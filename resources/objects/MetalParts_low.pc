@@ -1,0 +1,6 @@
+{
+    "class_id" : "mesh_component",
+	"id"       : "MetalParts_low",
+	"material" : "FlightHelmet_2/materials/MetalPartsMat.material.srms",
+	"mesh"     : "FlightHelmet_2/meshes/MetalParts_low.mesh.srms"
+}

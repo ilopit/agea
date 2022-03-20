@@ -1,0 +1,12 @@
+{
+   "class_id" : "mesh_object",
+   "components":[
+      {
+       "id"       : "cube.pc",
+		 "order"    : 1,
+		 "parent"   : 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      }
+   ]
+}

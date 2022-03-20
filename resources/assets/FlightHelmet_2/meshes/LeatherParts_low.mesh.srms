@@ -1,0 +1,8 @@
+{
+   "class_id"      : "mesh",
+   "id"            : "LeatherParts_low",
+   "index_size"    : 4,
+   "vertex_format" : "PNCV_F32",
+   "indeces"       : "FlightHelmet_2/meshes/LeatherParts_low.indx",
+   "vertices"      : "FlightHelmet_2/meshes/LeatherParts_low.vert"
+}

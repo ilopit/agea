@@ -1,0 +1,6 @@
+{
+   "class_id"    : "material",
+   "id"          : "FlightHelmet_Materials_RubberWoodMat_BaseColor",
+   "base_effect" : "simple_texture",
+   "texture"     : "FlightHelmet_2/textures/FlightHelmet_Materials_RubberWoodMat_BaseColor.texture.srms"
+}

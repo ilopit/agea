@@ -1,0 +1,47 @@
+{
+   "class_id" : "mesh_object",
+   "components":[
+      {
+         "id":"GlassPlastic_low.pc",
+		 "order"    : 1,
+		 "parent"   : 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      },
+      {
+         "id":"Hose_low.pc",
+		 "order" : 2,
+		 "parent": 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      },
+      {
+         "id":"LeatherParts_low.pc",
+		 "order" : 3,
+		 "parent": 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      },
+      {
+         "id":"Lenses_low.pc",
+		 "order" : 4,
+		 "parent": 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      },
+      {
+         "id":"MetalParts_low.pc",
+		 "order" : 5,
+		 "parent": 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      },
+      {
+         "id":"RubberWood_low.pc",
+		 "order" : 6,
+		 "parent": 0,
+		 "position" : {"x":0, "y":0, "z":0},
+		 "scale"    : {"x":1, "y":1, "z":1}
+      }
+   ]
+}

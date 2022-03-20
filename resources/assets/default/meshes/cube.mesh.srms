@@ -1,0 +1,7 @@
+{
+   "class_id"      : "mesh",
+   "id"            : "cube",
+   "index_size"    : 4,
+   "vertex_format" : "PNCV_F32",
+   "external"      : { "type" : "obj", "file" : "default/meshes/cube.obj"}
+}

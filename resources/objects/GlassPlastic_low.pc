@@ -1,0 +1,6 @@
+{
+    "class_id" : "mesh_component",
+	"id"       : "GlassPlastic_low",
+	"material" : "FlightHelmet_2/materials/RubberWoodMat.material.srms",
+	"mesh"     : "FlightHelmet_2/meshes/Hose_low.mesh.srms"
+}

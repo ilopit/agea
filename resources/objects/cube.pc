@@ -1,0 +1,6 @@
+{
+    "class_id" : "mesh_component",
+	"id"       : "cube",
+	"material" : "FlightHelmet_2/materials/GlassPlasticMat.material.srms",
+	"mesh"     : "default/meshes/cube.mesh.srms"
+}

@@ -1,0 +1,16 @@
+{
+   "groups":[
+      {
+         "name"     : "mesh_object_group",
+         "object"   : "flight_helmet.plo",
+         "instances": [
+            {
+               "id"       : "head_1",
+               "position" : {"x":-10,  "y":-10, "z":  0},
+               "rotation" : {"r":  0,  "p":  0, "y":  0},
+               "scale"    : {"x": 15,  "y": 15, "z": 15}
+            }
+         ]
+      }
+   ]
+}

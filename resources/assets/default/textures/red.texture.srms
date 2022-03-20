@@ -1,0 +1,6 @@
+{
+  "class_id"   : "texture",
+  "id"         : "red",
+  "format"     : "RGBA8",
+  "base_color" : "#FF0000FF"
+}
