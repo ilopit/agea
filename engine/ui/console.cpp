@@ -497,6 +497,7 @@ editor_console::handle_cmd_print(editor_console& e, const command_context& ctx)
 
     auto& arg = ctx.tokens[ctx.offset];
     static std::string buf(128, '\0');
+    static fixed_size_buffer buf2;
     buf.clear();
     // properties
     if (ctx.tokens.size() == 2)
@@ -520,13 +521,14 @@ editor_console::handle_cmd_print(editor_console& e, const command_context& ctx)
             auto& id = args[0];
             auto& name = args[1];
             auto& hint = args.size() == 3 ? args[2] : empty;
-            if (!glob::cli::get()->get_property(id, name, hint, buf))
+
+            if (!glob::cli::get()->get_property(id, name, hint, buf2))
             {
                 e.add_log("%s not found ", arg.c_str());
             }
             else
             {
-                e.add_log("%s = %s", arg.c_str(), buf.c_str());
+                e.add_log("%s = %s", arg.c_str(), buf2.data());
             }
         }
     }

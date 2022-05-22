@@ -96,9 +96,24 @@ load_level_path(level& l, const std::string& path)
 
             auto instance = object_constructor::object_clone_create(
                 class_obj->id(), item["id"].asString(), *l.m_occ);
-            object_constructor::update_object_properties(*instance, item);
-            instance->META_post_construct();
 
+            if (!instance)
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            if (!object_constructor::update_object_properties(*instance, item))
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            if (!instance->META_post_construct())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
             auto to_push = cast_ref<game_object>(instance);
 
             l.m_objects.push_back(to_push);

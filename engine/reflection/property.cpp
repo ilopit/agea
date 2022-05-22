@@ -15,7 +15,7 @@ namespace reflection
 static volatile bool initialize = property_convertes::init();
 
 bool
-property::save_to_string(property& prop, blob_ptr ptr, std::string& str)
+property::save_to_string(property& prop, blob_ptr ptr, fixed_size_buffer& str)
 {
     if (prop.type.type == property_type::t_nan)
     {
@@ -43,7 +43,7 @@ property::load_from_string(blob_ptr ptr, const std::string& str)
 }
 
 bool
-property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, std::string& buf)
+property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, fixed_size_buffer& buf)
 {
     if (type.type != property_type::t_vec3)
     {
@@ -323,9 +323,13 @@ property_convertes::init()
 }
 
 bool
-property_convertes::read_t_str(blob_ptr ptr, std::string& str)
+property_convertes::read_t_str(AGEA_read_from_property_args)
 {
-    str = extract<std::string>(ptr);
+    auto& str = extract<std::string>(ptr);
+
+    memcpy(buf.data(), str.data(), str.size());
+
+    buf[str.size()] = '\0';
 
     return true;
 }
@@ -340,11 +344,15 @@ property_convertes::write_t_str(blob_ptr ptr, const std::string& str)
 // Bool
 
 bool
-property_convertes::read_t_bool(blob_ptr ptr, std::string& str)
+property_convertes::read_t_bool(AGEA_read_from_property_args)
 {
     auto t = extract<bool>(ptr);
 
-    str = (t ? "true" : "false");
+    const std::string str = (t ? "true" : "false");
+
+    memcpy(buf.data(), str.data(), str.size());
+
+    buf[str.size()] = '\0';
 
     return true;
 }
@@ -376,11 +384,11 @@ property_convertes::write_t_bool(blob_ptr ptr, const std::string& str)
 // I8
 
 bool
-property_convertes::read_t_i8(blob_ptr ptr, std::string& str)
+property_convertes::read_t_i8(AGEA_read_from_property_args)
 {
     auto t = extract<int8_t>(ptr);
 
-    sprintf(str.data(), "%" PRIi8 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIi8 "", t);
 
     return true;
 }
@@ -398,11 +406,11 @@ property_convertes::write_t_i8(blob_ptr ptr, const std::string& str)
 // I16
 
 bool
-property_convertes::read_t_i16(blob_ptr ptr, std::string& str)
+property_convertes::read_t_i16(AGEA_read_from_property_args)
 {
     auto t = extract<int16_t>(ptr);
 
-    sprintf(str.data(), "%" PRIi16 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIi16 "", t);
 
     return true;
 }
@@ -419,11 +427,11 @@ property_convertes::write_t_i16(blob_ptr ptr, const std::string& str)
 // I32
 
 bool
-property_convertes::read_t_i32(blob_ptr ptr, std::string& str)
+property_convertes::read_t_i32(AGEA_read_from_property_args)
 {
     auto t = extract<int32_t>(ptr);
 
-    sscanf_s(str.c_str(), "%" PRIi32, &t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIi32, t);
 
     return true;
 }
@@ -440,11 +448,11 @@ property_convertes::write_t_i32(blob_ptr ptr, const std::string& str)
 // I64
 
 bool
-property_convertes::read_t_i64(blob_ptr ptr, std::string& str)
+property_convertes::read_t_i64(AGEA_read_from_property_args)
 {
     auto t = extract<int64_t>(ptr);
 
-    sprintf(str.data(), "%" PRIi64 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIi64 "", t);
 
     return true;
 }
@@ -461,11 +469,11 @@ property_convertes::write_t_i64(blob_ptr ptr, const std::string& str)
 // U8
 
 bool
-property_convertes::read_t_u8(blob_ptr ptr, std::string& str)
+property_convertes::read_t_u8(AGEA_read_from_property_args)
 {
     auto t = extract<uint8_t>(ptr);
 
-    sprintf(str.data(), "%" PRIu8 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIu8 "", t);
 
     return true;
 }
@@ -482,11 +490,11 @@ property_convertes::write_t_u8(blob_ptr ptr, const std::string& str)
 // U16
 
 bool
-property_convertes::read_t_u16(blob_ptr ptr, std::string& str)
+property_convertes::read_t_u16(AGEA_read_from_property_args)
 {
     auto t = extract<uint16_t>(ptr);
 
-    sprintf(str.data(), "%" PRIu16 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIu16 "", t);
 
     return true;
 }
@@ -503,11 +511,11 @@ property_convertes::write_t_u16(blob_ptr ptr, const std::string& str)
 // U32
 
 bool
-property_convertes::read_t_u32(blob_ptr ptr, std::string& str)
+property_convertes::read_t_u32(AGEA_read_from_property_args)
 {
     auto t = extract<uint32_t>(ptr);
 
-    sprintf(str.data(), "%" PRIu32 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIu32 "", t);
 
     return true;
 }
@@ -532,22 +540,22 @@ property_convertes::write_t_u64(blob_ptr ptr, const std::string& str)
 }
 
 bool
-property_convertes::read_t_u64(blob_ptr ptr, std::string& str)
+property_convertes::read_t_u64(AGEA_read_from_property_args)
 {
     auto t = extract<uint64_t>(ptr);
 
-    sprintf(str.data(), "%" PRIu64 "", t);
+    sprintf_s(buf.data(), buf.size(), "%" PRIu64 "", t);
     return true;
 }
 
 // Float
 
 bool
-property_convertes::read_t_f(blob_ptr ptr, std::string& str)
+property_convertes::read_t_f(AGEA_read_from_property_args)
 {
     auto t = extract<float>(ptr);
 
-    sprintf(str.data(), "%f", t);
+    sprintf_s(buf.data(), buf.size(), "%f", t);
     return true;
 }
 
@@ -563,11 +571,11 @@ property_convertes::write_t_f(blob_ptr ptr, const std::string& str)
 // Double
 
 bool
-property_convertes::read_t_d(blob_ptr ptr, std::string& str)
+property_convertes::read_t_d(AGEA_read_from_property_args)
 {
     auto t = extract<double>(ptr);
 
-    sprintf(str.data(), "%lf", t);
+    sprintf_s(buf.data(), buf.size(), "%lf", t);
     return true;
 }
 
@@ -583,10 +591,10 @@ property_convertes::write_t_d(blob_ptr ptr, const std::string& str)
 // Vec3
 
 bool
-property_convertes::read_t_vec3(blob_ptr ptr, std::string& str)
+property_convertes::read_t_vec3(AGEA_read_from_property_args)
 {
     auto t = extract<glm::vec3>(ptr);
-    sprintf(str.data(), "%f %f %f", t.x, t.y, t.z);
+    sprintf_s(buf.data(), buf.size(), "%f %f %f", t.x, t.y, t.z);
 
     return true;
 }
@@ -602,10 +610,10 @@ property_convertes::write_t_vec3(blob_ptr ptr, const std::string& str)
 // Material
 
 bool
-property_convertes::read_t_mat(blob_ptr ptr, std::string& str)
+property_convertes::read_t_mat(AGEA_read_from_property_args)
 {
     auto& t = extract<std::shared_ptr<model::material>>(ptr);
-    sprintf(str.data(), "%s", t->id().c_str());
+    sprintf_s(buf.data(), buf.size(), "%s", t->id().c_str());
 
     return true;
 }
@@ -630,10 +638,10 @@ property_convertes::write_t_mat(blob_ptr ptr, const std::string& str)
 // Mesh
 
 bool
-property_convertes::read_t_msh(blob_ptr ptr, std::string& str)
+property_convertes::read_t_msh(AGEA_read_from_property_args)
 {
     auto t = extract<std::shared_ptr<model::mesh>>(ptr);
-    sprintf(str.data(), "%s", t->id().c_str());
+    sprintf_s(buf.data(), buf.size(), "%s", t->id().c_str());
 
     return true;
 }

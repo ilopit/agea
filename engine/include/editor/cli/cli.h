@@ -2,6 +2,7 @@
 
 #include "core/agea_minimal.h"
 #include "utils/weird_singletone.h"
+#include "reflection/property_utils.h"
 
 namespace agea
 {
@@ -18,7 +19,7 @@ public:
     get_property(const std::string& object_id,
                  const std::string& property_name,
                  const std::string& subproperty_hint,
-                 std::string& list);
+                 fixed_size_buffer& result);
 
     static bool
     set_property(const std::string& object_id,

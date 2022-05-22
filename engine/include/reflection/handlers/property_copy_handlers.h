@@ -30,9 +30,6 @@ struct property_copy_handlers
     }
 
     static bool
-    copy(reflection::property& pf, reflection::property& pt, blob_ptr of, blob_ptr ot);
-
-    static bool
     init();
 
     // STR

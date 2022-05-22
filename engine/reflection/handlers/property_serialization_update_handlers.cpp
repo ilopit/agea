@@ -74,11 +74,17 @@ property_serialization_update_handlers::init()
 bool
 property_serialization_update_handlers::serialize_t_str(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_str(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<std::string>(ptr, jc);
     return true;
 }
@@ -87,12 +93,18 @@ property_serialization_update_handlers::deserialize_t_str(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_bool(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_bool(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<bool>(ptr, jc);
     return true;
 }
@@ -101,12 +113,18 @@ property_serialization_update_handlers::deserialize_t_bool(AGEA_deseialization_u
 bool
 property_serialization_update_handlers::serialize_t_i8(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_i8(AGEA_deseialization_update_args)
 {
-    reflection::extract<std::int8_t>(ptr) = jc.asInt();
+    AGEA_unused(occ);
+
+    reflection::extract<std::int8_t>(ptr) = (std::int8_t)jc.asInt();
     return true;
 }
 
@@ -114,13 +132,19 @@ property_serialization_update_handlers::deserialize_t_i8(AGEA_deseialization_upd
 bool
 property_serialization_update_handlers::serialize_t_i16(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_i16(AGEA_deseialization_update_args)
 {
-    reflection::extract<std::int16_t>(ptr) = jc.asInt();
+    AGEA_unused(occ);
+
+    reflection::extract<std::int16_t>(ptr) = (std::int16_t)jc.asInt();
     return true;
 }
 
@@ -128,11 +152,17 @@ property_serialization_update_handlers::deserialize_t_i16(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_i32(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_i32(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<std::int32_t>(ptr, jc);
     return true;
 }
@@ -141,11 +171,17 @@ property_serialization_update_handlers::deserialize_t_i32(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_i64(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_i64(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<std::int64_t>(ptr, jc);
     return true;
 }
@@ -154,12 +190,18 @@ property_serialization_update_handlers::deserialize_t_i64(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_u8(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_u8(AGEA_deseialization_update_args)
 {
-    reflection::extract<std::uint8_t>(ptr) = jc.asUInt();
+    AGEA_unused(occ);
+
+    reflection::extract<std::uint8_t>(ptr) = (std::uint8_t)jc.asUInt();
     return true;
 }
 
@@ -167,12 +209,18 @@ property_serialization_update_handlers::deserialize_t_u8(AGEA_deseialization_upd
 bool
 property_serialization_update_handlers::serialize_t_u16(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_u16(AGEA_deseialization_update_args)
 {
-    reflection::extract<std::uint16_t>(ptr) = jc.asUInt();
+    AGEA_unused(occ);
+
+    reflection::extract<std::uint16_t>(ptr) = (std::uint16_t)jc.asUInt();
     return true;
 }
 
@@ -180,12 +228,18 @@ property_serialization_update_handlers::deserialize_t_u16(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_u32(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_u32(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<std::int32_t>(ptr, jc);
     return true;
 }
@@ -194,12 +248,18 @@ property_serialization_update_handlers::deserialize_t_u32(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_u64(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_u64(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<std::uint64_t>(ptr, jc);
     return true;
 }
@@ -208,12 +268,18 @@ property_serialization_update_handlers::deserialize_t_u64(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_f(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_f(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<float>(ptr, jc);
     return true;
 }
@@ -222,11 +288,17 @@ property_serialization_update_handlers::deserialize_t_f(AGEA_deseialization_upda
 bool
 property_serialization_update_handlers::serialize_t_d(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 bool
 property_serialization_update_handlers::deserialize_t_d(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     reflection::extract_field<double>(ptr, jc);
     return true;
 }
@@ -235,12 +307,18 @@ property_serialization_update_handlers::deserialize_t_d(AGEA_deseialization_upda
 bool
 property_serialization_update_handlers::serialize_t_vec3(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_vec3(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     auto& field = reflection::extract<glm::vec3>(ptr);
 
     field.x = jc["x"].asFloat();
@@ -253,12 +331,18 @@ property_serialization_update_handlers::deserialize_t_vec3(AGEA_deseialization_u
 bool
 property_serialization_update_handlers::serialize_t_obj(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_obj(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
     ::agea::model::object_constructor::update_object_properties(*field, jc);
@@ -269,12 +353,18 @@ property_serialization_update_handlers::deserialize_t_obj(AGEA_deseialization_up
 bool
 property_serialization_update_handlers::serialize_t_com(AGEA_deseialization_update_args)
 {
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
     return true;
 }
 
 bool
 property_serialization_update_handlers::deserialize_t_com(AGEA_deseialization_update_args)
 {
+    AGEA_unused(occ);
+
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
     ::agea::model::object_constructor::update_object_properties(*field, jc);

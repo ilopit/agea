@@ -78,8 +78,8 @@ cli::print_properties(const std::string& object_id, std::string& result)
         return false;
     }
 
-    static std::string buffer(128, '\0');
-    buffer.clear();
+    static fixed_size_buffer buffer;
+    buffer.fill('\0');
 
     for (auto& categories : obj->reflection()->m_editor_properties)
     {
@@ -91,7 +91,7 @@ cli::print_properties(const std::string& object_id, std::string& result)
             result += p->name;
             result += " = ";
             reflection::property::save_to_string(*p, (::agea::blob_ptr)obj, buffer);
-            result += buffer.c_str();
+            result += buffer.data();
             result += "\n";
         }
     }
@@ -108,7 +108,7 @@ bool
 cli::get_property(const std::string& object_id,
                   const std::string& property_name,
                   const std::string& subproperty_hint,
-                  std::string& result)
+                  fixed_size_buffer& result)
 {
     auto obj = find_obj(object_id);
     if (!obj)

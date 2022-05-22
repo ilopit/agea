@@ -18,3 +18,5 @@
 #define AGEA_gen_class_cd_default(c) \
     c## ::##c() = default;           \
     c## ::##~c() = default;
+
+#define AGEA_unused(val) (void)(val)
