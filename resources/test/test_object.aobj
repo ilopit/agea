@@ -1,0 +1,37 @@
+{
+   "type_id"   : "mesh_object",
+   "id"        : "test_object",
+
+   "components":[
+      {
+        "object_class" : "test_root_component",
+        "id"           : "test_obj/test_root_component",
+        "order_idx"    : 0,
+        "parent_idx"   : -1
+      },
+      {
+        "object_class" : "test_component_a",
+        "id"           : "test_obj/test_component_a",
+        "order_idx"    : 1,
+        "parent_idx"   : 0
+      },
+      {
+        "object_class" : "test_component_b",
+        "id"           : "test_obj/test_component_b",
+        "order_idx"    : 2,
+        "parent_idx"   : 0
+      },
+      {
+        "object_class" : "test_component_a_2",
+        "id"           : "test_obj/test_component_a_2",
+        "order_idx"    : 3,
+        "parent_idx"   : 2
+      },
+      {
+        "object_class" : "test_component_b_2",
+        "id"           : "test_obj/test_component_b_2",
+        "order_idx"    : 4,
+        "parent_idx"   : 2
+      }
+   ]
+}

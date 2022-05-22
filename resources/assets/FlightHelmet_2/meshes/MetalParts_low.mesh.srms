@@ -1,0 +1,9 @@
+{
+   "type_id"       : "mesh",
+   "id"            : "MetalParts_low_mesh",
+   "index_size"    : 4,
+   "vertex_format" : "PNCV_F32",
+   "indices"       : "FlightHelmet_2/meshes/MetalParts_low.indx",
+   "vertices"      : "FlightHelmet_2/meshes/MetalParts_low.vert",
+   "class_obj"     : true,
+}

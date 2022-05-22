@@ -1,0 +1,7 @@
+{
+    "type_id"   : "mesh_component",
+	"id"        : "LeatherParts_low",
+	"material"  : "LeatherPartsMat",
+	"mesh"      : "LeatherParts_low_mesh",
+    "class_obj" : true
+}

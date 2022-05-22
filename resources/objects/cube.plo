@@ -1,0 +1,16 @@
+{
+   "type_id"   : "mesh_object",
+   "id"        : "cube_object",
+   "class_obj" : true,
+
+   "components":[
+      {
+       "id"         : "cube",
+       "order_idx"  : 1,
+       "parent_idx" : 0,
+       "position"   : {"x":0,   "y":0,   "z":0},
+       "scale"      : {"x":0.1, "y":0.1, "z":0.1},
+       "rotation"   : {"x":0,   "y":0,   "z":0}
+      }
+   ]
+}
