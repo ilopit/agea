@@ -57,7 +57,7 @@ private:
     static bool
     read_container(const std::string& object_id, serialization::json_conteiner& conteiner);
 
-    static void
+    static bool
     object_properties_load(smart_object& obj,
                            serialization::json_conteiner& jc,
                            object_constructor_context&);

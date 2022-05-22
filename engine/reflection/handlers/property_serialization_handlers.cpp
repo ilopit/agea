@@ -482,7 +482,7 @@ property_serialization_handlers::deserialize_t_com(AGEA_deseialization_args)
 
     field = obj;
 
-    if (!occ.propagate_to_obj_cache())
+    if (!occ.propagate_to_co_cache())
     {
         return false;
     }

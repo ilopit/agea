@@ -28,5 +28,11 @@ class_objects_cache::insert(std::shared_ptr<smart_object> obj, const std::string
     m_objects.insert({class_id, ctx});
 }
 
+void
+class_objects_cache::insert(std::shared_ptr<smart_object> obj)
+{
+    insert(std::move(obj), "");
+}
+
 }  // namespace model
 }  // namespace agea

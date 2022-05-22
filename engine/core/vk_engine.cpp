@@ -583,16 +583,7 @@ vulkan_engine::init_scene()
 void
 vulkan_engine::event_reload_world()
 {
-    auto level = glob::level::get();
-    level->m_objects.clear();
-
-    model::level_constructor::load_level_id(*glob::level::get(), "demo.plvl");
-
-    for (auto& o : glob::level::get()->m_objects)
-    {
-        auto obj = o->root_component();
-        obj->register_for_rendering();
-    }
+    AGEA_never("Not Implemented!");
 }
 
 void

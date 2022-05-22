@@ -3,7 +3,10 @@
 #include "model/level.h"
 #include "model/mesh_object.h"
 #include "model/components/mesh_component.h"
+
 #include "model/caches/class_object_cache.h"
+#include "model/caches/objects_cache.h"
+
 #include "model/object_construction_context.h"
 #include "core/fs_locator.h"
 
@@ -59,7 +62,11 @@ load_level_path(level& l, const std::string& path)
 
             auto class_obj_path = glob::resource_locator::get()->resource(category::all, obj_path);
 
-            object_constructor::class_object_load(class_obj_path, *l.m_occ);
+            if (!object_constructor::class_object_load(class_obj_path, *l.m_occ))
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
         }
     }
 
@@ -83,10 +90,11 @@ load_level_path(level& l, const std::string& path)
         auto& items = json_group["instances"];
         auto items_size = items.size();
 
-        auto class_obj = l.m_occ->class_cache->get(class_id);
+        auto class_obj = l.m_occ->class_obj_cache->get(class_id);
 
         if (!class_obj)
         {
+            ALOG_LAZY_ERROR;
             return false;
         }
 
@@ -109,14 +117,38 @@ load_level_path(level& l, const std::string& path)
                 return false;
             }
 
+            if (!l.m_occ->propagate_to_io_cache())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
             if (!instance->META_post_construct())
             {
                 ALOG_LAZY_ERROR;
                 return false;
             }
-            auto to_push = cast_ref<game_object>(instance);
+        }
+    }
+    fill_level_caches(l);
 
-            l.m_objects.push_back(to_push);
+    ALOG_INFO("Stats: CO items {0}, IO items {1}, Game objects {2}",
+              l.m_occ->class_obj_cache->size(), l.m_occ->instance_obj_cache->size(),
+              l.m_objects.size());
+
+    return true;
+}
+
+bool
+fill_level_caches(level& l)
+{
+    auto& occ = l.m_occ;
+    for (auto& o : occ->instance_obj_cache->items())
+    {
+        auto game_obj = o.second->as<game_object>();
+        if (game_obj)
+        {
+            l.m_objects.push_back(game_obj);
         }
     }
 

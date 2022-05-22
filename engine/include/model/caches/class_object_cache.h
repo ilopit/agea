@@ -26,6 +26,16 @@ public:
     void
     insert(std::shared_ptr<smart_object> obj, const std::string& path);
 
+    void
+    insert(std::shared_ptr<smart_object> obj);
+
+    size_t
+    size()
+    {
+        return m_objects.size();
+    }
+
+protected:
     std::unordered_map<std::string, class_object_context> m_objects;
 };
 

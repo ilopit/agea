@@ -20,12 +20,15 @@ public:
     extract_last();
 
     bool
-    propagate_to_obj_cache();
+    propagate_to_io_cache();
 
-    std::vector<std::shared_ptr<smart_object>> temporary_cache;
+    bool
+    propagate_to_co_cache();
 
-    std::shared_ptr<class_objects_cache> class_cache;
-    std::shared_ptr<objects_cache> obj_cache;
+    std::vector<std::shared_ptr<smart_object>> temporary_obj_cache;
+
+    std::shared_ptr<class_objects_cache> class_obj_cache;
+    std::shared_ptr<objects_cache> instance_obj_cache;
 
     // TODO, workaround
     std::shared_ptr<smart_object> last_obj;

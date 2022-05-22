@@ -14,8 +14,8 @@ namespace model
 {
 
 object_constructor_context::object_constructor_context()
-    : class_cache(std::make_shared<class_objects_cache>())
-    , obj_cache(std::make_shared<objects_cache>())
+    : class_obj_cache(std::make_shared<class_objects_cache>())
+    , instance_obj_cache(std::make_shared<objects_cache>())
 {
     ALOG_TRACE("Created");
 }
@@ -36,16 +36,32 @@ object_constructor_context::extract_last()
 }
 
 bool
-object_constructor_context::propagate_to_obj_cache()
+object_constructor_context::propagate_to_io_cache()
 {
-    while (!temporary_cache.empty())
+    while (!temporary_obj_cache.empty())
     {
-        auto obj = temporary_cache.back();
+        auto& obj = temporary_obj_cache.back();
 
         ALOG_INFO("Obj {0} propagated to O cache", obj->id());
 
-        obj_cache->insert(obj);
-        temporary_cache.pop_back();
+        instance_obj_cache->insert(std::move(obj));
+        temporary_obj_cache.pop_back();
+    }
+
+    return true;
+}
+
+bool
+object_constructor_context::propagate_to_co_cache()
+{
+    while (!temporary_obj_cache.empty())
+    {
+        auto& obj = temporary_obj_cache.back();
+
+        ALOG_INFO("Obj {0} propagated to O cache", obj->id());
+
+        class_obj_cache->insert(std::move(obj));
+        temporary_obj_cache.pop_back();
     }
 
     return true;

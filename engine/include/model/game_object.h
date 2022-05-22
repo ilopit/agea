@@ -198,6 +198,13 @@ public:
     bool
     post_construct();
 
+    component*
+    component_at(size_t idx)
+    {
+        AGEA_check(idx < m_components.size(), "Index should be in range");
+        return m_components[idx];
+    }
+
     AGEA_property("category=world", "visible=true", "access=rw", "hint=x,y,z");
     glm::vec3* m_position = nullptr;
 

@@ -11,13 +11,13 @@ namespace model
 {
 
 std::shared_ptr<smart_object>
-objects_cache::get(const std::string& id)
+objects_cache::get(const std::string& id) const
 {
     return m_items.at(id);
 }
 
 void
-objects_cache::insert(std::shared_ptr<smart_object>& obj)
+objects_cache::insert(std::shared_ptr<smart_object> obj)
 {
     auto& i = m_items[obj->id()];
 

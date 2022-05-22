@@ -44,7 +44,7 @@ object_constructor::read_container(const std::string& path,
     return true;
 }
 
-void
+bool
 object_constructor::object_properties_load(smart_object& obj,
                                            serialization::json_conteiner& jc,
                                            object_constructor_context& occ)
@@ -53,8 +53,12 @@ object_constructor::object_properties_load(smart_object& obj,
 
     for (auto& p : properties)
     {
-        reflection::property::deserialize(*p, obj, jc, occ);
+        if (!reflection::property::deserialize(*p, obj, jc, occ))
+        {
+        }
     }
+
+    return true;
 }
 
 bool
@@ -77,7 +81,7 @@ object_constructor::class_object_load(const std::string& object_path,
     auto type_id = conteiner["type_id"].asString();
     auto class_id = conteiner["id"].asString();
 
-    auto tryobj = occ.class_cache->get(class_id);
+    auto tryobj = occ.class_obj_cache->get(class_id);
 
     AGEA_check(!tryobj, "We should not re-load objects");
 
@@ -86,7 +90,7 @@ object_constructor::class_object_load(const std::string& object_path,
 
     object_properties_load(*empty, conteiner, occ);
 
-    occ.class_cache->insert(empty, object_path);
+    occ.class_obj_cache->insert(empty, object_path);
     occ.last_obj = empty;
 
     return empty.get();
@@ -97,10 +101,11 @@ object_constructor::object_clone_create(const std::string& object_id,
                                         const std::string& new_object_id,
                                         object_constructor_context& occ)
 {
-    auto obj = occ.class_cache->get(object_id);
+    auto obj = occ.class_obj_cache->get(object_id);
 
     if (!obj)
     {
+        ALOG_LAZY_ERROR;
         return nullptr;
     }
 
@@ -114,10 +119,14 @@ object_constructor::object_clone_create(smart_object& obj,
 {
     auto empty = obj.META_create_empty_obj();
     empty->META_set_id(new_object_id);
-    occ.temporary_cache.push_back(empty);
+    occ.temporary_obj_cache.push_back(empty);
     occ.last_obj = empty;
 
-    clone_object_properties(obj, *empty, occ);
+    if (!clone_object_properties(obj, *empty, occ))
+    {
+        ALOG_LAZY_ERROR;
+        return nullptr;
+    }
 
     empty->set_class_obj(&obj);
 

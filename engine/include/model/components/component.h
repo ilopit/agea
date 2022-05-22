@@ -21,7 +21,10 @@ public:
     bool
     construct(construct_params& c)
     {
-        base_class::construct(c);
+        if (!base_class::construct(c))
+        {
+            return false;
+        }
 
         return true;
     }
