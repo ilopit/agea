@@ -10,8 +10,9 @@ class smart_object;
 class class_objects_cache;
 class objects_cache;
 
-struct object_constructor_context
+class object_constructor_context
 {
+public:
     object_constructor_context();
     ~object_constructor_context();
 

@@ -133,7 +133,6 @@ public:
     std::string m_id;
 
     smart_object* m_class_obj = nullptr;
-    objects_cache* m_cache = nullptr;
 };
 
 template <typename To, typename From>

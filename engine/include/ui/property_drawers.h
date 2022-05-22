@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/agea_minimal.h"
+
 #include "reflection/property.h"
 
 #include <functional>

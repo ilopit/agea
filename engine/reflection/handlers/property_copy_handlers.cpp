@@ -14,20 +14,6 @@ namespace reflection
 namespace
 {
 
-template <typename T>
-void
-full_copy(blob_ptr from, blob_ptr to)
-{
-    extract<T>(to) = extract<T>(from);
-}
-
-template <typename T>
-void
-fast_copy(blob_ptr from, blob_ptr to)
-{
-    memcpy(to, from, sizeof(T));
-}
-
 }  // namespace
 
 bool

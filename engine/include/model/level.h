@@ -1,7 +1,8 @@
 #pragma once
 
-#include "game_object.h"
 #include "model/components/camera_component.h"
+#include "model/model_fwds.h"
+
 #include "utils/weird_singletone.h"
 
 #include "core/agea_minimal.h"
@@ -14,8 +15,7 @@ namespace agea
 {
 namespace model
 {
-struct object_constructor_context;
-class player;
+
 class level
 {
 public:

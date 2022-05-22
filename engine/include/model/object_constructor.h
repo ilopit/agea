@@ -4,6 +4,8 @@
 
 #include "core/fs_locator.h"
 #include "core/agea_minimal.h"
+
+#include "model/model_fwds.h"
 #include "model/caches/class_object_cache.h"
 
 #include <string>
@@ -13,10 +15,6 @@ namespace agea
 {
 namespace model
 {
-class smart_object;
-class game_object;
-class component;
-struct object_constructor_context;
 
 object_constructor_context&
 default_occ();

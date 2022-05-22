@@ -3,7 +3,7 @@
 #include "core/agea_minimal.h"
 
 #include "serialization/json_serialization.h"
-#include "reflection/property.h"
+
 #include "reflection/property_utils.h"
 
 #include <string>

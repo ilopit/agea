@@ -23,6 +23,7 @@
 #include "model/components/mesh_component.h"
 #include "model/level_constructor.h"
 #include "model/level.h"
+#include "model/game_object.h"
 
 #include "ui/ui.h"
 #include "editor/cli/cli.h"

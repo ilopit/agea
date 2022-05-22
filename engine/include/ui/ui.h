@@ -1,8 +1,8 @@
 #pragma once
 
 #include "utils/weird_singletone.h"
-#include "reflection/types.h"
-#include "reflection/property.h"
+
+#include "model/model_fwds.h"
 
 #include <vulkan/vulkan.h>
 
@@ -13,11 +13,6 @@
 
 namespace agea
 {
-namespace model
-{
-class game_object_component;
-class game_object;
-}  // namespace model
 
 namespace ui
 {

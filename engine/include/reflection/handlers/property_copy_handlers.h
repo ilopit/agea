@@ -3,7 +3,9 @@
 #include "core/agea_minimal.h"
 
 #include "serialization/json_serialization.h"
-#include "reflection/property.h"
+#include "reflection/property_utils.h"
+
+#include "model/model_fwds.h"
 
 #include <string>
 #include <vector>
@@ -12,12 +14,6 @@
 
 namespace agea
 {
-
-namespace model
-{
-struct object_constructor_context;
-}
-
 namespace reflection
 {
 struct property_copy_handlers

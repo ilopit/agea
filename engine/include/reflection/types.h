@@ -4,6 +4,8 @@
 
 #include "core/agea_minimal.h"
 
+#include "model/model_fwds.h"
+
 #define AGEA_create_resolver(in_type, out_type)            \
     template <>                                            \
     static property_type_description resolve<in_type>()    \
@@ -26,14 +28,6 @@
 
 namespace agea
 {
-
-namespace model
-{
-class material;
-class mesh;
-class texture;
-class smart_object;
-}  // namespace model
 
 namespace reflection
 {

@@ -2,14 +2,6 @@
 
 #include "ui/ui.h"
 
-#include <array>
-
-#include <SDL.h>
-#include <SDL_vulkan.h>
-#include <imgui.h>
-#include <backends/imgui_impl_sdl.h>
-#include <backends/imgui_impl_vulkan.h>
-
 #include "ui/console.h"
 #include "ui/property_drawers.h"
 
@@ -17,13 +9,24 @@
 #include "core/vk_initializers.h"
 
 #include "model/level.h"
+#include "model/game_object.h"
+
+#include "model/rendering/material.h"
 #include "model/caches/materials_cache.h"
+
 #include "reflection/property.h"
+
 #include "vulkan_render/vulkan_texture_data.h"
 #include "vulkan_render/render_loader.h"
 #include "vulkan_render/render_device.h"
 
-#include "model/rendering/material.h"
+#include <SDL.h>
+#include <SDL_vulkan.h>
+#include <imgui.h>
+#include <backends/imgui_impl_sdl.h>
+#include <backends/imgui_impl_vulkan.h>
+
+#include <array>
 
 namespace agea
 {

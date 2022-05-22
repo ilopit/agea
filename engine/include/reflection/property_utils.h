@@ -1,6 +1,9 @@
 #pragma once
 
 #include "core/agea_minimal.h"
+
+#include "model/model_fwds.h"
+
 #include <functional>
 
 #define AGEA_deseialization_args \
@@ -23,18 +26,11 @@ class Value;
 namespace agea
 {
 
-using fixed_size_buffer = std::array<char, 128>;
-
 namespace serialization
 {
 using json_conteiner = Json::Value;
 
 }  // namespace serialization
-namespace model
-{
-struct object_constructor_context;
-class smart_object;
-}  // namespace model
 
 namespace reflection
 {
@@ -59,11 +55,26 @@ reduce_ptr(blob_ptr ptr, bool is_ptr)
     return is_ptr ? *(blob_ptr*)(ptr) : ptr;
 }
 
-using property_serialization_handler = std::function<bool(AGEA_deseialization_args)>;
-using property_serialization_update_handler = std::function<bool(AGEA_deseialization_update_args)>;
-using property_copy_handler = std::function<bool(AGEA_copy_handlfer_args)>;
-using property_read_from_handler = std::function<bool(AGEA_read_from_property_args)>;
+template <typename T>
+void
+full_copy(blob_ptr from, blob_ptr to)
+{
+    extract<T>(to) = extract<T>(from);
+}
 
+template <typename T>
+void
+fast_copy(blob_ptr from, blob_ptr to)
+{
+    memcpy(to, from, sizeof(T));
+}
+
+// clang-format off
+using property_serialization_handler        = std::function<bool(AGEA_deseialization_args)>;
+using property_serialization_update_handler = std::function<bool(AGEA_deseialization_update_args)>;
+using property_copy_handler                 = std::function<bool(AGEA_copy_handlfer_args)>;
+using property_read_from_handler            = std::function<bool(AGEA_read_from_property_args)>;
+// clang-format on
 }  // namespace reflection
 
 }  // namespace agea

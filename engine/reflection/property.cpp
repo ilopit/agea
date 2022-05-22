@@ -205,7 +205,7 @@ property::deserialize_item(reflection::property& p,
 {
     if (!jc.isMember(p.name))
     {
-        ALOG_ERROR("Unable to deserialize property [{0}:{1}] ", obj.type_id(), p.name);
+        ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.type_id(), p.name);
         return false;
     }
 

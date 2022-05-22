@@ -2,6 +2,8 @@
 
 #include "core/agea_minimal.h"
 
+#include "model/game_object.h"
+
 namespace agea
 {
 namespace model
