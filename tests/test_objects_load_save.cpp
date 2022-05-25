@@ -57,10 +57,7 @@ TEST_F(test_load_objects, load_component)
     ASSERT_EQ(component->m_order_idx, model::NO_index);
     ASSERT_EQ(component->m_parent_idx, model::NO_parent);
 
-    auto eoc = glob::empty_objects_cache::get();
-    auto empty_obj = eoc->get(component->type_id());
-
-    ASSERT_NE(empty_obj, obj);
+    ASSERT_FALSE(is_from_EO_cache(component));
 }
 
 TEST_F(test_load_objects, load_object)
