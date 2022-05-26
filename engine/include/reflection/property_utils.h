@@ -7,10 +7,10 @@
 #include <functional>
 
 #define AGEA_deseialization_args \
-    ::agea::blob_ptr ptr, serialization::json_conteiner &jc, model::object_constructor_context &occ
+    ::agea::blob_ptr ptr, const serialization::conteiner &jc, model::object_constructor_context &occ
 
 #define AGEA_deseialization_update_args \
-    ::agea::blob_ptr ptr, serialization::json_conteiner &jc, model::object_constructor_context &occ
+    ::agea::blob_ptr ptr, const serialization::conteiner &jc, model::object_constructor_context &occ
 
 #define AGEA_copy_handlfer_args                                                        \
     model::smart_object &src_obj, model::smart_object &dst_obj, ::agea::blob_ptr from, \
@@ -18,9 +18,9 @@
 
 #define AGEA_read_from_property_args ::agea::blob_ptr ptr, fixed_size_buffer &buf
 
-namespace Json
+namespace YAML
 {
-class Value;
+class Node;
 }
 
 namespace agea
@@ -28,7 +28,7 @@ namespace agea
 
 namespace serialization
 {
-using json_conteiner = Json::Value;
+using conteiner = YAML::Node;
 
 }  // namespace serialization
 
@@ -44,7 +44,7 @@ extract(blob_ptr ptr)
 
 template <typename T>
 void
-extract_field(blob_ptr ptr, serialization::json_conteiner& jc)
+extract_field(blob_ptr ptr, const serialization::conteiner& jc)
 {
     extract<T>(ptr) = jc.as<T>();
 }

@@ -1,71 +1,117 @@
-{
-   "type_id"   : "mesh_object",
-   "id"        : "flight_helmet",
-   "class_obj" : true,
-
-   "components":[
-      {
-        "object_class" : "root_component",
-        "id"           : "flight_helmet/root_component",
-        "order_idx"    : 0,
-        "parent_idx"   : -1,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      },
-      {
-        "object_class" : "GlassPlastic_low",
-        "id"           : "flight_helmet/GlassPlastic_low",
-        "order_idx"    : 1,
-        "parent_idx"   : 0,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      },
-      {
-        "object_class" : "Hose_low",
-        "id"           : "flight_helmet/Hose_low",
-        "order_idx"    : 2,
-        "parent_idx"   : 0,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      },
-      {
-        "object_class" : "LeatherParts_low",
-        "id"           : "flight_helmet/LeatherParts_low",
-        "order_idx"    : 3,
-        "parent_idx"   : 0,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      },
-      {
-        "object_class" : "Lenses_low",
-        "id"           : "flight_helmet/Lenses_low",
-        "order_idx"    : 4,
-        "parent_idx"   : 0,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      },
-      {
-        "object_class" : "MetalParts_low",
-        "id"           : "flight_helmet/MetalParts_low",
-        "order_idx"    : 5,
-        "parent_idx"   : 0,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      },
-      {
-        "object_class" : "RubberWood_low",
-        "id"           : "flight_helmet/RubberWood_low",
-        "order_idx"    : 6,
-        "parent_idx"   : 0,
-        "position"     : {"x":0, "y":0, "z":0},
-        "scale"        : {"x":1, "y":1, "z":1},
-        "rotation"     : {"x":0, "y":0, "z":0}
-      }
-   ]
-}
+---
+type_id: mesh_object
+id: flight_helmet
+class_obj: true
+components:
+- object_class: root_component
+  id: flight_helmet/root_component
+  order_idx: 0
+  parent_idx: -1
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+- object_class: GlassPlastic_low
+  id: flight_helmet/GlassPlastic_low
+  order_idx: 1
+  parent_idx: 0
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+- object_class: Hose_low
+  id: flight_helmet/Hose_low
+  order_idx: 2
+  parent_idx: 0
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+- object_class: LeatherParts_low
+  id: flight_helmet/LeatherParts_low
+  order_idx: 3
+  parent_idx: 0
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+- object_class: Lenses_low
+  id: flight_helmet/Lenses_low
+  order_idx: 4
+  parent_idx: 0
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+- object_class: MetalParts_low
+  id: flight_helmet/MetalParts_low
+  order_idx: 5
+  parent_idx: 0
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+- object_class: RubberWood_low
+  id: flight_helmet/RubberWood_low
+  order_idx: 6
+  parent_idx: 0
+  position:
+    x: 0
+    y: 0
+    z: 0
+  scale:
+    x: 1
+    y: 1
+    z: 1
+  rotation:
+    x: 0
+    y: 0
+    z: 0

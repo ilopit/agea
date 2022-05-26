@@ -5,6 +5,7 @@
 #include "utils/string_utility.h"
 #include "model/caches/materials_cache.h"
 
+#include <array>
 #include <algorithm>
 
 namespace agea

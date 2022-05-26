@@ -8,6 +8,8 @@
 
 #include "utils/agea_log.h"
 
+#include "serialization/serialization.h"
+
 namespace agea
 {
 namespace reflection
@@ -124,7 +126,7 @@ property_serialization_update_handlers::deserialize_t_i8(AGEA_deseialization_upd
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::int8_t>(ptr) = (std::int8_t)jc.asInt();
+    reflection::extract<std::int8_t>(ptr) = jc.as<std::int8_t>();
     return true;
 }
 
@@ -144,7 +146,7 @@ property_serialization_update_handlers::deserialize_t_i16(AGEA_deseialization_up
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::int16_t>(ptr) = (std::int16_t)jc.asInt();
+    reflection::extract<std::int16_t>(ptr) = jc.as<std::int16_t>();
     return true;
 }
 
@@ -201,7 +203,7 @@ property_serialization_update_handlers::deserialize_t_u8(AGEA_deseialization_upd
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::uint8_t>(ptr) = (std::uint8_t)jc.asUInt();
+    reflection::extract<std::uint8_t>(ptr) = jc.as<std::uint8_t>();
     return true;
 }
 
@@ -220,7 +222,7 @@ property_serialization_update_handlers::deserialize_t_u16(AGEA_deseialization_up
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::uint16_t>(ptr) = (std::uint16_t)jc.asUInt();
+    reflection::extract<std::uint16_t>(ptr) = jc.as<std::uint16_t>();
     return true;
 }
 
@@ -321,9 +323,9 @@ property_serialization_update_handlers::deserialize_t_vec3(AGEA_deseialization_u
 
     auto& field = reflection::extract<glm::vec3>(ptr);
 
-    field.x = jc["x"].asFloat();
-    field.y = jc["y"].asFloat();
-    field.z = jc["z"].asFloat();
+    field.x = jc["x"].as<float>();
+    field.y = jc["y"].as<float>();
+    field.z = jc["z"].as<float>();
 
     return true;
 }

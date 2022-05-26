@@ -3,12 +3,13 @@
 #include "model/level.h"
 #include "model/mesh_object.h"
 #include "model/components/mesh_component.h"
-
 #include "model/caches/class_object_cache.h"
 #include "model/caches/objects_cache.h"
-
 #include "model/object_construction_context.h"
+
 #include "core/fs_locator.h"
+
+#include "serialization/serialization.h"
 
 #include <fstream>
 #include <json/json.h>
@@ -37,15 +38,7 @@ load_level_path(level& l, const std::string& path)
 {
     ALOG_INFO("Begin level loading with path {0}", path);
 
-    std::ifstream file(path);
-    if (!file.is_open())
-    {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    Json::Value json;
-    file >> json;
+    YAML::Node json = YAML::LoadFile(path);
 
     {
         auto objects_count = json["objecs"].size();
@@ -58,7 +51,7 @@ load_level_path(level& l, const std::string& path)
 
         for (unsigned idx = 0; idx < objects_count; ++idx)
         {
-            auto obj_path = json["objecs"][idx].asString();
+            auto obj_path = json["objecs"][idx].as<std::string>();
 
             auto class_obj_path = glob::resource_locator::get()->resource(category::all, obj_path);
 
@@ -80,14 +73,14 @@ load_level_path(level& l, const std::string& path)
 
     for (unsigned idx = 0; idx < groups_count; ++idx)
     {
-        auto& json_group = json["groups"][idx];
+        auto json_group = json["groups"][idx];
 
-        ALOG_INFO("Level : group {0}", json_group["name"].asString());
+        ALOG_INFO("Level : group {0}", json_group["name"].as<std::string>());
 
-        auto class_id = json_group["object_class"].asString();
+        auto class_id = json_group["object_class"].as<std::string>();
         ALOG_INFO("Level : class_id {0} instances", class_id);
 
-        auto& items = json_group["instances"];
+        auto items = json_group["instances"];
         auto items_size = items.size();
 
         auto class_obj = l.m_occ->class_obj_cache->get(class_id);
@@ -100,10 +93,10 @@ load_level_path(level& l, const std::string& path)
 
         for (unsigned i = 0; i < items_size; ++i)
         {
-            auto& item = items[i];
+            auto item = items[i];
 
             auto instance = object_constructor::object_clone_create(
-                class_obj->id(), item["id"].asString(), *l.m_occ);
+                class_obj->id(), item["id"].as<std::string>(), *l.m_occ);
 
             if (!instance)
             {

@@ -1,16 +1,18 @@
-{
-   "groups":[
-      {
-         "name"     : "mesh_object_group",
-         "object"   : "cube.plo",
-         "instances": [
-            {
-               "id"       : "cube",
-               "position" : {"x":  0,  "y":  0, "z":  0},
-               "rotation" : {"r":  0,  "p":  0, "y":  0},
-               "scale"    : {"x": 5,   "y": 45, "z":  5}
-            }
-         ]
-      }
-   ]
-}
+---
+groups:
+- name: mesh_object_group
+  object: cube.plo
+  instances:
+  - id: cube
+    position:
+      x: 0
+      y: 0
+      z: 0
+    rotation:
+      r: 0
+      p: 0
+      y: 0
+    scale:
+      x: 5
+      y: 45
+      z: 5

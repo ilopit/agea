@@ -4,7 +4,7 @@
 
 #include "reflection/property_utils.h"
 
-#include "serialization/json_serialization.h"
+#include "serialization/serialization_fwds.h"
 
 #include <string>
 #include <vector>

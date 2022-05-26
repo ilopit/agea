@@ -1,7 +1,6 @@
-{
-    "type_id"   : "mesh_component",
-	"id"        : "GlassPlastic_low",
-	"material"  : "RubberWoodMat",
-	"mesh"      : "Hose_low_mesh",
-    "class_obj" : true
-}
+---
+type_id: mesh_component
+id: GlassPlastic_low
+material: RubberWoodMat
+mesh: Hose_low_mesh
+class_obj: true

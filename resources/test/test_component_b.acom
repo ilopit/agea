@@ -1,6 +1,5 @@
-{
-    "type_id"    : "component",
-	"id"         : "test_component_b",
-	"order_idx"  : -1,
-    "parent_idx" : -1
-}
+---
+type_id: component
+id: test_component_b
+order_idx: -1
+parent_idx: -1

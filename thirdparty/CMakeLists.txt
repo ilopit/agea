@@ -76,3 +76,10 @@ externalize(gtest "gtests")
 externalize(gmock "gtests")
 externalize(gtest_main "gtests")
 externalize(gmock_main "gtests")
+
+#yaml-cpp
+set(YAML_CPP_BUILD_TESTS OFF)
+set(YAML_CPP_BUILD_TOOLS OFF)
+set(YAML_CPP_INSTALL OFF)
+add_subdirectory(upstream/yaml-cpp)
+externalize(yaml-cpp "yaml-cpp")

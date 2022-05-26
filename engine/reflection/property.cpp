@@ -5,7 +5,12 @@
 #include "model/rendering/material.h"
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
+
 #include "utils/agea_log.h"
+
+#include "serialization/serialization.h"
+
+#include <array>
 
 namespace agea
 {
@@ -131,7 +136,7 @@ property::copy(property& from_property,
 bool
 property::serialize(reflection::property&,
                     blob_ptr,
-                    serialization::json_conteiner&,
+                    const serialization::conteiner&,
                     model::object_constructor_context&)
 {
     return true;
@@ -140,7 +145,7 @@ property::serialize(reflection::property&,
 bool
 property::deserialize(reflection::property& p,
                       model::smart_object& obj,
-                      serialization::json_conteiner& jc,
+                      const serialization::conteiner& jc,
                       model::object_constructor_context& occ)
 {
     if (p.type.is_collection)
@@ -156,7 +161,7 @@ property::deserialize(reflection::property& p,
 bool
 property::deserialize_update(reflection::property& p,
                              blob_ptr ptr,
-                             serialization::json_conteiner& jc,
+                             const serialization::conteiner& jc,
                              model::object_constructor_context& occ)
 {
     if (p.type.is_collection)
@@ -172,11 +177,11 @@ property::deserialize_update(reflection::property& p,
 bool
 property::deserialize_collection(reflection::property& p,
                                  model::smart_object& obj,
-                                 serialization::json_conteiner& jc,
+                                 const serialization::conteiner& jc,
                                  model::object_constructor_context& occ)
 {
     auto ptr = (blob_ptr)&obj;
-    auto& items = jc[p.name];
+    auto items = jc[p.name];
     auto items_size = items.size();
     auto& r = extract<std::vector<void*>>(ptr + p.offset);
 
@@ -187,8 +192,8 @@ property::deserialize_collection(reflection::property& p,
 
     for (unsigned i = 0; i < items_size; ++i)
     {
-        auto& item = items[i];
-        auto idx = item["order_idx"].asUInt();
+        auto item = items[i];
+        auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
         p.serialization_handler((blob_ptr)filed_ptr, item, occ);
@@ -200,10 +205,10 @@ property::deserialize_collection(reflection::property& p,
 bool
 property::deserialize_item(reflection::property& p,
                            model::smart_object& obj,
-                           serialization::json_conteiner& jc,
+                           const serialization::conteiner& jc,
                            model::object_constructor_context& occ)
 {
-    if (!jc.isMember(p.name))
+    if (!jc[p.name])
     {
         ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.type_id(), p.name);
         return false;
@@ -221,10 +226,10 @@ property::deserialize_item(reflection::property& p,
 bool
 property::deserialize_update_collection(reflection::property& p,
                                         blob_ptr ptr,
-                                        serialization::json_conteiner& jc,
+                                        const serialization::conteiner& jc,
                                         model::object_constructor_context& occ)
 {
-    auto& items = jc[p.name];
+    auto items = jc[p.name];
     auto items_size = items.size();
     auto& r = extract<std::vector<model::component*>>(ptr + p.offset);
 
@@ -235,8 +240,8 @@ property::deserialize_update_collection(reflection::property& p,
 
     for (unsigned i = 0; i < items_size; ++i)
     {
-        auto& item = items[i];
-        auto idx = item["order_idx"].asUInt();
+        auto item = items[i];
+        auto idx = item["order_idx"].as<int32_t>();
 
         auto* filed_ptr = &r[idx];
         p.update_handler((blob_ptr)filed_ptr, item, occ);
@@ -248,12 +253,12 @@ property::deserialize_update_collection(reflection::property& p,
 bool
 property::deserialize_update_item(reflection::property& p,
                                   blob_ptr ptr,
-                                  serialization::json_conteiner& jc,
+                                  const serialization::conteiner& jc,
                                   model::object_constructor_context& occ)
 {
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    if (!jc.isMember(p.name))
+    if (!jc[p.name])
     {
         return false;
     }

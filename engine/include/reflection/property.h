@@ -40,19 +40,19 @@ public:
     static bool
     serialize(reflection::property& p,
               blob_ptr ptr,
-              serialization::json_conteiner& jc,
+              const serialization::conteiner& jc,
               model::object_constructor_context& occ);
 
     static bool
     deserialize(reflection::property& p,
                 model::smart_object& obj,
-                serialization::json_conteiner& jc,
+                const serialization::conteiner& jc,
                 model::object_constructor_context& occ);
 
     static bool
     deserialize_update(reflection::property& p,
                        blob_ptr ptr,
-                       serialization::json_conteiner& jc,
+                       const serialization::conteiner& jc,
                        model::object_constructor_context& occ);
 
     static bool
@@ -66,25 +66,25 @@ private:
     static bool
     deserialize_collection(reflection::property& p,
                            model::smart_object& obj,
-                           serialization::json_conteiner& jc,
+                           const serialization::conteiner& jc,
                            model::object_constructor_context& occ);
 
     static bool
     deserialize_item(reflection::property& p,
                      model::smart_object& obj,
-                     serialization::json_conteiner& jc,
+                     const serialization::conteiner& jc,
                      model::object_constructor_context& occ);
 
     static bool
     deserialize_update_collection(reflection::property& p,
                                   blob_ptr ptr,
-                                  serialization::json_conteiner& jc,
+                                  const serialization::conteiner& jc,
                                   model::object_constructor_context& occ);
 
     static bool
     deserialize_update_item(reflection::property& p,
                             blob_ptr ptr,
-                            serialization::json_conteiner& jc,
+                            const serialization::conteiner& jc,
                             model::object_constructor_context& occ);
 
 public:

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "serialization/json_serialization.h"
+#include "serialization/serialization_fwds.h"
 
 #include "core/fs_locator.h"
 #include "core/agea_minimal.h"
@@ -23,7 +23,7 @@ class object_constructor
 {
 public:
     static bool
-    object_save(serialization::json_conteiner& c, const std::string& object_id);
+    object_save(serialization::conteiner& c, const std::string& object_id);
 
     static smart_object*
     class_object_load(const std::string& object_path,
@@ -43,23 +43,18 @@ public:
                         object_constructor_context& occ);
 
     static bool
-    update_object_properties(smart_object& g, serialization::json_conteiner& c);
+    update_object_properties(smart_object& g, const serialization::conteiner& c);
 
     static bool
     clone_object_properties(smart_object& from, smart_object& to, object_constructor_context& occ);
 
 private:
     static bool
-    read_container(const std::string& object_id,
-                   serialization::json_conteiner& conteiner,
-                   category c);
-
-    static bool
-    read_container(const std::string& object_id, serialization::json_conteiner& conteiner);
+    read_container(const std::string& object_id, serialization::conteiner& conteiner, category c);
 
     static bool
     object_properties_load(smart_object& obj,
-                           serialization::json_conteiner& jc,
+                           const serialization::conteiner& jc,
                            object_constructor_context&);
 };
 

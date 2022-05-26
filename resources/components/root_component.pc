@@ -1,6 +1,5 @@
-{
-    "type_id"    : "game_object_component",
-	"id"         : "root_component",
-	"renderable" : false,
-	"class_obj"  : true
-}
+---
+type_id: game_object_component
+id: root_component
+renderable: false
+class_obj: true

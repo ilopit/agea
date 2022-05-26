@@ -7,12 +7,13 @@
 #include "model/caches/class_object_cache.h"
 #include "model/object_construction_context.h"
 
+#include "serialization/serialization.h"
+
 #include "utils/agea_log.h"
 
 #include "core/fs_locator.h"
 
 #include <fstream>
-#include <json/json.h>
 
 namespace agea
 {
@@ -20,33 +21,17 @@ namespace model
 {
 bool
 object_constructor::read_container(const std::string& object_id,
-                                   serialization::json_conteiner& conteiner,
+                                   serialization::conteiner& conteiner,
                                    category c)
 {
     auto path = glob::resource_locator::get()->resource(c, object_id);
 
-    return read_container(path, conteiner);
-}
-
-bool
-object_constructor::read_container(const std::string& path,
-                                   serialization::json_conteiner& conteiner)
-{
-    std::ifstream file(path);
-    if (!file.is_open())
-    {
-        return false;
-    }
-
-    Json::Value json;
-    file >> conteiner;
-
-    return true;
+    return serialization::read_container(path, conteiner);
 }
 
 bool
 object_constructor::object_properties_load(smart_object& obj,
-                                           serialization::json_conteiner& jc,
+                                           const serialization::conteiner& jc,
                                            object_constructor_context& occ)
 {
     auto& properties = obj.reflection()->m_serilalization_properties;
@@ -62,7 +47,7 @@ object_constructor::object_properties_load(smart_object& obj,
 }
 
 bool
-object_constructor::object_save(serialization::json_conteiner&, const std::string&)
+object_constructor::object_save(serialization::conteiner&, const std::string&)
 {
     return true;
 }
@@ -71,15 +56,15 @@ smart_object*
 object_constructor::class_object_load(const std::string& object_path,
                                       object_constructor_context& occ)
 {
-    serialization::json_conteiner conteiner;
-    if (!read_container(object_path, conteiner))
+    serialization::conteiner conteiner;
+    if (!serialization::read_container(object_path, conteiner))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
     }
 
-    auto type_id = conteiner["type_id"].asString();
-    auto class_id = conteiner["id"].asString();
+    auto type_id = conteiner["type_id"].as<std::string>();
+    auto class_id = conteiner["id"].as<std::string>();
 
     auto tryobj = occ.class_obj_cache->get(class_id);
 
@@ -134,29 +119,28 @@ object_constructor::object_clone_create(smart_object& obj,
 }
 
 bool
-object_constructor::update_object_properties(smart_object& obj, serialization::json_conteiner& jc)
+object_constructor::update_object_properties(smart_object& obj, const serialization::conteiner& jc)
 {
     auto& reflection = *obj.reflection();
 
-    auto keys = jc.getMemberNames();
-
     object_constructor_context c;
-    for (auto& k : keys)
+    for (auto k : jc)
     {
+        auto key_name = k.first.as<std::string>();
         auto itr = std::find_if(reflection.m_properties.begin(), reflection.m_properties.end(),
-                                [k](std::shared_ptr<::agea::reflection::property>& p)
-                                { return p->name == k.c_str(); });
+                                [&key_name](std::shared_ptr<::agea::reflection::property>& p)
+                                { return p->name == key_name; });
 
         if (itr == reflection.m_properties.end())
         {
-            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.id(), k.c_str());
+            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.id(), key_name);
             continue;
         }
 
         auto& p = *itr;
         if (!reflection::property::deserialize_update(*p, (blob_ptr)&obj, jc, c))
         {
-            ALOG_ERROR("Property update [{0}:{1}] failed", obj.id(), k.c_str());
+            ALOG_ERROR("Property update [{0}:{1}] failed", obj.id(), key_name);
             return false;
         }
     }

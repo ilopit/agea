@@ -1,26 +1,18 @@
 #pragma once
 
-#include <string>
-
-#include <json/json.h>
-
-namespace Json
-{
-class Value;
-}
+#include "serialization/serialization.h"
 
 namespace agea
 {
 
 namespace serialization
 {
-using json_conteiner = Json::Value;
 
-struct game_object_serialization_helper
+struct utils
 {
     template <typename T>
     static void
-    read_if_exists(const std::string& key, json_conteiner& s, T& p)
+    read_if_exists(const std::string& key, conteiner& s, T& p)
     {
         if (s.isMember(key))
         {
@@ -29,9 +21,9 @@ struct game_object_serialization_helper
     }
 
     static bool
-    has_key(const std::string& key, json_conteiner& s)
+    has_key(const std::string& key, conteiner& s)
     {
-        if (!s.isMember(key))
+        if (!s[key])
         {
             return false;
         }
@@ -39,9 +31,9 @@ struct game_object_serialization_helper
 
     template <typename T>
     static bool
-    read(const std::string& key, json_conteiner& s, T& p)
+    read(const std::string& key, conteiner& s, T& p)
     {
-        if (!s.isMember(key))
+        if (!s[key])
         {
             return false;
         }
@@ -54,7 +46,7 @@ struct game_object_serialization_helper
     template <typename T>
     static bool
     read_3vec(const std::string& key,
-              json_conteiner& s,
+              conteiner& s,
               const std::string& akey,
               const std::string& bkey,
               const std::string& ckey,

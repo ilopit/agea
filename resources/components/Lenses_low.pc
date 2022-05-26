@@ -1,7 +1,6 @@
-{
-    "type_id"   : "mesh_component",
-	"id"        : "Lenses_low",
-	"material"  : "LensesMat",
-	"mesh"      : "Lenses_low_mesh",
-    "class_obj" : true
-}
+---
+type_id: mesh_component
+id: Lenses_low
+material: LensesMat
+mesh: Lenses_low_mesh
+class_obj: true

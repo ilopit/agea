@@ -1,7 +1,6 @@
-{
-    "type_id"    : "texture",
-    "id"         : "FlightHelmet_Materials_MetalPartsMat_BaseColor",
-    "format"     : "RGBA8",
-    "base_color" : "FlightHelmet_2/textures/FlightHelmet_Materials_MetalPartsMat_BaseColor.png",
-    "class_obj"  : true
-}
+---
+type_id: texture
+id: FlightHelmet_Materials_MetalPartsMat_BaseColor
+format: RGBA8
+base_color: FlightHelmet_2/textures/FlightHelmet_Materials_MetalPartsMat_BaseColor.png
+class_obj: true

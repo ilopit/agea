@@ -1,7 +1,6 @@
-{
-    "type_id"     : "material",
-	"id"          : "RubberWoodMat",
-	"base_effect" : "simple_texture",
-	"texture"     : "FlightHelmet_Materials_RubberWoodMat_BaseColor",
-	"class_obj"   : true
-}
+---
+type_id: material
+id: RubberWoodMat
+base_effect: simple_texture
+texture: FlightHelmet_Materials_RubberWoodMat_BaseColor
+class_obj: true

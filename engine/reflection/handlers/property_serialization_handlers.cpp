@@ -9,6 +9,8 @@
 #include "model/caches/objects_cache.h"
 #include "model/object_constructor.h"
 
+#include "serialization/serialization.h"
+
 #include "utils/agea_log.h"
 
 namespace agea
@@ -136,7 +138,7 @@ property_serialization_handlers::deserialize_t_i8(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::int8_t>(ptr) = (std::int8_t)jc.asInt();
+    reflection::extract<std::int8_t>(ptr) = jc.as<int8_t>();
     return true;
 }
 
@@ -156,7 +158,7 @@ property_serialization_handlers::deserialize_t_i16(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::int16_t>(ptr) = (std::int16_t)jc.asInt();
+    reflection::extract<std::int16_t>(ptr) = jc.as<std::int16_t>();
     return true;
 }
 
@@ -213,7 +215,7 @@ property_serialization_handlers::deserialize_t_u8(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::uint8_t>(ptr) = (std::uint8_t)jc.asUInt();
+    reflection::extract<std::uint8_t>(ptr) = jc.as<std::uint8_t>();
     return true;
 }
 
@@ -232,7 +234,7 @@ property_serialization_handlers::deserialize_t_u16(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    reflection::extract<std::uint16_t>(ptr) = (std::uint16_t)jc.asUInt();
+    reflection::extract<std::uint16_t>(ptr) = jc.as<std::uint16_t>();
     return true;
 }
 
@@ -333,9 +335,9 @@ property_serialization_handlers::deserialize_t_vec3(AGEA_deseialization_args)
 
     auto& field = reflection::extract<glm::vec3>(ptr);
 
-    field.x = jc["x"].asFloat();
-    field.y = jc["y"].asFloat();
-    field.z = jc["z"].asFloat();
+    field.x = jc["x"].as<float>();
+    field.y = jc["y"].as<float>();
+    field.z = jc["z"].as<float>();
 
     return true;
 }
@@ -358,7 +360,7 @@ property_serialization_handlers::deserialize_t_txt(AGEA_deseialization_args)
 
     auto& field = reflection::extract<::agea::model::texture*>(ptr);
 
-    auto txt = glob::textures_cache::get()->get(jc.asString()).get();
+    auto txt = glob::textures_cache::get()->get(jc.as<std::string>()).get();
     if (!txt)
     {
         return false;
@@ -385,7 +387,7 @@ property_serialization_handlers::deserialize_t_mat(AGEA_deseialization_args)
 
     auto& field = reflection::extract<::agea::model::material*>(ptr);
 
-    auto mat = glob::materials_cache::get()->get(jc.asString()).get();
+    auto mat = glob::materials_cache::get()->get(jc.as<std::string>()).get();
     if (!mat)
     {
         return false;
@@ -412,7 +414,7 @@ property_serialization_handlers::deserialize_t_msh(AGEA_deseialization_args)
 
     auto& field = reflection::extract<::agea::model::mesh*>(ptr);
 
-    auto msh = glob::meshes_cache::get()->get(jc.asString()).get();
+    auto msh = glob::meshes_cache::get()->get(jc.as<std::string>()).get();
     if (!msh)
     {
         return false;
@@ -438,7 +440,7 @@ property_serialization_handlers::deserialize_t_obj(AGEA_deseialization_args)
 
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    auto str = jc["id"].asString();
+    auto str = jc["id"].as<std::string>();
 
     auto pstr = glob::class_objects_cache::get()->get(str);
 
@@ -462,9 +464,9 @@ property_serialization_handlers::deserialize_t_com(AGEA_deseialization_args)
 {
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    auto class_id = jc["object_class"].asString();
+    auto class_id = jc["object_class"].as<std::string>();
 
-    auto id = jc["id"].asString();
+    auto id = jc["id"].as<std::string>();
 
     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
 

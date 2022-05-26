@@ -1,7 +1,6 @@
-{
-    "type_id"   : "mesh_component",
-	"id"        : "cube",
-	"material"  : "red",
-	"mesh"      : "cube",
-	"class_obj" : true
-}
+---
+type_id: mesh_component
+id: cube
+material: red
+mesh: cube
+class_obj: true
