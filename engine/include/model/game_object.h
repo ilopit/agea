@@ -199,7 +199,7 @@ public:
     post_construct();
 
     component*
-    component_at(size_t idx)
+    component_at(size_t idx) const
     {
         AGEA_check(idx < m_components.size(), "Index should be in range");
         return m_components[idx];
@@ -214,7 +214,9 @@ public:
     AGEA_property("category=world", "visible=true", "access=rw", "hint=x,y,z");
     glm::vec3* m_scale = nullptr;
 
-    AGEA_property("category=meta", "serializable=true");
+    AGEA_property("category=meta",
+                  "serializable=true",
+                  "des_handler=custom::handle_object_components");
     std::vector<component*> m_components;
 
     game_object_component* m_root_component = nullptr;

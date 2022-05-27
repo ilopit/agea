@@ -43,10 +43,7 @@ public:
               serialization::conteiner& sc);
 
     static bool
-    deserialize(reflection::property& p,
-                model::smart_object& obj,
-                const serialization::conteiner& sc,
-                model::object_constructor_context& occ);
+    deserialize(deserialize_context&);
 
     static bool
     deserialize_update(reflection::property& p,
@@ -107,10 +104,13 @@ public:
     bool visible = false;
 
     // clang-format off
-    property_copy_handler                 copy_handler            = nullptr;
-    property_serialization_handler        serialization_handler   = nullptr;
-    property_deserialization_handler      deserialization_handler = nullptr;
-    property_serialization_update_handler update_handler          = nullptr;
+
+    property_deserialization_handler  deserialization_handler       = nullptr;
+
+    type_copy_handler                 types_copy_handler            = nullptr;
+    type_serialization_handler        types_serialization_handler   = nullptr;
+    type_deserialization_handler      types_deserialization_handler = nullptr;
+    type_serialization_update_handler types_update_handler          = nullptr;
     // clang-format on
 };
 
@@ -127,10 +127,10 @@ struct property_convertes
 {
     using write_to_property = std::function<bool(blob_ptr, const std::string&)>;
 
-    static std::vector<property_read_from_handler>&
+    static std::vector<type_read_from_handler>&
     readers()
     {
-        static std::vector<property_read_from_handler> s_readers;
+        static std::vector<type_read_from_handler> s_readers;
         return s_readers;
     }
 

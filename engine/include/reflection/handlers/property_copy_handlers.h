@@ -17,10 +17,10 @@ namespace reflection
 {
 struct property_copy_handlers
 {
-    static std::vector<property_copy_handler>&
+    static std::vector<type_copy_handler>&
     copy_handlers()
     {
-        static std::vector<property_copy_handler> s_copyrs;
+        static std::vector<type_copy_handler> s_copyrs;
         return s_copyrs;
     }
 

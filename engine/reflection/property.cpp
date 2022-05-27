@@ -99,7 +99,7 @@ property::copy(property& from_property,
                model::smart_object& dst_obj,
                model::object_constructor_context& occ)
 {
-    if (!from_property.copy_handler)
+    if (!from_property.types_copy_handler)
     {
         return true;
     }
@@ -118,8 +118,8 @@ property::copy(property& from_property,
 
         for (int i = 0; i < fromcol.size(); ++i)
         {
-            from_property.copy_handler(src_obj, dst_obj, (blob_ptr)&fromcol[i], (blob_ptr)&tocol[i],
-                                       occ);
+            from_property.types_copy_handler(src_obj, dst_obj, (blob_ptr)&fromcol[i],
+                                             (blob_ptr)&tocol[i], occ);
         }
     }
     else
@@ -128,7 +128,7 @@ property::copy(property& from_property,
                                                    from_property.type.is_ptr);
         auto to = ::agea::reflection::reduce_ptr((blob_ptr)&dst_obj + to_property.offset,
                                                  from_property.type.is_ptr);
-        from_property.copy_handler(src_obj, dst_obj, from, to, occ);
+        from_property.types_copy_handler(src_obj, dst_obj, from, to, occ);
     }
     return true;
 }
@@ -149,18 +149,15 @@ property::serialize(const reflection::property& p,
 }
 
 bool
-property::deserialize(reflection::property& p,
-                      model::smart_object& obj,
-                      const serialization::conteiner& jc,
-                      model::object_constructor_context& occ)
+property::deserialize(deserialize_context& ctx)
 {
-    if (p.type.is_collection)
+    if (ctx.p->type.is_collection)
     {
-        return deserialize_collection(p, obj, jc, occ);
+        return deserialize_collection(*ctx.p, *ctx.obj, *ctx.sc, *ctx.occ);
     }
     else
     {
-        return deserialize_item(p, obj, jc, occ);
+        return deserialize_item(*ctx.p, *ctx.obj, *ctx.sc, *ctx.occ);
     }
 }
 
@@ -202,7 +199,7 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        p.deserialization_handler((blob_ptr)filed_ptr, item, occ);
+        p.types_deserialization_handler((blob_ptr)filed_ptr, item, occ);
     }
 
     return true;
@@ -232,7 +229,7 @@ property::deserialize_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    p.deserialization_handler(ptr, jc[p.name], occ);
+    p.types_deserialization_handler(ptr, jc[p.name], occ);
 
     return true;
 }
@@ -248,7 +245,7 @@ property::serialize_item(const reflection::property& p,
 
     serialization::conteiner c;
 
-    p.serialization_handler(ptr, c);
+    p.types_serialization_handler(ptr, c);
 
     sc[p.name] = c;
 
@@ -276,7 +273,7 @@ property::deserialize_update_collection(reflection::property& p,
         auto idx = item["order_idx"].as<int32_t>();
 
         auto* filed_ptr = &r[idx];
-        p.update_handler((blob_ptr)filed_ptr, item, occ);
+        p.types_update_handler((blob_ptr)filed_ptr, item, occ);
     }
 
     return true;
@@ -295,7 +292,7 @@ property::deserialize_update_item(reflection::property& p,
         return false;
     }
 
-    p.update_handler(ptr, jc[p.name], occ);
+    p.types_update_handler(ptr, jc[p.name], occ);
     return true;
 }
 

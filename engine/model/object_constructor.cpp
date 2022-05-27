@@ -36,9 +36,15 @@ object_constructor::object_properties_load(smart_object& obj,
 {
     auto& properties = obj.reflection()->m_serilalization_properties;
 
+    reflection::deserialize_context dc;
+    dc.occ = &occ;
+    dc.sc = &jc;
+    dc.obj = &obj;
+
     for (auto& p : properties)
     {
-        if (!reflection::property::deserialize(*p, obj, jc, occ))
+        dc.p = p.get();
+        if (!reflection::property::deserialize(dc))
         {
         }
     }
