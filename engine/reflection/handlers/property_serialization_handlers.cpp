@@ -86,30 +86,31 @@ property_serialization_handlers::init()
 
 // STR
 bool
-property_serialization_handlers::serialize_t_str(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_str(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
-    AGEA_unused(jc);
-    AGEA_unused(occ);
+    reflection::pack_field<std::string>(ptr, jc);
 
     return true;
 }
 bool
 property_serialization_handlers::deserialize_t_str(AGEA_deseialization_args)
 {
+    AGEA_unused(ptr);
     AGEA_unused(occ);
-
+    AGEA_unused(jc);
     reflection::extract_field<std::string>(ptr, jc);
     return true;
 }
 
 // Bool
 bool
-property_serialization_handlers::serialize_t_bool(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_bool(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<bool>(ptr, jc);
 
     return true;
 }
@@ -125,11 +126,11 @@ property_serialization_handlers::deserialize_t_bool(AGEA_deseialization_args)
 
 // I8
 bool
-property_serialization_handlers::serialize_t_i8(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_i8(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
-    AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<std::int8_t>(ptr, jc);
 
     return true;
 }
@@ -144,11 +145,10 @@ property_serialization_handlers::deserialize_t_i8(AGEA_deseialization_args)
 
 // I16
 bool
-property_serialization_handlers::serialize_t_i16(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_i16(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
-    AGEA_unused(jc);
-    AGEA_unused(occ);
+    reflection::pack_field<std::int16_t>(ptr, jc);
 
     return true;
 }
@@ -164,11 +164,12 @@ property_serialization_handlers::deserialize_t_i16(AGEA_deseialization_args)
 
 // I32
 bool
-property_serialization_handlers::serialize_t_i32(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_i32(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<std::int32_t>(ptr, jc);
 
     return true;
 }
@@ -183,11 +184,12 @@ property_serialization_handlers::deserialize_t_i32(AGEA_deseialization_args)
 
 // I64
 bool
-property_serialization_handlers::serialize_t_i64(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_i64(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<std::int64_t>(ptr, jc);
 
     return true;
 }
@@ -202,11 +204,11 @@ property_serialization_handlers::deserialize_t_i64(AGEA_deseialization_args)
 
 // U8
 bool
-property_serialization_handlers::serialize_t_u8(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_u8(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+    reflection::pack_field<std::uint8_t>(ptr, jc);
 
     return true;
 }
@@ -221,11 +223,12 @@ property_serialization_handlers::deserialize_t_u8(AGEA_deseialization_args)
 
 // U16
 bool
-property_serialization_handlers::serialize_t_u16(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_u16(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<std::uint16_t>(ptr, jc);
 
     return true;
 }
@@ -240,11 +243,12 @@ property_serialization_handlers::deserialize_t_u16(AGEA_deseialization_args)
 
 // U32
 bool
-property_serialization_handlers::serialize_t_u32(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_u32(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<std::uint32_t>(ptr, jc);
 
     return true;
 }
@@ -254,17 +258,18 @@ property_serialization_handlers::deserialize_t_u32(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    reflection::extract_field<std::int32_t>(ptr, jc);
+    reflection::extract_field<std::uint32_t>(ptr, jc);
     return true;
 }
 
 // U64
 bool
-property_serialization_handlers::serialize_t_u64(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_u64(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<std::uint64_t>(ptr, jc);
 
     return true;
 }
@@ -280,11 +285,12 @@ property_serialization_handlers::deserialize_t_u64(AGEA_deseialization_args)
 
 // Float
 bool
-property_serialization_handlers::serialize_t_f(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_f(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<float>(ptr, jc);
 
     return true;
 }
@@ -300,11 +306,12 @@ property_serialization_handlers::deserialize_t_f(AGEA_deseialization_args)
 
 // Double
 bool
-property_serialization_handlers::serialize_t_d(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_d(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    reflection::pack_field<double>(ptr, jc);
 
     return true;
 }
@@ -319,11 +326,16 @@ property_serialization_handlers::deserialize_t_d(AGEA_deseialization_args)
 
 // Vec3
 bool
-property_serialization_handlers::serialize_t_vec3(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_vec3(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    auto& field = reflection::extract<glm::vec3>(ptr);
+
+    jc["x"] = field.x;
+    jc["y"] = field.y;
+    jc["z"] = field.z;
 
     return true;
 }
@@ -344,11 +356,13 @@ property_serialization_handlers::deserialize_t_vec3(AGEA_deseialization_args)
 
 // Texture
 bool
-property_serialization_handlers::serialize_t_txt(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_txt(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    auto field = reflection::extract<::agea::model::texture*>(ptr);
+    jc = field->id();
 
     return true;
 }
@@ -358,7 +372,7 @@ property_serialization_handlers::deserialize_t_txt(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    auto& field = reflection::extract<::agea::model::texture*>(ptr);
+    auto field = reflection::extract<::agea::model::texture*>(ptr);
 
     auto txt = glob::textures_cache::get()->get(jc.as<std::string>()).get();
     if (!txt)
@@ -371,11 +385,12 @@ property_serialization_handlers::deserialize_t_txt(AGEA_deseialization_args)
 
 // Material
 bool
-property_serialization_handlers::serialize_t_mat(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_mat(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+    auto field = reflection::extract<::agea::model::material*>(ptr);
+    jc = field->id();
 
     return true;
 }
@@ -398,11 +413,13 @@ property_serialization_handlers::deserialize_t_mat(AGEA_deseialization_args)
 
 // Mesh
 bool
-property_serialization_handlers::serialize_t_msh(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_msh(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    auto field = reflection::extract<::agea::model::mesh*>(ptr);
+    jc = field->id();
 
     return true;
 }
@@ -424,11 +441,14 @@ property_serialization_handlers::deserialize_t_msh(AGEA_deseialization_args)
 }
 
 bool
-property_serialization_handlers::serialize_t_obj(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_obj(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    auto field = reflection::extract<::agea::model::smart_object*>(ptr);
+
+    jc["id"] = field->id();
 
     return true;
 }
@@ -438,7 +458,7 @@ property_serialization_handlers::deserialize_t_obj(AGEA_deseialization_args)
 {
     AGEA_unused(occ);
 
-    auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
+    auto field = reflection::extract<::agea::model::smart_object*>(ptr);
 
     auto str = jc["id"].as<std::string>();
 
@@ -450,11 +470,15 @@ property_serialization_handlers::deserialize_t_obj(AGEA_deseialization_args)
 }
 
 bool
-property_serialization_handlers::serialize_t_com(AGEA_deseialization_args)
+property_serialization_handlers::serialize_t_com(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
-    AGEA_unused(occ);
+
+    auto field = reflection::extract<::agea::model::smart_object*>(ptr);
+
+    jc["id"] = field->id();
+    jc["object_class"] = field->m_class_obj->id();
 
     return true;
 }

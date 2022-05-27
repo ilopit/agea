@@ -1,8 +1,7 @@
----
 type_id: game_object_component
 id: test_root_component
-order_idx: -1
-parent_idx: -1
+order_idx: 4294967295
+parent_idx: 4294967295
 position:
   x: 0
   y: 0

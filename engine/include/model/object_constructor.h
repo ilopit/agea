@@ -22,15 +22,12 @@ default_occ();
 class object_constructor
 {
 public:
-    static bool
-    object_save(serialization::conteiner& c, const std::string& object_id);
-
     static smart_object*
     class_object_load(const std::string& object_path,
                       object_constructor_context& occ = default_occ());
 
-    static smart_object*
-    class_object_save(const std::string& object_path);
+    static bool
+    class_object_save(const smart_object& obj, const std::string& object_path);
 
     static smart_object*
     object_clone_create(const std::string& src_object_id,
@@ -55,7 +52,10 @@ private:
     static bool
     object_properties_load(smart_object& obj,
                            const serialization::conteiner& jc,
-                           object_constructor_context&);
+                           object_constructor_context& occ);
+
+    static bool
+    object_properties_save(const smart_object& obj, serialization::conteiner& jc);
 };
 
 }  // namespace model

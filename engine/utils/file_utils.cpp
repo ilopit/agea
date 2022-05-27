@@ -23,4 +23,22 @@ file_utils::load_file(const std::string& str, std::vector<char>& blob)
     return true;
 }
 
+bool
+file_utils::compare_files(const std::string& lpath, const std::string& rpath)
+{
+    std::vector<char> l, r;
+
+    if (!load_file(lpath, l))
+    {
+        return false;
+    }
+
+    if (!load_file(rpath, r))
+    {
+        return false;
+    }
+
+    return l == r;
+}
+
 }  // namespace agea

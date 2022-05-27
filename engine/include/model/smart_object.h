@@ -129,7 +129,11 @@ public:
     AGEA_property("category=meta", "visible=true");
     std::string m_type_id;
 
-    AGEA_property("category=meta", "serializable=true", "visible=true", "copyable=no");
+    AGEA_property("category=meta",
+                  "serializable=true",
+                  "serializable=custom::custom_loader",
+                  "visible=true",
+                  "copyable=no");
     std::string m_id;
 
     smart_object* m_class_obj = nullptr;

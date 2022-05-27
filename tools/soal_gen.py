@@ -232,13 +232,15 @@ def process_file(original_file_full_path, original_file_rel_path, context):
                 context.content += 'p->visible                = {0};\n'.format(prop.visible)
             if prop.serializable != "":
                 context.content += "    "
-                context.content += 'p->serialization_handler  = property_serialization_handlers::deserializers()[(size_t)p->type.type];\n'
+                context.content += 'p->serialization_handler    = property_serialization_handlers::serializers()[(size_t)p->type.type];\n'
+                context.content += "    "
+                context.content += 'p->deserialization_handler  = property_serialization_handlers::deserializers()[(size_t)p->type.type];\n'
             if prop.copyable != "no":
                 context.content += "    "
-                context.content += 'p->copy_handler           = property_copy_handlers::copy_handlers()[(size_t)p->type.type];\n'
+                context.content += 'p->copy_handler             = property_copy_handlers::copy_handlers()[(size_t)p->type.type];\n'
             if prop.updatable != "no":
                 context.content += "    "
-                context.content += 'p->update_handler         = property_serialization_update_handlers::deserializers()[(size_t)p->type.type];\n'
+                context.content += 'p->update_handler           = property_serialization_update_handlers::deserializers()[(size_t)p->type.type];\n'
             context.content += property_template_end
         i = i + 1
 

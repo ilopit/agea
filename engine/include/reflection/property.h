@@ -38,21 +38,20 @@ public:
     load_from_string_with_hint(blob_ptr ptr, const std::string& hint, const std::string& str);
 
     static bool
-    serialize(reflection::property& p,
-              blob_ptr ptr,
-              const serialization::conteiner& jc,
-              model::object_constructor_context& occ);
+    serialize(const reflection::property& p,
+              const model::smart_object& obj,
+              serialization::conteiner& sc);
 
     static bool
     deserialize(reflection::property& p,
                 model::smart_object& obj,
-                const serialization::conteiner& jc,
+                const serialization::conteiner& sc,
                 model::object_constructor_context& occ);
 
     static bool
     deserialize_update(reflection::property& p,
                        blob_ptr ptr,
-                       const serialization::conteiner& jc,
+                       const serialization::conteiner& sc,
                        model::object_constructor_context& occ);
 
     static bool
@@ -66,25 +65,34 @@ private:
     static bool
     deserialize_collection(reflection::property& p,
                            model::smart_object& obj,
-                           const serialization::conteiner& jc,
+                           const serialization::conteiner& sc,
                            model::object_constructor_context& occ);
+    static bool
+    serialize_collection(const reflection::property& p,
+                         const model::smart_object& obj,
+                         serialization::conteiner& sc);
 
     static bool
     deserialize_item(reflection::property& p,
                      model::smart_object& obj,
-                     const serialization::conteiner& jc,
+                     const serialization::conteiner& sc,
                      model::object_constructor_context& occ);
+
+    static bool
+    serialize_item(const reflection::property& p,
+                   const model::smart_object& obj,
+                   serialization::conteiner& sc);
 
     static bool
     deserialize_update_collection(reflection::property& p,
                                   blob_ptr ptr,
-                                  const serialization::conteiner& jc,
+                                  const serialization::conteiner& sc,
                                   model::object_constructor_context& occ);
 
     static bool
     deserialize_update_item(reflection::property& p,
                             blob_ptr ptr,
-                            const serialization::conteiner& jc,
+                            const serialization::conteiner& sc,
                             model::object_constructor_context& occ);
 
 public:
@@ -99,9 +107,10 @@ public:
     bool visible = false;
 
     // clang-format off
-    property_copy_handler                 copy_handler          = nullptr;
-    property_serialization_handler        serialization_handler = nullptr;
-    property_serialization_update_handler update_handler        = nullptr;
+    property_copy_handler                 copy_handler            = nullptr;
+    property_serialization_handler        serialization_handler   = nullptr;
+    property_deserialization_handler      deserialization_handler = nullptr;
+    property_serialization_update_handler update_handler          = nullptr;
     // clang-format on
 };
 

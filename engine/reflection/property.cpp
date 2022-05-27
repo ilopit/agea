@@ -134,12 +134,18 @@ property::copy(property& from_property,
 }
 
 bool
-property::serialize(reflection::property&,
-                    blob_ptr,
-                    const serialization::conteiner&,
-                    model::object_constructor_context&)
+property::serialize(const reflection::property& p,
+                    const model::smart_object& obj,
+                    serialization::conteiner& sc)
 {
-    return true;
+    if (p.type.is_collection)
+    {
+        return serialize_collection(p, obj, sc);
+    }
+    else
+    {
+        return serialize_item(p, obj, sc);
+    }
 }
 
 bool
@@ -196,9 +202,17 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        p.serialization_handler((blob_ptr)filed_ptr, item, occ);
+        p.deserialization_handler((blob_ptr)filed_ptr, item, occ);
     }
 
+    return true;
+}
+
+bool
+property::serialize_collection(const reflection::property& p,
+                               const model::smart_object& obj,
+                               serialization::conteiner& jc)
+{
     return true;
 }
 
@@ -218,7 +232,25 @@ property::deserialize_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    p.serialization_handler(ptr, jc[p.name], occ);
+    p.deserialization_handler(ptr, jc[p.name], occ);
+
+    return true;
+}
+
+bool
+property::serialize_item(const reflection::property& p,
+                         const model::smart_object& obj,
+                         serialization::conteiner& sc)
+{
+    auto ptr = (blob_ptr)&obj;
+
+    ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
+
+    serialization::conteiner c;
+
+    p.serialization_handler(ptr, c);
+
+    sc[p.name] = c;
 
     return true;
 }

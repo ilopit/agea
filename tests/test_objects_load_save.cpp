@@ -10,6 +10,10 @@
 #include "model/level_constructor.h"
 #include "model/game_object.h"
 
+#include "utils/file_utils.h"
+
+#include "serialization/serialization.h"
+
 #include "utils/agea_log.h"
 
 #include <gtest/gtest.h>
@@ -41,13 +45,13 @@ is_from_EO_cache(model::smart_object* obj)
 
 TEST_F(test_load_objects, load_component)
 {
-    auto path =
+    auto object_path =
         glob::resource_locator::get()->resource(category::all, "test/test_component_a_2.acom");
 
-    ASSERT_FALSE(path.empty());
+    ASSERT_FALSE(object_path.empty());
 
     model::object_constructor_context occ;
-    auto obj = model::object_constructor::class_object_load(path, occ);
+    auto obj = model::object_constructor::class_object_load(object_path, occ);
     ASSERT_TRUE(!!obj);
 
     auto component = obj->as<model::component>();
@@ -58,6 +62,13 @@ TEST_F(test_load_objects, load_component)
     ASSERT_EQ(component->m_parent_idx, model::NO_parent);
 
     ASSERT_FALSE(is_from_EO_cache(component));
+
+    std::string result_path = "result";
+    auto result = model::object_constructor::class_object_save(*obj, result_path);
+    ASSERT_TRUE(result);
+
+    result = file_utils::compare_files(object_path, result_path);
+    ASSERT_TRUE(result);
 }
 
 TEST_F(test_load_objects, load_object)

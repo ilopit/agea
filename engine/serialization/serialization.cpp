@@ -1,6 +1,7 @@
 #include "serialization/serialization.h"
 
 #include "utils/agea_log.h"
+#include <fstream>
 
 namespace agea
 {
@@ -17,6 +18,16 @@ read_container(const std::string& path, serialization::conteiner& conteiner)
         ALOG_LAZY_ERROR;
         return false;
     }
+
+    return true;
+}
+
+bool
+write_container(const std::string& path, const serialization::conteiner& conteiner)
+{
+    std::ofstream file(path);
+
+    file << conteiner;
 
     return true;
 }

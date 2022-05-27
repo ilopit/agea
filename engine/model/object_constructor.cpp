@@ -47,8 +47,17 @@ object_constructor::object_properties_load(smart_object& obj,
 }
 
 bool
-object_constructor::object_save(serialization::conteiner&, const std::string&)
+object_constructor::object_properties_save(const smart_object& obj, serialization::conteiner& jc)
 {
+    auto& properties = obj.reflection()->m_serilalization_properties;
+
+    for (auto& p : properties)
+    {
+        if (!reflection::property::serialize(*p, obj, jc))
+        {
+        }
+    }
+
     return true;
 }
 
@@ -79,6 +88,27 @@ object_constructor::class_object_load(const std::string& object_path,
     occ.last_obj = empty;
 
     return empty.get();
+}
+
+bool
+object_constructor::class_object_save(const smart_object& obj, const std::string& object_path)
+{
+    serialization::conteiner conteiner;
+
+    conteiner["type_id"] = obj.type_id();
+    conteiner["id"] = obj.id();
+
+    if (!object_properties_save(obj, conteiner))
+    {
+        return false;
+    }
+
+    if (!serialization::write_container(object_path, conteiner))
+    {
+        return false;
+    }
+
+    return true;
 }
 
 smart_object*
