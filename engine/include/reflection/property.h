@@ -43,9 +43,6 @@ public:
               serialization::conteiner& sc);
 
     static bool
-    deserialize(deserialize_context&);
-
-    static bool
     deserialize_update(reflection::property& p,
                        blob_ptr ptr,
                        const serialization::conteiner& sc,
@@ -58,22 +55,32 @@ public:
          model::smart_object& dst_obj,
          model::object_constructor_context& occ);
 
+    static bool
+    compare(compare_context& context);
+
 private:
+    static bool
+    default_deserialize(deserialize_context& context);
+
+    static bool
+    default_serialize(serialize_context& context);
+
     static bool
     deserialize_collection(reflection::property& p,
                            model::smart_object& obj,
                            const serialization::conteiner& sc,
                            model::object_constructor_context& occ);
-    static bool
-    serialize_collection(const reflection::property& p,
-                         const model::smart_object& obj,
-                         serialization::conteiner& sc);
 
     static bool
     deserialize_item(reflection::property& p,
                      model::smart_object& obj,
                      const serialization::conteiner& sc,
                      model::object_constructor_context& occ);
+
+    static bool
+    serialize_collection(const reflection::property& p,
+                         const model::smart_object& obj,
+                         serialization::conteiner& sc);
 
     static bool
     serialize_item(const reflection::property& p,
@@ -92,21 +99,29 @@ private:
                             const serialization::conteiner& sc,
                             model::object_constructor_context& occ);
 
+    static bool
+    compare_collection(compare_context& context);
+
+    static bool
+    compare_item(compare_context& context);
+
 public:
+    // clang-format off
     std::string name;
     size_t offset;
     property_type_description type;
 
     std::string category;
     std::vector<std::string> hints;
-    access_mode access = access_mode::ro;
-    bool serializable = false;
-    bool visible = false;
 
-    // clang-format off
+    access_mode access                                              = access_mode::ro;
+    bool serializable                                               = false;
+    bool visible                                                    = false;
 
-    property_deserialization_handler  deserialization_handler       = nullptr;
+    property_deserialization_handler  deserialization_handler       = default_deserialize;
+    property_serialization_handler    serialization_handler         = default_serialize;
 
+    type_compare_handler              types_compare_handler         = nullptr;
     type_copy_handler                 types_copy_handler            = nullptr;
     type_serialization_handler        types_serialization_handler   = nullptr;
     type_deserialization_handler      types_deserialization_handler = nullptr;

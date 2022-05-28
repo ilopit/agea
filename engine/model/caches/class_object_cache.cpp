@@ -34,5 +34,11 @@ class_objects_cache::insert(std::shared_ptr<smart_object> obj)
     insert(std::move(obj), "");
 }
 
+bool
+class_objects_cache::exists(const std::string& class_id)
+{
+    return m_objects.find(class_id) != m_objects.end();
+}
+
 }  // namespace model
 }  // namespace agea

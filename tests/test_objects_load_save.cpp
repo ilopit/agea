@@ -54,12 +54,13 @@ TEST_F(test_load_objects, load_component)
     auto obj = model::object_constructor::class_object_load(object_path, occ);
     ASSERT_TRUE(!!obj);
 
-    auto component = obj->as<model::component>();
+    auto component = obj->as<model::game_object_component>();
 
     ASSERT_EQ(component->id(), "test_component_a_2");
-    ASSERT_EQ(component->type_id(), "component");
+    ASSERT_EQ(component->type_id(), "game_object_component");
     ASSERT_EQ(component->m_order_idx, model::NO_index);
     ASSERT_EQ(component->m_parent_idx, model::NO_parent);
+    ASSERT_EQ(*component->m_renderable, false);
 
     ASSERT_FALSE(is_from_EO_cache(component));
 
@@ -87,10 +88,11 @@ TEST_F(test_load_objects, load_object)
         ASSERT_TRUE(!!obj);
     }
 
-    auto path = glob::resource_locator::get()->resource(category::all, "test/test_object.aobj");
-    ASSERT_FALSE(path.empty());
+    auto object_path =
+        glob::resource_locator::get()->resource(category::all, "test/test_object.aobj");
+    ASSERT_FALSE(object_path.empty());
 
-    auto obj = model::object_constructor::class_object_load(path, occ);
+    auto obj = model::object_constructor::class_object_load(object_path, occ);
     ASSERT_TRUE(!!obj);
 
     ASSERT_EQ(occ.class_obj_cache->size(), to_load.size() + to_load.size() + 1);
@@ -130,7 +132,7 @@ TEST_F(test_load_objects, load_object)
     {
         auto component = game_object->component_at(3U);
         ASSERT_EQ(component->id(), "test_obj/test_component_a_2");
-        ASSERT_EQ(component->type_id(), "component");
+        ASSERT_EQ(component->type_id(), "game_object_component");
         ASSERT_EQ(component->m_order_idx, 3U);
         ASSERT_EQ(component->m_parent_idx, 2U);
         ASSERT_FALSE(is_from_EO_cache(component));
@@ -143,4 +145,11 @@ TEST_F(test_load_objects, load_object)
         ASSERT_EQ(component->m_parent_idx, 2U);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
+
+    std::string result_path = "result";
+    auto result = model::object_constructor::class_object_save(*game_object, result_path);
+    ASSERT_TRUE(result);
+
+    result = file_utils::compare_files(object_path, result_path);
+    ASSERT_TRUE(result);
 }

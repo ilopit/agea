@@ -134,6 +134,19 @@ property::copy(property& from_property,
 }
 
 bool
+property::compare(compare_context& context)
+{
+    if (context.p->type.is_collection)
+    {
+        return compare_collection(context);
+    }
+    else
+    {
+        return compare_item(context);
+    }
+}
+
+bool
 property::serialize(const reflection::property& p,
                     const model::smart_object& obj,
                     serialization::conteiner& sc)
@@ -149,7 +162,7 @@ property::serialize(const reflection::property& p,
 }
 
 bool
-property::deserialize(deserialize_context& ctx)
+property::default_deserialize(deserialize_context& ctx)
 {
     if (ctx.p->type.is_collection)
     {
@@ -158,6 +171,19 @@ property::deserialize(deserialize_context& ctx)
     else
     {
         return deserialize_item(*ctx.p, *ctx.obj, *ctx.sc, *ctx.occ);
+    }
+}
+
+bool
+property::default_serialize(serialize_context& ctx)
+{
+    if (ctx.p->type.is_collection)
+    {
+        return serialize_collection(*ctx.p, *ctx.obj, *ctx.sc);
+    }
+    else
+    {
+        return serialize_item(*ctx.p, *ctx.obj, *ctx.sc);
     }
 }
 
@@ -206,9 +232,9 @@ property::deserialize_collection(reflection::property& p,
 }
 
 bool
-property::serialize_collection(const reflection::property& p,
-                               const model::smart_object& obj,
-                               serialization::conteiner& jc)
+property::serialize_collection(const reflection::property&,
+                               const model::smart_object&,
+                               serialization::conteiner&)
 {
     return true;
 }
@@ -294,6 +320,25 @@ property::deserialize_update_item(reflection::property& p,
 
     p.types_update_handler(ptr, jc[p.name], occ);
     return true;
+}
+
+bool
+property::compare_collection(compare_context&)
+{
+    AGEA_not_implemented;
+
+    return false;
+}
+
+bool
+property::compare_item(compare_context& context)
+{
+    auto src_ptr = ::agea::reflection::reduce_ptr(context.src_obj->as_blob() + context.p->offset,
+                                                  context.p->type.is_ptr);
+    auto dst_ptr = ::agea::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
+                                                  context.p->type.is_ptr);
+
+    return context.p->types_compare_handler(src_ptr, dst_ptr);
 }
 
 bool

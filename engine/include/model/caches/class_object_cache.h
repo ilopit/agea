@@ -29,6 +29,9 @@ public:
     void
     insert(std::shared_ptr<smart_object> obj);
 
+    bool
+    exists(const std::string& class_id);
+
     size_t
     size()
     {

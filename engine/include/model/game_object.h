@@ -216,7 +216,8 @@ public:
 
     AGEA_property("category=meta",
                   "serializable=true",
-                  "des_handler=custom::handle_object_components");
+                  "property_des_handler=custom::deserialize_game_object_components",
+                  "property_ser_handler=custom::serialize_game_object_components");
     std::vector<component*> m_components;
 
     game_object_component* m_root_component = nullptr;

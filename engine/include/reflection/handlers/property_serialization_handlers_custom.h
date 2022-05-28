@@ -9,7 +9,11 @@ namespace reflection
 namespace custom
 {
 
-bool handle_object_components(AGEA_deserialization_args);
-}
+bool
+deserialize_game_object_components(deserialize_context& dc);
+
+bool
+serialize_game_object_components(serialize_context& dc);
+}  // namespace custom
 }  // namespace reflection
 }  // namespace agea

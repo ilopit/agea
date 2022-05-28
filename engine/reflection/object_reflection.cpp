@@ -48,7 +48,7 @@ object_reflection::fill_properties()
             {
                 c->m_editor_properties[p->category].push_back(p);
             }
-            if (p->serialization_handler)
+            if (p->types_serialization_handler)
             {
                 c->m_serilalization_properties.push_back(p);
             }

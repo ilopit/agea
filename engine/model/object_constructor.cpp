@@ -44,7 +44,7 @@ object_constructor::object_properties_load(smart_object& obj,
     for (auto& p : properties)
     {
         dc.p = p.get();
-        if (!reflection::property::deserialize(dc))
+        if (!p->deserialization_handler(dc))
         {
         }
     }
@@ -57,9 +57,14 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 {
     auto& properties = obj.reflection()->m_serilalization_properties;
 
+    reflection::serialize_context sc;
+    sc.sc = &jc;
+    sc.obj = &obj;
+
     for (auto& p : properties)
     {
-        if (!reflection::property::serialize(*p, obj, jc))
+        sc.p = p.get();
+        if (!p->serialization_handler(sc))
         {
         }
     }
@@ -81,12 +86,11 @@ object_constructor::class_object_load(const std::string& object_path,
     auto type_id = conteiner["type_id"].as<std::string>();
     auto class_id = conteiner["id"].as<std::string>();
 
-    auto tryobj = occ.class_obj_cache->get(class_id);
-
-    AGEA_check(!tryobj, "We should not re-load objects");
+    AGEA_check(!(occ.class_obj_cache->exists(class_id)), "We should not re-load objects");
 
     auto eoc = glob::empty_objects_cache::get();
     auto empty = eoc->get(type_id)->META_create_empty_obj();
+    empty->META_set_id(class_id);
 
     object_properties_load(*empty, conteiner, occ);
 

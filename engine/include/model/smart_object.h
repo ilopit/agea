@@ -106,6 +106,12 @@ public:
         return (T*)this;
     }
 
+    blob_ptr
+    as_blob() const
+    {
+        return (blob_ptr)this;
+    }
+
     bool
     construct(this_class::construct_params&)
     {
@@ -129,7 +135,7 @@ public:
     AGEA_property("category=meta", "visible=true");
     std::string m_type_id;
 
-    AGEA_property("category=meta", "serializable=true", "visible=true", "copyable=no");
+    AGEA_property("category=meta", "visible=true", "copyable=no");
     std::string m_id;
 
     smart_object* m_class_obj = nullptr;
