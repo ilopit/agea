@@ -23,9 +23,6 @@ mesh_component::construct(construct_params& c)
 {
     AGEA_return_nok(base_class::construct(c));
 
-    // m_material = glob::materials_cache::get()->get(c.material_id);
-    // m_mesh = glob::meshes_cache::get()->get(c.mesh_id).;
-
     return true;
 }
 
@@ -34,8 +31,8 @@ mesh_component::prepare_for_rendering()
 {
     AGEA_return_nok(base_class::prepare_for_rendering());
 
-    m_render_data->material = m_material->m_material;
-    m_render_data->mesh = m_mesh->m_mesh_data;
+    m_render_data->material = m_material->get_material_data();
+    m_render_data->mesh = m_mesh->get_mesh_data();
 
     return true;
 }

@@ -75,7 +75,7 @@ game_object_component::update_matrix()
     if (m_render_root)
     {
         m_render_data->transform_matrix =
-            m_render_root->transofrm_matrix();  // *m_render_data->transform_matrix;
+            m_render_root->get_transofrm_matrix();  // *m_render_data->transform_matrix;
     }
 
     for (auto c : m_render_components)
@@ -85,7 +85,7 @@ game_object_component::update_matrix()
 }
 
 glm::mat4
-game_object_component::transofrm_matrix()
+game_object_component::get_transofrm_matrix()
 {
     return m_render_data->transform_matrix;
 }

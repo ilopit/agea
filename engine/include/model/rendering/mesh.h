@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "model/object_constructor.h"
 #include "model/smart_object.h"
 
 #include <vector>
@@ -25,6 +24,37 @@ public:
     bool
     prepare_for_rendering();
 
+    const std::string&
+    get_vertices() const
+    {
+        return m_vertices;
+    }
+
+    const std::string&
+    get_indices() const
+    {
+        return m_indices;
+    }
+
+    const std::string&
+    get_external_type() const
+    {
+        return m_external_type;
+    }
+
+    const std::string&
+    get_external_path()
+    {
+        return m_external_path;
+    }
+
+    render::mesh_data*
+    get_mesh_data()
+    {
+        return m_mesh_data;
+    }
+
+protected:
     AGEA_property("category=assets", "serializable=true", "visible=true");
     std::string m_vertices;
     AGEA_property("category=assets", "serializable=true", "visible=true");
@@ -36,7 +66,7 @@ public:
 
     uint32_t m_index_size = 0;
 
-    render::mesh_data* m_mesh_data;
+    render::mesh_data* m_mesh_data = nullptr;
 };
 
 }  // namespace model

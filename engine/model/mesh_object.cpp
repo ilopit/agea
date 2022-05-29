@@ -15,7 +15,10 @@ AGEA_gen_class_cd_default(mesh_object);
 bool
 mesh_object::construct(this_class::construct_params& p)
 {
-    base_class::construct(p);
+    if (!base_class::construct(p))
+    {
+        return false;
+    }
 
     return true;
 }

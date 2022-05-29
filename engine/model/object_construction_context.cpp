@@ -42,7 +42,7 @@ object_constructor_context::propagate_to_io_cache()
     {
         auto& obj = temporary_obj_cache.back();
 
-        ALOG_INFO("Obj {0} propagated to O cache", obj->id());
+        ALOG_INFO("Obj {0} propagated to O cache", obj->get_id());
 
         instance_obj_cache->insert(std::move(obj));
         temporary_obj_cache.pop_back();
@@ -58,7 +58,7 @@ object_constructor_context::propagate_to_co_cache()
     {
         auto& obj = temporary_obj_cache.back();
 
-        ALOG_INFO("Obj {0} propagated to O cache", obj->id());
+        ALOG_INFO("Obj {0} propagated to O cache", obj->get_id());
 
         class_obj_cache->insert(std::move(obj));
         temporary_obj_cache.pop_back();

@@ -1,9 +1,5 @@
 #pragma once
 
-#include "model/object_constructor.h"
-
-#include "reflection/types.h"
-#include "reflection/property.h"
 #include "reflection/object_reflection.h"
 
 #include "core/agea_minimal.h"
@@ -54,6 +50,7 @@ namespace model
 {
 
 class objects_cache;
+class object_constructor;
 
 class smart_object
 {
@@ -67,22 +64,18 @@ public:
     AGEA_gen_class_meta_super(smart_object);
     AGEA_gen_meta_api;
 
+    friend class object_constructor;
+
     const std::string&
-    type_id() const
+    get_type_id() const
     {
         return m_type_id;
     }
 
     const std::string&
-    id() const
+    get_id() const
     {
         return m_id;
-    }
-
-    void
-    META_set_id(const std::string& id)
-    {
-        m_id = id;
     }
 
     template <typename T>
@@ -126,8 +119,21 @@ public:
     {
     }
 
+    const smart_object*
+    get_class_obj() const
+    {
+        return m_class_obj;
+    }
+
+protected:
     void
-    set_class_obj(smart_object* obj)
+    META_set_id(const std::string& id)
+    {
+        m_id = id;
+    }
+
+    void
+    META_set_class_obj(smart_object* obj)
     {
         m_class_obj = obj;
     }

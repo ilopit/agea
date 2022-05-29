@@ -2,5 +2,5 @@
 type_id: material
 id: LensesMat
 base_effect: simple_texture
-texture: FlightHelmet_Materials_LensesMat_BaseColor
+base_texture: FlightHelmet_Materials_LensesMat_BaseColor
 class_obj: true

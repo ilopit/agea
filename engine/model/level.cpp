@@ -38,7 +38,7 @@ smart_object*
 level::find_object(const std::string& id)
 {
     auto iobj = std::find_if(m_objects.begin(), m_objects.end(),
-                             [&id](model::game_object* obj) { return obj->id() == id; });
+                             [&id](model::game_object* obj) { return obj->get_id() == id; });
 
     return iobj != m_objects.end() ? *iobj : nullptr;
 }
@@ -48,9 +48,9 @@ level::find_component(const std::string& id)
 {
     for (auto& o : m_objects)
     {
-        for (auto c : o->m_components)
+        for (auto c : o->get_components())
         {
-            if (c->id() == id)
+            if (c->get_id() == id)
             {
                 return c;
             }

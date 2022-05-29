@@ -3,6 +3,7 @@
 #include "core/agea_minimal.h"
 
 #include "model/rendering/texture.h"
+#include "utils/weird_singletone.h"
 
 namespace agea
 {

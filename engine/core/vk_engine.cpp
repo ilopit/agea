@@ -574,7 +574,7 @@ vulkan_engine::init_scene()
 
     for (auto& o : glob::level::get()->m_objects)
     {
-        auto obj = o->root_component();
+        auto obj = o->get_root_component();
         obj->prepare_for_rendering();
         obj->register_for_rendering();
     }

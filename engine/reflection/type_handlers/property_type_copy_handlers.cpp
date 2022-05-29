@@ -259,7 +259,7 @@ property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
     auto& f = extract<::agea::model::component*>(from);
     auto& t = extract<::agea::model::component*>(to);
 
-    auto new_id = dst_obj.id() + "/" + f->m_class_obj->id();
+    auto new_id = dst_obj.get_id() + "/" + f->get_class_obj()->get_id();
 
     auto p = model::object_constructor::object_clone_create(*f, new_id, ooc);
 

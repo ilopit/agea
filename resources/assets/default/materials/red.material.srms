@@ -1,5 +1,5 @@
 type_id: material
 id: red_mat
 base_effect: simple_texture
-texture: red_txt
+base_texture: red_txt
 class_obj: true

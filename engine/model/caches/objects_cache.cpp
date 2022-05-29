@@ -19,7 +19,7 @@ objects_cache::get(const std::string& id) const
 void
 objects_cache::insert(std::shared_ptr<smart_object> obj)
 {
-    auto& i = m_items[obj->id()];
+    auto& i = m_items[obj->get_id()];
 
     AGEA_check(!i, "We shouldn't reinsert items");
 

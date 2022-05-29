@@ -26,7 +26,8 @@ public:
 class property
 {
 public:
-    bool static save_to_string(property& from_property, blob_ptr ptr, fixed_size_buffer& buf);
+    static bool
+    save_to_string(property& from_property, blob_ptr ptr, fixed_size_buffer& buf);
 
     bool
     load_from_string(blob_ptr ptr, const std::string& str);

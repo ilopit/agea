@@ -247,7 +247,7 @@ property::deserialize_item(reflection::property& p,
 {
     if (!jc[p.name])
     {
-        ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.type_id(), p.name);
+        ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.get_type_id(), p.name);
         return false;
     }
 
@@ -692,7 +692,7 @@ bool
 property_convertes::read_t_mat(AGEA_read_from_property_args)
 {
     auto& t = extract<std::shared_ptr<model::material>>(ptr);
-    sprintf_s(buf.data(), buf.size(), "%s", t->id().c_str());
+    sprintf_s(buf.data(), buf.size(), "%s", t->get_id().c_str());
 
     return true;
 }
@@ -720,7 +720,7 @@ bool
 property_convertes::read_t_msh(AGEA_read_from_property_args)
 {
     auto t = extract<std::shared_ptr<model::mesh>>(ptr);
-    sprintf_s(buf.data(), buf.size(), "%s", t->id().c_str());
+    sprintf_s(buf.data(), buf.size(), "%s", t->get_id().c_str());
 
     return true;
 }

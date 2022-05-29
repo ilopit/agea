@@ -1,12 +1,17 @@
 #pragma once
 
 #include "reflection/type_handlers/property_type_serialization_handlers_custom.h"
+
 #include "reflection/property.h"
 
 #include "utils/agea_log.h"
+
 #include "model/object_construction_context.h"
-#include "serialization/serialization.h"
 #include "model/smart_object.h"
+
+#include "model/object_constructor.h"
+
+#include "serialization/serialization.h"
 
 namespace agea
 {
@@ -114,7 +119,7 @@ serialize_game_object_components(serialize_context& dc)
 
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
-    AGEA_check(!class_obj.m_class_obj, "Should be called only for class objs");
+    AGEA_check(!class_obj.get_class_obj(), "Should be called only for class objs");
 
     auto& components =
         extract<std::vector<model::smart_object*>>(class_obj.as_blob() + dc.p->offset);
@@ -122,12 +127,12 @@ serialize_game_object_components(serialize_context& dc)
     int i = 0;
     for (auto instance_component : components)
     {
-        auto class_component = instance_component->m_class_obj;
+        auto class_component = instance_component->get_class_obj();
         auto& properties = instance_component->reflection()->m_serilalization_properties;
 
         serialization::conteiner component_conteiner;
-        component_conteiner["object_class"] = class_component->id();
-        component_conteiner["id"] = instance_component->id();
+        component_conteiner["object_class"] = class_component->get_id();
+        component_conteiner["id"] = instance_component->get_id();
 
         reflection::serialize_context internal_sc{nullptr, instance_component,
                                                   &component_conteiner};

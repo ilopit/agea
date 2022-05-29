@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/agea_minimal.h"
+#include "utils/weird_singletone.h"
 
 #include "model/rendering/material.h"
 

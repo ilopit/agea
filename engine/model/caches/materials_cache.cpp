@@ -26,7 +26,7 @@ materials_cache::init()
 
         mobj->prepare_for_rendering();
 
-        m_materials[obj->id()] = mobj;
+        m_materials[obj->get_id()] = mobj;
 
         return true;
     };

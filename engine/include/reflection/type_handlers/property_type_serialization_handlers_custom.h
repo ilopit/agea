@@ -8,7 +8,6 @@ namespace reflection
 {
 namespace custom
 {
-
 bool
 deserialize_game_object_components(deserialize_context& dc);
 

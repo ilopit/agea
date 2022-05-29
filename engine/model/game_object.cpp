@@ -39,33 +39,23 @@ game_object::prepare_for_rendering()
 void
 game_object::build_components_structure()
 {
-    static int ii = 0;
-    for (auto c : m_components)
-    {
-        if (c->id().empty())
-        {
-            c->m_id = m_id + "/" + std::to_string(ii);
-            ++ii;
-        }
-    }
-
     for (auto i = 0; i < m_components.size(); ++i)
     {
         auto cloned = m_components[i];
         cloned->set_owner(this);
 
-        if (cloned->m_parent_idx != NO_parent)
+        if (cloned->get_parent_idx() != NO_parent)
         {
-            cloned->set_parent(m_components[cloned->m_parent_idx]);
-            m_components[cloned->m_parent_idx]->attach(cloned);
+            cloned->set_parent(m_components[cloned->get_parent_idx()]);
+            m_components[cloned->get_parent_idx()]->attach(cloned);
         }
     }
 
     set_root_component(m_components[0]->as<game_object_component>());
 
-    m_position = &m_root_component->m_position;
-    m_rotation = &m_root_component->m_rotation;
-    m_scale = &m_root_component->m_scale;
+    m_position = m_root_component->position_ptr();
+    m_rotation = m_root_component->rotation_ptr();
+    m_scale = m_root_component->scale_ptr();
 }
 
 bool

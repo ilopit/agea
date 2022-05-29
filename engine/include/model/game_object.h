@@ -3,7 +3,6 @@
 #include "core/agea_minimal.h"
 
 #include "model/components/game_object_component.h"
-#include "model/level.h"
 
 #include <iostream>
 #include <vector>
@@ -32,9 +31,9 @@ public:
 
     // Position
     glm::vec3
-    position() const
+    get_position() const
     {
-        return m_root_component->position();
+        return m_root_component->get_position();
     }
 
     void
@@ -44,9 +43,9 @@ public:
     }
 
     glm::quat
-    rotation() const
+    get_rotation() const
     {
-        return m_root_component->rotation();
+        return m_root_component->get_rotation();
     }
 
     void
@@ -56,21 +55,21 @@ public:
     }
 
     glm::vec3
-    forward_vector() const
+    get_forward_vector() const
     {
-        return m_root_component->forward_vector();
+        return m_root_component->get_forward_vector();
     }
 
     glm::vec3
-    up_vector() const
+    get_up_vector() const
     {
-        return m_root_component->up_vector();
+        return m_root_component->get_up_vector();
     }
 
     glm::vec3
-    right_vector() const
+    get_right_vector() const
     {
-        return m_root_component->right_vector();
+        return m_root_component->get_right_vector();
     }
 
     void
@@ -136,23 +135,9 @@ public:
         return prev;
     }
 
-    // Components part
-    template <typename component_type>
-    component_type*
-    add_component(typename component_type::construct_params& p)
-    {
-        auto cobj = glob::level::get()->spawn_component<component_type>(p);
-        if (cobj)
-        {
-            cobj->set_owner(this);
-        }
-        return cobj;
-    }
-
     void
     attach_component(component* c)
     {
-        // m_components.push_back(c);
         c->set_owner(this);
     }
 
@@ -178,7 +163,7 @@ public:
     }
 
     game_object_component*
-    root_component()
+    get_root_component()
     {
         return m_root_component;
     }
@@ -199,12 +184,19 @@ public:
     post_construct();
 
     component*
-    component_at(size_t idx) const
+    get_component_at(size_t idx) const
     {
         AGEA_check(idx < m_components.size(), "Index should be in range");
         return m_components[idx];
     }
 
+    std::vector<component*>
+    get_components()
+    {
+        return m_components;
+    }
+
+protected:
     AGEA_property("category=world", "visible=true", "access=rw", "hint=x,y,z");
     glm::vec3* m_position = nullptr;
 

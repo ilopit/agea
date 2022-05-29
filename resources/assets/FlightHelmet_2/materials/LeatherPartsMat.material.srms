@@ -2,5 +2,5 @@
 type_id: material
 id: LeatherPartsMat
 base_effect: simple_texture
-texture: FlightHelmet_Materials_LeatherPartsMat_BaseColor
+base_texture: FlightHelmet_Materials_LeatherPartsMat_BaseColor
 class_obj: true

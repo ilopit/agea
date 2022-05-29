@@ -179,7 +179,7 @@ bool
 property_drawers::draw_ro_mat(::agea::blob_ptr ptr)
 {
     auto& t = agea::reflection::extract<std::shared_ptr<model::material>>(ptr);
-    ImGui::Text("%s", t->id().c_str());
+    ImGui::Text("%s", t->get_id().c_str());
 
     return true;
 }
@@ -188,7 +188,7 @@ bool
 property_drawers::draw_ro_msh(::agea::blob_ptr ptr)
 {
     auto& t = agea::reflection::extract<std::shared_ptr<model::mesh>>(ptr);
-    ImGui::Text("%s", t->id().c_str());
+    ImGui::Text("%s", t->get_id().c_str());
 
     return true;
 }

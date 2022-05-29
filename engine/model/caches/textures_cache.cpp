@@ -25,7 +25,7 @@ textures_cache::init()
 
         tobj->prepare_for_rendering();
 
-        m_textures[obj->id()] = tobj;
+        m_textures[obj->get_id()] = tobj;
 
         return true;
     };

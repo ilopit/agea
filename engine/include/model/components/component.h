@@ -37,7 +37,7 @@ public:
     }
 
     game_object*
-    owner() const
+    get_owner() const
     {
         return m_owner_obj;
     }
@@ -50,7 +50,7 @@ public:
     }
 
     component*
-    parent() const
+    get_parent() const
     {
         return m_parent;
     }
@@ -61,6 +61,25 @@ public:
         m_attached_components.push_back(c);
     }
 
+    const std::vector<component*>
+    get_attached_components() const
+    {
+        return m_attached_components;
+    }
+
+    uint32_t
+    get_order_idx() const
+    {
+        return m_order_idx;
+    }
+
+    uint32_t
+    get_parent_idx() const
+    {
+        return m_parent_idx;
+    }
+
+protected:
     game_object* m_owner_obj = nullptr;
     component* m_parent = nullptr;
 

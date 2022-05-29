@@ -14,12 +14,12 @@ AGEA_gen_class_cd_default(material);
 bool
 material::prepare_for_rendering()
 {
-    m_material = glob::render_loader::get()->load_material(*this);
+    m_material_data = glob::render_loader::get()->load_material(*this);
 
-    m_roughness = &m_material->gpu_data.roughness;
-    m_metallic = &m_material->gpu_data.metallic;
-    m_gamma = &m_material->gpu_data.gamma;
-    m_albedo = &m_material->gpu_data.albedo;
+    m_roughness = &m_material_data->gpu_data.roughness;
+    m_metallic = &m_material_data->gpu_data.metallic;
+    m_gamma = &m_material_data->gpu_data.gamma;
+    m_albedo = &m_material_data->gpu_data.albedo;
 
     return true;
 }

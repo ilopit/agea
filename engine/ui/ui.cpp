@@ -131,7 +131,7 @@ level_editor_window::handle()
 void
 level_editor_window::draw_oject(model::game_object* obj)
 {
-    bool opened = ImGui::TreeNode(obj->id().data());
+    bool opened = ImGui::TreeNode(obj->get_id().data());
     if (ImGui::IsItemClicked())
     {
         get_window<object_editor>()->show(obj);
@@ -156,7 +156,7 @@ materials_selector::handle()
 
     for (auto& t : glob::materials_cache::get()->m_materials)
     {
-        auto& mat_id = t.second->id();
+        auto& mat_id = t.second->get_id();
         if (mat_id.find(m_filtering_text.data()) == std::string::npos)
         {
             continue;
@@ -174,7 +174,7 @@ materials_selector::handle()
                 m_selection_cb(mat_id);
             }
             ImGui::NextColumn();
-            ImGui::Image(t.second->m_material->texture_set, ImVec2{160, 160});
+            ImGui::Image(t.second->get_material_data()->texture_set, ImVec2{160, 160});
 
             ImGui::Columns(1);
 
@@ -270,7 +270,7 @@ object_editor::handle()
     sc.i = 0;
     sc.base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
                     ImGuiTreeNodeFlags_SpanAvailWidth;
-    draw_components(m_obj->m_root_component, sc);
+    draw_components(m_obj->get_root_component(), sc);
 
     ImGui::Separator();
 
@@ -287,12 +287,12 @@ object_editor::draw_components(model::game_object_component* root, selection_con
         node_flags |= ImGuiTreeNodeFlags_Selected;
     }
 
-    if (root->m_attached_components.empty())
+    if (root->get_attached_components().empty())
     {
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    auto open = ImGui::TreeNodeEx((void*)(intptr_t)sc.i, node_flags, "%s", root->id().c_str());
+    auto open = ImGui::TreeNodeEx((void*)(intptr_t)sc.i, node_flags, "%s", root->get_id().c_str());
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
     {
         sc.selected = sc.i;
@@ -302,14 +302,14 @@ object_editor::draw_components(model::game_object_component* root, selection_con
     ++sc.i;
     ImGui::NextColumn();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("%s", root->id().c_str());
+    ImGui::Text("%s", root->get_id().c_str());
     ImGui::NextColumn();
 
     if (open)
     {
-        if (!root->m_attached_components.empty())
+        if (!root->get_attached_components().empty())
         {
-            for (auto obj : root->m_attached_components)
+            for (auto obj : root->get_attached_components())
             {
                 draw_components((model::game_object_component*)obj, sc);
             }

@@ -25,11 +25,30 @@ public:
     bool
     prepare_for_rendering();
 
+    ::agea::render::material_data*
+    get_material_data() const
+    {
+        return m_material_data;
+    }
+
+    texture*
+    get_base_texture() const
+    {
+        return m_base_texture;
+    }
+
+    const std::string&
+    get_base_effect() const
+    {
+        return m_base_effect;
+    }
+
+protected:
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
     std::string m_base_effect;
 
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
-    texture* m_texture = nullptr;
+    texture* m_base_texture = nullptr;
 
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
     float* m_roughness = nullptr;
@@ -43,7 +62,7 @@ public:
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
     float* m_albedo = nullptr;
 
-    ::agea::render::material_data* m_material = nullptr;
+    ::agea::render::material_data* m_material_data = nullptr;
 };
 
 }  // namespace model

@@ -362,7 +362,7 @@ property_type_serialization_handlers::serialize_t_txt(AGEA_serialization_args)
     AGEA_unused(jc);
 
     auto field = reflection::extract<::agea::model::texture*>(ptr);
-    jc = field->id();
+    jc = field->get_id();
 
     return true;
 }
@@ -390,7 +390,7 @@ property_type_serialization_handlers::serialize_t_mat(AGEA_serialization_args)
     AGEA_unused(ptr);
     AGEA_unused(jc);
     auto field = reflection::extract<::agea::model::material*>(ptr);
-    jc = field->id();
+    jc = field->get_id();
 
     return true;
 }
@@ -419,7 +419,7 @@ property_type_serialization_handlers::serialize_t_msh(AGEA_serialization_args)
     AGEA_unused(jc);
 
     auto field = reflection::extract<::agea::model::mesh*>(ptr);
-    jc = field->id();
+    jc = field->get_id();
 
     return true;
 }
@@ -448,7 +448,7 @@ property_type_serialization_handlers::serialize_t_obj(AGEA_serialization_args)
 
     auto field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    jc["id"] = field->id();
+    jc["id"] = field->get_id();
 
     return true;
 }
@@ -477,8 +477,8 @@ property_type_serialization_handlers::serialize_t_com(AGEA_serialization_args)
 
     auto field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    jc["id"] = field->id();
-    jc["object_class"] = field->m_class_obj->id();
+    jc["id"] = field->get_id();
+    jc["object_class"] = field->get_class_obj()->get_id();
 
     return true;
 }

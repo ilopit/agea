@@ -30,6 +30,19 @@ public:
     bool
     construct(construct_params& c);
 
+    material*
+    get_material() const
+    {
+        return m_material;
+    }
+
+    mesh*
+    get_mesh() const
+    {
+        return m_mesh;
+    }
+
+protected:
     AGEA_property("category=assets", "serializable=true", "access=rw", "visible=true");
     material* m_material = nullptr;
 

@@ -2,6 +2,7 @@
 
 #include "core/agea_minimal.h"
 
+#include "utils/weird_singletone.h"
 #include "model/smart_object.h"
 
 namespace agea

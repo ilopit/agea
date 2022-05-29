@@ -6,7 +6,7 @@
 #include "model/caches/class_object_cache.h"
 #include "model/caches/objects_cache.h"
 #include "model/object_construction_context.h"
-
+#include "model/object_constructor.h"
 #include "core/fs_locator.h"
 
 #include "serialization/serialization.h"
@@ -96,7 +96,7 @@ load_level_path(level& l, const std::string& path)
             auto item = items[i];
 
             auto instance = object_constructor::object_clone_create(
-                class_obj->id(), item["id"].as<std::string>(), *l.m_occ);
+                class_obj->get_id(), item["id"].as<std::string>(), *l.m_occ);
 
             if (!instance)
             {

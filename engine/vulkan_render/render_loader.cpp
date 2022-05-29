@@ -192,7 +192,7 @@ loader::load_mesh(model::mesh& mc)
 {
     auto device = glob::render_device::get();
 
-    auto itr = m_meshes_cache.find(mc.id());
+    auto itr = m_meshes_cache.find(mc.get_id());
 
     if (itr != m_meshes_cache.end())
     {
@@ -200,19 +200,20 @@ loader::load_mesh(model::mesh& mc)
     }
 
     auto md = std::make_shared<mesh_data>();
-    md->m_id = mc.id();
+    md->m_id = mc.get_id();
 
-    if (!mc.m_external_path.empty())
+    if (!mc.get_external_path().empty())
     {
-        auto path = glob::resource_locator::get()->resource(category::assets, mc.m_external_path);
+        auto path =
+            glob::resource_locator::get()->resource(category::assets, mc.get_external_path());
         vulkan_mesh_data_loader::load_from_obj(path, *md);
     }
     else
     {
         std::string idx_file =
-            glob::resource_locator::get()->resource(category::assets, mc.m_indices);
+            glob::resource_locator::get()->resource(category::assets, mc.get_indices());
         std::string vert_file =
-            glob::resource_locator::get()->resource(category::assets, mc.m_vertices);
+            glob::resource_locator::get()->resource(category::assets, mc.get_vertices());
 
         vulkan_mesh_data_loader::load_from_amsh(idx_file, vert_file, *md);
     }
@@ -295,7 +296,7 @@ loader::load_mesh(model::mesh& mc)
             }
         });
 
-    m_meshes_cache[mc.id()] = md;
+    m_meshes_cache[mc.get_id()] = md;
 
     return md.get();
 }
@@ -323,7 +324,7 @@ loader::load_texture(model::texture& t)
 {
     auto device = glob::render_device::get();
 
-    auto titr = m_textures_cache.find(t.id());
+    auto titr = m_textures_cache.find(t.get_id());
     if (titr != m_textures_cache.end())
     {
         return titr->second.get();
@@ -331,13 +332,13 @@ loader::load_texture(model::texture& t)
 
     auto td = std::make_shared<texture_data>();
 
-    if (t.m_base_color.front() == '#')
+    if (t.get_base_color().front() == '#')
     {
-        load_1x1_image_from_color(t.m_base_color, td->image);
+        load_1x1_image_from_color(t.get_base_color(), td->image);
     }
     else
     {
-        auto path = glob::resource_locator::get()->resource(category::assets, t.m_base_color);
+        auto path = glob::resource_locator::get()->resource(category::assets, t.get_base_color());
         load_image_from_file_r(path, td->image);
     }
 
@@ -346,7 +347,7 @@ loader::load_texture(model::texture& t)
     imageinfo.subresourceRange.levelCount = td->image.mipLevels;
     vkCreateImageView(device->vk_device(), &imageinfo, nullptr, &td->image_view);
 
-    m_textures_cache[t.id()] = td;
+    m_textures_cache[t.get_id()] = td;
 
     return td.get();
 }
@@ -354,30 +355,31 @@ loader::load_texture(model::texture& t)
 material_data*
 loader::load_material(model::material& d)
 {
-    if (!d.m_texture)
+    if (!d.get_base_texture())
     {
         return nullptr;
     }
 
     auto device = glob::render_device::get();
 
-    auto it = m_materials_cache.find(d.id());
+    auto it = m_materials_cache.find(d.get_id());
     if (it != m_materials_cache.end())
     {
         return it->second.get();
     }
+
     auto td = std::make_shared<material_data>();
-    auto& def = m_materials_cache.at(d.m_base_effect);
-    td->id = d.id();
+    auto& def = m_materials_cache.at(d.get_base_effect());
+    td->id = d.get_id();
 
     td->pipeline = def->pipeline;
     td->effect = def->effect;
 
-    m_materials_cache[d.id()] = td;
+    m_materials_cache[d.get_id()] = td;
 
-    VkDescriptorImageInfo imageBufferInfo;
+    VkDescriptorImageInfo imageBufferInfo{};
     imageBufferInfo.sampler = device->sampler("default");
-    imageBufferInfo.imageView = m_textures_cache[d.m_texture->id()]->image_view;
+    imageBufferInfo.imageView = m_textures_cache[d.get_base_texture()->get_id()]->image_view;
     imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),

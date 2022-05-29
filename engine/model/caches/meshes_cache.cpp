@@ -24,7 +24,7 @@ meshes_cache::init()
         auto mobj = cast_ref<mesh>(occ.extract_last());
         mobj->prepare_for_rendering();
 
-        m_meshes[obj->id()] = mobj;
+        m_meshes[obj->get_id()] = mobj;
 
         return true;
     };

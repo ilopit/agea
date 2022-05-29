@@ -4,13 +4,12 @@
 
 #include <string>
 
+#include "model/model_fwds.h"
+
 namespace agea
 {
 namespace model
 {
-class level;
-class mesh_component;
-class game_object;
 
 namespace level_constructor
 {

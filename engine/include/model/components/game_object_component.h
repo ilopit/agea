@@ -7,9 +7,9 @@
 
 namespace agea
 {
-
 namespace model
 {
+
 const extern glm::vec3 DEF_FORWARD;
 const extern glm::vec3 DEF_UP;
 const extern glm::vec3 DEF_RIGHT;
@@ -39,7 +39,7 @@ public:
     }
 
     glm::vec3
-    position() const
+    get_position() const
     {
         return m_position;
     }
@@ -50,8 +50,8 @@ public:
         m_position = p;
     }
 
-    glm::quat
-    rotation() const
+    glm::vec3
+    get_rotation() const
     {
         return m_rotation;
     }
@@ -63,7 +63,7 @@ public:
     }
 
     glm::vec3
-    scale() const
+    get_scale() const
     {
         return m_scale;
     }
@@ -75,19 +75,19 @@ public:
     }
 
     glm::vec3
-    forward_vector() const
+    get_forward_vector() const
     {
         return glm::rotate(glm::quat(m_rotation), DEF_FORWARD);
     }
 
     glm::vec3
-    up_vector() const
+    get_up_vector() const
     {
         return glm::rotate(glm::quat(m_rotation), DEF_UP);
     }
 
     glm::vec3
-    right_vector() const
+    get_right_vector() const
     {
         return glm::rotate(glm::quat(m_rotation), DEF_RIGHT);
     }
@@ -141,7 +141,6 @@ public:
     {
         base_class::attach(c);
 
-        // AGEA_check(c->castable_to<game_object_component>(), "Not renderable!");
         m_render_components.push_back((game_object_component*)c);
     }
 
@@ -152,11 +151,30 @@ public:
     update_matrix();
 
     glm::mat4
-    transofrm_matrix();
+    get_transofrm_matrix();
 
     virtual void
     editor_update() override;
 
+    // ptr access for binding
+    glm::vec3*
+    position_ptr()
+    {
+        return &m_position;
+    }
+
+    glm::vec3*
+    rotation_ptr()
+    {
+        return &m_rotation;
+    }
+    glm::vec3*
+    scale_ptr()
+    {
+        return &m_scale;
+    }
+
+protected:
     AGEA_property("category=world", "serializable=true", "visible=true", "access=rw", "hint=x,y,z");
     glm::vec3 m_position;
 

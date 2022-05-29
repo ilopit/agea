@@ -66,7 +66,6 @@ public:
         obj->META_construct(p);
 
         auto result = obj.get();
-        // m_components.push_back(std::move(obj));
 
         return result;
     }

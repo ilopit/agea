@@ -9,6 +9,7 @@ class game_object;
 class game_object_component;
 class object_constructor_context;
 class smart_object;
+class level;
 
 }  // namespace model
 }  // namespace agea
