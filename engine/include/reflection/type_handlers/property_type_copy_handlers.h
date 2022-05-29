@@ -15,7 +15,7 @@ namespace agea
 {
 namespace reflection
 {
-struct property_copy_handlers
+struct property_type_copy_handlers
 {
     static std::vector<type_copy_handler>&
     copy_handlers()

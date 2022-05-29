@@ -16,7 +16,7 @@ namespace agea
 namespace reflection
 {
 
-struct property_serialization_update_handlers
+struct property_type_serialization_update_handlers
 {
     static std::vector<reflection::type_serialization_update_handler>&
     serializers()

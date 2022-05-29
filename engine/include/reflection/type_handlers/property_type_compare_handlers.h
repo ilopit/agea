@@ -15,7 +15,7 @@ namespace agea
 {
 namespace reflection
 {
-struct property_compare_handlers
+struct property_type_compare_handlers
 {
     static std::vector<type_compare_handler>&
     compare_handlers()

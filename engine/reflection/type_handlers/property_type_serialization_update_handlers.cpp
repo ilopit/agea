@@ -1,4 +1,4 @@
-#include "reflection/handlers/property_serialization_update_handlers.h"
+#include "reflection/type_handlers/property_type_serialization_update_handlers.h"
 
 #include "model/level.h"
 #include "model/caches/textures_cache.h"
@@ -16,7 +16,7 @@ namespace reflection
 {
 
 bool
-property_serialization_update_handlers::init()
+property_type_serialization_update_handlers::init()
 {
     using namespace reflection;
     // clang-format off
@@ -74,7 +74,7 @@ property_serialization_update_handlers::init()
 
 // STR
 bool
-property_serialization_update_handlers::serialize_t_str(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_str(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -83,7 +83,7 @@ property_serialization_update_handlers::serialize_t_str(AGEA_deserialization_upd
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_str(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_str(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -93,7 +93,7 @@ property_serialization_update_handlers::deserialize_t_str(AGEA_deserialization_u
 
 // Bool
 bool
-property_serialization_update_handlers::serialize_t_bool(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_bool(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -103,7 +103,7 @@ property_serialization_update_handlers::serialize_t_bool(AGEA_deserialization_up
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_bool(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_bool(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -113,7 +113,7 @@ property_serialization_update_handlers::deserialize_t_bool(AGEA_deserialization_
 
 // I8
 bool
-property_serialization_update_handlers::serialize_t_i8(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_i8(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -122,7 +122,7 @@ property_serialization_update_handlers::serialize_t_i8(AGEA_deserialization_upda
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_i8(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_i8(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -132,7 +132,7 @@ property_serialization_update_handlers::deserialize_t_i8(AGEA_deserialization_up
 
 // I16
 bool
-property_serialization_update_handlers::serialize_t_i16(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_i16(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -142,7 +142,7 @@ property_serialization_update_handlers::serialize_t_i16(AGEA_deserialization_upd
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_i16(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_i16(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -152,7 +152,7 @@ property_serialization_update_handlers::deserialize_t_i16(AGEA_deserialization_u
 
 // I32
 bool
-property_serialization_update_handlers::serialize_t_i32(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_i32(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -161,7 +161,7 @@ property_serialization_update_handlers::serialize_t_i32(AGEA_deserialization_upd
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_i32(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_i32(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -171,7 +171,7 @@ property_serialization_update_handlers::deserialize_t_i32(AGEA_deserialization_u
 
 // I64
 bool
-property_serialization_update_handlers::serialize_t_i64(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_i64(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -180,7 +180,7 @@ property_serialization_update_handlers::serialize_t_i64(AGEA_deserialization_upd
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_i64(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_i64(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -190,7 +190,7 @@ property_serialization_update_handlers::deserialize_t_i64(AGEA_deserialization_u
 
 // U8
 bool
-property_serialization_update_handlers::serialize_t_u8(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_u8(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -199,7 +199,7 @@ property_serialization_update_handlers::serialize_t_u8(AGEA_deserialization_upda
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_u8(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_u8(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -209,7 +209,7 @@ property_serialization_update_handlers::deserialize_t_u8(AGEA_deserialization_up
 
 // U16
 bool
-property_serialization_update_handlers::serialize_t_u16(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_u16(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -218,7 +218,7 @@ property_serialization_update_handlers::serialize_t_u16(AGEA_deserialization_upd
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_u16(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_u16(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -228,7 +228,7 @@ property_serialization_update_handlers::deserialize_t_u16(AGEA_deserialization_u
 
 // U32
 bool
-property_serialization_update_handlers::serialize_t_u32(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_u32(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -238,7 +238,7 @@ property_serialization_update_handlers::serialize_t_u32(AGEA_deserialization_upd
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_u32(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_u32(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -248,7 +248,7 @@ property_serialization_update_handlers::deserialize_t_u32(AGEA_deserialization_u
 
 // U64
 bool
-property_serialization_update_handlers::serialize_t_u64(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_u64(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -258,7 +258,7 @@ property_serialization_update_handlers::serialize_t_u64(AGEA_deserialization_upd
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_u64(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_u64(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -268,7 +268,7 @@ property_serialization_update_handlers::deserialize_t_u64(AGEA_deserialization_u
 
 // Float
 bool
-property_serialization_update_handlers::serialize_t_f(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_f(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -278,7 +278,7 @@ property_serialization_update_handlers::serialize_t_f(AGEA_deserialization_updat
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_f(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_f(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -288,7 +288,7 @@ property_serialization_update_handlers::deserialize_t_f(AGEA_deserialization_upd
 
 // Double
 bool
-property_serialization_update_handlers::serialize_t_d(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_d(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -297,7 +297,7 @@ property_serialization_update_handlers::serialize_t_d(AGEA_deserialization_updat
     return true;
 }
 bool
-property_serialization_update_handlers::deserialize_t_d(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_d(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -307,7 +307,7 @@ property_serialization_update_handlers::deserialize_t_d(AGEA_deserialization_upd
 
 // Vec3
 bool
-property_serialization_update_handlers::serialize_t_vec3(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_vec3(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -317,7 +317,7 @@ property_serialization_update_handlers::serialize_t_vec3(AGEA_deserialization_up
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_vec3(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_vec3(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -331,7 +331,7 @@ property_serialization_update_handlers::deserialize_t_vec3(AGEA_deserialization_
 }
 
 bool
-property_serialization_update_handlers::serialize_t_obj(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_obj(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -341,7 +341,7 @@ property_serialization_update_handlers::serialize_t_obj(AGEA_deserialization_upd
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_obj(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_obj(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 
@@ -353,7 +353,7 @@ property_serialization_update_handlers::deserialize_t_obj(AGEA_deserialization_u
 }
 
 bool
-property_serialization_update_handlers::serialize_t_com(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::serialize_t_com(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
@@ -363,7 +363,7 @@ property_serialization_update_handlers::serialize_t_com(AGEA_deserialization_upd
 }
 
 bool
-property_serialization_update_handlers::deserialize_t_com(AGEA_deserialization_update_args)
+property_type_serialization_update_handlers::deserialize_t_com(AGEA_deserialization_update_args)
 {
     AGEA_unused(occ);
 

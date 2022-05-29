@@ -1,6 +1,6 @@
 #pragma once
 
-#include "reflection/handlers/property_serialization_handlers_custom.h"
+#include "reflection/type_handlers/property_type_serialization_handlers_custom.h"
 #include "reflection/property.h"
 
 #include "utils/agea_log.h"

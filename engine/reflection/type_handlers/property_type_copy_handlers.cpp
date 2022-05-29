@@ -1,4 +1,4 @@
-#include "reflection/handlers/property_copy_handlers.h"
+#include "reflection/type_handlers/property_type_copy_handlers.h"
 
 #include "model/level.h"
 #include "model/caches/textures_cache.h"
@@ -17,30 +17,30 @@ namespace
 }  // namespace
 
 bool
-property_copy_handlers::init()
+property_type_copy_handlers::init()
 {
     using namespace reflection;
     // clang-format off
     copy_handlers()  .resize((size_t)property_type::t_last, nullptr);
 
-    copy_handlers()  [(size_t)property_type::t_str]  = property_copy_handlers::copy_t_str;
-    copy_handlers()  [(size_t)property_type::t_bool] = property_copy_handlers::copy_t_bool;
-    copy_handlers()  [(size_t)property_type::t_i8]   = property_copy_handlers::copy_t_i8;
-    copy_handlers()  [(size_t)property_type::t_i16]  = property_copy_handlers::copy_t_i16;
-    copy_handlers()  [(size_t)property_type::t_i32]  = property_copy_handlers::copy_t_i32;
-    copy_handlers()  [(size_t)property_type::t_i64]  = property_copy_handlers::copy_t_i64;
-    copy_handlers()  [(size_t)property_type::t_u8]   = property_copy_handlers::copy_t_u8;
-    copy_handlers()  [(size_t)property_type::t_u16]  = property_copy_handlers::copy_t_u16;
-    copy_handlers()  [(size_t)property_type::t_u32]  = property_copy_handlers::copy_t_u32;
-    copy_handlers()  [(size_t)property_type::t_u64]  = property_copy_handlers::copy_t_u64;
-    copy_handlers()  [(size_t)property_type::t_f]    = property_copy_handlers::copy_t_f;
-    copy_handlers()  [(size_t)property_type::t_d]    = property_copy_handlers::copy_t_d;
-    copy_handlers()  [(size_t)property_type::t_vec3] = property_copy_handlers::copy_t_vec3;
-    copy_handlers()  [(size_t)property_type::t_txt]  = property_copy_handlers::copy_t_txt;
-    copy_handlers()  [(size_t)property_type::t_mat]  = property_copy_handlers::copy_t_mat;
-    copy_handlers()  [(size_t)property_type::t_msh]  = property_copy_handlers::copy_t_msh;
-    copy_handlers()  [(size_t)property_type::t_obj]  = property_copy_handlers::copy_t_obj;
-    copy_handlers()  [(size_t)property_type::t_com]  = property_copy_handlers::copy_t_com;
+    copy_handlers()  [(size_t)property_type::t_str]  = property_type_copy_handlers::copy_t_str;
+    copy_handlers()  [(size_t)property_type::t_bool] = property_type_copy_handlers::copy_t_bool;
+    copy_handlers()  [(size_t)property_type::t_i8]   = property_type_copy_handlers::copy_t_i8;
+    copy_handlers()  [(size_t)property_type::t_i16]  = property_type_copy_handlers::copy_t_i16;
+    copy_handlers()  [(size_t)property_type::t_i32]  = property_type_copy_handlers::copy_t_i32;
+    copy_handlers()  [(size_t)property_type::t_i64]  = property_type_copy_handlers::copy_t_i64;
+    copy_handlers()  [(size_t)property_type::t_u8]   = property_type_copy_handlers::copy_t_u8;
+    copy_handlers()  [(size_t)property_type::t_u16]  = property_type_copy_handlers::copy_t_u16;
+    copy_handlers()  [(size_t)property_type::t_u32]  = property_type_copy_handlers::copy_t_u32;
+    copy_handlers()  [(size_t)property_type::t_u64]  = property_type_copy_handlers::copy_t_u64;
+    copy_handlers()  [(size_t)property_type::t_f]    = property_type_copy_handlers::copy_t_f;
+    copy_handlers()  [(size_t)property_type::t_d]    = property_type_copy_handlers::copy_t_d;
+    copy_handlers()  [(size_t)property_type::t_vec3] = property_type_copy_handlers::copy_t_vec3;
+    copy_handlers()  [(size_t)property_type::t_txt]  = property_type_copy_handlers::copy_t_txt;
+    copy_handlers()  [(size_t)property_type::t_mat]  = property_type_copy_handlers::copy_t_mat;
+    copy_handlers()  [(size_t)property_type::t_msh]  = property_type_copy_handlers::copy_t_msh;
+    copy_handlers()  [(size_t)property_type::t_obj]  = property_type_copy_handlers::copy_t_obj;
+    copy_handlers()  [(size_t)property_type::t_com]  = property_type_copy_handlers::copy_t_com;
     // clang-format on
 
     return true;
@@ -48,7 +48,7 @@ property_copy_handlers::init()
 
 // STR
 bool
-property_copy_handlers::copy_t_str(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_str(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -60,7 +60,7 @@ property_copy_handlers::copy_t_str(AGEA_copy_handler_args)
 
 // Bool
 bool
-property_copy_handlers::copy_t_bool(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_bool(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -72,7 +72,7 @@ property_copy_handlers::copy_t_bool(AGEA_copy_handler_args)
 
 // I8
 bool
-property_copy_handlers::copy_t_i8(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_i8(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -84,7 +84,7 @@ property_copy_handlers::copy_t_i8(AGEA_copy_handler_args)
 
 // I16
 bool
-property_copy_handlers::copy_t_i16(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_i16(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -96,7 +96,7 @@ property_copy_handlers::copy_t_i16(AGEA_copy_handler_args)
 
 // I32
 bool
-property_copy_handlers::copy_t_i32(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_i32(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -108,7 +108,7 @@ property_copy_handlers::copy_t_i32(AGEA_copy_handler_args)
 
 // I64
 bool
-property_copy_handlers::copy_t_i64(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_i64(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -119,7 +119,7 @@ property_copy_handlers::copy_t_i64(AGEA_copy_handler_args)
 }
 // U8
 bool
-property_copy_handlers::copy_t_u8(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_u8(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -131,7 +131,7 @@ property_copy_handlers::copy_t_u8(AGEA_copy_handler_args)
 
 // U16
 bool
-property_copy_handlers::copy_t_u16(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_u16(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -143,7 +143,7 @@ property_copy_handlers::copy_t_u16(AGEA_copy_handler_args)
 
 // U32
 bool
-property_copy_handlers::copy_t_u32(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_u32(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -155,7 +155,7 @@ property_copy_handlers::copy_t_u32(AGEA_copy_handler_args)
 
 // U64
 bool
-property_copy_handlers::copy_t_u64(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_u64(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -167,7 +167,7 @@ property_copy_handlers::copy_t_u64(AGEA_copy_handler_args)
 
 // Float
 bool
-property_copy_handlers::copy_t_f(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_f(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -179,7 +179,7 @@ property_copy_handlers::copy_t_f(AGEA_copy_handler_args)
 
 // Double
 bool
-property_copy_handlers::copy_t_d(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_d(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -191,7 +191,7 @@ property_copy_handlers::copy_t_d(AGEA_copy_handler_args)
 
 // Vec3
 bool
-property_copy_handlers::copy_t_vec3(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_vec3(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -203,7 +203,7 @@ property_copy_handlers::copy_t_vec3(AGEA_copy_handler_args)
 
 // Texture
 bool
-property_copy_handlers::copy_t_txt(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_txt(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -215,7 +215,7 @@ property_copy_handlers::copy_t_txt(AGEA_copy_handler_args)
 
 // Material
 bool
-property_copy_handlers::copy_t_mat(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_mat(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -227,7 +227,7 @@ property_copy_handlers::copy_t_mat(AGEA_copy_handler_args)
 
 // Mesh
 bool
-property_copy_handlers::copy_t_msh(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_msh(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -238,7 +238,7 @@ property_copy_handlers::copy_t_msh(AGEA_copy_handler_args)
 }
 
 bool
-property_copy_handlers::copy_t_obj(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_obj(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -252,7 +252,7 @@ property_copy_handlers::copy_t_obj(AGEA_copy_handler_args)
 }
 
 bool
-property_copy_handlers::copy_t_com(AGEA_copy_handler_args)
+property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
 {
     AGEA_unused(src_obj);
 
