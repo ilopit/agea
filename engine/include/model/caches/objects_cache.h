@@ -29,6 +29,7 @@ public:
         return m_items;
     }
 
+protected:
     std::unordered_map<std::string, std::shared_ptr<smart_object>> m_items;
 };
 

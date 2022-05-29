@@ -26,7 +26,7 @@ materials_cache::init()
 
         mobj->prepare_for_rendering();
 
-        m_materials[obj->get_id()] = mobj;
+        m_items[obj->get_id()] = mobj;
 
         return true;
     };
@@ -37,8 +37,8 @@ materials_cache::init()
 std::shared_ptr<agea::model::material>
 materials_cache::get(const std::string& id)
 {
-    auto itr = m_materials.find(id);
-    if (itr == m_materials.end())
+    auto itr = m_items.find(id);
+    if (itr == m_items.end())
     {
         return nullptr;
     }

@@ -18,7 +18,18 @@ public:
     std::shared_ptr<model::material>
     get(const std::string& id);
 
-    std::unordered_map<std::string, std::shared_ptr<model::material>> m_materials;
+    template <typename T>
+    void
+    call_on_items(const T& t)
+    {
+        for (auto& i : m_items)
+        {
+            t(i.second.get());
+        }
+    }
+
+protected:
+    std::unordered_map<std::string, std::shared_ptr<model::material>> m_items;
 };
 
 }  // namespace model

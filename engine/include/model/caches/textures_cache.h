@@ -18,6 +18,7 @@ public:
     std::shared_ptr<model::texture>
     get(const std::string& id);
 
+protected:
     std::unordered_map<std::string, std::shared_ptr<model::texture>> m_textures;
 };
 

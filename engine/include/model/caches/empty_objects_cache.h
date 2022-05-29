@@ -26,6 +26,7 @@ public:
         m_meshes.insert({type_id, obj});
     }
 
+protected:
     std::unordered_map<std::string, std::shared_ptr<model::smart_object>> m_meshes;
 };
 

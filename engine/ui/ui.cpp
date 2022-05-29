@@ -154,34 +154,37 @@ materials_selector::handle()
     ImGui::InputText("##material", m_filtering_text.data(), m_filtering_text.size(), 0);
     ImGui::Separator();
 
-    for (auto& t : glob::materials_cache::get()->m_materials)
-    {
-        auto& mat_id = t.second->get_id();
-        if (mat_id.find(m_filtering_text.data()) == std::string::npos)
+    glob::materials_cache::get()->call_on_items(
+        [this](model::material* m)
         {
-            continue;
-        }
-
-        auto open = ImGui::TreeNodeEx(mat_id.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-        if (open)
-        {
-            ImGui::Separator();
-            ImGui::Columns(2);
-            ImGui::SetColumnWidth(-1, 120);
-            ImGui::Text("Preview");
-            if (ImGui::Button("Use"))
             {
-                m_selection_cb(mat_id);
+                auto& mat_id = m->get_id();
+                if (mat_id.find(m_filtering_text.data()) == std::string::npos)
+                {
+                    return;
+                }
+
+                auto open = ImGui::TreeNodeEx(mat_id.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                if (open)
+                {
+                    ImGui::Separator();
+                    ImGui::Columns(2);
+                    ImGui::SetColumnWidth(-1, 120);
+                    ImGui::Text("Preview");
+                    if (ImGui::Button("Use"))
+                    {
+                        m_selection_cb(mat_id);
+                    }
+                    ImGui::NextColumn();
+                    ImGui::Image(m->get_material_data()->texture_set, ImVec2{160, 160});
+
+                    ImGui::Columns(1);
+
+                    ImGui::Separator();
+                    ImGui::TreePop();
+                }
             }
-            ImGui::NextColumn();
-            ImGui::Image(t.second->get_material_data()->texture_set, ImVec2{160, 160});
-
-            ImGui::Columns(1);
-
-            ImGui::Separator();
-            ImGui::TreePop();
-        }
-    }
+        });
 
     handle_end();
 }
