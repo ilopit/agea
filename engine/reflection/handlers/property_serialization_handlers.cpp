@@ -372,7 +372,7 @@ property_serialization_handlers::deserialize_t_txt(AGEA_deserialization_args)
 {
     AGEA_unused(occ);
 
-    auto field = reflection::extract<::agea::model::texture*>(ptr);
+    auto& field = reflection::extract<::agea::model::texture*>(ptr);
 
     auto txt = glob::textures_cache::get()->get(jc.as<std::string>()).get();
     if (!txt)

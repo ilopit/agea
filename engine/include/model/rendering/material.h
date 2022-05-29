@@ -29,7 +29,7 @@ public:
     std::string m_base_effect;
 
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
-    texture* m_texture;
+    texture* m_texture = nullptr;
 
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
     float* m_roughness = nullptr;
@@ -43,7 +43,7 @@ public:
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
     float* m_albedo = nullptr;
 
-    ::agea::render::material_data* m_material;
+    ::agea::render::material_data* m_material = nullptr;
 };
 
 }  // namespace model

@@ -354,6 +354,11 @@ loader::load_texture(model::texture& t)
 material_data*
 loader::load_material(model::material& d)
 {
+    if (!d.m_texture)
+    {
+        return nullptr;
+    }
+
     auto device = glob::render_device::get();
 
     auto it = m_materials_cache.find(d.id());

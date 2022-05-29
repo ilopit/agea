@@ -20,7 +20,7 @@ materials_cache::init()
         object_constructor_context occ;
         auto obj = agea::model::object_constructor::class_object_load(path, occ);
 
-        AGEA_check(obj, "should not be empty!");
+        AGEA_check(obj, "Should not be empty!");
 
         auto mobj = cast_ref<material>(occ.extract_last());
 
