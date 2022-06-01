@@ -38,10 +38,13 @@ load_level_path(level& l, const std::string& path)
 {
     ALOG_INFO("Begin level loading with path {0}", path);
 
-    YAML::Node json = YAML::LoadFile(path);
+    l.m_path = path;
+
+    serialization::conteiner conteiner;
+    serialization::read_container(path, conteiner);
 
     {
-        auto objects_count = json["objecs"].size();
+        auto objects_count = conteiner["objecs"].size();
 
         if (objects_count == 0)
         {
@@ -51,7 +54,7 @@ load_level_path(level& l, const std::string& path)
 
         for (unsigned idx = 0; idx < objects_count; ++idx)
         {
-            auto obj_path = json["objecs"][idx].as<std::string>();
+            auto obj_path = conteiner["objecs"][idx].as<std::string>();
 
             auto class_obj_path = glob::resource_locator::get()->resource(category::all, obj_path);
 
@@ -63,7 +66,7 @@ load_level_path(level& l, const std::string& path)
         }
     }
 
-    auto groups_count = json["groups"].size();
+    auto groups_count = conteiner["groups"].size();
 
     if (groups_count == 0)
     {
@@ -73,7 +76,7 @@ load_level_path(level& l, const std::string& path)
 
     for (unsigned idx = 0; idx < groups_count; ++idx)
     {
-        auto json_group = json["groups"][idx];
+        auto json_group = conteiner["groups"][idx];
 
         ALOG_INFO("Level : group {0}", json_group["name"].as<std::string>());
 
@@ -133,6 +136,12 @@ load_level_path(level& l, const std::string& path)
 }
 
 bool
+save_level(level& l)
+{
+    return true;
+}
+
+bool
 fill_level_caches(level& l)
 {
     auto& occ = l.m_occ;
@@ -141,7 +150,13 @@ fill_level_caches(level& l)
         auto game_obj = o.second->as<game_object>();
         if (game_obj)
         {
-            l.m_objects.push_back(game_obj);
+            l.m_objects[game_obj->get_id()] = game_obj;
+        }
+
+        auto comp_obj = o.second->as<component>();
+        if (comp_obj)
+        {
+            l.m_components[comp_obj->get_id()] = comp_obj;
         }
     }
 

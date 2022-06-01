@@ -18,9 +18,9 @@ groups:
         y: -10
         z: 0
       rotation:
-        x: 0
-        y: 0
-        z: 0
+        x: 1
+        y: 1
+        z: 1
       scale:
         x: 5
         y: 5
@@ -39,25 +39,8 @@ groups:
         y: 0
         z: 0
       scale:
-        x: 5
-        y: 5
-        z: 5
-      order_idx: 0
-      parent_idx: -1
-  - id: instance_test_obj_3
-    components:
-    - id: instance_test_comp_3
-      position:
-        x: 0
-        y: -10
-        z: 0
-      rotation:
-        x: 0
-        y: 0
-        z: 0
-      scale:
-        x: 5
-        y: 5
-        z: 5
+        x: 3
+        y: 3
+        z: 3
       order_idx: 0
       parent_idx: -1

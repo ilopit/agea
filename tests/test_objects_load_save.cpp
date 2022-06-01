@@ -58,9 +58,9 @@ TEST_F(test_load_objects, load_component)
 
     ASSERT_EQ(component->get_id(), "test_component_a_2");
     ASSERT_EQ(component->get_type_id(), "game_object_component");
-    ASSERT_EQ(component->m_order_idx, model::NO_index);
-    ASSERT_EQ(component->m_parent_idx, model::NO_parent);
-    ASSERT_EQ(*component->m_renderable, false);
+    ASSERT_EQ(component->get_order_idx(), model::NO_index);
+    ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
+    ASSERT_EQ(component->is_renderable(), false);
 
     ASSERT_FALSE(is_from_EO_cache(component));
 
@@ -102,47 +102,47 @@ TEST_F(test_load_objects, load_object)
     auto game_object = obj->as<model::game_object>();
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(game_object->id(), "test_object");
-    ASSERT_EQ(game_object->type_id(), "mesh_object");
+    ASSERT_EQ(game_object->get_id(), "test_object");
+    ASSERT_EQ(game_object->get_type_id(), "mesh_object");
 
     {
         auto component = game_object->get_component_at(0U);
-        ASSERT_EQ(component->id(), "test_obj/test_root_component");
-        ASSERT_EQ(component->type_id(), "game_object_component");
-        ASSERT_EQ(component->m_order_idx, 0U);
-        ASSERT_EQ(component->m_parent_idx, model::NO_parent);
+        ASSERT_EQ(component->get_id(), "test_obj/test_root_component");
+        ASSERT_EQ(component->get_type_id(), "game_object_component");
+        ASSERT_EQ(component->get_order_idx(), 0U);
+        ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
         auto component = game_object->get_component_at(1U);
-        ASSERT_EQ(component->id(), "test_obj/test_component_a");
+        ASSERT_EQ(component->get_id(), "test_obj/test_component_a");
         ASSERT_EQ(component->get_type_id(), "component");
-        ASSERT_EQ(component->m_order_idx, 1U);
-        ASSERT_EQ(component->m_parent_idx, 0U);
+        ASSERT_EQ(component->get_order_idx(), 1U);
+        ASSERT_EQ(component->get_parent_idx(), 0U);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
         auto component = game_object->get_component_at(2U);
         ASSERT_EQ(component->get_id(), "test_obj/test_component_b");
         ASSERT_EQ(component->get_type_id(), "component");
-        ASSERT_EQ(component->m_order_idx, 2U);
-        ASSERT_EQ(component->m_parent_idx, 0U);
+        ASSERT_EQ(component->get_order_idx(), 2U);
+        ASSERT_EQ(component->get_parent_idx(), 0U);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
         auto component = game_object->get_component_at(3U);
         ASSERT_EQ(component->get_id(), "test_obj/test_component_a_2");
         ASSERT_EQ(component->get_type_id(), "game_object_component");
-        ASSERT_EQ(component->m_order_idx, 3U);
-        ASSERT_EQ(component->m_parent_idx, 2U);
+        ASSERT_EQ(component->get_order_idx(), 3U);
+        ASSERT_EQ(component->get_parent_idx(), 2U);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
         auto component = game_object->get_component_at(4U);
         ASSERT_EQ(component->get_id(), "test_obj/test_component_b_2");
         ASSERT_EQ(component->get_type_id(), "component");
-        ASSERT_EQ(component->m_order_idx, 4U);
-        ASSERT_EQ(component->m_parent_idx, 2U);
+        ASSERT_EQ(component->get_order_idx(), 4U);
+        ASSERT_EQ(component->get_parent_idx(), 2U);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 

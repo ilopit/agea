@@ -121,7 +121,7 @@ level_editor_window::handle()
     {
         for (auto& o : level->m_objects)
         {
-            draw_oject(o);
+            draw_oject(o.second);
         }
         ImGui::TreePop();
     }

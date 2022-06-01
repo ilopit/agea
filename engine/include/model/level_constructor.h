@@ -17,6 +17,8 @@ bool
 load_level_id(level& l, const std::string& id);
 bool
 load_level_path(level& l, const std::string& path);
+bool
+save_level(level& l);
 
 bool
 fill_level_caches(level& l);

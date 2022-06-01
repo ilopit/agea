@@ -174,6 +174,12 @@ public:
         return &m_scale;
     }
 
+    bool
+    is_renderable()
+    {
+        return m_renderable;
+    }
+
 protected:
     AGEA_property("category=world", "serializable=true", "visible=true", "access=rw", "hint=x,y,z");
     glm::vec3 m_position;
