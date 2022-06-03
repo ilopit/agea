@@ -8,6 +8,7 @@
 
 #include "model/object_construction_context.h"
 #include "model/smart_object.h"
+#include "model/components/component.h"
 
 #include "model/object_constructor.h"
 
@@ -81,78 +82,117 @@ deserialize_game_object_components(deserialize_context& dc)
 bool
 serialize_game_object_components(serialize_context& dc)
 {
-    //     auto instance_ptr = (blob_ptr)dc.obj;
-    //     auto class_ptr = (blob_ptr)dc.obj->m_class_obj;
-    //
-    //     auto& instance_components_list =
-    //         extract<std::vector<model::smart_object*>>(instance_ptr + dc.p->offset);
-    //     auto& class_components_list =
-    //         extract<std::vector<model::smart_object*>>(class_ptr + dc.p->offset);
-    //
-    //     AGEA_check(instance_components_list.size() == class_components_list.size(),
-    //                "Should be same size");
-    //
-    //     for (auto iitr = instance_components_list.begin(), citr = class_components_list.begin();
-    //          iitr != instance_components_list.end(); ++citr, ++iitr)
-    //     {
-    //         auto& instance_component = **iitr;
-    //         auto& class_component = **citr;
-    //
-    //         AGEA_check((instance_component.type_id() == class_component.type_id()) &&
-    //                        (instance_component.m_class_obj->id() ==
-    //                        class_component.m_class_obj->id()),
-    //                    "Should have same origin");
-    //
-    //         auto& properties = instance_component.reflection()->m_serilalization_properties;
-    //
-    //         for (auto& p : properties)
-    //         {
-    //             auto same = p->types_compare_handler(instance_component, class_component,
-    //                                                  (blob_ptr)&instance_component + p->offset,
-    //                                                  (blob_ptr)&class_component + p->offset);
-    //
-    //             int i = 2;
-    //         }
-    //     }
-
-    serialization::conteiner components_conteiner;
-
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
-    AGEA_check(!class_obj.get_class_obj(), "Should be called only for class objs");
 
-    auto& components =
-        extract<std::vector<model::smart_object*>>(class_obj.as_blob() + dc.p->offset);
-
-    int i = 0;
-    for (auto instance_component : components)
+    if (class_obj.is_class_obj())
     {
-        auto class_component = instance_component->get_class_obj();
-        auto& properties = instance_component->reflection()->m_serilalization_properties;
+        serialization::conteiner components_conteiner;
 
-        serialization::conteiner component_conteiner;
-        component_conteiner["object_class"] = class_component->get_id();
-        component_conteiner["id"] = instance_component->get_id();
+        auto& components =
+            extract<std::vector<model::smart_object*>>(class_obj.as_blob() + dc.p->offset);
 
-        reflection::serialize_context internal_sc{nullptr, instance_component,
-                                                  &component_conteiner};
-        reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
-
-        for (auto& p : properties)
+        int i = 0;
+        for (auto instance_component : components)
         {
-            compare_ctx.p = p.get();
-            internal_sc.p = p.get();
-            auto same = reflection::property::compare(compare_ctx);
+            auto class_component = instance_component->get_class_obj();
 
-            if (!same)
+            serialization::conteiner component_conteiner;
+            component_conteiner["object_class"] = class_component->get_id();
+            component_conteiner["id"] = instance_component->get_id();
+
+            reflection::serialize_context internal_sc{nullptr, instance_component,
+                                                      &component_conteiner};
+            reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
+
+            std::vector<reflection::property*> diff;
+            model::object_constructor::diff_object_properties(*class_component, *instance_component,
+                                                              diff);
+
+            for (auto& p : diff)
             {
+                internal_sc.p = p;
+
                 p->serialization_handler(internal_sc);
             }
+            components_conteiner[i++] = component_conteiner;
         }
-        components_conteiner[i++] = component_conteiner;
+
+        conteiner[dc.p->name] = components_conteiner;
+    }
+    else
+    {
+        serialization::conteiner components_conteiner;
+
+        auto& obj_components =
+            extract<std::vector<model::component*>>(class_obj.as_blob() + dc.p->offset);
+
+        auto& parent_components = extract<std::vector<model::component*>>(
+            class_obj.get_class_obj()->as_blob() + dc.p->offset);
+
+        AGEA_check(obj_components.size() == parent_components.size(), "Shoild be same size!");
+
+        for (size_t i = 0; i < obj_components.size(); ++i)
+        {
+            auto class_component = parent_components[i];
+            auto obj_component = obj_components[i];
+
+            serialization::conteiner component_conteiner;
+
+            reflection::serialize_context internal_sc{nullptr, obj_component, &component_conteiner};
+
+            std::vector<reflection::property*> diff;
+            model::object_constructor::diff_object_properties(*class_component, *obj_component,
+                                                              diff);
+
+            if (!diff.empty())
+            {
+                component_conteiner["id"] = obj_component->get_id();
+                component_conteiner["order_idx"] = obj_component->get_order_idx();
+            }
+            for (auto& p : diff)
+            {
+                internal_sc.p = p;
+
+                p->serialization_handler(internal_sc);
+            }
+            if (!diff.empty())
+            {
+                components_conteiner.push_back(component_conteiner);
+            }
+        }
+
+        conteiner[dc.p->name] = components_conteiner;
     }
 
-    conteiner[dc.p->name] = components_conteiner;
+    return true;
+}
+
+bool
+compare_game_object_components(compare_context& ctx)
+{
+    auto& dst_components =
+        extract<std::vector<model::smart_object*>>(ctx.dst_obj->as_blob() + ctx.p->offset);
+    auto& src_components =
+        extract<std::vector<model::smart_object*>>(ctx.src_obj->as_blob() + ctx.p->offset);
+
+    if (dst_components.size() != src_components.size())
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < dst_components.size(); ++i)
+    {
+        std::vector<reflection::property*> props;
+
+        model::object_constructor::diff_object_properties(*dst_components[i], *src_components[i],
+                                                          props);
+
+        if (!props.empty())
+        {
+            return false;
+        }
+    }
 
     return true;
 }

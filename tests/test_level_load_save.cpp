@@ -7,6 +7,7 @@
 #include "model/game_object.h"
 
 #include "utils/agea_log.h"
+#include "utils/file_utils.h"
 
 #include <gtest/gtest.h>
 
@@ -78,7 +79,7 @@ TEST_F(test_load_level, load_level)
         const auto expected_pos = glm::vec3{-5.f, -10.f, 0.f};
         ASSERT_EQ(game_comp->get_position(), expected_pos);
 
-        const auto expected_rot = glm::vec3{0.f, 0.f, 0.f};
+        const auto expected_rot = glm::vec3{2.f, 3.f, 4.f};
         ASSERT_EQ(game_comp->get_rotation(), expected_rot);
 
         const auto expected_scale = glm::vec3{3.f, 3.f, 3.f};
@@ -89,4 +90,11 @@ TEST_F(test_load_level, load_level)
         ASSERT_EQ(comps[3]->get_id(), "instance_test_obj_2/test_component_a_2");
         ASSERT_EQ(comps[4]->get_id(), "instance_test_obj_2/test_component_b_2");
     }
+
+    std::string save_path = "result";
+
+    model::level_constructor::save_level(l, save_path);
+
+    result = file_utils::compare_files(save_path, path);
+    ASSERT_TRUE(result);
 }

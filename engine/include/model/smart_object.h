@@ -125,6 +125,12 @@ public:
         return m_class_obj;
     }
 
+    bool
+    is_class_obj() const
+    {
+        return m_class_obj == nullptr;
+    }
+
 protected:
     void
     META_set_id(const std::string& id)

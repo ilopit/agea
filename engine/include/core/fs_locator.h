@@ -51,6 +51,10 @@ public:
 
     std::string
     resource(category c, const std::string& resource);
+
+    std::string
+    relative_resource(category c, const std::string& resource);
+
     std::string
     resource_dir(category c);
 

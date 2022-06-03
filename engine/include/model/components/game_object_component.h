@@ -177,7 +177,7 @@ public:
     bool
     is_renderable()
     {
-        return m_renderable;
+        return *m_renderable;
     }
 
 protected:

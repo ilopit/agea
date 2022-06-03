@@ -1,46 +1,42 @@
----
-objecs:
-- test/test_component_a.acom
-- test/test_component_a_2.acom
-- test/test_component_b.acom
-- test/test_component_b_2.acom
-- test/test_root_component.acom
-- test/test_object.aobj
-groups:
-- name: test_group
-  object_class: test_object
-  instances:
-  - id: instance_test_obj_1
-    components:
-    - id: instance_test_comp_1
-      position:
-        x: -10
-        y: -10
-        z: 0
-      rotation:
-        x: 1
-        y: 1
-        z: 1
-      scale:
-        x: 5
-        y: 5
-        z: 5
-      order_idx: 0
-      parent_idx: -1
-  - id: instance_test_obj_2
-    components:
-    - id: instance_test_comp_2
-      position:
-        x: -5
-        y: -10
-        z: 0
-      rotation:
-        x: 0
-        y: 0
-        z: 0
-      scale:
-        x: 3
-        y: 3
-        z: 3
-      order_idx: 0
-      parent_idx: -1
+objects:
+  - test/test_component_a.acom
+  - test/test_component_a_2.acom
+  - test/test_component_b.acom
+  - test/test_component_b_2.acom
+  - test/test_root_component.acom
+  - test/test_object.aobj
+instance_groups:
+  - object_class: test_object
+    instances:
+      - id: instance_test_obj_1
+        components:
+          - id: instance_test_comp_1
+            order_idx: 0
+            position:
+              x: -10
+              y: -10
+              z: 0
+            rotation:
+              x: 1
+              y: 1
+              z: 1
+            scale:
+              x: 5
+              y: 5
+              z: 5
+      - id: instance_test_obj_2
+        components:
+          - id: instance_test_comp_2
+            order_idx: 0
+            position:
+              x: -5
+              y: -10
+              z: 0
+            rotation:
+              x: 2
+              y: 3
+              z: 4
+            scale:
+              x: 3
+              y: 3
+              z: 3

@@ -44,7 +44,7 @@ load_level_path(level& l, const std::string& path)
     serialization::read_container(path, conteiner);
 
     {
-        auto objects_count = conteiner["objecs"].size();
+        auto objects_count = conteiner["objects"].size();
 
         if (objects_count == 0)
         {
@@ -54,7 +54,7 @@ load_level_path(level& l, const std::string& path)
 
         for (unsigned idx = 0; idx < objects_count; ++idx)
         {
-            auto obj_path = conteiner["objecs"][idx].as<std::string>();
+            auto obj_path = conteiner["objects"][idx].as<std::string>();
 
             auto class_obj_path = glob::resource_locator::get()->resource(category::all, obj_path);
 
@@ -66,7 +66,7 @@ load_level_path(level& l, const std::string& path)
         }
     }
 
-    auto groups_count = conteiner["groups"].size();
+    auto groups_count = conteiner["instance_groups"].size();
 
     if (groups_count == 0)
     {
@@ -76,9 +76,9 @@ load_level_path(level& l, const std::string& path)
 
     for (unsigned idx = 0; idx < groups_count; ++idx)
     {
-        auto json_group = conteiner["groups"][idx];
+        auto json_group = conteiner["instance_groups"][idx];
 
-        ALOG_INFO("Level : group {0}", json_group["name"].as<std::string>());
+        ALOG_INFO("Level : group {0}", json_group["object_class"].as<std::string>());
 
         auto class_id = json_group["object_class"].as<std::string>();
         ALOG_INFO("Level : class_id {0} instances", class_id);
@@ -136,8 +136,91 @@ load_level_path(level& l, const std::string& path)
 }
 
 bool
-save_level(level& l)
+save_level(level& l, const std::string& path)
 {
+    serialization::conteiner conteiner;
+
+    {
+        auto& coc = l.occ().class_obj_cache;
+
+        auto items = coc->get_order();
+
+        std::sort(items.begin(), items.end(),
+                  [](class_objects_cache::class_object_context& l,
+                     class_objects_cache::class_object_context& r) { return l.order < r.order; });
+
+        serialization::conteiner objects_conteiner;
+
+        int idx = 0;
+        for (auto& i : items)
+        {
+            auto class_obj_path =
+                glob::resource_locator::get()->relative_resource(category::all, i.path);
+
+            objects_conteiner[idx++] = class_obj_path;
+        }
+
+        conteiner["objects"] = objects_conteiner;
+    }
+
+    {
+        std::unordered_map<const smart_object*, std::vector<smart_object*>> instances_groups_maping;
+
+        auto& items = l.occ().instance_obj_cache->items();
+
+        for (auto& o : items)
+        {
+            auto& obj = o.second;
+            auto cobj = obj->get_class_obj();
+
+            if (!obj->as<game_object>())
+            {
+                continue;
+            }
+
+            instances_groups_maping[cobj].push_back(obj.get());
+        }
+
+        serialization::conteiner instances_groups;
+
+        for (auto& instance_group : instances_groups_maping)
+        {
+            instances_groups["object_class"] = instance_group.first->get_id();
+
+            serialization::conteiner instances_conteiner;
+
+            for (auto& instance : instance_group.second)
+            {
+                serialization::conteiner intance;
+                intance["id"] = instance->get_id();
+
+                auto& base_obj = *instance_group.first;
+                auto& obj_to_diff = *instance;
+
+                std::vector<reflection::property*> diff;
+                object_constructor::diff_object_properties(base_obj, obj_to_diff, diff);
+
+                reflection::serialize_context ctx;
+                ctx.obj = instance;
+                ctx.sc = &intance;
+                for (auto p : diff)
+                {
+                    ctx.p = p;
+                    p->serialization_handler(ctx);
+                }
+
+                instances_groups["instances"].push_back(intance);
+            }
+        }
+
+        conteiner["instance_groups"].push_back(instances_groups);
+    }
+
+    if (!serialization::write_container(path, conteiner))
+    {
+        return false;
+    }
+
     return true;
 }
 

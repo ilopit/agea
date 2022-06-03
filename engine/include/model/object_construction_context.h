@@ -32,6 +32,8 @@ public:
 
     // TODO, workaround
     std::shared_ptr<smart_object> last_obj;
+
+    int m_class_object_order = 0;
 };
 }  // namespace model
 }  // namespace agea

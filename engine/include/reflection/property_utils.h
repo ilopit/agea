@@ -117,6 +117,7 @@ full_compare(blob_ptr from, blob_ptr to)
 
 using property_deserialization_handler  = std::function<bool(deserialize_context&)>;
 using property_serialization_handler    = std::function<bool(serialize_context&)>;
+using property_compare_handler          = std::function<bool(compare_context&)>;
 
 using type_serialization_handler        = std::function<bool(AGEA_serialization_args)>;
 using type_deserialization_handler      = std::function<bool(AGEA_deserialization_args)>;

@@ -13,6 +13,9 @@ deserialize_game_object_components(deserialize_context& dc);
 
 bool
 serialize_game_object_components(serialize_context& dc);
+
+bool
+compare_game_object_components(compare_context& ctx);
 }  // namespace custom
 }  // namespace reflection
 }  // namespace agea

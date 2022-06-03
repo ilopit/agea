@@ -18,13 +18,14 @@ public:
     {
         std::shared_ptr<smart_object> obj;
         std::string path;
+        int order = 0;
     };
 
     smart_object*
     get(const std::string& class_id);
 
     void
-    insert(std::shared_ptr<smart_object> obj, const std::string& path);
+    insert(std::shared_ptr<smart_object> obj, const std::string& path, int order);
 
     void
     insert(std::shared_ptr<smart_object> obj);
@@ -37,6 +38,9 @@ public:
     {
         return m_objects.size();
     }
+
+    std::vector<class_object_context>
+    get_order();
 
 protected:
     std::unordered_map<std::string, class_object_context> m_objects;

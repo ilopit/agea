@@ -13,6 +13,12 @@
 
 namespace agea
 {
+
+namespace reflection
+{
+class property;
+}
+
 namespace model
 {
 
@@ -44,6 +50,11 @@ public:
 
     static bool
     clone_object_properties(smart_object& from, smart_object& to, object_constructor_context& occ);
+
+    static bool
+    diff_object_properties(const smart_object& left,
+                           const smart_object& right,
+                           std::vector<reflection::property*>& diff);
 
 private:
     static bool

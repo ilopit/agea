@@ -57,7 +57,7 @@ public:
          model::object_constructor_context& occ);
 
     static bool
-    compare(compare_context& context);
+    default_compare(compare_context& context);
 
 private:
     static bool
@@ -121,6 +121,7 @@ public:
 
     property_deserialization_handler  deserialization_handler       = default_deserialize;
     property_serialization_handler    serialization_handler         = default_serialize;
+    property_compare_handler          compare_handler               = default_compare;
 
     type_compare_handler              types_compare_handler         = nullptr;
     type_copy_handler                 types_copy_handler            = nullptr;

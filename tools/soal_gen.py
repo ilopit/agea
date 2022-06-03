@@ -151,10 +151,9 @@ class property:
         self.hint = ""
         self.visible = ""
         self.serializable = "no"
-        self.type_ser_handler = ""
-        self.type_des_handler = ""
         self.property_ser_handler = ""
         self.property_des_handler = ""
+        self.property_compare_handler = ""
         self.copyable = "yes"
         self.updatable = "yes"
 
@@ -210,14 +209,12 @@ def process_file(original_file_full_path, original_file_rel_path, context):
                     prop.visible = pairs[1]
                 elif pairs[0] == "serializable":
                     prop.serializable = pairs[1]
-                elif pairs[0] == "type_ser_handler":
-                    prop.type_ser_handler = pairs[1]
-                elif pairs[0] == "type_des_handler":
-                    prop.type_des_handler = pairs[1]
                 elif pairs[0] == "property_ser_handler":
                     prop.property_ser_handler = pairs[1]
                 elif pairs[0] == "property_des_handler":
                     prop.property_des_handler = pairs[1]
+                elif pairs[0] == "property_compare_handler":
+                    prop.property_compare_handler = pairs[1]
                 elif pairs[0] == "access":
                     prop.access = pairs[1]
                 elif pairs[0] == "copyable":
@@ -262,12 +259,10 @@ def process_file(original_file_full_path, original_file_rel_path, context):
                 context.content += 'p->visible                        = {0};\n'.format(prop.visible)
 
             if prop.serializable == "true":
-                ser_handler = "property_type_serialization_handlers::serializers()[(size_t)p->type.type]" if prop.type_ser_handler == "" else prop.type_ser_handler
-                des_handler = "property_type_serialization_handlers::deserializers()[(size_t)p->type.type]" if prop.type_des_handler == "" else prop.type_des_handler
                 context.content += "    "
-                context.content += 'p->types_serialization_handler    = {0};\n'.format(ser_handler)
+                context.content += 'p->types_serialization_handler    = property_type_serialization_handlers::serializers()[(size_t)p->type.type];\n'
                 context.content += "    "
-                context.content += 'p->types_deserialization_handler  = {0};\n'.format(des_handler)
+                context.content += 'p->types_deserialization_handler  = property_type_serialization_handlers::deserializers()[(size_t)p->type.type];\n'
 
             if prop.property_ser_handler != "":
                 context.content += "    "
@@ -276,6 +271,10 @@ def process_file(original_file_full_path, original_file_rel_path, context):
             if prop.property_des_handler != "":
                 context.content += "    "
                 context.content += 'p->deserialization_handler        = {0};\n'.format(prop.property_des_handler)
+
+            if prop.property_compare_handler != "":
+                context.content += "    "
+                context.content += 'p->compare_handler                = {0};\n'.format(prop.property_compare_handler)
 
             if prop.copyable != "no":
                 context.content += "    "

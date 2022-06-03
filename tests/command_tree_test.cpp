@@ -32,16 +32,19 @@ TEST_F(commands_tree_test, happy_run)
         ASSERT_EQ(hints, expected);
     }
     {
+        hints.clear();
         std::vector<std::string> expected{"cc", "cd", "dd"};
         ct.hints({"aa", "bb"}, hints);
         ASSERT_EQ(hints, expected);
     }
     {
+        hints.clear();
         std::vector<std::string> expected{"cc", "cd"};
         ct.hints({"aa", "bb", "c"}, hints);
         ASSERT_EQ(hints, expected);
     }
     {
+        hints.clear();
         std::vector<std::string> expected{"dd"};
         ct.hints({"aa", "bb", "d"}, hints);
         ASSERT_EQ(hints, expected);

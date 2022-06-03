@@ -96,7 +96,8 @@ object_constructor::class_object_load(const std::string& object_path,
 
     object_properties_load(*empty, conteiner, occ);
 
-    occ.class_obj_cache->insert(empty, object_path);
+    occ.class_obj_cache->insert(empty, object_path, occ.m_class_object_order);
+    ++occ.m_class_object_order;
     occ.last_obj = empty;
 
     return empty.get();
@@ -203,6 +204,35 @@ object_constructor::clone_object_properties(smart_object& from,
         {
             ALOG_LAZY_ERROR;
             return false;
+        }
+    }
+
+    return true;
+}
+
+bool
+object_constructor::diff_object_properties(const smart_object& left,
+                                           const smart_object& right,
+                                           std::vector<reflection::property*>& diff)
+{
+    if (left.get_type_id() != right.get_type_id())
+    {
+        return false;
+    }
+
+    auto& properties = left.reflection()->m_serilalization_properties;
+
+    reflection::compare_context compare_ctx{nullptr, &left, &right};
+
+    for (auto& p : properties)
+    {
+        compare_ctx.p = p.get();
+
+        auto same = p->compare_handler(compare_ctx);
+
+        if (!same)
+        {
+            diff.push_back(p.get());
         }
     }
 

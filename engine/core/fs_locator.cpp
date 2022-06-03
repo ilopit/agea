@@ -36,6 +36,15 @@ resource_locator::resource(category c, const std::string& resource)
 }
 
 std::string
+resource_locator::relative_resource(category c, const std::string& resource)
+{
+    auto path = resource_dir(c);
+    auto size = path.size() + 1;
+
+    return resource.substr(size);
+}
+
+std::string
 resource_locator::resource_dir(category c)
 {
     auto path = m_root;

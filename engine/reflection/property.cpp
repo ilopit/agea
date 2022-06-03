@@ -134,7 +134,7 @@ property::copy(property& from_property,
 }
 
 bool
-property::compare(compare_context& context)
+property::default_compare(compare_context& context)
 {
     if (context.p->type.is_collection)
     {
