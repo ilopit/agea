@@ -198,9 +198,14 @@ object_constructor::clone_object_properties(smart_object& from,
 {
     auto& properties = from.reflection()->m_serilalization_properties;
 
+    reflection::copy_context ctx{nullptr, nullptr, &from, &to, &occ};
+
     for (auto& p : properties)
     {
-        if (!reflection::property::copy(*p, *p, from, to, occ))
+        ctx.dst_property = p.get();
+        ctx.src_property = p.get();
+
+        if (!p->copy_handler(ctx))
         {
             ALOG_LAZY_ERROR;
             return false;

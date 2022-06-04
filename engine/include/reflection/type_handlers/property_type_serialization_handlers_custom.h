@@ -9,13 +9,17 @@ namespace reflection
 namespace custom
 {
 bool
-deserialize_game_object_components(deserialize_context& dc);
+game_object_components_deserialize(deserialize_context& dc);
 
 bool
-serialize_game_object_components(serialize_context& dc);
+game_object_components_serialize(serialize_context& dc);
 
 bool
-compare_game_object_components(compare_context& ctx);
+game_object_components_compare(compare_context& ctx);
+
+bool
+game_object_components_copy(copy_context& ctx);
+
 }  // namespace custom
 }  // namespace reflection
 }  // namespace agea

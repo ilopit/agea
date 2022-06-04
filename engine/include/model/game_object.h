@@ -208,9 +208,10 @@ protected:
 
     AGEA_property("category=meta",
                   "serializable=true",
-                  "property_des_handler=custom::deserialize_game_object_components",
-                  "property_ser_handler=custom::serialize_game_object_components",
-                  "property_compare_handler=custom::compare_game_object_components");
+                  "property_des_handler=custom::game_object_components_deserialize",
+                  "property_ser_handler=custom::game_object_components_serialize",
+                  "property_compare_handler=custom::game_object_components_compare",
+                  "property_copy_handler=custom::game_object_components_copy");
     std::vector<component*> m_components;
 
     game_object_component* m_root_component = nullptr;

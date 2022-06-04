@@ -93,47 +93,6 @@ property::load_from_string_with_hint(blob_ptr ptr, const std::string& hint, cons
 }
 
 bool
-property::copy(property& from_property,
-               property& to_property,
-               model::smart_object& src_obj,
-               model::smart_object& dst_obj,
-               model::object_constructor_context& occ)
-{
-    if (!from_property.types_copy_handler)
-    {
-        return true;
-    }
-
-    AGEA_check(&to_property == &from_property, "Should be SAME properties!");
-    AGEA_check(&src_obj != &dst_obj, "Should not be SAME objects!");
-
-    if (to_property.type.is_collection)
-    {
-        auto& fromcol =
-            extract<std::vector<model::component*>>((blob_ptr)&src_obj + from_property.offset);
-        auto& tocol =
-            extract<std::vector<model::component*>>((blob_ptr)&dst_obj + to_property.offset);
-
-        tocol.resize(fromcol.size());
-
-        for (int i = 0; i < fromcol.size(); ++i)
-        {
-            from_property.types_copy_handler(src_obj, dst_obj, (blob_ptr)&fromcol[i],
-                                             (blob_ptr)&tocol[i], occ);
-        }
-    }
-    else
-    {
-        auto from = ::agea::reflection::reduce_ptr((blob_ptr)&src_obj + from_property.offset,
-                                                   from_property.type.is_ptr);
-        auto to = ::agea::reflection::reduce_ptr((blob_ptr)&dst_obj + to_property.offset,
-                                                 from_property.type.is_ptr);
-        from_property.types_copy_handler(src_obj, dst_obj, from, to, occ);
-    }
-    return true;
-}
-
-bool
 property::default_compare(compare_context& context)
 {
     if (context.p->type.is_collection)
@@ -143,21 +102,6 @@ property::default_compare(compare_context& context)
     else
     {
         return compare_item(context);
-    }
-}
-
-bool
-property::serialize(const reflection::property& p,
-                    const model::smart_object& obj,
-                    serialization::conteiner& sc)
-{
-    if (p.type.is_collection)
-    {
-        return serialize_collection(p, obj, sc);
-    }
-    else
-    {
-        return serialize_item(p, obj, sc);
     }
 }
 
@@ -185,6 +129,38 @@ property::default_serialize(serialize_context& ctx)
     {
         return serialize_item(*ctx.p, *ctx.obj, *ctx.sc);
     }
+}
+
+bool
+property::default_copy(copy_context& cxt)
+{
+    if (!cxt.src_property->types_copy_handler)
+    {
+        return true;
+    }
+
+    AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
+    AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
+
+    if (cxt.src_property->type.is_collection)
+    {
+        AGEA_not_implemented;
+    }
+    else
+    {
+        auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
+                                                   cxt.src_property->type.is_ptr);
+        auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
+                                                 cxt.dst_property->type.is_ptr);
+        cxt.dst_property->types_copy_handler(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
+    }
+    return true;
+}
+
+agea::blob_ptr
+property::get_blob(model::smart_object& obj)
+{
+    return obj.as_blob() + offset;
 }
 
 bool

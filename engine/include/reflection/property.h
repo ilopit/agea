@@ -38,10 +38,16 @@ public:
     bool
     load_from_string_with_hint(blob_ptr ptr, const std::string& hint, const std::string& str);
 
-    static bool
-    serialize(const reflection::property& p,
-              const model::smart_object& obj,
-              serialization::conteiner& sc);
+    // clang-format off
+    property_deserialization_handler deserialization_handler = default_deserialize;
+    property_serialization_handler   serialization_handler   = default_serialize;
+    property_compare_handler         compare_handler         = default_compare;
+    property_copy_handler            copy_handler            = default_copy;
+
+
+    blob_ptr get_blob(model::smart_object& obj);
+
+    // clang-format on
 
     static bool
     deserialize_update(reflection::property& p,
@@ -49,22 +55,18 @@ public:
                        const serialization::conteiner& sc,
                        model::object_constructor_context& occ);
 
-    static bool
-    copy(property& from_property,
-         property& to_property,
-         model::smart_object& src_obj,
-         model::smart_object& dst_obj,
-         model::object_constructor_context& occ);
-
+private:
     static bool
     default_compare(compare_context& context);
 
-private:
     static bool
     default_deserialize(deserialize_context& context);
 
     static bool
     default_serialize(serialize_context& context);
+
+    static bool
+    default_copy(copy_context& context);
 
     static bool
     deserialize_collection(reflection::property& p,
@@ -119,9 +121,7 @@ public:
     bool serializable                                               = false;
     bool visible                                                    = false;
 
-    property_deserialization_handler  deserialization_handler       = default_deserialize;
-    property_serialization_handler    serialization_handler         = default_serialize;
-    property_compare_handler          compare_handler               = default_compare;
+
 
     type_compare_handler              types_compare_handler         = nullptr;
     type_copy_handler                 types_copy_handler            = nullptr;

@@ -154,6 +154,7 @@ class property:
         self.property_ser_handler = ""
         self.property_des_handler = ""
         self.property_compare_handler = ""
+        self.property_copy_handler = ""
         self.copyable = "yes"
         self.updatable = "yes"
 
@@ -215,6 +216,8 @@ def process_file(original_file_full_path, original_file_rel_path, context):
                     prop.property_des_handler = pairs[1]
                 elif pairs[0] == "property_compare_handler":
                     prop.property_compare_handler = pairs[1]
+                elif pairs[0] == "property_copy_handler":
+                    prop.property_copy_handler = pairs[1]
                 elif pairs[0] == "access":
                     prop.access = pairs[1]
                 elif pairs[0] == "copyable":
@@ -275,6 +278,10 @@ def process_file(original_file_full_path, original_file_rel_path, context):
             if prop.property_compare_handler != "":
                 context.content += "    "
                 context.content += 'p->compare_handler                = {0};\n'.format(prop.property_compare_handler)
+
+            if prop.property_copy_handler != "":
+                context.content += "    "
+                context.content += 'p->copy_handler                   = {0};\n'.format(prop.property_copy_handler)
 
             if prop.copyable != "no":
                 context.content += "    "

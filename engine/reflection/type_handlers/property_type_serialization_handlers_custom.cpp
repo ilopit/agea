@@ -54,7 +54,7 @@ load_component(serialization::conteiner& sc, model::object_constructor_context& 
 }  // namespace
 
 bool
-deserialize_game_object_components(deserialize_context& dc)
+game_object_components_deserialize(deserialize_context& dc)
 {
     auto ptr = (blob_ptr)dc.obj;
 
@@ -80,7 +80,7 @@ deserialize_game_object_components(deserialize_context& dc)
 }
 
 bool
-serialize_game_object_components(serialize_context& dc)
+game_object_components_serialize(serialize_context& dc)
 {
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
@@ -169,7 +169,7 @@ serialize_game_object_components(serialize_context& dc)
 }
 
 bool
-compare_game_object_components(compare_context& ctx)
+game_object_components_compare(compare_context& ctx)
 {
     auto& dst_components =
         extract<std::vector<model::smart_object*>>(ctx.dst_obj->as_blob() + ctx.p->offset);
@@ -192,6 +192,25 @@ compare_game_object_components(compare_context& ctx)
         {
             return false;
         }
+    }
+
+    return true;
+}
+
+bool
+game_object_components_copy(copy_context& ctx)
+{
+    auto& src_col =
+        extract<std::vector<model::smart_object*>>(ctx.src_property->get_blob(*ctx.src_obj));
+    auto& dst_col =
+        extract<std::vector<model::smart_object*>>(ctx.dst_property->get_blob(*ctx.dst_obj));
+
+    dst_col.resize(src_col.size());
+
+    for (int i = 0; i < src_col.size(); ++i)
+    {
+        ctx.src_property->types_copy_handler(*ctx.src_obj, *ctx.dst_obj, (blob_ptr)&src_col[i],
+                                             (blob_ptr)&dst_col[i], *ctx.occ);
     }
 
     return true;
