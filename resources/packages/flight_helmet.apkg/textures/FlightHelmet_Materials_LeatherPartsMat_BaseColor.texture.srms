@@ -1,0 +1,5 @@
+---
+type_id: texture
+id: FlightHelmet_Materials_LeatherPartsMat_BaseColor
+format: RGBA8
+base_color: textures/extra/FlightHelmet_Materials_LeatherPartsMat_BaseColor.png

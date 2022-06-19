@@ -21,7 +21,7 @@ public:
     AGEA_gen_construct_params{
 
     };
-    AGEA_gen_meta_api;
+    AGEA_gen_meta_architype_api(game_object);
 
     bool
     construct(construct_params& params)

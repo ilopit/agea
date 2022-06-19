@@ -51,16 +51,17 @@ resource_locator::resource_dir(category c)
     switch (c)
     {
         // clang-format off
-    case category::all:{break;}
-    case category::assets:{path /= "assets"; break;}
-    case category::configs:{path /= "configs";break;}
-    case category::shaders_raw:{path /= "shaders";break;}
-    case category::shaders_compiled:{path /= "cache/shaders";break;}
-    case category::tmp:{path /= "tmp";break;}
-    case category::levels:{path /= "levels";break;}
-    case category::objects:{path /= "objects"; break; }
-    case category::components:{path /= "components"; break; }
-    case category::fonts:{path /= "fonts"; break; }
+    case category::all:              {                         break;}
+    case category::assets:           {path /= "assets";        break;}
+    case category::configs:          {path /= "configs";       break;}
+    case category::shaders_raw:      {path /= "shaders";       break;}
+    case category::shaders_compiled: {path /= "cache/shaders"; break;}
+    case category::tmp:              {path /= "tmp";           break;}
+    case category::levels:           {path /= "levels";        break;}
+    case category::objects:          {path /= "objects";       break;}
+    case category::components:       {path /= "components";    break;}
+    case category::packages:         {path /= "packages";      break;}
+    case category::fonts:            {path /= "fonts";         break;}
         // clang-format on
     default:
         return "";

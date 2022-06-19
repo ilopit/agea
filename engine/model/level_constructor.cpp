@@ -4,9 +4,11 @@
 #include "model/mesh_object.h"
 #include "model/components/mesh_component.h"
 #include "model/caches/class_object_cache.h"
-#include "model/caches/objects_cache.h"
+#include "model/caches/game_objects_cache.h"
 #include "model/object_construction_context.h"
 #include "model/object_constructor.h"
+#include "model/package_manager.h"
+
 #include "core/fs_locator.h"
 
 #include "serialization/serialization.h"
@@ -24,45 +26,43 @@ namespace level_constructor
 {
 
 bool
-load_level_id(level& l, const std::string& id)
+load_level_id(level& l, const std::string& id, cache_set_ref global_cs)
 {
     ALOG_INFO("Begin level loading with id {0}", id);
 
     auto path = glob::resource_locator::get()->resource(category::levels, id);
 
-    return load_level_path(l, path);
+    return load_level_path(l, path, global_cs);
 }
 
 bool
-load_level_path(level& l, const std::string& path)
+load_level_path(level& l, const std::string& path, cache_set_ref global_cs)
 {
     ALOG_INFO("Begin level loading with path {0}", path);
+    l.m_global_cs = global_cs;
 
-    l.m_path = path;
+    l.m_occ = std::make_unique<object_constructor_context>(l.m_global_cs, l.m_local_cs.get_ref(),
+                                                           &l.m_objects);
 
     serialization::conteiner conteiner;
-    serialization::read_container(path, conteiner);
+    if (!serialization::read_container(path, conteiner))
+    {
+        ALOG_LAZY_ERROR;
+        return false;
+    }
 
     {
-        auto objects_count = conteiner["objects"].size();
-
-        if (objects_count == 0)
+        auto packages = conteiner["packages"];
+        auto packages_count = packages.size();
+        for (size_t idx = 0; idx < packages_count; ++idx)
         {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-
-        for (unsigned idx = 0; idx < objects_count; ++idx)
-        {
-            auto obj_path = conteiner["objects"][idx].as<std::string>();
-
-            auto class_obj_path = glob::resource_locator::get()->resource(category::all, obj_path);
-
-            if (!object_constructor::class_object_load(class_obj_path, *l.m_occ))
+            auto id = packages[idx].as<std::string>();
+            if (!glob::package_manager::get()->load_package(id))
             {
                 ALOG_LAZY_ERROR;
                 return false;
             }
+            l.m_package_ids.push_back(id);
         }
     }
 
@@ -86,7 +86,7 @@ load_level_path(level& l, const std::string& path)
         auto items = json_group["instances"];
         auto items_size = items.size();
 
-        auto class_obj = l.m_occ->class_obj_cache->get(class_id);
+        auto class_obj = l.m_global_cs.objects->get_item(class_id);
 
         if (!class_obj)
         {
@@ -126,11 +126,6 @@ load_level_path(level& l, const std::string& path)
             }
         }
     }
-    fill_level_caches(l);
-
-    ALOG_INFO("Stats: CO items {0}, IO items {1}, Game objects {2}",
-              l.m_occ->class_obj_cache->size(), l.m_occ->instance_obj_cache->size(),
-              l.m_objects.size());
 
     return true;
 }
@@ -141,32 +136,16 @@ save_level(level& l, const std::string& path)
     serialization::conteiner conteiner;
 
     {
-        auto& coc = l.occ().class_obj_cache;
-
-        auto items = coc->get_order();
-
-        std::sort(items.begin(), items.end(),
-                  [](class_objects_cache::class_object_context& l,
-                     class_objects_cache::class_object_context& r) { return l.order < r.order; });
-
-        serialization::conteiner objects_conteiner;
-
-        int idx = 0;
-        for (auto& i : items)
         {
-            auto class_obj_path =
-                glob::resource_locator::get()->relative_resource(category::all, i.path);
-
-            objects_conteiner[idx++] = class_obj_path;
+            for (auto id : l.m_package_ids)
+            {
+                conteiner["packages"].push_back(id);
+            }
         }
 
-        conteiner["objects"] = objects_conteiner;
-    }
-
-    {
         std::unordered_map<const smart_object*, std::vector<smart_object*>> instances_groups_maping;
 
-        auto& items = l.occ().instance_obj_cache->items();
+        auto& items = l.m_local_cs.game_objects->get_items();
 
         for (auto& o : items)
         {
@@ -178,7 +157,7 @@ save_level(level& l, const std::string& path)
                 continue;
             }
 
-            instances_groups_maping[cobj].push_back(obj.get());
+            instances_groups_maping[cobj].push_back(obj);
         }
 
         serialization::conteiner instances_groups;
@@ -220,32 +199,8 @@ save_level(level& l, const std::string& path)
     {
         return false;
     }
-
     return true;
 }
-
-bool
-fill_level_caches(level& l)
-{
-    auto& occ = l.m_occ;
-    for (auto& o : occ->instance_obj_cache->items())
-    {
-        auto game_obj = o.second->as<game_object>();
-        if (game_obj)
-        {
-            l.m_objects[game_obj->get_id()] = game_obj;
-        }
-
-        auto comp_obj = o.second->as<component>();
-        if (comp_obj)
-        {
-            l.m_components[comp_obj->get_id()] = comp_obj;
-        }
-    }
-
-    return true;
-}
-
 }  // namespace level_constructor
 }  // namespace model
 }  // namespace agea

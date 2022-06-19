@@ -38,6 +38,4 @@ struct textures_viewer_backend_test : public testing::Test
 
 TEST_F(textures_viewer_backend_test, happy_run)
 {
-    model::textures_cache c;
-    c.init();
 }

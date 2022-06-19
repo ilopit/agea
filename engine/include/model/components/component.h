@@ -16,7 +16,7 @@ class component : public smart_object
 public:
     AGEA_gen_class_meta(component, smart_object);
     AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    AGEA_gen_meta_architype_api(component);
 
     bool
     construct(construct_params& c)

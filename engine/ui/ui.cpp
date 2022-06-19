@@ -121,7 +121,10 @@ level_editor_window::handle()
     {
         for (auto& o : level->m_objects)
         {
-            draw_oject(o.second);
+            if (auto game_obj = o->as<model::game_object>())
+            {
+                draw_oject(game_obj);
+            }
         }
         ImGui::TreePop();
     }
@@ -161,7 +164,7 @@ materials_selector::handle()
                 auto& mat_id = m->get_id();
                 if (mat_id.find(m_filtering_text.data()) == std::string::npos)
                 {
-                    return;
+                    return true;
                 }
 
                 auto open = ImGui::TreeNodeEx(mat_id.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
@@ -184,6 +187,7 @@ materials_selector::handle()
                     ImGui::TreePop();
                 }
             }
+            return true;
         });
 
     handle_end();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/agea_minimal.h"
+#include "model/caches/cache_set.h"
 
 #include <string>
 
@@ -14,14 +15,11 @@ namespace model
 namespace level_constructor
 {
 bool
-load_level_id(level& l, const std::string& id);
+load_level_id(level& l, const std::string& id, cache_set_ref global_cs);
 bool
-load_level_path(level& l, const std::string& path);
+load_level_path(level& l, const std::string& path, cache_set_ref global_cs);
 bool
 save_level(level& l, const std::string& path);
-
-bool
-fill_level_caches(level& l);
 
 }  // namespace level_constructor
 }  // namespace model

@@ -4,6 +4,7 @@
 #include "model/game_object.h"
 #include "model/mesh_object.h"
 #include "model/caches/empty_objects_cache.h"
+#include "model/caches/objects_cache.h"
 #include "model/caches/class_object_cache.h"
 #include "model/object_construction_context.h"
 
@@ -75,11 +76,13 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 }
 
 smart_object*
-object_constructor::class_object_load(const std::string& object_path,
+object_constructor::class_object_load(const std::string& package_path,
                                       object_constructor_context& occ)
 {
+    auto full_path = occ.get_full_path(package_path);
+
     serialization::conteiner conteiner;
-    if (!serialization::read_container(object_path, conteiner))
+    if (!serialization::read_container(full_path, conteiner))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
@@ -88,7 +91,7 @@ object_constructor::class_object_load(const std::string& object_path,
     auto type_id = conteiner["type_id"].as<std::string>();
     auto class_id = conteiner["id"].as<std::string>();
 
-    AGEA_check(!(occ.class_obj_cache->exists(class_id)), "We should not re-load objects");
+    AGEA_check(!(occ.m_local_set.objects->has_item(class_id)), "We should not re-load objects");
 
     auto eoc = glob::empty_objects_cache::get();
     auto empty = eoc->get(type_id)->META_create_empty_obj();
@@ -96,9 +99,7 @@ object_constructor::class_object_load(const std::string& object_path,
 
     object_properties_load(*empty, conteiner, occ);
 
-    occ.class_obj_cache->insert(empty, object_path, occ.m_class_object_order);
-    ++occ.m_class_object_order;
-    occ.last_obj = empty;
+    occ.add_obj(empty);
 
     return empty.get();
 }
@@ -129,7 +130,13 @@ object_constructor::object_clone_create(const std::string& object_id,
                                         const std::string& new_object_id,
                                         object_constructor_context& occ)
 {
-    auto obj = occ.class_obj_cache->get(object_id);
+    auto obj = occ.m_local_set.objects->get_item(object_id);
+
+    if (!obj)
+    {
+        ALOG_INFO("Cache miss {0} try in global!", object_id);
+        obj = occ.m_global_set.objects->get_item(object_id);
+    }
 
     if (!obj)
     {
@@ -147,8 +154,7 @@ object_constructor::object_clone_create(smart_object& obj,
 {
     auto empty = obj.META_create_empty_obj();
     empty->META_set_id(new_object_id);
-    occ.temporary_obj_cache.push_back(empty);
-    occ.last_obj = empty;
+    occ.add_obj(empty);
 
     if (!clone_object_properties(obj, *empty, occ))
     {

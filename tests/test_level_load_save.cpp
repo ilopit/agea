@@ -1,6 +1,10 @@
 #include "model/object_constructor.h"
 
 #include "model/caches/class_object_cache.h"
+#include "model/caches/materials_cache.h"
+#include "model/caches/textures_cache.h"
+#include "model/caches/meshes_cache.h"
+#include "model/package_manager.h"
 #include "model/object_construction_context.h"
 #include "model/level.h"
 #include "model/level_constructor.h"
@@ -19,6 +23,8 @@ struct test_load_level : public testing::Test
     SetUp()
     {
         m_resource_locator = glob::resource_locator::create();
+        m_package_manager = glob::package_manager::create();
+        m_cache_set = glob::cache_set::create();
     }
 
     void
@@ -27,7 +33,9 @@ struct test_load_level : public testing::Test
         m_resource_locator.reset();
     }
 
+    std::unique_ptr<closure<model::package_manager>> m_package_manager;
     std::unique_ptr<closure<resource_locator>> m_resource_locator;
+    std::unique_ptr<closure<model::cache_set>> m_cache_set;
 };
 
 TEST_F(test_load_level, load_level)
@@ -37,8 +45,8 @@ TEST_F(test_load_level, load_level)
     auto path = glob::resource_locator::get()->resource(category::all, "test/test_level.alvl");
 
     ASSERT_TRUE(!path.empty());
-
-    auto result = model::level_constructor::load_level_path(l, path);
+    auto result =
+        model::level_constructor::load_level_path(l, path, glob::cache_set::getr().get_ref());
     ASSERT_TRUE(result);
 
     {

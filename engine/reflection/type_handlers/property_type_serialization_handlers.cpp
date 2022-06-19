@@ -6,7 +6,7 @@
 #include "model/caches/materials_cache.h"
 #include "model/caches/class_object_cache.h"
 #include "model/object_construction_context.h"
-#include "model/caches/objects_cache.h"
+#include "model/caches/game_objects_cache.h"
 #include "model/object_constructor.h"
 
 #include "serialization/serialization.h"
@@ -374,10 +374,19 @@ property_type_serialization_handlers::deserialize_t_txt(AGEA_deserialization_arg
 
     auto& field = reflection::extract<::agea::model::texture*>(ptr);
 
-    auto txt = glob::textures_cache::get()->get(jc.as<std::string>()).get();
+    const auto& txt_id = jc.as<std::string>();
+
+    auto txt = occ.m_local_set.textures->get_item(txt_id);
+
     if (!txt)
     {
-        return false;
+        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", txt_id);
+        txt = occ.m_global_set.textures->get_item(txt_id);
+        if (!txt)
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
     }
     field = txt;
     return true;
@@ -389,6 +398,7 @@ property_type_serialization_handlers::serialize_t_mat(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(jc);
+
     auto field = reflection::extract<::agea::model::material*>(ptr);
     jc = field->get_id();
 
@@ -401,11 +411,19 @@ property_type_serialization_handlers::deserialize_t_mat(AGEA_deserialization_arg
     AGEA_unused(occ);
 
     auto& field = reflection::extract<::agea::model::material*>(ptr);
+    const auto& mat_id = jc.as<std::string>();
 
-    auto mat = glob::materials_cache::get()->get(jc.as<std::string>()).get();
+    auto mat = occ.m_local_set.materials->get_item(mat_id);
+
     if (!mat)
     {
-        return false;
+        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mat_id);
+        mat = occ.m_global_set.materials->get_item(mat_id);
+        if (!mat)
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
     }
     field = mat;
     return true;
@@ -430,11 +448,19 @@ property_type_serialization_handlers::deserialize_t_msh(AGEA_deserialization_arg
     AGEA_unused(occ);
 
     auto& field = reflection::extract<::agea::model::mesh*>(ptr);
+    const auto& mesh_id = jc.as<std::string>();
 
-    auto msh = glob::meshes_cache::get()->get(jc.as<std::string>()).get();
+    auto msh = occ.m_local_set.meshes->get_item(mesh_id);
+
     if (!msh)
     {
-        return false;
+        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mesh_id);
+        msh = occ.m_global_set.meshes->get_item(mesh_id);
+        if (!msh)
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
     }
     field = msh;
     return true;

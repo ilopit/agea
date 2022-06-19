@@ -31,8 +31,6 @@ default_footer = """
     object_reflection::fill_properties();
     return true;
 }
-
-static volatile bool registered = ::agea::reflection::entry::set_up();
 // clang-format on
 """
 
@@ -47,6 +45,12 @@ void
 agea::model::{0}::META_class_set_type_id()
 {{
     m_type_id = META_type_id();
+}}
+
+void 
+agea::model::{0}::META_class_set_architype_id()
+{{
+    m_architype_id = META_architype_id();
 }}
 
 ::agea::reflection::object_reflection*
@@ -91,6 +95,7 @@ agea::model::{0}::META_class_create_empty_obj()
 {{
     auto s = std::make_shared<this_class>();
     s->META_class_set_type_id();
+    s->META_class_set_architype_id();
     return s;
 }}
 

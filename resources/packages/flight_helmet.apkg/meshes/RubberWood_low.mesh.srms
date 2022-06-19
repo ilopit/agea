@@ -1,0 +1,7 @@
+---
+type_id: mesh
+id: RubberWood_low_mesh
+index_size: 4
+vertex_format: PNCV_F32
+indices: meshes/extra/RubberWood_low.indx
+vertices: meshes/extra/RubberWood_low.vert

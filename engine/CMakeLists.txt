@@ -120,6 +120,10 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/packages
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/packages)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_SOURCE_DIR}/resources/test
     ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test)
 

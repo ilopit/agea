@@ -15,15 +15,20 @@
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/render_loader.h"
 
-#include "model/caches/textures_cache.h"
+#include "model/caches/components_cache.h"
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
-#include "model/caches/class_object_cache.h"
+#include "model/caches/objects_cache.h"
+#include "model/caches/textures_cache.h"
 
 #include "model/components/mesh_component.h"
+
+#include "model/game_object.h"
+
 #include "model/level_constructor.h"
 #include "model/level.h"
-#include "model/game_object.h"
+
+#include "model/package_manager.h"
 
 #include "ui/ui.h"
 #include "editor/cli/cli.h"
@@ -68,12 +73,25 @@ vulkan_engine::init()
 {
     ALOG_INFO("Initialization started ...");
 
+    ::agea::reflection::entry::set_up();
+
     m_current_level = glob::level::create();
     m_window = glob::native_window::create();
     m_resource_locator = glob::resource_locator::create();
     m_render_loader = glob::render_loader::create();
     m_render_device = glob::render_device::create();
-    m_class_objects_cache = glob::class_objects_cache::create();
+    m_cache_set = glob::cache_set::create();
+    m_package_manager = glob::package_manager::create();
+
+    glob::cache_set_view::set(glob::cache_set::getr().get_ref());
+
+    glob::materials_cache::set(glob::cache_set_view::get().materials);
+    glob::meshes_cache::set(glob::cache_set_view::get().meshes);
+    glob::textures_cache::set(glob::cache_set_view::get().textures);
+    glob::objects_cache::set(glob::cache_set_view::get().objects);
+    glob::components_cache::set(glob::cache_set_view::get().components);
+
+    glob::caches_map::set(glob::cache_set::get()->map.get());
 
     m_ui = glob::ui::create();
     m_editor_cli = glob::cli::create();
@@ -130,7 +148,11 @@ vulkan_engine::handle_dirty_objects()
     {
         m_qs.remove_from_rdc(o);
 
-        o->prepare_for_rendering();
+        if (!o->prepare_for_rendering())
+        {
+            ALOG_LAZY_ERROR;
+            return;
+        }
 
         m_qs.add_to_queue(o);
     }
@@ -561,22 +583,51 @@ vulkan_engine::draw_new_objects(VkCommandBuffer cmd)
 void
 vulkan_engine::init_scene()
 {
-    m_textures_cache = glob::textures_cache::create();
-    glob::textures_cache::get()->init();
+    model::level_constructor::load_level_id(*glob::level::get(), "demo.alvl",
+                                            glob::cache_set_view::get());
 
-    m_materials_cache = glob::materials_cache::create();
-    glob::materials_cache::get()->init();
+    glob::cache_set_view::get().textures->call_on_items(
+        [](model::texture* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
 
-    m_meshes_cache = glob::meshes_cache::create();
-    glob::meshes_cache::get()->init();
+            return true;
+        });
 
-    model::level_constructor::load_level_id(*glob::level::get(), "demo.plvl");
+    glob::cache_set_view::get().materials->call_on_items(
+        [](model::material* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+            return true;
+        });
 
-    for (auto& o : glob::level::get()->m_objects)
+    glob::cache_set_view::get().meshes->call_on_items(
+        [](model::mesh* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            return true;
+        });
+
+    for (auto& o : glob::level::get()->m_local_cs.game_objects->get_items())
     {
-        auto obj = o.second->get_root_component();
-        obj->prepare_for_rendering();
-        obj->register_for_rendering();
+        auto obj = o.second->as<model::game_object>();
+
+        auto root = obj->get_root_component();
+        root->prepare_for_rendering();
+        root->register_for_rendering();
     }
 }
 

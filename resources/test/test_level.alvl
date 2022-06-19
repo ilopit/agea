@@ -1,10 +1,6 @@
-objects:
-  - test/test_component_a.acom
-  - test/test_component_a_2.acom
-  - test/test_component_b.acom
-  - test/test_component_b_2.acom
-  - test/test_root_component.acom
-  - test/test_object.aobj
+packages:
+  - root.apkg
+  - test.apkg
 instance_groups:
   - object_class: test_object
     instances:

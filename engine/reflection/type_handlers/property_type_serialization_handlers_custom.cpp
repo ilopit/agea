@@ -27,7 +27,6 @@ model::component*
 load_component(serialization::conteiner& sc, model::object_constructor_context& occ)
 {
     auto class_id = sc["object_class"].as<std::string>();
-
     auto id = sc["id"].as<std::string>();
 
     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
@@ -41,11 +40,6 @@ load_component(serialization::conteiner& sc, model::object_constructor_context& 
     if (!model::object_constructor::update_object_properties(*obj, sc))
     {
         ALOG_ERROR("object [{0}] update failed", class_id);
-        return false;
-    }
-
-    if (!occ.propagate_to_co_cache())
-    {
         return false;
     }
 

@@ -57,10 +57,10 @@ find_obj(const std::string& object_id)
         }
         else if (type == "mat")
         {
-            auto sobj = glob::materials_cache::get()->get(name);
+            auto sobj = glob::materials_cache::get()->get_item(name);
             if (sobj)
             {
-                obj = sobj.get();
+                obj = sobj;
             }
         }
     }

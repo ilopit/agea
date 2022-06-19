@@ -2,6 +2,7 @@
 
 #include "model/components/camera_component.h"
 #include "model/model_fwds.h"
+#include "model/caches/cache_set.h"
 
 #include "utils/weird_singletone.h"
 
@@ -28,25 +29,23 @@ public:
     object_constructor_context&
     occ();
 
-    camera_component*
-    get_camera(const std::string& camers);
-
     game_object*
     find_game_object(const std::string& id);
 
     smart_object*
     find_object(const std::string& id);
 
-    smart_object*
+    component*
     find_component(const std::string& id);
 
     void
     update();
 
-    std::unordered_map<std::string, game_object*> m_objects;
-    std::unordered_map<std::string, component*> m_components;
+    cache_set m_local_cs;
+    cache_set_ref m_global_cs;
 
-    std::map<std::string, camera_component*> m_cameras;
+    std::vector<std::shared_ptr<smart_object>> m_objects;
+    std::vector<std::string> m_package_ids;
 
     std::unique_ptr<object_constructor_context> m_occ;
     std::string m_path;

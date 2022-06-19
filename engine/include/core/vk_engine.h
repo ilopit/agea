@@ -7,6 +7,8 @@
 #include "utils/weird_singletone.h"
 #include "rendering queues.h"
 
+#include "model/model_fwds.h"
+
 #include <algorithm>
 #include <vector>
 #include <functional>
@@ -28,17 +30,6 @@ namespace editor
 {
 class cli;
 }
-
-namespace model
-{
-class level;
-class resource_locator;
-class textures_cache;
-class materials_cache;
-class meshes_cache;
-class class_objects_cache;
-class renderable;
-}  // namespace model
 
 namespace render
 {
@@ -108,19 +99,16 @@ private:
     compile_all_shaders();
 
     // clang-format off
-    std::unique_ptr<closure<model::level>>           m_current_level;
-    
-    std::unique_ptr<closure<model::textures_cache>>      m_textures_cache;
-    std::unique_ptr<closure<model::materials_cache>>     m_materials_cache;
-    std::unique_ptr<closure<model::meshes_cache>>        m_meshes_cache;
-    std::unique_ptr<closure<model::class_objects_cache>> m_class_objects_cache;
+    std::unique_ptr<closure<model::level>>               m_current_level;
+    std::unique_ptr<closure<model::cache_set>>           m_cache_set;
+    std::unique_ptr<closure<model::package_manager>>     m_package_manager;
 
-    std::unique_ptr<closure<native_window>>          m_window;
-    std::unique_ptr<closure<resource_locator>>       m_resource_locator;
-    std::unique_ptr<closure<render::loader>>         m_render_loader;
-    std::unique_ptr<closure<render::render_device>>  m_render_device;
-    std::unique_ptr<closure<ui::ui>>                 m_ui;
-    std::unique_ptr<closure<editor::cli>>            m_editor_cli;
+    std::unique_ptr<closure<native_window>>              m_window;
+    std::unique_ptr<closure<resource_locator>>           m_resource_locator;
+    std::unique_ptr<closure<render::loader>>             m_render_loader;
+    std::unique_ptr<closure<render::render_device>>      m_render_device;
+    std::unique_ptr<closure<ui::ui>>                     m_ui;
+    std::unique_ptr<closure<editor::cli>>                m_editor_cli;
     // clang-format on
 
     render::gpu_scene_data m_scene_parameters;

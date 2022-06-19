@@ -17,7 +17,7 @@ class texture : public smart_object
 public:
     AGEA_gen_class_meta(texture, smart_object);
     AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    AGEA_gen_meta_architype_api(texture);
 
     bool
     prepare_for_rendering();

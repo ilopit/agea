@@ -667,7 +667,7 @@ property_convertes::write_t_vec3(blob_ptr ptr, const std::string& str)
 bool
 property_convertes::read_t_mat(AGEA_read_from_property_args)
 {
-    auto& t = extract<std::shared_ptr<model::material>>(ptr);
+    auto& t = extract<model::material*>(ptr);
     sprintf_s(buf.data(), buf.size(), "%s", t->get_id().c_str());
 
     return true;
@@ -676,9 +676,9 @@ property_convertes::read_t_mat(AGEA_read_from_property_args)
 bool
 property_convertes::write_t_mat(blob_ptr ptr, const std::string& str)
 {
-    auto& t = extract<std::shared_ptr<model::material>>(ptr);
+    auto& t = extract<model::material*>(ptr);
 
-    auto mat = glob::materials_cache::get()->get(str);
+    auto mat = glob::materials_cache::get()->get_item(str);
 
     if (!mat)
     {
@@ -704,9 +704,9 @@ property_convertes::read_t_msh(AGEA_read_from_property_args)
 bool
 property_convertes::write_t_msh(blob_ptr ptr, const std::string& str)
 {
-    auto& t = extract<std::shared_ptr<model::mesh>>(ptr);
+    auto& t = extract<model::mesh*>(ptr);
 
-    auto mat = glob::meshes_cache::get()->get(str);
+    auto mat = glob::meshes_cache::get()->get_item(str);
 
     if (!mat)
     {

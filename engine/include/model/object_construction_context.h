@@ -2,38 +2,45 @@
 
 #include "core/agea_minimal.h"
 
+#include "model/model_fwds.h"
+#include "model/caches/cache_set.h"
+
 namespace agea
 {
 namespace model
 {
-class smart_object;
-class class_objects_cache;
-class objects_cache;
 
 class object_constructor_context
 {
 public:
     object_constructor_context();
-    ~object_constructor_context();
 
-    std::shared_ptr<smart_object>
-    extract_last();
+    object_constructor_context(cache_set_ref global_map,
+                               cache_set_ref local_map,
+                               std::vector<std::shared_ptr<smart_object>>* local_objcs);
+
+    ~object_constructor_context();
 
     bool
     propagate_to_io_cache();
 
+    std::string
+    get_full_path(const std::string& relative_path) const;
+
+    const std::string&
+    get_full_path() const;
+
     bool
     propagate_to_co_cache();
 
-    std::vector<std::shared_ptr<smart_object>> temporary_obj_cache;
+    bool
+    add_obj(std::shared_ptr<smart_object> obj);
 
-    std::shared_ptr<class_objects_cache> class_obj_cache;
-    std::shared_ptr<objects_cache> instance_obj_cache;
+    std::string m_full_path;
 
-    // TODO, workaround
-    std::shared_ptr<smart_object> last_obj;
-
-    int m_class_object_order = 0;
+    cache_set_ref m_global_set;
+    cache_set_ref m_local_set;
+    std::vector<std::shared_ptr<smart_object>>* m_local_objecs;
 };
 }  // namespace model
 }  // namespace agea

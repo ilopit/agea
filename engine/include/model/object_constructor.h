@@ -29,7 +29,7 @@ class object_constructor
 {
 public:
     static smart_object*
-    class_object_load(const std::string& object_path,
+    class_object_load(const std::string& package_path,
                       object_constructor_context& occ = default_occ());
 
     static bool

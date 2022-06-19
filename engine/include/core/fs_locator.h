@@ -17,13 +17,14 @@ enum class category : int
 {
     all = 0,
     assets,
+    components,
     configs,
-    shaders_compiled,
-    shaders_raw,
+    fonts,
     levels,
     objects,
-    components,
-    fonts,
+    packages,
+    shaders_compiled,
+    shaders_raw,
     tmp,
     last = tmp
 };

@@ -30,6 +30,8 @@
                                                                     \
     void META_class_set_type_id();                                  \
                                                                     \
+    void META_class_set_architype_id();                             \
+                                                                    \
     static const char* META_type_id();                              \
                                                                     \
     static reflection::object_reflection* META_object_reflection(); \
@@ -44,13 +46,19 @@
                                                                     \
     static std::shared_ptr<this_class> META_class_create_empty_obj();
 
+#define AGEA_gen_meta_architype_api(a)                     \
+    AGEA_gen_meta_api static architype META_architype_id() \
+    {                                                      \
+        return architype::a;                               \
+    }
+
 namespace agea
 {
 namespace model
 {
 
-class objects_cache;
 class object_constructor;
+class package;
 
 class smart_object
 {
@@ -62,9 +70,15 @@ public:
     };
 
     AGEA_gen_class_meta_super(smart_object);
-    AGEA_gen_meta_api;
+    AGEA_gen_meta_architype_api(unknown);
 
     friend class object_constructor;
+
+    architype
+    get_architype_id() const
+    {
+        return m_architype_id;
+    }
 
     const std::string&
     get_type_id() const
@@ -125,6 +139,18 @@ public:
         return m_class_obj;
     }
 
+    const package*
+    get_package() const
+    {
+        return m_package;
+    }
+
+    void
+    set_package(package* p)
+    {
+        m_package = p;
+    }
+
     bool
     is_class_obj() const
     {
@@ -145,12 +171,16 @@ protected:
     }
 
     AGEA_property("category=meta", "visible=true");
+    architype m_architype_id = architype::unknown;
+
+    AGEA_property("category=meta", "visible=true");
     std::string m_type_id;
 
     AGEA_property("category=meta", "visible=true", "copyable=no");
     std::string m_id;
 
     smart_object* m_class_obj = nullptr;
+    package* m_package = nullptr;
 };
 
 template <typename To, typename From>

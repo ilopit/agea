@@ -56,7 +56,35 @@ public:
         return s_obj;
     }
 
+    static T&
+    getr()
+    {
+        AGEA_check(s_obj, "Instance is empty");
+        return *s_obj;
+    }
+
 private:
     inline static T* s_obj = nullptr;
 };
+
+template <typename T>
+class simple_singleton
+{
+public:
+    static void
+    set(T obj)
+    {
+        m_obj = std::move(obj);
+    }
+
+    static T&
+    get()
+    {
+        return m_obj;
+    }
+
+private:
+    inline static T m_obj;
+};
+
 }  // namespace agea

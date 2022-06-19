@@ -12,7 +12,6 @@
 
 namespace agea
 {
-
 namespace reflection
 {
 

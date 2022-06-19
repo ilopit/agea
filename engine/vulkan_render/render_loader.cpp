@@ -19,6 +19,7 @@
 #include "model/rendering/mesh.h"
 #include "model/rendering/texture.h"
 #include "model/rendering/material.h"
+#include "model/package.h"
 
 #include <stb_image.h>
 
@@ -206,16 +207,24 @@ loader::load_mesh(model::mesh& mc)
     {
         auto path =
             glob::resource_locator::get()->resource(category::assets, mc.get_external_path());
-        vulkan_mesh_data_loader::load_from_obj(path, *md);
+        if (!vulkan_mesh_data_loader::load_from_obj(path, *md))
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
     }
     else
     {
-        std::string idx_file =
-            glob::resource_locator::get()->resource(category::assets, mc.get_indices());
-        std::string vert_file =
-            glob::resource_locator::get()->resource(category::assets, mc.get_vertices());
+        auto p = mc.get_package();
 
-        vulkan_mesh_data_loader::load_from_amsh(idx_file, vert_file, *md);
+        std::string idx_file = p->get_resource_path(mc.get_indices());
+        std::string vert_file = p->get_resource_path(mc.get_vertices());
+
+        if (!vulkan_mesh_data_loader::load_from_amsh(idx_file, vert_file, *md))
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
     }
 
     const size_t vertex_buffer_size = md->m_vertices.size() * sizeof(render::vertex_data);
@@ -338,8 +347,13 @@ loader::load_texture(model::texture& t)
     }
     else
     {
-        auto path = glob::resource_locator::get()->resource(category::assets, t.get_base_color());
-        load_image_from_file_r(path, td->image);
+        auto p = t.get_package();
+
+        AGEA_check(p, "Package shoul'd be set");
+
+        auto color_path = p->get_resource_path(t.get_base_color());
+
+        load_image_from_file_r(color_path, td->image);
     }
 
     VkImageViewCreateInfo imageinfo = vk_init::imageview_create_info(
@@ -357,6 +371,7 @@ loader::load_material(model::material& d)
 {
     if (!d.get_base_texture())
     {
+        ALOG_LAZY_ERROR;
         return nullptr;
     }
 
@@ -399,6 +414,7 @@ loader::load_shader(const std::string& path)
     auto it = m_shaders_cache.find(path);
     if (it != m_shaders_cache.end())
     {
+        ALOG_LAZY_ERROR;
         return it->second.get();
     }
 
@@ -406,6 +422,7 @@ loader::load_shader(const std::string& path)
     auto full_path = glob::resource_locator::get()->resource(category::shaders_compiled, path);
     if (!file_utils::load_file(full_path, buffer))
     {
+        ALOG_LAZY_ERROR;
         return nullptr;
     }
 
@@ -419,7 +436,8 @@ loader::load_shader(const std::string& path)
     VkShaderModule module;
     if (vkCreateShaderModule(device->vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
     {
-        return false;
+        ALOG_LAZY_ERROR;
+        return nullptr;
     }
 
     auto sd = std::make_shared<shader_data>(device->vk_device(), module, std::move(buffer));

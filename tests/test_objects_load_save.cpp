@@ -1,7 +1,7 @@
 #include "model/object_constructor.h"
 
 #include "model/caches/class_object_cache.h"
-#include "model/caches/objects_cache.h"
+#include "model/caches/game_objects_cache.h"
 #include "model/caches/empty_objects_cache.h"
 
 #include "model/object_construction_context.h"
@@ -51,7 +51,7 @@ TEST_F(test_load_objects, load_component)
     ASSERT_FALSE(object_path.empty());
 
     model::object_constructor_context occ;
-    auto obj = model::object_constructor::class_object_load(object_path, occ);
+    auto obj = model::object_constructor::class_object_load("test/test_component_a_2.acom", occ);
     ASSERT_TRUE(!!obj);
 
     auto component = obj->as<model::game_object_component>();
@@ -84,7 +84,7 @@ TEST_F(test_load_objects, load_object)
         auto path = glob::resource_locator::get()->resource(category::all, name);
         ASSERT_FALSE(path.empty());
 
-        auto obj = model::object_constructor::class_object_load(path, occ);
+        auto obj = model::object_constructor::class_object_load(name, occ);
         ASSERT_TRUE(!!obj);
     }
 
@@ -92,12 +92,11 @@ TEST_F(test_load_objects, load_object)
         glob::resource_locator::get()->resource(category::all, "test/test_object.aobj");
     ASSERT_FALSE(object_path.empty());
 
-    auto obj = model::object_constructor::class_object_load(object_path, occ);
+    auto obj = model::object_constructor::class_object_load("test/test_object.aobj", occ);
     ASSERT_TRUE(!!obj);
 
-    ASSERT_EQ(occ.class_obj_cache->size(), to_load.size() + to_load.size() + 1);
-    ASSERT_EQ(occ.instance_obj_cache->size(), 0U);
-    ASSERT_EQ(occ.temporary_obj_cache.size(), 0U);
+    ASSERT_EQ(occ.m_local_set.objects->get_size(), to_load.size() + to_load.size() + 1);
+    ASSERT_EQ(occ.m_local_set.objects->get_size(), 0U);
 
     auto game_object = obj->as<model::game_object>();
     ASSERT_TRUE(!!game_object);

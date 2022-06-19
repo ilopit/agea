@@ -34,7 +34,7 @@ public:
     exists(const std::string& class_id);
 
     size_t
-    size()
+    get_size()
     {
         return m_objects.size();
     }
