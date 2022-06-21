@@ -14,6 +14,15 @@ namespace model
 class package
 {
 public:
+    static bool
+    load_package(const utils::path& path, package& p, cache_set_ref global_cs);
+
+    static bool
+    save_package(const utils::path& path, const package& p);
+
+    static bool
+    load_package_conteiners(architype id, package& p);
+
     package();
     ~package();
 
@@ -21,35 +30,30 @@ public:
     package&
     operator=(package&&) noexcept;
 
-    static bool
-    load_package(const std::string& path, package& p, cache_set_ref global_cs);
-
-    static bool
-    save_package(const std::string& path, const package& p);
-
-    static bool
-    load_package_conteiners(architype id, package& p);
-
     const std::string&
     get_id() const
     {
         return m_id;
     }
 
-    const std::string&
+    const utils::path&
     get_path() const
     {
         return m_path;
     }
 
-    std::string
-    get_resource_path(const std::string& path) const
+    template <typename T>
+    utils::path
+    get_resource_path(const T& resource_path) const
     {
-        return m_path + "/" + path;
+        auto path = m_path;
+        path.append(resource_path);
+
+        return path;
     }
 
     void
-    set_path(const std::string& path) const
+    set_path(const utils::path& path) const
     {
         m_path = path;
     }
@@ -65,10 +69,11 @@ public:
 
 private:
     std::string m_id;
-    mutable std::string m_path;
+    mutable utils::path m_path;
 
     cache_set m_local_cs;
     cache_set_ref m_global_cs;
+
     std::vector<std::shared_ptr<smart_object>> m_objects;
 
     std::unique_ptr<object_constructor_context> m_occ;

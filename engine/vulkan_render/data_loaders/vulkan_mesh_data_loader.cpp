@@ -23,7 +23,7 @@ struct vertex_f32_pncv
 }  // namespace
 
 bool
-vulkan_mesh_data_loader::load_from_obj(const std::string& filename, mesh_data& md)
+vulkan_mesh_data_loader::load_from_obj(const utils::path& obj_path, mesh_data& md)
 {
     // attrib will contain the vertex arrays of the file
     tinyobj::attrib_t attrib;
@@ -37,7 +37,7 @@ vulkan_mesh_data_loader::load_from_obj(const std::string& filename, mesh_data& m
     std::string err;
 
     // load the OBJ file
-    tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str(), nullptr);
+    tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, obj_path.str().c_str(), nullptr);
     // make sure to output the warnings to the console, in case there are issues with the file
     if (!warn.empty())
     {
@@ -116,18 +116,18 @@ vulkan_mesh_data_loader::load_from_obj(const std::string& filename, mesh_data& m
 }
 
 bool
-vulkan_mesh_data_loader::load_from_amsh(const std::string& index_file,
-                                        const std::string& verteces_file,
+vulkan_mesh_data_loader::load_from_amsh(const utils::path& index_file,
+                                        const utils::path& verteces_file,
                                         mesh_data& md)
 {
     std::vector<char> indexBuffer, vertexBuffer;
 
-    if (!file_utils::load_file(index_file, indexBuffer))
+    if (!utils::file_utils::load_file(index_file, indexBuffer))
     {
         return false;
     }
 
-    if (!file_utils::load_file(verteces_file, vertexBuffer))
+    if (!utils::file_utils::load_file(verteces_file, vertexBuffer))
     {
         return false;
     }

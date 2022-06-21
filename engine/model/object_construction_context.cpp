@@ -22,7 +22,8 @@ object_constructor_context::object_constructor_context(
     cache_set_ref global_map,
     cache_set_ref local_map,
     std::vector<std::shared_ptr<smart_object>>* local_objcs)
-    : m_global_set(global_map)
+    : m_path_prefix()
+    , m_global_set(global_map)
     , m_local_set(local_map)
     , m_local_objecs(local_objcs)
 {
@@ -47,16 +48,19 @@ object_constructor_context::propagate_to_io_cache()
     return true;
 }
 
-std::string
-object_constructor_context::get_full_path(const std::string& relative_path) const
+utils::path
+object_constructor_context::get_full_path(const utils::path& relative_path) const
 {
-    return m_full_path + "/" + relative_path;
+    auto resource_path = m_path_prefix;
+    resource_path.append(relative_path);
+
+    return resource_path;
 }
 
-const std::string&
+const utils::path&
 object_constructor_context::get_full_path() const
 {
-    return m_full_path;
+    return m_path_prefix;
 }
 
 bool

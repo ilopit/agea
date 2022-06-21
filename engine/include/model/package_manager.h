@@ -16,6 +16,7 @@ public:
     bool
     load_package(const std::string& id);
 
+protected:
     std::unordered_map<std::string, package> m_packages;
 };
 

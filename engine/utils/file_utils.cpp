@@ -7,10 +7,13 @@
 
 namespace agea
 {
-bool
-file_utils::load_file(const std::string& str, std::vector<char>& blob)
+namespace utils
 {
-    std::ifstream file(str, std::ios_base::binary | std::ios_base::ate);
+
+bool
+file_utils::load_file(const utils::path& str, std::vector<char>& blob)
+{
+    std::ifstream file(str.fs(), std::ios_base::binary | std::ios_base::ate);
 
     if (!file.is_open())
     {
@@ -27,7 +30,7 @@ file_utils::load_file(const std::string& str, std::vector<char>& blob)
 }
 
 bool
-file_utils::compare_files(const std::string& lpath, const std::string& rpath)
+file_utils::compare_files(const utils::path& lpath, const utils::path& rpath)
 {
     std::vector<char> l, r;
 
@@ -43,7 +46,7 @@ file_utils::compare_files(const std::string& lpath, const std::string& rpath)
 
     if (l != r)
     {
-        ALOG_INFO("{0} {1} are different", lpath, rpath);
+        ALOG_INFO("{0} {1} are different", lpath.str(), rpath.str());
         return false;
     }
 
@@ -53,17 +56,17 @@ file_utils::compare_files(const std::string& lpath, const std::string& rpath)
 namespace
 {
 std::set<std::string>
-get_files(const std::string& path)
+get_files(const path& path)
 {
     std::set<std::string> files;
-    for (auto& resource : std::filesystem::recursive_directory_iterator(path))
+    for (auto& resource : std::filesystem::recursive_directory_iterator(path.fs()))
     {
         if (resource.is_directory())
         {
             continue;
         }
 
-        auto rel = std::filesystem::relative(resource, path);
+        auto rel = std::filesystem::relative(resource, path.fs());
 
         files.insert(rel.generic_string());
     }
@@ -73,7 +76,7 @@ get_files(const std::string& path)
 }  // namespace
 
 bool
-file_utils::compare_folders(const std::string& a, const std::string& b)
+file_utils::compare_folders(const utils::path& a, const utils::path& b)
 {
     auto left_files = get_files(a);
     auto right_files = get_files(b);
@@ -85,8 +88,10 @@ file_utils::compare_folders(const std::string& a, const std::string& b)
 
     for (auto& f : left_files)
     {
-        auto left = a + "/" + f;
-        auto right = b + "/" + f;
+        auto left = a;
+        left.append(f);
+        auto right = a;
+        right.append(f);
 
         if (!compare_files(left, right))
         {
@@ -96,5 +101,5 @@ file_utils::compare_folders(const std::string& a, const std::string& b)
 
     return true;
 }
-
+}  // namespace utils
 }  // namespace agea

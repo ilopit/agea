@@ -29,11 +29,11 @@ class object_constructor
 {
 public:
     static smart_object*
-    class_object_load(const std::string& package_path,
+    class_object_load(const utils::path& package_path,
                       object_constructor_context& occ = default_occ());
 
     static bool
-    class_object_save(const smart_object& obj, const std::string& object_path);
+    class_object_save(const smart_object& obj, const utils::path& object_path);
 
     static smart_object*
     object_clone_create(const std::string& src_object_id,

@@ -36,9 +36,9 @@ load_level_id(level& l, const std::string& id, cache_set_ref global_cs)
 }
 
 bool
-load_level_path(level& l, const std::string& path, cache_set_ref global_cs)
+load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
 {
-    ALOG_INFO("Begin level loading with path {0}", path);
+    ALOG_INFO("Begin level loading with path {0}", path.str());
     l.m_global_cs = global_cs;
 
     l.m_occ = std::make_unique<object_constructor_context>(l.m_global_cs, l.m_local_cs.get_ref(),
@@ -131,7 +131,7 @@ load_level_path(level& l, const std::string& path, cache_set_ref global_cs)
 }
 
 bool
-save_level(level& l, const std::string& path)
+save_level(level& l, const utils::path& path)
 {
     serialization::conteiner conteiner;
 

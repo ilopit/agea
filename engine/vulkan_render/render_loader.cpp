@@ -217,8 +217,8 @@ loader::load_mesh(model::mesh& mc)
     {
         auto p = mc.get_package();
 
-        std::string idx_file = p->get_resource_path(mc.get_indices());
-        std::string vert_file = p->get_resource_path(mc.get_vertices());
+        auto idx_file = p->get_resource_path(mc.get_indices());
+        auto vert_file = p->get_resource_path(mc.get_vertices());
 
         if (!vulkan_mesh_data_loader::load_from_amsh(idx_file, vert_file, *md))
         {
@@ -353,7 +353,7 @@ loader::load_texture(model::texture& t)
 
         auto color_path = p->get_resource_path(t.get_base_color());
 
-        load_image_from_file_r(color_path, td->image);
+        load_image_from_file_r(color_path.str(), td->image);
     }
 
     VkImageViewCreateInfo imageinfo = vk_init::imageview_create_info(
@@ -420,7 +420,7 @@ loader::load_shader(const std::string& path)
 
     std::vector<char> buffer;
     auto full_path = glob::resource_locator::get()->resource(category::shaders_compiled, path);
-    if (!file_utils::load_file(full_path, buffer))
+    if (!utils::file_utils::load_file(full_path, buffer))
     {
         ALOG_LAZY_ERROR;
         return nullptr;

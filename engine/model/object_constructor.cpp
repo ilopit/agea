@@ -76,7 +76,7 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 }
 
 smart_object*
-object_constructor::class_object_load(const std::string& package_path,
+object_constructor::class_object_load(const utils::path& package_path,
                                       object_constructor_context& occ)
 {
     auto full_path = occ.get_full_path(package_path);
@@ -105,7 +105,7 @@ object_constructor::class_object_load(const std::string& package_path,
 }
 
 bool
-object_constructor::class_object_save(const smart_object& obj, const std::string& object_path)
+object_constructor::class_object_save(const smart_object& obj, const utils::path& object_path)
 {
     serialization::conteiner conteiner;
 

@@ -18,33 +18,24 @@ temp_dir_context::~temp_dir_context()
     }
 }
 
-std::string
-resource_locator::resource(category c, const std::string& resource)
+utils::path
+resource_locator::resource(category c, const std::string& resource_id)
 {
     auto path = resource_dir(c);
 
-    std::filesystem::path full_path = path;
+    utils::path full_path(path);
 
-    full_path /= std::filesystem::path(resource);
+    full_path.append(resource_id);
 
-    if (!std::filesystem::exists(full_path))
+    if (!full_path.exists())
     {
-        ALOG_WARN("[{0}] - doesn't exist", full_path.generic_string());
+        ALOG_WARN("[{0}] - doesn't exist", full_path.str());
         return {};
     }
-    return full_path.generic_string();
+    return full_path;
 }
 
-std::string
-resource_locator::relative_resource(category c, const std::string& resource)
-{
-    auto path = resource_dir(c);
-    auto size = path.size() + 1;
-
-    return resource.substr(size);
-}
-
-std::string
+utils::path
 resource_locator::resource_dir(category c)
 {
     auto path = m_root;
@@ -64,15 +55,16 @@ resource_locator::resource_dir(category c)
     case category::fonts:            {path /= "fonts";         break;}
         // clang-format on
     default:
-        return "";
+        AGEA_never("Not supported category");
+        return {};
     }
-    return path.generic_string();
+    return utils::path(path);
 }
 
 bool
 resource_locator::run_over_folder(category c, const cb& callback, const std::string& extention)
 {
-    for (auto& p : std::filesystem::recursive_directory_iterator(resource_dir(c)))
+    for (auto& p : std::filesystem::recursive_directory_iterator(resource_dir(c).fs()))
     {
         if (p.is_directory())
         {
@@ -109,7 +101,7 @@ resource_locator::temp_dir()
 
     auto root = resource_dir(category::tmp);
 
-    auto full_path = std::filesystem::path(root) / path;
+    auto full_path = root.fs() / path;
 
     std::error_code ec;
     std::filesystem::create_directories(full_path, ec);
@@ -126,7 +118,7 @@ resource_locator::init_local_dirs()
     {
         auto path = resource_dir((category)i);
         std::error_code ec;
-        std::filesystem::create_directories(path, ec);
+        std::filesystem::create_directories(path.fs(), ec);
     }
     return true;
 }

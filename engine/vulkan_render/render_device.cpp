@@ -546,10 +546,9 @@ render_device::init_imgui()
     init_info.ImageCount = 3;
     ImGuiIO& io = ImGui::GetIO();
 
-    std::string path =
-        glob::resource_locator::get()->resource(category::fonts, "Roboto-Medium.ttf");
+    auto path = glob::resource_locator::get()->resource(category::fonts, "Roboto-Medium.ttf");
 
-    io.Fonts->AddFontFromFileTTF(path.c_str(), 26.0f);
+    io.Fonts->AddFontFromFileTTF(path.str().c_str(), 26.0f);
 
     ImGui_ImplVulkan_Init(&init_info, m_render_pass);
 

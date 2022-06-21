@@ -2,6 +2,8 @@
 
 #include "utils/weird_singletone.h"
 
+#include "utils/path.h"
+
 #include <filesystem>
 #include <optional>
 #include <functional>
@@ -50,13 +52,10 @@ class resource_locator
 public:
     using cb = std::function<bool(const std::string& path)>;
 
-    std::string
-    resource(category c, const std::string& resource);
+    utils::path
+    resource(category c, const std::string& resource_id);
 
-    std::string
-    relative_resource(category c, const std::string& resource);
-
-    std::string
+    utils::path
     resource_dir(category c);
 
     bool

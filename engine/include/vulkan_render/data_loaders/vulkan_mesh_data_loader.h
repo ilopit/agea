@@ -13,10 +13,10 @@ namespace render
 struct vulkan_mesh_data_loader
 {
     static bool
-    load_from_obj(const std::string& name, mesh_data& md);
+    load_from_obj(const utils::path& obj_path, mesh_data& md);
 
     static bool
-    load_from_amsh(const std::string& index_file, const std::string& verteces_file, mesh_data& md);
+    load_from_amsh(const utils::path& index_file, const utils::path& verteces_file, mesh_data& md);
 };
 }  // namespace render
 }  // namespace agea

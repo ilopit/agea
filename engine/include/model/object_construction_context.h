@@ -24,10 +24,10 @@ public:
     bool
     propagate_to_io_cache();
 
-    std::string
-    get_full_path(const std::string& relative_path) const;
+    utils::path
+    get_full_path(const utils::path& relative_path) const;
 
-    const std::string&
+    const utils::path&
     get_full_path() const;
 
     bool
@@ -36,7 +36,7 @@ public:
     bool
     add_obj(std::shared_ptr<smart_object> obj);
 
-    std::string m_full_path;
+    utils::path m_path_prefix;
 
     cache_set_ref m_global_set;
     cache_set_ref m_local_set;

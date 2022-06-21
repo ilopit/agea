@@ -640,25 +640,24 @@ vulkan_engine::event_reload_world()
 void
 vulkan_engine::compile_all_shaders()
 {
-    std::filesystem::path shader_dir =
-        glob::resource_locator::get()->resource_dir(category::shaders_raw);
-    std::filesystem::path shader_compiled_dir =
+    auto shader_dir = glob::resource_locator::get()->resource_dir(category::shaders_raw);
+    auto shader_compiled_dir =
         glob::resource_locator::get()->resource_dir(category::shaders_compiled);
 
-    auto stamp = shader_compiled_dir / "nice";
+    auto stamp = shader_compiled_dir.fs() / "nice";
     if (std::filesystem::exists(stamp) && !m_force_shader_recompile)
     {
         return;
     }
 
-    for (auto& p : std::filesystem::recursive_directory_iterator(shader_dir))
+    for (auto& p : std::filesystem::recursive_directory_iterator(shader_dir.fs()))
     {
         if (p.is_directory())
         {
             continue;
         }
 
-        auto shader_path = std::filesystem::relative(p, shader_dir);
+        auto shader_path = std::filesystem::relative(p, shader_dir.fs());
 
         ipc::construct_params params;
         params.path_to_binary = "C:\\VulkanSDK\\1.2.170.0\\Bin\\glslc.exe";
@@ -666,11 +665,11 @@ vulkan_engine::compile_all_shaders()
         auto td = glob::resource_locator::get()->temp_dir();
         params.working_dir = *td.folder;
 
-        auto raw_path = shader_dir / shader_path;
+        auto raw_path = shader_dir.fs() / shader_path;
         auto compiled_path = *td.folder / shader_path;
         compiled_path += ".spv";
 
-        auto final_path = shader_compiled_dir / shader_path;
+        auto final_path = shader_compiled_dir.fs() / shader_path;
         final_path += ".spv";
 
         params.arguments =
