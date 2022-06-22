@@ -1,9 +1,9 @@
 #pragma once
 
 #include "core/agea_minimal.h"
+#include "core/id.h"
 
 #include "model/model_fwds.h"
-
 #include "model/caches/cache_set.h"
 
 namespace agea
@@ -30,7 +30,7 @@ public:
     package&
     operator=(package&&) noexcept;
 
-    const std::string&
+    const core::id&
     get_id() const
     {
         return m_id;
@@ -68,7 +68,7 @@ public:
     propagate_to_global_caches();
 
 private:
-    std::string m_id;
+    core::id m_id;
     mutable utils::path m_path;
 
     cache_set m_local_cs;

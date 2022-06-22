@@ -63,7 +63,7 @@ package::load_package(const utils::path& path, package& p, cache_set_ref global_
     p.m_global_cs = global_cs;
 
     p.m_path = path;
-    p.m_id = path.fs().filename().generic_string();
+    p.m_id = core::id::from(path.fs().filename().generic_string());
     p.m_occ = std::make_unique<object_constructor_context>(p.m_global_cs, p.m_local_cs.get_ref(),
                                                            &p.m_objects);
     p.m_occ->m_path_prefix = utils::path(p.m_path);
@@ -89,7 +89,7 @@ package::save_package(const utils::path& path, const package& p)
 
     if (!path.exists())
     {
-        ALOG_INFO("There is no [{0}] conainer in [{1}] package!", p.get_id());
+        ALOG_INFO("There is no [{0}] conainer in [{1}] package!", p.get_id().cstr());
         std::filesystem::create_directories(path.fs());
     }
 
@@ -120,7 +120,7 @@ package::load_package_conteiners(architype id, package& p)
 
     if (!module_path.exists())
     {
-        ALOG_WARN("There is no [{0}] conainer in [{1}] package!", get_name(id), p.get_id());
+        ALOG_WARN("There is no [{0}] conainer in [{1}] package!", get_name(id), p.get_id().cstr());
         return true;
     }
 
