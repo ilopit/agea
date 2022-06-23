@@ -36,13 +36,13 @@ public:
     class_object_save(const smart_object& obj, const utils::path& object_path);
 
     static smart_object*
-    object_clone_create(const std::string& src_object_id,
-                        const std::string& new_object_id,
+    object_clone_create(const core::id& src_object_id,
+                        const core::id& new_object_id,
                         object_constructor_context& occ);
 
     static smart_object*
     object_clone_create(smart_object& src,
-                        const std::string& new_object_id,
+                        const core::id& new_object_id,
                         object_constructor_context& occ);
 
     static bool

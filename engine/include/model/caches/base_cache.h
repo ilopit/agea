@@ -21,7 +21,7 @@ public:
     }
 
     smart_object*
-    get_item(const std::string& id)
+    get_item(const core::id& id)
     {
         auto item = m_items.find(id);
 
@@ -29,7 +29,7 @@ public:
     }
 
     bool
-    has_item(const std::string& id)
+    has_item(const core::id& id)
     {
         return m_items.find(id) != m_items.end();
     }
@@ -58,14 +58,14 @@ public:
         return (uint32_t)m_items.size();
     }
 
-    const std::unordered_map<std::string, smart_object*>&
+    const std::unordered_map<core::id, smart_object*>&
     get_items()
     {
         return m_items;
     }
 
 protected:
-    std::unordered_map<std::string, smart_object*> m_items;
+    std::unordered_map<core::id, smart_object*> m_items;
     architype m_id;
 };
 
@@ -79,7 +79,7 @@ public:
     }
 
     T*
-    get_item(const std::string& id)
+    get_item(const core::id& id)
     {
         return (T*)base_cache::get_item(id);
     }
@@ -98,7 +98,7 @@ public:
         return true;
     }
 
-    const std::unordered_map<std::string, smart_object*>&
+    const std::unordered_map<core::id, smart_object*>&
     get_items()
     {
         return m_items;

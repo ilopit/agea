@@ -30,6 +30,9 @@ struct property_type_copy_handlers
     // STR
     static bool copy_t_str(AGEA_copy_handler_args);
 
+    // STR
+    static bool copy_t_id(AGEA_copy_handler_args);
+
     // Bool
     static bool copy_t_bool(AGEA_copy_handler_args);
 

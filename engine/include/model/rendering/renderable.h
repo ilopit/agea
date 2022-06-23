@@ -28,7 +28,7 @@ public:
     std::unique_ptr<render::render_data> m_render_data;
     bool m_dirty = true;
 
-    std::string m_owner_id;
+    core::id m_owner_id;
 };
 }  // namespace model
 }  // namespace agea

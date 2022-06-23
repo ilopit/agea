@@ -101,7 +101,7 @@ package::save_package(const utils::path& path, const package& p)
             std::filesystem::create_directories(obj_path.fs());
         }
 
-        obj_path.append(o->get_id() + ".aobj");
+        obj_path.append(o->get_id().str() + ".aobj");
 
         if (!object_constructor::class_object_save(*o, path))
         {

@@ -612,14 +612,14 @@ render_device::deinit_descriptors()
 bool
 render_device::create_textured_pipeline()
 {
-    auto mesh_module = glob::render_loader::get()->load_shader("pbr.vert.spv");
+    auto mesh_module = glob::render_loader::get()->load_shader(core::id::from("pbr.vert.spv"));
     if (!mesh_module)
     {
         std::cout << "Error when building the colored mesh shader" << std::endl;
         return false;
     }
 
-    auto texture_module = glob::render_loader::get()->load_shader("pbr.frag.spv");
+    auto texture_module = glob::render_loader::get()->load_shader(core::id::from("pbr.frag.spv"));
     if (!texture_module)
     {
         std::cout << "Error when building the colored mesh shader" << std::endl;
@@ -705,7 +705,7 @@ render_device::create_textured_pipeline()
     m_pipelines["textured"] = {texture_pipeline, texture_pipeline_layout};
 
     glob::render_loader::get()->create_default_material(texture_pipeline, textured_effect,
-                                                        "simple_texture");
+                                                        core::id::from("simple_texture"));
     return true;
 }
 

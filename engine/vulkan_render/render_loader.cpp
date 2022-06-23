@@ -311,7 +311,7 @@ loader::load_mesh(model::mesh& mc)
 }
 
 bool
-loader::create_default_material(VkPipeline pipeline, shader_effect* effect, const std::string& id)
+loader::create_default_material(VkPipeline pipeline, shader_effect* effect, const core::id& id)
 {
     auto it = m_materials_cache.find(id);
     if (it != m_materials_cache.end())
@@ -384,7 +384,8 @@ loader::load_material(model::material& d)
     }
 
     auto td = std::make_shared<material_data>();
-    auto& def = m_materials_cache.at(d.get_base_effect());
+    auto base_effect_id = d.get_base_effect();
+    auto& def = m_materials_cache.at(base_effect_id);
     td->id = d.get_id();
 
     td->pipeline = def->pipeline;
@@ -407,7 +408,7 @@ loader::load_material(model::material& d)
 }
 
 shader_data*
-loader::load_shader(const std::string& path)
+loader::load_shader(const core::id& path)
 {
     auto device = glob::render_device::get();
 
@@ -419,7 +420,8 @@ loader::load_shader(const std::string& path)
     }
 
     std::vector<char> buffer;
-    auto full_path = glob::resource_locator::get()->resource(category::shaders_compiled, path);
+    auto full_path =
+        glob::resource_locator::get()->resource(category::shaders_compiled, path.str());
     if (!utils::file_utils::load_file(full_path, buffer))
     {
         ALOG_LAZY_ERROR;

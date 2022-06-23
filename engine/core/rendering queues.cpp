@@ -16,7 +16,7 @@ rendering_queues::add_to_queue(model::renderable* obj)
 void
 rendering_queues::add_to_dirty_queue(model::renderable* r)
 {
-    ALOG_INFO("Added {0} to diry queue", r->m_owner_id);
+    ALOG_INFO("Added {0} to diry queue", r->m_owner_id.cstr());
     m_dirty_object.push_back(r);
 }
 

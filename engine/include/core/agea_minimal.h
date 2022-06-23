@@ -3,6 +3,7 @@
 #include "utils/check.h"
 #include "utils/defines_utils.h"
 #include "utils/path.h"
+#include "core/id.h"
 
 #include <glm_unofficial/glm.h>
 

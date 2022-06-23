@@ -12,7 +12,7 @@ namespace render
 std::string
 render_data::gen_render_data_id() const
 {
-    return material->id + "::" + mesh->id();
+    return material->id.str() + "::" + mesh->id().str();
 }
 
 bool

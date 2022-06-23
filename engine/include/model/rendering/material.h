@@ -37,7 +37,7 @@ public:
         return m_base_texture;
     }
 
-    const std::string&
+    const core::id&
     get_base_effect() const
     {
         return m_base_effect;
@@ -45,7 +45,7 @@ public:
 
 protected:
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
-    std::string m_base_effect;
+    core::id m_base_effect;
 
     AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
     texture* m_base_texture = nullptr;

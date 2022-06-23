@@ -35,10 +35,10 @@ default_footer = """
 """
 
 soal_template = """
-const char* 
+agea::core::id
 agea::model::{0}::META_type_id()
 {{
-    return "{0}";
+    return agea::core::id::from("{0}");
 }}
 
 void 
@@ -287,10 +287,6 @@ def process_file(original_file_full_path, original_file_rel_path, context):
             if prop.property_copy_handler != "":
                 context.content += "    "
                 context.content += 'p->copy_handler                   = {0};\n'.format(prop.property_copy_handler)
-
-            if prop.copyable != "no":
-                context.content += "    "
-                context.content += 'p->types_copy_handler             = property_type_copy_handlers::copy_handlers()[(size_t)p->type.type];\n'
 
             if prop.copyable != "no":
                 context.content += "    "

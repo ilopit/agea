@@ -134,7 +134,7 @@ level_editor_window::handle()
 void
 level_editor_window::draw_oject(model::game_object* obj)
 {
-    bool opened = ImGui::TreeNode(obj->get_id().data());
+    bool opened = ImGui::TreeNode(obj->get_id().cstr());
     if (ImGui::IsItemClicked())
     {
         get_window<object_editor>()->show(obj);
@@ -161,7 +161,7 @@ materials_selector::handle()
         [this](model::material* m)
         {
             {
-                auto& mat_id = m->get_id();
+                auto mat_id = m->get_id().str();
                 if (mat_id.find(m_filtering_text.data()) == std::string::npos)
                 {
                     return true;
@@ -299,7 +299,7 @@ object_editor::draw_components(model::game_object_component* root, selection_con
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    auto open = ImGui::TreeNodeEx((void*)(intptr_t)sc.i, node_flags, "%s", root->get_id().c_str());
+    auto open = ImGui::TreeNodeEx((void*)(intptr_t)sc.i, node_flags, "%s", root->get_id().cstr());
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
     {
         sc.selected = sc.i;
@@ -309,7 +309,7 @@ object_editor::draw_components(model::game_object_component* root, selection_con
     ++sc.i;
     ImGui::NextColumn();
     ImGui::AlignTextToFramePadding();
-    ImGui::Text("%s", root->get_id().c_str());
+    ImGui::Text("%s", root->get_id().cstr());
     ImGui::NextColumn();
 
     if (open)

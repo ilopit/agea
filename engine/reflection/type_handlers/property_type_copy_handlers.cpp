@@ -24,6 +24,7 @@ property_type_copy_handlers::init()
     copy_handlers()  .resize((size_t)property_type::t_last, nullptr);
 
     copy_handlers()  [(size_t)property_type::t_str]  = property_type_copy_handlers::copy_t_str;
+    copy_handlers()  [(size_t)property_type::t_id]   = property_type_copy_handlers::copy_t_id;
     copy_handlers()  [(size_t)property_type::t_bool] = property_type_copy_handlers::copy_t_bool;
     copy_handlers()  [(size_t)property_type::t_i8]   = property_type_copy_handlers::copy_t_i8;
     copy_handlers()  [(size_t)property_type::t_i16]  = property_type_copy_handlers::copy_t_i16;
@@ -55,6 +56,18 @@ property_type_copy_handlers::copy_t_str(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     full_copy<std::string>(from, to);
+    return true;
+}
+
+// STR
+bool
+property_type_copy_handlers::copy_t_id(AGEA_copy_handler_args)
+{
+    AGEA_unused(dst_obj);
+    AGEA_unused(src_obj);
+    AGEA_unused(ooc);
+
+    full_copy<core::id>(from, to);
     return true;
 }
 
@@ -259,7 +272,7 @@ property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
     auto& f = extract<::agea::model::component*>(from);
     auto& t = extract<::agea::model::component*>(to);
 
-    auto new_id = dst_obj.get_id() + "/" + f->get_class_obj()->get_id();
+    auto new_id = core::id::from(dst_obj.get_id().str() + "/" + f->get_class_obj()->get_id().str());
 
     auto p = model::object_constructor::object_clone_create(*f, new_id, ooc);
 

@@ -22,7 +22,7 @@ public:
     };
 
     smart_object*
-    get(const std::string& class_id);
+    get(const core::id& class_id);
 
     void
     insert(std::shared_ptr<smart_object> obj, const std::string& path, int order);
@@ -31,7 +31,7 @@ public:
     insert(std::shared_ptr<smart_object> obj);
 
     bool
-    exists(const std::string& class_id);
+    exists(const core::id& class_id);
 
     size_t
     get_size()
@@ -43,7 +43,7 @@ public:
     get_order();
 
 protected:
-    std::unordered_map<std::string, class_object_context> m_objects;
+    std::unordered_map<core::id, class_object_context> m_objects;
 };
 
 }  // namespace model

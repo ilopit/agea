@@ -152,6 +152,8 @@ property::default_copy(copy_context& cxt)
                                                    cxt.src_property->type.is_ptr);
         auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                                  cxt.dst_property->type.is_ptr);
+
+        AGEA_check(cxt.dst_property->types_copy_handler, "Should never happens!");
         cxt.dst_property->types_copy_handler(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
     }
     return true;
@@ -195,6 +197,8 @@ property::deserialize_collection(reflection::property& p,
         r.resize(items_size);
     }
 
+    AGEA_check(p.types_deserialization_handler, "Should never happens!");
+
     for (unsigned i = 0; i < items_size; ++i)
     {
         auto item = items[i];
@@ -223,7 +227,7 @@ property::deserialize_item(reflection::property& p,
 {
     if (!jc[p.name])
     {
-        ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.get_type_id(), p.name);
+        ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.get_type_id().str(), p.name);
         return false;
     }
 
@@ -231,6 +235,7 @@ property::deserialize_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
+    AGEA_check(p.types_deserialization_handler, "Should never happens!");
     p.types_deserialization_handler(ptr, jc[p.name], occ);
 
     return true;
@@ -247,6 +252,7 @@ property::serialize_item(const reflection::property& p,
 
     serialization::conteiner c;
 
+    AGEA_check(p.types_serialization_handler, "Should never happens!");
     p.types_serialization_handler(ptr, c);
 
     sc[p.name] = c;
@@ -268,7 +274,7 @@ property::deserialize_update_collection(reflection::property& p,
     {
         r.resize(items_size);
     }
-
+    AGEA_check(p.types_update_handler, "Should never happens!");
     for (unsigned i = 0; i < items_size; ++i)
     {
         auto item = items[i];
@@ -294,6 +300,8 @@ property::deserialize_update_item(reflection::property& p,
         return false;
     }
 
+    AGEA_check(p.types_update_handler, "Should be not a NULL");
+
     p.types_update_handler(ptr, jc[p.name], occ);
     return true;
 }
@@ -313,6 +321,8 @@ property::compare_item(compare_context& context)
                                                   context.p->type.is_ptr);
     auto dst_ptr = ::agea::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
                                                   context.p->type.is_ptr);
+
+    AGEA_check(context.p->types_compare_handler, "Should be not a NULL");
 
     return context.p->types_compare_handler(src_ptr, dst_ptr);
 }
@@ -668,7 +678,7 @@ bool
 property_convertes::read_t_mat(AGEA_read_from_property_args)
 {
     auto& t = extract<model::material*>(ptr);
-    sprintf_s(buf.data(), buf.size(), "%s", t->get_id().c_str());
+    sprintf_s(buf.data(), buf.size(), "%s", t->get_id().cstr());
 
     return true;
 }
@@ -678,7 +688,7 @@ property_convertes::write_t_mat(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<model::material*>(ptr);
 
-    auto mat = glob::materials_cache::get()->get_item(str);
+    auto mat = glob::materials_cache::get()->get_item(core::id::from(str));
 
     if (!mat)
     {
@@ -696,7 +706,7 @@ bool
 property_convertes::read_t_msh(AGEA_read_from_property_args)
 {
     auto t = extract<std::shared_ptr<model::mesh>>(ptr);
-    sprintf_s(buf.data(), buf.size(), "%s", t->get_id().c_str());
+    sprintf_s(buf.data(), buf.size(), "%s", t->get_id().cstr());
 
     return true;
 }
@@ -706,7 +716,7 @@ property_convertes::write_t_msh(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<model::mesh*>(ptr);
 
-    auto mat = glob::meshes_cache::get()->get_item(str);
+    auto mat = glob::meshes_cache::get()->get_item(core::id::from(str));
 
     if (!mat)
     {

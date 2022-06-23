@@ -44,7 +44,7 @@ struct material_data
         return &gpu_data.roughness;
     }
 
-    std::string id;
+    core::id id;
 
     VkDescriptorSet texture_set;
     VkPipeline pipeline;

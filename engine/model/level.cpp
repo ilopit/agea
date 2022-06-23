@@ -21,19 +21,19 @@ level::occ()
 }
 
 game_object*
-level::find_game_object(const std::string& id)
+level::find_game_object(const core::id& id)
 {
     return m_local_cs.game_objects->get_item(id);
 }
 
 agea::model::smart_object*
-level::find_object(const std::string& id)
+level::find_object(const core::id& id)
 {
     return nullptr;  // m_occ->get_item(id);
 }
 
 component*
-level::find_component(const std::string& id)
+level::find_component(const core::id& id)
 {
     return m_local_cs.components->get_item(id);
 }

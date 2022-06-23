@@ -43,6 +43,7 @@ enum class property_type
     t_nan = 0,
 
     t_str,
+    t_id,
 
     t_bool,
     t_float,
@@ -164,6 +165,7 @@ struct type_resolver
     }
 
     AGEA_create_resolver(std::string, property_type::t_str);
+    AGEA_create_resolver(core::id, property_type::t_id);
 
     AGEA_create_resolver(bool, property_type::t_bool);
 

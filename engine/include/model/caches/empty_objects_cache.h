@@ -13,7 +13,7 @@ class empty_objects_cache
 {
 public:
     model::smart_object*
-    get(const std::string& type_id)
+    get(const core::id& type_id)
     {
         auto itr = m_meshes.find(type_id);
 
@@ -21,13 +21,13 @@ public:
     }
 
     void
-    insert(const std::string& type_id, const std::shared_ptr<model::smart_object>& obj)
+    insert(const core::id& type_id, const std::shared_ptr<model::smart_object>& obj)
     {
         m_meshes.insert({type_id, obj});
     }
 
 protected:
-    std::unordered_map<std::string, std::shared_ptr<model::smart_object>> m_meshes;
+    std::unordered_map<core::id, std::shared_ptr<model::smart_object>> m_meshes;
 };
 
 }  // namespace model

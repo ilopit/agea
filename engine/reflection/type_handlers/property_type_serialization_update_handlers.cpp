@@ -26,6 +26,9 @@ property_type_serialization_update_handlers::init()
     serializers()  [(size_t)property_type::t_str]  = serialize_t_str;
     deserializers()[(size_t)property_type::t_str]  = deserialize_t_str;
 
+    serializers()  [(size_t)property_type::t_id]   = serialize_t_id;
+    deserializers()[(size_t)property_type::t_id]   = deserialize_t_id;
+
     serializers()  [(size_t)property_type::t_bool] = serialize_t_bool;
     deserializers()[(size_t)property_type::t_bool] = deserialize_t_bool;
 
@@ -88,6 +91,25 @@ property_type_serialization_update_handlers::deserialize_t_str(AGEA_deserializat
     AGEA_unused(occ);
 
     reflection::extract_field<std::string>(ptr, jc);
+    return true;
+}
+
+// STR
+bool
+property_type_serialization_update_handlers::serialize_t_id(AGEA_deserialization_update_args)
+{
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
+
+    return true;
+}
+bool
+property_type_serialization_update_handlers::deserialize_t_id(AGEA_deserialization_update_args)
+{
+    AGEA_unused(occ);
+
+    extract<core::id>(ptr) = core::id::from(jc.as<std::string>());
     return true;
 }
 

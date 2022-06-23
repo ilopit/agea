@@ -88,13 +88,14 @@ object_constructor::class_object_load(const utils::path& package_path,
         return nullptr;
     }
 
-    auto type_id = conteiner["type_id"].as<std::string>();
-    auto class_id = conteiner["id"].as<std::string>();
+    auto type_id = core::id::from(conteiner["type_id"].as<std::string>());
+    auto class_id = core::id::from(conteiner["id"].as<std::string>());
 
     AGEA_check(!(occ.m_local_set.objects->has_item(class_id)), "We should not re-load objects");
 
-    auto eoc = glob::empty_objects_cache::get();
-    auto empty = eoc->get(type_id)->META_create_empty_obj();
+    auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
+
+    auto empty = eoc_item->META_create_empty_obj();
     empty->META_set_id(class_id);
 
     object_properties_load(*empty, conteiner, occ);
@@ -109,8 +110,8 @@ object_constructor::class_object_save(const smart_object& obj, const utils::path
 {
     serialization::conteiner conteiner;
 
-    conteiner["type_id"] = obj.get_type_id();
-    conteiner["id"] = obj.get_id();
+    conteiner["type_id"] = obj.get_type_id().str();
+    conteiner["id"] = obj.get_id().str();
 
     if (!object_properties_save(obj, conteiner))
     {
@@ -126,15 +127,15 @@ object_constructor::class_object_save(const smart_object& obj, const utils::path
 }
 
 smart_object*
-object_constructor::object_clone_create(const std::string& object_id,
-                                        const std::string& new_object_id,
+object_constructor::object_clone_create(const core::id& object_id,
+                                        const core::id& new_object_id,
                                         object_constructor_context& occ)
 {
     auto obj = occ.m_local_set.objects->get_item(object_id);
 
     if (!obj)
     {
-        ALOG_INFO("Cache miss {0} try in global!", object_id);
+        ALOG_INFO("Cache miss {0} try in global!", object_id.str());
         obj = occ.m_global_set.objects->get_item(object_id);
     }
 
@@ -149,7 +150,7 @@ object_constructor::object_clone_create(const std::string& object_id,
 
 smart_object*
 object_constructor::object_clone_create(smart_object& obj,
-                                        const std::string& new_object_id,
+                                        const core::id& new_object_id,
                                         object_constructor_context& occ)
 {
     auto empty = obj.META_create_empty_obj();
@@ -182,14 +183,14 @@ object_constructor::update_object_properties(smart_object& obj, const serializat
 
         if (itr == reflection.m_properties.end())
         {
-            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.get_id(), key_name);
+            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.get_id().str(), key_name);
             continue;
         }
 
         auto& p = *itr;
         if (!reflection::property::deserialize_update(*p, (blob_ptr)&obj, jc, c))
         {
-            ALOG_ERROR("Property update [{0}:{1}] failed", obj.get_id(), key_name);
+            ALOG_ERROR("Property update [{0}:{1}] failed", obj.get_id().str(), key_name);
             return false;
         }
     }

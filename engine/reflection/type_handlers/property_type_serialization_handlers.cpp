@@ -11,6 +11,8 @@
 
 #include "serialization/serialization.h"
 
+#include "core/id.h"
+
 #include "utils/agea_log.h"
 
 namespace agea
@@ -28,6 +30,9 @@ property_type_serialization_handlers::init()
 
     serializers()  [(size_t)property_type::t_str]  = serialize_t_str;
     deserializers()[(size_t)property_type::t_str]  = deserialize_t_str;
+
+    serializers()  [(size_t)property_type::t_id]   = serialize_t_id;
+    deserializers()[(size_t)property_type::t_id]   = deserialize_t_id;
 
     serializers()  [(size_t)property_type::t_bool] = serialize_t_bool;
     deserializers()[(size_t)property_type::t_bool] = deserialize_t_bool;
@@ -100,6 +105,25 @@ property_type_serialization_handlers::deserialize_t_str(AGEA_deserialization_arg
     AGEA_unused(occ);
     AGEA_unused(jc);
     reflection::extract_field<std::string>(ptr, jc);
+    return true;
+}
+
+// ID
+bool
+property_type_serialization_handlers::serialize_t_id(AGEA_serialization_args)
+{
+    AGEA_unused(ptr);
+    jc = extract<core::id>(ptr).str();
+    return true;
+}
+
+bool
+property_type_serialization_handlers::deserialize_t_id(AGEA_deserialization_args)
+{
+    AGEA_unused(ptr);
+    AGEA_unused(occ);
+    AGEA_unused(jc);
+    extract<core::id>(ptr) = core::id::from(jc.as<std::string>());
     return true;
 }
 
@@ -362,7 +386,7 @@ property_type_serialization_handlers::serialize_t_txt(AGEA_serialization_args)
     AGEA_unused(jc);
 
     auto field = reflection::extract<::agea::model::texture*>(ptr);
-    jc = field->get_id();
+    jc = field->get_id().str();
 
     return true;
 }
@@ -374,13 +398,13 @@ property_type_serialization_handlers::deserialize_t_txt(AGEA_deserialization_arg
 
     auto& field = reflection::extract<::agea::model::texture*>(ptr);
 
-    const auto& txt_id = jc.as<std::string>();
+    const auto& txt_id = core::id::from(jc.as<std::string>());
 
     auto txt = occ.m_local_set.textures->get_item(txt_id);
 
     if (!txt)
     {
-        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", txt_id);
+        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", txt_id.str());
         txt = occ.m_global_set.textures->get_item(txt_id);
         if (!txt)
         {
@@ -400,7 +424,7 @@ property_type_serialization_handlers::serialize_t_mat(AGEA_serialization_args)
     AGEA_unused(jc);
 
     auto field = reflection::extract<::agea::model::material*>(ptr);
-    jc = field->get_id();
+    jc = field->get_id().str();
 
     return true;
 }
@@ -411,13 +435,13 @@ property_type_serialization_handlers::deserialize_t_mat(AGEA_deserialization_arg
     AGEA_unused(occ);
 
     auto& field = reflection::extract<::agea::model::material*>(ptr);
-    const auto& mat_id = jc.as<std::string>();
+    const auto& mat_id = core::id::from(jc.as<std::string>());
 
     auto mat = occ.m_local_set.materials->get_item(mat_id);
 
     if (!mat)
     {
-        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mat_id);
+        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mat_id.str());
         mat = occ.m_global_set.materials->get_item(mat_id);
         if (!mat)
         {
@@ -437,7 +461,7 @@ property_type_serialization_handlers::serialize_t_msh(AGEA_serialization_args)
     AGEA_unused(jc);
 
     auto field = reflection::extract<::agea::model::mesh*>(ptr);
-    jc = field->get_id();
+    jc = field->get_id().str();
 
     return true;
 }
@@ -448,13 +472,13 @@ property_type_serialization_handlers::deserialize_t_msh(AGEA_deserialization_arg
     AGEA_unused(occ);
 
     auto& field = reflection::extract<::agea::model::mesh*>(ptr);
-    const auto& mesh_id = jc.as<std::string>();
+    const auto& mesh_id = core::id::from(jc.as<std::string>());
 
     auto msh = occ.m_local_set.meshes->get_item(mesh_id);
 
     if (!msh)
     {
-        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mesh_id);
+        ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mesh_id.str());
         msh = occ.m_global_set.meshes->get_item(mesh_id);
         if (!msh)
         {
@@ -474,7 +498,7 @@ property_type_serialization_handlers::serialize_t_obj(AGEA_serialization_args)
 
     auto field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    jc["id"] = field->get_id();
+    jc["id"] = field->get_id().str();
 
     return true;
 }
@@ -486,9 +510,9 @@ property_type_serialization_handlers::deserialize_t_obj(AGEA_deserialization_arg
 
     auto field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    auto str = jc["id"].as<std::string>();
+    auto id = core::id::from(jc["id"].as<std::string>());
 
-    auto pstr = glob::class_objects_cache::get()->get(str);
+    auto pstr = glob::class_objects_cache::get()->get(id);
 
     field = pstr;
 
@@ -503,8 +527,8 @@ property_type_serialization_handlers::serialize_t_com(AGEA_serialization_args)
 
     auto field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    jc["id"] = field->get_id();
-    jc["object_class"] = field->get_class_obj()->get_id();
+    jc["id"] = field->get_id().str();
+    jc["object_class"] = field->get_class_obj()->get_id().str();
 
     return true;
 }
@@ -514,21 +538,21 @@ property_type_serialization_handlers::deserialize_t_com(AGEA_deserialization_arg
 {
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    auto class_id = jc["object_class"].as<std::string>();
+    auto class_id = core::id::from(jc["object_class"].as<std::string>());
 
-    auto id = jc["id"].as<std::string>();
+    auto id = core::id::from(jc["id"].as<std::string>());
 
     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
 
     if (!obj)
     {
-        ALOG_ERROR("object [{0}] doesn't exists", class_id);
+        ALOG_ERROR("object [{0}] doesn't exists", class_id.str());
         return false;
     }
 
     if (!model::object_constructor::update_object_properties(*obj, jc))
     {
-        ALOG_ERROR("object [{0}] update failed", class_id);
+        ALOG_ERROR("object [{0}] update failed", class_id.str());
         return false;
     }
 

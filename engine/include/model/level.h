@@ -30,13 +30,13 @@ public:
     occ();
 
     game_object*
-    find_game_object(const std::string& id);
+    find_game_object(const core::id& id);
 
     smart_object*
-    find_object(const std::string& id);
+    find_object(const core::id& id);
 
     component*
-    find_component(const std::string& id);
+    find_component(const core::id& id);
 
     void
     update();
@@ -48,7 +48,7 @@ public:
     std::vector<std::string> m_package_ids;
 
     std::unique_ptr<object_constructor_context> m_occ;
-    std::string m_path;
+    utils::path m_path;
 };
 
 }  // namespace model

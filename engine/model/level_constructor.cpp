@@ -10,6 +10,7 @@
 #include "model/package_manager.h"
 
 #include "core/fs_locator.h"
+#include "core/id.h"
 
 #include "serialization/serialization.h"
 
@@ -80,8 +81,8 @@ load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
 
         ALOG_INFO("Level : group {0}", json_group["object_class"].as<std::string>());
 
-        auto class_id = json_group["object_class"].as<std::string>();
-        ALOG_INFO("Level : class_id {0} instances", class_id);
+        auto class_id = core::id::from(json_group["object_class"].as<std::string>());
+        ALOG_INFO("Level : class_id {0} instances", class_id.str());
 
         auto items = json_group["instances"];
         auto items_size = items.size();
@@ -99,7 +100,7 @@ load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
             auto item = items[i];
 
             auto instance = object_constructor::object_clone_create(
-                class_obj->get_id(), item["id"].as<std::string>(), *l.m_occ);
+                class_obj->get_id(), core::id::from(item["id"].as<std::string>()), *l.m_occ);
 
             if (!instance)
             {
@@ -164,14 +165,14 @@ save_level(level& l, const utils::path& path)
 
         for (auto& instance_group : instances_groups_maping)
         {
-            instances_groups["object_class"] = instance_group.first->get_id();
+            instances_groups["object_class"] = instance_group.first->get_id().str();
 
             serialization::conteiner instances_conteiner;
 
             for (auto& instance : instance_group.second)
             {
                 serialization::conteiner intance;
-                intance["id"] = instance->get_id();
+                intance["id"] = instance->get_id().str();
 
                 auto& base_obj = *instance_group.first;
                 auto& obj_to_diff = *instance;

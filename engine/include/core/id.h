@@ -10,7 +10,7 @@ namespace core
 inline constexpr size_t
 id_size_in_bytes()
 {
-    return 32;
+    return 63;
 }
 
 class id
@@ -18,32 +18,22 @@ class id
 public:
     id() = default;
 
-    static id
-    from(const std::string& id_str)
-    {
-        id result;
-        if (id_str.empty() || id_str.size() > id_size_in_bytes())
-        {
-            return result;
-        }
+    id(const id& other);
 
-        memcpy(result.m_id, id_str.data(), id_str.size());
-        result.m_id[id_str.size()] = '\0';
+    id&
+    operator=(const id& other);
 
-        return result;
-    }
+    bool
+    operator==(const id& other) const;
+
+    bool
+    operator!=(const id& other) const;
 
     static id
-    from(const char* id_cstr)
-    {
-        id result;
+    from(const std::string& id_str);
 
-        if (!strncpy_s(result.m_id, id_size_in_bytes(), id_cstr, id_size_in_bytes()))
-        {
-            return {};
-        }
-        return result;
-    }
+    static id
+    from(const char* id_cstr);
 
     std::string
     str() const
@@ -66,6 +56,33 @@ public:
 private:
     char m_id[id_size_in_bytes() + 1] = {0};
 };
-}  // namespace core
 
+}  // namespace core
 }  // namespace agea
+
+namespace std
+{
+
+template <>
+struct hash<::agea::core::id>
+{
+    std::size_t
+    operator()(const ::agea::core::id& k) const
+    {
+        size_t result = 0;
+        const size_t prime = 31;
+
+        for (size_t i = 0; i < ::agea::core::id_size_in_bytes(); ++i)
+        {
+            if (k.cstr()[i] == '\0')
+            {
+                break;
+            }
+
+            result = k.cstr()[i] + (result * prime);
+        }
+        return result;
+    }
+};
+
+}  // namespace std

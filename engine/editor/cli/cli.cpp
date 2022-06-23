@@ -41,12 +41,12 @@ find_obj(const std::string& object_id)
 
     if (composite_id.size() == 1)
     {
-        obj = glob::level::get()->find_object(object_id);
+        obj = glob::level::get()->find_object(core::id::from(object_id));
     }
     if (composite_id.size() == 2)
     {
         auto& type = composite_id[0];
-        auto& name = composite_id[1];
+        auto name = core::id::from(composite_id[1]);
         if (type == "obj")
         {
             obj = glob::level::get()->find_object(name);

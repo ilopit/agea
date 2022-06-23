@@ -51,13 +51,13 @@ struct mesh_data
         return !m_indices.empty();
     }
 
-    const std::string&
+    const core::id&
     id()
     {
         return m_id;
     }
 
-    std::string m_id;
+    core::id m_id;
 
     std::vector<vertex_data> m_vertices;
     std::vector<uint32_t> m_indices;

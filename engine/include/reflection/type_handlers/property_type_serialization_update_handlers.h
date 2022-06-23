@@ -39,6 +39,10 @@ struct property_type_serialization_update_handlers
     static bool serialize_t_str(AGEA_deserialization_update_args);
     static bool deserialize_t_str(AGEA_deserialization_update_args);
 
+    // STR
+    static bool serialize_t_id(AGEA_deserialization_update_args);
+    static bool deserialize_t_id(AGEA_deserialization_update_args);
+
     // Bool
     static bool serialize_t_bool(AGEA_deserialization_update_args);
     static bool deserialize_t_bool(AGEA_deserialization_update_args);

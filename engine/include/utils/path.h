@@ -83,6 +83,9 @@ public:
     bool
     exists() const;
 
+    bool
+    empty() const;
+
 private:
     void
     normalize()

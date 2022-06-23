@@ -16,9 +16,10 @@
 
 #include "utils/agea_log.h"
 #include "utils/file_utils.h"
+#include "utils/path.h"
 
 #include <gtest/gtest.h>
-
+#define ID(val) ::agea::core::id::from(val)
 using namespace agea;
 
 struct test_load_package : public testing::Test
@@ -51,8 +52,8 @@ TEST_F(test_load_package, load_package)
     auto result = model::package::load_package(path, p, global_cache.get_ref());
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(p.get_id(), "test.apkg");
-    ASSERT_EQ(p.get_path(), path);
+    ASSERT_EQ(p.get_id(), ID("test.apkg"));
+    ASSERT_EQ(p.get_path().str(), path.str());
 
     auto& cache = p.get_cache();
 
@@ -69,52 +70,52 @@ TEST_F(test_load_package, load_package)
 
     ASSERT_EQ(all_size, size);
 
-    auto game_object = cache.game_objects->get_item("test_object");
+    auto game_object = cache.game_objects->get_item(ID("test_object"));
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(game_object->get_id(), "test_object");
-    ASSERT_EQ(game_object->get_type_id(), "mesh_object");
+    ASSERT_EQ(game_object->get_id(), ID("test_object"));
+    ASSERT_EQ(game_object->get_type_id(), ID("mesh_object"));
 
     {
         {
             auto component = game_object->get_component_at(0U);
-            ASSERT_EQ(component->get_id(), "test_obj/test_root_component");
-            ASSERT_EQ(component->get_type_id(), "game_object_component");
+            ASSERT_EQ(component->get_id(), ID("test_obj/test_root_component"));
+            ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
             ASSERT_EQ(component->get_order_idx(), 0U);
             ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
         }
         {
             auto component = game_object->get_component_at(1U);
-            ASSERT_EQ(component->get_id(), "test_obj/test_component_a");
-            ASSERT_EQ(component->get_type_id(), "component");
+            ASSERT_EQ(component->get_id(), ID("test_obj/test_component_a"));
+            ASSERT_EQ(component->get_type_id(), ID("component"));
             ASSERT_EQ(component->get_order_idx(), 1U);
             ASSERT_EQ(component->get_parent_idx(), 0U);
         }
         {
             auto component = game_object->get_component_at(2U);
-            ASSERT_EQ(component->get_id(), "test_obj/test_component_b");
-            ASSERT_EQ(component->get_type_id(), "component");
+            ASSERT_EQ(component->get_id(), ID("test_obj/test_component_b"));
+            ASSERT_EQ(component->get_type_id(), ID("component"));
             ASSERT_EQ(component->get_order_idx(), 2U);
             ASSERT_EQ(component->get_parent_idx(), 0U);
         }
         {
             auto component = game_object->get_component_at(3U);
-            ASSERT_EQ(component->get_id(), "test_obj/test_component_a_2");
-            ASSERT_EQ(component->get_type_id(), "game_object_component");
+            ASSERT_EQ(component->get_id(), ID("test_obj/test_component_a_2"));
+            ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
             ASSERT_EQ(component->get_order_idx(), 3U);
             ASSERT_EQ(component->get_parent_idx(), 2U);
         }
         {
             auto component = game_object->get_component_at(4U);
-            ASSERT_EQ(component->get_id(), "test_obj/test_component_b_2");
-            ASSERT_EQ(component->get_type_id(), "component");
+            ASSERT_EQ(component->get_id(), ID("test_obj/test_component_b_2"));
+            ASSERT_EQ(component->get_type_id(), ID("component"));
             ASSERT_EQ(component->get_order_idx(), 4U);
             ASSERT_EQ(component->get_parent_idx(), 2U);
         }
     }
-    result = model::package::save_package("test.apkg", p);
+    result = model::package::save_package(utils::path("test.apkg"), p);
     ASSERT_TRUE(result);
 
-    result = file_utils::compare_folders(path, "test.apkg");
+    result = utils::file_utils::compare_folders(path, utils::path("test.apkg"));
     ASSERT_TRUE(result);
 }

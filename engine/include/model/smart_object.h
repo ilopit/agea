@@ -32,7 +32,7 @@
                                                                     \
     void META_class_set_architype_id();                             \
                                                                     \
-    static const char* META_type_id();                              \
+    static core::id META_type_id();                                 \
                                                                     \
     static reflection::object_reflection* META_object_reflection(); \
                                                                     \
@@ -80,13 +80,13 @@ public:
         return m_architype_id;
     }
 
-    const std::string&
+    const core::id&
     get_type_id() const
     {
         return m_type_id;
     }
 
-    const std::string&
+    const core::id&
     get_id() const
     {
         return m_id;
@@ -159,7 +159,7 @@ public:
 
 protected:
     void
-    META_set_id(const std::string& id)
+    META_set_id(const core::id& id)
     {
         m_id = id;
     }
@@ -174,10 +174,10 @@ protected:
     architype m_architype_id = architype::unknown;
 
     AGEA_property("category=meta", "visible=true");
-    std::string m_type_id;
+    core::id m_type_id;
 
     AGEA_property("category=meta", "visible=true", "copyable=no");
-    std::string m_id;
+    core::id m_id;
 
     smart_object* m_class_obj = nullptr;
     package* m_package = nullptr;

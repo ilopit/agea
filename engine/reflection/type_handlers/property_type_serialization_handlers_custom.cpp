@@ -26,20 +26,20 @@ namespace
 model::component*
 load_component(serialization::conteiner& sc, model::object_constructor_context& occ)
 {
-    auto class_id = sc["object_class"].as<std::string>();
-    auto id = sc["id"].as<std::string>();
+    auto class_id = core::id::from(sc["object_class"].as<std::string>());
+    auto id = core::id::from(sc["id"].as<std::string>());
 
     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
 
     if (!obj)
     {
-        ALOG_ERROR("object [{0}] doesn't exists", class_id);
+        ALOG_ERROR("object [{0}] doesn't exists", class_id.cstr());
         return false;
     }
 
     if (!model::object_constructor::update_object_properties(*obj, sc))
     {
-        ALOG_ERROR("object [{0}] update failed", class_id);
+        ALOG_ERROR("object [{0}] update failed", class_id.cstr());
         return false;
     }
 
@@ -92,8 +92,8 @@ game_object_components_serialize(serialize_context& dc)
             auto class_component = instance_component->get_class_obj();
 
             serialization::conteiner component_conteiner;
-            component_conteiner["object_class"] = class_component->get_id();
-            component_conteiner["id"] = instance_component->get_id();
+            component_conteiner["object_class"] = class_component->get_id().str();
+            component_conteiner["id"] = instance_component->get_id().str();
 
             reflection::serialize_context internal_sc{nullptr, instance_component,
                                                       &component_conteiner};
@@ -141,7 +141,7 @@ game_object_components_serialize(serialize_context& dc)
 
             if (!diff.empty())
             {
-                component_conteiner["id"] = obj_component->get_id();
+                component_conteiner["id"] = obj_component->get_id().str();
                 component_conteiner["order_idx"] = obj_component->get_order_idx();
             }
             for (auto& p : diff)
