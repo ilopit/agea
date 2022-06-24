@@ -3,6 +3,7 @@
 #include "model/components/camera_component.h"
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
+#include "model/caches/line_cache.h"
 
 #include "utils/weird_singletone.h"
 
@@ -20,6 +21,8 @@ namespace model
 class level
 {
 public:
+    friend class level_constructor;
+
     level();
     ~level();
 
@@ -41,11 +44,18 @@ public:
     void
     update();
 
+    game_objects_cache&
+    get_game_objects()
+    {
+        return *m_local_cs.game_objects.get();
+    }
+
+private:
     cache_set m_local_cs;
     cache_set_ref m_global_cs;
 
-    std::vector<std::shared_ptr<smart_object>> m_objects;
-    std::vector<std::string> m_package_ids;
+    line_cache m_objects;
+    std::vector<core::id> m_package_ids;
 
     std::unique_ptr<object_constructor_context> m_occ;
     utils::path m_path;

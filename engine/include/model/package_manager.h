@@ -14,10 +14,10 @@ class package_manager
 {
 public:
     bool
-    load_package(const std::string& id);
+    load_package(const core::id& id);
 
 protected:
-    std::unordered_map<std::string, package> m_packages;
+    std::unordered_map<core::id, package> m_packages;
 };
 
 }  // namespace model

@@ -53,7 +53,7 @@ TEST_F(test_object_constructor, load_component)
     ASSERT_FALSE(object_path.empty());
 
     model::cache_set l, g;
-    std::vector<std::shared_ptr<model::smart_object>> objs;
+    model::line_cache objs;
 
     model::object_constructor_context occ(g.get_ref(), l.get_ref(), &objs);
     auto obj = model::object_constructor::class_object_load(object_path, occ);
@@ -84,7 +84,7 @@ TEST_F(test_object_constructor, load_and_save_object)
         "test/test_component_a_2.acom", "test/test_component_b_2.acom"};
 
     model::cache_set l, g;
-    std::vector<std::shared_ptr<model::smart_object>> objs;
+    model::line_cache objs;
 
     model::object_constructor_context occ(g.get_ref(), l.get_ref(), &objs);
     for (const auto& name : to_load)

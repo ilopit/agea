@@ -4,6 +4,7 @@
 
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
+#include "model/caches/line_cache.h"
 
 namespace agea
 {
@@ -17,7 +18,7 @@ public:
 
     object_constructor_context(cache_set_ref global_map,
                                cache_set_ref local_map,
-                               std::vector<std::shared_ptr<smart_object>>* local_objcs);
+                               line_cache* ownable_cache);
 
     ~object_constructor_context();
 
@@ -40,7 +41,7 @@ public:
 
     cache_set_ref m_global_set;
     cache_set_ref m_local_set;
-    std::vector<std::shared_ptr<smart_object>>* m_local_objecs;
+    line_cache* m_ownable_cache_ptr;
 };
 }  // namespace model
 }  // namespace agea

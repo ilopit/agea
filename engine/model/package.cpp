@@ -3,7 +3,7 @@
 #include "utils/agea_log.h"
 #include "model/object_constructor.h"
 #include "model/object_construction_context.h"
-#include "model/caches/base_cache.h"
+#include "model/caches/hash_cache.h"
 
 #include <filesystem>
 
@@ -93,7 +93,7 @@ package::save_package(const utils::path& path, const package& p)
         std::filesystem::create_directories(path.fs());
     }
 
-    for (auto& o : p.m_objects)
+    for (auto& o : p.m_objects.get_items())
     {
         auto obj_path = p.get_resource_path(utils::path(get_name(o->get_architype_id())));
         if (!obj_path.exists())
@@ -148,7 +148,7 @@ package::load_package_conteiners(architype id, package& p)
 void
 package::propagate_to_global_caches()
 {
-    for (auto& o : m_objects)
+    for (auto& o : m_objects.get_items())
     {
         o->set_package(this);
     }

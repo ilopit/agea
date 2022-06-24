@@ -119,9 +119,9 @@ level_editor_window::handle()
 
     if (ImGui::TreeNode("Level Objects"))
     {
-        for (auto& o : level->m_objects)
+        for (auto& o : level->get_game_objects().get_items())
         {
-            if (auto game_obj = o->as<model::game_object>())
+            if (auto game_obj = o.second->as<model::game_object>())
             {
                 draw_oject(game_obj);
             }

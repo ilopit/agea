@@ -12,10 +12,10 @@ namespace agea
 {
 namespace model
 {
-class base_cache
+class hash_cache
 {
 public:
-    base_cache(architype id)
+    hash_cache(architype id)
         : m_id(id)
     {
     }
@@ -70,18 +70,18 @@ protected:
 };
 
 template <typename T, architype ID>
-class cache : public base_cache
+class cache : public hash_cache
 {
 public:
     cache()
-        : base_cache(ID)
+        : hash_cache(ID)
     {
     }
 
     T*
     get_item(const core::id& id)
     {
-        return (T*)base_cache::get_item(id);
+        return (T*)hash_cache::get_item(id);
     }
 
     template <typename F>
@@ -108,14 +108,14 @@ public:
 class caches_map
 {
 public:
-    base_cache&
+    hash_cache&
     get_cache(architype id)
     {
         return *m_mapping.at(id);
     }
 
     void
-    add_cache(base_cache* c)
+    add_cache(hash_cache* c)
     {
         auto& v = m_mapping[c->get_id()];
         AGEA_check(v == nullptr, "Should not re-assign!");
@@ -129,14 +129,14 @@ public:
         item->add_item(obj);
     }
 
-    std::unordered_map<architype, base_cache*>&
+    std::unordered_map<architype, hash_cache*>&
     get_items()
     {
         return m_mapping;
     }
 
 private:
-    std::unordered_map<architype, base_cache*> m_mapping;
+    std::unordered_map<architype, hash_cache*> m_mapping;
 };
 
 }  // namespace model

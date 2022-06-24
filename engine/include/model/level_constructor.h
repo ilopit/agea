@@ -11,16 +11,15 @@ namespace agea
 {
 namespace model
 {
-
-namespace level_constructor
+class level_constructor
 {
-bool
-load_level_id(level& l, const std::string& id, cache_set_ref global_cs);
-bool
-load_level_path(level& l, const utils::path& path, cache_set_ref global_cs);
-bool
-save_level(level& l, const utils::path& path);
-
-}  // namespace level_constructor
+public:
+    static bool
+    load_level_id(level& l, const core::id& id, cache_set_ref global_cs);
+    static bool
+    load_level_path(level& l, const utils::path& path, cache_set_ref global_cs);
+    static bool
+    save_level(level& l, const utils::path& path);
+};
 }  // namespace model
 }  // namespace agea

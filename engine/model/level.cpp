@@ -41,7 +41,7 @@ level::find_component(const core::id& id)
 void
 level::update()
 {
-    for (auto& o : m_objects)
+    for (auto& o : m_objects.get_items())
     {
         if (auto obj = o->as<game_object>())
         {

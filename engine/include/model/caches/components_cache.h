@@ -2,7 +2,7 @@
 
 #include "core/agea_minimal.h"
 
-#include "model/caches/base_cache.h"
+#include "model/caches/hash_cache.h"
 #include "model/components/component.h"
 
 #include "utils/weird_singletone.h"

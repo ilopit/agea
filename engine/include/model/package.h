@@ -5,6 +5,7 @@
 
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
+#include "model/caches/line_cache.h"
 
 namespace agea
 {
@@ -74,7 +75,7 @@ private:
     cache_set m_local_cs;
     cache_set_ref m_global_cs;
 
-    std::vector<std::shared_ptr<smart_object>> m_objects;
+    line_cache m_objects;
 
     std::unique_ptr<object_constructor_context> m_occ;
 };

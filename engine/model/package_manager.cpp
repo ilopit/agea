@@ -8,7 +8,7 @@ namespace model
 {
 
 bool
-package_manager::load_package(const std::string& id)
+package_manager::load_package(const core::id& id)
 {
     auto itr = m_packages.find(id);
     if (itr != m_packages.end())
@@ -16,7 +16,7 @@ package_manager::load_package(const std::string& id)
         return true;
     }
 
-    auto path = glob::resource_locator::get()->resource(category::packages, id);
+    auto path = glob::resource_locator::get()->resource(category::packages, id.str());
 
     package p;
     if (!package::load_package(path, p, glob::cache_set_view::get()))

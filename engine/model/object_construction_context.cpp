@@ -18,14 +18,13 @@ namespace agea
 namespace model
 {
 
-object_constructor_context::object_constructor_context(
-    cache_set_ref global_map,
-    cache_set_ref local_map,
-    std::vector<std::shared_ptr<smart_object>>* local_objcs)
+object_constructor_context::object_constructor_context(cache_set_ref global_map,
+                                                       cache_set_ref local_map,
+                                                       line_cache* ownable_cache)
     : m_path_prefix()
     , m_global_set(global_map)
     , m_local_set(local_map)
-    , m_local_objecs(local_objcs)
+    , m_ownable_cache_ptr(ownable_cache)
 {
     ALOG_TRACE("Created");
 }
@@ -33,7 +32,7 @@ object_constructor_context::object_constructor_context(
 object_constructor_context::object_constructor_context()
     : m_global_set()
     , m_local_set()
-    , m_local_objecs(nullptr)
+    , m_ownable_cache_ptr(nullptr)
 {
 }
 
@@ -72,12 +71,12 @@ object_constructor_context::propagate_to_co_cache()
 bool
 object_constructor_context::add_obj(std::shared_ptr<smart_object> obj)
 {
-    AGEA_check(m_local_objecs, "Should exists!");
+    AGEA_check(m_ownable_cache_ptr, "Should exists!");
     AGEA_check(obj, "Should exists!");
 
     auto& obj_ref = *obj.get();
 
-    m_local_objecs->push_back(std::move(obj));
+    m_ownable_cache_ptr->add_item(std::move(obj));
 
     m_local_set.objects->add_item(obj_ref);
     m_local_set.map->add_item(obj_ref);

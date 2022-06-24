@@ -3,7 +3,7 @@
 #include "core/agea_minimal.h"
 #include "utils/weird_singletone.h"
 #include "model/model_fwds.h"
-#include "model/caches/base_cache.h"
+#include "model/caches/hash_cache.h"
 
 #include "model/rendering/material.h"
 

@@ -583,7 +583,7 @@ vulkan_engine::draw_new_objects(VkCommandBuffer cmd)
 void
 vulkan_engine::init_scene()
 {
-    model::level_constructor::load_level_id(*glob::level::get(), "demo.alvl",
+    model::level_constructor::load_level_id(*glob::level::get(), core::id::from("demo.alvl"),
                                             glob::cache_set_view::get());
 
     glob::cache_set_view::get().textures->call_on_items(
@@ -621,7 +621,7 @@ vulkan_engine::init_scene()
             return true;
         });
 
-    for (auto& o : glob::level::get()->m_local_cs.game_objects->get_items())
+    for (auto& o : glob::level::get()->get_game_objects().get_items())
     {
         auto obj = o.second->as<model::game_object>();
 

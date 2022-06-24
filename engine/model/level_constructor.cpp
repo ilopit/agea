@@ -23,21 +23,19 @@ namespace agea
 {
 namespace model
 {
-namespace level_constructor
-{
 
 bool
-load_level_id(level& l, const std::string& id, cache_set_ref global_cs)
+level_constructor::load_level_id(level& l, const core::id& id, cache_set_ref global_cs)
 {
-    ALOG_INFO("Begin level loading with id {0}", id);
+    ALOG_INFO("Begin level loading with id {0}", id.cstr());
 
-    auto path = glob::resource_locator::get()->resource(category::levels, id);
+    auto path = glob::resource_locator::get()->resource(category::levels, id.str());
 
     return load_level_path(l, path, global_cs);
 }
 
 bool
-load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
+level_constructor::load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
 {
     ALOG_INFO("Begin level loading with path {0}", path.str());
     l.m_global_cs = global_cs;
@@ -57,7 +55,7 @@ load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
         auto packages_count = packages.size();
         for (size_t idx = 0; idx < packages_count; ++idx)
         {
-            auto id = packages[idx].as<std::string>();
+            auto id = core::id::from(packages[idx].as<std::string>());
             if (!glob::package_manager::get()->load_package(id))
             {
                 ALOG_LAZY_ERROR;
@@ -132,7 +130,7 @@ load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
 }
 
 bool
-save_level(level& l, const utils::path& path)
+level_constructor::save_level(level& l, const utils::path& path)
 {
     serialization::conteiner conteiner;
 
@@ -140,7 +138,7 @@ save_level(level& l, const utils::path& path)
         {
             for (auto id : l.m_package_ids)
             {
-                conteiner["packages"].push_back(id);
+                conteiner["packages"].push_back(id.str());
             }
         }
 
@@ -202,6 +200,6 @@ save_level(level& l, const utils::path& path)
     }
     return true;
 }
-}  // namespace level_constructor
 }  // namespace model
+
 }  // namespace agea
