@@ -5,6 +5,10 @@
 #include "model/object_construction_context.h"
 #include "model/caches/hash_cache.h"
 
+#include "model/rendering/texture.h"
+#include "model/rendering/material.h"
+#include "model/rendering/mesh.h"
+
 #include <filesystem>
 
 namespace agea
@@ -55,6 +59,7 @@ package::package()
 package::~package()
 {
 }
+
 bool
 package::load_package(const utils::path& path, package& p, cache_set_ref global_cs)
 {
@@ -75,6 +80,11 @@ package::load_package(const utils::path& path, package& p, cache_set_ref global_
             ALOG_LAZY_ERROR;
             return false;
         }
+    }
+
+    for (auto& o : p.m_objects.get_items())
+    {
+        o->set_package(&p);
     }
 
     return true;
@@ -148,11 +158,6 @@ package::load_package_conteiners(architype id, package& p)
 void
 package::propagate_to_global_caches()
 {
-    for (auto& o : m_objects.get_items())
-    {
-        o->set_package(this);
-    }
-
     for (auto& c : m_local_cs.map->get_items())
     {
         for (auto& i : c.second->get_items())
@@ -160,6 +165,57 @@ package::propagate_to_global_caches()
             m_global_cs.map->get_cache(c.first).add_item(*i.second);
         }
     }
+}
+
+bool
+package::prepare_for_rendering()
+{
+    auto result = m_local_cs.textures->call_on_items(
+        [](model::texture* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            return true;
+        });
+
+    if (!result)
+    {
+        return result;
+    }
+
+    result = m_local_cs.materials->call_on_items(
+        [](model::material* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+            return true;
+        });
+
+    if (!result)
+    {
+        return result;
+    }
+
+    m_local_cs.meshes->call_on_items(
+        [](model::mesh* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            return true;
+        });
+
+    return result;
 }
 
 }  // namespace model

@@ -17,7 +17,7 @@ public:
     load_package(const core::id& id);
 
 protected:
-    std::unordered_map<core::id, package> m_packages;
+    std::unordered_map<core::id, std::unique_ptr<package>> m_packages;
 };
 
 }  // namespace model

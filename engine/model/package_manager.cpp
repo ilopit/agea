@@ -18,16 +18,20 @@ package_manager::load_package(const core::id& id)
 
     auto path = glob::resource_locator::get()->resource(category::packages, id.str());
 
-    package p;
-    if (!package::load_package(path, p, glob::cache_set_view::get()))
+    auto p = std::make_unique<model::package>();
+    if (!package::load_package(path, *p, glob::cache_set_view::get()))
     {
         return false;
     }
 
-    auto& p_ref = m_packages[id];
+    if (!p->prepare_for_rendering())
+    {
+        return false;
+    }
 
-    p_ref = std::move(p);
-    p_ref.propagate_to_global_caches();
+    p->propagate_to_global_caches();
+
+    m_packages[id] = std::move(p);
 
     return true;
 }

@@ -583,43 +583,10 @@ vulkan_engine::draw_new_objects(VkCommandBuffer cmd)
 void
 vulkan_engine::init_scene()
 {
-    model::level_constructor::load_level_id(*glob::level::get(), core::id::from("demo.alvl"),
-                                            glob::cache_set_view::get());
+    auto result = model::level_constructor::load_level_id(
+        *glob::level::get(), core::id::from("demo.alvl"), glob::cache_set_view::get());
 
-    glob::cache_set_view::get().textures->call_on_items(
-        [](model::texture* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            return true;
-        });
-
-    glob::cache_set_view::get().materials->call_on_items(
-        [](model::material* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-            return true;
-        });
-
-    glob::cache_set_view::get().meshes->call_on_items(
-        [](model::mesh* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            return true;
-        });
+    AGEA_check(result, "Should be not null!");
 
     for (auto& o : glob::level::get()->get_game_objects().get_items())
     {

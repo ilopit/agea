@@ -68,6 +68,9 @@ public:
     void
     propagate_to_global_caches();
 
+    bool
+    prepare_for_rendering();
+
 private:
     core::id m_id;
     mutable utils::path m_path;
