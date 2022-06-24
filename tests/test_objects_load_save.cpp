@@ -22,7 +22,7 @@
 
 using namespace agea;
 
-struct test_load_objects : public testing::Test
+struct test_object_constructor : public testing::Test
 {
     void
     SetUp()
@@ -45,16 +45,18 @@ is_from_EO_cache(model::smart_object* obj)
     return glob::empty_objects_cache::get()->get(obj->get_type_id()) == obj;
 }
 
-TEST_F(test_load_objects, load_component)
+TEST_F(test_object_constructor, load_component)
 {
     auto object_path =
         glob::resource_locator::get()->resource(category::all, "test/test_component_a_2.acom");
 
     ASSERT_FALSE(object_path.empty());
 
-    model::object_constructor_context occ;
-    auto obj = model::object_constructor::class_object_load(
-        utils::path("test/test_component_a_2.acom"), occ);
+    model::cache_set l, g;
+    std::vector<std::shared_ptr<model::smart_object>> objs;
+
+    model::object_constructor_context occ(g.get_ref(), l.get_ref(), &objs);
+    auto obj = model::object_constructor::class_object_load(object_path, occ);
     ASSERT_TRUE(!!obj);
 
     auto component = obj->as<model::game_object_component>();
@@ -75,14 +77,17 @@ TEST_F(test_load_objects, load_component)
     ASSERT_TRUE(result);
 }
 
-TEST_F(test_load_objects, load_object)
+TEST_F(test_object_constructor, load_and_save_object)
 {
     const std::vector<std::string> to_load{
         "test/test_root_component.acom", "test/test_component_a.acom", "test/test_component_b.acom",
         "test/test_component_a_2.acom", "test/test_component_b_2.acom"};
 
-    model::object_constructor_context occ;
-    for (auto name : to_load)
+    model::cache_set l, g;
+    std::vector<std::shared_ptr<model::smart_object>> objs;
+
+    model::object_constructor_context occ(g.get_ref(), l.get_ref(), &objs);
+    for (const auto& name : to_load)
     {
         auto path = glob::resource_locator::get()->resource(category::all, name);
         ASSERT_FALSE(path.empty());
@@ -95,12 +100,10 @@ TEST_F(test_load_objects, load_object)
         glob::resource_locator::get()->resource(category::all, "test/test_object.aobj");
     ASSERT_FALSE(object_path.empty());
 
-    auto obj =
-        model::object_constructor::class_object_load(utils::path("test/test_object.aobj"), occ);
+    auto obj = model::object_constructor::class_object_load(object_path, occ);
     ASSERT_TRUE(!!obj);
 
     ASSERT_EQ(occ.m_local_set.objects->get_size(), to_load.size() + to_load.size() + 1);
-    ASSERT_EQ(occ.m_local_set.objects->get_size(), 0U);
 
     auto game_object = obj->as<model::game_object>();
     ASSERT_TRUE(!!game_object);
