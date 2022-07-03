@@ -76,9 +76,11 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 }
 
 smart_object*
-object_constructor::class_object_load(const utils::path& package_path,
-                                      object_constructor_context& occ)
+object_constructor::class_object_load_internal(const utils::path& package_path,
+                                               object_constructor_context& occ)
 {
+    AGEA_check(occ.m_construction_type == obj_construction_type__class, "Should be only class");
+
     auto full_path = occ.get_full_path(package_path);
 
     serialization::conteiner conteiner;
@@ -88,21 +90,79 @@ object_constructor::class_object_load(const utils::path& package_path,
         return nullptr;
     }
 
-    auto type_id = core::id::from(conteiner["type_id"].as<std::string>());
-    auto class_id = core::id::from(conteiner["id"].as<std::string>());
+    auto obj = object_load_full(conteiner, occ);
+    if (!obj)
+    {
+        return nullptr;
+    }
 
-    AGEA_check(!(occ.m_local_set.objects->has_item(class_id)), "We should not re-load objects");
+    return obj;
+}
 
-    auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
+smart_object*
+object_constructor::class_object_load(const utils::path& package_path,
+                                      object_constructor_context& occ)
+{
+    AGEA_check(occ.m_construction_type == obj_construction_type__nav, "Should be only nav");
 
-    auto empty = eoc_item->META_create_empty_obj();
-    empty->META_set_id(class_id);
+    occ.m_construction_type = obj_construction_type__class;
+    auto obj = class_object_load_internal(package_path, occ);
+    occ.m_construction_type = obj_construction_type__nav;
 
-    object_properties_load(*empty, conteiner, occ);
+    return obj;
+}
 
-    occ.add_obj(empty);
+smart_object*
+object_constructor::instance_object_load_internal(const utils::path& package_path,
+                                                  object_constructor_context& occ)
+{
+    AGEA_check(occ.m_construction_type == obj_construction_type__instance, "Should be only class");
 
-    return empty.get();
+    auto full_path = occ.get_full_path(package_path);
+
+    serialization::conteiner conteiner;
+    if (!serialization::read_container(full_path, conteiner))
+    {
+        ALOG_LAZY_ERROR;
+        return nullptr;
+    }
+
+    auto class_load = conteiner["class_id"].IsDefined();
+    auto id = core::id::from(conteiner["id"].as<std::string>());
+
+    smart_object* obj = nullptr;
+    if (class_load)
+    {
+        auto class_id = core::id::from(conteiner["class_id"].as<std::string>());
+        auto src_obj = occ.find_class_obj(class_id);
+
+        if (!src_obj)
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
+
+        obj = object_load_partial(*src_obj, conteiner, occ);
+    }
+    else
+    {
+        obj = object_load_full(conteiner, occ);
+    }
+
+    return obj;
+}
+
+smart_object*
+object_constructor::instance_object_load(const utils::path& package_path,
+                                         object_constructor_context& occ)
+{
+    AGEA_check(occ.m_construction_type == obj_construction_type__nav, "Should be only nav");
+
+    occ.m_construction_type = obj_construction_type__instance;
+    auto obj = instance_object_load_internal(package_path, occ);
+    occ.m_construction_type = obj_construction_type__nav;
+
+    return obj;
 }
 
 bool
@@ -110,12 +170,41 @@ object_constructor::class_object_save(const smart_object& obj, const utils::path
 {
     serialization::conteiner conteiner;
 
-    conteiner["type_id"] = obj.get_type_id().str();
-    conteiner["id"] = obj.get_id().str();
-
-    if (!object_properties_save(obj, conteiner))
+    if (!object_save_full(conteiner, obj))
     {
         return false;
+    }
+
+    if (!serialization::write_container(object_path, conteiner))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool
+object_constructor::instance_object_save(const smart_object& obj, const utils::path& object_path)
+{
+    serialization::conteiner conteiner;
+
+    auto has_parent_obj = !obj.is_class_obj();
+
+    if (has_parent_obj)
+    {
+        if (!object_save_partial(conteiner, obj))
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
+    }
+    else
+    {
+        if (!object_save_full(conteiner, obj))
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
     }
 
     if (!serialization::write_container(object_path, conteiner))
@@ -131,12 +220,12 @@ object_constructor::object_clone_create(const core::id& object_id,
                                         const core::id& new_object_id,
                                         object_constructor_context& occ)
 {
-    auto obj = occ.m_local_set.objects->get_item(object_id);
+    auto obj = occ.m_class_local_set.objects->get_item(object_id);
 
     if (!obj)
     {
         ALOG_INFO("Cache miss {0} try in global!", object_id.str());
-        obj = occ.m_global_set.objects->get_item(object_id);
+        obj = occ.m_class_global_set.objects->get_item(object_id);
     }
 
     if (!obj)
@@ -155,6 +244,7 @@ object_constructor::object_clone_create(smart_object& obj,
 {
     auto empty = obj.META_create_empty_obj();
     empty->META_set_id(new_object_id);
+    empty->META_set_class_obj(&obj);
     occ.add_obj(empty);
 
     if (!clone_object_properties(obj, *empty, occ))
@@ -163,17 +253,16 @@ object_constructor::object_clone_create(smart_object& obj,
         return nullptr;
     }
 
-    empty->META_set_class_obj(&obj);
-
     return empty.get();
 }
 
 bool
-object_constructor::update_object_properties(smart_object& obj, const serialization::conteiner& jc)
+object_constructor::update_object_properties(smart_object& obj,
+                                             const serialization::conteiner& jc,
+                                             object_constructor_context& occ)
 {
     auto& reflection = *obj.reflection();
 
-    object_constructor_context c;
     for (auto k : jc)
     {
         auto key_name = k.first.as<std::string>();
@@ -183,12 +272,12 @@ object_constructor::update_object_properties(smart_object& obj, const serializat
 
         if (itr == reflection.m_properties.end())
         {
-            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.get_id().str(), key_name);
+            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.get_id().cstr(), key_name);
             continue;
         }
 
         auto& p = *itr;
-        if (!reflection::property::deserialize_update(*p, (blob_ptr)&obj, jc, c))
+        if (!reflection::property::deserialize_update(*p, (blob_ptr)&obj, jc, occ))
         {
             ALOG_ERROR("Property update [{0}:{1}] failed", obj.get_id().str(), key_name);
             return false;
@@ -255,6 +344,96 @@ object_constructor_context&
 default_occ()
 {
     return glob::level::get()->occ();
+}
+
+smart_object*
+object_constructor::object_load_full(serialization::conteiner& sc, object_constructor_context& occ)
+{
+    auto type_id = core::id::from(sc["type_id"].as<std::string>());
+    auto obj_id = core::id::from(sc["id"].as<std::string>());
+
+    auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
+
+    auto empty = eoc_item->META_create_empty_obj();
+    empty->META_set_id(obj_id);
+    occ.add_obj(empty);
+
+    if (!object_properties_load(*empty, sc, occ))
+    {
+        ALOG_LAZY_ERROR;
+        return nullptr;
+    }
+
+    return empty.get();
+}
+
+bool
+object_constructor::object_save_full(serialization::conteiner& sc, const smart_object& obj)
+{
+    sc["type_id"] = obj.get_type_id().str();
+    sc["id"] = obj.get_id().str();
+
+    if (!object_properties_save(obj, sc))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+smart_object*
+object_constructor::object_load_partial(smart_object& prototype_obj,
+                                        serialization::conteiner& sc,
+                                        object_constructor_context& occ)
+{
+    auto empty = prototype_obj.META_create_empty_obj();
+    auto obj_id = core::id::from(sc["id"].as<std::string>());
+
+    empty->META_set_id(obj_id);
+    empty->META_set_class_obj(&prototype_obj);
+    occ.add_obj(empty);
+
+    if (!clone_object_properties(prototype_obj, *empty, occ))
+    {
+        ALOG_LAZY_ERROR;
+        return nullptr;
+    }
+
+    if (!update_object_properties(*empty, sc, occ))
+    {
+        ALOG_LAZY_ERROR;
+        return nullptr;
+    }
+
+    return empty.get();
+}
+
+bool
+object_constructor::object_save_partial(serialization::conteiner& sc, const smart_object& obj)
+{
+    auto class_obj = obj.get_class_obj();
+
+    if (!class_obj)
+    {
+        return false;
+    }
+
+    sc["class_id"] = class_obj->get_id().str();
+    sc["id"] = obj.get_id().str();
+
+    std::vector<reflection::property*> diff;
+    model::object_constructor::diff_object_properties(*class_obj, obj, diff);
+
+    reflection::serialize_context ser_ctx{nullptr, &obj, &sc};
+
+    for (auto& p : diff)
+    {
+        ser_ctx.p = p;
+
+        p->serialization_handler(ser_ctx);
+    }
+
+    return true;
 }
 
 }  // namespace model

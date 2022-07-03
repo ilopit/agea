@@ -12,26 +12,34 @@
 #include "model/package.h"
 
 #include "utils/agea_log.h"
+#include "utils/check.h"
 
 namespace agea
 {
 namespace model
 {
 
-object_constructor_context::object_constructor_context(cache_set_ref global_map,
-                                                       cache_set_ref local_map,
+object_constructor_context::object_constructor_context(cache_set_ref class_global_map,
+                                                       cache_set_ref class_local_map,
+                                                       cache_set_ref instance_global_map,
+                                                       cache_set_ref instance_local_map,
                                                        line_cache* ownable_cache)
     : m_path_prefix()
-    , m_global_set(global_map)
-    , m_local_set(local_map)
+    , m_class_global_set(class_global_map)
+    , m_class_local_set(class_local_map)
+    , m_instance_global_set(instance_global_map)
+    , m_instance_local_set(instance_local_map)
     , m_ownable_cache_ptr(ownable_cache)
 {
     ALOG_TRACE("Created");
 }
 
 object_constructor_context::object_constructor_context()
-    : m_global_set()
-    , m_local_set()
+    : m_path_prefix()
+    , m_class_global_set()
+    , m_class_local_set()
+    , m_instance_global_set()
+    , m_instance_local_set()
     , m_ownable_cache_ptr(nullptr)
 {
 }
@@ -39,12 +47,6 @@ object_constructor_context::object_constructor_context()
 object_constructor_context::~object_constructor_context()
 {
     ALOG_TRACE("Destructed");
-}
-
-bool
-object_constructor_context::propagate_to_io_cache()
-{
-    return true;
 }
 
 utils::path
@@ -63,12 +65,6 @@ object_constructor_context::get_full_path() const
 }
 
 bool
-object_constructor_context::propagate_to_co_cache()
-{
-    return true;
-}
-
-bool
 object_constructor_context::add_obj(std::shared_ptr<smart_object> obj)
 {
     AGEA_check(m_ownable_cache_ptr, "Should exists!");
@@ -78,10 +74,39 @@ object_constructor_context::add_obj(std::shared_ptr<smart_object> obj)
 
     m_ownable_cache_ptr->add_item(std::move(obj));
 
-    m_local_set.objects->add_item(obj_ref);
-    m_local_set.map->add_item(obj_ref);
+    switch (m_construction_type)
+    {
+    case obj_construction_type::obj_construction_type__class:
+        m_class_local_set.objects->add_item(obj_ref);
+        m_class_local_set.map->add_item(obj_ref);
+        break;
+    case obj_construction_type::obj_construction_type__instance:
+        m_instance_local_set.objects->add_item(obj_ref);
+        m_instance_local_set.map->add_item(obj_ref);
+        break;
+    default:
+        AGEA_never("Unsupported type type");
+        break;
+    }
 
     return true;
+}
+
+smart_object*
+object_constructor_context::find_class_obj(const core::id& id)
+{
+    auto obj = m_class_local_set.objects ? m_class_local_set.objects->get_item(id) : nullptr;
+    if (!obj)
+    {
+        obj = m_class_global_set.objects->get_item(id);
+        if (!obj)
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
+    }
+
+    return obj;
 }
 
 }  // namespace model

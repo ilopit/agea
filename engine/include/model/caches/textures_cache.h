@@ -14,7 +14,9 @@ namespace glob
 struct textures_cache : public simple_singleton<::agea::model::textures_cache*>
 {
 };
+struct class_textures_cache : public simple_singleton<::agea::model::textures_cache*>
+{
+};
 
 }  // namespace glob
-
 }  // namespace agea

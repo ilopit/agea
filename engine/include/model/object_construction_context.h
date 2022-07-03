@@ -11,19 +11,25 @@ namespace agea
 namespace model
 {
 
+enum obj_construction_type
+{
+    obj_construction_type__nav = 0,
+    obj_construction_type__class,
+    obj_construction_type__instance
+};
+
 class object_constructor_context
 {
 public:
     object_constructor_context();
 
-    object_constructor_context(cache_set_ref global_map,
-                               cache_set_ref local_map,
+    object_constructor_context(cache_set_ref class_global_map,
+                               cache_set_ref class_local_map,
+                               cache_set_ref instance_global_map,
+                               cache_set_ref instance_local_map,
                                line_cache* ownable_cache);
 
     ~object_constructor_context();
-
-    bool
-    propagate_to_io_cache();
 
     utils::path
     get_full_path(const utils::path& relative_path) const;
@@ -32,15 +38,20 @@ public:
     get_full_path() const;
 
     bool
-    propagate_to_co_cache();
-
-    bool
     add_obj(std::shared_ptr<smart_object> obj);
+
+    smart_object*
+    find_class_obj(const core::id& id);
 
     utils::path m_path_prefix;
 
-    cache_set_ref m_global_set;
-    cache_set_ref m_local_set;
+    obj_construction_type m_construction_type = obj_construction_type::obj_construction_type__nav;
+
+    cache_set_ref m_class_global_set;
+    cache_set_ref m_class_local_set;
+    cache_set_ref m_instance_global_set;
+    cache_set_ref m_instance_local_set;
+
     line_cache* m_ownable_cache_ptr;
 };
 }  // namespace model

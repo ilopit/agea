@@ -33,7 +33,9 @@ private:
     T*& m_parent;
 };
 
-template <typename T>
+#define AGEA_SINGLETONE_SEED __COUNTER__
+
+template <typename T, int k = 1>
 class weird_singleton
 {
 public:
@@ -67,7 +69,7 @@ private:
     inline static T* s_obj = nullptr;
 };
 
-template <typename T>
+template <typename T, int seed = 1>
 class simple_singleton
 {
 public:

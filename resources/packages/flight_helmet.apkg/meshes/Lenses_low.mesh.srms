@@ -1,7 +1,0 @@
----
-type_id: mesh
-id: Lenses_low_mesh
-index_size: 4
-vertex_format: PNCV_F32
-indices: meshes/extra/Lenses_low.indx
-vertices: meshes/extra/Lenses_low.vert

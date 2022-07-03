@@ -15,5 +15,10 @@ namespace glob
 struct meshes_cache : public simple_singleton<::agea::model::meshes_cache*>
 {
 };
+
+struct class_meshes_cache : public simple_singleton<::agea::model::meshes_cache*>
+{
+};
+
 }  // namespace glob
 }  // namespace agea

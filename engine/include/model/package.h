@@ -16,13 +16,13 @@ class package
 {
 public:
     static bool
-    load_package(const utils::path& path, package& p, cache_set_ref global_cs);
+    load_package(const utils::path& path,
+                 package& p,
+                 cache_set_ref class_global_set,
+                 cache_set_ref instance_global_set);
 
     static bool
     save_package(const utils::path& path, const package& p);
-
-    static bool
-    load_package_conteiners(architype id, package& p);
 
     package();
     ~package();
@@ -62,7 +62,7 @@ public:
     cache_set&
     get_cache()
     {
-        return m_local_cs;
+        return m_instance_local_set;
     }
 
     void
@@ -75,8 +75,11 @@ private:
     core::id m_id;
     mutable utils::path m_path;
 
-    cache_set m_local_cs;
-    cache_set_ref m_global_cs;
+    cache_set_ref m_class_global_set;
+    cache_set_ref m_instance_global_set;
+
+    cache_set m_class_local_set;
+    cache_set m_instance_local_set;
 
     line_cache m_objects;
 

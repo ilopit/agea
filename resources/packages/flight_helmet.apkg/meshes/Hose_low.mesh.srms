@@ -1,7 +1,0 @@
----
-type_id: mesh
-id: Hose_low_mesh
-index_size: 4
-vertex_format: PNCV_F32
-indices: meshes/extra/Hose_low.indx
-vertices: meshes/extra/Hose_low.vert

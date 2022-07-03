@@ -29,16 +29,9 @@ struct test_load_level : public testing::Test
     {
         m_resource_locator = glob::resource_locator::create();
         m_package_manager = glob::package_manager::create();
-        m_cache_set = glob::cache_set::create();
 
-        glob::cache_set_view::set(glob::cache_set::getr().get_ref());
-        glob::materials_cache::set(glob::cache_set_view::get().materials);
-        glob::meshes_cache::set(glob::cache_set_view::get().meshes);
-        glob::textures_cache::set(glob::cache_set_view::get().textures);
-        glob::objects_cache::set(glob::cache_set_view::get().objects);
-        glob::components_cache::set(glob::cache_set_view::get().components);
-
-        glob::caches_map::set(glob::cache_set::get()->map.get());
+        glob::init_global_caches(m_class_objects_cache_set, m_objects_cache_set);
+        std::filesystem::remove_all("result");
     }
 
     void
@@ -49,28 +42,30 @@ struct test_load_level : public testing::Test
 
     std::unique_ptr<closure<model::package_manager>> m_package_manager;
     std::unique_ptr<closure<resource_locator>> m_resource_locator;
-    std::unique_ptr<closure<model::cache_set>> m_cache_set;
+    std::unique_ptr<closure<model::cache_set>> m_objects_cache_set;
+    std::unique_ptr<closure<model::cache_set>> m_class_objects_cache_set;
 };
 
 TEST_F(test_load_level, load_level)
 {
     model::level l;
 
-    auto path = glob::resource_locator::get()->resource(category::all, "test/test_level.alvl");
+    auto path = glob::resource_locator::get()->resource(category::levels, "test.alvl");
 
     ASSERT_TRUE(!path.empty());
-    auto result =
-        model::level_constructor::load_level_path(l, path, glob::cache_set::getr().get_ref());
+    auto result = model::level_constructor::load_level_path(
+        l, path, glob::class_objects_cache_set::getr().get_ref(),
+        glob::objects_cache_set::getr().get_ref());
     ASSERT_TRUE(result);
 
     {
-        auto obj = l.find_game_object(ID("instance_test_obj_1"));
+        auto obj = l.find_game_object(ID("test_instanded_game_object_1"));
         ASSERT_TRUE(obj);
 
         auto comps = obj->get_components();
 
-        ASSERT_EQ(obj->get_id(), ID("instance_test_obj_1"));
-        ASSERT_EQ(comps[0]->get_id(), ID("instance_test_comp_1"));
+        ASSERT_EQ(obj->get_id(), ID("test_instanded_game_object_1"));
+        ASSERT_EQ(comps[0]->get_id(), ID("test_instanded_game_object_1/test_root_component"));
         auto game_comp = comps[0]->as<model::game_object_component>();
 
         const auto expected_pos = glm::vec3{-10.f, -10.f, 0.f};
@@ -82,20 +77,20 @@ TEST_F(test_load_level, load_level)
         const auto expected_scale = glm::vec3{5.f, 5.f, 5.f};
         ASSERT_EQ(game_comp->get_scale(), expected_scale);
 
-        ASSERT_EQ(comps[1]->get_id(), ID("instance_test_obj_1/test_component_a"));
-        ASSERT_EQ(comps[2]->get_id(), ID("instance_test_obj_1/test_component_b"));
-        ASSERT_EQ(comps[3]->get_id(), ID("instance_test_obj_1/test_component_a_2"));
-        ASSERT_EQ(comps[4]->get_id(), ID("instance_test_obj_1/test_component_b_2"));
+        ASSERT_EQ(comps[1]->get_id(), ID("test_instanded_game_object_1/test_component_a"));
+        ASSERT_EQ(comps[2]->get_id(), ID("test_instanded_game_object_1/test_component_b"));
+        ASSERT_EQ(comps[3]->get_id(), ID("test_instanded_game_object_1/test_component_a_2"));
+        ASSERT_EQ(comps[4]->get_id(), ID("test_instanded_game_object_1/test_component_b_2"));
     }
 
     {
-        auto obj = l.find_game_object(ID("instance_test_obj_2"));
+        auto obj = l.find_game_object(ID("test_instanded_game_object_2"));
         ASSERT_TRUE(obj);
 
         auto comps = obj->get_components();
 
-        ASSERT_EQ(obj->get_id(), ID("instance_test_obj_2"));
-        ASSERT_EQ(comps[0]->get_id(), ID("instance_test_comp_2"));
+        ASSERT_EQ(obj->get_id(), ID("test_instanded_game_object_2"));
+        ASSERT_EQ(comps[0]->get_id(), ID("test_instanded_game_object_2/test_root_component"));
         auto game_comp = comps[0]->as<model::game_object_component>();
 
         const auto expected_pos = glm::vec3{-5.f, -10.f, 0.f};
@@ -107,16 +102,16 @@ TEST_F(test_load_level, load_level)
         const auto expected_scale = glm::vec3{3.f, 3.f, 3.f};
         ASSERT_EQ(game_comp->get_scale(), expected_scale);
 
-        ASSERT_EQ(comps[1]->get_id(), ID("instance_test_obj_2/test_component_a"));
-        ASSERT_EQ(comps[2]->get_id(), ID("instance_test_obj_2/test_component_b"));
-        ASSERT_EQ(comps[3]->get_id(), ID("instance_test_obj_2/test_component_a_2"));
-        ASSERT_EQ(comps[4]->get_id(), ID("instance_test_obj_2/test_component_b_2"));
+        ASSERT_EQ(comps[1]->get_id(), ID("test_instanded_game_object_2/test_component_a"));
+        ASSERT_EQ(comps[2]->get_id(), ID("test_instanded_game_object_2/test_component_b"));
+        ASSERT_EQ(comps[3]->get_id(), ID("test_instanded_game_object_2/test_component_a_2"));
+        ASSERT_EQ(comps[4]->get_id(), ID("test_instanded_game_object_2/test_component_b_2"));
     }
 
     utils::path save_path("result");
 
     model::level_constructor::save_level(l, save_path);
 
-    result = utils::file_utils::compare_files(save_path, path);
+    result = utils::file_utils::compare_folders(save_path, path);
     ASSERT_TRUE(result);
 }

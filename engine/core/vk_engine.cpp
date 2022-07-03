@@ -80,19 +80,10 @@ vulkan_engine::init()
     m_resource_locator = glob::resource_locator::create();
     m_render_loader = glob::render_loader::create();
     m_render_device = glob::render_device::create();
-    m_cache_set = glob::cache_set::create();
+
+    glob::init_global_caches(m_class_objects_cache_set, m_objects_cache_set);
+
     m_package_manager = glob::package_manager::create();
-
-    glob::cache_set_view::set(glob::cache_set::getr().get_ref());
-
-    glob::materials_cache::set(glob::cache_set_view::get().materials);
-    glob::meshes_cache::set(glob::cache_set_view::get().meshes);
-    glob::textures_cache::set(glob::cache_set_view::get().textures);
-    glob::objects_cache::set(glob::cache_set_view::get().objects);
-    glob::components_cache::set(glob::cache_set_view::get().components);
-
-    glob::caches_map::set(glob::cache_set::get()->map.get());
-
     m_ui = glob::ui::create();
     m_editor_cli = glob::cli::create();
 
@@ -584,7 +575,8 @@ void
 vulkan_engine::init_scene()
 {
     auto result = model::level_constructor::load_level_id(
-        *glob::level::get(), core::id::from("demo.alvl"), glob::cache_set_view::get());
+        *glob::level::get(), core::id::from("demo.alvl"), glob::class_objects_cache_set_view::get(),
+        glob::objects_cache_set_view::get());
 
     AGEA_check(result, "Should be not null!");
 

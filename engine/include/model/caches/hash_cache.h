@@ -143,8 +143,13 @@ private:
 
 namespace glob
 {
-struct caches_map : public simple_singleton<::agea::model::caches_map*>
+struct object_caches_map : public simple_singleton<::agea::model::caches_map*>
 {
 };
+
+struct class_object_caches_map : public simple_singleton<::agea::model::caches_map*>
+{
+};
+
 }  // namespace glob
 }  // namespace agea

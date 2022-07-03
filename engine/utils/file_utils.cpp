@@ -83,6 +83,7 @@ file_utils::compare_folders(const utils::path& a, const utils::path& b)
 
     if (left_files != right_files)
     {
+        ALOG_INFO("size missmatch {0} != {1}", left_files.size(), right_files.size());
         return false;
     }
 
@@ -95,6 +96,7 @@ file_utils::compare_folders(const utils::path& a, const utils::path& b)
 
         if (!compare_files(left, right))
         {
+            ALOG_INFO("{0} != {1}", left.str(), right.str());
             return false;
         }
     }

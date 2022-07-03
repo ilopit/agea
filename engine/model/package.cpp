@@ -4,6 +4,7 @@
 #include "model/object_constructor.h"
 #include "model/object_construction_context.h"
 #include "model/caches/hash_cache.h"
+#include "model/objects_loader.h"
 
 #include "model/rendering/texture.h"
 #include "model/rendering/material.h"
@@ -61,21 +62,34 @@ package::~package()
 }
 
 bool
-package::load_package(const utils::path& path, package& p, cache_set_ref global_cs)
+package::load_package(const utils::path& path,
+                      package& p,
+                      cache_set_ref class_global_set,
+                      cache_set_ref instance_global_set)
 {
     ALOG_INFO("Loading package {0}", path.str());
 
-    p.m_global_cs = global_cs;
+    p.m_class_global_set = class_global_set;
+    p.m_instance_global_set = instance_global_set;
 
     p.m_path = path;
     p.m_id = core::id::from(path.fs().filename().generic_string());
-    p.m_occ = std::make_unique<object_constructor_context>(p.m_global_cs, p.m_local_cs.get_ref(),
-                                                           &p.m_objects);
-    p.m_occ->m_path_prefix = utils::path(p.m_path);
+
+    p.m_occ = std::make_unique<object_constructor_context>(
+        p.m_class_global_set, p.m_class_local_set.get_ref(), p.m_instance_global_set,
+        p.m_instance_local_set.get_ref(), &p.m_objects);
+
+    p.m_occ->m_path_prefix = p.m_path;
 
     for (auto id : k_enums_to_handle)
     {
-        if (!load_package_conteiners(id, p))
+        if (!conteiner_loader::load_objects_conteiners(id, true, path, *p.m_occ))
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
+
+        if (!conteiner_loader::load_objects_conteiners(id, false, path, *p.m_occ))
         {
             ALOG_LAZY_ERROR;
             return false;
@@ -103,51 +117,19 @@ package::save_package(const utils::path& path, const package& p)
         std::filesystem::create_directories(path.fs());
     }
 
-    for (auto& o : p.m_objects.get_items())
+    for (auto id : k_enums_to_handle)
     {
-        auto obj_path = p.get_resource_path(utils::path(get_name(o->get_architype_id())));
-        if (!obj_path.exists())
-        {
-            std::filesystem::create_directories(obj_path.fs());
-        }
-
-        obj_path.append(o->get_id().str() + ".aobj");
-
-        if (!object_constructor::class_object_save(*o, path))
+        if (!conteiner_loader::save_objects_conteiners(
+                id, true, path, p.m_class_local_set.get_ref(), p.m_instance_local_set.get_ref()))
         {
             ALOG_LAZY_ERROR;
             return false;
         }
-    }
 
-    return true;
-}
-
-bool
-package::load_package_conteiners(architype id, package& p)
-{
-    auto module_path = p.get_resource_path(get_name(id));
-
-    if (!module_path.exists())
-    {
-        ALOG_WARN("There is no [{0}] conainer in [{1}] package!", get_name(id), p.get_id().cstr());
-        return true;
-    }
-
-    for (auto& resource : std::filesystem::directory_iterator(module_path.fs()))
-    {
-        if (resource.is_directory())
+        if (!conteiner_loader::save_objects_conteiners(
+                id, false, path, p.m_class_local_set.get_ref(), p.m_instance_local_set.get_ref()))
         {
-            continue;
-        }
-
-        auto package_path = get_name(id) / resource.path().filename();
-
-        auto obj =
-            model::object_constructor::class_object_load(utils::path(package_path), *p.m_occ);
-
-        if (!obj)
-        {
+            ALOG_LAZY_ERROR;
             return false;
         }
     }
@@ -158,11 +140,19 @@ package::load_package_conteiners(architype id, package& p)
 void
 package::propagate_to_global_caches()
 {
-    for (auto& c : m_local_cs.map->get_items())
+    for (auto& c : m_class_local_set.map->get_items())
     {
         for (auto& i : c.second->get_items())
         {
-            m_global_cs.map->get_cache(c.first).add_item(*i.second);
+            m_class_global_set.map->get_cache(c.first).add_item(*i.second);
+        }
+    }
+
+    for (auto& c : m_instance_local_set.map->get_items())
+    {
+        for (auto& i : c.second->get_items())
+        {
+            m_instance_global_set.map->get_cache(c.first).add_item(*i.second);
         }
     }
 }
@@ -170,7 +160,7 @@ package::propagate_to_global_caches()
 bool
 package::prepare_for_rendering()
 {
-    auto result = m_local_cs.textures->call_on_items(
+    auto result = m_class_local_set.textures->call_on_items(
         [](model::texture* t)
         {
             if (!t->prepare_for_rendering())
@@ -187,7 +177,7 @@ package::prepare_for_rendering()
         return result;
     }
 
-    result = m_local_cs.materials->call_on_items(
+    result = m_class_local_set.materials->call_on_items(
         [](model::material* t)
         {
             if (!t->prepare_for_rendering())
@@ -203,7 +193,52 @@ package::prepare_for_rendering()
         return result;
     }
 
-    m_local_cs.meshes->call_on_items(
+    result = m_class_local_set.meshes->call_on_items(
+        [](model::mesh* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            return true;
+        });
+
+    result = m_instance_local_set.textures->call_on_items(
+        [](model::texture* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+
+            return true;
+        });
+
+    if (!result)
+    {
+        return result;
+    }
+
+    result = m_instance_local_set.materials->call_on_items(
+        [](model::material* t)
+        {
+            if (!t->prepare_for_rendering())
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
+            return true;
+        });
+
+    if (!result)
+    {
+        return result;
+    }
+
+    result = m_instance_local_set.meshes->call_on_items(
         [](model::mesh* t)
         {
             if (!t->prepare_for_rendering())

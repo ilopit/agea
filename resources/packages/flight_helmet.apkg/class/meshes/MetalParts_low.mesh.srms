@@ -1,0 +1,7 @@
+---
+type_id: mesh
+id: MetalParts_low_mesh
+index_size: 4
+vertex_format: PNCV_F32
+indices: class/meshes/extra/MetalParts_low.indx
+vertices: class/meshes/extra/MetalParts_low.vert

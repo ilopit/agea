@@ -15,5 +15,8 @@ struct materials_cache : public simple_singleton<::agea::model::materials_cache*
 {
 };
 
+struct class_materials_cache : public simple_singleton<::agea::model::materials_cache*>
+{
+};
 }  // namespace glob
 }  // namespace agea

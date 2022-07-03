@@ -100,7 +100,8 @@ private:
 
     // clang-format off
     std::unique_ptr<closure<model::level>>               m_current_level;
-    std::unique_ptr<closure<model::cache_set>>           m_cache_set;
+    std::unique_ptr<closure<model::cache_set>>           m_class_objects_cache_set;
+    std::unique_ptr<closure<model::cache_set>>           m_objects_cache_set;
     std::unique_ptr<closure<model::package_manager>>     m_package_manager;
 
     std::unique_ptr<closure<native_window>>              m_window;

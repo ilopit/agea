@@ -29,11 +29,24 @@ class object_constructor
 {
 public:
     static smart_object*
-    class_object_load(const utils::path& package_path,
-                      object_constructor_context& occ = default_occ());
+    class_object_load(const utils::path& path, object_constructor_context& occ = default_occ());
+
+    static smart_object*
+    class_object_load_internal(const utils::path& path,
+                               object_constructor_context& occ = default_occ());
+
+    static smart_object*
+    instance_object_load(const utils::path& path, object_constructor_context& occ = default_occ());
+
+    static smart_object*
+    instance_object_load_internal(const utils::path& path,
+                                  object_constructor_context& occ = default_occ());
 
     static bool
     class_object_save(const smart_object& obj, const utils::path& object_path);
+
+    static bool
+    instance_object_save(const smart_object& obj, const utils::path& object_path);
 
     static smart_object*
     object_clone_create(const core::id& src_object_id,
@@ -46,7 +59,9 @@ public:
                         object_constructor_context& occ);
 
     static bool
-    update_object_properties(smart_object& g, const serialization::conteiner& c);
+    update_object_properties(smart_object& g,
+                             const serialization::conteiner& c,
+                             object_constructor_context& occ);
 
     static bool
     clone_object_properties(smart_object& from, smart_object& to, object_constructor_context& occ);
@@ -56,7 +71,6 @@ public:
                            const smart_object& right,
                            std::vector<reflection::property*>& diff);
 
-private:
     static bool
     read_container(const std::string& object_id, serialization::conteiner& conteiner, category c);
 
@@ -67,6 +81,20 @@ private:
 
     static bool
     object_properties_save(const smart_object& obj, serialization::conteiner& jc);
+
+    static smart_object*
+    object_load_full(serialization::conteiner& sc, object_constructor_context& occ);
+
+    static bool
+    object_save_full(serialization::conteiner& sc, const smart_object& obj);
+
+    static smart_object*
+    object_load_partial(smart_object& prototype_obj,
+                        serialization::conteiner& sc,
+                        object_constructor_context& occ);
+
+    static bool
+    object_save_partial(serialization::conteiner& sc, const smart_object& obj);
 };
 
 }  // namespace model

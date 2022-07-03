@@ -52,7 +52,8 @@ public:
 
 private:
     cache_set m_local_cs;
-    cache_set_ref m_global_cs;
+    cache_set_ref m_global_object_cs;
+    cache_set_ref m_global_class_object_cs;
 
     line_cache m_objects;
     std::vector<core::id> m_package_ids;

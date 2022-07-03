@@ -34,7 +34,7 @@ public:
     cache_set(cache_set&&) noexcept;
 
     cache_set_ref
-    get_ref();
+    get_ref() const;
 
     std::unique_ptr<objects_cache> objects;
     std::unique_ptr<components_cache> components;
@@ -50,13 +50,28 @@ public:
 
 namespace glob
 {
-struct cache_set_view : public simple_singleton<::agea::model::cache_set_ref>
+struct class_objects_cache_set_view
+    : public simple_singleton<::agea::model::cache_set_ref, AGEA_SINGLETONE_SEED>
 {
 };
 
-struct cache_set : public weird_singleton<::agea::model::cache_set>
+struct objects_cache_set_view
+    : public simple_singleton<::agea::model::cache_set_ref, AGEA_SINGLETONE_SEED>
 {
 };
+
+struct class_objects_cache_set
+    : public weird_singleton<::agea::model::cache_set, AGEA_SINGLETONE_SEED>
+{
+};
+
+struct objects_cache_set : public weird_singleton<::agea::model::cache_set, AGEA_SINGLETONE_SEED>
+{
+};
+
+void
+init_global_caches(std::unique_ptr<closure<model::cache_set>>& class_objects_cache_set,
+                   std::unique_ptr<closure<model::cache_set>>& objects_cache_set);
 
 }  // namespace glob
 

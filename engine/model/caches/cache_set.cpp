@@ -7,6 +7,7 @@
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
 #include "model/caches/textures_cache.h"
+#include "model/caches/objects_cache.h"
 
 #include "model/model_fwds.h"
 
@@ -35,7 +36,7 @@ cache_set::cache_set()
 cache_set::cache_set(cache_set&&) noexcept = default;
 
 cache_set_ref
-cache_set::get_ref()
+cache_set::get_ref() const
 {
     cache_set_ref csf;
 
@@ -56,4 +57,32 @@ cache_set::operator=(cache_set&&) noexcept = default;
 cache_set::~cache_set() = default;
 
 }  // namespace model
+
+void
+glob::init_global_caches(std::unique_ptr<closure<model::cache_set>>& class_objects_cache_set,
+                         std::unique_ptr<closure<model::cache_set>>& objects_cache_set)
+{
+    class_objects_cache_set = glob::class_objects_cache_set::create();
+
+    glob::class_objects_cache_set_view::set(glob::class_objects_cache_set::getr().get_ref());
+    glob::class_object_caches_map::set(glob::class_objects_cache_set::get()->map.get());
+
+    glob::class_materials_cache::set(glob::class_objects_cache_set_view::get().materials);
+    glob::class_meshes_cache::set(glob::class_objects_cache_set_view::get().meshes);
+    glob::class_textures_cache::set(glob::class_objects_cache_set_view::get().textures);
+    glob::class_objects_cache::set(glob::class_objects_cache_set_view::get().objects);
+    glob::class_components_cache::set(glob::class_objects_cache_set_view::get().components);
+
+    objects_cache_set = glob::objects_cache_set::create();
+
+    glob::objects_cache_set_view::set(glob::objects_cache_set::getr().get_ref());
+    glob::object_caches_map::set(glob::objects_cache_set::get()->map.get());
+
+    glob::materials_cache::set(glob::objects_cache_set_view::get().materials);
+    glob::meshes_cache::set(glob::objects_cache_set_view::get().meshes);
+    glob::textures_cache::set(glob::objects_cache_set_view::get().textures);
+    glob::objects_cache::set(glob::objects_cache_set_view::get().objects);
+    glob::components_cache::set(glob::objects_cache_set_view::get().components);
+}
+
 }  // namespace agea

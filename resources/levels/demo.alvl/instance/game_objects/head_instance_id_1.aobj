@@ -1,0 +1,29 @@
+class_id: flight_helmet
+id: flight_helmet_instance_1
+components:
+  - id: flight_helmet_instance_1/root_component
+    order_idx: 0
+    position:
+      x: -5
+      y: -5
+      z: 0
+    rotation:
+      x: 2
+      y: 3
+      z: 4
+    scale:
+      x: 3
+      y: 3
+      z: 3
+  - id: flight_helmet_instance_1/GlassPlastic_low
+    order_idx: 1
+  - id: flight_helmet_instance_1/Hose_low
+    order_idx: 2
+  - id: flight_helmet_instance_1/LeatherParts_low
+    order_idx: 3
+  - id: flight_helmet_instance_1/Lenses_low
+    order_idx: 4
+  - id: flight_helmet_instance_1/MetalParts_low
+    order_idx: 5
+  - id: flight_helmet_instance_1/RubberWood_low
+    order_idx: 6

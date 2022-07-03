@@ -9,9 +9,10 @@
 #include "model/object_construction_context.h"
 #include "model/smart_object.h"
 #include "model/components/component.h"
-
+#include "model/caches/class_object_cache.h"
+#include "model/caches/cache_set.h"
 #include "model/object_constructor.h"
-
+#include "model/caches/objects_cache.h"
 #include "serialization/serialization.h"
 
 namespace agea
@@ -26,7 +27,7 @@ namespace
 model::component*
 load_component(serialization::conteiner& sc, model::object_constructor_context& occ)
 {
-    auto class_id = core::id::from(sc["object_class"].as<std::string>());
+    auto class_id = core::id::from(sc["class_id"].as<std::string>());
     auto id = core::id::from(sc["id"].as<std::string>());
 
     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
@@ -37,7 +38,7 @@ load_component(serialization::conteiner& sc, model::object_constructor_context& 
         return false;
     }
 
-    if (!model::object_constructor::update_object_properties(*obj, sc))
+    if (!model::object_constructor::update_object_properties(*obj, sc, occ))
     {
         ALOG_ERROR("object [{0}] update failed", class_id.cstr());
         return false;
@@ -67,7 +68,26 @@ game_object_components_deserialize(deserialize_context& dc)
     {
         auto item = items[i];
         auto idx = item["order_idx"].as<std::uint32_t>();
-        r[idx] = load_component(item, *dc.occ);
+        //  r[idx] = load_component(item, *dc.occ);
+
+        auto class_id = core::id::from(item["class_id"].as<std::string>());
+        auto obj = dc.occ->m_class_local_set.objects->get_item(class_id);
+
+        if (!obj)
+        {
+            ALOG_INFO("Cache miss {0} try in global!", class_id.str());
+            obj = dc.occ->m_class_global_set.objects->get_item(class_id);
+        }
+
+        if (!obj)
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
+
+        auto cobj = model::object_constructor::object_load_partial(*obj, item, *dc.occ);
+
+        r[idx] = cobj->as<model::component>();
     }
 
     return true;
@@ -92,7 +112,7 @@ game_object_components_serialize(serialize_context& dc)
             auto class_component = instance_component->get_class_obj();
 
             serialization::conteiner component_conteiner;
-            component_conteiner["object_class"] = class_component->get_id().str();
+            component_conteiner["class_id"] = class_component->get_id().str();
             component_conteiner["id"] = instance_component->get_id().str();
 
             reflection::serialize_context internal_sc{nullptr, instance_component,
@@ -124,7 +144,7 @@ game_object_components_serialize(serialize_context& dc)
         auto& parent_components = extract<std::vector<model::component*>>(
             class_obj.get_class_obj()->as_blob() + dc.p->offset);
 
-        AGEA_check(obj_components.size() == parent_components.size(), "Shoild be same size!");
+        AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
 
         for (size_t i = 0; i < obj_components.size(); ++i)
         {
@@ -139,21 +159,17 @@ game_object_components_serialize(serialize_context& dc)
             model::object_constructor::diff_object_properties(*class_component, *obj_component,
                                                               diff);
 
-            if (!diff.empty())
-            {
-                component_conteiner["id"] = obj_component->get_id().str();
-                component_conteiner["order_idx"] = obj_component->get_order_idx();
-            }
+            component_conteiner["id"] = obj_component->get_id().str();
+            component_conteiner["order_idx"] = obj_component->get_order_idx();
+
             for (auto& p : diff)
             {
                 internal_sc.p = p;
 
                 p->serialization_handler(internal_sc);
             }
-            if (!diff.empty())
-            {
-                components_conteiner.push_back(component_conteiner);
-            }
+
+            components_conteiner.push_back(component_conteiner);
         }
 
         conteiner[dc.p->name] = components_conteiner;
@@ -163,32 +179,10 @@ game_object_components_serialize(serialize_context& dc)
 }
 
 bool
-game_object_components_compare(compare_context& ctx)
+game_object_components_compare(compare_context&)
 {
-    auto& dst_components =
-        extract<std::vector<model::smart_object*>>(ctx.dst_obj->as_blob() + ctx.p->offset);
-    auto& src_components =
-        extract<std::vector<model::smart_object*>>(ctx.src_obj->as_blob() + ctx.p->offset);
-
-    if (dst_components.size() != src_components.size())
-    {
-        return false;
-    }
-
-    for (size_t i = 0; i < dst_components.size(); ++i)
-    {
-        std::vector<reflection::property*> props;
-
-        model::object_constructor::diff_object_properties(*dst_components[i], *src_components[i],
-                                                          props);
-
-        if (!props.empty())
-        {
-            return false;
-        }
-    }
-
-    return true;
+    // Always different because of IDS
+    return false;
 }
 
 bool
@@ -203,8 +197,12 @@ game_object_components_copy(copy_context& ctx)
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        ctx.src_property->types_copy_handler(*ctx.src_obj, *ctx.dst_obj, (blob_ptr)&src_col[i],
-                                             (blob_ptr)&dst_col[i], *ctx.occ);
+        auto candidate_id = core::id::from(ctx.dst_obj->get_id().str() + "/" +
+                                           src_col[i]->get_class_obj()->get_id().str());
+
+        auto p =
+            model::object_constructor::object_clone_create(*src_col[i], candidate_id, *ctx.occ);
+        dst_col[i] = p;
     }
 
     return true;

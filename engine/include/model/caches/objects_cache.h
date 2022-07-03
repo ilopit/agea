@@ -15,6 +15,10 @@ struct objects_cache : public simple_singleton<::agea::model::objects_cache*>
 {
 };
 
+struct class_objects_cache : public simple_singleton<::agea::model::objects_cache*>
+{
+};
+
 }  // namespace glob
 
 }  // namespace agea

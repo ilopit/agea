@@ -1,0 +1,22 @@
+type_id: mesh_object
+id: test_class_game_object
+components:
+  - class_id: test_root_component
+    id: test_class_game_object/test_root_component
+    order_idx: 0
+  - class_id: test_component_a
+    id: test_class_game_object/test_component_a
+    order_idx: 1
+    parent_idx: 0
+  - class_id: test_component_b
+    id: test_class_game_object/test_component_b
+    order_idx: 2
+    parent_idx: 0
+  - class_id: test_component_a_2
+    id: test_class_game_object/test_component_a_2
+    order_idx: 3
+    parent_idx: 2
+  - class_id: test_component_b_2
+    id: test_class_game_object/test_component_b_2
+    order_idx: 4
+    parent_idx: 2

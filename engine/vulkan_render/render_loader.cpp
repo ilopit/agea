@@ -131,7 +131,7 @@ load_image_from_file_r(const std::string& file, allocated_image& outImage)
 
     if (!pixels)
     {
-        std::cout << "Failed to load texture file " << file << std::endl;
+        ALOG_LAZY_ERROR;
         return false;
     }
 
@@ -174,7 +174,7 @@ load_1x1_image_from_color(const std::string& color, allocated_image& outImage)
     allocated_buffer stagingBuffer =
         device->create_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-    void* data;
+    void* data = nullptr;
     vmaMapMemory(device->allocator(), stagingBuffer.allocation(), &data);
 
     memcpy(data, color_data.data(), static_cast<size_t>(size));
@@ -343,7 +343,11 @@ loader::load_texture(model::texture& t)
 
     if (t.get_base_color().front() == '#')
     {
-        load_1x1_image_from_color(t.get_base_color(), td->image);
+        if (!load_1x1_image_from_color(t.get_base_color(), td->image))
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
     }
     else
     {
@@ -353,7 +357,11 @@ loader::load_texture(model::texture& t)
 
         auto color_path = p->get_resource_path(t.get_base_color());
 
-        load_image_from_file_r(color_path.str(), td->image);
+        if (!load_image_from_file_r(color_path.str(), td->image))
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
     }
 
     VkImageViewCreateInfo imageinfo = vk_init::imageview_create_info(

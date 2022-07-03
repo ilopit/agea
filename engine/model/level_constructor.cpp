@@ -8,6 +8,7 @@
 #include "model/object_construction_context.h"
 #include "model/object_constructor.h"
 #include "model/package_manager.h"
+#include "model/objects_loader.h"
 
 #include "core/fs_locator.h"
 #include "core/id.h"
@@ -24,27 +25,43 @@ namespace agea
 namespace model
 {
 
+namespace
+{
+
+const std::vector<architype> k_enums_to_handle{architype::component, architype::game_object};
+}
+
 bool
-level_constructor::load_level_id(level& l, const core::id& id, cache_set_ref global_cs)
+level_constructor::load_level_id(level& l,
+                                 const core::id& id,
+                                 cache_set_ref global_class_cs,
+                                 cache_set_ref global_instances_cs)
 {
     ALOG_INFO("Begin level loading with id {0}", id.cstr());
 
     auto path = glob::resource_locator::get()->resource(category::levels, id.str());
 
-    return load_level_path(l, path, global_cs);
+    return load_level_path(l, path, global_class_cs, global_instances_cs);
 }
 
 bool
-level_constructor::load_level_path(level& l, const utils::path& path, cache_set_ref global_cs)
+level_constructor::load_level_path(level& l,
+                                   const utils::path& path,
+                                   cache_set_ref global_class_cs,
+                                   cache_set_ref global_instances_cs)
 {
     ALOG_INFO("Begin level loading with path {0}", path.str());
-    l.m_global_cs = global_cs;
+    l.m_global_class_object_cs = global_class_cs;
+    l.m_global_object_cs = global_instances_cs;
 
-    l.m_occ = std::make_unique<object_constructor_context>(l.m_global_cs, l.m_local_cs.get_ref(),
-                                                           &l.m_objects);
+    l.m_occ = std::make_unique<object_constructor_context>(l.m_global_class_object_cs,
+                                                           cache_set_ref{}, l.m_global_object_cs,
+                                                           l.m_local_cs.get_ref(), &l.m_objects);
 
+    auto root_path = path;
+    root_path.append("root.cfg");
     serialization::conteiner conteiner;
-    if (!serialization::read_container(path, conteiner))
+    if (!serialization::read_container(root_path, conteiner))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -65,65 +82,18 @@ level_constructor::load_level_path(level& l, const utils::path& path, cache_set_
         }
     }
 
-    auto groups_count = conteiner["instance_groups"].size();
-
-    if (groups_count == 0)
+    for (auto id : k_enums_to_handle)
     {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    for (unsigned idx = 0; idx < groups_count; ++idx)
-    {
-        auto json_group = conteiner["instance_groups"][idx];
-
-        ALOG_INFO("Level : group {0}", json_group["object_class"].as<std::string>());
-
-        auto class_id = core::id::from(json_group["object_class"].as<std::string>());
-        ALOG_INFO("Level : class_id {0} instances", class_id.str());
-
-        auto items = json_group["instances"];
-        auto items_size = items.size();
-
-        auto class_obj = l.m_global_cs.objects->get_item(class_id);
-
-        if (!class_obj)
+        if (!conteiner_loader::load_objects_conteiners(id, false, path, *l.m_occ))
         {
             ALOG_LAZY_ERROR;
             return false;
         }
+    }
 
-        for (unsigned i = 0; i < items_size; ++i)
-        {
-            auto item = items[i];
-
-            auto instance = object_constructor::object_clone_create(
-                class_obj->get_id(), core::id::from(item["id"].as<std::string>()), *l.m_occ);
-
-            if (!instance)
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            if (!object_constructor::update_object_properties(*instance, item))
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            if (!l.m_occ->propagate_to_io_cache())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            if (!instance->META_post_construct())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-        }
+    for (auto o : l.m_objects.get_items())
+    {
+        o->META_post_construct();
     }
 
     return true;
@@ -134,72 +104,34 @@ level_constructor::save_level(level& l, const utils::path& path)
 {
     serialization::conteiner conteiner;
 
+    if (!path.exists())
     {
-        {
-            for (auto id : l.m_package_ids)
-            {
-                conteiner["packages"].push_back(id.str());
-            }
-        }
-
-        std::unordered_map<const smart_object*, std::vector<smart_object*>> instances_groups_maping;
-
-        auto& items = l.m_local_cs.game_objects->get_items();
-
-        for (auto& o : items)
-        {
-            auto& obj = o.second;
-            auto cobj = obj->get_class_obj();
-
-            if (!obj->as<game_object>())
-            {
-                continue;
-            }
-
-            instances_groups_maping[cobj].push_back(obj);
-        }
-
-        serialization::conteiner instances_groups;
-
-        for (auto& instance_group : instances_groups_maping)
-        {
-            instances_groups["object_class"] = instance_group.first->get_id().str();
-
-            serialization::conteiner instances_conteiner;
-
-            for (auto& instance : instance_group.second)
-            {
-                serialization::conteiner intance;
-                intance["id"] = instance->get_id().str();
-
-                auto& base_obj = *instance_group.first;
-                auto& obj_to_diff = *instance;
-
-                std::vector<reflection::property*> diff;
-                object_constructor::diff_object_properties(base_obj, obj_to_diff, diff);
-
-                reflection::serialize_context ctx;
-                ctx.obj = instance;
-                ctx.sc = &intance;
-                for (auto p : diff)
-                {
-                    ctx.p = p;
-                    p->serialization_handler(ctx);
-                }
-
-                instances_groups["instances"].push_back(intance);
-            }
-        }
-
-        conteiner["instance_groups"].push_back(instances_groups);
+        std::filesystem::create_directories(path.fs());
     }
 
-    if (!serialization::write_container(path, conteiner))
+    for (auto& id : l.m_package_ids)
+    {
+        conteiner["packages"].push_back(id.str());
+    }
+    auto root_path = path;
+    root_path.append("root.cfg");
+    if (!serialization::write_container(root_path, conteiner))
     {
         return false;
     }
+
+    for (auto id : k_enums_to_handle)
+    {
+        if (!conteiner_loader::save_objects_conteiners(id, false, path, l.m_local_cs.get_ref(),
+                                                       l.m_local_cs.get_ref()))
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
+    }
+
     return true;
 }
-}  // namespace model
 
+}  // namespace model
 }  // namespace agea

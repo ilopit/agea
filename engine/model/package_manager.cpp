@@ -19,7 +19,8 @@ package_manager::load_package(const core::id& id)
     auto path = glob::resource_locator::get()->resource(category::packages, id.str());
 
     auto p = std::make_unique<model::package>();
-    if (!package::load_package(path, *p, glob::cache_set_view::get()))
+    if (!package::load_package(path, *p, glob::class_objects_cache_set_view::get(),
+                               glob::objects_cache_set_view::get()))
     {
         return false;
     }

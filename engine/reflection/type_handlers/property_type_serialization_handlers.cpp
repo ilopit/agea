@@ -4,7 +4,7 @@
 #include "model/caches/textures_cache.h"
 #include "model/caches/meshes_cache.h"
 #include "model/caches/materials_cache.h"
-#include "model/caches/class_object_cache.h"
+#include "model/caches/objects_cache.h"
 #include "model/object_construction_context.h"
 #include "model/caches/game_objects_cache.h"
 #include "model/object_constructor.h"
@@ -400,12 +400,12 @@ property_type_serialization_handlers::deserialize_t_txt(AGEA_deserialization_arg
 
     const auto& txt_id = core::id::from(jc.as<std::string>());
 
-    auto txt = occ.m_local_set.textures->get_item(txt_id);
+    auto txt = occ.m_class_local_set.textures->get_item(txt_id);
 
     if (!txt)
     {
         ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", txt_id.str());
-        txt = occ.m_global_set.textures->get_item(txt_id);
+        txt = occ.m_class_global_set.textures->get_item(txt_id);
         if (!txt)
         {
             ALOG_LAZY_ERROR;
@@ -437,12 +437,12 @@ property_type_serialization_handlers::deserialize_t_mat(AGEA_deserialization_arg
     auto& field = reflection::extract<::agea::model::material*>(ptr);
     const auto& mat_id = core::id::from(jc.as<std::string>());
 
-    auto mat = occ.m_local_set.materials->get_item(mat_id);
+    auto mat = occ.m_class_local_set.materials->get_item(mat_id);
 
     if (!mat)
     {
         ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mat_id.str());
-        mat = occ.m_global_set.materials->get_item(mat_id);
+        mat = occ.m_class_local_set.materials->get_item(mat_id);
         if (!mat)
         {
             ALOG_LAZY_ERROR;
@@ -474,12 +474,12 @@ property_type_serialization_handlers::deserialize_t_msh(AGEA_deserialization_arg
     auto& field = reflection::extract<::agea::model::mesh*>(ptr);
     const auto& mesh_id = core::id::from(jc.as<std::string>());
 
-    auto msh = occ.m_local_set.meshes->get_item(mesh_id);
+    auto msh = occ.m_class_local_set.meshes->get_item(mesh_id);
 
     if (!msh)
     {
         ALOG_INFO("Failed to find [{0}] in local cache, fallback to global", mesh_id.str());
-        msh = occ.m_global_set.meshes->get_item(mesh_id);
+        msh = occ.m_class_global_set.meshes->get_item(mesh_id);
         if (!msh)
         {
             ALOG_LAZY_ERROR;
@@ -512,7 +512,7 @@ property_type_serialization_handlers::deserialize_t_obj(AGEA_deserialization_arg
 
     auto id = core::id::from(jc["id"].as<std::string>());
 
-    auto pstr = glob::class_objects_cache::get()->get(id);
+    auto pstr = glob::class_objects_cache::get()->get_item(id);
 
     field = pstr;
 
@@ -550,18 +550,13 @@ property_type_serialization_handlers::deserialize_t_com(AGEA_deserialization_arg
         return false;
     }
 
-    if (!model::object_constructor::update_object_properties(*obj, jc))
+    if (!model::object_constructor::update_object_properties(*obj, jc, occ))
     {
         ALOG_ERROR("object [{0}] update failed", class_id.str());
         return false;
     }
 
     field = obj;
-
-    if (!occ.propagate_to_co_cache())
-    {
-        return false;
-    }
 
     return true;
 }

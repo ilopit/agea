@@ -369,7 +369,7 @@ property_type_serialization_update_handlers::deserialize_t_obj(AGEA_deserializat
 
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    ::agea::model::object_constructor::update_object_properties(*field, jc);
+    ::agea::model::object_constructor::update_object_properties(*field, jc, occ);
 
     return true;
 }
@@ -391,7 +391,7 @@ property_type_serialization_update_handlers::deserialize_t_com(AGEA_deserializat
 
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    ::agea::model::object_constructor::update_object_properties(*field, jc);
+    ::agea::model::object_constructor::update_object_properties(*field, jc, occ);
 
     return true;
 }
