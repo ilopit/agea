@@ -3,6 +3,7 @@
 #include <string>
 
 #include "model/architype.h"
+#include <functional>
 
 namespace agea
 {

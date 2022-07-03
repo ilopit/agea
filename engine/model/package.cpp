@@ -4,7 +4,7 @@
 #include "model/object_constructor.h"
 #include "model/object_construction_context.h"
 #include "model/caches/hash_cache.h"
-#include "model/objects_loader.h"
+#include "model/conteiner_loader.h"
 
 #include "model/rendering/texture.h"
 #include "model/rendering/material.h"
@@ -81,15 +81,23 @@ package::load_package(const utils::path& path,
 
     p.m_occ->m_path_prefix = p.m_path;
 
+    auto class_path = path;
+    class_path.append("class");
+
+    auto instances_path = path;
+    instances_path.append("instance");
+
     for (auto id : k_enums_to_handle)
     {
-        if (!conteiner_loader::load_objects_conteiners(id, true, path, *p.m_occ))
+        if (!conteiner_loader::load_objects_conteiners(id, object_constructor::class_object_load,
+                                                       class_path, *p.m_occ))
         {
             ALOG_LAZY_ERROR;
             return false;
         }
 
-        if (!conteiner_loader::load_objects_conteiners(id, false, path, *p.m_occ))
+        if (!conteiner_loader::load_objects_conteiners(id, object_constructor::instance_object_load,
+                                                       instances_path, *p.m_occ))
         {
             ALOG_LAZY_ERROR;
             return false;
@@ -117,17 +125,24 @@ package::save_package(const utils::path& path, const package& p)
         std::filesystem::create_directories(path.fs());
     }
 
+    auto class_path = path;
+    class_path.append("class");
+
+    auto instances_path = path;
+    instances_path.append("instance");
+
     for (auto id : k_enums_to_handle)
     {
-        if (!conteiner_loader::save_objects_conteiners(
-                id, true, path, p.m_class_local_set.get_ref(), p.m_instance_local_set.get_ref()))
+        if (!conteiner_loader::save_objects_conteiners(id, object_constructor::class_object_save,
+                                                       class_path, p.m_class_local_set.get_ref()))
         {
             ALOG_LAZY_ERROR;
             return false;
         }
 
-        if (!conteiner_loader::save_objects_conteiners(
-                id, false, path, p.m_class_local_set.get_ref(), p.m_instance_local_set.get_ref()))
+        if (!conteiner_loader::save_objects_conteiners(id, object_constructor::instance_object_save,
+                                                       instances_path,
+                                                       p.m_instance_local_set.get_ref()))
         {
             ALOG_LAZY_ERROR;
             return false;

@@ -1,4 +1,4 @@
-#include "model/objects_loader.h"
+#include "model/conteiner_loader.h"
 
 #include "utils/agea_log.h"
 #include "model/object_constructor.h"
@@ -49,18 +49,19 @@ get_name(architype id)
 
 bool
 conteiner_loader::load_objects_conteiners(architype id,
-                                          bool is_class,
+                                          conteiner_loader::obj_loader loader,
                                           const utils::path& folder_path,
                                           object_constructor_context& occ)
 {
-    std::string prefix =
-        (is_class ? std::string("class/") : std::string("instance/")) + get_name(id);
-
     auto module_path = folder_path;
-    module_path.append(prefix);
+
+    auto conteiner_name = get_name(id);
+
+    module_path.append(conteiner_name);
 
     if (!module_path.exists())
     {
+        ALOG_INFO("Conteiner {0} doesn't exists at {1}", conteiner_name, folder_path.str());
         return true;
     }
 
@@ -71,9 +72,7 @@ conteiner_loader::load_objects_conteiners(architype id,
             continue;
         }
 
-        auto obj =
-            is_class ? model::object_constructor::class_object_load(utils::path(resource), occ)
-                     : model::object_constructor::instance_object_load(utils::path(resource), occ);
+        auto obj = loader(utils::path(resource), occ);
 
         if (!obj)
         {
@@ -86,16 +85,14 @@ conteiner_loader::load_objects_conteiners(architype id,
 
 bool
 conteiner_loader::save_objects_conteiners(architype id,
-                                          bool is_class,
+                                          obj_saver s,
                                           const utils::path& folder_path,
-                                          cache_set_ref class_objects_cs_ref,
-                                          cache_set_ref objects_cs_ref)
+                                          cache_set_ref obj_set)
 {
-    std::string prefix =
-        (is_class ? std::string("class/") : std::string("instance/")) + get_name(id);
+    auto conteiner_name = get_name(id);
 
     auto module_path = folder_path;
-    module_path.append(prefix);
+    module_path.append(conteiner_name);
 
     if (module_path.exists())
     {
@@ -103,9 +100,7 @@ conteiner_loader::save_objects_conteiners(architype id,
         return false;
     }
 
-    auto from = is_class ? class_objects_cs_ref : objects_cs_ref;
-
-    auto& items = from.map->get_cache(id).get_items();
+    auto& items = obj_set.map->get_cache(id).get_items();
 
     if (!items.empty())
     {
@@ -119,10 +114,9 @@ conteiner_loader::save_objects_conteiners(architype id,
         auto full_path = module_path;
         full_path.append(file_name);
 
-        auto obj = is_class ? model::object_constructor::class_object_save(*i.second, full_path)
-                            : model::object_constructor::instance_object_save(*i.second, full_path);
+        auto result = s(*i.second, full_path);
 
-        if (!obj)
+        if (!result)
         {
             ALOG_LAZY_ERROR;
             return false;
