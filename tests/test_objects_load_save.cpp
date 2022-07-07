@@ -40,7 +40,7 @@ struct test_object_constructor : public testing::Test
     {
         m_resource_locator = glob::resource_locator::create();
         occ = model::object_constructor_context(
-            global_class_objects_cs.get_ref(), local_class_objects_cs.get_ref(),
+            utils::path(), global_class_objects_cs.get_ref(), local_class_objects_cs.get_ref(),
             global_objects_cs.get_ref(), local_objects_cs.get_ref(), &objs);
 
         std::filesystem::remove_all("result");

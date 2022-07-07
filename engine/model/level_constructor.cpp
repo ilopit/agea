@@ -54,9 +54,9 @@ level_constructor::load_level_path(level& l,
     l.m_global_class_object_cs = global_class_cs;
     l.m_global_object_cs = global_instances_cs;
 
-    l.m_occ = std::make_unique<object_constructor_context>(l.m_global_class_object_cs,
-                                                           cache_set_ref{}, l.m_global_object_cs,
-                                                           l.m_local_cs.get_ref(), &l.m_objects);
+    l.m_occ = std::make_unique<object_constructor_context>(
+        utils::path{}, l.m_global_class_object_cs, cache_set_ref{}, l.m_global_object_cs,
+        l.m_local_cs.get_ref(), &l.m_objects);
 
     auto root_path = path;
     root_path.append("root.cfg");
@@ -95,7 +95,7 @@ level_constructor::load_level_path(level& l,
         }
     }
 
-    for (auto o : l.m_objects.get_items())
+    for (auto& o : l.m_objects.get_items())
     {
         o->META_post_construct();
     }

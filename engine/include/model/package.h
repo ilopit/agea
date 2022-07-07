@@ -16,13 +16,13 @@ class package
 {
 public:
     static bool
-    load_package(const utils::path& path,
+    load_package(const utils::path& root_folder,
                  package& p,
                  cache_set_ref class_global_set,
                  cache_set_ref instance_global_set);
 
     static bool
-    save_package(const utils::path& path, const package& p);
+    save_package(const utils::path& root_folder, const package& p);
 
     package();
     ~package();
@@ -38,25 +38,34 @@ public:
     }
 
     const utils::path&
-    get_path() const
+    get_load_path() const
     {
-        return m_path;
+        return m_load_path;
+    }
+
+    const utils::path&
+    get_save_path() const
+    {
+        return m_save_root_path;
     }
 
     template <typename T>
     utils::path
     get_resource_path(const T& resource_path) const
     {
-        auto path = m_path;
-        path.append(resource_path);
-
-        return path;
+        return m_load_path / resource_path;
     }
 
     void
-    set_path(const utils::path& path) const
+    set_save_root_path(const utils::path& path) const
     {
-        m_path = path;
+        m_save_root_path = path;
+    }
+
+    void
+    set_load_path(const utils::path& path) const
+    {
+        m_load_path = path;
     }
 
     cache_set&
@@ -73,7 +82,8 @@ public:
 
 private:
     core::id m_id;
-    mutable utils::path m_path;
+    mutable utils::path m_load_path;
+    mutable utils::path m_save_root_path;
 
     cache_set_ref m_class_global_set;
     cache_set_ref m_instance_global_set;

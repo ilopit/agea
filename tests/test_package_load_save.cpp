@@ -18,29 +18,26 @@
 #include "utils/file_utils.h"
 #include "utils/path.h"
 
-#include <gtest/gtest.h>
+#include "base_test.h"
+
 #define ID(val) ::agea::core::id::from(val)
 using namespace agea;
 
-struct test_load_package : public testing::Test
+struct test_load_package : public base_test
 {
     void
     SetUp()
     {
-        m_resource_locator = glob::resource_locator::create();
-        m_game_objects_cache = glob::game_objects_cache::create();
-        std::filesystem::remove_all("result");
+        base_test::SetUp();
     }
 
     void
     TearDown()
     {
         m_resource_locator.reset();
-    }
-    std::unique_ptr<closure<resource_locator>> m_resource_locator;
 
-    std::unique_ptr<closure<model::components_cache>> m_components_cache;
-    std::unique_ptr<closure<model::game_objects_cache>> m_game_objects_cache;
+        base_test::TearDown();
+    }
 };
 
 TEST_F(test_load_package, load_package)
@@ -55,8 +52,8 @@ TEST_F(test_load_package, load_package)
                                                instance_global_cache.get_ref());
     ASSERT_TRUE(result);
 
-    ASSERT_EQ(p.get_id(), ID("test.apkg"));
-    ASSERT_EQ(p.get_path().str(), path.str());
+    ASSERT_EQ(p.get_id(), ID("test"));
+    ASSERT_EQ(p.get_load_path().str(), path.str());
 
     auto& cache = p.get_cache();
 
@@ -116,9 +113,9 @@ TEST_F(test_load_package, load_package)
             ASSERT_EQ(component->get_parent_idx(), 2U);
         }
     }
-    result = model::package::save_package(utils::path("result"), p);
+    result = model::package::save_package(get_current_workspace(), p);
     ASSERT_TRUE(result);
 
-    result = utils::file_utils::compare_folders(path, utils::path("result"));
+    result = utils::file_utils::compare_folders(path, get_current_workspace() / "test.apkg");
     ASSERT_TRUE(result);
 }

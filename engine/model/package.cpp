@@ -24,28 +24,6 @@ const std::vector<architype> k_enums_to_handle{architype::texture, architype::ma
                                                architype::mesh, architype::component,
                                                architype::game_object};
 
-std::string
-get_name(architype id)
-{
-    switch (id)
-    {
-    case agea::model::architype::texture:
-        return "textures";
-    case agea::model::architype::mesh:
-        return "meshes";
-    case agea::model::architype::material:
-        return "materials";
-    case agea::model::architype::game_object:
-        return "game_objects";
-    case agea::model::architype::component:
-        return "components";
-    default:
-        break;
-    }
-    AGEA_never("Uncovered!");
-    return "";
-}
-
 }  // namespace
 
 package::package(package&&) noexcept = default;
@@ -69,23 +47,26 @@ package::load_package(const utils::path& path,
 {
     ALOG_INFO("Loading package {0}", path.str());
 
+    std::string name, extension;
+    path.parse_file_name_and_ext(name, extension);
+
+    if (name.empty() || extension.empty() || extension != "apkg")
+    {
+        ALOG_ERROR("Loading package failed, {0} {1}", name, extension);
+        return false;
+    }
+
     p.m_class_global_set = class_global_set;
     p.m_instance_global_set = instance_global_set;
-
-    p.m_path = path;
-    p.m_id = core::id::from(path.fs().filename().generic_string());
+    p.m_load_path = path;
+    p.m_id = core::id::from(name);
 
     p.m_occ = std::make_unique<object_constructor_context>(
-        p.m_class_global_set, p.m_class_local_set.get_ref(), p.m_instance_global_set,
+        p.m_load_path, p.m_class_global_set, p.m_class_local_set.get_ref(), p.m_instance_global_set,
         p.m_instance_local_set.get_ref(), &p.m_objects);
 
-    p.m_occ->m_path_prefix = p.m_path;
-
-    auto class_path = path;
-    class_path.append("class");
-
-    auto instances_path = path;
-    instances_path.append("instance");
+    auto class_path = path / "class";
+    auto instances_path = path / "instance";
 
     for (auto id : k_enums_to_handle)
     {
@@ -113,23 +94,22 @@ package::load_package(const utils::path& path,
 }
 
 bool
-package::save_package(const utils::path& path, const package& p)
+package::save_package(const utils::path& root_folder, const package& p)
 {
-    ALOG_INFO("Loading package {0}", path.str());
+    ALOG_INFO("Loading package {0}", root_folder.str());
 
-    p.set_path(path);
+    p.set_save_root_path(root_folder);
 
-    if (!path.exists())
+    if (!root_folder.exists())
     {
         ALOG_INFO("There is no [{0}] conainer in [{1}] package!", p.get_id().cstr());
-        std::filesystem::create_directories(path.fs());
+        std::filesystem::create_directories(root_folder.fs());
     }
+    std::string name = p.get_id().str() + ".apkg";
+    auto full_path = root_folder / name;
 
-    auto class_path = path;
-    class_path.append("class");
-
-    auto instances_path = path;
-    instances_path.append("instance");
+    auto class_path = full_path / "class";
+    auto instances_path = full_path / "instance";
 
     for (auto id : k_enums_to_handle)
     {

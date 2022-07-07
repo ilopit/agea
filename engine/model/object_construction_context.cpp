@@ -19,12 +19,13 @@ namespace agea
 namespace model
 {
 
-object_constructor_context::object_constructor_context(cache_set_ref class_global_map,
+object_constructor_context::object_constructor_context(const utils::path& prefix_path,
+                                                       cache_set_ref class_global_map,
                                                        cache_set_ref class_local_map,
                                                        cache_set_ref instance_global_map,
                                                        cache_set_ref instance_local_map,
                                                        line_cache* ownable_cache)
-    : m_path_prefix()
+    : m_path_prefix(prefix_path)
     , m_class_global_set(class_global_map)
     , m_class_local_set(class_local_map)
     , m_instance_global_set(instance_global_map)
@@ -42,6 +43,7 @@ object_constructor_context::object_constructor_context()
     , m_instance_local_set()
     , m_ownable_cache_ptr(nullptr)
 {
+    ALOG_TRACE("Created");
 }
 
 object_constructor_context::~object_constructor_context()

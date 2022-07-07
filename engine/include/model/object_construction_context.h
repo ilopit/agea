@@ -5,6 +5,7 @@
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
+#include "utils/path.h"
 
 namespace agea
 {
@@ -23,7 +24,8 @@ class object_constructor_context
 public:
     object_constructor_context();
 
-    object_constructor_context(cache_set_ref class_global_map,
+    object_constructor_context(const utils::path& prefix_path,
+                               cache_set_ref class_global_map,
                                cache_set_ref class_local_map,
                                cache_set_ref instance_global_map,
                                cache_set_ref instance_local_map,
