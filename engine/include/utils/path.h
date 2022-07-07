@@ -43,6 +43,24 @@ public:
     operator=(path&&) noexcept = default;
 
     path&
+    operator/=(const path& other)
+    {
+        return append(other);
+    }
+
+    path&
+    operator/=(const char* other)
+    {
+        return append(other);
+    }
+
+    path&
+    operator/=(const std::string& other)
+    {
+        return append(other);
+    }
+
+    path&
     append(const path& p)
     {
         m_value /= p.m_value;
@@ -68,6 +86,12 @@ public:
         return *this;
     }
 
+    path
+    parent() const
+    {
+        return path(m_value.parent_path());
+    }
+
     std::string
     str() const
     {
@@ -86,6 +110,27 @@ public:
     bool
     empty() const;
 
+    std::string
+    file_name() const
+    {
+        return m_value.filename().generic_string();
+    }
+
+    void
+    parse_file_name_and_ext(std::string& file_name, std::string& extension) const
+    {
+        file_name = m_value.stem().generic_string();
+        extension = m_value.extension().generic_string();
+        if (!extension.empty() && extension.front() == '.')
+        {
+            extension = extension.substr(1);
+        }
+        else
+        {
+            extension.clear();
+        }
+    }
+
 private:
     void
     normalize()
@@ -98,3 +143,24 @@ private:
 }  // namespace utils
 
 }  // namespace agea
+
+inline agea::utils::path
+operator/(const agea::utils::path& l, const agea::utils::path& r)
+{  // append a pair of paths together
+    agea::utils::path tmp = l;
+    return tmp.append(r);
+}
+
+inline agea::utils::path
+operator/(const agea::utils::path& l, const char* r)
+{  // append a pair of paths together
+    agea::utils::path tmp = l;
+    return tmp.append(r);
+}
+
+inline agea::utils::path
+operator/(const agea::utils::path& l, const std::string& r)
+{  // append a pair of paths together
+    agea::utils::path tmp = l;
+    return tmp.append(r);
+}
