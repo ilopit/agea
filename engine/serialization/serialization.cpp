@@ -27,6 +27,11 @@ write_container(const utils::path& path, const serialization::conteiner& contein
 {
     std::ofstream file(path.fs());
 
+    if (!file.is_open())
+    {
+        return false;
+    }
+
     file << conteiner;
 
     return true;

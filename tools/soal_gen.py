@@ -158,6 +158,7 @@ class property:
         self.serializable = "no"
         self.property_ser_handler = ""
         self.property_des_handler = ""
+        self.property_prototype_handler = ""
         self.property_compare_handler = ""
         self.property_copy_handler = ""
         self.copyable = "yes"
@@ -219,6 +220,8 @@ def process_file(original_file_full_path, original_file_rel_path, context):
                     prop.property_ser_handler = pairs[1]
                 elif pairs[0] == "property_des_handler":
                     prop.property_des_handler = pairs[1]
+                elif pairs[0] == "property_prototype_handler":
+                    prop.property_prototype_handler = pairs[1]
                 elif pairs[0] == "property_compare_handler":
                     prop.property_compare_handler = pairs[1]
                 elif pairs[0] == "property_copy_handler":
@@ -279,6 +282,10 @@ def process_file(original_file_full_path, original_file_rel_path, context):
             if prop.property_des_handler != "":
                 context.content += "    "
                 context.content += 'p->deserialization_handler        = {0};\n'.format(prop.property_des_handler)
+
+            if prop.property_prototype_handler != "":
+                context.content += "    "
+                context.content += 'p->protorype_handler              = {0};\n'.format(prop.property_prototype_handler)
 
             if prop.property_compare_handler != "":
                 context.content += "    "

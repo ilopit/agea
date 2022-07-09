@@ -42,6 +42,7 @@ public:
     property_serialization_handler   serialization_handler   = default_serialize;
     property_compare_handler         compare_handler         = default_compare;
     property_copy_handler            copy_handler            = default_copy;
+    property_prototype_handler       protorype_handler       = default_prototype;
 
 
     blob_ptr get_blob(model::smart_object& obj);
@@ -66,6 +67,9 @@ private:
 
     static bool
     default_copy(copy_context& context);
+
+    static bool
+    default_prototype(property_prototype_context& context);
 
     static bool
     deserialize_collection(reflection::property& p,

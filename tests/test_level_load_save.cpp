@@ -20,24 +20,28 @@
 
 #define ID(val) ::agea::core::id::from(val)
 
+#include "base_test.h"
+
 using namespace agea;
 
-struct test_load_level : public testing::Test
+struct test_load_level : public base_test
 {
     void
     SetUp()
     {
-        m_resource_locator = glob::resource_locator::create();
+        base_test::SetUp();
+
         m_package_manager = glob::package_manager::create();
 
         glob::init_global_caches(m_class_objects_cache_set, m_objects_cache_set);
-        std::filesystem::remove_all("result");
     }
 
     void
     TearDown()
     {
         m_resource_locator.reset();
+
+        base_test::TearDown();
     }
 
     std::unique_ptr<closure<model::package_manager>> m_package_manager;
@@ -59,59 +63,51 @@ TEST_F(test_load_level, load_level)
     ASSERT_TRUE(result);
 
     {
-        auto obj = l.find_game_object(ID("test_instanded_game_object_1"));
+        auto obj = l.find_game_object(ID("test_instanded_object_1"));
         ASSERT_TRUE(obj);
 
         auto comps = obj->get_components();
 
-        ASSERT_EQ(obj->get_id(), ID("test_instanded_game_object_1"));
-        ASSERT_EQ(comps[0]->get_id(), ID("test_instanded_game_object_1/test_root_component"));
-        auto game_comp = comps[0]->as<model::game_object_component>();
+        ASSERT_EQ(obj->get_id(), ID("test_instanded_object_1"));
+        ASSERT_EQ(comps[0]->get_id(), ID("test_instanded_object_1__test_root_component"));
+        //         auto game_comp = comps[0]->as<model::game_object_component>();
+        //
+        //         const auto expected_pos = glm::vec3{-10.f, -10.f, 0.f};
+        //         ASSERT_EQ(game_comp->get_position(), expected_pos);
+        //
+        //         const auto expected_rot = glm::vec3{1.f, 1.f, 1.f};
+        //         ASSERT_EQ(game_comp->get_rotation(), expected_rot);
+        //
+        //         const auto expected_scale = glm::vec3{5.f, 5.f, 5.f};
+        //         ASSERT_EQ(game_comp->get_scale(), expected_scale);
 
-        const auto expected_pos = glm::vec3{-10.f, -10.f, 0.f};
-        ASSERT_EQ(game_comp->get_position(), expected_pos);
-
-        const auto expected_rot = glm::vec3{1.f, 1.f, 1.f};
-        ASSERT_EQ(game_comp->get_rotation(), expected_rot);
-
-        const auto expected_scale = glm::vec3{5.f, 5.f, 5.f};
-        ASSERT_EQ(game_comp->get_scale(), expected_scale);
-
-        ASSERT_EQ(comps[1]->get_id(), ID("test_instanded_game_object_1/test_component_a"));
-        ASSERT_EQ(comps[2]->get_id(), ID("test_instanded_game_object_1/test_component_b"));
-        ASSERT_EQ(comps[3]->get_id(), ID("test_instanded_game_object_1/test_component_a_2"));
-        ASSERT_EQ(comps[4]->get_id(), ID("test_instanded_game_object_1/test_component_b_2"));
+        ASSERT_EQ(comps[1]->get_id(), ID("test_instanded_object_1__test_component"));
     }
 
     {
-        auto obj = l.find_game_object(ID("test_instanded_game_object_2"));
+        auto obj = l.find_game_object(ID("test_instanded_object_2"));
         ASSERT_TRUE(obj);
 
         auto comps = obj->get_components();
 
-        ASSERT_EQ(obj->get_id(), ID("test_instanded_game_object_2"));
-        ASSERT_EQ(comps[0]->get_id(), ID("test_instanded_game_object_2/test_root_component"));
+        ASSERT_EQ(obj->get_id(), ID("test_instanded_object_2"));
+        ASSERT_EQ(comps[0]->get_id(), ID("test_instanded_object_2__test_root_component"));
         auto game_comp = comps[0]->as<model::game_object_component>();
 
-        const auto expected_pos = glm::vec3{-5.f, -10.f, 0.f};
-        ASSERT_EQ(game_comp->get_position(), expected_pos);
+        //         const auto expected_pos = glm::vec3{-5.f, -10.f, 0.f};
+        //         ASSERT_EQ(game_comp->get_position(), expected_pos);
+        //
+        //         const auto expected_rot = glm::vec3{2.f, 3.f, 4.f};
+        //         ASSERT_EQ(game_comp->get_rotation(), expected_rot);
+        //
+        //         const auto expected_scale = glm::vec3{3.f, 3.f, 3.f};
+        //         ASSERT_EQ(game_comp->get_scale(), expected_scale);
 
-        const auto expected_rot = glm::vec3{2.f, 3.f, 4.f};
-        ASSERT_EQ(game_comp->get_rotation(), expected_rot);
-
-        const auto expected_scale = glm::vec3{3.f, 3.f, 3.f};
-        ASSERT_EQ(game_comp->get_scale(), expected_scale);
-
-        ASSERT_EQ(comps[1]->get_id(), ID("test_instanded_game_object_2/test_component_a"));
-        ASSERT_EQ(comps[2]->get_id(), ID("test_instanded_game_object_2/test_component_b"));
-        ASSERT_EQ(comps[3]->get_id(), ID("test_instanded_game_object_2/test_component_a_2"));
-        ASSERT_EQ(comps[4]->get_id(), ID("test_instanded_game_object_2/test_component_b_2"));
+        ASSERT_EQ(comps[1]->get_id(), ID("test_instanded_object_2__test_component"));
     }
 
-    utils::path save_path("result");
+    model::level_constructor::save_level(l, get_current_workspace());
 
-    model::level_constructor::save_level(l, save_path);
-
-    result = utils::file_utils::compare_folders(save_path, path);
+    result = utils::file_utils::compare_folders(get_current_workspace() / "test.alvl", path);
     ASSERT_TRUE(result);
 }

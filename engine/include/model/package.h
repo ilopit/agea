@@ -74,6 +74,12 @@ public:
         return m_instance_local_set;
     }
 
+    cache_set&
+    get_class_cache()
+    {
+        return m_class_local_set;
+    }
+
     void
     propagate_to_global_caches();
 

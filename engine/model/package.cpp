@@ -59,6 +59,7 @@ package::load_package(const utils::path& path,
     p.m_class_global_set = class_global_set;
     p.m_instance_global_set = instance_global_set;
     p.m_load_path = path;
+    p.m_save_root_path = path.parent();
     p.m_id = core::id::from(name);
 
     p.m_occ = std::make_unique<object_constructor_context>(
@@ -76,7 +77,10 @@ package::load_package(const utils::path& path,
             ALOG_LAZY_ERROR;
             return false;
         }
+    }
 
+    for (auto id : k_enums_to_handle)
+    {
         if (!conteiner_loader::load_objects_conteiners(id, object_constructor::instance_object_load,
                                                        instances_path, *p.m_occ))
         {
@@ -96,7 +100,7 @@ package::load_package(const utils::path& path,
 bool
 package::save_package(const utils::path& root_folder, const package& p)
 {
-    ALOG_INFO("Loading package {0}", root_folder.str());
+    ALOG_INFO("Sabing package {0}", root_folder.str());
 
     p.set_save_root_path(root_folder);
 

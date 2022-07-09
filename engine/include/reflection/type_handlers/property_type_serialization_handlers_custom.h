@@ -12,6 +12,9 @@ bool
 game_object_components_deserialize(deserialize_context& dc);
 
 bool
+game_object_components_prototype(property_prototype_context& dc);
+
+bool
 game_object_components_serialize(serialize_context& dc);
 
 bool

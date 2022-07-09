@@ -210,6 +210,7 @@ protected:
                   "serializable=true",
                   "property_des_handler=custom::game_object_components_deserialize",
                   "property_ser_handler=custom::game_object_components_serialize",
+                  "property_prototype_handler=custom::game_object_components_prototype",
                   "property_compare_handler=custom::game_object_components_compare",
                   "property_copy_handler=custom::game_object_components_copy");
     std::vector<component*> m_components;

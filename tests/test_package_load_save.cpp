@@ -26,16 +26,8 @@ using namespace agea;
 struct test_load_package : public base_test
 {
     void
-    SetUp()
-    {
-        base_test::SetUp();
-    }
-
-    void
     TearDown()
     {
-        m_resource_locator.reset();
-
         base_test::TearDown();
     }
 };
@@ -55,11 +47,10 @@ TEST_F(test_load_package, load_package)
     ASSERT_EQ(p.get_id(), ID("test"));
     ASSERT_EQ(p.get_load_path().str(), path.str());
 
-    auto& cache = p.get_cache();
+    auto& cache = p.get_class_cache();
+    auto& class_cache = *cache.objects;
 
-    auto& class_cache = p.get_cache().objects;
-
-    auto all_size = class_cache->get_size();
+    auto all_size = class_cache.get_size();
 
     uint32_t size = 0;
     size += cache.game_objects->get_size();
@@ -70,47 +61,26 @@ TEST_F(test_load_package, load_package)
 
     ASSERT_EQ(all_size, size);
 
-    auto game_object = cache.game_objects->get_item(ID("test_game_object"));
+    auto game_object = cache.game_objects->get_item(ID("test_class_object"));
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(game_object->get_id(), ID("test_game_object"));
+    ASSERT_EQ(game_object->get_id(), ID("test_class_object"));
     ASSERT_EQ(game_object->get_type_id(), ID("mesh_object"));
 
     {
         {
             auto component = game_object->get_component_at(0U);
-            ASSERT_EQ(component->get_id(), ID("test_game_object/test_root_component"));
+            ASSERT_EQ(component->get_id(), ID("test_class_object__test_class_root_component"));
             ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
             ASSERT_EQ(component->get_order_idx(), 0U);
             ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
         }
         {
             auto component = game_object->get_component_at(1U);
-            ASSERT_EQ(component->get_id(), ID("test_game_object/test_component_a"));
+            ASSERT_EQ(component->get_id(), ID("test_class_object__test_class_component"));
             ASSERT_EQ(component->get_type_id(), ID("component"));
             ASSERT_EQ(component->get_order_idx(), 1U);
             ASSERT_EQ(component->get_parent_idx(), 0U);
-        }
-        {
-            auto component = game_object->get_component_at(2U);
-            ASSERT_EQ(component->get_id(), ID("test_game_object/test_component_b"));
-            ASSERT_EQ(component->get_type_id(), ID("component"));
-            ASSERT_EQ(component->get_order_idx(), 2U);
-            ASSERT_EQ(component->get_parent_idx(), 0U);
-        }
-        {
-            auto component = game_object->get_component_at(3U);
-            ASSERT_EQ(component->get_id(), ID("test_game_object/test_component_a_2"));
-            ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
-            ASSERT_EQ(component->get_order_idx(), 3U);
-            ASSERT_EQ(component->get_parent_idx(), 2U);
-        }
-        {
-            auto component = game_object->get_component_at(4U);
-            ASSERT_EQ(component->get_id(), ID("test_game_object/test_component_b_2"));
-            ASSERT_EQ(component->get_type_id(), ID("component"));
-            ASSERT_EQ(component->get_order_idx(), 4U);
-            ASSERT_EQ(component->get_parent_idx(), 2U);
         }
     }
     result = model::package::save_package(get_current_workspace(), p);

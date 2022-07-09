@@ -536,27 +536,32 @@ property_type_serialization_handlers::serialize_t_com(AGEA_serialization_args)
 bool
 property_type_serialization_handlers::deserialize_t_com(AGEA_deserialization_args)
 {
-    auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
+    AGEA_unused(ptr);
+    AGEA_unused(jc);
+    AGEA_unused(occ);
 
-    auto class_id = core::id::from(jc["object_class"].as<std::string>());
-
-    auto id = core::id::from(jc["id"].as<std::string>());
-
-    auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
-
-    if (!obj)
-    {
-        ALOG_ERROR("object [{0}] doesn't exists", class_id.str());
-        return false;
-    }
-
-    if (!model::object_constructor::update_object_properties(*obj, jc, occ))
-    {
-        ALOG_ERROR("object [{0}] update failed", class_id.str());
-        return false;
-    }
-
-    field = obj;
+    AGEA_not_implemented;
+    //     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
+    //
+    //     auto class_id = core::id::from(jc["object_class"].as<std::string>());
+    //
+    //     auto id = core::id::from(jc["id"].as<std::string>());
+    //
+    //     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
+    //
+    //     if (!obj)
+    //     {
+    //         ALOG_ERROR("object [{0}] doesn't exists", class_id.str());
+    //         return false;
+    //     }
+    //
+    //     if (!model::object_constructor::update_object_properties(*obj, jc, occ))
+    //     {
+    //         ALOG_ERROR("object [{0}] update failed", class_id.str());
+    //         return false;
+    //     }
+    //
+    //     field = obj;
 
     return true;
 }

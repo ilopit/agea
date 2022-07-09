@@ -32,15 +32,10 @@ public:
     class_object_load(const utils::path& path, object_constructor_context& occ = default_occ());
 
     static smart_object*
-    class_object_load_internal(const utils::path& path,
-                               object_constructor_context& occ = default_occ());
-
-    static smart_object*
     instance_object_load(const utils::path& path, object_constructor_context& occ = default_occ());
 
     static smart_object*
-    instance_object_load_internal(const utils::path& path,
-                                  object_constructor_context& occ = default_occ());
+    object_load_internal(const utils::path& path, object_constructor_context& occ);
 
     static bool
     class_object_save(const smart_object& obj, const utils::path& object_path);
@@ -62,7 +57,11 @@ public:
     update_object_properties(smart_object& g,
                              const serialization::conteiner& c,
                              object_constructor_context& occ);
-
+    static bool
+    prototype_object_properties(smart_object& from,
+                                smart_object& to,
+                                const serialization::conteiner& c,
+                                object_constructor_context& occ);
     static bool
     clone_object_properties(smart_object& from, smart_object& to, object_constructor_context& occ);
 

@@ -1,6 +1,0 @@
-class_id: test_root_component
-id: test_root_component_instanced
-rotation:
-  x: 4
-  y: 4
-  z: 4

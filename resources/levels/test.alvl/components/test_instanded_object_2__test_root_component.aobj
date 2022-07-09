@@ -1,0 +1,4 @@
+class_id: test_class_object__test_class_root_component
+id: test_instanded_object_2__test_root_component
+order_idx: 0
+parent_idx: 4294967295

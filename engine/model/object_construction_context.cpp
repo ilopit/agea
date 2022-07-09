@@ -100,12 +100,7 @@ object_constructor_context::find_class_obj(const core::id& id)
     auto obj = m_class_local_set.objects ? m_class_local_set.objects->get_item(id) : nullptr;
     if (!obj)
     {
-        obj = m_class_global_set.objects->get_item(id);
-        if (!obj)
-        {
-            ALOG_LAZY_ERROR;
-            return nullptr;
-        }
+        return m_class_global_set.objects->get_item(id);
     }
 
     return obj;

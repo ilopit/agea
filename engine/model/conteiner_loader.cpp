@@ -91,8 +91,7 @@ conteiner_loader::save_objects_conteiners(architype id,
 {
     auto conteiner_name = get_name(id);
 
-    auto module_path = folder_path;
-    module_path.append(conteiner_name);
+    auto module_path = folder_path / conteiner_name;
 
     if (module_path.exists())
     {
@@ -110,11 +109,12 @@ conteiner_loader::save_objects_conteiners(architype id,
 
     for (auto& i : items)
     {
-        auto file_name = i.second->get_id().str() + ".aobj";
-        auto full_path = module_path;
-        full_path.append(file_name);
+        auto& obj = *i.second;
 
-        auto result = s(*i.second, full_path);
+        auto file_name = obj.get_id().str() + ".aobj";
+        auto full_path = module_path / file_name;
+
+        auto result = s(obj, full_path);
 
         if (!result)
         {

@@ -159,6 +159,42 @@ property::default_copy(copy_context& cxt)
     return true;
 }
 
+bool
+property::default_prototype(property_prototype_context& ctx)
+{
+    if (!ctx.src_property->types_copy_handler)
+    {
+        return true;
+    }
+
+    AGEA_check(ctx.src_property == ctx.dst_property, "Should be SAME properties!");
+    AGEA_check(ctx.src_obj != ctx.dst_obj, "Should not be SAME objects!");
+
+    if (ctx.src_property->type.is_collection)
+    {
+        AGEA_not_implemented;
+    }
+    else
+    {
+        auto& conteiner = *ctx.sc;
+        if (conteiner[ctx.dst_property->name].IsDefined())
+        {
+            return deserialize_item(*ctx.src_property, *ctx.dst_obj, *ctx.sc, *ctx.occ);
+        }
+        else
+        {
+            auto from = ::agea::reflection::reduce_ptr(ctx.src_property->get_blob(*ctx.src_obj),
+                                                       ctx.src_property->type.is_ptr);
+            auto to = ::agea::reflection::reduce_ptr(ctx.dst_property->get_blob(*ctx.dst_obj),
+                                                     ctx.dst_property->type.is_ptr);
+
+            AGEA_check(ctx.dst_property->types_copy_handler, "Should never happens!");
+            ctx.dst_property->types_copy_handler(*ctx.src_obj, *ctx.dst_obj, from, to, *ctx.occ);
+        }
+    }
+    return true;
+}
+
 agea::blob_ptr
 property::get_blob(model::smart_object& obj)
 {
@@ -231,7 +267,7 @@ property::deserialize_item(reflection::property& p,
         return false;
     }
 
-    auto ptr = (blob_ptr)&obj;
+    auto ptr = obj.as_blob();
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
@@ -278,9 +314,8 @@ property::deserialize_update_collection(reflection::property& p,
     for (unsigned i = 0; i < items_size; ++i)
     {
         auto item = items[i];
-        auto idx = item["order_idx"].as<int32_t>();
 
-        auto* filed_ptr = &r[idx];
+        auto* filed_ptr = &r[i];
         p.types_update_handler((blob_ptr)filed_ptr, item, occ);
     }
 

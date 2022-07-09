@@ -1,6 +1,0 @@
----
-type_id: mesh_component
-id: Hose_low
-material: GlassPlasticMat
-mesh: GlassPlastic_low_mesh
-class_obj: true

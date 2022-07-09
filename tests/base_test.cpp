@@ -17,8 +17,6 @@ base_test::SetUp()
 void
 base_test::TearDown()
 {
-    std::error_code ec;
-    std::filesystem::remove_all(get_current_workspace().fs(), ec);
 }
 
 agea::utils::path

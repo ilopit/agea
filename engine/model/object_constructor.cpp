@@ -76,12 +76,27 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 }
 
 smart_object*
-object_constructor::class_object_load_internal(const utils::path& package_path,
-                                               object_constructor_context& occ)
+object_constructor::object_load_internal(const utils::path& package_path,
+                                         object_constructor_context& occ)
 {
-    AGEA_check(occ.m_construction_type == obj_construction_type__class, "Should be only class");
-
     auto full_path = occ.get_full_path(package_path);
+
+    std::string ext, name;
+    full_path.parse_file_name_and_ext(name, ext);
+
+    if (name.empty() || ext.empty() || ext != "aobj")
+    {
+        ALOG_ERROR("Loading object failed, {0} {1}", name, ext);
+        return nullptr;
+    }
+    auto obj_id = core::id::from(name);
+
+    auto obj = occ.find_class_obj(obj_id);
+
+    if (obj)
+    {
+        return obj;
+    }
 
     serialization::conteiner conteiner;
     if (!serialization::read_container(full_path, conteiner))
@@ -90,10 +105,36 @@ object_constructor::class_object_load_internal(const utils::path& package_path,
         return nullptr;
     }
 
-    auto obj = object_load_full(conteiner, occ);
-    if (!obj)
+    auto class_load = conteiner["class_id"].IsDefined();
+
+    auto id = core::id::from(conteiner["id"].as<std::string>());
+
+    if (class_load)
     {
-        return nullptr;
+        auto class_id = core::id::from(conteiner["class_id"].as<std::string>());
+        auto src_obj = occ.find_class_obj(class_id);
+
+        if (!src_obj)
+        {
+            auto p = package_path.parent() / (class_id.str() + ".aobj");
+            src_obj = object_load_internal(p, occ);
+        }
+
+        if (!src_obj)
+        {
+            return nullptr;
+        }
+
+        obj = object_load_partial(*src_obj, conteiner, occ);
+    }
+    else
+    {
+        obj = object_load_full(conteiner, occ);
+    }
+
+    if (obj->get_id() != core::id::from(name))
+    {
+        ALOG_ERROR("File name and id missmatch {0} != {1}", name, obj->get_id().cstr());
     }
 
     return obj;
@@ -106,48 +147,8 @@ object_constructor::class_object_load(const utils::path& package_path,
     AGEA_check(occ.m_construction_type == obj_construction_type__nav, "Should be only nav");
 
     occ.m_construction_type = obj_construction_type__class;
-    auto obj = class_object_load_internal(package_path, occ);
+    auto obj = object_load_internal(package_path, occ);
     occ.m_construction_type = obj_construction_type__nav;
-
-    return obj;
-}
-
-smart_object*
-object_constructor::instance_object_load_internal(const utils::path& package_path,
-                                                  object_constructor_context& occ)
-{
-    AGEA_check(occ.m_construction_type == obj_construction_type__instance, "Should be only class");
-
-    auto full_path = occ.get_full_path(package_path);
-
-    serialization::conteiner conteiner;
-    if (!serialization::read_container(full_path, conteiner))
-    {
-        ALOG_LAZY_ERROR;
-        return nullptr;
-    }
-
-    auto class_load = conteiner["class_id"].IsDefined();
-    auto id = core::id::from(conteiner["id"].as<std::string>());
-
-    smart_object* obj = nullptr;
-    if (class_load)
-    {
-        auto class_id = core::id::from(conteiner["class_id"].as<std::string>());
-        auto src_obj = occ.find_class_obj(class_id);
-
-        if (!src_obj)
-        {
-            ALOG_LAZY_ERROR;
-            return nullptr;
-        }
-
-        obj = object_load_partial(*src_obj, conteiner, occ);
-    }
-    else
-    {
-        obj = object_load_full(conteiner, occ);
-    }
 
     return obj;
 }
@@ -159,7 +160,7 @@ object_constructor::instance_object_load(const utils::path& package_path,
     AGEA_check(occ.m_construction_type == obj_construction_type__nav, "Should be only nav");
 
     occ.m_construction_type = obj_construction_type__instance;
-    auto obj = instance_object_load_internal(package_path, occ);
+    auto obj = object_load_internal(package_path, occ);
     occ.m_construction_type = obj_construction_type__nav;
 
     return obj;
@@ -288,6 +289,31 @@ object_constructor::update_object_properties(smart_object& obj,
 }
 
 bool
+object_constructor::prototype_object_properties(smart_object& from,
+                                                smart_object& to,
+                                                const serialization::conteiner& c,
+                                                object_constructor_context& occ)
+{
+    auto& properties = from.reflection()->m_serilalization_properties;
+
+    reflection::property_prototype_context ctx{nullptr, nullptr, &from, &to, &occ, &c};
+
+    for (auto& p : properties)
+    {
+        ctx.dst_property = p.get();
+        ctx.src_property = p.get();
+
+        if (!p->protorype_handler(ctx))
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool
 object_constructor::clone_object_properties(smart_object& from,
                                             smart_object& to,
                                             object_constructor_context& occ)
@@ -393,15 +419,8 @@ object_constructor::object_load_partial(smart_object& prototype_obj,
     empty->META_set_class_obj(&prototype_obj);
     occ.add_obj(empty);
 
-    if (!clone_object_properties(prototype_obj, *empty, occ))
+    if (!prototype_object_properties(prototype_obj, *empty, sc, occ))
     {
-        ALOG_LAZY_ERROR;
-        return nullptr;
-    }
-
-    if (!update_object_properties(*empty, sc, occ))
-    {
-        ALOG_LAZY_ERROR;
         return nullptr;
     }
 

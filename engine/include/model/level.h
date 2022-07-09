@@ -44,22 +44,55 @@ public:
     void
     update();
 
+    const utils::path&
+    get_load_path() const
+    {
+        return m_load_path;
+    }
+
+    const utils::path&
+    get_save_root_path() const
+    {
+        return m_save_root_path;
+    }
+
+    void
+    set_load_path(const utils::path& path)
+    {
+        m_load_path = path;
+    }
+
+    void
+    set_save_root_path(const utils::path& path)
+    {
+        m_save_root_path = path;
+    }
+
     game_objects_cache&
     get_game_objects()
     {
         return *m_local_cs.game_objects.get();
     }
 
+    const core::id&
+    get_id()
+    {
+        return m_id;
+    }
+
 private:
+    core::id m_id;
+
     cache_set m_local_cs;
     cache_set_ref m_global_object_cs;
     cache_set_ref m_global_class_object_cs;
+    std::unique_ptr<object_constructor_context> m_occ;
 
     line_cache m_objects;
     std::vector<core::id> m_package_ids;
 
-    std::unique_ptr<object_constructor_context> m_occ;
-    utils::path m_path;
+    utils::path m_load_path;
+    utils::path m_save_root_path;
 };
 
 }  // namespace model

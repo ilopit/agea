@@ -19,6 +19,11 @@
     model::smart_object &src_obj, model::smart_object &dst_obj, ::agea::blob_ptr from, \
         ::agea::blob_ptr to, model::object_constructor_context &ooc
 
+#define AGEA_protorype_handler_args                                                    \
+    model::smart_object &src_obj, model::smart_object &dst_obj, ::agea::blob_ptr from, \
+        ::agea::blob_ptr to, const serialization::conteiner &jc,                       \
+        model::object_constructor_context &ooc
+
 #define AGEA_compare_handler_args ::agea::blob_ptr from, ::agea::blob_ptr to
 
 #define AGEA_read_from_property_args ::agea::blob_ptr ptr, fixed_size_buffer &buf
@@ -65,6 +70,16 @@ struct copy_context
     model::smart_object* src_obj = nullptr;
     model::smart_object* dst_obj = nullptr;
     model::object_constructor_context* occ = nullptr;
+};
+
+struct property_prototype_context
+{
+    property* src_property = nullptr;
+    property* dst_property = nullptr;
+    model::smart_object* src_obj = nullptr;
+    model::smart_object* dst_obj = nullptr;
+    model::object_constructor_context* occ = nullptr;
+    const serialization::conteiner* sc = nullptr;
 };
 
 template <typename T>
@@ -128,6 +143,7 @@ using property_deserialization_handler  = std::function<bool(deserialize_context
 using property_serialization_handler    = std::function<bool(serialize_context&)>;
 using property_compare_handler          = std::function<bool(compare_context&)>;
 using property_copy_handler             = std::function<bool(copy_context&)>;
+using property_prototype_handler        = std::function<bool(property_prototype_context&)>;
 
 using type_serialization_handler        = std::function<bool(AGEA_serialization_args)>;
 using type_deserialization_handler      = std::function<bool(AGEA_deserialization_args)>;

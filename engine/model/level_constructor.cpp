@@ -51,15 +51,27 @@ level_constructor::load_level_path(level& l,
                                    cache_set_ref global_instances_cs)
 {
     ALOG_INFO("Begin level loading with path {0}", path.str());
+
     l.m_global_class_object_cs = global_class_cs;
     l.m_global_object_cs = global_instances_cs;
+    l.set_load_path(path);
+    l.set_save_root_path(path.parent());
+
+    std::string name, extension;
+    path.parse_file_name_and_ext(name, extension);
+
+    if (name.empty() || extension.empty() || extension != "alvl")
+    {
+        ALOG_ERROR("Loading level failed, {0} {1}", name, extension);
+        return false;
+    }
+    l.m_id = core::id::from(name);
 
     l.m_occ = std::make_unique<object_constructor_context>(
         utils::path{}, l.m_global_class_object_cs, cache_set_ref{}, l.m_global_object_cs,
         l.m_local_cs.get_ref(), &l.m_objects);
 
-    auto root_path = path;
-    root_path.append("root.cfg");
+    auto root_path = path / "root.cfg";
     serialization::conteiner conteiner;
     if (!serialization::read_container(root_path, conteiner))
     {
@@ -83,7 +95,6 @@ level_constructor::load_level_path(level& l,
     }
 
     auto instace_path = path;
-    instace_path.append("instance");
 
     for (auto id : k_enums_to_handle)
     {
@@ -106,26 +117,27 @@ level_constructor::load_level_path(level& l,
 bool
 level_constructor::save_level(level& l, const utils::path& path)
 {
-    serialization::conteiner conteiner;
+    l.set_save_root_path(path);
+    std::string name = l.get_id().str() + ".alvl";
+    auto full_path = path / name;
 
-    if (!path.exists())
+    if (!full_path.exists())
     {
-        std::filesystem::create_directories(path.fs());
+        std::filesystem::create_directories(full_path.fs());
     }
 
+    serialization::conteiner conteiner;
     for (auto& id : l.m_package_ids)
     {
         conteiner["packages"].push_back(id.str());
     }
-    auto root_path = path;
-    root_path.append("root.cfg");
+    auto root_path = full_path / "root.cfg";
     if (!serialization::write_container(root_path, conteiner))
     {
         return false;
     }
 
-    auto instace_path = path;
-    instace_path.append("instance");
+    auto instace_path = full_path;
 
     for (auto id : k_enums_to_handle)
     {

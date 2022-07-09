@@ -22,32 +22,6 @@ namespace reflection
 namespace custom
 {
 
-namespace
-{
-model::component*
-load_component(serialization::conteiner& sc, model::object_constructor_context& occ)
-{
-    auto class_id = core::id::from(sc["class_id"].as<std::string>());
-    auto id = core::id::from(sc["id"].as<std::string>());
-
-    auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
-
-    if (!obj)
-    {
-        ALOG_ERROR("object [{0}] doesn't exists", class_id.cstr());
-        return false;
-    }
-
-    if (!model::object_constructor::update_object_properties(*obj, sc, occ))
-    {
-        ALOG_ERROR("object [{0}] update failed", class_id.cstr());
-        return false;
-    }
-
-    return (model::component*)obj;
-}
-}  // namespace
-
 bool
 game_object_components_deserialize(deserialize_context& dc)
 {
@@ -67,29 +41,63 @@ game_object_components_deserialize(deserialize_context& dc)
     for (unsigned i = 0; i < items_size; ++i)
     {
         auto item = items[i];
-        auto idx = item["order_idx"].as<std::uint32_t>();
-        //  r[idx] = load_component(item, *dc.occ);
+        auto idx = i;
 
-        auto class_id = core::id::from(item["class_id"].as<std::string>());
-        auto obj = dc.occ->m_class_local_set.objects->get_item(class_id);
+        auto class_id = core::id::from(item["id"].as<std::string>());
+        auto obj = dc.occ->find_class_obj(class_id);
 
-        if (!obj)
-        {
-            ALOG_INFO("Cache miss {0} try in global!", class_id.str());
-            obj = dc.occ->m_class_global_set.objects->get_item(class_id);
-        }
-
-        if (!obj)
+        if (!obj || obj->get_architype_id() != model::architype::component)
         {
             ALOG_LAZY_ERROR;
-            return nullptr;
+            return false;
         }
 
-        auto cobj = model::object_constructor::object_load_partial(*obj, item, *dc.occ);
-
-        r[idx] = cobj->as<model::component>();
+        r[idx] = obj->as<model::component>();
     }
 
+    return true;
+}
+
+bool
+game_object_components_prototype(property_prototype_context& ctx)
+{
+    auto& sc = *ctx.sc;
+
+    auto items = sc[ctx.dst_property->name];
+    auto items_size = items.size();
+
+    auto& src_properties =
+        extract<std::vector<model::component*>>(ctx.src_obj->as_blob() + ctx.dst_property->offset);
+
+    if (src_properties.empty())
+    {
+        return true;
+    }
+
+    auto& dst_properties =
+        extract<std::vector<model::component*>>(ctx.dst_obj->as_blob() + ctx.dst_property->offset);
+
+    AGEA_check(dst_properties.empty(), "Should alway be empty!!");
+    AGEA_check(items_size == src_properties.size(), "Should alway be same!!");
+
+    dst_properties.resize(src_properties.size());
+
+    for (unsigned i = 0; i < items_size; ++i)
+    {
+        auto item = items[i];
+
+        auto class_id = core::id::from(item["id"].as<std::string>());
+        auto obj = ctx.occ->m_instance_local_set.objects->get_item(class_id);
+        if (!obj || dst_properties[i])
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
+        dst_properties[i] = obj->as<model::component>();
+
+        AGEA_check(src_properties[i]->get_id() == obj->get_class_obj()->get_id(),
+                   "Should have parent-child");
+    }
     return true;
 }
 
@@ -112,23 +120,25 @@ game_object_components_serialize(serialize_context& dc)
             auto class_component = instance_component->get_class_obj();
 
             serialization::conteiner component_conteiner;
-            component_conteiner["class_id"] = class_component->get_id().str();
+            // component_conteiner["class_id"] = class_component->get_id().str();
             component_conteiner["id"] = instance_component->get_id().str();
 
-            reflection::serialize_context internal_sc{nullptr, instance_component,
-                                                      &component_conteiner};
-            reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
-
-            std::vector<reflection::property*> diff;
-            model::object_constructor::diff_object_properties(*class_component, *instance_component,
-                                                              diff);
-
-            for (auto& p : diff)
-            {
-                internal_sc.p = p;
-
-                p->serialization_handler(internal_sc);
-            }
+            //             reflection::serialize_context internal_sc{nullptr, instance_component,
+            //                                                       &component_conteiner};
+            //             reflection::compare_context compare_ctx{nullptr, class_component,
+            //             instance_component};
+            //
+            //             std::vector<reflection::property*> diff;
+            //             model::object_constructor::diff_object_properties(*class_component,
+            //             *instance_component,
+            //                                                               diff);
+            //
+            //             for (auto& p : diff)
+            //             {
+            //                 internal_sc.p = p;
+            //
+            //                 p->serialization_handler(internal_sc);
+            //             }
             components_conteiner[i++] = component_conteiner;
         }
 
@@ -160,7 +170,6 @@ game_object_components_serialize(serialize_context& dc)
                                                               diff);
 
             component_conteiner["id"] = obj_component->get_id().str();
-            component_conteiner["order_idx"] = obj_component->get_order_idx();
 
             for (auto& p : diff)
             {
