@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "vulkan_render/vulkan_types.h"
+#include "vulkan_render_types/vulkan_types.h"
 
 namespace agea
 {
@@ -15,6 +15,7 @@ enum class texture_format : uint32_t
 struct texture_data
 {
     texture_data() = default;
+    ~texture_data();
 
     texture_data(const texture_data&) = delete;
     texture_data(texture_data&&) = delete;
@@ -24,11 +25,10 @@ struct texture_data
     texture_data&
     operator=(texture_data&&) = delete;
 
+    vk_device_provider m_device;
     allocated_image image;
     VkImageView image_view;
     texture_format format = texture_format::unknown;
-
-    ~texture_data();
 };
 
 }  // namespace render

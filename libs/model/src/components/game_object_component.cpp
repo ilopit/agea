@@ -1,6 +1,6 @@
 #include "model/components/game_object_component.h"
 
-#include "vulkan_render/vulkan_render_data.h"
+#include "vulkan_render_types/vulkan_render_data.h"
 #include "model/rendering/render_api.h"
 
 namespace agea

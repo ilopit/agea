@@ -29,3 +29,43 @@ add_subdirectory(thirdparty)
 add_subdirectory(engine)
 add_subdirectory(libs)
 add_subdirectory(tests)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/assets
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/assets)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/shaders
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/configs
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/configs)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/fonts
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/fonts)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/levels
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/levels)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/objects
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/objects)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/components
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/components
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/packages
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/packages)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/test
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test)

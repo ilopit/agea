@@ -2,8 +2,8 @@
 
 #include "utils/weird_singletone.h"
 
-#include "vulkan_render/vulkan_types.h"
-#include "vulkan_render/vulkan_render_fwds.h"
+#include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render_types/vulkan_render_fwds.h"
 
 #include <functional>
 #include <deque>

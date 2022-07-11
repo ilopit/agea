@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_render/vulkan_render_fwds.h"
+#include "vulkan_render_types/vulkan_render_fwds.h"
 
 #include <utils/path.h>
 

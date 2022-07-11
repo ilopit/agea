@@ -1,17 +1,17 @@
 ﻿#include "engine/vk_engine.h"
 
-#include "model/fs_locator.h"
+#include "resource_locator/resource_locator.h"
 
 #include "vulkan_render/vk_initializers.h"
 #include "vulkan_render/vk_descriptors.h"
 
-#include "vulkan_render/vulkan_texture_data.h"
-#include "vulkan_render/vulkan_types.h"
-#include "vulkan_render/vulkan_material_data.h"
-#include "vulkan_render/vulkan_shader_data.h"
-#include "vulkan_render/vulkan_mesh_data.h"
-#include "vulkan_render/vulkan_shader_effect.h"
-#include "vulkan_render/vulkan_render_data.h"
+#include "vulkan_render_types/vulkan_texture_data.h"
+#include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render_types/vulkan_material_data.h"
+#include "vulkan_render_types/vulkan_shader_data.h"
+#include "vulkan_render_types/vulkan_mesh_data.h"
+#include "vulkan_render_types/vulkan_shader_effect.h"
+#include "vulkan_render_types/vulkan_render_data.h"
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/render_loader.h"
 

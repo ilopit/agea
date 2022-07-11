@@ -18,11 +18,6 @@ namespace render
 class render_device;
 struct shader_data;
 
-uint32_t
-hash_descriptor_layout_info(VkDescriptorSetLayoutCreateInfo* info);
-
-class vulkan_engine;
-// holds all information for a given shader set for pipeline
 struct shader_effect
 {
     struct reflection_overrides
@@ -34,8 +29,6 @@ struct shader_effect
     void
     add_stage(shader_data* shaderModule, VkShaderStageFlagBits stage);
 
-    void
-    reflect_layout(render_device* engine, reflection_overrides* overrides, int overrideCount);
     VkPipelineLayout m_build_layout;
 
     struct reflected_binding
@@ -49,7 +42,6 @@ struct shader_effect
     std::array<VkDescriptorSetLayout, 4> m_set_layouts;
     std::array<uint32_t, 4> m_set_hashes;
 
-private:
     struct shader_stage
     {
         shader_data* m_shaderModule = nullptr;

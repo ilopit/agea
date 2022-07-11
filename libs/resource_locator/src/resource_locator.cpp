@@ -1,4 +1,4 @@
-#include "model/fs_locator.h"
+#include "resource_locator/resource_locator.h"
 
 #include <cassert>
 #include "utils/string_utility.h"

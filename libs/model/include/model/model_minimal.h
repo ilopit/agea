@@ -5,7 +5,7 @@
 #include "utils/path.h"
 #include "utils/id.h"
 
-#include "model/fs_locator.h"
+#include "resource_locator/resource_locator.h"
 
 #include <glm_unofficial/glm.h>
 

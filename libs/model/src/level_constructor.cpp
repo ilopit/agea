@@ -10,7 +10,7 @@
 #include "model/package_manager.h"
 #include "model/conteiner_loader.h"
 
-#include "model/fs_locator.h"
+#include "resource_locator/resource_locator.h"
 
 #include "serialization/serialization.h"
 

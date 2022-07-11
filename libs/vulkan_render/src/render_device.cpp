@@ -14,14 +14,14 @@
 
 #include "utils/file_utils.h"
 
-#include "vulkan_render/vulkan_texture_data.h"
-#include "vulkan_render/vulkan_shader_data.h"
-#include "vulkan_render/vulkan_shader_effect.h"
-#include "vulkan_render/vulkan_mesh_data.h"
+#include "vulkan_render_types/vulkan_texture_data.h"
+#include "vulkan_render_types/vulkan_shader_data.h"
+#include "vulkan_render_types/vulkan_shader_effect.h"
+#include "vulkan_render_types/vulkan_mesh_data.h"
 #include "vulkan_render/render_loader.h"
 
 #include <native/native_window.h>
-#include <model/fs_locator.h>
+#include "resource_locator/resource_locator.h"
 
 #include "imgui.h"
 #include "backends/imgui_impl_sdl.h"
@@ -223,6 +223,8 @@ render_device::init_swapchain()
     // allocate and create the image
     vmaCreateImage(m_allocator, &dimg_info, &dimg_allocinfo, &m_depth_image.m_image,
                    &m_depth_image.m_allocation, nullptr);
+
+    m_depth_image.m_allocator = []() { return glob::render_device::get()->allocator(); };
 
     // build a image-view for the depth image to use for rendering
     VkImageViewCreateInfo dview_info = vk_init::imageview_create_info(
@@ -638,7 +640,7 @@ render_device::create_textured_pipeline()
 
     textured_effect->add_stage(mesh_module, VK_SHADER_STAGE_VERTEX_BIT);
     textured_effect->add_stage(texture_module, VK_SHADER_STAGE_FRAGMENT_BIT);
-    textured_effect->reflect_layout(this, overrides, 2);
+    reflect_layout(this, *textured_effect, overrides, 2);
 
     m_todo_layouts.insert(m_todo_layouts.end(), textured_effect->m_set_layouts.begin(),
                           textured_effect->m_set_layouts.end());
@@ -822,7 +824,7 @@ render_device::create_buffer(size_t allocSize,
 
     // allocate the buffer
 
-    return allocated_buffer::create(bufferInfo, vmaallocInfo);
+    return allocated_buffer::create([this]() { return m_allocator; }, bufferInfo, vmaallocInfo);
 }
 }  // namespace render
 }  // namespace agea

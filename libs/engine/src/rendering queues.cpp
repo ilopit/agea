@@ -1,7 +1,7 @@
 #include "engine/rendering queues.h"
 
 #include "model/rendering/renderable.h"
-#include "vulkan_render/vulkan_render_data.h"
+#include "vulkan_render_types/vulkan_render_data.h"
 #include "utils/agea_log.h"
 
 namespace agea

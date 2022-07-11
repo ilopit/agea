@@ -1,35 +1,46 @@
 #pragma once
 
-#include "vulkan_material_data.h"
+#include "vulkan_render_types/vulkan_material_data.h"
 
 #include "utils/id.h"
+#include "utils/path.h"
 
 #include "utils/weird_singletone.h"
-#include "vulkan_render/vulkan_render_fwds.h"
+#include "vulkan_render_types/vulkan_render_fwds.h"
+#include "vulkan_render_types/vulkan_shader_effect.h"
 
 #include <memory>
 #include <unordered_map>
 
 namespace agea
 {
-namespace model
-{
-class mesh;
-class texture;
-class material;
-}  // namespace model
-
 namespace render
 {
+
+uint32_t
+hash_descriptor_layout_info(VkDescriptorSetLayoutCreateInfo* info);
+
+void
+reflect_layout(render_device* engine,
+               shader_effect& se,
+               shader_effect::reflection_overrides* overrides,
+               int overrideCount);
+
 class loader
 {
 public:
     mesh_data*
-    load_mesh(model::mesh& m);
+    load_mesh(const utils::id& mesh_id,
+              const utils::path& external_path,
+              const utils::path& indeces_path,
+              const utils::path& vertices_path);
+
     texture_data*
-    load_texture(model::texture& t);
+    load_texture(const utils::id& texture_id, const std::string& base_color);
     material_data*
-    load_material(model::material& d);
+    load_material(const utils::id& material_id,
+                  const utils::id& texture_id,
+                  const utils::id& base_effect_id);
     shader_data*
     load_shader(const utils::id& path);
 

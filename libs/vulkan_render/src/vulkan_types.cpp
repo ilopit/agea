@@ -1,6 +1,4 @@
-﻿#include "vulkan_render/vulkan_types.h"
-
-#include "vulkan_render/render_device.h"
+﻿#include "vulkan_render_types/vulkan_types.h"
 
 namespace agea
 {
@@ -16,9 +14,11 @@ allocated_buffer::operator=(allocated_buffer&& other) noexcept
     }
     m_buffer = other.m_buffer;
     m_allocation = other.m_allocation;
+    m_allocator = other.m_allocator;
 
     other.m_buffer = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
+    other.m_allocator = nullptr;
 
     return *this;
 }
@@ -29,42 +29,49 @@ allocated_buffer::allocated_buffer()
 {
 }
 
-allocated_buffer::allocated_buffer(VkBuffer b, VmaAllocation a)
+allocated_buffer::allocated_buffer(vma_allocator_provider alloc, VkBuffer b, VmaAllocation a)
     : m_buffer(b)
     , m_allocation(a)
+    , m_allocator(alloc)
 {
 }
 
 allocated_buffer::allocated_buffer(allocated_buffer&& other) noexcept
     : m_buffer(other.m_buffer)
     , m_allocation(other.m_allocation)
+    , m_allocator(other.m_allocator)
 {
     other.m_buffer = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
+    other.m_allocator = nullptr;
 }
 
 void
 allocated_buffer::clear()
 {
-    auto device = glob::render_device::get();
+    if (!m_allocator)
+    {
+        return;
+    }
 
-    vmaDestroyBuffer(device->allocator(), m_buffer, m_allocation);
+    vmaDestroyBuffer(m_allocator(), m_buffer, m_allocation);
 
     m_buffer = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
+    m_allocator = nullptr;
 }
 
 allocated_buffer
-allocated_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
+allocated_buffer::create(vma_allocator_provider alloc,
+                         VkBufferCreateInfo bci,
+                         VmaAllocationCreateInfo vaci)
 {
-    auto device = glob::render_device::get();
-
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    vmaCreateBuffer(device->allocator(), &bci, &vaci, &buffer, &allocation, nullptr);
+    vmaCreateBuffer(alloc(), &bci, &vaci, &buffer, &allocation, nullptr);
 
-    return allocated_buffer{buffer, allocation};
+    return allocated_buffer{alloc, buffer, allocation};
 }
 
 allocated_buffer::~allocated_buffer()
@@ -76,6 +83,7 @@ allocated_image::allocated_image(VkImage b, VmaAllocation a)
     : m_image(b)
     , m_allocation(a)
     , mipLevels(0)
+    , m_allocator()
 {
 }
 
@@ -83,16 +91,19 @@ allocated_image::allocated_image(allocated_image&& other) noexcept
     : m_image(other.m_image)
     , m_allocation(other.m_allocation)
     , mipLevels(other.mipLevels)
+    , m_allocator(other.m_allocator)
 {
     other.m_image = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
     other.mipLevels = 0;
+    other.m_allocator = 0;
 }
 
 allocated_image::allocated_image()
     : m_image(VK_NULL_HANDLE)
     , m_allocation(VK_NULL_HANDLE)
     , mipLevels(0)
+    , m_allocator()
 {
 }
 
@@ -106,10 +117,12 @@ allocated_image::operator=(allocated_image&& other) noexcept
     m_image = other.m_image;
     m_allocation = other.m_allocation;
     mipLevels = other.mipLevels;
+    m_allocator = other.m_allocator;
 
     other.m_image = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
     other.mipLevels = 0;
+    other.m_allocator = nullptr;
 
     return *this;
 }
@@ -127,17 +140,11 @@ allocated_image::clear()
         return;
     }
 
-    auto device = glob::render_device::get();
-
-    if (!device)
-    {
-        AGEA_never("never");
-    }
-
-    vmaDestroyImage(device->allocator(), m_image, m_allocation);
+    vmaDestroyImage(m_allocator(), m_image, m_allocation);
 
     m_image = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
+    m_allocator = nullptr;
 }
 
 VkPipeline

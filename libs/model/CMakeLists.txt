@@ -23,8 +23,9 @@ add_library(agea::model ALIAS model)
 target_link_libraries(model 
    utils
    glm_unofficial
-   serialization
+   agea::serialization
    agea::vulkan_render
+   agea::resource_locator
 )
 
 get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)

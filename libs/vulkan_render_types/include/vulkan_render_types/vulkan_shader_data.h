@@ -15,11 +15,10 @@ namespace agea
 {
 namespace render
 {
-class render_device;
 
 struct shader_data
 {
-    shader_data(VkDevice vk_device, VkShaderModule vk_module, std::vector<char> code)
+    shader_data(vk_device_provider vk_device, VkShaderModule vk_module, std::vector<char> code)
         : m_vk_device(vk_device)
         , m_vk_module(vk_module)
         , m_code(std::move(code))
@@ -41,7 +40,7 @@ struct shader_data
     }
 
 private:
-    VkDevice m_vk_device;
+    vk_device_provider m_vk_device;
     VkShaderModule m_vk_module;
     std::vector<char> m_code;
 };

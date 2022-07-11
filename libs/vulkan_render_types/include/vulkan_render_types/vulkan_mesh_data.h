@@ -1,8 +1,8 @@
 ﻿#pragma once
 
-#include "vulkan_render/vulkan_types.h"
+#include "vulkan_render_types/vulkan_types.h"
 
-#include "utils/id.h"
+#include <utils/id.h>
 
 #include <vector>
 #include <string>

@@ -1,6 +1,4 @@
-﻿#include "vulkan_render/vulkan_mesh_data.h"
-
-#include "vulkan_render/render_device.h"
+﻿#include "vulkan_render_types/vulkan_mesh_data.h"
 
 #include "utils/file_utils.h"
 
@@ -64,5 +62,4 @@ mesh_data::~mesh_data()
 }
 
 }  // namespace render
-
 }  // namespace agea

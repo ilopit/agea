@@ -6,8 +6,7 @@
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
 
-#include "vulkan_render/render_loader.h"
-#include "vulkan_render/vulkan_render_data.h"
+#include "vulkan_render_types/vulkan_render_data.h"
 
 namespace agea
 {

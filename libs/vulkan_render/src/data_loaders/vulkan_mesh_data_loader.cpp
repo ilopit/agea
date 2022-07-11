@@ -1,6 +1,6 @@
 #include "vulkan_render/data_loaders/vulkan_mesh_data_loader.h"
 
-#include "vulkan_render/vulkan_mesh_data.h"
+#include "vulkan_render_types/vulkan_mesh_data.h"
 #include "utils/file_utils.h"
 
 #include <tiny_obj_loader.h>

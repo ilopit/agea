@@ -19,6 +19,7 @@ target_link_libraries(vulkan_render PUBLIC
     agea::utils
     agea::model
     agea::native
+    agea::vulkan_render_types
     glm_unofficial
     sdl2
     spirv-reflect-static

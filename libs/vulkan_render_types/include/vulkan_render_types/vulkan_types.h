@@ -6,18 +6,22 @@
 #include <vk_mem_alloc.h>
 
 #include <vector>
+#include <functional>
 
 namespace agea
 {
 namespace render
 {
+using vk_device_provider = std::function<VkDevice()>;
+using vma_allocator_provider = std::function<VmaAllocator()>;
+
 struct allocated_buffer
 {
     allocated_buffer();
 
     ~allocated_buffer();
 
-    allocated_buffer(VkBuffer b, VmaAllocation a);
+    allocated_buffer(vma_allocator_provider alloc, VkBuffer b, VmaAllocation a);
 
     allocated_buffer(const allocated_buffer&) = delete;
     allocated_buffer&
@@ -31,7 +35,7 @@ struct allocated_buffer
     clear();
 
     static allocated_buffer
-    create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
+    create(vma_allocator_provider alloc, VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
 
     VkBuffer&
     buffer()
@@ -48,6 +52,7 @@ struct allocated_buffer
 private:
     VkBuffer m_buffer;
     VmaAllocation m_allocation;
+    vma_allocator_provider m_allocator;
 };
 
 struct allocated_image
@@ -73,6 +78,8 @@ struct allocated_image
     VmaAllocation m_allocation;
 
     int mipLevels;
+
+    vma_allocator_provider m_allocator;
 };
 
 class pipeline_builder

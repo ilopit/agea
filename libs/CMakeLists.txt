@@ -1,6 +1,8 @@
 ﻿add_subdirectory(engine)
 add_subdirectory(model)
 add_subdirectory(native)
+add_subdirectory(resource_locator)
 add_subdirectory(serialization)
 add_subdirectory(utils)
 add_subdirectory(vulkan_render)
+add_subdirectory(vulkan_render_types)

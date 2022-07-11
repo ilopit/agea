@@ -1,4 +1,4 @@
+add_library(stb_unofficial STATIC stb_unofficial/stb.cpp)
 
-add_library(stb_unofficial INTERFACE)
-
-target_include_directories(stb_unofficial INTERFACE "${PROJECT_SOURCE_DIR}/thirdparty/upstream/stb" )
+target_include_directories(stb_unofficial PUBLIC ".")
+target_include_directories(stb_unofficial PUBLIC "${PROJECT_SOURCE_DIR}/thirdparty/upstream/stb" )

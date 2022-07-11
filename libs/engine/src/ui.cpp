@@ -16,7 +16,7 @@
 
 #include "model/reflection/property.h"
 
-#include "vulkan_render/vulkan_texture_data.h"
+#include "vulkan_render_types/vulkan_texture_data.h"
 #include "vulkan_render/render_loader.h"
 #include "vulkan_render/render_device.h"
 
