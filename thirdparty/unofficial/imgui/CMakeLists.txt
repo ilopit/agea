@@ -18,3 +18,4 @@ target_sources(imgui_unofficial PRIVATE
 )
 
 target_link_libraries(imgui_unofficial sdl2 Vulkan::Vulkan)
+add_library(agea::imgui_unofficial ALIAS imgui_unofficial)

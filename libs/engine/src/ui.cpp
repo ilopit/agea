@@ -6,7 +6,6 @@
 #include "engine/property_drawers.h"
 
 #include "native/native_window.h"
-#include "vulkan_render/vk_initializers.h"
 
 #include "model/level.h"
 #include "model/game_object.h"

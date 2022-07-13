@@ -8,9 +8,10 @@ add_library(resource_locator STATIC
 target_include_directories(resource_locator PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 add_library(agea::resource_locator ALIAS resource_locator)
 
-target_link_libraries(resource_locator 
+target_link_libraries(resource_locator
+    agea::utils
+
     spdlog 
-    utils
 )
 
 get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)

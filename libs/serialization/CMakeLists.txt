@@ -8,7 +8,11 @@ add_library(serialization STATIC
 target_include_directories(serialization PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 add_library(agea::serialization ALIAS serialization)
 
-target_link_libraries(serialization utils yaml-cpp)
+target_link_libraries(serialization 
+    PUBLIC
+    agea::utils 
+    yaml-cpp
+)
 
 get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
 get_filename_component(PARENT_DIR_2 ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)

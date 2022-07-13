@@ -13,10 +13,9 @@
 
 #include "vulkan_render_types/vulkan_initializers.h"
 
-#include "utils/string_utility.h"
-#include "utils/file_utils.h"
-
-#include "model/rendering/mesh.h"
+#include <utils/string_utility.h>
+#include <utils/file_utils.h>
+#include <resource_locator/resource_locator.h>
 
 #include <stb_unofficial/stb.h>
 
@@ -86,7 +85,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
 {
     auto device = glob::render_device::get();
 
-    VkExtent3D imageExtent;
+    VkExtent3D imageExtent{};
     imageExtent.width = static_cast<uint32_t>(texWidth);
     imageExtent.height = static_cast<uint32_t>(texHeight);
     imageExtent.depth = 1;
@@ -349,7 +348,7 @@ reflect_layout(render_device* engine,
                 }
             }
         }
-        for (auto [k, v] : binds)
+        for (auto& [k, v] : binds)
         {
             ly.bindings.push_back(v);
         }
@@ -380,7 +379,7 @@ reflect_layout(render_device* engine,
     VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = utils::pipeline_layout_create_info();
 
     // setup push constants
-    VkPushConstantRange push_constant;
+    VkPushConstantRange push_constant{};
     // offset 0
     push_constant.offset = 0;
     // size of a MeshPushConstant struct

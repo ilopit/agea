@@ -11,19 +11,16 @@ target_include_directories(utils PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PU
 add_library(agea::vulkan_render ALIAS vulkan_render)
 
 target_link_libraries(vulkan_render PUBLIC
-    vma_unofficial
-    vk-bootstrap::vk-bootstrap
-    imgui_unofficial
-    tinyobjloader
-    Vulkan::Vulkan
     agea::utils
-    agea::model
     agea::native
     agea::vulkan_render_types
-    glm_unofficial
+    agea::glm_unofficial
+    agea::imgui_unofficial
+    agea::stb_unofficial
+    agea::resource_locator
+
+    tinyobjloader
     sdl2
-    spirv-reflect-static
-    stb_unofficial
 )
 
 get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
