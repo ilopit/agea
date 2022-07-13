@@ -5,7 +5,7 @@ namespace agea
 namespace render
 {
 VertexInputDescription
-vertex_data::get_vertex_description()
+get_vertex_description()
 {
     VertexInputDescription description;
 

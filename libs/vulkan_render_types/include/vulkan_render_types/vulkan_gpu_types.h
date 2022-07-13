@@ -45,5 +45,13 @@ struct gpu_material_data
     float albedo = 0.2f;
 };
 
+struct vertex_data
+{
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec3 color;
+    glm::vec2 uv;
+};
+
 }  // namespace render
 }  // namespace agea

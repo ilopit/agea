@@ -16,6 +16,7 @@ namespace agea
 {
 namespace render
 {
+class render_device;
 
 uint32_t
 hash_descriptor_layout_info(VkDescriptorSetLayoutCreateInfo* info);

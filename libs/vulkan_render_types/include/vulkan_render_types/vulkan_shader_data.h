@@ -3,8 +3,7 @@
 
 #pragma once
 
-#include "vulkan_types.h"
-#include "vulkan_render/vk_descriptors.h"
+#include "vulkan_render_types/vulkan_types.h"
 
 #include <vector>
 #include <array>

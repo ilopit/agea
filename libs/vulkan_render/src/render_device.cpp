@@ -682,7 +682,7 @@ render_device::create_textured_pipeline()
     pb.m_depth_stencil = utils::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 
     // build the mesh pipeline
-    auto vertexDescription = render::vertex_data::get_vertex_description();
+    auto vertexDescription = render::get_vertex_description();
 
     // connect the pipeline builder vertex input info to the one we get from Vertex
     pb.m_vertex_input_info.pVertexAttributeDescriptions = vertexDescription.attributes.data();

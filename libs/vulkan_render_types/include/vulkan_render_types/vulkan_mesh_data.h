@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render_types/vulkan_gpu_types.h"
 
 #include <utils/id.h>
 #include <glm_unofficial/glm.h>
@@ -20,16 +21,8 @@ struct VertexInputDescription
     VkPipelineVertexInputStateCreateFlags flags = 0;
 };
 
-struct vertex_data
-{
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec3 color;
-    glm::vec2 uv;
-
-    static VertexInputDescription
-    get_vertex_description();
-};
+VertexInputDescription
+get_vertex_description();
 
 struct mesh_data
 {

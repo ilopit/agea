@@ -5,6 +5,7 @@
 #include <vulkan_render_types/vulkan_material_data.h>
 #include <vulkan_render_types/vulkan_gpu_types.h>
 
+#include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/data_loaders/vulkan_mesh_data_loader.h"
 

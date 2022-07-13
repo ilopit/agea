@@ -13,8 +13,9 @@ namespace render
 using vk_device_provider = std::function<VkDevice()>;
 using vma_allocator_provider = std::function<VmaAllocator()>;
 
-struct allocated_buffer
+class allocated_buffer
 {
+public:
     allocated_buffer();
 
     ~allocated_buffer();
@@ -53,8 +54,9 @@ private:
     vma_allocator_provider m_allocator;
 };
 
-struct allocated_image
+class allocated_image
 {
+public:
     allocated_image();
     ~allocated_image();
 
