@@ -10,7 +10,7 @@
 
 #include "vk_mem_alloc.h"
 
-#include "vulkan_render_types/vk_initializers.h"
+#include "vulkan_render_types/vulkan_initializers.h"
 
 #include "utils/string_utility.h"
 #include "utils/file_utils.h"
@@ -90,7 +90,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
     imageExtent.height = static_cast<uint32_t>(texHeight);
     imageExtent.depth = 1;
 
-    VkImageCreateInfo dimg_info = vk_init::image_create_info(
+    VkImageCreateInfo dimg_info = utils::image_create_info(
         image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
 
     auto allloc_cb = []() { return glob::render_device::get()->allocator(); };
@@ -376,7 +376,7 @@ reflect_layout(render_device* engine,
     }
 
     // we start from just the default empty pipeline layout info
-    VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = vk_init::pipeline_layout_create_info();
+    VkPipelineLayoutCreateInfo mesh_pipeline_layout_info = utils::pipeline_layout_create_info();
 
     // setup push constants
     VkPushConstantRange push_constant;
@@ -409,10 +409,10 @@ reflect_layout(render_device* engine,
 }
 
 mesh_data*
-loader::load_mesh(const utils::id& mesh_id,
-                  const utils::path& external_path,
-                  const utils::path& idx_file,
-                  const utils::path& vert_file)
+loader::load_mesh(const agea::utils::id& mesh_id,
+                  const agea::utils::path& external_path,
+                  const agea::utils::path& idx_file,
+                  const agea::utils::path& vert_file)
 {
     auto device = glob::render_device::get();
 
@@ -532,7 +532,9 @@ loader::load_mesh(const utils::id& mesh_id,
 }
 
 bool
-loader::create_default_material(VkPipeline pipeline, shader_effect* effect, const utils::id& id)
+loader::create_default_material(VkPipeline pipeline,
+                                shader_effect* effect,
+                                const agea::utils::id& id)
 {
     auto it = m_materials_cache.find(id);
     if (it != m_materials_cache.end())
@@ -550,7 +552,7 @@ loader::create_default_material(VkPipeline pipeline, shader_effect* effect, cons
 }
 
 texture_data*
-loader::load_texture(const utils::id& texture_id, const std::string& base_color)
+loader::load_texture(const agea::utils::id& texture_id, const std::string& base_color)
 {
     auto device = glob::render_device::get();
 
@@ -580,7 +582,7 @@ loader::load_texture(const utils::id& texture_id, const std::string& base_color)
         }
     }
 
-    VkImageViewCreateInfo imageinfo = vk_init::imageview_create_info(
+    VkImageViewCreateInfo imageinfo = utils::imageview_create_info(
         VK_FORMAT_R8G8B8A8_UNORM, td->image.image(), VK_IMAGE_ASPECT_COLOR_BIT);
     imageinfo.subresourceRange.levelCount = td->image.get_mip_levels();
     vkCreateImageView(device->vk_device(), &imageinfo, nullptr, &td->image_view);
@@ -591,9 +593,9 @@ loader::load_texture(const utils::id& texture_id, const std::string& base_color)
 }
 
 material_data*
-loader::load_material(const utils::id& material_id,
-                      const utils::id& texture_id,
-                      const utils::id& base_effect_id)
+loader::load_material(const agea::utils::id& material_id,
+                      const agea::utils::id& texture_id,
+                      const agea::utils::id& base_effect_id)
 {
     auto device = glob::render_device::get();
 
@@ -627,7 +629,7 @@ loader::load_material(const utils::id& material_id,
 }
 
 shader_data*
-loader::load_shader(const utils::id& path)
+loader::load_shader(const agea::utils::id& path)
 {
     auto device = glob::render_device::get();
 
@@ -641,7 +643,7 @@ loader::load_shader(const utils::id& path)
     std::vector<char> buffer;
     auto full_path =
         glob::resource_locator::get()->resource(category::shaders_compiled, path.str());
-    if (!utils::file_utils::load_file(full_path, buffer))
+    if (!agea::utils::file_utils::load_file(full_path, buffer))
     {
         ALOG_LAZY_ERROR;
         return nullptr;

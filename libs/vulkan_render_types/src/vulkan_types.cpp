@@ -1,6 +1,6 @@
 ﻿#include "vulkan_render_types/vulkan_types.h"
 
-#include "vulkan_render_types/vk_initializers.h"
+#include "vulkan_render_types/vulkan_initializers.h"
 
 namespace agea
 {

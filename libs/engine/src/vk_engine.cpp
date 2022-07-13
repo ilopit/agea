@@ -2,18 +2,18 @@
 
 #include "resource_locator/resource_locator.h"
 
-#include "vulkan_render_types/vk_initializers.h"
-#include "vulkan_render/vk_descriptors.h"
+#include <vulkan_render_types/vulkan_initializers.h>
+#include <vulkan_render_types/vulkan_texture_data.h>
+#include <vulkan_render_types/vulkan_types.h>
+#include <vulkan_render_types/vulkan_material_data.h>
+#include <vulkan_render_types/vulkan_shader_data.h>
+#include <vulkan_render_types/vulkan_mesh_data.h>
+#include <vulkan_render_types/vulkan_shader_effect.h>
+#include <vulkan_render_types/vulkan_render_data.h>
 
-#include "vulkan_render_types/vulkan_texture_data.h"
-#include "vulkan_render_types/vulkan_types.h"
-#include "vulkan_render_types/vulkan_material_data.h"
-#include "vulkan_render_types/vulkan_shader_data.h"
-#include "vulkan_render_types/vulkan_mesh_data.h"
-#include "vulkan_render_types/vulkan_shader_effect.h"
-#include "vulkan_render_types/vulkan_render_data.h"
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/render_loader.h"
+#include "vulkan_render/vk_descriptors.h"
 
 #include "model/caches/components_cache.h"
 #include "model/caches/materials_cache.h"
@@ -182,7 +182,7 @@ vulkan_engine::draw()
     // begin the command buffer recording. We will use this command buffer exactly once, so we want
     // to let vulkan know that
     VkCommandBufferBeginInfo cmdBeginInfo =
-        vk_init::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        render::utils::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
@@ -202,8 +202,8 @@ vulkan_engine::draw()
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
     VkRenderPassBeginInfo rpInfo =
-        vk_init::renderpass_begin_info(device->render_pass(), VkExtent2D{width, height},
-                                       device->framebuffers(swapchainImageIndex));
+        render::utils::renderpass_begin_info(device->render_pass(), VkExtent2D{width, height},
+                                             device->framebuffers(swapchainImageIndex));
 
     // connect clear values
     rpInfo.clearValueCount = 2;
@@ -227,7 +227,7 @@ vulkan_engine::draw()
     // we want to wait on the _presentSemaphore, as that semaphore is signaled when the swapchain is
     // ready we will signal the _renderSemaphore, to signal that rendering has finished
 
-    VkSubmitInfo submit = vk_init::submit_info(&cmd);
+    VkSubmitInfo submit = render::utils::submit_info(&cmd);
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     submit.pWaitDstStageMask = &waitStage;
@@ -247,7 +247,7 @@ vulkan_engine::draw()
     //  we want to wait on the _renderSemaphore for that,
     //  as its necessary that drawing commands have finished before the image is displayed to the
     //  user
-    VkPresentInfoKHR presentInfo = vk_init::present_info();
+    VkPresentInfoKHR presentInfo = render::utils::present_info();
 
     presentInfo.pSwapchains = &device->swapchain();
     presentInfo.swapchainCount = 1;

@@ -12,7 +12,7 @@
 #include <utils/process.h>
 #include <utils/file_utils.h>
 
-#include <vulkan_render_types/vk_initializers.h>
+#include <vulkan_render_types/vulkan_initializers.h>
 #include <vulkan_render_types/vulkan_texture_data.h>
 #include <vulkan_render_types/vulkan_shader_data.h>
 #include <vulkan_render_types/vulkan_shader_effect.h>
@@ -214,7 +214,7 @@ render_device::init_swapchain()
     VkExtent3D depthImageExtent = {width, height, 1};
 
     // the depth image will be a image with the format we selected and Depth Attachment usage flag
-    VkImageCreateInfo dimg_info = vk_init::image_create_info(
+    VkImageCreateInfo dimg_info = utils::image_create_info(
         m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
 
     // for the depth image, we want to allocate it from gpu local memory
@@ -227,7 +227,7 @@ render_device::init_swapchain()
         []() { return glob::render_device::get()->allocator(); }, dimg_info, dimg_allocinfo);
 
     // build a image-view for the depth image to use for rendering
-    VkImageViewCreateInfo dview_info = vk_init::imageview_create_info(
+    VkImageViewCreateInfo dview_info = utils::imageview_create_info(
         m_depth_format, m_depth_image.image(), VK_IMAGE_ASPECT_DEPTH_BIT);
 
     VK_CHECK(vkCreateImageView(m_vk_device, &dview_info, nullptr, &m_depth_image_view));
@@ -356,7 +356,7 @@ render_device::init_framebuffers()
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
     VkFramebufferCreateInfo fb_info =
-        vk_init::framebuffer_create_info(m_render_pass, VkExtent2D{width, height});
+        utils::framebuffer_create_info(m_render_pass, VkExtent2D{width, height});
 
     const uint32_t swapchain_imagecount = (uint32_t)m_swapchain_images.size();
     m_framebuffers = std::vector<VkFramebuffer>(swapchain_imagecount);
@@ -393,7 +393,7 @@ render_device::init_commands()
 {
     // create a command pool for commands submitted to the graphics queue.
     // we also want the pool to allow for resetting of individual command buffers
-    VkCommandPoolCreateInfo commandPoolInfo = vk_init::command_pool_create_info(
+    VkCommandPoolCreateInfo commandPoolInfo = utils::command_pool_create_info(
         m_graphics_queue_family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     for (auto& frame : m_frames)
@@ -403,14 +403,14 @@ render_device::init_commands()
 
         // allocate the default command buffer that we will use for rendering
         VkCommandBufferAllocateInfo cmdAllocInfo =
-            vk_init::command_buffer_allocate_info(frame.m_command_pool, 1);
+            utils::command_buffer_allocate_info(frame.m_command_pool, 1);
 
         VK_CHECK(
             vkAllocateCommandBuffers(m_vk_device, &cmdAllocInfo, &frame.m_main_command_buffer));
     }
 
     VkCommandPoolCreateInfo uploadCommandPoolInfo =
-        vk_init::command_pool_create_info(m_graphics_queue_family);
+        utils::command_pool_create_info(m_graphics_queue_family);
     // create pool for upload context
     VK_CHECK(vkCreateCommandPool(m_vk_device, &uploadCommandPoolInfo, nullptr,
                                  &m_upload_context.m_command_pool));
@@ -438,9 +438,9 @@ render_device::init_sync_structures()
     // one fence to control when the gpu has finished rendering the frame,
     // and 2 semaphores to syncronize rendering with swapchain
     // we want the fence to start signalled so we can wait on it on the first frame
-    VkFenceCreateInfo fenceCreateInfo = vk_init::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
+    VkFenceCreateInfo fenceCreateInfo = utils::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 
-    VkSemaphoreCreateInfo semaphoreCreateInfo = vk_init::semaphore_create_info();
+    VkSemaphoreCreateInfo semaphoreCreateInfo = utils::semaphore_create_info();
 
     for (auto& frame : m_frames)
     {
@@ -452,7 +452,7 @@ render_device::init_sync_structures()
                                    &frame.m_render_semaphore));
     }
 
-    VkFenceCreateInfo uploadFenceCreateInfo = vk_init::fence_create_info();
+    VkFenceCreateInfo uploadFenceCreateInfo = utils::fence_create_info();
 
     VK_CHECK(vkCreateFence(m_vk_device, &uploadFenceCreateInfo, nullptr,
                            &m_upload_context.m_upload_fence));
@@ -571,7 +571,7 @@ render_device::init_descriptors()
     m_descriptor_layout_cache = std::make_unique<vk_utils::descriptor_layout_cache>();
     m_descriptor_layout_cache->init(m_vk_device);
 
-    VkDescriptorSetLayoutBinding textureBind = vk_init::descriptorset_layout_binding(
+    VkDescriptorSetLayoutBinding textureBind = utils::descriptorset_layout_binding(
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
 
     VkDescriptorSetLayoutCreateInfo set3info = {};
@@ -613,14 +613,16 @@ render_device::deinit_descriptors()
 bool
 render_device::create_textured_pipeline()
 {
-    auto mesh_module = glob::render_loader::get()->load_shader(utils::id::from("pbr.vert.spv"));
+    auto mesh_module =
+        glob::render_loader::get()->load_shader(agea::utils::id::from("pbr.vert.spv"));
     if (!mesh_module)
     {
         std::cout << "Error when building the colored mesh shader" << std::endl;
         return false;
     }
 
-    auto texture_module = glob::render_loader::get()->load_shader(utils::id::from("pbr.frag.spv"));
+    auto texture_module =
+        glob::render_loader::get()->load_shader(agea::utils::id::from("pbr.frag.spv"));
     if (!texture_module)
     {
         std::cout << "Error when building the colored mesh shader" << std::endl;
@@ -648,11 +650,11 @@ render_device::create_textured_pipeline()
     auto texture_pipeline_layout = textured_effect->m_build_layout;
 
     // vertex input controls how to read vertices from vertex buffers. We arent using it yet
-    pb.m_vertex_input_info = vk_init::vertex_input_state_create_info();
+    pb.m_vertex_input_info = utils::vertex_input_state_create_info();
 
     // input assembly is the configuration for drawing triangle lists, strips, or individual
     // points. we are just going to draw triangle list
-    pb.m_input_assembly = vk_init::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pb.m_input_assembly = utils::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
     // build viewport and scissor from the swapchain extents
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
@@ -668,17 +670,16 @@ render_device::create_textured_pipeline()
     pb.m_scissor.extent = VkExtent2D{width, height};
 
     // configure the rasterizer to draw filled triangles
-    pb.m_rasterizer = vk_init::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
+    pb.m_rasterizer = utils::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
 
     // we dont use multisampling, so just run the default one
-    pb.m_multisampling = vk_init::multisampling_state_create_info();
+    pb.m_multisampling = utils::multisampling_state_create_info();
 
     // a single blend attachment with no blending and writing to RGBA
-    pb.m_color_blend_attachment = vk_init::color_blend_attachment_state();
+    pb.m_color_blend_attachment = utils::color_blend_attachment_state();
 
     // default depth testing
-    pb.m_depth_stencil =
-        vk_init::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+    pb.m_depth_stencil = utils::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 
     // build the mesh pipeline
     auto vertexDescription = render::vertex_data::get_vertex_description();
@@ -694,11 +695,11 @@ render_device::create_textured_pipeline()
 
     auto meshVertShader = mesh_module->vk_module();
     pb.m_shader_stages.push_back(
-        vk_init::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
+        utils::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
 
     auto texturedMeshShader = texture_module->vk_module();
-    pb.m_shader_stages.push_back(vk_init::pipeline_shader_stage_create_info(
-        VK_SHADER_STAGE_FRAGMENT_BIT, texturedMeshShader));
+    pb.m_shader_stages.push_back(
+        utils::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, texturedMeshShader));
 
     pb.m_pipelineLayout = texture_pipeline_layout;
 
@@ -706,7 +707,7 @@ render_device::create_textured_pipeline()
     m_pipelines["textured"] = {texture_pipeline, texture_pipeline_layout};
 
     glob::render_loader::get()->create_default_material(texture_pipeline, textured_effect,
-                                                        utils::id::from("simple_texture"));
+                                                        agea::utils::id::from("simple_texture"));
     return true;
 }
 
@@ -724,7 +725,7 @@ render_device::deinit_imgui()
 void
 render_device::init_samplers()
 {
-    VkSamplerCreateInfo samplerInfo = vk_init::sampler_create_info(VK_FILTER_LINEAR);
+    VkSamplerCreateInfo samplerInfo = utils::sampler_create_info(VK_FILTER_LINEAR);
 
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     // info.anisotropyEnable = true;
@@ -762,14 +763,14 @@ render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& funct
 
     // allocate the default command buffer that we will use for rendering
     VkCommandBufferAllocateInfo cmdAllocInfo =
-        vk_init::command_buffer_allocate_info(m_upload_context.m_command_pool, 1);
+        utils::command_buffer_allocate_info(m_upload_context.m_command_pool, 1);
 
     VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &cmdAllocInfo, &cmd));
 
     // begin the command buffer recording. We will use this command buffer exactly once, so we
     // want to let vulkan know that
     VkCommandBufferBeginInfo cmdBeginInfo =
-        vk_init::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        utils::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
@@ -777,7 +778,7 @@ render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& funct
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
-    VkSubmitInfo submit = vk_init::submit_info(&cmd);
+    VkSubmitInfo submit = utils::submit_info(&cmd);
 
     // submit command buffer to the queue and execute it.
     // _renderFence will now block until the graphic commands finish execution

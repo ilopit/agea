@@ -30,31 +30,31 @@ class loader
 {
 public:
     mesh_data*
-    load_mesh(const utils::id& mesh_id,
-              const utils::path& external_path,
-              const utils::path& indeces_path,
-              const utils::path& vertices_path);
+    load_mesh(const agea::utils::id& mesh_id,
+              const agea::utils::path& external_path,
+              const agea::utils::path& indeces_path,
+              const agea::utils::path& vertices_path);
 
     texture_data*
-    load_texture(const utils::id& texture_id, const std::string& base_color);
+    load_texture(const agea::utils::id& texture_id, const std::string& base_color);
     material_data*
-    load_material(const utils::id& material_id,
-                  const utils::id& texture_id,
-                  const utils::id& base_effect_id);
+    load_material(const agea::utils::id& material_id,
+                  const agea::utils::id& texture_id,
+                  const agea::utils::id& base_effect_id);
     shader_data*
-    load_shader(const utils::id& path);
+    load_shader(const agea::utils::id& path);
 
     void
     clear_caches();
 
     bool
-    create_default_material(VkPipeline pipeline, shader_effect* effect, const utils::id& id);
+    create_default_material(VkPipeline pipeline, shader_effect* effect, const agea::utils::id& id);
 
 private:
-    std::unordered_map<utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
-    std::unordered_map<utils::id, std::shared_ptr<texture_data>> m_textures_cache;
-    std::unordered_map<utils::id, std::shared_ptr<material_data>> m_materials_cache;
-    std::unordered_map<utils::id, std::shared_ptr<shader_data>> m_shaders_cache;
+    std::unordered_map<agea::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
+    std::unordered_map<agea::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
+    std::unordered_map<agea::utils::id, std::shared_ptr<material_data>> m_materials_cache;
+    std::unordered_map<agea::utils::id, std::shared_ptr<shader_data>> m_shaders_cache;
 };
 
 }  // namespace render

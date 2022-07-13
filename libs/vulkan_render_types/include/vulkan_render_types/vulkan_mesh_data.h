@@ -51,13 +51,13 @@ struct mesh_data
         return !m_indices.empty();
     }
 
-    const utils::id&
+    const agea::utils::id&
     id()
     {
         return m_id;
     }
 
-    utils::id m_id;
+    agea::utils::id m_id;
 
     std::vector<vertex_data> m_vertices;
     std::vector<uint32_t> m_indices;

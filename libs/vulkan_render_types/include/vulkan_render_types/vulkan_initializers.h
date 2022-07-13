@@ -4,8 +4,11 @@
 
 namespace agea
 {
-namespace vk_init
+namespace render
 {
+namespace utils
+{
+
 VkCommandPoolCreateInfo
 command_pool_create_info(uint32_t queue_family_index, VkCommandPoolResetFlags flags = 0);
 
@@ -85,5 +88,6 @@ write_descriptor_image(VkDescriptorType type,
 VkSamplerCreateInfo
 sampler_create_info(VkFilter filters,
                     VkSamplerAddressMode sampler_adress_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
-}  // namespace vk_init
+}  // namespace utils
+}  // namespace render
 }  // namespace agea

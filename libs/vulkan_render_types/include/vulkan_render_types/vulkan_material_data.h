@@ -39,7 +39,7 @@ struct material_data
         return &gpu_data.roughness;
     }
 
-    utils::id id;
+    agea::utils::id id;
     VkDescriptorSet texture_set;
     VkPipeline pipeline;
     shader_effect* effect = nullptr;
