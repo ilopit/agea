@@ -2,7 +2,7 @@
 
 #include "resource_locator/resource_locator.h"
 
-#include "vulkan_render/vk_initializers.h"
+#include "vulkan_render_types/vk_initializers.h"
 #include "vulkan_render/vk_descriptors.h"
 
 #include "vulkan_render_types/vulkan_texture_data.h"

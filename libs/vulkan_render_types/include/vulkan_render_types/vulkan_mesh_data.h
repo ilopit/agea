@@ -3,6 +3,7 @@
 #include "vulkan_render_types/vulkan_types.h"
 
 #include <utils/id.h>
+#include <glm_unofficial/glm.h>
 
 #include <vector>
 #include <string>

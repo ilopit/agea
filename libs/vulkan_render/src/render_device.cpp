@@ -1,31 +1,33 @@
 #include "vulkan_render/render_device.h"
 
-#include "VkBootstrap.h"
+#include "vulkan_render/render_loader.h"
 
+#include "vulkan_render/vk_descriptors.h"
+#include "vulkan_render/vk_pipeline_builder.h"
+
+#include <VkBootstrap.h>
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
-#include "vulkan_render/vk_initializers.h"
-#include "vulkan_render/vk_descriptors.h "
-#include "utils/process.h"
+#include <utils/process.h>
+#include <utils/file_utils.h>
+
+#include <vulkan_render_types/vk_initializers.h>
+#include <vulkan_render_types/vulkan_texture_data.h>
+#include <vulkan_render_types/vulkan_shader_data.h>
+#include <vulkan_render_types/vulkan_shader_effect.h>
+#include <vulkan_render_types/vulkan_mesh_data.h>
+#include <vulkan_render_types/vulkan_gpu_types.h>
+
+#include <native/native_window.h>
+#include <resource_locator/resource_locator.h>
+
+#include <imgui.h>
+#include <backends/imgui_impl_sdl.h>
+#include <backends/imgui_impl_vulkan.h>
 
 #include <iostream>
 #include <fstream>
-
-#include "utils/file_utils.h"
-
-#include "vulkan_render_types/vulkan_texture_data.h"
-#include "vulkan_render_types/vulkan_shader_data.h"
-#include "vulkan_render_types/vulkan_shader_effect.h"
-#include "vulkan_render_types/vulkan_mesh_data.h"
-#include "vulkan_render/render_loader.h"
-
-#include <native/native_window.h>
-#include "resource_locator/resource_locator.h"
-
-#include "imgui.h"
-#include "backends/imgui_impl_sdl.h"
-#include "backends/imgui_impl_vulkan.h"
 
 namespace agea
 {
@@ -221,14 +223,12 @@ render_device::init_swapchain()
     dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // allocate and create the image
-    vmaCreateImage(m_allocator, &dimg_info, &dimg_allocinfo, &m_depth_image.m_image,
-                   &m_depth_image.m_allocation, nullptr);
-
-    m_depth_image.m_allocator = []() { return glob::render_device::get()->allocator(); };
+    m_depth_image = allocated_image::create(
+        []() { return glob::render_device::get()->allocator(); }, dimg_info, dimg_allocinfo);
 
     // build a image-view for the depth image to use for rendering
     VkImageViewCreateInfo dview_info = vk_init::imageview_create_info(
-        m_depth_format, m_depth_image.m_image, VK_IMAGE_ASPECT_DEPTH_BIT);
+        m_depth_format, m_depth_image.image(), VK_IMAGE_ASPECT_DEPTH_BIT);
 
     VK_CHECK(vkCreateImageView(m_vk_device, &dview_info, nullptr, &m_depth_image_view));
 

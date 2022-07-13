@@ -1,14 +1,16 @@
 #include "vulkan_render/render_loader.h"
 
-#include "vulkan_render_types/vulkan_mesh_data.h"
-#include "vulkan_render_types/vulkan_texture_data.h"
-#include "vulkan_render_types/vulkan_material_data.h"
+#include <vulkan_render_types/vulkan_mesh_data.h>
+#include <vulkan_render_types/vulkan_texture_data.h>
+#include <vulkan_render_types/vulkan_material_data.h>
+#include <vulkan_render_types/vulkan_gpu_types.h>
+
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/data_loaders/vulkan_mesh_data_loader.h"
 
 #include "vk_mem_alloc.h"
 
-#include "vulkan_render/vk_initializers.h"
+#include "vulkan_render_types/vk_initializers.h"
 
 #include "utils/string_utility.h"
 #include "utils/file_utils.h"
@@ -20,7 +22,6 @@
 #include <iostream>
 #include <sstream>
 #include <spirv_reflect.h>
-// FNV-1a 32bit hashing algorithm.
 
 namespace agea
 {
@@ -92,15 +93,12 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
     VkImageCreateInfo dimg_info = vk_init::image_create_info(
         image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
 
-    allocated_image newImage;
-    newImage.m_allocator = []() { return glob::render_device::get()->allocator(); };
+    auto allloc_cb = []() { return glob::render_device::get()->allocator(); };
 
     VmaAllocationCreateInfo dimg_allocinfo = {};
     dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    // allocate and create the image
-    vmaCreateImage(device->allocator(), &dimg_info, &dimg_allocinfo, &newImage.m_image,
-                   &newImage.m_allocation, nullptr);
+    allocated_image newImage = allocated_image::create(allloc_cb, dimg_info, dimg_allocinfo, 1);
 
     // transition image to transfer-receiver
     device->immediate_submit(
@@ -118,7 +116,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
 
             imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             imageBarrier_toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageBarrier_toTransfer.image = newImage.m_image;
+            imageBarrier_toTransfer.image = newImage.image();
             imageBarrier_toTransfer.subresourceRange = range;
 
             imageBarrier_toTransfer.srcAccessMask = 0;
@@ -141,7 +139,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
             copyRegion.imageExtent = imageExtent;
 
             // copy the buffer into the image
-            vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer(), newImage.m_image,
+            vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer(), newImage.image(),
                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
             VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
@@ -158,7 +156,6 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
                                  1, &imageBarrier_toReadable);
         });
 
-    newImage.mipLevels = 1;  // mips.size();
     return newImage;
 }
 bool
@@ -584,8 +581,8 @@ loader::load_texture(const utils::id& texture_id, const std::string& base_color)
     }
 
     VkImageViewCreateInfo imageinfo = vk_init::imageview_create_info(
-        VK_FORMAT_R8G8B8A8_UNORM, td->image.m_image, VK_IMAGE_ASPECT_COLOR_BIT);
-    imageinfo.subresourceRange.levelCount = td->image.mipLevels;
+        VK_FORMAT_R8G8B8A8_UNORM, td->image.image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    imageinfo.subresourceRange.levelCount = td->image.get_mip_levels();
     vkCreateImageView(device->vk_device(), &imageinfo, nullptr, &td->image_view);
 
     m_textures_cache[texture_id] = td;

@@ -2,23 +2,16 @@
 
 #include <utils/id.h>
 
-#include "vulkan_types.h"
-#include "vulkan_shader_data.h"
-#include "vulkan_texture_data.h"
+#include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render_types/vulkan_shader_data.h"
+#include "vulkan_render_types/vulkan_texture_data.h"
+#include "vulkan_render_types/vulkan_gpu_types.h"
 
 namespace agea
 {
 namespace render
 {
 struct shader_effect;
-
-struct gpu_material_data
-{
-    float roughness = 0.5f;
-    float metallic = 0.5f;
-    float gamma = 0.8f;
-    float albedo = 0.2f;
-};
 
 struct material_data
 {
@@ -47,12 +40,10 @@ struct material_data
     }
 
     utils::id id;
-
     VkDescriptorSet texture_set;
     VkPipeline pipeline;
     shader_effect* effect = nullptr;
     VkSampler sampler;
-
     gpu_material_data gpu_data;
 };
 }  // namespace render

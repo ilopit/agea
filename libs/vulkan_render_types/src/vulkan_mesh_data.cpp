@@ -1,10 +1,5 @@
 ﻿#include "vulkan_render_types/vulkan_mesh_data.h"
 
-#include "utils/file_utils.h"
-
-#include <iostream>
-#include <fstream>
-
 namespace agea
 {
 namespace render

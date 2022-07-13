@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <glm_unofficial/glm.h>
-
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
@@ -31,11 +29,11 @@ struct allocated_buffer
     allocated_buffer&
     operator=(allocated_buffer&& other) noexcept;
 
-    void
-    clear();
-
     static allocated_buffer
     create(vma_allocator_provider alloc, VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
+
+    void
+    clear();
 
     VkBuffer&
     buffer()
@@ -58,8 +56,7 @@ private:
 struct allocated_image
 {
     allocated_image();
-
-    allocated_image(VkImage i, VmaAllocation a);
+    ~allocated_image();
 
     allocated_image(const allocated_image&) = delete;
     allocated_image&
@@ -69,77 +66,45 @@ struct allocated_image
     allocated_image&
     operator=(allocated_image&& other) noexcept;
 
-    ~allocated_image();
+    static allocated_image
+    create(vma_allocator_provider allocator,
+           VkImageCreateInfo ici,
+           VmaAllocationCreateInfo aci,
+           int mips_level = 0);
 
     void
     clear();
 
+    VkImage
+    image()
+    {
+        return m_image;
+    }
+
+    int
+    get_mip_levels()
+    {
+        return mipLevels;
+    }
+
+private:
+    allocated_image(vma_allocator_provider a, int mips_level);
+
     VkImage m_image;
     VmaAllocation m_allocation;
-
-    int mipLevels;
-
+    int mipLevels = 1;
     vma_allocator_provider m_allocator;
-};
-
-class pipeline_builder
-{
-public:
-    VkPipeline
-    build_pipeline(VkDevice device, VkRenderPass pass);
-
-    std::vector<VkPipelineShaderStageCreateInfo> m_shader_stages;
-    VkPipelineVertexInputStateCreateInfo m_vertex_input_info;
-    VkPipelineInputAssemblyStateCreateInfo m_input_assembly;
-    VkViewport m_viewport;
-    VkRect2D m_scissor;
-    VkPipelineRasterizationStateCreateInfo m_rasterizer;
-    VkPipelineColorBlendAttachmentState m_color_blend_attachment;
-    VkPipelineMultisampleStateCreateInfo m_multisampling;
-    VkPipelineLayout m_pipelineLayout;
-    VkPipelineDepthStencilStateCreateInfo m_depth_stencil;
-};
-
-struct mesh_push_constants
-{
-    glm::vec4 data;
-    glm::mat4 render_matrix;
-};
-
-struct gpu_camera_data
-{
-    glm::mat4 projection;
-    glm::mat4 view;
-    glm::vec3 pos;
-};
-
-struct gpu_scene_data
-{
-    glm::vec4 lights[4];
-    glm::vec4 fog_color;      // w is for exponent
-    glm::vec4 fog_distances;  // x for min, y for max, zw unused.
-    glm::vec4 ambient_color;
-    glm::vec4 sunlight_direction;  // w for sun power
-    glm::vec4 sunlight_color;
-};
-
-struct gpu_object_data
-{
-    glm::mat4 model_matrix;
-    glm::vec3 obj_pos;
-    float dummy;
 };
 
 }  // namespace render
 }  // namespace agea
 
-#define VK_CHECK(x)                                                     \
-    do                                                                  \
-    {                                                                   \
-        VkResult err = x;                                               \
-        if (err)                                                        \
-        {                                                               \
-            std::cout << "Detected Vulkan error: " << err << std::endl; \
-            abort();                                                    \
-        }                                                               \
+#define VK_CHECK(x)                       \
+    do                                    \
+    {                                     \
+        VkResult err = x;                 \
+        if (err)                          \
+        {                                 \
+            AGEA_never("Vulkan failed!"); \
+        }                                 \
     } while (0)

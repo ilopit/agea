@@ -2,6 +2,7 @@
 
 #include "vulkan_render_types/vulkan_render_data.h"
 #include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render_types/vulkan_gpu_types.h"
 
 #include "resource_locator/resource_locator.h"
 #include "model/rendering/render_api.h"
