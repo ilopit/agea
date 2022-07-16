@@ -99,7 +99,7 @@ private:
 
 namespace glob
 {
-class level : public weird_singleton<::agea::model::level>
+class level : public ::agea::selfcleanable_singleton<::agea::model::level>
 {
 };
 }  // namespace glob

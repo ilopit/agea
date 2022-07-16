@@ -3,8 +3,6 @@
 #include "model/object_construction_context.h"
 
 #include "model/smart_object.h"
-#include "model/caches/class_object_cache.h"
-#include "model/caches/game_objects_cache.h"
 #include "model/caches/objects_cache.h"
 #include "model/caches/textures_cache.h"
 #include "model/caches/materials_cache.h"

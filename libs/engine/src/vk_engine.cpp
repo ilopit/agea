@@ -78,6 +78,9 @@ vulkan_engine::init()
 
     m_current_level = glob::level::create();
     m_window = glob::native_window::create();
+
+    auto p = glob::native_window::get();
+
     m_resource_locator = glob::resource_locator::create();
     m_render_loader = glob::vulkan_render_loader::create();
     m_render_device = glob::render_device::create();

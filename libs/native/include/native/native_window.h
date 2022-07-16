@@ -40,7 +40,7 @@ private:
 
 namespace glob
 {
-struct native_window : public weird_singleton<::agea::native_window>
+struct native_window : public ::agea::selfcleanable_singleton<::agea::native_window>
 {
 };
 }  // namespace glob

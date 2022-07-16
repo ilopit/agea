@@ -1,7 +1,7 @@
 ﻿#include "model/rendering/texture.h"
 #include "model/package.h"
 
-#include "vulkan_render/render_loader.h"
+#include <model_global_api/loader.h>
 
 namespace agea
 {

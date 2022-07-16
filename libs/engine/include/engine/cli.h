@@ -33,7 +33,7 @@ public:
 namespace glob
 {
 
-class cli : public weird_singleton<::agea::editor::cli>
+class cli : public ::agea::selfcleanable_singleton<::agea::editor::cli>
 {
 };
 

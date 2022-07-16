@@ -4,7 +4,6 @@
 #include "model/model_minimal.h"
 
 #include "model/model_fwds.h"
-#include "model/caches/class_object_cache.h"
 
 #include <string>
 #include <memory>

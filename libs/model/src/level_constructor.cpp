@@ -3,8 +3,6 @@
 #include "model/level.h"
 #include "model/mesh_object.h"
 #include "model/components/mesh_component.h"
-#include "model/caches/class_object_cache.h"
-#include "model/caches/game_objects_cache.h"
 #include "model/object_construction_context.h"
 #include "model/object_constructor.h"
 #include "model/package_manager.h"

@@ -277,7 +277,7 @@ private:
 
 namespace glob
 {
-struct render_device : public weird_singleton<::agea::render::render_device>
+struct render_device : public ::agea::selfcleanable_singleton<::agea::render::render_device>
 {
 };
 }  // namespace glob

@@ -178,7 +178,7 @@ public:
 
 namespace glob
 {
-struct ui : public weird_singleton<::agea::ui::ui>
+struct ui : public ::agea::selfcleanable_singleton<::agea::ui::ui>
 {
 };
 }  // namespace glob

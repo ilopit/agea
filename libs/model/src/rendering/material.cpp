@@ -2,7 +2,9 @@
 
 #include "model/rendering/texture.h"
 #include "model/caches/textures_cache.h"
-#include "vulkan_render/render_loader.h"
+
+#include <vulkan_render_types/vulkan_material_data.h>
+#include <model_global_api/loader.h>
 
 namespace agea
 {

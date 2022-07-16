@@ -102,17 +102,17 @@ private:
     compile_all_shaders();
 
     // clang-format off
-    std::unique_ptr<closure<model::level>>               m_current_level;
-    std::unique_ptr<closure<model::cache_set>>           m_class_objects_cache_set;
-    std::unique_ptr<closure<model::cache_set>>           m_objects_cache_set;
-    std::unique_ptr<closure<model::package_manager>>     m_package_manager;
+    singletone_autodeleter m_current_level;
+    singletone_autodeleter m_class_objects_cache_set;
+    singletone_autodeleter m_objects_cache_set;
+    singletone_autodeleter m_package_manager;
 
-    std::unique_ptr<closure<native_window>>              m_window;
-    std::unique_ptr<closure<resource_locator>>           m_resource_locator;
-    std::unique_ptr<closure<render::vulkan_loader>>      m_render_loader;
-    std::unique_ptr<closure<render::render_device>>      m_render_device;
-    std::unique_ptr<closure<ui::ui>>                     m_ui;
-    std::unique_ptr<closure<editor::cli>>                m_editor_cli;
+    singletone_autodeleter m_window;
+    singletone_autodeleter m_resource_locator;
+    singletone_autodeleter m_render_loader;
+    singletone_autodeleter m_render_device;
+    singletone_autodeleter m_ui;
+    singletone_autodeleter m_editor_cli;
     // clang-format on
 
     render::gpu_scene_data m_scene_parameters;
@@ -147,7 +147,7 @@ private:
 
 namespace glob
 {
-struct engine : public weird_singleton<::agea::vulkan_engine>
+struct engine : public selfcleanable_singleton<::agea::vulkan_engine>
 {
 };
 }  // namespace glob

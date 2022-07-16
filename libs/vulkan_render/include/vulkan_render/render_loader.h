@@ -64,7 +64,7 @@ private:
 
 namespace glob
 {
-struct vulkan_render_loader : public weird_singleton<::agea::render::vulkan_loader>
+struct vulkan_render_loader : public ::agea::selfcleanable_singleton<::agea::render::vulkan_loader>
 {
 };
 };  // namespace glob

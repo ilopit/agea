@@ -50,28 +50,25 @@ public:
 
 namespace glob
 {
-struct class_objects_cache_set_view
-    : public simple_singleton<::agea::model::cache_set_ref, AGEA_SINGLETONE_SEED>
+struct class_objects_cache_set_view : public simple_singleton<::agea::model::cache_set_ref, 1>
 {
 };
 
-struct objects_cache_set_view
-    : public simple_singleton<::agea::model::cache_set_ref, AGEA_SINGLETONE_SEED>
+struct objects_cache_set_view : public simple_singleton<::agea::model::cache_set_ref, 2>
 {
 };
 
-struct class_objects_cache_set
-    : public weird_singleton<::agea::model::cache_set, AGEA_SINGLETONE_SEED>
+struct class_objects_cache_set : public ::agea::selfcleanable_singleton<::agea::model::cache_set, 1>
 {
 };
 
-struct objects_cache_set : public weird_singleton<::agea::model::cache_set, AGEA_SINGLETONE_SEED>
+struct objects_cache_set : public ::agea::selfcleanable_singleton<::agea::model::cache_set, 2>
 {
 };
 
 void
-init_global_caches(std::unique_ptr<closure<model::cache_set>>& class_objects_cache_set,
-                   std::unique_ptr<closure<model::cache_set>>& objects_cache_set);
+init_global_caches(::agea::singletone_autodeleter& class_objects_cache_set,
+                   ::agea::singletone_autodeleter& objects_cache_set);
 
 }  // namespace glob
 

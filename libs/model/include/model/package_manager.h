@@ -24,7 +24,7 @@ protected:
 
 namespace glob
 {
-struct package_manager : public weird_singleton<::agea::model::package_manager>
+struct package_manager : public ::agea::selfcleanable_singleton<::agea::model::package_manager>
 {
 };
 }  // namespace glob

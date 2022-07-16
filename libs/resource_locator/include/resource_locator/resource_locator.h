@@ -73,7 +73,7 @@ private:
 
 namespace glob
 {
-struct resource_locator : public weird_singleton<::agea::resource_locator>
+struct resource_locator : public ::agea::selfcleanable_singleton<::agea::resource_locator>
 {
 };
 }  // namespace glob

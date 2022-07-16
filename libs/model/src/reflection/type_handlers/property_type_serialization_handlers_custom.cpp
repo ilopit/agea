@@ -9,7 +9,6 @@
 #include "model/object_construction_context.h"
 #include "model/smart_object.h"
 #include "model/components/component.h"
-#include "model/caches/class_object_cache.h"
 #include "model/caches/cache_set.h"
 #include "model/object_constructor.h"
 #include "model/caches/objects_cache.h"

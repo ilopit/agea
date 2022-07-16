@@ -34,9 +34,9 @@ protected:
 
 namespace glob
 {
-struct empty_objects_cache : public weird_singleton<::agea::model::empty_objects_cache>
+struct empty_objects_cache : public selfcleanable_singleton<::agea::model::empty_objects_cache>
 {
-    static std::unique_ptr<closure<::agea::model::empty_objects_cache>> s_closure;
+    static singletone_autodeleter s_closure;
 };
 
 }  // namespace glob

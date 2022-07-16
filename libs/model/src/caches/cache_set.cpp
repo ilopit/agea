@@ -59,8 +59,8 @@ cache_set::~cache_set() = default;
 }  // namespace model
 
 void
-glob::init_global_caches(std::unique_ptr<closure<model::cache_set>>& class_objects_cache_set,
-                         std::unique_ptr<closure<model::cache_set>>& objects_cache_set)
+glob::init_global_caches(::agea::singletone_autodeleter& class_objects_cache_set,
+                         ::agea::singletone_autodeleter& objects_cache_set)
 {
     class_objects_cache_set = glob::class_objects_cache_set::create();
 
