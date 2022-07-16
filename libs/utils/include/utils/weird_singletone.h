@@ -7,6 +7,68 @@
 
 namespace agea
 {
+
+struct base_deleter
+{
+    virtual ~base_deleter()
+    {
+    }
+};
+
+template <typename T>
+struct type_deleter : public base_deleter
+{
+    type_deleter(T** parent)
+        : m_parent(parent)
+    {
+    }
+
+    ~type_deleter()
+    {
+        if (*m_parent)
+        {
+            delete *m_parent;
+            *m_parent = nullptr;
+        }
+    }
+
+private:
+    T** m_parent;
+};
+
+template <typename T, int k = 1>
+class selfcleanable_singleton
+{
+public:
+    template <typename... Args>
+    static std::unique_ptr<base_deleter>
+    create(Args... args)
+    {
+        AGEA_check(!s_obj, "instance is not empty");
+
+        s_obj = new T(std::forward<Args>(args)...);
+
+        return std::make_unique<type_deleter<T>>(&s_obj);
+    }
+
+    static T*
+    get()
+    {
+        AGEA_check(s_obj, "Instance is empty");
+        return s_obj;
+    }
+
+    static T&
+    getr()
+    {
+        AGEA_check(s_obj, "Instance is empty");
+        return *s_obj;
+    }
+
+protected:
+    inline static T* s_obj = nullptr;
+};
+
 struct base_closure
 {
     virtual ~base_closure()
