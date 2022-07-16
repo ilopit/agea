@@ -17,8 +17,6 @@ add_library(model STATIC
    
    ${CMAKE_BINARY_DIR}/agea_generated/soal.generated.cpp
 )
-target_include_directories(model PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-add_library(agea::model ALIAS model)
 
 target_link_libraries(model PUBLIC
    agea::utils
@@ -28,11 +26,7 @@ target_link_libraries(model PUBLIC
    agea::vulkan_render_types
    agea::model_global_api
 )
-
-get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
-get_filename_component(PARENT_DIR_2 ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)
-file(RELATIVE_PATH rel ${PARENT_DIR_1} ${PARENT_DIR_2})
-set_target_properties(model PROPERTIES FOLDER ${rel})
+agea_finalize_library(model)
 
 add_custom_target(generate.soal ALL)
 add_custom_command(

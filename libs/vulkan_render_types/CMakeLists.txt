@@ -7,20 +7,14 @@ add_library(vulkan_render_types STATIC
    ${DATA_LOADERS_SRC}
 )
 
-target_include_directories(utils PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-add_library(agea::vulkan_render_types ALIAS vulkan_render_types)
-
 target_link_libraries(vulkan_render_types PUBLIC
     agea::utils
     agea::glm_unofficial
+    agea::vma_unofficial
 
     Vulkan::Vulkan
-    vma_unofficial
     vk-bootstrap::vk-bootstrap
     spirv-reflect-static
 )
 
-get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
-get_filename_component(PARENT_DIR_2 ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)
-file(RELATIVE_PATH rel ${PARENT_DIR_1} ${PARENT_DIR_2})
-set_target_properties(vulkan_render_types PROPERTIES FOLDER ${rel})
+agea_finalize_library(vulkan_render_types)

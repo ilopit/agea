@@ -2,8 +2,11 @@
 
 cmake_policy(VERSION 3.13)
 
+
 project ("agea")
 # Set a default build type if none was specified
+include(${PROJECT_SOURCE_DIR}/cmake/utils.cmake)
+
 set(default_build_type "Debug")
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   set(default_build_type "Debug")
