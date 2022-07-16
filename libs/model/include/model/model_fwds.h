@@ -7,6 +7,10 @@
 
 namespace agea
 {
+namespace render
+{
+class base_loader;
+}
 namespace model
 {
 class caches_map;

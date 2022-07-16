@@ -79,8 +79,9 @@ vulkan_engine::init()
     m_current_level = glob::level::create();
     m_window = glob::native_window::create();
     m_resource_locator = glob::resource_locator::create();
-    m_render_loader = glob::render_loader::create();
+    m_render_loader = glob::vulkan_render_loader::create();
     m_render_device = glob::render_device::create();
+    glob::render_loader::set(glob::vulkan_render_loader::get());
 
     glob::init_global_caches(m_class_objects_cache_set, m_objects_cache_set);
 

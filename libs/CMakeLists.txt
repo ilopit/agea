@@ -1,5 +1,6 @@
 ﻿add_subdirectory(engine)
 add_subdirectory(model)
+add_subdirectory(model_global_api)
 add_subdirectory(native)
 add_subdirectory(resource_locator)
 add_subdirectory(serialization)

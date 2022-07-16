@@ -9,5 +9,6 @@ struct material_data;
 struct texture_data;
 struct render_data;
 struct shader_effect;
+struct shader_data;
 }  // namespace render
 }  // namespace agea

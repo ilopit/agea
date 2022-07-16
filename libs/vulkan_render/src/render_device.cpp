@@ -706,8 +706,8 @@ render_device::create_textured_pipeline()
     auto texture_pipeline = pb.build_pipeline(m_vk_device, m_render_pass);
     m_pipelines["textured"] = {texture_pipeline, texture_pipeline_layout};
 
-    glob::render_loader::get()->create_default_material(texture_pipeline, textured_effect,
-                                                        agea::utils::id::from("simple_texture"));
+    glob::vulkan_render_loader::get()->create_default_material(
+        texture_pipeline, textured_effect, agea::utils::id::from("simple_texture"));
     return true;
 }
 

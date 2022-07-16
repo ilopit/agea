@@ -8,6 +8,7 @@
 
 #include <vulkan_render_types/vulkan_render_fwds.h>
 #include <vulkan_render_types/vulkan_shader_effect.h>
+#include <model_global_api/loader.h>
 
 #include <memory>
 #include <unordered_map>
@@ -27,26 +28,27 @@ reflect_layout(render_device* engine,
                shader_effect::reflection_overrides* overrides,
                int overrideCount);
 
-class loader
+class vulkan_loader : public loader
 {
 public:
-    mesh_data*
+    virtual mesh_data*
     load_mesh(const agea::utils::id& mesh_id,
               const agea::utils::path& external_path,
               const agea::utils::path& indeces_path,
-              const agea::utils::path& vertices_path);
+              const agea::utils::path& vertices_path) override;
 
-    texture_data*
-    load_texture(const agea::utils::id& texture_id, const std::string& base_color);
-    material_data*
+    virtual texture_data*
+    load_texture(const agea::utils::id& texture_id, const std::string& base_color) override;
+
+    virtual material_data*
     load_material(const agea::utils::id& material_id,
                   const agea::utils::id& texture_id,
-                  const agea::utils::id& base_effect_id);
-    shader_data*
-    load_shader(const agea::utils::id& path);
+                  const agea::utils::id& base_effect_id) override;
+    virtual shader_data*
+    load_shader(const agea::utils::id& path) override;
 
-    void
-    clear_caches();
+    virtual void
+    clear_caches() override;
 
     bool
     create_default_material(VkPipeline pipeline, shader_effect* effect, const agea::utils::id& id);
@@ -62,7 +64,7 @@ private:
 
 namespace glob
 {
-struct render_loader : public weird_singleton<::agea::render::loader>
+struct vulkan_render_loader : public weird_singleton<::agea::render::vulkan_loader>
 {
 };
 };  // namespace glob

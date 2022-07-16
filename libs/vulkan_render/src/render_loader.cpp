@@ -409,10 +409,10 @@ reflect_layout(render_device* engine,
 }
 
 mesh_data*
-loader::load_mesh(const agea::utils::id& mesh_id,
-                  const agea::utils::path& external_path,
-                  const agea::utils::path& idx_file,
-                  const agea::utils::path& vert_file)
+vulkan_loader::load_mesh(const agea::utils::id& mesh_id,
+                         const agea::utils::path& external_path,
+                         const agea::utils::path& idx_file,
+                         const agea::utils::path& vert_file)
 {
     auto device = glob::render_device::get();
 
@@ -532,9 +532,9 @@ loader::load_mesh(const agea::utils::id& mesh_id,
 }
 
 bool
-loader::create_default_material(VkPipeline pipeline,
-                                shader_effect* effect,
-                                const agea::utils::id& id)
+vulkan_loader::create_default_material(VkPipeline pipeline,
+                                       shader_effect* effect,
+                                       const agea::utils::id& id)
 {
     auto it = m_materials_cache.find(id);
     if (it != m_materials_cache.end())
@@ -552,7 +552,7 @@ loader::create_default_material(VkPipeline pipeline,
 }
 
 texture_data*
-loader::load_texture(const agea::utils::id& texture_id, const std::string& base_color)
+vulkan_loader::load_texture(const agea::utils::id& texture_id, const std::string& base_color)
 {
     auto device = glob::render_device::get();
 
@@ -593,9 +593,9 @@ loader::load_texture(const agea::utils::id& texture_id, const std::string& base_
 }
 
 material_data*
-loader::load_material(const agea::utils::id& material_id,
-                      const agea::utils::id& texture_id,
-                      const agea::utils::id& base_effect_id)
+vulkan_loader::load_material(const agea::utils::id& material_id,
+                             const agea::utils::id& texture_id,
+                             const agea::utils::id& base_effect_id)
 {
     auto device = glob::render_device::get();
 
@@ -629,7 +629,7 @@ loader::load_material(const agea::utils::id& material_id,
 }
 
 shader_data*
-loader::load_shader(const agea::utils::id& path)
+vulkan_loader::load_shader(const agea::utils::id& path)
 {
     auto device = glob::render_device::get();
 
@@ -672,7 +672,7 @@ loader::load_shader(const agea::utils::id& path)
 }
 
 void
-loader::clear_caches()
+vulkan_loader::clear_caches()
 {
     m_meshes_cache.clear();
     m_textures_cache.clear();

@@ -36,7 +36,7 @@ class cli;
 
 namespace render
 {
-class loader;
+class vulkan_loader;
 class render_device;
 struct frame_data;
 struct shader_effect;
@@ -109,7 +109,7 @@ private:
 
     std::unique_ptr<closure<native_window>>              m_window;
     std::unique_ptr<closure<resource_locator>>           m_resource_locator;
-    std::unique_ptr<closure<render::loader>>             m_render_loader;
+    std::unique_ptr<closure<render::vulkan_loader>>      m_render_loader;
     std::unique_ptr<closure<render::render_device>>      m_render_device;
     std::unique_ptr<closure<ui::ui>>                     m_ui;
     std::unique_ptr<closure<editor::cli>>                m_editor_cli;

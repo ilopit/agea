@@ -18,6 +18,7 @@ target_link_libraries(vulkan_render PUBLIC
     agea::imgui_unofficial
     agea::stb_unofficial
     agea::resource_locator
+    agea::model_global_api
 
     tinyobjloader
     sdl2

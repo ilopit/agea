@@ -20,12 +20,13 @@ add_library(model STATIC
 target_include_directories(model PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 add_library(agea::model ALIAS model)
 
-target_link_libraries(model 
+target_link_libraries(model PUBLIC
    agea::utils
    agea::glm_unofficial
    agea::serialization
    agea::resource_locator
    agea::vulkan_render_types
+   agea::model_global_api
 )
 
 get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
