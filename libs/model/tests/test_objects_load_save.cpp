@@ -1,6 +1,5 @@
 #include "model/object_constructor.h"
 
-#include "model/caches/class_object_cache.h"
 #include "model/caches/game_objects_cache.h"
 #include "model/caches/empty_objects_cache.h"
 
@@ -19,7 +18,7 @@
 
 #include <gtest/gtest.h>
 
-#define ID(val) ::agea::core::id::from(val)
+#define ID(val) ::agea::utils::id::from(val)
 
 using namespace agea;
 
@@ -47,7 +46,7 @@ struct test_object_constructor : base_test
     }
 
     void
-    check_item_in_caches(core::id id, model::architype atype, bool check_in_class)
+    check_item_in_caches(utils::id id, model::architype atype, bool check_in_class)
     {
         for (auto p : global_class_objects_cs.map->get_items())
         {
@@ -86,7 +85,7 @@ struct test_object_constructor : base_test
     model::cache_set global_objects_cs;
     model::line_cache objs;
     model::object_constructor_context occ;
-    std::unique_ptr<closure<resource_locator>> m_resource_locator;
+    agea::singletone_autodeleter m_resource_locator;
 };
 
 bool

@@ -1,14 +1,15 @@
 #pragma once
 
-#include "core/agea_minimal.h"
+#include <model/model_fwds.h>
 
-#include "model/model_fwds.h"
-#include "core/fs_locator.h"
-#include "utils/weird_singletone.h"
+#include <utils/weird_singletone.h>
+#include <utils/path.h>
 
 #include <filesystem>
 #include <gtest/gtest.h>
 
+namespace agea
+{
 struct base_test : public testing::Test
 {
     void
@@ -20,5 +21,6 @@ struct base_test : public testing::Test
     agea::utils::path
     get_current_workspace();
 
-    std::unique_ptr<agea::closure<agea::resource_locator>> m_resource_locator;
+    singletone_autodeleter m_resource_locator;
 };
+};  // namespace agea

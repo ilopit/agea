@@ -1,6 +1,5 @@
 #include "model/object_constructor.h"
 
-#include "model/caches/class_object_cache.h"
 #include "model/caches/materials_cache.h"
 #include "model/caches/textures_cache.h"
 #include "model/caches/meshes_cache.h"
@@ -20,7 +19,7 @@
 
 #include "base_test.h"
 
-#define ID(val) ::agea::core::id::from(val)
+#define ID(val) ::agea::utils::id::from(val)
 using namespace agea;
 
 struct test_load_package : public base_test

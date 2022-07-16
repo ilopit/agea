@@ -2,7 +2,7 @@
 
 #include "utils/agea_log.h"
 
-#include "reflection/property.h"
+#include <model/reflection/property.h>
 
 int
 main(int argc, char** argv)

@@ -2,7 +2,10 @@
 
 #include <filesystem>
 
-#include "utils/file_utils.h"
+#include <resource_locator/resource_locator.h>
+
+namespace agea
+{
 
 void
 base_test::SetUp()
@@ -26,3 +29,4 @@ base_test::get_current_workspace()
 
     return agea::utils::path(path);
 }
+}  // namespace agea

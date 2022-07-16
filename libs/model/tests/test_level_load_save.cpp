@@ -1,24 +1,23 @@
 #include "model/object_constructor.h"
 
-#include "model/caches/class_object_cache.h"
 #include "model/caches/materials_cache.h"
 #include "model/caches/textures_cache.h"
 #include "model/caches/meshes_cache.h"
 #include "model/caches/components_cache.h"
 #include "model/caches/objects_cache.h"
 
-#include "model/package_manager.h"
-#include "model/object_construction_context.h"
-#include "model/level.h"
-#include "model/level_constructor.h"
-#include "model/game_object.h"
+#include <model/package_manager.h>
+#include <model/object_construction_context.h>
+#include <model/level.h>
+#include <model/level_constructor.h>
+#include <model/game_object.h>
 
-#include "utils/agea_log.h"
-#include "utils/file_utils.h"
+#include <utils/agea_log.h>
+#include <utils/file_utils.h>
 
 #include <gtest/gtest.h>
 
-#define ID(val) ::agea::core::id::from(val)
+#define ID(val) ::agea::utils::id::from(val)
 
 #include "base_test.h"
 
@@ -44,10 +43,10 @@ struct test_load_level : public base_test
         base_test::TearDown();
     }
 
-    std::unique_ptr<closure<model::package_manager>> m_package_manager;
-    std::unique_ptr<closure<resource_locator>> m_resource_locator;
-    std::unique_ptr<closure<model::cache_set>> m_objects_cache_set;
-    std::unique_ptr<closure<model::cache_set>> m_class_objects_cache_set;
+    agea::singletone_autodeleter m_package_manager;
+    agea::singletone_autodeleter m_resource_locator;
+    agea::singletone_autodeleter m_objects_cache_set;
+    agea::singletone_autodeleter m_class_objects_cache_set;
 };
 
 TEST_F(test_load_level, load_level)
