@@ -28,7 +28,7 @@ reflect_layout(render_device* engine,
                shader_effect::reflection_overrides* overrides,
                int overrideCount);
 
-class vulkan_loader : public loader
+class vulkan_loader : public model::reder_loader
 {
 public:
     virtual mesh_data*

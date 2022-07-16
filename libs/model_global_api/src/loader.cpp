@@ -1,12 +1,12 @@
-#include "model_global_api/loader.h"
+#include <model_global_api/loader.h>
 
 namespace agea
 {
-namespace render
+namespace model
 {
-loader::~loader()
+reder_loader::~reder_loader()
 {
     ALOG_TRACE("Destroyed");
 }
-}  // namespace render
+}  // namespace model
 }  // namespace agea
