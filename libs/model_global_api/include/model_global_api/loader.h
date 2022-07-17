@@ -40,7 +40,7 @@ public:
 
 namespace glob
 {
-struct render_loader : public simple_singleton<::agea::model::reder_loader*>
+struct render_loader : public selfcleanable_singleton<::agea::model::reder_loader>
 {
 };
 };  // namespace glob

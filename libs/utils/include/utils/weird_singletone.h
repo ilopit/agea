@@ -50,6 +50,14 @@ public:
         return std::make_unique<type_deleter<T>>(&s_obj);
     }
 
+    template <typename K>
+    static void
+    assign()
+    {
+        AGEA_check(!s_obj, "instance is not empty");
+        s_obj = K::get();
+    }
+
     static T*
     get()
     {

@@ -11,6 +11,8 @@
 #include <vulkan_render_types/vulkan_shader_effect.h>
 #include <vulkan_render_types/vulkan_render_data.h>
 
+#include <model_global_api/render_api.h>
+
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
@@ -20,15 +22,11 @@
 #include "model/caches/meshes_cache.h"
 #include "model/caches/objects_cache.h"
 #include "model/caches/textures_cache.h"
-#include "model/rendering/render_api.h"
 
 #include "model/components/mesh_component.h"
-
 #include "model/game_object.h"
-
 #include "model/level_constructor.h"
 #include "model/level.h"
-
 #include "model/package_manager.h"
 
 #include "engine/ui.h"
@@ -79,12 +77,11 @@ vulkan_engine::init()
     m_current_level = glob::level::create();
     m_window = glob::native_window::create();
 
-    auto p = glob::native_window::get();
-
     m_resource_locator = glob::resource_locator::create();
-    m_render_loader = glob::vulkan_render_loader::create();
     m_render_device = glob::render_device::create();
-    glob::render_loader::set(glob::vulkan_render_loader::get());
+    m_render_loader = glob::vulkan_render_loader::create();
+
+    glob::render_loader::assign<glob::vulkan_render_loader>();
 
     glob::init_global_caches(m_class_objects_cache_set, m_objects_cache_set);
 
@@ -132,7 +129,7 @@ vulkan_engine::cleanup()
 {
     glob::render_device::get()->wait_for_fences();
 
-    glob::render_loader::get()->clear_caches();
+    glob::vulkan_render_loader::get()->clear_caches();
 
     glob::render_device::get()->destruct();
 }

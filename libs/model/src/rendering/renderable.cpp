@@ -1,10 +1,10 @@
 #pragma once
 #include "model/rendering/renderable.h"
-#include "model/rendering/render_api.h"
 
-#include "utils/defines_utils.h"
+#include <model_global_api/render_api.h>
 
-#include "vulkan_render_types/vulkan_render_data.h"
+#include <utils/defines_utils.h>
+#include <vulkan_render_types/vulkan_render_data.h>
 
 namespace agea
 {
@@ -25,7 +25,6 @@ renderable::mark_dirty()
 {
     if (!m_dirty)
     {
-        // glob::engine::get()->qs().add_to_dirty_queue(this);
         glob::model_render_api::get()->invalidate(this);
         m_dirty = true;
     }
