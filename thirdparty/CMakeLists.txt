@@ -48,6 +48,15 @@ set(BUILD_OBJECT_LIBS OFF)
 add_subdirectory(upstream/jsoncpp)
 externalize(jsoncpp_static "jsoncpp")
 
+#lua
+add_subdirectory(upstream/lua)
+externalize(lua_static "lua")
+externalize(lua_shared "lua")
+externalize(luac "lua")
+
+#luaa
+add_subdirectory(upstream/lua_bindings)
+
 #vkbootstrap
 add_subdirectory(upstream/vkbootstrap)
 externalize(vk-bootstrap "vk-bootstrap")

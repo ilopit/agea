@@ -25,7 +25,11 @@ target_link_libraries(model PUBLIC
    agea::resource_locator
    agea::vulkan_render_types
    agea::model_global_api
+
+   lua_static
+   sol2::sol2
 )
+
 agea_finalize_library(model)
 
 add_custom_target(generate.soal ALL)
