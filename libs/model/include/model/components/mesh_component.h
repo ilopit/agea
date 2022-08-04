@@ -1,5 +1,7 @@
 #pragma once
 
+#include "mesh_component.generated.h"
+
 #include "model/components/game_object_component.h"
 
 namespace agea
@@ -14,6 +16,8 @@ struct render_data;
 
 class mesh_component : public game_object_component
 {
+    AGEA_gen_meta__mesh_component();
+
 public:
     AGEA_gen_class_meta(mesh_component, game_object_component);
 
@@ -30,23 +34,11 @@ public:
     bool
     construct(construct_params& c);
 
-    material*
-    get_material() const
-    {
-        return m_material;
-    }
-
-    mesh*
-    get_mesh() const
-    {
-        return m_mesh;
-    }
-
 protected:
-    AGEA_property("category=assets", "serializable=true", "access=rw", "visible=true");
+    AGEA_property("category=assets", "serializable=true");
     material* m_material = nullptr;
 
-    AGEA_property("category=assets", "serializable=true", "access=rw", "visible=true");
+    AGEA_property("category=assets", "serializable=true");
     mesh* m_mesh = nullptr;
 };
 

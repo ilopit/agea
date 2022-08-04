@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game_object.generated.h"
+
 #include "model/model_minimal.h"
 
 #include "model/components/game_object_component.h"
@@ -15,6 +17,8 @@ class component;
 
 class game_object : public smart_object
 {
+    AGEA_gen_meta__game_object();
+
 public:
     // Meta part
     AGEA_gen_class_meta(game_object, smart_object);
@@ -29,13 +33,6 @@ public:
         return base_class::construct(params);
     }
 
-    // Position
-    glm::vec3
-    get_position() const
-    {
-        return m_root_component->get_position();
-    }
-
     void
     set_position(const glm::vec3& p)
     {
@@ -43,16 +40,16 @@ public:
     }
 
     glm::quat
-    get_rotation() const
+    get_rotation_quat() const
     {
         return m_root_component->get_rotation();
     }
-
-    void
-    set_rotation(glm::quat q)
-    {
-        m_root_component->set_rotation(q);
-    }
+    //
+    //     void
+    //     set_rotation(glm::quat q)
+    //     {
+    //         m_root_component->set_rotation(q);
+    //     }
 
     glm::vec3
     get_forward_vector() const
@@ -190,20 +187,14 @@ public:
         return m_components[idx];
     }
 
-    std::vector<component*>
-    get_components()
-    {
-        return m_components;
-    }
-
 protected:
-    AGEA_property("category=world", "visible=true", "access=rw", "hint=x,y,z");
+    AGEA_property("category=world", "access=cpp_only", "hint=x,y,z", "ref=true");
     glm::vec3* m_position = nullptr;
 
-    AGEA_property("category=world", "visible=true", "access=rw", "hint=x,y,z");
+    AGEA_property("category=world", "access=cpp_only", "hint=x,y,z", "ref=true");
     glm::vec3* m_rotation = nullptr;
 
-    AGEA_property("category=world", "visible=true", "access=rw", "hint=x,y,z");
+    AGEA_property("category=world", "access=cpp_only", "hint=x,y,z", "ref=true");
     glm::vec3* m_scale = nullptr;
 
     AGEA_property("category=meta",

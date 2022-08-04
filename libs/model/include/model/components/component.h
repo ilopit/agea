@@ -1,5 +1,7 @@
 #pragma once
 
+#include "component.generated.h"
+
 #include "model/smart_object.h"
 
 namespace agea
@@ -13,6 +15,8 @@ const inline uint32_t NO_index = UINT32_MAX;
 
 class component : public smart_object
 {
+    AGEA_gen_meta__component();
+
 public:
     AGEA_gen_class_meta(component, smart_object);
     AGEA_gen_construct_params{};
@@ -65,18 +69,6 @@ public:
     get_attached_components() const
     {
         return m_attached_components;
-    }
-
-    uint32_t
-    get_order_idx() const
-    {
-        return m_order_idx;
-    }
-
-    uint32_t
-    get_parent_idx() const
-    {
-        return m_parent_idx;
     }
 
 protected:

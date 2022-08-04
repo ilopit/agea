@@ -1,5 +1,6 @@
 #pragma once
 
+#include "material.generated.h"
 #include "model/smart_object.h"
 
 namespace agea
@@ -14,6 +15,8 @@ class texture;
 
 class material : public smart_object
 {
+    AGEA_gen_meta__material();
+
 public:
     AGEA_gen_class_meta(material, smart_object);
     AGEA_gen_construct_params{};
@@ -31,35 +34,23 @@ public:
         return m_material_data;
     }
 
-    texture*
-    get_base_texture() const
-    {
-        return m_base_texture;
-    }
-
-    const utils::id&
-    get_base_effect() const
-    {
-        return m_base_effect;
-    }
-
 protected:
-    AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
+    AGEA_property("category=properties", "access=cpp_only", "serializable=true");
     utils::id m_base_effect;
 
-    AGEA_property("category=properties", "access=rw", "visible=true", "serializable=true");
+    AGEA_property("category=properties", "access=cpp_only", "serializable=true");
     texture* m_base_texture = nullptr;
 
-    AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
+    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
     float* m_roughness = nullptr;
 
-    AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
+    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
     float* m_metallic = nullptr;
 
-    AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
+    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
     float* m_gamma = nullptr;
 
-    AGEA_property("category=properties", "access=rw", "visible=true", "serializable=false");
+    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
     float* m_albedo = nullptr;
 
     ::agea::render::material_data* m_material_data = nullptr;

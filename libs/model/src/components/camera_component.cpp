@@ -33,8 +33,8 @@ void
 camera_component::update_model()
 {
     auto owner_obj = (game_object*)get_owner();
-    m_model = glm::translate(owner_obj->get_position()) * glm::toMat4(owner_obj->get_rotation()) *
-              m_scale;
+    m_model = glm::translate(owner_obj->get_position()) *
+              glm::toMat4(owner_obj->get_rotation_quat()) * m_scale;
 }
 
 void

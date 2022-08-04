@@ -1,5 +1,7 @@
 #pragma once
 
+#include "smart_object.generated.h"
+
 #include "model/reflection/object_reflection.h"
 
 #include "model/model_minimal.h"
@@ -62,6 +64,8 @@ class package;
 
 class smart_object
 {
+    AGEA_gen_meta__smart_object();
+
 public:
     struct construct_params
     {
@@ -73,24 +77,6 @@ public:
     AGEA_gen_meta_architype_api(unknown);
 
     friend class object_constructor;
-
-    architype
-    get_architype_id() const
-    {
-        return m_architype_id;
-    }
-
-    const utils::id&
-    get_type_id() const
-    {
-        return m_type_id;
-    }
-
-    const utils::id&
-    get_id() const
-    {
-        return m_id;
-    }
 
     template <typename T>
     bool
@@ -170,13 +156,13 @@ protected:
         m_class_obj = obj;
     }
 
-    AGEA_property("category=meta", "visible=true");
+    AGEA_property("category=meta");
     architype m_architype_id = architype::unknown;
 
-    AGEA_property("category=meta", "visible=true");
+    AGEA_property("category=meta");
     utils::id m_type_id;
 
-    AGEA_property("category=meta", "visible=true", "copyable=no");
+    AGEA_property("category=meta", "copyable=no");
     utils::id m_id;
 
     smart_object* m_class_obj = nullptr;

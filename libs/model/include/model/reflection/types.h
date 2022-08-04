@@ -32,12 +32,6 @@ namespace agea
 namespace reflection
 {
 
-enum class access_mode
-{
-    ro = 0,
-    rw
-};
-
 enum class property_type
 {
     t_nan = 0,

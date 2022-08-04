@@ -30,6 +30,8 @@ target_link_libraries(model PUBLIC
    sol2::sol2
 )
 
+target_include_directories(model PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
+
 agea_finalize_library(model)
 
 add_custom_target(generate.soal ALL)
@@ -39,7 +41,7 @@ add_custom_command(
     COMMAND python ${PROJECT_SOURCE_DIR}/tools/soal_gen.py
                    ${PROJECT_SOURCE_DIR}/libs/model/soal/config 
                    ${PROJECT_SOURCE_DIR}/libs/model
-                   ${CMAKE_BINARY_DIR}/agea_generated/soal.generated.cpp)
+                   ${CMAKE_BINARY_DIR}/agea_generated)
 
 
 add_dependencies(model generate.soal)

@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "texture.generated.h"
+
 #include "model/smart_object.h"
 
 namespace agea
@@ -14,6 +16,8 @@ namespace model
 
 class texture : public smart_object
 {
+    AGEA_gen_meta__texture();
+
 public:
     AGEA_gen_class_meta(texture, smart_object);
     AGEA_gen_construct_params{};
@@ -22,15 +26,9 @@ public:
     bool
     prepare_for_rendering();
 
-    const std::string&
-    get_base_color() const
-    {
-        return m_base_color;
-    }
-
 protected:
     // Properties
-    AGEA_property("category=meta", "serializable=true", "visible=true");
+    AGEA_property("category=meta", "serializable=true");
     std::string m_base_color;
 
     agea::render::texture_data* m_texture = nullptr;

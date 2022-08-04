@@ -120,9 +120,7 @@ public:
     std::string category;
     std::vector<std::string> hints;
 
-    access_mode access                                              = access_mode::ro;
     bool serializable                                               = false;
-    bool visible                                                    = false;
 
 
 

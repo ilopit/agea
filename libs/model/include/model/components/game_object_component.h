@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game_object_component.generated.h"
+
 #include "model/components/component.h"
 #include "model/rendering/renderable.h"
 
@@ -14,6 +16,8 @@ const extern glm::vec3 DEF_RIGHT;
 
 class game_object_component : public component, public renderable
 {
+    AGEA_gen_meta__game_object_component();
+
 public:
     AGEA_gen_class_meta(game_object_component, component);
     AGEA_gen_construct_params
@@ -34,42 +38,6 @@ public:
         m_scale = c.scale;
 
         return true;
-    }
-
-    glm::vec3
-    get_position() const
-    {
-        return m_position;
-    }
-
-    void
-    set_position(glm::vec3 p)
-    {
-        m_position = p;
-    }
-
-    glm::vec3
-    get_rotation() const
-    {
-        return m_rotation;
-    }
-
-    void
-    set_rotation(glm::quat)
-    {
-        // m_rotation = q;
-    }
-
-    glm::vec3
-    get_scale() const
-    {
-        return m_scale;
-    }
-
-    void
-    set_scale(glm::vec3 s)
-    {
-        m_scale = s;
     }
 
     glm::vec3
@@ -179,19 +147,19 @@ public:
     }
 
 protected:
-    AGEA_property("category=world", "serializable=true", "visible=true", "access=rw", "hint=x,y,z");
+    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
     glm::vec3 m_position;
 
-    AGEA_property("category=world", "serializable=true", "visible=true", "access=rw", "hint=x,y,z");
+    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
     glm::vec3 m_rotation;
 
-    AGEA_property("category=world", "serializable=true", "visible=true", "access=rw", "hint=x,y,z");
+    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
     glm::vec3 m_scale;
 
-    AGEA_property("category=render", "visible=true");
+    AGEA_property("category=render", "ref=true");
     bool* m_visible = nullptr;
 
-    AGEA_property("category=render", "serializable=true", "visible=true");
+    AGEA_property("category=render", "serializable=true", "ref=true");
     bool* m_renderable = nullptr;
 
     // clang-format off
