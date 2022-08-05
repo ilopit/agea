@@ -156,13 +156,13 @@ protected:
         m_class_obj = obj;
     }
 
-    AGEA_property("category=meta");
+    AGEA_property("category=meta", "access=read_only");
     architype m_architype_id = architype::unknown;
 
-    AGEA_property("category=meta");
+    AGEA_property("category=meta", "access=read_only");
     utils::id m_type_id;
 
-    AGEA_property("category=meta", "copyable=no");
+    AGEA_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_id;
 
     smart_object* m_class_obj = nullptr;

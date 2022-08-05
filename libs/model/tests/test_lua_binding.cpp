@@ -19,6 +19,9 @@
 #include "utils/file_utils.h"
 #include "utils/path.h"
 
+#include "model/reflection/lua_api.h"
+#include <sol/sol.hpp>
+
 #include "base_test.h"
 
 #define ID(val) ::agea::utils::id::from(val)
@@ -85,12 +88,6 @@ private:
 
 TEST_F(test_luad_binding, load_package)
 {
-    sol::state lua;
-
-    sol::usertype<utils::id> aa = lua.new_usertype<utils::id>("id",
-                                                              // 3 constructors
-                                                              sol::constructors<utils::id()>());
-
     auto path = glob::resource_locator::get()->resource(category::packages, "test.apkg");
 
     model::package p;
@@ -102,45 +99,18 @@ TEST_F(test_luad_binding, load_package)
 
     ASSERT_TRUE(result);
 
-    lua.open_libraries(sol::lib::base);
+    get_lua_state().open_libraries(sol::lib::base);
 
     using namespace model;
-
-    // make usertype metatable
-    sol::usertype<smart_object> player_type = lua.new_usertype<smart_object>(
-        "smart_object", sol::meta_function::construct,
-        sol::factories(
-            // MyClass.new(...) -- dot syntax, no "self" value
-            // passed in
-
-            [](sol::object, const int d)
-            {
-                auto itr = glob::class_components_cache::get()->get_items().begin();
-                return itr->second;
-            }),
-        sol::call_constructor,
-        sol::factories(
-            [](const int& d)
-            {
-                auto itr = glob::class_components_cache::get()->get_items().begin();
-                return itr->second;
-            })
-
-    );
-
-    // .set(foo, bar) is the same as [foo] = bar;
-    player_type["id"] = &smart_object::get_id;
 
     // You can also add members to the code, defined in Lua!
     // This lets you have a high degree of flexibility in the
     // code
 
     std::string player_script = R"(
- obj = smart_object:new(2)
+ obj = game_object.c("test_class_object")
  print(obj:id())
- obj = smart_object(2)
-
 )";
 
-    lua.script(player_script);
+    get_lua_state().script(player_script);
 }

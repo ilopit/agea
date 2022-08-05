@@ -188,13 +188,13 @@ public:
     }
 
 protected:
-    AGEA_property("category=world", "access=cpp_only", "hint=x,y,z", "ref=true");
+    AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
     glm::vec3* m_position = nullptr;
 
-    AGEA_property("category=world", "access=cpp_only", "hint=x,y,z", "ref=true");
+    AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
     glm::vec3* m_rotation = nullptr;
 
-    AGEA_property("category=world", "access=cpp_only", "hint=x,y,z", "ref=true");
+    AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
     glm::vec3* m_scale = nullptr;
 
     AGEA_property("category=meta",

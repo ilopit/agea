@@ -1,3 +1,12 @@
 #pragma once
 
-#include <sol/sol.hpp>
+namespace sol
+{
+class state;
+}
+
+namespace agea
+{
+sol::state&
+get_lua_state();
+}
