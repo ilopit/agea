@@ -14,6 +14,7 @@ struct texture_data;
 namespace model
 {
 
+AGEA_class();
 class texture : public smart_object
 {
     AGEA_gen_meta__texture();

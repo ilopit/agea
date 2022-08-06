@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/game_object.h"
+#include "mesh_object.generated.h"
 
 namespace agea
 {
@@ -8,6 +9,7 @@ namespace model
 {
 class component;
 
+AGEA_class();
 class mesh_object : public game_object
 {
 public:

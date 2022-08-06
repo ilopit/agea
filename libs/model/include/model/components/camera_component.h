@@ -2,12 +2,17 @@
 
 #include "model/components/game_object_component.h"
 
+#include "camera_component.generated.h"
+
 namespace agea
 {
 namespace model
 {
+AGEA_class();
 class camera_component : public game_object_component
 {
+    AGEA_gen_meta__camera_component();
+
 public:
     AGEA_gen_class_meta(camera_component, game_object_component);
     AGEA_gen_construct_params

@@ -14,6 +14,7 @@ class material;
 
 struct render_data;
 
+AGEA_class();
 class mesh_component : public game_object_component
 {
     AGEA_gen_meta__mesh_component();

@@ -62,6 +62,7 @@ namespace model
 class object_constructor;
 class package;
 
+AGEA_class();
 class smart_object
 {
     AGEA_gen_meta__smart_object();

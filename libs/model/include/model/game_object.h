@@ -15,6 +15,7 @@ namespace model
 {
 class component;
 
+AGEA_class();
 class game_object : public smart_object
 {
     AGEA_gen_meta__game_object();

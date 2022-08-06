@@ -14,6 +14,7 @@ const extern glm::vec3 DEF_FORWARD;
 const extern glm::vec3 DEF_UP;
 const extern glm::vec3 DEF_RIGHT;
 
+AGEA_class();
 class game_object_component : public component, public renderable
 {
     AGEA_gen_meta__game_object_component();

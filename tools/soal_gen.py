@@ -203,7 +203,7 @@ lua_binding_template = """
                 }}
 
                 return item->as<{0}>();
-            }}
+            }}{1}
         );
 """
 
@@ -215,17 +215,6 @@ lua_binding_template_get_function = """
 
 lua_binding_template_set_function = """
         lua_type["{0}"] = &{1}::set_{0};"""
-
-def setter_access_kw(w: str):
-    return {"cpp_read_only": "protected", "cpp_only": "public", "read_only": "protected", "all": "public"}.get(w)
-
-
-def getter_access_kw(w: str):
-    return {"cpp_read_only": "public", "cpp_only": "public", "read_only": "public", "all": "public"}.get(w)
-
-
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
 
 
 class file_context:
@@ -240,7 +229,13 @@ class file_context:
         self.lua_binding = ""
 
 
-class property:
+class agea_class:
+    def __init__(self):
+        self.name = ""
+        self.parent = ""
+
+
+class agea_property:
     def __init__(self):
         self.name = ""
         self.category = ""
@@ -259,6 +254,27 @@ class property:
         self.ref = "false"
 
 
+def setter_access_kw(w: str):
+    return {"cpp_read_only": "protected", "cpp_only": "public", "read_only": "protected", "all": "public"}.get(w)
+
+
+def getter_access_kw(w: str):
+    return {"cpp_read_only": "public", "cpp_only": "public", "read_only": "public", "all": "public"}.get(w)
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+def write_lua_type(context: file_context, current_class: agea_class):
+    if current_class.parent == '':
+        context.lua_binding += lua_binding_template.format(
+            current_class.name, '')
+    else:
+        context.lua_binding += lua_binding_template.format(
+            current_class.name, ',sol::base_classes, sol::bases<' + current_class.parent + '>()')
+
+
 def process_file(original_file_full_path, original_file_rel_path, context: file_context):
 
     eprint("processing : {0} ...".format(original_file_full_path))
@@ -271,11 +287,28 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
 
     context.soal += soal_template.format(class_name)
     context.empty_cache += empty_template.format(class_name)
-    context.lua_binding += lua_binding_template.format(class_name)
 
     i = 0
+
+    current_class = agea_class()
+
     while i != lines_count:
         line = lines[i].strip()
+
+        if line.startswith("AGEA_class()"):
+            i = i + 1
+            final_tokens = []
+            class_tokens = lines[i].replace(
+                ":", " ").replace("\n", " ").replace(",", " ").split(" ")
+            for t in class_tokens:
+                if t not in {"class", "public", "private", str()}:
+                    final_tokens.append(t)
+
+            current_class.name = final_tokens[0]
+            if len(final_tokens) > 1:
+                current_class.parent = final_tokens[1]
+
+            write_lua_type(context, current_class)
 
         property_like = ""
 
@@ -290,7 +323,7 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
             i = i + 1
             field = lines[i].strip()[:-1].split()
 
-            prop = property()
+            prop = agea_property()
             property_raw = property_like[property_like.find(
                 "(") + 1:property_like.find(")")].split(", ")
 
@@ -350,17 +383,18 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
 
                 if prop.ref == "false":
                     context.methods += methods_template.format(
-                        prop.type, str(prop.owner), prop.name[2:])                    
+                        prop.type, str(prop.owner), prop.name[2:])
                 else:
                     context.methods += methods_template_ref.format(
                         prop.type[:-1], str(prop.owner), prop.name[2:])
 
                 if prop.access == "all" or prop.access == "read_only":
-                     context.lua_binding += lua_binding_template_get_function.format(prop.name[2:], prop.owner) 
+                    context.lua_binding += lua_binding_template_get_function.format(
+                        prop.name[2:], current_class.name)
 
                 if prop.access == "all":
-                     context.lua_binding += lua_binding_template_set_function.format(prop.name[2:], prop.owner)   
-               
+                    context.lua_binding += lua_binding_template_set_function.format(
+                        prop.name[2:], current_class.name)
 
             if prop.category != "":
                 context.content += "    "
@@ -413,7 +447,6 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
             context.content += property_template_end
 
         i = i + 1
-
 
     context.lua_binding += lua_binding_template_end
 
@@ -479,7 +512,7 @@ def write_single_file(output_dir, file_path):
             i = i + 1
             field = lines[i].strip()[:-1].split()
 
-            prop = property()
+            prop = agea_property()
             property_raw = property_like[property_like.find(
                 "(") + 1:property_like.find(")")].split(", ")
 
@@ -507,7 +540,7 @@ def write_single_file(output_dir, file_path):
             prop.type = field[0]
             prop.name = field[1]
             prop.owner = class_name
-            
+
             if prop.access != "no":
                 if prop.ref == "false":
                     header_file_content += methods_template_decl.format(

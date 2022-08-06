@@ -13,6 +13,7 @@ namespace model
 {
 class texture;
 
+AGEA_class();
 class material : public smart_object
 {
     AGEA_gen_meta__material();

@@ -13,6 +13,7 @@ class game_object;
 const inline uint32_t NO_parent = UINT32_MAX;
 const inline uint32_t NO_index = UINT32_MAX;
 
+AGEA_class();
 class component : public smart_object
 {
     AGEA_gen_meta__component();

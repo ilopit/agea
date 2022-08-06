@@ -16,6 +16,7 @@ struct mesh_data;
 
 namespace model
 {
+AGEA_class();
 class mesh : public smart_object
 {
     AGEA_gen_meta__mesh();
