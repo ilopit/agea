@@ -2,9 +2,25 @@
 
 #include <sol/sol.hpp>
 
-sol::state&
-agea::get_lua_state()
+namespace agea::reflection
 {
-    static sol::state s;
-    return s;
+
+lua_api::lua_api()
+    : m_state(std::make_unique<sol::state>())
+{
+    m_state->open_libraries(sol::lib::base);
 }
+
+lua_api::~lua_api()
+{
+}
+
+sol::state&
+lua_api::state()
+{
+    return *m_state;
+}
+
+}  // namespace agea::reflection
+
+agea::singletone_autodeleter agea::glob::lua_api::s_closure;

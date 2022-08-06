@@ -32,6 +32,7 @@ reflection::entry::set_up()
     property_type_compare_handlers::init();
 
     glob::empty_objects_cache::s_closure = std::move(glob::empty_objects_cache::create());
+    glob::lua_api::s_closure = std::move(glob::lua_api::create());
 """
 
 default_footer = """
@@ -178,7 +179,7 @@ property_template_end = """
 
 lua_binding_template = """
     {{
-        static sol::usertype<{0}> lua_type = get_lua_state().new_usertype<{0}>(
+        static sol::usertype<{0}> lua_type = glob::lua_api::getr().state().new_usertype<{0}>(
         "{0}", sol::no_constructor,
             "i",
             [](const char* id) -> {0}*

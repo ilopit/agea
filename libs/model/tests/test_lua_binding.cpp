@@ -99,8 +99,6 @@ TEST_F(test_luad_binding, load_package)
 
     ASSERT_TRUE(result);
 
-    get_lua_state().open_libraries(sol::lib::base);
-
     using namespace model;
 
     // You can also add members to the code, defined in Lua!
@@ -112,5 +110,5 @@ TEST_F(test_luad_binding, load_package)
  print(obj:id())
 )";
 
-    get_lua_state().script(player_script);
+    glob::lua_api::getr().state().script(player_script);
 }
