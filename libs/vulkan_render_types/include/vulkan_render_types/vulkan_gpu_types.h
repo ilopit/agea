@@ -39,10 +39,10 @@ struct gpu_object_data
 
 struct gpu_material_data
 {
-    float roughness = 0.5f;
-    float metallic = 0.5f;
-    float gamma = 0.8f;
-    float albedo = 0.2f;
+    float roughness = 0.f;
+    float metallic = 0.f;
+    float gamma = 0.f;
+    float albedo = 0.f;
 };
 
 struct vertex_data

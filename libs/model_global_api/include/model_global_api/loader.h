@@ -25,7 +25,8 @@ public:
     virtual render::material_data*
     load_material(const agea::utils::id& material_id,
                   const agea::utils::id& texture_id,
-                  const agea::utils::id& base_effect_id) = 0;
+                  const agea::utils::id& base_effect_id,
+                  const agea::utils::path& config_path) = 0;
 
     virtual render::shader_data*
     load_shader(const agea::utils::id& path) = 0;

@@ -2,6 +2,7 @@
 
 #include "model/rendering/texture.h"
 #include "model/caches/textures_cache.h"
+#include "model/package.h"
 
 #include <vulkan_render_types/vulkan_material_data.h>
 #include <model_global_api/loader.h>
@@ -16,12 +17,14 @@ AGEA_gen_class_cd_default(material);
 bool
 material::prepare_for_rendering()
 {
-    m_material_data = glob::render_loader::get()->load_material(get_id(), m_base_texture->get_id(),
-                                                                m_base_effect);
+    m_material_data =
+        glob::render_loader::get()->load_material(get_id(), m_base_texture->get_id(), m_base_effect,
+                                                  m_package->get_resource_path(m_config_path));
 
     if (!m_material_data)
     {
         ALOG_LAZY_ERROR;
+        return false;
     }
 
     m_roughness = &m_material_data->gpu_data.roughness;

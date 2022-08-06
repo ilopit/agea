@@ -40,6 +40,9 @@ protected:
     utils::id m_base_effect;
 
     AGEA_property("category=properties", "access=cpp_only", "serializable=true");
+    std::string m_config_path;
+
+    AGEA_property("category=properties", "access=cpp_only", "serializable=true");
     texture* m_base_texture = nullptr;
 
     AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");

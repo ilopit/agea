@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <iostream>
 
 namespace agea
 {
@@ -59,6 +60,9 @@ private:
 
 }  // namespace utils
 }  // namespace agea
+
+std::ostream&
+operator<<(std::ostream& os, const agea::utils::id& right);
 
 namespace std
 {

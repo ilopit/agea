@@ -16,6 +16,7 @@ target_link_libraries(vulkan_render PUBLIC
     agea::stb_unofficial
     agea::resource_locator
     agea::model_global_api
+    agea::serialization
 
     tinyobjloader
     sdl2

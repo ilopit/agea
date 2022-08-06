@@ -45,12 +45,6 @@ public:
     {
         return m_root_component->get_rotation();
     }
-    //
-    //     void
-    //     set_rotation(glm::quat q)
-    //     {
-    //         m_root_component->set_rotation(q);
-    //     }
 
     glm::vec3
     get_forward_vector() const

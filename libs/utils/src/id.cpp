@@ -61,3 +61,11 @@ id::operator=(const id& other)
 
 }  // namespace utils
 }  // namespace agea
+
+std::ostream&
+operator<<(std::ostream& os, const agea::utils::id& right)
+{
+    os << right.cstr();
+
+    return os;
+}

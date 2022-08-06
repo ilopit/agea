@@ -1,27 +1,26 @@
 #include "vulkan_render/render_loader.h"
 
-#include <vulkan_render_types/vulkan_mesh_data.h>
-#include <vulkan_render_types/vulkan_texture_data.h>
-#include <vulkan_render_types/vulkan_material_data.h>
-#include <vulkan_render_types/vulkan_gpu_types.h>
-
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/render_device.h"
 #include "vulkan_render/data_loaders/vulkan_mesh_data_loader.h"
 
-#include "vk_mem_alloc.h"
-
-#include "vulkan_render_types/vulkan_initializers.h"
+#include <vulkan_render_types/vulkan_mesh_data.h>
+#include <vulkan_render_types/vulkan_texture_data.h>
+#include <vulkan_render_types/vulkan_material_data.h>
+#include <vulkan_render_types/vulkan_gpu_types.h>
+#include <vulkan_render_types/vulkan_initializers.h>
 
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
 #include <resource_locator/resource_locator.h>
+#include <serialization/serialization.h>
 
+#include <vk_mem_alloc.h>
 #include <stb_unofficial/stb.h>
+#include <spirv_reflect.h>
 
 #include <iostream>
 #include <sstream>
-#include <spirv_reflect.h>
 
 namespace agea
 {
@@ -191,6 +190,23 @@ load_image_from_file_r(const std::string& file, allocated_image& outImage)
     stbi_image_free(pixels);
 
     outImage = upload_image(texWidth, texHeight, image_format, stagingBuffer);
+
+    return true;
+}
+
+bool
+load_material_config(const agea::utils::path& path, agea::render::gpu_material_data& data)
+{
+    agea::serialization::conteiner c;
+    if (!serialization::read_container(path, c))
+    {
+        return false;
+    }
+
+    data.albedo = c["albedo"].as<float>();
+    data.gamma = c["gamma"].as<float>();
+    data.metallic = c["metallic"].as<float>();
+    data.roughness = c["roughness"].as<float>();
 
     return true;
 }
@@ -595,7 +611,8 @@ vulkan_loader::load_texture(const agea::utils::id& texture_id, const std::string
 material_data*
 vulkan_loader::load_material(const agea::utils::id& material_id,
                              const agea::utils::id& texture_id,
-                             const agea::utils::id& base_effect_id)
+                             const agea::utils::id& base_effect_id,
+                             const agea::utils::path& config_path)
 {
     auto device = glob::render_device::get();
 
@@ -611,6 +628,11 @@ vulkan_loader::load_material(const agea::utils::id& material_id,
 
     td->pipeline = def->pipeline;
     td->effect = def->effect;
+
+    if (!load_material_config(config_path, td->gpu_data))
+    {
+        return nullptr;
+    }
 
     m_materials_cache[material_id] = td;
 
