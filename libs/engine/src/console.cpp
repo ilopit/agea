@@ -1,7 +1,6 @@
 #include "engine/console.h"
 
 #include "utils/string_utility.h"
-#include "engine/cli.h"
 
 #include "model/reflection/lua_api.h"
 #include <sol2_unofficial/sol.h>
@@ -487,55 +486,6 @@ editor_console::handle_cmd_help(editor_console& e, const command_context&)
     for (auto& c : e.m_commands.m_child)
     {
         e.add_log("- %s", c.first.c_str());
-    }
-}
-
-void
-editor_console::handle_cmd_print(editor_console& e, const command_context& ctx)
-{
-    static std::string empty;
-    if (ctx.tokens.empty())
-    {
-        e.add_log("No Args");
-        return;
-    }
-
-    auto& arg = ctx.tokens[ctx.offset];
-    static std::string buf(128, '\0');
-    static fixed_size_buffer buf2;
-    buf.clear();
-    // properties
-    if (ctx.tokens.size() == 2)
-    {
-        auto args = string_utils::split(arg, ".");
-
-        if (args.size() == 1)
-        {
-            auto& id = ctx.tokens[ctx.offset];
-            if (!glob::cli::get()->print_properties(id, buf))
-            {
-                e.add_log("%s not found ", id.c_str());
-            }
-            else
-            {
-                e.add_log("%s content :\n%s", id.c_str(), buf.c_str());
-            }
-        }
-        else if (args.size() == 2 || args.size() == 3)
-        {
-            auto& id = args[0];
-            auto& name = args[1];
-            auto& hint = args.size() == 3 ? args[2] : empty;
-
-            if (!glob::cli::get()->get_property(id, name, hint, buf2))
-            {
-                e.add_log("%s not found ", arg.c_str());
-            }
-            else
-            {
-                e.add_log("%s = %s", arg.c_str(), buf2.data());
-            }
-        }
     }
 }
 

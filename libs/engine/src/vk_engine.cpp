@@ -30,7 +30,6 @@
 #include "model/package_manager.h"
 
 #include "engine/ui.h"
-#include "engine/cli.h"
 #include "utils/process.h"
 #include "native/native_window.h"
 
@@ -87,7 +86,6 @@ vulkan_engine::init()
 
     m_package_manager = glob::package_manager::create();
     m_ui = glob::ui::create();
-    m_editor_cli = glob::cli::create();
 
     glob::resource_locator::get()->init_local_dirs();
 

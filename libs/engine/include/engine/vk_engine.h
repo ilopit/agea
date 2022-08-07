@@ -112,7 +112,6 @@ private:
     singletone_autodeleter m_render_loader;
     singletone_autodeleter m_render_device;
     singletone_autodeleter m_ui;
-    singletone_autodeleter m_editor_cli;
     // clang-format on
 
     render::gpu_scene_data m_scene_parameters;
