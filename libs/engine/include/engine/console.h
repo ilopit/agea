@@ -114,6 +114,7 @@ private:
     ImGuiTextFilter m_filter;
     bool m_auto_scroll;
     bool m_scroll_to_bottom;
+    size_t t = 0;
 };
 }  // namespace ui
 }  // namespace agea

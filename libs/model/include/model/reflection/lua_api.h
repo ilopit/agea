@@ -20,8 +20,15 @@ public:
     sol::state&
     state();
 
+    const std::string&
+    buffer();
+
+    void
+    wrire_buffer(const char* c, size_t n);
+
 private:
     std::unique_ptr<sol::state> m_state;
+    std::string m_buffer;
 };
 
 }  // namespace agea::reflection

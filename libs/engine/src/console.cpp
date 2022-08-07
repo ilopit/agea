@@ -1,8 +1,10 @@
 #include "engine/console.h"
 
 #include "utils/string_utility.h"
-
 #include "engine/cli.h"
+
+#include "model/reflection/lua_api.h"
+#include <sol/sol.hpp>
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -295,21 +297,12 @@ editor_console::exec_command(const std::string& command_line)
             break;
         }
     }
-    m_context.reset();
-    string_utils::split(command_line, " ", m_context.tokens);
+
+    glob::lua_api::getr().state().script(command_line);
+    add_log("# %s\n", &glob::lua_api::getr().buffer().c_str()[t]);
+    t = glob::lua_api::getr().buffer().size();
 
     m_history.push_back(command_line);
-
-    auto handle = m_commands.get(m_context.tokens, m_context.offset);
-
-    if (handle)
-    {
-        handle(*this, m_context);
-    }
-    else
-    {
-        add_log("Unknown command: '%s'\n", command_line.c_str());
-    }
 
     // On command input, we scroll to bottom even if AutoScroll==false
     m_scroll_to_bottom = true;
