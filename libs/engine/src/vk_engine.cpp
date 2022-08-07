@@ -17,21 +17,24 @@
 #include "vulkan_render/render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
 
-#include "model/caches/components_cache.h"
-#include "model/caches/materials_cache.h"
-#include "model/caches/meshes_cache.h"
-#include "model/caches/objects_cache.h"
-#include "model/caches/textures_cache.h"
+#include <model/caches/components_cache.h>
+#include <model/caches/materials_cache.h>
+#include <model/caches/meshes_cache.h>
+#include <model/caches/objects_cache.h>
+#include <model/caches/textures_cache.h>
 
-#include "model/components/mesh_component.h"
-#include "model/game_object.h"
-#include "model/level_constructor.h"
-#include "model/level.h"
-#include "model/package_manager.h"
+#include <model/components/mesh_component.h>
+#include <model/game_object.h>
+#include <model/level_constructor.h>
+#include <model/level.h>
+#include <model/package_manager.h>
 
 #include "engine/ui.h"
-#include "utils/process.h"
-#include "native/native_window.h"
+
+#include <native/native_window.h>
+#include <utils/agea_log.h>
+#include <utils/process.h>
+#include <utils/clock.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -47,8 +50,7 @@
 #include <fstream>
 #include <algorithm>
 #include <chrono>
-
-#include "utils/agea_log.h"
+#include <thread>
 
 namespace agea
 {
@@ -271,6 +273,8 @@ vulkan_engine::run()
     // main loop
     while (!bQuit)
     {
+        auto start_ts = utils::get_current_time_mks();
+
         handle_dirty_objects();
 
         // Handle events on queue
@@ -284,7 +288,6 @@ vulkan_engine::run()
                 process_input_event(&e);
             }
 
-            // close the window when user alt-f4s or clicks the X button
             if (e.type == SDL_QUIT)
             {
                 bQuit = true;
@@ -298,6 +301,13 @@ vulkan_engine::run()
         glob::level::get()->update();
 
         draw();
+
+        auto dur = utils::get_current_time_mks() - start_ts;
+
+        if (dur < 16167)
+        {
+            std::this_thread::sleep_for(std::chrono::microseconds(16167 - dur));
+        }
     }
 }
 
