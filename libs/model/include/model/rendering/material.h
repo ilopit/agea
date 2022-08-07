@@ -45,16 +45,16 @@ protected:
     AGEA_property("category=properties", "access=cpp_only", "serializable=true");
     texture* m_base_texture = nullptr;
 
-    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
+    AGEA_property("category=properties", "access=all", "serializable=false", "ref=true");
     float* m_roughness = nullptr;
 
-    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
+    AGEA_property("category=properties", "access=all", "serializable=false", "ref=true");
     float* m_metallic = nullptr;
 
-    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
+    AGEA_property("category=properties", "access=all", "serializable=false", "ref=true");
     float* m_gamma = nullptr;
 
-    AGEA_property("category=properties", "access=cpp_only", "serializable=false", "ref=true");
+    AGEA_property("category=properties", "access=all", "serializable=false", "ref=true");
     float* m_albedo = nullptr;
 
     ::agea::render::material_data* m_material_data = nullptr;

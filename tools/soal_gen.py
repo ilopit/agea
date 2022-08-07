@@ -212,10 +212,10 @@ lua_binding_template_end = """
     }"""
 
 lua_binding_template_get_function = """
-        lua_type["{0}"] = &{1}::get_{0};"""
+        lua_type["get_{0}"] = &{1}::get_{0};"""
 
 lua_binding_template_set_function = """
-        lua_type["{0}"] = &{1}::set_{0};"""
+        lua_type["set_{0}"] = &{1}::set_{0};"""
 
 
 class file_context:
