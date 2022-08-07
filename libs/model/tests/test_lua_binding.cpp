@@ -20,7 +20,6 @@
 #include "utils/path.h"
 
 #include "model/reflection/lua_api.h"
-#include <sol/sol.hpp>
 
 #include "base_test.h"
 

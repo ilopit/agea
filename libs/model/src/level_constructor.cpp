@@ -7,6 +7,8 @@
 #include "model/object_constructor.h"
 #include "model/package_manager.h"
 #include "model/conteiner_loader.h"
+#include "model/caches/cache_set.h"
+#include "model/caches/hash_cache.h"
 
 #include "resource_locator/resource_locator.h"
 
@@ -90,12 +92,10 @@ level_constructor::load_level_path(level& l,
         }
     }
 
-    auto instace_path = path;
-
     for (auto id : k_enums_to_handle)
     {
         if (!conteiner_loader::load_objects_conteiners(id, object_constructor::instance_object_load,
-                                                       instace_path, *l.m_occ))
+                                                       path, *l.m_occ))
         {
             ALOG_LAZY_ERROR;
             return false;
@@ -106,6 +106,17 @@ level_constructor::load_level_path(level& l,
     {
         o->META_post_construct();
     }
+
+    size_t idx = 0;
+    for (auto& c : l.m_local_cs.map->get_items())
+    {
+        for (auto& i : c.second->get_items())
+        {
+            global_instances_cs.map->get_cache(c.first).add_item(*i.second);
+            ++idx;
+        }
+    }
+    ALOG_INFO("Propageted {0} object instances from {1} to global cache", idx, name);
 
     return true;
 }

@@ -27,7 +27,7 @@ target_link_libraries(model PUBLIC
    agea::model_global_api
 
    lua_static
-   sol2::sol2
+   agea::sol2_unofficial
 )
 
 target_include_directories(model PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)

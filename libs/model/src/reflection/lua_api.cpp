@@ -1,6 +1,6 @@
 #include "model/reflection/lua_api.h"
 
-#include <sol/sol.hpp>
+#include <sol2_unofficial/sol.h>
 
 namespace
 {

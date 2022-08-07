@@ -139,11 +139,13 @@ package::save_package(const utils::path& root_folder, const package& p)
 void
 package::propagate_to_global_caches()
 {
+    size_t count = 0;
     for (auto& c : m_class_local_set.map->get_items())
     {
         for (auto& i : c.second->get_items())
         {
             m_class_global_set.map->get_cache(c.first).add_item(*i.second);
+            ++count;
         }
     }
 
@@ -152,8 +154,11 @@ package::propagate_to_global_caches()
         for (auto& i : c.second->get_items())
         {
             m_instance_global_set.map->get_cache(c.first).add_item(*i.second);
+            ++count;
         }
     }
+
+    ALOG_INFO("Propageted {0} object instances from {1} to global cache", count, m_id.cstr());
 }
 
 bool

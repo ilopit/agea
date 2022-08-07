@@ -56,6 +56,7 @@ externalize(luac "lua")
 
 #luaa
 add_subdirectory(upstream/lua_bindings)
+add_subdirectory(unofficial/lua_bindings)
 
 #vkbootstrap
 add_subdirectory(upstream/vkbootstrap)

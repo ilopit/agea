@@ -4,7 +4,7 @@
 #include "engine/cli.h"
 
 #include "model/reflection/lua_api.h"
-#include <sol/sol.hpp>
+#include <sol2_unofficial/sol.h>
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -298,11 +298,23 @@ editor_console::exec_command(const std::string& command_line)
         }
     }
 
-    glob::lua_api::getr().state().script(command_line);
-    add_log("# %s\n", &glob::lua_api::getr().buffer().c_str()[t]);
-    t = glob::lua_api::getr().buffer().size();
+    auto result = glob::lua_api::getr().state().script(command_line);
 
-    m_history.push_back(command_line);
+    if (result.status() == sol::call_status::ok)
+    {
+        auto to_add = glob::lua_api::getr().buffer().substr(t);
+        if (!to_add.empty())
+        {
+            m_items.push_back(to_add);
+            t = glob::lua_api::getr().buffer().size();
+        }
+        m_history.push_back(command_line);
+    }
+    else
+    {
+        sol::error err = result;
+        add_log("# [error] %s\n", err.what());
+    }
 
     // On command input, we scroll to bottom even if AutoScroll==false
     m_scroll_to_bottom = true;
@@ -527,53 +539,11 @@ editor_console::handle_cmd_print(editor_console& e, const command_context& ctx)
     }
 }
 
-void
-editor_console::handle_cmd_set(editor_console& e, const command_context& ctx)
-{
-    static std::string empty;
-    if (ctx.tokens.empty())
-    {
-        e.add_log("No Args");
-        return;
-    }
-
-    auto& arg = ctx.tokens[ctx.offset];
-    // properties
-    if (ctx.tokens.size() == 3)
-    {
-        auto args = string_utils::split(arg, ".");
-
-        if (args.size() == 2 || args.size() == 3)
-        {
-            auto& id = args[0];
-            auto& name = args[1];
-            auto& subproperty = args.size() == 3 ? args[2] : empty;
-
-            auto& value = ctx.tokens[2];
-            if (!glob::cli::get()->set_property(id, name, subproperty, value))
-            {
-                e.add_log("%s not found ", arg.c_str());
-            }
-            else
-            {
-                e.add_log("%s updated!", arg.c_str());
-            }
-        }
-    }
-}
-
 editor_console::editor_console()
     : window(window_title())
 {
     m_buf.fill('\0');
     m_history_pos = -1;
-
-    m_commands.add({"help"}, handle_cmd_help);
-    m_commands.add({"history"}, handle_cmd_history);
-    m_commands.add({"clear"}, handle_cmd_clear);
-    m_commands.add({"reset"}, handle_cmd_reset);
-    m_commands.add({"print"}, handle_cmd_print);
-    m_commands.add({"set"}, handle_cmd_set);
 
     m_auto_scroll = true;
     m_scroll_to_bottom = false;
