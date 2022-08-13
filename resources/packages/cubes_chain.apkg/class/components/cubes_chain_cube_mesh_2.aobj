@@ -1,0 +1,18 @@
+type_id: mesh_component
+id: cubes_chain_cube_mesh_2
+material: red_mat
+mesh: cube_mesh
+order_idx: 2
+parent_idx: 1
+position:
+  x: 0
+  y: 0
+  z: 0
+scale:
+  x: 1
+  y: 1
+  z: 1
+rotation:
+  x: 0
+  y: 0
+  z: 0

@@ -1,0 +1,5 @@
+type_id: texture
+id: red_txt
+format: RGBA8
+base_color: "#FF0000FF"
+class_obj: true

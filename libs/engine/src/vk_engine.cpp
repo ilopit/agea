@@ -585,7 +585,7 @@ void
 vulkan_engine::init_scene()
 {
     auto result = model::level_constructor::load_level_id(
-        *glob::level::get(), utils::id::from("demo.alvl"),
+        *glob::level::get(), utils::id::from("demo2.alvl"),
         glob::class_objects_cache_set_view::get(), glob::objects_cache_set_view::get());
 
     AGEA_check(result, "Should be not null!");
