@@ -101,8 +101,12 @@ editor_console::save_to_file()
     file.close();
 
     file.open(HISTORY_FILE);
-    for (auto& i : m_history)
+    for (auto i : m_history)
     {
+        if (i.back() != '\n')
+        {
+            i += '\n';
+        }
         file << i;
     }
 }
@@ -119,6 +123,8 @@ editor_console::add_log(const char* fmt, ...) IM_FMTARGS(2)
     m_buf[idx] = 0;
     va_end(args);
     m_items.push_back(m_buf.data());
+
+    m_buf.fill('\0');
 }
 
 void
@@ -296,23 +302,41 @@ editor_console::exec_command(const std::string& command_line)
             break;
         }
     }
-
-    auto result = glob::lua_api::getr().state().script(command_line);
-
-    if (result.status() == sol::call_status::ok)
+    if (command_line.front() == '-')
     {
-        auto to_add = glob::lua_api::getr().buffer().substr(t);
-        if (!to_add.empty())
+        string_utils::split(command_line, " ", m_context.tokens);
+
+        auto handle = m_commands.get(m_context.tokens, m_context.offset);
+
+        if (handle)
         {
-            m_items.push_back(to_add);
-            t = glob::lua_api::getr().buffer().size();
+            handle(*this, m_context);
+            m_history.push_back(command_line);
         }
-        m_history.push_back(command_line);
+        else
+        {
+            add_log("Unknown command: '%s'\n", command_line.c_str());
+        }
     }
     else
     {
-        sol::error err = result;
-        add_log("# [error] %s\n", err.what());
+        auto result = glob::lua_api::getr().state().script(command_line);
+
+        if (result.status() == sol::call_status::ok)
+        {
+            auto to_add = glob::lua_api::getr().buffer().substr(t);
+            if (!to_add.empty())
+            {
+                m_items.push_back(to_add);
+                t = glob::lua_api::getr().buffer().size();
+            }
+            m_history.push_back(command_line);
+        }
+        else
+        {
+            sol::error err = result;
+            add_log("# [error] %s\n", err.what());
+        }
     }
 
     // On command input, we scroll to bottom even if AutoScroll==false
@@ -489,11 +513,41 @@ editor_console::handle_cmd_help(editor_console& e, const command_context&)
     }
 }
 
+void
+editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
+{
+    std::string file_name = ctx.tokens[1];
+
+    auto result = glob::lua_api::getr().state().script_file(file_name);
+
+    if (result.status() == sol::call_status::ok)
+    {
+        auto to_add = glob::lua_api::getr().buffer().substr(e.t);
+        if (!to_add.empty())
+        {
+            e.m_items.push_back(to_add);
+        }
+
+        e.t = glob::lua_api::getr().buffer().size();
+    }
+    else
+    {
+        sol::error err = result;
+        e.add_log("# [error] %s\n", err.what());
+    }
+}
+
 editor_console::editor_console()
     : window(window_title())
+    , m_history_pos(-1)
 {
     m_buf.fill('\0');
-    m_history_pos = -1;
+
+    m_commands.add({"--help"}, handle_cmd_help);
+    m_commands.add({"--history"}, handle_cmd_history);
+    m_commands.add({"--clear"}, handle_cmd_clear);
+    m_commands.add({"--reset"}, handle_cmd_reset);
+    m_commands.add({"--run"}, handle_cmd_run);
 
     m_auto_scroll = true;
     m_scroll_to_bottom = false;

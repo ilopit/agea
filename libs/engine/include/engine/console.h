@@ -90,6 +90,8 @@ struct editor_console : public window
     handle_cmd_history(editor_console& e, const command_context& ctx);
     static void
     handle_cmd_help(editor_console& e, const command_context& ctx);
+    static void
+    handle_cmd_run(editor_console& e, const command_context& ctx);
 
 private:
     static int
