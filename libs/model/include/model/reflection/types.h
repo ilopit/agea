@@ -176,7 +176,7 @@ struct type_resolver
     AGEA_create_resolver(float, property_type::t_f);
     AGEA_create_resolver(double, property_type::t_d);
 
-    AGEA_create_resolver(glm::vec3, property_type::t_vec3);
+    AGEA_create_resolver(model::vec3, property_type::t_vec3);
 };
 
 }  // namespace reflection

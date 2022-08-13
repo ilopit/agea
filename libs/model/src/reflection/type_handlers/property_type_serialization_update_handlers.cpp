@@ -5,6 +5,7 @@
 #include "model/caches/meshes_cache.h"
 #include "model/caches/materials_cache.h"
 #include "model/object_constructor.h"
+#include "model/core_types/vec3.h"
 
 #include "utils/agea_log.h"
 
@@ -343,7 +344,7 @@ property_type_serialization_update_handlers::deserialize_t_vec3(AGEA_deserializa
 {
     AGEA_unused(occ);
 
-    auto& field = reflection::extract<glm::vec3>(ptr);
+    auto& field = reflection::extract<model::vec3>(ptr);
 
     field.x = jc["x"].as<float>();
     field.y = jc["y"].as<float>();

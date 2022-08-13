@@ -42,21 +42,21 @@ public:
     }
 
     AGEA_function("category=world");
-    glm::vec3
+    vec3
     get_forward_vector() const
     {
         return m_root_component->get_forward_vector();
     }
 
     AGEA_function("category=world");
-    glm::vec3
+    vec3
     get_up_vector() const
     {
         return m_root_component->get_up_vector();
     }
 
     AGEA_function("category=world");
-    glm::vec3
+    vec3
     get_right_vector() const
     {
         return m_root_component->get_right_vector();
@@ -64,14 +64,14 @@ public:
 
     AGEA_function("category=world");
     void
-    move(const glm::vec3& delta)
+    move(const vec3& delta)
     {
         m_root_component->move(delta);
     }
 
     AGEA_function("category=world");
     void
-    rotate(float delta_angle, const glm::vec3& axis)
+    rotate(float delta_angle, const vec3& axis)
     {
         m_root_component->rotate(delta_angle, axis);
     }
@@ -187,13 +187,13 @@ public:
 
 protected:
     AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
-    glm::vec3* m_position = nullptr;
+    vec3* m_position = nullptr;
 
     AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
-    glm::vec3* m_rotation = nullptr;
+    vec3* m_rotation = nullptr;
 
     AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
-    glm::vec3* m_scale = nullptr;
+    vec3* m_scale = nullptr;
 
     AGEA_property("category=meta",
                   "serializable=true",

@@ -7,9 +7,9 @@ namespace agea
 {
 namespace model
 {
-const glm::vec3 DEF_FORWARD(0, 0, -1);
-const glm::vec3 DEF_UP(0, 1, 0);
-const glm::vec3 DEF_RIGHT(1, 0, 0);
+const vec3 DEF_FORWARD(0, 0, -1);
+const vec3 DEF_UP(0, 1, 0);
+const vec3 DEF_RIGHT(1, 0, 0);
 
 game_object_component::game_object_component()
 {
@@ -66,7 +66,7 @@ game_object_component::update_matrix()
     auto t = glm::translate(glm::mat4{1.0}, m_position);
     auto s = glm::scale(glm::mat4{1.0}, m_scale);
 
-    auto rot_in_radians = glm::radians(m_rotation);
+    auto rot_in_radians = glm::radians(m_rotation.as_glm());
 
     auto r = glm::toMat4(glm::quat(rot_in_radians));
 

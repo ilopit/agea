@@ -16,6 +16,11 @@ struct vec3 : ::glm::vec3
     {
     }
 
+    vec3(const glm::vec3& v)
+        : glm::vec3(v)
+    {
+    }
+
     AGEA_ctor("category=world");
     vec3(float x, float y, float z)
         : glm::vec3(x, y, z)
@@ -29,7 +34,7 @@ struct vec3 : ::glm::vec3
     }
 
     glm::vec3
-    as_glm()
+    as_glm() const
     {
         return *this;
     }

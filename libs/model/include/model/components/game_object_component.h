@@ -4,15 +4,16 @@
 
 #include "model/components/component.h"
 #include "model/rendering/renderable.h"
+#include "model/core_types/vec3.h"
 
 namespace agea
 {
 namespace model
 {
 
-const extern glm::vec3 DEF_FORWARD;
-const extern glm::vec3 DEF_UP;
-const extern glm::vec3 DEF_RIGHT;
+const extern vec3 DEF_FORWARD;
+const extern vec3 DEF_UP;
+const extern vec3 DEF_RIGHT;
 
 AGEA_class();
 class game_object_component : public component, public renderable
@@ -23,9 +24,9 @@ public:
     AGEA_gen_class_meta(game_object_component, component);
     AGEA_gen_construct_params
     {
-        glm::vec3 position = glm::vec3(0.f, 0.f, 0.f);
-        glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f);
-        glm::vec3 rotation = glm::vec3(0.f, 0.f, 0.f);
+        vec3 position = vec3(0.f, 0.f, 0.f);
+        vec3 scale = vec3(1.f, 1.f, 1.f);
+        vec3 rotation = vec3(0.f, 0.f, 0.f);
     };
     AGEA_gen_meta_api;
 
@@ -41,32 +42,32 @@ public:
         return true;
     }
 
-    glm::vec3
+    vec3
     get_forward_vector() const
     {
-        return glm::rotate(glm::quat(m_rotation), DEF_FORWARD);
+        return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_FORWARD.as_glm());
     }
 
-    glm::vec3
+    vec3
     get_up_vector() const
     {
-        return glm::rotate(glm::quat(m_rotation), DEF_UP);
+        return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_UP.as_glm());
     }
 
-    glm::vec3
+    vec3
     get_right_vector() const
     {
-        return glm::rotate(glm::quat(m_rotation), DEF_RIGHT);
+        return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_RIGHT.as_glm());
     }
 
     void
-    move(const glm::vec3& delta)
+    move(const vec3& delta)
     {
-        m_position += delta;
+        m_position += delta.as_glm();
     }
 
     void
-    rotate(float delta_angle, const glm::vec3& axis)
+    rotate(float delta_angle, const vec3& axis)
     {
         m_rotation = glm::rotate(m_rotation, delta_angle, axis);
     }
@@ -124,18 +125,18 @@ public:
     editor_update() override;
 
     // ptr access for binding
-    glm::vec3*
+    vec3*
     position_ptr()
     {
         return &m_position;
     }
 
-    glm::vec3*
+    vec3*
     rotation_ptr()
     {
         return &m_rotation;
     }
-    glm::vec3*
+    vec3*
     scale_ptr()
     {
         return &m_scale;
@@ -149,13 +150,13 @@ public:
 
 protected:
     AGEA_property("category=world", "serializable=true", "hint=x,y,z");
-    glm::vec3 m_position;
+    vec3 m_position;
 
     AGEA_property("category=world", "serializable=true", "hint=x,y,z");
-    glm::vec3 m_rotation;
+    vec3 m_rotation;
 
     AGEA_property("category=world", "serializable=true", "hint=x,y,z");
-    glm::vec3 m_scale;
+    vec3 m_scale;
 
     AGEA_property("category=render", "ref=true");
     bool* m_visible = nullptr;

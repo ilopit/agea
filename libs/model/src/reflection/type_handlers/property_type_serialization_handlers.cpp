@@ -355,7 +355,7 @@ property_type_serialization_handlers::serialize_t_vec3(AGEA_serialization_args)
     AGEA_unused(ptr);
     AGEA_unused(jc);
 
-    auto& field = reflection::extract<glm::vec3>(ptr);
+    auto& field = reflection::extract<model::vec3>(ptr);
 
     jc["x"] = field.x;
     jc["y"] = field.y;
@@ -369,7 +369,7 @@ property_type_serialization_handlers::deserialize_t_vec3(AGEA_deserialization_ar
 {
     AGEA_unused(occ);
 
-    auto& field = reflection::extract<glm::vec3>(ptr);
+    auto& field = reflection::extract<model::vec3>(ptr);
 
     field.x = jc["x"].as<float>();
     field.y = jc["y"].as<float>();

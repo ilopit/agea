@@ -8,6 +8,7 @@
 #include <resource_locator/resource_locator.h>
 
 #include <glm_unofficial/glm.h>
+#include "core_types/vec3.h"
 
 #include <string>
 #include <stdint.h>
