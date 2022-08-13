@@ -9,6 +9,7 @@
 #include "model/caches/empty_objects_cache.h"
 #include "model/caches/cache_set.h"
 #include "model/reflection/lua_api.h"
+#include <sol2_unofficial/sol.h>
 
 #include "model/object_construction_context.h"
 #include "model/level.h"
@@ -45,46 +46,6 @@ struct test_luad_binding : public base_test
     agea::singletone_autodeleter m_class_objects_cache_set;
 };
 
-model::smart_object*
-item_aa()
-{
-    auto itr = glob::class_components_cache::get()->get_items().begin();
-    return itr->second;
-}
-
-model::smart_object*
-item_bb(const char*)
-{
-    auto itr = glob::class_components_cache::get()->get_items().begin();
-    return itr->second;
-}
-
-struct player
-{
-public:
-    int bullets;
-    int speed;
-
-    player()
-        : player(3, 100)
-    {
-    }
-
-    player(int ammo)
-        : player(ammo, 100)
-    {
-    }
-
-    player(int ammo, int hitpoints)
-        : bullets(ammo)
-        , hp(hitpoints)
-    {
-    }
-
-private:
-    int hp;
-};
-
 TEST_F(test_luad_binding, load_package)
 {
     auto path = glob::resource_locator::get()->resource(category::packages, "test.apkg");
@@ -98,15 +59,9 @@ TEST_F(test_luad_binding, load_package)
 
     ASSERT_TRUE(result);
 
-    using namespace model;
-
-    // You can also add members to the code, defined in Lua!
-    // This lets you have a high degree of flexibility in the
-    // code
-
     std::string player_script = R"(
- obj = game_object.c("test_class_object")
- print(obj:id())
+ obj = vec3.new(1,2,3)
+ print(obj)
 )";
 
     glob::lua_api::getr().state().script(player_script);

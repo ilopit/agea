@@ -1,6 +1,7 @@
 include/model/game_object.h
 include/model/mesh_object.h
 include/model/smart_object.h
+include/model/core_types/vec3.h
 include/model/components/camera_component.h
 include/model/components/component.h
 include/model/components/game_object_component.h

@@ -3,7 +3,7 @@
 #include "smart_object.generated.h"
 
 #include "model/reflection/object_reflection.h"
-
+#include <arl/arl_defines.h>
 #include "model/model_minimal.h"
 
 #include <string>

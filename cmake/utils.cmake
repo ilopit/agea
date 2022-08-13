@@ -12,6 +12,20 @@ macro(agea_finalize_library)
     add_library(agea::${ARGV0} ALIAS ${ARGV0})
 endmacro()
 
+macro(agea_finalize_interface_library)
+
+    get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
+    file(RELATIVE_PATH rel ${PARENT_DIR_1} ${CMAKE_CURRENT_LIST_DIR})
+    set_target_properties(${ARGV0} PROPERTIES FOLDER ${rel})
+
+    target_include_directories(${ARGV0} 
+        INTERFACE 
+            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+            "${CMAKE_CURRENT_SOURCE_DIR}")
+
+    add_library(agea::${ARGV0} ALIAS ${ARGV0})
+endmacro()
+
 macro(agea_finalize_executable)
 
     get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)

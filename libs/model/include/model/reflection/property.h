@@ -240,6 +240,3 @@ struct property_convertes
 
 }  // namespace reflection
 }  // namespace agea
-
-#define AGEA_property(...)
-#define AGEA_class(...)

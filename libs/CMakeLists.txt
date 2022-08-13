@@ -1,4 +1,5 @@
-﻿add_subdirectory(engine)
+﻿add_subdirectory(arl)
+add_subdirectory(engine)
 add_subdirectory(model)
 add_subdirectory(model_global_api)
 add_subdirectory(native)

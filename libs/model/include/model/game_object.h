@@ -3,7 +3,7 @@
 #include "game_object.generated.h"
 
 #include "model/model_minimal.h"
-
+#include "model/core_types/vec3.h"
 #include "model/components/game_object_component.h"
 
 #include <iostream>
@@ -34,60 +34,63 @@ public:
         return base_class::construct(params);
     }
 
-    void
-    set_position(const glm::vec3& p)
-    {
-        m_root_component->set_position(p);
-    }
-
+    AGEA_function("category=world");
     glm::quat
     get_rotation_quat() const
     {
         return m_root_component->get_rotation();
     }
 
+    AGEA_function("category=world");
     glm::vec3
     get_forward_vector() const
     {
         return m_root_component->get_forward_vector();
     }
 
+    AGEA_function("category=world");
     glm::vec3
     get_up_vector() const
     {
         return m_root_component->get_up_vector();
     }
 
+    AGEA_function("category=world");
     glm::vec3
     get_right_vector() const
     {
         return m_root_component->get_right_vector();
     }
 
+    AGEA_function("category=world");
     void
     move(const glm::vec3& delta)
     {
         m_root_component->move(delta);
     }
 
+    AGEA_function("category=world");
     void
     rotate(float delta_angle, const glm::vec3& axis)
     {
         m_root_component->rotate(delta_angle, axis);
     }
 
+    AGEA_function("category=world");
     void
     roll(float delta_angle)
     {
         m_root_component->roll(delta_angle);
     }
 
+    AGEA_function("category=world");
     void
     yaw(float delta_angle)
     {
         m_root_component->yaw(delta_angle);
     }
 
+    AGEA_function("category=world");
     void
     pitch(float delta_angle)
     {

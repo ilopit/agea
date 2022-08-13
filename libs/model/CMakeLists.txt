@@ -4,6 +4,7 @@ file(GLOB MODEL_COMPONENTS_SRC            "include/model/components/*.h"        
 file(GLOB MODEL_RENDERING_SRC             "include/model/rendering/*.h"                  "src/rendering/*.cpp")
 file(GLOB MODEL_SRC                       "include/model/*.h"                            "src/*.cpp")
 file(GLOB MODEL_CACHES_SRC                "include/model/caches/*.h"                     "src/caches/*.cpp")
+file(GLOB MODEL_CORE_TYPES_SRC            "include/model/core_types/*.h"                 "src/core_types/*.cpp")
 file(GLOB MODEL_REFLECTION_SRC            "include/model/reflection/*.h"                 "src/reflection/*.cpp")
 file(GLOB MODEL_REFLECTION_HANDLERS_SRC   "include/model/reflection/type_handlers/*.h"   "src/reflection/type_handlers/*.cpp")
 
@@ -12,6 +13,7 @@ add_library(model STATIC
    ${MODEL_RENDERING_SRC}        
    ${MODEL_SRC}         
    ${MODEL_CACHES_SRC}
+   ${MODEL_CORE_TYPES_SRC}
    ${MODEL_REFLECTION_SRC}        
    ${MODEL_REFLECTION_HANDLERS_SRC}
    
@@ -19,6 +21,7 @@ add_library(model STATIC
 )
 
 target_link_libraries(model PUBLIC
+   agea::arl
    agea::utils
    agea::glm_unofficial
    agea::serialization
