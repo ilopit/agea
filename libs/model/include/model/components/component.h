@@ -72,14 +72,30 @@ public:
         return m_attached_components;
     }
 
+    uint32_t
+    get_order_idx() const
+    {
+        return m_order_idx;
+    }
+
+    uint32_t
+    get_parent_idx() const
+    {
+        return m_parent_idx;
+    }
+
+    void
+    set_order_parent_idx(uint32_t o, uint32_t p)
+    {
+        m_order_idx = o;
+        m_parent_idx = p;
+    }
+
 protected:
     game_object* m_owner_obj = nullptr;
     component* m_parent = nullptr;
 
-    AGEA_property("category=meta", "serializable=true");
     uint32_t m_order_idx = NO_index;
-
-    AGEA_property("category=meta", "serializable=true");
     uint32_t m_parent_idx = NO_parent;
 
     std::vector<component*> m_attached_components;

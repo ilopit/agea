@@ -61,6 +61,19 @@ namespace model
 
 class object_constructor;
 class package;
+class smart_object;
+
+enum smart_object_state
+{
+    smart_objet_state__empty,
+    smart_objet_state__constructed,
+    smart_objet_state__render_creating,
+    smart_objet_state__render_created,
+    smart_objet_state__render_scheduling,
+    smart_objet_state__render_scheduled
+};
+
+using smart_object_ptr = std::shared_ptr<smart_object>;
 
 AGEA_class();
 class smart_object
@@ -98,6 +111,13 @@ public:
         }
 
         return (T*)this;
+    }
+
+    template <typename T>
+    T&
+    asr()
+    {
+        return *((T*)this);
     }
 
     blob_ptr
@@ -144,6 +164,30 @@ public:
         return m_class_obj == nullptr;
     }
 
+    smart_object_state
+    get_state()
+    {
+        return m_obj_state;
+    }
+
+    void
+    set_state(smart_object_state v)
+    {
+        m_obj_state = v;
+    }
+
+    bool
+    has_dirty_transform()
+    {
+        return m_has_dirty_transform;
+    }
+
+    void
+    set_dirty_transform(bool v)
+    {
+        m_has_dirty_transform = v;
+    }
+
 protected:
     void
     META_set_id(const utils::id& id)
@@ -168,6 +212,9 @@ protected:
 
     smart_object* m_class_obj = nullptr;
     package* m_package = nullptr;
+
+    smart_object_state m_obj_state = smart_object_state::smart_objet_state__empty;
+    bool m_has_dirty_transform = false;
 };
 
 template <typename To, typename From>

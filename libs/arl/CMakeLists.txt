@@ -1,5 +1,3 @@
-set(CMAKE_CXX_STANDARD 17)
-
 file(GLOB LIB_SRC "include/arl/*.h")
 
 add_library(arl INTERFACE

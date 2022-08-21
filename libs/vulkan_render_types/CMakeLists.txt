@@ -1,5 +1,3 @@
-set(CMAKE_CXX_STANDARD 17)
-
 file(GLOB LIB_SRC "include/vulkan_render_types/*.h" "src/*.cpp")
 
 add_library(vulkan_render_types STATIC

@@ -36,14 +36,25 @@ game_object_components_deserialize(deserialize_context& dc)
     {
         r.resize(items_size);
     }
+    else
+    {
+        ALOG_LAZY_ERROR;
+    }
+
+    auto layout = sc["layout"];
+    auto layout_size = items_size;
+
+    std::vector<int> layout_mapping;
+    for (unsigned i = 0; i < layout_size; ++i)
+    {
+        layout_mapping.push_back(layout[i].as<int>());
+    }
 
     for (unsigned i = 0; i < items_size; ++i)
     {
         auto item = items[i];
-        auto idx = i;
 
-        auto class_id = utils::id::from(item["id"].as<std::string>());
-        auto obj = dc.occ->find_class_obj(class_id);
+        auto obj = model::object_constructor::object_load_internal(item, *dc.occ);
 
         if (!obj || obj->get_architype_id() != model::architype::component)
         {
@@ -51,7 +62,8 @@ game_object_components_deserialize(deserialize_context& dc)
             return false;
         }
 
-        r[idx] = obj->as<model::component>();
+        r[i] = obj->as<model::component>();
+        r[i]->set_order_parent_idx(i, layout_mapping[i]);
     }
 
     return true;
@@ -64,6 +76,15 @@ game_object_components_prototype(property_prototype_context& ctx)
 
     auto items = sc[ctx.dst_property->name];
     auto items_size = items.size();
+
+    auto layout = sc["layout"];
+    auto layout_size = items_size;
+
+    std::vector<int> layout_mapping;
+    for (unsigned i = 0; i < layout_size; ++i)
+    {
+        layout_mapping.push_back(layout[i].as<int>());
+    }
 
     auto& src_properties =
         extract<std::vector<model::component*>>(ctx.src_obj->as_blob() + ctx.dst_property->offset);
@@ -85,17 +106,16 @@ game_object_components_prototype(property_prototype_context& ctx)
     {
         auto item = items[i];
 
-        auto class_id = utils::id::from(item["id"].as<std::string>());
-        auto obj = ctx.occ->m_instance_local_set.objects->get_item(class_id);
-        if (!obj || dst_properties[i])
+        auto obj = model::object_constructor::object_load_internal(item, *ctx.occ);
+
+        if (!obj || obj->get_architype_id() != model::architype::component)
         {
             ALOG_LAZY_ERROR;
             return false;
         }
-        dst_properties[i] = obj->as<model::component>();
 
-        AGEA_check(src_properties[i]->get_id() == obj->get_class_obj()->get_id(),
-                   "Should have parent-child");
+        dst_properties[i] = obj->as<model::component>();
+        dst_properties[i]->set_order_parent_idx(i, layout_mapping[i]);
     }
     return true;
 }
@@ -109,46 +129,50 @@ game_object_components_serialize(serialize_context& dc)
     if (class_obj.is_class_obj())
     {
         serialization::conteiner components_conteiner;
+        serialization::conteiner components_layout;
+        components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
         auto& components =
-            extract<std::vector<model::smart_object*>>(class_obj.as_blob() + dc.p->offset);
+            extract<std::vector<model::component*>>(class_obj.as_blob() + dc.p->offset);
 
         int i = 0;
         for (auto instance_component : components)
         {
+            auto class_component = instance_component->get_class_obj();
             serialization::conteiner component_conteiner;
-            // component_conteiner["class_id"] = class_component->get_id().str();
+
             component_conteiner["id"] = instance_component->get_id().str();
+            component_conteiner["class_id"] = class_component->get_id().str();
 
-            //             reflection::serialize_context internal_sc{nullptr, instance_component,
-            //                                                       &component_conteiner};
-            //             reflection::compare_context compare_ctx{nullptr, class_component,
-            //             instance_component};
-            //
-            //             std::vector<reflection::property*> diff;
-            //             model::object_constructor::diff_object_properties(*class_component,
-            //             *instance_component,
-            //                                                               diff);
-            //
-            //             for (auto& p : diff)
-            //             {
-            //                 internal_sc.p = p;
-            //
-            //                 p->serialization_handler(internal_sc);
-            //             }
+            reflection::serialize_context internal_sc{nullptr, instance_component,
+                                                      &component_conteiner};
+            reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
+
+            std::vector<reflection::property*> diff;
+            model::object_constructor::diff_object_properties(*class_component, *instance_component,
+                                                              diff);
+
+            for (auto& p : diff)
+            {
+                internal_sc.p = p;
+                p->serialization_handler(internal_sc);
+            }
             components_conteiner[i++] = component_conteiner;
+            components_layout.push_back((int)instance_component->get_parent_idx());
         }
-
+        conteiner["layout"] = components_layout;
         conteiner[dc.p->name] = components_conteiner;
     }
     else
     {
         serialization::conteiner components_conteiner;
+        serialization::conteiner components_layout;
+        components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
         auto& obj_components =
             extract<std::vector<model::component*>>(class_obj.as_blob() + dc.p->offset);
 
-        auto& parent_components = extract<std::vector<model::component*>>(
+        auto& parent_components = extract<std::vector<model::smart_object*>>(
             class_obj.get_class_obj()->as_blob() + dc.p->offset);
 
         AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
@@ -160,24 +184,25 @@ game_object_components_serialize(serialize_context& dc)
 
             serialization::conteiner component_conteiner;
 
+            component_conteiner["id"] = obj_component->get_id().str();
+            component_conteiner["class_id"] = class_component->get_id().str();
+
             reflection::serialize_context internal_sc{nullptr, obj_component, &component_conteiner};
 
             std::vector<reflection::property*> diff;
             model::object_constructor::diff_object_properties(*class_component, *obj_component,
                                                               diff);
 
-            component_conteiner["id"] = obj_component->get_id().str();
-
             for (auto& p : diff)
             {
                 internal_sc.p = p;
-
                 p->serialization_handler(internal_sc);
             }
 
-            components_conteiner.push_back(component_conteiner);
+            components_conteiner[i++] = component_conteiner;
+            components_layout.push_back((int)obj_component->get_parent_idx());
         }
-
+        conteiner["layout"] = components_layout;
         conteiner[dc.p->name] = components_conteiner;
     }
 
@@ -203,8 +228,8 @@ game_object_components_copy(copy_context& ctx)
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto candidate_id = utils::id::from(ctx.dst_obj->get_id().str() + "/" +
-                                            src_col[i]->get_class_obj()->get_id().str());
+        auto candidate_id =
+            AID(ctx.dst_obj->get_id().str() + "/" + src_col[i]->get_class_obj()->get_id().str());
 
         auto p =
             model::object_constructor::object_clone_create(*src_col[i], candidate_id, *ctx.occ);

@@ -1,7 +1,5 @@
-set(CMAKE_CXX_STANDARD 17)
-
 file(GLOB LIB_SRC          "include/vulkan_render/*.h"              "src/*.cpp")
-file(GLOB DATA_LOADERS_SRC "include/vulkan_render/data_loaders/*.h" "src/data_loaders/*.cpp")
+file(GLOB DATA_LOADERS_SRC "include/vulkan_render/vulkan_loaders/*.h" "src/vulkan_loaders/*.cpp")
 
 add_library(vulkan_render STATIC
    ${LIB_SRC}
@@ -15,7 +13,6 @@ target_link_libraries(vulkan_render PUBLIC
     agea::imgui_unofficial
     agea::stb_unofficial
     agea::resource_locator
-    agea::model_global_api
     agea::serialization
 
     tinyobjloader

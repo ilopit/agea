@@ -1,0 +1,4 @@
+---
+type_id: mesh
+id: cube_mesh
+external: class/meshes/cube_mesh.obj

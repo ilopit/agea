@@ -106,10 +106,10 @@ public:
 class caches_map
 {
 public:
-    hash_cache&
+    hash_cache*
     get_cache(architype id)
     {
-        return *m_mapping.at(id);
+        return m_mapping.at(id);
     }
 
     void
@@ -125,6 +125,8 @@ public:
     {
         auto& item = m_mapping.at(obj.get_architype_id());
         item->add_item(obj);
+
+        m_mapping.at(architype::smart_object)->add_item(obj);
     }
 
     std::unordered_map<architype, hash_cache*>&
@@ -141,11 +143,11 @@ private:
 
 namespace glob
 {
-struct object_caches_map : public simple_singleton<::agea::model::caches_map*>
+struct object_caches_map : public simple_singleton<::agea::model::caches_map*, 1>
 {
 };
 
-struct class_object_caches_map : public simple_singleton<::agea::model::caches_map*>
+struct class_object_caches_map : public simple_singleton<::agea::model::caches_map*, 2>
 {
 };
 

@@ -4,8 +4,9 @@
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
+#include "model/object_mapping.h"
 
-#include "utils/weird_singletone.h"
+#include <utils/weird_singletone.h>
 
 #include "model/model_minimal.h"
 
@@ -35,14 +36,11 @@ public:
     game_object*
     find_game_object(const utils::id& id);
 
-    smart_object*
-    find_object(const utils::id& id);
-
     component*
     find_component(const utils::id& id);
 
     void
-    update();
+    tick(float dt);
 
     const utils::path&
     get_load_path() const
@@ -80,6 +78,54 @@ public:
         return m_id;
     }
 
+    void
+    add_to_dirty_components_queue(game_object_component* g)
+    {
+        m_dirty_transform_components.emplace_back(g);
+    }
+
+    line_cache<game_object_component*>&
+    get_dirty_transforms_components_queue()
+    {
+        return m_dirty_transform_components;
+    }
+
+    void
+    add_to_dirty_render_queue(game_object_component* g)
+    {
+        m_dirty_render_components.emplace_back(g);
+    }
+
+    line_cache<game_object_component*>&
+    get_dirty_render_queue()
+    {
+        return m_dirty_render_components;
+    }
+
+    void
+    add_to_dirty_render_assets_queue(asset* a)
+    {
+        m_dirty_render_assets.emplace_back(a);
+    }
+
+    line_cache<asset*>&
+    get_dirty_render_assets_queue()
+    {
+        return m_dirty_render_assets;
+    }
+
+    void
+    add_to_dirty_shader_effect_queue(shader_effect* se)
+    {
+        m_dirty_shader_effects.emplace_back(se);
+    }
+
+    line_cache<shader_effect*>&
+    get_dirty_shader_effect_queue()
+    {
+        return m_dirty_shader_effects;
+    }
+
 private:
     utils::id m_id;
 
@@ -88,8 +134,17 @@ private:
     cache_set_ref m_global_class_object_cs;
     std::unique_ptr<object_constructor_context> m_occ;
 
-    line_cache m_objects;
+    line_cache<smart_object_ptr> m_objects;
+    line_cache<game_object*> m_tickable_objects;
+
+    line_cache<game_object_component*> m_dirty_transform_components;
+    line_cache<game_object_component*> m_dirty_render_components;
+    line_cache<asset*> m_dirty_render_assets;
+    line_cache<shader_effect*> m_dirty_shader_effects;
+
     std::vector<utils::id> m_package_ids;
+
+    object_mapping m_mapping;
 
     utils::path m_load_path;
     utils::path m_save_root_path;

@@ -17,29 +17,29 @@ property_drawers::init()
 {
     using namespace reflection;
     // clang-format off
-    ro_drawers().resize((size_t)property_type::t_last, nullptr);
+    ro_drawers().resize((size_t)utils::agea_type::t_last, nullptr);
 
-    ro_drawers()[(size_t)property_type::t_str] = property_drawers::draw_ro_str;
+    ro_drawers()[(size_t)utils::agea_type::t_str] = property_drawers::draw_ro_str;
 
-    ro_drawers()[(size_t)property_type::t_bool] = property_drawers::draw_ro_bool;
+    ro_drawers()[(size_t)utils::agea_type::t_bool] = property_drawers::draw_ro_bool;
 
-    ro_drawers()[(size_t)property_type::t_i8] = property_drawers::draw_ro_i8;
-    ro_drawers()[(size_t)property_type::t_i16] = property_drawers::draw_ro_i16;
-    ro_drawers()[(size_t)property_type::t_i32] = property_drawers::draw_ro_i32;
-    ro_drawers()[(size_t)property_type::t_i64] = property_drawers::draw_ro_i64;
+    ro_drawers()[(size_t)utils::agea_type::t_i8] = property_drawers::draw_ro_i8;
+    ro_drawers()[(size_t)utils::agea_type::t_i16] = property_drawers::draw_ro_i16;
+    ro_drawers()[(size_t)utils::agea_type::t_i32] = property_drawers::draw_ro_i32;
+    ro_drawers()[(size_t)utils::agea_type::t_i64] = property_drawers::draw_ro_i64;
 
-    ro_drawers()[(size_t)property_type::t_u8] = property_drawers::draw_ro_u8;
-    ro_drawers()[(size_t)property_type::t_u16] = property_drawers::draw_ro_u16;
-    ro_drawers()[(size_t)property_type::t_u32] = property_drawers::draw_ro_u32;
-    ro_drawers()[(size_t)property_type::t_u64] = property_drawers::draw_ro_u64;
+    ro_drawers()[(size_t)utils::agea_type::t_u8] = property_drawers::draw_ro_u8;
+    ro_drawers()[(size_t)utils::agea_type::t_u16] = property_drawers::draw_ro_u16;
+    ro_drawers()[(size_t)utils::agea_type::t_u32] = property_drawers::draw_ro_u32;
+    ro_drawers()[(size_t)utils::agea_type::t_u64] = property_drawers::draw_ro_u64;
 
-    ro_drawers()[(size_t)property_type::t_f] = property_drawers::draw_ro_f;
-    ro_drawers()[(size_t)property_type::t_d] = property_drawers::draw_ro_d;
+    ro_drawers()[(size_t)utils::agea_type::t_f] = property_drawers::draw_ro_f;
+    ro_drawers()[(size_t)utils::agea_type::t_d] = property_drawers::draw_ro_d;
 
-    ro_drawers()[(size_t)property_type::t_vec3] = property_drawers::draw_ro_vec3;
+    ro_drawers()[(size_t)utils::agea_type::t_vec3] = property_drawers::draw_ro_vec3;
 
-    ro_drawers()[(size_t)property_type::t_mat] = property_drawers::draw_ro_mat;
-    ro_drawers()[(size_t)property_type::t_msh] = property_drawers::draw_ro_msh;
+    ro_drawers()[(size_t)utils::agea_type::t_mat] = property_drawers::draw_ro_mat;
+    ro_drawers()[(size_t)utils::agea_type::t_msh] = property_drawers::draw_ro_msh;
 
     // clang-format on
 }

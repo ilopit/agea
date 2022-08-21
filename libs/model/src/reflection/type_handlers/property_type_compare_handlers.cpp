@@ -21,26 +21,26 @@ property_type_compare_handlers::init()
 {
     using namespace reflection;
     // clang-format off
-    compare_handlers()  .resize((size_t)property_type::t_last, nullptr);
+    compare_handlers()  .resize((size_t)utils::agea_type::t_last, nullptr);
 
-    compare_handlers()  [(size_t)property_type::t_str]  = property_type_compare_handlers::compare_t_str;
-    compare_handlers()  [(size_t)property_type::t_bool] = property_type_compare_handlers::compare_t_bool;
-    compare_handlers()  [(size_t)property_type::t_i8]   = property_type_compare_handlers::compare_t_i8;
-    compare_handlers()  [(size_t)property_type::t_i16]  = property_type_compare_handlers::compare_t_i16;
-    compare_handlers()  [(size_t)property_type::t_i32]  = property_type_compare_handlers::compare_t_i32;
-    compare_handlers()  [(size_t)property_type::t_i64]  = property_type_compare_handlers::compare_t_i64;
-    compare_handlers()  [(size_t)property_type::t_u8]   = property_type_compare_handlers::compare_t_u8;
-    compare_handlers()  [(size_t)property_type::t_u16]  = property_type_compare_handlers::compare_t_u16;
-    compare_handlers()  [(size_t)property_type::t_u32]  = property_type_compare_handlers::compare_t_u32;
-    compare_handlers()  [(size_t)property_type::t_u64]  = property_type_compare_handlers::compare_t_u64;
-    compare_handlers()  [(size_t)property_type::t_f]    = property_type_compare_handlers::compare_t_f;
-    compare_handlers()  [(size_t)property_type::t_d]    = property_type_compare_handlers::compare_t_d;
-    compare_handlers()  [(size_t)property_type::t_vec3] = property_type_compare_handlers::compare_t_vec3;
-    compare_handlers()  [(size_t)property_type::t_txt]  = property_type_compare_handlers::compare_t_txt;
-    compare_handlers()  [(size_t)property_type::t_mat]  = property_type_compare_handlers::compare_t_mat;
-    compare_handlers()  [(size_t)property_type::t_msh]  = property_type_compare_handlers::compare_t_msh;
-    compare_handlers()  [(size_t)property_type::t_obj]  = property_type_compare_handlers::compare_t_obj;
-    compare_handlers()  [(size_t)property_type::t_com]  = property_type_compare_handlers::compare_t_com;
+    compare_handlers()  [(size_t)utils::agea_type::t_str]  = property_type_compare_handlers::compare_t_str;
+    compare_handlers()  [(size_t)utils::agea_type::t_bool] = property_type_compare_handlers::compare_t_bool;
+    compare_handlers()  [(size_t)utils::agea_type::t_i8]   = property_type_compare_handlers::compare_t_i8;
+    compare_handlers()  [(size_t)utils::agea_type::t_i16]  = property_type_compare_handlers::compare_t_i16;
+    compare_handlers()  [(size_t)utils::agea_type::t_i32]  = property_type_compare_handlers::compare_t_i32;
+    compare_handlers()  [(size_t)utils::agea_type::t_i64]  = property_type_compare_handlers::compare_t_i64;
+    compare_handlers()  [(size_t)utils::agea_type::t_u8]   = property_type_compare_handlers::compare_t_u8;
+    compare_handlers()  [(size_t)utils::agea_type::t_u16]  = property_type_compare_handlers::compare_t_u16;
+    compare_handlers()  [(size_t)utils::agea_type::t_u32]  = property_type_compare_handlers::compare_t_u32;
+    compare_handlers()  [(size_t)utils::agea_type::t_u64]  = property_type_compare_handlers::compare_t_u64;
+    compare_handlers()  [(size_t)utils::agea_type::t_f]    = property_type_compare_handlers::compare_t_f;
+    compare_handlers()  [(size_t)utils::agea_type::t_d]    = property_type_compare_handlers::compare_t_d;
+    compare_handlers()  [(size_t)utils::agea_type::t_vec3] = property_type_compare_handlers::compare_t_vec3;
+    compare_handlers()  [(size_t)utils::agea_type::t_txt]  = property_type_compare_handlers::compare_t_txt;
+    compare_handlers()  [(size_t)utils::agea_type::t_mat]  = property_type_compare_handlers::compare_t_mat;
+    compare_handlers()  [(size_t)utils::agea_type::t_msh]  = property_type_compare_handlers::compare_t_msh;
+    compare_handlers()  [(size_t)utils::agea_type::t_obj]  = property_type_compare_handlers::compare_t_obj;
+    compare_handlers()  [(size_t)utils::agea_type::t_com]  = property_type_compare_handlers::compare_t_com;
     // clang-format on
 
     return true;

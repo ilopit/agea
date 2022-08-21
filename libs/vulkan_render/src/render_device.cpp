@@ -1,9 +1,10 @@
 #include "vulkan_render/render_device.h"
 
-#include "vulkan_render/render_loader.h"
-
+#include "vulkan_render/vulkan_loader.h"
+#include "vulkan_render/vk_transit.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vk_pipeline_builder.h"
+#include "vulkan_render/shader_reflection.h"
 
 #include <VkBootstrap.h>
 #include <SDL.h>
@@ -15,7 +16,7 @@
 #include <vulkan_render_types/vulkan_initializers.h>
 #include <vulkan_render_types/vulkan_texture_data.h>
 #include <vulkan_render_types/vulkan_shader_data.h>
-#include <vulkan_render_types/vulkan_shader_effect.h>
+#include <vulkan_render_types/vulkan_shader_effect_data.h>
 #include <vulkan_render_types/vulkan_mesh_data.h>
 #include <vulkan_render_types/vulkan_gpu_types.h>
 
@@ -42,8 +43,6 @@ render_device::~render_device() = default;
 bool
 render_device::construct(construct_params& params)
 {
-    m_headless = params.headless;
-
     init_vulkan(params.window);
 
     init_swapchain();
@@ -60,8 +59,6 @@ render_device::construct(construct_params& params)
 
     init_descriptors();
 
-    init_pipelines();
-
     init_imgui();
 
     return true;
@@ -75,16 +72,10 @@ render_device::destruct()
         frame.m_dynamic_descriptor_allocator->cleanup();
     }
 
-    for (auto l : m_todo_layouts)
-    {
-        vkDestroyDescriptorSetLayout(m_vk_device, l, nullptr);
-    }
     m_descriptor_allocator->cleanup();
     m_descriptor_layout_cache->cleanup();
 
     deinit_imgui();
-
-    deinit_pipelines();
 
     deinit_sync_structures();
 
@@ -112,7 +103,7 @@ render_device::init_vulkan(SDL_Window* window)
     auto inst_ret = builder.set_app_name("AGEA")
                         .request_validation_layers(true)
                         .use_default_debug_messenger()
-                        .set_headless(m_headless)
+                        .require_api_version(1, 2)
                         .build();
 
     vkb::Instance vkb_inst = inst_ret.value();
@@ -127,11 +118,14 @@ render_device::init_vulkan(SDL_Window* window)
     // We want a gpu that can write to the SDL surface and supports vulkan 1.2
     vkb::PhysicalDeviceSelector selector{vkb_inst};
 
-    selector.set_minimum_version(1, 2).prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
-    if (!m_headless)
-    {
-        selector.set_surface(m_surface);
-    }
+    VkPhysicalDeviceFeatures features_11{};
+    features_11.fillModeNonSolid = true;
+
+    selector.set_required_features(features_11)
+        .set_minimum_version(1, 2)
+        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
+
+    selector.set_surface(m_surface);
 
     vkb::PhysicalDevice physicalDevice = selector.select().value();
     // create the final vulkan device
@@ -182,11 +176,6 @@ render_device::init_swapchain()
     // hardcoding the depth format to 32 bit float
     m_depth_format = VK_FORMAT_D32_SFLOAT;
 
-    if (m_headless)
-    {
-        return true;
-    }
-
     vkb::SwapchainBuilder swapchainBuilder{m_vk_gpu, m_vk_device, m_surface};
 
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
@@ -210,6 +199,9 @@ render_device::init_swapchain()
 
     m_swachain_image_format = vkbSwapchain.image_format;
 
+    m_depth_image_views.resize(m_swapchain_image_views.size());
+    m_depth_images.resize(m_swapchain_images.size());
+
     // depth image size will match the window
     VkExtent3D depthImageExtent = {width, height, 1};
 
@@ -222,15 +214,18 @@ render_device::init_swapchain()
     dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    // allocate and create the image
-    m_depth_image = allocated_image::create(
-        []() { return glob::render_device::get()->allocator(); }, dimg_info, dimg_allocinfo);
+    for (auto i = 0; i < m_swapchain_images.size(); ++i)
+    {
+        // allocate and create the image
+        m_depth_images[i] =
+            allocated_image::create(get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
 
-    // build a image-view for the depth image to use for rendering
-    VkImageViewCreateInfo dview_info = utils::imageview_create_info(
-        m_depth_format, m_depth_image.image(), VK_IMAGE_ASPECT_DEPTH_BIT);
+        // build a image-view for the depth image to use for rendering
+        VkImageViewCreateInfo dview_info = utils::imageview_create_info(
+            m_depth_format, m_depth_images[i].image(), VK_IMAGE_ASPECT_DEPTH_BIT);
 
-    VK_CHECK(vkCreateImageView(m_vk_device, &dview_info, nullptr, &m_depth_image_view));
+        VK_CHECK(vkCreateImageView(m_vk_device, &dview_info, nullptr, &m_depth_image_views[i]));
+    }
 
     return true;
 }
@@ -238,16 +233,12 @@ render_device::init_swapchain()
 bool
 render_device::deinit_swapchain()
 {
-    if (m_headless)
+    m_depth_images.clear();
+
+    for (auto i : m_depth_image_views)
     {
-        return true;
+        vkDestroyImageView(m_vk_device, i, nullptr);
     }
-
-    m_depth_image.clear();
-
-    vkDestroyImageView(m_vk_device, m_depth_image_view, nullptr);
-
-    vkDestroySwapchainKHR(m_vk_device, m_swapchain, nullptr);
 
     for (auto i : m_swapchain_image_views)
     {
@@ -344,10 +335,6 @@ render_device::deinit_default_renderpass()
 bool
 render_device::init_framebuffers()
 {
-    if (m_headless)
-    {
-        return true;
-    }
     // create the framebuffers for the swapchain images. This will connect the render-pass to the
     // images for rendering
     m_frames.resize(FRAMES_IN_FLYIGNT);
@@ -363,9 +350,7 @@ render_device::init_framebuffers()
 
     for (uint32_t i = 0; i < swapchain_imagecount; i++)
     {
-        VkImageView attachments[2];
-        attachments[0] = m_swapchain_image_views[i];
-        attachments[1] = m_depth_image_view;
+        VkImageView attachments[2] = {m_swapchain_image_views[i], m_depth_image_views[i]};
 
         fb_info.pAttachments = attachments;
         fb_info.attachmentCount = 2;
@@ -474,37 +459,8 @@ render_device::deinit_sync_structures()
 }
 
 bool
-render_device::init_pipelines()
-{
-    if (m_headless)
-    {
-        return true;
-    }
-
-    create_textured_pipeline();
-
-    return true;
-}
-
-bool
-render_device::deinit_pipelines()
-{
-    for (auto& p : m_pipelines)
-    {
-        vkDestroyPipeline(m_vk_device, p.second.p, nullptr);
-        vkDestroyPipelineLayout(m_vk_device, p.second.l, nullptr);
-    }
-
-    return true;
-}
-
-bool
 render_device::init_imgui()
 {
-    if (m_headless)
-    {
-        return true;
-    }
     // 1: create descriptor pool for IMGUI
     // the size of the pool is very oversize, but its copied from imgui demo itself.
     VkDescriptorPoolSize pool_sizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
@@ -589,14 +545,12 @@ render_device::init_descriptors()
 
         frame.m_dynamic_descriptor_allocator->init(m_vk_device);
 
-        const int MAX_OBJECTS = 10000;
-        frame.m_object_buffer =
-            create_buffer(sizeof(gpu_object_data) * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                          VMA_MEMORY_USAGE_CPU_TO_GPU);
+        frame.m_object_buffer = transit_buffer(create_buffer(
+            10 * 1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU));
 
         // 10 megabyte of dynamic data buffer
-        frame.m_dynamic_data_buffer = create_buffer(10'000'000, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                                    VMA_MEMORY_USAGE_CPU_TO_GPU);
+        frame.m_dynamic_data_buffer = transit_buffer(create_buffer(
+            10 * 1024 * 1024, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU));
     }
     return true;
 }
@@ -611,110 +565,10 @@ render_device::deinit_descriptors()
 }
 
 bool
-render_device::create_textured_pipeline()
-{
-    auto mesh_module =
-        glob::render_loader::get()->load_shader(agea::utils::id::from("pbr.vert.spv"));
-    if (!mesh_module)
-    {
-        std::cout << "Error when building the colored mesh shader" << std::endl;
-        return false;
-    }
-
-    auto texture_module =
-        glob::render_loader::get()->load_shader(agea::utils::id::from("pbr.frag.spv"));
-    if (!texture_module)
-    {
-        std::cout << "Error when building the colored mesh shader" << std::endl;
-        return false;
-    }
-
-    shader_effect::reflection_overrides overrides[] = {
-        {"sceneData", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC},
-        {"cameraData", VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}};
-
-    // build the stage-create-info for both vertex and fragment stages. This lets the pipeline
-    // know the shader modules per stage
-    pipeline_builder pb;
-
-    m_effects.emplace_back(std::make_unique<shader_effect>());
-    auto textured_effect = m_effects.back().get();
-
-    textured_effect->add_stage(mesh_module, VK_SHADER_STAGE_VERTEX_BIT);
-    textured_effect->add_stage(texture_module, VK_SHADER_STAGE_FRAGMENT_BIT);
-    reflect_layout(this, *textured_effect, overrides, 2);
-
-    m_todo_layouts.insert(m_todo_layouts.end(), textured_effect->m_set_layouts.begin(),
-                          textured_effect->m_set_layouts.end());
-
-    auto texture_pipeline_layout = textured_effect->m_build_layout;
-
-    // vertex input controls how to read vertices from vertex buffers. We arent using it yet
-    pb.m_vertex_input_info = utils::vertex_input_state_create_info();
-
-    // input assembly is the configuration for drawing triangle lists, strips, or individual
-    // points. we are just going to draw triangle list
-    pb.m_input_assembly = utils::input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-
-    // build viewport and scissor from the swapchain extents
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
-    pb.m_viewport.x = 0.0f;
-    pb.m_viewport.y = 0.0f;
-    pb.m_viewport.width = (float)width;
-    pb.m_viewport.height = (float)height;
-    pb.m_viewport.minDepth = 0.0f;
-    pb.m_viewport.maxDepth = 1.0f;
-
-    pb.m_scissor.offset = {0, 0};
-    pb.m_scissor.extent = VkExtent2D{width, height};
-
-    // configure the rasterizer to draw filled triangles
-    pb.m_rasterizer = utils::rasterization_state_create_info(VK_POLYGON_MODE_FILL);
-
-    // we dont use multisampling, so just run the default one
-    pb.m_multisampling = utils::multisampling_state_create_info();
-
-    // a single blend attachment with no blending and writing to RGBA
-    pb.m_color_blend_attachment = utils::color_blend_attachment_state();
-
-    // default depth testing
-    pb.m_depth_stencil = utils::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-
-    // build the mesh pipeline
-    auto vertexDescription = render::get_vertex_description();
-
-    // connect the pipeline builder vertex input info to the one we get from Vertex
-    pb.m_vertex_input_info.pVertexAttributeDescriptions = vertexDescription.attributes.data();
-    pb.m_vertex_input_info.vertexAttributeDescriptionCount =
-        (uint32_t)vertexDescription.attributes.size();
-
-    pb.m_vertex_input_info.pVertexBindingDescriptions = vertexDescription.bindings.data();
-    pb.m_vertex_input_info.vertexBindingDescriptionCount =
-        (uint32_t)vertexDescription.bindings.size();
-
-    auto meshVertShader = mesh_module->vk_module();
-    pb.m_shader_stages.push_back(
-        utils::pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, meshVertShader));
-
-    auto texturedMeshShader = texture_module->vk_module();
-    pb.m_shader_stages.push_back(
-        utils::pipeline_shader_stage_create_info(VK_SHADER_STAGE_FRAGMENT_BIT, texturedMeshShader));
-
-    pb.m_pipelineLayout = texture_pipeline_layout;
-
-    auto texture_pipeline = pb.build_pipeline(m_vk_device, m_render_pass);
-    m_pipelines["textured"] = {texture_pipeline, texture_pipeline_layout};
-
-    glob::vulkan_render_loader::get()->create_default_material(
-        texture_pipeline, textured_effect, agea::utils::id::from("simple_texture"));
-    return true;
-}
-
-bool
 render_device::deinit_imgui()
 {
     vkDestroyDescriptorPool(m_vk_device, m_imguiPool, nullptr);
+
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
@@ -747,6 +601,18 @@ render_device::deinit_samplers()
     }
 }
 
+vk_device_provider
+render_device::get_vk_device_provider()
+{
+    return []() { return glob::render_device::get()->vk_device(); };
+}
+
+vma_allocator_provider
+render_device::get_vma_allocator_provider()
+{
+    return []() { return glob::render_device::get()->allocator(); };
+}
+
 void
 render_device::wait_for_fences()
 {
@@ -759,12 +625,11 @@ render_device::wait_for_fences()
 void
 render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
 {
-    VkCommandBuffer cmd;
-
     // allocate the default command buffer that we will use for rendering
     VkCommandBufferAllocateInfo cmdAllocInfo =
         utils::command_buffer_allocate_info(m_upload_context.m_command_pool, 1);
 
+    VkCommandBuffer cmd;
     VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &cmdAllocInfo, &cmd));
 
     // begin the command buffer recording. We will use this command buffer exactly once, so we

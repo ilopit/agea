@@ -6,10 +6,18 @@
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
 
+#include "object_mapping.h"
+
 namespace agea
 {
 namespace model
 {
+enum package_state
+{
+    package_state__unloaded,
+    package_state__loaded,
+    package_state__render_loaded
+};
 
 class package
 {
@@ -48,12 +56,8 @@ public:
         return m_save_root_path;
     }
 
-    template <typename T>
     utils::path
-    get_resource_path(const T& resource_path) const
-    {
-        return m_load_path / resource_path;
-    }
+    get_relative_path(const utils::path& p) const;
 
     void
     set_save_root_path(const utils::path& path) const
@@ -82,13 +86,30 @@ public:
     void
     propagate_to_global_caches();
 
-    bool
-    prepare_for_rendering();
+    package_state
+    get_state()
+    {
+        return m_state;
+    }
+
+    void
+    set_state(package_state v)
+    {
+        m_state = v;
+    }
+
+    line_cache<std::shared_ptr<smart_object>>&
+    get_objects()
+    {
+        return m_objects;
+    }
 
 private:
     utils::id m_id;
     mutable utils::path m_load_path;
     mutable utils::path m_save_root_path;
+
+    package_state m_state = package_state__unloaded;
 
     cache_set_ref m_class_global_set;
     cache_set_ref m_instance_global_set;
@@ -96,7 +117,9 @@ private:
     cache_set m_class_local_set;
     cache_set m_instance_local_set;
 
-    line_cache m_objects;
+    line_cache<std::shared_ptr<smart_object>> m_objects;
+
+    object_mapping m_mapping;
 
     std::unique_ptr<object_constructor_context> m_occ;
 };

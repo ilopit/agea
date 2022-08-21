@@ -48,13 +48,13 @@ VkPipelineInputAssemblyStateCreateInfo
 input_assembly_create_info(VkPrimitiveTopology topology);
 
 VkPipelineRasterizationStateCreateInfo
-rasterization_state_create_info(VkPolygonMode polygon_mode);
+rasterization_state_create_info(bool polygon_mode, bool alpha_support);
 
 VkPipelineMultisampleStateCreateInfo
 multisampling_state_create_info();
 
 VkPipelineColorBlendAttachmentState
-color_blend_attachment_state();
+color_blend_attachment_state(bool enable_alpha);
 
 VkPipelineLayoutCreateInfo
 pipeline_layout_create_info();

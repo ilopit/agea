@@ -1,21 +1,22 @@
 #pragma once
 
-#include "utils/weird_singletone.h"
+#include "vk_transit.h"
 
-#include "vulkan_render_types/vulkan_types.h"
-#include "vulkan_render_types/vulkan_render_fwds.h"
+#include <vulkan_render_types/vulkan_types.h>
+#include <vulkan_render_types/vulkan_render_fwds.h>
+
+#include <utils/weird_singletone.h>
+#include <utils/id.h>
 
 #include <functional>
-#include <deque>
 #include <vector>
 #include <memory>
 
 struct SDL_Window;
 
-constexpr unsigned int FRAMES_IN_FLYIGNT = 3;
+constexpr uint64_t FRAMES_IN_FLYIGNT = 3ULL;
 namespace agea
 {
-
 namespace vk_utils
 {
 class descriptor_layout_cache;
@@ -39,8 +40,8 @@ struct frame_data
     VkCommandPool m_command_pool;
     VkCommandBuffer m_main_command_buffer;
 
-    allocated_buffer m_object_buffer;
-    allocated_buffer m_dynamic_data_buffer;
+    transit_buffer m_object_buffer;
+    transit_buffer m_dynamic_data_buffer;
 
     std::unique_ptr<vk_utils::descriptor_allocator> m_dynamic_descriptor_allocator;
 };
@@ -54,7 +55,6 @@ public:
     struct construct_params
     {
         SDL_Window* window = nullptr;
-        bool headless = false;
     };
 
     bool
@@ -153,6 +153,37 @@ public:
         return m_frames[idx];
     }
 
+    size_t
+    frame_size() const
+    {
+        return m_frames.size();
+    }
+
+    void
+    switch_frame_indeces()
+    {
+        ++m_current_frame_number;
+        m_current_frame_index = m_current_frame_number % m_frames.size();
+    }
+
+    frame_data&
+    get_current_frame()
+    {
+        return m_frames[m_current_frame_index];
+    }
+
+    uint64_t
+    get_current_frame_index() const
+    {
+        return m_current_frame_index;
+    }
+
+    uint64_t
+    get_current_frame_number() const
+    {
+        return m_current_frame_number;
+    }
+
     VkSwapchainKHR&
     swapchain()
     {
@@ -164,6 +195,12 @@ public:
     {
         return m_samplers.at(id);
     }
+
+    vk_device_provider
+    get_vk_device_provider();
+
+    vma_allocator_provider
+    get_vma_allocator_provider();
 
     void
     wait_for_fences();
@@ -242,14 +279,6 @@ private:
     VkSwapchainKHR m_swapchain;
     VkFormat m_swachain_image_format;
 
-    struct vk_pipeline
-    {
-        VkPipeline p;
-        VkPipelineLayout l;
-    };
-
-    std::unordered_map<std::string, vk_pipeline> m_pipelines;
-
     VkDescriptorPool m_imguiPool;
 
     std::vector<VkFramebuffer> m_framebuffers;
@@ -257,20 +286,19 @@ private:
     std::vector<VkImageView> m_swapchain_image_views;
 
     VkDescriptorSetLayout m_single_texture_set_layout;
-    std::vector<VkDescriptorSetLayout> m_todo_layouts;
 
     // depth resources
-    VkImageView m_depth_image_view;
-    allocated_image m_depth_image;
+    std::vector<VkImageView> m_depth_image_views;
+    std::vector<allocated_image> m_depth_images;
 
     // the format for the depth image
     VkFormat m_depth_format;
 
     // TODO, move
-    std::vector<std::unique_ptr<shader_effect>> m_effects;
     std::unordered_map<std::string, VkSampler> m_samplers;
 
-    bool m_headless;
+    uint64_t m_current_frame_number = UINT64_MAX;
+    uint64_t m_current_frame_index = 0ULL;
 };
 
 }  // namespace render

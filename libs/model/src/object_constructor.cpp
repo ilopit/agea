@@ -19,15 +19,6 @@ namespace agea
 {
 namespace model
 {
-bool
-object_constructor::read_container(const std::string& object_id,
-                                   serialization::conteiner& conteiner,
-                                   category c)
-{
-    auto path = glob::resource_locator::get()->resource(c, object_id);
-
-    return serialization::read_container(path, conteiner);
-}
 
 bool
 object_constructor::object_properties_load(smart_object& obj,
@@ -86,7 +77,7 @@ object_constructor::object_load_internal(const utils::path& package_path,
         ALOG_ERROR("Loading object failed, {0} {1}", name, ext);
         return nullptr;
     }
-    auto obj_id = utils::id::from(name);
+    auto obj_id = AID(name);
 
     auto obj = occ.find_class_obj(obj_id);
 
@@ -102,19 +93,30 @@ object_constructor::object_load_internal(const utils::path& package_path,
         return nullptr;
     }
 
+    return object_load_internal(conteiner, occ);
+}
+
+smart_object*
+object_constructor::object_load_internal(serialization::conteiner& conteiner,
+                                         object_constructor_context& occ)
+{
     auto class_load = conteiner["class_id"].IsDefined();
 
-    auto id = utils::id::from(conteiner["id"].as<std::string>());
+    auto id = utils::id::make_id(conteiner["id"].as<std::string>());
 
+    smart_object* obj = nullptr;
     if (class_load)
     {
-        auto class_id = utils::id::from(conteiner["class_id"].as<std::string>());
+        auto class_id = utils::id::make_id(conteiner["class_id"].as<std::string>());
         auto src_obj = occ.find_class_obj(class_id);
 
         if (!src_obj)
         {
-            auto p = package_path.parent() / (class_id.str() + ".aobj");
+            auto prev_type = occ.m_construction_type;
+            occ.m_construction_type = obj_construction_type__class;
+            auto p = occ.get_full_path(class_id);
             src_obj = object_load_internal(p, occ);
+            occ.m_construction_type = prev_type;
         }
 
         if (!src_obj)
@@ -129,11 +131,10 @@ object_constructor::object_load_internal(const utils::path& package_path,
         obj = object_load_full(conteiner, occ);
     }
 
-    if (obj->get_id() != utils::id::from(name))
+    if (obj->get_id() != id)
     {
-        ALOG_ERROR("File name and id missmatch {0} != {1}", name, obj->get_id().cstr());
+        ALOG_LAZY_ERROR;
     }
-
     return obj;
 }
 
@@ -372,13 +373,11 @@ default_occ()
 smart_object*
 object_constructor::object_load_full(serialization::conteiner& sc, object_constructor_context& occ)
 {
-    auto type_id = utils::id::from(sc["type_id"].as<std::string>());
-    auto obj_id = utils::id::from(sc["id"].as<std::string>());
+    auto type_id = AID(sc["type_id"].as<std::string>());
+    auto obj_id = AID(sc["id"].as<std::string>());
 
-    auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
+    auto empty = create_empty_object(type_id, obj_id);
 
-    auto empty = eoc_item->META_create_empty_obj();
-    empty->META_set_id(obj_id);
     occ.add_obj(empty);
 
     if (!object_properties_load(*empty, sc, occ))
@@ -388,6 +387,17 @@ object_constructor::object_load_full(serialization::conteiner& sc, object_constr
     }
 
     return empty.get();
+}
+
+std::shared_ptr<smart_object>
+object_constructor::create_empty_object(const utils::id& type_id, const utils::id& obj_id)
+{
+    auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
+
+    auto empty = eoc_item->META_create_empty_obj();
+    empty->META_set_id(obj_id);
+
+    return empty;
 }
 
 bool
@@ -410,7 +420,7 @@ object_constructor::object_load_partial(smart_object& prototype_obj,
                                         object_constructor_context& occ)
 {
     auto empty = prototype_obj.META_create_empty_obj();
-    auto obj_id = utils::id::from(sc["id"].as<std::string>());
+    auto obj_id = AID(sc["id"].as<std::string>());
 
     empty->META_set_id(obj_id);
     empty->META_set_class_obj(&prototype_obj);

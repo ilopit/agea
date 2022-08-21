@@ -1,8 +1,7 @@
-set(CMAKE_CXX_STANDARD 17)
-
 file(GLOB MODEL_COMPONENTS_SRC            "include/model/components/*.h"                 "src/components/*.cpp")
-file(GLOB MODEL_RENDERING_SRC             "include/model/rendering/*.h"                  "src/rendering/*.cpp")
+file(GLOB MODEL_RENDERING_SRC             "include/model/assets/*.h"                     "src/assets/*.cpp")
 file(GLOB MODEL_SRC                       "include/model/*.h"                            "src/*.cpp")
+file(GLOB DEMO_SRC                        "include/model/demo/*.h"                       "src/demo/*.cpp")
 file(GLOB MODEL_CACHES_SRC                "include/model/caches/*.h"                     "src/caches/*.cpp")
 file(GLOB MODEL_CORE_TYPES_SRC            "include/model/core_types/*.h"                 "src/core_types/*.cpp")
 file(GLOB MODEL_REFLECTION_SRC            "include/model/reflection/*.h"                 "src/reflection/*.cpp")
@@ -10,8 +9,9 @@ file(GLOB MODEL_REFLECTION_HANDLERS_SRC   "include/model/reflection/type_handler
 
 add_library(model STATIC
    ${MODEL_COMPONENTS_SRC}         
-   ${MODEL_RENDERING_SRC}        
-   ${MODEL_SRC}         
+   ${MODEL_RENDERING_SRC}
+   ${DEMO_SRC}
+   ${MODEL_SRC}
    ${MODEL_CACHES_SRC}
    ${MODEL_CORE_TYPES_SRC}
    ${MODEL_REFLECTION_SRC}        
@@ -20,14 +20,14 @@ add_library(model STATIC
    ${CMAKE_BINARY_DIR}/agea_generated/soal.generated.cpp
 )
 
+target_compile_options(model PRIVATE /bigobj)
+
 target_link_libraries(model PUBLIC
    agea::arl
    agea::utils
    agea::glm_unofficial
    agea::serialization
    agea::resource_locator
-   agea::vulkan_render_types
-   agea::model_global_api
 
    lua_static
    agea::sol2_unofficial

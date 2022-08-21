@@ -1,59 +1,74 @@
 #pragma once
 
 #include "model/model_minimal.h"
-
-#include "utils/weird_singletone.h"
-#include "model/model_fwds.h"
 #include "model/smart_object.h"
 
-#include <string>
+#include <utils/line_conteiner.h>
+
+#include <type_traits>
+
+template <typename T>
+struct is_shared_ptr : std::false_type
+{
+    typedef void Type;
+};
+
+template <typename T>
+struct is_shared_ptr<std::shared_ptr<T>> : std::true_type
+{
+    typedef T Type;
+};
+
+template <typename T>
+struct is_unique_ptr : std::false_type
+{
+    typedef void Type;
+};
+
+template <typename T>
+struct is_unique_ptr<std::unique_ptr<T>> : std::true_type
+{
+    typedef T Type;
+};
 
 namespace agea
 {
 namespace model
 {
 
-using smart_object_ptr = std::shared_ptr<smart_object>;
-
-class line_cache
+template <typename T>
+class line_cache : public utils::line_conteiner<T>
 {
 public:
-    smart_object*
+    line_cache()
+    {
+        static_assert((is_shared_ptr<T>::value &&
+                       std::is_base_of<smart_object, typename is_shared_ptr<T>::Type>::value) ||
+                          (std::is_pointer<T>::value &&
+                           std::is_base_of<smart_object, std::remove_pointer<T>::type>::value),
+                      "False");
+    }
+
+    T*
     get_item(const utils::id& id)
     {
-        auto itr = std::find_if(m_items.begin(), m_items.end(),
-                                [&id](const smart_object_ptr& o) { return o->get_id() == id; });
+        auto itr = find_if([&id](const T& o) { return o->get_id() == id; });
 
-        return itr != m_items.end() ? itr->get() : nullptr;
+        if (itr == std::is_pointer<T>::value)
+        {
+            return &(*itr);
+        }
+        else
+        {
+            return itr->get();
+        }
     }
 
     bool
     has_item(const utils::id& id)
     {
-        return get_item(id) == nullptr;
+        return (bool)get_item(id);
     }
-
-    void
-    add_item(smart_object_ptr obj)
-    {
-        m_items.push_back(std::move(obj));
-    }
-
-    uint32_t
-    get_size()
-    {
-        return (uint32_t)m_items.size();
-    }
-
-    const std::vector<smart_object_ptr>&
-    get_items() const
-    {
-        return m_items;
-    }
-
-protected:
-    std::vector<smart_object_ptr> m_items;
-    bool m_strict_mode;
 };
 }  // namespace model
 }  // namespace agea

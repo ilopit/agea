@@ -33,8 +33,14 @@ struct vec3 : ::glm::vec3
     {
     }
 
-    glm::vec3
+    const glm::vec3&
     as_glm() const
+    {
+        return *this;
+    }
+
+    glm::vec3&
+    as_glm()
     {
         return *this;
     }

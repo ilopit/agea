@@ -86,6 +86,28 @@ public:
         return *this;
     }
 
+    path&
+    add(const char* p)
+    {
+        AGEA_check(p, "Should not be NULL");
+        m_value += p;
+        normalize();
+
+        return *this;
+    }
+
+    path&
+    add(const std::string& p)
+    {
+        m_value += p;
+        normalize();
+
+        return *this;
+    }
+
+    path
+    relative(const path& p) const;
+
     path
     parent() const
     {
@@ -131,6 +153,19 @@ public:
         }
     }
 
+    bool
+    has_extention(const char* v) const
+    {
+        auto e = m_value.extension().generic_string();
+        return e.compare(v) == 0;
+    }
+
+    bool
+    operator<(const agea::utils::path& l) const
+    {
+        return fs() < l.fs();
+    }
+
 private:
     void
     normalize()
@@ -164,3 +199,11 @@ operator/(const agea::utils::path& l, const std::string& r)
     agea::utils::path tmp = l;
     return tmp.append(r);
 }
+
+inline bool
+operator<(const ::agea::utils::path& l, const ::agea::utils::path& r)
+{
+    return l.fs() < r.fs();
+}
+
+#define APATH(value) ::agea::utils::path(value)

@@ -15,6 +15,9 @@ class package_manager
 public:
     bool
     load_package(const utils::id& id);
+    
+    package*
+    get_package(const utils::id& id);
 
 protected:
     std::unordered_map<utils::id, std::unique_ptr<package>> m_packages;

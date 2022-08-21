@@ -5,6 +5,12 @@ namespace agea
 namespace utils
 {
 
+path
+path::relative(const path& p) const
+{
+    return path(std::filesystem::relative(m_value, p.fs()));
+}
+
 bool
 path::exists() const
 {

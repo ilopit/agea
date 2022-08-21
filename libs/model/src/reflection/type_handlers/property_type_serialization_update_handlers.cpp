@@ -16,61 +16,68 @@ namespace agea
 namespace reflection
 {
 
+template <typename T>
+void
+extract_field(blob_ptr ptr, const serialization::conteiner& jc)
+{
+    extract<T>(ptr) = jc.as<T>();
+}
+
 bool
 property_type_serialization_update_handlers::init()
 {
     using namespace reflection;
     // clang-format off
-    serializers()  .resize((size_t)property_type::t_last, nullptr);
-    deserializers().resize((size_t)property_type::t_last, nullptr);
+    serializers()  .resize((size_t)utils::agea_type::t_last, nullptr);
+    deserializers().resize((size_t)utils::agea_type::t_last, nullptr);
 
-    serializers()  [(size_t)property_type::t_str]  = serialize_t_str;
-    deserializers()[(size_t)property_type::t_str]  = deserialize_t_str;
+    serializers()  [(size_t)utils::agea_type::t_str]  = serialize_t_str;
+    deserializers()[(size_t)utils::agea_type::t_str]  = deserialize_t_str;
 
-    serializers()  [(size_t)property_type::t_id]   = serialize_t_id;
-    deserializers()[(size_t)property_type::t_id]   = deserialize_t_id;
+    serializers()  [(size_t)utils::agea_type::t_id]   = serialize_t_id;
+    deserializers()[(size_t)utils::agea_type::t_id]   = deserialize_t_id;
 
-    serializers()  [(size_t)property_type::t_bool] = serialize_t_bool;
-    deserializers()[(size_t)property_type::t_bool] = deserialize_t_bool;
+    serializers()  [(size_t)utils::agea_type::t_bool] = serialize_t_bool;
+    deserializers()[(size_t)utils::agea_type::t_bool] = deserialize_t_bool;
 
-    serializers()  [(size_t)property_type::t_i8]   = serialize_t_i8;
-    deserializers()[(size_t)property_type::t_i8]   = deserialize_t_i8;
+    serializers()  [(size_t)utils::agea_type::t_i8]   = serialize_t_i8;
+    deserializers()[(size_t)utils::agea_type::t_i8]   = deserialize_t_i8;
 
-    serializers()  [(size_t)property_type::t_i16]  = serialize_t_i16;
-    deserializers()[(size_t)property_type::t_i16]  = deserialize_t_i16;
+    serializers()  [(size_t)utils::agea_type::t_i16]  = serialize_t_i16;
+    deserializers()[(size_t)utils::agea_type::t_i16]  = deserialize_t_i16;
 
-    serializers()  [(size_t)property_type::t_i32]  = serialize_t_i32;
-    deserializers()[(size_t)property_type::t_i32]  = deserialize_t_i32;
+    serializers()  [(size_t)utils::agea_type::t_i32]  = serialize_t_i32;
+    deserializers()[(size_t)utils::agea_type::t_i32]  = deserialize_t_i32;
 
-    serializers()  [(size_t)property_type::t_i64]  = serialize_t_i64;
-    deserializers()[(size_t)property_type::t_i64]  = deserialize_t_i64;
+    serializers()  [(size_t)utils::agea_type::t_i64]  = serialize_t_i64;
+    deserializers()[(size_t)utils::agea_type::t_i64]  = deserialize_t_i64;
 
-    serializers()  [(size_t)property_type::t_u8]   = serialize_t_u8;
-    deserializers()[(size_t)property_type::t_u8]   = deserialize_t_u8;
+    serializers()  [(size_t)utils::agea_type::t_u8]   = serialize_t_u8;
+    deserializers()[(size_t)utils::agea_type::t_u8]   = deserialize_t_u8;
 
-    serializers()  [(size_t)property_type::t_u16]  = serialize_t_u16;
-    deserializers()[(size_t)property_type::t_u16]  = deserialize_t_u16;
+    serializers()  [(size_t)utils::agea_type::t_u16]  = serialize_t_u16;
+    deserializers()[(size_t)utils::agea_type::t_u16]  = deserialize_t_u16;
 
-    serializers()  [(size_t)property_type::t_u32]  = serialize_t_u32;
-    deserializers()[(size_t)property_type::t_u32]  = deserialize_t_u32;
+    serializers()  [(size_t)utils::agea_type::t_u32]  = serialize_t_u32;
+    deserializers()[(size_t)utils::agea_type::t_u32]  = deserialize_t_u32;
 
-    serializers()  [(size_t)property_type::t_u64]  = serialize_t_u64;
-    deserializers()[(size_t)property_type::t_u64]  = deserialize_t_u64;
+    serializers()  [(size_t)utils::agea_type::t_u64]  = serialize_t_u64;
+    deserializers()[(size_t)utils::agea_type::t_u64]  = deserialize_t_u64;
 
-    serializers()  [(size_t)property_type::t_f]    = serialize_t_f;
-    deserializers()[(size_t)property_type::t_f]    = deserialize_t_f;
+    serializers()  [(size_t)utils::agea_type::t_f]    = serialize_t_f;
+    deserializers()[(size_t)utils::agea_type::t_f]    = deserialize_t_f;
 
-    serializers()  [(size_t)property_type::t_d]    = serialize_t_d;
-    deserializers()[(size_t)property_type::t_d]    = deserialize_t_d;
+    serializers()  [(size_t)utils::agea_type::t_d]    = serialize_t_d;
+    deserializers()[(size_t)utils::agea_type::t_d]    = deserialize_t_d;
 
-    serializers()  [(size_t)property_type::t_vec3] = serialize_t_vec3;
-    deserializers()[(size_t)property_type::t_vec3] = deserialize_t_vec3;
+    serializers()  [(size_t)utils::agea_type::t_vec3] = serialize_t_vec3;
+    deserializers()[(size_t)utils::agea_type::t_vec3] = deserialize_t_vec3;
 
-    serializers()  [(size_t)property_type::t_obj]  = serialize_t_obj;
-    deserializers()[(size_t)property_type::t_obj]  = deserialize_t_obj;
+    serializers()  [(size_t)utils::agea_type::t_obj]  = serialize_t_obj;
+    deserializers()[(size_t)utils::agea_type::t_obj]  = deserialize_t_obj;
 
-    serializers()[(size_t)property_type::t_com]    = serialize_t_com;
-    deserializers()[(size_t)property_type::t_com]  = deserialize_t_com;
+    serializers()[(size_t)utils::agea_type::t_com]    = serialize_t_com;
+    deserializers()[(size_t)utils::agea_type::t_com]  = deserialize_t_com;
     // clang-format on
 
     return true;
@@ -110,7 +117,7 @@ property_type_serialization_update_handlers::deserialize_t_id(AGEA_deserializati
 {
     AGEA_unused(occ);
 
-    extract<utils::id>(ptr) = utils::id::from(jc.as<std::string>());
+    extract<utils::id>(ptr) = AID(jc.as<std::string>());
     return true;
 }
 

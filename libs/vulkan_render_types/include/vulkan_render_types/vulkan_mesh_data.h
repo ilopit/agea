@@ -6,9 +6,6 @@
 #include <utils/id.h>
 #include <glm_unofficial/glm.h>
 
-#include <vector>
-#include <string>
-
 namespace agea
 {
 namespace render
@@ -26,39 +23,44 @@ get_vertex_description();
 
 struct mesh_data
 {
+    mesh_data(const ::agea::utils::id& id)
+        : m_id(id)
+    {
+    }
+    ~mesh_data();
+
     uint32_t
     vertices_size()
     {
-        return (uint32_t)m_vertices.size();
+        return m_vertices_size;
     }
 
     uint32_t
     indices_size()
     {
-        return (uint32_t)m_indices.size();
+        return m_indices_size;
     }
 
     bool
     has_indices()
     {
-        return !m_indices.empty();
+        return m_indices_size;
     }
 
-    const agea::utils::id&
+    const ::agea::utils::id&
     id()
     {
         return m_id;
     }
 
-    agea::utils::id m_id;
-
-    std::vector<vertex_data> m_vertices;
-    std::vector<uint32_t> m_indices;
+    uint32_t m_vertices_size = 0U;
+    uint32_t m_indices_size = 0U;
 
     allocated_buffer m_vertexBuffer;
     allocated_buffer m_indexBuffer;
 
-    ~mesh_data();
+private:
+    ::agea::utils::id m_id;
 };
 }  // namespace render
 

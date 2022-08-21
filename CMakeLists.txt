@@ -19,7 +19,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #set up cmake
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(BUILD_SHARED_LIBS OFF)
@@ -71,3 +71,7 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_SOURCE_DIR}/resources/test
     ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/resources/tools
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/tools)

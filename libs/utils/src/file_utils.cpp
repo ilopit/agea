@@ -11,7 +11,7 @@ namespace utils
 {
 
 bool
-file_utils::load_file(const utils::path& str, std::vector<char>& blob)
+file_utils::load_file(const utils::path& str, std::vector<uint8_t>& blob)
 {
     std::ifstream file(str.fs(), std::ios_base::binary | std::ios_base::ate);
 
@@ -24,7 +24,22 @@ file_utils::load_file(const utils::path& str, std::vector<char>& blob)
 
     file.seekg(0);
 
-    file.read(blob.data(), size);
+    file.read((char*)blob.data(), size);
+
+    return true;
+}
+
+bool
+file_utils::save_file(const utils::path& str, const std::vector<uint8_t>& blob)
+{
+    std::ofstream file(str.fs(), std::ios_base::binary);
+
+    if (!file.is_open())
+    {
+        return false;
+    }
+
+    file.write((char*)blob.data(), blob.size());
 
     return true;
 }
@@ -32,7 +47,7 @@ file_utils::load_file(const utils::path& str, std::vector<char>& blob)
 bool
 file_utils::compare_files(const utils::path& lpath, const utils::path& rpath)
 {
-    std::vector<char> l, r;
+    std::vector<uint8_t> l, r;
 
     if (!load_file(lpath, l))
     {

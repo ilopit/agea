@@ -1,15 +1,17 @@
 #include "model/package.h"
 
-#include "utils/agea_log.h"
 #include "model/object_constructor.h"
 #include "model/object_construction_context.h"
 #include "model/caches/hash_cache.h"
-#include "model/conteiner_loader.h"
 
-#include "model/rendering/texture.h"
-#include "model/rendering/material.h"
-#include "model/rendering/mesh.h"
+#include "model/assets/texture.h"
+#include "model/assets/material.h"
+#include "model/assets/mesh.h"
 
+#include <utils/agea_log.h>
+
+#include <serialization/serialization.h>
+#include <map>
 #include <filesystem>
 
 namespace agea
@@ -17,21 +19,12 @@ namespace agea
 namespace model
 {
 
-namespace
-{
-
-const std::vector<architype> k_enums_to_handle{architype::texture, architype::material,
-                                               architype::mesh, architype::component,
-                                               architype::game_object};
-
-}  // namespace
-
 package::package(package&&) noexcept = default;
 package&
 package::operator=(package&&) noexcept = default;
 
 package::package()
-    : m_occ(nullptr)
+    : m_occ(std::make_unique<object_constructor_context>())
 {
 }
 
@@ -60,39 +53,46 @@ package::load_package(const utils::path& path,
     p.m_instance_global_set = instance_global_set;
     p.m_load_path = path;
     p.m_save_root_path = path.parent();
-    p.m_id = utils::id::from(name);
+    p.m_id = AID(name);
 
-    p.m_occ = std::make_unique<object_constructor_context>(
-        p.m_load_path, p.m_class_global_set, p.m_class_local_set.get_ref(), p.m_instance_global_set,
-        p.m_instance_local_set.get_ref(), &p.m_objects);
-
-    auto class_path = path / "class";
-    auto instances_path = path / "instance";
-
-    for (auto id : k_enums_to_handle)
+    if (!p.m_mapping.buiild_object_mapping(path / "package.acfg"))
     {
-        if (!conteiner_loader::load_objects_conteiners(id, object_constructor::class_object_load,
-                                                       class_path, *p.m_occ))
+        ALOG_LAZY_ERROR;
+        return false;
+    }
+
+    p.m_occ->set_prefix_path(p.m_load_path)
+        .set_class_global_set(p.m_class_global_set)
+        .set_instance_global_set(p.m_instance_global_set)
+        .set_class_local_set(p.m_class_local_set.get_ref())
+        .set_instance_local_set(p.m_instance_local_set.get_ref())
+        .set_objects_mapping(p.m_mapping.m_items)
+        .set_ownable_cache(&p.m_objects);
+
+    for (auto& i : p.m_mapping.m_items)
+    {
+        auto& mapping = i.second;
+        if (mapping.first && p.m_occ->find_class_obj(i.first))
+        {
+            continue;
+        }
+
+        auto obj = mapping.first
+                       ? object_constructor::class_object_load(mapping.second, *p.m_occ)
+                       : object_constructor::instance_object_load(mapping.second, *p.m_occ);
+
+        if (!obj)
         {
             ALOG_LAZY_ERROR;
-            return false;
         }
     }
 
-    for (auto id : k_enums_to_handle)
-    {
-        if (!conteiner_loader::load_objects_conteiners(id, object_constructor::instance_object_load,
-                                                       instances_path, *p.m_occ))
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-    }
-
-    for (auto& o : p.m_objects.get_items())
+    for (auto& o : p.m_objects)
     {
         o->set_package(&p);
     }
+
+    p.m_state = package_state__loaded;
 
     return true;
 }
@@ -112,28 +112,68 @@ package::save_package(const utils::path& root_folder, const package& p)
     std::string name = p.get_id().str() + ".apkg";
     auto full_path = root_folder / name;
 
-    auto class_path = full_path / "class";
-    auto instances_path = full_path / "instance";
+    std::map<std::string, std::string> class_pathes;
 
-    for (auto id : k_enums_to_handle)
+    for (auto& i : p.m_objects)
     {
-        if (!conteiner_loader::save_objects_conteiners(id, object_constructor::class_object_save,
-                                                       class_path, p.m_class_local_set.get_ref()))
+        auto id = i->get_id();
+        auto itr = p.m_mapping.m_items.find(id);
+
+        if (itr == p.m_mapping.m_items.end())
         {
             ALOG_LAZY_ERROR;
             return false;
         }
 
-        if (!conteiner_loader::save_objects_conteiners(id, object_constructor::instance_object_save,
-                                                       instances_path,
-                                                       p.m_instance_local_set.get_ref()))
+        auto& mapping = itr->second;
+        auto full_obj_path = full_path / mapping.second;
+
+        auto parent = full_obj_path.parent();
+        if (!parent.empty())
+        {
+            std::filesystem::create_directories(parent.fs());
+        }
+
+        bool result = false;
+        if (mapping.first)
+        {
+            result = object_constructor::class_object_save(*i, full_obj_path);
+            class_pathes[i->get_id().str()] = mapping.second.str();
+        }
+        else
+        {
+            result = object_constructor::instance_object_save(*i, full_obj_path);
+        }
+
+        if (!result)
         {
             ALOG_LAZY_ERROR;
             return false;
         }
     }
 
+    auto meta_file = full_path / "package.cfg";
+    serialization::conteiner meta_conteiner;
+
+    int i = 0;
+    for (auto& c : class_pathes)
+    {
+        meta_conteiner["class_obj_mapping"][i++][c.first] = c.second;
+    }
+
+    if (!serialization::write_container(meta_file, meta_conteiner))
+    {
+        ALOG_LAZY_ERROR;
+        return false;
+    }
+
     return true;
+}
+
+utils::path
+package::get_relative_path(const utils::path& p) const
+{
+    return p.relative(m_save_root_path);
 }
 
 void
@@ -144,7 +184,7 @@ package::propagate_to_global_caches()
     {
         for (auto& i : c.second->get_items())
         {
-            m_class_global_set.map->get_cache(c.first).add_item(*i.second);
+            m_class_global_set.map->get_cache(c.first)->add_item(*i.second);
             ++count;
         }
     }
@@ -153,108 +193,17 @@ package::propagate_to_global_caches()
     {
         for (auto& i : c.second->get_items())
         {
-            m_instance_global_set.map->get_cache(c.first).add_item(*i.second);
+            m_instance_global_set.map->get_cache(c.first)->add_item(*i.second);
             ++count;
         }
     }
 
+    for (auto& c : m_objects)
+    {
+        c->META_post_construct();
+    }
+
     ALOG_INFO("Propageted {0} object instances from {1} to global cache", count, m_id.cstr());
-}
-
-bool
-package::prepare_for_rendering()
-{
-    auto result = m_class_local_set.textures->call_on_items(
-        [](model::texture* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            return true;
-        });
-
-    if (!result)
-    {
-        return result;
-    }
-
-    result = m_class_local_set.materials->call_on_items(
-        [](model::material* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-            return true;
-        });
-
-    if (!result)
-    {
-        return result;
-    }
-
-    result = m_class_local_set.meshes->call_on_items(
-        [](model::mesh* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            return true;
-        });
-
-    result = m_instance_local_set.textures->call_on_items(
-        [](model::texture* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            return true;
-        });
-
-    if (!result)
-    {
-        return result;
-    }
-
-    result = m_instance_local_set.materials->call_on_items(
-        [](model::material* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-            return true;
-        });
-
-    if (!result)
-    {
-        return result;
-    }
-
-    result = m_instance_local_set.meshes->call_on_items(
-        [](model::mesh* t)
-        {
-            if (!t->prepare_for_rendering())
-            {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
-
-            return true;
-        });
-
-    return result;
 }
 
 }  // namespace model

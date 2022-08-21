@@ -176,22 +176,19 @@ input_assembly_create_info(VkPrimitiveTopology topology)
     return info;
 }
 VkPipelineRasterizationStateCreateInfo
-rasterization_state_create_info(VkPolygonMode polygon_mode)
+rasterization_state_create_info(bool polygon_mode, bool alpha_support)
 {
     VkPipelineRasterizationStateCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     info.pNext = nullptr;
 
     info.depthClampEnable = VK_FALSE;
-    // rasterizer discard allows objects with holes, default to no
     info.rasterizerDiscardEnable = VK_FALSE;
 
-    info.polygonMode = polygon_mode;
+    info.polygonMode = polygon_mode ? VK_POLYGON_MODE_FILL : VK_POLYGON_MODE_LINE;
     info.lineWidth = 1.0f;
-    // no backface cull
-    info.cullMode = VK_CULL_MODE_NONE;
-    info.frontFace = VK_FRONT_FACE_CLOCKWISE;
-    // no depth bias
+    info.cullMode = alpha_support ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
+    info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     info.depthBiasEnable = VK_FALSE;
     info.depthBiasConstantFactor = 0.0f;
     info.depthBiasClamp = 0.0f;
@@ -217,12 +214,28 @@ multisampling_state_create_info()
 }
 
 VkPipelineColorBlendAttachmentState
-color_blend_attachment_state()
+color_blend_attachment_state(bool enable_alpha)
 {
     VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+    if (!enable_alpha)
+    {
+        color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+                                                VK_COLOR_COMPONENT_G_BIT |
+                                                VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        color_blend_attachment.blendEnable = VK_FALSE;
+        return color_blend_attachment;
+    }
+    color_blend_attachment.blendEnable = VK_TRUE;
+
     color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    color_blend_attachment.blendEnable = VK_FALSE;
+    color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+    color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
     return color_blend_attachment;
 }
 

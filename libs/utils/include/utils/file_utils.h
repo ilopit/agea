@@ -13,7 +13,10 @@ namespace utils
 struct file_utils
 {
     static bool
-    load_file(const path& file, std::vector<char>& blob);
+    load_file(const path& file, std::vector<uint8_t>& blob);
+
+    static bool
+    save_file(const path& file, const std::vector<uint8_t>& blob);
 
     static bool
     compare_files(const path& a, const path& b);

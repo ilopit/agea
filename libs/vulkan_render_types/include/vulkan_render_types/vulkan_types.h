@@ -10,6 +10,9 @@ namespace agea
 {
 namespace render
 {
+
+constexpr size_t DESCRIPTORS_SETS_COUNT = 4UL;
+
 using vk_device_provider = std::function<VkDevice()>;
 using vma_allocator_provider = std::function<VmaAllocator()>;
 
@@ -46,6 +49,12 @@ public:
     allocation()
     {
         return m_allocation;
+    }
+
+    VmaAllocator
+    allocator()
+    {
+        return m_allocator();
     }
 
 private:

@@ -3,11 +3,16 @@
 #include "game_object_component.generated.h"
 
 #include "model/components/component.h"
-#include "model/rendering/renderable.h"
 #include "model/core_types/vec3.h"
 
 namespace agea
 {
+
+namespace render
+{
+class object_data;
+}
+
 namespace model
 {
 
@@ -16,7 +21,7 @@ const extern vec3 DEF_UP;
 const extern vec3 DEF_RIGHT;
 
 AGEA_class();
-class game_object_component : public component, public renderable
+class game_object_component : public component
 {
     AGEA_gen_meta__game_object_component();
 
@@ -43,55 +48,19 @@ public:
     }
 
     vec3
-    get_forward_vector() const
-    {
-        return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_FORWARD.as_glm());
-    }
+    get_forward_vector() const;
 
     vec3
-    get_up_vector() const
-    {
-        return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_UP.as_glm());
-    }
+    get_up_vector() const;
 
     vec3
-    get_right_vector() const
-    {
-        return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_RIGHT.as_glm());
-    }
+    get_right_vector() const;
 
     void
-    move(const vec3& delta)
-    {
-        m_position += delta.as_glm();
-    }
+    move(const vec3& delta);
 
     void
-    rotate(float delta_angle, const vec3& axis)
-    {
-        m_rotation = glm::rotate(m_rotation, delta_angle, axis);
-    }
-
-    void
-    roll(float delta_angle)
-    {
-        rotate(delta_angle, DEF_FORWARD);
-    }
-
-    void
-    yaw(float delta_angle)
-    {
-        rotate(delta_angle, DEF_UP);
-    }
-
-    void
-    pitch(float delta_angle)
-    {
-        rotate(delta_angle, DEF_RIGHT);
-    }
-
-    void
-    register_for_rendering();
+    rotate(const vec3& delta);
 
     virtual void
     set_parent(component* c)
@@ -112,41 +81,44 @@ public:
         m_render_components.push_back((game_object_component*)c);
     }
 
-    virtual bool
-    prepare_for_rendering() override;
-
     void
     update_matrix();
 
     glm::mat4
     get_transofrm_matrix();
 
+    glm::mat4
+    get_normal_matrix();
+
+    glm::vec4
+    get_world_position();
+
     virtual void
-    editor_update() override;
+    on_tick(float dt);
 
-    // ptr access for binding
-    vec3*
-    position_ptr()
+    std::vector<game_object_component*>&
+    get_render_components()
     {
-        return &m_position;
-    }
-
-    vec3*
-    rotation_ptr()
-    {
-        return &m_rotation;
-    }
-    vec3*
-    scale_ptr()
-    {
-        return &m_scale;
+        return m_render_components;
     }
 
-    bool
-    is_renderable()
+    render::object_data*
+    get_object_dat()
     {
-        return *m_renderable;
+        return m_render_handle;
     }
+
+    void
+    set_object_dat(render::object_data* v)
+    {
+        m_render_handle = v;
+    }
+
+    void
+    mark_transform_dirty();
+
+    void
+    mark_render_dirty();
 
 protected:
     AGEA_property("category=world", "serializable=true", "hint=x,y,z");
@@ -156,19 +128,15 @@ protected:
     vec3 m_rotation;
 
     AGEA_property("category=world", "serializable=true", "hint=x,y,z");
-    vec3 m_scale;
+    vec3 m_scale = {1.f};
 
-    AGEA_property("category=render", "ref=true");
-    bool* m_visible = nullptr;
+    glm::mat4 m_transform_matrix;
+    glm::mat4 m_normal_matrix;
+    glm::vec4 m_world_position;
 
-    AGEA_property("category=render", "serializable=true", "ref=true");
-    bool* m_renderable = nullptr;
-
-    // clang-format off
-    std::vector<game_object_component*>      m_render_components;
-
-    game_object_component*                   m_render_root = nullptr;
-    // clang-format on
+    std::vector<game_object_component*> m_render_components;
+    game_object_component* m_render_root = nullptr;
+    render::object_data* m_render_handle = nullptr;
 };
 
 }  // namespace model

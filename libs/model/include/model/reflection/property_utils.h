@@ -7,10 +7,12 @@
 
 #include <functional>
 
-#define AGEA_serialization_args ::agea::blob_ptr ptr, serialization::conteiner &jc
+#define AGEA_serialization_args \
+    const model::smart_object &obj, ::agea::blob_ptr ptr, serialization::conteiner &jc
 
-#define AGEA_deserialization_args \
-    ::agea::blob_ptr ptr, const serialization::conteiner &jc, model::object_constructor_context &occ
+#define AGEA_deserialization_args                                                       \
+    model::smart_object &obj, ::agea::blob_ptr ptr, const serialization::conteiner &jc, \
+        model::object_constructor_context &occ
 
 #define AGEA_deserialization_update_args \
     ::agea::blob_ptr ptr, const serialization::conteiner &jc, model::object_constructor_context &occ
@@ -87,13 +89,6 @@ T&
 extract(blob_ptr ptr)
 {
     return *(T*)(ptr);
-}
-
-template <typename T>
-void
-extract_field(blob_ptr ptr, const serialization::conteiner& jc)
-{
-    extract<T>(ptr) = jc.as<T>();
 }
 
 template <typename T>

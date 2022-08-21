@@ -21,27 +21,27 @@ property_type_copy_handlers::init()
 {
     using namespace reflection;
     // clang-format off
-    copy_handlers()  .resize((size_t)property_type::t_last, nullptr);
+    copy_handlers()  .resize((size_t)utils::agea_type::t_last, nullptr);
 
-    copy_handlers()  [(size_t)property_type::t_str]  = property_type_copy_handlers::copy_t_str;
-    copy_handlers()  [(size_t)property_type::t_id]   = property_type_copy_handlers::copy_t_id;
-    copy_handlers()  [(size_t)property_type::t_bool] = property_type_copy_handlers::copy_t_bool;
-    copy_handlers()  [(size_t)property_type::t_i8]   = property_type_copy_handlers::copy_t_i8;
-    copy_handlers()  [(size_t)property_type::t_i16]  = property_type_copy_handlers::copy_t_i16;
-    copy_handlers()  [(size_t)property_type::t_i32]  = property_type_copy_handlers::copy_t_i32;
-    copy_handlers()  [(size_t)property_type::t_i64]  = property_type_copy_handlers::copy_t_i64;
-    copy_handlers()  [(size_t)property_type::t_u8]   = property_type_copy_handlers::copy_t_u8;
-    copy_handlers()  [(size_t)property_type::t_u16]  = property_type_copy_handlers::copy_t_u16;
-    copy_handlers()  [(size_t)property_type::t_u32]  = property_type_copy_handlers::copy_t_u32;
-    copy_handlers()  [(size_t)property_type::t_u64]  = property_type_copy_handlers::copy_t_u64;
-    copy_handlers()  [(size_t)property_type::t_f]    = property_type_copy_handlers::copy_t_f;
-    copy_handlers()  [(size_t)property_type::t_d]    = property_type_copy_handlers::copy_t_d;
-    copy_handlers()  [(size_t)property_type::t_vec3] = property_type_copy_handlers::copy_t_vec3;
-    copy_handlers()  [(size_t)property_type::t_txt]  = property_type_copy_handlers::copy_t_txt;
-    copy_handlers()  [(size_t)property_type::t_mat]  = property_type_copy_handlers::copy_t_mat;
-    copy_handlers()  [(size_t)property_type::t_msh]  = property_type_copy_handlers::copy_t_msh;
-    copy_handlers()  [(size_t)property_type::t_obj]  = property_type_copy_handlers::copy_t_obj;
-    copy_handlers()  [(size_t)property_type::t_com]  = property_type_copy_handlers::copy_t_com;
+    copy_handlers()  [(size_t)utils::agea_type::t_str]  = property_type_copy_handlers::copy_t_str;
+    copy_handlers()  [(size_t)utils::agea_type::t_id]   = property_type_copy_handlers::copy_t_id;
+    copy_handlers()  [(size_t)utils::agea_type::t_bool] = property_type_copy_handlers::copy_t_bool;
+    copy_handlers()  [(size_t)utils::agea_type::t_i8]   = property_type_copy_handlers::copy_t_i8;
+    copy_handlers()  [(size_t)utils::agea_type::t_i16]  = property_type_copy_handlers::copy_t_i16;
+    copy_handlers()  [(size_t)utils::agea_type::t_i32]  = property_type_copy_handlers::copy_t_i32;
+    copy_handlers()  [(size_t)utils::agea_type::t_i64]  = property_type_copy_handlers::copy_t_i64;
+    copy_handlers()  [(size_t)utils::agea_type::t_u8]   = property_type_copy_handlers::copy_t_u8;
+    copy_handlers()  [(size_t)utils::agea_type::t_u16]  = property_type_copy_handlers::copy_t_u16;
+    copy_handlers()  [(size_t)utils::agea_type::t_u32]  = property_type_copy_handlers::copy_t_u32;
+    copy_handlers()  [(size_t)utils::agea_type::t_u64]  = property_type_copy_handlers::copy_t_u64;
+    copy_handlers()  [(size_t)utils::agea_type::t_f]    = property_type_copy_handlers::copy_t_f;
+    copy_handlers()  [(size_t)utils::agea_type::t_d]    = property_type_copy_handlers::copy_t_d;
+    copy_handlers()  [(size_t)utils::agea_type::t_vec3] = property_type_copy_handlers::copy_t_vec3;
+    copy_handlers()  [(size_t)utils::agea_type::t_txt]  = property_type_copy_handlers::copy_t_txt;
+    copy_handlers()  [(size_t)utils::agea_type::t_mat]  = property_type_copy_handlers::copy_t_mat;
+    copy_handlers()  [(size_t)utils::agea_type::t_msh]  = property_type_copy_handlers::copy_t_msh;
+    copy_handlers()  [(size_t)utils::agea_type::t_obj]  = property_type_copy_handlers::copy_t_obj;
+    copy_handlers()  [(size_t)utils::agea_type::t_com]  = property_type_copy_handlers::copy_t_com;
     // clang-format on
 
     return true;
@@ -272,8 +272,7 @@ property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
     auto& f = extract<::agea::model::component*>(from);
     auto& t = extract<::agea::model::component*>(to);
 
-    auto new_id =
-        utils::id::from(dst_obj.get_id().str() + "/" + f->get_class_obj()->get_id().str());
+    auto new_id = AID(dst_obj.get_id().str() + "/" + f->get_class_obj()->get_id().str());
 
     auto p = model::object_constructor::object_clone_create(*f, new_id, ooc);
 
