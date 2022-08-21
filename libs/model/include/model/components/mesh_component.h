@@ -29,17 +29,34 @@ public:
     };
     AGEA_gen_meta_api;
 
-    virtual bool
-    prepare_for_rendering() override;
-
     bool
     construct(construct_params& c);
 
+    material*
+    get_material() const
+    {
+        return m_material;
+    }
+
+    void
+    set_material(material* v)
+    {
+        AGEA_check(v, "Should not be NULL!");
+        m_material = v;
+        mark_render_dirty();
+    }
+
+    mesh*
+    get_mesh() const
+    {
+        return m_mesh;
+    }
+
 protected:
-    AGEA_property("category=assets", "serializable=true");
+    AGEA_property("category=assets", "serializable=true", "access=no");
     material* m_material = nullptr;
 
-    AGEA_property("category=assets", "serializable=true");
+    AGEA_property("category=assets", "serializable=true", "access=no");
     mesh* m_mesh = nullptr;
 };
 

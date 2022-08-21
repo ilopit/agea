@@ -17,7 +17,7 @@ id::operator!=(const id& other) const
 }
 
 id
-id::from(const char* id_cstr)
+id::make_id(const char* id_cstr)
 {
     id result;
 
@@ -29,7 +29,7 @@ id::from(const char* id_cstr)
 }
 
 id
-id::from(const std::string& id_str)
+id::make_id(const std::string& id_str)
 {
     id result;
     if (id_str.empty() || id_str.size() > id_size_in_bytes())

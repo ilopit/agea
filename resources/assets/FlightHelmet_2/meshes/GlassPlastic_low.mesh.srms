@@ -1,8 +1,0 @@
----
-type_id: mesh
-id: GlassPlastic_low_mesh
-index_size: 4
-vertex_format: PNCV_F32
-indices: FlightHelmet_2/meshes/GlassPlastic_low.indx
-vertices: FlightHelmet_2/meshes/GlassPlastic_low.vert
-class_obj: true

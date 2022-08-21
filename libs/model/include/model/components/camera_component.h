@@ -71,6 +71,12 @@ public:
         return m_movement_speed;
     }
 
+    float
+    aspect_ratio()
+    {
+        return m_aspect_ratio;
+    }
+
     void
     update_model();
 

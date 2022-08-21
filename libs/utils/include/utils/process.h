@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils/path.h"
+
 #include <cstdint>
 #include <string>
 
@@ -9,9 +11,9 @@ namespace ipc
 {
 struct construct_params
 {
-    std::string path_to_binary;
+    utils::path path_to_binary;
     std::string arguments;
-    std::string working_dir;
+    utils::path working_dir;
 };
 
 bool

@@ -120,13 +120,6 @@ public:
     model::game_object* m_obj = nullptr;
 };
 
-template <typename T>
-static T*
-get_window()
-{
-    return (T*)glob::ui::get()->m_winodws[T::window_title()].get();
-}
-
 class materials_selector : public window
 {
 public:
@@ -182,4 +175,14 @@ struct ui : public ::agea::selfcleanable_singleton<::agea::ui::ui>
 {
 };
 }  // namespace glob
+
+namespace ui
+{
+template <typename T>
+static T*
+get_window()
+{
+    return (T*)glob::ui::get()->m_winodws[T::window_title()].get();
+}
+}  // namespace ui
 }  // namespace agea

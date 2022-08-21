@@ -1,6 +1,0 @@
----
-type_id: material
-id: green_mat
-base_effect: simple_texture
-base_texture: green_txt
-class_obj: true

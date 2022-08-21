@@ -6,9 +6,6 @@
 #include "model/core_types/vec3.h"
 #include "model/components/game_object_component.h"
 
-#include <iostream>
-#include <vector>
-
 namespace agea
 {
 namespace model
@@ -61,94 +58,15 @@ public:
     {
         return m_root_component->get_right_vector();
     }
-
-    AGEA_function("category=world");
-    void
-    move(const vec3& delta)
-    {
-        m_root_component->move(delta);
-    }
-
-    AGEA_function("category=world");
-    void
-    rotate(float delta_angle, const vec3& axis)
-    {
-        m_root_component->rotate(delta_angle, axis);
-    }
-
-    AGEA_function("category=world");
-    void
-    roll(float delta_angle)
-    {
-        m_root_component->roll(delta_angle);
-    }
-
-    AGEA_function("category=world");
-    void
-    yaw(float delta_angle)
-    {
-        m_root_component->yaw(delta_angle);
-    }
-
-    AGEA_function("category=world");
-    void
-    pitch(float delta_angle)
-    {
-        m_root_component->pitch(delta_angle);
-    }
-
     virtual void
-    on_tick(float)
+    on_tick(float dt)
     {
-    }
-
-    // State
-    void
-    reset_updated_state()
-    {
-        m_updated = false;
-    }
-
-    bool
-    has_updated() const
-    {
-        return m_updated;
-    }
-
-    void
-    mark_updated()
-    {
-        m_updated = true;
-    }
-
-    bool
-    consume_update()
-    {
-        auto prev = has_updated();
-        reset_updated_state();
-
-        return prev;
     }
 
     void
     attach_component(component* c)
     {
         c->set_owner(this);
-    }
-
-    template <typename obj_type>
-    component*
-    find_component()
-    {
-        for (auto& c : m_components)
-        {
-            if (c->class_id() == obj_type::META_class_id())
-            {
-                return c;
-            }
-        }
-
-        return nullptr;
     }
 
     void
@@ -164,12 +82,6 @@ public:
     }
 
     void
-    update_matrixes();
-
-    void
-    update();
-
-    void
     prepare_for_rendering();
 
     void
@@ -183,6 +95,17 @@ public:
     {
         AGEA_check(idx < m_components.size(), "Index should be in range");
         return m_components[idx];
+    }
+
+    template <typename T>
+    static void
+    over_tickable(game_object_component* obj, const T& pred)
+    {
+        pred(obj);
+        for (auto o : obj->get_render_components())
+        {
+            over_tickable<T>(o, pred);
+        }
     }
 
 protected:
@@ -203,6 +126,8 @@ protected:
                   "property_compare_handler=custom::game_object_components_compare",
                   "property_copy_handler=custom::game_object_components_copy");
     std::vector<component*> m_components;
+
+    std::vector<component*> m_render_components;
 
     game_object_component* m_root_component = nullptr;
 

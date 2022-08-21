@@ -1,6 +1,0 @@
----
-type_id: mesh_component
-id: MetalParts_low
-material: MetalPartsMat
-mesh: MetalParts_low_mesh
-class_obj: true

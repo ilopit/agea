@@ -2,7 +2,6 @@
 
 #include "vulkan_render_types/vulkan_types.h"
 
-
 class pipeline_builder
 {
 public:

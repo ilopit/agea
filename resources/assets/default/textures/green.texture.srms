@@ -1,6 +1,0 @@
----
-type_id: texture
-id: green_txt
-format: RGBA8
-base_color: "#00FF00FF"
-class_obj: true

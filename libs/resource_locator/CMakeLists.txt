@@ -1,5 +1,3 @@
-set(CMAKE_CXX_STANDARD 17)
-
 file(GLOB LIB_SRC "include/resource_locator/*.h" "src/*.cpp")
 
 add_library(resource_locator STATIC

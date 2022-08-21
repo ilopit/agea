@@ -1,30 +1,52 @@
 #pragma once
 
 #include "vulkan_render_types/vulkan_render_fwds.h"
+#include "vulkan_render_types/vulkan_gpu_types.h"
 
 #include <glm_unofficial/glm.h>
 
 #include <string>
+#include <utils/id.h>
 
 namespace agea
 {
 namespace render
 {
-struct render_data
+class object_data
 {
-    std::string
-    gen_render_data_id() const;
+public:
+    object_data(const ::agea::utils::id& id, gpu_data_index_type idx)
+        : m_id(id)
+        , m_gpu_index(idx)
+    {
+    }
 
-    bool
-    empty();
+    gpu_object_data gpu_data;
+
+    gpu_data_index_type
+    gpu_index()
+    {
+        return m_gpu_index;
+    }
+
+    void
+    set_gpu_index(gpu_data_index_type index)
+    {
+        m_gpu_index = index;
+    }
 
     render::mesh_data* mesh = nullptr;
     render::material_data* material = nullptr;
-
-    glm::mat4 transform_matrix;
-
     bool visible = true;
     bool rendarable = true;
+    float distance_to_camera = 0.f;
+
+    std::string queue_id;
+
+private:
+    ::agea::utils::id m_id;
+
+    gpu_data_index_type m_gpu_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 };
 };  // namespace render
 }  // namespace agea

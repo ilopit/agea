@@ -8,6 +8,7 @@
 #include "model/caches/meshes_cache.h"
 #include "model/caches/textures_cache.h"
 #include "model/caches/objects_cache.h"
+#include "model/caches/shader_effects_cache.h"
 
 #include "model/model_fwds.h"
 
@@ -23,6 +24,7 @@ cache_set::cache_set()
     , materials(std::make_unique<materials_cache>())
     , meshes(std::make_unique<meshes_cache>())
     , textures(std::make_unique<textures_cache>())
+    , shader_effects(std::make_unique<shader_effects_cache>())
     , map(std::make_unique<caches_map>())
 {
     map->add_cache(objects.get());
@@ -31,6 +33,7 @@ cache_set::cache_set()
     map->add_cache(materials.get());
     map->add_cache(meshes.get());
     map->add_cache(textures.get());
+    map->add_cache(shader_effects.get());
 }
 
 cache_set::cache_set(cache_set&&) noexcept = default;
@@ -46,6 +49,7 @@ cache_set::get_ref() const
     csf.materials = materials.get();
     csf.meshes = meshes.get();
     csf.textures = textures.get();
+    csf.shader_effects = shader_effects.get();
     csf.map = map.get();
 
     return csf;
@@ -72,6 +76,7 @@ glob::init_global_caches(::agea::singletone_autodeleter& class_objects_cache_set
     glob::class_textures_cache::set(glob::class_objects_cache_set_view::get().textures);
     glob::class_objects_cache::set(glob::class_objects_cache_set_view::get().objects);
     glob::class_components_cache::set(glob::class_objects_cache_set_view::get().components);
+    glob::class_shader_effects_cache::set(glob::class_objects_cache_set_view::get().shader_effects);
 
     objects_cache_set = glob::objects_cache_set::create();
 
@@ -83,6 +88,7 @@ glob::init_global_caches(::agea::singletone_autodeleter& class_objects_cache_set
     glob::textures_cache::set(glob::objects_cache_set_view::get().textures);
     glob::objects_cache::set(glob::objects_cache_set_view::get().objects);
     glob::components_cache::set(glob::objects_cache_set_view::get().components);
+    glob::shader_effects_cache::set(glob::objects_cache_set_view::get().shader_effects);
 }
 
 }  // namespace agea

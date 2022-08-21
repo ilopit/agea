@@ -1,0 +1,10 @@
+class_obj_mapping:
+  - root_component: class/components/root_component.aobj
+
+  - se_simple_texture: class/shader_effects/se_simple_texture.aobj
+
+  - txt_red: class/textures/txt_red.aobj
+
+  - mt_red: class/materials/mt_red.aobj
+
+  - cube_mesh: class/meshes/cube_mesh.aobj

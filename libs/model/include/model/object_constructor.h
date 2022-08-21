@@ -34,6 +34,9 @@ public:
     static smart_object*
     object_load_internal(const utils::path& path, object_constructor_context& occ);
 
+    static smart_object*
+    object_load_internal(serialization::conteiner& c, object_constructor_context& occ);
+
     static bool
     class_object_save(const smart_object& obj, const utils::path& object_path);
 
@@ -68,15 +71,15 @@ public:
                            std::vector<reflection::property*>& diff);
 
     static bool
-    read_container(const std::string& object_id, serialization::conteiner& conteiner, category c);
-
-    static bool
     object_properties_load(smart_object& obj,
                            const serialization::conteiner& jc,
                            object_constructor_context& occ);
 
     static bool
     object_properties_save(const smart_object& obj, serialization::conteiner& jc);
+
+    static std::shared_ptr<smart_object>
+    create_empty_object(const utils::id& type_id, const utils::id& obj_id);
 
     static smart_object*
     object_load_full(serialization::conteiner& sc, object_constructor_context& occ);

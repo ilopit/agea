@@ -84,7 +84,7 @@ soal_template = """
 utils::id
 {0}::META_type_id()
 {{
-    return agea::utils::id::from("{0}");
+    return AID("{0}");
 }}
 
 void 
@@ -169,6 +169,7 @@ property_template_start = """
     // Main fields
     p->name                           = "{0}";
     p->offset                         = offsetof(type, m_{0});
+    p->size                           = sizeof(type::m_{0});
     p->type                           = ::agea::reflection::type_resolver::resolve<decltype(type::m_{0})>();
     p->types_compare_handler          = property_type_compare_handlers::compare_handlers()[(size_t)p->type.type];\n
     // Extra fields
@@ -184,7 +185,7 @@ lua_binding_class_template = """
             "i",
             [](const char* id) -> {0}*
             {{
-                auto item = glob::objects_cache::get()->get_item(utils::id::from(id));
+                auto item = glob::objects_cache::get()->get_item(AID(id));
 
                 if(!item)
                 {{
@@ -196,7 +197,7 @@ lua_binding_class_template = """
             "c",
             [](const char* id) -> {0}*
             {{
-                auto item = glob::class_objects_cache::get()->get_item(utils::id::from(id));
+                auto item = glob::class_objects_cache::get()->get_item(AID(id));
 
                 if(!item)
                 {{
@@ -277,6 +278,7 @@ class agea_property:
         self.property_prototype_handler = ""
         self.property_compare_handler = ""
         self.property_copy_handler = ""
+        self.gpu_data = ""
         self.copyable = "yes"
         self.updatable = "yes"
         self.ref = "false"
@@ -284,16 +286,16 @@ class agea_property:
 
 def write_properties(context: file_context, prop: agea_property, current_class: agea_class):
 
-    if prop.access != "no":
-        context.content += property_template_start.format(
-            prop.name[2:], prop.type, prop.owner)
+    context.content += property_template_start.format(
+        prop.name[2:], prop.type, prop.owner)
 
-    if prop.ref == "false":
-        context.methods += methods_template.format(
-            prop.type, str(prop.owner), prop.name[2:])
-    else:
-        context.methods += methods_template_ref.format(
-            prop.type[:-1], str(prop.owner), prop.name[2:])
+    if prop.access != "no":
+        if prop.ref == "false":
+            context.methods += methods_template.format(
+                prop.type, str(prop.owner), prop.name[2:])
+        else:
+            context.methods += methods_template_ref.format(
+                prop.type[:-1], str(prop.owner), prop.name[2:])
 
     if prop.access == "all" or prop.access == "read_only":
         context.lua_binding += lua_binding_template_get_function.format(
@@ -307,6 +309,11 @@ def write_properties(context: file_context, prop: agea_property, current_class: 
         context.content += "    "
         context.content += 'p->category                       = "{0}";\n'.format(
             prop.category)
+
+    if prop.gpu_data != "":
+        context.content += "    "
+        context.content += 'p->gpu_data                       = "{0}";\n'.format(
+            prop.gpu_data)
 
     if prop.hint != "":
         context.content += "    "
@@ -506,6 +513,8 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
                     prop.property_copy_handler = pairs[1]
                 elif pairs[0] == "access":
                     prop.access = pairs[1]
+                elif pairs[0] == "gpu_data":
+                    prop.gpu_data = pairs[1]
                 elif pairs[0] == "copyable":
                     prop.copyable = pairs[1]
                 elif pairs[0] == "updatable":

@@ -1,0 +1,4 @@
+type_id: pbr_material
+id: mt_red
+shader_effect: se_simple_texture
+base_texture: txt_red

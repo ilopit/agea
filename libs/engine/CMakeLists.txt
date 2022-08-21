@@ -1,5 +1,3 @@
-set(CMAKE_CXX_STANDARD 17)
-
 file(GLOB LIB_SRC "include/engine/*.h" "src/*.cpp")
 
 add_library(engine STATIC
@@ -11,6 +9,7 @@ target_link_libraries(engine PUBLIC
     agea::utils
     agea::model
     agea::vulkan_render
+    agea::asset_importer
 )
 
 agea_finalize_library(engine)

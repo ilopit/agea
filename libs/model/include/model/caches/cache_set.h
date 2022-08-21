@@ -19,6 +19,7 @@ public:
     materials_cache* materials = nullptr;
     meshes_cache* meshes = nullptr;
     textures_cache* textures = nullptr;
+    shader_effects_cache* shader_effects = nullptr;
 
     caches_map* map = nullptr;
 };
@@ -42,6 +43,7 @@ public:
     std::unique_ptr<materials_cache> materials;
     std::unique_ptr<meshes_cache> meshes;
     std::unique_ptr<textures_cache> textures;
+    std::unique_ptr<shader_effects_cache> shader_effects;
 
     std::unique_ptr<caches_map> map;
 };

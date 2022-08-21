@@ -105,9 +105,21 @@ struct property_type_serialization_handlers
     static bool serialize_t_obj(AGEA_serialization_args);
     static bool deserialize_t_obj(AGEA_deserialization_args);
 
+    // Se
+    static bool serialize_t_se(AGEA_serialization_args);
+    static bool deserialize_t_se(AGEA_deserialization_args);
+
     // Com
     static bool serialize_t_com(AGEA_serialization_args);
     static bool deserialize_t_com(AGEA_deserialization_args);
+
+    // Color
+    static bool serialize_t_color(AGEA_serialization_args);
+    static bool deserialize_t_color(AGEA_deserialization_args);
+
+    // Buffer
+    static bool serialize_t_buf(AGEA_serialization_args);
+    static bool deserialize_t_buf(AGEA_deserialization_args);
 };
 
 }  // namespace reflection

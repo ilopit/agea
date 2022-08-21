@@ -15,7 +15,8 @@ enum class architype : uint8_t
     component = 2,
     mesh = 3,
     texture = 4,
-    material = 5,
+    shader_effect = 5,
+    material = 6,
     last = material
 };
 }

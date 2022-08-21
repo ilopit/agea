@@ -1,6 +1,0 @@
----
-type_id: mesh_component
-id: RubberWood_low
-material: RubberWoodMat
-mesh: RubberWood_low_mesh
-class_obj: true

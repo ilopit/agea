@@ -13,6 +13,7 @@ class base_loader;
 }
 namespace model
 {
+class asset;
 class caches_map;
 class cache_set;
 class cache_set_ref;
@@ -28,6 +29,8 @@ class texture;
 class mesh;
 class material;
 class smart_object;
+class shader_effect;
+class light_component;
 
 template <typename T, architype ID>
 class cache;
@@ -38,6 +41,7 @@ using game_objects_cache = cache<game_object, architype::game_object>;
 using textures_cache = cache<texture, architype::texture>;
 using meshes_cache = cache<mesh, architype::mesh>;
 using materials_cache = cache<material, architype::material>;
+using shader_effects_cache = cache<shader_effect, architype::shader_effect>;
 
 }  // namespace model
 }  // namespace agea

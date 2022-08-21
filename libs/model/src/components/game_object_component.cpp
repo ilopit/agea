@@ -1,7 +1,6 @@
 #include "model/components/game_object_component.h"
 
-#include <vulkan_render_types/vulkan_render_data.h>
-#include <model_global_api/render_api.h>
+#include "model/level.h"
 
 namespace agea
 {
@@ -13,51 +12,42 @@ const vec3 DEF_RIGHT(1, 0, 0);
 
 game_object_component::game_object_component()
 {
-    m_visible = &m_render_data->visible;
-    m_renderable = &m_render_data->rendarable;
 }
 
 game_object_component::~game_object_component()
 {
 }
 
-void
-game_object_component::register_for_rendering()
+vec3
+game_object_component::get_forward_vector() const
 {
-    AGEA_check(m_render_data, "Should be valid");
-
-    if (m_render_data->rendarable)
-    {
-        if (!m_render_data->empty())
-        {
-            glob::model_render_api::get()->invalidate(this);
-        }
-        else
-        {
-            auto id = m_render_data->gen_render_data_id();
-
-            glob::model_render_api::get()->add_to_render_queue(this);
-        }
-    }
-
-    for (auto c : m_render_components)
-    {
-        c->register_for_rendering();
-    }
+    return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_FORWARD.as_glm());
 }
 
-bool
-game_object_component::prepare_for_rendering()
+vec3
+game_object_component::get_up_vector() const
 {
-    for (auto rc : m_render_components)
-    {
-        rc->prepare_for_rendering();
-    }
+    return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_UP.as_glm());
+}
 
-    m_dirty = false;
-    m_owner_id = m_id;
+vec3
+game_object_component::get_right_vector() const
+{
+    return glm::rotate(glm::quat(m_rotation.as_glm()), DEF_RIGHT.as_glm());
+}
 
-    return true;
+void
+game_object_component::move(const vec3& delta)
+{
+    m_position += delta.as_glm();
+    update_matrix();
+}
+
+void
+game_object_component::rotate(const vec3& delta)
+{
+    m_rotation += delta.as_glm();
+    update_matrix();
 }
 
 void
@@ -70,13 +60,15 @@ game_object_component::update_matrix()
 
     auto r = glm::toMat4(glm::quat(rot_in_radians));
 
-    m_render_data->transform_matrix = t * s * r;
-
+    m_transform_matrix = t * s * r;
+    m_world_position = glm::vec4(m_position, 1.0f);
     if (m_render_root)
     {
-        m_render_data->transform_matrix =
-            m_render_root->get_transofrm_matrix();  // *m_render_data->transform_matrix;
+        m_transform_matrix = m_render_root->get_transofrm_matrix() * m_transform_matrix;
+        m_world_position = m_render_root->get_transofrm_matrix() * s * r * m_world_position;
     }
+
+    m_normal_matrix = glm::transpose(glm::inverse(m_transform_matrix));
 
     for (auto c : m_render_components)
     {
@@ -87,15 +79,43 @@ game_object_component::update_matrix()
 glm::mat4
 game_object_component::get_transofrm_matrix()
 {
-    return m_render_data->transform_matrix;
+    return m_transform_matrix;
+}
+
+glm::mat4
+game_object_component::get_normal_matrix()
+{
+    return m_normal_matrix;
+}
+
+glm::vec4
+game_object_component::get_world_position()
+{
+    return m_world_position;
 }
 
 void
-game_object_component::editor_update()
+game_object_component::on_tick(float dt)
 {
-    if (m_render_data->rendarable)
+}
+
+void
+game_object_component::mark_transform_dirty()
+{
+    if (!has_dirty_transform())
     {
-        mark_dirty();
+        glob::level::getr().add_to_dirty_components_queue(this);
+        set_dirty_transform(false);
+    }
+}
+
+void
+game_object_component::mark_render_dirty()
+{
+    if (get_state() != smart_objet_state__constructed)
+    {
+        glob::level::getr().add_to_dirty_render_queue(this);
+        set_state(smart_objet_state__constructed);
     }
 }
 

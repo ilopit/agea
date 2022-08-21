@@ -14,7 +14,7 @@ temp_dir_context::~temp_dir_context()
 {
     if (folder)
     {
-        std::filesystem::remove_all(*folder);
+        std::filesystem::remove_all(folder->fs());
     }
 }
 
@@ -48,6 +48,7 @@ resource_locator::resource_dir(category c)
     case category::shaders_raw:      {path /= "shaders";       break;}
     case category::shaders_compiled: {path /= "cache/shaders"; break;}
     case category::tmp:              {path /= "tmp";           break;}
+    case category::tools:            {path /= "tools";         break;}
     case category::levels:           {path /= "levels";        break;}
     case category::objects:          {path /= "objects";       break;}
     case category::components:       {path /= "components";    break;}
@@ -88,7 +89,7 @@ resource_locator::temp_dir()
     auto rand_part = [](size_t length)
     {
         std::string result;
-        constexpr char* data = "0123456789ABCDEF";
+        constexpr char data[] = "0123456789ABCDEF";
         for (size_t i = 0; i < length; ++i)
         {
             result += data[rand() % 16];
@@ -108,7 +109,7 @@ resource_locator::temp_dir()
 
     auto e = ec.message();
 
-    return temp_dir_context(full_path.generic_string());
+    return temp_dir_context(APATH(full_path));
 }
 
 bool

@@ -46,8 +46,6 @@ pipeline_builder::build_pipeline(VkDevice device, VkRenderPass pass)
     pi.subpass = 0;
     pi.basePipelineHandle = VK_NULL_HANDLE;
 
-    // its easy to error out on create graphics pipeline, so we handle it a bit better than the
-    // common VK_CHECK case
     VkPipeline new_pipeline;
     if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pi, nullptr, &new_pipeline) !=
         VK_SUCCESS)

@@ -22,23 +22,16 @@
 
 using namespace agea;
 
-namespace
-{
-
-const std::vector<std::string> k_components_to_load{
-    "packages/test.apkg/class/components/test_class_component.aobj",
-    "packages/test.apkg/class/components/test_class_root_component.aobj",
-    "packages/test.apkg/class/components/test_class_object__test_class_root_component.aobj",
-    "packages/test.apkg/class/components/test_class_object__test_class_component.aobj",
-};
-}  // namespace
-
 struct test_object_constructor : base_test
 {
     void
     SetUp()
     {
         base_test::SetUp();
+
+        {
+            auto prefix = glob::resource_locator::get()->resource(category::all, "packages/cube_chain.apgk")
+        }
 
         occ = model::object_constructor_context(
             utils::path(), global_class_objects_cs.get_ref(), local_class_objects_cs.get_ref(),

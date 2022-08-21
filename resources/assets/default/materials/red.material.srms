@@ -1,5 +1,0 @@
-type_id: material
-id: red_mat
-base_effect: simple_texture
-base_texture: red_txt
-class_obj: true

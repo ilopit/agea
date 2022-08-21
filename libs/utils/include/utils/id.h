@@ -31,10 +31,10 @@ public:
     operator!=(const id& other) const;
 
     static id
-    from(const std::string& id_str);
+    make_id(const std::string& id_str);
 
     static id
-    from(const char* id_cstr);
+    make_id(const char* id_cstr);
 
     std::string
     str() const
@@ -90,3 +90,5 @@ struct hash<::agea::utils::id>
 };
 
 }  // namespace std
+
+#define AID(value) ::agea::utils::id::make_id(value)

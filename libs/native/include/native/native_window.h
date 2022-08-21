@@ -6,7 +6,6 @@ struct SDL_Window;
 
 namespace agea
 {
-
 class native_window
 {
 public:
@@ -29,6 +28,12 @@ public:
     handle() const
     {
         return m_window;
+    }
+
+    float
+    aspect_ratio()
+    {
+        return float(get_size().w) / get_size().h;
     }
 
     size

@@ -27,24 +27,24 @@ enum class category : int
     packages,
     shaders_compiled,
     shaders_raw,
+    tools,
     tmp,
     last = tmp
 };
 
-using resource_path = std::optional<std::string>;
+using resource_path = std::optional<utils::path>;
 
 struct temp_dir_context
 {
     temp_dir_context() = default;
+    ~temp_dir_context();
 
-    temp_dir_context(std::string s)
+    temp_dir_context(utils::path s)
         : folder(std::move(s))
     {
     }
 
     resource_path folder;
-
-    ~temp_dir_context();
 };
 
 class resource_locator

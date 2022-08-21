@@ -24,13 +24,6 @@ class object_constructor_context
 public:
     object_constructor_context();
 
-    object_constructor_context(const utils::path& prefix_path,
-                               cache_set_ref class_global_map,
-                               cache_set_ref class_local_map,
-                               cache_set_ref instance_global_map,
-                               cache_set_ref instance_local_map,
-                               line_cache* ownable_cache);
-
     ~object_constructor_context();
 
     utils::path
@@ -39,22 +32,78 @@ public:
     const utils::path&
     get_full_path() const;
 
+    utils::path
+    get_full_path(const utils::id& id) const;
+
     bool
     add_obj(std::shared_ptr<smart_object> obj);
 
     smart_object*
     find_class_obj(const utils::id& id);
 
-    utils::path m_path_prefix;
+    smart_object*
+    find_class_obj(const utils::id& id, architype a_type);
 
-    obj_construction_type m_construction_type = obj_construction_type::obj_construction_type__nav;
+    object_constructor_context&
+    set_prefix_path(const utils::path& v)
+    {
+        m_path_prefix = v;
+        return *this;
+    }
+
+    object_constructor_context&
+    set_class_global_set(cache_set_ref v)
+    {
+        m_class_global_set = v;
+        return *this;
+    }
+
+    object_constructor_context&
+    set_class_local_set(cache_set_ref v)
+    {
+        m_class_local_set = v;
+        return *this;
+    }
+
+    object_constructor_context&
+    set_instance_global_set(cache_set_ref v)
+    {
+        m_instance_global_set = v;
+        return *this;
+    }
+
+    object_constructor_context&
+    set_instance_local_set(cache_set_ref v)
+    {
+        m_instance_local_set = v;
+        return *this;
+    }
+
+    object_constructor_context&
+    set_objects_mapping(std::unordered_map<utils::id, std::pair<bool, utils::path>> v)
+    {
+        m_object_mapping = v;
+        return *this;
+    }
+
+    object_constructor_context&
+    set_ownable_cache(line_cache<smart_object_ptr>* v)
+    {
+        m_ownable_cache_ptr = v;
+        return *this;
+    }
+
+    utils::path m_path_prefix;
 
     cache_set_ref m_class_global_set;
     cache_set_ref m_class_local_set;
     cache_set_ref m_instance_global_set;
     cache_set_ref m_instance_local_set;
 
-    line_cache* m_ownable_cache_ptr;
+    std::unordered_map<utils::id, std::pair<bool, utils::path>> m_object_mapping;
+
+    obj_construction_type m_construction_type = obj_construction_type::obj_construction_type__nav;
+    line_cache<smart_object_ptr>* m_ownable_cache_ptr;
 };
 }  // namespace model
 }  // namespace agea

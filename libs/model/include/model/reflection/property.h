@@ -115,6 +115,7 @@ public:
     // clang-format off
     std::string name;
     size_t offset;
+    size_t size;
     property_type_description type;
 
     std::string category;
@@ -129,6 +130,8 @@ public:
     type_serialization_handler        types_serialization_handler   = nullptr;
     type_deserialization_handler      types_deserialization_handler = nullptr;
     type_serialization_update_handler types_update_handler          = nullptr;
+
+    std::string gpu_data;
     // clang-format on
 };
 

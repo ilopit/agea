@@ -2,7 +2,7 @@
 
 #include <inttypes.h>
 
-#include "model/rendering/material.h"
+#include "model/assets/material.h"
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
 
@@ -22,7 +22,7 @@ static volatile bool initialize = property_convertes::init();
 bool
 property::save_to_string(property& prop, blob_ptr ptr, fixed_size_buffer& str)
 {
-    if (prop.type.type == property_type::t_nan)
+    if (prop.type.type == utils::agea_type::t_nan)
     {
         return false;
     }
@@ -36,7 +36,7 @@ property::save_to_string(property& prop, blob_ptr ptr, fixed_size_buffer& str)
 bool
 property::load_from_string(blob_ptr ptr, const std::string& str)
 {
-    if (type.type == property_type::t_nan)
+    if (type.type == utils::agea_type::t_nan)
     {
         return false;
     }
@@ -50,7 +50,7 @@ property::load_from_string(blob_ptr ptr, const std::string& str)
 bool
 property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, fixed_size_buffer& buf)
 {
-    if (type.type != property_type::t_vec3)
+    if (type.type != utils::agea_type::t_vec3)
     {
         return false;
     }
@@ -65,7 +65,7 @@ property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, fixed_siz
     auto extra_offset = (hitr - hints.begin()) * sizeof(float);
 
     auto fixed_ptr = reduce_ptr(ptr + offset + extra_offset, type.is_ptr);
-    auto idx = (size_t)property_type::t_f;
+    auto idx = (size_t)utils::agea_type::t_f;
 
     return property_convertes::readers()[idx](fixed_ptr, buf);
 }
@@ -73,7 +73,7 @@ property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, fixed_siz
 bool
 property::load_from_string_with_hint(blob_ptr ptr, const std::string& hint, const std::string& str)
 {
-    if (type.type != property_type::t_vec3)
+    if (type.type != utils::agea_type::t_vec3)
     {
         return false;
     }
@@ -89,7 +89,7 @@ property::load_from_string_with_hint(blob_ptr ptr, const std::string& hint, cons
 
     auto fixed_ptr = reduce_ptr(ptr + offset + extra_offset, type.is_ptr);
 
-    return property_convertes::writers()[(size_t)property_type::t_f](fixed_ptr, str);
+    return property_convertes::writers()[(size_t)utils::agea_type::t_f](fixed_ptr, str);
 }
 
 bool
@@ -241,7 +241,7 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        p.types_deserialization_handler((blob_ptr)filed_ptr, item, occ);
+        p.types_deserialization_handler(obj, (blob_ptr)filed_ptr, item, occ);
     }
 
     return true;
@@ -272,7 +272,7 @@ property::deserialize_item(reflection::property& p,
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
     AGEA_check(p.types_deserialization_handler, "Should never happens!");
-    p.types_deserialization_handler(ptr, jc[p.name], occ);
+    p.types_deserialization_handler(obj, ptr, jc[p.name], occ);
 
     return true;
 }
@@ -289,7 +289,7 @@ property::serialize_item(const reflection::property& p,
     serialization::conteiner c;
 
     AGEA_check(p.types_serialization_handler, "Should never happens!");
-    p.types_serialization_handler(ptr, c);
+    p.types_serialization_handler(obj, ptr, c);
 
     sc[p.name] = c;
 
@@ -367,53 +367,53 @@ property_convertes::init()
 {
     // clang-format off
 
-    readers().resize((size_t)property_type::t_last, nullptr);
-    writers().resize((size_t)property_type::t_last, nullptr);
+    readers().resize((size_t)utils::agea_type::t_last, nullptr);
+    writers().resize((size_t)utils::agea_type::t_last, nullptr);
 
-    readers()[(size_t)property_type::t_str]      = property_convertes::read_t_str;
-    writers()[(size_t)property_type::t_str]      = property_convertes::write_t_str;
+    readers()[(size_t)utils::agea_type::t_str]      = property_convertes::read_t_str;
+    writers()[(size_t)utils::agea_type::t_str]      = property_convertes::write_t_str;
 
-    readers()[(size_t)property_type::t_bool]     = property_convertes::read_t_bool;
-    writers()[(size_t)property_type::t_bool]     = property_convertes::write_t_bool;
+    readers()[(size_t)utils::agea_type::t_bool]     = property_convertes::read_t_bool;
+    writers()[(size_t)utils::agea_type::t_bool]     = property_convertes::write_t_bool;
 
-    readers()[(size_t)property_type::t_i8]       = property_convertes::read_t_i8;
-    writers()[(size_t)property_type::t_i8]       = property_convertes::write_t_i8;
+    readers()[(size_t)utils::agea_type::t_i8]       = property_convertes::read_t_i8;
+    writers()[(size_t)utils::agea_type::t_i8]       = property_convertes::write_t_i8;
                                                   
-    readers()[(size_t)property_type::t_i16]      = property_convertes::read_t_i16;
-    writers()[(size_t)property_type::t_i16]      = property_convertes::write_t_i16;
+    readers()[(size_t)utils::agea_type::t_i16]      = property_convertes::read_t_i16;
+    writers()[(size_t)utils::agea_type::t_i16]      = property_convertes::write_t_i16;
                                                   
-    readers()[(size_t)property_type::t_i32]      = property_convertes::read_t_i32;
-    writers()[(size_t)property_type::t_i32]      = property_convertes::write_t_i32;
+    readers()[(size_t)utils::agea_type::t_i32]      = property_convertes::read_t_i32;
+    writers()[(size_t)utils::agea_type::t_i32]      = property_convertes::write_t_i32;
                                                   
-    readers()[(size_t)property_type::t_i64]      = property_convertes::read_t_i64;
-    writers()[(size_t)property_type::t_i64]      = property_convertes::write_t_i64;
+    readers()[(size_t)utils::agea_type::t_i64]      = property_convertes::read_t_i64;
+    writers()[(size_t)utils::agea_type::t_i64]      = property_convertes::write_t_i64;
                                                   
-    readers()[(size_t)property_type::t_u8]       = property_convertes::read_t_u8;
-    writers()[(size_t)property_type::t_u8]       = property_convertes::write_t_u8;
+    readers()[(size_t)utils::agea_type::t_u8]       = property_convertes::read_t_u8;
+    writers()[(size_t)utils::agea_type::t_u8]       = property_convertes::write_t_u8;
                                                   
-    readers()[(size_t)property_type::t_u16]      = property_convertes::read_t_u16;
-    writers()[(size_t)property_type::t_u16]      = property_convertes::write_t_u16;
+    readers()[(size_t)utils::agea_type::t_u16]      = property_convertes::read_t_u16;
+    writers()[(size_t)utils::agea_type::t_u16]      = property_convertes::write_t_u16;
                                                   
-    readers()[(size_t)property_type::t_u32]      = property_convertes::read_t_u32;
-    writers()[(size_t)property_type::t_u32]      = property_convertes::write_t_u32;
+    readers()[(size_t)utils::agea_type::t_u32]      = property_convertes::read_t_u32;
+    writers()[(size_t)utils::agea_type::t_u32]      = property_convertes::write_t_u32;
                                                   
-    readers()[(size_t)property_type::t_u64]      = property_convertes::read_t_u64;
-    writers()[(size_t)property_type::t_u64]      = property_convertes::write_t_u64;
+    readers()[(size_t)utils::agea_type::t_u64]      = property_convertes::read_t_u64;
+    writers()[(size_t)utils::agea_type::t_u64]      = property_convertes::write_t_u64;
                                                   
-    readers()[(size_t)property_type::t_f]        = property_convertes::read_t_f;
-    writers()[(size_t)property_type::t_f]        = property_convertes::write_t_f;
+    readers()[(size_t)utils::agea_type::t_f]        = property_convertes::read_t_f;
+    writers()[(size_t)utils::agea_type::t_f]        = property_convertes::write_t_f;
                                                   
-    readers()[(size_t)property_type::t_d]        = property_convertes::read_t_d;
-    writers()[(size_t)property_type::t_d]        = property_convertes::write_t_d;
+    readers()[(size_t)utils::agea_type::t_d]        = property_convertes::read_t_d;
+    writers()[(size_t)utils::agea_type::t_d]        = property_convertes::write_t_d;
                                                   
-    readers()[(size_t)property_type::t_vec3]     = property_convertes::read_t_vec3;
-    writers()[(size_t)property_type::t_vec3]     = property_convertes::write_t_vec3;
+    readers()[(size_t)utils::agea_type::t_vec3]     = property_convertes::read_t_vec3;
+    writers()[(size_t)utils::agea_type::t_vec3]     = property_convertes::write_t_vec3;
                                                   
-    readers()[(size_t)property_type::t_mat]      = property_convertes::read_t_mat;
-    writers()[(size_t)property_type::t_mat]      = property_convertes::write_t_mat;
+    readers()[(size_t)utils::agea_type::t_mat]      = property_convertes::read_t_mat;
+    writers()[(size_t)utils::agea_type::t_mat]      = property_convertes::write_t_mat;
                                                   
-    readers()[(size_t)property_type::t_msh]      = property_convertes::read_t_msh;
-    writers()[(size_t)property_type::t_msh]      = property_convertes::write_t_msh;
+    readers()[(size_t)utils::agea_type::t_msh]      = property_convertes::read_t_msh;
+    writers()[(size_t)utils::agea_type::t_msh]      = property_convertes::write_t_msh;
 
     /// ////////////////////////////////////////////////////////////////////////
 
@@ -723,7 +723,7 @@ property_convertes::write_t_mat(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<model::material*>(ptr);
 
-    auto mat = glob::materials_cache::get()->get_item(utils::id::from(str));
+    auto mat = glob::materials_cache::get()->get_item(AID(str));
 
     if (!mat)
     {
@@ -751,7 +751,7 @@ property_convertes::write_t_msh(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<model::mesh*>(ptr);
 
-    auto mat = glob::meshes_cache::get()->get_item(utils::id::from(str));
+    auto mat = glob::meshes_cache::get()->get_item(AID(str));
 
     if (!mat)
     {

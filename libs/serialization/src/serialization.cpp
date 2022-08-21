@@ -15,9 +15,9 @@ read_container(const utils::path& path, serialization::conteiner& conteiner)
     {
         conteiner = YAML::LoadFile(path.str());
     }
-    catch (const std::exception&)
+    catch (const std::exception& e)
     {
-        ALOG_LAZY_ERROR;
+        ALOG_ERROR("read_container failed {0}", e.what());
         return false;
     }
 

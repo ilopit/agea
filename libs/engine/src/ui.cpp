@@ -10,13 +10,12 @@
 #include "model/level.h"
 #include "model/game_object.h"
 
-#include "model/rendering/material.h"
+#include "model/assets/material.h"
 #include "model/caches/materials_cache.h"
 
 #include "model/reflection/property.h"
 
 #include "vulkan_render_types/vulkan_texture_data.h"
-#include "vulkan_render/render_loader.h"
 #include "vulkan_render/render_device.h"
 
 #include <SDL.h>
@@ -178,7 +177,7 @@ materials_selector::handle()
                         m_selection_cb(mat_id);
                     }
                     ImGui::NextColumn();
-                    ImGui::Image(m->get_material_data()->texture_set, ImVec2{160, 160});
+                    // ImGui::Image(m->get_material_data()->texture_set, ImVec2{160, 160});
 
                     ImGui::Columns(1);
 
@@ -226,7 +225,7 @@ components_editor::handle()
 
                         (*str) = selected;
 
-                        m_obj->mark_dirty();
+                        // m_obj->mark_dirty();
                     };
 
                     get_window<materials_selector>()->show(handler);

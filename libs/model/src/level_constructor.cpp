@@ -6,7 +6,6 @@
 #include "model/object_construction_context.h"
 #include "model/object_constructor.h"
 #include "model/package_manager.h"
-#include "model/conteiner_loader.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/hash_cache.h"
 
@@ -63,13 +62,10 @@ level_constructor::load_level_path(level& l,
         ALOG_ERROR("Loading level failed, {0} {1}", name, extension);
         return false;
     }
-    l.m_id = utils::id::from(name);
-
-    l.m_occ = std::make_unique<object_constructor_context>(
-        utils::path{}, l.m_global_class_object_cs, cache_set_ref{}, l.m_global_object_cs,
-        l.m_local_cs.get_ref(), &l.m_objects);
+    l.m_id = AID(name);
 
     auto root_path = path / "root.cfg";
+
     serialization::conteiner conteiner;
     if (!serialization::read_container(root_path, conteiner))
     {
@@ -77,12 +73,28 @@ level_constructor::load_level_path(level& l,
         return false;
     }
 
+    if (!l.m_mapping.buiild_object_mapping(root_path))
+    {
+        ALOG_LAZY_ERROR;
+        return false;
+    }
+
+    l.m_occ = std::make_unique<object_constructor_context>();
+    l.m_occ->set_prefix_path(utils::path{})
+        .set_class_global_set(l.m_global_class_object_cs)
+        .set_instance_global_set(l.m_global_object_cs)
+        .set_class_local_set(cache_set_ref{})
+        .set_instance_local_set(l.m_local_cs.get_ref())
+        .set_ownable_cache(&l.m_objects)
+        .set_objects_mapping(l.m_mapping.m_items)
+        .set_prefix_path(path);
+
     {
         auto packages = conteiner["packages"];
         auto packages_count = packages.size();
         for (size_t idx = 0; idx < packages_count; ++idx)
         {
-            auto id = utils::id::from(packages[idx].as<std::string>());
+            auto id = AID(packages[idx].as<std::string>());
             if (!glob::package_manager::get()->load_package(id))
             {
                 ALOG_LAZY_ERROR;
@@ -92,19 +104,31 @@ level_constructor::load_level_path(level& l,
         }
     }
 
-    for (auto id : k_enums_to_handle)
+    for (auto& i : l.m_mapping.m_items)
     {
-        if (!conteiner_loader::load_objects_conteiners(id, object_constructor::instance_object_load,
-                                                       path, *l.m_occ))
+        auto& mapping = i.second;
+
+        auto obj = mapping.first
+                       ? object_constructor::class_object_load(mapping.second, *l.m_occ)
+                       : object_constructor::instance_object_load(mapping.second, *l.m_occ);
+
+        if (!obj)
         {
             ALOG_LAZY_ERROR;
-            return false;
         }
     }
 
-    for (auto& o : l.m_objects.get_items())
+    for (auto& o : l.m_objects)
     {
         o->META_post_construct();
+    }
+
+    for (auto& o : l.m_objects)
+    {
+        if (auto a = o->as<game_object>())
+        {
+            l.m_tickable_objects.emplace_back(a);
+        }
     }
 
     size_t idx = 0;
@@ -112,7 +136,7 @@ level_constructor::load_level_path(level& l,
     {
         for (auto& i : c.second->get_items())
         {
-            global_instances_cs.map->get_cache(c.first).add_item(*i.second);
+            global_instances_cs.map->get_cache(c.first)->add_item(*i.second);
             ++idx;
         }
     }
@@ -145,16 +169,6 @@ level_constructor::save_level(level& l, const utils::path& path)
     }
 
     auto instace_path = full_path;
-
-    for (auto id : k_enums_to_handle)
-    {
-        if (!conteiner_loader::save_objects_conteiners(id, object_constructor::instance_object_save,
-                                                       instace_path, l.m_local_cs.get_ref()))
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-    }
 
     return true;
 }
