@@ -1,0 +1,22 @@
+---
+actions:
+  - id: move_forward
+    events:
+      - trigger: w
+        amp: 5
+      - trigger: s
+        amp: -5
+  - id: move_left
+    events:
+      - trigger: a
+        amp: 5
+      - trigger: d
+        amp: -5
+  - id: look_up
+    events:
+      - trigger: mouse_move_y
+        amp: -5
+  - id: look_left
+    events:
+      - trigger: mouse_move_x
+        amp: -5

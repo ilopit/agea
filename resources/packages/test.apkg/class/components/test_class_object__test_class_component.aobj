@@ -1,0 +1,4 @@
+class_id: test_class_component
+id: test_class_object__test_class_component
+order_idx: 1
+parent_idx: 0

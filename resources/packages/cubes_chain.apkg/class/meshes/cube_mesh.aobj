@@ -1,0 +1,8 @@
+---
+type_id: mesh
+id: cube_mesh
+index_size: 4
+vertex_format: PNCV_F32
+external_type: obj
+external_path: class/meshes/extra/cube.obj
+class_obj: true

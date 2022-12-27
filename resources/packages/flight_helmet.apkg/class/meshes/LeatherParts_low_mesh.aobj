@@ -1,0 +1,7 @@
+---
+type_id: mesh
+id: LeatherParts_low_mesh
+index_size: 4
+vertex_format: PNCV_F32
+indices: class/meshes/extra/LeatherParts_low.indx
+vertices: class/meshes/extra/LeatherParts_low.vert

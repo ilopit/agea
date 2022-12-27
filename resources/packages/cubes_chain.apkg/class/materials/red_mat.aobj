@@ -1,0 +1,5 @@
+type_id: material
+id: red_mat
+base_effect: simple_texture
+base_texture: red_txt
+config_path: class/materials/extra/default.cfg

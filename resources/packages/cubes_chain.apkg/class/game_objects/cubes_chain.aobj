@@ -1,0 +1,8 @@
+---
+type_id: mesh_object
+id: cubes_chain
+components:
+- id: cubes_chain_root_component
+- id: cubes_chain_cube_mesh_1
+- id: cubes_chain_cube_mesh_2
+- id: cubes_chain_cube_mesh_3

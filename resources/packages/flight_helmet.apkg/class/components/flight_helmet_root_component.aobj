@@ -1,0 +1,16 @@
+class_id: root_component
+id: flight_helmet_root_component
+order_idx: 0
+parent_idx: 4294967295
+position:
+  x: 0
+  y: 0
+  z: 0
+scale:
+  x: 1
+  y: 1
+  z: 1
+rotation:
+  x: 0
+  y: 0
+  z: 0
