@@ -27,9 +27,6 @@ public:
     level();
     ~level();
 
-    void
-    construct();
-
     object_constructor_context&
     occ();
 

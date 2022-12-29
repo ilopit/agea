@@ -1,14 +1,10 @@
 #include "vulkan_render/render_device.h"
 
-#include "vulkan_render/vulkan_loader.h"
+#include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_transit.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/shader_reflection.h"
-
-#include <VkBootstrap.h>
-#include <SDL.h>
-#include <SDL_vulkan.h>
 
 #include <utils/process.h>
 #include <utils/file_utils.h>
@@ -21,11 +17,16 @@
 #include <vulkan_render_types/vulkan_gpu_types.h>
 
 #include <native/native_window.h>
+
 #include <resource_locator/resource_locator.h>
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl.h>
 #include <backends/imgui_impl_vulkan.h>
+
+#include <VkBootstrap.h>
+#include <SDL.h>
+#include <SDL_vulkan.h>
 
 #include <iostream>
 #include <fstream>

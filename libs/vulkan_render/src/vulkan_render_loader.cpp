@@ -1,4 +1,4 @@
-#include "vulkan_render/vulkan_loader.h"
+#include "vulkan_render/vulkan_render_loader.h"
 
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/render_device.h"
@@ -203,9 +203,9 @@ load_1x1_image_from_color(const std::string& color, allocated_image& outImage)
 }  // namespace
 
 mesh_data*
-vulkan_loader::create_mesh(const agea::utils::id& mesh_id,
-                           agea::utils::buffer_view<render::gpu_vertex_data> vbv,
-                           agea::utils::buffer_view<render::gpu_index_data> ibv)
+vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
+                                  agea::utils::buffer_view<render::gpu_vertex_data> vbv,
+                                  agea::utils::buffer_view<render::gpu_index_data> ibv)
 {
     auto device = glob::render_device::get();
 
@@ -305,10 +305,10 @@ vulkan_loader::create_mesh(const agea::utils::id& mesh_id,
 }
 
 texture_data*
-vulkan_loader::create_texture(const agea::utils::id& texture_id,
-                              const agea::utils::buffer& base_color,
-                              uint32_t w,
-                              uint32_t h)
+vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
+                                     const agea::utils::buffer& base_color,
+                                     uint32_t w,
+                                     uint32_t h)
 {
     auto device = glob::render_device::get();
 
@@ -354,12 +354,12 @@ vulkan_loader::create_texture(const agea::utils::id& texture_id,
 }
 
 object_data*
-vulkan_loader::create_object(const agea::utils::id& id,
-                             material_data& mat_data,
-                             mesh_data& mesh_data,
-                             const glm::mat4& model_matrix,
-                             const glm::mat4& normal_matrix,
-                             const glm::vec3& obj_pos)
+vulkan_render_loader::create_object(const agea::utils::id& id,
+                                    material_data& mat_data,
+                                    mesh_data& mesh_data,
+                                    const glm::mat4& model_matrix,
+                                    const glm::mat4& normal_matrix,
+                                    const glm::vec3& obj_pos)
 {
     AGEA_check(!get_material_data(id), "Shoudn't exist");
 
@@ -373,12 +373,12 @@ vulkan_loader::create_object(const agea::utils::id& id,
 }
 
 bool
-vulkan_loader::update_object(object_data& obj_data,
-                             material_data& mat_data,
-                             mesh_data& mesh_data,
-                             const glm::mat4& model_matrix,
-                             const glm::mat4& normal_matrix,
-                             const glm::vec3& obj_pos)
+vulkan_render_loader::update_object(object_data& obj_data,
+                                    material_data& mat_data,
+                                    mesh_data& mesh_data,
+                                    const glm::mat4& model_matrix,
+                                    const glm::mat4& normal_matrix,
+                                    const glm::vec3& obj_pos)
 {
     obj_data.material = &mat_data;
     obj_data.mesh = &mesh_data;
@@ -391,11 +391,11 @@ vulkan_loader::update_object(object_data& obj_data,
 }
 
 material_data*
-vulkan_loader::create_material(const agea::utils::id& id,
-                               const agea::utils::id& type_id,
-                               texture_data& t_data,
-                               shader_effect_data& se_data,
-                               const agea::utils::dynamic_object& gpu_params)
+vulkan_render_loader::create_material(const agea::utils::id& id,
+                                      const agea::utils::id& type_id,
+                                      texture_data& t_data,
+                                      shader_effect_data& se_data,
+                                      const agea::utils::dynamic_object& gpu_params)
 {
     auto device = glob::render_device::get();
 
@@ -414,12 +414,11 @@ vulkan_loader::create_material(const agea::utils::id& id,
 }
 
 bool
-vulkan_loader::update_material(material_data& mat_data,
-                               texture_data& t_data,
-                               shader_effect_data& se_data,
-                               const agea::utils::dynamic_object& gpu_params)
+vulkan_render_loader::update_material(material_data& mat_data,
+                                      texture_data& t_data,
+                                      shader_effect_data& se_data,
+                                      const agea::utils::dynamic_object& gpu_params)
 {
-    mat_data.texture_id = t_data.id();
     mat_data.effect = &se_data;
     mat_data.texture_set = t_data.descriptor_set;
     mat_data.gpu_data = gpu_params;
@@ -428,14 +427,14 @@ vulkan_loader::update_material(material_data& mat_data,
 }
 
 shader_effect_data*
-vulkan_loader::create_shader_effect(const agea::utils::id& id,
-                                    agea::utils::buffer& vert_buffer,
-                                    bool is_vert_binary,
-                                    agea::utils::buffer& frag_buffer,
-                                    bool is_frag_binary,
-                                    bool is_wire,
-                                    bool enable_alpha,
-                                    VkRenderPass render_path)
+vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
+                                           agea::utils::buffer& vert_buffer,
+                                           bool is_vert_binary,
+                                           agea::utils::buffer& frag_buffer,
+                                           bool is_frag_binary,
+                                           bool is_wire,
+                                           bool enable_alpha,
+                                           VkRenderPass render_path)
 {
     AGEA_check(!get_shader_data(id), "should never happens");
 
@@ -455,16 +454,16 @@ vulkan_loader::create_shader_effect(const agea::utils::id& id,
 }
 
 bool
-vulkan_loader::update_shader_effect(shader_effect_data& se_data,
-                                    agea::utils::buffer& vert_buffer,
-                                    bool is_vert_binary,
-                                    agea::utils::buffer& frag_buffer,
-                                    bool is_frag_binary,
-                                    bool is_wire,
-                                    bool enable_alpha,
-                                    VkRenderPass render_path)
+vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
+                                           agea::utils::buffer& vert_buffer,
+                                           bool is_vert_binary,
+                                           agea::utils::buffer& frag_buffer,
+                                           bool is_frag_binary,
+                                           bool is_wire,
+                                           bool enable_alpha,
+                                           VkRenderPass render_path)
 {
-    AGEA_check(get_shader_data(se_data.id()), "should never happens");
+    AGEA_check(get_shader_data(se_data.get_id()), "should never happens");
 
     if (!frag_buffer.has_file_updated() && !vert_buffer.has_file_updated() &&
         is_wire == se_data.m_is_wire && enable_alpha == se_data.m_enable_alpha)
@@ -494,7 +493,7 @@ vulkan_loader::update_shader_effect(shader_effect_data& se_data,
 }
 
 void
-vulkan_loader::clear_caches()
+vulkan_render_loader::clear_caches()
 {
     while (!m_ddq.empty())
     {
@@ -511,7 +510,7 @@ vulkan_loader::clear_caches()
 }
 
 void
-vulkan_loader::shedule_to_deltete(resource_deleter d)
+vulkan_render_loader::shedule_to_deltete(resource_deleter d)
 {
     auto size = glob::render_device::getr().get_current_frame_number() + FRAMES_IN_FLYIGNT * 2;
 
@@ -519,7 +518,7 @@ vulkan_loader::shedule_to_deltete(resource_deleter d)
 }
 
 void
-vulkan_loader::delete_sheduled_actions()
+vulkan_render_loader::delete_sheduled_actions()
 {
     if (m_ddq.empty())
     {

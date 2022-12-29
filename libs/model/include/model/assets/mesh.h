@@ -11,7 +11,7 @@ namespace agea
 {
 namespace render
 {
-struct mesh_data;
+class mesh_data;
 }
 
 namespace model
@@ -26,9 +26,6 @@ public:
     AGEA_gen_construct_params{};
     AGEA_gen_meta_architype_api(mesh);
 
-    bool
-    prepare_for_rendering();
-
     render::mesh_data*
     get_mesh_data()
     {
@@ -41,32 +38,38 @@ public:
         m_mesh_data = v;
     }
 
-    utils::buffer& get_vertices_buffer()
+    utils::buffer&
+    get_vertices_buffer()
     {
         return m_vertices;
     }
 
-    void set_vertices_buffer(utils::buffer& v)
+    void
+    set_vertices_buffer(utils::buffer& v)
     {
         m_vertices = v;
     }
 
-    utils::buffer& get_indicess_buffer()
+    utils::buffer&
+    get_indicess_buffer()
     {
         return m_indices;
     }
 
-    void set_indices_buffer(utils::buffer& v)
+    void
+    set_indices_buffer(utils::buffer& v)
     {
         m_indices = v;
     }
 
-    utils::buffer& get_external_buffer()
+    utils::buffer&
+    get_external_buffer()
     {
         return m_external;
     }
 
-    void set_external_buffer(utils::buffer& v)
+    void
+    set_external_buffer(utils::buffer& v)
     {
         m_external = v;
     }

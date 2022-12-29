@@ -1,8 +1,9 @@
 #include "resource_locator/resource_locator.h"
 
+#include <utils/string_utility.h>
+#include <utils/agea_log.h>
+
 #include <cassert>
-#include "utils/string_utility.h"
-#include "utils/agea_log.h"
 
 namespace agea
 {

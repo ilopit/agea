@@ -9,7 +9,6 @@
 #include <utils/singleton_instance.h>
 #include <utils/dynamic_object.h>
 #include <utils/line_conteiner.h>
-
 #include <utils/path.h>
 
 #include <vulkan/vulkan.h>
@@ -25,7 +24,7 @@ namespace render
 {
 class render_device;
 
-class vulkan_loader
+class vulkan_render_loader
 {
 public:
     using resource_deleter = std::function<void()>;
@@ -211,7 +210,7 @@ private:
 namespace glob
 {
 struct vulkan_render_loader
-    : public ::agea::singleton_instance<::agea::render::vulkan_loader, vulkan_render_loader>
+    : public ::agea::singleton_instance<::agea::render::vulkan_render_loader, vulkan_render_loader>
 {
 };
 };  // namespace glob

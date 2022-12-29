@@ -13,7 +13,7 @@ namespace agea
 {
 namespace render
 {
-struct shader_data;
+class shader_data;
 
 struct vulkan_descriptor_set_layout_data
 {
@@ -101,19 +101,20 @@ struct shader_reflection
 
 }  // namespace reflection
 
-struct shader_effect_data
+class shader_effect_data
 {
+public:
     shader_effect_data(const ::agea::utils::id& id, vk_device_provider vdp);
     ~shader_effect_data();
 
-    void
-    reset();
-
     const ::agea::utils::id&
-    id() const
+    get_id() const
     {
         return m_id;
     }
+
+    void
+    reset();
 
     void
     add_shader(std::shared_ptr<shader_data> se_data);

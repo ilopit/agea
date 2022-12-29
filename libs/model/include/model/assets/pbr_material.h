@@ -24,9 +24,6 @@ public:
         return true;
     };
 
-    bool
-    prepare_for_rendering();
-
     AGEA_function("category=world");
     void
     set_albedo(float v)

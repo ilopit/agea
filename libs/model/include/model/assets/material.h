@@ -8,7 +8,7 @@ namespace agea
 {
 namespace render
 {
-struct material_data;
+class material_data;
 }  // namespace render
 
 namespace model
@@ -27,9 +27,6 @@ public:
 
     bool
     construct(this_class::construct_params& p);
-
-    bool
-    prepare_for_rendering();
 
     ::agea::render::material_data*
     get_material_data() const

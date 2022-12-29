@@ -9,7 +9,7 @@ namespace agea
 {
 namespace render
 {
-struct shader_effect_data;
+class shader_effect_data;
 }  // namespace render
 
 namespace model

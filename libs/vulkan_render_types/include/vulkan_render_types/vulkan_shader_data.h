@@ -8,9 +8,9 @@ namespace agea
 {
 namespace render
 {
-
-struct shader_data
+class shader_data
 {
+public:
     shader_data(vk_device_provider vk_device,
                 VkShaderModule vk_module,
                 ::agea::utils::buffer code,

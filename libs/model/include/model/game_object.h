@@ -82,9 +82,6 @@ public:
     }
 
     void
-    prepare_for_rendering();
-
-    void
     build_components_structure();
 
     bool

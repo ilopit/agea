@@ -21,8 +21,9 @@ struct VertexInputDescription
 VertexInputDescription
 get_vertex_description();
 
-struct mesh_data
+class mesh_data
 {
+public:
     mesh_data(const ::agea::utils::id& id)
         : m_id(id)
     {
@@ -48,7 +49,7 @@ struct mesh_data
     }
 
     const ::agea::utils::id&
-    id()
+    get_id()
     {
         return m_id;
     }

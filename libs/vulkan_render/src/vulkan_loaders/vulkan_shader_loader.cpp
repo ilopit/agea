@@ -296,7 +296,7 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
 {
     auto device = glob::render_device::get();
 
-    old_se_data = std::make_shared<render::shader_effect_data>(se_data.id(),
+    old_se_data = std::make_shared<render::shader_effect_data>(se_data.get_id(),
                                                                device->get_vk_device_provider());
 
     auto vs = se_data.extract_shader(VK_SHADER_STAGE_VERTEX_BIT);

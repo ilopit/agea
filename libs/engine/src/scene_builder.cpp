@@ -26,7 +26,7 @@
 #include <vulkan_render_types/vulkan_shader_data.h>
 #include <vulkan_render_types/vulkan_initializers.h>
 
-#include <vulkan_render/vulkan_loader.h>
+#include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/render_device.h>
 
 #include <utils/agea_log.h>
@@ -45,7 +45,7 @@ make_qid(render::material_data& mt_data, render::mesh_data& m_data)
         return "transparent";
     }
 
-    return m_data.id().str() + "::" + m_data.id().str();
+    return m_data.get_id().str() + "::" + m_data.get_id().str();
 }
 
 bool

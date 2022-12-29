@@ -1,7 +1,5 @@
 ﻿#include "model/assets/mesh.h"
 
-#include "model/package.h"
-
 namespace agea
 {
 namespace model

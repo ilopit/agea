@@ -1,8 +1,9 @@
 #pragma once
 
+#include "model/model_fwds.h"
+
 #include "model/model_minimal.h"
 #include "model/caches/cache_set.h"
-#include "model/model_fwds.h"
 
 namespace agea
 {

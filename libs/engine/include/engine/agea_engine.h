@@ -39,10 +39,10 @@ class cli;
 namespace render
 {
 
-class vulkan_loader;
+class vulkan_render_loader;
 class render_device;
 struct frame_data;
-struct shader_effect_data;
+class shader_effect_data;
 class transit_buffer;
 }  // namespace render
 

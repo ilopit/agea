@@ -1,8 +1,5 @@
 #pragma once
 
-#include <vulkan_render_types/vulkan_render_fwds.h>
-#include <vulkan_render_types/vulkan_gpu_types.h>
-
 #include <utils/path.h>
 #include <utils/id.h>
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <filesystem>
-
 #include "utils/check.h"
+
+#include <filesystem>
 
 namespace agea
 {

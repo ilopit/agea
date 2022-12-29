@@ -1,8 +1,9 @@
-#include <assets_importer/assets_importer.h>
+#include "assets_importer/assets_importer.h "
 
 #include <utils/agea_log.h>
 #include <utils/buffer.h>
 
+#include <vulkan_render_types/vulkan_render_fwds.h>
 #include <vulkan_render_types/vulkan_gpu_types.h>
 
 #include <stb_unofficial/stb.h>
@@ -53,7 +54,7 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
 {
     int tex_width = 0, tex_height = 0, tex_channels = 0;
 
-    void* pixels = stbi_load_from_memory((stbi_uc*)image_buffer.data(), image_buffer.size(),
+    void* pixels = stbi_load_from_memory((stbi_uc*)image_buffer.data(), (int)image_buffer.size(),
                                          &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
     if (!pixels)
     {

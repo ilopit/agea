@@ -1,6 +1,6 @@
 #pragma once
 
-#include "utils/singleton_instance.h"
+#include <utils/singleton_instance.h>
 
 struct SDL_Window;
 

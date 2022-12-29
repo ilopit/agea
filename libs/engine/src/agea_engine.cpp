@@ -16,7 +16,7 @@
 #include <vulkan_render_types/vulkan_render_data.h>
 
 #include <vulkan_render/render_device.h>
-#include <vulkan_render/vulkan_loader.h>
+#include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vk_descriptors.h>
 
 #include <model/caches/components_cache.h>

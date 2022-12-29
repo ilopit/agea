@@ -5,8 +5,9 @@
 
 #include <glm_unofficial/glm.h>
 
-#include <string>
 #include <utils/id.h>
+
+#include <string>
 
 namespace agea
 {
@@ -21,7 +22,11 @@ public:
     {
     }
 
-    gpu_object_data gpu_data;
+    const utils::id&
+    get_id() const
+    {
+        return m_id;
+    }
 
     gpu_data_index_type
     gpu_index()
@@ -29,11 +34,7 @@ public:
         return m_gpu_index;
     }
 
-    void
-    set_gpu_index(gpu_data_index_type index)
-    {
-        m_gpu_index = index;
-    }
+    gpu_object_data gpu_data;
 
     render::mesh_data* mesh = nullptr;
     render::material_data* material = nullptr;

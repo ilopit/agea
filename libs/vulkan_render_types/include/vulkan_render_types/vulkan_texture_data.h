@@ -14,8 +14,9 @@ enum class texture_format : uint32_t
     rgba8
 };
 
-struct texture_data
+class texture_data
 {
+public:
     texture_data(const ::agea::utils::id& id, vk_device_provider dbp);
     ~texture_data();
 
@@ -29,17 +30,17 @@ struct texture_data
     VkImageView image_view = VK_NULL_HANDLE;
     VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
     allocated_image image;
-
-    vk_device_provider m_device = nullptr;
     texture_format format = texture_format::unknown;
 
     const ::agea::utils::id&
-    id() const
+    get_id() const
     {
         return m_id;
     }
 
+private:
     ::agea::utils::id m_id;
+    vk_device_provider m_device = nullptr;
 };
 
 }  // namespace render

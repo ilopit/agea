@@ -10,7 +10,7 @@ namespace agea
 {
 namespace render
 {
-struct texture_data;
+class texture_data;
 }  // namespace render
 
 namespace model

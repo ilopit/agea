@@ -10,10 +10,11 @@ namespace agea
 {
 namespace render
 {
-struct shader_effect_data;
+class shader_effect_data;
 
-struct material_data
+class material_data
 {
+public:
     material_data(const ::agea::utils::id& id, gpu_data_index_type type_id, gpu_data_index_type idx)
         : m_id(id)
         , m_type_id(type_id)
@@ -22,7 +23,7 @@ struct material_data
     }
 
     const agea::utils::id&
-    id() const
+    get_id() const
     {
         return m_id;
     }
@@ -44,8 +45,6 @@ struct material_data
     VkDescriptorSet texture_set = VK_NULL_HANDLE;
     shader_effect_data* effect = nullptr;
     VkSampler sampler = VK_NULL_HANDLE;
-
-    ::agea::utils::id texture_id;
 
 private:
     ::agea::utils::id m_id;

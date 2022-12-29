@@ -1,24 +1,27 @@
 #pragma once
 
+#include <serialization/serialization_fwds.h>
+
 #include <utils/id.h>
 #include <utils/path.h>
-
-#include <serialization/serialization_fwds.h>
 
 #include <unordered_map>
 
 namespace agea
 {
-    namespace model
-    {
-        class object_mapping
-        {
-            public:
-            bool buiild_object_mapping(const utils::path& p);
+namespace model
+{
 
-            bool buiild_object_mapping(serialization::conteiner& c, bool is_class);
+class object_mapping
+{
+public:
+    bool
+    buiild_object_mapping(const utils::path& p);
 
-            std::unordered_map<utils::id,std::pair<bool, utils::path>> m_items;
-        };
-    }
-}
+    bool
+    buiild_object_mapping(serialization::conteiner& c, bool is_class);
+
+    std::unordered_map<utils::id, std::pair<bool, utils::path>> m_items;
+};
+}  // namespace model
+}  // namespace agea

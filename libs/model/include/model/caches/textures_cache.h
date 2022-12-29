@@ -1,7 +1,6 @@
 #pragma once
 
-#include "model/model_minimal.h"
-
+#include "model/model_fwds.h"
 #include "model/caches/hash_cache.h"
 
 #include <utils/singleton_instance.h>
