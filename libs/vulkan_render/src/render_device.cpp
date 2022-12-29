@@ -236,18 +236,20 @@ render_device::init_swapchain()
 bool
 render_device::deinit_swapchain()
 {
-    m_depth_images.clear();
+    for (auto i : m_swapchain_image_views)
+    {
+        vkDestroyImageView(m_vk_device, i, nullptr);
+    }
 
     for (auto i : m_depth_image_views)
     {
         vkDestroyImageView(m_vk_device, i, nullptr);
     }
 
-    for (auto i : m_swapchain_image_views)
-    {
-        vkDestroyImageView(m_vk_device, i, nullptr);
-    }
+    m_depth_images.clear();
+    m_swapchain_image_views.clear();
 
+    vkDestroySwapchainKHR(m_vk_device, m_swapchain, nullptr);
     vkDestroySurfaceKHR(m_vk_instance, m_surface, nullptr);
 
     return true;

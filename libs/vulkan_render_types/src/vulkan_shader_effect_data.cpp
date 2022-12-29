@@ -13,7 +13,10 @@ shader_effect_data::shader_effect_data(const ::agea::utils::id& id, vk_device_pr
 {
 }
 
-shader_effect_data::~shader_effect_data() = default;
+shader_effect_data::~shader_effect_data()
+{
+    reset();
+}
 
 void
 shader_effect_data::reset()

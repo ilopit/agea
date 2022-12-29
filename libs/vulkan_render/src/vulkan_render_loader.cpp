@@ -207,14 +207,9 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
                                   agea::utils::buffer_view<render::gpu_vertex_data> vbv,
                                   agea::utils::buffer_view<render::gpu_index_data> ibv)
 {
+    AGEA_check(!get_mesh_data(mesh_id), "should never happens");
+
     auto device = glob::render_device::get();
-
-    auto itr = m_meshes_cache.find(mesh_id);
-
-    if (itr != m_meshes_cache.end())
-    {
-        return itr->second.get();
-    }
 
     auto md = std::make_shared<mesh_data>(mesh_id);
     md->m_indices_size = (uint32_t)ibv.size();
@@ -310,13 +305,9 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
                                      uint32_t w,
                                      uint32_t h)
 {
-    auto device = glob::render_device::get();
+    AGEA_check(!get_texture_data(texture_id), "should never happens");
 
-    auto titr = m_textures_cache.find(texture_id);
-    if (titr != m_textures_cache.end())
-    {
-        return titr->second.get();
-    }
+    auto device = glob::render_device::get();
 
     auto td = std::make_shared<texture_data>(texture_id, device->get_vk_device_provider());
 
@@ -397,9 +388,9 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
                                       shader_effect_data& se_data,
                                       const agea::utils::dynamic_object& gpu_params)
 {
-    auto device = glob::render_device::get();
-
     AGEA_check(!get_material_data(id), "Shouldn't exist");
+
+    auto device = glob::render_device::get();
 
     auto mtt_id = generate_mtt_id(type_id);
     auto mt_idx = generate_mtt_id(type_id);
