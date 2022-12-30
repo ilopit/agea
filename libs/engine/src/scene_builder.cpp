@@ -28,6 +28,7 @@
 
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/render_device.h>
+#include <vulkan_render/vulkan_render.h>
 
 #include <utils/agea_log.h>
 
@@ -224,7 +225,7 @@ scene_builder::pfr_material(model::smart_object& obj, bool sub_object)
             mat_model.get_id(), mat_model.get_type_id(), *txt_data, *se_data, dyn_gpu_data);
 
         mat_model.set_material_data(mat_data);
-        glob::engine::getr().update_ssbo_data_ranges(mat_data->type_id());
+        glob::vulkan_render::getr().update_ssbo_data_ranges(mat_data->type_id());
     }
     else
     {
@@ -232,7 +233,7 @@ scene_builder::pfr_material(model::smart_object& obj, bool sub_object)
                                                            dyn_gpu_data);
     }
 
-    glob::engine::getr().schedule_material_data_gpu_transfer(mat_data);
+    glob::vulkan_render::getr().schedule_material_data_gpu_transfer(mat_data);
 
     return true;
 }
@@ -447,7 +448,7 @@ scene_builder::sfr_mesh_component(model::smart_object& obj, bool sub_object)
 
         auto new_rqid = make_qid(*mat_data, *mesh_data);
         object_data->queue_id = new_rqid;
-        glob::engine::getr().add_object(object_data);
+        glob::vulkan_render::getr().add_object(object_data);
     }
     else
     {
@@ -463,13 +464,13 @@ scene_builder::sfr_mesh_component(model::smart_object& obj, bool sub_object)
         auto& rqid = object_data->queue_id;
         if (new_rqid != rqid)
         {
-            glob::engine::getr().drop_object(object_data);
+            glob::vulkan_render::getr().drop_object(object_data);
             object_data->queue_id = new_rqid;
-            glob::engine::getr().add_object(object_data);
+            glob::vulkan_render::getr().add_object(object_data);
         }
     }
 
-    glob::engine::getr().schedule_game_data_gpu_transfer(object_data);
+    glob::vulkan_render::getr().schedule_game_data_gpu_transfer(object_data);
 
     if (sub_object)
     {

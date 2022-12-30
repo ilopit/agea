@@ -1,5 +1,9 @@
 ﻿#pragma once
 
+#include "vulkan_render_types/vulkan_gpu_types.h"
+
+#include "vulkan_render_types/vulkan_generic.h"
+
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
 
@@ -10,11 +14,6 @@ namespace agea
 {
 namespace render
 {
-
-constexpr size_t DESCRIPTORS_SETS_COUNT = 4UL;
-
-using vk_device_provider = std::function<VkDevice()>;
-using vma_allocator_provider = std::function<VmaAllocator()>;
 
 class allocated_buffer
 {
