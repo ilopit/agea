@@ -18,16 +18,15 @@
 #include <assets_importer/mesh_importer.h>
 #include <assets_importer/texture_importer.h>
 
-#include <vulkan_render_types/vulkan_mesh_data.h>
-#include <vulkan_render_types/vulkan_texture_data.h>
-#include <vulkan_render_types/vulkan_material_data.h>
-#include <vulkan_render_types/vulkan_gpu_types.h>
-#include <vulkan_render_types/vulkan_shader_effect_data.h>
-#include <vulkan_render_types/vulkan_shader_data.h>
-#include <vulkan_render_types/vulkan_initializers.h>
-
+#include <vulkan_render/utils/vulkan_initializers.h>
+#include <vulkan_render/types/vulkan_mesh_data.h>
+#include <vulkan_render/types/vulkan_texture_data.h>
+#include <vulkan_render/types/vulkan_material_data.h>
+#include <vulkan_render/types/vulkan_gpu_types.h>
+#include <vulkan_render/types/vulkan_shader_effect_data.h>
+#include <vulkan_render/types/vulkan_shader_data.h>
 #include <vulkan_render/vulkan_render_loader.h>
-#include <vulkan_render/render_device.h>
+#include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vulkan_render.h>
 
 #include <utils/agea_log.h>
@@ -119,10 +118,11 @@ scene_builder::create_collection_template(model::smart_object& so,
 {
     auto& properties = so.reflection()->m_properties;
 
-    t.layout = std::make_shared<utils::dynamic_object_layout>();
     t.offset_in_object.clear();
 
     size_t dst_offest = 0;
+
+    utils::dynamic_object_layout_sequence_builder sb;
 
     for (auto& p : properties)
     {
@@ -131,13 +131,13 @@ scene_builder::create_collection_template(model::smart_object& so,
             switch (p->type.type)
             {
             case utils::agea_type::t_f:
-                t.layout->add_field(AID(p->name), (uint32_t)p->type.type, (uint32_t)p->size);
+                sb.add_field(AID(p->name), p->type.type, (uint32_t)p->size);
                 break;
 
             case utils::agea_type::t_vec4:
             case utils::agea_type::t_vec3:
             {
-                t.layout->add_field(AID(p->name), (uint32_t)p->type.type, (uint32_t)p->size, 16);
+                sb.add_field(AID(p->name), p->type.type, (uint32_t)p->size, 16);
                 break;
             }
             default:
@@ -146,7 +146,9 @@ scene_builder::create_collection_template(model::smart_object& so,
             t.offset_in_object.push_back((uint32_t)p->offset);
         }
     }
-    t.layout->finalize(16);
+
+    t.layout = sb.get_obj();
+
     return true;
 }
 
@@ -333,12 +335,25 @@ scene_builder::pfr_shader_effect(model::smart_object& obj, bool sub_object)
 
     auto se_data = glob::vulkan_render_loader::get()->get_shader_effect_data(se_model.get_id());
 
+    static render::vertex_input_description input = []()
+    {
+        agea::utils::dynamic_object_layout_sequence_builder builder;
+        builder.add_field(AID(""), agea::utils::agea_type::t_vec3, 1);
+        builder.add_field(AID(""), agea::utils::agea_type::t_vec3, 1);
+        builder.add_field(AID(""), agea::utils::agea_type::t_vec3, 1);
+        builder.add_field(AID(""), agea::utils::agea_type::t_vec2, 1);
+
+        auto dol = builder.get_obj();
+
+        return render::convert_to_vertex_input_description(*dol);
+    }();
+
     if (!se_data)
     {
         se_data = glob::vulkan_render_loader::get()->create_shader_effect(
             se_model.get_id(), se_model.m_vert, se_model.m_is_vert_binary, se_model.m_frag,
             se_model.m_is_frag_binary, se_model.m_wire_topology, se_model.m_enable_alpha_support,
-            glob::render_device::getr().render_pass());
+            false, glob::render_device::getr().render_pass(), input);
 
         if (!se_data)
         {
@@ -352,7 +367,8 @@ scene_builder::pfr_shader_effect(model::smart_object& obj, bool sub_object)
         if (!glob::vulkan_render_loader::get()->update_shader_effect(
                 *se_data, se_model.m_vert, se_model.m_is_vert_binary, se_model.m_frag,
                 se_model.m_is_frag_binary, se_model.m_wire_topology,
-                se_model.m_enable_alpha_support, glob::render_device::getr().render_pass()))
+                se_model.m_enable_alpha_support, false, glob::render_device::getr().render_pass(),
+                input))
         {
             ALOG_LAZY_ERROR;
             return false;

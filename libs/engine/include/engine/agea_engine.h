@@ -2,9 +2,9 @@
 
 #include "scene_builder.h"
 
-#include <vulkan_render_types/vulkan_render_data.h>
-#include <vulkan_render_types/vulkan_types.h>
-#include <vulkan_render_types/vulkan_gpu_types.h>
+#include <vulkan_render/types/vulkan_render_data.h>
+#include <vulkan_render/types/vulkan_types.h>
+#include <vulkan_render/types/vulkan_gpu_types.h>
 
 #include <resource_locator/resource_locator.h>
 

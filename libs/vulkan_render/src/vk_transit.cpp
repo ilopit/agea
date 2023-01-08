@@ -2,7 +2,7 @@
 
 #include "vulkan_render/vk_transit.h"
 
-#include "vulkan_render/render_device.h"
+#include "vulkan_render/vulkan_render_device.h"
 
 namespace agea
 {
@@ -22,6 +22,12 @@ transit_buffer::end()
 {
     vmaUnmapMemory(allocator(), allocation());
     m_data_begin = nullptr;
+}
+
+void
+transit_buffer::flush()
+{
+    vmaFlushAllocation(allocator(), allocation(), 0, m_offset);
 }
 
 void

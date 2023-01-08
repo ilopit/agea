@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_types.h"
 
 #include <utils/buffer.h>
 

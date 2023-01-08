@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 namespace agea
 {
 namespace utils
@@ -48,5 +50,9 @@ enum class agea_type
     t_last = t_mat4 + 1,
 
 };
-}
+
+uint32_t
+get_agea_type_size(agea_type t);
+
+}  // namespace utils
 }  // namespace agea

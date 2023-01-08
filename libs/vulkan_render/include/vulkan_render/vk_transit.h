@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vulkan_render_types/vulkan_types.h>
+#include "vulkan_render/types/vulkan_types.h"
 
 #include <vk_mem_alloc.h>
 
@@ -83,6 +83,9 @@ public:
 
     void
     end();
+
+    void
+    flush();
 
     uint32_t
     get_offset()

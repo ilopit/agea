@@ -159,7 +159,10 @@ public:
     ~ui();
 
     void
-    new_frame();
+    init();
+
+    void
+    new_frame(float dt);
 
     void
     draw(VkCommandBuffer cmd);

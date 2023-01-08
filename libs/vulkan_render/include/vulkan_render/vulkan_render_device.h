@@ -2,8 +2,8 @@
 
 #include "vk_transit.h"
 
-#include <vulkan_render_types/vulkan_types.h>
-#include <vulkan_render_types/vulkan_render_fwds.h>
+#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_render_types_fwds.h"
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
@@ -15,16 +15,18 @@
 struct SDL_Window;
 
 constexpr uint64_t FRAMES_IN_FLYIGNT = 3ULL;
+
 namespace agea
 {
+namespace render
+{
+
 namespace vk_utils
 {
 class descriptor_layout_cache;
 class descriptor_allocator;
 }  // namespace vk_utils
 
-namespace render
-{
 struct upload_context
 {
     VkFence m_upload_fence;
@@ -39,9 +41,6 @@ struct frame_data
 
     VkCommandPool m_command_pool;
     VkCommandBuffer m_main_command_buffer;
-
-    transit_buffer m_object_buffer;
-    transit_buffer m_dynamic_data_buffer;
 
     std::unique_ptr<vk_utils::descriptor_allocator> m_dynamic_descriptor_allocator;
 };
@@ -242,22 +241,9 @@ private:
     deinit_sync_structures();
 
     bool
-    init_pipelines();
-    bool
-    deinit_pipelines();
-
-    bool
-    init_imgui();
-    bool
-    deinit_imgui();
-
-    bool
     init_descriptors();
     bool
     deinit_descriptors();
-
-    bool
-    create_textured_pipeline();
 
     std::unique_ptr<vk_utils::descriptor_allocator> m_descriptor_allocator;
     std::unique_ptr<vk_utils::descriptor_layout_cache> m_descriptor_layout_cache;
@@ -278,8 +264,6 @@ private:
 
     VkSwapchainKHR m_swapchain;
     VkFormat m_swachain_image_format;
-
-    VkDescriptorPool m_imguiPool;
 
     std::vector<VkFramebuffer> m_framebuffers;
     std::vector<VkImage> m_swapchain_images;

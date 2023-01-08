@@ -6,19 +6,18 @@
 #include "engine/editor.h"
 #include "engine/config.h"
 
-#include <vulkan_render_types/vulkan_initializers.h>
-#include <vulkan_render_types/vulkan_texture_data.h>
-#include <vulkan_render_types/vulkan_types.h>
-#include <vulkan_render_types/vulkan_material_data.h>
-#include <vulkan_render_types/vulkan_shader_data.h>
-#include <vulkan_render_types/vulkan_mesh_data.h>
-#include <vulkan_render_types/vulkan_shader_effect_data.h>
-#include <vulkan_render_types/vulkan_render_data.h>
-
-#include <vulkan_render/vulkan_render.h>
-#include <vulkan_render/vulkan_render_loader.h>
-#include <vulkan_render/render_device.h>
-#include <vulkan_render/vk_descriptors.h>
+#include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
+#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_mesh_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/vulkan_render_data.h"
+#include "vulkan_render/vulkan_render.h"
+#include "vulkan_render/vulkan_render_loader.h"
+#include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/vk_descriptors.h"
 
 #include <model/caches/components_cache.h>
 #include <model/caches/materials_cache.h>
@@ -142,6 +141,8 @@ vulkan_engine::init()
         return false;
     }
 
+    glob::ui::getr().init();
+
     glob::vulkan_render::getr().init();
 
     init_scene();
@@ -153,6 +154,8 @@ void
 vulkan_engine::cleanup()
 {
     glob::render_device::get()->wait_for_fences();
+
+    glob::vulkan_render::getr().deinit();
 
     glob::vulkan_render_loader::get()->clear_caches();
 
@@ -175,21 +178,19 @@ vulkan_engine::run()
             break;
         }
 
-        glob::input_manager::get()->input_tick(frame_time);
         glob::game_editor::get()->on_tick(frame_time);
 
         update_cameras();
-
-        glob::ui::get()->new_frame();
+        glob::ui::get()->new_frame(frame_time);
 
         tick(frame_time);
+        glob::vulkan_render::getr().set_camera(m_camera_data);
 
         consume_updated_shader_effects();
         consume_updated_render_assets();
         consume_updated_render_components();
         consume_updated_transforms();
 
-        glob::vulkan_render::getr().set_camera(m_camera_data);
         glob::vulkan_render::getr().draw();
 
         glob::vulkan_render_loader::getr().delete_sheduled_actions();
@@ -205,7 +206,6 @@ vulkan_engine::run()
         frame_time = 0.00001f * frame_msk.count();
     }
 }
-
 void
 vulkan_engine::tick(float dt)
 {

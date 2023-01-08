@@ -1,14 +1,12 @@
 #include "vulkan_render/shader_reflection.h"
 
-#include "vulkan_render/render_device.h"
+#include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
 
 #include <utils/dynamic_object.h>
 #include <utils/string_utility.h>
 #include <utils/agea_types.h>
-
-#include <vulkan_render_types/vulkan_shader_data.h>
-#include <vulkan_render_types/vulkan_shader_effect_data.h>
-
 #include <spirv_reflect.h>
 
 namespace agea
@@ -21,11 +19,12 @@ namespace
 void
 spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_layout& dl)
 {
+    utils::dynamic_object_layout_sequence_builder sb;
+
     for (uint32_t i = 0; i < parent.member_count; ++i)
     {
         auto& member = parent.members[i];
         auto type = agea::utils::agea_type::t_nan;
-        uint32_t size = 0;
         uint32_t alligment = 0;
         uint32_t items_count = 0;
 
@@ -40,16 +39,12 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
             type = (agea::utils::agea_type)((uint32_t)::agea::utils::agea_type::t_mat2 +
                                             member.traits.numeric.matrix.column_count - 2);
 
-            size = sizeof(float) * member.traits.numeric.matrix.column_count *
-                   member.traits.numeric.matrix.column_count;
-
             alligment = 16;
             break;
         }
         case SpvOpTypeFloat:
         {
             type = agea::utils::agea_type::t_f;
-            size = sizeof(float);
             alligment = sizeof(float);
             break;
         }
@@ -57,7 +52,6 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
         {
             type = (agea::utils::agea_type)((uint32_t)::agea::utils::agea_type::t_vec2 +
                                             member.traits.numeric.vector.component_count - 2);
-            size = member.traits.numeric.vector.component_count * sizeof(float);
             alligment = 16;
             break;
         }
@@ -69,7 +63,6 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
 
             type = agea::utils::agea_type::t_f;
 
-            size = sizeof(float) * member.traits.array.dims[0];
             items_count = member.traits.array.dims[0];
 
             alligment = 16;
@@ -82,7 +75,6 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
             type = member.traits.numeric.scalar.signedness ? agea::utils::agea_type::t_i32
                                                            : agea::utils::agea_type::t_u32;
 
-            size = sizeof(uint32_t);
             alligment = sizeof(uint32_t);
 
             break;
@@ -91,8 +83,9 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
             AGEA_never("Unhendled op type");
             break;
         }
-        dl.add_field(AID(member.struct_member_name), (uint32_t)type, size, alligment, items_count);
+        sb.add_field(AID(member.struct_member_name), type, alligment, items_count);
     }
+    dl = *sb.get_obj();
 }
 
 bool

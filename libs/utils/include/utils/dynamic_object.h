@@ -1,7 +1,7 @@
 #pragma once
 
 #include "utils/id.h"
-
+#include "utils/agea_types.h"
 #include "utils/check.h"
 
 #include <vector>
@@ -47,68 +47,73 @@ struct dymamic_object_wrapper
 struct dynamic_object_field
 {
     utils::id id;
-    uint32_t type_id;
-    uint32_t offset = 0;
-    uint32_t size = 0;
-    uint32_t items_count = 0;
+    agea_type type_id;
+    uint32_t offset = 0U;
+    uint32_t size = 0U;
+    uint32_t items_count = 1U;
+};
+
+class dynamic_object_layout;
+
+class basic_dynamic_object_layout_builder
+{
+public:
+    basic_dynamic_object_layout_builder();
+
+    std::shared_ptr<dynamic_object_layout>
+    get_obj() const
+    {
+        return m_layout;
+    }
+
+private:
+    std::shared_ptr<dynamic_object_layout> m_layout;
+};
+
+class dynamic_object_layout_sequence_builder : public basic_dynamic_object_layout_builder
+{
+public:
+    void
+    add_field(const utils::id& id, agea_type type, uint32_t aligment = 4, uint32_t items_count = 1);
+};
+
+class dynamic_object_layout_random_builder : public basic_dynamic_object_layout_builder
+{
+public:
+    void
+    add_field(const utils::id& id,
+              agea_type type,
+              uint32_t offest,
+              uint32_t aligment = 4,
+              uint32_t items_count = 1);
+
+    void
+    finalize(uint32_t final_size);
 };
 
 class dynamic_object_layout
 {
 public:
-    void
-    add_field(
-        utils::id id, uint32_t type, uint32_t size, uint32_t aligment = 4, uint32_t items_count = 0)
-    {
-        dynamic_object_field field;
-        field.id = id;
-        field.type_id = type;
+    friend class dynamic_object_layout_sequence_builder;
+    friend class dynamic_object_layout_random_builder;
 
-        field.size = size < aligment ? aligment : size;
-
-        auto mod = m_size % aligment;
-
-        field.offset = mod ? (m_size + (aligment - mod)) : m_size;
-
-        m_size = field.offset + field.size;
-
-        field.items_count = items_count;
-
-        m_fields.emplace_back(field);
-    }
-
-    void
-    finalize(uint32_t alligment)
-    {
-        auto mod = m_size % alligment;
-        m_size = mod ? (m_size + (alligment - mod)) : m_size;
-    }
+    dynamic_object_layout();
+    dynamic_object_layout(bool partial_description);
 
     const utils::id&
-    get_id()
-    {
-        return m_id;
-    }
+    get_id();
 
     uint32_t
-    get_size() const
-    {
-        return m_size;
-    }
+    get_size() const;
 
     const std::vector<dynamic_object_field>&
-    get_fields()
-    {
-        return m_fields;
-    }
+    get_fields();
 
     void
-    set_id(const utils::id& id)
-    {
-        m_id = id;
-    }
+    set_id(const utils::id& id);
 
 private:
+    bool m_partial_description = false;
     utils::id m_id;
     uint32_t m_size = 0;
     std::vector<dynamic_object_field> m_fields;

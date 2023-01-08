@@ -1,16 +1,16 @@
 ﻿#pragma once
 
-#include "vulkan_render_types/vulkan_types.h"
-#include "vulkan_render_types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_gpu_types.h"
 
 #include <utils/id.h>
-#include <glm_unofficial/glm.h>
+#include <utils/dynamic_object.h>
 
 namespace agea
 {
 namespace render
 {
-struct VertexInputDescription
+struct vertex_input_description
 {
     std::vector<VkVertexInputBindingDescription> bindings;
     std::vector<VkVertexInputAttributeDescription> attributes;
@@ -18,8 +18,8 @@ struct VertexInputDescription
     VkPipelineVertexInputStateCreateFlags flags = 0;
 };
 
-VertexInputDescription
-get_vertex_description();
+render::vertex_input_description
+convert_to_vertex_input_description(agea::utils::dynamic_object_layout& dol);
 
 class mesh_data
 {
@@ -57,8 +57,8 @@ public:
     uint32_t m_vertices_size = 0U;
     uint32_t m_indices_size = 0U;
 
-    allocated_buffer m_vertexBuffer;
-    allocated_buffer m_indexBuffer;
+    allocated_buffer m_vertex_buffer;
+    allocated_buffer m_index_buffer;
 
 private:
     ::agea::utils::id m_id;

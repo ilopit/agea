@@ -1,8 +1,7 @@
 ﻿#pragma once
 
-#include "vulkan_render_types/vulkan_gpu_types.h"
-
-#include "vulkan_render_types/vulkan_generic.h"
+#include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_generic.h"
 
 #include <vulkan/vulkan.h>
 #include <vk_mem_alloc.h>
@@ -100,10 +99,10 @@ public:
 private:
     allocated_image(vma_allocator_provider a, int mips_level);
 
-    VkImage m_image;
     VmaAllocation m_allocation;
-    int mipLevels = 1;
     vma_allocator_provider m_allocator;
+    VkImage m_image;
+    int mipLevels = 1;
 };
 
 }  // namespace render

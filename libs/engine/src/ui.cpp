@@ -14,8 +14,8 @@
 
 #include <native/native_window.h>
 
-#include <vulkan_render_types/vulkan_texture_data.h>
-#include <vulkan_render/render_device.h>
+#include <vulkan_render/types/vulkan_texture_data.h>
+#include <vulkan_render/vulkan_render_device.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -55,29 +55,57 @@ ui::ui()
 
 ui::~ui()
 {
+    if (ImGui::GetCurrentContext())
+    {
+        ImGui::DestroyContext();
+    }
 }
 
 void
-ui::new_frame()
+ui::init()
 {
-    // imgui new frame
-    ImGui_ImplVulkan_NewFrame();
-    ImGui_ImplSDL2_NewFrame(::agea::glob::native_window::get()->handle());
+    // Init ImGui
+    ImGui::CreateContext();
+    ImGui_ImplSDL2_InitForSDLRenderer(glob::native_window::getr().handle(), nullptr);
+
+    // Color scheme
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.0f, 0.0f, 0.0f, 0.1f);
+    style.Colors[ImGuiCol_MenuBarBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+    style.Colors[ImGuiCol_Header] = ImVec4(0.8f, 0.0f, 0.0f, 0.4f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.8f);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
+    style.Colors[ImGuiCol_SliderGrab] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(1.0f, 1.0f, 1.0f, 0.1f);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(1.0f, 1.0f, 1.0f, 0.2f);
+    style.Colors[ImGuiCol_Button] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(1.0f, 0.0f, 0.0f, 0.6f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
+}
+
+void
+ui::new_frame(float dt)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    auto s = glob::native_window::getr().get_size();
+
+    io.DisplaySize = ImVec2(s.w, s.h);
+    io.DeltaTime = dt;
 
     ImGui::NewFrame();
-
     ImGui::ShowDemoWindow();
 
     for (auto& w : m_winodws)
     {
         w.second->handle();
     }
-}
 
-void
-ui::draw(VkCommandBuffer cmd)
-{
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+    ImGui::Render();
 }
 
 void

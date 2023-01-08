@@ -1,19 +1,19 @@
 #include "vulkan_render/vulkan_render_loader.h"
 
 #include "vulkan_render/vk_descriptors.h"
-#include "vulkan_render/render_device.h"
+#include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/vk_transit.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
 
-#include <vulkan_render_types/vulkan_mesh_data.h>
-#include <vulkan_render_types/vulkan_texture_data.h>
-#include <vulkan_render_types/vulkan_material_data.h>
-#include <vulkan_render_types/vulkan_render_data.h>
-#include <vulkan_render_types/vulkan_gpu_types.h>
-#include <vulkan_render_types/vulkan_initializers.h>
-#include <vulkan_render_types/vulkan_shader_data.h>
-#include <vulkan_render_types/vulkan_shader_effect_data.h>
+#include "vulkan_render/types/vulkan_mesh_data.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
+#include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_render_data.h"
+#include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/utils/vulkan_initializers.h"
 
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
@@ -50,7 +50,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
     imageExtent.height = static_cast<uint32_t>(texHeight);
     imageExtent.depth = 1;
 
-    VkImageCreateInfo dimg_info = utils::image_create_info(
+    VkImageCreateInfo dimg_info = vk_utils::make_image_create_info(
         image_format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, imageExtent);
 
     VmaAllocationCreateInfo dimg_allocinfo = {};
@@ -63,7 +63,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
     device->immediate_submit(
         [&](VkCommandBuffer cmd)
         {
-            VkImageSubresourceRange range;
+            VkImageSubresourceRange range{};
             range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             range.baseMipLevel = 0;
             range.levelCount = 1;
@@ -155,23 +155,6 @@ load_image_from_file_r(const std::string& file, allocated_image& outImage)
 }
 
 bool
-load_material_config(const agea::utils::path& path, agea::render::gpu_material_data& data)
-{
-    agea::serialization::conteiner c;
-    if (!serialization::read_container(path, c))
-    {
-        return false;
-    }
-
-    data.albedo = c["albedo"].as<float>();
-    data.gamma = c["gamma"].as<float>();
-    data.metallic = c["metallic"].as<float>();
-    data.roughness = c["roughness"].as<float>();
-
-    return true;
-}
-
-bool
 load_1x1_image_from_color(const std::string& color, allocated_image& outImage)
 {
     auto device = glob::render_device::get();
@@ -218,62 +201,62 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
     const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
     const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
 
-    const uint32_t bufferSize = vertex_buffer_size + index_buffer_size;
+    const uint32_t buffer_size = vertex_buffer_size + index_buffer_size;
 
     // allocate vertex buffer
-    VkBufferCreateInfo stagingBufferInfo = {};
-    stagingBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingBufferInfo.pNext = nullptr;
+    VkBufferCreateInfo staging_buffer_ci = {};
+    staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    staging_buffer_ci.pNext = nullptr;
     // this is the total size, in bytes, of the buffer we are allocating
-    stagingBufferInfo.size = bufferSize;
+    staging_buffer_ci.size = buffer_size;
     // this buffer is going to be used as a Vertex Buffer
-    stagingBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    staging_buffer_ci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
     // let the VMA library know that this data should be writeable by CPU, but also readable by
     // GPU
-    VmaAllocationCreateInfo vmaallocInfo = {};
-    vmaallocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+    VmaAllocationCreateInfo vma_alloc_ci = {};
+    vma_alloc_ci.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-    render::transit_buffer stagingBuffer(allocated_buffer::create(
-        device->get_vma_allocator_provider(), stagingBufferInfo, vmaallocInfo));
+    render::transit_buffer staging_buffer(allocated_buffer::create(
+        device->get_vma_allocator_provider(), staging_buffer_ci, vma_alloc_ci));
     // copy vertex data
 
-    stagingBuffer.begin();
+    staging_buffer.begin();
 
-    stagingBuffer.upload_data(vbv.data(), vertex_buffer_size, false);
-    stagingBuffer.upload_data(ibv.data(), index_buffer_size, false);
+    staging_buffer.upload_data(vbv.data(), vertex_buffer_size, false);
+    staging_buffer.upload_data(ibv.data(), index_buffer_size, false);
 
-    stagingBuffer.end();
+    staging_buffer.end();
 
     // allocate vertex buffer
-    VkBufferCreateInfo vertexBufferInfo = {};
-    vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    vertexBufferInfo.pNext = nullptr;
+    VkBufferCreateInfo vertex_buffer_ci = {};
+    vertex_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vertex_buffer_ci.pNext = nullptr;
     // this is the total size, in bytes, of the buffer we are allocating
-    vertexBufferInfo.size = vertex_buffer_size;
+    vertex_buffer_ci.size = vertex_buffer_size;
     // this buffer is going to be used as a Vertex Buffer
-    vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    vertex_buffer_ci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     // let the VMA library know that this data should be gpu native
-    vmaallocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    vma_alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    md->m_vertexBuffer = allocated_buffer::create(device->get_vma_allocator_provider(),
-                                                  vertexBufferInfo, vmaallocInfo);
+    md->m_vertex_buffer = allocated_buffer::create(device->get_vma_allocator_provider(),
+                                                   vertex_buffer_ci, vma_alloc_ci);
     // allocate the buffer
     if (index_buffer_size > 0)
     {
         // allocate index buffer
-        VkBufferCreateInfo indexBufferInfo = {};
-        indexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        indexBufferInfo.pNext = nullptr;
+        VkBufferCreateInfo index_buffer_ci = {};
+        index_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        index_buffer_ci.pNext = nullptr;
         // this is the total size, in bytes, of the buffer we are allocating
-        indexBufferInfo.size = index_buffer_size;
+        index_buffer_ci.size = index_buffer_size;
         // this buffer is going to be used as a index Buffer
-        indexBufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        index_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         //         // allocate the buffer
-        md->m_indexBuffer = allocated_buffer::create(device->get_vma_allocator_provider(),
-                                                     indexBufferInfo, vmaallocInfo);
+        md->m_index_buffer = allocated_buffer::create(device->get_vma_allocator_provider(),
+                                                      index_buffer_ci, vma_alloc_ci);
     }
 
     device->immediate_submit(
@@ -283,14 +266,15 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
             copy.dstOffset = 0;
             copy.srcOffset = 0;
             copy.size = vertex_buffer_size;
-            vkCmdCopyBuffer(cmd, stagingBuffer.buffer(), md->m_vertexBuffer.buffer(), 1, &copy);
+            vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_vertex_buffer.buffer(), 1, &copy);
 
             if (index_buffer_size > 0)
             {
                 copy.dstOffset = 0;
                 copy.srcOffset = vertex_buffer_size;
                 copy.size = index_buffer_size;
-                vkCmdCopyBuffer(cmd, stagingBuffer.buffer(), md->m_indexBuffer.buffer(), 1, &copy);
+                vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1,
+                                &copy);
             }
         });
 
@@ -313,29 +297,29 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    allocated_buffer stagingBuffer = device->create_buffer(
+    allocated_buffer staging_buffer = device->create_buffer(
         base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* data = nullptr;
-    vmaMapMemory(device->allocator(), stagingBuffer.allocation(), &data);
+    vmaMapMemory(device->allocator(), staging_buffer.allocation(), &data);
     memcpy(data, base_color.data(), (size_t)base_color.size());
-    vmaUnmapMemory(device->allocator(), stagingBuffer.allocation());
+    vmaUnmapMemory(device->allocator(), staging_buffer.allocation());
 
-    td->image = upload_image(w, h, image_format, stagingBuffer);
+    td->image = upload_image(w, h, image_format, staging_buffer);
 
-    VkImageViewCreateInfo imageinfo = utils::imageview_create_info(
+    VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
         VK_FORMAT_R8G8B8A8_UNORM, td->image.image(), VK_IMAGE_ASPECT_COLOR_BIT);
-    imageinfo.subresourceRange.levelCount = td->image.get_mip_levels();
-    vkCreateImageView(device->vk_device(), &imageinfo, nullptr, &td->image_view);
+    image_info.subresourceRange.levelCount = td->image.get_mip_levels();
+    vkCreateImageView(device->vk_device(), &image_info, nullptr, &td->image_view);
 
-    VkDescriptorImageInfo imageBufferInfo{};
-    imageBufferInfo.sampler = device->sampler("default");
-    imageBufferInfo.imageView = td->image_view;
-    imageBufferInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    VkDescriptorImageInfo image_buffer_info{};
+    image_buffer_info.sampler = device->sampler("default");
+    image_buffer_info.imageView = td->image_view;
+    image_buffer_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                         device->descriptor_allocator())
-        .bind_image(0, &imageBufferInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        .bind_image(0, &image_buffer_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(td->descriptor_set);
 
@@ -393,7 +377,7 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
     auto device = glob::render_device::get();
 
     auto mtt_id = generate_mtt_id(type_id);
-    auto mt_idx = generate_mtt_id(type_id);
+    auto mt_idx = generate_mt_idx(type_id);
 
     auto data = std::make_shared<material_data>(id, mtt_id, mt_idx);
 
@@ -425,16 +409,18 @@ vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
                                            bool is_frag_binary,
                                            bool is_wire,
                                            bool enable_alpha,
-                                           VkRenderPass render_path)
+                                           bool enable_dynamic_state,
+                                           VkRenderPass render_path,
+                                           vertex_input_description& input_description)
 {
     AGEA_check(!get_shader_data(id), "should never happens");
 
     auto device = glob::render_device::get();
     auto effect = std::make_shared<shader_effect_data>(id, device->get_vk_device_provider());
 
-    if (!vulkan_shader_loader::create_shader_effect(*effect, vert_buffer, is_vert_binary,
-                                                    frag_buffer, is_frag_binary, is_wire,
-                                                    enable_alpha, render_path))
+    if (!vulkan_shader_loader::create_shader_effect(
+            *effect, vert_buffer, is_vert_binary, frag_buffer, is_frag_binary, is_wire,
+            enable_alpha, enable_dynamic_state, render_path, input_description))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
@@ -452,7 +438,9 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
                                            bool is_frag_binary,
                                            bool is_wire,
                                            bool enable_alpha,
-                                           VkRenderPass render_path)
+                                           bool enable_dynamic_state,
+                                           VkRenderPass render_path,
+                                           vertex_input_description& input_description)
 {
     AGEA_check(get_shader_data(se_data.get_id()), "should never happens");
 
@@ -464,9 +452,9 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
 
     std::shared_ptr<render::shader_effect_data> old_se_data;
 
-    if (!vulkan_shader_loader::update_shader_effect(se_data, vert_buffer, is_vert_binary,
-                                                    frag_buffer, is_frag_binary, is_wire,
-                                                    enable_alpha, render_path, old_se_data))
+    if (!vulkan_shader_loader::update_shader_effect(
+            se_data, vert_buffer, is_vert_binary, frag_buffer, is_frag_binary, is_wire,
+            enable_alpha, enable_dynamic_state, render_path, old_se_data, input_description))
     {
         ALOG_LAZY_ERROR;
         return false;

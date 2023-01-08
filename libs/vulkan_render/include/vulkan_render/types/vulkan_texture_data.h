@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_types.h"
 
 #include <utils/id.h>
 
@@ -20,6 +20,12 @@ public:
     texture_data(const ::agea::utils::id& id, vk_device_provider dbp);
     ~texture_data();
 
+    const ::agea::utils::id&
+    get_id() const
+    {
+        return m_id;
+    }
+
     texture_data(const texture_data&) = delete;
     texture_data(texture_data&&) = delete;
     texture_data&
@@ -31,12 +37,6 @@ public:
     VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
     allocated_image image;
     texture_format format = texture_format::unknown;
-
-    const ::agea::utils::id&
-    get_id() const
-    {
-        return m_id;
-    }
 
 private:
     ::agea::utils::id m_id;

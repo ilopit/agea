@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vulkan_render_types/vulkan_gpu_types.h>
-#include <vulkan_render_types/vulkan_render_fwds.h>
+#include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_render_types_fwds.h"
 
 #include <utils/buffer.h>
 #include <utils/id.h>
@@ -92,7 +92,9 @@ public:
                          bool is_frag_binary,
                          bool is_wire,
                          bool enable_alpha,
-                         VkRenderPass render_path);
+                         bool enable_dynamic_state,
+                         VkRenderPass render_path,
+                         vertex_input_description& inout_description);
 
     bool
     update_shader_effect(shader_effect_data& se_data,
@@ -102,7 +104,9 @@ public:
                          bool is_frag_binary,
                          bool is_wire,
                          bool enable_alpha,
-                         VkRenderPass render_path);
+                         bool enable_dynamic_state,
+                         VkRenderPass render_path,
+                         vertex_input_description& input_description);
 
     void
     clear_caches();

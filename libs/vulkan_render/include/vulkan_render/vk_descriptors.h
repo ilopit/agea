@@ -1,12 +1,14 @@
 ﻿#pragma once
 
-#include "vulkan_render_types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_types.h"
 
 #include <vector>
 #include <array>
 #include <unordered_map>
 
 namespace agea
+{
+namespace render
 {
 namespace vk_utils
 {
@@ -31,49 +33,54 @@ public:
 
     void
     reset_pools();
+
     bool
     allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);
 
     void
-    init(VkDevice newDevice);
+    init(VkDevice new_device);
 
     void
     cleanup();
 
-    VkDevice device;
+    VkDevice
+    device()
+    {
+        return m_device;
+    }
 
 private:
     VkDescriptorPool
     grab_pool();
 
-    VkDescriptorPool currentPool{VK_NULL_HANDLE};
-    pool_sizes descriptorSizes;
-    std::vector<VkDescriptorPool> usedPools;
-    std::vector<VkDescriptorPool> freePools;
+    VkDevice m_device = VK_NULL_HANDLE;
+    VkDescriptorPool m_current_pool = VK_NULL_HANDLE;
+    pool_sizes m_descriptor_sizes;
+    std::vector<VkDescriptorPool> m_used_pools;
+    std::vector<VkDescriptorPool> m_free_pools;
 };
 
 class descriptor_layout_cache
 {
 public:
-    void
-    init(VkDevice newDevice);
-    void
-    cleanup();
-
-    VkDescriptorSetLayout
-    create_descriptor_layout(VkDescriptorSetLayoutCreateInfo* info);
-
     struct descriptor_layout_info
     {
-        // good idea to turn this into a inlined array
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-
         bool
         operator==(const descriptor_layout_info& other) const;
 
         size_t
         hash() const;
+
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
     };
+
+    void
+    init(VkDevice new_device);
+    void
+    cleanup();
+
+    VkDescriptorSetLayout
+    create_descriptor_layout(VkDescriptorSetLayoutCreateInfo* info);
 
 private:
     struct descriptor_layout_hash
@@ -87,7 +94,7 @@ private:
 
     std::unordered_map<descriptor_layout_info, VkDescriptorSetLayout, descriptor_layout_hash>
         m_layout_cache;
-    VkDevice device;
+    VkDevice m_device;
 };
 
 class descriptor_builder
@@ -98,15 +105,15 @@ public:
 
     descriptor_builder&
     bind_buffer(uint32_t binding,
-                VkDescriptorBufferInfo* bufferInfo,
+                VkDescriptorBufferInfo* buffer_info,
                 VkDescriptorType type,
-                VkShaderStageFlags stageFlags);
+                VkShaderStageFlags stage_flags);
 
     descriptor_builder&
     bind_image(uint32_t binding,
-               VkDescriptorImageInfo* imageInfo,
+               VkDescriptorImageInfo* image_info,
                VkDescriptorType type,
-               VkShaderStageFlags stageFlags);
+               VkShaderStageFlags stage_flags);
 
     bool
     build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
@@ -114,12 +121,13 @@ public:
     build(VkDescriptorSet& set);
 
 private:
-    std::vector<VkWriteDescriptorSet> writes;
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    std::vector<VkWriteDescriptorSet> m_writes;
+    std::vector<VkDescriptorSetLayoutBinding> m_bindings;
 
-    descriptor_layout_cache* cache;
-    descriptor_allocator* alloc;
+    descriptor_layout_cache* m_cache = nullptr;
+    descriptor_allocator* m_alloc = nullptr;
 };
 }  // namespace vk_utils
+}  // namespace render
 
 }  // namespace agea

@@ -8,7 +8,7 @@ target_link_libraries(asset_importer PUBLIC
     agea::utils
     agea::serialization
     agea::stb_unofficial
-    agea::vulkan_render_types
+    agea::vulkan_render
     agea::model
 
     tinyobjloader

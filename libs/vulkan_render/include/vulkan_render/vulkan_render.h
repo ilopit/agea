@@ -1,8 +1,10 @@
 #pragma once
 
-#include <vulkan_render_types/vulkan_render_data.h>
-#include <vulkan_render_types/vulkan_types.h>
-#include <vulkan_render_types/vulkan_gpu_types.h>
+#include "vulkan_render/types/vulkan_render_data.h"
+#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/vk_transit.h"
 
 #include <resource_locator/resource_locator.h>
 
@@ -25,16 +27,14 @@ class vulkan_render_loader;
 class render_device;
 struct frame_data;
 class shader_effect_data;
-class transit_buffer;
-}  // namespace render
 
-using render_line_conteiner = utils::line_conteiner<render::object_data*>;
+using render_line_conteiner = ::agea::utils::line_conteiner<render::object_data*>;
 
-using materials_update_queue = utils::line_conteiner<render::material_data*>;
-using materials_update_queue_set = utils::line_conteiner<materials_update_queue>;
-using objects_update_queue = utils::line_conteiner<render::object_data*>;
+using materials_update_queue = ::agea::utils::line_conteiner<render::material_data*>;
+using materials_update_queue_set = ::agea::utils::line_conteiner<materials_update_queue>;
+using objects_update_queue = ::agea::utils::line_conteiner<render::object_data*>;
 
-struct gpu_transfer_data
+struct frame_state
 {
     bool
     has_data() const
@@ -47,9 +47,20 @@ struct gpu_transfer_data
     {
         has_materials = false;
     }
+
+    transit_buffer m_object_buffer;
+    transit_buffer m_dynamic_data_buffer;
+
+    transit_buffer m_ui_vertex_buffer;
+    transit_buffer m_ui_index_buffer;
+    int32_t m_ui_vertex_count = 0;
+    int32_t m_ui_index_count = 0;
+
     objects_update_queue m_objects_queue;
     materials_update_queue_set m_materias_queue_set;
+
     bool has_materials = false;
+    frame_data* frame = nullptr;
 };
 
 class vulkan_render
@@ -61,20 +72,14 @@ public:
     void
     init();
 
-    void set_camera(render::gpu_camera_data);
+    void
+    deinit();
+
+    void
+    set_camera(render::gpu_camera_data d);
 
     void
     draw();
-    void
-    draw_new_objects(VkCommandBuffer cmd, render::frame_data& frame);
-
-    void
-    draw_objects(render_line_conteiner& r,
-                 VkCommandBuffer cmd,
-                 render::transit_buffer& obj_tb,
-                 VkDescriptorSet obj_ds,
-                 render::transit_buffer& dyn_tb,
-                 VkDescriptorSet global_ds);
 
     void
     add_object(render::object_data* obj_data);
@@ -90,7 +95,18 @@ public:
     void
     update_ssbo_data_ranges(render::gpu_data_index_type range_id);
 
-    // private:
+private:
+    void
+    draw_new_objects(render::frame_state& frame);
+
+    void
+    draw_objects(render_line_conteiner& r,
+                 VkCommandBuffer cmd,
+                 render::transit_buffer& obj_tb,
+                 VkDescriptorSet obj_ds,
+                 render::transit_buffer& dyn_tb,
+                 VkDescriptorSet global_ds);
+
     void
     update_gpu_object_data(render::gpu_object_data* object_SSBO);
 
@@ -100,24 +116,50 @@ public:
     void
     update_transparent_objects_queue();
 
-    gpu_transfer_data&
+    frame_state&
     get_current_frame_transfer_data();
+
+    void
+    prepare_ui_pipeline();
+    void
+    prepare_ui_resources();
+
+    void
+    update_ui(frame_state& cmd);
+    void
+    draw_ui(frame_state& cmd);
+    void
+    resize(uint32_t width, uint32_t height);
 
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
-    std::unordered_map<std::string, render_line_conteiner> m_default_render_objec_queue;
+    std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
     render_line_conteiner m_transparent_render_object_queue;
 
-    std::vector<gpu_transfer_data> m_transfer_queue;
+    std::vector<frame_state> m_frames;
     agea::utils::line_conteiner<std::pair<uint32_t, uint32_t>> m_ssbo_range;
+
+    // UI
+
+    render::shader_effect_data* m_ui_se = nullptr;
+    render::texture_data* m_ui_txt = nullptr;
+
+    struct ui_push_constants
+    {
+        glm::vec2 scale;
+        glm::vec2 translate;
+    };
+
+    ui_push_constants m_ui_push_constants;
 };
+}  // namespace render
 
 namespace glob
 {
-struct vulkan_render : public singleton_instance<::agea::vulkan_render, vulkan_render>
+struct vulkan_render : public singleton_instance<::agea::render::vulkan_render, vulkan_render>
 {
 };
 }  // namespace glob

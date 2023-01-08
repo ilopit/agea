@@ -1,59 +1,65 @@
 #include "vulkan_render/vk_pipeline_builder.h"
 
-VkPipeline
-pipeline_builder::build_pipeline(VkDevice device, VkRenderPass pass)
+namespace agea::render::vk_utils
 {
-    // make viewport state from our stored viewport and scissor.
-    // at the moment we wont support multiple viewports or scissors
-    VkPipelineViewportStateCreateInfo vs = {};
-    vs.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vs.pNext = nullptr;
+VkPipeline
+pipeline_builder::build(VkDevice device, VkRenderPass pass)
+{
+    VkPipelineViewportStateCreateInfo viewport_state_ci = {};
+    viewport_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_state_ci.pNext = nullptr;
 
-    vs.viewportCount = 1;
-    vs.pViewports = &m_viewport;
-    vs.scissorCount = 1;
-    vs.pScissors = &m_scissor;
+    viewport_state_ci.viewportCount = 1;
+    viewport_state_ci.pViewports = &m_viewport;
+    viewport_state_ci.scissorCount = 1;
+    viewport_state_ci.pScissors = &m_scissor;
 
-    // setup dummy color blending. We arent using transparent objects yet
-    // the blending is just "no blend", but we do write to the color attachment
-    VkPipelineColorBlendStateCreateInfo cb = {};
-    cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    cb.pNext = nullptr;
+    VkPipelineColorBlendStateCreateInfo color_blend_state_ci = {};
+    color_blend_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blend_state_ci.pNext = nullptr;
+    color_blend_state_ci.logicOpEnable = VK_FALSE;
+    color_blend_state_ci.logicOp = VK_LOGIC_OP_COPY;
+    color_blend_state_ci.attachmentCount = 1;
+    color_blend_state_ci.pAttachments = &m_color_blend_attachment;
 
-    cb.logicOpEnable = VK_FALSE;
-    cb.logicOp = VK_LOGIC_OP_COPY;
-    cb.attachmentCount = 1;
-    cb.pAttachments = &m_color_blend_attachment;
+    VkGraphicsPipelineCreateInfo pipeline_ci = {};
+    pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipeline_ci.pColorBlendState = &color_blend_state_ci;
+    pipeline_ci.pNext = nullptr;
+    pipeline_ci.pViewportState = &viewport_state_ci;
 
-    // build the actual pipeline
-    // we now use all of the info structs we have been writing into into this one to create the
-    // pipeline
-    VkGraphicsPipelineCreateInfo pi = {};
-    pi.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pi.pNext = nullptr;
+    if (!m_dynamic_state_enables.empty())
+    {
+        m_dynamic_state_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        m_dynamic_state_ci.pDynamicStates = m_dynamic_state_enables.data();
+        m_dynamic_state_ci.dynamicStateCount =
+            static_cast<uint32_t>(m_dynamic_state_enables.size());
+        m_dynamic_state_ci.flags = 0;
 
-    pi.stageCount = (uint32_t)m_shader_stages.size();
-    pi.pStages = m_shader_stages.data();
-    pi.pVertexInputState = &m_vertex_input_info;
-    pi.pInputAssemblyState = &m_input_assembly;
-    pi.pViewportState = &vs;
-    pi.pRasterizationState = &m_rasterizer;
-    pi.pMultisampleState = &m_multisampling;
-    pi.pColorBlendState = &cb;
-    pi.pDepthStencilState = &m_depth_stencil;
-    pi.layout = m_pipelineLayout;
-    pi.renderPass = pass;
-    pi.subpass = 0;
-    pi.basePipelineHandle = VK_NULL_HANDLE;
+        pipeline_ci.pDynamicState = &m_dynamic_state_ci;
+    }
 
-    VkPipeline new_pipeline;
-    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pi, nullptr, &new_pipeline) !=
+    pipeline_ci.stageCount = (uint32_t)m_shader_stages_ci.size();
+    pipeline_ci.pStages = m_shader_stages_ci.data();
+    pipeline_ci.pVertexInputState = &m_vertex_input_info_ci;
+    pipeline_ci.pInputAssemblyState = &m_input_assembly_ci;
+    pipeline_ci.pRasterizationState = &m_rasterizer_ci;
+    pipeline_ci.pMultisampleState = &m_multisampling_ci;
+    pipeline_ci.pDepthStencilState = &m_depth_stencil_ci;
+    pipeline_ci.layout = m_pipeline_layout;
+    pipeline_ci.renderPass = pass;
+    pipeline_ci.subpass = 0;
+    pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;
+
+    VkPipeline pipeline;
+    if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &pipeline) !=
         VK_SUCCESS)
     {
         return VK_NULL_HANDLE;  // failed to create graphics pipeline
     }
     else
     {
-        return new_pipeline;
+        return pipeline;
     }
 }
+}  // namespace agea::render::vk_utils
