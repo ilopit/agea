@@ -53,7 +53,8 @@ public:
     create_texture(const agea::utils::id& texture_id,
                    const agea::utils::buffer& base_color,
                    uint32_t w,
-                   uint32_t h);
+                   uint32_t h,
+                   const agea::utils::id& sampler_id = AID("default"));
 
     object_data*
     create_object(const agea::utils::id& id,
@@ -108,6 +109,9 @@ public:
                          VkRenderPass render_path,
                          vertex_input_description& input_description);
 
+    sampler_data*
+    create_sampler(const agea::utils::id& id, VkBorderColor color);
+
     void
     clear_caches();
 
@@ -157,6 +161,12 @@ public:
         return get_data<object_data>(m_objects_cache, id);
     }
 
+    sampler_data*
+    get_sampler_data(const agea::utils::id& id)
+    {
+        return get_data<sampler_data>(m_samplers_cache, id);
+    }
+
     void
     delete_sheduled_actions();
 
@@ -196,14 +206,15 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<object_data>> m_objects_cache;
+    std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
+
+    std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
+    std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_type_ids;
 
     std::priority_queue<deleyer_delete_action,
                         std::vector<deleyer_delete_action>,
                         deleyer_delete_action_compare>
         m_ddq;
-
-    std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
-    std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_type_ids;
 
     gpu_data_index_type m_new_object_index = 0U;
     gpu_data_index_type m_last_mtt_id = 0U;

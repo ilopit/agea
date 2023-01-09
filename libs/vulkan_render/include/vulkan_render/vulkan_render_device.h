@@ -1,9 +1,9 @@
 #pragma once
 
-#include "vk_transit.h"
-
-#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_generic.h"
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
+#include "vulkan_render/utils/vulkan_buffer.h"
+#include "vulkan_render/utils/vulkan_image.h"
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
@@ -116,10 +116,10 @@ public:
     uint32_t
     pad_uniform_buffer_size(uint32_t originalSize);
 
-    allocated_buffer
-    create_buffer(size_t allocSize,
+    vk_utils::vulkan_buffer
+    create_buffer(size_t alloc_size,
                   VkBufferUsageFlags usage,
-                  VmaMemoryUsage memoryUsage,
+                  VmaMemoryUsage memory_usage,
                   VkMemoryPropertyFlags required_flags = 0);
 
     vk_utils::descriptor_allocator*
@@ -189,12 +189,6 @@ public:
         return m_swapchain;
     }
 
-    VkSampler
-    sampler(const std::string& id)
-    {
-        return m_samplers.at(id);
-    }
-
     vk_device_provider
     get_vk_device_provider();
 
@@ -214,11 +208,6 @@ private:
     init_swapchain();
     bool
     deinit_swapchain();
-
-    void
-    init_samplers();
-    void
-    deinit_samplers();
 
     bool
     init_default_renderpass();
@@ -273,13 +262,10 @@ private:
 
     // depth resources
     std::vector<VkImageView> m_depth_image_views;
-    std::vector<allocated_image> m_depth_images;
+    std::vector<vk_utils::vulkan_image> m_depth_images;
 
     // the format for the depth image
     VkFormat m_depth_format;
-
-    // TODO, move
-    std::unordered_map<std::string, VkSampler> m_samplers;
 
     uint64_t m_current_frame_number = UINT64_MAX;
     uint64_t m_current_frame_index = 0ULL;

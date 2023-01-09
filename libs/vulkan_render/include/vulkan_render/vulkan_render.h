@@ -1,10 +1,9 @@
 #pragma once
 
 #include "vulkan_render/types/vulkan_render_data.h"
-#include "vulkan_render/types/vulkan_types.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
-#include "vulkan_render/types/vulkan_types.h"
-#include "vulkan_render/vk_transit.h"
+#include "vulkan_render/utils/vulkan_buffer.h"
+#include "vulkan_render/utils/vulkan_image.h"
 
 #include <resource_locator/resource_locator.h>
 
@@ -48,11 +47,12 @@ struct frame_state
         has_materials = false;
     }
 
-    transit_buffer m_object_buffer;
-    transit_buffer m_dynamic_data_buffer;
+    vk_utils::vulkan_buffer m_object_buffer;
+    vk_utils::vulkan_buffer m_dynamic_data_buffer;
 
-    transit_buffer m_ui_vertex_buffer;
-    transit_buffer m_ui_index_buffer;
+    vk_utils::vulkan_buffer m_ui_vertex_buffer;
+    vk_utils::vulkan_buffer m_ui_index_buffer;
+
     int32_t m_ui_vertex_count = 0;
     int32_t m_ui_index_count = 0;
 
@@ -102,9 +102,9 @@ private:
     void
     draw_objects(render_line_conteiner& r,
                  VkCommandBuffer cmd,
-                 render::transit_buffer& obj_tb,
+                 vk_utils::vulkan_buffer& obj_tb,
                  VkDescriptorSet obj_ds,
-                 render::transit_buffer& dyn_tb,
+                 vk_utils::vulkan_buffer& dyn_tb,
                  VkDescriptorSet global_ds);
 
     void
@@ -119,6 +119,8 @@ private:
     frame_state&
     get_current_frame_transfer_data();
 
+    void
+    prepare_system_resources();
     void
     prepare_ui_pipeline();
     void

@@ -3,7 +3,6 @@
 #include "scene_builder.h"
 
 #include <vulkan_render/types/vulkan_render_data.h>
-#include <vulkan_render/types/vulkan_types.h>
 #include <vulkan_render/types/vulkan_gpu_types.h>
 
 #include <resource_locator/resource_locator.h>
@@ -14,7 +13,6 @@
 
 #include <model/model_fwds.h>
 
-#include <algorithm>
 #include <vector>
 #include <functional>
 #include <memory>
@@ -38,7 +36,6 @@ class cli;
 
 namespace render
 {
-
 class vulkan_render_loader;
 class render_device;
 struct frame_data;

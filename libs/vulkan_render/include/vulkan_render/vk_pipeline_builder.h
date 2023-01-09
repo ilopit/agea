@@ -1,6 +1,6 @@
 #pragma once
 
-#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/types/vulkan_generic.h"
 
 namespace agea::render::vk_utils
 {

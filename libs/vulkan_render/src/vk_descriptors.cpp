@@ -1,41 +1,50 @@
 ﻿#include "vulkan_render/vk_descriptors.h"
 
+#include "vulkan_render/vulkan_render_device.h"
+
 #include <algorithm>
 
 namespace agea::render::vk_utils
 {
+
+namespace
+{
+const uint32_t SETS_COUNT = 64;
 VkDescriptorPool
-createPool(VkDevice d,
-           const descriptor_allocator::pool_sizes& pool_sizes,
-           int count,
-           VkDescriptorPoolCreateFlags flags)
+create_pool(const descriptor_allocator::pool_sizes_mapping& pool_sizes,
+            uint32_t sets_count,
+            VkDescriptorPoolCreateFlags flags)
 {
     std::vector<VkDescriptorPoolSize> sizes;
-    sizes.reserve(pool_sizes.sizes.size());
-    for (const auto& [f, s] : pool_sizes.sizes)
+    sizes.reserve(pool_sizes.size());
+    for (const auto& [f, s] : pool_sizes)
     {
-        sizes.push_back({f, uint32_t(s * count)});
+        sizes.push_back({f, uint32_t(s * sets_count)});
     }
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pool_info.flags = flags;
-    pool_info.maxSets = count;
+    pool_info.maxSets = sets_count;
     pool_info.poolSizeCount = (uint32_t)sizes.size();
     pool_info.pPoolSizes = sizes.data();
 
+    auto device = glob::render_device::getr().vk_device();
     VkDescriptorPool pool;
-    vkCreateDescriptorPool(d, &pool_info, nullptr, &pool);
+    vkCreateDescriptorPool(device, &pool_info, nullptr, &pool);
 
     return pool;
 }
+}  // namespace
 
 void
 descriptor_allocator::reset_pools()
 {
+    auto device = glob::render_device::getr().vk_device();
+
     for (auto p : m_used_pools)
     {
-        vkResetDescriptorPool(m_device, p, 0);
+        vkResetDescriptorPool(device, p, 0);
     }
 
     m_free_pools = m_used_pools;
@@ -60,7 +69,8 @@ descriptor_allocator::allocate(VkDescriptorSet* set, VkDescriptorSetLayout layou
     descriptor_ai.descriptorPool = m_current_pool;
     descriptor_ai.descriptorSetCount = 1;
 
-    VkResult alloc_result = vkAllocateDescriptorSets(m_device, &descriptor_ai, set);
+    auto device = glob::render_device::getr().vk_device();
+    VkResult alloc_result = vkAllocateDescriptorSets(device, &descriptor_ai, set);
     bool is_reallocate_needed = false;
 
     switch (alloc_result)
@@ -86,7 +96,7 @@ descriptor_allocator::allocate(VkDescriptorSet* set, VkDescriptorSetLayout layou
         m_current_pool = grab_pool();
         m_used_pools.push_back(m_current_pool);
 
-        alloc_result = vkAllocateDescriptorSets(m_device, &descriptor_ai, set);
+        alloc_result = vkAllocateDescriptorSets(device, &descriptor_ai, set);
 
         // if it still fails then we have big issues
         if (alloc_result == VK_SUCCESS)
@@ -99,22 +109,18 @@ descriptor_allocator::allocate(VkDescriptorSet* set, VkDescriptorSetLayout layou
 }
 
 void
-descriptor_allocator::init(VkDevice new_device)
-{
-    m_device = new_device;
-}
-
-void
 descriptor_allocator::cleanup()
 {
+    auto device = glob::render_device::getr().vk_device();
+
     // delete every pool held
     for (auto p : m_free_pools)
     {
-        vkDestroyDescriptorPool(m_device, p, nullptr);
+        vkDestroyDescriptorPool(device, p, nullptr);
     }
     for (auto p : m_used_pools)
     {
-        vkDestroyDescriptorPool(m_device, p, nullptr);
+        vkDestroyDescriptorPool(device, p, nullptr);
     }
 }
 
@@ -129,14 +135,26 @@ descriptor_allocator::grab_pool()
     }
     else
     {
-        return createPool(m_device, m_descriptor_sizes, 100, 0);
+        return create_pool(m_descriptor_sizes, 64, 0);
     }
 }
 
-void
-descriptor_layout_cache::init(VkDevice new_device)
+descriptor_allocator::pool_sizes_mapping
+descriptor_allocator::get_default_pool_size()
 {
-    m_device = new_device;
+    pool_sizes_mapping result = {{VK_DESCRIPTOR_TYPE_SAMPLER, 0.5f},
+                                 {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f},
+                                 {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f},
+                                 {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f},
+                                 {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f},
+                                 {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f},
+                                 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2.f},
+                                 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2.f},
+                                 {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f},
+                                 {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1.f},
+                                 {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f}};
+
+    return result;
 }
 
 VkDescriptorSetLayout
@@ -175,7 +193,8 @@ descriptor_layout_cache::create_descriptor_layout(VkDescriptorSetLayoutCreateInf
     else
     {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-        vkCreateDescriptorSetLayout(m_device, info, nullptr, &layout);
+        auto device = glob::render_device::getr().vk_device();
+        vkCreateDescriptorSetLayout(device, info, nullptr, &layout);
 
         m_layout_cache[layout_info] = layout;
         return layout;
@@ -187,7 +206,8 @@ descriptor_layout_cache::cleanup()
 {
     for (const auto& pair : m_layout_cache)
     {
-        vkDestroyDescriptorSetLayout(m_device, pair.second, nullptr);
+        auto device = glob::render_device::getr().vk_device();
+        vkDestroyDescriptorSetLayout(device, pair.second, nullptr);
     }
 }
 
@@ -285,8 +305,8 @@ descriptor_builder::build(VkDescriptorSet& set, VkDescriptorSetLayout& layout)
         w.dstSet = set;
     }
 
-    vkUpdateDescriptorSets(m_alloc->device(), (uint32_t)m_writes.size(), m_writes.data(), 0,
-                           nullptr);
+    auto device = glob::render_device::getr().vk_device();
+    vkUpdateDescriptorSets(device, (uint32_t)m_writes.size(), m_writes.data(), 0, nullptr);
 
     return true;
 }

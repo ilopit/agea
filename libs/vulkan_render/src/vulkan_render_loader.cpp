@@ -3,8 +3,8 @@
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vk_pipeline_builder.h"
-#include "vulkan_render/vk_transit.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
+#include "vulkan_render/utils/vulkan_initializers.h"
 
 #include "vulkan_render/types/vulkan_mesh_data.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
@@ -13,7 +13,7 @@
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
-#include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/types/vulkan_sampler_data.h"
 
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
@@ -40,8 +40,11 @@ namespace render
 
 namespace
 {
-allocated_image
-upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffer& stagingBuffer)
+vk_utils::vulkan_image
+upload_image(int texWidth,
+             int texHeight,
+             VkFormat image_format,
+             vk_utils::vulkan_buffer& stagingBuffer)
 {
     auto device = glob::render_device::get();
 
@@ -56,8 +59,8 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
     VmaAllocationCreateInfo dimg_allocinfo = {};
     dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    allocated_image newImage =
-        allocated_image::create(device->get_vma_allocator_provider(), dimg_info, dimg_allocinfo, 1);
+    auto new_image = vk_utils::vulkan_image::create(device->get_vma_allocator_provider(), dimg_info,
+                                                    dimg_allocinfo, 1);
 
     // transition image to transfer-receiver
     device->immediate_submit(
@@ -75,7 +78,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
 
             imageBarrier_toTransfer.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             imageBarrier_toTransfer.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageBarrier_toTransfer.image = newImage.image();
+            imageBarrier_toTransfer.image = new_image.image();
             imageBarrier_toTransfer.subresourceRange = range;
 
             imageBarrier_toTransfer.srcAccessMask = 0;
@@ -98,7 +101,7 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
             copyRegion.imageExtent = imageExtent;
 
             // copy the buffer into the image
-            vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer(), newImage.image(),
+            vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer(), new_image.image(),
                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
             VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
@@ -115,10 +118,10 @@ upload_image(int texWidth, int texHeight, VkFormat image_format, allocated_buffe
                                  1, &imageBarrier_toReadable);
         });
 
-    return newImage;
+    return new_image;
 }
 bool
-load_image_from_file_r(const std::string& file, allocated_image& outImage)
+load_image_from_file_r(const std::string& file, vk_utils::vulkan_image& outImage)
 {
     auto device = glob::render_device::get();
 
@@ -137,8 +140,8 @@ load_image_from_file_r(const std::string& file, allocated_image& outImage)
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    allocated_buffer stagingBuffer = device->create_buffer(
-        imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    auto stagingBuffer = device->create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                               VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* data;
     vmaMapMemory(device->allocator(), stagingBuffer.allocation(), &data);
@@ -155,7 +158,7 @@ load_image_from_file_r(const std::string& file, allocated_image& outImage)
 }
 
 bool
-load_1x1_image_from_color(const std::string& color, allocated_image& outImage)
+load_1x1_image_from_color(const std::string& color, vk_utils::vulkan_image& outImage)
 {
     auto device = glob::render_device::get();
 
@@ -168,7 +171,7 @@ load_1x1_image_from_color(const std::string& color, allocated_image& outImage)
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    allocated_buffer stagingBuffer =
+    auto stagingBuffer =
         device->create_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* data = nullptr;
@@ -217,8 +220,8 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
     VmaAllocationCreateInfo vma_alloc_ci = {};
     vma_alloc_ci.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-    render::transit_buffer staging_buffer(allocated_buffer::create(
-        device->get_vma_allocator_provider(), staging_buffer_ci, vma_alloc_ci));
+    auto staging_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
+                                                          staging_buffer_ci, vma_alloc_ci);
     // copy vertex data
 
     staging_buffer.begin();
@@ -240,8 +243,8 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
     // let the VMA library know that this data should be gpu native
     vma_alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    md->m_vertex_buffer = allocated_buffer::create(device->get_vma_allocator_provider(),
-                                                   vertex_buffer_ci, vma_alloc_ci);
+    md->m_vertex_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
+                                                          vertex_buffer_ci, vma_alloc_ci);
     // allocate the buffer
     if (index_buffer_size > 0)
     {
@@ -255,8 +258,8 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
         index_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         //         // allocate the buffer
-        md->m_index_buffer = allocated_buffer::create(device->get_vma_allocator_provider(),
-                                                      index_buffer_ci, vma_alloc_ci);
+        md->m_index_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
+                                                             index_buffer_ci, vma_alloc_ci);
     }
 
     device->immediate_submit(
@@ -287,7 +290,8 @@ texture_data*
 vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
                                      const agea::utils::buffer& base_color,
                                      uint32_t w,
-                                     uint32_t h)
+                                     uint32_t h,
+                                     const agea::utils::id& sampler_id)
 {
     AGEA_check(!get_texture_data(texture_id), "should never happens");
 
@@ -297,8 +301,8 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    allocated_buffer staging_buffer = device->create_buffer(
-        base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    auto staging_buffer = device->create_buffer(base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* data = nullptr;
     vmaMapMemory(device->allocator(), staging_buffer.allocation(), &data);
@@ -312,8 +316,10 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
     image_info.subresourceRange.levelCount = td->image.get_mip_levels();
     vkCreateImageView(device->vk_device(), &image_info, nullptr, &td->image_view);
 
+    auto sampler = get_sampler_data(sampler_id);
+
     VkDescriptorImageInfo image_buffer_info{};
-    image_buffer_info.sampler = device->sampler("default");
+    image_buffer_info.sampler = sampler->m_sampler;
     image_buffer_info.imageView = td->image_view;
     image_buffer_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -384,6 +390,29 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
     update_material(*data, t_data, se_data, gpu_params);
 
     m_materials_cache[id] = data;
+
+    return data.get();
+}
+
+sampler_data*
+vulkan_render_loader::create_sampler(const agea::utils::id& id, VkBorderColor color)
+{
+    AGEA_check(!get_sampler_data(id), "Shouldn't exist");
+
+    auto device = glob::render_device::get();
+
+    VkSamplerCreateInfo sampler_ci = vk_utils::make_sampler_create_info(VK_FILTER_LINEAR);
+
+    sampler_ci.maxLod = 30.f;
+    sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    sampler_ci.borderColor = color;
+
+    auto data = std::make_shared<sampler_data>(id, device->get_vk_device_provider());
+
+    vkCreateSampler(glob::render_device::get()->vk_device(), &sampler_ci, nullptr,
+                    &data->m_sampler);
+
+    m_samplers_cache[id] = data;
 
     return data.get();
 }
@@ -486,6 +515,7 @@ vulkan_render_loader::clear_caches()
     m_shaders_cache.clear();
     m_shaders_effects_cache.clear();
     m_objects_cache.clear();
+    m_samplers_cache.clear();
 }
 
 void

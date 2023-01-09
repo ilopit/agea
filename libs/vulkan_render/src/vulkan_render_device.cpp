@@ -1,12 +1,12 @@
 #include "vulkan_render/vulkan_render_device.h"
 
 #include "vulkan_render/vulkan_render_loader.h"
-#include "vulkan_render/vk_transit.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/shader_reflection.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
+
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
@@ -46,8 +46,6 @@ render_device::construct(construct_params& params)
 
     init_swapchain();
 
-    init_samplers();
-
     init_default_renderpass();
 
     init_framebuffers();
@@ -79,8 +77,6 @@ render_device::destruct()
     deinit_framebuffers();
 
     deinit_default_renderpass();
-
-    deinit_samplers();
 
     deinit_swapchain();
 
@@ -171,38 +167,38 @@ render_device::init_swapchain()
     // hardcoding the depth format to 32 bit float
     m_depth_format = VK_FORMAT_D32_SFLOAT;
 
-    vkb::SwapchainBuilder swapchainBuilder{m_vk_gpu, m_vk_device, m_surface};
+    vkb::SwapchainBuilder swapchain_builder{m_vk_gpu, m_vk_device, m_surface};
 
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
     VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 
-    vkb::Swapchain vkbSwapchain = swapchainBuilder
-                                      .use_default_format_selection()
-                                      // use vsync present mode
-                                      .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
-                                      .set_desired_extent(width, height)
-                                      .set_desired_format(format)
-                                      .build()
-                                      .value();
+    vkb::Swapchain vkb_swapchain = swapchain_builder
+                                       .use_default_format_selection()
+                                       // use vsync present mode
+                                       .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+                                       .set_desired_extent(width, height)
+                                       .set_desired_format(format)
+                                       .build()
+                                       .value();
 
     // store swapchain and its related images
-    m_swapchain = vkbSwapchain.swapchain;
-    m_swapchain_images = vkbSwapchain.get_images().value();
-    m_swapchain_image_views = vkbSwapchain.get_image_views().value();
+    m_swapchain = vkb_swapchain.swapchain;
+    m_swapchain_images = vkb_swapchain.get_images().value();
+    m_swapchain_image_views = vkb_swapchain.get_image_views().value();
 
-    m_swachain_image_format = vkbSwapchain.image_format;
+    m_swachain_image_format = vkb_swapchain.image_format;
 
     m_depth_image_views.resize(m_swapchain_image_views.size());
     m_depth_images.resize(m_swapchain_images.size());
 
     // depth image size will match the window
-    VkExtent3D depthImageExtent = {width, height, 1};
+    VkExtent3D depth_image_extent = {width, height, 1};
 
     // the depth image will be a image with the format we selected and Depth Attachment usage flag
     VkImageCreateInfo dimg_info = vk_utils::make_image_create_info(
-        m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImageExtent);
+        m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image_extent);
 
     // for the depth image, we want to allocate it from gpu local memory
     VmaAllocationCreateInfo dimg_allocinfo = {};
@@ -213,13 +209,14 @@ render_device::init_swapchain()
     {
         // allocate and create the image
         m_depth_images[i] =
-            allocated_image::create(get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
+            vk_utils::vulkan_image::create(get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
 
         // build a image-view for the depth image to use for rendering
-        VkImageViewCreateInfo dview_info = vk_utils::make_imageview_create_info(
+        VkImageViewCreateInfo depth_image_view_ci = vk_utils::make_imageview_create_info(
             m_depth_format, m_depth_images[i].image(), VK_IMAGE_ASPECT_DEPTH_BIT);
 
-        VK_CHECK(vkCreateImageView(m_vk_device, &dview_info, nullptr, &m_depth_image_views[i]));
+        VK_CHECK(
+            vkCreateImageView(m_vk_device, &depth_image_view_ci, nullptr, &m_depth_image_views[i]));
     }
 
     return true;
@@ -375,26 +372,26 @@ render_device::init_commands()
 {
     // create a command pool for commands submitted to the graphics queue.
     // we also want the pool to allow for resetting of individual command buffers
-    VkCommandPoolCreateInfo commandPoolInfo = vk_utils::make_command_pool_create_info(
+    VkCommandPoolCreateInfo command_pool_ci = vk_utils::make_command_pool_create_info(
         m_graphics_queue_family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     for (auto& frame : m_frames)
     {
         VK_CHECK(
-            vkCreateCommandPool(m_vk_device, &commandPoolInfo, nullptr, &frame.m_command_pool));
+            vkCreateCommandPool(m_vk_device, &command_pool_ci, nullptr, &frame.m_command_pool));
 
         // allocate the default command buffer that we will use for rendering
-        VkCommandBufferAllocateInfo cmdAllocInfo =
+        VkCommandBufferAllocateInfo command_buffer_ai =
             vk_utils::make_command_buffer_allocate_info(frame.m_command_pool, 1);
 
-        VK_CHECK(
-            vkAllocateCommandBuffers(m_vk_device, &cmdAllocInfo, &frame.m_main_command_buffer));
+        VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &command_buffer_ai,
+                                          &frame.m_main_command_buffer));
     }
 
-    VkCommandPoolCreateInfo uploadCommandPoolInfo =
+    VkCommandPoolCreateInfo upload_command_pool_ci =
         vk_utils::make_command_pool_create_info(m_graphics_queue_family);
     // create pool for upload context
-    VK_CHECK(vkCreateCommandPool(m_vk_device, &uploadCommandPoolInfo, nullptr,
+    VK_CHECK(vkCreateCommandPool(m_vk_device, &upload_command_pool_ci, nullptr,
                                  &m_upload_context.m_command_pool));
 
     return true;
@@ -460,10 +457,7 @@ bool
 render_device::init_descriptors()
 {
     m_descriptor_allocator = std::make_unique<vk_utils::descriptor_allocator>();
-    m_descriptor_allocator->init(m_vk_device);
-
     m_descriptor_layout_cache = std::make_unique<vk_utils::descriptor_layout_cache>();
-    m_descriptor_layout_cache->init(m_vk_device);
 
     VkDescriptorSetLayoutBinding textureBind = vk_utils::make_descriptor_set_layout_binding(
         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
@@ -480,8 +474,6 @@ render_device::init_descriptors()
     for (auto& frame : m_frames)
     {
         frame.m_dynamic_descriptor_allocator = std::make_unique<vk_utils::descriptor_allocator>();
-
-        frame.m_dynamic_descriptor_allocator->init(m_vk_device);
     }
     return true;
 }
@@ -493,40 +485,6 @@ render_device::deinit_descriptors()
     m_descriptor_allocator.reset();
 
     return true;
-}
-
-void
-render_device::init_samplers()
-{
-    VkSamplerCreateInfo sampler_ci = vk_utils::make_sampler_create_info(VK_FILTER_LINEAR);
-
-    sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    // info.anisotropyEnable = true;
-    // samplerInfo.mipLodBias = 2;
-    sampler_ci.maxLod = 30.f;
-    // samplerInfo.minLod = 3;
-    VkSampler sampler = VK_NULL_HANDLE;
-    vkCreateSampler(glob::render_device::get()->vk_device(), &sampler_ci, nullptr, &sampler);
-
-    m_samplers["default"] = sampler;
-
-    // Font texture Sampler
-    sampler_ci =
-        vk_utils::make_sampler_create_info(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-    sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    sampler_ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    vkCreateSampler(glob::render_device::get()->vk_device(), &sampler_ci, nullptr, &sampler);
-
-    m_samplers["font"] = sampler;
-}
-
-void
-render_device::deinit_samplers()
-{
-    for (auto& s : m_samplers)
-    {
-        vkDestroySampler(vk_device(), s.second, nullptr);
-    }
 }
 
 vk_device_provider
@@ -554,18 +512,18 @@ void
 render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
 {
     // allocate the default command buffer that we will use for rendering
-    VkCommandBufferAllocateInfo cmdAllocInfo =
+    VkCommandBufferAllocateInfo command_buffer_ai =
         vk_utils::make_command_buffer_allocate_info(m_upload_context.m_command_pool, 1);
 
     VkCommandBuffer cmd;
-    VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &cmdAllocInfo, &cmd));
+    VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &command_buffer_ai, &cmd));
 
     // begin the command buffer recording. We will use this command buffer exactly once, so we
     // want to let vulkan know that
-    VkCommandBufferBeginInfo cmdBeginInfo =
+    VkCommandBufferBeginInfo command_buffer_bi =
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+    VK_CHECK(vkBeginCommandBuffer(cmd, &command_buffer_bi));
 
     function(cmd);
 
@@ -584,41 +542,42 @@ render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& funct
 }
 
 uint32_t
-render_device::pad_uniform_buffer_size(uint32_t originalSize)
+render_device::pad_uniform_buffer_size(uint32_t original_size)
 {
     // Calculate required alignment based on minimum device offset alignment
-    uint32_t minUboAlignment = (uint32_t)m_gpu_properties.limits.minUniformBufferOffsetAlignment;
-    uint32_t alignedSize = originalSize;
-    if (minUboAlignment > 0)
+    uint32_t min_ubo_alignment = (uint32_t)m_gpu_properties.limits.minUniformBufferOffsetAlignment;
+    uint32_t aligned_size = original_size;
+    if (min_ubo_alignment > 0)
     {
-        alignedSize = (alignedSize + minUboAlignment - 1) & ~(minUboAlignment - 1);
+        aligned_size = (aligned_size + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1);
     }
-    return alignedSize;
+    return aligned_size;
 }
 
-allocated_buffer
-render_device::create_buffer(size_t allocSize,
+vk_utils::vulkan_buffer
+render_device::create_buffer(size_t alloc_size,
                              VkBufferUsageFlags usage,
-                             VmaMemoryUsage memoryUsage,
+                             VmaMemoryUsage memory_usage,
                              VkMemoryPropertyFlags required_flags)
 {
     // allocate vertex buffer
-    VkBufferCreateInfo bufferInfo = {};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.pNext = nullptr;
-    bufferInfo.size = allocSize;
+    VkBufferCreateInfo buffer_ci = {};
+    buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_ci.pNext = nullptr;
+    buffer_ci.size = alloc_size;
 
-    bufferInfo.usage = usage;
+    buffer_ci.usage = usage;
 
     // let the VMA library know that this data should be writable by CPU, but also readable by
     // GPU
-    VmaAllocationCreateInfo vmaallocInfo = {};
-    vmaallocInfo.usage = memoryUsage;
-    vmaallocInfo.requiredFlags = required_flags;
+    VmaAllocationCreateInfo vma_alloc_ci = {};
+    vma_alloc_ci.usage = memory_usage;
+    vma_alloc_ci.requiredFlags = required_flags;
 
     // allocate the buffer
 
-    return allocated_buffer::create([this]() { return m_allocator; }, bufferInfo, vmaallocInfo);
+    return vk_utils::vulkan_buffer::create([this]() { return m_allocator; }, buffer_ci,
+                                           vma_alloc_ci);
 }
 }  // namespace render
 }  // namespace agea

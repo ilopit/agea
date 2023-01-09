@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include "vulkan_render/types/vulkan_types.h"
-
 #include <vector>
 #include <array>
 #include <unordered_map>
+
+#include <vulkan/vulkan.h>
 
 namespace agea
 {
@@ -15,21 +15,10 @@ namespace vk_utils
 class descriptor_allocator
 {
 public:
-    struct pool_sizes
-    {
-        std::vector<std::pair<VkDescriptorType, float>> sizes = {
-            {VK_DESCRIPTOR_TYPE_SAMPLER, 0.5f},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4.f},
-            {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 4.f},
-            {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1.f},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1.f},
-            {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1.f},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2.f},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2.f},
-            {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f},
-            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1.f},
-            {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 0.5f}};
-    };
+    using pool_sizes_mapping = std::vector<std::pair<VkDescriptorType, float>>;
+
+    static std::vector<std::pair<VkDescriptorType, float>>
+    get_default_pool_size();
 
     void
     reset_pools();
@@ -38,24 +27,14 @@ public:
     allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);
 
     void
-    init(VkDevice new_device);
-
-    void
     cleanup();
-
-    VkDevice
-    device()
-    {
-        return m_device;
-    }
 
 private:
     VkDescriptorPool
     grab_pool();
 
-    VkDevice m_device = VK_NULL_HANDLE;
     VkDescriptorPool m_current_pool = VK_NULL_HANDLE;
-    pool_sizes m_descriptor_sizes;
+    pool_sizes_mapping m_descriptor_sizes;
     std::vector<VkDescriptorPool> m_used_pools;
     std::vector<VkDescriptorPool> m_free_pools;
 };
@@ -75,8 +54,6 @@ public:
     };
 
     void
-    init(VkDevice new_device);
-    void
     cleanup();
 
     VkDescriptorSetLayout
@@ -94,7 +71,6 @@ private:
 
     std::unordered_map<descriptor_layout_info, VkDescriptorSetLayout, descriptor_layout_hash>
         m_layout_cache;
-    VkDevice m_device;
 };
 
 class descriptor_builder

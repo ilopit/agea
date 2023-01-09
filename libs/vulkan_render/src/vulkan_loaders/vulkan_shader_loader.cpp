@@ -4,7 +4,6 @@
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/shader_reflection.h"
-#include "vulkan_render/vk_transit.h"
 #include "vulkan_render/types/vulkan_mesh_data.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_material_data.h"

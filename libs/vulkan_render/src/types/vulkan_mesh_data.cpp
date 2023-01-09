@@ -7,7 +7,7 @@ namespace agea
 namespace render
 {
 
-render::vertex_input_description
+vertex_input_description
 convert_to_vertex_input_description(agea::utils::dynamic_object_layout& dol)
 {
     render::vertex_input_description description{};

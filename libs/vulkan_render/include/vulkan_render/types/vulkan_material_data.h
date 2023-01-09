@@ -1,7 +1,6 @@
 #pragma once
 
-#include "vulkan_render/types/vulkan_types.h"
-#include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_generic.h"
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>

@@ -19,4 +19,16 @@
     c## ::##c() = default;           \
     c## ::##~c() = default;
 
+#define AGEA_gen_class_non_copyable(c) \
+    c(const c&) = delete; \
+    c& operator=(const c&) = delete
+
+#define AGEA_gen_class_non_moveable(c) \
+    c(c&&) = delete; \
+    c& operator=(c&&)) = delete
+
+#define AGEA_gen_class_non_copyble_non_moveable(c) \
+AGEA_gen_class_non_copyable(c); \
+AGEA_gen_class_non_moveable(c);
+
 #define AGEA_unused(val) (void)(val)

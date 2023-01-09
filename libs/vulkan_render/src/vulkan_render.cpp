@@ -7,7 +7,6 @@
 #include "vulkan_render/utils/vulkan_converters.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
-#include "vulkan_render/types/vulkan_types.h"
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_mesh_data.h"
@@ -62,14 +61,15 @@ vulkan_render::init()
     {
         m_frames[i].frame = &device->frame(i);
 
-        m_frames[i].m_object_buffer = transit_buffer(device->create_buffer(
-            10 * 1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU));
+        m_frames[i].m_object_buffer = device->create_buffer(
+            10 * 1024 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // 10 megabyte of dynamic data buffer
-        m_frames[i].m_dynamic_data_buffer = transit_buffer(device->create_buffer(
-            10 * 1024, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU));
+        m_frames[i].m_dynamic_data_buffer = device->create_buffer(
+            10 * 1024, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
+    prepare_system_resources();
     prepare_ui_resources();
     prepare_ui_pipeline();
 }
@@ -267,14 +267,14 @@ vulkan_render::draw_new_objects(render::frame_state& current_frame)
 void
 vulkan_render::draw_objects(render_line_conteiner& r,
                             VkCommandBuffer cmd,
-                            render::transit_buffer& obj_tb,
+                            vk_utils::vulkan_buffer& obj_tb,
                             VkDescriptorSet obj_ds,
-                            render::transit_buffer& dyn_tb,
+                            vk_utils::vulkan_buffer& dyn_tb,
                             VkDescriptorSet global_ds)
 
 {
-    render::mesh_data* cur_mesh = nullptr;
-    render::material_data* cur_material = nullptr;
+    mesh_data* cur_mesh = nullptr;
+    material_data* cur_material = nullptr;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
@@ -462,6 +462,16 @@ vulkan_render::get_current_frame_transfer_data()
 }
 
 void
+vulkan_render::prepare_system_resources()
+{
+    glob::vulkan_render_loader::getr().create_sampler(AID("default"),
+                                                      VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
+
+    glob::vulkan_render_loader::getr().create_sampler(AID("font"),
+                                                      VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+}
+
+void
 vulkan_render::update_transparent_objects_queue()
 {
     for (auto& obj : m_transparent_render_object_queue)
@@ -495,8 +505,8 @@ vulkan_render::prepare_ui_resources()
     image_raw_buffer.resize(size);
     memcpy(image_raw_buffer.data(), font_data, size);
 
-    m_ui_txt = glob::vulkan_render_loader::getr().create_texture(AID("font"), image_raw_buffer,
-                                                                 tex_width, tex_height);
+    m_ui_txt = glob::vulkan_render_loader::getr().create_texture(
+        AID("font"), image_raw_buffer, tex_width, tex_height, AID("font"));
 }
 
 void
@@ -569,14 +579,14 @@ vulkan_render::update_ui(frame_state& fs)
         VmaAllocationCreateInfo vma_ci = {};
         vma_ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-        fs.m_ui_vertex_buffer = (render::allocated_buffer::create(
-            device->get_vma_allocator_provider(), staging_buffer_ci, vma_ci));
+        fs.m_ui_vertex_buffer = vk_utils::vulkan_buffer::create(
+            device->get_vma_allocator_provider(), staging_buffer_ci, vma_ci);
 
         staging_buffer_ci.size = index_buffer_size;
         staging_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-        fs.m_ui_index_buffer = (render::allocated_buffer::create(
-            device->get_vma_allocator_provider(), staging_buffer_ci, vma_ci));
+        fs.m_ui_index_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
+                                                               staging_buffer_ci, vma_ci);
     }
 
     // Upload data

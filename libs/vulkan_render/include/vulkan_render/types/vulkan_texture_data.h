@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "vulkan_render/types/vulkan_types.h"
+#include "vulkan_render/utils/vulkan_image.h"
 
 #include <utils/id.h>
 
@@ -35,7 +35,7 @@ public:
 
     VkImageView image_view = VK_NULL_HANDLE;
     VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
-    allocated_image image;
+    vk_utils::vulkan_image image;
     texture_format format = texture_format::unknown;
 
 private:

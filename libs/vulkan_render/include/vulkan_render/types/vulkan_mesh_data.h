@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "vulkan_render/types/vulkan_types.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/utils/vulkan_buffer.h"
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
@@ -18,7 +18,7 @@ struct vertex_input_description
     VkPipelineVertexInputStateCreateFlags flags = 0;
 };
 
-render::vertex_input_description
+vertex_input_description
 convert_to_vertex_input_description(agea::utils::dynamic_object_layout& dol);
 
 class mesh_data
@@ -57,8 +57,8 @@ public:
     uint32_t m_vertices_size = 0U;
     uint32_t m_indices_size = 0U;
 
-    allocated_buffer m_vertex_buffer;
-    allocated_buffer m_index_buffer;
+    vk_utils::vulkan_buffer m_vertex_buffer;
+    vk_utils::vulkan_buffer m_index_buffer;
 
 private:
     ::agea::utils::id m_id;

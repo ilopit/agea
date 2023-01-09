@@ -1,6 +1,5 @@
 ﻿#include "engine/agea_engine.h"
 
-#include "resource_locator/resource_locator.h"
 #include "engine/ui.h"
 #include "engine/input_manager.h"
 #include "engine/editor.h"
@@ -8,7 +7,6 @@
 
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
-#include "vulkan_render/types/vulkan_types.h"
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_mesh_data.h"
@@ -37,18 +35,13 @@
 #include <model/package_manager.h>
 
 #include <native/native_window.h>
+
 #include <utils/agea_log.h>
 #include <utils/process.h>
 #include <utils/clock.h>
 
-#include <SDL.h>
-#include <SDL_vulkan.h>
-#include <SDL_events.h>
-
 #include <imgui.h>
 
-#include <backends/imgui_impl_sdl.h>
-#include <backends/imgui_impl_vulkan.h>
 #include <VkBootstrap.h>
 
 #include <iostream>
