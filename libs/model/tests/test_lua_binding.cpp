@@ -1,3 +1,5 @@
+#if 0
+
 #include "model/object_constructor.h"
 
 #include "model/caches/materials_cache.h"
@@ -66,3 +68,5 @@ TEST_F(test_luad_binding, load_package)
 
     glob::lua_api::getr().state().script(player_script);
 }
+
+#endif

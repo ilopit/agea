@@ -3,11 +3,13 @@
 #include "smart_object.generated.h"
 
 #include "model/reflection/object_reflection.h"
-#include <arl/arl_defines.h>
 #include "model/model_minimal.h"
+
+#include <arl/arl_defines.h>
 
 #include <string>
 #include <memory>
+#include <bitset>
 
 #define AGEA_gen_class_meta_super(t) \
     using this_class = t;            \
@@ -71,6 +73,16 @@ enum smart_object_state
     smart_objet_state__render_created,
     smart_objet_state__render_scheduling,
     smart_objet_state__render_scheduled
+};
+
+enum smart_object_internal_state
+{
+    empty = 0,
+    class_obj = 1,
+    instance_obj = 2,
+    standalone = 3,
+    inhereted = 4,
+    mirror = 5
 };
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
@@ -158,12 +170,6 @@ public:
         m_package = p;
     }
 
-    bool
-    is_class_obj() const
-    {
-        return m_class_obj == nullptr;
-    }
-
     smart_object_state
     get_state()
     {
@@ -188,6 +194,18 @@ public:
         m_has_dirty_transform = v;
     }
 
+    void
+    set_state(smart_object_internal_state f)
+    {
+        m_obj_internal_state.set(f);
+    }
+
+    bool
+    has_state(smart_object_internal_state f) const
+    {
+        return m_obj_internal_state.test(f);
+    }
+
 protected:
     void
     META_set_id(const utils::id& id)
@@ -210,11 +228,13 @@ protected:
     AGEA_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_id;
 
-    smart_object* m_class_obj = nullptr;
+    const smart_object* m_class_obj = nullptr;
     package* m_package = nullptr;
 
     smart_object_state m_obj_state = smart_object_state::smart_objet_state__empty;
     bool m_has_dirty_transform = false;
+
+    std::bitset<32> m_obj_internal_state;
 };
 
 template <typename To, typename From>

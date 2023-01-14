@@ -1,0 +1,16 @@
+type_id: mesh_component
+id: cube_mesh_component
+material: mt_red
+mesh: cube_mesh
+position:
+  x: 0
+  y: 0
+  z: 0
+rotation:
+  x: 0
+  y: 0
+  z: 0
+scale:
+  x: 1
+  y: 1
+  z: 1

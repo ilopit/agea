@@ -83,6 +83,15 @@ struct property_type_copy_handlers
 
     // Com
     static bool copy_t_com(AGEA_copy_handler_args);
+
+    // Com
+    static bool copy_t_buf(AGEA_copy_handler_args);
+
+    // Color
+    static bool copy_t_col(AGEA_copy_handler_args);
+
+    // Color
+    static bool copy_t_se(AGEA_copy_handler_args);
 };
 
 }  // namespace reflection

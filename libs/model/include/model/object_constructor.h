@@ -26,22 +26,16 @@ class object_constructor
 {
 public:
     static smart_object*
-    class_object_load(const utils::path& path, object_constructor_context& occ = default_occ());
+    object_load_internal(const utils::path& path_in_package, object_constructor_context& occ);
 
     static smart_object*
-    instance_object_load(const utils::path& path, object_constructor_context& occ = default_occ());
-
-    static smart_object*
-    object_load_internal(const utils::path& path, object_constructor_context& occ);
+    object_load(const utils::id& id, object_constructor_context& occ);
 
     static smart_object*
     object_load_internal(serialization::conteiner& c, object_constructor_context& occ);
 
     static bool
-    class_object_save(const smart_object& obj, const utils::path& object_path);
-
-    static bool
-    instance_object_save(const smart_object& obj, const utils::path& object_path);
+    object_save(const smart_object& obj, const utils::path& object_path);
 
     static smart_object*
     object_clone_create(const utils::id& src_object_id,
@@ -80,6 +74,13 @@ public:
 
     static std::shared_ptr<smart_object>
     create_empty_object(const utils::id& type_id, const utils::id& obj_id);
+
+    template <typename T>
+    static std::shared_ptr<T>
+    create_empty_object(const utils::id& obj_id)
+    {
+        return std::static_pointer_cast<T>(create_empty_object(T::META_type_id(), obj_id));
+    }
 
     static smart_object*
     object_load_full(serialization::conteiner& sc, object_constructor_context& occ);

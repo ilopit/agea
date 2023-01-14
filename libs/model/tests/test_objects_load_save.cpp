@@ -1,24 +1,26 @@
-#include "model/object_constructor.h"
-
-#include "model/caches/game_objects_cache.h"
-#include "model/caches/empty_objects_cache.h"
-
-#include "model/object_construction_context.h"
-
-#include "model/level.h"
-#include "model/level_constructor.h"
-#include "model/game_object.h"
-
-#include "utils/file_utils.h"
-
-#include "serialization/serialization.h"
-
-#include "utils/agea_log.h"
 #include "base_test.h"
 
-#include <gtest/gtest.h>
+#include <model/caches/game_objects_cache.h>
+#include <model/caches/empty_objects_cache.h>
+#include <model/caches/caches_map.h>
 
-#define ID(val) ::agea::utils::id::from(val)
+#include <model/object_constructor.h>
+#include <model/object_construction_context.h>
+#include <model/level.h>
+#include <model/level_constructor.h>
+
+#include <model/game_object.h>
+#include <model/objects_mapping.h>
+#include <model/components/mesh_component.h>
+#include <model/assets/material.h>
+#include <model/assets/mesh.h>
+
+#include <serialization/serialization.h>
+
+#include <utils/file_utils.h>
+#include <utils/agea_log.h>
+
+#include <gtest/gtest.h>
 
 using namespace agea;
 
@@ -30,12 +32,20 @@ struct test_object_constructor : base_test
         base_test::SetUp();
 
         {
-            auto prefix = glob::resource_locator::get()->resource(category::all, "packages/cube_chain.apgk")
-        }
+            auto prefix = glob::resource_locator::get()->resource(category::packages, "test.apkg");
 
-        occ = model::object_constructor_context(
-            utils::path(), global_class_objects_cs.get_ref(), local_class_objects_cs.get_ref(),
-            global_objects_cs.get_ref(), local_objects_cs.get_ref(), &objs);
+            model::object_mapping om;
+
+            om.buiild_object_mapping(prefix / APATH("package.acfg"));
+
+            occ.set_prefix_path(prefix)
+                .set_class_global_set(&global_class_objects_cs)
+                .set_class_local_set(&local_class_objects_cs)
+                .set_instance_global_set(&global_objects_cs)
+                .set_instance_local_set(&local_objects_cs)
+                .set_ownable_cache(&objs)
+                .set_objects_mapping(om.m_items);
+        }
     }
 
     void
@@ -76,9 +86,9 @@ struct test_object_constructor : base_test
     model::cache_set global_class_objects_cs;
     model::cache_set local_objects_cs;
     model::cache_set global_objects_cs;
-    model::line_cache objs;
+    model::line_cache<model::smart_object_ptr> objs;
+
     model::object_constructor_context occ;
-    agea::singletone_autodeleter m_resource_locator;
 };
 
 bool
@@ -89,291 +99,322 @@ is_from_EO_cache(model::smart_object* obj)
 
 TEST_F(test_object_constructor, load_and_save_class_component)
 {
-    auto object_path = glob::resource_locator::get()->resource(
-        category::all, "packages/test.apkg/class/components/test_class_root_component.aobj");
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
 
-    ASSERT_FALSE(object_path.empty());
+    occ.get_class_global_set()->map->add_item(*mt_red);
+    occ.get_class_global_set()->map->add_item(*cube_mesh);
 
-    auto obj = model::object_constructor::class_object_load(object_path, occ);
+    auto obj = model::object_constructor::class_object_load(
+        APATH("class/components/cube_mesh_component.aobj"), occ);
     ASSERT_TRUE(!!obj);
 
-    auto component = obj->as<model::game_object_component>();
+    auto component = obj->as<model::mesh_component>();
 
-    ASSERT_EQ(component->get_id(), ID("test_class_root_component"));
-    ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
+    ASSERT_EQ(component->get_id(), AID("cube_mesh_component"));
+    ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
     ASSERT_EQ(component->get_order_idx(), model::NO_index);
     ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
-    ASSERT_EQ(component->is_renderable(), false);
+    ASSERT_EQ(component->get_material(), mt_red.get());
+    ASSERT_EQ(component->get_mesh(), cube_mesh.get());
 
     ASSERT_FALSE(is_from_EO_cache(component));
 
-    check_item_in_caches(ID("test_class_root_component"), model::architype::component, true);
+    check_item_in_caches(AID("cube_mesh_component"), model::architype::component, true);
 
     ASSERT_EQ(objs.get_size(), 1U);
 
     auto result =
-        model::object_constructor::class_object_save(*obj, get_current_workspace() / "save.aobj");
+        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 
-    result = utils::file_utils::compare_files(object_path, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
-}
+    utils::path p;
+    occ.make_full_path(APATH("class/components/cube_mesh_component.aobj"), p);
 
-TEST_F(test_object_constructor, load_and_save_instanced_component)
-{
-    auto class_comonent_path = glob::resource_locator::get()->resource(
-        category::all, "packages/test.apkg/class/components/test_class_root_component.aobj");
-    ASSERT_FALSE(class_comonent_path.empty());
-
-    auto component_path = glob::resource_locator::get()->resource(
-        category::all,
-        "packages/test.apkg/class/components/"
-        "test_class_object__test_class_root_component.aobj");
-    ASSERT_FALSE(component_path.empty());
-
-    auto obj = model::object_constructor::class_object_load(class_comonent_path, occ);
-    ASSERT_TRUE(!!obj);
-    obj = model::object_constructor::instance_object_load(component_path, occ);
-    ASSERT_TRUE(!!obj);
-
-    auto component = obj->as<model::game_object_component>();
-
-    ASSERT_EQ(component->get_id(), ID("test_class_object__test_class_root_component"));
-    ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
-    ASSERT_EQ(component->get_order_idx(), 0);
-    ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
-    ASSERT_EQ(component->is_renderable(), false);
-    ASSERT_TRUE(component->get_class_obj());
-
-    ASSERT_FALSE(is_from_EO_cache(component));
-
-    check_item_in_caches(ID("test_class_object__test_class_root_component"),
-                         model::architype::component, false);
-
-    ASSERT_EQ(objs.get_size(), 2U);
-
-    auto result = model::object_constructor::instance_object_save(
-        *obj, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
-
-    result =
-        utils::file_utils::compare_files(component_path, get_current_workspace() / "save.aobj");
+    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
-TEST_F(test_object_constructor, load_and_save_component)
+TEST_F(test_object_constructor, load_and_save_class_component__subobjects_are_instances)
 {
-    auto component_path = glob::resource_locator::get()->resource(
-        category::all, "packages/test.apkg/class/components/test_class_root_component.aobj");
-    ASSERT_FALSE(component_path.empty());
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
 
-    auto obj = model::object_constructor::instance_object_load(component_path, occ);
+    occ.get_instance_global_set()->map->add_item(*mt_red);
+    occ.get_instance_global_set()->map->add_item(*cube_mesh);
+
+    auto obj = model::object_constructor::class_object_load(
+        APATH("class/components/cube_mesh_component.aobj"), occ);
+    ASSERT_EQ(obj, nullptr);
+}
+
+TEST_F(test_object_constructor, load_and_save_instance_component)
+{
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+
+    occ.get_instance_global_set()->map->add_item(*mt_red);
+    occ.get_instance_global_set()->map->add_item(*cube_mesh);
+
+    auto obj = model::object_constructor::instance_object_load(
+        APATH("class/components/cube_mesh_component.aobj"), occ);
     ASSERT_TRUE(!!obj);
 
-    auto component = obj->as<model::game_object_component>();
+    auto component = obj->as<model::mesh_component>();
 
-    ASSERT_EQ(component->get_id(), ID("test_class_root_component"));
-    ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
+    ASSERT_EQ(component->get_id(), AID("cube_mesh_component"));
+    ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
     ASSERT_EQ(component->get_order_idx(), model::NO_index);
     ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
-    ASSERT_EQ(component->is_renderable(), false);
+    ASSERT_EQ(component->get_material(), mt_red.get());
+    ASSERT_EQ(component->get_mesh(), cube_mesh.get());
 
     ASSERT_FALSE(is_from_EO_cache(component));
-    check_item_in_caches(ID("test_class_root_component"), model::architype::component, false);
+
+    check_item_in_caches(AID("cube_mesh_component"), model::architype::component, false);
 
     ASSERT_EQ(objs.get_size(), 1U);
 
-    auto result = model::object_constructor::instance_object_save(
-        *obj, get_current_workspace() / "save.aobj");
+    auto result =
+        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 
-    result =
-        utils::file_utils::compare_files(component_path, get_current_workspace() / "save.aobj");
+    utils::path p;
+    occ.make_full_path(APATH("class/components/cube_mesh_component.aobj"), p);
+
+    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    ASSERT_TRUE(result);
+}
+
+TEST_F(test_object_constructor, load_and_save_instance_component__subobjects_are_classes)
+{
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+
+    occ.get_class_global_set()->map->add_item(*mt_red);
+    occ.get_class_global_set()->map->add_item(*cube_mesh);
+
+    auto obj = model::object_constructor::instance_object_load(
+        APATH("class/components/cube_mesh_component.aobj"), occ);
+    ASSERT_EQ(obj, nullptr);
+}
+
+TEST_F(test_object_constructor, load_and_save_derived_class_component)
+{
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto mt_green =
+        model::object_constructor::create_empty_object<model::material>(AID("mt_green"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+
+    occ.get_class_global_set()->map->add_item(*mt_red);
+    occ.get_class_global_set()->map->add_item(*mt_green);
+    occ.get_class_global_set()->map->add_item(*cube_mesh);
+
+    {
+        auto obj = model::object_constructor::class_object_load(
+            APATH("class/components/cube_mesh_component.aobj"), occ);
+        ASSERT_TRUE(!!obj);
+    }
+
+    auto obj = model::object_constructor::class_object_load(
+        APATH("class/components/cube_mesh_component_derived.aobj"), occ);
+    ASSERT_TRUE(!!obj);
+
+    auto component = obj->as<model::mesh_component>();
+
+    ASSERT_EQ(component->get_id(), AID("cube_mesh_component_derived"));
+    ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
+    ASSERT_EQ(component->get_order_idx(), model::NO_index);
+    ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
+    ASSERT_EQ(component->get_material(), mt_green.get());
+    ASSERT_EQ(component->get_mesh(), cube_mesh.get());
+
+    ASSERT_FALSE(is_from_EO_cache(component));
+
+    check_item_in_caches(AID("cube_mesh_component_derived"), model::architype::component, true);
+
+    ASSERT_EQ(objs.get_size(), 2U);
+
+    auto result =
+        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
+    ASSERT_TRUE(result);
+
+    utils::path p;
+    occ.make_full_path(APATH("class/components/cube_mesh_component_derived.aobj"), p);
+
+    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    ASSERT_TRUE(result);
+}
+
+TEST_F(test_object_constructor, load_and_save_derived_class_component__without_preload)
+{
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto mt_green =
+        model::object_constructor::create_empty_object<model::material>(AID("mt_green"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+
+    occ.get_class_global_set()->map->add_item(*mt_red);
+    occ.get_class_global_set()->map->add_item(*mt_green);
+    occ.get_class_global_set()->map->add_item(*cube_mesh);
+
+    auto obj = model::object_constructor::class_object_load(
+        APATH("class/components/cube_mesh_component_derived.aobj"), occ);
+    ASSERT_TRUE(!!obj);
+
+    auto component = obj->as<model::mesh_component>();
+
+    ASSERT_EQ(component->get_id(), AID("cube_mesh_component_derived"));
+    ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
+    ASSERT_EQ(component->get_order_idx(), model::NO_index);
+    ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
+    ASSERT_EQ(component->get_material(), mt_green.get());
+    ASSERT_EQ(component->get_mesh(), cube_mesh.get());
+
+    ASSERT_FALSE(is_from_EO_cache(component));
+
+    check_item_in_caches(AID("cube_mesh_component_derived"), model::architype::component, true);
+
+    ASSERT_EQ(objs.get_size(), 2U);
+
+    auto result =
+        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
+    ASSERT_TRUE(result);
+
+    utils::path p;
+    occ.make_full_path(APATH("class/components/cube_mesh_component_derived.aobj"), p);
+
+    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
 /* ====================================================================================== */
 TEST_F(test_object_constructor, load_and_save_class_object)
 {
-    for (const auto& name : k_components_to_load)
-    {
-        auto path = glob::resource_locator::get()->resource(category::all, name);
-        ASSERT_FALSE(path.empty());
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mesh_component = model::object_constructor::create_empty_object<model::mesh_component>(
+        AID("cube_mesh_component"));
+    auto root_component =
+        model::object_constructor::create_empty_object<model::game_object_component>(
+            AID("root_component"));
 
-        auto obj = model::object_constructor::class_object_load(path, occ);
-        ASSERT_TRUE(!!obj);
-    }
+    occ.get_class_global_set()->map->add_item(*mt_red);
+    occ.get_class_global_set()->map->add_item(*cube_mesh);
+    occ.get_class_global_set()->map->add_item(*mesh_component);
+    occ.get_class_global_set()->map->add_item(*root_component);
 
-    auto object_path = glob::resource_locator::get()->resource(
-        category::all, "packages/test.apkg/class/game_objects/test_class_object.aobj");
-    ASSERT_FALSE(object_path.empty());
-
-    auto obj = model::object_constructor::class_object_load(object_path, occ);
+    auto obj = model::object_constructor::class_object_load(
+        APATH("class/game_objects/cubes_chain.aobj"), occ);
     ASSERT_TRUE(!!obj);
 
-    check_item_in_caches(ID("test_class_object"), model::architype::game_object, true);
-
-    //     ASSERT_EQ(objs.get_size(), k_components_to_load.size() + k_components_to_load.size() +
-    //     1); ASSERT_EQ(occ.m_class_local_set.objects->get_size(),
-    //               k_components_to_load.size() + k_components_to_load.size() + 1);
+    check_item_in_caches(AID("cubes_chain"), model::architype::game_object, true);
 
     auto game_object = obj->as<model::game_object>();
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(game_object->get_id(), ID("test_class_object"));
-    ASSERT_EQ(game_object->get_type_id(), ID("mesh_object"));
+    ASSERT_EQ(occ.get_class_local_set()->objects->get_size(), 4);
+    ASSERT_EQ(occ.get_instance_local_set()->objects->get_size(), 0);
+
+    ASSERT_EQ(game_object->get_id(), AID("cubes_chain"));
+    ASSERT_EQ(game_object->get_type_id(), AID("mesh_object"));
 
     {
         auto component = game_object->get_component_at(0U);
-        ASSERT_EQ(component->get_id(), ID("test_class_object__test_class_root_component"));
-        ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
-        ASSERT_EQ(component->get_order_idx(), 0U);
+        ASSERT_EQ(component->get_id(), AID("cube_chain_root_component"));
+        ASSERT_EQ(component->get_type_id(), AID("game_object_component"));
+        ASSERT_EQ(component->get_order_idx(), 0);
         ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
         auto component = game_object->get_component_at(1U);
-        ASSERT_EQ(component->get_id(), ID("test_class_object__test_class_component"));
-        ASSERT_EQ(component->get_type_id(), ID("component"));
-        ASSERT_EQ(component->get_order_idx(), 1U);
-        ASSERT_EQ(component->get_parent_idx(), 0U);
+        ASSERT_EQ(component->get_id(), AID("cubes_chain_cube_mesh_1"));
+        ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
+        ASSERT_EQ(component->get_order_idx(), 1);
+        ASSERT_EQ(component->get_parent_idx(), 0);
+        ASSERT_FALSE(is_from_EO_cache(component));
+    }
+    {
+        auto component = game_object->get_component_at(2U);
+        ASSERT_EQ(component->get_id(), AID("cubes_chain_cube_mesh_2"));
+        ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
+        ASSERT_EQ(component->get_order_idx(), 2);
+        ASSERT_EQ(component->get_parent_idx(), 0);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 
-    auto result = model::object_constructor::class_object_save(
-        *game_object, get_current_workspace() / "save.aobj");
+    auto result =
+        model::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 
-    result = utils::file_utils::compare_files(object_path, get_current_workspace() / "save.aobj");
+    utils::path p;
+    occ.make_full_path(APATH("class/game_objects/cubes_chain.aobj"), p);
+
+    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
-TEST_F(test_object_constructor, load_and_save_instanced_game_object)
+TEST_F(test_object_constructor, load_and_save_instance_object)
 {
-    for (const auto& name : k_components_to_load)
-    {
-        auto path = glob::resource_locator::get()->resource(category::all, name);
-        ASSERT_FALSE(path.empty());
+    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mesh_component = model::object_constructor::create_empty_object<model::mesh_component>(
+        AID("cube_mesh_component"));
+    auto root_component =
+        model::object_constructor::create_empty_object<model::game_object_component>(
+            AID("root_component"));
 
-        auto obj = model::object_constructor::class_object_load(path, occ);
-        ASSERT_TRUE(!!obj);
-    }
+    occ.get_instance_global_set()->map->add_item(*mt_red);
+    occ.get_instance_global_set()->map->add_item(*cube_mesh);
+    occ.get_class_global_set()->map->add_item(*mesh_component);
+    occ.get_class_global_set()->map->add_item(*root_component);
 
-    for (const auto& name :
-         {"levels/test.alvl/components/test_instanded_object_1__test_component.aobj",
-          "levels/test.alvl/components/test_instanded_object_1__test_root_component.aobj"})
-    {
-        auto path = glob::resource_locator::get()->resource(category::all, name);
-        ASSERT_FALSE(path.empty());
-
-        auto obj = model::object_constructor::instance_object_load(path, occ);
-        ASSERT_TRUE(!!obj);
-    }
-
-    auto object_path = glob::resource_locator::get()->resource(
-        category::all, "packages/test.apkg/class/game_objects/test_class_object.aobj");
-    ASSERT_FALSE(object_path.empty());
-
-    auto obj = model::object_constructor::class_object_load(object_path, occ);
+    auto obj = model::object_constructor::instance_object_load(
+        APATH("class/game_objects/cubes_chain.aobj"), occ);
     ASSERT_TRUE(!!obj);
 
-    object_path = glob::resource_locator::get()->resource(
-        category::all, "levels/test.alvl/game_objects/test_instanded_object_1.aobj");
-    ASSERT_FALSE(object_path.empty());
-
-    obj = model::object_constructor::instance_object_load(object_path, occ);
-    ASSERT_TRUE(!!obj);
-
-    check_item_in_caches(ID("test_instanded_object_1"), model::architype::game_object, false);
-
-    //     ASSERT_EQ(objs.get_size(), k_components_to_load.size() + k_components_to_load.size() +
-    //                                    k_components_to_load.size() + 2);
-    //     ASSERT_EQ(occ.m_class_local_set.objects->get_size(),
-    //               k_components_to_load.size() + k_components_to_load.size() + 1);
-    //     ASSERT_EQ(occ.m_instance_local_set.objects->get_size(), k_components_to_load.size() + 1);
+    check_item_in_caches(AID("cubes_chain"), model::architype::game_object, false);
 
     auto game_object = obj->as<model::game_object>();
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(game_object->get_id(), ID("test_instanded_object_1"));
-    ASSERT_EQ(game_object->get_type_id(), ID("mesh_object"));
+    ASSERT_EQ(occ.get_instance_local_set()->objects->get_size(), 4);
+
+    ASSERT_EQ(game_object->get_id(), AID("cubes_chain"));
+    ASSERT_EQ(game_object->get_type_id(), AID("mesh_object"));
 
     {
         auto component = game_object->get_component_at(0U);
-        ASSERT_EQ(component->get_id(), ID("test_instanded_object_1__test_root_component"));
-        ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
-        ASSERT_EQ(component->get_order_idx(), 0U);
+        ASSERT_EQ(component->get_id(), AID("cube_chain_root_component"));
+        ASSERT_EQ(component->get_type_id(), AID("game_object_component"));
+        ASSERT_EQ(component->get_order_idx(), 0);
         ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
         auto component = game_object->get_component_at(1U);
-        ASSERT_EQ(component->get_id(), ID("test_instanded_object_1__test_component"));
-        ASSERT_EQ(component->get_type_id(), ID("component"));
-        ASSERT_EQ(component->get_order_idx(), 1U);
-        ASSERT_EQ(component->get_parent_idx(), 0U);
-        ASSERT_FALSE(is_from_EO_cache(component));
-    }
-
-    auto result = model::object_constructor::instance_object_save(
-        *game_object, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
-
-    result = utils::file_utils::compare_files(object_path, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
-}
-
-TEST_F(test_object_constructor, DISABLED_load_and_save_game_object)
-{
-    for (const auto& name : k_components_to_load)
-    {
-        auto path = glob::resource_locator::get()->resource(category::all, name);
-        ASSERT_FALSE(path.empty());
-
-        auto obj = model::object_constructor::class_object_load(path, occ);
-        ASSERT_TRUE(!!obj);
-    }
-
-    auto object_path = glob::resource_locator::get()->resource(
-        category::all, "packages/test.apkg/instance/game_objects/test_game_object.aobj");
-    ASSERT_FALSE(object_path.empty());
-
-    auto obj = model::object_constructor::instance_object_load(object_path, occ);
-    ASSERT_TRUE(!!obj);
-
-    check_item_in_caches(ID("test_game_object"), model::architype::game_object, false);
-
-    //     ASSERT_EQ(objs.get_size(), k_components_to_load.size() + k_components_to_load.size() +
-    //     1); ASSERT_EQ(occ.m_class_local_set.objects->get_size(), k_components_to_load.size());
-    //     ASSERT_EQ(occ.m_instance_local_set.objects->get_size(), k_components_to_load.size() + 1);
-
-    auto game_object = obj->as<model::game_object>();
-    ASSERT_TRUE(!!game_object);
-
-    ASSERT_EQ(game_object->get_id(), ID("test_game_object"));
-    ASSERT_EQ(game_object->get_type_id(), ID("mesh_object"));
-
-    {
-        auto component = game_object->get_component_at(0U);
-        ASSERT_EQ(component->get_id(), ID("test_game_object/test_root_component"));
-        ASSERT_EQ(component->get_type_id(), ID("game_object_component"));
-        ASSERT_EQ(component->get_order_idx(), 0U);
-        ASSERT_EQ(component->get_parent_idx(), model::NO_parent);
+        ASSERT_EQ(component->get_id(), AID("cubes_chain_cube_mesh_1"));
+        ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
+        ASSERT_EQ(component->get_order_idx(), 1);
+        ASSERT_EQ(component->get_parent_idx(), 0);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
     {
-        auto component = game_object->get_component_at(1U);
-        ASSERT_EQ(component->get_id(), ID("test_game_object/test_component_a"));
-        ASSERT_EQ(component->get_type_id(), ID("component"));
-        ASSERT_EQ(component->get_order_idx(), 1U);
-        ASSERT_EQ(component->get_parent_idx(), 0U);
+        auto component = game_object->get_component_at(2U);
+        ASSERT_EQ(component->get_id(), AID("cubes_chain_cube_mesh_2"));
+        ASSERT_EQ(component->get_type_id(), AID("mesh_component"));
+        ASSERT_EQ(component->get_order_idx(), 2);
+        ASSERT_EQ(component->get_parent_idx(), 0);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 
-    utils::path result_path("result");
-    auto result = model::object_constructor::instance_object_save(*game_object, result_path);
+    auto result =
+        model::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 
-    result = utils::file_utils::compare_files(object_path, result_path);
+    utils::path p;
+    occ.make_full_path(APATH("class/game_objects/cubes_chain.aobj"), p);
+
+    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }

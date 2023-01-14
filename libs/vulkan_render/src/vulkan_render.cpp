@@ -87,7 +87,7 @@ vulkan_render::set_camera(render::gpu_camera_data c)
 }
 
 void
-vulkan_render::draw()
+vulkan_render::draw_objects()
 {
     auto device = glob::render_device::get();
 
@@ -147,7 +147,7 @@ vulkan_render::draw()
     rp_info.pClearValues = &clear_values[0];
     vkCmdBeginRenderPass(cmd, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
 
-    draw_new_objects(current_frame);
+    draw_objects(current_frame);
 
     update_ui(current_frame);
     draw_ui(current_frame);
@@ -187,7 +187,7 @@ vulkan_render::draw()
 }
 
 void
-vulkan_render::draw_new_objects(render::frame_state& current_frame)
+vulkan_render::draw_objects(render::frame_state& current_frame)
 {
     auto cmd = current_frame.frame->m_main_command_buffer;
 
@@ -253,24 +253,24 @@ vulkan_render::draw_new_objects(render::frame_state& current_frame)
 
     for (auto& r : m_default_render_object_queue)
     {
-        draw_objects(r.second, cmd, object_tb, object_data_set, dyn, global_set);
+        draw_objects_queue(r.second, cmd, object_tb, object_data_set, dyn, global_set);
     }
 
     if (m_transparent_render_object_queue.empty())
     {
         update_transparent_objects_queue();
-        draw_objects(m_transparent_render_object_queue, cmd, object_tb, object_data_set, dyn,
-                     global_set);
+        draw_objects_queue(m_transparent_render_object_queue, cmd, object_tb, object_data_set, dyn,
+                           global_set);
     }
 }
 
 void
-vulkan_render::draw_objects(render_line_conteiner& r,
-                            VkCommandBuffer cmd,
-                            vk_utils::vulkan_buffer& obj_tb,
-                            VkDescriptorSet obj_ds,
-                            vk_utils::vulkan_buffer& dyn_tb,
-                            VkDescriptorSet global_ds)
+vulkan_render::draw_objects_queue(render_line_conteiner& r,
+                                  VkCommandBuffer cmd,
+                                  vk_utils::vulkan_buffer& obj_tb,
+                                  VkDescriptorSet obj_ds,
+                                  vk_utils::vulkan_buffer& dyn_tb,
+                                  VkDescriptorSet global_ds)
 
 {
     mesh_data* cur_mesh = nullptr;
@@ -524,9 +524,9 @@ vulkan_render::prepare_ui_pipeline()
     agea::utils::buffer::load(frag_path, frag);
 
     agea::utils::dynamic_object_layout_sequence_builder builder;
-    builder.add_field(AID(""), agea::utils::agea_type::t_vec2, 1);
-    builder.add_field(AID(""), agea::utils::agea_type::t_vec2, 1);
-    builder.add_field(AID(""), agea::utils::agea_type::t_color, 1);
+    builder.add_field(AID("pos"), agea::utils::agea_type::t_vec2, 1);
+    builder.add_field(AID("uv"), agea::utils::agea_type::t_vec2, 1);
+    builder.add_field(AID("color"), agea::utils::agea_type::t_color, 1);
 
     auto dol = builder.get_obj();
 
@@ -642,12 +642,12 @@ vulkan_render::draw_ui(frame_state& fs)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline);
 
-    // texture descriptor
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout, 0, 1,
                             &m_ui_txt->descriptor_set, 0, nullptr);
 
     m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
     m_ui_push_constants.translate = glm::vec2(-1.0f);
+
     vkCmdPushConstants(cmd, m_ui_se->m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(ui_push_constants), &m_ui_push_constants);
 

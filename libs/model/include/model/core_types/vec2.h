@@ -68,12 +68,6 @@ struct vec2 : ::glm::vec2
     {
         return y;
     }
-
-    std::string
-    to_string()
-    {
-        return "bla";
-    }
 };
 
 }  // namespace model

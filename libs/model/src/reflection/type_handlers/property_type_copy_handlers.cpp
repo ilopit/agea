@@ -4,8 +4,10 @@
 #include "model/caches/textures_cache.h"
 #include "model/caches/meshes_cache.h"
 #include "model/caches/materials_cache.h"
+#include "model/core_types/color.h"
 
 #include "model/object_constructor.h"
+#include "model/object_construction_context.h"
 
 namespace agea
 {
@@ -13,7 +15,23 @@ namespace reflection
 {
 namespace
 {
+bool
+copy_smart_object(AGEA_copy_handler_args)
+{
+    auto type = ooc.get_construction_type();
+    if (type == model::obj_construction_type::mirror_obj)
+    {
+        auto& obj = extract<::agea::model::smart_object*>(from);
+        extract<::agea::model::smart_object*>(to) =
+            model::object_constructor::object_clone_create(obj->get_id(), obj->get_id(), ooc);
+    }
+    else
+    {
+        fast_copy<model::smart_object*>(from, to);
+    }
 
+    return true;
+}
 }  // namespace
 
 bool
@@ -37,11 +55,14 @@ property_type_copy_handlers::init()
     copy_handlers()  [(size_t)utils::agea_type::t_f]    = property_type_copy_handlers::copy_t_f;
     copy_handlers()  [(size_t)utils::agea_type::t_d]    = property_type_copy_handlers::copy_t_d;
     copy_handlers()  [(size_t)utils::agea_type::t_vec3] = property_type_copy_handlers::copy_t_vec3;
-    copy_handlers()  [(size_t)utils::agea_type::t_txt]  = property_type_copy_handlers::copy_t_txt;
-    copy_handlers()  [(size_t)utils::agea_type::t_mat]  = property_type_copy_handlers::copy_t_mat;
-    copy_handlers()  [(size_t)utils::agea_type::t_msh]  = property_type_copy_handlers::copy_t_msh;
-    copy_handlers()  [(size_t)utils::agea_type::t_obj]  = property_type_copy_handlers::copy_t_obj;
-    copy_handlers()  [(size_t)utils::agea_type::t_com]  = property_type_copy_handlers::copy_t_com;
+    copy_handlers()  [(size_t)utils::agea_type::t_txt]  = copy_smart_object;
+    copy_handlers()  [(size_t)utils::agea_type::t_mat]  = copy_smart_object;
+    copy_handlers()  [(size_t)utils::agea_type::t_msh]  = copy_smart_object;
+    copy_handlers()  [(size_t)utils::agea_type::t_obj]  = copy_smart_object;
+    copy_handlers()  [(size_t)utils::agea_type::t_se]   = copy_smart_object;
+    copy_handlers()  [(size_t)utils::agea_type::t_com]  = copy_smart_object;
+    copy_handlers()  [(size_t)utils::agea_type::t_buf]  = property_type_copy_handlers::copy_t_buf;
+    copy_handlers()  [(size_t)utils::agea_type::t_color] = property_type_copy_handlers::copy_t_col;
     // clang-format on
 
     return true;
@@ -280,6 +301,42 @@ property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
 
     return true;
 }
+
+bool
+property_type_copy_handlers::copy_t_buf(AGEA_copy_handler_args)
+{
+    AGEA_unused(src_obj);
+
+    auto& f = extract<::agea::utils::buffer>(from);
+    auto& t = extract<::agea::utils::buffer>(to);
+
+    t = f;
+
+    return true;
+}
+
+bool
+property_type_copy_handlers::copy_t_col(AGEA_copy_handler_args)
+{
+    AGEA_unused(src_obj);
+
+    auto& f = extract<::agea::model::color>(from);
+    auto& t = extract<::agea::model::color>(to);
+
+    t = f;
+
+    return true;
+}
+
+bool
+property_type_copy_handlers::copy_t_se(AGEA_copy_handler_args)
+{
+    AGEA_unused(dst_obj);
+    AGEA_unused(src_obj);
+    AGEA_unused(ooc);
+
+    return copy_smart_object(src_obj, dst_obj, from, to, ooc);
+}  // namespace
 
 }  // namespace reflection
 }  // namespace agea

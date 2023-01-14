@@ -2,7 +2,7 @@
 
 #include <model/model_fwds.h>
 
-#include <utils/weird_singletone.h>
+#include <utils/singleton_instance.h>
 #include <utils/path.h>
 
 #include <filesystem>
@@ -21,6 +21,6 @@ struct base_test : public testing::Test
     agea::utils::path
     get_current_workspace();
 
-    singletone_autodeleter m_resource_locator;
+    agea::singleton_registry m_regestry;
 };
 };  // namespace agea

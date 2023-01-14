@@ -1,5 +1,5 @@
-type_id: mesh_object
-id: cubes_chain
+type_id: cubes_chain
+id: cubes_chain_derived
 layout: [-1, 0, 0]
 components:
   - id: cube_chain_root_component

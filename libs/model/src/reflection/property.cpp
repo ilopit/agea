@@ -274,9 +274,8 @@ property::deserialize_item(reflection::property& p,
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
     AGEA_check(p.types_deserialization_handler, "Should never happens!");
-    p.types_deserialization_handler(obj, ptr, jc[p.name], occ);
 
-    return true;
+    return p.types_deserialization_handler(obj, ptr, jc[p.name], occ);
 }
 
 bool

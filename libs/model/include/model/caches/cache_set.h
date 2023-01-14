@@ -9,20 +9,6 @@ namespace agea
 {
 namespace model
 {
-class cache_set_ref
-{
-public:
-    objects_cache* objects = nullptr;
-    components_cache* components = nullptr;
-    game_objects_cache* game_objects = nullptr;
-    materials_cache* materials = nullptr;
-    meshes_cache* meshes = nullptr;
-    textures_cache* textures = nullptr;
-    shader_effects_cache* shader_effects = nullptr;
-
-    caches_map* map = nullptr;
-};
-
 class cache_set
 {
 public:
@@ -32,9 +18,6 @@ public:
     cache_set&
     operator=(cache_set&&) noexcept;
     cache_set(cache_set&&) noexcept;
-
-    cache_set_ref
-    get_ref() const;
 
     std::unique_ptr<objects_cache> objects;
     std::unique_ptr<components_cache> components;
@@ -51,15 +34,6 @@ public:
 
 namespace glob
 {
-struct class_objects_cache_set_view
-    : public singleton_instance<::agea::model::cache_set_ref, class_objects_cache_set_view>
-{
-};
-
-struct objects_cache_set_view
-    : public singleton_instance<::agea::model::cache_set_ref, objects_cache_set_view>
-{
-};
 
 struct class_objects_cache_set
     : public ::agea::singleton_instance<::agea::model::cache_set, class_objects_cache_set>

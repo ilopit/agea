@@ -79,7 +79,7 @@ public:
     set_camera(render::gpu_camera_data d);
 
     void
-    draw();
+    draw_objects();
 
     void
     add_object(render::object_data* obj_data);
@@ -97,15 +97,15 @@ public:
 
 private:
     void
-    draw_new_objects(render::frame_state& frame);
+    draw_objects(render::frame_state& frame);
 
     void
-    draw_objects(render_line_conteiner& r,
-                 VkCommandBuffer cmd,
-                 vk_utils::vulkan_buffer& obj_tb,
-                 VkDescriptorSet obj_ds,
-                 vk_utils::vulkan_buffer& dyn_tb,
-                 VkDescriptorSet global_ds);
+    draw_objects_queue(render_line_conteiner& r,
+                       VkCommandBuffer cmd,
+                       vk_utils::vulkan_buffer& obj_tb,
+                       VkDescriptorSet obj_ds,
+                       vk_utils::vulkan_buffer& dyn_tb,
+                       VkDescriptorSet global_ds);
 
     void
     update_gpu_object_data(render::gpu_object_data* object_SSBO);

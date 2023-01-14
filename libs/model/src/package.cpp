@@ -37,8 +37,8 @@ package::~package()
 bool
 package::load_package(const utils::path& path,
                       package& p,
-                      cache_set_ref class_global_set,
-                      cache_set_ref instance_global_set)
+                      cache_set* class_global_set,
+                      cache_set* instance_global_set)
 {
     ALOG_INFO("Loading package {0}", path.str());
 
@@ -66,27 +66,17 @@ package::load_package(const utils::path& path,
     p.m_occ->set_prefix_path(p.m_load_path)
         .set_class_global_set(p.m_class_global_set)
         .set_instance_global_set(p.m_instance_global_set)
-        .set_class_local_set(p.m_class_local_set.get_ref())
-        .set_instance_local_set(p.m_instance_local_set.get_ref())
+        .set_class_local_set(&p.m_class_local_set)
+        .set_instance_local_set(&p.m_instance_local_set)
         .set_objects_mapping(p.m_mapping.m_items)
         .set_ownable_cache(&p.m_objects);
 
     for (auto& i : p.m_mapping.m_items)
     {
-        auto& mapping = i.second;
-        if (mapping.first && p.m_occ->find_class_obj(i.first))
-        {
-            continue;
-        }
-
-        auto obj = mapping.first
-                       ? object_constructor::class_object_load(mapping.second, *p.m_occ)
-                       : object_constructor::instance_object_load(mapping.second, *p.m_occ);
-
-        if (!obj)
-        {
-            ALOG_LAZY_ERROR;
-        }
+        p.m_occ->set_construction_type(i.second.first ? obj_construction_type::class_obj
+                                                      : obj_construction_type::instance_obj);
+        object_constructor::object_load(i.first, *p.m_occ);
+        p.m_occ->set_construction_type(obj_construction_type::nav);
     }
 
     for (auto& o : p.m_objects)
@@ -94,7 +84,7 @@ package::load_package(const utils::path& path,
         o->set_package(&p);
     }
 
-    p.m_state = package_state__loaded;
+    p.m_state = package_state::loaded;
 
     return true;
 }
@@ -139,12 +129,12 @@ package::save_package(const utils::path& root_folder, const package& p)
         bool result = false;
         if (mapping.first)
         {
-            result = object_constructor::class_object_save(*i, full_obj_path);
+            result = object_constructor::object_save(*i, full_obj_path);
             class_pathes[i->get_id().str()] = mapping.second.str();
         }
         else
         {
-            result = object_constructor::instance_object_save(*i, full_obj_path);
+            result = object_constructor::object_save(*i, full_obj_path);
         }
 
         if (!result)
@@ -181,12 +171,32 @@ package::get_relative_path(const utils::path& p) const
 void
 package::propagate_to_global_caches()
 {
+    ALOG_INFO("Propagate to global [{0}]", m_id.cstr());
+
+    size_t size = m_objects.get_size();
+    for (size_t i = 0; i < size; ++i)
+    {
+        auto& e = m_objects[i];
+        AGEA_check(e->has_state(smart_object_internal_state::class_obj), "Never happens");
+
+        ALOG_INFO("Mirroring [{0}]", e->get_id().cstr());
+
+        m_occ->set_construction_type(obj_construction_type::mirror_obj);
+        auto o = object_constructor::object_clone_create(e->get_id(), e->get_id(), *m_occ);
+        m_occ->set_construction_type(obj_construction_type::nav);
+
+        if (o)
+        {
+            m_package_instances.emplace_back(o);
+        }
+    }
+
     size_t count = 0;
     for (auto& c : m_class_local_set.map->get_items())
     {
         for (auto& i : c.second->get_items())
         {
-            m_class_global_set.map->get_cache(c.first)->add_item(*i.second);
+            m_class_global_set->map->get_cache(c.first)->add_item(*i.second);
             ++count;
         }
     }
@@ -195,7 +205,7 @@ package::propagate_to_global_caches()
     {
         for (auto& i : c.second->get_items())
         {
-            m_instance_global_set.map->get_cache(c.first)->add_item(*i.second);
+            m_instance_global_set->map->get_cache(c.first)->add_item(*i.second);
             ++count;
         }
     }

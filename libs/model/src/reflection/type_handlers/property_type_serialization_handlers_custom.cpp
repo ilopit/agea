@@ -126,7 +126,7 @@ game_object_components_serialize(serialize_context& dc)
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (class_obj.is_class_obj())
+    if (class_obj.has_state(model::smart_object_internal_state::inhereted))
     {
         serialization::conteiner components_conteiner;
         serialization::conteiner components_layout;

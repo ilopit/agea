@@ -1,0 +1,5 @@
+class_obj_mapping:
+  - cube_mesh_component: class/components/cube_mesh_component.aobj
+
+  - cubes_chain: class/game_objects/cubes_chain.aobj
+  

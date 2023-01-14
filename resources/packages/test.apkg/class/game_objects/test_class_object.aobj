@@ -1,5 +1,0 @@
-type_id: mesh_object
-id: test_class_object
-components:
-  - id: test_class_object__test_class_root_component
-  - id: test_class_object__test_class_component

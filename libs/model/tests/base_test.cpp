@@ -14,7 +14,7 @@ base_test::SetUp()
     std::filesystem::remove_all(get_current_workspace().fs(), ec);
     std::filesystem::create_directories(get_current_workspace().fs(), ec);
 
-    m_resource_locator = agea::glob::resource_locator::create();
+    agea::glob::resource_locator::create(m_regestry);
 }
 
 void

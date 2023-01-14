@@ -20,8 +20,8 @@ package_manager::load_package(const utils::id& id)
     auto path = glob::resource_locator::get()->resource(category::packages, id.str());
 
     auto p = std::make_unique<model::package>();
-    if (!package::load_package(path, *p, glob::class_objects_cache_set_view::getr(),
-                               glob::objects_cache_set_view::getr()))
+    if (!package::load_package(path, *p, glob::class_objects_cache_set::get(),
+                               glob::objects_cache_set::get()))
     {
         return false;
     }

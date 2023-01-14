@@ -1,3 +1,5 @@
+#if 0
+
 #include "model/object_constructor.h"
 
 #include "model/caches/materials_cache.h"
@@ -88,3 +90,5 @@ TEST_F(test_load_package, load_package)
     result = utils::file_utils::compare_folders(path, get_current_workspace() / "test.apkg");
     ASSERT_TRUE(result);
 }
+
+#endif

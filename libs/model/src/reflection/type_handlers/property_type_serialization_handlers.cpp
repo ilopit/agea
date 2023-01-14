@@ -46,31 +46,15 @@ load_smart_object(blob_ptr ptr,
 {
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
-    const auto& id = AID(jc.as<std::string>());
+    const auto id = AID(jc.as<std::string>());
 
-    auto obj = occ.find_class_obj(id, a_type);
+    field = model::object_constructor::object_load(id, occ);
 
-    if (!obj)
+    if (!field)
     {
-        auto prev_type = occ.m_construction_type;
-        occ.m_construction_type = model::obj_construction_type__class;
-        auto p = occ.get_full_path();
-        if (p.empty())
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-
-        obj = model::object_constructor::object_load_internal(p, occ);
-        occ.m_construction_type = prev_type;
-        if (!obj)
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
+        ALOG_LAZY_ERROR;
+        return false;
     }
-
-    field = obj;
 
     return true;
 }
@@ -142,14 +126,14 @@ property_type_serialization_handlers::init()
     serializers()  [(size_t)utils::agea_type::t_com]  = serialize_t_com;
     deserializers()[(size_t)utils::agea_type::t_com]  = deserialize_t_com;
 
-    serializers()[(size_t)utils::agea_type::t_se] = serialize_t_se;
-    deserializers()[(size_t)utils::agea_type::t_se] = deserialize_t_se;
+    serializers()[(size_t)utils::agea_type::t_se]       = serialize_t_se;
+    deserializers()[(size_t)utils::agea_type::t_se]     = deserialize_t_se;
     
     serializers()  [(size_t)utils::agea_type::t_color]  = serialize_t_color;
     deserializers()[(size_t)utils::agea_type::t_color]  = deserialize_t_color;
 
-    serializers()  [(size_t)utils::agea_type::t_buf]  = serialize_t_buf;
-    deserializers()[(size_t)utils::agea_type::t_buf]  = deserialize_t_buf;
+    serializers()  [(size_t)utils::agea_type::t_buf]    = serialize_t_buf;
+    deserializers()[(size_t)utils::agea_type::t_buf]    = deserialize_t_buf;
     // clang-format on
 
     return true;
@@ -570,27 +554,6 @@ property_type_serialization_handlers::deserialize_t_com(AGEA_deserialization_arg
     AGEA_unused(occ);
 
     AGEA_not_implemented;
-    //     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
-    //
-    //     auto class_id = core::id::from(jc["object_class"].as<std::string>());
-    //
-    //     auto id = core::id::from(jc["id"].as<std::string>());
-    //
-    //     auto obj = model::object_constructor::object_clone_create(class_id, id, occ);
-    //
-    //     if (!obj)
-    //     {
-    //         ALOG_ERROR("object [{0}] doesn't exists", class_id.str());
-    //         return false;
-    //     }
-    //
-    //     if (!model::object_constructor::update_object_properties(*obj, jc, occ))
-    //     {
-    //         ALOG_ERROR("object [{0}] update failed", class_id.str());
-    //         return false;
-    //     }
-    //
-    //     field = obj;
 
     return true;
 }
@@ -613,6 +576,7 @@ property_type_serialization_handlers::deserialize_t_color(AGEA_deserialization_a
 
     if (str_color.size() != 0)
     {
+        ALOG_LAZY_ERROR;
         return false;
     }
 
@@ -639,6 +603,7 @@ property_type_serialization_handlers::serialize_t_buf(AGEA_serialization_args)
 
     if (!utils::buffer::save(field))
     {
+        ALOG_LAZY_ERROR;
         return false;
     }
 
@@ -650,9 +615,15 @@ property_type_serialization_handlers::serialize_t_buf(AGEA_serialization_args)
 bool
 property_type_serialization_handlers::deserialize_t_buf(AGEA_deserialization_args)
 {
-    auto rel_path = utils::path(jc.as<std::string>());
+    auto rel_path = APATH(jc.as<std::string>());
 
-    auto package_path = occ.get_full_path(rel_path);
+    utils::path package_path;
+
+    if (!occ.make_full_path(rel_path, package_path))
+    {
+        ALOG_LAZY_ERROR;
+        return false;
+    }
 
     auto& f = reflection::extract<::agea::utils::buffer>(ptr);
     f.set_file(package_path);

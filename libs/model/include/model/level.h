@@ -4,7 +4,7 @@
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
-#include "model/object_mapping.h"
+#include "model/objects_mapping.h"
 
 #include "model/model_minimal.h"
 
@@ -123,12 +123,18 @@ public:
         return m_dirty_shader_effects;
     }
 
+    const std::vector<utils::id>&
+    get_package_ids() const
+    {
+        return m_package_ids;
+    }
+
 private:
     utils::id m_id;
 
     cache_set m_local_cs;
-    cache_set_ref m_global_object_cs;
-    cache_set_ref m_global_class_object_cs;
+    cache_set* m_global_object_cs = nullptr;
+    cache_set* m_global_class_object_cs = nullptr;
     std::unique_ptr<object_constructor_context> m_occ;
 
     line_cache<smart_object_ptr> m_objects;

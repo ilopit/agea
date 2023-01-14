@@ -104,13 +104,6 @@ struct vec4 : ::glm::vec4
     {
         return w;
     }
-
-
-    std::string
-    to_string()
-    {
-        return "bla";
-    }
 };
 
 }  // namespace model

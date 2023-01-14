@@ -17,8 +17,6 @@
 
 namespace agea
 {
-glob::class_objects_cache_set_view::type glob::class_objects_cache_set_view::type::s_instance;
-glob::objects_cache_set_view::type glob::objects_cache_set_view::type::s_instance;
 
 glob::class_objects_cache_set::type glob::class_objects_cache_set::type::s_instance;
 glob::objects_cache_set::type glob::objects_cache_set::type::s_instance;
@@ -46,23 +44,6 @@ cache_set::cache_set()
 
 cache_set::cache_set(cache_set&&) noexcept = default;
 
-cache_set_ref
-cache_set::get_ref() const
-{
-    cache_set_ref csf;
-
-    csf.objects = objects.get();
-    csf.components = components.get();
-    csf.game_objects = game_objects.get();
-    csf.materials = materials.get();
-    csf.meshes = meshes.get();
-    csf.textures = textures.get();
-    csf.shader_effects = shader_effects.get();
-    csf.map = map.get();
-
-    return csf;
-}
-
 cache_set&
 cache_set::operator=(cache_set&&) noexcept = default;
 
@@ -73,32 +54,29 @@ cache_set::~cache_set() = default;
 void
 glob::init_global_caches(singleton_registry& r)
 {
+    // clang-format off
     glob::empty_objects_cache::create(r);
 
     glob::class_objects_cache_set::create(r);
-
-    glob::class_objects_cache_set_view::create(r, glob::class_objects_cache_set::getr().get_ref());
     glob::class_object_caches_map::create_ref(glob::class_objects_cache_set::get()->map.get());
 
-    glob::class_materials_cache::create_ref(glob::class_objects_cache_set_view::getr().materials);
-    glob::class_meshes_cache::create_ref(glob::class_objects_cache_set_view::getr().meshes);
-    glob::class_textures_cache::create_ref(glob::class_objects_cache_set_view::getr().textures);
-    glob::class_objects_cache::create_ref(glob::class_objects_cache_set_view::getr().objects);
-    glob::class_components_cache::create_ref(glob::class_objects_cache_set_view::getr().components);
-    glob::class_shader_effects_cache::create_ref(
-        glob::class_objects_cache_set_view::getr().shader_effects);
+    glob::class_materials_cache::create_ref(glob::class_objects_cache_set::getr().materials.get());
+    glob::class_meshes_cache::create_ref(glob::class_objects_cache_set::getr().meshes.get());
+    glob::class_textures_cache::create_ref(glob::class_objects_cache_set::getr().textures.get());
+    glob::class_objects_cache::create_ref(glob::class_objects_cache_set::getr().objects.get());
+    glob::class_components_cache::create_ref(glob::class_objects_cache_set::getr().components.get());
+    glob::class_shader_effects_cache::create_ref(glob::class_objects_cache_set::getr().shader_effects.get());
 
     glob::objects_cache_set::create(r);
-
-    glob::objects_cache_set_view::create(r, glob::objects_cache_set::getr().get_ref());
     glob::object_caches_map::create_ref(glob::objects_cache_set::get()->map.get());
 
-    glob::materials_cache::create_ref(glob::objects_cache_set_view::getr().materials);
-    glob::meshes_cache::create_ref(glob::objects_cache_set_view::getr().meshes);
-    glob::textures_cache::create_ref(glob::objects_cache_set_view::getr().textures);
-    glob::objects_cache::create_ref(glob::objects_cache_set_view::getr().objects);
-    glob::components_cache::create_ref(glob::objects_cache_set_view::getr().components);
-    glob::shader_effects_cache::create_ref(glob::objects_cache_set_view::getr().shader_effects);
+    glob::materials_cache::create_ref(glob::objects_cache_set::getr().materials.get());
+    glob::meshes_cache::create_ref(glob::objects_cache_set::getr().meshes.get());
+    glob::textures_cache::create_ref(glob::objects_cache_set::getr().textures.get());
+    glob::objects_cache::create_ref(glob::objects_cache_set::getr().objects.get());
+    glob::components_cache::create_ref(glob::objects_cache_set::getr().components.get());
+    glob::shader_effects_cache::create_ref(glob::objects_cache_set::getr().shader_effects.get());
+    // clang-format on
 }
 
 }  // namespace agea

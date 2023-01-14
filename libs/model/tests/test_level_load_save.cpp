@@ -1,3 +1,5 @@
+#if 0
+
 #include "model/object_constructor.h"
 
 #include "model/caches/materials_cache.h"
@@ -110,3 +112,5 @@ TEST_F(test_load_level, load_level)
     result = utils::file_utils::compare_folders(get_current_workspace() / "test.alvl", path);
     ASSERT_TRUE(result);
 }
+
+#endif

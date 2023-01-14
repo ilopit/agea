@@ -1,7 +1,0 @@
-class_id: test_class_root_component
-id: test_class_object__test_class_root_component
-position:
-  x: 1
-  y: 1
-  z: 1
-order_idx: 0

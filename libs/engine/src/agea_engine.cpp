@@ -184,7 +184,7 @@ vulkan_engine::run()
         consume_updated_render_components();
         consume_updated_transforms();
 
-        glob::vulkan_render::getr().draw();
+        glob::vulkan_render::getr().draw_objects();
 
         glob::vulkan_render_loader::getr().delete_sheduled_actions();
 
@@ -209,8 +209,8 @@ bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
     auto result = model::level_constructor::load_level_id(
-        *glob::level::get(), glob::config::get()->level, glob::class_objects_cache_set_view::getr(),
-        glob::objects_cache_set_view::getr());
+        *glob::level::get(), glob::config::get()->level, glob::class_objects_cache_set::get(),
+        glob::objects_cache_set::get());
 
     if (!result)
     {
@@ -334,6 +334,14 @@ vulkan_engine::prepare_for_rendering(model::package& p)
 bool
 vulkan_engine::prepare_for_rendering(model::level& p)
 {
+    auto& ids = p.get_package_ids();
+
+    for (auto& id : ids)
+    {
+        auto p = glob::package_manager::getr().get_package(id);
+        prepare_for_rendering(*p);
+    }
+
     auto& cs = p.get_game_objects();
 
     for (auto& o : cs.get_items())

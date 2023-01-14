@@ -89,12 +89,6 @@ struct vec3 : ::glm::vec3
     {
         return z;
     }
-
-    std::string
-    to_string()
-    {
-        return "bla";
-    }
 };
 
 }  // namespace model

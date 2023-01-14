@@ -6,17 +6,17 @@
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
 
-#include "object_mapping.h"
+#include "model/objects_mapping.h"
 
 namespace agea
 {
 namespace model
 {
-enum package_state
+enum class package_state
 {
-    package_state__unloaded,
-    package_state__loaded,
-    package_state__render_loaded
+    unloaded,
+    loaded,
+    render_loaded
 };
 
 class package
@@ -25,8 +25,8 @@ public:
     static bool
     load_package(const utils::path& root_folder,
                  package& p,
-                 cache_set_ref class_global_set,
-                 cache_set_ref instance_global_set);
+                 cache_set* class_global_set,
+                 cache_set* instance_global_set);
 
     static bool
     save_package(const utils::path& root_folder, const package& p);
@@ -98,10 +98,10 @@ public:
         m_state = v;
     }
 
-    line_cache<std::shared_ptr<smart_object>>&
+    line_cache<smart_object*>&
     get_objects()
     {
-        return m_objects;
+        return m_package_instances;
     }
 
 private:
@@ -109,15 +109,17 @@ private:
     mutable utils::path m_load_path;
     mutable utils::path m_save_root_path;
 
-    package_state m_state = package_state__unloaded;
+    package_state m_state = package_state::unloaded;
 
-    cache_set_ref m_class_global_set;
-    cache_set_ref m_instance_global_set;
+    cache_set* m_class_global_set = nullptr;
+    cache_set* m_instance_global_set = nullptr;
 
     cache_set m_class_local_set;
     cache_set m_instance_local_set;
 
     line_cache<std::shared_ptr<smart_object>> m_objects;
+
+    line_cache<smart_object*> m_package_instances;
 
     object_mapping m_mapping;
 

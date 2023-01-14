@@ -338,10 +338,10 @@ scene_builder::pfr_shader_effect(model::smart_object& obj, bool sub_object)
     static render::vertex_input_description input = []()
     {
         agea::utils::dynamic_object_layout_sequence_builder builder;
-        builder.add_field(AID(""), agea::utils::agea_type::t_vec3, 1);
-        builder.add_field(AID(""), agea::utils::agea_type::t_vec3, 1);
-        builder.add_field(AID(""), agea::utils::agea_type::t_vec3, 1);
-        builder.add_field(AID(""), agea::utils::agea_type::t_vec2, 1);
+        builder.add_field(AID("pos"), agea::utils::agea_type::t_vec3, 1);
+        builder.add_field(AID("norm"), agea::utils::agea_type::t_vec3, 1);
+        builder.add_field(AID("color"), agea::utils::agea_type::t_vec3, 1);
+        builder.add_field(AID("uv"), agea::utils::agea_type::t_vec2, 1);
 
         auto dol = builder.get_obj();
 
@@ -386,6 +386,8 @@ scene_builder::pfr_empty(model::smart_object&, bool)
 bool
 scene_builder::schedule_for_rendering(model::smart_object& obj, bool sub_objects)
 {
+    AGEA_check(!obj.has_state(model::smart_object_internal_state::class_obj), "");
+
     if (obj.get_state() == model::smart_objet_state__render_scheduled)
     {
         return true;
@@ -505,6 +507,8 @@ scene_builder::sfr_mesh_component(model::smart_object& obj, bool sub_object)
 bool
 scene_builder::prepare_for_rendering(model::smart_object& obj, bool sub_objects)
 {
+    AGEA_check(!obj.has_state(model::smart_object_internal_state::class_obj), "");
+
     if (obj.get_state() == model::smart_objet_state__render_created ||
         obj.get_state() == model::smart_objet_state__render_scheduled)
     {

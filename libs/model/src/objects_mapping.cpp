@@ -1,4 +1,4 @@
-#include "model/object_mapping.h"
+#include "model/objects_mapping.h"
 
 #include <serialization/serialization.h>
 

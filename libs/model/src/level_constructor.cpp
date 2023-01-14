@@ -32,8 +32,8 @@ const std::vector<architype> k_enums_to_handle{architype::component, architype::
 bool
 level_constructor::load_level_id(level& l,
                                  const utils::id& id,
-                                 cache_set_ref global_class_cs,
-                                 cache_set_ref global_instances_cs)
+                                 cache_set* global_class_cs,
+                                 cache_set* global_instances_cs)
 {
     ALOG_INFO("Begin level loading with id {0}", id.cstr());
 
@@ -45,8 +45,8 @@ level_constructor::load_level_id(level& l,
 bool
 level_constructor::load_level_path(level& l,
                                    const utils::path& path,
-                                   cache_set_ref global_class_cs,
-                                   cache_set_ref global_instances_cs)
+                                   cache_set* global_class_cs,
+                                   cache_set* global_instances_cs)
 {
     ALOG_INFO("Begin level loading with path {0}", path.str());
 
@@ -84,8 +84,8 @@ level_constructor::load_level_path(level& l,
     l.m_occ->set_prefix_path(utils::path{})
         .set_class_global_set(l.m_global_class_object_cs)
         .set_instance_global_set(l.m_global_object_cs)
-        .set_class_local_set(cache_set_ref{})
-        .set_instance_local_set(l.m_local_cs.get_ref())
+        .set_class_local_set(nullptr)
+        .set_instance_local_set(&l.m_local_cs)
         .set_ownable_cache(&l.m_objects)
         .set_objects_mapping(l.m_mapping.m_items)
         .set_prefix_path(path);
@@ -109,14 +109,10 @@ level_constructor::load_level_path(level& l,
     {
         auto& mapping = i.second;
 
-        auto obj = mapping.first
-                       ? object_constructor::class_object_load(mapping.second, *l.m_occ)
-                       : object_constructor::instance_object_load(mapping.second, *l.m_occ);
-
-        if (!obj)
-        {
-            ALOG_LAZY_ERROR;
-        }
+        l.m_occ->set_construction_type(i.second.first ? obj_construction_type::class_obj
+                                                      : obj_construction_type::instance_obj);
+        object_constructor::object_load(i.first, *l.m_occ);
+        l.m_occ->set_construction_type(obj_construction_type::nav);
     }
 
     for (auto& o : l.m_objects)
@@ -137,7 +133,7 @@ level_constructor::load_level_path(level& l,
     {
         for (auto& i : c.second->get_items())
         {
-            global_instances_cs.map->get_cache(c.first)->add_item(*i.second);
+            global_instances_cs->map->get_cache(c.first)->add_item(*i.second);
             ++idx;
         }
     }
