@@ -121,13 +121,13 @@ public:
     mark_render_dirty();
 
 protected:
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
-    vec3 m_position;
+    AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
+    vec3 m_position = {0.f};
 
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
-    vec3 m_rotation;
+    AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
+    vec3 m_rotation = {0.f};
 
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
+    AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
     vec3 m_scale = {1.f};
 
     glm::mat4 m_transform_matrix;

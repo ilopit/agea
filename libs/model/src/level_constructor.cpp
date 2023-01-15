@@ -109,10 +109,12 @@ level_constructor::load_level_path(level& l,
     {
         auto& mapping = i.second;
 
-        l.m_occ->set_construction_type(i.second.first ? obj_construction_type::class_obj
-                                                      : obj_construction_type::instance_obj);
-        object_constructor::object_load(i.first, *l.m_occ);
-        l.m_occ->set_construction_type(obj_construction_type::nav);
+        l.m_occ->set_construction_type(
+            i.second.first ? object_constructor_context::construction_type::class_obj
+                           : object_constructor_context::construction_type::instance_obj);
+        smart_object* obj = nullptr;
+        object_constructor::object_load(i.first, *l.m_occ, obj);
+        l.m_occ->set_construction_type(object_constructor_context::construction_type::nav);
     }
 
     for (auto& o : l.m_objects)

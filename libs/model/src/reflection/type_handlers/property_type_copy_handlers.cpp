@@ -15,22 +15,23 @@ namespace reflection
 {
 namespace
 {
-bool
+result_code
 copy_smart_object(AGEA_copy_handler_args)
 {
     auto type = ooc.get_construction_type();
-    if (type == model::obj_construction_type::mirror_obj)
+    if (type == model::object_constructor_context::construction_type::mirror_obj)
     {
         auto& obj = extract<::agea::model::smart_object*>(from);
-        extract<::agea::model::smart_object*>(to) =
-            model::object_constructor::object_clone_create(obj->get_id(), obj->get_id(), ooc);
+        auto& dst_obj = extract<::agea::model::smart_object*>(to);
+        return model::object_constructor::object_clone_create(obj->get_id(), obj->get_id(), ooc,
+                                                              dst_obj);
     }
     else
     {
         fast_copy<model::smart_object*>(from, to);
     }
 
-    return true;
+    return result_code::ok;
 }
 }  // namespace
 
@@ -69,7 +70,7 @@ property_type_copy_handlers::init()
 }
 
 // STR
-bool
+result_code
 property_type_copy_handlers::copy_t_str(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -77,11 +78,11 @@ property_type_copy_handlers::copy_t_str(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     full_copy<std::string>(from, to);
-    return true;
+    return result_code::failed;
 }
 
 // STR
-bool
+result_code
 property_type_copy_handlers::copy_t_id(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -89,11 +90,11 @@ property_type_copy_handlers::copy_t_id(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     full_copy<utils::id>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Bool
-bool
+result_code
 property_type_copy_handlers::copy_t_bool(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -101,11 +102,11 @@ property_type_copy_handlers::copy_t_bool(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<bool>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // I8
-bool
+result_code
 property_type_copy_handlers::copy_t_i8(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -113,11 +114,11 @@ property_type_copy_handlers::copy_t_i8(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<int8_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // I16
-bool
+result_code
 property_type_copy_handlers::copy_t_i16(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -125,11 +126,11 @@ property_type_copy_handlers::copy_t_i16(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<int16_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // I32
-bool
+result_code
 property_type_copy_handlers::copy_t_i32(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -137,11 +138,11 @@ property_type_copy_handlers::copy_t_i32(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<int32_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // I64
-bool
+result_code
 property_type_copy_handlers::copy_t_i64(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -149,10 +150,10 @@ property_type_copy_handlers::copy_t_i64(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<int64_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 // U8
-bool
+result_code
 property_type_copy_handlers::copy_t_u8(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -160,11 +161,11 @@ property_type_copy_handlers::copy_t_u8(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<uint8_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // U16
-bool
+result_code
 property_type_copy_handlers::copy_t_u16(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -172,11 +173,11 @@ property_type_copy_handlers::copy_t_u16(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<uint16_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // U32
-bool
+result_code
 property_type_copy_handlers::copy_t_u32(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -184,11 +185,11 @@ property_type_copy_handlers::copy_t_u32(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<uint32_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // U64
-bool
+result_code
 property_type_copy_handlers::copy_t_u64(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -196,11 +197,11 @@ property_type_copy_handlers::copy_t_u64(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<uint64_t>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Float
-bool
+result_code
 property_type_copy_handlers::copy_t_f(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -208,11 +209,11 @@ property_type_copy_handlers::copy_t_f(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<float>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Double
-bool
+result_code
 property_type_copy_handlers::copy_t_d(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -220,11 +221,11 @@ property_type_copy_handlers::copy_t_d(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<double>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Vec3
-bool
+result_code
 property_type_copy_handlers::copy_t_vec3(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -232,11 +233,11 @@ property_type_copy_handlers::copy_t_vec3(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     full_copy<glm::vec3>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Texture
-bool
+result_code
 property_type_copy_handlers::copy_t_txt(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -244,11 +245,11 @@ property_type_copy_handlers::copy_t_txt(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<model::smart_object*>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Material
-bool
+result_code
 property_type_copy_handlers::copy_t_mat(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -256,11 +257,11 @@ property_type_copy_handlers::copy_t_mat(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<model::smart_object*>(from, to);
-    return true;
+    return result_code::ok;
 }
 
 // Mesh
-bool
+result_code
 property_type_copy_handlers::copy_t_msh(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -268,10 +269,10 @@ property_type_copy_handlers::copy_t_msh(AGEA_copy_handler_args)
     AGEA_unused(ooc);
 
     fast_copy<model::smart_object*>(from, to);
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_type_copy_handlers::copy_t_obj(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
@@ -282,27 +283,27 @@ property_type_copy_handlers::copy_t_obj(AGEA_copy_handler_args)
     AGEA_unused(to);
 
     AGEA_never("We should never be here!");
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
 {
     AGEA_unused(src_obj);
 
-    auto& f = extract<::agea::model::component*>(from);
-    auto& t = extract<::agea::model::component*>(to);
+    auto& f = extract<::agea::model::smart_object*>(from);
+    auto& t = extract<::agea::model::smart_object*>(to);
 
     auto new_id = AID(dst_obj.get_id().str() + "/" + f->get_class_obj()->get_id().str());
 
-    auto p = model::object_constructor::object_clone_create(*f, new_id, ooc);
+    auto p = model::object_constructor::object_clone_create(*f, new_id, ooc, t);
 
     t = (::agea::model::component*)p;
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_type_copy_handlers::copy_t_buf(AGEA_copy_handler_args)
 {
     AGEA_unused(src_obj);
@@ -312,10 +313,10 @@ property_type_copy_handlers::copy_t_buf(AGEA_copy_handler_args)
 
     t = f;
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_type_copy_handlers::copy_t_col(AGEA_copy_handler_args)
 {
     AGEA_unused(src_obj);
@@ -325,10 +326,10 @@ property_type_copy_handlers::copy_t_col(AGEA_copy_handler_args)
 
     t = f;
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_type_copy_handlers::copy_t_se(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);

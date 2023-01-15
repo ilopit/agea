@@ -26,27 +26,6 @@ public:
     AGEA_gen_construct_params{};
     AGEA_gen_meta_architype_api(shader_effect);
 
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    utils::buffer m_vert;
-
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    bool m_is_vert_binary = false;
-
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    utils::buffer m_frag;
-
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    bool m_is_frag_binary = false;
-
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    bool m_wire_topology = false;
-
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    color m_color;
-
-    AGEA_property("category=meta", "serializable=true", "access=no");
-    bool m_enable_alpha_support = false;
-
     render::shader_effect_data*
     get_shader_effect_data()
     {
@@ -61,6 +40,24 @@ public:
 
     void
     mark_render_dirty();
+
+    AGEA_property("category=meta", "serializable=true", "access=no");
+    utils::buffer m_vert;
+
+    AGEA_property("category=meta", "serializable=true", "access=no", "default=true");
+    bool m_is_vert_binary = false;
+
+    AGEA_property("category=meta", "serializable=true", "access=no");
+    utils::buffer m_frag;
+
+    AGEA_property("category=meta", "serializable=true", "access=no", "default=true");
+    bool m_is_frag_binary = false;
+
+    AGEA_property("category=meta", "serializable=true", "access=no", "default=true");
+    bool m_wire_topology = false;
+
+    AGEA_property("category=meta", "serializable=true", "access=no", "default=true");
+    bool m_enable_alpha_support = false;
 
 private:
     render::shader_effect_data* m_shader_effect_data = nullptr;

@@ -73,10 +73,12 @@ package::load_package(const utils::path& path,
 
     for (auto& i : p.m_mapping.m_items)
     {
-        p.m_occ->set_construction_type(i.second.first ? obj_construction_type::class_obj
-                                                      : obj_construction_type::instance_obj);
-        object_constructor::object_load(i.first, *p.m_occ);
-        p.m_occ->set_construction_type(obj_construction_type::nav);
+        auto ctype = i.second.first ? object_constructor_context::construction_type::class_obj
+                                    : object_constructor_context::construction_type::instance_obj;
+        p.m_occ->set_construction_type(ctype);
+        smart_object* obj = nullptr;
+        object_constructor::object_load(i.first, *p.m_occ, obj);
+        p.m_occ->set_construction_type(object_constructor_context::construction_type::nav);
     }
 
     for (auto& o : p.m_objects)
@@ -126,7 +128,7 @@ package::save_package(const utils::path& root_folder, const package& p)
             std::filesystem::create_directories(parent.fs());
         }
 
-        bool result = false;
+        result_code result = result_code::failed;
         if (mapping.first)
         {
             result = object_constructor::object_save(*i, full_obj_path);
@@ -137,7 +139,7 @@ package::save_package(const utils::path& root_folder, const package& p)
             result = object_constructor::object_save(*i, full_obj_path);
         }
 
-        if (!result)
+        if (result != result_code::ok)
         {
             ALOG_LAZY_ERROR;
             return false;
@@ -181,13 +183,16 @@ package::propagate_to_global_caches()
 
         ALOG_INFO("Mirroring [{0}]", e->get_id().cstr());
 
-        m_occ->set_construction_type(obj_construction_type::mirror_obj);
-        auto o = object_constructor::object_clone_create(e->get_id(), e->get_id(), *m_occ);
-        m_occ->set_construction_type(obj_construction_type::nav);
+        m_occ->set_construction_type(object_constructor_context::construction_type::mirror_obj);
+        smart_object* obj = nullptr;
+        auto result =
+            object_constructor::object_clone_create(e->get_id(), e->get_id(), *m_occ, obj);
 
-        if (o)
+        m_occ->set_construction_type(object_constructor_context::construction_type::nav);
+
+        if (result_code::ok == result && obj)
         {
-            m_package_instances.emplace_back(o);
+            m_package_instances.emplace_back(obj);
         }
     }
 

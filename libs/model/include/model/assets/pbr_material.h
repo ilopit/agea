@@ -84,16 +84,32 @@ public:
         return m_roughness;
     }
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_albedo = 0.1f;
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_gamma = 0.1f;
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_metallic = 0.1f;
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_roughness = 0.1f;
 };
 

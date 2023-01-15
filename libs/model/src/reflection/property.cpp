@@ -21,12 +21,12 @@ namespace reflection
 
 static volatile bool initialize = property_convertes::init();
 
-bool
+result_code
 property::save_to_string(property& prop, blob_ptr ptr, fixed_size_buffer& str)
 {
     if (prop.type.type == utils::agea_type::t_nan)
     {
-        return false;
+        return result_code::failed;
     }
 
     auto fixed_ptr = reflection::reduce_ptr(ptr + prop.offset, prop.type.is_ptr);
@@ -35,12 +35,12 @@ property::save_to_string(property& prop, blob_ptr ptr, fixed_size_buffer& str)
     return property_convertes::readers()[idx](fixed_ptr, str);
 }
 
-bool
+result_code
 property::load_from_string(blob_ptr ptr, const std::string& str)
 {
     if (type.type == utils::agea_type::t_nan)
     {
-        return false;
+        return result_code::failed;
     }
 
     auto fixed_ptr = reduce_ptr(ptr + offset, type.is_ptr);
@@ -49,19 +49,19 @@ property::load_from_string(blob_ptr ptr, const std::string& str)
     return property_convertes::writers()[idx](fixed_ptr, str);
 }
 
-bool
+result_code
 property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, fixed_size_buffer& buf)
 {
     if (type.type != utils::agea_type::t_vec3)
     {
-        return false;
+        return result_code::failed;
     }
 
     auto hitr = std::find(hints.begin(), hints.end(), h);
 
     if (hitr == hints.end())
     {
-        return false;
+        return result_code::failed;
     }
 
     auto extra_offset = (hitr - hints.begin()) * sizeof(float);
@@ -72,19 +72,19 @@ property::save_to_string_with_hint(blob_ptr ptr, const std::string& h, fixed_siz
     return property_convertes::readers()[idx](fixed_ptr, buf);
 }
 
-bool
+result_code
 property::load_from_string_with_hint(blob_ptr ptr, const std::string& hint, const std::string& str)
 {
     if (type.type != utils::agea_type::t_vec3)
     {
-        return false;
+        return result_code::failed;
     }
 
     auto hitr = std::find(hints.begin(), hints.end(), hint);
 
     if (hitr == hints.end())
     {
-        return false;
+        return result_code::failed;
     }
 
     auto extra_offset = (hitr - hints.begin()) * sizeof(float);
@@ -94,7 +94,7 @@ property::load_from_string_with_hint(blob_ptr ptr, const std::string& hint, cons
     return property_convertes::writers()[(size_t)utils::agea_type::t_f](fixed_ptr, str);
 }
 
-bool
+result_code
 property::default_compare(compare_context& context)
 {
     if (context.p->type.is_collection)
@@ -107,7 +107,7 @@ property::default_compare(compare_context& context)
     }
 }
 
-bool
+result_code
 property::default_deserialize(deserialize_context& ctx)
 {
     if (ctx.p->type.is_collection)
@@ -120,7 +120,7 @@ property::default_deserialize(deserialize_context& ctx)
     }
 }
 
-bool
+result_code
 property::default_serialize(serialize_context& ctx)
 {
     if (ctx.p->type.is_collection)
@@ -133,40 +133,31 @@ property::default_serialize(serialize_context& ctx)
     }
 }
 
-bool
+result_code
 property::default_copy(copy_context& cxt)
 {
-    if (!cxt.src_property->types_copy_handler)
-    {
-        return true;
-    }
+    AGEA_check(cxt.src_property->types_copy_handler, "Should be valid!");
 
     AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
     AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
 
-    if (cxt.src_property->type.is_collection)
-    {
-        AGEA_not_implemented;
-    }
-    else
-    {
-        auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
-                                                   cxt.src_property->type.is_ptr);
-        auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
-                                                 cxt.dst_property->type.is_ptr);
+    AGEA_check(!cxt.src_property->type.is_collection, "Not supported!");
 
-        AGEA_check(cxt.dst_property->types_copy_handler, "Should never happens!");
-        cxt.dst_property->types_copy_handler(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
-    }
-    return true;
+    auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
+                                               cxt.src_property->type.is_ptr);
+    auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
+                                             cxt.dst_property->type.is_ptr);
+
+    AGEA_check(cxt.dst_property->types_copy_handler, "Should never happens!");
+    return cxt.dst_property->types_copy_handler(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
 }
 
-bool
+result_code
 property::default_prototype(property_prototype_context& ctx)
 {
     if (!ctx.src_property->types_copy_handler)
     {
-        return true;
+        return result_code::failed;
     }
 
     AGEA_check(ctx.src_property == ctx.dst_property, "Should be SAME properties!");
@@ -194,7 +185,7 @@ property::default_prototype(property_prototype_context& ctx)
             ctx.dst_property->types_copy_handler(*ctx.src_obj, *ctx.dst_obj, from, to, *ctx.occ);
         }
     }
-    return true;
+    return result_code::ok;
 }
 
 agea::blob_ptr
@@ -203,7 +194,7 @@ property::get_blob(model::smart_object& obj)
     return obj.as_blob() + offset;
 }
 
-bool
+result_code
 property::deserialize_update(reflection::property& p,
                              blob_ptr ptr,
                              const serialization::conteiner& jc,
@@ -219,7 +210,7 @@ property::deserialize_update(reflection::property& p,
     }
 }
 
-bool
+result_code
 property::deserialize_collection(reflection::property& p,
                                  model::smart_object& obj,
                                  const serialization::conteiner& jc,
@@ -246,18 +237,18 @@ property::deserialize_collection(reflection::property& p,
         p.types_deserialization_handler(obj, (blob_ptr)filed_ptr, item, occ);
     }
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property::serialize_collection(const reflection::property&,
                                const model::smart_object&,
                                serialization::conteiner&)
 {
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property::deserialize_item(reflection::property& p,
                            model::smart_object& obj,
                            const serialization::conteiner& jc,
@@ -265,8 +256,9 @@ property::deserialize_item(reflection::property& p,
 {
     if (!jc[p.name])
     {
-        ALOG_WARN("Unable to deserialize property [{0}:{1}] ", obj.get_type_id().str(), p.name);
-        return false;
+        ALOG_WARN("Unable to deserialize property [{0}][{1}:{2}] ", obj.get_id().cstr(),
+                  obj.get_type_id().str(), p.name);
+        return result_code::doesnt_exist;
     }
 
     auto ptr = obj.as_blob();
@@ -278,7 +270,7 @@ property::deserialize_item(reflection::property& p,
     return p.types_deserialization_handler(obj, ptr, jc[p.name], occ);
 }
 
-bool
+result_code
 property::serialize_item(const reflection::property& p,
                          const model::smart_object& obj,
                          serialization::conteiner& sc)
@@ -294,10 +286,10 @@ property::serialize_item(const reflection::property& p,
 
     sc[p.name] = c;
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property::deserialize_update_collection(reflection::property& p,
                                         blob_ptr ptr,
                                         const serialization::conteiner& jc,
@@ -320,10 +312,10 @@ property::deserialize_update_collection(reflection::property& p,
         p.types_update_handler((blob_ptr)filed_ptr, item, occ);
     }
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property::deserialize_update_item(reflection::property& p,
                                   blob_ptr ptr,
                                   const serialization::conteiner& jc,
@@ -333,24 +325,24 @@ property::deserialize_update_item(reflection::property& p,
 
     if (!jc[p.name])
     {
-        return false;
+        return result_code::doesnt_exist;
     }
 
     AGEA_check(p.types_update_handler, "Should be not a NULL");
 
     p.types_update_handler(ptr, jc[p.name], occ);
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property::compare_collection(compare_context&)
 {
     AGEA_not_implemented;
 
-    return false;
+    return result_code::failed;
 }
 
-bool
+result_code
 property::compare_item(compare_context& context)
 {
     auto src_ptr = ::agea::reflection::reduce_ptr(context.src_obj->as_blob() + context.p->offset,
@@ -423,7 +415,7 @@ property_convertes::init()
     return true;
 }
 
-bool
+result_code
 property_convertes::read_t_str(AGEA_read_from_property_args)
 {
     auto& str = extract<std::string>(ptr);
@@ -432,19 +424,19 @@ property_convertes::read_t_str(AGEA_read_from_property_args)
 
     buf[str.size()] = '\0';
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_str(blob_ptr ptr, const std::string& str)
 {
     extract<std::string>(ptr) = str;
-    return true;
+    return result_code::ok;
 }
 
 // Bool
 
-bool
+result_code
 property_convertes::read_t_bool(AGEA_read_from_property_args)
 {
     auto t = extract<bool>(ptr);
@@ -455,10 +447,10 @@ property_convertes::read_t_bool(AGEA_read_from_property_args)
 
     buf[str.size()] = '\0';
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_bool(blob_ptr ptr, const std::string& str)
 {
     char c[8] = {0};
@@ -476,250 +468,250 @@ property_convertes::write_t_bool(blob_ptr ptr, const std::string& str)
     }
     else
     {
-        return false;
+        return result_code::failed;
     }
 
-    return true;
+    return result_code::ok;
 }
 
 // I8
 
-bool
+result_code
 property_convertes::read_t_i8(AGEA_read_from_property_args)
 {
     auto t = extract<int8_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIi8 "", t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_i8(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<int8_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIi8 "", &t);
 
-    return true;
+    return result_code::ok;
 }
 
 // I16
 
-bool
+result_code
 property_convertes::read_t_i16(AGEA_read_from_property_args)
 {
     auto t = extract<int16_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIi16 "", t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_i16(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<int16_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIi16 "", &t);
-    return true;
+    return result_code::ok;
 }
 
 // I32
 
-bool
+result_code
 property_convertes::read_t_i32(AGEA_read_from_property_args)
 {
     auto t = extract<int32_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIi32, t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_i32(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<int32_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIi32, &t);
-    return true;
+    return result_code::ok;
 }
 
 // I64
 
-bool
+result_code
 property_convertes::read_t_i64(AGEA_read_from_property_args)
 {
     auto t = extract<int64_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIi64 "", t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_i64(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<int64_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIi64 "", &t);
-    return true;
+    return result_code::ok;
 }
 
 // U8
 
-bool
+result_code
 property_convertes::read_t_u8(AGEA_read_from_property_args)
 {
     auto t = extract<uint8_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIu8 "", t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_u8(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<uint8_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIu8 "", &t);
-    return true;
+    return result_code::ok;
 }
 
 // U16
 
-bool
+result_code
 property_convertes::read_t_u16(AGEA_read_from_property_args)
 {
     auto t = extract<uint16_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIu16 "", t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_u16(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<uint16_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIu16 "", &t);
-    return true;
+    return result_code::ok;
 }
 
 // U32
 
-bool
+result_code
 property_convertes::read_t_u32(AGEA_read_from_property_args)
 {
     auto t = extract<uint32_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIu32 "", t);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_u32(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<uint32_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIu32 "", &t);
-    return true;
+    return result_code::ok;
 }
 
 // U64
-bool
+result_code
 property_convertes::write_t_u64(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<uint64_t>(ptr);
 
     sscanf_s(str.data(), "%" PRIu64 "", &t);
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::read_t_u64(AGEA_read_from_property_args)
 {
     auto t = extract<uint64_t>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%" PRIu64 "", t);
-    return true;
+    return result_code::ok;
 }
 
 // Float
 
-bool
+result_code
 property_convertes::read_t_f(AGEA_read_from_property_args)
 {
     auto t = extract<float>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%f", t);
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_f(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<float>(ptr);
 
     sscanf_s(str.data(), "%f", &t);
-    return true;
+    return result_code::ok;
 }
 
 // Double
 
-bool
+result_code
 property_convertes::read_t_d(AGEA_read_from_property_args)
 {
     auto t = extract<double>(ptr);
 
     sprintf_s(buf.data(), buf.size(), "%lf", t);
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_d(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<double>(ptr);
 
     sscanf_s(str.data(), "%lf", &t);
-    return true;
+    return result_code::ok;
 }
 
 // Vec3
 
-bool
+result_code
 property_convertes::read_t_vec3(AGEA_read_from_property_args)
 {
     auto t = extract<glm::vec3>(ptr);
     sprintf_s(buf.data(), buf.size(), "%f %f %f", t.x, t.y, t.z);
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_vec3(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<glm::vec3>(ptr);
     sscanf_s(str.data(), "%f %f %f", &t.x, &t.y, &t.z);
-    return true;
+    return result_code::ok;
 }
 
 // Material
 
-bool
+result_code
 property_convertes::read_t_mat(AGEA_read_from_property_args)
 {
     auto& t = extract<model::material*>(ptr);
     sprintf_s(buf.data(), buf.size(), "%s", t->get_id().cstr());
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_mat(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<model::material*>(ptr);
@@ -728,26 +720,26 @@ property_convertes::write_t_mat(blob_ptr ptr, const std::string& str)
 
     if (!mat)
     {
-        return false;
+        return result_code::failed;
     }
 
     t = mat;
 
-    return true;
+    return result_code::ok;
 }
 
 // Mesh
 
-bool
+result_code
 property_convertes::read_t_msh(AGEA_read_from_property_args)
 {
     auto t = extract<std::shared_ptr<model::mesh>>(ptr);
     sprintf_s(buf.data(), buf.size(), "%s", t->get_id().cstr());
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 property_convertes::write_t_msh(blob_ptr ptr, const std::string& str)
 {
     auto& t = extract<model::mesh*>(ptr);
@@ -756,12 +748,12 @@ property_convertes::write_t_msh(blob_ptr ptr, const std::string& str)
 
     if (!mat)
     {
-        return false;
+        return result_code::failed;
     }
 
     t = mat;
 
-    return true;
+    return result_code::ok;
 }
 
 }  // namespace reflection

@@ -53,10 +53,10 @@ public:
     }
 
 protected:
-    AGEA_property("category=assets", "serializable=true", "access=no");
+    AGEA_property("category=assets", "serializable=true", "access=no", "default=true");
     material* m_material = nullptr;
 
-    AGEA_property("category=assets", "serializable=true", "access=no");
+    AGEA_property("category=assets", "serializable=true", "access=no", "default=true");
     mesh* m_mesh = nullptr;
 };
 

@@ -21,7 +21,7 @@ namespace reflection
 namespace custom
 {
 
-bool
+result_code
 game_object_components_deserialize(deserialize_context& dc)
 {
     auto ptr = (blob_ptr)dc.obj;
@@ -54,22 +54,23 @@ game_object_components_deserialize(deserialize_context& dc)
     {
         auto item = items[i];
 
-        auto obj = model::object_constructor::object_load_internal(item, *dc.occ);
+        model::smart_object* obj = nullptr;
+        auto rc = model::object_constructor::object_load(item, *dc.occ, obj);
 
-        if (!obj || obj->get_architype_id() != model::architype::component)
+        if (rc != result_code::ok || !obj || obj->get_architype_id() != model::architype::component)
         {
             ALOG_LAZY_ERROR;
-            return false;
+            return result_code::failed;
         }
 
         r[i] = obj->as<model::component>();
         r[i]->set_order_parent_idx(i, layout_mapping[i]);
     }
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 game_object_components_prototype(property_prototype_context& ctx)
 {
     auto& sc = *ctx.sc;
@@ -91,7 +92,7 @@ game_object_components_prototype(property_prototype_context& ctx)
 
     if (src_properties.empty())
     {
-        return true;
+        return result_code::ok;
     }
 
     auto& dst_properties =
@@ -106,27 +107,28 @@ game_object_components_prototype(property_prototype_context& ctx)
     {
         auto item = items[i];
 
-        auto obj = model::object_constructor::object_load_internal(item, *ctx.occ);
+        model::smart_object* obj = nullptr;
+        auto rc = model::object_constructor::object_load(item, *ctx.occ, obj);
 
-        if (!obj || obj->get_architype_id() != model::architype::component)
+        if (rc != result_code::ok || !obj || obj->get_architype_id() != model::architype::component)
         {
             ALOG_LAZY_ERROR;
-            return false;
+            return result_code::failed;
         }
 
         dst_properties[i] = obj->as<model::component>();
         dst_properties[i]->set_order_parent_idx(i, layout_mapping[i]);
     }
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 game_object_components_serialize(serialize_context& dc)
 {
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (class_obj.has_state(model::smart_object_internal_state::inhereted))
+    if (class_obj.has_state(model::smart_object_internal_state::standalone))
     {
         serialization::conteiner components_conteiner;
         serialization::conteiner components_layout;
@@ -206,17 +208,17 @@ game_object_components_serialize(serialize_context& dc)
         conteiner[dc.p->name] = components_conteiner;
     }
 
-    return true;
+    return result_code::ok;
 }
 
-bool
+result_code
 game_object_components_compare(compare_context&)
 {
     // Always different because of IDS
-    return false;
+    return result_code::failed;
 }
 
-bool
+result_code
 game_object_components_copy(copy_context& ctx)
 {
     auto& src_col =
@@ -231,12 +233,18 @@ game_object_components_copy(copy_context& ctx)
         auto candidate_id =
             AID(ctx.dst_obj->get_id().str() + "/" + src_col[i]->get_class_obj()->get_id().str());
 
-        auto p =
-            model::object_constructor::object_clone_create(*src_col[i], candidate_id, *ctx.occ);
+        model::smart_object* p = nullptr;
+        auto rc =
+            model::object_constructor::object_clone_create(*src_col[i], candidate_id, *ctx.occ, p);
+
+        if (rc != result_code::ok)
+        {
+            return rc;
+        }
         dst_col[i] = p;
     }
 
-    return true;
+    return result_code::ok;
 }
 
 }  // namespace custom

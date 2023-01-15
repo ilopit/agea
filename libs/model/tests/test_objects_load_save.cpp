@@ -105,9 +105,13 @@ TEST_F(test_object_constructor, load_and_save_class_component)
     occ.get_class_global_set()->map->add_item(*mt_red);
     occ.get_class_global_set()->map->add_item(*cube_mesh);
 
-    auto obj = model::object_constructor::class_object_load(
-        APATH("class/components/cube_mesh_component.aobj"), occ);
+    occ.set_construction_type(model::object_constructor_context::construction_type::class_obj);
+
+    model::smart_object* obj = nullptr;
+    auto rc = model::object_constructor::object_load(
+        APATH("class/components/cube_mesh_component.aobj"), occ, obj);
     ASSERT_TRUE(!!obj);
+    ASSERT_EQ(rc, result_code::ok);
 
     auto component = obj->as<model::mesh_component>();
 
@@ -124,28 +128,34 @@ TEST_F(test_object_constructor, load_and_save_class_component)
 
     ASSERT_EQ(objs.get_size(), 1U);
 
-    auto result =
-        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
+    rc = model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
+    ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
     occ.make_full_path(APATH("class/components/cube_mesh_component.aobj"), p);
 
-    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    auto result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
 TEST_F(test_object_constructor, load_and_save_class_component__subobjects_are_instances)
 {
     auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
-
     occ.get_instance_global_set()->map->add_item(*mt_red);
-    occ.get_instance_global_set()->map->add_item(*cube_mesh);
+    mt_red->set_state(agea::model::smart_object_internal_state::instance_obj);
 
-    auto obj = model::object_constructor::class_object_load(
-        APATH("class/components/cube_mesh_component.aobj"), occ);
+    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    occ.get_instance_global_set()->map->add_item(*cube_mesh);
+    cube_mesh->set_state(agea::model::smart_object_internal_state::instance_obj);
+
+    occ.set_construction_type(model::object_constructor_context::construction_type::class_obj);
+
+    model::smart_object* obj = nullptr;
+    auto rc = model::object_constructor::object_load(
+        APATH("class/components/cube_mesh_component.aobj"), occ, obj);
+
     ASSERT_EQ(obj, nullptr);
+    ASSERT_EQ(rc, result_code::path_not_found);
 }
 
 TEST_F(test_object_constructor, load_and_save_instance_component)
@@ -155,9 +165,10 @@ TEST_F(test_object_constructor, load_and_save_instance_component)
 
     occ.get_instance_global_set()->map->add_item(*mt_red);
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
-
-    auto obj = model::object_constructor::instance_object_load(
-        APATH("class/components/cube_mesh_component.aobj"), occ);
+    occ.set_construction_type(model::object_constructor_context::construction_type::instance_obj);
+    model::smart_object* obj = nullptr;
+    model::object_constructor::object_load(APATH("class/components/cube_mesh_component.aobj"), occ,
+                                           obj);
     ASSERT_TRUE(!!obj);
 
     auto component = obj->as<model::mesh_component>();
@@ -175,14 +186,13 @@ TEST_F(test_object_constructor, load_and_save_instance_component)
 
     ASSERT_EQ(objs.get_size(), 1U);
 
-    auto result =
-        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
+    auto rc = model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
+    ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
     occ.make_full_path(APATH("class/components/cube_mesh_component.aobj"), p);
 
-    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    auto result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
@@ -193,9 +203,10 @@ TEST_F(test_object_constructor, load_and_save_instance_component__subobjects_are
 
     occ.get_class_global_set()->map->add_item(*mt_red);
     occ.get_class_global_set()->map->add_item(*cube_mesh);
-
-    auto obj = model::object_constructor::instance_object_load(
-        APATH("class/components/cube_mesh_component.aobj"), occ);
+    occ.set_construction_type(model::object_constructor_context::construction_type::instance_obj);
+    model::smart_object* obj = nullptr;
+    model::object_constructor::object_load(APATH("class/components/cube_mesh_component.aobj"), occ,
+                                           obj);
     ASSERT_EQ(obj, nullptr);
 }
 
@@ -206,19 +217,25 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component)
         model::object_constructor::create_empty_object<model::material>(AID("mt_green"));
     auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
 
+    result_code rc = result_code::nav;
+
     occ.get_class_global_set()->map->add_item(*mt_red);
     occ.get_class_global_set()->map->add_item(*mt_green);
     occ.get_class_global_set()->map->add_item(*cube_mesh);
+    occ.set_construction_type(model::object_constructor_context::construction_type::class_obj);
 
+    model::smart_object* obj = nullptr;
     {
-        auto obj = model::object_constructor::class_object_load(
-            APATH("class/components/cube_mesh_component.aobj"), occ);
+        rc = model::object_constructor::object_load(
+            APATH("class/components/cube_mesh_component.aobj"), occ, obj);
         ASSERT_TRUE(!!obj);
+        ASSERT_EQ(rc, result_code::ok);
     }
 
-    auto obj = model::object_constructor::class_object_load(
-        APATH("class/components/cube_mesh_component_derived.aobj"), occ);
+    rc = model::object_constructor::object_load(
+        APATH("class/components/cube_mesh_component_derived.aobj"), occ, obj);
     ASSERT_TRUE(!!obj);
+    ASSERT_EQ(rc, result_code::ok);
 
     auto component = obj->as<model::mesh_component>();
 
@@ -235,14 +252,13 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component)
 
     ASSERT_EQ(objs.get_size(), 2U);
 
-    auto result =
-        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
+    rc = model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
+    ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
     occ.make_full_path(APATH("class/components/cube_mesh_component_derived.aobj"), p);
 
-    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    auto result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
@@ -257,8 +273,10 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component__without_p
     occ.get_class_global_set()->map->add_item(*mt_green);
     occ.get_class_global_set()->map->add_item(*cube_mesh);
 
-    auto obj = model::object_constructor::class_object_load(
-        APATH("class/components/cube_mesh_component_derived.aobj"), occ);
+    occ.set_construction_type(model::object_constructor_context::construction_type::class_obj);
+    model::smart_object* obj = nullptr;
+    model::object_constructor::object_load(
+        APATH("class/components/cube_mesh_component_derived.aobj"), occ, obj);
     ASSERT_TRUE(!!obj);
 
     auto component = obj->as<model::mesh_component>();
@@ -276,14 +294,13 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component__without_p
 
     ASSERT_EQ(objs.get_size(), 2U);
 
-    auto result =
-        model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
+    auto rc = model::object_constructor::object_save(*obj, get_current_workspace() / "save.aobj");
+    ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
     occ.make_full_path(APATH("class/components/cube_mesh_component_derived.aobj"), p);
 
-    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    auto result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
@@ -302,10 +319,12 @@ TEST_F(test_object_constructor, load_and_save_class_object)
     occ.get_class_global_set()->map->add_item(*cube_mesh);
     occ.get_class_global_set()->map->add_item(*mesh_component);
     occ.get_class_global_set()->map->add_item(*root_component);
-
-    auto obj = model::object_constructor::class_object_load(
-        APATH("class/game_objects/cubes_chain.aobj"), occ);
+    occ.set_construction_type(model::object_constructor_context::construction_type::class_obj);
+    model::smart_object* obj = nullptr;
+    auto rc = model::object_constructor::object_load(APATH("class/game_objects/cubes_chain.aobj"),
+                                                     occ, obj);
     ASSERT_TRUE(!!obj);
+    ASSERT_EQ(rc, result_code::ok);
 
     check_item_in_caches(AID("cubes_chain"), model::architype::game_object, true);
 
@@ -343,14 +362,14 @@ TEST_F(test_object_constructor, load_and_save_class_object)
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 
-    auto result =
+    rc =
         model::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
+    ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
     occ.make_full_path(APATH("class/game_objects/cubes_chain.aobj"), p);
 
-    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    auto result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }
 
@@ -368,11 +387,13 @@ TEST_F(test_object_constructor, load_and_save_instance_object)
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
     occ.get_class_global_set()->map->add_item(*mesh_component);
     occ.get_class_global_set()->map->add_item(*root_component);
+    occ.set_construction_type(model::object_constructor_context::construction_type::instance_obj);
 
-    auto obj = model::object_constructor::instance_object_load(
-        APATH("class/game_objects/cubes_chain.aobj"), occ);
+    model::smart_object* obj = nullptr;
+    auto rc = model::object_constructor::object_load(APATH("class/game_objects/cubes_chain.aobj"),
+                                                     occ, obj);
     ASSERT_TRUE(!!obj);
-
+    ASSERT_EQ(rc, result_code::ok);
     check_item_in_caches(AID("cubes_chain"), model::architype::game_object, false);
 
     auto game_object = obj->as<model::game_object>();
@@ -408,13 +429,13 @@ TEST_F(test_object_constructor, load_and_save_instance_object)
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 
-    auto result =
+    rc =
         model::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
-    ASSERT_TRUE(result);
+    ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
     occ.make_full_path(APATH("class/game_objects/cubes_chain.aobj"), p);
 
-    result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
+    auto result = utils::file_utils::compare_files(p, get_current_workspace() / "save.aobj");
     ASSERT_TRUE(result);
 }

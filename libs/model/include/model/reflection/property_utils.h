@@ -119,34 +119,35 @@ fast_copy(blob_ptr from, blob_ptr to)
 }
 
 template <typename T>
-bool
+result_code
 fast_compare(blob_ptr from, blob_ptr to)
 {
-    return memcmp(to, from, sizeof(T)) == 0;
+    return memcmp(to, from, sizeof(T)) ? result_code::failed : result_code::ok;
 }
 
 template <typename T>
-bool
+result_code
 full_compare(blob_ptr from, blob_ptr to)
 {
-    return extract<T>(to) == extract<T>(from);
+    return (extract<T>(to) == extract<T>(from)) ? result_code::ok : result_code::failed;
 }
 
 // clang-format off
 
-using property_deserialization_handler  = std::function<bool(deserialize_context&)>;
-using property_serialization_handler    = std::function<bool(serialize_context&)>;
-using property_compare_handler          = std::function<bool(compare_context&)>;
-using property_copy_handler             = std::function<bool(copy_context&)>;
-using property_prototype_handler        = std::function<bool(property_prototype_context&)>;
+using property_deserialization_handler  = std::function<result_code(deserialize_context&)>;
+using property_serialization_handler    = std::function<result_code(serialize_context&)>;
+using property_compare_handler          = std::function<result_code(compare_context&)>;
+using property_copy_handler             = std::function<result_code(copy_context&)>;
+using property_prototype_handler        = std::function<result_code(property_prototype_context&)>;
 
-using type_serialization_handler        = std::function<bool(AGEA_serialization_args)>;
-using type_deserialization_handler      = std::function<bool(AGEA_deserialization_args)>;
-using type_serialization_update_handler = std::function<bool(AGEA_deserialization_update_args)>;
-using type_copy_handler                 = std::function<bool(AGEA_copy_handler_args)>;
-using type_compare_handler              = std::function<bool(AGEA_compare_handler_args)>;
-using type_read_from_handler            = std::function<bool(AGEA_read_from_property_args)>;
+using type_serialization_handler        = std::function<result_code(AGEA_serialization_args)>;
+using type_deserialization_handler      = std::function<result_code(AGEA_deserialization_args)>;
+using type_serialization_update_handler = std::function<result_code(AGEA_deserialization_update_args)>;
+using type_copy_handler                 = std::function<result_code(AGEA_copy_handler_args)>;
+using type_compare_handler              = std::function<result_code(AGEA_compare_handler_args)>;
+using type_read_from_handler            = std::function<result_code(AGEA_read_from_property_args)>;
 // clang-format on
+
 }  // namespace reflection
 
 }  // namespace agea

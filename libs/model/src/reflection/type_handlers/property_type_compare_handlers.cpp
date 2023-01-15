@@ -47,123 +47,123 @@ property_type_compare_handlers::init()
 }
 
 // STR
-bool
+result_code
 property_type_compare_handlers::compare_t_str(AGEA_compare_handler_args)
 {
     return full_compare<std::string>(from, to);
 }
 
 // Bool
-bool
+result_code
 property_type_compare_handlers::compare_t_bool(AGEA_compare_handler_args)
 {
     return fast_compare<bool>(from, to);
 }
 
 // I8
-bool
+result_code
 property_type_compare_handlers::compare_t_i8(AGEA_compare_handler_args)
 {
     return fast_compare<int8_t>(from, to);
 }
 
 // I16
-bool
+result_code
 property_type_compare_handlers::compare_t_i16(AGEA_compare_handler_args)
 {
     return fast_compare<int16_t>(from, to);
 }
 
 // I32
-bool
+result_code
 property_type_compare_handlers::compare_t_i32(AGEA_compare_handler_args)
 {
     return fast_compare<int32_t>(from, to);
 }
 
 // I64
-bool
+result_code
 property_type_compare_handlers::compare_t_i64(AGEA_compare_handler_args)
 {
     return fast_compare<int64_t>(from, to);
 }
 // U8
-bool
+result_code
 property_type_compare_handlers::compare_t_u8(AGEA_compare_handler_args)
 {
     return fast_compare<uint8_t>(from, to);
 }
 
 // U16
-bool
+result_code
 property_type_compare_handlers::compare_t_u16(AGEA_compare_handler_args)
 {
     return fast_compare<uint16_t>(from, to);
 }
 
 // U32
-bool
+result_code
 property_type_compare_handlers::compare_t_u32(AGEA_compare_handler_args)
 {
     return fast_compare<uint32_t>(from, to);
 }
 
 // U64
-bool
+result_code
 property_type_compare_handlers::compare_t_u64(AGEA_compare_handler_args)
 {
     return fast_compare<uint64_t>(from, to);
 }
 
 // Float
-bool
+result_code
 property_type_compare_handlers::compare_t_f(AGEA_compare_handler_args)
 {
     return fast_compare<float>(from, to);
 }
 
 // Double
-bool
+result_code
 property_type_compare_handlers::compare_t_d(AGEA_compare_handler_args)
 {
     return fast_compare<double>(from, to);
 }
 
 // Vec3
-bool
+result_code
 property_type_compare_handlers::compare_t_vec3(AGEA_compare_handler_args)
 {
     return full_compare<glm::vec3>(from, to);
 }
 
 // Texture
-bool
+result_code
 property_type_compare_handlers::compare_t_txt(AGEA_compare_handler_args)
 {
     return fast_compare<model::smart_object*>(from, to);
 }
 
 // Material
-bool
+result_code
 property_type_compare_handlers::compare_t_mat(AGEA_compare_handler_args)
 {
     return fast_compare<model::smart_object*>(from, to);
 }
 
 // Mesh
-bool
+result_code
 property_type_compare_handlers::compare_t_msh(AGEA_compare_handler_args)
 {
     return fast_compare<model::smart_object*>(from, to);
 }
 
-bool
+result_code
 property_type_compare_handlers::compare_t_obj(AGEA_compare_handler_args)
 {
     return fast_compare<model::smart_object*>(from, to);
 }
 
-bool
+result_code
 property_type_compare_handlers::compare_t_com(AGEA_compare_handler_args)
 {
     return fast_compare<model::smart_object*>(from, to);

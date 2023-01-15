@@ -75,14 +75,14 @@ public:
     }
 
 protected:
-    AGEA_property("category=assets", "serializable=true");
-    utils::buffer m_vertices;
+    AGEA_property("category=assets", "serializable=true", "default=true");
+    utils::buffer m_vertices = {};
 
-    AGEA_property("category=assets", "serializable=true");
-    utils::buffer m_indices;
+    AGEA_property("category=assets", "serializable=true", "default=true");
+    utils::buffer m_indices = {};
 
-    AGEA_property("category=assets", "serializable=true");
-    utils::buffer m_external;
+    AGEA_property("category=assets", "serializable=true", "default=true");
+    utils::buffer m_external = {};
 
     render::mesh_data* m_mesh_data = nullptr;
 };

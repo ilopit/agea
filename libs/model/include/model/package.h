@@ -14,7 +14,7 @@ namespace model
 {
 enum class package_state
 {
-    unloaded,
+    unloaded = 0,
     loaded,
     render_loaded
 };

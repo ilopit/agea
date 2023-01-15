@@ -79,11 +79,11 @@ object_constructor_context::add_obj(std::shared_ptr<smart_object> obj)
 
     switch (m_construction_type)
     {
-    case obj_construction_type::class_obj:
+    case object_constructor_context::construction_type::class_obj:
         m_class_local_set->map->add_item(obj_ref);
         break;
-    case obj_construction_type::instance_obj:
-    case obj_construction_type::mirror_obj:
+    case object_constructor_context::construction_type::instance_obj:
+    case object_constructor_context::construction_type::mirror_obj:
         m_instance_local_set->map->add_item(obj_ref);
         break;
     default:

@@ -280,6 +280,7 @@ class agea_property:
         self.copyable = "yes"
         self.updatable = "yes"
         self.ref = "false"
+        self.has_default = "false"
 
 
 def write_properties(context: file_context, prop: agea_property, current_class: agea_class):
@@ -312,6 +313,10 @@ def write_properties(context: file_context, prop: agea_property, current_class: 
         context.content += "    "
         context.content += 'p->gpu_data                       = "{0}";\n'.format(
             prop.gpu_data)
+
+    if prop.has_default == "true":
+        context.content += "    "
+        context.content += 'p->has_default                    = {0};\n'.format(prop.has_default)
 
     if prop.hint != "":
         context.content += "    "
@@ -479,7 +484,7 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
                 property_like += lines[i].strip() + " "
 
             i = i + 1
-            field = lines[i].strip()[:-1].split()
+            field_tokens = lines[i].strip()[:-1].split()
 
             prop = agea_property()
             property_raw = property_like[property_like.find(
@@ -511,6 +516,11 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
                     prop.property_copy_handler = pairs[1]
                 elif pairs[0] == "access":
                     prop.access = pairs[1]
+                elif pairs[0] == "default":
+                    prop.has_default = pairs[1]
+                    if(len(field_tokens) < 3 or field_tokens[2] != "="):
+                       eprint("Please provide default arument")
+                       exit(-1)
                 elif pairs[0] == "gpu_data":
                     prop.gpu_data = pairs[1]
                 elif pairs[0] == "copyable":
@@ -533,8 +543,9 @@ def process_file(original_file_full_path, original_file_rel_path, context: file_
                     eprint("Unsupported property = " + pairs[0])
                     exit(-1)
 
-            prop.type = field[0]
-            prop.name = field[1]
+            prop.type = field_tokens[0]
+            prop.name = field_tokens[1]
+
             prop.owner = class_name
             current_class.properties.append(prop)
 

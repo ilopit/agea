@@ -25,4 +25,16 @@ namespace agea
 {
 using blob_ptr = uint8_t*;
 using fixed_size_buffer = std::array<char, 128>;
+
+enum class result_code
+{
+    nav = 0,
+    ok,
+    failed,
+    doesnt_exist,
+    serialization_error,
+    path_not_found,
+    id_not_found
+};
+
 }  // namespace agea

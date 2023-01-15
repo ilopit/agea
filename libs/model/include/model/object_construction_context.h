@@ -12,17 +12,17 @@ namespace agea
 namespace model
 {
 
-enum class obj_construction_type
-{
-    nav = 0,
-    class_obj,
-    instance_obj,
-    mirror_obj
-};
-
 class object_constructor_context
 {
 public:
+    enum class construction_type
+    {
+        nav = 0,
+        class_obj,
+        instance_obj,
+        mirror_obj
+    };
+
     object_constructor_context();
 
     ~object_constructor_context();
@@ -100,14 +100,14 @@ public:
         return *this;
     }
 
-    obj_construction_type
+    object_constructor_context::construction_type
     get_construction_type()
     {
         return m_construction_type;
     }
 
     void
-    set_construction_type(obj_construction_type t)
+    set_construction_type(object_constructor_context::construction_type t)
     {
         m_construction_type = t;
     }
@@ -146,7 +146,8 @@ private:
 
     std::unordered_map<utils::id, std::pair<bool, utils::path>> m_object_mapping;
 
-    obj_construction_type m_construction_type = obj_construction_type::nav;
+    object_constructor_context::construction_type m_construction_type =
+        object_constructor_context::construction_type::nav;
     line_cache<smart_object_ptr>* m_ownable_cache_ptr;
 };
 }  // namespace model

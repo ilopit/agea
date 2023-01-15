@@ -53,7 +53,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
     mesh->set_vertices_buffer(vertices);
 
     serialization::conteiner c;
-    if (!model::object_constructor::object_save_full(c, *mesh))
+    if (model::object_constructor::object_save_full(c, *mesh) != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -101,7 +101,7 @@ convert_image_to_atxt(const utils::path& obj_path,
     txt->set_height(h);
     serialization::conteiner c;
 
-    if (!model::object_constructor::object_save_full(c, *txt))
+    if (model::object_constructor::object_save_full(c, *txt) != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return false;
