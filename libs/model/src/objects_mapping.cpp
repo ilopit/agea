@@ -47,8 +47,8 @@ object_mapping::buiild_object_mapping(serialization::conteiner& c, bool is_class
             auto f = AID(ss.first.as<std::string>());
             auto s = APATH(ss.second.as<std::string>());
             auto& m = m_items[f];
-            m.first = is_class;
-            m.second = s;
+            m.is_class = is_class;
+            m.p = s;
         }
     }
     return true;

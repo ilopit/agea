@@ -11,6 +11,12 @@ namespace render
 {
 class shader_effect_data;
 
+struct texture_sampler_data
+{
+    texture_data* texture = nullptr;
+    VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+};
+
 class material_data
 {
 public:
@@ -41,9 +47,8 @@ public:
 
     agea::utils::dynamic_object gpu_data;
 
-    VkDescriptorSet texture_set = VK_NULL_HANDLE;
+    std::vector<texture_sampler_data> texture_samples;
     shader_effect_data* effect = nullptr;
-    VkSampler sampler = VK_NULL_HANDLE;
 
 private:
     ::agea::utils::id m_id;

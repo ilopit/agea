@@ -18,100 +18,101 @@ namespace agea
 {
 namespace engine
 {
-enum input_event_type
+enum class input_event_type
 {
-    input_event__nan = 0,
-    input_event_press,
-    input_event_release,
-    input_event_scale,
-    input_event_count
+    nan = 0,
+
+    press,
+    release,
+    scale,
+    count
 };
 
 enum input_event_id
 {
-    ieid_nan = 0,
+    nan = 0,
 
-    ieid_ms_btm_left,
-    ieid_ms_btm_wheel,
-    ieid_ms_btm_right,
+    mouse_left,
+    mouse_wheel,
+    mouse_right,
 
-    ieid_ms_wheel,
-    ieid_ms_move_x,
-    ieid_ms_move_y,
+    mouse_move_wheel,
+    mouse_move_x,
+    mouse_move_y,
 
-    ieid_kb_btn_return,
-    ieid_kb_btn_escape,
-    ieid_kb_btn_backspace,
-    ieid_kb_btn_tab,
-    ieid_kb_btn_space,
-    ieid_kb_btn_capslock,
+    keyboard_return,
+    keyboard_escape,
+    keyboard_backspace,
+    keyboard_tab,
+    keyboard_space,
+    keyboard_capslock,
 
-    ieid_kb_btn_0,
-    ieid_kb_btn_1,
-    ieid_kb_btn_2,
-    ieid_kb_btn_3,
-    ieid_kb_btn_4,
-    ieid_kb_btn_5,
-    ieid_kb_btn_6,
-    ieid_kb_btn_7,
-    ieid_kb_btn_8,
-    ieid_kb_btn_9,
+    keyboard_0,
+    keyboard_1,
+    keyboard_2,
+    keyboard_3,
+    keyboard_4,
+    keyboard_5,
+    keyboard_6,
+    keyboard_7,
+    keyboard_8,
+    keyboard_9,
 
-    ieid_kb_btn_a,
-    ieid_kb_btn_b,
-    ieid_kb_btn_c,
-    ieid_kb_btn_d,
-    ieid_kb_btn_e,
-    ieid_kb_btn_f,
-    ieid_kb_btn_g,
-    ieid_kb_btn_h,
-    ieid_kb_btn_i,
-    ieid_kb_btn_j,
-    ieid_kb_btn_k,
-    ieid_kb_btn_l,
-    ieid_kb_btn_m,
-    ieid_kb_btn_n,
-    ieid_kb_btn_o,
-    ieid_kb_btn_p,
-    ieid_kb_btn_q,
-    ieid_kb_btn_r,
-    ieid_kb_btn_s,
-    ieid_kb_btn_t,
-    ieid_kb_btn_u,
-    ieid_kb_btn_v,
-    ieid_kb_btn_w,
-    ieid_kb_btn_x,
-    ieid_kb_btn_y,
-    ieid_kb_btn_z,
+    keyboard_a,
+    keyboard_b,
+    keyboard_c,
+    keyboard_d,
+    keyboard_e,
+    keyboard_f,
+    keyboard_g,
+    keyboard_h,
+    keyboard_i,
+    keyboard_j,
+    keyboard_k,
+    keyboard_l,
+    keyboard_m,
+    keyboard_n,
+    keyboard_o,
+    keyboard_p,
+    keyboard_q,
+    keyboard_r,
+    keyboard_s,
+    keyboard_t,
+    keyboard_u,
+    keyboard_v,
+    keyboard_w,
+    keyboard_x,
+    keyboard_y,
+    keyboard_z,
 
-    ieid_kb_btn_f1,
-    ieid_kb_btn_f2,
-    ieid_kb_btn_f3,
-    ieid_kb_btn_f4,
-    ieid_kb_btn_f5,
-    ieid_kb_btn_f6,
-    ieid_kb_btn_f7,
-    ieid_kb_btn_f8,
-    ieid_kb_btn_f9,
-    ieid_kb_btn_f10,
-    ieid_kb_btn_f11,
-    ieid_kb_btn_f12,
+    keyboard_f1,
+    keyboard_f2,
+    keyboard_f3,
+    keyboard_f4,
+    keyboard_f5,
+    keyboard_f6,
+    keyboard_f7,
+    keyboard_f8,
+    keyboard_f9,
+    keyboard_f10,
+    keyboard_f11,
+    keyboard_f12,
 
-    ieid_kb_btn_printscreen,
-    ieid_kb_btn_scrolllock,
-    ieid_kb_btn_pause,
-    ieid_kb_btn_insert,
-    ieid_kb_btn_home,
-    ieid_kb_btn_pageup,
+    keyboard_printscreen,
+    keyboard_scrolllock,
+    keyboard_pause,
+    keyboard_insert,
+    keyboard_home,
+    keyboard_pageup,
 
-    ieid_kb_btn_end,
-    ieid_kb_btn_pagedown,
-    ieid_kb_btn_right,
-    ieid_kb_btn_left,
-    ieid_kb_btn_down,
-    ieid_kb_btn_up,
+    keyboard_end,
+    keyboard_pagedown,
+    keyboard_right,
+    keyboard_left,
+    keyboard_down,
+    keyboard_up,
 
-    ieid_kb_btn_delete
+    keyboard_delete
 };
 
 struct input_event
@@ -191,8 +192,8 @@ public:
         input_fixed_action_handler ev;
         ev.assign(o, m);
 
-        auto& e = m_fixed_actions_mapping[pressed ? input_event_type::input_event_press
-                                                  : input_event_type::input_event_release];
+        auto& e =
+            m_fixed_actions_mapping[pressed ? input_event_type::press : input_event_type::release];
         auto& action = m_input_actions[id];
 
         for (auto& kb_action : action.m_triggers)
@@ -245,6 +246,7 @@ protected:
         m_scaled_value_actions;
 
     std::vector<input_event> m_events_to_fire;
+    bool m_updated = true;
 };
 
 }  // namespace engine

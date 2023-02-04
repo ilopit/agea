@@ -31,6 +31,7 @@ enum class result_code
     nav = 0,
     ok,
     failed,
+    proto_doesnt_exist,
     doesnt_exist,
     serialization_error,
     path_not_found,

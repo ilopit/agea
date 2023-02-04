@@ -51,6 +51,8 @@ private:
     float look_left_delta = 0.f;
 
     render::gpu_camera_data m_camera_data;
+
+    bool m_updated = true;
 };
 }  // namespace engine
 namespace glob

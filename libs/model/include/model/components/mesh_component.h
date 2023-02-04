@@ -46,6 +46,14 @@ public:
         mark_render_dirty();
     }
 
+    void
+    set_mesh(mesh* v)
+    {
+        AGEA_check(v, "Should not be NULL!");
+        m_mesh = v;
+        mark_render_dirty();
+    }
+
     mesh*
     get_mesh() const
     {

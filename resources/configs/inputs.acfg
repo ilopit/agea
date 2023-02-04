@@ -9,9 +9,9 @@ actions:
   - id: move_left
     events:
       - trigger: a
-        amp: 5
-      - trigger: d
         amp: -5
+      - trigger: d
+        amp: 5
   - id: look_up
     events:
       - trigger: mouse_move_y

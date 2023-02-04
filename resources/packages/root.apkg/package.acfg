@@ -8,3 +8,5 @@ class_obj_mapping:
   - mt_red: class/materials/mt_red.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
+
+  - decor : class/game_objects/decor.aobj

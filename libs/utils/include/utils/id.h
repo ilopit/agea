@@ -17,7 +17,7 @@ id_size_in_bytes()
 class id
 {
 public:
-    id() = default;
+    id();
 
     id(const id& other);
 
@@ -55,7 +55,7 @@ public:
     }
 
 private:
-    char m_id[id_size_in_bytes() + 1] = {0};
+    char m_id[id_size_in_bytes() + 1];
 };
 
 }  // namespace utils

@@ -23,86 +23,86 @@ namespace
 {
 
 const std::unordered_map<std::string, input_event_id> mapping{
-    {"mouse_move_x", input_event_id::ieid_ms_move_x},
-    {"mouse_move_y", input_event_id::ieid_ms_move_y},
+    {"mouse_move_x", input_event_id::mouse_move_x},
+    {"mouse_move_y", input_event_id::mouse_move_y},
 
-    {"mouse_button_left", input_event_id::ieid_ms_btm_left},
-    {"mouse_button_middle", input_event_id::ieid_ms_btm_wheel},
-    {"mouse_button_right", input_event_id::ieid_ms_btm_right},
+    {"mouse_button_left", input_event_id::mouse_left},
+    {"mouse_button_middle", input_event_id::mouse_wheel},
+    {"mouse_button_right", input_event_id::mouse_right},
 
-    {"return", input_event_id::ieid_kb_btn_return},
-    {"escape", input_event_id::ieid_kb_btn_escape},
-    {"backspace", input_event_id::ieid_kb_btn_backspace},
-    {"tab", input_event_id::ieid_kb_btn_tab},
-    {"space", input_event_id::ieid_kb_btn_space},
-    {"capslock", input_event_id::ieid_kb_btn_capslock},
+    {"return", input_event_id::keyboard_return},
+    {"escape", input_event_id::keyboard_escape},
+    {"backspace", input_event_id::keyboard_backspace},
+    {"tab", input_event_id::keyboard_tab},
+    {"space", input_event_id::keyboard_space},
+    {"capslock", input_event_id::keyboard_capslock},
 
-    {"0", input_event_id::ieid_kb_btn_0},
-    {"1", input_event_id::ieid_kb_btn_1},
-    {"2", input_event_id::ieid_kb_btn_2},
-    {"3", input_event_id::ieid_kb_btn_3},
-    {"4", input_event_id::ieid_kb_btn_4},
-    {"5", input_event_id::ieid_kb_btn_5},
-    {"6", input_event_id::ieid_kb_btn_6},
-    {"7", input_event_id::ieid_kb_btn_7},
-    {"8", input_event_id::ieid_kb_btn_8},
-    {"9", input_event_id::ieid_kb_btn_9},
+    {"0", input_event_id::keyboard_0},
+    {"1", input_event_id::keyboard_1},
+    {"2", input_event_id::keyboard_2},
+    {"3", input_event_id::keyboard_3},
+    {"4", input_event_id::keyboard_4},
+    {"5", input_event_id::keyboard_5},
+    {"6", input_event_id::keyboard_6},
+    {"7", input_event_id::keyboard_7},
+    {"8", input_event_id::keyboard_8},
+    {"9", input_event_id::keyboard_9},
 
-    {"a", input_event_id::ieid_kb_btn_a},
-    {"b", input_event_id::ieid_kb_btn_b},
-    {"c", input_event_id::ieid_kb_btn_c},
-    {"d", input_event_id::ieid_kb_btn_d},
-    {"e", input_event_id::ieid_kb_btn_e},
-    {"f", input_event_id::ieid_kb_btn_f},
-    {"g", input_event_id::ieid_kb_btn_g},
-    {"h", input_event_id::ieid_kb_btn_h},
-    {"i", input_event_id::ieid_kb_btn_i},
-    {"g", input_event_id::ieid_kb_btn_j},
-    {"k", input_event_id::ieid_kb_btn_k},
-    {"l", input_event_id::ieid_kb_btn_l},
-    {"m", input_event_id::ieid_kb_btn_m},
-    {"n", input_event_id::ieid_kb_btn_n},
-    {"o", input_event_id::ieid_kb_btn_o},
-    {"p", input_event_id::ieid_kb_btn_p},
-    {"q", input_event_id::ieid_kb_btn_q},
-    {"r", input_event_id::ieid_kb_btn_r},
-    {"s", input_event_id::ieid_kb_btn_s},
-    {"t", input_event_id::ieid_kb_btn_t},
-    {"u", input_event_id::ieid_kb_btn_u},
-    {"v", input_event_id::ieid_kb_btn_v},
-    {"w", input_event_id::ieid_kb_btn_w},
-    {"x", input_event_id::ieid_kb_btn_x},
-    {"y", input_event_id::ieid_kb_btn_y},
-    {"z", input_event_id::ieid_kb_btn_z},
+    {"a", input_event_id::keyboard_a},
+    {"b", input_event_id::keyboard_b},
+    {"c", input_event_id::keyboard_c},
+    {"d", input_event_id::keyboard_d},
+    {"e", input_event_id::keyboard_e},
+    {"f", input_event_id::keyboard_f},
+    {"g", input_event_id::keyboard_g},
+    {"h", input_event_id::keyboard_h},
+    {"i", input_event_id::keyboard_i},
+    {"g", input_event_id::keyboard_j},
+    {"k", input_event_id::keyboard_k},
+    {"l", input_event_id::keyboard_l},
+    {"m", input_event_id::keyboard_m},
+    {"n", input_event_id::keyboard_n},
+    {"o", input_event_id::keyboard_o},
+    {"p", input_event_id::keyboard_p},
+    {"q", input_event_id::keyboard_q},
+    {"r", input_event_id::keyboard_r},
+    {"s", input_event_id::keyboard_s},
+    {"t", input_event_id::keyboard_t},
+    {"u", input_event_id::keyboard_u},
+    {"v", input_event_id::keyboard_v},
+    {"w", input_event_id::keyboard_w},
+    {"x", input_event_id::keyboard_x},
+    {"y", input_event_id::keyboard_y},
+    {"z", input_event_id::keyboard_z},
 
-    {"f1", input_event_id::ieid_kb_btn_f1},
-    {"f2", input_event_id::ieid_kb_btn_f2},
-    {"f3", input_event_id::ieid_kb_btn_f3},
-    {"f4", input_event_id::ieid_kb_btn_f4},
-    {"f5", input_event_id::ieid_kb_btn_f5},
-    {"f6", input_event_id::ieid_kb_btn_f6},
-    {"f7", input_event_id::ieid_kb_btn_f7},
-    {"f8", input_event_id::ieid_kb_btn_f8},
-    {"f9", input_event_id::ieid_kb_btn_f9},
-    {"f10", input_event_id::ieid_kb_btn_f10},
-    {"f11", input_event_id::ieid_kb_btn_f11},
-    {"f12", input_event_id::ieid_kb_btn_f12},
+    {"f1", input_event_id::keyboard_f1},
+    {"f2", input_event_id::keyboard_f2},
+    {"f3", input_event_id::keyboard_f3},
+    {"f4", input_event_id::keyboard_f4},
+    {"f5", input_event_id::keyboard_f5},
+    {"f6", input_event_id::keyboard_f6},
+    {"f7", input_event_id::keyboard_f7},
+    {"f8", input_event_id::keyboard_f8},
+    {"f9", input_event_id::keyboard_f9},
+    {"f10", input_event_id::keyboard_f10},
+    {"f11", input_event_id::keyboard_f11},
+    {"f12", input_event_id::keyboard_f12},
 
-    {"printscreen", input_event_id::ieid_kb_btn_printscreen},
-    {"scrolllock", input_event_id::ieid_kb_btn_scrolllock},
-    {"pause", input_event_id::ieid_kb_btn_pause},
-    {"insert", input_event_id::ieid_kb_btn_insert},
-    {"home", input_event_id::ieid_kb_btn_home},
-    {"pageup", input_event_id::ieid_kb_btn_pageup},
+    {"printscreen", input_event_id::keyboard_printscreen},
+    {"scrolllock", input_event_id::keyboard_scrolllock},
+    {"pause", input_event_id::keyboard_pause},
+    {"insert", input_event_id::keyboard_insert},
+    {"home", input_event_id::keyboard_home},
+    {"pageup", input_event_id::keyboard_pageup},
 
-    {"end", input_event_id::ieid_kb_btn_end},
-    {"pagedown", input_event_id::ieid_kb_btn_pagedown},
-    {"right", input_event_id::ieid_kb_btn_right},
-    {"left", input_event_id::ieid_kb_btn_left},
-    {"down", input_event_id::ieid_kb_btn_down},
-    {"up", input_event_id::ieid_kb_btn_up},
+    {"end", input_event_id::keyboard_end},
+    {"pagedown", input_event_id::keyboard_pagedown},
+    {"right", input_event_id::keyboard_right},
+    {"left", input_event_id::keyboard_left},
+    {"down", input_event_id::keyboard_down},
+    {"up", input_event_id::keyboard_up},
 
-    {"delete", input_event_id::ieid_kb_btn_delete}
+    {"delete", input_event_id::keyboard_delete}
 
 };
 
@@ -121,7 +121,7 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
     case SDLK_7:
     case SDLK_8:
     case SDLK_9:
-        eie = (input_event_id)(key_code - SDLK_0 + input_event_id::ieid_kb_btn_0);
+        eie = (input_event_id)(key_code - SDLK_0 + input_event_id::keyboard_0);
         return true;
 
     case SDLK_a:
@@ -150,7 +150,7 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
     case SDLK_x:
     case SDLK_y:
     case SDLK_z:
-        eie = (input_event_id)(key_code - SDLK_a + input_event_id::ieid_kb_btn_a);
+        eie = (input_event_id)(key_code - SDLK_a + input_event_id::keyboard_a);
         return true;
 
     case SDLK_F1:
@@ -165,7 +165,7 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
     case SDLK_F10:
     case SDLK_F11:
     case SDLK_F12:
-        eie = (input_event_id)(key_code - SDLK_F1 + input_event_id::ieid_kb_btn_f1);
+        eie = (input_event_id)(key_code - SDLK_F1 + input_event_id::keyboard_f1);
         return true;
 
     case SDLK_PRINTSCREEN:
@@ -174,8 +174,7 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
     case SDLK_INSERT:
     case SDLK_HOME:
     case SDLK_PAGEUP:
-        eie =
-            (input_event_id)(key_code - SDLK_PRINTSCREEN + input_event_id::ieid_kb_btn_printscreen);
+        eie = (input_event_id)(key_code - SDLK_PRINTSCREEN + input_event_id::keyboard_printscreen);
         return true;
 
     case SDLK_END:
@@ -184,7 +183,7 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
     case SDLK_LEFT:
     case SDLK_DOWN:
     case SDLK_UP:
-        eie = (input_event_id)(key_code - SDLK_END + input_event_id::ieid_kb_btn_end);
+        eie = (input_event_id)(key_code - SDLK_END + input_event_id::keyboard_end);
         return true;
     }
 
@@ -207,7 +206,7 @@ from_string(const std::string& s)
 {
     auto itr = mapping.find(s);
 
-    return itr != mapping.end() ? itr->second : ieid_nan;
+    return itr != mapping.end() ? itr->second : input_event_id::nan;
 }
 
 }  // namespace
@@ -227,10 +226,9 @@ input_manager::transform_from_sdl_event(const SDL_Event& se, std::vector<input_e
     {
     case SDL_KEYDOWN:
     case SDL_KEYUP:
-        ie.type = se.type == SDL_KEYDOWN ? input_event_type::input_event_press
-                                         : input_event_type::input_event_release;
+        ie.type = se.type == SDL_KEYDOWN ? input_event_type::press : input_event_type::release;
 
-        if (from_sdl_kb_sym_code(se.key.keysym.sym, ie.id))
+        if (!from_sdl_kb_sym_code(se.key.keysym.sym, ie.id))
         {
             return false;
         }
@@ -239,14 +237,15 @@ input_manager::transform_from_sdl_event(const SDL_Event& se, std::vector<input_e
 
         v.push_back(ie);
         m_input_event_state[ie.id] = se.type == SDL_KEYDOWN;
+
         break;
     case SDL_MOUSEWHEEL:
 
         m_mouse_wheel_state.x = se.wheel.x;
         m_mouse_wheel_state.y = se.wheel.y;
 
-        ie.type = input_event_type::input_event_scale;
-        ie.id = input_event_id::ieid_ms_wheel;
+        ie.type = input_event_type::scale;
+        ie.id = input_event_id::mouse_move_wheel;
 
         if (se.wheel.y)
         {
@@ -259,32 +258,30 @@ input_manager::transform_from_sdl_event(const SDL_Event& se, std::vector<input_e
         m_mouse_axis_state.x = se.motion.x;
         m_mouse_axis_state.y = se.motion.y;
         m_mouse_axis_state.xrel = se.motion.xrel;
-        m_mouse_axis_state.xrel = se.motion.yrel;
+        m_mouse_axis_state.yrel = se.motion.yrel;
 
-        ie.type = input_event_type::input_event_scale;
+        ie.type = input_event_type::scale;
+        ie.id = input_event_id::mouse_move_x;
 
-        ie.id = input_event_id::ieid_ms_move_x;
         if (se.motion.xrel)
         {
-            auto rel =
-                (500.f * se.motion.xrel) / (float)agea::glob::native_window::get()->get_size().w;
-            ie.amp = rel * m_dur_seconds * agea::glob::native_window::get()->aspect_ratio();
+            auto rel = (500.f * se.motion.xrel) / (float)glob::native_window::get()->get_size().w;
+            ie.amp = rel * m_dur_seconds * glob::native_window::get()->aspect_ratio();
             v.push_back(ie);
         }
 
-        ie.id = input_event_id::ieid_ms_move_y;
+        ie.id = input_event_id::mouse_move_y;
         if (se.motion.yrel)
         {
-            auto rel =
-                (500.f * se.motion.yrel) / (float)agea::glob::native_window::get()->get_size().h;
-            ie.amp = rel * m_dur_seconds * agea::glob::native_window::get()->aspect_ratio();
+            auto rel = (500.f * se.motion.yrel) / (float)glob::native_window::get()->get_size().h;
+            ie.amp = rel * m_dur_seconds;
             v.push_back(ie);
         }
-
+        break;
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
-        ie.type = se.type == SDL_MOUSEBUTTONDOWN ? input_event_type::input_event_press
-                                                 : input_event_type::input_event_release;
+        ie.type =
+            se.type == SDL_MOUSEBUTTONDOWN ? input_event_type::press : input_event_type::release;
 
         if (!from_sdl_mouse_btm_code(se.button.button, ie.id))
         {
@@ -303,7 +300,7 @@ input_manager::transform_from_sdl_event(const SDL_Event& se, std::vector<input_e
 
 input_manager::input_manager()
     : m_scaled_value_actions()
-    , m_fixed_actions_mapping(input_event_type::input_event_count)
+    , m_fixed_actions_mapping((size_t)input_event_type::count)
 {
 }
 
@@ -327,6 +324,7 @@ input_manager::input_tick(float dur_seconds)
             consume_sdl_events(e);
         }
     }
+
     return true;
 }
 
@@ -359,14 +357,14 @@ input_manager::load_actions(const utils::path& path)
 
         action.id = id;
 
-        for (unsigned ei = 0; ei < events_size; ++si)
+        for (unsigned ei = 0; ei < events_size; ++ei)
         {
             auto e = events[ei];
 
             auto trigger = e["trigger"].as<std::string>();
             auto native_code = from_string(trigger);
 
-            if (native_code == ieid_nan)
+            if (native_code == input_event_id::nan)
             {
                 ALOG_WARN("unknow trigger {0}", trigger);
                 continue;
@@ -396,7 +394,7 @@ input_manager::fire_input_event()
     {
         switch (e.type)
         {
-        case input_event_type::input_event_scale:
+        case input_event_type::scale:
         {
             auto subscribers = m_scaled_value_actions[e.id];
             for (auto& s : subscribers)
@@ -405,10 +403,10 @@ input_manager::fire_input_event()
             }
             break;
         }
-        case input_event_type::input_event_press:
+        case input_event_type::press:
         {
             {
-                auto& subscribers = m_fixed_actions_mapping[e.type][e.id];
+                auto& subscribers = m_fixed_actions_mapping[(size_t)e.type][e.id];
                 for (auto& s : subscribers)
                 {
                     s.fire();
@@ -425,7 +423,7 @@ input_manager::fire_input_event()
         }
         default:
         {
-            auto& subscribers = m_fixed_actions_mapping[e.type][e.id];
+            auto& subscribers = m_fixed_actions_mapping[(size_t)e.type][e.id];
             for (auto& s : subscribers)
             {
                 s.fire();
@@ -440,10 +438,10 @@ input_manager::fire_input_event()
 void
 input_manager::drop_fired_event()
 {
-    auto itr = std::remove_if(
-        m_events_to_fire.begin(), m_events_to_fire.end(),
-        [this](const input_event& o)
-        { return o.type == input_event_type::input_event_press && !m_input_event_state[o.id]; });
+    auto itr =
+        std::remove_if(m_events_to_fire.begin(), m_events_to_fire.end(),
+                       [this](const input_event& o)
+                       { return o.type == input_event_type::press && !m_input_event_state[o.id]; });
 
     if (itr != m_events_to_fire.end())
     {
@@ -454,12 +452,10 @@ input_manager::drop_fired_event()
 void
 input_manager::drop_obsolete()
 {
-    auto itr = std::remove_if(m_events_to_fire.begin(), m_events_to_fire.end(),
-                              [this](const input_event& o)
-                              {
-                                  return o.type == input_event_type::input_event_press ||
-                                         o.type == input_event_type::input_event_scale;
-                              });
+    auto itr = std::remove_if(
+        m_events_to_fire.begin(), m_events_to_fire.end(),
+        [this](const input_event& o)
+        { return o.type == input_event_type::release || o.type == input_event_type::scale; });
 
     if (itr != m_events_to_fire.end())
     {

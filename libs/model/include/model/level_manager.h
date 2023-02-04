@@ -9,7 +9,7 @@ namespace agea
 {
 namespace model
 {
-class level_constructor
+class level_manager
 {
 public:
     static bool

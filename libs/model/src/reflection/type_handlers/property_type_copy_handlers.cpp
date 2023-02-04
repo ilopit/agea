@@ -7,7 +7,7 @@
 #include "model/core_types/color.h"
 
 #include "model/object_constructor.h"
-#include "model/object_construction_context.h"
+#include "model/object_load_context.h"
 
 namespace agea
 {
@@ -18,13 +18,14 @@ namespace
 result_code
 copy_smart_object(AGEA_copy_handler_args)
 {
+    auto& s = src_obj;
     auto type = ooc.get_construction_type();
-    if (type == model::object_constructor_context::construction_type::mirror_obj)
+    if (type != model::object_load_type::class_obj)
     {
         auto& obj = extract<::agea::model::smart_object*>(from);
         auto& dst_obj = extract<::agea::model::smart_object*>(to);
-        return model::object_constructor::object_clone_create(obj->get_id(), obj->get_id(), ooc,
-                                                              dst_obj);
+        return model::object_constructor::object_clone_create_internal(obj->get_id(), obj->get_id(),
+                                                                       ooc, dst_obj);
     }
     else
     {
@@ -296,7 +297,7 @@ property_type_copy_handlers::copy_t_com(AGEA_copy_handler_args)
 
     auto new_id = AID(dst_obj.get_id().str() + "/" + f->get_class_obj()->get_id().str());
 
-    auto p = model::object_constructor::object_clone_create(*f, new_id, ooc, t);
+    auto p = model::object_constructor::object_clone_create_internal(*f, new_id, ooc, t);
 
     t = (::agea::model::component*)p;
 

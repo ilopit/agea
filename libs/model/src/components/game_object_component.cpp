@@ -40,14 +40,20 @@ void
 game_object_component::move(const vec3& delta)
 {
     m_position += delta.as_glm();
+
     update_matrix();
+
+    mark_transform_dirty();
 }
 
 void
 game_object_component::rotate(const vec3& delta)
 {
     m_rotation += delta.as_glm();
+
     update_matrix();
+
+    mark_transform_dirty();
 }
 
 void
@@ -62,6 +68,7 @@ game_object_component::update_matrix()
 
     m_transform_matrix = t * s * r;
     m_world_position = glm::vec4(m_position, 1.0f);
+
     if (m_render_root)
     {
         m_transform_matrix = m_render_root->get_transofrm_matrix() * m_transform_matrix;
@@ -76,46 +83,23 @@ game_object_component::update_matrix()
     }
 }
 
-glm::mat4
-game_object_component::get_transofrm_matrix()
-{
-    return m_transform_matrix;
-}
-
-glm::mat4
-game_object_component::get_normal_matrix()
-{
-    return m_normal_matrix;
-}
-
-glm::vec4
-game_object_component::get_world_position()
-{
-    return m_world_position;
-}
-
-void
-game_object_component::on_tick(float dt)
-{
-}
-
 void
 game_object_component::mark_transform_dirty()
 {
-    if (!has_dirty_transform())
+    if (has_dirty_transform())
     {
         glob::level::getr().add_to_dirty_components_queue(this);
-        set_dirty_transform(false);
+        set_dirty_transform(true);
     }
 }
 
 void
 game_object_component::mark_render_dirty()
 {
-    if (get_state() != smart_objet_state__constructed)
+    if (get_state() != smart_object_state::constructed)
     {
         glob::level::getr().add_to_dirty_render_queue(this);
-        set_state(smart_objet_state__constructed);
+        set_state(smart_object_state::constructed);
     }
 }
 

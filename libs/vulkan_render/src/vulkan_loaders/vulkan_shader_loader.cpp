@@ -200,14 +200,10 @@ bool
 vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            std::shared_ptr<shader_data>& vert_module,
                                            std::shared_ptr<shader_data>& frag_module,
-                                           bool is_wire,
-                                           bool enable_alpha,
-                                           bool enable_dynamic_state,
-                                           VkRenderPass render_pass,
-                                           vertex_input_description& input_description)
+                                           const shader_effect_create_info& info)
 {
-    se_data.m_is_wire = is_wire;
-    se_data.m_enable_alpha = enable_alpha;
+    se_data.m_is_wire = info.is_wire;
+    se_data.m_enable_alpha = info.enable_alpha;
 
     se_data.add_shader(vert_module);
     se_data.add_shader(frag_module);
@@ -245,24 +241,27 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_scissor.offset = {0, 0};
     pb.m_scissor.extent = VkExtent2D{width, height};
 
-    pb.m_rasterizer_ci = vk_utils::make_rasterization_state_create_info(!is_wire, enable_alpha);
+    pb.m_rasterizer_ci = vk_utils::make_rasterization_state_create_info(
+        info.is_wire ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL, info.cull_mode);
 
     pb.m_multisampling_ci = vk_utils::make_multisampling_state_create_info();
 
-    pb.m_color_blend_attachment = vk_utils::make_color_blend_attachment_state(enable_alpha);
+    pb.m_color_blend_attachment = vk_utils::make_color_blend_attachment_state(info.enable_alpha);
 
     pb.m_depth_stencil_ci =
-        vk_utils::make_depth_stencil_create_info(true, true, VK_COMPARE_OP_ALWAYS);
+        vk_utils::make_depth_stencil_create_info(true, true, info.depth_compare_op);
 
-    pb.m_vertex_input_info_ci.pVertexAttributeDescriptions = input_description.attributes.data();
+    pb.m_vertex_input_info_ci.pVertexAttributeDescriptions =
+        info.vert_input_description->attributes.data();
     pb.m_vertex_input_info_ci.vertexAttributeDescriptionCount =
-        (uint32_t)input_description.attributes.size();
+        (uint32_t)info.vert_input_description->attributes.size();
 
-    pb.m_vertex_input_info_ci.pVertexBindingDescriptions = input_description.bindings.data();
+    pb.m_vertex_input_info_ci.pVertexBindingDescriptions =
+        info.vert_input_description->bindings.data();
     pb.m_vertex_input_info_ci.vertexBindingDescriptionCount =
-        (uint32_t)input_description.bindings.size();
+        (uint32_t)info.vert_input_description->bindings.size();
 
-    if (enable_dynamic_state)
+    if (info.enable_dynamic_state)
     {
         std::vector<VkDynamicState> dynamic_state_enables = {VK_DYNAMIC_STATE_VIEWPORT,
                                                              VK_DYNAMIC_STATE_SCISSOR};
@@ -280,23 +279,15 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     pb.m_pipeline_layout = se_data.m_pipeline_layout;
 
-    se_data.m_pipeline = pb.build(device->vk_device(), render_pass);
+    se_data.m_pipeline = pb.build(device->vk_device(), info.render_pass);
 
     return se_data.m_pipeline != VK_NULL_HANDLE;
 }
 
 bool
 vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
-                                           agea::utils::buffer& vert_buffer,
-                                           bool is_vert_binary,
-                                           agea::utils::buffer& frag_buffer,
-                                           bool is_frag_binary,
-                                           bool is_wire,
-                                           bool enable_alpha,
-                                           bool enable_dynamic_state,
-                                           VkRenderPass render_pass,
-                                           std::shared_ptr<render::shader_effect_data>& old_se_data,
-                                           vertex_input_description& input_description)
+                                           const shader_effect_create_info& info,
+                                           std::shared_ptr<render::shader_effect_data>& old_se_data)
 {
     auto device = glob::render_device::get();
 
@@ -304,11 +295,11 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
                                                                device->get_vk_device_provider());
 
     auto vs = se_data.extract_shader(VK_SHADER_STAGE_VERTEX_BIT);
-    if (vert_buffer.consume_file_updated())
+    if (info.vert_buffer->consume_file_updated())
     {
         old_se_data->add_shader(std::move(vs));
 
-        vs = load_data_shader(vert_buffer, is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT);
+        vs = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT);
         if (!vs)
         {
             ALOG_ERROR("Error");
@@ -317,11 +308,11 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     }
 
     auto fs = se_data.extract_shader(VK_SHADER_STAGE_FRAGMENT_BIT);
-    if (frag_buffer.consume_file_updated())
+    if (info.frag_buffer->consume_file_updated())
     {
         old_se_data->add_shader(std::move(vs));
 
-        vs = load_data_shader(frag_buffer, is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT);
+        vs = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT);
         if (!fs)
         {
             ALOG_ERROR("Error");
@@ -339,40 +330,32 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     old_se_data->m_pipeline_layout = se_data.m_pipeline_layout;
     se_data.m_pipeline_layout = VK_NULL_HANDLE;
 
-    return create_shader_effect(se_data, vs, fs, is_wire, enable_alpha, enable_dynamic_state,
-                                render_pass, input_description);
+    return create_shader_effect(se_data, vs, fs, info);
 }
 
 bool
 vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
-                                           agea::utils::buffer& vert_buffer,
-                                           bool is_vert_buffer,
-                                           agea::utils::buffer& frag_buffer,
-                                           bool is_frag_buffer,
-                                           bool is_wire,
-                                           bool enable_alpha,
-                                           bool enable_dynamic_state,
-                                           VkRenderPass render_pass,
-                                           vertex_input_description& input_description)
+                                           const shader_effect_create_info& info)
 {
     auto device = glob::render_device::get();
 
-    auto vert_module = load_data_shader(vert_buffer, is_vert_buffer, VK_SHADER_STAGE_VERTEX_BIT);
+    auto vert_module =
+        load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT);
     if (!vert_module)
     {
         ALOG_ERROR("Error");
         return false;
     }
 
-    auto frag_module = load_data_shader(frag_buffer, is_frag_buffer, VK_SHADER_STAGE_FRAGMENT_BIT);
+    auto frag_module =
+        load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT);
     if (!frag_module)
     {
         ALOG_ERROR("Error");
         return false;
     }
 
-    return create_shader_effect(se_data, vert_module, frag_module, is_wire, enable_alpha,
-                                enable_dynamic_state, render_pass, input_description);
+    return create_shader_effect(se_data, vert_module, frag_module, info);
 }
 
 }  // namespace render

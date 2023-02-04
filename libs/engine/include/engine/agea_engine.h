@@ -81,7 +81,6 @@ private:
 
     bool prepare_for_rendering(model::package& p);
     bool prepare_for_rendering(model::level& l);
-    bool schedule_for_rendering(model::level& l);
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on

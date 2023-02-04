@@ -44,22 +44,14 @@ game_object::build_components_structure()
 bool
 game_object::post_construct()
 {
-    if (get_state() != smart_objet_state__empty)
-    {
-        return true;
-    }
+    AGEA_check(get_state() == smart_object_state::loaded, "Should be in proper place");
 
     AGEA_return_nok(base_class::post_construct());
-
-    for (auto c : m_components)
-    {
-        c->post_construct();
-    }
 
     build_components_structure();
 
     m_root_component->update_matrix();
-    set_state(smart_objet_state__constructed);
+    set_state(smart_object_state::constructed);
 
     return true;
 }

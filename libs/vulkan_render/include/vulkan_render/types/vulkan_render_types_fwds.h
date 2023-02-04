@@ -12,5 +12,6 @@ class shader_effect_data;
 class shader_data;
 class sampler_data;
 struct vertex_input_description;
+struct texture_sampler_data;
 }  // namespace render
 }  // namespace agea

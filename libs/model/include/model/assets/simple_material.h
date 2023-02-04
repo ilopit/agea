@@ -3,6 +3,7 @@
 #include "simple_material.generated.h"
 
 #include "model/assets/material.h"
+#include "model/assets/texture_sample.h"
 
 namespace agea
 {
@@ -83,16 +84,44 @@ public:
     }
 
 protected:
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    bool
+    post_construct();
+
+    AGEA_property("category=meta",
+                  "serializable=true",
+                  "property_des_handler=custom::texture_sample_deserialize",
+                  "property_ser_handler=custom::texture_sample_serialize",
+                  "property_prototype_handler=custom::texture_sample_prototype",
+                  "property_compare_handler=custom::texture_sample_compare",
+                  "property_copy_handler=custom::texture_sample_copy");
+    texture_sample m_simple_texture;
+
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_albedo = 0.2f;
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_gamma = 0.4f;
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_metallic = 0.6f;
 
-    AGEA_property("category=properties", "access=no", "serializable=true", "gpu_data=MaterialData");
+    AGEA_property("category=properties",
+                  "access=no",
+                  "serializable=true",
+                  "gpu_data=MaterialData",
+                  "default=true");
     float m_roughness = 0.8f;
 };
 

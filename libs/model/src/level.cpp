@@ -7,7 +7,8 @@
 #include "model/caches/game_objects_cache.h"
 #include "model/caches/caches_map.h"
 
-#include "model/object_construction_context.h"
+#include "model/object_load_context.h"
+#include "model/object_constructor.h"
 
 namespace agea
 {
@@ -19,17 +20,12 @@ namespace model
 
 level::level()
     : m_occ(nullptr)
+    , m_mapping(std::make_shared<model::object_mapping>())
 {
 }
 
 level::~level()
 {
-}
-
-object_constructor_context&
-level::occ()
-{
-    return *m_occ.get();
 }
 
 game_object*
@@ -42,6 +38,33 @@ component*
 level::find_component(const utils::id& id)
 {
     return m_local_cs.components->get_item(id);
+}
+
+smart_object*
+level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
+{
+    auto proto_obj = m_occ->find_obj(proto_obj_id);
+
+    if (!proto_obj)
+    {
+        return nullptr;
+    }
+
+    smart_object* result = nullptr;
+    std::vector<smart_object*> loaded_obj;
+
+    auto rc = object_constructor::object_clone(*proto_obj, object_id, *m_occ, result, loaded_obj);
+    if (rc != result_code::ok)
+    {
+        return nullptr;
+    }
+
+    for (auto o : loaded_obj)
+    {
+        o->META_post_construct();
+    }
+
+    return result;
 }
 
 void

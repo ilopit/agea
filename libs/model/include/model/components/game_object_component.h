@@ -49,18 +49,34 @@ public:
 
     vec3
     get_forward_vector() const;
-
     vec3
     get_up_vector() const;
-
     vec3
     get_right_vector() const;
 
     void
     move(const vec3& delta);
-
     void
     rotate(const vec3& delta);
+
+    const glm::mat4&
+    get_transofrm_matrix() const
+    {
+        return m_transform_matrix;
+    }
+    const glm::mat4&
+    get_normal_matrix() const
+    {
+        return m_normal_matrix;
+    }
+    const glm::vec4&
+    get_world_position() const
+    {
+        return m_world_position;
+    };
+
+    void
+    update_matrix();
 
     virtual void
     set_parent(component* c)
@@ -81,37 +97,36 @@ public:
         m_render_components.push_back((game_object_component*)c);
     }
 
-    void
-    update_matrix();
-
-    glm::mat4
-    get_transofrm_matrix();
-
-    glm::mat4
-    get_normal_matrix();
-
-    glm::vec4
-    get_world_position();
-
-    virtual void
-    on_tick(float dt);
-
     std::vector<game_object_component*>&
     get_render_components()
     {
         return m_render_components;
     }
 
+    virtual void
+    on_tick(float dt)
+    {
+    }
+
     render::object_data*
-    get_object_dat()
+    get_render_object_data() const
     {
         return m_render_handle;
     }
-
     void
-    set_object_dat(render::object_data* v)
+    set_render_object_data(render::object_data* v)
     {
         m_render_handle = v;
+    }
+    bool
+    has_dirty_transform() const
+    {
+        return m_has_dirty_transform;
+    }
+    void
+    set_dirty_transform(bool v)
+    {
+        m_has_dirty_transform = v;
     }
 
     void
@@ -121,6 +136,12 @@ public:
     mark_render_dirty();
 
 protected:
+    AGEA_property("category=object", "serializable=true", "default=true");
+    bool m_tickable = false;
+
+    AGEA_property("category=object", "serializable=true", "default=true");
+    bool m_visible = false;
+
     AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
     vec3 m_position = {0.f};
 
@@ -135,6 +156,9 @@ protected:
     glm::vec4 m_world_position;
 
     std::vector<game_object_component*> m_render_components;
+
+    bool m_has_dirty_transform = false;
+
     game_object_component* m_render_root = nullptr;
     render::object_data* m_render_handle = nullptr;
 };

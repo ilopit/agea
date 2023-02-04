@@ -13,6 +13,8 @@ namespace agea
 class singleton_registry
 {
 public:
+    ~singleton_registry();
+
     void
     add(base_singleton_instance* obj);
 

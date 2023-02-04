@@ -25,6 +25,9 @@ vulkan_buffer::operator=(vulkan_buffer&& other) noexcept
         m_offset = other.m_offset;
         other.m_offset = 0;
 
+        m_alloc_size = other.m_alloc_size;
+        other.m_alloc_size = 0;
+
         m_data_begin = other.m_data_begin;
         other.m_data_begin = nullptr;
 
@@ -38,13 +41,18 @@ vulkan_buffer::vulkan_buffer()
     : m_buffer(VK_NULL_HANDLE)
     , m_allocation(VK_NULL_HANDLE)
     , m_allocator(nullptr)
+    , m_alloc_size(0)
 {
 }
 
-vulkan_buffer::vulkan_buffer(vma_allocator_provider alloc, VkBuffer b, VmaAllocation a)
+vulkan_buffer::vulkan_buffer(vma_allocator_provider alloc,
+                             VkBuffer b,
+                             VmaAllocation a,
+                             VkDeviceSize alloc_size)
     : m_buffer(b)
     , m_allocation(a)
     , m_allocator(alloc)
+    , m_alloc_size(alloc_size)
 {
 }
 
@@ -55,12 +63,14 @@ vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
     , m_offset(other.m_offset)
     , m_data_begin(other.m_data_begin)
     , m_offsets(std::move(other.m_offsets))
+    , m_alloc_size(other.m_alloc_size)
 {
     other.m_buffer = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
     other.m_allocator = nullptr;
     other.m_offset = 0;
     other.m_data_begin = nullptr;
+    other.m_alloc_size = 0;
 }
 
 void
@@ -76,6 +86,7 @@ vulkan_buffer::clear()
     m_buffer = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
     m_allocator = nullptr;
+    m_alloc_size = 0;
 }
 
 vulkan_buffer
@@ -88,7 +99,7 @@ vulkan_buffer::create(vma_allocator_provider alloc,
 
     vmaCreateBuffer(alloc(), &bci, &vaci, &buffer, &allocation, nullptr);
 
-    return vulkan_buffer{alloc, buffer, allocation};
+    return vulkan_buffer{alloc, buffer, allocation, bci.size};
 }
 
 vulkan_buffer::~vulkan_buffer()

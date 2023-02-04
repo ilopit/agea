@@ -52,14 +52,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
     mesh->set_indices_buffer(indices);
     mesh->set_vertices_buffer(vertices);
 
-    serialization::conteiner c;
-    if (model::object_constructor::object_save_full(c, *mesh) != result_code::ok)
-    {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    if (!serialization::write_container(full_obj_path, c))
+    if (model::object_constructor::object_save(*mesh, full_obj_path) != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -99,15 +92,9 @@ convert_image_to_atxt(const utils::path& obj_path,
     txt->set_base_color(std::move(base_color));
     txt->set_width(w);
     txt->set_height(h);
+
     serialization::conteiner c;
-
-    if (model::object_constructor::object_save_full(c, *txt) != result_code::ok)
-    {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    if (!serialization::write_container(full_obj_path, c))
+    if (model::object_constructor::object_save(*txt, full_obj_path) != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return false;

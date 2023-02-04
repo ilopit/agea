@@ -2,6 +2,9 @@
 
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
+#include "vulkan_render/vulkan_render_loader_create_infos.h"
+
+#include "vulkan_render/types/vulkan_material_data.h"
 
 #include <utils/buffer.h>
 #include <utils/id.h>
@@ -53,8 +56,7 @@ public:
     create_texture(const agea::utils::id& texture_id,
                    const agea::utils::buffer& base_color,
                    uint32_t w,
-                   uint32_t h,
-                   const agea::utils::id& sampler_id = AID("default"));
+                   uint32_t h);
 
     object_data*
     create_object(const agea::utils::id& id,
@@ -75,39 +77,21 @@ public:
     material_data*
     create_material(const agea::utils::id& id,
                     const agea::utils::id& type_id,
-                    texture_data& t_data,
+                    std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
                     const agea::utils::dynamic_object& params);
 
     bool
     update_material(material_data& mat_data,
-                    texture_data& t_data,
+                    std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
                     const agea::utils::dynamic_object& params);
 
     shader_effect_data*
-    create_shader_effect(const agea::utils::id& id,
-                         agea::utils::buffer& vert_buffer,
-                         bool is_vert_binary,
-                         agea::utils::buffer& frag_buffer,
-                         bool is_frag_binary,
-                         bool is_wire,
-                         bool enable_alpha,
-                         bool enable_dynamic_state,
-                         VkRenderPass render_path,
-                         vertex_input_description& inout_description);
+    create_shader_effect(const agea::utils::id& id, const shader_effect_create_info& info);
 
     bool
-    update_shader_effect(shader_effect_data& se_data,
-                         agea::utils::buffer& vert_buffer,
-                         bool is_vert_binary,
-                         agea::utils::buffer& frag_buffer,
-                         bool is_frag_binary,
-                         bool is_wire,
-                         bool enable_alpha,
-                         bool enable_dynamic_state,
-                         VkRenderPass render_path,
-                         vertex_input_description& input_description);
+    update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info);
 
     sampler_data*
     create_sampler(const agea::utils::id& id, VkBorderColor color);
@@ -176,6 +160,40 @@ public:
         return m_new_object_index++;
     }
 
+    gpu_data_index_type
+    get_objects_alloc_size() const
+    {
+        return m_new_object_index * sizeof(gpu_object_data);
+    }
+
+    gpu_data_index_type
+    get_mat_alloc_size(gpu_data_index_type mtt_id) const
+    {
+        for (auto& mat : m_materials_type_ids)
+        {
+            if (mat.second.idx == mtt_id)
+            {
+                return mat.second.alloc_size;
+            }
+        }
+
+        AGEA_never("Should be");
+
+        return {};
+    }
+
+    std::unordered_map<agea::utils::id, std::shared_ptr<object_data>>&
+    get_objects_cache()
+    {
+        return m_objects_cache;
+    }
+
+    std::unordered_map<agea::utils::id, std::shared_ptr<material_data>>&
+    get_materials_cache()
+    {
+        return m_materials_cache;
+    }
+
 private:
     void
     shedule_to_deltete(resource_deleter d);
@@ -187,16 +205,17 @@ private:
     }
 
     gpu_data_index_type
-    generate_mtt_id(const agea::utils::id& type_id)
+    generate_mtt_id(const agea::utils::id& type_id, uint32_t alloc_size)
     {
         auto itr = m_materials_type_ids.find(type_id);
 
         if (itr == m_materials_type_ids.end())
         {
-            itr = m_materials_type_ids.insert({type_id, m_last_mtt_id++}).first;
+            auto mtt_id = m_last_mtt_id++;
+            itr = m_materials_type_ids.insert({type_id, {m_last_mtt_id, alloc_size}}).first;
         }
 
-        return itr->second;
+        return itr->second.idx;
     }
 
     std::unordered_map<agea::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
@@ -206,10 +225,18 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<object_data>> m_objects_cache;
+
     std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 
     std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
-    std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_type_ids;
+
+    struct material_description
+    {
+        gpu_data_index_type idx = 0;
+        gpu_data_index_type alloc_size = 0;
+    };
+
+    std::unordered_map<agea::utils::id, material_description> m_materials_type_ids;
 
     std::priority_queue<deleyer_delete_action,
                         std::vector<deleyer_delete_action>,

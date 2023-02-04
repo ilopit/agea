@@ -9,14 +9,13 @@ namespace agea
 {
 class scene_builder
 {
+    using pfr = bool (scene_builder::*)(model::smart_object&, bool);
+
 public:
     scene_builder();
 
     bool
     prepare_for_rendering(model::smart_object& obj, bool sub_objects);
-
-    bool
-    schedule_for_rendering(model::smart_object& obj, bool sub_objects);
 
 private:
     // clang-format off
@@ -29,9 +28,6 @@ private:
     bool pfr_shader_effect(model::smart_object& obj, bool sub_objects);
     bool pfr_empty(model::smart_object& obj, bool sub_objects);
 
-    bool sfr_game_object(model::smart_object& obj, bool sub_objects);
-    bool sfr_game_object_component(model::smart_object& obj, bool sub_objects);
-    bool sfr_mesh_component(model::smart_object& obj, bool sub_objects);
     // clang-format on
 
     utils::dynamic_object
@@ -49,11 +45,7 @@ private:
     bool
     create_collection_template(model::smart_object& so, scene_builder::collection_template& t);
 
-    std::unordered_map<utils::id, std::function<bool(model::smart_object&, bool sub_objects)>>
-        m_pfr_handlers;
-
-    std::unordered_map<utils::id, std::function<bool(model::smart_object&, bool sub_objects)>>
-        m_sfr_handlers;
+    std::unordered_map<utils::id, pfr> m_pfr_handlers;
 
     std::unordered_map<utils::id, collection_template> m_gpu_data_collection_templates;
 };

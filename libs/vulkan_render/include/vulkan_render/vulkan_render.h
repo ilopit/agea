@@ -100,6 +100,9 @@ private:
     draw_objects(render::frame_state& frame);
 
     void
+    upload_render_data(render::frame_state& frame);
+
+    void
     draw_objects_queue(render_line_conteiner& r,
                        VkCommandBuffer cmd,
                        vk_utils::vulkan_buffer& obj_tb,
@@ -133,6 +136,20 @@ private:
     void
     resize(uint32_t width, uint32_t height);
 
+    bool
+    rearrange_ssbo();
+
+    VkDeviceSize
+    ssbo_size() const
+    {
+        VkDeviceSize result = 0;
+        for (auto i : m_ssbo_range)
+        {
+            result += i;
+        }
+        return result;
+    }
+
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
@@ -142,12 +159,13 @@ private:
     render_line_conteiner m_transparent_render_object_queue;
 
     std::vector<frame_state> m_frames;
-    agea::utils::line_conteiner<std::pair<uint32_t, uint32_t>> m_ssbo_range;
+    agea::utils::line_conteiner<uint32_t> m_ssbo_range;
 
     // UI
 
     render::shader_effect_data* m_ui_se = nullptr;
     render::texture_data* m_ui_txt = nullptr;
+    VkDescriptorSet m_font_descriptor_set = VK_NULL_HANDLE;
 
     struct ui_push_constants
     {

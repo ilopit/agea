@@ -22,19 +22,26 @@ namespace model
 class level
 {
 public:
-    friend class level_constructor;
+    friend class level_manager;
 
     level();
     ~level();
-
-    object_constructor_context&
-    occ();
 
     game_object*
     find_game_object(const utils::id& id);
 
     component*
     find_component(const utils::id& id);
+
+    template <typename T>
+    auto
+    spawn_object(const utils::id& type_id, const utils::id& id)
+    {
+        return spawm_object(type_id, id)->as<T>();
+    }
+
+    smart_object*
+    spawm_object(const utils::id& proto_obj, const utils::id& object_id);
 
     void
     tick(float dt);
@@ -135,7 +142,7 @@ private:
     cache_set m_local_cs;
     cache_set* m_global_object_cs = nullptr;
     cache_set* m_global_class_object_cs = nullptr;
-    std::unique_ptr<object_constructor_context> m_occ;
+    std::unique_ptr<object_load_context> m_occ;
 
     line_cache<smart_object_ptr> m_objects;
     line_cache<game_object*> m_tickable_objects;
@@ -147,7 +154,7 @@ private:
 
     std::vector<utils::id> m_package_ids;
 
-    object_mapping m_mapping;
+    std::shared_ptr<object_mapping> m_mapping;
 
     utils::path m_load_path;
     utils::path m_save_root_path;

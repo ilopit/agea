@@ -3,6 +3,7 @@
 #include "material.generated.h"
 
 #include "model/assets/asset.h"
+#include "model/assets/texture_sample.h"
 
 namespace agea
 {
@@ -40,24 +41,20 @@ public:
         m_material_data = v;
     }
 
-    texture*
-    get_base_texture() const
+    std::unordered_map<utils::id, texture_sample>&
+    get_texture_samples()
     {
-        return m_base_texture;
+        return m_texture_samples;
     }
 
-    void
-    set_base_texture(texture* base_texture)
-    {
-        m_base_texture = base_texture;
-    }
+    texture_sample&
+    get_sample(const utils::id& slot);
 
 protected:
     AGEA_property("category=properties", "access=cpp_only", "serializable=true");
     shader_effect* m_shader_effect = nullptr;
 
-    AGEA_property("category=properties", "access=no", "serializable=true");
-    texture* m_base_texture = nullptr;
+    std::unordered_map<utils::id, texture_sample> m_texture_samples;
 
     ::agea::render::material_data* m_material_data = nullptr;
 };

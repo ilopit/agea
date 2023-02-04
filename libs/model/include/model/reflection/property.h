@@ -53,7 +53,7 @@ public:
     deserialize_update(reflection::property& p,
                        blob_ptr ptr,
                        const serialization::conteiner& sc,
-                       model::object_constructor_context& occ);
+                       model::object_load_context& occ);
 
 private:
     static result_code
@@ -75,13 +75,13 @@ private:
     deserialize_collection(reflection::property& p,
                            model::smart_object& obj,
                            const serialization::conteiner& sc,
-                           model::object_constructor_context& occ);
+                           model::object_load_context& occ);
 
     static result_code
     deserialize_item(reflection::property& p,
                      model::smart_object& obj,
                      const serialization::conteiner& sc,
-                     model::object_constructor_context& occ);
+                     model::object_load_context& occ);
 
     static result_code
     serialize_collection(const reflection::property& p,
@@ -97,13 +97,13 @@ private:
     deserialize_update_collection(reflection::property& p,
                                   blob_ptr ptr,
                                   const serialization::conteiner& sc,
-                                  model::object_constructor_context& occ);
+                                  model::object_load_context& occ);
 
     static result_code
     deserialize_update_item(reflection::property& p,
                             blob_ptr ptr,
                             const serialization::conteiner& sc,
-                            model::object_constructor_context& occ);
+                            model::object_load_context& occ);
 
     static result_code
     compare_collection(compare_context& context);

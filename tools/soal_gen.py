@@ -270,7 +270,7 @@ class agea_property:
         self.access = "cpp_only"
         self.owner = ""
         self.hint = ""
-        self.serializable = "no"
+        self.serializable = "false"
         self.property_ser_handler = ""
         self.property_des_handler = ""
         self.property_prototype_handler = ""
@@ -324,6 +324,8 @@ def write_properties(context: file_context, prop: agea_property, current_class: 
             prop.hint)
 
     if prop.serializable == "true":
+        context.content += "    "
+        context.content += 'p->serializable                   = true;\n'
         context.content += "    "
         context.content += 'p->types_serialization_handler    = property_type_serialization_handlers::serializers()[(size_t)p->type.type];\n'
         context.content += "    "

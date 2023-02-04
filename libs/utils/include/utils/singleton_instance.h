@@ -70,6 +70,13 @@ public:
         return *s_instance.m_obj;
     }
 
+    void
+    reset()
+    {
+        s_instance.m_obj = nullptr;
+        s_instance.m_reg = nullptr;
+    }
+
 protected:
     T* m_obj = nullptr;
     static singleton_instance s_instance;

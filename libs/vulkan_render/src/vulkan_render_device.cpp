@@ -113,8 +113,10 @@ render_device::init_vulkan(SDL_Window* window)
     features_11.fillModeNonSolid = true;
 
     selector.set_required_features(features_11)
+        .add_required_extension("VK_EXT_graphics_pipeline_library")
+        .add_required_extension("VK_KHR_pipeline_library")
         .set_minimum_version(1, 2)
-        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
+        .prefer_gpu_device_type(vkb::PreferredDeviceType::integrated);
 
     selector.set_surface(m_surface);
 
@@ -174,9 +176,7 @@ render_device::init_swapchain()
 
     VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 
-    vkb::Swapchain vkb_swapchain = swapchain_builder
-                                       .use_default_format_selection()
-                                       // use vsync present mode
+    vkb::Swapchain vkb_swapchain = swapchain_builder.use_default_format_selection()
                                        .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
                                        .set_desired_extent(width, height)
                                        .set_desired_format(format)
@@ -197,7 +197,7 @@ render_device::init_swapchain()
     VkExtent3D depth_image_extent = {width, height, 1};
 
     // the depth image will be a image with the format we selected and Depth Attachment usage flag
-    VkImageCreateInfo dimg_info = vk_utils::make_image_create_info(
+    auto dimg_info = vk_utils::make_image_create_info(
         m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image_extent);
 
     // for the depth image, we want to allocate it from gpu local memory
@@ -212,7 +212,7 @@ render_device::init_swapchain()
             vk_utils::vulkan_image::create(get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
 
         // build a image-view for the depth image to use for rendering
-        VkImageViewCreateInfo depth_image_view_ci = vk_utils::make_imageview_create_info(
+        auto depth_image_view_ci = vk_utils::make_imageview_create_info(
             m_depth_format, m_depth_images[i].image(), VK_IMAGE_ASPECT_DEPTH_BIT);
 
         VK_CHECK(
@@ -336,8 +336,7 @@ render_device::init_framebuffers()
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
-    VkFramebufferCreateInfo fb_info =
-        vk_utils::make_framebuffer_create_info(m_render_pass, VkExtent2D{width, height});
+    auto fb_info = vk_utils::make_framebuffer_create_info(m_render_pass, VkExtent2D{width, height});
 
     const uint32_t swapchain_imagecount = (uint32_t)m_swapchain_images.size();
     m_framebuffers = std::vector<VkFramebuffer>(swapchain_imagecount);
@@ -372,7 +371,7 @@ render_device::init_commands()
 {
     // create a command pool for commands submitted to the graphics queue.
     // we also want the pool to allow for resetting of individual command buffers
-    VkCommandPoolCreateInfo command_pool_ci = vk_utils::make_command_pool_create_info(
+    auto command_pool_ci = vk_utils::make_command_pool_create_info(
         m_graphics_queue_family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     for (auto& frame : m_frames)
@@ -381,15 +380,14 @@ render_device::init_commands()
             vkCreateCommandPool(m_vk_device, &command_pool_ci, nullptr, &frame.m_command_pool));
 
         // allocate the default command buffer that we will use for rendering
-        VkCommandBufferAllocateInfo command_buffer_ai =
+        auto command_buffer_ai =
             vk_utils::make_command_buffer_allocate_info(frame.m_command_pool, 1);
 
         VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &command_buffer_ai,
                                           &frame.m_main_command_buffer));
     }
 
-    VkCommandPoolCreateInfo upload_command_pool_ci =
-        vk_utils::make_command_pool_create_info(m_graphics_queue_family);
+    auto upload_command_pool_ci = vk_utils::make_command_pool_create_info(m_graphics_queue_family);
     // create pool for upload context
     VK_CHECK(vkCreateCommandPool(m_vk_device, &upload_command_pool_ci, nullptr,
                                  &m_upload_context.m_command_pool));
@@ -417,8 +415,7 @@ render_device::init_sync_structures()
     // one fence to control when the gpu has finished rendering the frame,
     // and 2 semaphores to syncronize rendering with swapchain
     // we want the fence to start signalled so we can wait on it on the first frame
-    VkFenceCreateInfo fenceCreateInfo =
-        vk_utils::make_fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
+    auto fenceCreateInfo = vk_utils::make_fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = vk_utils::make_semaphore_create_info();
 
@@ -512,7 +509,7 @@ void
 render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function)
 {
     // allocate the default command buffer that we will use for rendering
-    VkCommandBufferAllocateInfo command_buffer_ai =
+    auto command_buffer_ai =
         vk_utils::make_command_buffer_allocate_info(m_upload_context.m_command_pool, 1);
 
     VkCommandBuffer cmd;
@@ -520,7 +517,7 @@ render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& funct
 
     // begin the command buffer recording. We will use this command buffer exactly once, so we
     // want to let vulkan know that
-    VkCommandBufferBeginInfo command_buffer_bi =
+    auto command_buffer_bi =
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &command_buffer_bi));
@@ -529,7 +526,7 @@ render_device::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& funct
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
-    VkSubmitInfo submit = vk_utils::make_submit_info(&cmd);
+    auto submit = vk_utils::make_submit_info(&cmd);
 
     // submit command buffer to the queue and execute it.
     // _renderFence will now block until the graphic commands finish execution

@@ -290,8 +290,7 @@ texture_data*
 vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
                                      const agea::utils::buffer& base_color,
                                      uint32_t w,
-                                     uint32_t h,
-                                     const agea::utils::id& sampler_id)
+                                     uint32_t h)
 {
     AGEA_check(!get_texture_data(texture_id), "should never happens");
 
@@ -315,19 +314,6 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
         VK_FORMAT_R8G8B8A8_UNORM, td->image.image(), VK_IMAGE_ASPECT_COLOR_BIT);
     image_info.subresourceRange.levelCount = td->image.get_mip_levels();
     vkCreateImageView(device->vk_device(), &image_info, nullptr, &td->image_view);
-
-    auto sampler = get_sampler_data(sampler_id);
-
-    VkDescriptorImageInfo image_buffer_info{};
-    image_buffer_info.sampler = sampler->m_sampler;
-    image_buffer_info.imageView = td->image_view;
-    image_buffer_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
-                                        device->descriptor_allocator())
-        .bind_image(0, &image_buffer_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    VK_SHADER_STAGE_FRAGMENT_BIT)
-        .build(td->descriptor_set);
 
     m_textures_cache[texture_id] = td;
 
@@ -374,7 +360,7 @@ vulkan_render_loader::update_object(object_data& obj_data,
 material_data*
 vulkan_render_loader::create_material(const agea::utils::id& id,
                                       const agea::utils::id& type_id,
-                                      texture_data& t_data,
+                                      std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
                                       const agea::utils::dynamic_object& gpu_params)
 {
@@ -382,16 +368,36 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
 
     auto device = glob::render_device::get();
 
-    auto mtt_id = generate_mtt_id(type_id);
+    auto mtt_id = generate_mtt_id(type_id, gpu_params.size());
     auto mt_idx = generate_mt_idx(type_id);
 
-    auto data = std::make_shared<material_data>(id, mtt_id, mt_idx);
+    auto mat_data = std::make_shared<material_data>(id, mtt_id, mt_idx);
 
-    update_material(*data, t_data, se_data, gpu_params);
+    mat_data->effect = &se_data;
+    mat_data->texture_samples = samples;
 
-    m_materials_cache[id] = data;
+    VkDescriptorImageInfo image_buffer_info{};
 
-    return data.get();
+    image_buffer_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    for (auto& ts : mat_data->texture_samples)
+    {
+        auto sampler = get_sampler_data(AID("default"));
+        image_buffer_info.sampler = sampler->m_sampler;
+        image_buffer_info.imageView = ts.texture->image_view;
+
+        vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
+                                            device->descriptor_allocator())
+            .bind_image(0, &image_buffer_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build(ts.descriptor_set);
+    }
+
+    mat_data->gpu_data = gpu_params;
+
+    m_materials_cache[id] = mat_data;
+
+    return mat_data.get();
 }
 
 sampler_data*
@@ -419,12 +425,12 @@ vulkan_render_loader::create_sampler(const agea::utils::id& id, VkBorderColor co
 
 bool
 vulkan_render_loader::update_material(material_data& mat_data,
-                                      texture_data& t_data,
+                                      std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
                                       const agea::utils::dynamic_object& gpu_params)
 {
     mat_data.effect = &se_data;
-    mat_data.texture_set = t_data.descriptor_set;
+    mat_data.texture_samples = samples;
     mat_data.gpu_data = gpu_params;
 
     return true;
@@ -432,24 +438,14 @@ vulkan_render_loader::update_material(material_data& mat_data,
 
 shader_effect_data*
 vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
-                                           agea::utils::buffer& vert_buffer,
-                                           bool is_vert_binary,
-                                           agea::utils::buffer& frag_buffer,
-                                           bool is_frag_binary,
-                                           bool is_wire,
-                                           bool enable_alpha,
-                                           bool enable_dynamic_state,
-                                           VkRenderPass render_path,
-                                           vertex_input_description& input_description)
+                                           const shader_effect_create_info& info)
 {
     AGEA_check(!get_shader_data(id), "should never happens");
 
     auto device = glob::render_device::get();
     auto effect = std::make_shared<shader_effect_data>(id, device->get_vk_device_provider());
 
-    if (!vulkan_shader_loader::create_shader_effect(
-            *effect, vert_buffer, is_vert_binary, frag_buffer, is_frag_binary, is_wire,
-            enable_alpha, enable_dynamic_state, render_path, input_description))
+    if (!vulkan_shader_loader::create_shader_effect(*effect, info))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
@@ -461,29 +457,19 @@ vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
 
 bool
 vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
-                                           agea::utils::buffer& vert_buffer,
-                                           bool is_vert_binary,
-                                           agea::utils::buffer& frag_buffer,
-                                           bool is_frag_binary,
-                                           bool is_wire,
-                                           bool enable_alpha,
-                                           bool enable_dynamic_state,
-                                           VkRenderPass render_path,
-                                           vertex_input_description& input_description)
+                                           const shader_effect_create_info& info)
 {
     AGEA_check(get_shader_data(se_data.get_id()), "should never happens");
 
-    if (!frag_buffer.has_file_updated() && !vert_buffer.has_file_updated() &&
-        is_wire == se_data.m_is_wire && enable_alpha == se_data.m_enable_alpha)
+    if (!info.frag_buffer->has_file_updated() && !info.vert_buffer->has_file_updated() &&
+        info.is_wire == se_data.m_is_wire && info.enable_alpha == se_data.m_enable_alpha)
     {
         ALOG_TRACE("No need to re-create shader effect");
     }
 
     std::shared_ptr<render::shader_effect_data> old_se_data;
 
-    if (!vulkan_shader_loader::update_shader_effect(
-            se_data, vert_buffer, is_vert_binary, frag_buffer, is_frag_binary, is_wire,
-            enable_alpha, enable_dynamic_state, render_path, old_se_data, input_description))
+    if (!vulkan_shader_loader::update_shader_effect(se_data, info, old_se_data))
     {
         ALOG_LAZY_ERROR;
         return false;

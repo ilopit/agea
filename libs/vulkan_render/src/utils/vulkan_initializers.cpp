@@ -164,16 +164,16 @@ make_input_assembly_create_info(VkPrimitiveTopology topology)
     return ci;
 }
 VkPipelineRasterizationStateCreateInfo
-make_rasterization_state_create_info(bool polygon_mode, bool alpha_support)
+make_rasterization_state_create_info(VkPolygonMode polygon_mode, VkCullModeFlags cull_mode)
 {
     VkPipelineRasterizationStateCreateInfo ci = {};
     ci.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     ci.pNext = nullptr;
     ci.depthClampEnable = VK_FALSE;
     ci.rasterizerDiscardEnable = VK_FALSE;
-    ci.polygonMode = polygon_mode ? VK_POLYGON_MODE_FILL : VK_POLYGON_MODE_LINE;
+    ci.polygonMode = polygon_mode;
     ci.lineWidth = 1.0f;
-    ci.cullMode = VK_CULL_MODE_NONE;
+    ci.cullMode = cull_mode;
     ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     ci.depthBiasEnable = VK_FALSE;
     ci.depthBiasConstantFactor = 0.0f;

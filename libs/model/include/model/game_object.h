@@ -58,6 +58,7 @@ public:
     {
         return m_root_component->get_right_vector();
     }
+
     virtual void
     on_tick(float dt)
     {

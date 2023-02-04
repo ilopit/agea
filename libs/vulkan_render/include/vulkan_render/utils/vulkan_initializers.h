@@ -50,7 +50,7 @@ VkPipelineInputAssemblyStateCreateInfo
 make_input_assembly_create_info(VkPrimitiveTopology topology);
 
 VkPipelineRasterizationStateCreateInfo
-make_rasterization_state_create_info(bool polygon_mode, bool alpha_support);
+make_rasterization_state_create_info(VkPolygonMode polygon_mode, VkCullModeFlags cull_mode);
 
 VkPipelineMultisampleStateCreateInfo
 make_multisampling_state_create_info();
@@ -68,7 +68,7 @@ VkImageViewCreateInfo
 make_imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspect_flags);
 
 VkPipelineDepthStencilStateCreateInfo
-make_depth_stencil_create_info(bool depth_test, bool depth_trite, VkCompareOp compare_op);
+make_depth_stencil_create_info(bool depth_test, bool depth_write, VkCompareOp compare_op);
 
 VkDescriptorSetLayoutBinding
 make_descriptor_set_layout_binding(VkDescriptorType type,

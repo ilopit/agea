@@ -7,7 +7,7 @@
 #include "model/caches/caches_map.h"
 #include "model/caches/materials_cache.h"
 #include "model/caches/objects_cache.h"
-#include "model/object_construction_context.h"
+#include "model/object_load_context.h"
 #include "model/caches/game_objects_cache.h"
 #include "model/object_constructor.h"
 #include "model/package.h"
@@ -41,14 +41,14 @@ extract_field(blob_ptr ptr, const serialization::conteiner& jc)
 result_code
 load_smart_object(blob_ptr ptr,
                   const serialization::conteiner& jc,
-                  model::object_constructor_context& occ,
+                  model::object_load_context& occ,
                   model::architype a_type)
 {
     auto& field = reflection::extract<::agea::model::smart_object*>(ptr);
 
     const auto id = AID(jc.as<std::string>());
 
-    return model::object_constructor::object_load(id, occ, field);
+    return model::object_constructor::object_load_internal(id, occ, field);
 }
 
 }  // namespace

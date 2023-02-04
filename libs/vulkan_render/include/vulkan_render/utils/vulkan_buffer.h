@@ -73,9 +73,15 @@ public:
     flush();
 
     uint32_t
-    get_offset()
+    get_offset() const
     {
         return m_offset;
+    }
+
+    VkDeviceSize
+    get_alloc_size() const
+    {
+        return m_alloc_size;
     }
 
     uint32_t*
@@ -97,13 +103,17 @@ public:
     }
 
 private:
-    vulkan_buffer(vma_allocator_provider alloc, VkBuffer b, VmaAllocation a);
+    vulkan_buffer(vma_allocator_provider alloc,
+                  VkBuffer b,
+                  VmaAllocation a,
+                  VkDeviceSize alloc_size);
 
     VkBuffer m_buffer = VK_NULL_HANDLE;
     VmaAllocation m_allocation = VK_NULL_HANDLE;
     vma_allocator_provider m_allocator = nullptr;
 
     uint32_t m_offset = 0U;
+    VkDeviceSize m_alloc_size = 0U;
     std::uint8_t* m_data_begin = nullptr;
 
     std::vector<uint32_t> m_offsets;

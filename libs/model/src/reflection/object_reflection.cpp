@@ -44,7 +44,7 @@ object_reflection::fill_properties()
     {
         for (auto& p : c->m_properties)
         {
-            if (p->types_serialization_handler)
+            if (p->serializable)
             {
                 c->m_serilalization_properties.push_back(p);
             }

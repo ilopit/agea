@@ -4,14 +4,8 @@
 #include "engine/input_manager.h"
 #include "engine/editor.h"
 #include "engine/config.h"
+#include "engine/engine_counters.h"
 
-#include "vulkan_render/utils/vulkan_initializers.h"
-#include "vulkan_render/types/vulkan_texture_data.h"
-#include "vulkan_render/types/vulkan_material_data.h"
-#include "vulkan_render/types/vulkan_shader_data.h"
-#include "vulkan_render/types/vulkan_mesh_data.h"
-#include "vulkan_render/types/vulkan_shader_effect_data.h"
-#include "vulkan_render/types/vulkan_render_data.h"
 #include "vulkan_render/vulkan_render.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vulkan_render_device.h"
@@ -25,14 +19,16 @@
 #include <model/caches/game_objects_cache.h>
 #include <model/caches/caches_map.h>
 #include <model/caches/empty_objects_cache.h>
-#include <model/reflection/lua_api.h>
 
+#include <model/reflection/lua_api.h>
 #include <model/components/mesh_component.h>
 #include <model/game_object.h>
 #include <model/assets/shader_effect.h>
-#include <model/level_constructor.h>
+#include <model/level_manager.h>
 #include <model/level.h>
+#include <model/package.h>
 #include <model/package_manager.h>
+#include <model/id_generator.h>
 
 #include <native/native_window.h>
 
@@ -41,8 +37,6 @@
 #include <utils/clock.h>
 
 #include <imgui.h>
-
-#include <VkBootstrap.h>
 
 #include <iostream>
 #include <fstream>
@@ -97,6 +91,8 @@ vulkan_engine::init()
     glob::package_manager::create(*m_registry);
     glob::lua_api::create(*m_registry);
     glob::vulkan_render::create(*m_registry);
+    glob::id_generator::create(*m_registry);
+    glob::engine_counters::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
 
@@ -107,7 +103,7 @@ vulkan_engine::init()
     glob::config::get()->load(main_config);
 
     utils::path input_config = cfgs_folder / "inputs.acfg";
-    glob::input_manager::get()->load_actions(main_config);
+    glob::input_manager::get()->load_actions(input_config);
 
     ::agea::reflection::entry::set_up();
 
@@ -164,27 +160,45 @@ vulkan_engine::run()
     // main loop
     for (;;)
     {
+        AGEA_make_scope(frame);
+
         auto start_ts = utils::get_current_time_mks();
 
-        if (!glob::input_manager::get()->input_tick(frame_time))
         {
-            break;
+            AGEA_make_scope(input);
+
+            if (!glob::input_manager::get()->input_tick(frame_time))
+            {
+                break;
+            }
+
+            glob::input_manager::get()->fire_input_event();
         }
 
-        glob::game_editor::get()->on_tick(frame_time);
+        {
+            AGEA_make_scope(ui_tick);
+            glob::ui::get()->new_frame(frame_time);
+        }
+        {
+            AGEA_make_scope(tick);
+            tick(frame_time);
+        }
 
-        update_cameras();
-        glob::ui::get()->new_frame(frame_time);
+        {
+            AGEA_make_scope(consume_updates);
 
-        tick(frame_time);
-        glob::vulkan_render::getr().set_camera(m_camera_data);
+            update_cameras();
+            glob::vulkan_render::getr().set_camera(m_camera_data);
+            consume_updated_shader_effects();
+            consume_updated_render_assets();
+            consume_updated_render_components();
+            consume_updated_transforms();
+        }
+        {
+            AGEA_make_scope(draw);
 
-        consume_updated_shader_effects();
-        consume_updated_render_assets();
-        consume_updated_render_components();
-        consume_updated_transforms();
-
-        glob::vulkan_render::getr().draw_objects();
+            glob::vulkan_render::getr().draw_objects();
+        }
 
         glob::vulkan_render_loader::getr().delete_sheduled_actions();
 
@@ -202,13 +216,14 @@ vulkan_engine::run()
 void
 vulkan_engine::tick(float dt)
 {
+    glob::game_editor::get()->on_tick(dt);
     glob::level::get()->tick(dt);
 }
 
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto result = model::level_constructor::load_level_id(
+    auto result = model::level_manager::load_level_id(
         *glob::level::get(), glob::config::get()->level, glob::class_objects_cache_set::get(),
         glob::objects_cache_set::get());
 
@@ -219,12 +234,6 @@ vulkan_engine::load_level(const utils::id& level_id)
     }
 
     if (!prepare_for_rendering(*glob::level::get()))
-    {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    if (!schedule_for_rendering(*glob::level::get()))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -245,7 +254,7 @@ vulkan_engine::consume_updated_transforms()
 
     for (auto& i : items)
     {
-        auto obj_data = i->get_object_dat();
+        auto obj_data = i->get_render_object_data();
         if (obj_data)
         {
             obj_data->gpu_data.model_matrix = i->get_transofrm_matrix();
@@ -267,6 +276,23 @@ void
 vulkan_engine::init_scene()
 {
     load_level(glob::config::get()->level);
+
+    for (int x = 0; x < 3; ++x)
+    {
+        for (int y = 0; y < 3; ++y)
+        {
+            for (int z = 0; z < 3; ++z)
+            {
+                auto id = std::format("obj_{}_{}_{}", x, y, z);
+                auto p =
+                    glob::level::getr().spawn_object<model::game_object>(AID("decor"), AID(id));
+
+                p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z * 10.f});
+
+                m_scene->prepare_for_rendering(*p, true);
+            }
+        }
+    }
 }
 
 void
@@ -276,12 +302,11 @@ vulkan_engine::consume_updated_render_components()
 
     for (auto& i : items)
     {
-        auto obj_data = (render::object_data*)i->get_object_dat();
+        auto obj_data = (render::object_data*)i->get_render_object_data();
 
         if (obj_data)
         {
             m_scene->prepare_for_rendering(*i, false);
-            m_scene->schedule_for_rendering(*i, false);
         }
     }
 
@@ -356,78 +381,9 @@ vulkan_engine::prepare_for_rendering(model::level& p)
     return true;
 }
 
-bool
-vulkan_engine::schedule_for_rendering(model::level& p)
-{
-    auto& cs = p.get_game_objects();
-
-    for (auto& o : cs.get_items())
-    {
-        if (!m_scene->schedule_for_rendering(*o.second, true))
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-    }
-
-    return true;
-}
-
 void
 vulkan_engine::compile_all_shaders()
 {
-    //     auto shader_dir = glob::resource_locator::get()->resource_dir(category::shaders_raw);
-    //     auto shader_compiled_dir =
-    //         glob::resource_locator::get()->resource_dir(category::shaders_compiled);
-    //
-    //     auto stamp = shader_compiled_dir.fs() / "nice";
-    //     if (std::filesystem::exists(stamp) && !m_force_shader_recompile)
-    //     {
-    //         return;
-    //     }
-    //
-    //     for (auto& p : std::filesystem::recursive_directory_iterator(shader_dir.fs()))
-    //     {
-    //         if (p.is_directory())
-    //         {
-    //             continue;
-    //         }
-    //
-    //         auto shader_path = std::filesystem::relative(p, shader_dir.fs());
-    //
-    //         ipc::construct_params params;
-    //         params.path_to_binary = "C:\\VulkanSDK\\1.2.170.0\\Bin\\glslc.exe";
-    //
-    //         auto td = glob::resource_locator::get()->temp_dir();
-    //         params.working_dir = *td.folder;
-    //
-    //         auto raw_path = shader_dir.fs() / shader_path;
-    //         auto compiled_path = *td.folder / shader_path;
-    //         compiled_path += ".spv";
-    //
-    //         auto final_path = shader_compiled_dir.fs() / shader_path;
-    //         final_path += ".spv";
-    //
-    //         params.arguments =
-    //             "-V " + raw_path.generic_string() + " -o " + compiled_path.generic_string();
-    //
-    //         uint64_t rc = 0;
-    //         if (!ipc::run_binary(params, rc))
-    //         {
-    //             AGEA_never("Shader compilation failed");
-    //
-    //             return;
-    //         }
-    //
-    //         auto name = shader_path.generic_string() + ".spv";
-    //
-    //         std::filesystem::rename(compiled_path, final_path);
-    //     }
-    //
-    //     std::ofstream file(stamp);
-    //     file << "hehey)";
-
-    return;
 }
 
 }  // namespace agea

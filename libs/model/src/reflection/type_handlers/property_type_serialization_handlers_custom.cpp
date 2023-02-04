@@ -4,15 +4,18 @@
 
 #include "model/reflection/property.h"
 
-#include "utils/agea_log.h"
-
-#include "model/object_construction_context.h"
+#include "model/object_load_context.h"
 #include "model/smart_object.h"
 #include "model/components/component.h"
 #include "model/caches/cache_set.h"
 #include "model/object_constructor.h"
 #include "model/caches/objects_cache.h"
-#include "serialization/serialization.h"
+#include "model/id_generator.h"
+#include "model/assets/material.h"
+
+#include <serialization/serialization.h>
+
+#include <utils/agea_log.h>
 
 namespace agea
 {
@@ -55,7 +58,7 @@ game_object_components_deserialize(deserialize_context& dc)
         auto item = items[i];
 
         model::smart_object* obj = nullptr;
-        auto rc = model::object_constructor::object_load(item, *dc.occ, obj);
+        auto rc = model::object_constructor::object_load_internal(item, *dc.occ, obj);
 
         if (rc != result_code::ok || !obj || obj->get_architype_id() != model::architype::component)
         {
@@ -108,7 +111,7 @@ game_object_components_prototype(property_prototype_context& ctx)
         auto item = items[i];
 
         model::smart_object* obj = nullptr;
-        auto rc = model::object_constructor::object_load(item, *ctx.occ, obj);
+        auto rc = model::object_constructor::object_load_internal(item, *ctx.occ, obj);
 
         if (rc != result_code::ok || !obj || obj->get_architype_id() != model::architype::component)
         {
@@ -128,7 +131,7 @@ game_object_components_serialize(serialize_context& dc)
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (class_obj.has_state(model::smart_object_internal_state::standalone))
+    if (class_obj.has_state_flag(model::smart_object_state_flag::standalone))
     {
         serialization::conteiner components_conteiner;
         serialization::conteiner components_layout;
@@ -221,27 +224,121 @@ game_object_components_compare(compare_context&)
 result_code
 game_object_components_copy(copy_context& ctx)
 {
+    //     AGEA_check(ctx.occ->get_construction_type() ==
+    //                    model::object_constructor_context::construction_type::mirror_obj,
+    //                "Should alway be empty!!");
+
     auto& src_col =
-        extract<std::vector<model::smart_object*>>(ctx.src_property->get_blob(*ctx.src_obj));
+        extract<std::vector<model::component*>>(ctx.src_property->get_blob(*ctx.src_obj));
     auto& dst_col =
-        extract<std::vector<model::smart_object*>>(ctx.dst_property->get_blob(*ctx.dst_obj));
+        extract<std::vector<model::component*>>(ctx.dst_property->get_blob(*ctx.dst_obj));
 
     dst_col.resize(src_col.size());
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto candidate_id =
-            AID(ctx.dst_obj->get_id().str() + "/" + src_col[i]->get_class_obj()->get_id().str());
+        model::smart_object* obj = nullptr;
+        result_code rc = result_code::nav;
 
-        model::smart_object* p = nullptr;
-        auto rc =
-            model::object_constructor::object_clone_create(*src_col[i], candidate_id, *ctx.occ, p);
+        if (ctx.occ->get_construction_type() == model::object_load_type::mirror_copy)
+        {
+            rc = model::object_constructor::object_clone_create_internal(
+                *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
+        }
+        else
+        {
+            auto id =
+                glob::id_generator::getr().generate(ctx.src_obj->get_id(), src_col[i]->get_id());
+
+            rc = model::object_constructor::object_clone_create_internal(*src_col[i], id, *ctx.occ,
+                                                                         obj);
+        }
 
         if (rc != result_code::ok)
         {
             return rc;
         }
-        dst_col[i] = p;
+
+        auto comp = obj->as<model::component>();
+        comp->set_order_parent_idx(src_col[i]->get_order_idx(), src_col[i]->get_parent_idx());
+
+        dst_col[i] = comp;
+    }
+
+    return result_code::ok;
+}
+
+result_code
+texture_sample_deserialize(deserialize_context& dc)
+{
+    auto src = dc.obj->as<model::material>();
+
+    auto& sc = *dc.sc;
+
+    auto item = sc[dc.p->name];
+
+    const auto id = AID(dc.p->name);
+    const auto texture_id = AID(item["texture"].as<std::string>());
+
+    model::smart_object* obj = nullptr;
+    auto rc = model::object_constructor::object_load_internal(texture_id, *dc.occ, obj);
+    if (rc != result_code::ok)
+    {
+        return rc;
+    }
+
+    const auto slot = item["slot"].as<uint32_t>();
+
+    auto& sample = src->get_sample(id);
+    sample.txt = obj->as<model::texture>();
+    sample.sampler_id = AID(item["sampler"].as<std::string>());
+    sample.slot = slot;
+
+    return result_code::ok;
+}
+
+result_code
+texture_sample_prototype(property_prototype_context& dc)
+{
+    return result_code::ok;
+}
+
+result_code
+texture_sample_serialize(serialize_context& dc)
+{
+    return result_code::ok;
+}
+
+result_code
+texture_sample_compare(compare_context& ctx)
+{
+    return result_code::ok;
+}
+
+result_code
+texture_sample_copy(copy_context& ctx)
+{
+    auto src = ctx.src_obj->as<model::material>();
+    auto dst = ctx.dst_obj->as<model::material>();
+
+    auto id = AID(ctx.src_property->name);
+
+    result_code rc = result_code::ok;
+
+    if (ctx.occ->get_construction_type() != model::object_load_type::mirror_copy)
+    {
+        dst->get_sample(id) = src->get_sample(id);
+    }
+    else
+    {
+        dst->get_sample(id) = src->get_sample(id);
+
+        model::smart_object* obj = nullptr;
+
+        rc = model::object_constructor::object_clone_create_internal(
+            src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ, obj);
+
+        dst->get_sample(id).txt = obj->as<model::texture>();
     }
 
     return result_code::ok;

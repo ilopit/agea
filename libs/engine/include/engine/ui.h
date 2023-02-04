@@ -43,6 +43,33 @@ public:
     std::string m_str;
 };
 
+class performance_counters_window : public window
+{
+public:
+    static const char*
+    window_title()
+    {
+        return "Performance counters";
+    }
+
+    performance_counters_window()
+        : window(window_title())
+    {
+    }
+
+    void
+    handle() override;
+
+    double frame_avg = 0.0;
+    double fps = 0.0;
+    double input_avg = 0.0;
+    double tick_avg = 0.0;
+    double ui_tick_avg = 0.0;
+    double consume_updates_avg = 0.0;
+    double draw_avg = 0.0;
+    int lock = 0;
+};
+
 class level_editor_window : public window
 {
 public:

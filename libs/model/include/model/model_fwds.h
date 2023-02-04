@@ -21,7 +21,7 @@ class class_objects_cache;
 class component;
 class game_object;
 class game_object_component;
-class object_constructor_context;
+class object_load_context;
 class level;
 class package;
 class package_manager;

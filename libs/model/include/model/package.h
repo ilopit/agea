@@ -22,21 +22,14 @@ enum class package_state
 class package
 {
 public:
-    static bool
-    load_package(const utils::path& root_folder,
-                 package& p,
-                 cache_set* class_global_set,
-                 cache_set* instance_global_set);
-
-    static bool
-    save_package(const utils::path& root_folder, const package& p);
-
     package();
     ~package();
 
     package(package&&) noexcept;
     package&
     operator=(package&&) noexcept;
+
+    friend class package_manager;
 
     const utils::id&
     get_id() const
@@ -72,19 +65,16 @@ public:
     }
 
     cache_set&
-    get_cache()
-    {
-        return m_instance_local_set;
-    }
-
-    cache_set&
     get_class_cache()
     {
         return m_class_local_set;
     }
 
-    void
-    propagate_to_global_caches();
+    cache_set&
+    get_cache()
+    {
+        return m_instance_local_set;
+    }
 
     package_state
     get_state()
@@ -118,12 +108,10 @@ private:
     cache_set m_instance_local_set;
 
     line_cache<std::shared_ptr<smart_object>> m_objects;
-
     line_cache<smart_object*> m_package_instances;
 
-    object_mapping m_mapping;
-
-    std::unique_ptr<object_constructor_context> m_occ;
+    std::shared_ptr<object_mapping> m_mapping;
+    std::unique_ptr<object_load_context> m_occ;
 };
 
 }  // namespace model

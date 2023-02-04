@@ -1,29 +1,18 @@
-#include <utils/weird_singletone.h>
+#include "utils/clock.h"
 
 #include <gtest/gtest.h>
 
-namespace
+using namespace agea::utils;
+
+TEST(test_utils, test_clock)
 {
-struct to_test : agea::selfcleanable_singleton<float>
-{
-    static float*
-    test_get()
+    counter<10> ctr;
+
+    for (uint64_t i = 1; i <= 10; ++i)
     {
-        return s_obj;
+        ctr.update(i);
     }
-};
-}  // namespace
 
-TEST(test_utils, singleton)
-{
-    ASSERT_FALSE(to_test::test_get());
-    {
-        std::unique_ptr<agea::base_deleter> ptr = to_test::create();
-
-        ASSERT_TRUE(to_test::test_get());
-        *to_test::test_get() = 5.f;
-
-        ASSERT_EQ(*to_test::test_get(), 5.f);
-    }
-    ASSERT_FALSE(to_test::test_get());
+    ASSERT_NEAR(ctr.avg, 5.5, 0.0001);
+    ASSERT_EQ(ctr.value, 10);
 }

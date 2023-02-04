@@ -9,13 +9,13 @@ layout (location = 3) in vec2 inTexCoord;
 // Params
 layout (set = 0, binding = 0) uniform CameraData 
 {
-	mat4 projection;
-	mat4 view;
-	vec3 camPos;
+    mat4 projection;
+    mat4 view;
+    vec3 camPos;
 } dyn_camera_data;
 
 layout(set = 0, binding = 1) uniform SceneData{
-	vec4 lights[4];   
+    vec4 lights[4];
     vec4 lightColor;
     vec4 lightPos;
 } dyn_scene_data;
@@ -24,18 +24,18 @@ layout(set = 0, binding = 1) uniform SceneData{
 // materials
 struct MaterialData
 {
-	float albedo;
-	float roughness;
+    float albedo;
+    float roughness;
     vec4 color;
-	float metallic;
-	float gamma;
+    float metallic;
+    float gamma;
     vec3 color2;
 };
 
 //all object matrices
 layout(std140, set = 1, binding = 1) readonly buffer MaterialBuffer{   
 
-	MaterialData objects[];
+    MaterialData objects[];
 } dyn_material_buffer;
 
 

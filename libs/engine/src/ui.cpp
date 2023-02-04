@@ -4,6 +4,7 @@
 
 #include "engine/console.h"
 #include "engine/property_drawers.h"
+#include "engine/engine_counters.h"
 
 #include <model/level.h>
 #include <model/game_object.h>
@@ -49,8 +50,13 @@ ui::ui()
     m_winodws[materials_selector::window_title()] = std::make_unique<materials_selector>();
     m_winodws[object_editor::window_title()] = std::make_unique<object_editor>();
     m_winodws[components_editor::window_title()] = std::make_unique<components_editor>();
+
     m_winodws[editor_console::window_title()] = std::make_unique<editor_console>();
     m_winodws[editor_console::window_title()]->m_show = true;
+
+    m_winodws[performance_counters_window::window_title()] =
+        std::make_unique<performance_counters_window>();
+    m_winodws[performance_counters_window::window_title()]->m_show = true;
 }
 
 ui::~ui()
@@ -351,6 +357,35 @@ object_editor::draw_components(model::game_object_component* root, selection_con
         }
         ImGui::TreePop();
     }
+}
+
+void
+performance_counters_window::handle()
+{
+    if (!lock)
+    {
+        frame_avg = glob::engine_counters::getr().frame.avg / 1000;
+        fps = 1000000.0 / glob::engine_counters::getr().frame.avg;
+        input_avg = glob::engine_counters::getr().input.avg / 1000;
+        tick_avg = glob::engine_counters::getr().tick.avg / 1000;
+        ui_tick_avg = glob::engine_counters::getr().ui_tick.avg / 1000;
+        consume_updates_avg = glob::engine_counters::getr().consume_updates.avg / 1000;
+        draw_avg = glob::engine_counters::getr().draw.avg / 1000;
+        lock = 30;
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Frame   : %3.3lf", frame_avg);
+    ImGui::Text("FPS     : %3.3lf", fps);
+    ImGui::Text("Input   : %3.3lf", input_avg);
+    ImGui::Separator();
+    ImGui::Text("Tick    : %3.3lf", tick_avg);
+    ImGui::Text("UI tick : %3.3lf", ui_tick_avg);
+    ImGui::Text("Update  : %3.3lf", consume_updates_avg);
+    ImGui::Separator();
+    ImGui::Text("Draw    : %3.3lf", draw_avg);
+
+    --lock;
 }
 
 }  // namespace ui

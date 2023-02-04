@@ -3,7 +3,6 @@
 #include "model/model_minimal.h"
 
 #include "model/model_fwds.h"
-#include "model/package.h"
 
 #include <utils/singleton_instance.h>
 
@@ -16,6 +15,9 @@ class package_manager
 public:
     bool
     load_package(const utils::id& id);
+
+    void
+    save_package(const utils::id& id, const utils::path& root_folder);
 
     package*
     get_package(const utils::id& id);

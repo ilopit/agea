@@ -198,7 +198,7 @@ result_code
 property::deserialize_update(reflection::property& p,
                              blob_ptr ptr,
                              const serialization::conteiner& jc,
-                             model::object_constructor_context& occ)
+                             model::object_load_context& occ)
 {
     if (p.type.is_collection)
     {
@@ -214,7 +214,7 @@ result_code
 property::deserialize_collection(reflection::property& p,
                                  model::smart_object& obj,
                                  const serialization::conteiner& jc,
-                                 model::object_constructor_context& occ)
+                                 model::object_load_context& occ)
 {
     auto ptr = (blob_ptr)&obj;
     auto items = jc[p.name];
@@ -252,7 +252,7 @@ result_code
 property::deserialize_item(reflection::property& p,
                            model::smart_object& obj,
                            const serialization::conteiner& jc,
-                           model::object_constructor_context& occ)
+                           model::object_load_context& occ)
 {
     if (!jc[p.name])
     {
@@ -293,7 +293,7 @@ result_code
 property::deserialize_update_collection(reflection::property& p,
                                         blob_ptr ptr,
                                         const serialization::conteiner& jc,
-                                        model::object_constructor_context& occ)
+                                        model::object_load_context& occ)
 {
     auto items = jc[p.name];
     auto items_size = items.size();
@@ -319,7 +319,7 @@ result_code
 property::deserialize_update_item(reflection::property& p,
                                   blob_ptr ptr,
                                   const serialization::conteiner& jc,
-                                  model::object_constructor_context& occ)
+                                  model::object_load_context& occ)
 {
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 

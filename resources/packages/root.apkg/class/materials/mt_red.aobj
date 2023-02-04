@@ -1,4 +1,7 @@
-type_id: pbr_material
+type_id: simple_material
 id: mt_red
 shader_effect: se_simple_texture
-base_texture: txt_red
+simple_texture:
+    texture: txt_red
+    slot: 0
+    sampler: default

@@ -4,6 +4,12 @@ namespace agea
 {
 namespace utils
 {
+
+id::id()
+{
+    memset(m_id, 0, id_size_in_bytes() + 1);
+}
+
 bool
 id::operator==(const id& other) const
 {

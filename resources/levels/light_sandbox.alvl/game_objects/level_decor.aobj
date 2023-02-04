@@ -1,0 +1,10 @@
+class_id: decor
+id: level_decor
+layout: [-1, 0]
+components: 
+  - id: decor__root_component_2
+    class_id: decor__root_component
+  - id: decor__floor_2
+    class_id: decor__floor
+    material: mt_red
+    mesh: cube_mesh

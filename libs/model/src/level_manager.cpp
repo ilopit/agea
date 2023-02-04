@@ -1,14 +1,16 @@
-#include "model/level_constructor.h"
+#include "model/level_manager.h"
 
 #include "model/level.h"
 #include "model/mesh_object.h"
 #include "model/components/mesh_component.h"
-#include "model/object_construction_context.h"
+#include "model/object_load_context.h"
 #include "model/object_constructor.h"
 #include "model/package_manager.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/hash_cache.h"
 #include "model/caches/caches_map.h"
+
+#include <utils/agea_log.h>
 
 #include <resource_locator/resource_locator.h>
 
@@ -16,24 +18,16 @@
 
 #include <fstream>
 
-#include <utils/agea_log.h>
-
 namespace agea
 {
 namespace model
 {
 
-namespace
-{
-
-const std::vector<architype> k_enums_to_handle{architype::component, architype::game_object};
-}
-
 bool
-level_constructor::load_level_id(level& l,
-                                 const utils::id& id,
-                                 cache_set* global_class_cs,
-                                 cache_set* global_instances_cs)
+level_manager::load_level_id(level& l,
+                             const utils::id& id,
+                             cache_set* global_class_cs,
+                             cache_set* global_instances_cs)
 {
     ALOG_INFO("Begin level loading with id {0}", id.cstr());
 
@@ -43,10 +37,10 @@ level_constructor::load_level_id(level& l,
 }
 
 bool
-level_constructor::load_level_path(level& l,
-                                   const utils::path& path,
-                                   cache_set* global_class_cs,
-                                   cache_set* global_instances_cs)
+level_manager::load_level_path(level& l,
+                               const utils::path& path,
+                               cache_set* global_class_cs,
+                               cache_set* global_instances_cs)
 {
     ALOG_INFO("Begin level loading with path {0}", path.str());
 
@@ -74,20 +68,20 @@ level_constructor::load_level_path(level& l,
         return false;
     }
 
-    if (!l.m_mapping.buiild_object_mapping(root_path))
+    if (!l.m_mapping->buiild_object_mapping(root_path))
     {
         ALOG_LAZY_ERROR;
         return false;
     }
 
-    l.m_occ = std::make_unique<object_constructor_context>();
+    l.m_occ = std::make_unique<object_load_context>();
     l.m_occ->set_prefix_path(utils::path{})
         .set_class_global_set(l.m_global_class_object_cs)
         .set_instance_global_set(l.m_global_object_cs)
         .set_class_local_set(nullptr)
         .set_instance_local_set(&l.m_local_cs)
         .set_ownable_cache(&l.m_objects)
-        .set_objects_mapping(l.m_mapping.m_items)
+        .set_objects_mapping(l.m_mapping)
         .set_prefix_path(path);
 
     {
@@ -105,47 +99,35 @@ level_constructor::load_level_path(level& l,
         }
     }
 
-    for (auto& i : l.m_mapping.m_items)
-    {
-        auto& mapping = i.second;
+    std::vector<smart_object*> loaded_obj;
 
-        l.m_occ->set_construction_type(
-            i.second.first ? object_constructor_context::construction_type::class_obj
-                           : object_constructor_context::construction_type::instance_obj);
+    for (auto& i : l.m_mapping->m_items)
+    {
         smart_object* obj = nullptr;
-        object_constructor::object_load(i.first, *l.m_occ, obj);
-        l.m_occ->set_construction_type(object_constructor_context::construction_type::nav);
-    }
+        auto rc = object_constructor::object_load(i.first, object_load_type::instance_obj, *l.m_occ,
+                                                  obj, loaded_obj);
 
-    for (auto& o : l.m_objects)
-    {
-        o->META_post_construct();
-    }
-
-    for (auto& o : l.m_objects)
-    {
-        if (auto a = o->as<game_object>())
+        if (rc != result_code::ok)
         {
-            l.m_tickable_objects.emplace_back(a);
+            return false;
+        }
+
+        for (auto o : loaded_obj)
+        {
+            o->META_post_construct();
+
+            if (auto game_obj = o->as<game_object>())
+            {
+                l.m_tickable_objects.emplace_back(game_obj);
+            }
         }
     }
-
-    size_t idx = 0;
-    for (auto& c : l.m_local_cs.map->get_items())
-    {
-        for (auto& i : c.second->get_items())
-        {
-            global_instances_cs->map->get_cache(c.first)->add_item(*i.second);
-            ++idx;
-        }
-    }
-    ALOG_INFO("Propageted {0} object instances from {1} to global cache", idx, name);
 
     return true;
 }
 
 bool
-level_constructor::save_level(level& l, const utils::path& path)
+level_manager::save_level(level& l, const utils::path& path)
 {
     l.set_save_root_path(path);
     std::string name = l.get_id().str() + ".alvl";
@@ -166,8 +148,6 @@ level_constructor::save_level(level& l, const utils::path& path)
     {
         return false;
     }
-
-    auto instace_path = full_path;
 
     return true;
 }

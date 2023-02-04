@@ -20,12 +20,6 @@ public:
     texture_data(const ::agea::utils::id& id, vk_device_provider dbp);
     ~texture_data();
 
-    const ::agea::utils::id&
-    get_id() const
-    {
-        return m_id;
-    }
-
     texture_data(const texture_data&) = delete;
     texture_data(texture_data&&) = delete;
     texture_data&
@@ -33,8 +27,13 @@ public:
     texture_data&
     operator=(texture_data&&) = delete;
 
+    const ::agea::utils::id&
+    get_id() const
+    {
+        return m_id;
+    }
+
     VkImageView image_view = VK_NULL_HANDLE;
-    VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
     vk_utils::vulkan_image image;
     texture_format format = texture_format::unknown;
 

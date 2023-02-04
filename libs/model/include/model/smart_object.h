@@ -65,24 +65,23 @@ class object_constructor;
 class package;
 class smart_object;
 
-enum smart_object_state
-{
-    smart_objet_state__empty,
-    smart_objet_state__constructed,
-    smart_objet_state__render_creating,
-    smart_objet_state__render_created,
-    smart_objet_state__render_scheduling,
-    smart_objet_state__render_scheduled
-};
-
-enum smart_object_internal_state
+enum class smart_object_state
 {
     empty = 0,
-    class_obj = 1,
-    instance_obj = 2,
-    standalone = 3,
-    inhereted = 4,
-    mirror = 5
+    loaded,
+    constructed,
+    render_preparing,
+    render_ready
+};
+
+enum smart_object_state_flag : uint32_t
+{
+    empty = 0,
+    proto_obj,
+    instance_obj,
+    standalone,
+    inhereted,
+    mirror
 };
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
@@ -147,27 +146,16 @@ public:
     bool
     post_construct();
 
-    virtual void
-    editor_update()
-    {
-    }
-
     const smart_object*
     get_class_obj() const
     {
-        return m_class_obj;
+        return m_proto_obj;
     }
 
     const package*
     get_package() const
     {
         return m_package;
-    }
-
-    void
-    set_package(package* p)
-    {
-        m_package = p;
     }
 
     smart_object_state
@@ -182,28 +170,28 @@ public:
         m_obj_state = v;
     }
 
-    bool
-    has_dirty_transform()
-    {
-        return m_has_dirty_transform;
-    }
-
     void
-    set_dirty_transform(bool v)
+    set_state_flag(smart_object_state_flag f)
     {
-        m_has_dirty_transform = v;
-    }
-
-    void
-    set_state(smart_object_internal_state f)
-    {
-        m_obj_internal_state.set(f);
+        m_obj_internal_state |= (1 << f);
     }
 
     bool
-    has_state(smart_object_internal_state f) const
+    has_state_flag(smart_object_state_flag f) const
     {
-        return m_obj_internal_state.test(f);
+        return m_obj_internal_state & (1 << f);
+    }
+
+    void
+    set_package(package* p)
+    {
+        m_package = p;
+    }
+
+    void
+    set_level(level* p)
+    {
+        m_level = p;
     }
 
 protected:
@@ -216,25 +204,25 @@ protected:
     void
     META_set_class_obj(smart_object* obj)
     {
-        m_class_obj = obj;
+        m_proto_obj = obj;
     }
 
     AGEA_property("category=meta", "access=read_only");
     architype m_architype_id = architype::unknown;
 
-    AGEA_property("category=meta", "access=read_only");
+    AGEA_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_type_id;
 
     AGEA_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_id;
 
-    const smart_object* m_class_obj = nullptr;
+    const smart_object* m_proto_obj = nullptr;
     package* m_package = nullptr;
+    level* m_level = nullptr;
 
-    smart_object_state m_obj_state = smart_object_state::smart_objet_state__empty;
-    bool m_has_dirty_transform = false;
+    smart_object_state m_obj_state = smart_object_state::empty;
 
-    std::bitset<32> m_obj_internal_state;
+    uint32_t m_obj_internal_state = smart_object_state_flag::empty;
 };
 
 template <typename To, typename From>
