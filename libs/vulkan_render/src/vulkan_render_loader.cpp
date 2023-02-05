@@ -388,7 +388,7 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
 
         vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                             device->descriptor_allocator())
-            .bind_image(0, &image_buffer_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .bind_image(ts.slot, &image_buffer_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                         VK_SHADER_STAGE_FRAGMENT_BIT)
             .build(ts.descriptor_set);
     }

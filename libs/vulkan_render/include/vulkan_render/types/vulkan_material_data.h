@@ -15,6 +15,7 @@ struct texture_sampler_data
 {
     texture_data* texture = nullptr;
     VkDescriptorSet descriptor_set = VK_NULL_HANDLE;
+    uint32_t slot = 0;
 };
 
 class material_data

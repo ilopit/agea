@@ -165,7 +165,7 @@ private:
 
     render::shader_effect_data* m_ui_se = nullptr;
     render::texture_data* m_ui_txt = nullptr;
-    VkDescriptorSet m_font_descriptor_set = VK_NULL_HANDLE;
+    render::material_data* m_ui_mat = nullptr;
 
     struct ui_push_constants
     {
