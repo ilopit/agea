@@ -12,9 +12,9 @@ layout (location = 3) out vec2 outTexCoord;
 
 layout (set = 0, binding = 0) uniform CameraBuffer 
 {
-	mat4 projection;
-	mat4 view;
-	vec3 camPos;
+    mat4 projection;
+    mat4 view;
+    vec3 camPos;
 } dyn_camera_data;
 
 struct ObjectData{
@@ -26,20 +26,20 @@ struct ObjectData{
 //all object matrices
 layout(std140, set = 1, binding = 0) readonly buffer ObjectBuffer{   
 
-	ObjectData objects[];
+    ObjectData objects[];
 } dyn_object_buffer;
 
 void main() 
-{	
-	mat4 modelMatrix   = dyn_object_buffer.objects[gl_InstanceIndex].model;
-	mat4 normalMatrix  = dyn_object_buffer.objects[gl_InstanceIndex].normal;
+{
+    mat4 modelMatrix   = dyn_object_buffer.objects[gl_InstanceIndex].model;
+    mat4 normalMatrix  = dyn_object_buffer.objects[gl_InstanceIndex].normal;
 
-	mat4 modelView = dyn_camera_data.view * modelMatrix;
-	
-	outColor    = vColor;
-	outTexCoord = vTexCoord;
-	outNormal   = mat3(normalMatrix) * vNormal;
-	outWorldPos  = vec3(modelMatrix * vec4(vPosition, 1));
+    mat4 modelView = dyn_camera_data.view * modelMatrix;
+    
+    outColor    = vColor;
+    outTexCoord = vTexCoord;
+    outNormal   = mat3(normalMatrix) * vNormal;
+    outWorldPos  = vec3(modelMatrix * vec4(vPosition, 1));
 
-	gl_Position =  dyn_camera_data.projection * modelView * vec4(vPosition, 1.0);
+    gl_Position =  dyn_camera_data.projection * modelView * vec4(vPosition, 1.0);
 }
