@@ -51,7 +51,6 @@ game_object::post_construct()
     build_components_structure();
 
     m_root_component->update_matrix();
-    set_state(smart_object_state::constructed);
 
     return true;
 }

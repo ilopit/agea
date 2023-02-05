@@ -86,6 +86,7 @@ package_manager::load_package(const utils::id& id)
         for (auto& o : loaded_obj)
         {
             o->META_post_construct();
+            o->set_state(smart_object_state::constructed);
         }
 
         auto mirror_id = obj->get_id();
@@ -98,9 +99,10 @@ package_manager::load_package(const utils::id& id)
             return false;
         }
 
-        for (auto& o : loaded_obj)
+        for (auto o : loaded_obj)
         {
             o->META_post_construct();
+            o->set_state(smart_object_state::constructed);
         }
     }
 
