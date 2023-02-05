@@ -2,8 +2,6 @@
 
 #include <model/model_fwds.h>
 
-#include <vulkan/vulkan.h>
-
 #include <utils/singleton_instance.h>
 
 #include <vector>
@@ -190,9 +188,6 @@ public:
 
     void
     new_frame(float dt);
-
-    void
-    draw(VkCommandBuffer cmd);
 
     std::unordered_map<std::string, std::unique_ptr<window>> m_winodws;
 };
