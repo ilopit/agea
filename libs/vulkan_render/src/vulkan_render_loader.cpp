@@ -368,10 +368,9 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
 
     auto device = glob::render_device::get();
 
-    auto mtt_id = generate_mtt_id(type_id, gpu_params.size());
     auto mt_idx = generate_mt_idx(type_id);
 
-    auto mat_data = std::make_shared<material_data>(id, mtt_id, mt_idx);
+    auto mat_data = std::make_shared<material_data>(id, type_id, mt_idx);
 
     mat_data->effect = &se_data;
     mat_data->texture_samples = samples;

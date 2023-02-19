@@ -526,6 +526,8 @@ object_constructor::create_empty_object(const utils::id& type_id, const utils::i
 {
     auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
 
+    AGEA_check(eoc_item, "Should exist!");
+
     auto empty = eoc_item->META_create_empty_obj();
     empty->META_set_id(obj_id);
 

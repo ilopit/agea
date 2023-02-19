@@ -275,6 +275,9 @@ vulkan_engine::init_scene()
 {
     load_level(glob::config::get()->level);
 
+    auto id1 = AID("decor");
+    auto id2 = AID("decor2");
+
     for (int x = 0; x < 3; ++x)
     {
         for (int y = 0; y < 3; ++y)
@@ -282,8 +285,8 @@ vulkan_engine::init_scene()
             for (int z = 0; z < 3; ++z)
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
-                auto p =
-                    glob::level::getr().spawn_object<model::game_object>(AID("decor"), AID(id));
+                auto p = glob::level::getr().spawn_object<model::game_object>((z & 1) ? id1 : id2,
+                                                                              AID(id));
 
                 p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z * 10.f});
 

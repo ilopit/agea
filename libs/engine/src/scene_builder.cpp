@@ -6,8 +6,9 @@
 #include <model/assets/material.h>
 #include <model/assets/texture.h>
 #include <model/assets/shader_effect.h>
-#include <model/assets/simple_material.h>
 #include <model/assets/pbr_material.h>
+#include <model/assets/solid_color_material.h>
+#include <model/assets/simple_texture_material.h>
 #include <model/assets/mesh.h>
 #include <model/mesh_object.h>
 #include <model/point_light.h>
@@ -67,7 +68,7 @@ const render::vertex_input_description DEFAULT_VERTEX_DESCRIPTION = []()
     builder.add_field(AID("color"), agea::utils::agea_type::t_vec3, 1);
     builder.add_field(AID("uv"), agea::utils::agea_type::t_vec2, 1);
 
-    auto dol = builder.get_obj();
+    auto dol = builder.get_layout();
 
     return render::convert_to_vertex_input_description(*dol);
 }();
@@ -97,7 +98,8 @@ scene_builder::scene_builder()
     // clang-format off
     m_pfr_handlers[model::mesh::META_type_id()] = &scene_builder::pfr_mesh;
     m_pfr_handlers[model::material::META_type_id()] = &scene_builder::pfr_material;
-    m_pfr_handlers[model::simple_material::META_type_id()] = &scene_builder::pfr_material;
+    m_pfr_handlers[model::solid_color_material::META_type_id()] = &scene_builder::pfr_material;
+    m_pfr_handlers[model::simple_texture_material::META_type_id()] = &scene_builder::pfr_material;
     m_pfr_handlers[model::pbr_material::META_type_id()] = &scene_builder::pfr_material;
 
     m_pfr_handlers[model::texture::META_type_id()] = &scene_builder::pfr_texture;
@@ -153,13 +155,13 @@ scene_builder::create_collection_template(model::smart_object& so,
             switch (p->type.type)
             {
             case utils::agea_type::t_f:
-                sb.add_field(AID(p->name), p->type.type, (uint32_t)p->size);
+                sb.add_field(AID(p->name), p->type.type, 1);
                 break;
 
             case utils::agea_type::t_vec4:
             case utils::agea_type::t_vec3:
             {
-                sb.add_field(AID(p->name), p->type.type, (uint32_t)p->size, 16);
+                sb.add_field(AID(p->name), p->type.type, 16);
                 break;
             }
             default:
@@ -169,7 +171,7 @@ scene_builder::create_collection_template(model::smart_object& so,
         }
     }
 
-    t.layout = sb.get_obj();
+    t.layout = sb.get_layout();
 
     return true;
 }
@@ -241,7 +243,7 @@ scene_builder::pfr_material(model::smart_object& obj, bool sub_object)
 
     auto se_data = se_model->get_shader_effect_data();
 
-    AGEA_check(samples_data.size() && se_data, "Should exist");
+    AGEA_check(se_data, "Should exist");
 
     auto mat_data = glob::vulkan_render_loader::get()->get_material_data(mat_model.get_id());
 
@@ -253,7 +255,14 @@ scene_builder::pfr_material(model::smart_object& obj, bool sub_object)
             mat_model.get_id(), mat_model.get_type_id(), samples_data, *se_data, dyn_gpu_data);
 
         mat_model.set_material_data(mat_data);
-        glob::vulkan_render::getr().update_ssbo_data_ranges(mat_data->type_id());
+
+        if (mat_data->gpu_data.size())
+        {
+            auto type_inx = glob::vulkan_render::getr().generate_material_ssbo_data_range(
+                mat_data->type_id(), mat_data->gpu_data.size());
+
+            mat_data->set_idx(type_inx);
+        }
     }
     else
     {

@@ -5,17 +5,17 @@ AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: true
 AlwaysBreakAfterReturnType: All
-BasedOnStyle:  Google
+BasedOnStyle: Google
 BinPackParameters: false
 BreakBeforeBinaryOperators: false
 BreakBeforeBraces: Allman
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: true
-ColumnLimit:     100
+ColumnLimit: 100
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 DerivePointerBinding: true
 IndentCaseLabels : false
-IndentWidth:     4
+IndentWidth: 4
 PenaltyBreakComment: 60
 DerivePointerAlignment: false
 PointerAlignment: Left
@@ -25,5 +25,5 @@ SortIncludes: false
 SpacesInAngles:  false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
-TabWidth:        4
+TabWidth: 4
 UseTab: Never

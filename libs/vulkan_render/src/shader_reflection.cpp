@@ -85,7 +85,7 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
         }
         sb.add_field(AID(member.struct_member_name), type, alligment, items_count);
     }
-    dl = *sb.get_obj();
+    dl = *sb.get_layout();
 }
 
 bool

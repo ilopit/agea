@@ -92,8 +92,8 @@ public:
     void
     schedule_game_data_gpu_transfer(render::object_data* md);
 
-    void
-    update_ssbo_data_ranges(render::gpu_data_index_type range_id);
+    gpu_data_index_type
+    generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size);
 
 private:
     void
@@ -106,9 +106,9 @@ private:
     draw_objects_queue(render_line_conteiner& r,
                        VkCommandBuffer cmd,
                        vk_utils::vulkan_buffer& obj_tb,
-                       VkDescriptorSet obj_ds,
                        vk_utils::vulkan_buffer& dyn_tb,
-                       VkDescriptorSet global_ds);
+                       VkDescriptorSet global_ds,
+                       render::frame_state& current_frame);
 
     void
     update_gpu_object_data(render::gpu_object_data* object_SSBO);
@@ -150,22 +150,35 @@ private:
         return result;
     }
 
+    VkDeviceSize
+    get_mat_alloc_size(gpu_data_index_type mat_type_index);
+
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
     std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
+
+    struct material_type_property
+    {
+        gpu_data_index_type type_index;
+        VkDeviceSize alloc_size;
+    };
+
+    std::unordered_map<utils::id, material_type_property> m_type_id_range_id;
+
     render_line_conteiner m_transparent_render_object_queue;
 
     std::vector<frame_state> m_frames;
-    agea::utils::line_conteiner<uint32_t> m_ssbo_range;
+
+    utils::line_conteiner<uint32_t> m_ssbo_range;
 
     // UI
 
-    render::shader_effect_data* m_ui_se = nullptr;
-    render::texture_data* m_ui_txt = nullptr;
-    render::material_data* m_ui_mat = nullptr;
+    shader_effect_data* m_ui_se = nullptr;
+    texture_data* m_ui_txt = nullptr;
+    material_data* m_ui_mat = nullptr;
 
     struct ui_push_constants
     {

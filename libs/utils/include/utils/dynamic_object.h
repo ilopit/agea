@@ -61,7 +61,7 @@ public:
     basic_dynamic_object_layout_builder();
 
     std::shared_ptr<dynamic_object_layout>
-    get_obj() const
+    get_layout() const
     {
         return m_layout;
     }

@@ -72,7 +72,7 @@ public:
     void
     flush();
 
-    uint32_t
+    VkDeviceSize
     get_offset() const
     {
         return m_offset;
@@ -82,6 +82,14 @@ public:
     get_alloc_size() const
     {
         return m_alloc_size;
+    }
+
+    VkDeviceSize
+    get_range_alloc_size(uint32_t idx) const
+    {
+        auto size = (m_offsets.size() == (idx + 1)) ? m_offset : m_offsets[idx + 1];
+
+        return size - m_offsets[idx];
     }
 
     uint32_t*

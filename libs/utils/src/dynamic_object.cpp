@@ -48,10 +48,9 @@ dynamic_object_layout_sequence_builder::add_field(const utils::id& id,
     field.id = id;
     field.type_id = type;
 
-    auto size = get_agea_type_size(type);
-    field.size = size < aligment ? aligment : size;
+    field.size = get_agea_type_size(type);
 
-    auto& obj = *get_obj();
+    auto& obj = *get_layout();
 
     auto mod = obj.m_size % aligment;
 
@@ -71,7 +70,7 @@ dynamic_object_layout_random_builder::add_field(const utils::id& id,
                                                 uint32_t aligment /*= 4*/,
                                                 uint32_t items_count /*= 1*/)
 {
-    auto& obj = *get_obj();
+    auto& obj = *get_layout();
 
     dynamic_object_field field;
     field.id = id;
@@ -94,7 +93,7 @@ dynamic_object_layout_random_builder::add_field(const utils::id& id,
 void
 dynamic_object_layout_random_builder::finalize(uint32_t final_size)
 {
-    auto& obj = *get_obj();
+    auto& obj = *get_layout();
     obj.m_size = final_size;
 }
 

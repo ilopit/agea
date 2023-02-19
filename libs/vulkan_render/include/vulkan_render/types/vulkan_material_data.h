@@ -21,7 +21,9 @@ struct texture_sampler_data
 class material_data
 {
 public:
-    material_data(const ::agea::utils::id& id, gpu_data_index_type type_id, gpu_data_index_type idx)
+    material_data(const ::agea::utils::id& id,
+                  const ::agea::utils::id& type_id,
+                  gpu_data_index_type idx)
         : m_id(id)
         , m_type_id(type_id)
         , m_index(idx)
@@ -34,7 +36,7 @@ public:
         return m_id;
     }
 
-    gpu_data_index_type
+    const agea::utils::id&
     type_id() const
     {
         return m_type_id;
@@ -46,6 +48,18 @@ public:
         return m_index;
     }
 
+    void
+    set_idx(gpu_data_index_type i)
+    {
+        m_type_index = i;
+    }
+
+    gpu_data_index_type
+    gpu_type_idx() const
+    {
+        return m_type_index;
+    }
+
     agea::utils::dynamic_object gpu_data;
 
     std::vector<texture_sampler_data> texture_samples;
@@ -53,7 +67,8 @@ public:
 
 private:
     ::agea::utils::id m_id;
-    gpu_data_index_type m_type_id = INVALID_GPU_MATERIAL_DATA_INDEX;
+    ::agea::utils::id m_type_id;
+    gpu_data_index_type m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 };
 }  // namespace render

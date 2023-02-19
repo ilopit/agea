@@ -166,22 +166,6 @@ public:
         return m_new_object_index * sizeof(gpu_object_data);
     }
 
-    gpu_data_index_type
-    get_mat_alloc_size(gpu_data_index_type mtt_id) const
-    {
-        for (auto& mat : m_materials_type_ids)
-        {
-            if (mat.second.idx == mtt_id)
-            {
-                return mat.second.alloc_size;
-            }
-        }
-
-        AGEA_never("Should be");
-
-        return {};
-    }
-
     std::unordered_map<agea::utils::id, std::shared_ptr<object_data>>&
     get_objects_cache()
     {
@@ -194,6 +178,12 @@ public:
         return m_materials_cache;
     }
 
+    gpu_data_index_type
+    last_mat_index(const agea::utils::id& type_id)
+    {
+        return m_materials_index.at(type_id);
+    }
+
 private:
     void
     shedule_to_deltete(resource_deleter d);
@@ -202,20 +192,6 @@ private:
     generate_mt_idx(const agea::utils::id& type_id)
     {
         return m_materials_index[type_id]++;
-    }
-
-    gpu_data_index_type
-    generate_mtt_id(const agea::utils::id& type_id, uint32_t alloc_size)
-    {
-        auto itr = m_materials_type_ids.find(type_id);
-
-        if (itr == m_materials_type_ids.end())
-        {
-            auto mtt_id = m_last_mtt_id++;
-            itr = m_materials_type_ids.insert({type_id, {m_last_mtt_id, alloc_size}}).first;
-        }
-
-        return itr->second.idx;
     }
 
     std::unordered_map<agea::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
@@ -229,14 +205,6 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 
     std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
-
-    struct material_description
-    {
-        gpu_data_index_type idx = 0;
-        gpu_data_index_type alloc_size = 0;
-    };
-
-    std::unordered_map<agea::utils::id, material_description> m_materials_type_ids;
 
     std::priority_queue<deleyer_delete_action,
                         std::vector<deleyer_delete_action>,

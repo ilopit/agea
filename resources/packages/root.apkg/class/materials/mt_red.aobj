@@ -1,4 +1,4 @@
-type_id: simple_material
+type_id: simple_texture_material
 id: mt_red
 shader_effect: se_simple_texture
 simple_texture:

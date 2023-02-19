@@ -13,7 +13,8 @@ include/model/components/light_component.h
 include/model/assets/asset.h
 include/model/assets/material.h
 include/model/assets/pbr_material.h
-include/model/assets/simple_material.h
+include/model/assets/solid_color_material.h
+include/model/assets/simple_texture_material.h
 include/model/assets/mesh.h
 include/model/assets/texture.h
 include/model/assets/shader_effect.h

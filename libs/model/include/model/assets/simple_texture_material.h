@@ -1,6 +1,6 @@
 #pragma once
 
-#include "simple_material.generated.h"
+#include "simple_texture_material.generated.h"
 
 #include "model/assets/material.h"
 #include "model/assets/texture_sample.h"
@@ -11,12 +11,12 @@ namespace model
 {
 
 AGEA_class();
-class simple_material : public material
+class simple_texture_material : public material
 {
-    AGEA_gen_meta__simple_material();
+    AGEA_gen_meta__simple_texture_material();
 
 public:
-    AGEA_gen_class_meta(simple_material, material);
+    AGEA_gen_class_meta(simple_texture_material, material);
     AGEA_gen_construct_params{};
     AGEA_gen_meta_api;
 
@@ -84,9 +84,6 @@ public:
     }
 
 protected:
-    bool
-    post_construct();
-
     AGEA_property("category=meta",
                   "serializable=true",
                   "property_des_handler=custom::texture_sample_deserialize",
