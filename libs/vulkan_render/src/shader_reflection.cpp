@@ -7,6 +7,8 @@
 #include <utils/dynamic_object.h>
 #include <utils/string_utility.h>
 #include <utils/agea_types.h>
+#include <utils/dynamic_object_builder.h>
+
 #include <spirv_reflect.h>
 
 namespace agea
@@ -19,12 +21,12 @@ namespace
 void
 spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_layout& dl)
 {
-    utils::dynamic_object_layout_sequence_builder sb;
+    utils::dynamic_object_layout_sequence_builder<utils::agea_type> sb;
 
     for (uint32_t i = 0; i < parent.member_count; ++i)
     {
         auto& member = parent.members[i];
-        auto type = agea::utils::agea_type::t_nan;
+        auto type = agea::utils::agea_type::id::t_nan;
         uint32_t alligment = 0;
         uint32_t items_count = 0;
 
@@ -36,22 +38,22 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
             AGEA_check(
                 member.traits.numeric.matrix.row_count == member.traits.numeric.matrix.column_count,
                 "h != w");
-            type = (agea::utils::agea_type)((uint32_t)::agea::utils::agea_type::t_mat2 +
-                                            member.traits.numeric.matrix.column_count - 2);
+            type = (agea::utils::agea_type::id)((uint32_t)::agea::utils::agea_type::id::t_mat2 +
+                                                member.traits.numeric.matrix.column_count - 2);
 
             alligment = 16;
             break;
         }
         case SpvOpTypeFloat:
         {
-            type = agea::utils::agea_type::t_f;
+            type = agea::utils::agea_type::id::t_f;
             alligment = sizeof(float);
             break;
         }
         case SpvOpTypeVector:
         {
-            type = (agea::utils::agea_type)((uint32_t)::agea::utils::agea_type::t_vec2 +
-                                            member.traits.numeric.vector.component_count - 2);
+            type = (agea::utils::agea_type::id)((uint32_t)::agea::utils::agea_type::id::t_vec2 +
+                                                member.traits.numeric.vector.component_count - 2);
             alligment = 16;
             break;
         }
@@ -61,7 +63,7 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
             AGEA_check(member.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "only floats");
             AGEA_check(member.traits.numeric.vector.component_count, "Only vectors supported");
 
-            type = agea::utils::agea_type::t_f;
+            type = agea::utils::agea_type::id::t_f;
 
             items_count = member.traits.array.dims[0];
 
@@ -72,8 +74,8 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
         {
             AGEA_check(member.type_flags & SPV_REFLECT_TYPE_FLAG_INT, "only floats");
 
-            type = member.traits.numeric.scalar.signedness ? agea::utils::agea_type::t_i32
-                                                           : agea::utils::agea_type::t_u32;
+            type = member.traits.numeric.scalar.signedness ? agea::utils::agea_type::id::t_i32
+                                                           : agea::utils::agea_type::id::t_u32;
 
             alligment = sizeof(uint32_t);
 

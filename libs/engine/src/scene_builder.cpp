@@ -31,6 +31,7 @@
 #include <vulkan_render/vulkan_render.h>
 
 #include <utils/agea_log.h>
+#include <utils/dynamic_object_builder.h>
 
 namespace agea
 {
@@ -62,11 +63,11 @@ is_agea_mesh(const utils::path& p)
 
 const render::vertex_input_description DEFAULT_VERTEX_DESCRIPTION = []()
 {
-    agea::utils::dynamic_object_layout_sequence_builder builder;
-    builder.add_field(AID("pos"), agea::utils::agea_type::t_vec3, 1);
-    builder.add_field(AID("norm"), agea::utils::agea_type::t_vec3, 1);
-    builder.add_field(AID("color"), agea::utils::agea_type::t_vec3, 1);
-    builder.add_field(AID("uv"), agea::utils::agea_type::t_vec2, 1);
+    agea::utils::dynamic_object_layout_sequence_builder<utils::agea_type> builder;
+    builder.add_field(AID("pos"), agea::utils::agea_type::id::t_vec3, 1);
+    builder.add_field(AID("norm"), agea::utils::agea_type::id::t_vec3, 1);
+    builder.add_field(AID("color"), agea::utils::agea_type::id::t_vec3, 1);
+    builder.add_field(AID("uv"), agea::utils::agea_type::id::t_vec2, 1);
 
     auto dol = builder.get_layout();
 
@@ -146,7 +147,7 @@ scene_builder::create_collection_template(model::smart_object& so,
 
     size_t dst_offest = 0;
 
-    utils::dynamic_object_layout_sequence_builder sb;
+    agea_dynobj_builder sb;
 
     for (auto& p : properties)
     {
@@ -154,12 +155,12 @@ scene_builder::create_collection_template(model::smart_object& so,
         {
             switch (p->type.type)
             {
-            case utils::agea_type::t_f:
+            case utils::agea_type::id::t_f:
                 sb.add_field(AID(p->name), p->type.type, 1);
                 break;
 
-            case utils::agea_type::t_vec4:
-            case utils::agea_type::t_vec3:
+            case utils::agea_type::id::t_vec4:
+            case utils::agea_type::id::t_vec3:
             {
                 sb.add_field(AID(p->name), p->type.type, 16);
                 break;

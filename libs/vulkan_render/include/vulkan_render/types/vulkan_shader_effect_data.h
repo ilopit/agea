@@ -4,6 +4,7 @@
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
+#include <utils/dynamic_object_builder.h>
 
 #include <vector>
 #include <array>

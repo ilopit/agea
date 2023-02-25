@@ -35,17 +35,6 @@ struct gpu_object_data
     float dummy;
 };
 
-struct gpu_material_data
-{
-    float albedo = 0.f;
-    float roughness = 0.f;
-    float pad2[2];
-    glm::vec4 color{1.0};
-    float metallic = 0.f;
-    float gamma = 0.f;
-    float pad3[2];
-};
-
 struct gpu_vertex_data
 {
     glm::vec3 position;

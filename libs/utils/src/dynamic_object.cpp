@@ -1,105 +1,38 @@
 #include "utils/dynamic_object.h"
 
+#include "utils/dynamic_object_builder.h"
+
 namespace agea
 {
 namespace utils
 {
 
-dynamic_object_layout::dynamic_object_layout()
+dynamic_object::dynamic_object(const std::shared_ptr<dynamic_object_layout>& l)
+    : m_layout(l)
 {
+    m_data.resize(l->get_size());
 }
 
-dynamic_object_layout::dynamic_object_layout(bool partial_description)
-    : m_partial_description(partial_description)
+void
+dynamic_object::write_unsafe(uint32_t pos, uint8_t* data)
 {
+    auto& field = m_layout->get_fields()[pos];
+
+    memcpy(m_data.data() + field.offset, data, field.size);
 }
 
-const id&
-dynamic_object_layout::get_id()
+void
+dynamic_object::read_unsafe(uint32_t pos, uint8_t* data)
 {
-    return m_id;
+    auto& field = m_layout->get_fields()[pos];
+
+    memcpy(data, m_data.data() + field.offset, field.size);
 }
 
 uint32_t
-dynamic_object_layout::get_size() const
+dynamic_object::get_type_id(uint32_t pos)
 {
-    return m_size;
-}
-
-const std::vector<dynamic_object_field>&
-dynamic_object_layout::get_fields()
-{
-    return m_fields;
-}
-
-void
-dynamic_object_layout::set_id(const utils::id& id)
-{
-    m_id = id;
-}
-
-void
-dynamic_object_layout_sequence_builder::add_field(const utils::id& id,
-                                                  agea_type type,
-                                                  uint32_t aligment /*= 4*/,
-                                                  uint32_t items_count /*= 1*/)
-{
-    dynamic_object_field field;
-    field.id = id;
-    field.type_id = type;
-
-    field.size = get_agea_type_size(type);
-
-    auto& obj = *get_layout();
-
-    auto mod = obj.m_size % aligment;
-
-    field.offset = mod ? (obj.m_size + (aligment - mod)) : obj.m_size;
-
-    obj.m_size = field.offset + field.size;
-
-    field.items_count = items_count;
-
-    obj.m_fields.emplace_back(field);
-}
-
-void
-dynamic_object_layout_random_builder::add_field(const utils::id& id,
-                                                agea_type type,
-                                                uint32_t offest,
-                                                uint32_t aligment /*= 4*/,
-                                                uint32_t items_count /*= 1*/)
-{
-    auto& obj = *get_layout();
-
-    dynamic_object_field field;
-    field.id = id;
-    field.type_id = type;
-
-    auto size = get_agea_type_size(type);
-    field.size = size < aligment ? aligment : size;
-
-    auto mod = obj.m_size % aligment;
-
-    field.offset = offest;
-
-    obj.m_size = field.offset + field.size;
-
-    field.items_count = items_count;
-
-    obj.m_fields.emplace_back(field);
-}
-
-void
-dynamic_object_layout_random_builder::finalize(uint32_t final_size)
-{
-    auto& obj = *get_layout();
-    obj.m_size = final_size;
-}
-
-basic_dynamic_object_layout_builder::basic_dynamic_object_layout_builder()
-    : m_layout(std::make_shared<dynamic_object_layout>())
-{
+    return m_layout->get_fields()[pos].type;
 }
 
 }  // namespace utils

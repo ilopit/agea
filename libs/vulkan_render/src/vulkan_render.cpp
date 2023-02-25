@@ -23,6 +23,7 @@
 #include <utils/process.h>
 #include <utils/clock.h>
 #include <utils/dynamic_object.h>
+#include <utils/dynamic_object_builder.h>
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl.h>
@@ -204,11 +205,6 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     {
         upload_render_data(current_frame);
     }
-
-    VkDescriptorBufferInfo object_buffer_info{};
-    object_buffer_info.buffer = current_frame.m_object_buffer.buffer();
-    object_buffer_info.offset = 0;
-    object_buffer_info.range = current_frame.m_object_buffer.get_offset();
 
     m_scene_parameters.lights_color = glm::vec4{1.f, 1.f, 1.f, 0.f};
     m_scene_parameters.lights_position = glm::vec4{1.f, 1.f, 1.f, 0.f};
@@ -591,10 +587,10 @@ vulkan_render::prepare_ui_pipeline()
     auto frag_path = path / "se_uioverlay.frag";
     agea::utils::buffer::load(frag_path, frag);
 
-    agea::utils::dynamic_object_layout_sequence_builder builder;
-    builder.add_field(AID("pos"), agea::utils::agea_type::t_vec2, 1);
-    builder.add_field(AID("uv"), agea::utils::agea_type::t_vec2, 1);
-    builder.add_field(AID("color"), agea::utils::agea_type::t_color, 1);
+    utils::dynamic_object_layout_sequence_builder<utils::agea_type> builder;
+    builder.add_field(AID("pos"), agea::utils::agea_type::id::t_vec2, 1);
+    builder.add_field(AID("uv"), agea::utils::agea_type::id::t_vec2, 1);
+    builder.add_field(AID("color"), agea::utils::agea_type::id::t_color, 1);
 
     auto dol = builder.get_layout();
 

@@ -11,7 +11,7 @@ namespace render
 namespace vk_utils
 {
 VkFormat
-convert_to_vk_format(agea::utils::agea_type t);
+convert_to_vk_format(agea::utils::agea_type::id t);
 
 }
 }  // namespace render

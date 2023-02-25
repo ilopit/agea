@@ -79,7 +79,7 @@ struct buffer
     buffer&
     operator=(const buffer& other) = default;
 
-    buffer(buffer&& other)
+    buffer(buffer&& other) noexcept
         : m_file(std::move(other.m_file))
         , m_data(std::move(other.m_data))
         , m_last_write_time(other.m_last_write_time)
@@ -88,7 +88,7 @@ struct buffer
     }
 
     buffer&
-    operator=(buffer&& other)
+    operator=(buffer&& other) noexcept
     {
         if (this != &other)
         {

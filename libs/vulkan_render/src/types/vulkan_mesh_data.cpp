@@ -2,6 +2,8 @@
 
 #include "vulkan_render/utils/vulkan_converters.h"
 
+#include <utils/dynamic_object_builder.h>
+
 namespace agea
 {
 namespace render
@@ -25,7 +27,7 @@ convert_to_vertex_input_description(agea::utils::dynamic_object_layout& dol)
 
     for (auto& f : dol.get_fields())
     {
-        auto vk_format = vk_utils::convert_to_vk_format(f.type_id);
+        auto vk_format = vk_utils::convert_to_vk_format((utils::agea_type::id)f.type);
 
         AGEA_check(vk_format != VK_FORMAT_UNDEFINED, "Should never happens");
 
