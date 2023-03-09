@@ -45,13 +45,13 @@ package::get_relative_path(const utils::path& p) const
 }
 
 smart_object*
-package::spawn_class_object_impl(const utils::id& id,
-                                 const utils::id& type_id,
-                                 smart_object::construct_params& params)
+package::spawn_object_impl(const utils::id& type_id,
+                           const utils::id& id,
+                           smart_object::construct_params& params)
 {
-    auto proto_obj = m_occ->find_class_obj(type_id);
+    auto proto_obj = m_occ->find_class_obj(id);
 
-    if (!proto_obj)
+    if (proto_obj)
     {
         return nullptr;
     }

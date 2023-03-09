@@ -105,11 +105,9 @@ public:
 
     template <typename T>
     smart_object*
-    spawn_class_object(const utils::id& id,
-                       const utils::id& type_id,
-                       typename T::construct_params& p)
+    spawn_object(const utils::id& id, typename T::construct_params& p)
     {
-        return spawn_class_object_impl(id, type_id, p);
+        return spawn_object_impl(T::META_type_id(), id, p);
     }
 
     template <typename T>
@@ -121,9 +119,10 @@ public:
 
 private:
     smart_object*
-    spawn_class_object_impl(const utils::id& type_id,
-                            const utils::id& id,
-                            model::smart_object::construct_params& p);
+    spawn_object_impl(const utils::id& type_id,
+                      const utils::id& id,
+                      model::smart_object::construct_params& p);
+
     utils::id m_id;
     mutable utils::path m_load_path;
     mutable utils::path m_save_root_path;
