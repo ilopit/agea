@@ -23,7 +23,12 @@ class mesh : public smart_object
 
 public:
     AGEA_gen_class_meta(mesh, smart_object);
-    AGEA_gen_construct_params{};
+    AGEA_gen_construct_params
+    {
+        utils::buffer vertices;
+        utils::buffer indices;
+        utils::buffer external;
+    };
     AGEA_gen_meta_architype_api(mesh);
 
     render::mesh_data*
@@ -73,6 +78,9 @@ public:
     {
         m_external = v;
     }
+
+    bool
+    construct(this_class::construct_params& params);
 
 protected:
     AGEA_property("category=assets", "serializable=true", "default=true");

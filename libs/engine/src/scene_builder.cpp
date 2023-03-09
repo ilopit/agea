@@ -125,7 +125,7 @@ scene_builder::extract_gpu_data(model::smart_object& so,
     auto fitr = ct.layout->get_fields().begin();
     auto src_obj_ptr = so.as_blob();
 
-    utils::dynamic_object dyn_obj(ct.layout);
+    utils::dynamic_object dyn_obj(ct.layout, ct.layout->get_size());
 
     AGEA_check(ct.offset_in_object.size() == ct.layout->get_fields().size(), "Should be same!");
 
@@ -200,8 +200,7 @@ scene_builder::pfr_mesh(model::smart_object& obj, bool sub_object)
     auto vertices = msh_model.get_vertices_buffer().make_view<render::gpu_vertex_data>();
     auto indices = msh_model.get_indicess_buffer().make_view<render::gpu_index_data>();
 
-    if (msh_model.get_vertices_buffer().get_file().empty() &&
-        msh_model.get_indicess_buffer().get_file().empty())
+    if (!msh_model.get_vertices_buffer().size())
     {
         if (!asset_importer::mesh_importer::extract_mesh_data_from_3do(
                 msh_model.get_external_buffer().get_file(), vertices, indices))

@@ -18,7 +18,7 @@ read_container(const utils::path& path, serialization::conteiner& conteiner)
     }
     catch (const std::exception& e)
     {
-        ALOG_ERROR("read_container failed {0}", e.what());
+        ALOG_ERROR("read_container failed {0} {1}", e.what(), path.str());
         return false;
     }
 

@@ -65,6 +65,9 @@ private:
     update_cameras();
 
     void
+    init_default_resources();
+
+    void
     init_scene();
 
     void

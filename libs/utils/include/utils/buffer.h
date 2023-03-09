@@ -74,6 +74,10 @@ struct buffer
 
     buffer() = default;
 
+    buffer(size_t s);
+
+    buffer(size_t s, uint8_t value);
+
     buffer(const buffer& other) = default;
 
     buffer&

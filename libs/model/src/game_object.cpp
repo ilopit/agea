@@ -48,6 +48,11 @@ game_object::post_construct()
 
     AGEA_return_nok(base_class::post_construct());
 
+    for (auto c : m_components)
+    {
+        c->post_construct();
+    }
+
     build_components_structure();
 
     m_root_component->update_matrix();

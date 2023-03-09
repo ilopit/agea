@@ -86,6 +86,7 @@ object_load_context::add_obj(std::shared_ptr<smart_object> obj)
         m_instance_local_set->map->add_item(obj_ref);
         m_instance_global_set->map->add_item(obj_ref);
         break;
+    case object_load_type::nav:
     default:
         AGEA_never("Unsupported type type");
         break;

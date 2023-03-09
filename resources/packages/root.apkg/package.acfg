@@ -8,7 +8,9 @@ class_obj_mapping:
   - mt_solid_color: class/materials/mt_solid_color.aobj
   - mt_solid_color_2: class/materials/mt_solid_color_2.aobj
 
-  - root_component: class/components/root_component.aobj
   - cube_mesh: class/meshes/cube_mesh.aobj
+
+  - root_component: class/components/root_component.aobj
   - decor : class/game_objects/decor.aobj
   - decor2 : class/game_objects/decor2.aobj
+  - plane : class/game_objects/plane.aobj

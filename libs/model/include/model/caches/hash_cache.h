@@ -12,14 +12,10 @@ namespace agea
 {
 namespace model
 {
+
 class hash_cache
 {
 public:
-    hash_cache(architype id)
-        : m_id(id)
-    {
-    }
-
     smart_object*
     get_item(const utils::id& id)
     {
@@ -28,28 +24,19 @@ public:
         return item != m_items.end() ? item->second : nullptr;
     }
 
-    bool
-    has_item(const utils::id& id)
-    {
-        return m_items.find(id) != m_items.end();
-    }
-
     void
     add_item(smart_object& obj)
     {
-        AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
-                   "Should have same architype!");
-
         auto& item = m_items[obj.get_id()];
 
         AGEA_check(item == nullptr, "Should not re-assign!");
         item = &obj;
     }
 
-    architype
-    get_id() const
+    bool
+    has_item(const utils::id& id)
     {
-        return m_id;
+        return m_items.find(id) != m_items.end();
     }
 
     uint32_t
@@ -66,6 +53,32 @@ public:
 
 protected:
     std::unordered_map<utils::id, smart_object*> m_items;
+};
+
+class architype_cache : public hash_cache
+{
+public:
+    architype_cache(architype id)
+        : m_id(id)
+    {
+    }
+
+    void
+    add_item(smart_object& obj)
+    {
+        AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
+                   "Should have same architype!");
+
+        hash_cache::add_item(obj);
+    }
+
+    architype
+    get_id() const
+    {
+        return m_id;
+    }
+
+protected:
     architype m_id;
 };
 }  // namespace model

@@ -40,11 +40,11 @@ convert_3do_to_amsh(const utils::path& obj_path,
     indices.set_file(dst_folder_path / APATH("class/meshes") / ind_ext);
 
     auto full_obj_path = dst_folder_path / APATH("class/meshes") / obj_ext;
-    auto obj = model::object_constructor::create_empty_object(AID("mesh"), mesh_id);
+    auto obj = model::object_constructor::alloc_empty_object<model::mesh>();
 
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
-    model::package p;
+    model::package p(AID("dummy"));
     p.set_save_root_path(dst_folder_path);
 
     auto mesh = obj->as<model::mesh>();
@@ -81,10 +81,10 @@ convert_image_to_atxt(const utils::path& obj_path,
 
     auto full_obj_path = dst_folder_path / APATH("class/textures") / obj_ext;
 
-    auto obj = model::object_constructor::create_empty_object(AID("texture"), texture_id);
+    auto obj = model::object_constructor::alloc_empty_object<model::texture>();
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
-    model::package p;
+    model::package p(AID("dummy"));
     p.set_save_root_path(dst_folder_path);
 
     auto txt = obj->as<model::texture>();

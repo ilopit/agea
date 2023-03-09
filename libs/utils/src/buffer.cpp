@@ -20,6 +20,16 @@ buffer::load(const utils::path& p, buffer& b)
     return true;
 }
 
+buffer::buffer(size_t s)
+    : m_data(s)
+{
+}
+
+buffer::buffer(size_t s, uint8_t value)
+    : m_data(s, value)
+{
+}
+
 bool
 buffer::has_file_updated() const
 {

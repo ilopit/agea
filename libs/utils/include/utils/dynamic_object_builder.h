@@ -83,6 +83,12 @@ public:
         return m_layout;
     }
 
+    dynamic_object
+    make_obj();
+
+    dynamic_object
+    make_empty_obj();
+
 private:
     std::shared_ptr<dynamic_object_layout> m_layout;
 };

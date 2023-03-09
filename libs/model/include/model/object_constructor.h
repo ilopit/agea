@@ -49,6 +49,13 @@ public:
                  smart_object*& obj,
                  std::vector<smart_object*>& loaded_obj);
 
+    template <typename T>
+    static result_code
+    register_package_type(object_load_context& occ)
+    {
+        return register_package_type_impl(alloc_empty_object<T>(), occ);
+    }
+
     static result_code
     object_load_internal(const utils::path& path_in_package,
                          object_load_context& occ,
@@ -101,17 +108,26 @@ public:
     static result_code
     object_properties_save(const smart_object& obj, serialization::conteiner& jc);
 
-    static std::shared_ptr<smart_object>
-    create_empty_object(const utils::id& type_id, const utils::id& obj_id);
-
     template <typename T>
-    static std::shared_ptr<T>
-    create_empty_object(const utils::id& obj_id)
+    static std::shared_ptr<smart_object>
+    alloc_empty_object()
     {
-        return std::static_pointer_cast<T>(create_empty_object(T::META_type_id(), obj_id));
+        auto empty = T::META_class_create_empty_obj();
+        empty->META_set_id(T::META_type_id());
+
+        return empty;
     }
 
+    static smart_object*
+    alloc_empty_object(const utils::id& type_id,
+                       const utils::id& id,
+                       uint32_t flags,
+                       object_load_context& olc);
+
 private:
+    static result_code
+    register_package_type_impl(std::shared_ptr<smart_object> empty, object_load_context& olc);
+
     static result_code
     object_load_full(serialization::conteiner& sc, object_load_context& occ, smart_object*& obj);
 

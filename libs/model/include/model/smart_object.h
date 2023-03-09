@@ -29,25 +29,25 @@
 
 #define AGEA_gen_construct_params struct construct_params : base_class::construct_params
 
-#define AGEA_gen_meta_api                                           \
-    friend class ::agea::reflection::entry;                         \
-                                                                    \
-    void META_class_set_type_id();                                  \
-                                                                    \
-    void META_class_set_architype_id();                             \
-                                                                    \
-    static utils::id META_type_id();                                \
-                                                                    \
-    static reflection::object_reflection* META_object_reflection(); \
-                                                                    \
-    virtual reflection::object_reflection* reflection() const;      \
-                                                                    \
-    virtual bool META_construct(smart_object::construct_params& i); \
-                                                                    \
-    virtual bool META_post_construct();                             \
-                                                                    \
-    virtual std::shared_ptr<smart_object> META_create_empty_obj();  \
-                                                                    \
+#define AGEA_gen_meta_api                                                 \
+    friend class ::agea::reflection::entry;                               \
+                                                                          \
+    void META_class_set_type_id();                                        \
+                                                                          \
+    void META_class_set_architype_id();                                   \
+                                                                          \
+    static utils::id META_type_id();                                      \
+                                                                          \
+    static reflection::object_reflection* META_object_reflection();       \
+                                                                          \
+    virtual reflection::object_reflection* reflection() const;            \
+                                                                          \
+    virtual bool META_construct(const smart_object::construct_params& i); \
+                                                                          \
+    virtual bool META_post_construct();                                   \
+                                                                          \
+    virtual std::shared_ptr<smart_object> META_create_empty_obj();        \
+                                                                          \
     static std::shared_ptr<this_class> META_class_create_empty_obj();
 
 #define AGEA_gen_meta_architype_api(a)                     \
@@ -77,11 +77,12 @@ enum class smart_object_state
 enum smart_object_state_flag : uint32_t
 {
     empty = 0,
-    proto_obj,
-    instance_obj,
-    standalone,
-    inhereted,
-    mirror
+    proto_obj = 1,
+    instance_obj = 2,
+    standalone = 4,
+    inhereted = 8,
+    mirror = 16,
+    empty_obj = 32
 };
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
@@ -94,12 +95,10 @@ class smart_object
 public:
     struct construct_params
     {
-        std::string id;
-        std::string name;
     };
 
     AGEA_gen_class_meta_super(smart_object);
-    AGEA_gen_meta_architype_api(unknown);
+    AGEA_gen_meta_architype_api(smart_object);
 
     friend class object_constructor;
 
@@ -138,7 +137,7 @@ public:
     }
 
     bool
-    construct(this_class::construct_params&)
+    construct(const this_class::construct_params&)
     {
         return true;
     }
@@ -171,15 +170,15 @@ public:
     }
 
     void
-    set_state_flag(smart_object_state_flag f)
+    set_state_flag(uint32_t f)
     {
-        m_obj_internal_state |= (1 << f);
+        m_obj_internal_state |= f;
     }
 
     bool
-    has_state_flag(smart_object_state_flag f) const
+    has_state_flag(uint32_t f) const
     {
-        return m_obj_internal_state & (1 << f);
+        return m_obj_internal_state & f;
     }
 
     void

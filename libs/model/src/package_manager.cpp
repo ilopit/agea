@@ -22,6 +22,13 @@ glob::package_manager::type glob::package_manager::type::s_instance;
 
 namespace model
 {
+
+bool
+package_manager::init()
+{
+    return true;
+}
+
 bool
 package_manager::load_package(const utils::id& id)
 {
@@ -52,22 +59,11 @@ package_manager::load_package(const utils::id& id)
         return false;
     }
 
-    auto new_package = std::make_unique<package>();
-    new_package->m_class_global_set = glob::class_objects_cache_set::get();
-    new_package->m_instance_global_set = glob::objects_cache_set::get();
+    auto new_package = std::make_unique<package>(AID(name));
     new_package->m_load_path = path;
     new_package->m_save_root_path = path.parent();
-    new_package->m_id = AID(name);
 
-    auto olc = std::make_unique<object_load_context>();
-    olc->set_prefix_path(path)
-        .set_package(new_package.get())
-        .set_class_global_set(new_package->m_class_global_set)
-        .set_instance_global_set(new_package->m_instance_global_set)
-        .set_class_local_set(&new_package->m_class_local_set)
-        .set_instance_local_set(&new_package->m_instance_local_set)
-        .set_objects_mapping(mapping)
-        .set_ownable_cache(&new_package->m_objects);
+    new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
 
     std::vector<smart_object*> loaded_obj;
     for (auto& i : mapping->m_items)
@@ -75,8 +71,8 @@ package_manager::load_package(const utils::id& id)
         AGEA_check(i.second.is_class, "Load only package!");
 
         smart_object* obj = nullptr;
-        auto rc = object_constructor::object_load(i.first, object_load_type::class_obj, *olc, obj,
-                                                  loaded_obj);
+        auto rc = object_constructor::object_load(i.first, object_load_type::class_obj,
+                                                  new_package->get_load_context(), obj, loaded_obj);
         if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;
@@ -92,7 +88,8 @@ package_manager::load_package(const utils::id& id)
         auto mirror_id = obj->get_id();
         obj = nullptr;
 
-        rc = object_constructor::mirror_object(mirror_id, *olc, obj, loaded_obj);
+        rc = object_constructor::mirror_object(mirror_id, new_package->get_load_context(), obj,
+                                               loaded_obj);
         if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;
@@ -106,7 +103,6 @@ package_manager::load_package(const utils::id& id)
         }
     }
 
-    new_package->m_occ = std::move(olc);
     new_package->set_state(package_state::loaded);
 
     m_packages[id] = std::move(new_package);
@@ -199,6 +195,22 @@ package_manager::get_package(const utils::id& id)
     auto itr = m_packages.find(id);
 
     return itr != m_packages.end() ? (itr->second.get()) : nullptr;
+}
+
+package*
+package_manager::create_package(const utils::id& id)
+{
+    auto itr = m_packages.find(id);
+    if (itr != m_packages.end())
+    {
+        return nullptr;
+    }
+
+    auto& p = m_packages[id];
+
+    p = std::make_unique<package>(id);
+
+    return p.get();
 }
 
 }  // namespace model

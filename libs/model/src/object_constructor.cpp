@@ -113,6 +113,52 @@ object_constructor::object_clone(smart_object& src,
     return rc;
 }
 
+smart_object*
+object_constructor::alloc_empty_object(const utils::id& type_id,
+                                       const utils::id& id,
+                                       uint32_t extra_flags,
+                                       object_load_context& olc)
+{
+    auto eoc_item = glob::empty_objects_cache::get()->get_item(type_id);
+
+    AGEA_check(eoc_item, "Should exist!");
+
+    auto empty = eoc_item->META_create_empty_obj();
+    empty->META_set_id(id);
+    empty->set_state_flag(extra_flags);
+    empty->set_package(olc.get_package());
+    empty->set_level(olc.get_level());
+
+    auto ptr = empty.get();
+    update_flags(olc.get_construction_type(), *empty);
+    olc.add_obj(std::move(empty));
+    olc.push_object_loaded(ptr);
+
+    return ptr;
+}
+
+result_code
+object_constructor::register_package_type_impl(std::shared_ptr<smart_object> empty,
+                                               object_load_context& olc)
+{
+    AGEA_check(olc.get_construction_type() == object_load_type::nav, "Should be nav!");
+    AGEA_check(olc.get_package(), "Should exist");
+    AGEA_check(!olc.get_level(), "Should exist");
+
+    glob::empty_objects_cache::get()->add_item(*empty);
+
+    empty->set_state_flag(smart_object_state_flag::proto_obj | smart_object_state_flag::empty_obj);
+
+    olc.set_construction_type(object_load_type::class_obj);
+    olc.add_obj(empty);
+    olc.set_construction_type(object_load_type::mirror_copy);
+
+    alloc_empty_object(empty->get_id(), empty->get_id(), smart_object_state_flag::empty_obj, olc);
+    olc.set_construction_type(object_load_type::nav);
+
+    return result_code::ok;
+}
+
 result_code
 object_constructor::object_properties_load(smart_object& obj,
                                            const serialization::conteiner& jc,
@@ -238,7 +284,7 @@ object_constructor::object_load_internal(serialization::conteiner& conteiner,
     }
 
     obj->set_state(smart_object_state::loaded);
-    occ.push_object_loaded(obj);
+    // occ.push_object_loaded(obj);
 
     if (obj && (obj->get_id() != id))
     {
@@ -354,27 +400,19 @@ object_constructor::object_clone_create_internal(smart_object& proto_obj,
 {
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
-    auto empty = create_empty_object(proto_obj.get_type_id(), new_object_id);
-    empty->META_set_class_obj(&proto_obj);
-    empty->set_package(occ.get_package());
-    empty->set_level(occ.get_level());
+    obj = alloc_empty_object(proto_obj.get_type_id(), new_object_id,
+                             smart_object_state_flag::inhereted, occ);
 
-    occ.add_obj(empty);
+    obj->META_set_class_obj(&proto_obj);
 
-    update_flags(occ.get_construction_type(), *empty);
-    empty->set_state_flag(smart_object_state_flag::inhereted);
-
-    auto rc = clone_object_properties(proto_obj, *empty, occ);
+    auto rc = clone_object_properties(proto_obj, *obj, occ);
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return rc;
     }
 
-    obj = empty.get();
-
     obj->set_state(smart_object_state::loaded);
-    occ.push_object_loaded(obj);
 
     return result_code::ok;
 }
@@ -501,37 +539,9 @@ object_constructor::object_load_full(serialization::conteiner& sc,
     auto type_id = AID(sc["type_id"].as<std::string>());
     auto obj_id = AID(sc["id"].as<std::string>());
 
-    auto empty = create_empty_object(type_id, obj_id);
-    empty->set_package(occ.get_package());
-    empty->set_level(occ.get_level());
+    obj = alloc_empty_object(type_id, obj_id, smart_object_state_flag::standalone, occ);
 
-    empty->set_state_flag(smart_object_state_flag::standalone);
-    update_flags(occ.get_construction_type(), *empty);
-
-    occ.add_obj(empty);
-
-    auto result = object_properties_load(*empty, sc, occ);
-    if (result != result_code::ok)
-    {
-        ALOG_LAZY_ERROR;
-        return result;
-    }
-
-    obj = empty.get();
-    return result_code::ok;
-}
-
-std::shared_ptr<smart_object>
-object_constructor::create_empty_object(const utils::id& type_id, const utils::id& obj_id)
-{
-    auto eoc_item = glob::empty_objects_cache::get()->get(type_id);
-
-    AGEA_check(eoc_item, "Should exist!");
-
-    auto empty = eoc_item->META_create_empty_obj();
-    empty->META_set_id(obj_id);
-
-    return empty;
+    return object_properties_load(*obj, sc, occ);
 }
 
 result_code
@@ -552,23 +562,20 @@ object_constructor::object_load_partial(smart_object& prototype_obj,
     AGEA_check(occ.get_construction_type() != object_load_type::mirror_copy, "Should not be here!");
 
     auto obj_id = AID(sc["id"].as<std::string>());
-    auto empty = create_empty_object(prototype_obj.get_type_id(), obj_id);
 
-    empty->META_set_class_obj(&prototype_obj);
-    empty->set_package(occ.get_package());
-    empty->set_level(occ.get_level());
-    empty->set_state_flag(smart_object_state_flag::inhereted);
+    obj = alloc_empty_object(prototype_obj.get_type_id(), obj_id,
+                             smart_object_state_flag::inhereted, occ);
 
-    update_flags(occ.get_construction_type(), *empty);
+    obj->META_set_class_obj(&prototype_obj);
 
-    occ.add_obj(empty);
+    auto rc = prototype_object_properties(prototype_obj, *obj, sc, occ);
 
-    auto rc = prototype_object_properties(prototype_obj, *empty, sc, occ);
-
-    if (rc == result_code::ok)
+    if (rc != result_code::ok)
     {
-        obj = empty.get();
+        return rc;
     }
+
+    obj->set_state(smart_object_state::loaded);
 
     return rc;
 }

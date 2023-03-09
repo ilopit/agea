@@ -13,18 +13,18 @@ namespace agea
 namespace model
 {
 template <typename T, architype ID>
-class cache : public hash_cache
+class cache : public architype_cache
 {
 public:
     cache()
-        : hash_cache(ID)
+        : architype_cache(ID)
     {
     }
 
     T*
     get_item(const utils::id& id)
     {
-        return (T*)hash_cache::get_item(id);
+        return (T*)architype_cache::get_item(id);
     }
 
     template <typename F>
@@ -51,14 +51,14 @@ public:
 class caches_map
 {
 public:
-    hash_cache*
+    architype_cache*
     get_cache(architype id)
     {
         return m_mapping.at(id);
     }
 
     void
-    add_cache(hash_cache* c)
+    add_cache(architype_cache* c)
     {
         auto& v = m_mapping[c->get_id()];
         AGEA_check(v == nullptr, "Should not re-assign!");
@@ -68,20 +68,25 @@ public:
     void
     add_item(smart_object& obj)
     {
-        auto& item = m_mapping.at(obj.get_architype_id());
-        item->add_item(obj);
+        auto aid = obj.get_architype_id();
+
+        if (aid != architype::smart_object)
+        {
+            auto& item = m_mapping.at(aid);
+            item->add_item(obj);
+        }
 
         m_mapping.at(architype::smart_object)->add_item(obj);
     }
 
-    std::unordered_map<architype, hash_cache*>&
+    std::unordered_map<architype, architype_cache*>&
     get_items()
     {
         return m_mapping;
     }
 
 private:
-    std::unordered_map<architype, hash_cache*> m_mapping;
+    std::unordered_map<architype, architype_cache*> m_mapping;
 };
 }  // namespace model
 

@@ -18,17 +18,20 @@
 #include <model/caches/textures_cache.h>
 #include <model/caches/game_objects_cache.h>
 #include <model/caches/caches_map.h>
+#include <model/assets/mesh.h>
 #include <model/caches/empty_objects_cache.h>
 
 #include <model/reflection/lua_api.h>
 #include <model/components/mesh_component.h>
 #include <model/game_object.h>
 #include <model/assets/shader_effect.h>
+#include <model/assets/mesh.h>
 #include <model/level_manager.h>
 #include <model/level.h>
 #include <model/package.h>
 #include <model/package_manager.h>
 #include <model/id_generator.h>
+#include <model/object_constructor.h>
 
 #include <native/native_window.h>
 
@@ -94,6 +97,8 @@ vulkan_engine::init()
 
     glob::init_global_caches(*m_registry);
 
+    glob::package_manager::getr().init();
+
     glob::resource_locator::get()->init_local_dirs();
     auto cfgs_folder = glob::resource_locator::get()->resource_dir(category::configs);
 
@@ -131,6 +136,8 @@ vulkan_engine::init()
     glob::ui::getr().init();
 
     glob::vulkan_render::getr().init();
+
+    init_default_resources();
 
     init_scene();
 
@@ -271,29 +278,90 @@ vulkan_engine::update_cameras()
 }
 
 void
+vulkan_engine::init_default_resources()
+{
+    utils::buffer vert_buffer;
+    {
+        render::gpu_dynobj_builder builder;
+        builder.add_field(AID("vPosition"), render::gpu_type::g_vec3, 1);
+        builder.add_field(AID("vNormal"), render::gpu_type::g_vec3, 1);
+        builder.add_field(AID("vColor"), render::gpu_type::g_vec3, 1);
+        builder.add_field(AID("vTexCoord"), render::gpu_type::g_vec2, 1);
+
+        auto vert_obj = builder.make_empty_obj();
+        vert_buffer.resize(vert_obj.expected_size() * 4);
+        vert_obj.set_external(vert_buffer.data());
+        vert_obj.write_at<render::gpu_type>(0, 0, glm::vec3{1.f, 1.f, 0.f});
+        vert_obj.write_at<render::gpu_type>(1, 0, glm::vec3{1.f, -1.f, 0.f});
+        vert_obj.write_at<render::gpu_type>(2, 0, glm::vec3{-1.f, 1.f, 0.f});
+        vert_obj.write_at<render::gpu_type>(3, 0, glm::vec3{-1.f, -1.f, 0.f});
+
+        vert_buffer.resize(vert_obj.expected_size() * 4);
+    }
+
+    utils::buffer index_buffer(6 * 4);
+    auto v = index_buffer.make_view<uint32_t>();
+    v.at(0) = 2;
+    v.at(1) = 0;
+    v.at(2) = 3;
+    v.at(3) = 0;
+    v.at(4) = 1;
+    v.at(5) = 3;
+
+    //     auto ss = glob::vulkan_render_loader::getr().create_mesh(
+    //         AID("plane_mesh"), vert_buffer.make_view<render::gpu_vertex_data>(),
+    //         index_buffer.make_view<render::gpu_index_data>());
+
+    auto pkg = glob::package_manager::getr().get_package(AID("agea"));
+
+    model::mesh::construct_params p;
+    p.indices = index_buffer;
+    p.vertices = vert_buffer;
+
+    auto obj = pkg->spawn_class_object<model::mesh>(AID("plane_mesh"), AID("mesh"), p);
+
+    m_scene->prepare_for_rendering(*obj, true);
+}
+
+void
 vulkan_engine::init_scene()
 {
+    int i = 2;
+    //     auto rc = object_constructor::object_clone(*proto_obj, object_id, *m_occ, result,
+    //     loaded_obj); if (rc != result_code::ok)
+    //     {
+    //         return nullptr;
+    //     }
+    //
+    //     for (auto o : loaded_obj)
+    //     {
+    //         o->META_post_construct();
+    //         o->set_state(smart_object_state::constructed);
+    //     }
+
     load_level(glob::config::get()->level);
 
-    auto id1 = AID("decor");
-    auto id2 = AID("decor2");
-
-    for (int x = 0; x < 3; ++x)
-    {
-        for (int y = 0; y < 3; ++y)
-        {
-            for (int z = 0; z < 3; ++z)
-            {
-                auto id = std::format("obj_{}_{}_{}", x, y, z);
-                auto p = glob::level::getr().spawn_object<model::game_object>((z & 1) ? id1 : id2,
-                                                                              AID(id));
-
-                p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z * 10.f});
-
-                m_scene->prepare_for_rendering(*p, true);
-            }
-        }
-    }
+    //     auto id1 = AID("decor");
+    //     auto id2 = AID("decor2");
+    //
+    //     for (int x = 0; x < 3; ++x)
+    //     {
+    //         for (int y = 0; y < 3; ++y)
+    //         {
+    //             for (int z = 0; z < 3; ++z)
+    //             {
+    //                 auto id = std::format("obj_{}_{}_{}", x, y, z);
+    //                 auto p = glob::level::getr().spawn_object<model::game_object>((z & 1) ? id1 :
+    //                 id2,
+    //                                                                               AID(id));
+    //
+    //                 p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z
+    //                 * 10.f});
+    //
+    //                 m_scene->prepare_for_rendering(*p, true);
+    //             }
+    //         }
+    //     }
 }
 
 void

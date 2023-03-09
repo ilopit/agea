@@ -5,7 +5,7 @@
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
-
+#include "model/object_constructor.h"
 #include "model/objects_mapping.h"
 
 namespace agea
@@ -22,7 +22,10 @@ enum class package_state
 class package
 {
 public:
-    package();
+    package(const utils::id& id,
+            cache_set* class_global_set = glob::class_objects_cache_set::get(),
+            cache_set* instance_global_set = glob::objects_cache_set::get());
+
     ~package();
 
     package(package&&) noexcept;
@@ -77,7 +80,7 @@ public:
     }
 
     package_state
-    get_state()
+    get_state() const
     {
         return m_state;
     }
@@ -94,7 +97,33 @@ public:
         return m_package_instances;
     }
 
+    object_load_context&
+    get_load_context()
+    {
+        return *m_occ.get();
+    }
+
+    template <typename T>
+    smart_object*
+    spawn_class_object(const utils::id& id,
+                       const utils::id& type_id,
+                       typename T::construct_params& p)
+    {
+        return spawn_class_object_impl(id, type_id, p);
+    }
+
+    template <typename T>
+    result_code
+    register_type()
+    {
+        return object_constructor::register_package_type<T>(*m_occ);
+    }
+
 private:
+    smart_object*
+    spawn_class_object_impl(const utils::id& type_id,
+                            const utils::id& id,
+                            model::smart_object::construct_params& p);
     utils::id m_id;
     mutable utils::path m_load_path;
     mutable utils::path m_save_root_path;

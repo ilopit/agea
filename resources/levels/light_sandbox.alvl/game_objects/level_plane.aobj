@@ -1,0 +1,8 @@
+class_id: plane
+id: level_plane
+layout: [-1, 0]
+components: 
+  - id: level_plane__root_component
+    class_id: plane__root_component
+  - id: level_plane_plane_component
+    class_id: plane__component
