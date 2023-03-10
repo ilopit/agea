@@ -95,6 +95,47 @@ object_constructor::mirror_object(const utils::id& class_object_id,
     return rc;
 }
 
+smart_object*
+object_constructor::construct_package_object(const utils::id& type_id,
+                                             const utils::id& id,
+                                             const model::smart_object::construct_params& params,
+                                             object_load_context& olc)
+{
+    auto proto_obj = olc.find_class_obj(id);
+
+    if (proto_obj)
+    {
+        return nullptr;
+    }
+
+    olc.set_construction_type(object_load_type::class_obj);
+    auto obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+    if (!obj->META_construct(params))
+    {
+        return nullptr;
+    }
+    if (!obj->META_post_construct())
+    {
+        return nullptr;
+    }
+    obj->set_state(smart_object_state::constructed);
+
+    olc.set_construction_type(object_load_type::mirror_copy);
+    obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+    if (!obj->META_construct(params))
+    {
+        return nullptr;
+    }
+    if (!obj->META_post_construct())
+    {
+        return nullptr;
+    }
+
+    obj->set_state(smart_object_state::constructed);
+
+    return obj;
+}
+
 result_code
 object_constructor::object_clone(smart_object& src,
                                  const utils::id& new_object_id,

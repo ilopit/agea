@@ -1,9 +1,11 @@
 #pragma once
 
-#include "serialization/serialization_fwds.h"
+#include <serialization/serialization_fwds.h>
+
 #include "model/object_load_type.h"
 #include "model/model_minimal.h"
 #include "model/model_fwds.h"
+#include "model/smart_object.h"
 
 #include <string>
 #include <memory>
@@ -41,6 +43,12 @@ public:
                   object_load_context& occ,
                   smart_object*& obj,
                   std::vector<smart_object*>& loaded_obj);
+
+    static smart_object*
+    construct_package_object(const utils::id& type_id,
+                             const utils::id& id,
+                             const model::smart_object::construct_params& p,
+                             object_load_context& olc);
 
     static result_code
     object_clone(smart_object& src,

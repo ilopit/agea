@@ -44,45 +44,5 @@ package::get_relative_path(const utils::path& p) const
     return p.relative(m_save_root_path);
 }
 
-smart_object*
-package::spawn_object_impl(const utils::id& type_id,
-                           const utils::id& id,
-                           smart_object::construct_params& params)
-{
-    auto proto_obj = m_occ->find_class_obj(id);
-
-    if (proto_obj)
-    {
-        return nullptr;
-    }
-
-    m_occ->set_construction_type(object_load_type::class_obj);
-    auto obj = object_constructor::alloc_empty_object(type_id, id, 0, *m_occ);
-    if (!obj->META_construct(params))
-    {
-        return nullptr;
-    }
-    if (!obj->META_post_construct())
-    {
-        return nullptr;
-    }
-    obj->set_state(smart_object_state::constructed);
-
-    m_occ->set_construction_type(object_load_type::mirror_copy);
-    obj = object_constructor::alloc_empty_object(type_id, id, 0, *m_occ);
-    if (!obj->META_construct(params))
-    {
-        return nullptr;
-    }
-    if (!obj->META_post_construct())
-    {
-        return nullptr;
-    }
-
-    obj->set_state(smart_object_state::constructed);
-
-    return obj;
-}
-
 }  // namespace model
 }  // namespace agea
