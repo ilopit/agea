@@ -43,7 +43,7 @@ TEST_F(test_id_generator, generate_components_ids)
     new_id = glob::id_generator::getr().generate(AID("foo"), AID("bar#5"));
     ASSERT_EQ(new_id, AID("foo/bar#5"));
 
-    auto m = model::object_constructor::create_empty_object<model::smart_object>(AID("foo/bar#6"));
+    auto m = model::object_constructor::alloc_empty_object<model::smart_object>(AID("foo/bar#6"));
     m_class_cache.add_item(*m);
 
     new_id = glob::id_generator::getr().generate(AID("foo"), AID("bar#5"));
@@ -64,7 +64,7 @@ TEST_F(test_id_generator, generate_obj_ids)
     new_id = glob::id_generator::getr().generate(AID("bar#5"));
     ASSERT_EQ(new_id, AID("bar#5"));
 
-    auto m = model::object_constructor::create_empty_object<model::smart_object>(AID("bar#6"));
+    auto m = model::object_constructor::alloc_empty_object<model::smart_object>(AID("bar#6"));
     m_class_cache.add_item(*m);
 
     new_id = glob::id_generator::getr().generate(AID("bar#5"));

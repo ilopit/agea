@@ -7,6 +7,7 @@
 #include "model/caches/objects_cache.h"
 #include "model/caches/caches_map.h"
 #include "model/object_load_context.h"
+#include "model/reflection/object_reflection.h"
 
 #include "model/level.h"
 
@@ -109,19 +110,21 @@ object_constructor::construct_package_object(const utils::id& type_id,
     }
 
     olc.set_construction_type(object_load_type::class_obj);
-    auto obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+    auto obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
     if (!obj->META_construct(params))
     {
         return nullptr;
     }
+
     if (!obj->META_post_construct())
     {
         return nullptr;
     }
+
     obj->set_state(smart_object_state::constructed);
 
     olc.set_construction_type(object_load_type::mirror_copy);
-    obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+    obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
     if (!obj->META_construct(params))
     {
         return nullptr;
@@ -158,6 +161,7 @@ smart_object*
 object_constructor::alloc_empty_object(const utils::id& type_id,
                                        const utils::id& id,
                                        uint32_t extra_flags,
+                                       bool add_global,
                                        object_load_context& olc)
 {
     auto eoc_item = glob::empty_objects_cache::get()->get_item(type_id);
@@ -172,7 +176,8 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
 
     auto ptr = empty.get();
     update_flags(olc.get_construction_type(), *empty);
-    olc.add_obj(std::move(empty));
+
+    olc.add_obj(std::move(empty), add_global);
     olc.push_object_loaded(ptr);
 
     return ptr;
@@ -191,10 +196,11 @@ object_constructor::register_package_type_impl(std::shared_ptr<smart_object> emp
     empty->set_state_flag(smart_object_state_flag::proto_obj | smart_object_state_flag::empty_obj);
 
     olc.set_construction_type(object_load_type::class_obj);
-    olc.add_obj(empty);
+    olc.add_obj(empty, false);
     olc.set_construction_type(object_load_type::mirror_copy);
 
-    alloc_empty_object(empty->get_id(), empty->get_id(), smart_object_state_flag::empty_obj, olc);
+    alloc_empty_object(empty->get_id(), empty->get_id(), smart_object_state_flag::empty_obj, false,
+                       olc);
     olc.set_construction_type(object_load_type::nav);
 
     return result_code::ok;
@@ -237,13 +243,30 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 {
     auto& properties = obj.reflection()->m_serilalization_properties;
 
+    auto empty_obj = glob::empty_objects_cache::getr().get_item(obj.reflection()->class_id);
+
     reflection::serialize_context sc;
+    reflection::compare_context cc;
     sc.sc = &jc;
     sc.obj = &obj;
+
+    cc.dst_obj = &obj;
+    cc.src_obj = empty_obj;
 
     for (auto& p : properties)
     {
         sc.p = p.get();
+
+        if (p->has_default)
+        {
+            cc.p = p.get();
+            auto rc = p->compare_handler(cc);
+            if (rc == result_code::ok)
+            {
+                continue;
+            }
+        }
+
         auto r = p->serialization_handler(sc);
         if (r != result_code::ok)
         {
@@ -325,7 +348,6 @@ object_constructor::object_load_internal(serialization::conteiner& conteiner,
     }
 
     obj->set_state(smart_object_state::loaded);
-    // occ.push_object_loaded(obj);
 
     if (obj && (obj->get_id() != id))
     {
@@ -442,7 +464,7 @@ object_constructor::object_clone_create_internal(smart_object& proto_obj,
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
     obj = alloc_empty_object(proto_obj.get_type_id(), new_object_id,
-                             smart_object_state_flag::inhereted, occ);
+                             smart_object_state_flag::inhereted, false, occ);
 
     obj->META_set_class_obj(&proto_obj);
 
@@ -469,7 +491,7 @@ object_constructor::update_object_properties(smart_object& obj,
     {
         auto key_name = k.first.as<std::string>();
         auto itr = std::find_if(reflection.m_properties.begin(), reflection.m_properties.end(),
-                                [&key_name](std::shared_ptr<::agea::reflection::property>& p)
+                                [&key_name](const std::shared_ptr<::agea::reflection::property>& p)
                                 { return p->name == key_name; });
 
         if (itr == reflection.m_properties.end())
@@ -580,7 +602,7 @@ object_constructor::object_load_full(serialization::conteiner& sc,
     auto type_id = AID(sc["type_id"].as<std::string>());
     auto obj_id = AID(sc["id"].as<std::string>());
 
-    obj = alloc_empty_object(type_id, obj_id, smart_object_state_flag::standalone, occ);
+    obj = alloc_empty_object(type_id, obj_id, smart_object_state_flag::standalone, false, occ);
 
     return object_properties_load(*obj, sc, occ);
 }
@@ -605,7 +627,7 @@ object_constructor::object_load_partial(smart_object& prototype_obj,
     auto obj_id = AID(sc["id"].as<std::string>());
 
     obj = alloc_empty_object(prototype_obj.get_type_id(), obj_id,
-                             smart_object_state_flag::inhereted, occ);
+                             smart_object_state_flag::inhereted, false, occ);
 
     obj->META_set_class_obj(&prototype_obj);
 

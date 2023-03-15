@@ -40,9 +40,9 @@ public:
     }
 
     uint32_t
-    get_size() const
+    get_object_size() const
     {
-        return m_size;
+        return m_object_size;
     }
 
     const std::vector<dynamic_object_field>&
@@ -65,7 +65,7 @@ public:
 
 private:
     utils::id m_id;
-    uint32_t m_size = 0;
+    uint32_t m_object_size = 0;
     std::vector<dynamic_object_field> m_fields;
 };
 
@@ -109,17 +109,17 @@ public:
 
         field.size = TYPE_DESCRIPTOR::size(type);
 
-        auto& obj = *basic_dynamic_object_layout_builder::get_layout();
+        auto& layout = *basic_dynamic_object_layout_builder::get_layout();
 
-        auto mod = obj.m_size % aligment;
+        auto mod = layout.m_object_size % aligment;
 
-        field.offset = mod ? (obj.m_size + (aligment - mod)) : obj.m_size;
+        field.offset = mod ? (layout.m_object_size + (aligment - mod)) : layout.m_object_size;
 
-        obj.m_size = field.offset + field.size;
+        layout.m_object_size = field.offset + field.size;
 
         field.items_count = items_count;
 
-        obj.m_fields.emplace_back(field);
+        layout.m_fields.emplace_back(field);
     }
 };
 
@@ -143,11 +143,11 @@ public:
         auto size = TYPE_DESCRIPTOR::size(type_id);
         field.size = size < aligment ? aligment : size;
 
-        auto mod = obj.m_size % aligment;
+        auto mod = obj.m_object_size % aligment;
 
         field.offset = offest;
 
-        obj.m_size = field.offset + field.size;
+        obj.m_object_size = field.offset + field.size;
 
         field.items_count = items_count;
 
@@ -158,7 +158,7 @@ public:
     finalize(uint32_t final_size)
     {
         auto& obj = *basic_dynamic_object_layout_builder::get_layout();
-        obj.m_size = final_size;
+        obj.m_object_size = final_size;
     }
 };
 

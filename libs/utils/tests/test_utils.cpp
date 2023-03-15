@@ -90,7 +90,7 @@ TEST(test_utils, DISABLE_test_dynamic_object)
 
         auto layout = builder.get_layout();
 
-        ASSERT_EQ(layout->get_size(), 36);
+        ASSERT_EQ(layout->get_object_size(), 36);
         ASSERT_EQ(layout->get_fields().size(), 3);
 
         {
@@ -119,7 +119,7 @@ TEST(test_utils, DISABLE_test_dynamic_object)
 
         auto layout = builder.get_layout();
 
-        ASSERT_EQ(layout->get_size(), 48);
+        ASSERT_EQ(layout->get_object_size(), 48);
         ASSERT_EQ(layout->get_fields().size(), 4);
 
         {
@@ -156,7 +156,7 @@ TEST(test_utils, test_dynamic_object_write)
 
     auto layout = builder.get_layout();
 
-    auto obj = layout->get_empty_obj();
+    auto obj = builder.make_obj();
 
     const uint32_t v1 = 0x12345678;
     const uint32_t v2 = 0xFEFEFEFE;

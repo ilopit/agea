@@ -14,8 +14,8 @@ dynamic_object::dynamic_object(const std::shared_ptr<dynamic_object_layout>& l)
 
 dynamic_object::dynamic_object(const std::shared_ptr<dynamic_object_layout>& l, size_t size)
     : m_layout(l)
+    , m_data(l->get_object_size())
 {
-    m_data.resize(l->get_size());
 }
 
 void
@@ -51,7 +51,7 @@ dynamic_object::size() const
 uint32_t
 dynamic_object::expected_size() const
 {
-    return m_layout->get_size();
+    return m_layout->get_object_size();
 }
 
 uint32_t

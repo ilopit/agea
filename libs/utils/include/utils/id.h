@@ -49,7 +49,7 @@ public:
     }
 
     bool
-    valid()
+    valid() const
     {
         return m_id[0] != '\0';
     }

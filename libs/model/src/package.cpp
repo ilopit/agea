@@ -1,6 +1,9 @@
 #include "model/package.h"
 
 #include "model/caches/empty_objects_cache.h"
+#include "model/caches/objects_cache.h"
+#include "model/caches/caches_map.h"
+
 #include "model/object_load_context.h"
 #include "model/object_constructor.h"
 
@@ -42,6 +45,50 @@ utils::path
 package::get_relative_path(const utils::path& p) const
 {
     return p.relative(m_save_root_path);
+}
+
+void
+package::init_global_cache_reference(
+    cache_set* class_global_set /*= glob::class_objects_cache_set::get()*/,
+    cache_set* instance_global_set /*= glob::objects_cache_set::get()*/)
+{
+    AGEA_check(!(m_class_global_set || m_instance_global_set), "Should be empty!");
+    AGEA_check(class_global_set && instance_global_set, "Should NOT be empty!");
+
+    m_class_global_set = class_global_set;
+    m_instance_global_set = instance_global_set;
+
+    m_occ->set_class_global_set(m_class_global_set).set_instance_global_set(m_instance_global_set);
+}
+
+void
+package::register_in_global_cache()
+{
+    for (auto& i : m_class_local_set.objects->get_items())
+    {
+        auto& obj = *i.second;
+
+        AGEA_check(obj.has_state_flag(model::smart_object_state_flag::proto_obj),
+                   "Should be only proto!");
+
+        m_class_global_set->map->add_item(obj);
+    }
+
+    ALOG_INFO("[PKG:{0}], Registered {1} class object", m_id.cstr(),
+              m_class_local_set.objects->get_size());
+
+    for (auto& i : m_instance_local_set.objects->get_items())
+    {
+        auto& obj = *i.second;
+        AGEA_check(!obj.has_state_flag(model::smart_object_state_flag::proto_obj) &&
+                       obj.has_state_flag(model::smart_object_state_flag::mirror),
+                   "Should NOT be only proto!");
+
+        m_instance_global_set->map->add_item(obj);
+    }
+
+    ALOG_INFO("[PKG:{0}], Registered {1} instance object", m_id.cstr(),
+              m_instance_local_set.objects->get_size());
 }
 
 }  // namespace model

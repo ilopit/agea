@@ -40,7 +40,7 @@
                                                                           \
     static reflection::object_reflection* META_object_reflection();       \
                                                                           \
-    virtual reflection::object_reflection* reflection() const;            \
+    virtual const reflection::object_reflection* reflection() const;      \
                                                                           \
     virtual bool META_construct(const smart_object::construct_params& i); \
                                                                           \

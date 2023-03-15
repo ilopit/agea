@@ -18,7 +18,6 @@ class object_load_context
 {
 public:
     object_load_context();
-
     ~object_load_context();
 
     bool
@@ -28,7 +27,7 @@ public:
     make_full_path(const utils::id& id, utils::path& p) const;
 
     bool
-    add_obj(std::shared_ptr<smart_object> obj);
+    add_obj(std::shared_ptr<smart_object> obj, bool add_global);
 
     smart_object*
     find_class_obj(const utils::id& id);

@@ -23,8 +23,8 @@ class package
 {
 public:
     package(const utils::id& id,
-            cache_set* class_global_set = glob::class_objects_cache_set::get(),
-            cache_set* instance_global_set = glob::objects_cache_set::get());
+            cache_set* class_global_set = nullptr,
+            cache_set* instance_global_set = nullptr);
 
     ~package();
 
@@ -117,6 +117,13 @@ public:
         return object_constructor::register_package_type<T>(*m_occ);
     }
 
+    void
+    init_global_cache_reference(cache_set* class_global_set = glob::class_objects_cache_set::get(),
+                                cache_set* instance_global_set = glob::objects_cache_set::get());
+
+    void
+    register_in_global_cache();
+
 private:
     utils::id m_id;
     mutable utils::path m_load_path;
@@ -132,7 +139,6 @@ private:
 
     line_cache<std::shared_ptr<smart_object>> m_objects;
     line_cache<smart_object*> m_package_instances;
-
     std::shared_ptr<object_mapping> m_mapping;
     std::unique_ptr<object_load_context> m_occ;
 };

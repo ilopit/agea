@@ -117,11 +117,11 @@ public:
     object_properties_save(const smart_object& obj, serialization::conteiner& jc);
 
     template <typename T>
-    static std::shared_ptr<smart_object>
-    alloc_empty_object()
+    static std::shared_ptr<T>
+    alloc_empty_object(const utils::id& id = T::META_type_id())
     {
         auto empty = T::META_class_create_empty_obj();
-        empty->META_set_id(T::META_type_id());
+        empty->META_set_id(id);
 
         return empty;
     }
@@ -129,7 +129,8 @@ public:
     static smart_object*
     alloc_empty_object(const utils::id& type_id,
                        const utils::id& id,
-                       uint32_t flags,
+                       uint32_t extra_flags,
+                       bool add_global,
                        object_load_context& olc);
 
 private:

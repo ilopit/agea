@@ -13,6 +13,9 @@ namespace model
 class package_manager
 {
 public:
+    package_manager();
+    ~package_manager();
+
     bool
     init();
 
@@ -25,8 +28,8 @@ public:
     package*
     get_package(const utils::id& id);
 
-    package*
-    create_package(const utils::id& id);
+    bool
+    register_package(std::unique_ptr<package>& pkg);
 
 protected:
     std::unordered_map<utils::id, std::unique_ptr<package>> m_packages;

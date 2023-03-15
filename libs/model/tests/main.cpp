@@ -5,6 +5,7 @@
 #include <model/reflection/property.h>
 #include <model/caches/empty_objects_cache.h>
 #include <model/reflection/lua_api.h>
+#include <model/package_manager.h>
 
 #include <utils/singleton_registry.h>
 
@@ -17,6 +18,7 @@ main(int argc, char** argv)
     auto& r = *registry;
     agea::glob::empty_objects_cache::create(r);
     agea::glob::lua_api::create(r);
+    agea::glob::package_manager::create(r);
 
     ::agea::reflection::entry::set_up();
 

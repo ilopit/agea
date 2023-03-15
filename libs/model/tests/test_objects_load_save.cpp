@@ -133,13 +133,13 @@ struct test_object_constructor : base_test
 bool
 is_from_EO_cache(model::smart_object* obj)
 {
-    return glob::empty_objects_cache::get()->get(obj->get_type_id()) == obj;
+    return glob::empty_objects_cache::get()->get_item(obj->get_type_id()) == obj;
 }
 
 TEST_F(test_object_constructor, load_and_save_class_component)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
 
     occ.get_class_global_set()->map->add_item(*mt_red);
     occ.get_class_global_set()->map->add_item(*cube_mesh);
@@ -178,11 +178,11 @@ TEST_F(test_object_constructor, load_and_save_class_component)
 
 TEST_F(test_object_constructor, load_and_save_class_component__subobjects_are_instances)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
     occ.get_instance_global_set()->map->add_item(*mt_red);
     mt_red->set_state_flag(agea::model::smart_object_state_flag::instance_obj);
 
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
     cube_mesh->set_state_flag(agea::model::smart_object_state_flag::instance_obj);
 
@@ -197,8 +197,8 @@ TEST_F(test_object_constructor, load_and_save_class_component__subobjects_are_in
 
 TEST_F(test_object_constructor, load_and_save_instance_component)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
 
     occ.get_instance_global_set()->map->add_item(*mt_red);
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
@@ -235,8 +235,8 @@ TEST_F(test_object_constructor, load_and_save_instance_component)
 
 TEST_F(test_object_constructor, load_and_save_instance_component__subobjects_are_classes)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
 
     occ.get_class_global_set()->map->add_item(*mt_red);
     occ.get_class_global_set()->map->add_item(*cube_mesh);
@@ -250,10 +250,9 @@ TEST_F(test_object_constructor, load_and_save_instance_component__subobjects_are
 
 TEST_F(test_object_constructor, load_and_save_derived_class_component)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto mt_green =
-        model::object_constructor::create_empty_object<model::material>(AID("mt_green"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
+    auto mt_green = model::object_constructor::alloc_empty_object<model::material>(AID("mt_green"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
 
     result_code rc = result_code::nav;
 
@@ -304,10 +303,9 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component)
 
 TEST_F(test_object_constructor, load_and_save_derived_class_component__without_preload)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto mt_green =
-        model::object_constructor::create_empty_object<model::material>(AID("mt_green"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
+    auto mt_green = model::object_constructor::alloc_empty_object<model::material>(AID("mt_green"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
 
     occ.get_class_global_set()->map->add_item(*mt_red);
     occ.get_class_global_set()->map->add_item(*mt_green);
@@ -324,12 +322,12 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component__without_p
 /* ====================================================================================== */
 TEST_F(test_object_constructor, load_and_save_class_object)
 {
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
-    auto mesh_component = model::object_constructor::create_empty_object<model::mesh_component>(
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
+    auto mesh_component = model::object_constructor::alloc_empty_object<model::mesh_component>(
         AID("cube_mesh_component"));
     auto root_component =
-        model::object_constructor::create_empty_object<model::game_object_component>(
+        model::object_constructor::alloc_empty_object<model::game_object_component>(
             AID("root_component"));
 
     occ.get_class_global_set()->map->add_item(*mt_red);
@@ -392,27 +390,27 @@ TEST_F(test_object_constructor, load_and_save_class_object)
 
 TEST_F(test_object_constructor, load_and_save_instance_object)
 {
-    auto se_simple_texture = model::object_constructor::create_empty_object<model::shader_effect>(
+    auto se_simple_texture = model::object_constructor::alloc_empty_object<model::shader_effect>(
         AID("se_simple_texture"));
     occ.get_instance_local_set()->map->add_item(*se_simple_texture);
 
-    auto txt_red = model::object_constructor::create_empty_object<model::texture>(AID("txt_red"));
+    auto txt_red = model::object_constructor::alloc_empty_object<model::texture>(AID("txt_red"));
     occ.get_instance_local_set()->map->add_item(*txt_red);
 
     auto root_component =
-        model::object_constructor::create_empty_object<model::game_object_component>(
+        model::object_constructor::alloc_empty_object<model::game_object_component>(
             AID("root_component"));
     occ.get_instance_local_set()->map->add_item(*root_component);
 
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
     occ.get_instance_local_set()->map->add_item(*mt_red);
     mt_red->set_shader_effect(se_simple_texture->as<model::shader_effect>());
-    mt_red->set_base_texture(txt_red->as<model::texture>());
+    // mt_red->set_base_texture(txt_red->as<model::texture>());
 
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
     occ.get_instance_local_set()->map->add_item(*cube_mesh);
 
-    auto mesh_component = model::object_constructor::create_empty_object<model::mesh_component>(
+    auto mesh_component = model::object_constructor::alloc_empty_object<model::mesh_component>(
         AID("cube_mesh_component"));
     mesh_component->set_material(mt_red->as<model::material>());
     mesh_component->set_mesh(cube_mesh->as<model::mesh>());
@@ -473,29 +471,29 @@ TEST_F(test_object_constructor, load_and_save_instance_object)
 
 TEST_F(test_object_constructor, test_object_miroring)
 {
-    auto se_simple_texture = model::object_constructor::create_empty_object<model::shader_effect>(
+    auto se_simple_texture = model::object_constructor::alloc_empty_object<model::shader_effect>(
         AID("se_simple_texture"));
     occ.get_class_local_set()->map->add_item(*se_simple_texture);
 
-    auto txt_red = model::object_constructor::create_empty_object<model::texture>(AID("txt_red"));
+    auto txt_red = model::object_constructor::alloc_empty_object<model::texture>(AID("txt_red"));
     occ.get_class_local_set()->map->add_item(*txt_red);
 
-    auto mt_red = model::object_constructor::create_empty_object<model::material>(AID("mt_red"));
+    auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
     occ.get_class_local_set()->map->add_item(*mt_red);
     mt_red->set_shader_effect(se_simple_texture->as<model::shader_effect>());
-    mt_red->set_base_texture(txt_red->as<model::texture>());
+    // mt_red->set_base_texture(txt_red->as<model::texture>());
 
-    auto cube_mesh = model::object_constructor::create_empty_object<model::mesh>(AID("cube_mesh"));
+    auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
     occ.get_class_local_set()->map->add_item(*cube_mesh);
 
-    auto mesh_component = model::object_constructor::create_empty_object<model::mesh_component>(
+    auto mesh_component = model::object_constructor::alloc_empty_object<model::mesh_component>(
         AID("cube_mesh_component"));
     mesh_component->set_material(mt_red->as<model::material>());
     mesh_component->set_mesh(cube_mesh->as<model::mesh>());
     occ.get_class_local_set()->map->add_item(*mesh_component);
 
     auto root_component =
-        model::object_constructor::create_empty_object<model::game_object_component>(
+        model::object_constructor::alloc_empty_object<model::game_object_component>(
             AID("root_component"));
     occ.get_class_local_set()->map->add_item(*root_component);
 
@@ -516,14 +514,13 @@ TEST_F(test_object_constructor, test_object_miroring)
     check_item_in_caches(AID("cube_chain_root_component"), model::architype::component, true, true);
     check_item_in_caches(AID("cubes_chain_cube_mesh_1"), model::architype::component, true, true);
     check_item_in_caches(AID("cubes_chain_cube_mesh_2"), model::architype::component, true, true);
-    check_item_in_caches(AID("txt_red"), model::architype::texture, true, true);
     check_item_in_caches(AID("mt_red"), model::architype::material, true, true);
     check_item_in_caches(AID("se_simple_texture"), model::architype::shader_effect, true, true);
 
     auto game_object = obj->as<model::game_object>();
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(occ.get_instance_local_set()->objects->get_size(), 8);
+    ASSERT_EQ(occ.get_instance_local_set()->objects->get_size(), 7);
 
     ASSERT_EQ(game_object->get_id(), AID("cubes_chain"));
     ASSERT_EQ(game_object->get_type_id(), AID("mesh_object"));

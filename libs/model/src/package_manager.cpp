@@ -23,9 +23,22 @@ glob::package_manager::type glob::package_manager::type::s_instance;
 namespace model
 {
 
+package_manager::package_manager()
+{
+}
+
+package_manager::~package_manager()
+{
+}
+
 bool
 package_manager::init()
 {
+    for (auto& p : m_packages)
+    {
+        p.second->init_global_cache_reference();
+        p.second->register_in_global_cache();
+    }
     return true;
 }
 
@@ -64,6 +77,7 @@ package_manager::load_package(const utils::id& id)
     new_package->m_save_root_path = path.parent();
 
     new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
+    new_package->init_global_cache_reference();
 
     std::vector<smart_object*> loaded_obj;
     for (auto& i : mapping->m_items)
@@ -103,6 +117,7 @@ package_manager::load_package(const utils::id& id)
         }
     }
 
+    new_package->register_in_global_cache();
     new_package->set_state(package_state::loaded);
 
     m_packages[id] = std::move(new_package);
@@ -197,20 +212,18 @@ package_manager::get_package(const utils::id& id)
     return itr != m_packages.end() ? (itr->second.get()) : nullptr;
 }
 
-package*
-package_manager::create_package(const utils::id& id)
+bool
+package_manager::register_package(std::unique_ptr<package>& pkg)
 {
-    auto itr = m_packages.find(id);
+    auto itr = m_packages.find(pkg->get_id());
     if (itr != m_packages.end())
     {
-        return nullptr;
+        return false;
     }
 
-    auto& p = m_packages[id];
+    m_packages[pkg->get_id()] = std::move(pkg);
 
-    p = std::make_unique<package>(id);
-
-    return p.get();
+    return true;
 }
 
 }  // namespace model

@@ -66,7 +66,7 @@ object_load_context::make_full_path(const utils::id& id, utils::path& p) const
 }
 
 bool
-object_load_context::add_obj(std::shared_ptr<smart_object> obj)
+object_load_context::add_obj(std::shared_ptr<smart_object> obj, bool add_global)
 {
     AGEA_check(m_ownable_cache_ptr, "Should exists!");
     AGEA_check(obj, "Should exists!");
@@ -78,15 +78,27 @@ object_load_context::add_obj(std::shared_ptr<smart_object> obj)
     switch (m_construction_type)
     {
     case object_load_type::class_obj:
+    {
         m_class_local_set->map->add_item(obj_ref);
-        m_class_global_set->map->add_item(obj_ref);
+
+        if (add_global)
+        {
+            m_class_global_set->map->add_item(obj_ref);
+        }
+
         break;
+    }
     case object_load_type::instance_obj:
     case object_load_type::mirror_copy:
+    {
         m_instance_local_set->map->add_item(obj_ref);
-        m_instance_global_set->map->add_item(obj_ref);
+
+        if (add_global)
+        {
+            m_instance_global_set->map->add_item(obj_ref);
+        }
         break;
-    case object_load_type::nav:
+    }
     default:
         AGEA_never("Unsupported type type");
         break;

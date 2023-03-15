@@ -97,8 +97,6 @@ vulkan_engine::init()
 
     glob::init_global_caches(*m_registry);
 
-    glob::package_manager::getr().init();
-
     glob::resource_locator::get()->init_local_dirs();
     auto cfgs_folder = glob::resource_locator::get()->resource_dir(category::configs);
 
@@ -109,6 +107,7 @@ vulkan_engine::init()
     glob::input_manager::get()->load_actions(input_config);
 
     ::agea::reflection::entry::set_up();
+    glob::package_manager::getr().init();
 
     glob::game_editor::get()->init();
 

@@ -8,10 +8,10 @@ namespace utils
 dynamic_object
 basic_dynamic_object_layout_builder::make_obj()
 {
-    return dynamic_object(m_layout);
+    return dynamic_object(m_layout, m_layout->get_object_size());
 }
 
-agea::utils::dynamic_object
+dynamic_object
 basic_dynamic_object_layout_builder::make_empty_obj()
 {
     return dynamic_object(m_layout);

@@ -36,12 +36,15 @@ reflection::entry::set_up()
     property_type_serialization_update_handlers::init();
     property_type_compare_handlers::init();
 
-    auto pkg = glob::package_manager::getr().create_package(AID("agea"));
+    auto pkg = std::make_unique<package>(AID("agea"));
 
 """
 
 default_footer = """
     object_reflection::fill_properties();
+
+    glob::package_manager::getr().register_package(pkg);
+
     return true;
 }
 // clang-format on
@@ -114,7 +117,7 @@ reflection::object_reflection*
     return &rt;
 }}
 
-reflection::object_reflection*
+const reflection::object_reflection*
 {0}::reflection() const
 {{
     return this_class::META_object_reflection();
