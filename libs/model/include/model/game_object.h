@@ -28,11 +28,19 @@ public:
     bool
     construct(construct_params& params);
 
+    virtual bool
+    post_construct() override;
+
+    virtual bool
+    post_load() override;
+
     void
     attach(component* c);
 
-    bool
-    post_construct();
+    component*
+    spawn_component(const utils::id& type_id,
+                    const utils::id& id,
+                    const model::component::construct_params& params);
 
     virtual void
     on_tick(float dt)
@@ -106,9 +114,12 @@ public:
 
 protected:
     void
-    recreate_structure_form_layout(component* parent,
-                                   uint32_t& position,
-                                   uint32_t& total_subojects_count);
+    recreate_structure_form_layout_impl(component* parent,
+                                        uint32_t& position,
+                                        uint32_t& total_subojects_count);
+
+    void
+    recreate_renderable_components();
 
     AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
     vec3* m_position = nullptr;

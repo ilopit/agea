@@ -95,7 +95,7 @@ package_manager::load_package(const utils::id& id)
 
         for (auto& o : loaded_obj)
         {
-            o->META_post_construct();
+            o->post_load();
             o->set_state(smart_object_state::constructed);
         }
 
@@ -112,7 +112,7 @@ package_manager::load_package(const utils::id& id)
 
         for (auto o : loaded_obj)
         {
-            o->META_post_construct();
+            o->post_load();
             o->set_state(smart_object_state::constructed);
         }
     }

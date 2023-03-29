@@ -2,6 +2,8 @@
 
 #include "model/components/component.h"
 #include "model/game_object.h"
+#include "model/components/component.h"
+#include "model/package.h"
 #include "model/mesh_object.h"
 #include "model/caches/empty_objects_cache.h"
 #include "model/caches/objects_cache.h"
@@ -96,49 +98,6 @@ object_constructor::mirror_object(const utils::id& class_object_id,
     return rc;
 }
 
-smart_object*
-object_constructor::construct_package_object(const utils::id& type_id,
-                                             const utils::id& id,
-                                             const model::smart_object::construct_params& params,
-                                             object_load_context& olc)
-{
-    auto proto_obj = olc.find_class_obj(id);
-
-    if (proto_obj)
-    {
-        return nullptr;
-    }
-
-    olc.set_construction_type(object_load_type::class_obj);
-    auto obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
-    if (!obj->META_construct(params))
-    {
-        return nullptr;
-    }
-
-    if (!obj->META_post_construct())
-    {
-        return nullptr;
-    }
-
-    obj->set_state(smart_object_state::constructed);
-
-    olc.set_construction_type(object_load_type::mirror_copy);
-    obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
-    if (!obj->META_construct(params))
-    {
-        return nullptr;
-    }
-    if (!obj->META_post_construct())
-    {
-        return nullptr;
-    }
-
-    obj->set_state(smart_object_state::constructed);
-
-    return obj;
-}
-
 result_code
 object_constructor::object_clone(smart_object& src,
                                  const utils::id& new_object_id,
@@ -181,6 +140,75 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
     olc.push_object_loaded(ptr);
 
     return ptr;
+}
+
+smart_object*
+object_constructor::object_construct(const utils::id& type_id,
+                                     const utils::id& id,
+                                     const model::smart_object::construct_params& params,
+                                     object_load_context& olc)
+{
+    auto package = olc.get_package();
+    auto level = olc.get_level();
+
+    smart_object* obj = nullptr;
+
+    if (package)
+    {
+        auto prev_ct = olc.get_construction_type();
+
+        AGEA_check(prev_ct != object_load_type::instance_obj, "ct missmatch!");
+
+        auto proto_obj = olc.find_class_obj(id);
+
+        olc.set_construction_type(object_load_type::class_obj);
+        obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
+        if (!obj->META_construct(params))
+        {
+            return nullptr;
+        }
+
+        if (!obj->post_construct())
+        {
+            return nullptr;
+        }
+
+        obj->set_state(smart_object_state::constructed);
+
+        olc.set_construction_type(object_load_type::mirror_copy);
+        obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
+        if (!obj->META_construct(params))
+        {
+            return nullptr;
+        }
+        if (!obj->post_construct())
+        {
+            return nullptr;
+        }
+
+        obj->set_state(smart_object_state::constructed);
+
+        olc.set_construction_type(prev_ct);
+    }
+    else if (level)
+    {
+        AGEA_check(olc.get_construction_type() == object_load_type::mirror_copy, "ct missmatch!");
+
+        olc.set_construction_type(object_load_type::mirror_copy);
+        obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
+        if (!obj->META_construct(params))
+        {
+            return nullptr;
+        }
+        if (!obj->post_construct())
+        {
+            return nullptr;
+        }
+
+        obj->set_state(smart_object_state::constructed);
+    }
+
+    return obj;
 }
 
 result_code

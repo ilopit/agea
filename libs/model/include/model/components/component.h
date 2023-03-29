@@ -108,12 +108,12 @@ public:
     }
 
     void
-    set_owner(game_object* o)
+    set_owner(const game_object* o)
     {
         m_owner_obj = o;
     }
 
-    game_object*
+    const game_object*
     get_owner() const
     {
         return m_owner_obj;
@@ -132,7 +132,7 @@ public:
     }
 
     component&
-    add_child(component* c)
+    attach(component* c)
     {
         m_children.push_back(c);
 
@@ -148,14 +148,8 @@ public:
         return m_parent;
     }
 
-    virtual void
-    attach(component* c)
-    {
-        m_children.push_back(c);
-    }
-
     const std::vector<component*>&
-    get_subcomponents() const
+    get_children() const
     {
         return m_children;
     }
@@ -191,7 +185,7 @@ public:
         return m_total_subcomponents;
     }
 
-    game_object* m_owner_obj = nullptr;
+    const game_object* m_owner_obj = nullptr;
     component* m_parent = nullptr;
 
     uint32_t m_order_idx = NO_index;

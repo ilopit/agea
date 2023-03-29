@@ -132,12 +132,6 @@ bool
     return construct(*cp);
 }}
 
-bool
-{0}::META_post_construct()
-{{
-    return post_construct();
-}}
-
 std::shared_ptr<::smart_object>
 {0}::META_create_empty_obj()
 {{

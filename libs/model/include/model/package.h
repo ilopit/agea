@@ -98,7 +98,7 @@ public:
     }
 
     object_load_context&
-    get_load_context()
+    get_load_context() const
     {
         return *m_occ.get();
     }
@@ -107,7 +107,7 @@ public:
     smart_object*
     spawn_object(const utils::id& id, typename const T::construct_params& p)
     {
-        return object_constructor::construct_package_object(T::META_type_id(), id, p, *m_occ);
+        return object_constructor::object_construct(T::META_type_id(), id, p, *m_occ);
     }
 
     template <typename T>

@@ -114,7 +114,7 @@ level_manager::load_level_path(level& l,
 
         for (auto o : loaded_obj)
         {
-            o->META_post_construct();
+            o->post_load();
             o->set_state(smart_object_state::constructed);
 
             if (auto game_obj = o->as<game_object>())

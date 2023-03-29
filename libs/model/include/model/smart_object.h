@@ -44,8 +44,6 @@
                                                                           \
     virtual bool META_construct(const smart_object::construct_params& i); \
                                                                           \
-    virtual bool META_post_construct();                                   \
-                                                                          \
     virtual std::shared_ptr<smart_object> META_create_empty_obj();        \
                                                                           \
     static std::shared_ptr<this_class> META_class_create_empty_obj();
@@ -142,8 +140,11 @@ public:
         return true;
     }
 
-    bool
+    virtual bool
     post_construct();
+
+    virtual bool
+    post_load();
 
     const smart_object*
     get_class_obj() const
@@ -155,6 +156,12 @@ public:
     get_package() const
     {
         return m_package;
+    }
+
+    const level*
+    get_level() const
+    {
+        return m_level;
     }
 
     smart_object_state

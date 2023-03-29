@@ -555,8 +555,8 @@ TEST_F(test_object_constructor, construct_package_obj)
 {
     model::package p(AID("AID"));
 
-    auto obj = model::object_constructor::construct_package_object(
-        model::mesh::META_type_id(), AID(""), model::mesh::construct_params(),
-        p.get_load_context());
+    auto obj = model::object_constructor::object_construct(model::mesh::META_type_id(), AID(""),
+                                                           model::mesh::construct_params(),
+                                                           p.get_load_context());
     ASSERT_TRUE(obj);
 }

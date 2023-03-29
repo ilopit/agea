@@ -61,12 +61,12 @@ TEST_F(test_game_object_structure, generate_from_ids)
     c4->set_order_parent_idx(4, 2);
     c5->set_order_parent_idx(5, 4);
 
-    go->attach_component(c1.get());
-    go->attach_component(c3.get());
-    go->attach_component(c0.get());
-    go->attach_component(c2.get());
-    go->attach_component(c5.get());
-    go->attach_component(c4.get());
+    go->attach(c1.get());
+    go->attach(c3.get());
+    go->attach(c0.get());
+    go->attach(c2.get());
+    go->attach(c5.get());
+    go->attach(c4.get());
 
     go->recreate_structure_from_ids();
 
@@ -93,9 +93,9 @@ TEST_F(test_game_object_structure, generate_from_structure)
        - 2  - 3
             - 4 - 5
     */
-    c0->add_child(c1.get()).add_child(c2.get());
-    c2->add_child(c3.get()).add_child(c4.get());
-    c4->add_child(c5.get());
+    c0->attach(c1.get()).attach(c2.get());
+    c2->attach(c3.get()).attach(c4.get());
+    c4->attach(c5.get());
 
     go->set_root_component(c0.get());
 

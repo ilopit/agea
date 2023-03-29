@@ -136,6 +136,12 @@ public:
         return m_package_ids;
     }
 
+    object_load_context&
+    get_load_context() const
+    {
+        return *m_occ;
+    }
+
 private:
     utils::id m_id;
 

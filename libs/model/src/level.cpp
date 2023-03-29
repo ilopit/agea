@@ -61,7 +61,7 @@ level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
 
     for (auto o : loaded_obj)
     {
-        o->META_post_construct();
+        o->post_load();
         o->set_state(smart_object_state::constructed);
     }
 

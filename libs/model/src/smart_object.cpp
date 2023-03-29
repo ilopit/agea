@@ -13,5 +13,11 @@ smart_object::post_construct()
     return true;
 }
 
+bool
+smart_object::post_load()
+{
+    return true;
+}
+
 }  // namespace model
 }  // namespace agea
