@@ -125,7 +125,7 @@ scene_builder::extract_gpu_data(model::smart_object& so,
     auto fitr = ct.layout->get_fields().begin();
     auto src_obj_ptr = so.as_blob();
 
-    utils::dynamic_object dyn_obj(ct.layout, ct.layout->get_size());
+    utils::dynamic_object dyn_obj(ct.layout, ct.layout->get_object_size());
 
     AGEA_check(ct.offset_in_object.size() == ct.layout->get_fields().size(), "Should be same!");
 
@@ -308,15 +308,6 @@ scene_builder::pfr_texture(model::smart_object& obj, bool sub_object)
 bool
 scene_builder::pfr_game_object_component(model::smart_object& obj, bool sub_object)
 {
-    auto& t = obj.asr<model::game_object_component>();
-
-    for (auto o : t.get_render_components())
-    {
-        if (!prepare_for_rendering(*o, sub_object))
-        {
-            return false;
-        }
-    }
     return true;
 }
 
@@ -325,13 +316,14 @@ scene_builder::pfr_game_object(model::smart_object& obj, bool sub_object)
 {
     auto& t = obj.asr<model::game_object>();
 
-    auto root = t.get_root_component();
-    root->update_matrix();
-
-    if (!prepare_for_rendering(*root, sub_object))
+    for (auto& o : t.get_renderable_components())
     {
-        return false;
+        if (!prepare_for_rendering(*o, sub_object))
+        {
+            return false;
+        }
     }
+
     return true;
 }
 

@@ -76,11 +76,6 @@ game_object_component::update_matrix()
     }
 
     m_normal_matrix = glm::transpose(glm::inverse(m_transform_matrix));
-
-    for (auto c : m_render_components)
-    {
-        c->update_matrix();
-    }
 }
 
 void

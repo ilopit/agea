@@ -236,7 +236,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
                            current_frame);
     }
 
-    if (m_transparent_render_object_queue.empty())
+    if (!m_transparent_render_object_queue.empty())
     {
         update_transparent_objects_queue();
         draw_objects_queue(m_transparent_render_object_queue, cmd, current_frame.m_object_buffer,

@@ -220,7 +220,6 @@ protected:
     level* m_level = nullptr;
 
     smart_object_state m_obj_state = smart_object_state::empty;
-
     uint32_t m_obj_internal_state = smart_object_state_flag::empty;
 };
 

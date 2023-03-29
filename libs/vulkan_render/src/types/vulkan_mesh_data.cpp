@@ -16,7 +16,7 @@ convert_to_vertex_input_description(agea::utils::dynamic_object_layout& dol)
 
     VkVertexInputBindingDescription main_binding = {};
     main_binding.binding = 0;
-    main_binding.stride = dol.get_size();
+    main_binding.stride = dol.get_object_size();
     main_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
     description.bindings.push_back(main_binding);

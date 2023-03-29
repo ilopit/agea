@@ -328,7 +328,7 @@ object_editor::draw_components(model::game_object_component* root, selection_con
         node_flags |= ImGuiTreeNodeFlags_Selected;
     }
 
-    if (root->get_attached_components().empty())
+    if (root->get_subcomponents().empty())
     {
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
@@ -348,9 +348,9 @@ object_editor::draw_components(model::game_object_component* root, selection_con
 
     if (open)
     {
-        if (!root->get_attached_components().empty())
+        if (!root->get_subcomponents().empty())
         {
-            for (auto obj : root->get_attached_components())
+            for (auto obj : root->get_subcomponents())
             {
                 draw_components((model::game_object_component*)obj, sc);
             }

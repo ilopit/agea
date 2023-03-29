@@ -8,7 +8,7 @@
 #include <model/object_load_context.h>
 #include <model/level.h>
 #include <model/level_manager.h>
-
+#include <model/package.h>
 #include <model/game_object.h>
 #include <model/objects_mapping.h>
 #include <model/components/mesh_component.h>
@@ -549,4 +549,14 @@ TEST_F(test_object_constructor, test_object_miroring)
         ASSERT_EQ(component->get_parent_idx(), 0);
         ASSERT_FALSE(is_from_EO_cache(component));
     }
+}
+
+TEST_F(test_object_constructor, construct_package_obj)
+{
+    model::package p(AID("AID"));
+
+    auto obj = model::object_constructor::construct_package_object(
+        model::mesh::META_type_id(), AID(""), model::mesh::construct_params(),
+        p.get_load_context());
+    ASSERT_TRUE(obj);
 }

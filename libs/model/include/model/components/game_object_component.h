@@ -89,23 +89,10 @@ public:
         }
     }
 
-    virtual void
-    attach(component* c)
-    {
-        base_class::attach(c);
-
-        m_render_components.push_back((game_object_component*)c);
-    }
-
-    std::vector<game_object_component*>&
+    std::vector<component*>&
     get_render_components()
     {
-        return m_render_components;
-    }
-
-    virtual void
-    on_tick(float dt)
-    {
+        return m_components;
     }
 
     render::object_data*
@@ -155,7 +142,7 @@ protected:
     glm::mat4 m_normal_matrix;
     glm::vec4 m_world_position;
 
-    std::vector<game_object_component*> m_render_components;
+    std::vector<component*> m_components;
 
     bool m_has_dirty_transform = false;
 

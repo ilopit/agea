@@ -74,8 +74,10 @@ level::tick(float dt)
     for (auto o : m_tickable_objects)
     {
         o->on_tick(dt);
-        game_object::over_tickable(o->get_root_component(),
-                                   [dt](game_object_component* obj) { obj->on_tick(dt); });
+        for (auto c : o->get_renderable_components())
+        {
+            c->on_tick(dt);
+        }
     }
 }
 

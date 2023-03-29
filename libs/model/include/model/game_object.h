@@ -26,9 +26,24 @@ public:
     AGEA_gen_meta_architype_api(game_object);
 
     bool
-    construct(construct_params& params)
+    construct(construct_params& params);
+
+    void
+    attach(component* c);
+
+    bool
+    post_construct();
+
+    virtual void
+    on_tick(float dt)
     {
-        return base_class::construct(params);
+    }
+
+    component*
+    get_component_at(size_t idx) const
+    {
+        AGEA_check(idx < m_components.size(), "Index should be in range");
+        return m_components[idx];
     }
 
     AGEA_function("category=world");
@@ -59,17 +74,6 @@ public:
         return m_root_component->get_right_vector();
     }
 
-    virtual void
-    on_tick(float dt)
-    {
-    }
-
-    void
-    attach_component(component* c)
-    {
-        c->set_owner(this);
-    }
-
     void
     set_root_component(game_object_component* root)
     {
@@ -82,31 +86,30 @@ public:
         return m_root_component;
     }
 
-    void
-    build_components_structure();
-
-    bool
-    post_construct();
-
-    component*
-    get_component_at(size_t idx) const
+    std::vector<game_object_component*>&
+    get_renderable_components()
     {
-        AGEA_check(idx < m_components.size(), "Index should be in range");
-        return m_components[idx];
+        return m_renderable_components;
     }
 
-    template <typename T>
-    static void
-    over_tickable(game_object_component* obj, const T& pred)
+    void
+    recreate_structure_form_layout();
+
+    void
+    recreate_structure_from_ids();
+
+    Range<component>
+    get_components()
     {
-        pred(obj);
-        for (auto o : obj->get_render_components())
-        {
-            over_tickable<T>(o, pred);
-        }
+        return {m_components.begin(), m_components.end()};
     }
 
 protected:
+    void
+    recreate_structure_form_layout(component* parent,
+                                   uint32_t& position,
+                                   uint32_t& total_subojects_count);
+
     AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
     vec3* m_position = nullptr;
 
@@ -125,7 +128,7 @@ protected:
                   "property_copy_handler=custom::game_object_components_copy");
     std::vector<component*> m_components;
 
-    std::vector<component*> m_render_components;
+    std::vector<game_object_component*> m_renderable_components;
 
     game_object_component* m_root_component = nullptr;
 
