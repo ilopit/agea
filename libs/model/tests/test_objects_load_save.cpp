@@ -180,11 +180,11 @@ TEST_F(test_object_constructor, load_and_save_class_component__subobjects_are_in
 {
     auto mt_red = model::object_constructor::alloc_empty_object<model::material>(AID("mt_red"));
     occ.get_instance_global_set()->map->add_item(*mt_red);
-    mt_red->set_state_flag(agea::model::smart_object_state_flag::instance_obj);
+    mt_red->set_flag(agea::model::smart_object_state_flag::instance_obj);
 
     auto cube_mesh = model::object_constructor::alloc_empty_object<model::mesh>(AID("cube_mesh"));
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
-    cube_mesh->set_state_flag(agea::model::smart_object_state_flag::instance_obj);
+    cube_mesh->set_flag(agea::model::smart_object_state_flag::instance_obj);
 
     model::smart_object* obj = nullptr;
     auto rc = model::object_constructor::object_load(

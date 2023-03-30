@@ -68,7 +68,7 @@ package::register_in_global_cache()
     {
         auto& obj = *i.second;
 
-        AGEA_check(obj.has_state_flag(model::smart_object_state_flag::proto_obj),
+        AGEA_check(obj.has_flag(model::smart_object_state_flag::proto_obj),
                    "Should be only proto!");
 
         m_class_global_set->map->add_item(obj);
@@ -80,8 +80,8 @@ package::register_in_global_cache()
     for (auto& i : m_instance_local_set.objects->get_items())
     {
         auto& obj = *i.second;
-        AGEA_check(!obj.has_state_flag(model::smart_object_state_flag::proto_obj) &&
-                       obj.has_state_flag(model::smart_object_state_flag::mirror),
+        AGEA_check(!obj.has_flag(model::smart_object_state_flag::proto_obj) &&
+                       obj.has_flag(model::smart_object_state_flag::mirror),
                    "Should NOT be only proto!");
 
         m_instance_global_set->map->add_item(obj);

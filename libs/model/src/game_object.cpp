@@ -60,15 +60,19 @@ game_object::post_construct()
 {
     AGEA_check(get_state() == smart_object_state::loaded, "Should be in proper place");
 
-    AGEA_return_nok(base_class::post_construct());
+    recreate_structure_from_layout();
 
-    recreate_structure_form_layout();
+    for (auto c : m_components)
+    {
+        c->set_state(smart_object_state::constructed);
+    }
+
+    set_state(smart_object_state::constructed);
 
     for (auto c : m_renderable_components)
     {
         c->update_matrix();
     }
-
     return true;
 }
 
@@ -77,15 +81,19 @@ game_object::post_load()
 {
     AGEA_check(get_state() == smart_object_state::loaded, "Should be in proper place");
 
-    AGEA_return_nok(base_class::post_load());
-
     recreate_structure_from_ids();
+
+    for (auto c : m_components)
+    {
+        c->set_state(smart_object_state::constructed);
+    }
+
+    set_state(smart_object_state::constructed);
 
     for (auto c : m_renderable_components)
     {
         c->update_matrix();
     }
-
     return true;
 }
 
@@ -114,7 +122,7 @@ game_object::recreate_structure_form_layout_impl(component* parent,
 }
 
 void
-game_object::recreate_structure_form_layout()
+game_object::recreate_structure_from_layout()
 {
     uint32_t last_obj_id = 0, subobj_count = 0;
 
@@ -123,11 +131,11 @@ game_object::recreate_structure_form_layout()
     m_components.clear();
 
     recreate_structure_form_layout_impl(m_root_component, last_obj_id, subobj_count);
-    recreate_renderable_components();
+    fill_renderable_components();
 }
 
 void
-game_object::recreate_renderable_components()
+game_object::fill_renderable_components()
 {
     for (auto c : m_components)
     {
@@ -168,7 +176,7 @@ game_object::recreate_structure_from_ids()
 
     m_root_component->count_child_nodes();
 
-    recreate_renderable_components();
+    fill_renderable_components();
 }
 
 }  // namespace model

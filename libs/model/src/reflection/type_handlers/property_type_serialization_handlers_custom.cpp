@@ -131,7 +131,7 @@ game_object_components_serialize(serialize_context& dc)
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (class_obj.has_state_flag(model::smart_object_state_flag::standalone))
+    if (class_obj.has_flag(model::smart_object_state_flag::standalone))
     {
         serialization::conteiner components_conteiner;
         serialization::conteiner components_layout;

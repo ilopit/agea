@@ -425,7 +425,7 @@ scene_builder::pfr_empty(model::smart_object&, bool)
 bool
 scene_builder::prepare_for_rendering(model::smart_object& obj, bool sub_objects)
 {
-    AGEA_check(!obj.has_state_flag(model::smart_object_state_flag::proto_obj), "");
+    AGEA_check(!obj.has_flag(model::smart_object_state_flag::proto_obj), "");
 
     if (obj.get_state() == model::smart_object_state::render_ready)
     {

@@ -101,7 +101,7 @@ public:
     }
 
     void
-    recreate_structure_form_layout();
+    recreate_structure_from_layout();
 
     void
     recreate_structure_from_ids();
@@ -119,7 +119,7 @@ protected:
                                         uint32_t& total_subojects_count);
 
     void
-    recreate_renderable_components();
+    fill_renderable_components();
 
     AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
     vec3* m_position = nullptr;

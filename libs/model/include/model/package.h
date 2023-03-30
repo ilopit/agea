@@ -105,7 +105,7 @@ public:
 
     template <typename T>
     smart_object*
-    spawn_object(const utils::id& id, typename const T::construct_params& p)
+    add_object(const utils::id& id, typename const T::construct_params& p)
     {
         return object_constructor::object_construct(T::META_type_id(), id, p, *m_occ);
     }

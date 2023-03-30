@@ -99,10 +99,5 @@ TEST_F(test_game_object_structure, generate_from_structure)
 
     go->set_root_component(c0.get());
 
-    go->recreate_structure_form_layout();
-
-    for (auto& c : go->get_components())
-    {
-        std::cout << c.get_id() << std::endl;
-    }
+    go->recreate_structure_from_layout();
 }

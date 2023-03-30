@@ -31,15 +31,15 @@ update_flags(object_load_type type, smart_object& obj)
 {
     if (type == object_load_type::mirror_copy)
     {
-        obj.set_state_flag(smart_object_state_flag::mirror);
+        obj.set_flag(smart_object_state_flag::mirror);
     }
     else if (type == object_load_type::instance_obj)
     {
-        obj.set_state_flag(smart_object_state_flag::instance_obj);
+        obj.set_flag(smart_object_state_flag::instance_obj);
     }
     else if (type == object_load_type::class_obj)
     {
-        obj.set_state_flag(smart_object_state_flag::proto_obj);
+        obj.set_flag(smart_object_state_flag::proto_obj);
     }
 }
 
@@ -129,7 +129,7 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
 
     auto empty = eoc_item->META_create_empty_obj();
     empty->META_set_id(id);
-    empty->set_state_flag(extra_flags);
+    empty->set_flag(extra_flags);
     empty->set_package(olc.get_package());
     empty->set_level(olc.get_level());
 
@@ -159,8 +159,6 @@ object_constructor::object_construct(const utils::id& type_id,
 
         AGEA_check(prev_ct != object_load_type::instance_obj, "ct missmatch!");
 
-        auto proto_obj = olc.find_class_obj(id);
-
         olc.set_construction_type(object_load_type::class_obj);
         obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
         if (!obj->META_construct(params))
@@ -173,8 +171,6 @@ object_constructor::object_construct(const utils::id& type_id,
             return nullptr;
         }
 
-        obj->set_state(smart_object_state::constructed);
-
         olc.set_construction_type(object_load_type::mirror_copy);
         obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
         if (!obj->META_construct(params))
@@ -185,8 +181,6 @@ object_constructor::object_construct(const utils::id& type_id,
         {
             return nullptr;
         }
-
-        obj->set_state(smart_object_state::constructed);
 
         olc.set_construction_type(prev_ct);
     }
@@ -204,8 +198,6 @@ object_constructor::object_construct(const utils::id& type_id,
         {
             return nullptr;
         }
-
-        obj->set_state(smart_object_state::constructed);
     }
 
     return obj;
@@ -221,7 +213,7 @@ object_constructor::register_package_type_impl(std::shared_ptr<smart_object> emp
 
     glob::empty_objects_cache::get()->add_item(*empty);
 
-    empty->set_state_flag(smart_object_state_flag::proto_obj | smart_object_state_flag::empty_obj);
+    empty->set_flag(smart_object_state_flag::proto_obj | smart_object_state_flag::empty_obj);
 
     olc.set_construction_type(object_load_type::class_obj);
     olc.add_obj(empty, false);
@@ -420,12 +412,11 @@ object_constructor::object_load_internal(const utils::id& id,
 result_code
 object_constructor::object_save(const smart_object& obj, const utils::path& object_path)
 {
-    AGEA_check(!obj.has_state_flag(smart_object_state_flag::mirror),
-               "Mirro object should not be saved");
+    AGEA_check(!obj.has_flag(smart_object_state_flag::mirror), "Mirro object should not be saved");
 
     serialization::conteiner conteiner;
 
-    auto has_parent_obj = obj.has_state_flag(smart_object_state_flag::inhereted);
+    auto has_parent_obj = obj.has_flag(smart_object_state_flag::inhereted);
 
     if (has_parent_obj)
     {
@@ -674,7 +665,7 @@ object_constructor::object_load_partial(smart_object& prototype_obj,
 result_code
 object_constructor::object_save_partial(serialization::conteiner& sc, const smart_object& obj)
 {
-    AGEA_check(obj.has_state_flag(smart_object_state_flag::inhereted), "");
+    AGEA_check(obj.has_flag(smart_object_state_flag::inhereted), "");
 
     auto proto_obj = obj.get_class_obj();
 

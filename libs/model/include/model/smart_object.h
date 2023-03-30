@@ -177,13 +177,13 @@ public:
     }
 
     void
-    set_state_flag(uint32_t f)
+    set_flag(uint32_t f)
     {
         m_obj_internal_state |= f;
     }
 
     bool
-    has_state_flag(uint32_t f) const
+    has_flag(uint32_t f) const
     {
         return m_obj_internal_state & f;
     }

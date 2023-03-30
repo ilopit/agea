@@ -317,7 +317,7 @@ vulkan_engine::init_default_resources()
     p.indices = index_buffer;
     p.vertices = vert_buffer;
 
-    auto obj = pkg->spawn_object<model::mesh>(AID("plane_mesh"), p);
+    auto obj = pkg->add_object<model::mesh>(AID("plane_mesh"), p);
 
     m_scene->prepare_for_rendering(*obj, true);
 }
