@@ -1,6 +1,6 @@
 #pragma once
 
-#include "light_component.generated.h"
+#include "model/light_component.generated.h"
 
 #include "model/components/game_object_component.h"
 

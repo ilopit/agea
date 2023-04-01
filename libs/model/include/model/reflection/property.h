@@ -12,16 +12,20 @@
 
 namespace agea
 {
-namespace reflection
+
+namespace model
 {
 
-class entry
+class module_reflection
 {
 public:
     static bool
     set_up();
 };
+}  // namespace model
 
+namespace reflection
+{
 class property
 {
 public:

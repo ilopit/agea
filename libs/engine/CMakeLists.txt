@@ -10,6 +10,8 @@ target_link_libraries(engine PUBLIC
     agea::model
     agea::vulkan_render
     agea::asset_importer
+
+    demo
 )
 
 agea_finalize_library(engine)

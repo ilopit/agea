@@ -14,7 +14,6 @@
 #include <model/point_light.h>
 #include <model/components/light_component.h>
 #include <model/components/mesh_component.h>
-#include <model/demo/demo_mesh_component.h>
 
 #include <assets_importer/mesh_importer.h>
 #include <assets_importer/texture_importer.h>
@@ -108,7 +107,6 @@ scene_builder::scene_builder()
     m_pfr_handlers[model::game_object::META_type_id()] = &scene_builder::pfr_game_object;
     m_pfr_handlers[model::mesh_object::META_type_id()] = &scene_builder::pfr_game_object;
     m_pfr_handlers[model::mesh_component::META_type_id()] = &scene_builder::pfr_mesh_component;
-    m_pfr_handlers[model::demo_mesh_component::META_type_id()] = &scene_builder::pfr_mesh_component;
 
     m_pfr_handlers[model::shader_effect::META_type_id()] = &scene_builder::pfr_shader_effect;
     m_pfr_handlers[model::light_component::META_type_id()] = &scene_builder::pfr_game_object_component;

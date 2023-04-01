@@ -1,6 +1,6 @@
 #pragma once
 
-#include "component.generated.h"
+#include "model/component.generated.h"
 
 #include "model/smart_object.h"
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "asset.generated.h"
+#include "model/asset.generated.h"
 
 #include "model/smart_object.h"
 

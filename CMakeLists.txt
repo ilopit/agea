@@ -31,6 +31,7 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty)
 add_subdirectory(engine)
 add_subdirectory(libs)
+add_subdirectory(modules)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_SOURCE_DIR}/resources/assets

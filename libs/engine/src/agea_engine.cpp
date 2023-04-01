@@ -94,8 +94,15 @@ vulkan_engine::init()
     glob::vulkan_render::create(*m_registry);
     glob::id_generator::create(*m_registry);
     glob::engine_counters::create(*m_registry);
+    glob::module_manager::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
+
+    glob::module_manager::getr().register_module<model::model_module>();
+    for (auto& [id, m] : glob::module_manager::getr().modules())
+    {
+        m->init_reflection();
+    }
 
     glob::resource_locator::get()->init_local_dirs();
     auto cfgs_folder = glob::resource_locator::get()->resource_dir(category::configs);
@@ -106,7 +113,6 @@ vulkan_engine::init()
     utils::path input_config = cfgs_folder / "inputs.acfg";
     glob::input_manager::get()->load_actions(input_config);
 
-    ::agea::reflection::entry::set_up();
     glob::package_manager::getr().init();
 
     glob::game_editor::get()->init();
@@ -311,7 +317,7 @@ vulkan_engine::init_default_resources()
     //         AID("plane_mesh"), vert_buffer.make_view<render::gpu_vertex_data>(),
     //         index_buffer.make_view<render::gpu_index_data>());
 
-    auto pkg = glob::package_manager::getr().get_package(AID("agea"));
+    auto pkg = glob::package_manager::getr().get_package(AID("model"));
 
     model::mesh::construct_params p;
     p.indices = index_buffer;
@@ -326,41 +332,29 @@ void
 vulkan_engine::init_scene()
 {
     int i = 2;
-    //     auto rc = object_constructor::object_clone(*proto_obj, object_id, *m_occ, result,
-    //     loaded_obj); if (rc != result_code::ok)
-    //     {
-    //         return nullptr;
-    //     }
-    //
-    //     for (auto o : loaded_obj)
-    //     {
-    //         o->META_post_construct();
-    //         o->set_state(smart_object_state::constructed);
-    //     }
 
     load_level(glob::config::get()->level);
 
-    //     auto id1 = AID("decor");
-    //     auto id2 = AID("decor2");
-    //
-    //     for (int x = 0; x < 3; ++x)
-    //     {
-    //         for (int y = 0; y < 3; ++y)
-    //         {
-    //             for (int z = 0; z < 3; ++z)
-    //             {
-    //                 auto id = std::format("obj_{}_{}_{}", x, y, z);
-    //                 auto p = glob::level::getr().spawn_object<model::game_object>((z & 1) ? id1 :
-    //                 id2,
-    //                                                                               AID(id));
-    //
-    //                 p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z
-    //                 * 10.f});
-    //
-    //                 m_scene->prepare_for_rendering(*p, true);
-    //             }
-    //         }
-    //     }
+    auto id1 = AID("decor");
+    auto id2 = AID("decor2");
+
+    for (int x = 0; x < 3; ++x)
+    {
+        for (int y = 0; y < 3; ++y)
+        {
+            for (int z = 0; z < 3; ++z)
+            {
+                auto id = std::format("obj_{}_{}_{}", x, y, z);
+                auto p = glob::level::getr().spawn_object<model::game_object>((z & 1) ? id1 : id2,
+                                                                              AID(id));
+
+                p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z * 10.f});
+                p->update_position();
+
+                m_scene->prepare_for_rendering(*p, true);
+            }
+        }
+    }
 }
 
 void

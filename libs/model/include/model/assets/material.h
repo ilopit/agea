@@ -1,6 +1,6 @@
 #pragma once
 
-#include "material.generated.h"
+#include "model/material.generated.h"
 
 #include "model/assets/asset.h"
 #include "model/assets/texture_sample.h"

@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "mesh.generated.h"
+#include "model/mesh.generated.h"
 
 #include "model/assets/asset.h"
 

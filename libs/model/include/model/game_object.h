@@ -1,10 +1,11 @@
 #pragma once
 
-#include "game_object.generated.h"
+#include "model/game_object.generated.h"
 
 #include "model/model_minimal.h"
 #include "model/core_types/vec3.h"
 #include "model/components/game_object_component.h"
+#include "model/smart_object.h"
 
 namespace agea
 {
@@ -33,6 +34,9 @@ public:
 
     virtual bool
     post_load() override;
+
+    void
+    update_position();
 
     void
     attach(component* c);
@@ -120,15 +124,6 @@ protected:
 
     void
     fill_renderable_components();
-
-    AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
-    vec3* m_position = nullptr;
-
-    AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
-    vec3* m_rotation = nullptr;
-
-    AGEA_property("category=world", "access=read_only", "hint=x,y,z", "ref=true");
-    vec3* m_scale = nullptr;
 
     AGEA_property("category=meta",
                   "serializable=true",

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mesh_component.generated.h"
+#include "model/mesh_component.generated.h"
 
 #include "model/components/game_object_component.h"
 

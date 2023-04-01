@@ -24,17 +24,17 @@ camera_component::set_movement_speed(float ms)
 void
 camera_component::update_view()
 {
-    auto owner_obj = (game_object*)get_owner();
-    m_view = glm::lookAt(owner_obj->get_position(),
-                         owner_obj->get_position() + get_forward_vector(), get_up_vector());
+    //     auto owner_obj = (game_object*)get_owner();
+    //     m_view = glm::lookAt(owner_obj->get_position(),
+    //                          owner_obj->get_position() + get_forward_vector(), get_up_vector());
 }
 
 void
 camera_component::update_model()
 {
-    auto owner_obj = (game_object*)get_owner();
-    m_model = glm::translate(owner_obj->get_position()) *
-              glm::toMat4(owner_obj->get_rotation_quat()) * m_scale;
+    //     auto owner_obj = (game_object*)get_owner();
+    //     m_model = glm::translate(owner_obj->get_position()) *
+    //               glm::toMat4(owner_obj->get_rotation_quat()) * m_scale;
 }
 
 void

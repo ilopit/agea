@@ -3,7 +3,7 @@
 #include "model/assets/asset.h"
 #include "model/core_types/color.h"
 
-#include "shader_effect.generated.h"
+#include "model/shader_effect.generated.h"
 
 namespace agea
 {

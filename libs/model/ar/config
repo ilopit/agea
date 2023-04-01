@@ -18,4 +18,3 @@ include/model/assets/simple_texture_material.h
 include/model/assets/mesh.h
 include/model/assets/texture.h
 include/model/assets/shader_effect.h
-include/model/demo/demo_mesh_component.h

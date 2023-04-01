@@ -1,8 +1,15 @@
-macro(agea_finalize_library)
+
+macro(agea_ide_path)
 
     get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
     file(RELATIVE_PATH rel ${PARENT_DIR_1} ${CMAKE_CURRENT_LIST_DIR})
     set_target_properties(${ARGV0} PROPERTIES FOLDER ${rel})
+
+endmacro()
+
+macro(agea_finalize_library)
+
+    agea_ide_path(${ARGV0})
 
     target_include_directories(${ARGV0} 
         PUBLIC 
@@ -14,9 +21,7 @@ endmacro()
 
 macro(agea_finalize_interface_library)
 
-    get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
-    file(RELATIVE_PATH rel ${PARENT_DIR_1} ${CMAKE_CURRENT_LIST_DIR})
-    set_target_properties(${ARGV0} PROPERTIES FOLDER ${rel})
+    agea_ide_path(${ARGV0})
 
     target_include_directories(${ARGV0} 
         INTERFACE 
@@ -28,9 +33,7 @@ endmacro()
 
 macro(agea_finalize_executable)
 
-    get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
-    file(RELATIVE_PATH rel ${PARENT_DIR_1} ${CMAKE_CURRENT_LIST_DIR})
-    set_target_properties(${ARGV0} PROPERTIES FOLDER ${rel})
+    agea_ide_path(${ARGV0})
 
     set_target_properties(${ARGV0}  PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_BINARY_DIR}/project_Debug/bin"
@@ -41,4 +44,34 @@ macro(agea_finalize_executable)
         VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/bin"
     )
 
+endmacro()
+
+macro(agea_ar_target)
+
+    set(full_name ${ARGV0})
+
+    add_custom_command(
+        TARGET ${full_name}
+        PRE_BUILD
+        COMMAND python ${PROJECT_SOURCE_DIR}/tools/soal_gen.py
+                    ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/ar/config 
+                    ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
+                    ${CMAKE_BINARY_DIR}/agea_generated
+                    ${ARGV1})
+
+    set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/${ARGV1})
+    set(ar_file ${ar_folder}/${ARGV1}.ar.cpp)
+
+    agea_ide_path(${full_name})
+
+    if(EXISTS ${ar_file})
+        message("File already exists, skipping")
+    else()
+
+        if(NOT EXISTS)
+        file(MAKE_DIRECTORY ${ar_folder})
+        endif()
+
+        write_file(${ar_file} "//ar file do not modify")
+    endif()
 endmacro()

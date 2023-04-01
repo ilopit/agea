@@ -1,6 +1,6 @@
 #pragma once
 
-#include "point_light.generated.h"
+#include "model/point_light.generated.h"
 
 #include "model/game_object.h"
 

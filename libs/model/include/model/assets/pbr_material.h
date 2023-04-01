@@ -1,6 +1,6 @@
 #pragma once
 
-#include "pbr_material.generated.h"
+#include "model/pbr_material.generated.h"
 
 #include "model/assets/material.h"
 

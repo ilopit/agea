@@ -90,11 +90,18 @@ game_object::post_load()
 
     set_state(smart_object_state::constructed);
 
+    update_position();
+
+    return true;
+}
+
+void
+game_object::update_position()
+{
     for (auto c : m_renderable_components)
     {
         c->update_matrix();
     }
-    return true;
 }
 
 void

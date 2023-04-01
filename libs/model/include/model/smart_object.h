@@ -1,9 +1,11 @@
 #pragma once
 
-#include "smart_object.generated.h"
+#include "model/smart_object.generated.h"
 
 #include "model/reflection/object_reflection.h"
 #include "model/model_minimal.h"
+#include "model/architype.h"
+#include "model/model_module.h"
 
 #include <arl/arl_defines.h>
 
@@ -29,30 +31,33 @@
 
 #define AGEA_gen_construct_params struct construct_params : base_class::construct_params
 
-#define AGEA_gen_meta_api                                                 \
-    friend class ::agea::reflection::entry;                               \
-                                                                          \
-    void META_class_set_type_id();                                        \
-                                                                          \
-    void META_class_set_architype_id();                                   \
-                                                                          \
-    static utils::id META_type_id();                                      \
-                                                                          \
-    static reflection::object_reflection* META_object_reflection();       \
-                                                                          \
-    virtual const reflection::object_reflection* reflection() const;      \
-                                                                          \
-    virtual bool META_construct(const smart_object::construct_params& i); \
-                                                                          \
-    virtual std::shared_ptr<smart_object> META_create_empty_obj();        \
-                                                                          \
+#define AGEA_gen_meta_api                                                                \
+    friend class ::agea::model::model_module;                                            \
+                                                                                         \
+    void META_class_set_type_id();                                                       \
+                                                                                         \
+    void META_class_set_architype_id();                                                  \
+                                                                                         \
+    static ::agea::utils::id META_type_id();                                             \
+                                                                                         \
+    static ::agea::reflection::object_reflection* META_object_reflection();              \
+                                                                                         \
+    virtual const ::agea::reflection::object_reflection* reflection() const;             \
+                                                                                         \
+    virtual bool META_construct(const ::agea::model::smart_object::construct_params& i); \
+                                                                                         \
+    virtual std::shared_ptr<::agea::model::smart_object> META_create_empty_obj();        \
+                                                                                         \
     static std::shared_ptr<this_class> META_class_create_empty_obj();
 
-#define AGEA_gen_meta_architype_api(a)                     \
-    AGEA_gen_meta_api static architype META_architype_id() \
-    {                                                      \
-        return architype::a;                               \
+// clang-format off
+#define AGEA_gen_meta_architype_api(a)                                    \
+    AGEA_gen_meta_api;                                                     \
+    static ::agea::model::architype META_architype_id()                   \
+    {                                                                     \
+        return ::agea::model::architype::a;                               \
     }
+// clang-format off
 
 namespace agea
 {
@@ -96,6 +101,7 @@ public:
     };
 
     AGEA_gen_class_meta_super(smart_object);
+
     AGEA_gen_meta_architype_api(smart_object);
 
     friend class object_constructor;

@@ -1,7 +1,8 @@
 #pragma once
 
+#include "model/mesh_object.generated.h"
+
 #include "model/game_object.h"
-#include "mesh_object.generated.h"
 
 namespace agea
 {

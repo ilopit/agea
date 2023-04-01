@@ -2,7 +2,7 @@
 
 #include "model/components/game_object_component.h"
 
-#include "camera_component.generated.h"
+#include "model/camera_component.generated.h"
 
 namespace agea
 {

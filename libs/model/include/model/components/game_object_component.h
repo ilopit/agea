@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game_object_component.generated.h"
+#include "model/game_object_component.generated.h"
 
 #include "model/components/component.h"
 #include "model/core_types/vec3.h"
