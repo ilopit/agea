@@ -16,7 +16,6 @@ source_group("core_types" FILES  ${MODEL_CORE_TYPES_SRC})
 source_group("demo" FILES  ${MODEL_DEMO_SRC})
 source_group("model" FILES  ${MODEL_SRC})
 source_group("reflection" FILES  ${MODEL_REFLECTION_SRC})
-source_group("reflection/type_handlers" FILES  ${MODEL_REFLECTION_HANDLERS_SRC})
 source_group("generated" FILES  ${GENERATED_SRC})
 
 add_library(model STATIC

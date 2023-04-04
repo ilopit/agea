@@ -89,6 +89,8 @@ package::register_in_global_cache()
 
     ALOG_INFO("[PKG:{0}], Registered {1} instance object", m_id.cstr(),
               m_instance_local_set.objects->get_size());
+
+    m_occ->set_global_load_mode(true);
 }
 
 }  // namespace model

@@ -151,21 +151,19 @@ scene_builder::create_collection_template(model::smart_object& so,
     {
         if (!p->gpu_data.empty())
         {
-            switch (p->type.type)
+            if (model::types::tid_float == p->rtype.type_id)
             {
-            case utils::agea_type::id::t_f:
-                sb.add_field(AID(p->name), p->type.type, 1);
-                break;
+                sb.add_field(p->rtype.type_id, agea::utils::agea_type::t_f, 1);
+            }
+            else if (model::types::tid_vec3 == p->rtype.type_id)
+            {
+                sb.add_field(p->rtype.type_id, agea::utils::agea_type::t_vec3, 16);
+            }
+            else if (model::types::tid_vec4 == p->rtype.type_id)
+            {
+                sb.add_field(p->rtype.type_id, agea::utils::agea_type::t_vec4, 16);
+            }
 
-            case utils::agea_type::id::t_vec4:
-            case utils::agea_type::id::t_vec3:
-            {
-                sb.add_field(AID(p->name), p->type.type, 16);
-                break;
-            }
-            default:
-                AGEA_never("Unsupported type!");
-            }
             t.offset_in_object.push_back((uint32_t)p->offset);
         }
     }

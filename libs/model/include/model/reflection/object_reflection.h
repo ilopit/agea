@@ -13,7 +13,7 @@ class object_reflection
 public:
     using property_list = std::vector<std::shared_ptr<property>>;
 
-    object_reflection(object_reflection* p, const utils::id& id)
+    object_reflection(object_reflection* p, const agea::utils::id& id)
         : parent(p)
         , class_id(id)
     {
@@ -36,7 +36,7 @@ public:
     property_list m_properties;
     property_list m_serilalization_properties;
     bool initialized = false;
-    utils::id class_id;
+    agea::utils::id class_id;
 };
 }  // namespace reflection
 }  // namespace agea

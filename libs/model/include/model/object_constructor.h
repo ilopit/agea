@@ -131,7 +131,6 @@ public:
     alloc_empty_object(const utils::id& type_id,
                        const utils::id& id,
                        uint32_t extra_flags,
-                       bool add_global,
                        object_load_context& olc);
 
 private:

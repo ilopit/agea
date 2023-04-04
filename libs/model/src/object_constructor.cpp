@@ -120,7 +120,6 @@ smart_object*
 object_constructor::alloc_empty_object(const utils::id& type_id,
                                        const utils::id& id,
                                        uint32_t extra_flags,
-                                       bool add_global,
                                        object_load_context& olc)
 {
     auto eoc_item = glob::empty_objects_cache::get()->get_item(type_id);
@@ -136,7 +135,7 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
     auto ptr = empty.get();
     update_flags(olc.get_construction_type(), *empty);
 
-    olc.add_obj(std::move(empty), add_global);
+    olc.add_obj(std::move(empty), olc.get_global_load_mode());
     olc.push_object_loaded(ptr);
 
     return ptr;
@@ -160,7 +159,7 @@ object_constructor::object_construct(const utils::id& type_id,
         AGEA_check(prev_ct != object_load_type::instance_obj, "ct missmatch!");
 
         olc.set_construction_type(object_load_type::class_obj);
-        obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
+        obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
         if (!obj->META_construct(params))
         {
             return nullptr;
@@ -172,7 +171,7 @@ object_constructor::object_construct(const utils::id& type_id,
         }
 
         olc.set_construction_type(object_load_type::mirror_copy);
-        obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
+        obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
         if (!obj->META_construct(params))
         {
             return nullptr;
@@ -189,7 +188,7 @@ object_constructor::object_construct(const utils::id& type_id,
         AGEA_check(olc.get_construction_type() == object_load_type::mirror_copy, "ct missmatch!");
 
         olc.set_construction_type(object_load_type::mirror_copy);
-        obj = object_constructor::alloc_empty_object(type_id, id, 0, true, olc);
+        obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
         if (!obj->META_construct(params))
         {
             return nullptr;
@@ -219,8 +218,7 @@ object_constructor::register_package_type_impl(std::shared_ptr<smart_object> emp
     olc.add_obj(empty, false);
     olc.set_construction_type(object_load_type::mirror_copy);
 
-    alloc_empty_object(empty->get_id(), empty->get_id(), smart_object_state_flag::empty_obj, false,
-                       olc);
+    alloc_empty_object(empty->get_id(), empty->get_id(), smart_object_state_flag::empty_obj, olc);
     olc.set_construction_type(object_load_type::nav);
 
     return result_code::ok;
@@ -483,7 +481,7 @@ object_constructor::object_clone_create_internal(smart_object& proto_obj,
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
     obj = alloc_empty_object(proto_obj.get_type_id(), new_object_id,
-                             smart_object_state_flag::inhereted, false, occ);
+                             smart_object_state_flag::inhereted, occ);
 
     obj->META_set_class_obj(&proto_obj);
 
@@ -621,7 +619,7 @@ object_constructor::object_load_full(serialization::conteiner& sc,
     auto type_id = AID(sc["type_id"].as<std::string>());
     auto obj_id = AID(sc["id"].as<std::string>());
 
-    obj = alloc_empty_object(type_id, obj_id, smart_object_state_flag::standalone, false, occ);
+    obj = alloc_empty_object(type_id, obj_id, smart_object_state_flag::standalone, occ);
 
     return object_properties_load(*obj, sc, occ);
 }
@@ -646,7 +644,7 @@ object_constructor::object_load_partial(smart_object& prototype_obj,
     auto obj_id = AID(sc["id"].as<std::string>());
 
     obj = alloc_empty_object(prototype_obj.get_type_id(), obj_id,
-                             smart_object_state_flag::inhereted, false, occ);
+                             smart_object_state_flag::inhereted, occ);
 
     obj->META_set_class_obj(&prototype_obj);
 

@@ -2,8 +2,10 @@
 
 #include "model/model_fwds.h"
 #include "model/model_minimal.h"
+#include "model/model_module.h"
 
 #include <utils/buffer.h>
+#include <utils/id.h>
 
 #include <type_traits>
 
@@ -20,13 +22,6 @@
         return {out_type, true};                           \
     }
 
-#define AGEA_create_resolver_simple(in_type, out_type)  \
-    template <>                                         \
-    static property_type_description resolve<in_type>() \
-    {                                                   \
-        return {out_type, false};                       \
-    }
-
 namespace agea
 {
 namespace reflection
@@ -38,20 +33,20 @@ struct property_type_description
 {
     property_type_description() = default;
 
-    property_type_description(utils::agea_type::id t, bool ptr)
+    property_type_description(::agea::utils::id t, bool ptr)
         : type(t)
         , is_ptr(ptr)
     {
     }
 
-    property_type_description(utils::agea_type::id t, bool ptr, bool collection)
+    property_type_description(::agea::utils::id t, bool ptr, bool collection)
         : type(t)
         , is_ptr(ptr)
         , is_collection(collection)
     {
     }
 
-    utils::agea_type::id type = utils::agea_type::id::t_nan;
+    ::agea::utils::id type;
     bool is_ptr = false;
     bool is_collection = false;
 };
@@ -68,66 +63,61 @@ struct type_resolver
     static property_type_description
     resolve()
     {
-        if (is_std_vector<T>::value)
+        if (std::is_base_of<::agea::model::material, typename std::remove_pointer<T>::type>::value)
         {
-            return is_std_vector<T>::type();
-        }
-        else if (std::is_base_of<::agea::model::material,
-                                 typename std::remove_pointer<T>::type>::value)
-        {
-            return property_type_description(utils::agea_type::id::t_mat, false);
+            return property_type_description{model::types::tid_mat, false};
         }
         else if (std::is_base_of<::agea::model::texture,
                                  typename std::remove_pointer<T>::type>::value)
         {
-            return property_type_description(utils::agea_type::id::t_txt, false);
+            return property_type_description{model::types::tid_txt, false};
         }
         else if (std::is_base_of<::agea::model::mesh, typename std::remove_pointer<T>::type>::value)
         {
-            return property_type_description(utils::agea_type::id::t_msh, false);
+            return property_type_description{model::types::tid_msh, false};
         }
         else if (std::is_base_of<::agea::model::component,
                                  typename std::remove_pointer<T>::type>::value)
         {
-            return property_type_description(utils::agea_type::id::t_com, false);
+            return property_type_description{model::types::tid_com, false};
         }
         else if (std::is_base_of<::agea::model::shader_effect,
                                  typename std::remove_pointer<T>::type>::value)
         {
-            return property_type_description(utils::agea_type::id::t_se, false);
+            return property_type_description{model::types::tid_se, false};
         }
         else if (std::is_base_of<::agea::model::smart_object,
                                  typename std::remove_pointer<T>::type>::value)
         {
-            return property_type_description(utils::agea_type::id::t_obj, false);
+            return property_type_description{model::types::tid_obj, false};
         }
 
-        return property_type_description(utils::agea_type::id::t_nan, false);
+        return property_type_description{};
     }
 
-    AGEA_create_resolver(std::string, utils::agea_type::id::t_str);
-    AGEA_create_resolver(utils::id, utils::agea_type::id::t_id);
-    AGEA_create_resolver(utils::buffer, utils::agea_type::id::t_buf);
-    AGEA_create_resolver(model::color, utils::agea_type::id::t_color);
+    AGEA_create_resolver(std::string, model::types::tid_string);
+    AGEA_create_resolver(utils::id, model::types::tid_id);
+    AGEA_create_resolver(utils::buffer, model::types::tid_buffer);
+    AGEA_create_resolver(model::color, model::types::tid_color);
 
-    AGEA_create_resolver(bool, utils::agea_type::id::t_bool);
+    AGEA_create_resolver(bool, model::types::tid_bool);
 
-    AGEA_create_resolver(std::int8_t, utils::agea_type::id::t_i8);
-    AGEA_create_resolver(std::int16_t, utils::agea_type::id::t_i16);
-    AGEA_create_resolver(std::int32_t, utils::agea_type::id::t_i32);
-    AGEA_create_resolver(std::int64_t, utils::agea_type::id::t_i64);
+    AGEA_create_resolver(std::int8_t, model::types::tid_i8);
+    AGEA_create_resolver(std::int16_t, model::types::tid_i16);
+    AGEA_create_resolver(std::int32_t, model::types::tid_i32);
+    AGEA_create_resolver(std::int64_t, model::types::tid_i64);
 
-    AGEA_create_resolver(std::uint8_t, utils::agea_type::id::t_u8);
-    AGEA_create_resolver(std::uint16_t, utils::agea_type::id::t_u16);
-    AGEA_create_resolver(std::uint32_t, utils::agea_type::id::t_u32);
-    AGEA_create_resolver(std::uint64_t, utils::agea_type::id::t_u64);
+    AGEA_create_resolver(std::uint8_t, model::types::tid_u8);
+    AGEA_create_resolver(std::uint16_t, model::types::tid_u16);
+    AGEA_create_resolver(std::uint32_t, model::types::tid_u32);
+    AGEA_create_resolver(std::uint64_t, model::types::tid_u64);
 
-    AGEA_create_resolver(float, utils::agea_type::id::t_f);
-    AGEA_create_resolver(double, utils::agea_type::id::t_d);
+    AGEA_create_resolver(float, model::types::tid_float);
+    AGEA_create_resolver(double, model::types::tid_double);
 
-    AGEA_create_resolver(model::vec2, utils::agea_type::id::t_vec2);
-    AGEA_create_resolver(model::vec3, utils::agea_type::id::t_vec3);
-    AGEA_create_resolver(model::vec4, utils::agea_type::id::t_vec4);
+    AGEA_create_resolver(model::vec2, model::types::tid_vec2);
+    AGEA_create_resolver(model::vec3, model::types::tid_vec3);
+    AGEA_create_resolver(model::vec4, model::types::tid_vec4);
 };
 
 template <typename T>

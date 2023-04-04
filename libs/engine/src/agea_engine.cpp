@@ -95,12 +95,15 @@ vulkan_engine::init()
     glob::id_generator::create(*m_registry);
     glob::engine_counters::create(*m_registry);
     glob::module_manager::create(*m_registry);
+    glob::reflection_type_registry::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
 
     glob::module_manager::getr().register_module<model::model_module>();
+
     for (auto& [id, m] : glob::module_manager::getr().modules())
     {
+        m->init_types();
         m->init_reflection();
     }
 

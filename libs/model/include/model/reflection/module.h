@@ -13,21 +13,28 @@ namespace reflection
 class module
 {
 public:
-    module(const utils::id& id) :m_id(id)
+    module(const ::agea::utils::id& id) :m_id(id)
+    {
+    }
+
+    virtual ~module()
     {
     }
 
     virtual bool
     init_reflection() = 0;
 
-    const utils::id&
+    virtual bool
+    init_types() = 0;
+
+    const agea::utils::id&
     get_id() const
     {
         return m_id;
     }
 
 private:
-    utils::id m_id;
+    agea::utils::id m_id;
 };
 
 class module_manager
@@ -37,7 +44,7 @@ public:
     ~module_manager();
 
     module*
-    get_module(const utils::id& id);
+    get_module(const agea::utils::id& id);
 
     template <typename module_t>
     bool
@@ -46,14 +53,14 @@ public:
         return register_module(module_t::instance().get_id(), module_t::instance());
     }
 
-    std::unordered_map<utils::id, module*>&
+    std::unordered_map<agea::utils::id, module*>&
     modules();
 
 protected:
     bool
-    register_module(const utils::id& id, module& m);
+    register_module(const agea::utils::id& id, module& m);
 
-    std::unordered_map<utils::id, module*> m_modules;
+    std::unordered_map<agea::utils::id, module*> m_modules;
 };
 
 }  // namespace reflection

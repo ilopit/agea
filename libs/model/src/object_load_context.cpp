@@ -111,12 +111,13 @@ smart_object*
 object_load_context::find_class_obj(const utils::id& id)
 {
     auto obj = m_class_local_set ? m_class_local_set->objects->get_item(id) : nullptr;
-    if (!obj)
+
+    if (obj)
     {
-        return m_class_global_set->objects->get_item(id);
+        return obj;
     }
 
-    return obj;
+    return m_class_global_set ? m_class_global_set->objects->get_item(id) : nullptr;
 }
 
 smart_object*
@@ -124,19 +125,20 @@ object_load_context::find_obj(const utils::id& id)
 {
     auto obj =
         m_instance_local_set->objects ? m_instance_local_set->objects->get_item(id) : nullptr;
-    if (!obj)
+
+    if (obj)
     {
-        return m_instance_global_set->objects->get_item(id);
+        return obj;
     }
 
-    return obj;
+    return m_instance_global_set ? m_instance_global_set->objects->get_item(id) : nullptr;
 }
 
 smart_object*
 object_load_context::find_obj(const utils::id& id, architype a_type)
 {
     smart_object* obj = nullptr;
-    auto c = m_instance_local_set->map ? m_instance_local_set->map->get_cache(a_type) : nullptr;
+    auto c = m_instance_local_set ? m_instance_local_set->map->get_cache(a_type) : nullptr;
 
     if (c)
     {
@@ -147,7 +149,7 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
         }
     }
 
-    c = m_instance_global_set->map->get_cache(a_type);
+    c = m_instance_global_set ? m_instance_global_set->map->get_cache(a_type) : nullptr;
     if (c)
     {
         obj = c->get_item(id);
@@ -160,7 +162,7 @@ smart_object*
 object_load_context::find_class_obj(const utils::id& id, architype a_type)
 {
     smart_object* obj = nullptr;
-    auto c = m_class_local_set->map ? m_class_local_set->map->get_cache(a_type) : nullptr;
+    auto c = m_class_local_set ? m_class_local_set->map->get_cache(a_type) : nullptr;
 
     if (c)
     {
@@ -171,7 +173,7 @@ object_load_context::find_class_obj(const utils::id& id, architype a_type)
         }
     }
 
-    c = m_class_global_set->map->get_cache(a_type);
+    c = m_class_global_set ? m_class_global_set->map->get_cache(a_type) : nullptr;
     if (c)
     {
         obj = c->get_item(id);

@@ -1,8 +1,7 @@
-#pragma once
-
-#include "model/reflection/type_handlers/property_type_serialization_handlers_custom.h"
+#include "model/reflection/model_property_overrides.h"
 
 #include "model/reflection/property.h"
+#include "model/reflection/reflection_type_utils.h"
 
 #include "model/object_load_context.h"
 #include "model/smart_object.h"
@@ -33,7 +32,7 @@ game_object_components_deserialize(deserialize_context& dc)
 
     auto items = sc[dc.p->name];
     auto items_size = items.size();
-    auto& r = extract<std::vector<model::component*>>(ptr + dc.p->offset);
+    auto& r = utils::as_type<std::vector<model::component*>>(ptr + dc.p->offset);
 
     if (r.empty())
     {
@@ -90,16 +89,16 @@ game_object_components_prototype(property_prototype_context& ctx)
         layout_mapping.push_back(layout[i].as<int>());
     }
 
-    auto& src_properties =
-        extract<std::vector<model::component*>>(ctx.src_obj->as_blob() + ctx.dst_property->offset);
+    auto& src_properties = utils::as_type<std::vector<model::component*>>(ctx.src_obj->as_blob() +
+                                                                          ctx.dst_property->offset);
 
     if (src_properties.empty())
     {
         return result_code::ok;
     }
 
-    auto& dst_properties =
-        extract<std::vector<model::component*>>(ctx.dst_obj->as_blob() + ctx.dst_property->offset);
+    auto& dst_properties = utils::as_type<std::vector<model::component*>>(ctx.dst_obj->as_blob() +
+                                                                          ctx.dst_property->offset);
 
     AGEA_check(dst_properties.empty(), "Should alway be empty!!");
     AGEA_check(items_size == src_properties.size(), "Should alway be same!!");
@@ -137,8 +136,8 @@ game_object_components_serialize(serialize_context& dc)
         serialization::conteiner components_layout;
         components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
-        auto& components =
-            extract<std::vector<model::component*>>(class_obj.as_blob() + dc.p->offset);
+        auto& components = agea::reflection::utils::as_type<std::vector<model::component*>>(
+            class_obj.as_blob() + dc.p->offset);
 
         int i = 0;
         for (auto instance_component : components)
@@ -175,9 +174,9 @@ game_object_components_serialize(serialize_context& dc)
         components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
         auto& obj_components =
-            extract<std::vector<model::component*>>(class_obj.as_blob() + dc.p->offset);
+            utils::as_type<std::vector<model::component*>>(class_obj.as_blob() + dc.p->offset);
 
-        auto& parent_components = extract<std::vector<model::smart_object*>>(
+        auto& parent_components = utils::as_type<std::vector<model::smart_object*>>(
             class_obj.get_class_obj()->as_blob() + dc.p->offset);
 
         AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
@@ -228,10 +227,10 @@ game_object_components_copy(copy_context& ctx)
     //                    model::object_constructor_context::construction_type::mirror_obj,
     //                "Should alway be empty!!");
 
-    auto& src_col =
-        extract<std::vector<model::component*>>(ctx.src_property->get_blob(*ctx.src_obj));
-    auto& dst_col =
-        extract<std::vector<model::component*>>(ctx.dst_property->get_blob(*ctx.dst_obj));
+    auto& src_col = reflection::utils::as_type<std::vector<model::component*>>(
+        ctx.src_property->get_blob(*ctx.src_obj));
+    auto& dst_col = reflection::utils::as_type<std::vector<model::component*>>(
+        ctx.dst_property->get_blob(*ctx.dst_obj));
 
     dst_col.resize(src_col.size());
 
