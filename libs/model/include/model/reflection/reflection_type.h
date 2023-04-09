@@ -3,6 +3,7 @@
 #include <utils/id.h>
 
 #include "model/model_minimal.h"
+#include "model/reflection/property.h"
 
 #include "model/model_fwds.h"
 #include "serialization/serialization_fwds.h"
@@ -49,11 +50,20 @@ using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
 
+using property_list = std::vector<std::shared_ptr<property>>;
+
 struct reflection_type
 {
-    agea::utils::id type_id;
+    int type_id = -1;
     agea::utils::id module_id;
+    agea::utils::id type_name;
     uint32_t size = 0;
+
+    reflection_type* parent = nullptr;
+
+    std::unordered_map<std::string, property_list> m_editor_properties;
+    property_list m_properties;
+    property_list m_serilalization_properties;
 
     type_serialization_handler serialization = nullptr;
     type_deserialization_handler deserialization = nullptr;
@@ -61,6 +71,8 @@ struct reflection_type
     type_copy_handler copy = nullptr;
     type_compare_handler compare = nullptr;
     type_ui_handler ui = nullptr;
+
+    bool initialized = false;
 };
 
 class reflection_type_registry
@@ -69,22 +81,22 @@ public:
     void
     add_type(reflection_type&& t)
     {
-        m_packages[t.type_id] = std::move(t);
+        m_types[t.type_id] = std::move(t);
     }
 
-    reflection_type
-    get_type(const utils::id& id)
+    reflection_type*
+    get_type(const int& id)
     {
-        if (!id.valid())
-        {
-            return reflection_type{};
-        }
+        auto itr = m_types.find(id);
 
-        return m_packages.at(id);
+        return itr != m_types.end() ? &itr->second : nullptr;
     }
+
+    void
+    finilaze();
 
 private:
-    std::unordered_map<utils::id, reflection_type> m_packages;
+    std::unordered_map<int, reflection_type> m_types;
 };
 
 }  // namespace reflection

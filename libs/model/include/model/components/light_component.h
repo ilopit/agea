@@ -9,7 +9,7 @@ namespace agea
 namespace model
 {
 
-AGEA_class();
+AGEA_ar_class();
 class light_component : public game_object_component
 {
     AGEA_gen_meta__light_component();
@@ -21,7 +21,7 @@ public:
     AGEA_gen_meta_api;
 
 protected:
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z");
+    AGEA_ar_property("category=world", "serializable=true", "hint=x,y,z");
     vec3 m_light;
 };
 

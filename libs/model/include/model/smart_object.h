@@ -2,12 +2,11 @@
 
 #include "model/smart_object.generated.h"
 
-#include "model/reflection/object_reflection.h"
+#include "model/reflection/reflection_type.h"
 #include "model/model_minimal.h"
 #include "model/architype.h"
-#include "model/model_module.h"
 
-#include <arl/arl_defines.h>
+#include <ar/ar_defines.h>
 
 #include <string>
 #include <memory>
@@ -32,7 +31,6 @@
 #define AGEA_gen_construct_params struct construct_params : base_class::construct_params
 
 #define AGEA_gen_meta_api                                                                \
-    friend class ::agea::model::model_module;                                            \
                                                                                          \
     void META_class_set_type_id();                                                       \
                                                                                          \
@@ -40,9 +38,13 @@
                                                                                          \
     static ::agea::utils::id META_type_id();                                             \
                                                                                          \
-    static ::agea::reflection::object_reflection* META_object_reflection();              \
+    static ::agea::reflection::reflection_type*& META_reflection_type()                  \
+    {                                                                                    \
+        static ::agea::reflection::reflection_type* s_reflection = nullptr;              \
+        return s_reflection;                                                             \
+    }                                                                                    \
                                                                                          \
-    virtual const ::agea::reflection::object_reflection* reflection() const;             \
+    virtual const ::agea::reflection::reflection_type* reflection() const;               \
                                                                                          \
     virtual bool META_construct(const ::agea::model::smart_object::construct_params& i); \
                                                                                          \
@@ -90,7 +92,7 @@ enum smart_object_state_flag : uint32_t
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
 
-AGEA_class();
+AGEA_ar_class();
 class smart_object
 {
     AGEA_gen_meta__smart_object();
@@ -219,13 +221,13 @@ protected:
         m_proto_obj = obj;
     }
 
-    AGEA_property("category=meta", "access=read_only");
+    AGEA_ar_property("category=meta", "access=read_only");
     architype m_architype_id = architype::unknown;
 
-    AGEA_property("category=meta", "access=read_only", "copyable=no");
+    AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_type_id;
 
-    AGEA_property("category=meta", "access=read_only", "copyable=no");
+    AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_id;
 
     const smart_object* m_proto_obj = nullptr;

@@ -26,7 +26,6 @@
 namespace agea
 {
 using blob_ptr = uint8_t*;
-using fixed_size_buffer = std::array<char, 128>;
 
 enum class result_code
 {

@@ -8,7 +8,7 @@ namespace agea
 {
 namespace model
 {
-AGEA_class();
+AGEA_ar_class();
 class camera_component : public game_object_component
 {
     AGEA_gen_meta__camera_component();

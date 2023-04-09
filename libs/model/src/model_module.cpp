@@ -21,6 +21,8 @@
 
 #include "model/reflection/reflection_type_utils.h"
 
+#include "model/model_types_resolvers.ar.h"
+
 #include <utils/agea_log.h>
 #include <utils/string_utility.h>
 
@@ -31,58 +33,18 @@ namespace agea
 namespace model
 {
 
-namespace types
-{
-
-const utils::id tid_string = AID("model.string");
-const utils::id tid_bool = AID("model.bool");
-
-const utils::id tid_i8 = AID("model.i8");
-const utils::id tid_i16 = AID("model.i16");
-const utils::id tid_i32 = AID("model.i32");
-const utils::id tid_i64 = AID("model.i64");
-const utils::id tid_u8 = AID("model.u8");
-const utils::id tid_u16 = AID("model.u16");
-const utils::id tid_u32 = AID("model.u32");
-const utils::id tid_u64 = AID("model.u64");
-
-const utils::id tid_float = AID("model.float");
-const utils::id tid_double = AID("model.double");
-
-const utils::id tid_id = AID("model.id");
-const utils::id tid_buffer = AID("model.buffer");
-const utils::id tid_color = AID("model.color");
-
-const utils::id tid_vec2 = AID("model.vec2");
-const utils::id tid_vec3 = AID("model.vec3");
-const utils::id tid_vec4 = AID("model.vec4");
-
-const utils::id tid_obj = AID("model.obj");
-const utils::id tid_com = AID("model.com");
-const utils::id tid_txt = AID("model.txt");
-const utils::id tid_msh = AID("model.msh");
-const utils::id tid_se = AID("model.se");
-const utils::id tid_mat = AID("model.mat");
-}  // namespace types
-
 namespace
 {
 
 // ========  UTILS  ====================================
 
-#define MAKE_POD_TYPE(id, type_name)                                      \
-    {                                                                     \
-        reflection::reflection_type type;                                 \
-        type.type_id = id;                                                \
-        type.module_id = model_id;                                        \
-        type.size = sizeof(type_name);                                    \
-                                                                          \
-        type.deserialization = default_deserialize<type_name>;            \
-        type.compare = default_compare<type_name>;                        \
-        type.copy = default_copy<type_name>;                              \
-        type.serialization = default_serialize<type_name>;                \
-                                                                          \
-        glob::reflection_type_registry::getr().add_type(std::move(type)); \
+#define MAKE_POD_TYPE(id, type_name)                                   \
+    {                                                                  \
+        auto rt = glob::reflection_type_registry::getr().get_type(id); \
+        rt->deserialization = default_deserialize<type_name>;          \
+        rt->compare = default_compare<type_name>;                      \
+        rt->copy = default_copy<type_name>;                            \
+        rt->serialization = default_serialize<type_name>;              \
     }
 
 template <typename T>
@@ -532,144 +494,126 @@ copy_t_buf(AGEA_copy_handler_args)
 }  // namespace
 
 bool
-model_module::init_types()
+model_module::override_reflection_types()
 {
     auto model_id = AID("model");
 
-    MAKE_POD_TYPE(types::tid_string, std::string);
-    MAKE_POD_TYPE(types::tid_bool, bool);
+    MAKE_POD_TYPE(agea::model::model__string, std::string);
+    MAKE_POD_TYPE(agea::model::model__bool, bool);
 
-    MAKE_POD_TYPE(types::tid_i8, std::int8_t);
-    MAKE_POD_TYPE(types::tid_i16, std::int16_t);
-    MAKE_POD_TYPE(types::tid_i32, std::int32_t);
-    MAKE_POD_TYPE(types::tid_i64, std::int64_t);
+    MAKE_POD_TYPE(agea::model::model__int8_t, std::int8_t);
+    MAKE_POD_TYPE(agea::model::model__int16_t, std::int16_t);
+    MAKE_POD_TYPE(agea::model::model__int32_t, std::int32_t);
+    MAKE_POD_TYPE(agea::model::model__int64_t, std::int64_t);
 
-    MAKE_POD_TYPE(types::tid_u8, std::uint8_t);
-    MAKE_POD_TYPE(types::tid_u16, std::uint16_t);
-    MAKE_POD_TYPE(types::tid_u32, std::uint32_t);
-    MAKE_POD_TYPE(types::tid_u64, std::uint64_t);
+    MAKE_POD_TYPE(agea::model::model__uint8_t, std::uint8_t);
+    MAKE_POD_TYPE(agea::model::model__uint16_t, std::uint16_t);
+    MAKE_POD_TYPE(agea::model::model__uint32_t, std::uint32_t);
+    MAKE_POD_TYPE(agea::model::model__uint64_t, std::uint64_t);
 
-    MAKE_POD_TYPE(types::tid_float, float);
-    MAKE_POD_TYPE(types::tid_double, double);
+    MAKE_POD_TYPE(agea::model::model__float, float);
+    MAKE_POD_TYPE(agea::model::model__double, double);
 
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_id;
-        type.module_id = model_id;
-        type.size = sizeof(utils::id);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__id);
 
-        type.deserialization = deserialize_t_id;
-        type.compare = default_compare<utils::id>;
-        type.copy = default_copy<utils::id>;
-        type.serialization = serialize_t_id;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_id;
+        rt->compare = default_compare<utils::id>;
+        rt->copy = default_copy<utils::id>;
+        rt->serialization = serialize_t_id;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_buffer;
-        type.module_id = model_id;
-        type.size = sizeof(utils::id);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__buffer);
 
-        type.deserialization = deserialize_t_buf;
-        type.copy = default_copy<utils::buffer>;
-        type.serialization = serialize_t_buf;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_buf;
+        rt->copy = default_copy<utils::buffer>;
+        rt->serialization = serialize_t_buf;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_vec3;
-        type.module_id = model_id;
-        type.size = sizeof(glm::vec3);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__vec3);
 
-        type.deserialization = deserialize_t_vec3;
-        type.compare = default_compare<glm::vec3>;
-        type.copy = default_copy<glm::vec3>;
-        type.serialization = serialize_t_vec3;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_vec3;
+        rt->compare = default_compare<glm::vec3>;
+        rt->copy = default_copy<glm::vec3>;
+        rt->serialization = serialize_t_vec3;
     }
 
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_obj;
-        type.module_id = model_id;
-        type.size = sizeof(model::smart_object*);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__smart_object);
 
-        type.deserialization = deserialize_t_obj;
-        type.compare = default_compare<model::smart_object*>;
-        type.copy = copy_smart_object;
-        type.serialization = serialize_t_obj;
-        type.deserialization_with_proto = deserialize_from_proto_t_obj;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_obj;
+        rt->compare = default_compare<model::smart_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_obj;
+        rt->deserialization_with_proto = deserialize_from_proto_t_obj;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_com;
-        type.module_id = model_id;
-        type.size = sizeof(model::component*);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__component);
 
-        type.deserialization = deserialize_t_com;
-        type.compare = default_compare<model::smart_object*>;
-        type.copy = copy_smart_object;
-        type.serialization = serialize_t_com;
-        type.deserialization_with_proto = deserialize_from_proto_t_com;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_com;
+        rt->compare = default_compare<model::smart_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_com;
+        rt->deserialization_with_proto = deserialize_from_proto_t_com;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_txt;
-        type.module_id = model_id;
-        type.size = sizeof(model::texture*);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__texture);
 
-        type.deserialization = deserialize_t_txt;
-        type.compare = default_compare<model::smart_object*>;
-        type.copy = copy_smart_object;
-        type.serialization = serialize_t_txt;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_txt;
+        rt->compare = default_compare<model::smart_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_txt;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_mat;
-        type.module_id = model_id;
-        type.size = sizeof(model::material*);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__material);
 
-        type.deserialization = deserialize_t_mat;
-        type.compare = default_compare<model::smart_object*>;
-        type.copy = copy_smart_object;
-        type.serialization = serialize_t_mat;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_mat;
+        rt->compare = default_compare<model::smart_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_mat;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_msh;
-        type.module_id = model_id;
-        type.size = sizeof(model::mesh*);
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__mesh);
 
-        type.deserialization = deserialize_t_msh;
-        type.compare = default_compare<model::smart_object*>;
-        type.copy = copy_smart_object;
-        type.serialization = serialize_t_msh;
-
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_msh;
+        rt->compare = default_compare<model::smart_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_msh;
     }
     {
-        reflection::reflection_type type;
-        type.type_id = types::tid_se;
-        type.module_id = model_id;
-        type.size = sizeof(model::shader_effect*);
+        auto rt =
+            glob::reflection_type_registry::getr().get_type(agea::model::model__shader_effect);
 
-        type.deserialization = deserialize_t_se;
-        type.compare = default_compare<model::smart_object*>;
-        type.copy = copy_smart_object;
-        type.serialization = serialize_t_se;
+        rt->deserialization = deserialize_t_se;
+        rt->compare = default_compare<model::smart_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_se;
+    }
+    {
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__game_object);
 
-        glob::reflection_type_registry::getr().add_type(std::move(type));
+        rt->deserialization = deserialize_t_se;
+        rt->compare = default_compare<model::game_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_obj;
+    }
+    {
+        auto rt = glob::reflection_type_registry::getr().get_type(
+            agea::model::model__game_object_component);
+
+        rt->deserialization = deserialize_t_com;
+        rt->compare = default_compare<model::game_object_component*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_com;
+        rt->deserialization_with_proto = deserialize_from_proto_t_com;
+    }
+    {
+        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__mesh_object);
+
+        rt->deserialization = deserialize_t_se;
+        rt->compare = default_compare<model::game_object*>;
+        rt->copy = copy_smart_object;
+        rt->serialization = serialize_t_obj;
     }
 
     return true;

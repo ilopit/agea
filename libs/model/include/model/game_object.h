@@ -13,7 +13,7 @@ namespace model
 {
 class component;
 
-AGEA_class();
+AGEA_ar_class();
 class game_object : public smart_object
 {
     AGEA_gen_meta__game_object();
@@ -58,28 +58,28 @@ public:
         return m_components[idx];
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     glm::quat
     get_rotation_quat() const
     {
         return m_root_component->get_rotation();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     vec3
     get_forward_vector() const
     {
         return m_root_component->get_forward_vector();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     vec3
     get_up_vector() const
     {
         return m_root_component->get_up_vector();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     vec3
     get_right_vector() const
     {
@@ -125,13 +125,13 @@ protected:
     void
     fill_renderable_components();
 
-    AGEA_property("category=meta",
-                  "serializable=true",
-                  "property_des_handler=custom::game_object_components_deserialize",
-                  "property_ser_handler=custom::game_object_components_serialize",
-                  "property_prototype_handler=custom::game_object_components_prototype",
-                  "property_compare_handler=custom::game_object_components_compare",
-                  "property_copy_handler=custom::game_object_components_copy");
+    AGEA_ar_property("category=meta",
+                     "serializable=true",
+                     "property_des_handler=custom::game_object_components_deserialize",
+                     "property_ser_handler=custom::game_object_components_serialize",
+                     "property_prototype_handler=custom::game_object_components_prototype",
+                     "property_compare_handler=custom::game_object_components_compare",
+                     "property_copy_handler=custom::game_object_components_copy");
     std::vector<component*> m_components;
 
     std::vector<game_object_component*> m_renderable_components;

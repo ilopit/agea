@@ -25,7 +25,7 @@ public:
     init_reflection() = 0;
 
     virtual bool
-    init_types() = 0;
+    override_reflection_types() = 0;
 
     const agea::utils::id&
     get_id() const

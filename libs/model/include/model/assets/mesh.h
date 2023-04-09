@@ -4,6 +4,8 @@
 
 #include "model/assets/asset.h"
 
+#include "utils/buffer.h"
+
 #include <vector>
 #include <string>
 
@@ -16,7 +18,7 @@ class mesh_data;
 
 namespace model
 {
-AGEA_class();
+AGEA_ar_class();
 class mesh : public smart_object
 {
     AGEA_gen_meta__mesh();
@@ -83,13 +85,13 @@ public:
     construct(this_class::construct_params& params);
 
 protected:
-    AGEA_property("category=assets", "serializable=true", "default=true");
+    AGEA_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_vertices = {};
 
-    AGEA_property("category=assets", "serializable=true", "default=true");
+    AGEA_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_indices = {};
 
-    AGEA_property("category=assets", "serializable=true", "default=true");
+    AGEA_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_external = {};
 
     render::mesh_data* m_mesh_data = nullptr;

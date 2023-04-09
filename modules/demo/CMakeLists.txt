@@ -14,7 +14,7 @@ add_library(demo STATIC
 target_compile_options(demo PRIVATE /bigobj)
 
 target_link_libraries(demo PUBLIC
-   agea::arl
+   agea::ar
    agea::utils
    agea::glm_unofficial
    agea::model
@@ -30,5 +30,5 @@ agea_finalize_library(demo)
 target_include_directories(demo PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
 add_custom_target(generate.demo.ar ALL)
-agea_ar_target(generate.demo.ar demo)
+agea_ar_target(generate.demo.ar demo 100)
 

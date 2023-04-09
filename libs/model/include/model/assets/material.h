@@ -16,7 +16,7 @@ namespace model
 {
 class texture;
 
-AGEA_class();
+AGEA_ar_class();
 class material : public asset
 {
     AGEA_gen_meta__material();
@@ -51,7 +51,7 @@ public:
     get_sample(const utils::id& slot);
 
 protected:
-    AGEA_property("category=properties", "access=cpp_only", "serializable=true");
+    AGEA_ar_property("category=properties", "access=cpp_only", "serializable=true");
     shader_effect* m_shader_effect = nullptr;
 
     std::unordered_map<utils::id, texture_sample> m_texture_samples;

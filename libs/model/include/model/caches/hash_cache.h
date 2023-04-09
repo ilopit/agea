@@ -13,11 +13,12 @@ namespace agea
 namespace model
 {
 
+template <typename id_t>
 class hash_cache
 {
 public:
     smart_object*
-    get_item(const utils::id& id)
+    get_item(const id_t& id)
     {
         auto item = m_items.find(id);
 
@@ -34,7 +35,7 @@ public:
     }
 
     bool
-    has_item(const utils::id& id)
+    has_item(const id_t& id)
     {
         return m_items.find(id) != m_items.end();
     }
@@ -45,17 +46,17 @@ public:
         return (uint32_t)m_items.size();
     }
 
-    const std::unordered_map<utils::id, smart_object*>&
+    const std::unordered_map<id_t, smart_object*>&
     get_items()
     {
         return m_items;
     }
 
 protected:
-    std::unordered_map<utils::id, smart_object*> m_items;
+    std::unordered_map<id_t, smart_object*> m_items;
 };
 
-class architype_cache : public hash_cache
+class architype_cache : public hash_cache<utils::id>
 {
 public:
     architype_cache(architype id)

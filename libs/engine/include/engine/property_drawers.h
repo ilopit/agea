@@ -1,6 +1,7 @@
 #pragma once
 
 #include "model/reflection/property.h"
+#include "model/reflection/reflection_type.h"
 
 #include <functional>
 
@@ -114,10 +115,10 @@ public:
     static result_code
     write_t_msh(::agea::blob_ptr ptr);
 
-    static std::unordered_map<utils::id, reflection::type_ui_handler>&
+    static std::unordered_map<int, reflection::type_ui_handler>&
     ro_drawers()
     {
-        static std::unordered_map<utils::id, reflection::type_ui_handler> s_readers;
+        static std::unordered_map<int, reflection::type_ui_handler> s_readers;
         return s_readers;
     }
 };

@@ -13,6 +13,8 @@
 
 #include "model/reflection/reflection_type_utils.h"
 
+#include "model/model_types_ids.ar.h"
+
 namespace agea
 {
 namespace ui
@@ -24,29 +26,29 @@ property_drawers::init()
     using namespace reflection;
     // clang-format off
 
-    ro_drawers()[model::types::tid_string] = property_drawers::draw_ro_str;
+    ro_drawers()[model::model__string] = property_drawers::draw_ro_str;
 
-    ro_drawers()[model::types::tid_bool] = property_drawers::draw_ro_bool;
+    ro_drawers()[model::model__bool] = property_drawers::draw_ro_bool;
 
-    ro_drawers()[model::types::tid_i8] = property_drawers::draw_ro_i8;
-    ro_drawers()[model::types::tid_i16] = property_drawers::draw_ro_i16;
-    ro_drawers()[model::types::tid_i32] = property_drawers::draw_ro_i32;
-    ro_drawers()[model::types::tid_i64] = property_drawers::draw_ro_i64;
-
-
-    ro_drawers()[model::types::tid_u8] = property_drawers::draw_ro_i8;
-    ro_drawers()[model::types::tid_u16] = property_drawers::draw_ro_i16;
-    ro_drawers()[model::types::tid_u32] = property_drawers::draw_ro_i32;
-    ro_drawers()[model::types::tid_u64] = property_drawers::draw_ro_i64;
+    ro_drawers()[model::model__int8_t] = property_drawers::draw_ro_i8;
+    ro_drawers()[model::model__int16_t] = property_drawers::draw_ro_i16;
+    ro_drawers()[model::model__int32_t] = property_drawers::draw_ro_i32;
+    ro_drawers()[model::model__int64_t] = property_drawers::draw_ro_i64;
 
 
-    ro_drawers()[model::types::tid_float] = property_drawers::draw_ro_f;
-    ro_drawers()[model::types::tid_double] = property_drawers::draw_ro_d;
+    ro_drawers()[model::model__uint8_t] = property_drawers::draw_ro_i8;
+    ro_drawers()[model::model__uint16_t] = property_drawers::draw_ro_i16;
+    ro_drawers()[model::model__uint32_t] = property_drawers::draw_ro_i32;
+    ro_drawers()[model::model__uint64_t] = property_drawers::draw_ro_i64;
 
-    ro_drawers()[model::types::tid_vec3] = property_drawers::draw_ro_vec3;
 
-    ro_drawers()[model::types::tid_mat] = property_drawers::draw_ro_mat;
-    ro_drawers()[model::types::tid_msh] = property_drawers::draw_ro_msh;
+    ro_drawers()[model::model__float] = property_drawers::draw_ro_f;
+    ro_drawers()[model::model__double] = property_drawers::draw_ro_d;
+
+    ro_drawers()[model::model__vec3] = property_drawers::draw_ro_vec3;
+
+    ro_drawers()[model::model__material] = property_drawers::draw_ro_mat;
+    ro_drawers()[model::model__mesh] = property_drawers::draw_ro_msh;
 
     // clang-format on
 }
@@ -56,8 +58,8 @@ property_drawers::draw_ro(::agea::model::smart_object* obj, ::agea::reflection::
 {
     auto ptr = (::agea::blob_ptr)obj;
 
-    ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
-    ro_drawers()[p.type.type](ptr);
+    ptr = ::agea::reflection::utils::reduce_ptr(ptr + p.offset, p.type.is_ptr);
+    ro_drawers()[p.type.type_id](ptr);
 
     return result_code::ok;
 }

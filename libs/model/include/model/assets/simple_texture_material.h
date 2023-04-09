@@ -10,7 +10,7 @@ namespace agea
 namespace model
 {
 
-AGEA_class();
+AGEA_ar_class();
 class simple_texture_material : public material
 {
     AGEA_gen_meta__simple_texture_material();
@@ -23,7 +23,7 @@ public:
     bool
     construct(this_class::construct_params& p);
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_albedo(float v)
     {
@@ -31,14 +31,14 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_albedo()
     {
         return m_albedo;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_gamma(float v)
     {
@@ -46,14 +46,14 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_gamma()
     {
         return m_gamma;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_metallic(float v)
     {
@@ -61,14 +61,14 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_metallic()
     {
         return m_metallic;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_roughness(float v)
     {
@@ -76,7 +76,7 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_roughness()
     {
@@ -84,41 +84,41 @@ public:
     }
 
 protected:
-    AGEA_property("category=meta",
-                  "serializable=true",
-                  "property_des_handler=custom::texture_sample_deserialize",
-                  "property_ser_handler=custom::texture_sample_serialize",
-                  "property_prototype_handler=custom::texture_sample_prototype",
-                  "property_compare_handler=custom::texture_sample_compare",
-                  "property_copy_handler=custom::texture_sample_copy");
+    AGEA_ar_property("category=meta",
+                     "serializable=true",
+                     "property_des_handler=custom::texture_sample_deserialize",
+                     "property_ser_handler=custom::texture_sample_serialize",
+                     "property_prototype_handler=custom::texture_sample_prototype",
+                     "property_compare_handler=custom::texture_sample_compare",
+                     "property_copy_handler=custom::texture_sample_copy");
     texture_sample m_simple_texture;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_albedo = 0.2f;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_gamma = 0.4f;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_metallic = 0.6f;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_roughness = 0.8f;
 };
 

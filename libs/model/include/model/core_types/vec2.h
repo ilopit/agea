@@ -1,6 +1,6 @@
 #pragma once
 
-#include <arl/arl_defines.h>
+#include <ar/ar_defines.h>
 #include <glm_unofficial/glm.h>
 
 namespace agea
@@ -8,7 +8,7 @@ namespace agea
 namespace model
 {
 
-AGEA_struct();
+AGEA_ar_struct();
 struct vec2 : ::glm::vec2
 {
     vec2()
@@ -21,7 +21,7 @@ struct vec2 : ::glm::vec2
     {
     }
 
-    AGEA_ctor("category=world");
+    AGEA_ar_ctor("category=world");
     vec2(float x, float y)
         : glm::vec2(x, y)
     {
@@ -40,14 +40,14 @@ struct vec2 : ::glm::vec2
     }
 
     // x
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_x(float v)
     {
         x = v;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_x() const
     {
@@ -55,14 +55,14 @@ struct vec2 : ::glm::vec2
     }
 
     // y
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_y(float v)
     {
         y = v;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_y() const
     {

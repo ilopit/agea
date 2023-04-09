@@ -34,7 +34,7 @@ add_library(model STATIC
 target_compile_options(model PRIVATE /bigobj)
 
 target_link_libraries(model PUBLIC
-   agea::arl
+   agea::ar
    agea::utils
    agea::glm_unofficial
    agea::serialization
@@ -53,11 +53,13 @@ add_custom_target(generate.model.ar ALL)
 add_custom_command(
     TARGET generate.model.ar
     PRE_BUILD
-    COMMAND python ${PROJECT_SOURCE_DIR}/tools/soal_gen.py
+    COMMAND python ${PROJECT_SOURCE_DIR}/tools/argen.py
                 ${PROJECT_SOURCE_DIR}/libs/model/ar/config 
                 ${PROJECT_SOURCE_DIR}/libs/model
                 ${CMAKE_BINARY_DIR}/agea_generated
-                model)
+                model
+                agea
+                0)
 
 set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/model)
 set(ar_file ${ar_folder}/model.ar.cpp)

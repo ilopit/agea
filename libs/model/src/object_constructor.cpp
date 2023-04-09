@@ -261,7 +261,7 @@ object_constructor::object_properties_save(const smart_object& obj, serializatio
 {
     auto& properties = obj.reflection()->m_serilalization_properties;
 
-    auto empty_obj = glob::empty_objects_cache::getr().get_item(obj.reflection()->class_id);
+    auto empty_obj = glob::empty_objects_cache::getr().get_item(obj.reflection()->type_name);
 
     reflection::serialize_context sc;
     reflection::compare_context cc;

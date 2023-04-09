@@ -13,7 +13,7 @@ example_header_template = """
 
 namespace {0}
 {{
-AGEA_class();
+AGEA_ar_class();
 class example : public ::agea::model::game_object
 {{
     AGEA_gen_meta__example();
@@ -74,7 +74,7 @@ add_library({0} STATIC
 target_compile_options({0} PRIVATE /bigobj)
 
 target_link_libraries({0} PUBLIC
-   agea::arl
+   agea::ar
    agea::utils
    agea::glm_unofficial
    agea::model
@@ -90,7 +90,7 @@ agea_finalize_library({0})
 target_include_directories({0} PUBLIC ${{CMAKE_BINARY_DIR}}/agea_generated)
 
 add_custom_target(generate.{0}.ar ALL)
-agea_ar_target(generate.{0}.ar {0})
+agea_ar_target(generate.{0}.ar {0} 100)
 
 """
 
@@ -107,6 +107,12 @@ public:
     {module_name}_module(const ::agea::utils::id& id)
        : ::agea::reflection::module(id)
     {{
+    }}
+
+    virtual bool
+    override_reflection_types()
+    {{
+        return true;
     }}
 
     virtual bool init_reflection();

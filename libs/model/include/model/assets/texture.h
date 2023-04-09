@@ -16,7 +16,7 @@ class texture_data;
 namespace model
 {
 
-AGEA_class();
+AGEA_ar_class();
 class texture : public asset
 {
     AGEA_gen_meta__texture();
@@ -45,13 +45,13 @@ public:
     }
 
 protected:
-    AGEA_property("category=meta", "serializable=true");
+    AGEA_ar_property("category=meta", "serializable=true");
     utils::buffer m_base_color;
 
-    AGEA_property("category=meta", "serializable=true");
+    AGEA_ar_property("category=meta", "serializable=true");
     uint32_t m_width;
 
-    AGEA_property("category=meta", "serializable=true");
+    AGEA_ar_property("category=meta", "serializable=true");
     uint32_t m_height;
 
     agea::render::texture_data* m_texture_data = nullptr;

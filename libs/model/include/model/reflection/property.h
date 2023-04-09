@@ -2,9 +2,9 @@
 
 #include "model/model_minimal.h"
 
-#include "model/reflection/types.h"
+#include "model/reflection/reflection_type_utils.h"
 #include "model/reflection/property_utils.h"
-#include "model/reflection/reflection_type.h"
+#include "model/reflection/type_description.h"
 
 #include <string>
 #include <vector>
@@ -13,20 +13,11 @@
 
 namespace agea
 {
-
-namespace model
-{
-
-class module_reflection
-{
-public:
-    static bool
-    set_up();
-};
-}  // namespace model
-
 namespace reflection
 {
+
+struct reflection_type;
+
 class property
 {
 public:
@@ -108,8 +99,7 @@ public:
     // clang-format off
     std::string name;
     size_t offset;
-    size_t size;
-    property_type_description type;
+    type_description type;
 
     std::string category;
     std::vector<std::string> hints;
@@ -117,19 +107,10 @@ public:
     bool serializable                                               = false;
     bool has_default                                                = false;
 
-    reflection_type rtype;
+    reflection_type* rtype = nullptr;
 
     std::string gpu_data;
     // clang-format on
-};
-
-struct class_reflection_table
-{
-    class_reflection_table(class_reflection_table* p)
-        : parent(p)
-    {
-    }
-    class_reflection_table* parent;
 };
 
 }  // namespace reflection

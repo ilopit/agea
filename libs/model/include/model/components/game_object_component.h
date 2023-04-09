@@ -20,7 +20,7 @@ const extern vec3 DEF_FORWARD;
 const extern vec3 DEF_UP;
 const extern vec3 DEF_RIGHT;
 
-AGEA_class();
+AGEA_ar_class();
 class game_object_component : public component
 {
     AGEA_gen_meta__game_object_component();
@@ -123,19 +123,19 @@ public:
     mark_render_dirty();
 
 protected:
-    AGEA_property("category=object", "serializable=true", "default=true");
+    AGEA_ar_property("category=object", "serializable=true", "default=true");
     bool m_tickable = false;
 
-    AGEA_property("category=object", "serializable=true", "default=true");
+    AGEA_ar_property("category=object", "serializable=true", "default=true");
     bool m_visible = false;
 
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
+    AGEA_ar_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
     vec3 m_position = {0.f};
 
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
+    AGEA_ar_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
     vec3 m_rotation = {0.f};
 
-    AGEA_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
+    AGEA_ar_property("category=world", "serializable=true", "hint=x,y,z", "default=true");
     vec3 m_scale = {1.f};
 
     glm::mat4 m_transform_matrix;

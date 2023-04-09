@@ -8,7 +8,7 @@ namespace agea
 {
 namespace model
 {
-AGEA_class();
+AGEA_ar_class();
 class pbr_material : public material
 {
     AGEA_gen_meta__pbr_material();
@@ -24,7 +24,7 @@ public:
         return true;
     };
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_albedo(float v)
     {
@@ -32,14 +32,14 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_albedo()
     {
         return m_albedo;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_gamma(float v)
     {
@@ -47,14 +47,14 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_gamma()
     {
         return m_gamma;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_metallic(float v)
     {
@@ -62,14 +62,14 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_metallic()
     {
         return m_metallic;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_roughness(float v)
     {
@@ -77,39 +77,39 @@ public:
         mark_render_dirty();
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_roughness()
     {
         return m_roughness;
     }
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_albedo = 0.1f;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_gamma = 0.1f;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_metallic = 0.1f;
 
-    AGEA_property("category=properties",
-                  "access=no",
-                  "serializable=true",
-                  "gpu_data=MaterialData",
-                  "default=true");
+    AGEA_ar_property("category=properties",
+                     "access=no",
+                     "serializable=true",
+                     "gpu_data=MaterialData",
+                     "default=true");
     float m_roughness = 0.1f;
 };
 

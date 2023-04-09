@@ -103,9 +103,11 @@ vulkan_engine::init()
 
     for (auto& [id, m] : glob::module_manager::getr().modules())
     {
-        m->init_types();
         m->init_reflection();
+        m->override_reflection_types();
     }
+
+    glob::reflection_type_registry::getr().finilaze();
 
     glob::resource_locator::get()->init_local_dirs();
     auto cfgs_folder = glob::resource_locator::get()->resource_dir(category::configs);

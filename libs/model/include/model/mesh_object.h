@@ -10,7 +10,7 @@ namespace model
 {
 class component;
 
-AGEA_class();
+AGEA_ar_class();
 class mesh_object : public game_object
 {
 public:

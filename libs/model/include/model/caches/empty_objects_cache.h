@@ -12,7 +12,7 @@ namespace agea
 namespace glob
 {
 struct empty_objects_cache
-    : public singleton_instance<::agea::model::hash_cache, empty_objects_cache>
+    : public singleton_instance<::agea::model::hash_cache<utils::id>, empty_objects_cache>
 {
 };
 

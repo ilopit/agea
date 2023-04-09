@@ -59,12 +59,6 @@ struct property_prototype_context
     const serialization::conteiner* sc = nullptr;
 };
 
-inline blob_ptr
-reduce_ptr(blob_ptr ptr, bool is_ptr)
-{
-    return is_ptr ? *(blob_ptr*)(ptr) : ptr;
-}
-
 // clang-format off
 
 using property_deserialization_handler  = result_code(*)(deserialize_context&);

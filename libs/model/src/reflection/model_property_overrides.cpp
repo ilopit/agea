@@ -1,4 +1,4 @@
-#include "model/reflection/model_property_overrides.h"
+#include "model/model_properties_custom.h"
 
 #include "model/reflection/property.h"
 #include "model/reflection/reflection_type_utils.h"

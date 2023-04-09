@@ -14,6 +14,7 @@
 #include <model/point_light.h>
 #include <model/components/light_component.h>
 #include <model/components/mesh_component.h>
+#include <model/model_types_ids.ar.h>
 
 #include <assets_importer/mesh_importer.h>
 #include <assets_importer/texture_importer.h>
@@ -151,17 +152,19 @@ scene_builder::create_collection_template(model::smart_object& so,
     {
         if (!p->gpu_data.empty())
         {
-            if (model::types::tid_float == p->rtype.type_id)
+            switch (p->rtype->type_id)
             {
-                sb.add_field(p->rtype.type_id, agea::utils::agea_type::t_f, 1);
-            }
-            else if (model::types::tid_vec3 == p->rtype.type_id)
-            {
-                sb.add_field(p->rtype.type_id, agea::utils::agea_type::t_vec3, 16);
-            }
-            else if (model::types::tid_vec4 == p->rtype.type_id)
-            {
-                sb.add_field(p->rtype.type_id, agea::utils::agea_type::t_vec4, 16);
+            case model::model__float:
+                sb.add_field(AID(""), agea::utils::agea_type::t_f, 1);
+                break;
+            case model::model__vec3:
+                sb.add_field(AID(""), agea::utils::agea_type::t_vec3, 16);
+                break;
+            case model::model__vec4:
+                sb.add_field(AID(""), agea::utils::agea_type::t_vec4, 16);
+                break;
+            default:
+                break;
             }
 
             t.offset_in_object.push_back((uint32_t)p->offset);

@@ -8,7 +8,7 @@ namespace agea
 {
 namespace model
 {
-AGEA_class();
+AGEA_ar_class();
 class asset : public smart_object
 {
     AGEA_gen_meta__asset();

@@ -11,7 +11,7 @@ namespace agea
 namespace model
 {
 
-AGEA_class();
+AGEA_ar_class();
 class point_light : public game_object
 {
     AGEA_gen_meta__point_light();

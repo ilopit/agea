@@ -9,21 +9,19 @@ class demo_module : public ::agea::reflection::module
 {
 public:
     demo_module(const ::agea::utils::id& id)
-        : ::agea::reflection::module(id)
+       : ::agea::reflection::module(id)
     {
     }
 
     virtual bool
-    init_reflection() override;
-
-    virtual bool
-    init_types() override
+    override_reflection_types()
     {
         return true;
     }
 
-    demo_module&
-    instance();
+    virtual bool init_reflection();
+
+    demo_module& instance();
 };
 
 }  // namespace demo

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <arl/arl_defines.h>
+#include <ar/ar_defines.h>
 #include <glm_unofficial/glm.h>
 
 namespace agea
@@ -8,7 +8,7 @@ namespace agea
 namespace model
 {
 
-AGEA_struct();
+AGEA_ar_struct();
 struct vec3 : ::glm::vec3
 {
     vec3()
@@ -21,13 +21,13 @@ struct vec3 : ::glm::vec3
     {
     }
 
-    AGEA_ctor("category=world");
+    AGEA_ar_ctor("category=world");
     vec3(float x, float y, float z)
         : glm::vec3(x, y, z)
     {
     }
 
-    AGEA_ctor("category=world");
+    AGEA_ar_ctor("category=world");
     vec3(float v)
         : glm::vec3(v)
     {
@@ -46,14 +46,14 @@ struct vec3 : ::glm::vec3
     }
 
     // x
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_x(float v)
     {
         x = v;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_x() const
     {
@@ -61,14 +61,14 @@ struct vec3 : ::glm::vec3
     }
 
     // y
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_y(float v)
     {
         y = v;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_y() const
     {
@@ -76,14 +76,14 @@ struct vec3 : ::glm::vec3
     }
 
     // z
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     void
     set_z(float v)
     {
         z = v;
     }
 
-    AGEA_function("category=world");
+    AGEA_ar_function("category=world");
     float
     get_z() const
     {

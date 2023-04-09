@@ -1,4 +1,4 @@
-﻿add_subdirectory(arl)
+﻿add_subdirectory(ar)
 add_subdirectory(assets_importer)
 add_subdirectory(engine)
 add_subdirectory(model)

@@ -1,10 +1,11 @@
 #pragma once
 
 #include "model/model_minimal.h"
-
 #include "model/model_fwds.h"
+
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
+
 #include "model/object_constructor.h"
 #include "model/objects_mapping.h"
 

@@ -9,7 +9,7 @@
 
 namespace demo
 {
-AGEA_class();
+AGEA_ar_class();
 class example : public ::agea::model::game_object
 {
     AGEA_gen_meta__example();

@@ -14,7 +14,7 @@ class material;
 
 struct render_data;
 
-AGEA_class();
+AGEA_ar_class();
 class mesh_component : public game_object_component
 {
     AGEA_gen_meta__mesh_component();
@@ -61,10 +61,10 @@ public:
     }
 
 protected:
-    AGEA_property("category=assets", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=assets", "serializable=true", "access=no", "default=true");
     material* m_material = nullptr;
 
-    AGEA_property("category=assets", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=assets", "serializable=true", "access=no", "default=true");
     mesh* m_mesh = nullptr;
 };
 
