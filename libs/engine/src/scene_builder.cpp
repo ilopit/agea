@@ -63,11 +63,11 @@ is_agea_mesh(const utils::path& p)
 
 const render::vertex_input_description DEFAULT_VERTEX_DESCRIPTION = []()
 {
-    agea::utils::dynamic_object_layout_sequence_builder<utils::agea_type> builder;
-    builder.add_field(AID("pos"), agea::utils::agea_type::id::t_vec3, 1);
-    builder.add_field(AID("norm"), agea::utils::agea_type::id::t_vec3, 1);
-    builder.add_field(AID("color"), agea::utils::agea_type::id::t_vec3, 1);
-    builder.add_field(AID("uv"), agea::utils::agea_type::id::t_vec2, 1);
+    agea::utils::dynamic_object_layout_sequence_builder<render::gpu_type> builder;
+    builder.add_field(AID("pos"), render::gpu_type::g_vec3, 1);
+    builder.add_field(AID("norm"), render::gpu_type::g_vec3, 1);
+    builder.add_field(AID("color"), render::gpu_type::g_vec3, 1);
+    builder.add_field(AID("uv"), render::gpu_type::g_vec2, 1);
 
     auto dol = builder.get_layout();
 
@@ -146,7 +146,7 @@ scene_builder::create_collection_template(model::smart_object& so,
 
     size_t dst_offest = 0;
 
-    agea_dynobj_builder sb;
+    utils::dynamic_object_layout_sequence_builder<render::gpu_type> sb;
 
     for (auto& p : properties)
     {
@@ -155,13 +155,13 @@ scene_builder::create_collection_template(model::smart_object& so,
             switch (p->rtype->type_id)
             {
             case model::model__float:
-                sb.add_field(AID(""), agea::utils::agea_type::t_f, 1);
+                sb.add_field(AID(""), render::gpu_type::g_float, 1);
                 break;
             case model::model__vec3:
-                sb.add_field(AID(""), agea::utils::agea_type::t_vec3, 16);
+                sb.add_field(AID(""), render::gpu_type::g_vec3, 16);
                 break;
             case model::model__vec4:
-                sb.add_field(AID(""), agea::utils::agea_type::t_vec4, 16);
+                sb.add_field(AID(""), render::gpu_type::g_vec4, 16);
                 break;
             default:
                 break;

@@ -13,6 +13,7 @@ gpu_type::size(gpu_type::id t)
     case gpu_type::g_float:
     case gpu_type::g_int:
     case gpu_type::g_unsigned:
+    case gpu_type::g_color:
         return 4;
     case gpu_type::g_double:
     case gpu_type::g_vec2:
@@ -29,6 +30,8 @@ gpu_type::size(gpu_type::id t)
     default:
         break;
     }
+
+    AGEA_never("Should be never here!");
 
     return 0;
 }

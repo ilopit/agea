@@ -587,10 +587,10 @@ vulkan_render::prepare_ui_pipeline()
     auto frag_path = path / "se_uioverlay.frag";
     agea::utils::buffer::load(frag_path, frag);
 
-    utils::dynamic_object_layout_sequence_builder<utils::agea_type> builder;
-    builder.add_field(AID("pos"), agea::utils::agea_type::id::t_vec2, 1);
-    builder.add_field(AID("uv"), agea::utils::agea_type::id::t_vec2, 1);
-    builder.add_field(AID("color"), agea::utils::agea_type::id::t_color, 1);
+    utils::dynamic_object_layout_sequence_builder<gpu_type> builder;
+    builder.add_field(AID("pos"), agea::render::gpu_type::g_vec2, 1);
+    builder.add_field(AID("uv"), agea::render::gpu_type::g_vec2, 1);
+    builder.add_field(AID("color"), agea::render::gpu_type::g_color, 1);
 
     auto dol = builder.get_layout();
 

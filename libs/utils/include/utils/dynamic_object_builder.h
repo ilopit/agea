@@ -1,7 +1,6 @@
 #pragma once
 
 #include "utils/id.h"
-#include "utils/agea_types.h"
 #include "utils/check.h"
 #include "utils/dynamic_object.h"
 
@@ -164,5 +163,4 @@ public:
 
 }  // namespace utils
 
-using agea_dynobj_builder = utils::dynamic_object_layout_sequence_builder<utils::agea_type>;
 }  // namespace agea
