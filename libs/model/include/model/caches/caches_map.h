@@ -41,7 +41,7 @@ public:
         return true;
     }
 
-    const std::unordered_map<utils::id, smart_object*>&
+    const std::unordered_map<utils::id, root::smart_object*>&
     get_items()
     {
         return m_items;
@@ -66,7 +66,7 @@ public:
     }
 
     void
-    add_item(smart_object& obj)
+    add_item(root::smart_object& obj)
     {
         auto aid = obj.get_architype_id();
 

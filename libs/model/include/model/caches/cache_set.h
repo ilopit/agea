@@ -3,6 +3,8 @@
 #include "model/model_minimal.h"
 #include "model/model_fwds.h"
 
+#include <model/caches/caches_map.h>
+
 #include <utils/singleton_instance.h>
 
 namespace agea

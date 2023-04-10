@@ -23,7 +23,7 @@ public:
     init();
 
     static result_code
-    draw_ro(::agea::model::smart_object* obj, ::agea::reflection::property& p);
+    draw_ro(::agea::root::smart_object* obj, ::agea::reflection::property& p);
 
     // STR
     static result_code

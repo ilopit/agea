@@ -8,19 +8,19 @@ example_header_template = """
 #include "{0}/example.generated.h"
 
 #include "model/model_minimal.h"
-#include "model/core_types/vec3.h"
-#include "model/game_object.h"
+#include "root/core_types/vec3.h"
+#include "root/game_object.h"
 
 namespace {0}
 {{
 AGEA_ar_class();
-class example : public ::agea::model::game_object
+class example : public ::agea::root::game_object
 {{
     AGEA_gen_meta__example();
 
 public:
     // Meta part
-    AGEA_gen_class_meta(example, ::agea::model::game_object);
+    AGEA_gen_class_meta(example, ::agea::root::game_object);
     AGEA_gen_meta_api;
     AGEA_gen_construct_params{{
 
@@ -78,6 +78,7 @@ target_link_libraries({0} PUBLIC
    agea::utils
    agea::glm_unofficial
    agea::model
+   agea::root
    agea::serialization
    agea::resource_locator
 
@@ -90,7 +91,7 @@ agea_finalize_library({0})
 target_include_directories({0} PUBLIC ${{CMAKE_BINARY_DIR}}/agea_generated)
 
 add_custom_target(generate.{0}.ar ALL)
-agea_ar_target(generate.{0}.ar {0} 100)
+agea_ar_target(generate.{0}.ar {0} " " 100)
 
 """
 
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     module_includes = []
     for d in os.listdir(modules_path):
         if os.path.isdir(os.path.join(modules_path, d)):
-            module_includes.append(f"add_subdirectory({str(d)})")
+            module_includes.append(f"add_subdirectory({str(d)})\n")
 
     with open(os.path.join(modules_path, "CMakeLists.txt"), "w", newline='\n') as w:
         w.writelines(module_includes)

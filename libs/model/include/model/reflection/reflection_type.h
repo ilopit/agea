@@ -12,24 +12,24 @@
 
 #include <vector>
 
-#define AGEA_serialization_args                                   \
-    const ::agea::model::smart_object &obj, ::agea::blob_ptr ptr, \
+#define AGEA_serialization_args                                  \
+    const ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
         ::agea::serialization::conteiner &jc
 
-#define AGEA_deserialization_args                           \
-    ::agea::model::smart_object &obj, ::agea::blob_ptr ptr, \
+#define AGEA_deserialization_args                          \
+    ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
         const ::agea::serialization::conteiner &jc, ::agea::model::object_load_context &occ
 
 #define AGEA_deserialization_update_args                              \
     ::agea::blob_ptr ptr, const ::agea::serialization::conteiner &jc, \
         ::agea::model::object_load_context &occ
 
-#define AGEA_copy_handler_args                                                  \
-    ::agea::model::smart_object &src_obj, ::agea::model::smart_object &dst_obj, \
+#define AGEA_copy_handler_args                                                \
+    ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj, \
         ::agea::blob_ptr from, ::agea::blob_ptr to, ::agea::model::object_load_context &ooc
 
 #define AGEA_protorype_handler_args                                                             \
-    ::agea::model::smart_object &src_obj, ::agea::model::smart_object &dst_obj,                 \
+    ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj,                   \
         ::agea::blob_ptr from, ::agea::blob_ptr to, const ::agea::serialization::conteiner &jc, \
         ::agea::model::object_load_context &ooc
 

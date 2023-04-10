@@ -1,8 +1,8 @@
 #include "model/level_manager.h"
 
 #include "model/level.h"
-#include "model/mesh_object.h"
-#include "model/components/mesh_component.h"
+#include "root/mesh_object.h"
+#include "root/components/mesh_component.h"
 #include "model/object_load_context.h"
 #include "model/object_constructor.h"
 #include "model/package_manager.h"
@@ -99,11 +99,11 @@ level_manager::load_level_path(level& l,
         }
     }
 
-    std::vector<smart_object*> loaded_obj;
+    std::vector<root::smart_object*> loaded_obj;
 
     for (auto& i : l.m_mapping->m_items)
     {
-        smart_object* obj = nullptr;
+        root::smart_object* obj = nullptr;
         auto rc = object_constructor::object_load(i.first, object_load_type::instance_obj, *l.m_occ,
                                                   obj, loaded_obj);
 
@@ -116,7 +116,7 @@ level_manager::load_level_path(level& l,
         {
             o->post_load();
 
-            if (auto game_obj = o->as<game_object>())
+            if (auto game_obj = o->as<root::game_object>())
             {
                 l.m_tickable_objects.emplace_back(game_obj);
             }

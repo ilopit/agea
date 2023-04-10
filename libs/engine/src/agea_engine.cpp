@@ -18,14 +18,15 @@
 #include <model/caches/textures_cache.h>
 #include <model/caches/game_objects_cache.h>
 #include <model/caches/caches_map.h>
-#include <model/assets/mesh.h>
+#include <root/assets/mesh.h>
+#include <root/components/mesh_component.h>
+#include <root/game_object.h>
+#include <root/assets/shader_effect.h>
+#include <root/assets/mesh.h>
+
 #include <model/caches/empty_objects_cache.h>
 
 #include <model/reflection/lua_api.h>
-#include <model/components/mesh_component.h>
-#include <model/game_object.h>
-#include <model/assets/shader_effect.h>
-#include <model/assets/mesh.h>
 #include <model/level_manager.h>
 #include <model/level.h>
 #include <model/package.h>
@@ -99,7 +100,7 @@ vulkan_engine::init()
 
     glob::init_global_caches(*m_registry);
 
-    glob::module_manager::getr().register_module<model::model_module>();
+    glob::module_manager::getr().register_module<root::root_module>();
 
     for (auto& [id, m] : glob::module_manager::getr().modules())
     {
@@ -322,13 +323,13 @@ vulkan_engine::init_default_resources()
     //         AID("plane_mesh"), vert_buffer.make_view<render::gpu_vertex_data>(),
     //         index_buffer.make_view<render::gpu_index_data>());
 
-    auto pkg = glob::package_manager::getr().get_package(AID("model"));
+    auto pkg = glob::package_manager::getr().get_package(AID("root"));
 
-    model::mesh::construct_params p;
+    root::mesh::construct_params p;
     p.indices = index_buffer;
     p.vertices = vert_buffer;
 
-    auto obj = pkg->add_object<model::mesh>(AID("plane_mesh"), p);
+    auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
 
     m_scene->prepare_for_rendering(*obj, true);
 }
@@ -350,10 +351,10 @@ vulkan_engine::init_scene()
             for (int z = 0; z < 3; ++z)
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
-                auto p = glob::level::getr().spawn_object<model::game_object>((z & 1) ? id1 : id2,
-                                                                              AID(id));
+                auto p = glob::level::getr().spawn_object<root::game_object>((z & 1) ? id1 : id2,
+                                                                             AID(id));
 
-                p->get_root_component()->set_position(model::vec3{x * 10.f, y * 10.f, z * 10.f});
+                p->get_root_component()->set_position(root::vec3{x * 10.f, y * 10.f, z * 10.f});
                 p->update_position();
 
                 m_scene->prepare_for_rendering(*p, true);

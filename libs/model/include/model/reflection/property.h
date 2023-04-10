@@ -29,7 +29,7 @@ public:
     property_prototype_handler       protorype_handler       = default_prototype;
 
 
-    blob_ptr get_blob(model::smart_object& obj);
+    blob_ptr get_blob(root::smart_object& obj);
 
     // clang-format on
 
@@ -57,24 +57,24 @@ private:
 
     static result_code
     deserialize_collection(reflection::property& p,
-                           model::smart_object& obj,
+                           root::smart_object& obj,
                            const serialization::conteiner& sc,
                            model::object_load_context& occ);
 
     static result_code
     deserialize_item(reflection::property& p,
-                     model::smart_object& obj,
+                     root::smart_object& obj,
                      const serialization::conteiner& sc,
                      model::object_load_context& occ);
 
     static result_code
     serialize_collection(const reflection::property& p,
-                         const model::smart_object& obj,
+                         const root::smart_object& obj,
                          serialization::conteiner& sc);
 
     static result_code
     serialize_item(const reflection::property& p,
-                   const model::smart_object& obj,
+                   const root::smart_object& obj,
                    serialization::conteiner& sc);
 
     static result_code

@@ -39,6 +39,7 @@ target_link_libraries(model PUBLIC
    agea::glm_unofficial
    agea::serialization
    agea::resource_locator
+   agea::root
 
    lua_static
    agea::sol2_unofficial
@@ -47,38 +48,5 @@ target_link_libraries(model PUBLIC
 target_include_directories(model PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
 agea_finalize_library(model)
-
-
-add_custom_target(generate.model.ar ALL)
-add_custom_command(
-    TARGET generate.model.ar
-    PRE_BUILD
-    COMMAND python ${PROJECT_SOURCE_DIR}/tools/argen.py
-                ${PROJECT_SOURCE_DIR}/libs/model/ar/config 
-                ${PROJECT_SOURCE_DIR}/libs/model
-                ${CMAKE_BINARY_DIR}/agea_generated
-                model
-                agea
-                0)
-
-set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/model)
-set(ar_file ${ar_folder}/model.ar.cpp)
-
-agea_ide_path(generate.model.ar)
-
-if(EXISTS ${ar_file})
-    message("File already exists, skipping")
-else()
-
-    if(NOT EXISTS)
-    file(MAKE_DIRECTORY ${ar_folder})
-    endif()
-
-    write_file(${ar_file} "//ar file do not modify")
-endif()
-
-
-
-add_dependencies(model generate.model.ar)
 
 add_subdirectory(tests)

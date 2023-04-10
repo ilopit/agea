@@ -1,9 +1,9 @@
 #pragma once
 
-#include "core_types/vec2.h"
-#include "core_types/vec3.h"
-#include "core_types/vec4.h"
-#include "core_types/color.h"
+#include "root/core_types/vec2.h"
+#include "root/core_types/vec3.h"
+#include "root/core_types/vec4.h"
+#include "root/core_types/color.h"
 
 #include <utils/check.h>
 #include <utils/defines_utils.h>

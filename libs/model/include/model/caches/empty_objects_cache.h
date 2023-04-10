@@ -1,9 +1,9 @@
 #pragma once
 
 #include "model/model_minimal.h"
-
-#include "model/smart_object.h"
 #include "model/caches/hash_cache.h"
+
+#include "root/smart_object.h"
 
 #include <utils/singleton_instance.h>
 

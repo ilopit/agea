@@ -7,8 +7,8 @@
 #include "engine/engine_counters.h"
 
 #include <model/level.h>
-#include <model/game_object.h>
-#include <model/assets/material.h>
+#include <root/game_object.h>
+#include <root/assets/material.h>
 #include <model/caches/caches_map.h>
 #include <model/caches/materials_cache.h>
 #include <model/reflection/property.h>
@@ -155,7 +155,7 @@ level_editor_window::handle()
     {
         for (auto& o : level->get_game_objects().get_items())
         {
-            if (auto game_obj = o.second->as<model::game_object>())
+            if (auto game_obj = o.second->as<root::game_object>())
             {
                 draw_oject(game_obj);
             }
@@ -166,7 +166,7 @@ level_editor_window::handle()
 }
 
 void
-level_editor_window::draw_oject(model::game_object* obj)
+level_editor_window::draw_oject(root::game_object* obj)
 {
     bool opened = ImGui::TreeNode(obj->get_id().cstr());
     if (ImGui::IsItemClicked())
@@ -192,7 +192,7 @@ materials_selector::handle()
     ImGui::Separator();
 
     glob::materials_cache::get()->call_on_items(
-        [this](model::material* m)
+        [this](root::material* m)
         {
             {
                 auto mat_id = m->get_id().str();
@@ -319,7 +319,7 @@ object_editor::handle()
 }
 
 void
-object_editor::draw_components(model::game_object_component* root, selection_context& sc)
+object_editor::draw_components(root::game_object_component* root, selection_context& sc)
 {
     ImGuiTreeNodeFlags node_flags = sc.base_flags;
     const bool is_selected = sc.i == sc.selected;
@@ -352,7 +352,7 @@ object_editor::draw_components(model::game_object_component* root, selection_con
         {
             for (auto obj : root->get_children())
             {
-                draw_components((model::game_object_component*)obj, sc);
+                draw_components((root::game_object_component*)obj, sc);
             }
         }
         ImGui::TreePop();

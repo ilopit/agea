@@ -6,9 +6,9 @@
 #include "model/caches/caches_map.h"
 #include "model/package.h"
 
-#include "model/assets/texture.h"
-#include "model/assets/material.h"
-#include "model/assets/mesh.h"
+#include "root/assets/texture.h"
+#include "root/assets/material.h"
+#include "root/assets/mesh.h"
 
 #include <serialization/serialization.h>
 
@@ -79,12 +79,12 @@ package_manager::load_package(const utils::id& id)
     new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
     new_package->init_global_cache_reference();
 
-    std::vector<smart_object*> loaded_obj;
+    std::vector<root::smart_object*> loaded_obj;
     for (auto& i : mapping->m_items)
     {
         AGEA_check(i.second.is_class, "Load only package!");
 
-        smart_object* obj = nullptr;
+        root::smart_object* obj = nullptr;
         auto rc = object_constructor::object_load(i.first, object_load_type::class_obj,
                                                   new_package->get_load_context(), obj, loaded_obj);
         if (rc != result_code::ok)
@@ -96,7 +96,7 @@ package_manager::load_package(const utils::id& id)
         for (auto& o : loaded_obj)
         {
             o->post_load();
-            o->set_state(smart_object_state::constructed);
+            o->set_state(root::smart_object_state::constructed);
         }
 
         auto mirror_id = obj->get_id();
@@ -113,7 +113,7 @@ package_manager::load_package(const utils::id& id)
         for (auto o : loaded_obj)
         {
             o->post_load();
-            o->set_state(smart_object_state::constructed);
+            o->set_state(root::smart_object_state::constructed);
         }
     }
 

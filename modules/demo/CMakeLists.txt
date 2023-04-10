@@ -18,6 +18,7 @@ target_link_libraries(demo PUBLIC
    agea::utils
    agea::glm_unofficial
    agea::model
+   agea::root
    agea::serialization
    agea::resource_locator
 
@@ -30,5 +31,5 @@ agea_finalize_library(demo)
 target_include_directories(demo PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
 add_custom_target(generate.demo.ar ALL)
-agea_ar_target(generate.demo.ar demo 100)
+agea_ar_target(generate.demo.ar demo " " 100)
 

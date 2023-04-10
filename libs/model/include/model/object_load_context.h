@@ -27,18 +27,18 @@ public:
     make_full_path(const utils::id& id, utils::path& p) const;
 
     bool
-    add_obj(std::shared_ptr<smart_object> obj, bool add_global);
+    add_obj(std::shared_ptr<root::smart_object> obj, bool add_global);
 
-    smart_object*
+    root::smart_object*
     find_class_obj(const utils::id& id);
 
-    smart_object*
+    root::smart_object*
     find_obj(const utils::id& id);
 
-    smart_object*
+    root::smart_object*
     find_class_obj(const utils::id& id, architype a_type);
 
-    smart_object*
+    root::smart_object*
     find_obj(const utils::id& id, architype a_type);
 
     // clang-format off
@@ -50,7 +50,7 @@ public:
     object_load_context& set_instance_local_set  (cache_set* v)                             { m_instance_local_set = v; return *this; }
     object_load_context& set_level               (level* l)                                 { m_level = l; return *this; }
     object_load_context& set_objects_mapping     (const std::shared_ptr<object_mapping>& v) { m_object_mapping = v; return *this; }
-    object_load_context& set_ownable_cache       (line_cache<smart_object_ptr>* v)          { m_ownable_cache_ptr = v; return *this; }
+    object_load_context& set_ownable_cache       (line_cache<root::smart_object_ptr>* v)    { m_ownable_cache_ptr = v; return *this; }
     object_load_context& set_package             (package* p)                               { m_package = p; return *this; }
     object_load_context& set_prefix_path         (const utils::path& v)                     { m_path_prefix = v; return *this; }
 
@@ -66,14 +66,14 @@ public:
 
     // clang-format on
     void
-    reset_loaded_objects(std::vector<smart_object*>& objs)
+    reset_loaded_objects(std::vector<root::smart_object*>& objs)
     {
         objs = std::move(m_loaded_objects);
         m_loaded_objects.clear();
     }
 
     void
-    push_object_loaded(smart_object* o)
+    push_object_loaded(root::smart_object* o)
     {
         m_loaded_objects.push_back(o);
     }
@@ -91,10 +91,10 @@ private:
     package* m_package = nullptr;
     level* m_level = nullptr;
 
-    std::vector<smart_object*> m_loaded_objects;
+    std::vector<root::smart_object*> m_loaded_objects;
     std::shared_ptr<object_mapping> m_object_mapping;
 
-    line_cache<smart_object_ptr>* m_ownable_cache_ptr;
+    line_cache<root::smart_object_ptr>* m_ownable_cache_ptr;
 };
 }  // namespace model
 }  // namespace agea

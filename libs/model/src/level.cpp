@@ -1,8 +1,8 @@
 #include "model/level.h"
 
-#include "model/game_object.h"
-#include "model/assets/asset.h"
-#include "model/assets/shader_effect.h"
+#include "root/game_object.h"
+#include "root/assets/asset.h"
+#include "root/assets/shader_effect.h"
 
 #include "model/caches/game_objects_cache.h"
 #include "model/caches/caches_map.h"
@@ -28,19 +28,19 @@ level::~level()
 {
 }
 
-game_object*
+root::game_object*
 level::find_game_object(const utils::id& id)
 {
     return m_local_cs.game_objects->get_item(id);
 }
 
-component*
+root::component*
 level::find_component(const utils::id& id)
 {
     return m_local_cs.components->get_item(id);
 }
 
-smart_object*
+root::smart_object*
 level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
 {
     auto proto_obj = m_occ->find_obj(proto_obj_id);
@@ -50,8 +50,8 @@ level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
         return nullptr;
     }
 
-    smart_object* result = nullptr;
-    std::vector<smart_object*> loaded_obj;
+    root::smart_object* result = nullptr;
+    std::vector<root::smart_object*> loaded_obj;
 
     auto rc = object_constructor::object_clone(*proto_obj, object_id, *m_occ, result, loaded_obj);
     if (rc != result_code::ok)
@@ -62,7 +62,7 @@ level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
     for (auto o : loaded_obj)
     {
         o->post_load();
-        o->set_state(smart_object_state::constructed);
+        o->set_state(root::smart_object_state::constructed);
     }
 
     return result;

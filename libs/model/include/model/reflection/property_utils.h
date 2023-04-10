@@ -21,7 +21,7 @@ class property;
 struct deserialize_context
 {
     property* p = nullptr;
-    model::smart_object* obj = nullptr;
+    root::smart_object* obj = nullptr;
     const serialization::conteiner* sc = nullptr;
     model::object_load_context* occ = nullptr;
 };
@@ -29,23 +29,23 @@ struct deserialize_context
 struct serialize_context
 {
     property* p = nullptr;
-    const model::smart_object* obj = nullptr;
+    const root::smart_object* obj = nullptr;
     serialization::conteiner* sc = nullptr;
 };
 
 struct compare_context
 {
     property* p = nullptr;
-    const model::smart_object* src_obj = nullptr;
-    const model::smart_object* dst_obj = nullptr;
+    const root::smart_object* src_obj = nullptr;
+    const root::smart_object* dst_obj = nullptr;
 };
 
 struct copy_context
 {
     property* src_property = nullptr;
     property* dst_property = nullptr;
-    model::smart_object* src_obj = nullptr;
-    model::smart_object* dst_obj = nullptr;
+    root::smart_object* src_obj = nullptr;
+    root::smart_object* dst_obj = nullptr;
     model::object_load_context* occ = nullptr;
 };
 
@@ -53,8 +53,8 @@ struct property_prototype_context
 {
     property* src_property = nullptr;
     property* dst_property = nullptr;
-    model::smart_object* src_obj = nullptr;
-    model::smart_object* dst_obj = nullptr;
+    root::smart_object* src_obj = nullptr;
+    root::smart_object* dst_obj = nullptr;
     model::object_load_context* occ = nullptr;
     const serialization::conteiner* sc = nullptr;
 };

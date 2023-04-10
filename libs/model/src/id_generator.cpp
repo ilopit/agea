@@ -2,7 +2,7 @@
 
 #include <model/caches/caches_map.h>
 #include <model/caches/objects_cache.h>
-#include <model/smart_object.h>
+#include <root/smart_object.h>
 
 #include <utils/agea_log.h>
 

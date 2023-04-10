@@ -5,8 +5,9 @@
 
 #include <utils/agea_log.h>
 
-#include <model/assets/mesh.h>
-#include <model/assets/texture.h>
+#include <root/assets/mesh.h>
+#include <root/assets/texture.h>
+
 #include <model/object_constructor.h>
 #include <model/package.h>
 
@@ -40,14 +41,14 @@ convert_3do_to_amsh(const utils::path& obj_path,
     indices.set_file(dst_folder_path / APATH("class/meshes") / ind_ext);
 
     auto full_obj_path = dst_folder_path / APATH("class/meshes") / obj_ext;
-    auto obj = model::object_constructor::alloc_empty_object<model::mesh>();
+    auto obj = model::object_constructor::alloc_empty_object<root::mesh>();
 
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
     model::package p(AID("dummy"));
     p.set_save_root_path(dst_folder_path);
 
-    auto mesh = obj->as<model::mesh>();
+    auto mesh = obj->as<root::mesh>();
     mesh->set_package(&p);
     mesh->set_indices_buffer(indices);
     mesh->set_vertices_buffer(vertices);
@@ -81,13 +82,13 @@ convert_image_to_atxt(const utils::path& obj_path,
 
     auto full_obj_path = dst_folder_path / APATH("class/textures") / obj_ext;
 
-    auto obj = model::object_constructor::alloc_empty_object<model::texture>();
+    auto obj = model::object_constructor::alloc_empty_object<root::texture>();
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
     model::package p(AID("dummy"));
     p.set_save_root_path(dst_folder_path);
 
-    auto txt = obj->as<model::texture>();
+    auto txt = obj->as<root::texture>();
     txt->set_package(&p);
     txt->set_base_color(std::move(base_color));
     txt->set_width(w);

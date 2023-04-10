@@ -2,19 +2,19 @@
 
 #include "engine/agea_engine.h"
 
-#include <model/assets/mesh.h>
-#include <model/assets/material.h>
-#include <model/assets/texture.h>
-#include <model/assets/shader_effect.h>
-#include <model/assets/pbr_material.h>
-#include <model/assets/solid_color_material.h>
-#include <model/assets/simple_texture_material.h>
-#include <model/assets/mesh.h>
-#include <model/mesh_object.h>
-#include <model/point_light.h>
-#include <model/components/light_component.h>
-#include <model/components/mesh_component.h>
-#include <model/model_types_ids.ar.h>
+#include <root/assets/mesh.h>
+#include <root/assets/material.h>
+#include <root/assets/texture.h>
+#include <root/assets/shader_effect.h>
+#include <root/assets/pbr_material.h>
+#include <root/assets/solid_color_material.h>
+#include <root/assets/simple_texture_material.h>
+#include <root/assets/mesh.h>
+#include <root/mesh_object.h>
+#include <root/point_light.h>
+#include <root/components/light_component.h>
+#include <root/components/mesh_component.h>
+#include <root/root_types_ids.ar.h>
 
 #include <assets_importer/mesh_importer.h>
 #include <assets_importer/texture_importer.h>
@@ -75,7 +75,7 @@ const render::vertex_input_description DEFAULT_VERTEX_DESCRIPTION = []()
 }();
 
 render::shader_effect_create_info
-make_se_ci(model::shader_effect& se_model)
+make_se_ci(root::shader_effect& se_model)
 {
     render::shader_effect_create_info se_ci;
     se_ci.vert_buffer = &se_model.m_vert;
@@ -97,27 +97,27 @@ make_se_ci(model::shader_effect& se_model)
 scene_builder::scene_builder()
 {
     // clang-format off
-    m_pfr_handlers[model::mesh::META_type_id()] = &scene_builder::pfr_mesh;
-    m_pfr_handlers[model::material::META_type_id()] = &scene_builder::pfr_material;
-    m_pfr_handlers[model::solid_color_material::META_type_id()] = &scene_builder::pfr_material;
-    m_pfr_handlers[model::simple_texture_material::META_type_id()] = &scene_builder::pfr_material;
-    m_pfr_handlers[model::pbr_material::META_type_id()] = &scene_builder::pfr_material;
+    m_pfr_handlers[root::mesh::META_type_id()] = &scene_builder::pfr_mesh;
+    m_pfr_handlers[root::material::META_type_id()] = &scene_builder::pfr_material;
+    m_pfr_handlers[root::solid_color_material::META_type_id()] = &scene_builder::pfr_material;
+    m_pfr_handlers[root::simple_texture_material::META_type_id()] = &scene_builder::pfr_material;
+    m_pfr_handlers[root::pbr_material::META_type_id()] = &scene_builder::pfr_material;
 
-    m_pfr_handlers[model::texture::META_type_id()] = &scene_builder::pfr_texture;
-    m_pfr_handlers[model::game_object_component::META_type_id()] = &scene_builder::pfr_game_object_component;
-    m_pfr_handlers[model::game_object::META_type_id()] = &scene_builder::pfr_game_object;
-    m_pfr_handlers[model::mesh_object::META_type_id()] = &scene_builder::pfr_game_object;
-    m_pfr_handlers[model::mesh_component::META_type_id()] = &scene_builder::pfr_mesh_component;
+    m_pfr_handlers[root::texture::META_type_id()] = &scene_builder::pfr_texture;
+    m_pfr_handlers[root::game_object_component::META_type_id()] = &scene_builder::pfr_game_object_component;
+    m_pfr_handlers[root::game_object::META_type_id()] = &scene_builder::pfr_game_object;
+    m_pfr_handlers[root::mesh_object::META_type_id()] = &scene_builder::pfr_game_object;
+    m_pfr_handlers[root::mesh_component::META_type_id()] = &scene_builder::pfr_mesh_component;
 
-    m_pfr_handlers[model::shader_effect::META_type_id()] = &scene_builder::pfr_shader_effect;
-    m_pfr_handlers[model::light_component::META_type_id()] = &scene_builder::pfr_game_object_component;
-    m_pfr_handlers[model::point_light::META_type_id()] = &scene_builder::pfr_game_object;
+    m_pfr_handlers[root::shader_effect::META_type_id()] = &scene_builder::pfr_shader_effect;
+    m_pfr_handlers[root::light_component::META_type_id()] = &scene_builder::pfr_game_object_component;
+    m_pfr_handlers[root::point_light::META_type_id()] = &scene_builder::pfr_game_object;
 
     // clang-format on
 }
 
 utils::dynamic_object
-scene_builder::extract_gpu_data(model::smart_object& so,
+scene_builder::extract_gpu_data(root::smart_object& so,
                                 const scene_builder::collection_template& ct)
 {
     auto oitr = ct.offset_in_object.begin();
@@ -137,7 +137,7 @@ scene_builder::extract_gpu_data(model::smart_object& so,
 }
 
 bool
-scene_builder::create_collection_template(model::smart_object& so,
+scene_builder::create_collection_template(root::smart_object& so,
                                           scene_builder::collection_template& t)
 {
     auto& properties = so.reflection()->m_properties;
@@ -154,13 +154,13 @@ scene_builder::create_collection_template(model::smart_object& so,
         {
             switch (p->rtype->type_id)
             {
-            case model::model__float:
+            case root::root__float:
                 sb.add_field(AID(""), render::gpu_type::g_float, 1);
                 break;
-            case model::model__vec3:
+            case root::root__vec3:
                 sb.add_field(AID(""), render::gpu_type::g_vec3, 16);
                 break;
-            case model::model__vec4:
+            case root::root__vec4:
                 sb.add_field(AID(""), render::gpu_type::g_vec4, 16);
                 break;
             default:
@@ -177,7 +177,7 @@ scene_builder::create_collection_template(model::smart_object& so,
 }
 
 utils::dynamic_object
-scene_builder::collect_gpu_data(model::smart_object& so)
+scene_builder::collect_gpu_data(root::smart_object& so)
 {
     auto itr = m_gpu_data_collection_templates.find(so.get_type_id());
     if (itr == m_gpu_data_collection_templates.end())
@@ -192,9 +192,9 @@ scene_builder::collect_gpu_data(model::smart_object& so)
 }
 
 bool
-scene_builder::pfr_mesh(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_mesh(root::smart_object& obj, bool sub_object)
 {
-    auto& msh_model = obj.asr<model::mesh>();
+    auto& msh_model = obj.asr<root::mesh>();
 
     auto vertices = msh_model.get_vertices_buffer().make_view<render::gpu_vertex_data>();
     auto indices = msh_model.get_indicess_buffer().make_view<render::gpu_index_data>();
@@ -217,9 +217,9 @@ scene_builder::pfr_mesh(model::smart_object& obj, bool sub_object)
 }
 
 bool
-scene_builder::pfr_material(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_material(root::smart_object& obj, bool sub_object)
 {
-    auto& mat_model = obj.asr<model::material>();
+    auto& mat_model = obj.asr<root::material>();
 
     auto txt_models = mat_model.get_texture_samples();
 
@@ -275,9 +275,9 @@ scene_builder::pfr_material(model::smart_object& obj, bool sub_object)
 }
 
 bool
-scene_builder::pfr_texture(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_texture(root::smart_object& obj, bool sub_object)
 {
-    auto& t = obj.asr<model::texture>();
+    auto& t = obj.asr<root::texture>();
 
     auto& bc = t.get_mutable_base_color();
     auto w = t.get_width();
@@ -305,15 +305,15 @@ scene_builder::pfr_texture(model::smart_object& obj, bool sub_object)
 }
 
 bool
-scene_builder::pfr_game_object_component(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_game_object_component(root::smart_object& obj, bool sub_object)
 {
     return true;
 }
 
 bool
-scene_builder::pfr_game_object(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_game_object(root::smart_object& obj, bool sub_object)
 {
-    auto& t = obj.asr<model::game_object>();
+    auto& t = obj.asr<root::game_object>();
 
     for (auto& o : t.get_renderable_components())
     {
@@ -327,9 +327,9 @@ scene_builder::pfr_game_object(model::smart_object& obj, bool sub_object)
 }
 
 bool
-scene_builder::pfr_mesh_component(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_mesh_component(root::smart_object& obj, bool sub_object)
 {
-    auto& moc = obj.asr<model::mesh_component>();
+    auto& moc = obj.asr<root::mesh_component>();
 
     if (!prepare_for_rendering(*moc.get_material(), sub_object))
     {
@@ -385,9 +385,9 @@ scene_builder::pfr_mesh_component(model::smart_object& obj, bool sub_object)
 }
 
 bool
-scene_builder::pfr_shader_effect(model::smart_object& obj, bool sub_object)
+scene_builder::pfr_shader_effect(root::smart_object& obj, bool sub_object)
 {
-    auto& se_model = obj.asr<model::shader_effect>();
+    auto& se_model = obj.asr<root::shader_effect>();
 
     auto se_data = glob::vulkan_render_loader::get()->get_shader_effect_data(se_model.get_id());
 
@@ -416,34 +416,34 @@ scene_builder::pfr_shader_effect(model::smart_object& obj, bool sub_object)
 }
 
 bool
-scene_builder::pfr_empty(model::smart_object&, bool)
+scene_builder::pfr_empty(root::smart_object&, bool)
 {
     return true;
 }
 
 bool
-scene_builder::prepare_for_rendering(model::smart_object& obj, bool sub_objects)
+scene_builder::prepare_for_rendering(root::smart_object& obj, bool sub_objects)
 {
-    AGEA_check(!obj.has_flag(model::smart_object_state_flag::proto_obj), "");
+    AGEA_check(!obj.has_flag(root::smart_object_state_flag::proto_obj), "");
 
-    if (obj.get_state() == model::smart_object_state::render_ready)
+    if (obj.get_state() == root::smart_object_state::render_ready)
     {
         return true;
     }
 
-    AGEA_check(obj.get_state() == model::smart_object_state::constructed, "Shoud not happen");
+    AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Shoud not happen");
 
     auto itr = m_pfr_handlers.find(obj.get_type_id());
 
     if (itr != m_pfr_handlers.end())
     {
-        obj.set_state(model::smart_object_state::render_preparing);
+        obj.set_state(root::smart_object_state::render_preparing);
 
         auto f = itr->second;
 
         auto result = ((this)->*f)(obj, sub_objects);
 
-        obj.set_state(model::smart_object_state::render_ready);
+        obj.set_state(root::smart_object_state::render_ready);
 
         return result;
     }

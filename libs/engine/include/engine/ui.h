@@ -86,7 +86,7 @@ public:
     handle() override;
 
     void
-    draw_oject(model::game_object* obj);
+    draw_oject(root::game_object* obj);
 };
 
 class components_editor : public window
@@ -104,7 +104,7 @@ public:
     }
 
     void
-    show(model::game_object_component* obj)
+    show(root::game_object_component* obj)
     {
         m_obj = obj;
         m_show = true;
@@ -113,7 +113,7 @@ public:
     void
     handle() override;
 
-    model::game_object_component* m_obj = nullptr;
+    root::game_object_component* m_obj = nullptr;
 };
 
 class object_editor : public window
@@ -131,18 +131,18 @@ public:
     }
 
     void
-    show(model::game_object* obj)
+    show(root::game_object* obj)
     {
         m_obj = obj;
         m_show = true;
     }
 
     void
-    draw_components(model::game_object_component* obj, selection_context& sc);
+    draw_components(root::game_object_component* obj, selection_context& sc);
     void
     handle() override;
 
-    model::game_object* m_obj = nullptr;
+    root::game_object* m_obj = nullptr;
 };
 
 class materials_selector : public window

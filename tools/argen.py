@@ -116,7 +116,7 @@ const ::agea::reflection::reflection_type*
 }}
 
 bool
-{type}::META_construct(const ::agea::model::smart_object::construct_params& i)
+{type}::META_construct(const ::agea::root::smart_object::construct_params& i)
 {{
     /* Replace to dynamic cast */
     this_class::construct_params* cp = (this_class::construct_params*)&i;
@@ -124,7 +124,7 @@ bool
     return construct(*cp);
 }}
 
-std::shared_ptr<::agea::model::smart_object>
+std::shared_ptr<::agea::root::smart_object>
 {type}::META_create_empty_obj()
 {{
     return this_class::META_class_create_empty_obj();

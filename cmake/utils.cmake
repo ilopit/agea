@@ -54,12 +54,12 @@ macro(agea_ar_target)
         TARGET ${full_name}
         PRE_BUILD
         COMMAND python ${PROJECT_SOURCE_DIR}/tools/argen.py
-                    ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/ar/config 
-                    ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
-                    ${CMAKE_BINARY_DIR}/agea_generated
-                    ${ARGV1}
-                    " "
-                    ${ARGV2})
+                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/ar/config 
+                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
+                       ${CMAKE_BINARY_DIR}/agea_generated
+                       ${ARGV1}
+                       ${ARGV2}
+                       ${ARGV3})
 
     set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/${ARGV1})
     set(ar_file ${ar_folder}/${ARGV1}.ar.cpp)

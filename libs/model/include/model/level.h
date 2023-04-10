@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/components/camera_component.h"
+#include "root/components/camera_component.h"
 #include "model/model_fwds.h"
 #include "model/caches/cache_set.h"
 #include "model/caches/line_cache.h"
@@ -27,10 +27,10 @@ public:
     level();
     ~level();
 
-    game_object*
+    root::game_object*
     find_game_object(const utils::id& id);
 
-    component*
+    root::component*
     find_component(const utils::id& id);
 
     template <typename T>
@@ -40,7 +40,7 @@ public:
         return spawm_object(type_id, id)->as<T>();
     }
 
-    smart_object*
+    root::smart_object*
     spawm_object(const utils::id& proto_obj, const utils::id& object_id);
 
     void
@@ -83,48 +83,48 @@ public:
     }
 
     void
-    add_to_dirty_components_queue(game_object_component* g)
+    add_to_dirty_components_queue(root::game_object_component* g)
     {
         m_dirty_transform_components.emplace_back(g);
     }
 
-    line_cache<game_object_component*>&
+    line_cache<root::game_object_component*>&
     get_dirty_transforms_components_queue()
     {
         return m_dirty_transform_components;
     }
 
     void
-    add_to_dirty_render_queue(game_object_component* g)
+    add_to_dirty_render_queue(root::game_object_component* g)
     {
         m_dirty_render_components.emplace_back(g);
     }
 
-    line_cache<game_object_component*>&
+    line_cache<root::game_object_component*>&
     get_dirty_render_queue()
     {
         return m_dirty_render_components;
     }
 
     void
-    add_to_dirty_render_assets_queue(asset* a)
+    add_to_dirty_render_assets_queue(root::asset* a)
     {
         m_dirty_render_assets.emplace_back(a);
     }
 
-    line_cache<asset*>&
+    line_cache<root::asset*>&
     get_dirty_render_assets_queue()
     {
         return m_dirty_render_assets;
     }
 
     void
-    add_to_dirty_shader_effect_queue(shader_effect* se)
+    add_to_dirty_shader_effect_queue(root::shader_effect* se)
     {
         m_dirty_shader_effects.emplace_back(se);
     }
 
-    line_cache<shader_effect*>&
+    line_cache<root::shader_effect*>&
     get_dirty_shader_effect_queue()
     {
         return m_dirty_shader_effects;
@@ -150,13 +150,13 @@ private:
     cache_set* m_global_class_object_cs = nullptr;
     std::unique_ptr<object_load_context> m_occ;
 
-    line_cache<smart_object_ptr> m_objects;
-    line_cache<game_object*> m_tickable_objects;
+    line_cache<root::smart_object_ptr> m_objects;
+    line_cache<root::game_object*> m_tickable_objects;
 
-    line_cache<game_object_component*> m_dirty_transform_components;
-    line_cache<game_object_component*> m_dirty_render_components;
-    line_cache<asset*> m_dirty_render_assets;
-    line_cache<shader_effect*> m_dirty_shader_effects;
+    line_cache<root::game_object_component*> m_dirty_transform_components;
+    line_cache<root::game_object_component*> m_dirty_render_components;
+    line_cache<root::asset*> m_dirty_render_assets;
+    line_cache<root::shader_effect*> m_dirty_shader_effects;
 
     std::vector<utils::id> m_package_ids;
 

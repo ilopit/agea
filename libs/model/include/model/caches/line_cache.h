@@ -1,7 +1,7 @@
 #pragma once
 
 #include "model/model_minimal.h"
-#include "model/smart_object.h"
+#include "root/smart_object.h"
 
 #include <utils/line_conteiner.h>
 
@@ -42,11 +42,12 @@ class line_cache : public utils::line_conteiner<T>
 public:
     line_cache()
     {
-        static_assert((is_shared_ptr<T>::value &&
-                       std::is_base_of<smart_object, typename is_shared_ptr<T>::Type>::value) ||
-                          (std::is_pointer<T>::value &&
-                           std::is_base_of<smart_object, std::remove_pointer<T>::type>::value),
-                      "False");
+        static_assert(
+            (is_shared_ptr<T>::value &&
+             std::is_base_of<root::smart_object, typename is_shared_ptr<T>::Type>::value) ||
+                (std::is_pointer<T>::value &&
+                 std::is_base_of<root::smart_object, std::remove_pointer<T>::type>::value),
+            "False");
     }
 
     T*

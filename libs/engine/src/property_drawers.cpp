@@ -7,13 +7,13 @@
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
 
-#include "model/assets/material.h"
-#include "model/assets/mesh.h"
-#include "model/assets/texture.h"
+#include "root/assets/material.h"
+#include "root/assets/mesh.h"
+#include "root/assets/texture.h"
 
 #include "model/reflection/reflection_type_utils.h"
 
-#include "model/model_types_ids.ar.h"
+#include "root/root_types_ids.ar.h"
 
 namespace agea
 {
@@ -26,35 +26,35 @@ property_drawers::init()
     using namespace reflection;
     // clang-format off
 
-    ro_drawers()[model::model__string] = property_drawers::draw_ro_str;
+    ro_drawers()[root::root__string] = property_drawers::draw_ro_str;
 
-    ro_drawers()[model::model__bool] = property_drawers::draw_ro_bool;
+    ro_drawers()[root::root__bool] = property_drawers::draw_ro_bool;
 
-    ro_drawers()[model::model__int8_t] = property_drawers::draw_ro_i8;
-    ro_drawers()[model::model__int16_t] = property_drawers::draw_ro_i16;
-    ro_drawers()[model::model__int32_t] = property_drawers::draw_ro_i32;
-    ro_drawers()[model::model__int64_t] = property_drawers::draw_ro_i64;
-
-
-    ro_drawers()[model::model__uint8_t] = property_drawers::draw_ro_i8;
-    ro_drawers()[model::model__uint16_t] = property_drawers::draw_ro_i16;
-    ro_drawers()[model::model__uint32_t] = property_drawers::draw_ro_i32;
-    ro_drawers()[model::model__uint64_t] = property_drawers::draw_ro_i64;
+    ro_drawers()[root::root__int8_t] = property_drawers::draw_ro_i8;
+    ro_drawers()[root::root__int16_t] = property_drawers::draw_ro_i16;
+    ro_drawers()[root::root__int32_t] = property_drawers::draw_ro_i32;
+    ro_drawers()[root::root__int64_t] = property_drawers::draw_ro_i64;
 
 
-    ro_drawers()[model::model__float] = property_drawers::draw_ro_f;
-    ro_drawers()[model::model__double] = property_drawers::draw_ro_d;
+    ro_drawers()[root::root__uint8_t] = property_drawers::draw_ro_i8;
+    ro_drawers()[root::root__uint16_t] = property_drawers::draw_ro_i16;
+    ro_drawers()[root::root__uint32_t] = property_drawers::draw_ro_i32;
+    ro_drawers()[root::root__uint64_t] = property_drawers::draw_ro_i64;
 
-    ro_drawers()[model::model__vec3] = property_drawers::draw_ro_vec3;
 
-    ro_drawers()[model::model__material] = property_drawers::draw_ro_mat;
-    ro_drawers()[model::model__mesh] = property_drawers::draw_ro_msh;
+    ro_drawers()[root::root__float] = property_drawers::draw_ro_f;
+    ro_drawers()[root::root__double] = property_drawers::draw_ro_d;
+
+    ro_drawers()[root::root__vec3] = property_drawers::draw_ro_vec3;
+
+    ro_drawers()[root::root__material] = property_drawers::draw_ro_mat;
+    ro_drawers()[root::root__mesh] = property_drawers::draw_ro_msh;
 
     // clang-format on
 }
 
 result_code
-property_drawers::draw_ro(::agea::model::smart_object* obj, ::agea::reflection::property& p)
+property_drawers::draw_ro(::agea::root::smart_object* obj, ::agea::reflection::property& p)
 {
     auto ptr = (::agea::blob_ptr)obj;
 
@@ -185,7 +185,7 @@ property_drawers::draw_ro_vec3(::agea::blob_ptr ptr)
 result_code
 property_drawers::draw_ro_mat(::agea::blob_ptr ptr)
 {
-    auto& t = agea::reflection::utils::as_type<std::shared_ptr<model::material>>(ptr);
+    auto& t = agea::reflection::utils::as_type<std::shared_ptr<root::material>>(ptr);
     ImGui::Text("%s", t->get_id().cstr());
 
     return result_code::ok;
@@ -194,7 +194,7 @@ property_drawers::draw_ro_mat(::agea::blob_ptr ptr)
 result_code
 property_drawers::draw_ro_msh(::agea::blob_ptr ptr)
 {
-    auto& t = agea::reflection::utils::as_type<model::mesh*>(ptr);
+    auto& t = agea::reflection::utils::as_type<root::mesh*>(ptr);
     ImGui::Text("%s", t->get_id().cstr());
 
     return result_code::ok;

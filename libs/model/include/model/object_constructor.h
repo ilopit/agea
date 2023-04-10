@@ -5,8 +5,9 @@
 #include "model/object_load_type.h"
 #include "model/model_minimal.h"
 #include "model/model_fwds.h"
-#include "model/smart_object.h"
-#include "model/components/component.h"
+
+#include <root/smart_object.h>
+#include <root/components/component.h>
 
 #include <string>
 #include <memory>
@@ -29,34 +30,34 @@ public:
     object_load(const utils::path& path_in_package,
                 object_load_type type,
                 object_load_context& occ,
-                smart_object*& obj,
-                std::vector<smart_object*>& loaded_obj);
+                root::smart_object*& obj,
+                std::vector<root::smart_object*>& loaded_obj);
 
     static result_code
     object_load(const utils::id& id,
                 object_load_type type,
                 object_load_context& occ,
-                smart_object*& obj,
-                std::vector<smart_object*>& loaded_obj);
+                root::smart_object*& obj,
+                std::vector<root::smart_object*>& loaded_obj);
 
     static result_code
     mirror_object(const utils::id& class_object_id,
                   object_load_context& occ,
-                  smart_object*& obj,
-                  std::vector<smart_object*>& loaded_obj);
+                  root::smart_object*& obj,
+                  std::vector<root::smart_object*>& loaded_obj);
 
-    static smart_object*
+    static root::smart_object*
     object_construct(const utils::id& type_id,
                      const utils::id& id,
-                     const model::smart_object::construct_params& p,
+                     const root::smart_object::construct_params& p,
                      object_load_context& olc);
 
     static result_code
-    object_clone(smart_object& src,
+    object_clone(root::smart_object& src,
                  const utils::id& new_object_id,
                  object_load_context& occ,
-                 smart_object*& obj,
-                 std::vector<smart_object*>& loaded_obj);
+                 root::smart_object*& obj,
+                 std::vector<root::smart_object*>& loaded_obj);
 
     template <typename T>
     static result_code
@@ -68,54 +69,58 @@ public:
     static result_code
     object_load_internal(const utils::path& path_in_package,
                          object_load_context& occ,
-                         smart_object*& obj);
+                         root::smart_object*& obj);
 
     static result_code
-    object_load_internal(const utils::id& id, object_load_context& occ, smart_object*& obj);
+    object_load_internal(const utils::id& id, object_load_context& occ, root::smart_object*& obj);
 
     static result_code
-    object_load_internal(serialization::conteiner& c, object_load_context& occ, smart_object*& obj);
+    object_load_internal(serialization::conteiner& c,
+                         object_load_context& occ,
+                         root::smart_object*& obj);
 
     // Utils
     static result_code
-    object_save(const smart_object& obj, const utils::path& object_path);
+    object_save(const root::smart_object& obj, const utils::path& object_path);
 
     static result_code
     object_clone_create_internal(const utils::id& src_object_id,
                                  const utils::id& new_object_id,
                                  object_load_context& occ,
-                                 smart_object*& obj);
+                                 root::smart_object*& obj);
 
     static result_code
-    object_clone_create_internal(smart_object& src,
+    object_clone_create_internal(root::smart_object& src,
                                  const utils::id& new_object_id,
                                  object_load_context& occ,
-                                 smart_object*& obj);
+                                 root::smart_object*& obj);
 
     static result_code
-    update_object_properties(smart_object& g,
+    update_object_properties(root::smart_object& g,
                              const serialization::conteiner& c,
                              object_load_context& occ);
     static result_code
-    prototype_object_properties(smart_object& from,
-                                smart_object& to,
+    prototype_object_properties(root::smart_object& from,
+                                root::smart_object& to,
                                 const serialization::conteiner& c,
                                 object_load_context& occ);
     static result_code
-    clone_object_properties(smart_object& from, smart_object& to, object_load_context& occ);
+    clone_object_properties(root::smart_object& from,
+                            root::smart_object& to,
+                            object_load_context& occ);
 
     static result_code
-    diff_object_properties(const smart_object& left,
-                           const smart_object& right,
+    diff_object_properties(const root::smart_object& left,
+                           const root::smart_object& right,
                            std::vector<reflection::property*>& diff);
 
     static result_code
-    object_properties_load(smart_object& obj,
+    object_properties_load(root::smart_object& obj,
                            const serialization::conteiner& jc,
                            object_load_context& occ);
 
     static result_code
-    object_properties_save(const smart_object& obj, serialization::conteiner& jc);
+    object_properties_save(const root::smart_object& obj, serialization::conteiner& jc);
 
     template <typename T>
     static std::shared_ptr<T>
@@ -127,7 +132,7 @@ public:
         return empty;
     }
 
-    static smart_object*
+    static root::smart_object*
     alloc_empty_object(const utils::id& type_id,
                        const utils::id& id,
                        uint32_t extra_flags,
@@ -135,22 +140,24 @@ public:
 
 private:
     static result_code
-    register_package_type_impl(std::shared_ptr<smart_object> empty, object_load_context& olc);
+    register_package_type_impl(std::shared_ptr<root::smart_object> empty, object_load_context& olc);
 
     static result_code
-    object_load_full(serialization::conteiner& sc, object_load_context& occ, smart_object*& obj);
+    object_load_full(serialization::conteiner& sc,
+                     object_load_context& occ,
+                     root::smart_object*& obj);
 
     static result_code
-    object_save_full(serialization::conteiner& sc, const smart_object& obj);
+    object_save_full(serialization::conteiner& sc, const root::smart_object& obj);
 
     static result_code
-    object_load_partial(smart_object& prototype_obj,
+    object_load_partial(root::smart_object& prototype_obj,
                         serialization::conteiner& sc,
                         object_load_context& occ,
-                        smart_object*& obj);
+                        root::smart_object*& obj);
 
     static result_code
-    object_save_partial(serialization::conteiner& sc, const smart_object& obj);
+    object_save_partial(serialization::conteiner& sc, const root::smart_object& obj);
 };
 
 }  // namespace model

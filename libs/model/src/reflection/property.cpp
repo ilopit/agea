@@ -2,8 +2,9 @@
 
 #include <inttypes.h>
 
-#include "model/assets/material.h"
-#include "model/assets/mesh.h"
+#include "root/assets/material.h"
+#include "root/assets/mesh.h"
+
 #include "model/caches/materials_cache.h"
 #include "model/caches/meshes_cache.h"
 #include "model/caches/caches_map.h"
@@ -126,7 +127,7 @@ property::default_prototype(property_prototype_context& ctx)
 }
 
 agea::blob_ptr
-property::get_blob(model::smart_object& obj)
+property::get_blob(root::smart_object& obj)
 {
     return obj.as_blob() + offset;
 }
@@ -149,7 +150,7 @@ property::deserialize_update(reflection::property& p,
 
 result_code
 property::deserialize_collection(reflection::property& p,
-                                 model::smart_object& obj,
+                                 root::smart_object& obj,
                                  const serialization::conteiner& jc,
                                  model::object_load_context& occ)
 {
@@ -179,7 +180,7 @@ property::deserialize_collection(reflection::property& p,
 
 result_code
 property::serialize_collection(const reflection::property&,
-                               const model::smart_object&,
+                               const root::smart_object&,
                                serialization::conteiner&)
 {
     return result_code::ok;
@@ -187,7 +188,7 @@ property::serialize_collection(const reflection::property&,
 
 result_code
 property::deserialize_item(reflection::property& p,
-                           model::smart_object& obj,
+                           root::smart_object& obj,
                            const serialization::conteiner& jc,
                            model::object_load_context& occ)
 {
@@ -209,7 +210,7 @@ property::deserialize_item(reflection::property& p,
 
 result_code
 property::serialize_item(const reflection::property& p,
-                         const model::smart_object& obj,
+                         const root::smart_object& obj,
                          serialization::conteiner& sc)
 {
     auto ptr = (blob_ptr)&obj;
@@ -234,7 +235,7 @@ property::deserialize_update_collection(reflection::property& p,
 {
     auto items = jc[p.name];
     auto items_size = items.size();
-    auto& r = utils::as_type<std::vector<model::component*>>(ptr + p.offset);
+    auto& r = utils::as_type<std::vector<root::component*>>(ptr + p.offset);
 
     if (r.empty())
     {

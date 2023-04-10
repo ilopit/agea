@@ -92,7 +92,7 @@ public:
         m_state = v;
     }
 
-    line_cache<smart_object*>&
+    line_cache<root::smart_object*>&
     get_objects()
     {
         return m_package_instances;
@@ -105,7 +105,7 @@ public:
     }
 
     template <typename T>
-    smart_object*
+    root::smart_object*
     add_object(const utils::id& id, typename const T::construct_params& p)
     {
         return object_constructor::object_construct(T::META_type_id(), id, p, *m_occ);
@@ -138,8 +138,8 @@ private:
     cache_set m_class_local_set;
     cache_set m_instance_local_set;
 
-    line_cache<std::shared_ptr<smart_object>> m_objects;
-    line_cache<smart_object*> m_package_instances;
+    line_cache<std::shared_ptr<root::smart_object>> m_objects;
+    line_cache<root::smart_object*> m_package_instances;
     std::shared_ptr<object_mapping> m_mapping;
     std::unique_ptr<object_load_context> m_occ;
 };

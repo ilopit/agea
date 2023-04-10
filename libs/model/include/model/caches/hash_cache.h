@@ -1,8 +1,9 @@
 #pragma once
 
 #include "model/model_fwds.h"
-#include "model/smart_object.h"
 #include "model/architype.h"
+
+#include "root/smart_object.h"
 
 #include <utils/singleton_instance.h>
 
@@ -17,7 +18,7 @@ template <typename id_t>
 class hash_cache
 {
 public:
-    smart_object*
+    root::smart_object*
     get_item(const id_t& id)
     {
         auto item = m_items.find(id);
@@ -26,7 +27,7 @@ public:
     }
 
     void
-    add_item(smart_object& obj)
+    add_item(root::smart_object& obj)
     {
         auto& item = m_items[obj.get_id()];
 
@@ -46,14 +47,14 @@ public:
         return (uint32_t)m_items.size();
     }
 
-    const std::unordered_map<id_t, smart_object*>&
+    const std::unordered_map<id_t, root::smart_object*>&
     get_items()
     {
         return m_items;
     }
 
 protected:
-    std::unordered_map<id_t, smart_object*> m_items;
+    std::unordered_map<id_t, root::smart_object*> m_items;
 };
 
 class architype_cache : public hash_cache<utils::id>
@@ -65,7 +66,7 @@ public:
     }
 
     void
-    add_item(smart_object& obj)
+    add_item(root::smart_object& obj)
     {
         AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
                    "Should have same architype!");

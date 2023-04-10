@@ -2,7 +2,8 @@
 
 #include "model/object_load_context.h"
 
-#include "model/smart_object.h"
+#include "root/smart_object.h"
+
 #include "model/caches/objects_cache.h"
 #include "model/caches/textures_cache.h"
 #include "model/caches/materials_cache.h"
@@ -66,7 +67,7 @@ object_load_context::make_full_path(const utils::id& id, utils::path& p) const
 }
 
 bool
-object_load_context::add_obj(std::shared_ptr<smart_object> obj, bool add_global)
+object_load_context::add_obj(std::shared_ptr<root::smart_object> obj, bool add_global)
 {
     AGEA_check(m_ownable_cache_ptr, "Should exists!");
     AGEA_check(obj, "Should exists!");
@@ -107,7 +108,7 @@ object_load_context::add_obj(std::shared_ptr<smart_object> obj, bool add_global)
     return true;
 }
 
-smart_object*
+root::smart_object*
 object_load_context::find_class_obj(const utils::id& id)
 {
     auto obj = m_class_local_set ? m_class_local_set->objects->get_item(id) : nullptr;
@@ -120,7 +121,7 @@ object_load_context::find_class_obj(const utils::id& id)
     return m_class_global_set ? m_class_global_set->objects->get_item(id) : nullptr;
 }
 
-smart_object*
+root::smart_object*
 object_load_context::find_obj(const utils::id& id)
 {
     auto obj =
@@ -134,10 +135,10 @@ object_load_context::find_obj(const utils::id& id)
     return m_instance_global_set ? m_instance_global_set->objects->get_item(id) : nullptr;
 }
 
-smart_object*
+root::smart_object*
 object_load_context::find_obj(const utils::id& id, architype a_type)
 {
-    smart_object* obj = nullptr;
+    root::smart_object* obj = nullptr;
     auto c = m_instance_local_set ? m_instance_local_set->map->get_cache(a_type) : nullptr;
 
     if (c)
@@ -158,10 +159,10 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
     return obj;
 }
 
-smart_object*
+root::smart_object*
 object_load_context::find_class_obj(const utils::id& id, architype a_type)
 {
-    smart_object* obj = nullptr;
+    root::smart_object* obj = nullptr;
     auto c = m_class_local_set ? m_class_local_set->map->get_cache(a_type) : nullptr;
 
     if (c)
