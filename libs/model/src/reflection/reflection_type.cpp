@@ -35,6 +35,9 @@ reflection::reflection_type_registry::finilaze()
 
             to_insert = top->m_properties;
             top->initialized = true;
+
+            top->finalize_handlers();
+
             to_handle.pop();
         }
     }
@@ -48,6 +51,23 @@ reflection::reflection_type_registry::finilaze()
                 c.second.m_serilalization_properties.push_back(p);
             }
         }
+    }
+}
+
+void
+reflection::reflection_type::finalize_handlers()
+{
+    if (parent)
+    {
+        serialization = serialization ? serialization : parent->serialization;
+        deserialization = deserialization ? deserialization : parent->deserialization;
+        deserialization_with_proto = deserialization_with_proto
+                                         ? deserialization_with_proto
+                                         : parent->deserialization_with_proto;
+
+        copy = copy ? copy : parent->copy;
+        compare = compare ? compare : parent->compare;
+        ui = ui ? ui : parent->ui;
     }
 }
 

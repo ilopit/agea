@@ -54,6 +54,9 @@ using property_list = std::vector<std::shared_ptr<property>>;
 
 struct reflection_type
 {
+    void
+    finalize_handlers();
+
     int type_id = -1;
     agea::utils::id module_id;
     agea::utils::id type_name;

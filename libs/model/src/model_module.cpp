@@ -515,7 +515,7 @@ model_module::override_reflection_types()
     MAKE_POD_TYPE(agea::model::model__double, double);
 
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__id);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__id);
 
         rt->deserialization = deserialize_t_id;
         rt->compare = default_compare<utils::id>;
@@ -523,14 +523,14 @@ model_module::override_reflection_types()
         rt->serialization = serialize_t_id;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__buffer);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__buffer);
 
         rt->deserialization = deserialize_t_buf;
         rt->copy = default_copy<utils::buffer>;
         rt->serialization = serialize_t_buf;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__vec3);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__vec3);
 
         rt->deserialization = deserialize_t_vec3;
         rt->compare = default_compare<glm::vec3>;
@@ -539,7 +539,7 @@ model_module::override_reflection_types()
     }
 
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__smart_object);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__smart_object);
 
         rt->deserialization = deserialize_t_obj;
         rt->compare = default_compare<model::smart_object*>;
@@ -548,72 +548,35 @@ model_module::override_reflection_types()
         rt->deserialization_with_proto = deserialize_from_proto_t_obj;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__component);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__component);
 
         rt->deserialization = deserialize_t_com;
         rt->compare = default_compare<model::smart_object*>;
-        rt->copy = copy_smart_object;
-        rt->serialization = serialize_t_com;
         rt->deserialization_with_proto = deserialize_from_proto_t_com;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__texture);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__texture);
 
         rt->deserialization = deserialize_t_txt;
-        rt->compare = default_compare<model::smart_object*>;
-        rt->copy = copy_smart_object;
         rt->serialization = serialize_t_txt;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__material);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__material);
 
         rt->deserialization = deserialize_t_mat;
-        rt->compare = default_compare<model::smart_object*>;
-        rt->copy = copy_smart_object;
         rt->serialization = serialize_t_mat;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__mesh);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__mesh);
 
         rt->deserialization = deserialize_t_msh;
-        rt->compare = default_compare<model::smart_object*>;
-        rt->copy = copy_smart_object;
         rt->serialization = serialize_t_msh;
     }
     {
-        auto rt =
-            glob::reflection_type_registry::getr().get_type(agea::model::model__shader_effect);
+        auto rt = glob::reflection_type_registry::getr().get_type(model__shader_effect);
 
         rt->deserialization = deserialize_t_se;
-        rt->compare = default_compare<model::smart_object*>;
-        rt->copy = copy_smart_object;
         rt->serialization = serialize_t_se;
-    }
-    {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__game_object);
-
-        rt->deserialization = deserialize_t_se;
-        rt->compare = default_compare<model::game_object*>;
-        rt->copy = copy_smart_object;
-        rt->serialization = serialize_t_obj;
-    }
-    {
-        auto rt = glob::reflection_type_registry::getr().get_type(
-            agea::model::model__game_object_component);
-
-        rt->deserialization = deserialize_t_com;
-        rt->compare = default_compare<model::game_object_component*>;
-        rt->copy = copy_smart_object;
-        rt->serialization = serialize_t_com;
-        rt->deserialization_with_proto = deserialize_from_proto_t_com;
-    }
-    {
-        auto rt = glob::reflection_type_registry::getr().get_type(agea::model::model__mesh_object);
-
-        rt->deserialization = deserialize_t_se;
-        rt->compare = default_compare<model::game_object*>;
-        rt->copy = copy_smart_object;
-        rt->serialization = serialize_t_obj;
     }
 
     return true;
