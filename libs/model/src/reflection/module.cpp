@@ -24,12 +24,12 @@ module_manager::get_module(const utils::id& id)
 bool
 module_manager::register_module(const utils::id& id, module& m)
 {
-    m_modules[id] = &m;
+    m_modules.push_back(&m);
 
     return true;
 }
 
-std::unordered_map<agea::utils::id, module*>&
+std::vector<module*>&
 module_manager::modules()
 {
     return m_modules;

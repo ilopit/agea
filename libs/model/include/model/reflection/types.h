@@ -7,11 +7,10 @@ namespace agea::reflection
 template <typename T>
 struct type_resolver
 {
-    static int
-    resolver()
+    enum
     {
-        return -1;
-    }
+        value = -1
+    };
 };
 
 template <typename T>
@@ -21,10 +20,10 @@ agea_type_resolve()
     if constexpr (std::is_pointer<T>::value)
     {
         using no_ptr_type = std::remove_pointer<T>::type;
-        return type_description{type_resolver<no_ptr_type>::resolver(), false};
+        return type_description{type_resolver<no_ptr_type>::value, false};
     }
 
-    return type_description{type_resolver<T>::resolver(), false};
+    return type_description{type_resolver<T>::value, false};
 }
 
-}
+}  // namespace agea::reflection

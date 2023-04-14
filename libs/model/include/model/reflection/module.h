@@ -53,14 +53,14 @@ public:
         return register_module(module_t::instance().get_id(), module_t::instance());
     }
 
-    std::unordered_map<agea::utils::id, module*>&
+    std::vector<module*>&
     modules();
 
 protected:
     bool
     register_module(const agea::utils::id& id, module& m);
 
-    std::unordered_map<agea::utils::id, module*> m_modules;
+    std::vector<module*> m_modules;
 };
 
 }  // namespace reflection

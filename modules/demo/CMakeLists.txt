@@ -31,5 +31,5 @@ agea_finalize_library(demo)
 target_include_directories(demo PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
 add_custom_target(generate.demo.ar ALL)
-agea_ar_target(generate.demo.ar demo " " 100)
+agea_ar_target(generate.demo.ar demo " ")
 

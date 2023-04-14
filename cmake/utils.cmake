@@ -58,8 +58,7 @@ macro(agea_ar_target)
                        ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
                        ${CMAKE_BINARY_DIR}/agea_generated
                        ${ARGV1}
-                       ${ARGV2}
-                       ${ARGV3})
+                       ${ARGV2})
 
     set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/${ARGV1})
     set(ar_file ${ar_folder}/${ARGV1}.ar.cpp)

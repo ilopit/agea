@@ -17,15 +17,7 @@
 #include <model/caches/objects_cache.h>
 #include <model/caches/textures_cache.h>
 #include <model/caches/game_objects_cache.h>
-#include <model/caches/caches_map.h>
-#include <root/assets/mesh.h>
-#include <root/components/mesh_component.h>
-#include <root/game_object.h>
-#include <root/assets/shader_effect.h>
-#include <root/assets/mesh.h>
-
 #include <model/caches/empty_objects_cache.h>
-
 #include <model/reflection/lua_api.h>
 #include <model/level_manager.h>
 #include <model/level.h>
@@ -33,6 +25,14 @@
 #include <model/package_manager.h>
 #include <model/id_generator.h>
 #include <model/object_constructor.h>
+#include <model/caches/caches_map.h>
+#include <demo/demo_module.h>
+
+#include <root/assets/mesh.h>
+#include <root/components/mesh_component.h>
+#include <root/game_object.h>
+#include <root/assets/shader_effect.h>
+#include <root/assets/mesh.h>
 
 #include <native/native_window.h>
 
@@ -101,8 +101,9 @@ vulkan_engine::init()
     glob::init_global_caches(*m_registry);
 
     glob::module_manager::getr().register_module<root::root_module>();
+    glob::module_manager::getr().register_module<demo::demo_module>();
 
-    for (auto& [id, m] : glob::module_manager::getr().modules())
+    for (auto m : glob::module_manager::getr().modules())
     {
         m->init_reflection();
         m->override_reflection_types();

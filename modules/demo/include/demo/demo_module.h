@@ -21,7 +21,7 @@ public:
 
     virtual bool init_reflection();
 
-    demo_module& instance();
+    static demo_module& instance();
 };
 
 }  // namespace demo

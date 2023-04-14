@@ -49,7 +49,7 @@ agea_finalize_library(root)
 target_include_directories(root PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
 add_custom_target(generate.root.ar ALL)
-agea_ar_target(generate.root.ar root "agea" 0)
+agea_ar_target(generate.root.ar root "agea")
 
 
 add_subdirectory(tests)

@@ -118,7 +118,7 @@ public:
 
     virtual bool init_reflection();
 
-    {module_name}_module& instance();
+    static {module_name}_module& instance();
 }};
 
 }}  // namespace {module_name}

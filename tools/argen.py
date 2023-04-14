@@ -35,8 +35,6 @@ bool
 """
 
 default_footer = """
-    //::agea::reflection::object_reflection::fill_properties();
-
     ::agea::glob::package_manager::getr().register_package(pkg);
 
     return true;
@@ -142,13 +140,13 @@ std::shared_ptr<{type}>
 
 empty_template_with_parent = """
 {{
-    auto type_id = ::agea::reflection::type_resolver<{type}>::resolver();
+    int type_id = ::agea::reflection::type_resolver<{type}>::value;
     AGEA_check(type_id != -1, "Type is not defined!");
 
     auto type = ::agea::glob::reflection_type_registry::getr().get_type(type_id);
     AGEA_check(type, "Type is not defined!");
 
-    auto parent_type_id = ::agea::reflection::type_resolver<{parent}>::resolver();
+    int parent_type_id = ::agea::reflection::type_resolver<{parent}>::value;
     AGEA_check(parent_type_id != -1, "Type is not defined!");
 
     auto parent = ::agea::glob::reflection_type_registry::getr().get_type(parent_type_id);
@@ -160,7 +158,7 @@ empty_template_with_parent = """
 
 empty_template = """
 {{
-    auto type_id = ::agea::reflection::type_resolver<{type}>::resolver();
+    int type_id = ::agea::reflection::type_resolver<{type}>::value;
     AGEA_check(type_id != -1, "Type is not defined!");
 
     ::agea::reflection::reflection_type rt;
@@ -197,11 +195,10 @@ type_resolver = """
 template <>
 struct type_resolver<{full_type}>
 {{
-static int
-resolver()
-{{
-    return  ::{full_module_name}::{module_name}__{type};
-}}
+    enum
+    {{
+        value = ::{full_module_name}::{module_name}__{type}
+    }};
 }};
 """
 
@@ -287,7 +284,7 @@ def extstrip(value: str):
 
 
 class file_context:
-    def __init__(self, module_name, module_namespace, first_type_id: int):
+    def __init__(self, module_name, module_namespace):
         self.module_name = module_name
         if module_namespace:
             self.full_module_name = module_namespace + "::" + module_name
@@ -308,7 +305,6 @@ class file_context:
         self.lua_ctor = ""
         self.has_custom_types = False
         self.has_custom_properties = False
-        self.first_type_id = first_type_id
 
 
 class agea_class:
@@ -341,6 +337,7 @@ class agea_range:
         self.module = m
         self.offset = int(o)
         self.count = int(c)
+        self.dependency = []
 
 
 class agea_range_list:
@@ -366,6 +363,9 @@ class agea_range_list:
 
                         self.ranges.append(agea_range(
                             tokens[0], tokens[1], tokens[2]))
+
+                        for t in range(3, len(tokens)):
+                            self.ranges[-1].dependency.append(tokens[t])
 
             self.ranges.sort(key=operator.attrgetter('module'))
 
@@ -401,17 +401,22 @@ class agea_range_list:
 
     def save(self):
 
-        range_desc = "{module_name}:{offset}:{count}\n"
+        range_desc = "{module_name}:{offset}:{count}"
 
         with open(self.path, 'w') as file:
 
             file.write(range_desc.format(
                 module_name="root", offset=self.ranges[0].offset, count=self.ranges[0].count))
+            file.write('\n')
 
             for r in range(1, len(self.ranges)):
                 r = self.ranges[r]
                 file.write(range_desc.format(
                     module_name=r.module, offset=r.offset, count=r.count))
+
+                for d in r.dependency:
+                    file.write(":" + d)
+                file.write('\n')
 
 
 class agea_property:
@@ -798,7 +803,7 @@ namespace {full_module_name} {{
     output.write(types_template_begin.format(
         module_name=context.module_name, full_module_name=context.full_module_name))
 
-    start_from = False
+    first_written = False
     if len(context.custom_types) != 0:
         output.write('            // custom-types\n')
         output.write("            {module_name}__{type} = {module_name}__first,\n".format(
@@ -888,7 +893,7 @@ namespace agea::reflection
     output.write("}\n")
 
 
-def write_file(output_file, context: file_context):
+def write_file(output_file, context: file_context, dependencies):
     output = open(output_file, "w")
 
     custom_include = ""
@@ -906,12 +911,12 @@ def write_file(output_file, context: file_context):
         module_name=context.module_name, custom_include=custom_include))
     output.write("\n\n")
 
-    l = list(context.includes)
-    l.sort()
-
-    for i in l:
-        output.write(i)
-        output.write("\n")
+    for d in dependencies:
+        f = """#include "{module_name}/{module_name}_module.h"
+#include "{module_name}/{module_name}_types_ids.ar.h"
+#include "{module_name}/{module_name}_types_resolvers.ar.h"
+"""
+        output.write(f.format(module_name=d))
 
     output.write("\n\n")
     output.write("namespace {full_module_name} {{".format(
@@ -1023,14 +1028,14 @@ def write_single_file(output_dir, file_path, package_name):
         file.write(header_file_content)
 
 
-def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace, first_type_id):
+def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
 
-    print("SOLing : SOL config - {0}, root dir - {1}, output - {2}, package_name - {3}, module_namespace - {4}, first_type_id - {5}".format(
-        ar_cfg_path, root_dir, output_dir, module_name, module_namespace, first_type_id))
+    print("SOLing : SOL config - {0}, root dir - {1}, output - {2}, package_name - {3}, module_namespace - {4}".format(
+        ar_cfg_path, root_dir, output_dir, module_name, module_namespace))
 
     module_namespace = module_namespace.strip()
 
-    context = file_context(module_name, module_namespace, first_type_id)
+    context = file_context(module_name, module_namespace)
 
     context.has_custom_types = os.path.exists(
         os.path.join(
@@ -1051,15 +1056,10 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace, first
     output_file = os.path.join(
         output_dir, module_name,  module_name + ".ar.cpp")
 
-    write_file(output_file, context)
-
-    output_file = os.path.join(
-        output_dir, module_name,  module_name + "_types_ids.ar.h")
-
     context.types.sort()
     context.custom_types.sort()
 
-    ranges = os.path.join(os.path.dirname(root_dir), "ranges")
+    ranges = os.path.join(os.path.dirname(root_dir), "modules")
 
     arl = agea_range_list(ranges)
 
@@ -1068,6 +1068,11 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace, first
     types_count = len(context.custom_types) + len(context.types)
 
     ri = arl.update(module_name, types_count)
+
+    write_file(output_file, context, arl.ranges[ri].dependency)
+
+    output_file = os.path.join(
+        output_dir, module_name,  module_name + "_types_ids.ar.h")
 
     for i in range(ri, len(arl.ranges)):
         meta_ids_file = os.path.join(
@@ -1090,4 +1095,4 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace, first
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2], sys.argv[3],
-         sys.argv[4], sys.argv[5], sys.argv[6])
+         sys.argv[4], sys.argv[5])

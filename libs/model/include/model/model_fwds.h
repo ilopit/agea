@@ -7,10 +7,6 @@
 
 namespace agea
 {
-namespace render
-{
-class base_loader;
-}
 namespace root
 {
 class asset;
