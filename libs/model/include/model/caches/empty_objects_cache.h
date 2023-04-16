@@ -3,7 +3,7 @@
 #include "model/model_minimal.h"
 #include "model/caches/hash_cache.h"
 
-#include "root/smart_object.h"
+#include <root/smart_object.h>
 
 #include <utils/singleton_instance.h>
 

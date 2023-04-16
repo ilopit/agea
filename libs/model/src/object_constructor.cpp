@@ -184,9 +184,11 @@ object_constructor::object_construct(const utils::id& type_id,
     }
     else if (level)
     {
-        AGEA_check(olc.get_construction_type() == object_load_type::mirror_copy, "ct missmatch!");
+        auto prev_ct = olc.get_construction_type();
 
-        olc.set_construction_type(object_load_type::mirror_copy);
+        AGEA_check(olc.get_construction_type() != object_load_type::mirror_copy, "ct missmatch!");
+
+        olc.set_construction_type(object_load_type::instance_obj);
         obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
         if (!obj->META_construct(params))
         {
@@ -196,7 +198,11 @@ object_constructor::object_construct(const utils::id& type_id,
         {
             return nullptr;
         }
+
+        olc.set_construction_type(prev_ct);
     }
+
+    olc.reset_loaded_objects();
 
     return obj;
 }

@@ -37,11 +37,17 @@ public:
     auto
     spawn_object(const utils::id& type_id, const utils::id& id)
     {
-        return spawm_object(type_id, id)->as<T>();
+        return spawn_object_impl(type_id, id)->as<T>();
     }
 
-    root::smart_object*
-    spawm_object(const utils::id& proto_obj, const utils::id& object_id);
+    template <typename T>
+    auto
+    spawn_object(const utils::id& type_id,
+                 const utils::id& id,
+                 const typename T::construct_params& p)
+    {
+        return spawn_object_impl(type_id, id, p)->as<T>();
+    }
 
     void
     tick(float dt);
@@ -143,6 +149,14 @@ public:
     }
 
 private:
+    root::smart_object*
+    spawn_object_impl(const utils::id& proto_obj_id, const utils::id& object_id);
+
+    root::smart_object*
+    spawn_object_impl(const utils::id& proto_obj_id,
+                      const utils::id& object_id,
+                      const root::smart_object::construct_params& p);
+
     utils::id m_id;
 
     cache_set m_local_cs;

@@ -91,7 +91,6 @@ private:
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
-    std::unique_ptr<scene_builder> m_scene;
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 };
 

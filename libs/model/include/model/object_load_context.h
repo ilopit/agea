@@ -73,6 +73,12 @@ public:
     }
 
     void
+    reset_loaded_objects()
+    {
+        m_loaded_objects.clear();
+    }
+
+    void
     push_object_loaded(root::smart_object* o)
     {
         m_loaded_objects.push_back(o);

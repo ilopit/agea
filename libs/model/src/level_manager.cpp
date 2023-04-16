@@ -72,9 +72,7 @@ level_manager::load_level_path(level& l,
     {
         ALOG_LAZY_ERROR;
         return false;
-    }
-
-    l.m_occ = std::make_unique<object_load_context>();
+    };
     l.m_occ->set_prefix_path(utils::path{})
         .set_class_global_set(l.m_global_class_object_cs)
         .set_instance_global_set(l.m_global_object_cs)
@@ -82,7 +80,8 @@ level_manager::load_level_path(level& l,
         .set_instance_local_set(&l.m_local_cs)
         .set_ownable_cache(&l.m_objects)
         .set_objects_mapping(l.m_mapping)
-        .set_prefix_path(path);
+        .set_prefix_path(path)
+        .set_level(&l);
 
     {
         auto packages = conteiner["packages"];

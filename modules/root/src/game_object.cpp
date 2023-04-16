@@ -39,7 +39,8 @@ game_object::attach(component* c)
 }
 
 component*
-game_object::spawn_component(const utils::id& type_id,
+game_object::spawn_component(component* parent,
+                             const utils::id& type_id,
                              const utils::id& id,
                              const component::construct_params& params)
 {
@@ -50,7 +51,10 @@ game_object::spawn_component(const utils::id& type_id,
                     m_package ? m_package->get_load_context() : m_level->get_load_context())
                     ->as<component>();
 
-    attach(comp);
+    if (parent)
+    {
+        parent->add_child(comp);
+    }
 
     return comp;
 }
@@ -58,7 +62,7 @@ game_object::spawn_component(const utils::id& type_id,
 bool
 game_object::post_construct()
 {
-    AGEA_check(get_state() == smart_object_state::loaded, "Should be in proper place");
+    AGEA_check(get_state() != smart_object_state::constructed, "Should be in proper place");
 
     recreate_structure_from_layout();
 
@@ -172,7 +176,7 @@ game_object::recreate_structure_from_ids()
     {
         if (n->m_parent_idx != -1)
         {
-            m_components[n->m_parent_idx]->attach(n);
+            m_components[n->m_parent_idx]->add_child(n);
         }
         else
         {

@@ -26,6 +26,8 @@
 #include <model/id_generator.h>
 #include <model/object_constructor.h>
 #include <model/caches/caches_map.h>
+#include <render_bridge/render_bridge.h>
+
 #include <demo/demo_module.h>
 
 #include <root/assets/mesh.h>
@@ -33,6 +35,8 @@
 #include <root/game_object.h>
 #include <root/assets/shader_effect.h>
 #include <root/assets/mesh.h>
+
+#include <demo/example.h>
 
 #include <native/native_window.h>
 
@@ -52,7 +56,6 @@ glob::engine::type glob::engine::type::s_instance;
 
 vulkan_engine::vulkan_engine(std::unique_ptr<singleton_registry> r)
     : m_registry(std::move(r))
-    , m_scene(std::make_unique<scene_builder>())
 {
 }
 void
@@ -97,6 +100,7 @@ vulkan_engine::init()
     glob::engine_counters::create(*m_registry);
     glob::module_manager::create(*m_registry);
     glob::reflection_type_registry::create(*m_registry);
+    glob::render_bridge::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
 
@@ -332,7 +336,7 @@ vulkan_engine::init_default_resources()
 
     auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
 
-    m_scene->prepare_for_rendering(*obj, true);
+    glob::render_bridge::getr().prepare_for_rendering(*obj, true);
 }
 
 void
@@ -342,26 +346,34 @@ vulkan_engine::init_scene()
 
     load_level(glob::config::get()->level);
 
-    auto id1 = AID("decor");
-    auto id2 = AID("decor2");
+    demo::example::construct_params pp;
 
-    for (int x = 0; x < 3; ++x)
-    {
-        for (int y = 0; y < 3; ++y)
-        {
-            for (int z = 0; z < 3; ++z)
-            {
-                auto id = std::format("obj_{}_{}_{}", x, y, z);
-                auto p = glob::level::getr().spawn_object<root::game_object>((z & 1) ? id1 : id2,
-                                                                             AID(id));
+    auto obj = glob::level::getr().spawn_object<demo::example>(AID("example"), AID("BB"), pp);
 
-                p->get_root_component()->set_position(root::vec3{x * 10.f, y * 10.f, z * 10.f});
-                p->update_position();
+    glob::render_bridge::getr().prepare_for_rendering(*obj, true);
 
-                m_scene->prepare_for_rendering(*p, true);
-            }
-        }
-    }
+    //
+    //     auto id1 = AID("decor");
+    //     auto id2 = AID("decor2");
+    //
+    //     for (int x = 0; x < 3; ++x)
+    //     {
+    //         for (int y = 0; y < 3; ++y)
+    //         {
+    //             for (int z = 0; z < 3; ++z)
+    //             {
+    //                 auto id = std::format("obj_{}_{}_{}", x, y, z);
+    //                 auto p = glob::level::getr().spawn_object<root::game_object>((z & 1) ? id1 :
+    //                 id2,
+    //                                                                              AID(id));
+    //
+    //                 p->get_root_component()->set_position(root::vec3{x * 10.f, y * 10.f, z
+    //                 * 10.f}); p->update_position();
+    //
+    //                 m_scene->prepare_for_rendering(*p, true);
+    //             }
+    //         }
+    //     }
 }
 
 void
@@ -375,7 +387,7 @@ vulkan_engine::consume_updated_render_components()
 
         if (obj_data)
         {
-            m_scene->prepare_for_rendering(*i, false);
+            glob::render_bridge::getr().prepare_for_rendering(*i, true);
         }
     }
 
@@ -389,7 +401,7 @@ vulkan_engine::consume_updated_render_assets()
 
     for (auto& i : items)
     {
-        m_scene->prepare_for_rendering(*i, false);
+        glob::render_bridge::getr().prepare_for_rendering(*i, true);
     }
 
     items.clear();
@@ -402,7 +414,7 @@ vulkan_engine::consume_updated_shader_effects()
 
     for (auto& i : items)
     {
-        m_scene->prepare_for_rendering(*i, false);
+        glob::render_bridge::getr().prepare_for_rendering(*i, true);
     }
 
     items.clear();
@@ -415,7 +427,7 @@ vulkan_engine::prepare_for_rendering(model::package& p)
 
     for (auto& o : cs)
     {
-        if (!m_scene->prepare_for_rendering(*o, true))
+        if (glob::render_bridge::getr().prepare_for_rendering(*o, true) != result_code::ok)
         {
             ALOG_LAZY_ERROR;
             return false;
@@ -440,7 +452,7 @@ vulkan_engine::prepare_for_rendering(model::level& p)
 
     for (auto& o : cs.get_items())
     {
-        if (!m_scene->prepare_for_rendering(*o.second, true))
+        if (glob::render_bridge::getr().prepare_for_rendering(*o.second, true) != result_code::ok)
         {
             ALOG_LAZY_ERROR;
             return false;

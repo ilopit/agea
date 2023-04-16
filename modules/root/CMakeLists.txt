@@ -39,6 +39,8 @@ target_link_libraries(root PUBLIC
    agea::glm_unofficial
    agea::serialization
    agea::resource_locator
+   agea::asset_importer
+   agea::render_bridge
 
    lua_static
    agea::sol2_unofficial

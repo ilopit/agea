@@ -41,8 +41,19 @@ public:
     void
     attach(component* c);
 
+    template <typename T>
+    T*
+    spawn_component(component* parent,
+                    const utils::id& type_id,
+                    const utils::id& id,
+                    const typename T::construct_params& params)
+    {
+        return spawn_component(parent, type_id, id, params)->as<T>();
+    }
+
     component*
-    spawn_component(const utils::id& type_id,
+    spawn_component(component* parent,
+                    const utils::id& type_id,
                     const utils::id& id,
                     const root::component::construct_params& params);
 

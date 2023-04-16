@@ -17,6 +17,7 @@ main(int, char*)
 {
     agea::utils::setup_logger();
     auto registry = std::make_unique<agea::singleton_registry>();
+
 #if WIN32
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif

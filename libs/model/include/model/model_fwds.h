@@ -38,13 +38,13 @@ class package_manager;
 template <typename T, architype ID>
 class cache;
 
-using objects_cache = cache<root::smart_object, architype::smart_object>;
-using components_cache = cache<root::component, architype::component>;
-using game_objects_cache = cache<root::game_object, architype::game_object>;
-using textures_cache = cache<root::texture, architype::texture>;
-using meshes_cache = cache<root::mesh, architype::mesh>;
-using materials_cache = cache<root::material, architype::material>;
-using shader_effects_cache = cache<root::shader_effect, architype::shader_effect>;
+using objects_cache = cache<::agea::root::smart_object, architype::smart_object>;
+using components_cache = cache<::agea::root::component, architype::component>;
+using game_objects_cache = cache<::agea::root::game_object, architype::game_object>;
+using textures_cache = cache<::agea::root::texture, architype::texture>;
+using meshes_cache = cache<::agea::root::mesh, architype::mesh>;
+using materials_cache = cache<::agea::root::material, architype::material>;
+using shader_effects_cache = cache<::agea::root::shader_effect, architype::shader_effect>;
 
 }  // namespace model
 }  // namespace agea

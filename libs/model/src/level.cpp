@@ -19,7 +19,7 @@ namespace model
 {
 
 level::level()
-    : m_occ(nullptr)
+    : m_occ(std::make_unique<object_load_context>())
     , m_mapping(std::make_shared<model::object_mapping>())
 {
 }
@@ -41,7 +41,7 @@ level::find_component(const utils::id& id)
 }
 
 root::smart_object*
-level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
+level::spawn_object_impl(const utils::id& proto_obj_id, const utils::id& object_id)
 {
     auto proto_obj = m_occ->find_obj(proto_obj_id);
 
@@ -66,6 +66,14 @@ level::spawm_object(const utils::id& proto_obj_id, const utils::id& object_id)
     }
 
     return result;
+}
+
+root::smart_object*
+level::spawn_object_impl(const utils::id& proto_obj_id,
+                         const utils::id& object_id,
+                         const root::smart_object::construct_params& p)
+{
+    return object_constructor::object_construct(proto_obj_id, object_id, p, *m_occ);
 }
 
 void

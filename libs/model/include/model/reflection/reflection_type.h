@@ -37,8 +37,13 @@
 
 #define AGEA_reflection_type_ui_args ::agea::blob_ptr ptr
 
+#define AGEA_reflection_type_render_loader agea::render_bridge &rb, root::smart_object &, bool
+
 namespace agea
 {
+
+class render_bridge;
+
 namespace reflection
 {
 
@@ -49,6 +54,7 @@ using type_deserialisation_with_prototype_handler =
 using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
+using type_rendler_builder = result_code (*)(AGEA_reflection_type_render_loader);
 
 using property_list = std::vector<std::shared_ptr<property>>;
 
@@ -74,6 +80,7 @@ struct reflection_type
     type_copy_handler copy = nullptr;
     type_compare_handler compare = nullptr;
     type_ui_handler ui = nullptr;
+    type_rendler_builder render = nullptr;
 
     bool initialized = false;
 };
