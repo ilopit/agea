@@ -17,7 +17,7 @@ source_group("root" FILES  ${ROOT_SRC})
 source_group("reflection" FILES  ${ROOT_REFLECTION_SRC})
 source_group("generated" FILES  ${GENERATED_SRC})
 
-add_library(root STATIC
+add_library(root.m.model STATIC
    ${ROOT_COMPONENTS_SRC}         
    ${ROOT_ASSETS_SRC}
    ${ROOT_DEMO_SRC}
@@ -30,28 +30,45 @@ add_library(root STATIC
    ${GENERATED_SRC}
 )
 
-target_compile_options(root PRIVATE /bigobj)
+target_compile_options(root.m.model PRIVATE /bigobj)
+target_include_directories(root.m.model PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
-target_link_libraries(root PUBLIC
+target_link_libraries(root.m.model PUBLIC
    agea::ar
-   agea::utils
-   agea::model
+   agea::core
    agea::glm_unofficial
    agea::serialization
    agea::resource_locator
-   agea::asset_importer
-   agea::render_bridge
+   agea::utils
+   
+   agea::sol2_unofficial
 
    lua_static
-   agea::sol2_unofficial
 )
 
-agea_finalize_library(root)
+agea_finalize_library(root.m.model)
 
-target_include_directories(root PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
+add_custom_target(root.m.ar ALL)
+agea_ar_target(root.m.ar root "agea")
 
-add_custom_target(generate.root.ar ALL)
-agea_ar_target(generate.root.ar root "agea")
+#####  Render
+file(GLOB ROOT_RENDER_SRC "include/render/*.h" "src/render/*.cpp")
+
+source_group("render" FILES ${ROOT_RENDER_SRC})
 
 
+add_library(root.m.render STATIC
+   ${ROOT_RENDER_SRC}
+)
+
+target_link_libraries(root.m.render
+
+   agea::root.m.render
+   agea::asset_importer
+   agea::render_bridge
+)
+
+agea_finalize_library(root.m.render)
+
+#####  Tests
 add_subdirectory(tests)

@@ -2,7 +2,7 @@
 
 #include "root/game_object.generated.h"
 
-#include "model/model_minimal.h"
+#include "core/model_minimal.h"
 #include "root/core_types/vec3.h"
 #include "root/components/game_object_component.h"
 #include "root/smart_object.h"

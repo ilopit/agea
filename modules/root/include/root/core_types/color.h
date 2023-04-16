@@ -6,7 +6,7 @@
 
 namespace agea
 {
-namespace model
+namespace core
 {
 
 AGEA_ar_struct();
@@ -15,5 +15,5 @@ struct color : ::glm::vec4
     glm::vec4 m_data;
 };
 
-}  // namespace model
+}  // namespace core
 }  // namespace agea

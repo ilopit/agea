@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "model/reflection/module.h"
+#include "core/reflection/module.h"
 
 namespace demo
 {
@@ -9,7 +9,7 @@ class demo_module : public ::agea::reflection::module
 {
 public:
     demo_module(const ::agea::utils::id& id)
-       : ::agea::reflection::module(id)
+        : ::agea::reflection::module(id)
     {
     }
 
@@ -19,9 +19,11 @@ public:
         return true;
     }
 
-    virtual bool init_reflection();
+    virtual bool
+    init_reflection();
 
-    static demo_module& instance();
+    static demo_module&
+    instance();
 };
 
 }  // namespace demo

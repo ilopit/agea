@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include "scene_builder.h"
-
 #include <vulkan_render/types/vulkan_render_data.h>
 #include <vulkan_render/types/vulkan_gpu_types.h>
 
@@ -11,7 +9,7 @@
 #include <utils/id.h>
 #include <utils/line_conteiner.h>
 
-#include <model/model_fwds.h>
+#include <core/model_fwds.h>
 
 #include <vector>
 #include <functional>
@@ -82,8 +80,8 @@ private:
     void consume_updated_render_assets();
     void consume_updated_shader_effects();
 
-    bool prepare_for_rendering(model::package& p);
-    bool prepare_for_rendering(model::level& l);
+    bool prepare_for_rendering(core::package& p);
+    bool prepare_for_rendering(core::level& l);
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on

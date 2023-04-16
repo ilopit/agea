@@ -6,7 +6,7 @@
 #include <model/caches/empty_objects_cache.h>
 #include <model/reflection/lua_api.h>
 #include <model/package_manager.h>
-#include <model/model_module.h>
+#include <root/root_module.h>
 
 #include <utils/singleton_registry.h>
 
@@ -23,12 +23,12 @@ main(int argc, char** argv)
     agea::glob::module_manager::create(r);
     agea::glob::reflection_type_registry::create(r);
 
-    agea::glob::module_manager::getr().register_module<agea::model::model_module>();
+    agea::glob::module_manager::getr().register_module<agea::root::root_module>();
 
-    for (auto& [id, m] : agea::glob::module_manager::getr().modules())
+    for (auto m : agea::glob::module_manager::getr().modules())
     {
-        m->init_types();
         m->init_reflection();
+        m->override_reflection_types();
     }
 
     testing::InitGoogleTest(&argc, argv);

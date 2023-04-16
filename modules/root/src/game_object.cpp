@@ -2,9 +2,9 @@
 
 #include "root/components/component.h"
 #include "root/components/game_object_component.h"
-#include "model/object_constructor.h"
-#include "model/package.h"
-#include "model/level.h"
+#include "core/object_constructor.h"
+#include "core/package.h"
+#include "core/level.h"
 
 namespace agea
 {
@@ -46,7 +46,7 @@ game_object::spawn_component(component* parent,
 {
     AGEA_check(((bool)m_package != (bool)m_level), "Only one should be set!");
 
-    auto comp = model::object_constructor::object_construct(
+    auto comp = core::object_constructor::object_construct(
                     type_id, id, params,
                     m_package ? m_package->get_load_context() : m_level->get_load_context())
                     ->as<component>();

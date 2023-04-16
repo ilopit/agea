@@ -2,7 +2,7 @@
 
 #include "utils/string_utility.h"
 
-#include "model/reflection/lua_api.h"
+#include "core/reflection/lua_api.h"
 #include <sol2_unofficial/sol.h>
 
 #include <ctype.h>

@@ -1,15 +1,15 @@
 #include "root/root_properties_custom.h"
 
-#include "model/reflection/property.h"
-#include "model/reflection/reflection_type_utils.h"
+#include "core/reflection/property.h"
+#include "core/reflection/reflection_type_utils.h"
 
-#include "model/object_load_context.h"
+#include "core/object_load_context.h"
 #include "root/smart_object.h"
 #include "root/components/component.h"
-#include "model/caches/cache_set.h"
-#include "model/object_constructor.h"
-#include "model/caches/objects_cache.h"
-#include "model/id_generator.h"
+#include "core/caches/cache_set.h"
+#include "core/object_constructor.h"
+#include "core/caches/objects_cache.h"
+#include "core/id_generator.h"
 #include "root/assets/material.h"
 
 #include <serialization/serialization.h>
@@ -57,9 +57,9 @@ game_object_components_deserialize(deserialize_context& dc)
         auto item = items[i];
 
         root::smart_object* obj = nullptr;
-        auto rc = model::object_constructor::object_load_internal(item, *dc.occ, obj);
+        auto rc = core::object_constructor::object_load_internal(item, *dc.occ, obj);
 
-        if (rc != result_code::ok || !obj || obj->get_architype_id() != model::architype::component)
+        if (rc != result_code::ok || !obj || obj->get_architype_id() != core::architype::component)
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -110,9 +110,9 @@ game_object_components_prototype(property_prototype_context& ctx)
         auto item = items[i];
 
         root::smart_object* obj = nullptr;
-        auto rc = model::object_constructor::object_load_internal(item, *ctx.occ, obj);
+        auto rc = core::object_constructor::object_load_internal(item, *ctx.occ, obj);
 
-        if (rc != result_code::ok || !obj || obj->get_architype_id() != model::architype::component)
+        if (rc != result_code::ok || !obj || obj->get_architype_id() != core::architype::component)
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -153,8 +153,8 @@ game_object_components_serialize(serialize_context& dc)
             reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
 
             std::vector<reflection::property*> diff;
-            model::object_constructor::diff_object_properties(*class_component, *instance_component,
-                                                              diff);
+            core::object_constructor::diff_object_properties(*class_component, *instance_component,
+                                                             diff);
 
             for (auto& p : diff)
             {
@@ -194,8 +194,8 @@ game_object_components_serialize(serialize_context& dc)
             reflection::serialize_context internal_sc{nullptr, obj_component, &component_conteiner};
 
             std::vector<reflection::property*> diff;
-            model::object_constructor::diff_object_properties(*class_component, *obj_component,
-                                                              diff);
+            core::object_constructor::diff_object_properties(*class_component, *obj_component,
+                                                             diff);
 
             for (auto& p : diff)
             {
@@ -239,9 +239,9 @@ game_object_components_copy(copy_context& ctx)
         root::smart_object* obj = nullptr;
         result_code rc = result_code::nav;
 
-        if (ctx.occ->get_construction_type() == model::object_load_type::mirror_copy)
+        if (ctx.occ->get_construction_type() == core::object_load_type::mirror_copy)
         {
-            rc = model::object_constructor::object_clone_create_internal(
+            rc = core::object_constructor::object_clone_create_internal(
                 *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
         }
         else
@@ -249,8 +249,8 @@ game_object_components_copy(copy_context& ctx)
             auto id =
                 glob::id_generator::getr().generate(ctx.src_obj->get_id(), src_col[i]->get_id());
 
-            rc = model::object_constructor::object_clone_create_internal(*src_col[i], id, *ctx.occ,
-                                                                         obj);
+            rc = core::object_constructor::object_clone_create_internal(*src_col[i], id, *ctx.occ,
+                                                                        obj);
         }
 
         if (rc != result_code::ok)
@@ -280,7 +280,7 @@ texture_sample_deserialize(deserialize_context& dc)
     const auto texture_id = AID(item["texture"].as<std::string>());
 
     root::smart_object* obj = nullptr;
-    auto rc = model::object_constructor::object_load_internal(texture_id, *dc.occ, obj);
+    auto rc = core::object_constructor::object_load_internal(texture_id, *dc.occ, obj);
     if (rc != result_code::ok)
     {
         return rc;
@@ -324,7 +324,7 @@ texture_sample_copy(copy_context& ctx)
 
     result_code rc = result_code::ok;
 
-    if (ctx.occ->get_construction_type() != model::object_load_type::mirror_copy)
+    if (ctx.occ->get_construction_type() != core::object_load_type::mirror_copy)
     {
         dst->get_sample(id) = src->get_sample(id);
     }
@@ -334,7 +334,7 @@ texture_sample_copy(copy_context& ctx)
 
         root::smart_object* obj = nullptr;
 
-        rc = model::object_constructor::object_clone_create_internal(
+        rc = core::object_constructor::object_clone_create_internal(
             src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ, obj);
 
         dst->get_sample(id).txt = obj->as<root::texture>();

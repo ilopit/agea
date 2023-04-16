@@ -17,8 +17,8 @@ target_link_libraries(demo PUBLIC
    agea::ar
    agea::utils
    agea::glm_unofficial
-   agea::model
-   agea::root
+   agea::core
+   agea::root.m.model
    agea::serialization
    agea::resource_locator
 

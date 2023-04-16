@@ -4,7 +4,7 @@
 #include <model/caches/objects_cache.h>
 #include <model/caches/objects_cache.h>
 #include <model/caches/caches_map.h>
-#include <model/game_object.h>
+#include <root/game_object.h>
 #include <model/object_constructor.h>
 
 #include <utils/singleton_registry.h>
@@ -12,6 +12,8 @@
 #include <gtest/gtest.h>
 
 using namespace agea;
+using namespace core;
+using namespace root;
 
 struct test_game_object_structure : base_test
 {
@@ -25,20 +27,20 @@ struct test_game_object_structure : base_test
     }
 
     singleton_registry m_reg;
-    model::objects_cache m_class_cache;
-    model::objects_cache m_cache;
+    core::objects_cache m_class_cache;
+    core::objects_cache m_cache;
 };
 
 template <typename T>
 auto
 aeo(const utils::id& id)
 {
-    return model::object_constructor::alloc_empty_object<T>(id);
+    return core::object_constructor::alloc_empty_object<T>(id);
 }
 
 TEST_F(test_game_object_structure, generate_from_ids)
 {
-    using namespace model;
+    using namespace core;
 
     auto go = aeo<game_object>(AID("game_object"));
     auto c0 = aeo<game_object_component>(AID("c0"));
@@ -78,7 +80,7 @@ TEST_F(test_game_object_structure, generate_from_ids)
 
 TEST_F(test_game_object_structure, generate_from_structure)
 {
-    using namespace model;
+    using namespace core;
 
     auto go = aeo<game_object>(AID("game_object"));
     auto c0 = aeo<game_object_component>(AID("c0"));
@@ -93,9 +95,9 @@ TEST_F(test_game_object_structure, generate_from_structure)
        - 2  - 3
             - 4 - 5
     */
-    c0->attach(c1.get()).attach(c2.get());
-    c2->attach(c3.get()).attach(c4.get());
-    c4->attach(c5.get());
+    c0->add_child(c1.get()).add_child(c2.get());
+    c2->add_child(c3.get()).add_child(c4.get());
+    c4->add_child(c5.get());
 
     go->set_root_component(c0.get());
 

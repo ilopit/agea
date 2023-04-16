@@ -4,7 +4,11 @@
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
 #include <utils/singleton_instance.h>
-#include <model/model_minimal.h>
+
+#include <core/model_minimal.h>
+#include <vulkan_render/vulkan_render_loader_create_infos.h>
+
+#include <root/assets/shader_effect.h>
 
 #include <unordered_map>
 
@@ -31,6 +35,9 @@ struct access_template
 class render_bridge
 {
 public:
+    static render::shader_effect_create_info
+    make_se_ci(root::shader_effect& se_model);
+
     static std::string
     make_qid(render::material_data& mt_data, render::mesh_data& m_data);
 

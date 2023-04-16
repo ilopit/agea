@@ -4,14 +4,14 @@
 
 #include <inttypes.h>
 
-#include "model/caches/materials_cache.h"
-#include "model/caches/meshes_cache.h"
+#include "core/caches/materials_cache.h"
+#include "core/caches/meshes_cache.h"
 
 #include "root/assets/material.h"
 #include "root/assets/mesh.h"
 #include "root/assets/texture.h"
 
-#include "model/reflection/reflection_type_utils.h"
+#include "core/reflection/reflection_type_utils.h"
 
 #include "root/root_types_ids.ar.h"
 

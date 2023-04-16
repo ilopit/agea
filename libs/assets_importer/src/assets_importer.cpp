@@ -8,8 +8,8 @@
 #include <root/assets/mesh.h>
 #include <root/assets/texture.h>
 
-#include <model/object_constructor.h>
-#include <model/package.h>
+#include <core/object_constructor.h>
+#include <core/package.h>
 
 #include <serialization/serialization.h>
 
@@ -41,11 +41,11 @@ convert_3do_to_amsh(const utils::path& obj_path,
     indices.set_file(dst_folder_path / APATH("class/meshes") / ind_ext);
 
     auto full_obj_path = dst_folder_path / APATH("class/meshes") / obj_ext;
-    auto obj = model::object_constructor::alloc_empty_object<root::mesh>();
+    auto obj = core::object_constructor::alloc_empty_object<root::mesh>();
 
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
-    model::package p(AID("dummy"));
+    core::package p(AID("dummy"));
     p.set_save_root_path(dst_folder_path);
 
     auto mesh = obj->as<root::mesh>();
@@ -53,7 +53,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
     mesh->set_indices_buffer(indices);
     mesh->set_vertices_buffer(vertices);
 
-    if (model::object_constructor::object_save(*mesh, full_obj_path) != result_code::ok)
+    if (core::object_constructor::object_save(*mesh, full_obj_path) != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -82,10 +82,10 @@ convert_image_to_atxt(const utils::path& obj_path,
 
     auto full_obj_path = dst_folder_path / APATH("class/textures") / obj_ext;
 
-    auto obj = model::object_constructor::alloc_empty_object<root::texture>();
+    auto obj = core::object_constructor::alloc_empty_object<root::texture>();
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
-    model::package p(AID("dummy"));
+    core::package p(AID("dummy"));
     p.set_save_root_path(dst_folder_path);
 
     auto txt = obj->as<root::texture>();
@@ -95,7 +95,7 @@ convert_image_to_atxt(const utils::path& obj_path,
     txt->set_height(h);
 
     serialization::conteiner c;
-    if (model::object_constructor::object_save(*txt, full_obj_path) != result_code::ok)
+    if (core::object_constructor::object_save(*txt, full_obj_path) != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return false;

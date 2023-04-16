@@ -7,9 +7,11 @@ target_link_libraries(engine PUBLIC
     sdl2
 
     agea::utils
-    agea::model
+    agea::core
     agea::vulkan_render
     agea::asset_importer
+    agea::render_bridge
+    agea::root.m.render
 
     demo
 )

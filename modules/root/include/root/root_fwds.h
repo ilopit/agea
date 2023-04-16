@@ -21,7 +21,7 @@ class shader_effect;
 class light_component;
 
 }  // namespace root
-namespace model
+namespace core
 {
 
 class level;
@@ -44,5 +44,5 @@ using meshes_cache = cache<root::mesh, architype::mesh>;
 using materials_cache = cache<root::material, architype::material>;
 using shader_effects_cache = cache<root::shader_effect, architype::shader_effect>;
 
-}  // namespace model
+}  // namespace core
 }  // namespace agea

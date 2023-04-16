@@ -1,0 +1,87 @@
+#pragma once
+
+#include "core/model_fwds.h"
+#include "core/architype.h"
+
+#include "root/smart_object.h"
+
+#include <utils/singleton_instance.h>
+
+#include <string>
+
+namespace agea
+{
+namespace core
+{
+
+template <typename id_t>
+class hash_cache
+{
+public:
+    root::smart_object*
+    get_item(const id_t& id)
+    {
+        auto item = m_items.find(id);
+
+        return item != m_items.end() ? item->second : nullptr;
+    }
+
+    void
+    add_item(root::smart_object& obj)
+    {
+        auto& item = m_items[obj.get_id()];
+
+        AGEA_check(item == nullptr, "Should not re-assign!");
+        item = &obj;
+    }
+
+    bool
+    has_item(const id_t& id)
+    {
+        return m_items.find(id) != m_items.end();
+    }
+
+    uint32_t
+    get_size()
+    {
+        return (uint32_t)m_items.size();
+    }
+
+    const std::unordered_map<id_t, root::smart_object*>&
+    get_items()
+    {
+        return m_items;
+    }
+
+protected:
+    std::unordered_map<id_t, root::smart_object*> m_items;
+};
+
+class architype_cache : public hash_cache<utils::id>
+{
+public:
+    architype_cache(architype id)
+        : m_id(id)
+    {
+    }
+
+    void
+    add_item(root::smart_object& obj)
+    {
+        AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
+                   "Should have same architype!");
+
+        hash_cache::add_item(obj);
+    }
+
+    architype
+    get_id() const
+    {
+        return m_id;
+    }
+
+protected:
+    architype m_id;
+};
+}  // namespace core
+}  // namespace agea

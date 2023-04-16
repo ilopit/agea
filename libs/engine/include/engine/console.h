@@ -2,7 +2,7 @@
 
 #include "engine/ui.h"
 
-#include <model/model_minimal.h>
+#include <core/model_minimal.h>
 
 #include <imgui.h>
 

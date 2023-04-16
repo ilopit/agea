@@ -11,21 +11,21 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
 
-#include <model/caches/components_cache.h>
-#include <model/caches/materials_cache.h>
-#include <model/caches/meshes_cache.h>
-#include <model/caches/objects_cache.h>
-#include <model/caches/textures_cache.h>
-#include <model/caches/game_objects_cache.h>
-#include <model/caches/empty_objects_cache.h>
-#include <model/reflection/lua_api.h>
-#include <model/level_manager.h>
-#include <model/level.h>
-#include <model/package.h>
-#include <model/package_manager.h>
-#include <model/id_generator.h>
-#include <model/object_constructor.h>
-#include <model/caches/caches_map.h>
+#include <core/caches/components_cache.h>
+#include <core/caches/materials_cache.h>
+#include <core/caches/meshes_cache.h>
+#include <core/caches/objects_cache.h>
+#include <core/caches/textures_cache.h>
+#include <core/caches/game_objects_cache.h>
+#include <core/caches/empty_objects_cache.h>
+#include <core/reflection/lua_api.h>
+#include <core/level_manager.h>
+#include <core/level.h>
+#include <core/package.h>
+#include <core/package_manager.h>
+#include <core/id_generator.h>
+#include <core/object_constructor.h>
+#include <core/caches/caches_map.h>
 #include <render_bridge/render_bridge.h>
 
 #include <demo/demo_module.h>
@@ -35,6 +35,7 @@
 #include <root/game_object.h>
 #include <root/assets/shader_effect.h>
 #include <root/assets/mesh.h>
+#include <root/render/root_render_module.h>
 
 #include <demo/example.h>
 
@@ -104,7 +105,7 @@ vulkan_engine::init()
 
     glob::init_global_caches(*m_registry);
 
-    glob::module_manager::getr().register_module<root::root_module>();
+    glob::module_manager::getr().register_module<root::root_render_module>();
     glob::module_manager::getr().register_module<demo::demo_module>();
 
     for (auto m : glob::module_manager::getr().modules())
@@ -244,7 +245,7 @@ vulkan_engine::tick(float dt)
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto result = model::level_manager::load_level_id(
+    auto result = core::level_manager::load_level_id(
         *glob::level::get(), glob::config::get()->level, glob::class_objects_cache_set::get(),
         glob::objects_cache_set::get());
 
@@ -421,7 +422,7 @@ vulkan_engine::consume_updated_shader_effects()
 }
 
 bool
-vulkan_engine::prepare_for_rendering(model::package& p)
+vulkan_engine::prepare_for_rendering(core::package& p)
 {
     auto& cs = p.get_objects();
 
@@ -438,7 +439,7 @@ vulkan_engine::prepare_for_rendering(model::package& p)
 }
 
 bool
-vulkan_engine::prepare_for_rendering(model::level& p)
+vulkan_engine::prepare_for_rendering(core::level& p)
 {
     auto& ids = p.get_package_ids();
 

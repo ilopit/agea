@@ -6,12 +6,12 @@
 #include "engine/property_drawers.h"
 #include "engine/engine_counters.h"
 
-#include <model/level.h>
+#include <core/level.h>
 #include <root/game_object.h>
 #include <root/assets/material.h>
-#include <model/caches/caches_map.h>
-#include <model/caches/materials_cache.h>
-#include <model/reflection/property.h>
+#include <core/caches/caches_map.h>
+#include <core/caches/materials_cache.h>
+#include <core/reflection/property.h>
 
 #include <native/native_window.h>
 

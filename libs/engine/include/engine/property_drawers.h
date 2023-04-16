@@ -1,17 +1,17 @@
 #pragma once
 
-#include "model/reflection/property.h"
-#include "model/reflection/reflection_type.h"
+#include "core/reflection/property.h"
+#include "core/reflection/reflection_type.h"
 
 #include <functional>
 
 namespace agea
 {
 
-namespace model
+namespace core
 {
 class smart_object;
-}  // namespace model
+}  // namespace core
 
 namespace ui
 {

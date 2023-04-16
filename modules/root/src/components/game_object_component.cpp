@@ -1,6 +1,6 @@
 #include "root/components/game_object_component.h"
 
-#include "model/level.h"
+#include "core/level.h"
 
 namespace agea
 {

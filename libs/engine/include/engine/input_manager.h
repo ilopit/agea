@@ -1,7 +1,7 @@
 #pragma once
 
-#include <model/model_fwds.h>
-#include <model/caches/line_cache.h>
+#include <core/model_fwds.h>
+#include <core/caches/line_cache.h>
 
 #include <utils/id.h>
 #include <utils/path.h>

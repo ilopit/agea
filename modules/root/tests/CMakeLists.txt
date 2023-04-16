@@ -4,15 +4,15 @@ file(GLOB TEST_SOURCES
 )
 source_group("test_sources" FILES ${TEST_SOURCES})
 
-add_executable (root_tests
+add_executable (root.m.tests
     ${TEST_SOURCES}
  )
 
-target_link_libraries(root_tests
-    agea::model
-    agea::root
+target_link_libraries(root.m.tests
+    agea::core
+    agea::root.m.model
     
     gtest
 )
 
-agea_finalize_executable(root_tests)
+agea_finalize_executable(root.m.tests)

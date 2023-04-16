@@ -5,9 +5,9 @@
 #include <root/assets/mesh.h>
 #include <root/assets/material.h>
 
-#include <model/caches/caches_map.h>
-#include <model/caches/materials_cache.h>
-#include <model/caches/meshes_cache.h>
+#include <core/caches/caches_map.h>
+#include <core/caches/materials_cache.h>
+#include <core/caches/meshes_cache.h>
 
 namespace demo
 {

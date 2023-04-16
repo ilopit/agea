@@ -1,7 +1,6 @@
 #include "render_bridge/render_bridge.h"
 
 #include <root/smart_object.h>
-
 #include <root/assets/shader_effect.h>
 #include <root/root_types_ids.ar.h>
 
@@ -39,24 +38,6 @@ const render::vertex_input_description DEFAULT_VERTEX_DESCRIPTION = []()
 
     return render::convert_to_vertex_input_description(*dol);
 }();
-
-render::shader_effect_create_info
-make_se_ci(root::shader_effect& se_model)
-{
-    render::shader_effect_create_info se_ci;
-    se_ci.vert_buffer = &se_model.m_vert;
-    se_ci.frag_buffer = &se_model.m_frag;
-    se_ci.is_vert_binary = se_model.m_is_vert_binary;
-    se_ci.is_frag_binary = se_model.m_is_frag_binary;
-    se_ci.is_wire = se_model.m_wire_topology;
-    se_ci.enable_alpha = se_model.m_enable_alpha_support;
-    se_ci.render_pass = glob::render_device::getr().render_pass();
-    se_ci.enable_dynamic_state = false;
-    se_ci.vert_input_description = &DEFAULT_VERTEX_DESCRIPTION;
-    se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
-
-    return se_ci;
-}
 
 }  // namespace
 
@@ -131,6 +112,24 @@ render_bridge::collect_gpu_data(root::smart_object& so)
     }
 
     return extract_gpu_data(so, itr->second);
+}
+
+render::shader_effect_create_info
+render_bridge::make_se_ci(root::shader_effect& se_model)
+{
+    render::shader_effect_create_info se_ci;
+    se_ci.vert_buffer = &se_model.m_vert;
+    se_ci.frag_buffer = &se_model.m_frag;
+    se_ci.is_vert_binary = se_model.m_is_vert_binary;
+    se_ci.is_frag_binary = se_model.m_is_frag_binary;
+    se_ci.is_wire = se_model.m_wire_topology;
+    se_ci.enable_alpha = se_model.m_enable_alpha_support;
+    se_ci.render_pass = glob::render_device::getr().render_pass();
+    se_ci.enable_dynamic_state = false;
+    se_ci.vert_input_description = &DEFAULT_VERTEX_DESCRIPTION;
+    se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
+
+    return se_ci;
 }
 
 std::string

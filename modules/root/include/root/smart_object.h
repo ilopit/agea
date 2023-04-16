@@ -2,9 +2,9 @@
 
 #include "root/smart_object.generated.h"
 
-#include "model/reflection/reflection_type.h"
-#include "model/model_minimal.h"
-#include "model/architype.h"
+#include "core/reflection/reflection_type.h"
+#include "core/model_minimal.h"
+#include "core/architype.h"
 
 #include <ar/ar_defines.h>
 
@@ -55,16 +55,16 @@
 // clang-format off
 #define AGEA_gen_meta_architype_api(a)                                    \
     AGEA_gen_meta_api;                                                     \
-    static ::agea::model::architype META_architype_id()                   \
+    static ::agea::core::architype META_architype_id()                   \
     {                                                                     \
-        return ::agea::model::architype::a;                               \
+        return ::agea::core::architype::a;                               \
     }
 // clang-format off
 
 namespace agea
 {
 
-namespace model
+namespace core
 {
 class object_constructor;
 class package;
@@ -112,7 +112,7 @@ public:
 
     AGEA_gen_meta_architype_api(smart_object);
 
-    friend class model::object_constructor;
+    friend class core::object_constructor;
 
     template <typename T>
     bool
@@ -166,13 +166,13 @@ public:
         return m_proto_obj;
     }
 
-    const model::package*
+    const core::package*
     get_package() const
     {
         return m_package;
     }
 
-    const model::level*
+    const core::level*
     get_level() const
     {
         return m_level;
@@ -203,13 +203,13 @@ public:
     }
 
     void
-    set_package(model::package* p)
+    set_package(core::package* p)
     {
         m_package = p;
     }
 
     void
-    set_level(model::level* p)
+    set_level(core::level* p)
     {
         m_level = p;
     }
@@ -228,7 +228,7 @@ protected:
     }
 
     AGEA_ar_property("category=meta", "access=read_only");
-    model::architype m_architype_id = model::architype::unknown;
+    core::architype m_architype_id = core::architype::unknown;
 
     AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_type_id;
@@ -237,8 +237,8 @@ protected:
     utils::id m_id;
 
     const smart_object* m_proto_obj = nullptr;
-    model::package* m_package = nullptr;
-    model::level * m_level = nullptr;
+    core::package* m_package = nullptr;
+    core::level * m_level = nullptr;
 
     smart_object_state m_obj_state = smart_object_state::empty;
     uint32_t m_obj_internal_state = smart_object_state_flag::empty;
@@ -274,5 +274,5 @@ cast_ref(From* ref)
     return (To*)ref;
 }
 
-}  // namespace model
+}  // namespace core
 }  // namespace agea

@@ -1,7 +1,7 @@
 ﻿add_subdirectory(ar)
 add_subdirectory(assets_importer)
+add_subdirectory(core)
 add_subdirectory(engine)
-add_subdirectory(model)
 add_subdirectory(native)
 add_subdirectory(resource_locator)
 add_subdirectory(render_bridge)

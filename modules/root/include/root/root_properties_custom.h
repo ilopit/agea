@@ -1,6 +1,6 @@
 #pragma once
 
-#include "model/reflection/property_utils.h"
+#include "core/reflection/property_utils.h"
 
 namespace agea
 {
