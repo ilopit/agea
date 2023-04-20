@@ -37,8 +37,8 @@ public:
 namespace glob
 {
 
-struct class_objects_cache_set
-    : public ::agea::singleton_instance<::agea::core::cache_set, class_objects_cache_set>
+struct proto_objects_cache_set
+    : public ::agea::singleton_instance<::agea::core::cache_set, proto_objects_cache_set>
 {
 };
 

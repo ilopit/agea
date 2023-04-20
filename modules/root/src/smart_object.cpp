@@ -1,5 +1,7 @@
 #include "root/smart_object.h"
 
+#include <core/reflection/reflection_type.h>
+
 namespace agea
 {
 namespace root
@@ -19,6 +21,18 @@ smart_object::post_load()
 {
     set_state(smart_object_state::constructed);
     return true;
+}
+
+core::architype
+smart_object::get_architype_id() const
+{
+    return m_rt->arch;
+}
+
+const agea::utils::id&
+smart_object::get_type_id() const
+{
+    return m_rt->type_name;
 }
 
 }  // namespace root

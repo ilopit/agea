@@ -17,7 +17,6 @@
 #include <core/caches/objects_cache.h>
 #include <core/caches/textures_cache.h>
 #include <core/caches/game_objects_cache.h>
-#include <core/caches/empty_objects_cache.h>
 #include <core/reflection/lua_api.h>
 #include <core/level_manager.h>
 #include <core/level.h>
@@ -246,7 +245,7 @@ bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
     auto result = core::level_manager::load_level_id(
-        *glob::level::get(), glob::config::get()->level, glob::class_objects_cache_set::get(),
+        *glob::level::get(), glob::config::get()->level, glob::proto_objects_cache_set::get(),
         glob::objects_cache_set::get());
 
     if (!result)

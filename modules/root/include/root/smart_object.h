@@ -32,44 +32,23 @@
 
 #define AGEA_gen_meta_api                                                               \
                                                                                         \
-    void META_class_set_type_id();                                                      \
+    static ::agea::utils::id AR_TYPE_id();                                              \
                                                                                         \
-    void META_class_set_architype_id();                                                 \
-                                                                                        \
-    static ::agea::utils::id META_type_id();                                            \
-                                                                                        \
-    static ::agea::reflection::reflection_type*& META_reflection_type()                 \
-    {                                                                                   \
-        static ::agea::reflection::reflection_type* s_reflection = nullptr;             \
-        return s_reflection;                                                            \
-    }                                                                                   \
-                                                                                        \
-    virtual const ::agea::reflection::reflection_type* reflection() const;              \
+    static const ::agea::reflection::reflection_type& AR_TYPE_reflection();             \
                                                                                         \
     virtual bool META_construct(const ::agea::root::smart_object::construct_params& i); \
                                                                                         \
-    virtual std::shared_ptr<::agea::root::smart_object> META_create_empty_obj();        \
+    static std::shared_ptr<this_class> AR_TYPE_create_empty_obj();                      \
                                                                                         \
-    static std::shared_ptr<this_class> META_class_create_empty_obj();
-
-// clang-format off
-#define AGEA_gen_meta_architype_api(a)                                    \
-    AGEA_gen_meta_api;                                                     \
-    static ::agea::core::architype META_architype_id()                   \
-    {                                                                     \
-        return ::agea::core::architype::a;                               \
-    }
-// clang-format off
+    static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj();
 
 namespace agea
 {
-
 namespace core
 {
 class object_constructor;
 class package;
-}
-
+}  // namespace core
 
 namespace root
 {
@@ -98,7 +77,7 @@ enum smart_object_state_flag : uint32_t
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
 
-AGEA_ar_class();
+AGEA_ar_class("architype=smart_object");
 class smart_object
 {
     AGEA_gen_meta__smart_object();
@@ -110,7 +89,7 @@ public:
 
     AGEA_gen_class_meta_super(smart_object);
 
-    AGEA_gen_meta_architype_api(smart_object);
+    AGEA_gen_meta_api;
 
     friend class core::object_constructor;
 
@@ -214,6 +193,18 @@ public:
         m_level = p;
     }
 
+    core::architype
+    get_architype_id() const;
+
+    const utils::id&
+    get_type_id() const;
+
+    const reflection::reflection_type*
+    get_reflection() const
+    {
+        return m_rt;
+    }
+
 protected:
     void
     META_set_id(const utils::id& id)
@@ -227,10 +218,15 @@ protected:
         m_proto_obj = obj;
     }
 
-    AGEA_ar_property("category=meta", "access=read_only");
-    core::architype m_architype_id = core::architype::unknown;
+    void
+    META_set_reflection_type(const reflection::reflection_type* rt)
+    {
+        m_rt = rt;
+    }
 
-    AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
+    const reflection::reflection_type* m_rt = nullptr;
+
+    AGEA_ar_property("category=meta", "access=no", "copyable=no");
     utils::id m_type_id;
 
     AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
@@ -238,7 +234,7 @@ protected:
 
     const smart_object* m_proto_obj = nullptr;
     core::package* m_package = nullptr;
-    core::level * m_level = nullptr;
+    core::level* m_level = nullptr;
 
     smart_object_state m_obj_state = smart_object_state::empty;
     uint32_t m_obj_internal_state = smart_object_state_flag::empty;
@@ -274,5 +270,5 @@ cast_ref(From* ref)
     return (To*)ref;
 }
 
-}  // namespace core
+}  // namespace root
 }  // namespace agea

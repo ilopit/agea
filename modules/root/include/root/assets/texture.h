@@ -16,7 +16,7 @@ class texture_data;
 namespace root
 {
 
-AGEA_ar_class();
+AGEA_ar_class("architype=texture");
 class texture : public asset
 {
     AGEA_gen_meta__texture();
@@ -24,7 +24,7 @@ class texture : public asset
 public:
     AGEA_gen_class_meta(texture, asset);
     AGEA_gen_construct_params{};
-    AGEA_gen_meta_architype_api(texture);
+    AGEA_gen_meta_api;
 
     utils::buffer&
     get_mutable_base_color()

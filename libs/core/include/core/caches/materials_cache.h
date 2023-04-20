@@ -13,8 +13,8 @@ struct materials_cache : public singleton_instance<::agea::core::materials_cache
 {
 };
 
-struct class_materials_cache
-    : public singleton_instance<::agea::core::materials_cache, class_materials_cache>
+struct proto_materials_cache
+    : public singleton_instance<::agea::core::materials_cache, proto_materials_cache>
 {
 };
 }  // namespace glob

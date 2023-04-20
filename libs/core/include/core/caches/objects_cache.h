@@ -13,8 +13,8 @@ struct objects_cache : public singleton_instance<::agea::core::objects_cache, ob
 {
 };
 
-struct class_objects_cache
-    : public singleton_instance<::agea::core::objects_cache, class_objects_cache>
+struct proto_objects_cache
+    : public singleton_instance<::agea::core::objects_cache, proto_objects_cache>
 {
 };
 

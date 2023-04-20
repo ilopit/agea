@@ -63,7 +63,7 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
 bool
 render_bridge::create_collection_template(root::smart_object& so, access_template& t)
 {
-    auto& properties = so.reflection()->m_properties;
+    auto& properties = so.get_reflection()->m_properties;
 
     t.offset_in_object.clear();
 
@@ -169,7 +169,7 @@ render_bridge::prepare_for_rendering(root::smart_object& obj, bool sub_objects)
 
     obj.set_state(root::smart_object_state::render_preparing);
 
-    result_code rc = obj.reflection()->render(*this, obj, sub_objects);
+    result_code rc = obj.get_reflection()->render(*this, obj, sub_objects);
 
     obj.set_state(root::smart_object_state::render_ready);
 

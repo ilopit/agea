@@ -86,7 +86,7 @@ class game_object;
 const inline uint32_t NO_parent = UINT32_MAX;
 const inline uint32_t NO_index = UINT32_MAX;
 
-AGEA_ar_class();
+AGEA_ar_class("architype=component");
 class component : public smart_object
 {
     AGEA_gen_meta__component();
@@ -94,7 +94,7 @@ class component : public smart_object
 public:
     AGEA_gen_class_meta(component, smart_object);
     AGEA_gen_construct_params{};
-    AGEA_gen_meta_architype_api(component);
+    AGEA_gen_meta_api;
 
     bool
     construct(construct_params& c)

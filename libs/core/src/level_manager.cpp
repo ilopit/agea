@@ -74,14 +74,10 @@ level_manager::load_level_path(level& l,
         return false;
     };
     l.m_occ->set_prefix_path(utils::path{})
-        .set_class_global_set(l.m_global_class_object_cs)
+        .set_proto_global_set(l.m_global_class_object_cs)
         .set_instance_global_set(l.m_global_object_cs)
-        .set_class_local_set(nullptr)
-        .set_instance_local_set(&l.m_local_cs)
-        .set_ownable_cache(&l.m_objects)
-        .set_objects_mapping(l.m_mapping)
-        .set_prefix_path(path)
-        .set_level(&l);
+        .set_proto_local_set(nullptr)
+        .set_prefix_path(path);
 
     {
         auto packages = conteiner["packages"];

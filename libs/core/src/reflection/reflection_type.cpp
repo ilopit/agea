@@ -7,11 +7,34 @@ namespace agea
 glob::reflection_type_registry::type glob::reflection_type_registry::s_instance;
 
 void
+reflection::reflection_type_registry::add_type(reflection_type* t)
+{
+    m_types[t->type_id] = t;
+    m_types_by_name[t->type_name] = t;
+}
+
+reflection::reflection_type*
+reflection::reflection_type_registry::get_type(const agea::utils::id& id)
+{
+    auto itr = m_types_by_name.find(id);
+
+    return itr != m_types_by_name.end() ? itr->second : nullptr;
+}
+
+reflection::reflection_type*
+reflection::reflection_type_registry::get_type(const int id)
+{
+    auto itr = m_types.find(id);
+
+    return itr != m_types.end() ? itr->second : nullptr;
+}
+
+void
 reflection::reflection_type_registry::finilaze()
 {
     for (auto& t : m_types)
     {
-        auto* rt = &t.second;
+        auto* rt = t.second;
         std::stack<reflection_type*> to_handle;
 
         while (rt)
@@ -44,11 +67,11 @@ reflection::reflection_type_registry::finilaze()
 
     for (auto& c : m_types)
     {
-        for (auto& p : c.second.m_properties)
+        for (auto& p : c.second->m_properties)
         {
             if (p->serializable)
             {
-                c.second.m_serilalization_properties.push_back(p);
+                c.second->m_serilalization_properties.push_back(p);
             }
         }
     }
@@ -69,6 +92,8 @@ reflection::reflection_type::finalize_handlers()
         compare = compare ? compare : parent->compare;
         ui = ui ? ui : parent->ui;
         render = render ? render : parent->render;
+        instance = instance ? instance : parent->instance;
+        alloc = alloc ? alloc : parent->alloc;
     }
 }
 

@@ -96,8 +96,8 @@ struct object_caches_map : public singleton_instance<::agea::core::caches_map, o
 {
 };
 
-struct class_object_caches_map
-    : public singleton_instance<::agea::core::caches_map, class_object_caches_map>
+struct proto_object_caches_map
+    : public singleton_instance<::agea::core::caches_map, proto_object_caches_map>
 {
 };
 }  // namespace glob

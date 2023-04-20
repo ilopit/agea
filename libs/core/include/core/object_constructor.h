@@ -124,9 +124,9 @@ public:
 
     template <typename T>
     static std::shared_ptr<T>
-    alloc_empty_object(const utils::id& id = T::META_type_id())
+    alloc_empty_object(const utils::id& id = T::AR_TYPE_id())
     {
-        auto empty = T::META_class_create_empty_obj();
+        auto empty = T::AR_TYPE_create_empty_obj();
         empty->META_set_id(id);
 
         return empty;

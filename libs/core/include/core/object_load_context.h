@@ -30,20 +30,20 @@ public:
     add_obj(std::shared_ptr<root::smart_object> obj, bool add_global);
 
     root::smart_object*
-    find_class_obj(const utils::id& id);
+    find_proto_obj(const utils::id& id);
 
     root::smart_object*
     find_obj(const utils::id& id);
 
     root::smart_object*
-    find_class_obj(const utils::id& id, architype a_type);
+    find_proto_obj(const utils::id& id, architype a_type);
 
     root::smart_object*
     find_obj(const utils::id& id, architype a_type);
 
     // clang-format off
-    object_load_context& set_class_global_set    (cache_set* v)                             { m_class_global_set = v; return *this; }
-    object_load_context& set_class_local_set     (cache_set* v)                             { m_class_local_set = v; return *this; }
+    object_load_context& set_proto_global_set    (cache_set* v)                             { m_class_global_set = v; return *this; }
+    object_load_context& set_proto_local_set     (cache_set* v)                             { m_class_local_set = v; return *this; }
     object_load_context& set_construction_type   (object_load_type t)                       { m_construction_type = t; return *this; }
     object_load_context& set_global_load_mode    (bool v)                                   { m_is_global_load_mode = v; return *this; }
     object_load_context& set_instance_global_set (cache_set* v)                             { m_instance_global_set = v; return *this; }
@@ -54,8 +54,8 @@ public:
     object_load_context& set_package             (package* p)                               { m_package = p; return *this; }
     object_load_context& set_prefix_path         (const utils::path& v)                     { m_path_prefix = v; return *this; }
 
-    cache_set*          get_class_global_set() const    { return m_class_global_set; }
-    cache_set*          get_class_local_set() const     { return m_class_local_set; }
+    cache_set*          get_proto_global_set() const    { return m_class_global_set; }
+    cache_set*          get_proto_local_set() const     { return m_class_local_set; }
     object_load_type    get_construction_type()         { return m_construction_type; }
     bool                get_global_load_mode()          { return m_is_global_load_mode; }
     cache_set*          get_instance_global_set() const { return m_instance_global_set; }

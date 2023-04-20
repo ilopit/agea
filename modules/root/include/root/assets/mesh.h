@@ -18,7 +18,7 @@ class mesh_data;
 
 namespace root
 {
-AGEA_ar_class();
+AGEA_ar_class("architype=mesh");
 class mesh : public smart_object
 {
     AGEA_gen_meta__mesh();
@@ -31,7 +31,7 @@ public:
         utils::buffer indices;
         utils::buffer external;
     };
-    AGEA_gen_meta_architype_api(mesh);
+    AGEA_gen_meta_api;
 
     render::mesh_data*
     get_mesh_data()

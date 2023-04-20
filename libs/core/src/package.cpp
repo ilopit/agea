@@ -1,6 +1,5 @@
 #include "core/package.h"
 
-#include "core/caches/empty_objects_cache.h"
 #include "core/caches/objects_cache.h"
 #include "core/caches/caches_map.h"
 
@@ -30,10 +29,10 @@ package::package(const utils::id& id, cache_set* class_global_set, cache_set* in
     , m_id(id)
 {
     m_occ->set_package(this)
-        .set_class_local_set(&m_class_local_set)
+        .set_proto_local_set(&m_class_local_set)
         .set_instance_local_set(&m_instance_local_set)
         .set_ownable_cache(&m_objects)
-        .set_class_global_set(class_global_set)
+        .set_proto_global_set(class_global_set)
         .set_instance_global_set(instance_global_set);
 }
 
@@ -58,7 +57,7 @@ package::init_global_cache_reference(
     m_class_global_set = class_global_set;
     m_instance_global_set = instance_global_set;
 
-    m_occ->set_class_global_set(m_class_global_set).set_instance_global_set(m_instance_global_set);
+    m_occ->set_proto_global_set(m_class_global_set).set_instance_global_set(m_instance_global_set);
 }
 
 void

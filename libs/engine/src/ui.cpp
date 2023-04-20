@@ -237,7 +237,7 @@ components_editor::handle()
 
     ImGui::Columns(2);
     ImGui::Separator();
-    auto& list = m_obj->reflection()->m_editor_properties;
+    auto& list = m_obj->get_reflection()->m_editor_properties;
 
     for (auto& categories : list)
     {
@@ -287,7 +287,7 @@ object_editor::handle()
     ImGui::Columns(2);
     ImGui::Separator();
 
-    for (auto& categories : m_obj->reflection()->m_editor_properties)
+    for (auto& categories : m_obj->get_reflection()->m_editor_properties)
     {
         ImGui::Separator();
         ImGui::Text("%s", categories.first.c_str());

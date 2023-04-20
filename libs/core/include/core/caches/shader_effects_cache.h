@@ -13,8 +13,8 @@ struct shader_effects_cache
     : public singleton_instance<::agea::core::shader_effects_cache, shader_effects_cache>
 {
 };
-struct class_shader_effects_cache
-    : public singleton_instance<::agea::core::shader_effects_cache, class_shader_effects_cache>
+struct proto_shader_effects_cache
+    : public singleton_instance<::agea::core::shader_effects_cache, proto_shader_effects_cache>
 {
 };
 

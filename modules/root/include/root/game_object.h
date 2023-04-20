@@ -13,7 +13,7 @@ namespace root
 {
 class component;
 
-AGEA_ar_class();
+AGEA_ar_class("architype=game_object");
 class game_object : public smart_object
 {
     AGEA_gen_meta__game_object();
@@ -24,7 +24,7 @@ public:
     AGEA_gen_construct_params{
 
     };
-    AGEA_gen_meta_architype_api(game_object);
+    AGEA_gen_meta_api;
 
     bool
     construct(construct_params& params);

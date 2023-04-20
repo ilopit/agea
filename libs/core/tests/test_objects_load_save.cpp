@@ -46,8 +46,8 @@ struct test_object_constructor : base_test
             om->buiild_object_mapping(prefix / APATH("package.acfg"));
 
             occ.set_prefix_path(prefix)
-                .set_class_global_set(&global_class_objects_cs)
-                .set_class_local_set(&local_class_objects_cs)
+                .set_proto_global_set(&global_class_objects_cs)
+                .set_proto_local_set(&local_class_objects_cs)
                 .set_instance_global_set(&global_objects_cs)
                 .set_instance_local_set(&local_objects_cs)
                 .set_ownable_cache(&objs)
@@ -141,8 +141,8 @@ TEST_F(test_object_constructor, load_and_save_class_component)
     auto mt_red = core::object_constructor::alloc_empty_object<core::material>(AID("mt_red"));
     auto cube_mesh = core::object_constructor::alloc_empty_object<core::mesh>(AID("cube_mesh"));
 
-    occ.get_class_global_set()->map->add_item(*mt_red);
-    occ.get_class_global_set()->map->add_item(*cube_mesh);
+    occ.get_proto_global_set()->map->add_item(*mt_red);
+    occ.get_proto_global_set()->map->add_item(*cube_mesh);
 
     core::smart_object* obj = nullptr;
     auto rc = core::object_constructor::object_load(
@@ -204,8 +204,8 @@ TEST_F(test_object_constructor, load_and_save_instance_component)
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
     core::smart_object* obj = nullptr;
     core::object_constructor::object_load(APATH("class/components/cube_mesh_component.aobj"),
-                                           core::object_load_type::instance_obj, occ, obj,
-                                           dummy_loaded_obj);
+                                          core::object_load_type::instance_obj, occ, obj,
+                                          dummy_loaded_obj);
     ASSERT_TRUE(!!obj);
 
     auto component = obj->as<core::mesh_component>();
@@ -238,13 +238,13 @@ TEST_F(test_object_constructor, load_and_save_instance_component__subobjects_are
     auto mt_red = core::object_constructor::alloc_empty_object<core::material>(AID("mt_red"));
     auto cube_mesh = core::object_constructor::alloc_empty_object<core::mesh>(AID("cube_mesh"));
 
-    occ.get_class_global_set()->map->add_item(*mt_red);
-    occ.get_class_global_set()->map->add_item(*cube_mesh);
+    occ.get_proto_global_set()->map->add_item(*mt_red);
+    occ.get_proto_global_set()->map->add_item(*cube_mesh);
 
     core::smart_object* obj = nullptr;
     core::object_constructor::object_load(APATH("class/components/cube_mesh_component.aobj"),
-                                           core::object_load_type::instance_obj, occ, obj,
-                                           dummy_loaded_obj);
+                                          core::object_load_type::instance_obj, occ, obj,
+                                          dummy_loaded_obj);
     ASSERT_EQ(obj, nullptr);
 }
 
@@ -256,9 +256,9 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component)
 
     result_code rc = result_code::nav;
 
-    occ.get_class_global_set()->map->add_item(*mt_red);
-    occ.get_class_global_set()->map->add_item(*mt_green);
-    occ.get_class_global_set()->map->add_item(*cube_mesh);
+    occ.get_proto_global_set()->map->add_item(*mt_red);
+    occ.get_proto_global_set()->map->add_item(*mt_green);
+    occ.get_proto_global_set()->map->add_item(*cube_mesh);
 
     core::smart_object* obj = nullptr;
     {
@@ -307,9 +307,9 @@ TEST_F(test_object_constructor, load_and_save_derived_class_component__without_p
     auto mt_green = core::object_constructor::alloc_empty_object<core::material>(AID("mt_green"));
     auto cube_mesh = core::object_constructor::alloc_empty_object<core::mesh>(AID("cube_mesh"));
 
-    occ.get_class_global_set()->map->add_item(*mt_red);
-    occ.get_class_global_set()->map->add_item(*mt_green);
-    occ.get_class_global_set()->map->add_item(*cube_mesh);
+    occ.get_proto_global_set()->map->add_item(*mt_red);
+    occ.get_proto_global_set()->map->add_item(*mt_green);
+    occ.get_proto_global_set()->map->add_item(*cube_mesh);
 
     core::smart_object* obj = nullptr;
     auto rc = core::object_constructor::object_load(
@@ -326,18 +326,17 @@ TEST_F(test_object_constructor, load_and_save_class_object)
     auto cube_mesh = core::object_constructor::alloc_empty_object<core::mesh>(AID("cube_mesh"));
     auto mesh_component = core::object_constructor::alloc_empty_object<core::mesh_component>(
         AID("cube_mesh_component"));
-    auto root_component =
-        core::object_constructor::alloc_empty_object<core::game_object_component>(
-            AID("root_component"));
+    auto root_component = core::object_constructor::alloc_empty_object<core::game_object_component>(
+        AID("root_component"));
 
-    occ.get_class_global_set()->map->add_item(*mt_red);
-    occ.get_class_global_set()->map->add_item(*cube_mesh);
-    occ.get_class_global_set()->map->add_item(*mesh_component);
-    occ.get_class_global_set()->map->add_item(*root_component);
+    occ.get_proto_global_set()->map->add_item(*mt_red);
+    occ.get_proto_global_set()->map->add_item(*cube_mesh);
+    occ.get_proto_global_set()->map->add_item(*mesh_component);
+    occ.get_proto_global_set()->map->add_item(*root_component);
     core::smart_object* obj = nullptr;
     auto rc = core::object_constructor::object_load(APATH("class/game_objects/cubes_chain.aobj"),
-                                                     core::object_load_type::class_obj, occ, obj,
-                                                     dummy_loaded_obj);
+                                                    core::object_load_type::class_obj, occ, obj,
+                                                    dummy_loaded_obj);
     ASSERT_TRUE(!!obj);
     ASSERT_EQ(rc, result_code::ok);
 
@@ -346,7 +345,7 @@ TEST_F(test_object_constructor, load_and_save_class_object)
     auto game_object = obj->as<core::game_object>();
     ASSERT_TRUE(!!game_object);
 
-    ASSERT_EQ(occ.get_class_local_set()->objects->get_size(), 4);
+    ASSERT_EQ(occ.get_proto_local_set()->objects->get_size(), 4);
     ASSERT_EQ(occ.get_instance_local_set()->objects->get_size(), 0);
 
     ASSERT_EQ(game_object->get_id(), AID("cubes_chain"));
@@ -377,8 +376,7 @@ TEST_F(test_object_constructor, load_and_save_class_object)
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 
-    rc =
-        core::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
+    rc = core::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
     ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
@@ -390,16 +388,15 @@ TEST_F(test_object_constructor, load_and_save_class_object)
 
 TEST_F(test_object_constructor, load_and_save_instance_object)
 {
-    auto se_simple_texture = core::object_constructor::alloc_empty_object<core::shader_effect>(
-        AID("se_simple_texture"));
+    auto se_simple_texture =
+        core::object_constructor::alloc_empty_object<core::shader_effect>(AID("se_simple_texture"));
     occ.get_instance_local_set()->map->add_item(*se_simple_texture);
 
     auto txt_red = core::object_constructor::alloc_empty_object<core::texture>(AID("txt_red"));
     occ.get_instance_local_set()->map->add_item(*txt_red);
 
-    auto root_component =
-        core::object_constructor::alloc_empty_object<core::game_object_component>(
-            AID("root_component"));
+    auto root_component = core::object_constructor::alloc_empty_object<core::game_object_component>(
+        AID("root_component"));
     occ.get_instance_local_set()->map->add_item(*root_component);
 
     auto mt_red = core::object_constructor::alloc_empty_object<core::material>(AID("mt_red"));
@@ -418,8 +415,8 @@ TEST_F(test_object_constructor, load_and_save_instance_object)
 
     core::smart_object* obj = nullptr;
     auto rc = core::object_constructor::object_load(APATH("class/game_objects/cubes_chain.aobj"),
-                                                     core::object_load_type::instance_obj, occ,
-                                                     obj, dummy_loaded_obj);
+                                                    core::object_load_type::instance_obj, occ, obj,
+                                                    dummy_loaded_obj);
     ASSERT_EQ(rc, result_code::ok);
     ASSERT_TRUE(!!obj);
 
@@ -458,8 +455,7 @@ TEST_F(test_object_constructor, load_and_save_instance_object)
         ASSERT_FALSE(is_from_EO_cache(component));
     }
 
-    rc =
-        core::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
+    rc = core::object_constructor::object_save(*game_object, get_current_workspace() / "save.aobj");
     ASSERT_EQ(rc, result_code::ok);
 
     utils::path p;
@@ -471,36 +467,35 @@ TEST_F(test_object_constructor, load_and_save_instance_object)
 
 TEST_F(test_object_constructor, test_object_miroring)
 {
-    auto se_simple_texture = core::object_constructor::alloc_empty_object<core::shader_effect>(
-        AID("se_simple_texture"));
-    occ.get_class_local_set()->map->add_item(*se_simple_texture);
+    auto se_simple_texture =
+        core::object_constructor::alloc_empty_object<core::shader_effect>(AID("se_simple_texture"));
+    occ.get_proto_local_set()->map->add_item(*se_simple_texture);
 
     auto txt_red = core::object_constructor::alloc_empty_object<core::texture>(AID("txt_red"));
-    occ.get_class_local_set()->map->add_item(*txt_red);
+    occ.get_proto_local_set()->map->add_item(*txt_red);
 
     auto mt_red = core::object_constructor::alloc_empty_object<core::material>(AID("mt_red"));
-    occ.get_class_local_set()->map->add_item(*mt_red);
+    occ.get_proto_local_set()->map->add_item(*mt_red);
     mt_red->set_shader_effect(se_simple_texture->as<core::shader_effect>());
     // mt_red->set_base_texture(txt_red->as<model::texture>());
 
     auto cube_mesh = core::object_constructor::alloc_empty_object<core::mesh>(AID("cube_mesh"));
-    occ.get_class_local_set()->map->add_item(*cube_mesh);
+    occ.get_proto_local_set()->map->add_item(*cube_mesh);
 
     auto mesh_component = core::object_constructor::alloc_empty_object<core::mesh_component>(
         AID("cube_mesh_component"));
     mesh_component->set_material(mt_red->as<core::material>());
     mesh_component->set_mesh(cube_mesh->as<core::mesh>());
-    occ.get_class_local_set()->map->add_item(*mesh_component);
+    occ.get_proto_local_set()->map->add_item(*mesh_component);
 
-    auto root_component =
-        core::object_constructor::alloc_empty_object<core::game_object_component>(
-            AID("root_component"));
-    occ.get_class_local_set()->map->add_item(*root_component);
+    auto root_component = core::object_constructor::alloc_empty_object<core::game_object_component>(
+        AID("root_component"));
+    occ.get_proto_local_set()->map->add_item(*root_component);
 
     core::smart_object* obj = nullptr;
     auto rc = core::object_constructor::object_load(APATH("class/game_objects/cubes_chain.aobj"),
-                                                     core::object_load_type::class_obj, occ, obj,
-                                                     dummy_loaded_obj);
+                                                    core::object_load_type::class_obj, occ, obj,
+                                                    dummy_loaded_obj);
     ASSERT_EQ(rc, result_code::ok);
     ASSERT_TRUE(!!obj);
 
@@ -555,8 +550,7 @@ TEST_F(test_object_constructor, construct_package_obj)
 {
     core::package p(AID("AID"));
 
-    auto obj = core::object_constructor::object_construct(core::mesh::META_type_id(), AID(""),
-                                                           core::mesh::construct_params(),
-                                                           p.get_load_context());
+    auto obj = core::object_constructor::object_construct(
+        core::mesh::META_type_id(), AID(""), core::mesh::construct_params(), p.get_load_context());
     ASSERT_TRUE(obj);
 }

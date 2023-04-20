@@ -9,7 +9,6 @@
 #include "core/caches/textures_cache.h"
 #include "core/caches/objects_cache.h"
 #include "core/caches/shader_effects_cache.h"
-#include "core/caches/empty_objects_cache.h"
 
 #include "core/caches/caches_map.h"
 
@@ -18,7 +17,7 @@
 namespace agea
 {
 
-glob::class_objects_cache_set::type glob::class_objects_cache_set::type::s_instance;
+glob::proto_objects_cache_set::type glob::proto_objects_cache_set::type::s_instance;
 glob::objects_cache_set::type glob::objects_cache_set::type::s_instance;
 
 namespace core
@@ -55,17 +54,15 @@ void
 glob::init_global_caches(singleton_registry& r)
 {
     // clang-format off
-    glob::empty_objects_cache::create(r);
+    glob::proto_objects_cache_set::create(r);
+    glob::proto_object_caches_map::create_ref(glob::proto_objects_cache_set::get()->map.get());
 
-    glob::class_objects_cache_set::create(r);
-    glob::class_object_caches_map::create_ref(glob::class_objects_cache_set::get()->map.get());
-
-    glob::class_materials_cache::create_ref(glob::class_objects_cache_set::getr().materials.get());
-    glob::class_meshes_cache::create_ref(glob::class_objects_cache_set::getr().meshes.get());
-    glob::class_textures_cache::create_ref(glob::class_objects_cache_set::getr().textures.get());
-    glob::class_objects_cache::create_ref(glob::class_objects_cache_set::getr().objects.get());
-    glob::class_components_cache::create_ref(glob::class_objects_cache_set::getr().components.get());
-    glob::class_shader_effects_cache::create_ref(glob::class_objects_cache_set::getr().shader_effects.get());
+    glob::proto_materials_cache::create_ref(glob::proto_objects_cache_set::getr().materials.get());
+    glob::proto_meshes_cache::create_ref(glob::proto_objects_cache_set::getr().meshes.get());
+    glob::proto_textures_cache::create_ref(glob::proto_objects_cache_set::getr().textures.get());
+    glob::proto_objects_cache::create_ref(glob::proto_objects_cache_set::getr().objects.get());
+    glob::proto_components_cache::create_ref(glob::proto_objects_cache_set::getr().components.get());
+    glob::proto_shader_effects_cache::create_ref(glob::proto_objects_cache_set::getr().shader_effects.get());
 
     glob::objects_cache_set::create(r);
     glob::object_caches_map::create_ref(glob::objects_cache_set::get()->map.get());

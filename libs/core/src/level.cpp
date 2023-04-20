@@ -22,6 +22,10 @@ level::level()
     : m_occ(std::make_unique<object_load_context>())
     , m_mapping(std::make_shared<core::object_mapping>())
 {
+    m_occ->set_instance_local_set(&m_local_cs)
+        .set_ownable_cache(&m_objects)
+        .set_objects_mapping(m_mapping)
+        .set_level(this);
 }
 
 level::~level()

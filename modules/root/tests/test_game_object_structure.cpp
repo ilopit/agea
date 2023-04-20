@@ -22,7 +22,7 @@ struct test_game_object_structure : base_test
     {
         base_test::SetUp();
         glob::id_generator::create(m_reg);
-        glob::class_objects_cache::create_ref(&m_class_cache);
+        glob::proto_objects_cache::create_ref(&m_class_cache);
         glob::objects_cache::create_ref(&m_cache);
     }
 

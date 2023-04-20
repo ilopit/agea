@@ -13,8 +13,8 @@ struct components_cache
     : public singleton_instance<::agea::core::components_cache, components_cache>
 {
 };
-struct class_components_cache
-    : public singleton_instance<::agea::core::components_cache, class_components_cache>
+struct proto_components_cache
+    : public singleton_instance<::agea::core::components_cache, proto_components_cache>
 {
 };
 }  // namespace glob

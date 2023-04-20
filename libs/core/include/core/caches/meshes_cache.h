@@ -13,8 +13,8 @@ struct meshes_cache : public singleton_instance<::agea::core::meshes_cache, mesh
 {
 };
 
-struct class_meshes_cache
-    : public singleton_instance<::agea::core::meshes_cache, class_meshes_cache>
+struct proto_meshes_cache
+    : public singleton_instance<::agea::core::meshes_cache, proto_meshes_cache>
 {
 };
 

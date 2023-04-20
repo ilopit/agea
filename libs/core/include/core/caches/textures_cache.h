@@ -12,8 +12,8 @@ namespace glob
 struct textures_cache : public singleton_instance<::agea::core::textures_cache, textures_cache>
 {
 };
-struct class_textures_cache
-    : public singleton_instance<::agea::core::textures_cache, class_textures_cache>
+struct proto_textures_cache
+    : public singleton_instance<::agea::core::textures_cache, proto_textures_cache>
 {
 };
 

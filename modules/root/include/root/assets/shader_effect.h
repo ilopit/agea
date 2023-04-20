@@ -18,7 +18,7 @@ namespace root
 {
 class texture;
 
-AGEA_ar_class();
+AGEA_ar_class("architype=shader_effect");
 class shader_effect : public smart_object
 {
     AGEA_gen_meta__shader_effect();
@@ -26,7 +26,7 @@ class shader_effect : public smart_object
 public:
     AGEA_gen_class_meta(shader_effect, asset);
     AGEA_gen_construct_params{};
-    AGEA_gen_meta_architype_api(shader_effect);
+    AGEA_gen_meta_api;
 
     render::shader_effect_data*
     get_shader_effect_data()

@@ -16,7 +16,7 @@ namespace root
 {
 class texture;
 
-AGEA_ar_class();
+AGEA_ar_class("architype=material");
 class material : public asset
 {
     AGEA_gen_meta__material();
@@ -24,7 +24,8 @@ class material : public asset
 public:
     AGEA_gen_class_meta(material, asset);
     AGEA_gen_construct_params{};
-    AGEA_gen_meta_architype_api(material);
+
+    AGEA_gen_meta_api;
 
     bool
     construct(this_class::construct_params& p);

@@ -5,7 +5,6 @@
 #include "root/components/component.h"
 #include "core/package.h"
 #include "root/mesh_object.h"
-#include "core/caches/empty_objects_cache.h"
 #include "core/caches/objects_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/object_load_context.h"
@@ -121,11 +120,11 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
                                        uint32_t extra_flags,
                                        object_load_context& olc)
 {
-    auto eoc_item = glob::empty_objects_cache::get()->get_item(type_id);
+    auto eoc_item = olc.find_proto_obj(type_id);
 
     AGEA_check(eoc_item, "Should exist!");
 
-    auto empty = eoc_item->META_create_empty_obj();
+    auto empty = eoc_item->get_reflection()->alloc();
     empty->META_set_id(id);
     empty->set_flag(extra_flags);
     empty->set_package(olc.get_package());
@@ -215,8 +214,6 @@ object_constructor::register_package_type_impl(std::shared_ptr<root::smart_objec
     AGEA_check(olc.get_package(), "Should exist");
     AGEA_check(!olc.get_level(), "Should exist");
 
-    glob::empty_objects_cache::get()->add_item(*empty);
-
     empty->set_flag(root::smart_object_state_flag::proto_obj |
                     root::smart_object_state_flag::empty_obj);
 
@@ -236,7 +233,7 @@ object_constructor::object_properties_load(root::smart_object& obj,
                                            const serialization::conteiner& jc,
                                            object_load_context& occ)
 {
-    auto& properties = obj.reflection()->m_serilalization_properties;
+    auto& properties = obj.get_reflection()->m_serilalization_properties;
 
     reflection::deserialize_context dc;
     dc.occ = &occ;
@@ -267,9 +264,11 @@ result_code
 object_constructor::object_properties_save(const root::smart_object& obj,
                                            serialization::conteiner& jc)
 {
-    auto& properties = obj.reflection()->m_serilalization_properties;
+    auto& properties = obj.get_reflection()->m_serilalization_properties;
 
-    auto empty_obj = glob::empty_objects_cache::getr().get_item(obj.reflection()->type_name);
+    auto empty_obj = obj.get_reflection()->alloc();
+
+    //  glob::empty_objects_cache::getr().get_item(obj.reflection()->type_name);
 
     reflection::serialize_context sc;
     reflection::compare_context cc;
@@ -277,7 +276,7 @@ object_constructor::object_properties_save(const root::smart_object& obj,
     sc.obj = &obj;
 
     cc.dst_obj = &obj;
-    cc.src_obj = empty_obj;
+    cc.src_obj = empty_obj.get();
 
     for (auto& p : properties)
     {
@@ -345,7 +344,7 @@ object_constructor::object_load_internal(serialization::conteiner& conteiner,
         auto class_id = AID(conteiner["class_id"].as<std::string>());
         auto src_obj = occ.get_construction_type() != object_load_type::class_obj
                            ? occ.find_obj(class_id)
-                           : occ.find_class_obj(class_id);
+                           : occ.find_proto_obj(class_id);
 
         if (!src_obj)
         {
@@ -390,7 +389,7 @@ object_constructor::object_load_internal(const utils::id& id,
 {
     AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
 
-    obj = occ.get_construction_type() == object_load_type::class_obj ? occ.find_class_obj(id)
+    obj = occ.get_construction_type() == object_load_type::class_obj ? occ.find_proto_obj(id)
                                                                      : occ.find_obj(id);
     if (obj)
     {
@@ -469,7 +468,7 @@ object_constructor::object_clone_create_internal(const utils::id& object_id,
     }
 
     obj = occ.get_construction_type() == object_load_type::mirror_copy
-              ? occ.find_class_obj(object_id)
+              ? occ.find_proto_obj(object_id)
               : occ.find_obj(object_id);
 
     if (!obj)
@@ -511,7 +510,7 @@ object_constructor::update_object_properties(root::smart_object& obj,
                                              const serialization::conteiner& jc,
                                              object_load_context& occ)
 {
-    auto& reflection = *obj.reflection();
+    auto& reflection = *obj.get_reflection();
 
     for (auto k : jc)
     {
@@ -544,7 +543,7 @@ object_constructor::prototype_object_properties(root::smart_object& from,
                                                 const serialization::conteiner& c,
                                                 object_load_context& occ)
 {
-    auto& properties = from.reflection()->m_serilalization_properties;
+    auto& properties = from.get_reflection()->m_serilalization_properties;
 
     reflection::property_prototype_context ctx{nullptr, nullptr, &from, &to, &occ, &c};
 
@@ -569,7 +568,7 @@ object_constructor::clone_object_properties(root::smart_object& from,
                                             root::smart_object& to,
                                             object_load_context& occ)
 {
-    auto& properties = from.reflection()->m_serilalization_properties;
+    auto& properties = from.get_reflection()->m_serilalization_properties;
 
     reflection::copy_context ctx{nullptr, nullptr, &from, &to, &occ};
 
@@ -599,7 +598,7 @@ object_constructor::diff_object_properties(const root::smart_object& left,
         return result_code::failed;
     }
 
-    auto& properties = left.reflection()->m_serilalization_properties;
+    auto& properties = left.get_reflection()->m_serilalization_properties;
 
     reflection::compare_context compare_ctx{nullptr, &left, &right};
 

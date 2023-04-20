@@ -109,7 +109,7 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj, bool add_g
 }
 
 root::smart_object*
-object_load_context::find_class_obj(const utils::id& id)
+object_load_context::find_proto_obj(const utils::id& id)
 {
     auto obj = m_class_local_set ? m_class_local_set->objects->get_item(id) : nullptr;
 
@@ -160,7 +160,7 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
 }
 
 root::smart_object*
-object_load_context::find_class_obj(const utils::id& id, architype a_type)
+object_load_context::find_proto_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
     auto c = m_class_local_set ? m_class_local_set->map->get_cache(a_type) : nullptr;

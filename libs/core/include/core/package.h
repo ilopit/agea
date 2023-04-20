@@ -108,7 +108,7 @@ public:
     root::smart_object*
     add_object(const utils::id& id, typename const T::construct_params& p)
     {
-        return object_constructor::object_construct(T::META_type_id(), id, p, *m_occ);
+        return object_constructor::object_construct(T::AR_TYPE_id(), id, p, *m_occ);
     }
 
     template <typename T>
@@ -119,7 +119,7 @@ public:
     }
 
     void
-    init_global_cache_reference(cache_set* class_global_set = glob::class_objects_cache_set::get(),
+    init_global_cache_reference(cache_set* class_global_set = glob::proto_objects_cache_set::get(),
                                 cache_set* instance_global_set = glob::objects_cache_set::get());
 
     void

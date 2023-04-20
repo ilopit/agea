@@ -1,12 +1,12 @@
 #pragma once
 
-#include <utils/id.h>
-
 #include "core/model_minimal.h"
 #include "core/reflection/property.h"
-
+#include "core/architype.h"
 #include "core/model_fwds.h"
-#include "serialization/serialization_fwds.h"
+
+#include <utils/id.h>
+#include <serialization/serialization_fwds.h>
 
 #include <functional>
 
@@ -55,6 +55,8 @@ using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
 using type_rendler_builder = result_code (*)(AGEA_reflection_type_render_loader);
+using type_allocator = std::shared_ptr<root::smart_object> (*)();
+using type_instance = const root::smart_object& (*)();
 
 using property_list = std::vector<std::shared_ptr<property>>;
 
@@ -67,6 +69,7 @@ struct reflection_type
     agea::utils::id module_id;
     agea::utils::id type_name;
     uint32_t size = 0;
+    core::architype arch = core::architype::unknown;
 
     reflection_type* parent = nullptr;
 
@@ -74,13 +77,34 @@ struct reflection_type
     property_list m_properties;
     property_list m_serilalization_properties;
 
-    type_serialization_handler serialization = nullptr;
-    type_deserialization_handler deserialization = nullptr;
+    void
+    update()
+    {
+        if (arch != core::architype::unknown)
+        {
+            return;
+        }
+
+        if (parent)
+        {
+            parent->update();
+
+            arch = parent->arch;
+        }
+    }
+
+    // clang-format off
+    type_serialization_handler                  serialization = nullptr;
+    type_deserialization_handler                deserialization = nullptr;
     type_deserialisation_with_prototype_handler deserialization_with_proto = nullptr;
-    type_copy_handler copy = nullptr;
-    type_compare_handler compare = nullptr;
-    type_ui_handler ui = nullptr;
-    type_rendler_builder render = nullptr;
+    type_copy_handler                           copy = nullptr;
+    type_compare_handler                        compare = nullptr;
+    type_ui_handler                             ui = nullptr;
+    type_rendler_builder                        render = nullptr;
+    type_allocator                              alloc = nullptr;
+    type_instance                               instance = nullptr;
+
+    // clang-format on
 
     bool initialized = false;
 };
@@ -89,24 +113,20 @@ class reflection_type_registry
 {
 public:
     void
-    add_type(reflection_type&& t)
-    {
-        m_types[t.type_id] = std::move(t);
-    }
+    add_type(reflection_type* t);
 
     reflection_type*
-    get_type(const int& id)
-    {
-        auto itr = m_types.find(id);
+    get_type(const int id);
 
-        return itr != m_types.end() ? &itr->second : nullptr;
-    }
+    reflection_type*
+    get_type(const agea::utils::id& id);
 
     void
     finilaze();
 
 private:
-    std::unordered_map<int, reflection_type> m_types;
+    std::unordered_map<int, reflection_type*> m_types;
+    std::unordered_map<agea::utils::id, reflection_type*> m_types_by_name;
 };
 
 }  // namespace reflection
