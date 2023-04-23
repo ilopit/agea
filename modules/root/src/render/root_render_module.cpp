@@ -10,6 +10,7 @@
 #include "root/assets/mesh.h"
 #include "root/mesh_object.h"
 #include "root/point_light.h"
+#include "root/game_object.h"
 #include "root/components/light_component.h"
 #include "root/components/mesh_component.h"
 #include "root/root_types_ids.ar.h"
@@ -172,17 +173,32 @@ pfr_texture(render_bridge& rb, root::smart_object& obj, bool sub_object)
 result_code
 pfr_game_object_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
+    auto& t = obj.asr<root::game_object_component>();
+
+    auto r = t.get_owner()->asr<root::game_object>().get_components(t.get_order_idx() + 1);
+
+    for (auto& o : r)
+    {
+        auto rc = rb.prepare_for_rendering(o, false);
+        AGEA_return_nok(rc);
+    }
+
     return result_code::ok;
 }
 
 result_code
 pfr_game_object(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
+    if (!sub_object)
+    {
+        return result_code::ok;
+    }
+
     auto& t = obj.asr<root::game_object>();
 
     for (auto& o : t.get_renderable_components())
     {
-        if (rb.prepare_for_rendering(*o, sub_object) != result_code::ok)
+        if (rb.prepare_for_rendering(*o, false) != result_code::ok)
         {
             return result_code::failed;
         }
@@ -194,17 +210,16 @@ pfr_game_object(render_bridge& rb, root::smart_object& obj, bool sub_object)
 result_code
 pfr_mesh_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
+    auto rc = pfr_game_object_component(rb, obj, sub_object);
+    AGEA_return_nok(rc);
+
     auto& moc = obj.asr<root::mesh_component>();
 
-    if (rb.prepare_for_rendering(*moc.get_material(), sub_object) != result_code::ok)
-    {
-        return result_code::failed;
-    }
+    rc = rb.prepare_for_rendering(*moc.get_material(), sub_object);
+    AGEA_return_nok(rc);
 
-    if (rb.prepare_for_rendering(*moc.get_mesh(), sub_object) != result_code::ok)
-    {
-        return result_code::failed;
-    }
+    rc = rb.prepare_for_rendering(*moc.get_mesh(), sub_object);
+    AGEA_return_nok(rc);
 
     auto object_data = moc.get_render_object_data();
     auto mat_data = moc.get_material()->get_material_data();
@@ -246,7 +261,7 @@ pfr_mesh_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
 
     glob::vulkan_render::getr().schedule_game_data_gpu_transfer(object_data);
 
-    return pfr_game_object_component(rb, obj, sub_object);
+    return result_code::ok;
 }
 
 result_code

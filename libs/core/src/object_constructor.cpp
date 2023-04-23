@@ -120,12 +120,11 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
                                        uint32_t extra_flags,
                                        object_load_context& olc)
 {
-    auto eoc_item = olc.find_proto_obj(type_id);
+    auto rt = glob::reflection_type_registry::getr().get_type(type_id);
 
-    AGEA_check(eoc_item, "Should exist!");
+    AGEA_check(rt, "Should exist!");
 
-    auto empty = eoc_item->get_reflection()->alloc();
-    empty->META_set_id(id);
+    auto empty = rt->alloc(id);
     empty->set_flag(extra_flags);
     empty->set_package(olc.get_package());
     empty->set_level(olc.get_level());
@@ -266,7 +265,7 @@ object_constructor::object_properties_save(const root::smart_object& obj,
 {
     auto& properties = obj.get_reflection()->m_serilalization_properties;
 
-    auto empty_obj = obj.get_reflection()->alloc();
+    auto empty_obj = glob::proto_objects_cache::getr().get_item(obj.get_reflection()->type_name);
 
     //  glob::empty_objects_cache::getr().get_item(obj.reflection()->type_name);
 
@@ -276,7 +275,7 @@ object_constructor::object_properties_save(const root::smart_object& obj,
     sc.obj = &obj;
 
     cc.dst_obj = &obj;
-    cc.src_obj = empty_obj.get();
+    cc.src_obj = empty_obj;
 
     for (auto& p : properties)
     {
@@ -371,8 +370,6 @@ object_constructor::object_load_internal(serialization::conteiner& conteiner,
             return result;
         }
     }
-
-    obj->set_state(root::smart_object_state::loaded);
 
     if (obj && (obj->get_id() != id))
     {
@@ -629,7 +626,11 @@ object_constructor::object_load_full(serialization::conteiner& sc,
 
     obj = alloc_empty_object(type_id, obj_id, root::smart_object_state_flag::standalone, occ);
 
-    return object_properties_load(*obj, sc, occ);
+    auto rc = object_properties_load(*obj, sc, occ);
+
+    obj->set_state(root::smart_object_state::loaded);
+
+    return rc;
 }
 
 result_code

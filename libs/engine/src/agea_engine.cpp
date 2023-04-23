@@ -275,12 +275,24 @@ vulkan_engine::consume_updated_transforms()
 
     for (auto& i : items)
     {
-        auto obj_data = i->get_render_object_data();
-        if (obj_data)
+        auto r = i->get_owner()->get_components(i->get_order_idx());
+
+        for (auto& obj : r)
         {
-            obj_data->gpu_data.model_matrix = i->get_transofrm_matrix();
-            i->set_dirty_transform(false);
-            glob::vulkan_render::getr().schedule_game_data_gpu_transfer(obj_data);
+            if (auto goc = obj.as<root::game_object_component>())
+            {
+                goc->update_matrix();
+
+                auto obj_data = goc->get_render_object_data();
+
+                if (obj_data)
+                {
+                    obj_data->gpu_data.model_matrix = i->get_transofrm_matrix();
+                    i->set_dirty_transform(false);
+
+                    glob::vulkan_render::getr().schedule_game_data_gpu_transfer(obj_data);
+                }
+            }
         }
     }
 
@@ -307,6 +319,7 @@ vulkan_engine::init_default_resources()
         auto vert_obj = builder.make_empty_obj();
         vert_buffer.resize(vert_obj.expected_size() * 4);
         vert_obj.set_external(vert_buffer.data());
+
         vert_obj.write_at<render::gpu_type>(0, 0, glm::vec3{1.f, 1.f, 0.f});
         vert_obj.write_at<render::gpu_type>(1, 0, glm::vec3{1.f, -1.f, 0.f});
         vert_obj.write_at<render::gpu_type>(2, 0, glm::vec3{-1.f, 1.f, 0.f});
@@ -348,32 +361,30 @@ vulkan_engine::init_scene()
 
     demo::example::construct_params pp;
 
-    auto obj = glob::level::getr().spawn_object<demo::example>(AID("example"), AID("BB"), pp);
+    // auto obj = glob::level::getr().spawn_object<demo::example>(AID("BB"), pp);
 
-    glob::render_bridge::getr().prepare_for_rendering(*obj, true);
+    // glob::render_bridge::getr().prepare_for_rendering(*obj, true);
 
     //
-    //     auto id1 = AID("decor");
-    //     auto id2 = AID("decor2");
-    //
-    //     for (int x = 0; x < 3; ++x)
-    //     {
-    //         for (int y = 0; y < 3; ++y)
-    //         {
-    //             for (int z = 0; z < 3; ++z)
-    //             {
-    //                 auto id = std::format("obj_{}_{}_{}", x, y, z);
-    //                 auto p = glob::level::getr().spawn_object<root::game_object>((z & 1) ? id1 :
-    //                 id2,
-    //                                                                              AID(id));
-    //
-    //                 p->get_root_component()->set_position(root::vec3{x * 10.f, y * 10.f, z
-    //                 * 10.f}); p->update_position();
-    //
-    //                 m_scene->prepare_for_rendering(*p, true);
-    //             }
-    //         }
-    //     }
+    auto id1 = AID("decor");
+    auto id2 = AID("decor2");
+
+    int x = 0, y = 0, z = 0;
+
+    for (x = 0; x < 3; ++x)
+    {
+        for (y = 0; y < 3; ++y)
+        {
+            for (z = 0; z < 3; ++z)
+            {
+                auto id = std::format("obj_{}_{}_{}", x, y, z);
+                auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
+                    (z & 1) ? id1 : id2, AID(id));
+
+                p->get_root_component()->set_position(root::vec3{x * 10.f, y * 10.f, z * 10.f});
+            }
+        }
+    }
 }
 
 void
@@ -383,12 +394,7 @@ vulkan_engine::consume_updated_render_components()
 
     for (auto& i : items)
     {
-        auto obj_data = (render::object_data*)i->get_render_object_data();
-
-        if (obj_data)
-        {
-            glob::render_bridge::getr().prepare_for_rendering(*i, true);
-        }
+        glob::render_bridge::getr().prepare_for_rendering(*i, true);
     }
 
     items.clear();

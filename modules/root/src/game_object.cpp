@@ -66,11 +66,6 @@ game_object::post_construct()
 
     recreate_structure_from_layout();
 
-    for (auto c : m_components)
-    {
-        c->set_state(smart_object_state::constructed);
-    }
-
     set_state(smart_object_state::constructed);
 
     for (auto c : m_renderable_components)
@@ -182,6 +177,7 @@ game_object::recreate_structure_from_ids()
         {
             AGEA_check(!m_root_component, "Should not be reassigned");
             m_root_component = n->as<game_object_component>();
+            m_root_component->set_owner(this);
         }
     }
 

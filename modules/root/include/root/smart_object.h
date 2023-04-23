@@ -30,17 +30,18 @@
 
 #define AGEA_gen_construct_params struct construct_params : base_class::construct_params
 
-#define AGEA_gen_meta_api                                                               \
-                                                                                        \
-    static ::agea::utils::id AR_TYPE_id();                                              \
-                                                                                        \
-    static const ::agea::reflection::reflection_type& AR_TYPE_reflection();             \
-                                                                                        \
-    virtual bool META_construct(const ::agea::root::smart_object::construct_params& i); \
-                                                                                        \
-    static std::shared_ptr<this_class> AR_TYPE_create_empty_obj();                      \
-                                                                                        \
-    static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj();
+#define AGEA_gen_meta_api                                                                     \
+                                                                                              \
+    static ::agea::utils::id AR_TYPE_id();                                                    \
+                                                                                              \
+    static const ::agea::reflection::reflection_type& AR_TYPE_reflection();                   \
+                                                                                              \
+    virtual bool META_construct(const ::agea::root::smart_object::construct_params& i);       \
+                                                                                              \
+    static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::agea::utils::id& id); \
+                                                                                              \
+    static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
+        const ::agea::utils::id& id);
 
 namespace agea
 {
@@ -164,10 +165,7 @@ public:
     }
 
     void
-    set_state(smart_object_state v)
-    {
-        m_obj_state = v;
-    }
+    set_state(smart_object_state v);
 
     void
     set_flag(uint32_t f)

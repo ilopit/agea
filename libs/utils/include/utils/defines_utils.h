@@ -1,9 +1,15 @@
 #pragma once
 
-#define AGEA_return_nok(cond) \
-    if (!(cond))              \
-    {                         \
-        return false;         \
+#define AGEA_return_false(cond) \
+    if (!(cond))                \
+    {                           \
+        return false;           \
+    }
+
+#define AGEA_return_nok(rc)    \
+    if (rc != result_code::ok) \
+    {                          \
+        return rc;             \
     }
 
 #define AGEA_stringify_impl(s) #s
@@ -20,15 +26,15 @@
     c## ::##~c() = default;
 
 #define AGEA_gen_class_non_copyable(c) \
-    c(const c&) = delete; \
+    c(const c&) = delete;              \
     c& operator=(const c&) = delete
 
 #define AGEA_gen_class_non_moveable(c) \
-    c(c&&) = delete; \
+    c(c&&) = delete;                   \
     c& operator=(c&&)) = delete
 
 #define AGEA_gen_class_non_copyble_non_moveable(c) \
-AGEA_gen_class_non_copyable(c); \
-AGEA_gen_class_non_moveable(c);
+    AGEA_gen_class_non_copyable(c);                \
+    AGEA_gen_class_non_moveable(c);
 
 #define AGEA_unused(val) (void)(val)

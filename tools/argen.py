@@ -94,16 +94,17 @@ const ::agea::reflection::reflection_type&
 }}                  
 
 std::shared_ptr<::agea::root::smart_object> 
-{type}::AR_TYPE_create_empty_gen_obj()
+{type}::AR_TYPE_create_empty_gen_obj(const ::agea::utils::id& id)
 {{    
-    return {type}::AR_TYPE_create_empty_obj();
+    return {type}::AR_TYPE_create_empty_obj(id);
 }}
 
 std::shared_ptr<{type}>
-{type}::AR_TYPE_create_empty_obj()
+{type}::AR_TYPE_create_empty_obj(const ::agea::utils::id& id)
 {{
     auto s = std::make_shared<this_class>();
     s->META_set_reflection_type(&this_class::AR_TYPE_reflection());
+    s->META_set_id(id);
     return s;
 }}
 

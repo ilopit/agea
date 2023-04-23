@@ -39,6 +39,8 @@
 
 #define AGEA_reflection_type_render_loader agea::render_bridge &rb, root::smart_object &, bool
 
+#define AGEA_AR_alloc_args const agea::utils::id& id
+
 namespace agea
 {
 
@@ -55,7 +57,7 @@ using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
 using type_rendler_builder = result_code (*)(AGEA_reflection_type_render_loader);
-using type_allocator = std::shared_ptr<root::smart_object> (*)();
+using type_allocator = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
 using type_instance = const root::smart_object& (*)();
 
 using property_list = std::vector<std::shared_ptr<property>>;

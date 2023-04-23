@@ -95,8 +95,10 @@ package_manager::load_package(const utils::id& id)
 
         for (auto& o : loaded_obj)
         {
-            o->post_load();
-            o->set_state(root::smart_object_state::constructed);
+            if (o->get_state() != root::smart_object_state::constructed)
+            {
+                o->post_load();
+            }
         }
 
         auto mirror_id = obj->get_id();
@@ -112,8 +114,10 @@ package_manager::load_package(const utils::id& id)
 
         for (auto o : loaded_obj)
         {
-            o->post_load();
-            o->set_state(root::smart_object_state::constructed);
+            if (o->get_state() != root::smart_object_state::constructed)
+            {
+                o->post_load();
+            }
         }
     }
 

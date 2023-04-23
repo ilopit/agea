@@ -45,9 +45,9 @@ level::find_component(const utils::id& id)
 }
 
 root::smart_object*
-level::spawn_object_impl(const utils::id& proto_obj_id, const utils::id& object_id)
+level::spawn_object_impl(const utils::id& proto_id, const utils::id& object_id)
 {
-    auto proto_obj = m_occ->find_obj(proto_obj_id);
+    auto proto_obj = m_occ->find_obj(proto_id);
 
     if (!proto_obj)
     {
@@ -65,19 +65,30 @@ level::spawn_object_impl(const utils::id& proto_obj_id, const utils::id& object_
 
     for (auto o : loaded_obj)
     {
-        o->post_load();
-        o->set_state(root::smart_object_state::constructed);
+        if (o->get_state() != root::smart_object_state::constructed)
+        {
+            o->post_load();
+        }
     }
+
+    auto obj = result->as<root::game_object>();
+
+    add_to_dirty_render_queue(obj->get_root_component());
 
     return result;
 }
 
 root::smart_object*
-level::spawn_object_impl(const utils::id& proto_obj_id,
+level::spawn_object_impl(const utils::id& proto_id,
                          const utils::id& object_id,
                          const root::smart_object::construct_params& p)
 {
-    return object_constructor::object_construct(proto_obj_id, object_id, p, *m_occ);
+    auto obj = object_constructor::object_construct(proto_id, object_id, p, *m_occ)
+                   ->as<root::game_object>();
+
+    add_to_dirty_render_queue(obj->get_root_component());
+
+    return obj;
 }
 
 void

@@ -35,18 +35,16 @@ public:
 
     template <typename T>
     auto
-    spawn_object(const utils::id& type_id, const utils::id& id)
+    spawn_object_from_proto(const utils::id& proto_id, const utils::id& id)
     {
-        return spawn_object_impl(type_id, id)->as<T>();
+        return spawn_object_impl(proto_id, id)->as<T>();
     }
 
     template <typename T>
     auto
-    spawn_object(const utils::id& type_id,
-                 const utils::id& id,
-                 const typename T::construct_params& p)
+    spawn_object(const utils::id& id, const typename T::construct_params& p)
     {
-        return spawn_object_impl(type_id, id, p)->as<T>();
+        return spawn_object_impl(T::AR_TYPE_id(), id, p)->as<T>();
     }
 
     void
@@ -89,7 +87,7 @@ public:
     }
 
     void
-    add_to_dirty_components_queue(root::game_object_component* g)
+    add_to_dirty_transform_queue(root::game_object_component* g)
     {
         m_dirty_transform_components.emplace_back(g);
     }
@@ -150,11 +148,11 @@ public:
 
 private:
     root::smart_object*
-    spawn_object_impl(const utils::id& proto_obj_id, const utils::id& object_id);
+    spawn_object_impl(const utils::id& proto_id, const utils::id& id);
 
     root::smart_object*
-    spawn_object_impl(const utils::id& proto_obj_id,
-                      const utils::id& object_id,
+    spawn_object_impl(const utils::id& proto_id,
+                      const utils::id& id,
                       const root::smart_object::construct_params& p);
 
     utils::id m_id;

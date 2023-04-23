@@ -126,14 +126,13 @@ public:
     static std::shared_ptr<T>
     alloc_empty_object(const utils::id& id = T::AR_TYPE_id())
     {
-        auto empty = T::AR_TYPE_create_empty_obj();
-        empty->META_set_id(id);
+        auto empty = T::AR_TYPE_create_empty_obj(id);
 
         return empty;
     }
 
     static root::smart_object*
-    alloc_empty_object(const utils::id& type_id,
+    alloc_empty_object(const utils::id& proto_id,
                        const utils::id& id,
                        uint32_t extra_flags,
                        object_load_context& olc);

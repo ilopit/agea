@@ -81,9 +81,9 @@ game_object_component::update_matrix()
 void
 game_object_component::mark_transform_dirty()
 {
-    if (has_dirty_transform())
+    if (!has_dirty_transform())
     {
-        glob::level::getr().add_to_dirty_components_queue(this);
+        m_level->add_to_dirty_transform_queue(this);
         set_dirty_transform(true);
     }
 }
@@ -93,7 +93,7 @@ game_object_component::mark_render_dirty()
 {
     if (get_state() != smart_object_state::constructed)
     {
-        glob::level::getr().add_to_dirty_render_queue(this);
+        m_level->add_to_dirty_render_queue(this);
         set_state(smart_object_state::constructed);
     }
 }

@@ -108,13 +108,13 @@ public:
     }
 
     void
-    set_owner(const game_object* o)
+    set_owner(game_object* o)
     {
         m_owner_obj = o;
     }
 
-    const game_object*
-    get_owner() const
+    game_object*
+    get_owner()
     {
         return m_owner_obj;
     }
@@ -185,7 +185,7 @@ public:
         return m_total_subcomponents;
     }
 
-    const game_object* m_owner_obj = nullptr;
+    game_object* m_owner_obj = nullptr;
     component* m_parent = nullptr;
 
     uint32_t m_order_idx = NO_index;

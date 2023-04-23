@@ -21,8 +21,9 @@ class game_object : public smart_object
 public:
     // Meta part
     AGEA_gen_class_meta(game_object, smart_object);
-    AGEA_gen_construct_params{
-
+    AGEA_gen_construct_params
+    {
+        vec3 pos = {0.f};
     };
     AGEA_gen_meta_api;
 
@@ -58,7 +59,7 @@ public:
                     const root::component::construct_params& params);
 
     virtual void
-    on_tick(float dt)
+    on_tick(float)
     {
     }
 
@@ -125,6 +126,12 @@ public:
     get_components()
     {
         return {m_components.begin(), m_components.end()};
+    }
+
+    Range<component>
+    get_components(uint32_t idx)
+    {
+        return {m_components.begin() + idx, m_components.end()};
     }
 
 protected:

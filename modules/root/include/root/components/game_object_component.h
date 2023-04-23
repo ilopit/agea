@@ -38,7 +38,7 @@ public:
     bool
     construct(construct_params& c)
     {
-        AGEA_return_nok(base_class::construct(c));
+        AGEA_return_false(base_class::construct(c));
 
         m_position = c.position;
         m_rotation = c.rotation;
