@@ -105,6 +105,8 @@ descriptor_allocator::allocate(VkDescriptorSet* set, VkDescriptorSetLayout layou
         }
     }
 
+    AGEA_never("Should never happens!");
+
     return false;
 }
 

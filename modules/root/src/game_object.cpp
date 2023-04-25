@@ -68,10 +68,8 @@ game_object::post_construct()
 
     set_state(smart_object_state::constructed);
 
-    for (auto c : m_renderable_components)
-    {
-        c->update_matrix();
-    }
+    update_position();
+
     return true;
 }
 
@@ -184,6 +182,13 @@ game_object::recreate_structure_from_ids()
     m_root_component->count_child_nodes();
 
     fill_renderable_components();
+}
+
+void
+game_object::update_root()
+{
+    m_root_component = m_components.front()->as<game_object_component>();
+    m_root_component->set_owner(this);
 }
 
 }  // namespace root

@@ -337,10 +337,6 @@ vulkan_engine::init_default_resources()
     v.at(4) = 1;
     v.at(5) = 3;
 
-    //     auto ss = glob::vulkan_render_loader::getr().create_mesh(
-    //         AID("plane_mesh"), vert_buffer.make_view<render::gpu_vertex_data>(),
-    //         index_buffer.make_view<render::gpu_index_data>());
-
     auto pkg = glob::package_manager::getr().get_package(AID("root"));
 
     root::mesh::construct_params p;
@@ -361,27 +357,28 @@ vulkan_engine::init_scene()
 
     demo::example::construct_params pp;
 
-    // auto obj = glob::level::getr().spawn_object<demo::example>(AID("BB"), pp);
+    auto obj = glob::level::getr().spawn_object<demo::example>(AID("BB"), pp);
 
-    // glob::render_bridge::getr().prepare_for_rendering(*obj, true);
+    core::spawn_parameters sp;
 
-    //
     auto id1 = AID("decor");
     auto id2 = AID("decor2");
 
     int x = 0, y = 0, z = 0;
 
-    for (x = 0; x < 3; ++x)
+    int DIM = 3;
+
+    for (x = 0; x < DIM; ++x)
     {
-        for (y = 0; y < 3; ++y)
+        for (y = 0; y < DIM; ++y)
         {
-            for (z = 0; z < 3; ++z)
+            for (z = 0; z < DIM; ++z)
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
-                auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
-                    (z & 1) ? id1 : id2, AID(id));
 
-                p->get_root_component()->set_position(root::vec3{x * 10.f, y * 10.f, z * 10.f});
+                sp.positon = root::vec3{x * 10.f, y * 10.f, z * 10.f};
+                auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
+                    (z & 1) ? id1 : id2, AID(id), sp);
             }
         }
     }

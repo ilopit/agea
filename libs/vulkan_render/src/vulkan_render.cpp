@@ -330,7 +330,7 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
     uint32_t objects_to_draw_idx = 0;
     for (auto& obj : r)
     {
-        if (cur_material != obj->material)
+        if (!cur_material || (cur_material->gpu_type_idx() != obj->material->gpu_type_idx()))
         {
             cur_material = obj->material;
             AGEA_check(cur_material, "Shouldn't be null");
@@ -356,6 +356,8 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
                 .bind_buffer(1, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                              VK_SHADER_STAGE_FRAGMENT_BIT)
                 .build(object_data_set);
+
+            AGEA_check(object_data_set, "Should never happens");
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
                                     OBJECTS_descriptor_sets, 1, &object_data_set, 2, dummy_offest);
@@ -387,13 +389,8 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
             }
         }
 
-        if (!obj->visible)
-        {
-            continue;
-        }
-
         render::gpu_push_constants c{};
-        c.mat_id = cur_material->gpu_idx();
+        c.mat_id = obj->material->gpu_idx();
 
         vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(render::gpu_push_constants), &c);

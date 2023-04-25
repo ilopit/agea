@@ -8,16 +8,25 @@
 #include "core/objects_mapping.h"
 #include "core/model_minimal.h"
 
+#include <root/core_types/vec3.h>
+
 #include <utils/singleton_instance.h>
 
 #include <map>
 #include <vector>
 #include <string>
+#include <optional>
 
 namespace agea
 {
 namespace core
 {
+struct spawn_parameters
+{
+    std::optional<root::vec3> positon;
+    std::optional<root::vec3> scale;
+    std::optional<root::vec3> rotation;
+};
 
 class level
 {
@@ -35,16 +44,18 @@ public:
 
     template <typename T>
     auto
-    spawn_object_from_proto(const utils::id& proto_id, const utils::id& id)
+    spawn_object_from_proto(const utils::id& proto_id,
+                            const utils::id& id,
+                            const spawn_parameters& prms)
     {
-        return spawn_object_impl(proto_id, id)->as<T>();
+        return spawn_object_impl(proto_id, id, prms)->as<T>();
     }
 
     template <typename T>
     auto
-    spawn_object(const utils::id& id, const typename T::construct_params& p)
+    spawn_object(const utils::id& id, const typename T::construct_params& prms)
     {
-        return spawn_object_impl(T::AR_TYPE_id(), id, p)->as<T>();
+        return spawn_object_impl(T::AR_TYPE_id(), id, prms)->as<T>();
     }
 
     void
@@ -148,7 +159,7 @@ public:
 
 private:
     root::smart_object*
-    spawn_object_impl(const utils::id& proto_id, const utils::id& id);
+    spawn_object_impl(const utils::id& proto_id, const utils::id& id, const spawn_parameters& prms);
 
     root::smart_object*
     spawn_object_impl(const utils::id& proto_id,

@@ -98,6 +98,42 @@ public:
         return m_root_component->get_right_vector();
     }
 
+    vec3
+    get_position() const
+    {
+        return m_root_component->get_position();
+    }
+
+    void
+    set_position(vec3 v)
+    {
+        m_root_component->set_position(v);
+    }
+
+    vec3
+    get_rotation() const
+    {
+        return m_root_component->get_rotation();
+    }
+
+    void
+    set_rotation(vec3 v)
+    {
+        m_root_component->set_rotation(v);
+    }
+
+    vec3
+    get_scale() const
+    {
+        return m_root_component->get_scale();
+    }
+
+    void
+    set_scale(vec3 v)
+    {
+        m_root_component->set_scale(v);
+    }
+
     void
     set_root_component(game_object_component* root)
     {
@@ -134,6 +170,9 @@ public:
         return {m_components.begin() + idx, m_components.end()};
     }
 
+    void
+    update_root();
+
 protected:
     void
     recreate_structure_form_layout_impl(component* parent,
@@ -156,7 +195,6 @@ protected:
 
     game_object_component* m_root_component = nullptr;
 
-    bool m_updated = false;
 };
 
 }  // namespace root
