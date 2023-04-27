@@ -1,16 +1,20 @@
 class_obj_mapping:
   - se_simple_texture: class/shader_effects/se_simple_texture.aobj
   - se_solid_color: class/shader_effects/se_solid_color.aobj
-
+  - se_texture_billboard: class/shader_effects/se_texture_billboard.aobj
+  
   - txt_red: class/textures/txt_red.aobj
+  - txt_lamp: class/textures/txt_lamp.aobj
 
   - mt_red: class/materials/mt_red.aobj
   - mt_solid_color: class/materials/mt_solid_color.aobj
   - mt_solid_color_2: class/materials/mt_solid_color_2.aobj
+  - mt_billboard_bulb: class/materials/mt_billboard_bulb.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
 
   - root_component: class/components/root_component.aobj
+  - bulb_component: class/components/bulb_component.aobj
   - decor : class/game_objects/decor.aobj
   - decor2 : class/game_objects/decor2.aobj
   - plane : class/game_objects/plane.aobj
