@@ -2,9 +2,11 @@
 
 #include "root/components/component.h"
 #include "root/components/game_object_component.h"
-#include "core/object_constructor.h"
-#include "core/package.h"
-#include "core/level.h"
+
+#include <core/object_constructor.h>
+#include <core/package.h>
+#include <core/level.h>
+#include <core/object_load_context.h>
 
 namespace agea
 {
@@ -22,7 +24,17 @@ game_object::~game_object()
 bool
 game_object::construct(construct_params& params)
 {
-    return base_class::construct(params);
+    if (!base_class::construct(params))
+    {
+        return false;
+    }
+
+    game_object_component::construct_params gcp;
+    gcp.position = params.pos;
+
+    m_root_component = spawn_component<game_object_component>(nullptr, AID("root_component"), gcp);
+
+    return true;
 }
 
 void
@@ -57,6 +69,45 @@ game_object::spawn_component(component* parent,
     }
 
     return comp;
+}
+
+component*
+game_object::spawn_component_with_proto(component* parent,
+                                        const utils::id& proto_id,
+                                        const utils::id& id)
+{
+    auto& occ = m_package ? m_package->get_load_context() : m_level->get_load_context();
+
+    auto proto_obj = occ.find_obj(proto_id);
+
+    if (!proto_obj)
+    {
+        return nullptr;
+    }
+
+    root::smart_object* result = nullptr;
+
+    auto rc = core::object_constructor::object_clone_create_internal(*proto_obj, id, occ, result);
+    if (rc != result_code::ok)
+    {
+        return nullptr;
+    }
+
+    occ.reset_loaded_objects();
+
+    if (!result->post_load())
+    {
+        return nullptr;
+    }
+
+    auto com = result->as<component>();
+
+    if (parent)
+    {
+        parent->add_child(com);
+    }
+
+    return com;
 }
 
 bool
@@ -123,6 +174,13 @@ game_object::recreate_structure_form_layout_impl(component* parent,
 
     parent->m_total_subcomponents += (uint32_t)parent->m_children.size();
     total_subojects_count = parent->m_total_subcomponents;
+}
+
+void
+game_object::set_rotation(vec3 v)
+{
+    m_root_component->set_rotation(v);
+    m_level->add_to_dirty_transform_queue(m_root_component);
 }
 
 void

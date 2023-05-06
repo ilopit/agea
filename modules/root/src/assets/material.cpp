@@ -19,5 +19,11 @@ material::get_sample(const utils::id& slot)
     return m_texture_samples[slot];
 }
 
+void
+material::set_sample(const utils::id& slot, const texture_sample& ts)
+{
+    m_texture_samples[slot] = ts;
+}
+
 }  // namespace root
 }  // namespace agea

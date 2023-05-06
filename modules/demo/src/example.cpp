@@ -25,10 +25,7 @@ example::construct(construct_params& params)
 {
     base_class::construct(params);
 
-    agea::root::mesh_component::construct_params mpc{};
-
-    auto com =
-        spawn_component<agea::root::mesh_component>(nullptr, AID("mesh_component"), AID("AB"), mpc);
+    auto com = spawn_component<agea::root::mesh_component>(nullptr, AID("AB"), {});
 
     com->set_mesh(::agea::glob::meshes_cache::getr().get_item(AID("cube_mesh")));
     com->set_material(::agea::glob::materials_cache::getr().get_item(AID("mt_red")));

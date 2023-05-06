@@ -20,6 +20,12 @@ public:
     AGEA_gen_class_meta(point_light, game_object);
     AGEA_gen_construct_params{};
     AGEA_gen_meta_api;
+
+    bool
+    construct(construct_params& params);
+
+    virtual void
+    on_tick(float) override;
 };
 
 }  // namespace root

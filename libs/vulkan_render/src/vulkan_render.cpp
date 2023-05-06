@@ -316,6 +316,7 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
 {
     const uint32_t dummy_offest[] = {0, 0};
 
+    uint32_t cur_material_idx = INVALID_GPU_INDEX;
     mesh_data* cur_mesh = nullptr;
     material_data* cur_material = nullptr;
 
@@ -330,9 +331,10 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
     uint32_t objects_to_draw_idx = 0;
     for (auto& obj : r)
     {
-        if (!cur_material || (cur_material->gpu_type_idx() != obj->material->gpu_type_idx()))
+        if (cur_material_idx != obj->material->gpu_type_idx())
         {
             cur_material = obj->material;
+            cur_material_idx = obj->material->gpu_type_idx();
             AGEA_check(cur_material, "Shouldn't be null");
 
             pipeline = cur_material->effect->m_pipeline;
@@ -618,8 +620,8 @@ vulkan_render::prepare_ui_pipeline()
     samples.front().texture = m_ui_txt;
     samples.front().slot = 0;
 
-    m_ui_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_ui"), AID("ui"), samples,
-                                                                  *m_ui_se, {});
+    m_ui_mat = glob::vulkan_render_loader::getr().create_material(
+        AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynamic_object{});
 }
 
 void

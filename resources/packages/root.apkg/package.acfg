@@ -2,7 +2,8 @@ class_obj_mapping:
   - se_simple_texture: class/shader_effects/se_simple_texture.aobj
   - se_solid_color: class/shader_effects/se_solid_color.aobj
   - se_texture_billboard: class/shader_effects/se_texture_billboard.aobj
-  
+  - se_color_line:  class/shader_effects/se_color_line.aobj
+
   - txt_red: class/textures/txt_red.aobj
   - txt_lamp: class/textures/txt_lamp.aobj
 

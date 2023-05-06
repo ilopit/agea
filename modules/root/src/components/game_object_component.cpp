@@ -18,6 +18,18 @@ game_object_component::~game_object_component()
 {
 }
 
+bool
+game_object_component::construct(construct_params& c)
+{
+    AGEA_return_false(base_class::construct(c));
+
+    extract<vec3>(c.position, m_position);
+    extract<vec3>(c.rotation, m_rotation);
+    extract<vec3>(c.scale, m_scale);
+
+    return true;
+}
+
 vec3
 game_object_component::get_forward_vector() const
 {

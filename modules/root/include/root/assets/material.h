@@ -51,6 +51,9 @@ public:
     texture_sample&
     get_sample(const utils::id& slot);
 
+    void
+    set_sample(const utils::id& slot, const texture_sample&);
+
 protected:
     AGEA_ar_property("category=properties", "access=cpp_only", "serializable=true");
     shader_effect* m_shader_effect = nullptr;

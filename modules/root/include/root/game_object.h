@@ -45,11 +45,10 @@ public:
     template <typename T>
     T*
     spawn_component(component* parent,
-                    const utils::id& type_id,
                     const utils::id& id,
                     const typename T::construct_params& params)
     {
-        return spawn_component(parent, type_id, id, params)->as<T>();
+        return spawn_component(parent, T::AR_TYPE_id(), id, params)->as<T>();
     }
 
     component*
@@ -57,6 +56,8 @@ public:
                     const utils::id& type_id,
                     const utils::id& id,
                     const root::component::construct_params& params);
+    component*
+    spawn_component_with_proto(component* parent, const utils::id& proto_id, const utils::id& id);
 
     virtual void
     on_tick(float)
@@ -117,10 +118,7 @@ public:
     }
 
     void
-    set_rotation(vec3 v)
-    {
-        m_root_component->set_rotation(v);
-    }
+    set_rotation(vec3 v);
 
     vec3
     get_scale() const
@@ -194,7 +192,6 @@ protected:
     std::vector<game_object_component*> m_renderable_components;
 
     game_object_component* m_root_component = nullptr;
-
 };
 
 }  // namespace root

@@ -22,6 +22,13 @@ public:
 
     dynamic_object(const std::shared_ptr<dynamic_object_layout>& l, size_t size);
 
+    dynamic_object(const std::shared_ptr<dynamic_object_layout>& l, std::vector<uint8_t>* external);
+
+    dynamic_object(const dynamic_object& other);
+
+    dynamic_object&
+    operator=(const dynamic_object& other);
+
     template <typename TYPE_DESCRIPTOR, typename T, typename... VARGS>
     bool
     write(uint32_t pos, const T& v, VARGS&&... args)
@@ -49,21 +56,40 @@ public:
         return true;
     }
 
+    template <typename TYPE_DESCRIPTOR, typename... VARGS>
+    bool
+    write_obj(uint32_t field_idx, VARGS&&... args)
+    {
+        auto ojb_size = expected_size();
+
+        if (m_cursor + ojb_size >= m_data->size())
+        {
+            m_data->insert(m_data->end(), m_data->size() - m_cursor + ojb_size, 0u);
+        }
+
+        bool r = write_fields<TYPE_DESCRIPTOR>((uint32_t)m_cursor, field_idx, args...);
+
+        m_cursor += expected_size();
+
+        return true;
+    }
+
     template <typename TYPE_DESCRIPTOR, typename T, typename... VARGS>
     bool
-    write_at(uint32_t obj_idx, uint32_t field_idx, const T& v, VARGS&&... args)
+    write_fields(uint32_t offset, uint32_t field_idx, const T& v, VARGS&&... args)
     {
-        if (!write_at<TYPE_DESCRIPTOR>(obj_idx, field_idx, v))
+        if (!write_fields<TYPE_DESCRIPTOR>(offset, field_idx, v))
         {
             return false;
         }
 
-        return write_at<TYPE_DESCRIPTOR>(obj_idx, ++field_idx, args...);
+        return write_fields<TYPE_DESCRIPTOR>(offset, ++field_idx, args...);
+        return true;
     }
 
     template <typename TYPE_DESCRIPTOR, typename T>
     bool
-    write_at(uint32_t obj_idx, uint32_t field_idx, const T& v)
+    write_fields(uint32_t offset, uint32_t field_idx, const T& v)
     {
         auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
 
@@ -72,7 +98,8 @@ public:
             return false;
         }
 
-        write_unsafe(obj_idx * expected_size(), field_idx, (uint8_t*)&v);
+        write_unsafe(offset, field_idx, (uint8_t*)&v);
+
         return true;
     }
 
@@ -115,7 +142,7 @@ public:
     uint8_t*
     data()
     {
-        return m_external_data ? m_external_data : m_data.data();
+        return m_data->data();
     }
 
     const uint8_t*
@@ -130,24 +157,16 @@ public:
     uint32_t
     expected_size() const;
 
-    const std::vector<uint8_t>&
-    full_data()
-    {
-        return m_data;
-    }
-
-    void
-    set_external(uint8_t* ptr)
-    {
-        m_external_data = ptr;
-    }
-
     uint32_t
     get_type_id(uint32_t pos);
 
 private:
-    std::vector<uint8_t> m_data;
-    uint8_t* m_external_data = nullptr;
+    uint64_t m_cursor = 0;
+
+    std::vector<uint8_t> m_allocated;
+    std::vector<uint8_t>* m_external_ref = nullptr;
+    std::vector<uint8_t>* m_data = nullptr;
+
     std::shared_ptr<dynamic_object_layout> m_layout;
 };
 

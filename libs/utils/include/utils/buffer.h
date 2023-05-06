@@ -136,6 +136,12 @@ struct buffer
         return m_data.data();
     }
 
+    std::vector<uint8_t>&
+    full_data()
+    {
+        return m_data;
+    }
+
     uint64_t
     size() const
     {

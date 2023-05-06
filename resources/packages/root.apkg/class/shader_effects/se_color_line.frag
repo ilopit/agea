@@ -24,10 +24,7 @@ layout(set = 0, binding = 1) uniform SceneData{
 // materials
 struct MaterialData
 {
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    float shininess;
+    vec3 color;
 };
 
 //all object matrices
@@ -53,7 +50,7 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-    vec3 object_color = texture(tex1, inTexCoord).xyz;
-    //outColor = vec4(1.0,1.0,1.0, 1.0);
-    outColor = vec4(object_color, 1.0);
+    MaterialData material = dyn_material_buffer.objects[constants.material_id];
+
+    outColor = vec4(1.0, 1.0, 1.0, 1.0);
 }

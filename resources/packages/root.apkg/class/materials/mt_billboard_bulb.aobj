@@ -1,6 +1,6 @@
 type_id: simple_texture_material
 id: mt_billboard_bulb
-shader_effect: se_simple_texture
+shader_effect: se_texture_billboard
 simple_texture:
     texture: txt_lamp
     slot: 0

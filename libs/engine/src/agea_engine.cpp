@@ -35,6 +35,7 @@
 #include <root/assets/shader_effect.h>
 #include <root/assets/mesh.h>
 #include <root/render/root_render_module.h>
+#include <root/point_light.h>
 
 #include <demo/example.h>
 
@@ -316,26 +317,26 @@ vulkan_engine::init_default_resources()
         builder.add_field(AID("vColor"), render::gpu_type::g_vec3, 1);
         builder.add_field(AID("vTexCoord"), render::gpu_type::g_vec2, 1);
 
-        auto vert_obj = builder.make_empty_obj();
-        vert_buffer.resize(vert_obj.expected_size() * 4);
-        vert_obj.set_external(vert_buffer.data());
+        auto vert_obj = builder.make_obj(&vert_buffer.full_data());
 
-        vert_obj.write_at<render::gpu_type>(0, 0, glm::vec3{1.f, 1.f, 0.f});
-        vert_obj.write_at<render::gpu_type>(1, 0, glm::vec3{1.f, -1.f, 0.f});
-        vert_obj.write_at<render::gpu_type>(2, 0, glm::vec3{-1.f, 1.f, 0.f});
-        vert_obj.write_at<render::gpu_type>(3, 0, glm::vec3{-1.f, -1.f, 0.f});
+        using v3 = glm::vec3;
+        using v2 = glm::vec2;
 
-        vert_buffer.resize(vert_obj.expected_size() * 4);
+        vert_obj.write_obj<render::gpu_type>(0, v3{-1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 0.f});
+        vert_obj.write_obj<render::gpu_type>(0, v3{1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.0, 0.f});
+        vert_obj.write_obj<render::gpu_type>(0, v3{-1.f, -1.f, 0.f}, v3{0.f}, v3{0.f},
+                                             v2{0.f, 1.f});
+        vert_obj.write_obj<render::gpu_type>(0, v3{1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.f, 1.f});
     }
 
     utils::buffer index_buffer(6 * 4);
     auto v = index_buffer.make_view<uint32_t>();
-    v.at(0) = 2;
-    v.at(1) = 0;
-    v.at(2) = 3;
-    v.at(3) = 0;
-    v.at(4) = 1;
-    v.at(5) = 3;
+    v.at(0) = 0;
+    v.at(1) = 2;
+    v.at(2) = 1;
+    v.at(3) = 2;
+    v.at(4) = 3;
+    v.at(5) = 1;
 
     auto pkg = glob::package_manager::getr().get_package(AID("root"));
 
@@ -351,13 +352,13 @@ vulkan_engine::init_default_resources()
 void
 vulkan_engine::init_scene()
 {
-    int i = 2;
-
     load_level(glob::config::get()->level);
 
-    demo::example::construct_params pp;
+    root::point_light::construct_params plp;
 
-    auto obj = glob::level::getr().spawn_object<demo::example>(AID("BB"), pp);
+    plp.pos = {20.f, 0.f, 40.f};
+
+    glob::level::getr().spawn_object<root::point_light>(AID("PL"), plp);
 
     core::spawn_parameters sp;
 
@@ -366,7 +367,7 @@ vulkan_engine::init_scene()
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 3;
+    int DIM = 4;
 
     for (x = 0; x < DIM; ++x)
     {
@@ -379,6 +380,7 @@ vulkan_engine::init_scene()
                 sp.positon = root::vec3{x * 10.f, y * 10.f, z * 10.f};
                 auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
                     (z & 1) ? id1 : id2, AID(id), sp);
+                ALOG_INFO("Spawned {0}", p->get_id().cstr());
             }
         }
     }

@@ -188,6 +188,7 @@ object_constructor::object_construct(const utils::id& type_id,
 
         olc.set_construction_type(object_load_type::instance_obj);
         obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+
         if (!obj->META_construct(params))
         {
             return nullptr;
@@ -266,8 +267,6 @@ object_constructor::object_properties_save(const root::smart_object& obj,
     auto& properties = obj.get_reflection()->m_serilalization_properties;
 
     auto empty_obj = glob::proto_objects_cache::getr().get_item(obj.get_reflection()->type_name);
-
-    //  glob::empty_objects_cache::getr().get_item(obj.reflection()->type_name);
 
     reflection::serialize_context sc;
     reflection::compare_context cc;

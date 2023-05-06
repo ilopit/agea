@@ -29,23 +29,14 @@ public:
     AGEA_gen_class_meta(game_object_component, component);
     AGEA_gen_construct_params
     {
-        vec3 position = vec3(0.f, 0.f, 0.f);
-        vec3 scale = vec3(1.f, 1.f, 1.f);
-        vec3 rotation = vec3(0.f, 0.f, 0.f);
+        std::optional<vec3> position = vec3(0.f, 0.f, 0.f);
+        std::optional<vec3> scale = vec3(1.f, 1.f, 1.f);
+        std::optional<vec3> rotation = vec3(0.f, 0.f, 0.f);
     };
     AGEA_gen_meta_api;
 
     bool
-    construct(construct_params& c)
-    {
-        AGEA_return_false(base_class::construct(c));
-
-        m_position = c.position;
-        m_rotation = c.rotation;
-        m_scale = c.scale;
-
-        return true;
-    }
+    construct(construct_params& c);
 
     vec3
     get_forward_vector() const;

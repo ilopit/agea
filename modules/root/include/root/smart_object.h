@@ -49,10 +49,21 @@ namespace core
 {
 class object_constructor;
 class package;
+
 }  // namespace core
 
 namespace root
 {
+
+template <typename T>
+void
+extract(const std::optional<T>& o, T& v)
+{
+    if (o.has_value())
+    {
+        v = *o;
+    }
+}
 
 class smart_object;
 

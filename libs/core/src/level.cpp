@@ -59,11 +59,16 @@ level::spawn_object_impl(const utils::id& proto_id,
     root::smart_object* result = nullptr;
     std::vector<root::smart_object*> loaded_obj;
 
-    auto rc = object_constructor::object_clone(*proto_obj, object_id, *m_occ, result, loaded_obj);
+    m_occ->set_construction_type(object_load_type::instance_obj);
+
+    auto rc =
+        object_constructor::object_clone_create_internal(*proto_obj, object_id, *m_occ, result);
     if (rc != result_code::ok)
     {
         return nullptr;
     }
+
+    m_occ->reset_loaded_objects(loaded_obj);
 
     auto obj = result->as<root::game_object>();
 
@@ -75,22 +80,18 @@ level::spawn_object_impl(const utils::id& proto_id,
     }
     if (prms.rotation)
     {
-        obj->set_position(prms.rotation.value());
+        obj->set_rotation(prms.rotation.value());
     }
     if (prms.scale)
     {
-        obj->set_position(prms.scale.value());
+        obj->set_scale(prms.scale.value());
     }
 
-    for (auto o : loaded_obj)
-    {
-        if (o->get_state() != root::smart_object_state::constructed)
-        {
-            o->post_load();
-        }
-    }
+    result->post_load();
 
     add_to_dirty_render_queue(obj->get_root_component());
+
+    m_tickable_objects.emplace_back(obj);
 
     return result;
 }
@@ -104,6 +105,8 @@ level::spawn_object_impl(const utils::id& proto_id,
                    ->as<root::game_object>();
 
     add_to_dirty_render_queue(obj->get_root_component());
+
+    m_tickable_objects.emplace_back(obj);
 
     return obj;
 }

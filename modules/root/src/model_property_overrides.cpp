@@ -326,11 +326,11 @@ texture_sample_copy(copy_context& ctx)
 
     if (ctx.occ->get_construction_type() != core::object_load_type::mirror_copy)
     {
-        dst->get_sample(id) = src->get_sample(id);
+        dst->set_sample(id, src->get_sample(id));
     }
     else
     {
-        dst->get_sample(id) = src->get_sample(id);
+        dst->set_sample(id, src->get_sample(id));
 
         root::smart_object* obj = nullptr;
 

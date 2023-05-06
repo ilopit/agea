@@ -88,6 +88,9 @@ public:
     dynamic_object
     make_empty_obj();
 
+    dynamic_object
+    make_obj(std::vector<uint8_t>* external);
+
 private:
     std::shared_ptr<dynamic_object_layout> m_layout;
 };

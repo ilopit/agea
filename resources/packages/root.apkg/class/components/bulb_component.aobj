@@ -1,4 +1,5 @@
 type_id: mesh_component
 id: bulb_component
 material: mt_billboard_bulb
-mesh: cube_mesh
+#material: mt_red
+mesh: plane_mesh

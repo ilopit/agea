@@ -1,0 +1,7 @@
+type_id: shader_effect
+id: se_color_line
+vert: class/shader_effects/se_color_line.vert
+is_vert_binary: false
+frag: class/shader_effects/se_color_line.frag
+is_frag_binary: false
+wire_topology: true
