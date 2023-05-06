@@ -171,6 +171,9 @@ public:
     void
     update_root();
 
+    void
+    move(const vec3& v);
+
 protected:
     void
     recreate_structure_form_layout_impl(component* parent,

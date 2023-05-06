@@ -2,6 +2,8 @@
 
 #include "core/level.h"
 
+#include <root/game_object.h>
+
 namespace agea
 {
 namespace root
@@ -53,7 +55,7 @@ game_object_component::move(const vec3& delta)
 {
     m_position += delta.as_glm();
 
-    update_matrix();
+    update_children_matrixes();
 
     mark_transform_dirty();
 }
@@ -63,7 +65,7 @@ game_object_component::rotate(const vec3& delta)
 {
     m_rotation += delta.as_glm();
 
-    update_matrix();
+    update_children_matrixes();
 
     mark_transform_dirty();
 }
@@ -107,6 +109,21 @@ game_object_component::mark_render_dirty()
     {
         m_level->add_to_dirty_render_queue(this);
         set_state(smart_object_state::constructed);
+    }
+}
+
+
+void
+game_object_component::update_children_matrixes()
+{
+    auto r = get_owner()->get_components(get_order_idx());
+
+    for (auto& obj : r)
+    {
+        if (auto goc = obj.as<root::game_object_component>())
+        {
+            goc->update_matrix();
+        }
     }
 }
 

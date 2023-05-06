@@ -79,6 +79,7 @@ private:
     void consume_updated_render_components();
     void consume_updated_render_assets();
     void consume_updated_shader_effects();
+    void consume_updated_light_sources();
 
     bool prepare_for_rendering(core::package& p);
     bool prepare_for_rendering(core::level& l);

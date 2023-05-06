@@ -53,7 +53,7 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-    vec3 object_color = texture(tex1, inTexCoord).xyz;
+    //vec3 object_color = ;
     //outColor = vec4(1.0,1.0,1.0, 1.0);
-    outColor = vec4(object_color, 1.0);
+    outColor = texture(tex1, inTexCoord);
 }

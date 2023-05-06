@@ -26,14 +26,14 @@ protected:
                      "serializable=true",
                      "gpu_data=MaterialData",
                      "default=true");
-    vec3 m_ambient = {1.0f, 0.5f, 0.31f};
+    vec3 m_ambient = {.2f, .2f, .2f};
 
     AGEA_ar_property("category=properties",
                      "access=no",
                      "serializable=true",
                      "gpu_data=MaterialData",
                      "default=true");
-    vec3 m_diffuse = {1.0f, 0.5f, 0.31f};
+    vec3 m_diffuse = {.2f, .2f, .2f};
 
     AGEA_ar_property("category=properties",
                      "access=no",

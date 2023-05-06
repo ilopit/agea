@@ -69,6 +69,9 @@ public:
     void
     update_matrix();
 
+    void
+    update_children_matrixes();
+
     virtual void
     set_parent(component* c)
     {
@@ -86,16 +89,6 @@ public:
         return m_components;
     }
 
-    render::object_data*
-    get_render_object_data() const
-    {
-        return m_render_handle;
-    }
-    void
-    set_render_object_data(render::object_data* v)
-    {
-        m_render_handle = v;
-    }
     bool
     has_dirty_transform() const
     {
@@ -108,10 +101,10 @@ public:
     }
 
     void
-    mark_transform_dirty();
+    mark_render_dirty();
 
     void
-    mark_render_dirty();
+    mark_transform_dirty();
 
 protected:
     AGEA_ar_property("category=object", "serializable=true", "default=true");
@@ -138,7 +131,6 @@ protected:
     bool m_has_dirty_transform = false;
 
     game_object_component* m_render_root = nullptr;
-    render::object_data* m_render_handle = nullptr;
 };
 
 }  // namespace root

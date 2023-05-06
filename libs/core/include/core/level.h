@@ -1,6 +1,6 @@
 #pragma once
 
-#include "root/components/camera_component.h"
+#include "root/components/mesh_component.h"
 
 #include "core/model_fwds.h"
 #include "core/caches/cache_set.h"

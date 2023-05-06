@@ -54,6 +54,17 @@ public:
         mark_render_dirty();
     }
 
+    render::object_data*
+    get_render_object_data() const
+    {
+        return m_render_handle;
+    }
+    void
+    set_render_object_data(render::object_data* v)
+    {
+        m_render_handle = v;
+    }
+
     mesh*
     get_mesh() const
     {
@@ -66,6 +77,8 @@ protected:
 
     AGEA_ar_property("category=assets", "serializable=true", "access=no", "default=true");
     mesh* m_mesh = nullptr;
+
+    render::object_data* m_render_handle = nullptr;
 };
 
 }  // namespace root

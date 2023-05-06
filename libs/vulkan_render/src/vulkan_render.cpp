@@ -207,7 +207,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     }
 
     m_scene_parameters.lights_color = glm::vec4{1.f, 1.f, 1.f, 0.f};
-    m_scene_parameters.lights_position = glm::vec4{1.f, 1.f, 1.f, 0.f};
+    m_scene_parameters.lights_position = m_lighsts.front()->obj_pos;
 
     auto& dyn = current_frame.m_dynamic_data_buffer;
 
@@ -294,13 +294,13 @@ vulkan_render::upload_render_data(render::frame_state& frame)
     auto gpu_object_data_begin =
         (render::gpu_object_data*)buffer_td.allocate_data(m_ssbo_range.front());
 
-    update_gpu_object_data(gpu_object_data_begin);
+    upload_gpu_object_data(gpu_object_data_begin);
 
     for (size_t i = 1; i < m_ssbo_range.get_size(); ++i)
     {
         auto gpu_material_data_begin = buffer_td.allocate_data(m_ssbo_range[i]);
         auto& mat_set = get_current_frame_transfer_data().m_materias_queue_set[i - 1];
-        update_gpu_materials_data(gpu_material_data_begin, mat_set);
+        upload_gpu_materials_data(gpu_material_data_begin, mat_set);
     }
     buffer_td.end();
 }
@@ -447,7 +447,7 @@ vulkan_render::drop_object(render::object_data* obj_data)
 }
 
 void
-vulkan_render::schedule_material_data_gpu_transfer(render::material_data* md)
+vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
 {
     for (auto& q : m_frames)
     {
@@ -457,12 +457,18 @@ vulkan_render::schedule_material_data_gpu_transfer(render::material_data* md)
 }
 
 void
-vulkan_render::schedule_game_data_gpu_transfer(render::object_data* obj_date)
+vulkan_render::schedule_game_data_gpu_upload(render::object_data* obj_date)
 {
     for (auto& q : m_frames)
     {
         q.m_objects_queue.emplace_back(obj_date);
     }
+}
+
+void
+vulkan_render::add_point_light_source(render::ligh_data* p)
+{
+    m_lighsts.push_back(p);
 }
 
 gpu_data_index_type
@@ -484,7 +490,7 @@ vulkan_render::generate_material_ssbo_data_range(const utils::id& mat_id, uint64
 }
 
 void
-vulkan_render::update_gpu_object_data(render::gpu_object_data* object_SSBO)
+vulkan_render::upload_gpu_object_data(render::gpu_object_data* object_SSBO)
 {
     auto& to_update = get_current_frame_transfer_data().m_objects_queue;
 
@@ -502,7 +508,7 @@ vulkan_render::update_gpu_object_data(render::gpu_object_data* object_SSBO)
 }
 
 void
-vulkan_render::update_gpu_materials_data(uint8_t* ssbo_data, materials_update_queue& mats_to_update)
+vulkan_render::upload_gpu_materials_data(uint8_t* ssbo_data, materials_update_queue& mats_to_update)
 {
     if (mats_to_update.empty())
     {

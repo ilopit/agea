@@ -2,6 +2,7 @@
 
 #include "vulkan_render/types/vulkan_render_data.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_light_data.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/vulkan_image.h"
 
@@ -87,10 +88,13 @@ public:
     drop_object(render::object_data* obj_data);
 
     void
-    schedule_material_data_gpu_transfer(render::material_data* md);
+    schedule_material_data_gpu_upload(render::material_data* md);
 
     void
-    schedule_game_data_gpu_transfer(render::object_data* md);
+    schedule_game_data_gpu_upload(render::object_data* md);
+
+    void
+    add_point_light_source(render::ligh_data* p);
 
     gpu_data_index_type
     generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size);
@@ -111,10 +115,10 @@ private:
                        render::frame_state& current_frame);
 
     void
-    update_gpu_object_data(render::gpu_object_data* object_SSBO);
+    upload_gpu_object_data(render::gpu_object_data* object_SSBO);
 
     void
-    update_gpu_materials_data(uint8_t* object_SSBO, materials_update_queue& queue);
+    upload_gpu_materials_data(uint8_t* object_SSBO, materials_update_queue& queue);
 
     void
     update_transparent_objects_queue();
@@ -155,6 +159,7 @@ private:
 
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
+    std::vector<render::ligh_data*> m_lighsts;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 

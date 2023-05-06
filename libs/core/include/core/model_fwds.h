@@ -17,6 +17,7 @@ class cache_set_ref;
 class component;
 class game_object;
 class game_object_component;
+class mesh_component;
 
 class texture;
 class mesh;
@@ -24,6 +25,7 @@ class material;
 class smart_object;
 class shader_effect;
 class light_component;
+class point_light;
 
 }  // namespace root
 

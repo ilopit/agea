@@ -135,7 +135,7 @@ pfr_material(render_bridge& rb, root::smart_object& obj, bool sub_object)
                                                            dyn_gpu_data);
     }
 
-    glob::vulkan_render::getr().schedule_material_data_gpu_transfer(mat_data);
+    glob::vulkan_render::getr().schedule_material_data_gpu_upload(mat_data);
 
     return result_code::ok;
 }
@@ -259,7 +259,7 @@ pfr_mesh_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
         }
     }
 
-    glob::vulkan_render::getr().schedule_game_data_gpu_transfer(object_data);
+    glob::vulkan_render::getr().schedule_game_data_gpu_upload(object_data);
 
     return result_code::ok;
 }
@@ -291,6 +291,24 @@ pfr_shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_object)
             ALOG_LAZY_ERROR;
             return result_code::failed;
         }
+    }
+    return result_code::ok;
+}
+
+result_code
+pfr_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+{
+    auto& se_model = obj.asr<root::light_component>();
+
+    auto rh = se_model.get_handler();
+    if (!rh)
+    {
+        rh = new render::ligh_data(se_model.get_id());
+        rh->obj_pos = se_model.get_world_position();
+
+        glob::vulkan_render::getr().add_point_light_source(rh);
+
+        se_model.set_handler(rh);
     }
     return result_code::ok;
 }
@@ -342,6 +360,10 @@ root_render_module::override_reflection_types()
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__shader_effect);
         rt->render = pfr_shader_effect;
+    }
+    {
+        auto rt = glob::reflection_type_registry::getr().get_type(root__light_component);
+        rt->render = pfr_light_component;
     }
 
     return true;

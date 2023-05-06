@@ -180,7 +180,6 @@ void
 game_object::set_rotation(vec3 v)
 {
     m_root_component->set_rotation(v);
-    m_level->add_to_dirty_transform_queue(m_root_component);
 }
 
 void
@@ -247,6 +246,12 @@ game_object::update_root()
 {
     m_root_component = m_components.front()->as<game_object_component>();
     m_root_component->set_owner(this);
+}
+
+void
+game_object::move(const vec3& v)
+{
+    m_root_component->move(v);
 }
 
 }  // namespace root

@@ -33,9 +33,9 @@
 #include <root/components/mesh_component.h>
 #include <root/game_object.h>
 #include <root/assets/shader_effect.h>
-#include <root/assets/mesh.h>
-#include <root/render/root_render_module.h>
 #include <root/point_light.h>
+#include <root/render/root_render_module.h>
+#include <root/components/light_component.h>
 
 #include <demo/example.h>
 
@@ -280,21 +280,21 @@ vulkan_engine::consume_updated_transforms()
 
         for (auto& obj : r)
         {
-            if (auto goc = obj.as<root::game_object_component>())
+            if (auto m = obj.as<root::mesh_component>())
             {
-                goc->update_matrix();
+                auto obj_data = m->get_render_object_data();
 
-                auto obj_data = goc->get_render_object_data();
+                obj_data->gpu_data.model_matrix = i->get_transofrm_matrix();
 
-                if (obj_data)
-                {
-                    obj_data->gpu_data.model_matrix = i->get_transofrm_matrix();
-                    i->set_dirty_transform(false);
-
-                    glob::vulkan_render::getr().schedule_game_data_gpu_transfer(obj_data);
-                }
+                glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
+            }
+            else if (auto m = obj.as<root::light_component>())
+            {
+                m->get_handler()->obj_pos = m->get_world_position();
             }
         }
+
+        i->set_dirty_transform(false);
     }
 
     items.clear();
@@ -356,7 +356,7 @@ vulkan_engine::init_scene()
 
     root::point_light::construct_params plp;
 
-    plp.pos = {20.f, 0.f, 40.f};
+    plp.pos = {20.f, 20.f, 40.f};
 
     glob::level::getr().spawn_object<root::point_light>(AID("PL"), plp);
 
@@ -367,7 +367,7 @@ vulkan_engine::init_scene()
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 4;
+    int DIM = 2;
 
     for (x = 0; x < DIM; ++x)
     {
@@ -377,7 +377,8 @@ vulkan_engine::init_scene()
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
 
-                sp.positon = root::vec3{x * 10.f, y * 10.f, z * 10.f};
+                sp.positon = root::vec3{x * 40.f, y * 40.f, z * 40.f};
+                sp.scale = root::vec3{10.f};
                 auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
                     (z & 1) ? id1 : id2, AID(id), sp);
                 ALOG_INFO("Spawned {0}", p->get_id().cstr());
@@ -420,6 +421,19 @@ vulkan_engine::consume_updated_shader_effects()
     for (auto& i : items)
     {
         glob::render_bridge::getr().prepare_for_rendering(*i, true);
+    }
+
+    items.clear();
+}
+
+void
+vulkan_engine::consume_updated_light_sources()
+{
+    auto& items = glob::level::getr().get_dirty_shader_effect_queue();
+
+    for (auto& i : items)
+    {
+        // glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
     }
 
     items.clear();
