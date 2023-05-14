@@ -48,6 +48,13 @@ struct frame_state
         has_materials = false;
     }
 
+    void
+    clear_upload_queues()
+    {
+        m_objects_queue.clear();
+        m_materias_queue_set.clear();
+    }
+
     vk_utils::vulkan_buffer m_object_buffer;
     vk_utils::vulkan_buffer m_dynamic_data_buffer;
 
@@ -98,6 +105,9 @@ public:
 
     gpu_data_index_type
     generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size);
+
+    void
+    clear_upload_queue();
 
 private:
     void
@@ -164,6 +174,7 @@ private:
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
     std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
+    render_line_conteiner m_transparent_render_object_queue;
 
     struct material_type_property
     {
@@ -172,8 +183,6 @@ private:
     };
 
     std::unordered_map<utils::id, material_type_property> m_type_id_range_id;
-
-    render_line_conteiner m_transparent_render_object_queue;
 
     std::vector<frame_state> m_frames;
 

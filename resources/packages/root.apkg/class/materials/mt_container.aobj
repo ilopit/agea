@@ -1,0 +1,7 @@
+type_id: simple_texture_material
+id: mt_container
+shader_effect: se_simple_texture
+simple_texture:
+    texture: txt_container
+    slot: 0
+    sampler: default

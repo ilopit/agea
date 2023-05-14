@@ -3,8 +3,10 @@
 #include "engine/input_manager.h"
 
 #include <native/native_window.h>
+#include <vulkan_render/vulkan_render.h>
 
 #include <utils/agea_log.h>
+#include <core/level.h>
 
 namespace agea
 {
@@ -26,6 +28,9 @@ game_editor::init()
                                                        &game_editor::ev_look_up);
     glob::input_manager::get()->register_scaled_action(AID("look_left"), this,
                                                        &game_editor::ev_look_left);
+
+    glob::input_manager::get()->register_fixed_action(AID("level_reload"), true, this,
+                                                      &game_editor::ev_reload);
 }
 
 void
@@ -54,6 +59,20 @@ game_editor::ev_look_left(float f)
 {
     look_left_delta = f;
     m_updated = true;
+}
+
+void
+game_editor::ev_reload()
+{
+    glob::level::getr().drop_pending_updates();
+
+    glob::vulkan_render::getr().clear_upload_queue();
+
+    auto packages = glob::level::getr().get_package_ids();
+
+    for (auto& pid : packages)
+    {
+    }
 }
 
 glm::mat4

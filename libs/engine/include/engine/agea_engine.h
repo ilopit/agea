@@ -82,7 +82,6 @@ private:
     void consume_updated_light_sources();
 
     bool prepare_for_rendering(core::package& p);
-    bool prepare_for_rendering(core::level& l);
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on

@@ -211,6 +211,7 @@ vulkan_engine::run()
 
             update_cameras();
             glob::vulkan_render::getr().set_camera(m_camera_data);
+
             consume_updated_shader_effects();
             consume_updated_render_assets();
             consume_updated_render_components();
@@ -250,12 +251,6 @@ vulkan_engine::load_level(const utils::id& level_id)
         glob::objects_cache_set::get());
 
     if (!result)
-    {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    if (!prepare_for_rendering(*glob::level::get()))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -447,31 +442,6 @@ vulkan_engine::prepare_for_rendering(core::package& p)
     for (auto& o : cs)
     {
         if (glob::render_bridge::getr().prepare_for_rendering(*o, true) != result_code::ok)
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool
-vulkan_engine::prepare_for_rendering(core::level& p)
-{
-    auto& ids = p.get_package_ids();
-
-    for (auto& id : ids)
-    {
-        auto p = glob::package_manager::getr().get_package(id);
-        prepare_for_rendering(*p);
-    }
-
-    auto& cs = p.get_game_objects();
-
-    for (auto& o : cs.get_items())
-    {
-        if (glob::render_bridge::getr().prepare_for_rendering(*o.second, true) != result_code::ok)
         {
             ALOG_LAZY_ERROR;
             return false;

@@ -192,9 +192,9 @@ public:
         input_fixed_action_handler ev;
         ev.assign(o, m);
 
-        auto& e =
-            m_fixed_actions_mapping[pressed ? input_event_type::press : input_event_type::release];
         auto& action = m_input_actions[id];
+        auto& e = m_fixed_actions_mapping[(size_t)(pressed ? input_event_type::press
+                                                           : input_event_type::release)];
 
         for (auto& kb_action : action.m_triggers)
         {

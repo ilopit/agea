@@ -6,11 +6,13 @@ class_obj_mapping:
 
   - txt_red: class/textures/txt_red.aobj
   - txt_lamp: class/textures/txt_lamp.aobj
+  - txt_container: class/textures/txt_container.aobj
 
   - mt_red: class/materials/mt_red.aobj
   - mt_solid_color: class/materials/mt_solid_color.aobj
   - mt_solid_color_2: class/materials/mt_solid_color_2.aobj
   - mt_billboard_bulb: class/materials/mt_billboard_bulb.aobj
+  - mt_container: class/materials/mt_container.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
 

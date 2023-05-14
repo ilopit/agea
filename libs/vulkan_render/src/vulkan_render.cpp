@@ -490,6 +490,15 @@ vulkan_render::generate_material_ssbo_data_range(const utils::id& mat_id, uint64
 }
 
 void
+vulkan_render::clear_upload_queue()
+{
+    for (auto& q : m_frames)
+    {
+        q.clear_upload_queues();
+    }
+}
+
+void
 vulkan_render::upload_gpu_object_data(render::gpu_object_data* object_SSBO)
 {
     auto& to_update = get_current_frame_transfer_data().m_objects_queue;

@@ -157,6 +157,9 @@ public:
         return *m_occ;
     }
 
+    void
+    drop_pending_updates();
+
 private:
     root::smart_object*
     spawn_object_impl(const utils::id& proto_id, const utils::id& id, const spawn_parameters& prms);

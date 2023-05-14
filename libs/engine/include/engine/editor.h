@@ -36,6 +36,9 @@ private:
     void
     ev_look_left(float f);
 
+    void
+    ev_reload();
+
     glm::mat4
     get_rotation_matrix();
 

@@ -124,5 +124,14 @@ level::tick(float dt)
     }
 }
 
+void
+level::drop_pending_updates()
+{
+    m_dirty_transform_components.clear();
+    m_dirty_render_components.clear();
+    m_dirty_render_assets.clear();
+    m_dirty_shader_effects.clear();
+}
+
 }  // namespace core
 }  // namespace agea

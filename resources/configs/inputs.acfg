@@ -20,3 +20,6 @@ actions:
     events:
       - trigger: mouse_move_x
         amp: -5
+  - id: level_reload
+    events:
+      - trigger: r
