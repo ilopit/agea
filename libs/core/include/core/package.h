@@ -9,6 +9,8 @@
 #include "core/object_constructor.h"
 #include "core/objects_mapping.h"
 
+#include "core/container.h"
+
 namespace agea
 {
 namespace core
@@ -27,7 +29,7 @@ enum class package_type
     obj
 };
 
-class package
+class package : public container
 {
 public:
     package(const utils::id& id,
@@ -43,73 +45,22 @@ public:
 
     friend class package_manager;
 
-    const utils::id&
-    get_id() const
-    {
-        return m_id;
-    }
-
-    const utils::path&
-    get_load_path() const
-    {
-        return m_load_path;
-    }
-
-    const utils::path&
-    get_save_path() const
-    {
-        return m_save_root_path;
-    }
-
-    utils::path
-    get_relative_path(const utils::path& p) const;
-
-    void
-    set_save_root_path(const utils::path& path) const
-    {
-        m_save_root_path = path;
-    }
-
-    void
-    set_load_path(const utils::path& path) const
-    {
-        m_load_path = path;
-    }
-
-    cache_set&
-    get_class_cache()
-    {
-        return m_proto_local_set;
-    }
-
-    cache_set&
-    get_cache()
-    {
-        return m_instance_local_set;
-    }
-
     package_state
     get_state() const
     {
         return m_state;
     }
 
+    package_type
+    get_type() const
+    {
+        return m_type;
+    }
+
     void
     set_state(package_state v)
     {
         m_state = v;
-    }
-
-    object_load_context&
-    get_load_context() const
-    {
-        return *m_occ.get();
-    }
-
-    line_cache<std::shared_ptr<root::smart_object>>&
-    get_objects()
-    {
-        return m_objects;
     }
 
     template <typename T>
@@ -136,32 +87,14 @@ public:
     void
     unregister_in_global_cache();
 
-    package_type
-    get_type() const
-    {
-        return m_type;
-    }
-
     void
     unload();
 
 private:
-    utils::id m_id;
-    mutable utils::path m_load_path;
-    mutable utils::path m_save_root_path;
-
     package_state m_state = package_state::unloaded;
     package_type m_type = package_type::nan;
 
-    cache_set* m_class_global_set = nullptr;
-    cache_set* m_instance_global_set = nullptr;
-
-    cache_set m_proto_local_set;
-    cache_set m_instance_local_set;
-
-    line_cache<std::shared_ptr<root::smart_object>> m_objects;
-    std::shared_ptr<object_mapping> m_mapping;
-    std::unique_ptr<object_load_context> m_occ;
+    cache_set m_proto_local_cs;
 };
 
 }  // namespace core

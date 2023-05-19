@@ -54,5 +54,11 @@ object_mapping::buiild_object_mapping(serialization::conteiner& c, bool is_class
     return true;
 }
 
+void
+object_mapping::clear()
+{
+    m_items.clear();
+}
+
 }  // namespace core
 }  // namespace agea

@@ -7,6 +7,7 @@
 #include "core/caches/line_cache.h"
 #include "core/objects_mapping.h"
 #include "core/model_minimal.h"
+#include "core/container.h"
 
 #include <root/core_types/vec3.h>
 
@@ -28,12 +29,19 @@ struct spawn_parameters
     std::optional<root::vec3> rotation;
 };
 
-class level
+enum class level_state
+{
+    unloaded = 0,
+    loaded,
+    render_loaded
+};
+
+class level : public container
 {
 public:
     friend class level_manager;
 
-    level();
+    level(const utils::id& id, cache_set* class_global_set, cache_set* instance_global_set);
     ~level();
 
     root::game_object*
@@ -61,40 +69,10 @@ public:
     void
     tick(float dt);
 
-    const utils::path&
-    get_load_path() const
-    {
-        return m_load_path;
-    }
-
-    const utils::path&
-    get_save_root_path() const
-    {
-        return m_save_root_path;
-    }
-
-    void
-    set_load_path(const utils::path& path)
-    {
-        m_load_path = path;
-    }
-
-    void
-    set_save_root_path(const utils::path& path)
-    {
-        m_save_root_path = path;
-    }
-
     game_objects_cache&
     get_game_objects()
     {
-        return *m_local_cs.game_objects.get();
-    }
-
-    const utils::id&
-    get_id()
-    {
-        return m_id;
+        return *m_instance_local_cs.game_objects.get();
     }
 
     void
@@ -164,12 +142,12 @@ public:
     unregister_objects();
 
     void
-    clear();
+    unload();
 
-    cache_set&
-    get_local_cs()
+    level_state
+    get_state() const
     {
-        return m_local_cs;
+        return m_state;
     }
 
 private:
@@ -181,14 +159,8 @@ private:
                       const utils::id& id,
                       const root::smart_object::construct_params& p);
 
-    utils::id m_id;
+    level_state m_state = level_state::unloaded;
 
-    cache_set m_local_cs;
-    cache_set* m_global_object_cs = nullptr;
-    cache_set* m_global_class_object_cs = nullptr;
-    std::unique_ptr<object_load_context> m_occ;
-
-    line_cache<root::smart_object_ptr> m_objects;
     line_cache<root::game_object*> m_tickable_objects;
 
     line_cache<root::game_object_component*> m_dirty_transform_components;
@@ -197,11 +169,6 @@ private:
     line_cache<root::shader_effect*> m_dirty_shader_effects;
 
     std::vector<utils::id> m_package_ids;
-
-    std::shared_ptr<object_mapping> m_mapping;
-
-    utils::path m_load_path;
-    utils::path m_save_root_path;
 };
 
 }  // namespace core

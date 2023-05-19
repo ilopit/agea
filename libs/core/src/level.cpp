@@ -18,15 +18,16 @@ glob::level::type glob::level::type::s_instance;
 namespace core
 {
 
-level::level()
-    : m_occ(std::make_unique<object_load_context>())
-    , m_mapping(std::make_shared<core::object_mapping>())
+level::level(const utils::id& id, cache_set* class_global_set, cache_set* instance_global_set)
+    : container(id)
 {
-    m_occ->set_instance_local_set(&m_local_cs)
+    m_occ->set_instance_local_set(&m_instance_local_cs)
         .set_ownable_cache(&m_objects)
         .set_objects_mapping(m_mapping)
         .set_level(this)
-        .set_global_load_mode(true);
+        .set_global_load_mode(true)
+        .set_proto_global_set(class_global_set)
+        .set_instance_global_set(instance_global_set);
 }
 
 level::~level()
@@ -36,13 +37,13 @@ level::~level()
 root::game_object*
 level::find_game_object(const utils::id& id)
 {
-    return m_local_cs.game_objects->get_item(id);
+    return m_instance_local_cs.game_objects->get_item(id);
 }
 
 root::component*
 level::find_component(const utils::id& id)
 {
-    return m_local_cs.components->get_item(id);
+    return m_instance_local_cs.components->get_item(id);
 }
 
 root::smart_object*
@@ -137,21 +138,19 @@ level::drop_pending_updates()
 void
 level::unregister_objects()
 {
-    for (auto& i : m_local_cs.objects->get_items())
-    {
-        auto& obj = *i.second;
-
-        m_global_object_cs->map->remove_item(obj);
-    }
-
-    m_local_cs.clear();
+    container::unregister_in_global_cache(m_instance_local_cs, *m_instance_global_cs, m_id,
+                                          "instance");
 }
 
 void
-level::clear()
+level::unload()
 {
-    m_objects.clear();
+    container::unload();
+
     m_tickable_objects.clear();
+    m_package_ids.clear();
+
+    m_state = level_state::unloaded;
 }
 
 }  // namespace core

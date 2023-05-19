@@ -21,8 +21,8 @@ namespace core
 
 object_load_context::object_load_context()
     : m_path_prefix()
-    , m_class_global_set()
-    , m_class_local_set()
+    , m_proto_global_set()
+    , m_proto_local_set()
     , m_instance_global_set()
     , m_instance_local_set()
     , m_ownable_cache_ptr(nullptr)
@@ -80,11 +80,11 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj, bool add_g
     {
     case object_load_type::class_obj:
     {
-        m_class_local_set->map->add_item(obj_ref);
+        m_proto_local_set->map->add_item(obj_ref);
 
         if (add_global)
         {
-            m_class_global_set->map->add_item(obj_ref);
+            m_proto_global_set->map->add_item(obj_ref);
         }
 
         break;
@@ -111,14 +111,14 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj, bool add_g
 root::smart_object*
 object_load_context::find_proto_obj(const utils::id& id)
 {
-    auto obj = m_class_local_set ? m_class_local_set->objects->get_item(id) : nullptr;
+    auto obj = m_proto_local_set ? m_proto_local_set->objects->get_item(id) : nullptr;
 
     if (obj)
     {
         return obj;
     }
 
-    return m_class_global_set ? m_class_global_set->objects->get_item(id) : nullptr;
+    return m_proto_global_set ? m_proto_global_set->objects->get_item(id) : nullptr;
 }
 
 root::smart_object*
@@ -163,7 +163,7 @@ root::smart_object*
 object_load_context::find_proto_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
-    auto c = m_class_local_set ? m_class_local_set->map->get_cache(a_type) : nullptr;
+    auto c = m_proto_local_set ? m_proto_local_set->map->get_cache(a_type) : nullptr;
 
     if (c)
     {
@@ -174,7 +174,7 @@ object_load_context::find_proto_obj(const utils::id& id, architype a_type)
         }
     }
 
-    c = m_class_global_set ? m_class_global_set->map->get_cache(a_type) : nullptr;
+    c = m_proto_global_set ? m_proto_global_set->map->get_cache(a_type) : nullptr;
     if (c)
     {
         obj = c->get_item(id);

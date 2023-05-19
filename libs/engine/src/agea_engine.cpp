@@ -93,7 +93,6 @@ vulkan_engine::init()
     glob::render_device::create(*m_registry);
     glob::vulkan_render_loader::create(*m_registry);
     glob::ui::create(*m_registry);
-    glob::level::create(*m_registry);
     glob::level_manager::create(*m_registry);
     glob::native_window::create(*m_registry);
     glob::package_manager::create(*m_registry);
@@ -248,15 +247,16 @@ vulkan_engine::tick(float dt)
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto result = glob::level_manager::getr().load_level_id(
-        *glob::level::get(), glob::config::get()->level, glob::proto_objects_cache_set::get(),
-        glob::objects_cache_set::get());
-
+    auto result = glob::level_manager::getr().load_level(glob::config::get()->level,
+                                                         glob::proto_objects_cache_set::get(),
+                                                         glob::objects_cache_set::get());
     if (!result)
     {
-        ALOG_LAZY_ERROR;
+        ALOG_FATAL("Nothign to do here!");
         return false;
     }
+
+    glob::level::create_ref(result);
 
     return true;
 }
@@ -264,7 +264,7 @@ vulkan_engine::load_level(const utils::id& level_id)
 bool
 vulkan_engine::unload_render_resources(core::level& l)
 {
-    auto& cs = l.get_local_cs();
+    auto& cs = l.get_local_cache();
 
     for (auto& t : cs.objects->get_items())
     {
@@ -277,7 +277,7 @@ vulkan_engine::unload_render_resources(core::level& l)
 bool
 vulkan_engine::unload_render_resources(core::package& l)
 {
-    auto& cs = l.get_cache();
+    auto& cs = l.get_local_cache();
 
     for (auto& t : cs.objects->get_items())
     {
@@ -385,12 +385,12 @@ vulkan_engine::init_scene()
 
     core::spawn_parameters sp;
 
-    auto id1 = AID("decor2");
+    auto id1 = AID("decor");
     auto id2 = AID("decor2");
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 5;
+    int DIM = 4;
 
     for (x = 0; x < DIM; ++x)
     {
@@ -461,6 +461,5 @@ vulkan_engine::consume_updated_light_sources()
 
     items.clear();
 }
-
 
 }  // namespace agea

@@ -46,7 +46,7 @@ point_light::on_tick(float dt)
         f = 0.f;
     }
     vec3 g{0.f, dt * (dir ? -1.f : 1.f), 0.f};
-    move(g);
+    // move(g);
 }
 
 }  // namespace root

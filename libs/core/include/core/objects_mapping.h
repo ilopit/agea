@@ -26,6 +26,9 @@ public:
     bool
     buiild_object_mapping(serialization::conteiner& c, bool is_class);
 
+    void
+    clear();
+
     std::unordered_map<utils::id, item> m_items;
 };
 }  // namespace core

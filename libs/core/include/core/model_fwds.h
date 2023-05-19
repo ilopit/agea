@@ -10,9 +10,6 @@ namespace agea
 namespace root
 {
 class asset;
-class caches_map;
-class cache_set;
-class cache_set_ref;
 
 class component;
 class game_object;
@@ -31,11 +28,15 @@ class point_light;
 
 namespace core
 {
+class caches_map;
+class cache_set;
+class cache_set_ref;
 class class_objects_cache;
 class object_load_context;
 class level;
 class package;
 class package_manager;
+class object_mapping;
 
 template <typename T, architype ID>
 class cache;
