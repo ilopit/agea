@@ -302,6 +302,7 @@ vulkan_render::upload_render_data(render::frame_state& frame)
         auto& mat_set = get_current_frame_transfer_data().m_materias_queue_set[i - 1];
         upload_gpu_materials_data(gpu_material_data_begin, mat_set);
     }
+    get_current_frame_transfer_data().reset();
     buffer_td.end();
 }
 
@@ -414,6 +415,10 @@ vulkan_render::add_object(render::object_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
 
+    auto id = m_objects_id.alloc_id();
+
+    obj_data->set_index(id);
+
     if (obj_data->queue_id == "transparent")
     {
         m_transparent_render_object_queue.emplace_back(obj_data);
@@ -469,6 +474,15 @@ void
 vulkan_render::add_point_light_source(render::ligh_data* p)
 {
     m_lighsts.push_back(p);
+}
+
+void
+vulkan_render::remove_point_light_source(render::ligh_data* p)
+{
+    auto itr = std::remove_if(m_lighsts.begin(), m_lighsts.end(),
+                              [p](render::ligh_data* i) { return p == i; });
+
+    m_lighsts.erase(itr);
 }
 
 gpu_data_index_type
@@ -593,7 +607,7 @@ vulkan_render::prepare_ui_pipeline()
     agea::utils::buffer vert, frag;
 
     auto path = glob::resource_locator::get()->resource(category::packages,
-                                                        "root.apkg/class/shader_effects");
+                                                        "base.apkg/class/shader_effects");
 
     auto vert_path = path / "se_uioverlay.vert";
     agea::utils::buffer::load(vert_path, vert);
@@ -792,11 +806,12 @@ vulkan_render::rearrange_ssbo()
 {
     bool rearanged = false;
 
-    if (m_ssbo_range.front() <= glob::vulkan_render_loader::getr().get_objects_alloc_size())
+    const auto obj_alloc_size = m_objects_id.get_ids_in_fly() * sizeof(gpu_object_data);
+
+    if (m_ssbo_range.front() <= obj_alloc_size)
     {
-        ALOG_INFO("Reallocing objects SSBO range {0}=>{1}", m_ssbo_range.front(),
-                  glob::vulkan_render_loader::getr().get_objects_alloc_size());
-        m_ssbo_range.front() = glob::vulkan_render_loader::getr().get_objects_alloc_size() * 2;
+        ALOG_INFO("Reallocing objects SSBO range {0}=>{1}", m_ssbo_range.front(), obj_alloc_size);
+        m_ssbo_range.front() = obj_alloc_size * 2;
         rearanged = true;
     }
 
@@ -819,7 +834,7 @@ vulkan_render::get_mat_alloc_size(gpu_data_index_type mat_type_index)
 {
     for (auto& [i, property] : m_type_id_range_id)
     {
-        if (property.type_index = mat_type_index)
+        if (property.type_index == mat_type_index)
         {
             return glob::vulkan_render_loader::getr().last_mat_index(i) * property.alloc_size;
         }

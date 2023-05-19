@@ -20,10 +20,18 @@ enum class package_state
     render_loaded
 };
 
+enum class package_type
+{
+    nan = 0,
+    type,
+    obj
+};
+
 class package
 {
 public:
     package(const utils::id& id,
+            package_type t,
             cache_set* class_global_set = nullptr,
             cache_set* instance_global_set = nullptr);
 
@@ -71,7 +79,7 @@ public:
     cache_set&
     get_class_cache()
     {
-        return m_class_local_set;
+        return m_proto_local_set;
     }
 
     cache_set&
@@ -92,16 +100,16 @@ public:
         m_state = v;
     }
 
-    line_cache<root::smart_object*>&
-    get_objects()
-    {
-        return m_package_instances;
-    }
-
     object_load_context&
     get_load_context() const
     {
         return *m_occ.get();
+    }
+
+    line_cache<std::shared_ptr<root::smart_object>>&
+    get_objects()
+    {
+        return m_objects;
     }
 
     template <typename T>
@@ -125,21 +133,33 @@ public:
     void
     register_in_global_cache();
 
+    void
+    unregister_in_global_cache();
+
+    package_type
+    get_type() const
+    {
+        return m_type;
+    }
+
+    void
+    unload();
+
 private:
     utils::id m_id;
     mutable utils::path m_load_path;
     mutable utils::path m_save_root_path;
 
     package_state m_state = package_state::unloaded;
+    package_type m_type = package_type::nan;
 
     cache_set* m_class_global_set = nullptr;
     cache_set* m_instance_global_set = nullptr;
 
-    cache_set m_class_local_set;
+    cache_set m_proto_local_set;
     cache_set m_instance_local_set;
 
     line_cache<std::shared_ptr<root::smart_object>> m_objects;
-    line_cache<root::smart_object*> m_package_instances;
     std::shared_ptr<object_mapping> m_mapping;
     std::unique_ptr<object_load_context> m_occ;
 };

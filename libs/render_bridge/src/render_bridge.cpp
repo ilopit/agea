@@ -141,7 +141,7 @@ render_bridge::make_qid(render::material_data& mt_data, render::mesh_data& m_dat
         return "transparent";
     }
 
-    return m_data.get_id().str() + "::" + m_data.get_id().str();
+    return mt_data.get_id().str() + "::" + m_data.get_id().str();
 }
 
 bool
@@ -157,7 +157,7 @@ render_bridge::is_agea_mesh(const utils::path& p)
 }
 
 agea::result_code
-render_bridge::prepare_for_rendering(root::smart_object& obj, bool sub_objects)
+render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 {
     AGEA_check(!obj.has_flag(root::smart_object_state_flag::proto_obj), "");
 
@@ -170,9 +170,30 @@ render_bridge::prepare_for_rendering(root::smart_object& obj, bool sub_objects)
 
     obj.set_state(root::smart_object_state::render_preparing);
 
-    result_code rc = obj.get_reflection()->render(*this, obj, sub_objects);
+    result_code rc = obj.get_reflection()->render_ctor(*this, obj, sub_objects);
 
     obj.set_state(root::smart_object_state::render_ready);
+
+    return rc;
+}
+
+agea::result_code
+render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
+{
+    AGEA_check(!obj.has_flag(root::smart_object_state_flag::proto_obj), "");
+
+    if (obj.get_state() == root::smart_object_state::constructed)
+    {
+        return result_code::ok;
+    }
+
+    AGEA_check(obj.get_state() == root::smart_object_state::render_ready, "Shoud not happen");
+
+    obj.set_state(root::smart_object_state::render_preparing);
+
+    result_code rc = obj.get_reflection()->render_dtor(*this, obj, sub_objects);
+
+    obj.set_state(root::smart_object_state::constructed);
 
     return rc;
 }

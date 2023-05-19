@@ -4,12 +4,14 @@
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
+#include "vulkan_render/types/vulkan_gpu_types.h"
 
 namespace agea
 {
 namespace render
 {
 class shader_effect_data;
+class texture_data;
 
 struct texture_sampler_data
 {
@@ -29,6 +31,8 @@ public:
         , m_index(idx)
     {
     }
+
+    ~material_data();
 
     const agea::utils::id&
     get_id() const

@@ -26,7 +26,7 @@ default_content = """
 bool
 {module_name}_module::init_reflection()
 {{
-    auto pkg = std::make_unique<agea::core::package>(AID("{module_name}"));
+    auto pkg = std::make_unique<agea::core::package>(AID("{module_name}"), agea::core::package_type::type);
 
 """
 

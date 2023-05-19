@@ -34,6 +34,12 @@ public:
         return m_gpu_index;
     }
 
+    void
+    set_index(gpu_data_index_type v)
+    {
+        m_gpu_index = v;
+    }
+
     gpu_object_data gpu_data;
 
     render::mesh_data* mesh = nullptr;

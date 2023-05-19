@@ -25,7 +25,8 @@ level::level()
     m_occ->set_instance_local_set(&m_local_cs)
         .set_ownable_cache(&m_objects)
         .set_objects_mapping(m_mapping)
-        .set_level(this);
+        .set_level(this)
+        .set_global_load_mode(true);
 }
 
 level::~level()
@@ -131,6 +132,26 @@ level::drop_pending_updates()
     m_dirty_render_components.clear();
     m_dirty_render_assets.clear();
     m_dirty_shader_effects.clear();
+}
+
+void
+level::unregister_objects()
+{
+    for (auto& i : m_local_cs.objects->get_items())
+    {
+        auto& obj = *i.second;
+
+        m_global_object_cs->map->remove_item(obj);
+    }
+
+    m_local_cs.clear();
+}
+
+void
+level::clear()
+{
+    m_objects.clear();
+    m_tickable_objects.clear();
 }
 
 }  // namespace core

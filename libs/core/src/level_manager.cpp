@@ -20,6 +20,9 @@
 
 namespace agea
 {
+
+glob::level_manager::type glob::level_manager::type::s_instance;
+
 namespace core
 {
 
@@ -119,6 +122,14 @@ level_manager::load_level_path(level& l,
     }
 
     return true;
+}
+
+void
+level_manager::unload_level(level& l)
+{
+    l.drop_pending_updates();
+    l.unregister_objects();
+    l.clear();
 }
 
 bool

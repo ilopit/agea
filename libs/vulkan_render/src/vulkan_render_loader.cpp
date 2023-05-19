@@ -320,6 +320,17 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
     return td.get();
 }
 
+void
+vulkan_render_loader::destroy_texture_data(const agea::utils::id& id)
+{
+    auto itr = m_textures_cache.find(id);
+    if (itr != m_textures_cache.end())
+    {
+        shedule_to_deltete_t(std::move(itr->second));
+        m_textures_cache.erase(itr);
+    }
+}
+
 object_data*
 vulkan_render_loader::create_object(const agea::utils::id& id,
                                     material_data& mat_data,
@@ -328,9 +339,9 @@ vulkan_render_loader::create_object(const agea::utils::id& id,
                                     const glm::mat4& normal_matrix,
                                     const glm::vec3& obj_pos)
 {
-    AGEA_check(!get_material_data(id), "Shoudn't exist");
+    AGEA_check(!get_object_data(id), "Shoudn't exist");
 
-    auto data = std::make_shared<object_data>(id, generate_new_object_index());
+    auto data = std::make_shared<object_data>(id, -1);
 
     update_object(*data, mat_data, mesh_data, model_matrix, normal_matrix, obj_pos);
 
@@ -355,6 +366,27 @@ vulkan_render_loader::update_object(object_data& obj_data,
     obj_data.gpu_data.obj_pos = obj_pos;
 
     return true;
+}
+
+void
+vulkan_render_loader::destroy_object(const agea::utils::id& id)
+{
+    auto itr = m_objects_cache.find(id);
+    if (itr != m_objects_cache.end())
+    {
+        m_objects_cache.erase(itr);
+    }
+}
+
+void
+vulkan_render_loader::destroy_mesh_data(const agea::utils::id& id)
+{
+    auto itr = m_meshes_cache.find(id);
+    if (itr != m_meshes_cache.end())
+    {
+        shedule_to_deltete_t(std::move(itr->second));
+        m_meshes_cache.erase(itr);
+    }
 }
 
 material_data*
@@ -422,6 +454,17 @@ vulkan_render_loader::create_sampler(const agea::utils::id& id, VkBorderColor co
     return data.get();
 }
 
+void
+vulkan_render_loader::destroy_sampler_data(const agea::utils::id& id)
+{
+    auto itr = m_samplers_cache.find(id);
+    if (itr != m_samplers_cache.end())
+    {
+        shedule_to_deltete_t(std::move(itr->second));
+        m_samplers_cache.erase(itr);
+    }
+}
+
 bool
 vulkan_render_loader::update_material(material_data& mat_data,
                                       std::vector<texture_sampler_data>& samples,
@@ -433,6 +476,17 @@ vulkan_render_loader::update_material(material_data& mat_data,
     mat_data.gpu_data = gpu_params;
 
     return true;
+}
+
+void
+vulkan_render_loader::destroy_material_data(const agea::utils::id& id)
+{
+    auto itr = m_materials_cache.find(id);
+    if (itr != m_materials_cache.end())
+    {
+        shedule_to_deltete_t(std::move(itr->second));
+        m_materials_cache.erase(itr);
+    }
 }
 
 shader_effect_data*
@@ -474,26 +528,27 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
         return false;
     }
 
-    resource_deleter rd = [old_se_data]() mutable
-    {
-        ALOG_INFO("Shader effect deleted");
-        old_se_data.reset();
-    };
+    auto rd = s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
 
-    shedule_to_deltete(rd);
+    shedule_to_deltete(std::move(rd));
 
     return true;
 }
 
 void
+vulkan_render_loader::destroy_shader_effect_data(const agea::utils::id& id)
+{
+    auto itr = m_shaders_effects_cache.find(id);
+    if (itr != m_shaders_effects_cache.end())
+    {
+        shedule_to_deltete_t(std::move(itr->second));
+        m_shaders_effects_cache.erase(itr);
+    }
+}
+
+void
 vulkan_render_loader::clear_caches()
 {
-    while (!m_ddq.empty())
-    {
-        m_ddq.top().deleter();
-        m_ddq.pop();
-    }
-
     m_meshes_cache.clear();
     m_textures_cache.clear();
     m_materials_cache.clear();
@@ -501,14 +556,21 @@ vulkan_render_loader::clear_caches()
     m_shaders_effects_cache.clear();
     m_objects_cache.clear();
     m_samplers_cache.clear();
+    m_materials_index.clear();
+    m_last_mtt_id = 0;
+
+    while (!m_ddq.empty())
+    {
+        m_ddq.pop();
+    }
 }
 
 void
-vulkan_render_loader::shedule_to_deltete(resource_deleter d)
+vulkan_render_loader::shedule_to_deltete(std::unique_ptr<b_deleter> d)
 {
     auto size = glob::render_device::getr().get_current_frame_number() + FRAMES_IN_FLYIGNT * 2;
 
-    m_ddq.emplace(size, d);
+    m_ddq.emplace(size, std::move(d));
 }
 
 void
@@ -519,13 +581,10 @@ vulkan_render_loader::delete_sheduled_actions()
         return;
     }
 
-    auto& top = m_ddq.top();
-
     auto device = glob::render_device::get();
     auto current_frame = device->get_current_frame_number();
-    if (top.frame_to_delete <= current_frame)
+    while (!m_ddq.empty() && m_ddq.top().frame_to_delete <= current_frame)
     {
-        top.deleter();
         m_ddq.pop();
     }
 }

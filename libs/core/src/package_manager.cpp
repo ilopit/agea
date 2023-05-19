@@ -46,7 +46,7 @@ bool
 package_manager::load_package(const utils::id& id)
 {
     auto itr = m_packages.find(id);
-    if (itr != m_packages.end())
+    if (itr != m_packages.end() && itr->second->get_state() == package_state::loaded)
     {
         ALOG_INFO("[{0}] already loaded", id.cstr());
         return true;
@@ -72,7 +72,7 @@ package_manager::load_package(const utils::id& id)
         return false;
     }
 
-    auto new_package = std::make_unique<package>(AID(name));
+    auto new_package = std::make_unique<package>(AID(name), package_type::obj);
     new_package->m_load_path = path;
     new_package->m_save_root_path = path.parent();
 
@@ -125,6 +125,29 @@ package_manager::load_package(const utils::id& id)
     new_package->set_state(package_state::loaded);
 
     m_packages[id] = std::move(new_package);
+
+    return true;
+}
+
+bool
+package_manager::unload_package(const utils::id& id)
+{
+    auto p = get_package(id);
+
+    if (!p)
+    {
+        ALOG_ERROR("Doesn't exist {0}", id.cstr());
+        return false;
+    }
+
+    return unload_package(*p);
+}
+
+bool
+package_manager::unload_package(package& p)
+{
+    p.unregister_in_global_cache();
+    p.unload();
 
     return true;
 }

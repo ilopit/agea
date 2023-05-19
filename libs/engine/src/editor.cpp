@@ -1,12 +1,18 @@
 #include "engine/editor.h"
 
 #include "engine/input_manager.h"
+#include "engine/agea_engine.h"
 
 #include <native/native_window.h>
 #include <vulkan_render/vulkan_render.h>
+#include <vulkan_render/vulkan_render_loader.h>
+
+#include <core/level.h>
+#include <core/level_manager.h>
+#include <core/package_manager.h>
+#include <core/package.h>
 
 #include <utils/agea_log.h>
-#include <core/level.h>
 
 namespace agea
 {
@@ -64,15 +70,27 @@ game_editor::ev_look_left(float f)
 void
 game_editor::ev_reload()
 {
-    glob::level::getr().drop_pending_updates();
+    auto& level = glob::level::getr();
+
+    level.drop_pending_updates();
 
     glob::vulkan_render::getr().clear_upload_queue();
 
-    auto packages = glob::level::getr().get_package_ids();
+    glob::engine::getr().unload_render_resources(level);
+    glob::level_manager::getr().unload_level(level);
 
-    for (auto& pid : packages)
+    auto& pm = glob::package_manager::getr();
+    for (auto& id : level.get_package_ids())
     {
+        auto p = pm.get_package(id);
+        glob::engine::getr().unload_render_resources(*p);
+        pm.unload_package(*p);
     }
+
+    glob::vulkan_render::getr().m_default_render_object_queue.clear();
+    glob::vulkan_render::getr().m_transparent_render_object_queue.clear();
+
+    glob::engine::getr().init_scene();
 }
 
 glm::mat4

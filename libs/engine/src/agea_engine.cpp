@@ -36,6 +36,7 @@
 #include <root/point_light.h>
 #include <root/render/root_render_module.h>
 #include <root/components/light_component.h>
+#include <root/assets/material.h>
 
 #include <demo/example.h>
 
@@ -93,6 +94,7 @@ vulkan_engine::init()
     glob::vulkan_render_loader::create(*m_registry);
     glob::ui::create(*m_registry);
     glob::level::create(*m_registry);
+    glob::level_manager::create(*m_registry);
     glob::native_window::create(*m_registry);
     glob::package_manager::create(*m_registry);
     glob::lua_api::create(*m_registry);
@@ -246,7 +248,7 @@ vulkan_engine::tick(float dt)
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto result = core::level_manager::load_level_id(
+    auto result = glob::level_manager::getr().load_level_id(
         *glob::level::get(), glob::config::get()->level, glob::proto_objects_cache_set::get(),
         glob::objects_cache_set::get());
 
@@ -254,6 +256,32 @@ vulkan_engine::load_level(const utils::id& level_id)
     {
         ALOG_LAZY_ERROR;
         return false;
+    }
+
+    return true;
+}
+
+bool
+vulkan_engine::unload_render_resources(core::level& l)
+{
+    auto& cs = l.get_local_cs();
+
+    for (auto& t : cs.objects->get_items())
+    {
+        glob::render_bridge::getr().render_dtor(*t.second, true);
+    }
+
+    return true;
+}
+
+bool
+vulkan_engine::unload_render_resources(core::package& l)
+{
+    auto& cs = l.get_cache();
+
+    for (auto& t : cs.objects->get_items())
+    {
+        glob::render_bridge::getr().render_dtor(*t.second, true);
     }
 
     return true;
@@ -341,7 +369,7 @@ vulkan_engine::init_default_resources()
 
     auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
 
-    glob::render_bridge::getr().prepare_for_rendering(*obj, true);
+    glob::render_bridge::getr().render_ctor(*obj, true);
 }
 
 void
@@ -351,18 +379,18 @@ vulkan_engine::init_scene()
 
     root::point_light::construct_params plp;
 
-    plp.pos = {20.f, 20.f, 40.f};
+    plp.pos = {0.f, 20.f, 0.f};
 
     glob::level::getr().spawn_object<root::point_light>(AID("PL"), plp);
 
     core::spawn_parameters sp;
 
-    auto id1 = AID("decor");
+    auto id1 = AID("decor2");
     auto id2 = AID("decor2");
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 2;
+    int DIM = 5;
 
     for (x = 0; x < DIM; ++x)
     {
@@ -389,7 +417,7 @@ vulkan_engine::consume_updated_render_components()
 
     for (auto& i : items)
     {
-        glob::render_bridge::getr().prepare_for_rendering(*i, true);
+        glob::render_bridge::getr().render_ctor(*i, true);
     }
 
     items.clear();
@@ -402,7 +430,7 @@ vulkan_engine::consume_updated_render_assets()
 
     for (auto& i : items)
     {
-        glob::render_bridge::getr().prepare_for_rendering(*i, true);
+        glob::render_bridge::getr().render_ctor(*i, true);
     }
 
     items.clear();
@@ -415,7 +443,7 @@ vulkan_engine::consume_updated_shader_effects()
 
     for (auto& i : items)
     {
-        glob::render_bridge::getr().prepare_for_rendering(*i, true);
+        glob::render_bridge::getr().render_ctor(*i, true);
     }
 
     items.clear();
@@ -434,26 +462,5 @@ vulkan_engine::consume_updated_light_sources()
     items.clear();
 }
 
-bool
-vulkan_engine::prepare_for_rendering(core::package& p)
-{
-    auto& cs = p.get_objects();
-
-    for (auto& o : cs)
-    {
-        if (glob::render_bridge::getr().prepare_for_rendering(*o, true) != result_code::ok)
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void
-vulkan_engine::compile_all_shaders()
-{
-}
 
 }  // namespace agea

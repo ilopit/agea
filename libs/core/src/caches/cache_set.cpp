@@ -43,6 +43,18 @@ cache_set::cache_set()
 
 cache_set::cache_set(cache_set&&) noexcept = default;
 
+void
+cache_set::clear()
+{
+    objects->clear();
+    components->clear();
+    game_objects->clear();
+    materials->clear();
+    meshes->clear();
+    textures->clear();
+    shader_effects->clear();
+}
+
 cache_set&
 cache_set::operator=(cache_set&&) noexcept = default;
 

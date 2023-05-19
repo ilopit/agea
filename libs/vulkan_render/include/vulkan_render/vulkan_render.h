@@ -11,6 +11,7 @@
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
 #include <utils/line_conteiner.h>
+#include <utils/id_allocator.h>
 
 #include <algorithm>
 #include <vector>
@@ -52,7 +53,11 @@ struct frame_state
     clear_upload_queues()
     {
         m_objects_queue.clear();
-        m_materias_queue_set.clear();
+
+        for (auto& m : m_materias_queue_set)
+        {
+            m.clear();
+        }
     }
 
     vk_utils::vulkan_buffer m_object_buffer;
@@ -102,6 +107,8 @@ public:
 
     void
     add_point_light_source(render::ligh_data* p);
+    void
+    remove_point_light_source(render::ligh_data* p);
 
     gpu_data_index_type
     generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size);
@@ -136,6 +143,7 @@ private:
     frame_state&
     get_current_frame_transfer_data();
 
+public:
     void
     prepare_system_resources();
     void
@@ -188,8 +196,9 @@ private:
 
     utils::line_conteiner<uint32_t> m_ssbo_range;
 
-    // UI
+    utils::id_allocator m_objects_id;
 
+    // UI
     shader_effect_data* m_ui_se = nullptr;
     texture_data* m_ui_txt = nullptr;
     material_data* m_ui_mat = nullptr;

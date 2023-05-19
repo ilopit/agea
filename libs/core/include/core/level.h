@@ -160,6 +160,18 @@ public:
     void
     drop_pending_updates();
 
+    void
+    unregister_objects();
+
+    void
+    clear();
+
+    cache_set&
+    get_local_cs()
+    {
+        return m_local_cs;
+    }
+
 private:
     root::smart_object*
     spawn_object_impl(const utils::id& proto_id, const utils::id& id, const spawn_parameters& prms);

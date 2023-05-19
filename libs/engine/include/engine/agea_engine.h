@@ -58,15 +58,21 @@ public:
     void
     tick(float dt);
 
-private:
-    void
-    update_cameras();
-
     void
     init_default_resources();
 
     void
     init_scene();
+
+    bool
+    unload_render_resources(core::level& l);
+
+    bool
+    unload_render_resources(core::package& l);
+
+private:
+    void
+    update_cameras();
 
     void
     compile_all_shaders();

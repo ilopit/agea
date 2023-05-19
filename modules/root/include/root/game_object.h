@@ -3,6 +3,8 @@
 #include "root/game_object.generated.h"
 
 #include "core/model_minimal.h"
+#include "core/id_generator.h"
+
 #include "root/core_types/vec3.h"
 #include "root/components/game_object_component.h"
 #include "root/smart_object.h"
@@ -48,7 +50,9 @@ public:
                     const utils::id& id,
                     const typename T::construct_params& params)
     {
-        return spawn_component(parent, T::AR_TYPE_id(), id, params)->as<T>();
+        return spawn_component(parent, T::AR_TYPE_id(),
+                               glob::id_generator::getr().generate(id, T::AR_TYPE_id()), params)
+            ->as<T>();
     }
 
     component*

@@ -35,6 +35,13 @@ public:
         item = &obj;
     }
 
+    void
+    remove_item(root::smart_object& obj)
+    {
+        const auto& oid = obj.get_id();
+        m_items.erase(oid);
+    }
+
     bool
     has_item(const id_t& id)
     {
@@ -51,6 +58,12 @@ public:
     get_items()
     {
         return m_items;
+    }
+
+    void
+    clear()
+    {
+        m_items.clear();
     }
 
 protected:
@@ -72,6 +85,15 @@ public:
                    "Should have same architype!");
 
         hash_cache::add_item(obj);
+    }
+
+    void
+    remove_item(root::smart_object& obj)
+    {
+        AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
+                   "Should have same architype!");
+
+        hash_cache::remove_item(obj);
     }
 
     architype

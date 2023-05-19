@@ -22,6 +22,12 @@ public:
     bool
     load_package(const utils::id& id);
 
+    bool
+    unload_package(const utils::id& id);
+
+    bool
+    unload_package(package& p);
+
     void
     save_package(const utils::id& id, const utils::path& root_folder);
 
@@ -30,6 +36,12 @@ public:
 
     bool
     register_package(std::unique_ptr<package>& pkg);
+
+    std::unordered_map<utils::id, std::unique_ptr<package>>&
+    get_packages()
+    {
+        return m_packages;
+    }
 
 protected:
     std::unordered_map<utils::id, std::unique_ptr<package>> m_packages;

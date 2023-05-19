@@ -7,6 +7,7 @@
 #include "core/caches/hash_cache.h"
 
 #include <utils/singleton_instance.h>
+#include <utils/agea_log.h>
 
 namespace agea
 {
@@ -77,6 +78,22 @@ public:
         }
 
         m_mapping.at(architype::smart_object)->add_item(obj);
+    }
+
+    void
+    remove_item(root::smart_object& obj)
+    {
+        ALOG_INFO("Removing {0}", obj.get_id().cstr());
+
+        auto aid = obj.get_architype_id();
+
+        if (aid != architype::smart_object)
+        {
+            auto& item = m_mapping.at(aid);
+            item->remove_item(obj);
+        }
+
+        m_mapping.at(architype::smart_object)->remove_item(obj);
     }
 
     std::unordered_map<architype, architype_cache*>&

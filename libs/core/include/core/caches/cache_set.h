@@ -21,6 +21,9 @@ public:
     operator=(cache_set&&) noexcept;
     cache_set(cache_set&&) noexcept;
 
+    void
+    clear();
+
     std::unique_ptr<objects_cache> objects;
     std::unique_ptr<components_cache> components;
     std::unique_ptr<game_objects_cache> game_objects;

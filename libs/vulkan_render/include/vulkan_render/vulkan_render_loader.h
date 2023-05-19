@@ -27,15 +27,46 @@ namespace render
 {
 class render_device;
 
+struct b_deleter
+{
+    virtual ~b_deleter()
+    {
+    }
+};
+
+template <typename T>
+struct s_deleter : public b_deleter
+{
+    template <typename T>
+    static std::unique_ptr<b_deleter>
+    make(T&& v)
+    {
+        return std::make_unique<s_deleter<T>>(std::move(v));
+    }
+
+    s_deleter(T&& v)
+        : under_delete(std::move(v))
+    {
+    }
+
+    ~s_deleter()
+    {
+        int i = 2;
+    }
+
+    T under_delete;
+};
+
+template <typename T>
+struct rhandle;
+
 class vulkan_render_loader
 {
 public:
-    using resource_deleter = std::function<void()>;
-
     struct deleyer_delete_action
     {
         uint64_t frame_to_delete = 0;
-        resource_deleter deleter = nullptr;
+        std::unique_ptr<b_deleter> deleter = nullptr;
     };
 
     struct deleyer_delete_action_compare
@@ -47,16 +78,46 @@ public:
         }
     };
 
+    /*************************/
+
+    mesh_data*
+    get_mesh_data(const agea::utils::id& id)
+    {
+        return get_data<mesh_data>(m_meshes_cache, id);
+    }
+
     mesh_data*
     create_mesh(const agea::utils::id& mesh_id,
                 agea::utils::buffer_view<render::gpu_vertex_data> vertices,
                 agea::utils::buffer_view<render::gpu_index_data> indices);
+
+    void
+    destroy_mesh_data(const agea::utils::id& id);
+
+    /*************************/
+
+    texture_data*
+    get_texture_data(const agea::utils::id& id)
+    {
+        return get_data<texture_data>(m_textures_cache, id);
+    }
 
     texture_data*
     create_texture(const agea::utils::id& texture_id,
                    const agea::utils::buffer& base_color,
                    uint32_t w,
                    uint32_t h);
+
+    void
+    destroy_texture_data(const agea::utils::id& id);
+
+    /*************************/
+
+    object_data*
+    get_object_data(const agea::utils::id& id)
+    {
+        return get_data<object_data>(m_objects_cache, id);
+    }
 
     object_data*
     create_object(const agea::utils::id& id,
@@ -74,6 +135,23 @@ public:
                   const glm::mat4& normal_matrix,
                   const glm::vec3& obj_pos);
 
+    void
+    destroy_object(const agea::utils::id& id);
+
+    /*************************/
+
+    material_data*
+    get_material_data(const agea::utils::id& id)
+    {
+        return get_data<material_data>(m_materials_cache, id);
+    }
+
+    std::unordered_map<agea::utils::id, std::shared_ptr<material_data>>&
+    get_materials_cache()
+    {
+        return m_materials_cache;
+    }
+
     material_data*
     create_material(const agea::utils::id& id,
                     const agea::utils::id& type_id,
@@ -87,15 +165,46 @@ public:
                     shader_effect_data& se_data,
                     const agea::utils::dynamic_object& params);
 
+    void
+    destroy_material_data(const agea::utils::id& id);
+
+    /*************************/
+    shader_effect_data*
+    get_shader_effect_data(const agea::utils::id& id)
+    {
+        return get_data<shader_effect_data>(m_shaders_effects_cache, id);
+    }
+
     shader_effect_data*
     create_shader_effect(const agea::utils::id& id, const shader_effect_create_info& info);
 
     bool
     update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info);
 
+    void
+    destroy_shader_effect_data(const agea::utils::id& id);
+
+    /*************************/
+    shader_data*
+    get_shader_data(const agea::utils::id& id)
+    {
+        return get_data<shader_data>(m_shaders_cache, id);
+    }
+
+    /*************************/
+    sampler_data*
+    get_sampler_data(const agea::utils::id& id)
+    {
+        return get_data<sampler_data>(m_samplers_cache, id);
+    }
+
     sampler_data*
     create_sampler(const agea::utils::id& id, VkBorderColor color);
 
+    void
+    destroy_sampler_data(const agea::utils::id& id);
+
+    /*************************/
     void
     clear_caches();
 
@@ -109,62 +218,18 @@ public:
         return itr != col.end() ? itr->second.get() : nullptr;
     }
 
-    mesh_data*
-    get_mesh_data(const agea::utils::id& id)
+    template <typename T>
+    static T*
+    get_data(std::unordered_map<agea::utils::id, std::shared_ptr<rhandle<T>>>& col,
+             const agea::utils::id& id)
     {
-        return get_data<mesh_data>(m_meshes_cache, id);
-    }
+        auto itr = col.find(id);
 
-    texture_data*
-    get_texture_data(const agea::utils::id& id)
-    {
-        return get_data<texture_data>(m_textures_cache, id);
-    }
-
-    material_data*
-    get_material_data(const agea::utils::id& id)
-    {
-        return get_data<material_data>(m_materials_cache, id);
-    }
-
-    shader_data*
-    get_shader_data(const agea::utils::id& id)
-    {
-        return get_data<shader_data>(m_shaders_cache, id);
-    }
-
-    shader_effect_data*
-    get_shader_effect_data(const agea::utils::id& id)
-    {
-        return get_data<shader_effect_data>(m_shaders_effects_cache, id);
-    }
-
-    object_data*
-    get_object_data(const agea::utils::id& id)
-    {
-        return get_data<object_data>(m_objects_cache, id);
-    }
-
-    sampler_data*
-    get_sampler_data(const agea::utils::id& id)
-    {
-        return get_data<sampler_data>(m_samplers_cache, id);
+        return itr != col.end() ? &(itr->second->handle) : nullptr;
     }
 
     void
     delete_sheduled_actions();
-
-    gpu_data_index_type
-    generate_new_object_index()
-    {
-        return m_new_object_index++;
-    }
-
-    gpu_data_index_type
-    get_objects_alloc_size() const
-    {
-        return m_new_object_index * sizeof(gpu_object_data);
-    }
 
     std::unordered_map<agea::utils::id, std::shared_ptr<object_data>>&
     get_objects_cache()
@@ -172,22 +237,22 @@ public:
         return m_objects_cache;
     }
 
-    std::unordered_map<agea::utils::id, std::shared_ptr<material_data>>&
-    get_materials_cache()
-    {
-        return m_materials_cache;
-    }
-
     gpu_data_index_type
     last_mat_index(const agea::utils::id& type_id)
     {
         return m_materials_index.at(type_id);
     }
+    void
+    shedule_to_deltete(std::unique_ptr<b_deleter> d);
+
+    template <typename T>
+    void
+    shedule_to_deltete_t(T&& v)
+    {
+        shedule_to_deltete(s_deleter<T>::make(std::move(v)));
+    }
 
 private:
-    void
-    shedule_to_deltete(resource_deleter d);
-
     gpu_data_index_type
     generate_mt_idx(const agea::utils::id& type_id)
     {
@@ -211,7 +276,6 @@ private:
                         deleyer_delete_action_compare>
         m_ddq;
 
-    gpu_data_index_type m_new_object_index = 0U;
     gpu_data_index_type m_last_mtt_id = 0U;
 };
 
@@ -224,5 +288,34 @@ struct vulkan_render_loader
 {
 };
 };  // namespace glob
+}  // namespace agea
+
+namespace agea
+{
+namespace render
+{
+
+template <typename T>
+struct rhandle
+{
+    template <typename Args>
+    rhandle(Args&& args)
+        : handle(std::forward<Args>(args))
+    {
+    }
+
+    rhandle(rhandle&&) noexcept = default;
+    rhandle&
+    operator=(rhandle&&) noexcept = default;
+
+    ~rhandle()
+    {
+        agea::glob::vulkan_render_loader::getr().shedule_to_deltete_t(std::move(handle));
+    }
+
+    T handle;
+};
+
+}  // namespace render
 
 }  // namespace agea

@@ -37,7 +37,9 @@
 
 #define AGEA_reflection_type_ui_args ::agea::blob_ptr ptr
 
-#define AGEA_reflection_type_render_loader agea::render_bridge &rb, root::smart_object &, bool
+#define AGEA_reflection_type_render_ctor_args agea::render_bridge &rb, root::smart_object &, bool
+
+#define AGEA_reflection_type_render_dtor_args agea::render_bridge &rb, root::smart_object &, bool
 
 #define AGEA_AR_alloc_args const agea::utils::id& id
 
@@ -56,7 +58,8 @@ using type_deserialisation_with_prototype_handler =
 using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
-using type_rendler_builder = result_code (*)(AGEA_reflection_type_render_loader);
+using type_rendler_ctor = result_code (*)(AGEA_reflection_type_render_ctor_args);
+using type_rendler_dtor = result_code (*)(AGEA_reflection_type_render_dtor_args);
 using type_allocator = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
 using type_instance = const root::smart_object& (*)();
 
@@ -102,7 +105,8 @@ struct reflection_type
     type_copy_handler                           copy = nullptr;
     type_compare_handler                        compare = nullptr;
     type_ui_handler                             ui = nullptr;
-    type_rendler_builder                        render = nullptr;
+    type_rendler_ctor                           render_ctor = nullptr;
+    type_rendler_dtor                           render_dtor = nullptr;
     type_allocator                              alloc = nullptr;
     type_instance                               instance = nullptr;
 

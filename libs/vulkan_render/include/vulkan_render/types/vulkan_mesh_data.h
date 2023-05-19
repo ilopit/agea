@@ -30,6 +30,10 @@ public:
     }
     ~mesh_data();
 
+    mesh_data(mesh_data&& other) noexcept = default;
+    mesh_data&
+    operator=(mesh_data&& other) noexcept = default;
+
     uint32_t
     vertices_size()
     {

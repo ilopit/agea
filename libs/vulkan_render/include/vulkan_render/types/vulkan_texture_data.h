@@ -21,11 +21,13 @@ public:
     ~texture_data();
 
     texture_data(const texture_data&) = delete;
-    texture_data(texture_data&&) = delete;
     texture_data&
     operator=(const texture_data&) = delete;
+
+    texture_data(texture_data&& other) noexcept;
+
     texture_data&
-    operator=(texture_data&&) = delete;
+    operator=(texture_data&& other) noexcept;
 
     const ::agea::utils::id&
     get_id() const

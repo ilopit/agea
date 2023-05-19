@@ -91,7 +91,8 @@ reflection::reflection_type::finalize_handlers()
         copy = copy ? copy : parent->copy;
         compare = compare ? compare : parent->compare;
         ui = ui ? ui : parent->ui;
-        render = render ? render : parent->render;
+        render_ctor = render_ctor ? render_ctor : parent->render_ctor;
+        render_dtor = render_dtor ? render_dtor : parent->render_dtor;
         instance = instance ? instance : parent->instance;
         alloc = alloc ? alloc : parent->alloc;
     }

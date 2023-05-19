@@ -48,7 +48,10 @@ public:
     is_agea_mesh(const utils::path& p);
 
     agea::result_code
-    prepare_for_rendering(root::smart_object& obj, bool sub_objects);
+    render_ctor(root::smart_object& obj, bool sub_objects);
+
+    agea::result_code
+    render_dtor(root::smart_object& obj, bool sub_objects);
 
     utils::dynamic_object
     collect_gpu_data(root::smart_object& so);
