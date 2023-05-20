@@ -76,11 +76,13 @@ game_editor::ev_reload()
 
     glob::vulkan_render::getr().clear_upload_queue();
 
+    auto pids = level.get_package_ids();
+
     glob::engine::getr().unload_render_resources(level);
     glob::level_manager::getr().unload_level(level);
 
     auto& pm = glob::package_manager::getr();
-    for (auto& id : level.get_package_ids())
+    for (auto& id : pids)
     {
         auto p = pm.get_package(id);
         glob::engine::getr().unload_render_resources(*p);
