@@ -87,6 +87,7 @@ public:
 
     descriptor_builder&
     bind_image(uint32_t binding,
+               uint32_t binding_count,
                VkDescriptorImageInfo* image_info,
                VkDescriptorType type,
                VkShaderStageFlags stage_flags);

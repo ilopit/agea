@@ -23,9 +23,10 @@ struct gpu_camera_data
 
 struct gpu_scene_data
 {
-    glm::vec4 lights[4];
-    glm::vec4 lights_color;
-    glm::vec4 lights_position;
+    alignas(16) glm::vec3 position;
+    alignas(16) glm::vec3 ambient;
+    alignas(16) glm::vec3 diffuse;
+    alignas(16) glm::vec3 specular;
 };
 
 struct gpu_object_data

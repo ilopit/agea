@@ -255,13 +255,14 @@ descriptor_builder::bind_buffer(uint32_t binding,
 
 descriptor_builder&
 descriptor_builder::bind_image(uint32_t binding,
+                               uint32_t binding_count,
                                VkDescriptorImageInfo* image_info,
                                VkDescriptorType type,
                                VkShaderStageFlags stage_flags)
 {
     VkDescriptorSetLayoutBinding new_binding{};
 
-    new_binding.descriptorCount = 1;
+    new_binding.descriptorCount = binding_count;
     new_binding.descriptorType = type;
     new_binding.pImmutableSamplers = nullptr;
     new_binding.stageFlags = stage_flags;
@@ -273,7 +274,7 @@ descriptor_builder::bind_image(uint32_t binding,
     new_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     new_write.pNext = nullptr;
 
-    new_write.descriptorCount = 1;
+    new_write.descriptorCount = binding_count;
     new_write.descriptorType = type;
     new_write.pImageInfo = image_info;
     new_write.dstBinding = binding;

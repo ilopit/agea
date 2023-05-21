@@ -10,10 +10,6 @@ namespace agea
 
 glob::resource_locator::type glob::resource_locator::type::s_instance;
 
-const std::string TEXTURE_EXT = ".texture.srms";
-const std::string MATERIAL_EXT = ".material.srms";
-const std::string MESH_EXT = ".mesh.srms";
-
 temp_dir_context::~temp_dir_context()
 {
     if (folder)
@@ -46,18 +42,19 @@ resource_locator::resource_dir(category c)
     switch (c)
     {
         // clang-format off
-    case category::all:              {                         break;}
-    case category::assets:           {path /= "assets";        break;}
-    case category::configs:          {path /= "configs";       break;}
-    case category::shaders_raw:      {path /= "shaders";       break;}
-    case category::shaders_compiled: {path /= "cache/shaders"; break;}
-    case category::tmp:              {path /= "tmp";           break;}
-    case category::tools:            {path /= "tools";         break;}
-    case category::levels:           {path /= "levels";        break;}
-    case category::objects:          {path /= "objects";       break;}
-    case category::components:       {path /= "components";    break;}
-    case category::packages:         {path /= "packages";      break;}
-    case category::fonts:            {path /= "fonts";         break;}
+    case category::all:              {                              break;}
+    case category::assets:           {path /= "assets";             break;}
+    case category::configs:          {path /= "configs";            break;}
+    case category::shaders_raw:      {path /= "shaders";            break;}
+    case category::shaders_compiled: {path /= "cache/shaders";      break;}
+    case category::shaders_includes: {path /= "shaders_includes";   break;}
+    case category::tmp:              {path /= "tmp";                break;}
+    case category::tools:            {path /= "tools";              break;}
+    case category::levels:           {path /= "levels";             break;}
+    case category::objects:          {path /= "objects";            break;}
+    case category::components:       {path /= "components";         break;}
+    case category::packages:         {path /= "packages";           break;}
+    case category::fonts:            {path /= "fonts";              break;}
         // clang-format on
     default:
         AGEA_never("Not supported category");

@@ -68,6 +68,7 @@ public:
 
     std::vector<texture_sampler_data> texture_samples;
     shader_effect_data* effect = nullptr;
+    VkDescriptorSet m_set = VK_NULL_HANDLE;
 
 private:
     ::agea::utils::id m_id;

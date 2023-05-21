@@ -35,7 +35,7 @@ namespace render
 namespace
 {
 
-void
+bool
 compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compiled_buffer)
 {
     static int shader_id = 0;
@@ -52,20 +52,25 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
     agea::utils::path compiled_path = *td.folder / shader_name.str();
     compiled_path.add(".spv");
 
-    params.arguments = "-V " + raw_buffer.get_file().str() + " -o " + compiled_path.str() +
-                       " --target-env=vulkan1.2 --target-spv=spv1.5";
+    auto includes = glob::resource_locator::get()->resource_dir(category::shaders_includes);
+    params.arguments =
+        std::format("-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2}",
+                    raw_buffer.get_file().str(), compiled_path.str(), includes.str());
 
     uint64_t rc = 0;
-    if (!ipc::run_binary(params, rc))
+    if (!ipc::run_binary(params, rc) || rc != 0)
     {
         AGEA_never("Shader compilation failed");
-        return;
+        return false;
     }
 
     if (!agea::utils::buffer::load(compiled_path, compiled_buffer))
     {
         ALOG_FATAL("Shader compilation failed");
+        return false;
     }
+
+    return true;
 }
 
 std::shared_ptr<shader_data>

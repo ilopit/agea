@@ -1,7 +1,11 @@
-type_id: simple_texture_material
+type_id: pbr_material
 id: mt_container
-shader_effect: se_simple_texture
-simple_texture:
+shader_effect: se_simple_texture_lit
+diffuse:
     texture: txt_container
     slot: 0
+    sampler: default
+specular:
+    texture: txt_container_spec
+    slot: 1
     sampler: default

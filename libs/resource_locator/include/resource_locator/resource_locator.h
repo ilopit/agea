@@ -25,6 +25,7 @@ enum class category : int
     objects,
     packages,
     shaders_compiled,
+    shaders_includes,
     shaders_raw,
     tools,
     tmp,

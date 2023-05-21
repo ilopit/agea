@@ -206,8 +206,10 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
         upload_render_data(current_frame);
     }
 
-    m_scene_parameters.lights_color = glm::vec4{1.f, 1.f, 1.f, 0.f};
-    m_scene_parameters.lights_position = m_lighsts.front()->obj_pos;
+    m_scene_parameters.ambient = glm::vec3{0.2f};
+    m_scene_parameters.diffuse = glm::vec3{0.5f};
+    m_scene_parameters.specular = glm::vec3{1.0f};
+    m_scene_parameters.position = m_lighsts.front()->obj_pos;
 
     auto& dyn = current_frame.m_dynamic_data_buffer;
 
@@ -369,10 +371,10 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
                 cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, GLOBAL_descriptor_sets, 1,
                 &global_ds, dyn_buffer.get_dyn_offsets_count(), dyn_buffer.get_dyn_offsets_ptr());
 
-            for (auto& ts : cur_material->texture_samples)
+            if (cur_material->m_set)
             {
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                        TEXTURES_descriptor_sets, 1, &ts.descriptor_set, 0,
+                                        TEXTURES_descriptor_sets, 1, &cur_material->m_set, 0,
                                         nullptr);
             }
         }
@@ -636,13 +638,6 @@ vulkan_render::prepare_ui_pipeline()
 
     m_ui_se = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci);
 
-    auto sampler = glob::vulkan_render_loader::getr().get_sampler_data(AID("font"));
-
-    VkDescriptorImageInfo image_buffer_info{};
-    image_buffer_info.sampler = sampler->m_sampler;
-    image_buffer_info.imageView = m_ui_txt->image_view;
-    image_buffer_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
     auto device = glob::render_device::get();
 
     std::vector<texture_sampler_data> samples(1);
@@ -756,10 +751,10 @@ vulkan_render::draw_ui(frame_state& fs)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline);
 
-    for (auto& ts : m_ui_mat->texture_samples)
+    // for (auto& ts : m_ui_mat->texture_samples)
     {
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout,
-                                ts.slot, 1, &ts.descriptor_set, 0, nullptr);
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout, 0,
+                                1, &m_ui_mat->m_set, 0, nullptr);
     }
 
     m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);

@@ -407,21 +407,23 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
     mat_data->effect = &se_data;
     mat_data->texture_samples = samples;
 
-    VkDescriptorImageInfo image_buffer_info{};
-
-    image_buffer_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-    for (auto& ts : mat_data->texture_samples)
+    auto sampler = get_sampler_data(AID("default"));
+    if (!samples.empty())
     {
-        auto sampler = get_sampler_data(AID("default"));
-        image_buffer_info.sampler = sampler->m_sampler;
-        image_buffer_info.imageView = ts.texture->image_view;
+        std::vector<VkDescriptorImageInfo> image_buffer_info(samples.size());
+
+        for (int i = 0; i < samples.size(); ++i)
+        {
+            image_buffer_info[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            image_buffer_info[i].sampler = sampler->m_sampler;
+            image_buffer_info[i].imageView = samples[i].texture->image_view;
+        }
 
         vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                             device->descriptor_allocator())
-            .bind_image(ts.slot, &image_buffer_info, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        VK_SHADER_STAGE_FRAGMENT_BIT)
-            .build(ts.descriptor_set);
+            .bind_image(0, (uint32_t)image_buffer_info.size(), image_buffer_info.data(),
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build(mat_data->m_set);
     }
 
     mat_data->gpu_data = gpu_params;
