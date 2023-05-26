@@ -15,15 +15,70 @@ layout (set = 0, binding = 0) uniform CameraData
     vec3 camPos;
 } dyn_camera_data;
 
-layout(set = 0, binding = 1) uniform SceneData{
-    vec3 position;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-} dyn_scene_data;
-
 // Constants
 layout(push_constant) uniform Constants
 {
     uint material_id;
+    uint directional_light_id;
+
+    uint point_lights_size;
+    uint point_light_ids[10];
+
+    uint spot_lights_size;
+    uint spot_light_ids[10];
 } constants;
+
+struct DirLight {
+    vec3 direction;
+	
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+struct PointLight {
+    vec3 position;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+
+    float constant;
+    float linear;
+    float quadratic;
+};
+
+struct SpotLight {
+    vec3 position;
+    vec3 direction;  
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular; 
+
+    float cutOff;
+    float outerCutOff;
+  
+    float constant;
+    float linear;
+    float quadratic;      
+};
+
+layout(set = 0, binding = 1) uniform SceneData{
+    DirLight directional;
+    PointLight points[10];
+    SpotLight spots[10];
+} dyn_scene_data;
+
+layout(std140, set = 3, binding = 0) readonly buffer DirLightBuffer{   
+
+    DirLight objects[];
+} dyn_directional_lights_buffer;
+
+layout(std140, set = 3, binding = 1) readonly buffer PointLightBuffer{   
+
+    PointLight objects[];
+} dyn_point_lights_buffer;
+
+layout(std140, set = 3, binding = 2) readonly buffer SpotLightBuffer{   
+
+    SpotLight objects[];
+} dyn_spot_lights_buffer;

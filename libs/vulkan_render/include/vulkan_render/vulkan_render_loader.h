@@ -2,6 +2,8 @@
 
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
+#include "vulkan_render/types/vulkan_light_data.h"
+
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
 #include "vulkan_render/types/vulkan_material_data.h"
@@ -140,6 +142,23 @@ public:
 
     /*************************/
 
+    light_data*
+    get_light_data(const agea::utils::id& id)
+    {
+        return get_data<light_data>(m_light_cache, id);
+    }
+
+    light_data*
+    create_light_data(const agea::utils::id& id, light_type lt, const gpu_light& gld);
+
+    bool
+    update_light_data(light_data& ld, const gpu_light& gld);
+
+    void
+    destroy_light_data(const agea::utils::id& id);
+
+    /*************************/
+
     material_data*
     get_material_data(const agea::utils::id& id)
     {
@@ -252,6 +271,12 @@ public:
         shedule_to_deltete(s_deleter<T>::make(std::move(v)));
     }
 
+    std::unordered_map<agea::utils::id, std::shared_ptr<light_data>>&
+    get_lights()
+    {
+        return m_light_cache;
+    }
+
 private:
     gpu_data_index_type
     generate_mt_idx(const agea::utils::id& type_id)
@@ -266,6 +291,8 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<object_data>> m_objects_cache;
+
+    std::unordered_map<agea::utils::id, std::shared_ptr<light_data>> m_light_cache;
 
     std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 

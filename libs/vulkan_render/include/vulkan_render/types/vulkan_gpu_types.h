@@ -21,12 +21,46 @@ struct gpu_camera_data
     glm::vec3 position;
 };
 
-struct gpu_scene_data
+struct gpu_directional_light_data
+{
+    alignas(16) glm::vec3 direction;
+    alignas(16) glm::vec3 ambient;
+    alignas(16) glm::vec3 diffuse;
+    alignas(16) glm::vec3 specular;
+};
+
+struct gpu_point_light_data
 {
     alignas(16) glm::vec3 position;
     alignas(16) glm::vec3 ambient;
     alignas(16) glm::vec3 diffuse;
     alignas(16) glm::vec3 specular;
+
+    float constant;
+    float linear;
+    float quadratic;
+};
+
+struct gpu_spot_light_data
+{
+    alignas(16) glm::vec3 position;
+    alignas(16) glm::vec3 direction;
+    alignas(16) glm::vec3 ambient;
+    alignas(16) glm::vec3 diffuse;
+    alignas(16) glm::vec3 specular;
+
+    float cut_off;
+    float outer_cut_off;
+    float constant;
+    float linear;
+    float quadratic;
+};
+
+struct gpu_scene_data
+{
+    gpu_directional_light_data directional;
+    gpu_point_light_data points[10];
+    gpu_spot_light_data spots[10];
 };
 
 struct gpu_object_data
@@ -47,7 +81,14 @@ struct gpu_vertex_data
 
 struct gpu_push_constants
 {
-    alignas(16) gpu_data_index_type mat_id;
+    gpu_data_index_type material_id;
+    gpu_data_index_type directional_light_id;
+
+    gpu_data_index_type point_lights_size;
+    gpu_data_index_type point_light_ids[10];
+
+    gpu_data_index_type spot_lights_size;
+    gpu_data_index_type spot_light_ids[10];
 };
 
 struct gpu_type

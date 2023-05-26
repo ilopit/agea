@@ -2,7 +2,6 @@ include/root/root_types_custom.h
 include/root/game_object.h
 include/root/mesh_object.h
 include/root/smart_object.h
-include/root/point_light.h
 include/root/core_types/vec2.h
 include/root/core_types/vec3.h
 include/root/core_types/vec4.h
@@ -10,7 +9,12 @@ include/root/components/camera_component.h
 include/root/components/component.h
 include/root/components/game_object_component.h
 include/root/components/mesh_component.h
-include/root/components/light_component.h
+include/root/lights/components/directional_light_component.h
+include/root/lights/components/point_light_component.h
+include/root/lights/components/spot_light_component.h
+include/root/lights/directional_light.h
+include/root/lights/point_light.h
+include/root/lights/spot_light.h
 include/root/assets/asset.h
 include/root/assets/material.h
 include/root/assets/pbr_material.h

@@ -1,0 +1,5 @@
+type_id: texture
+id: txt_spot_light
+base_color: class/textures/txt_spot_light.png
+width: 128
+height: 128

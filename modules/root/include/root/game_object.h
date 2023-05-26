@@ -63,6 +63,9 @@ public:
     component*
     spawn_component_with_proto(component* parent, const utils::id& proto_id, const utils::id& id);
 
+    component*
+    spawn_component_with_proto(component* parent, const utils::id& proto_id);
+
     virtual void
     on_tick(float)
     {

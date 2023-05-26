@@ -3,6 +3,8 @@ file(GLOB ROOT_CACHES_SRC                "include/root/caches/*.h"              
 file(GLOB ROOT_DEMO_SRC                  "include/root/demo/*.h"                       "src/demo/*.cpp")
 file(GLOB ROOT_CORE_TYPES_SRC            "include/root/core_types/*.h"                 "src/core_types/*.cpp")
 file(GLOB ROOT_COMPONENTS_SRC            "include/root/components/*.h"                 "src/components/*.cpp")
+file(GLOB ROOT_LIGHTS_COMPONENTS_SRC     "include/root/lights/components/*.h"          "src/lights/components/*.cpp")
+file(GLOB ROOT_LIGHTS_SRC                "include/root/lights/*.h"                     "src/lights/*.cpp")
 file(GLOB ROOT_SRC                       "include/root/*.h"                            "src/*.cpp")
 file(GLOB ROOT_REFLECTION_SRC            "include/root/reflection/*.h"                 "src/reflection/*.cpp")
 file(GLOB ROOT_REFLECTION_HANDLERS_SRC   "include/root/reflection/type_handlers/*.h"   "src/reflection/type_handlers/*.cpp")
@@ -12,18 +14,22 @@ file(GLOB GENERATED_SRC                   "${CMAKE_BINARY_DIR}/agea_generated/ro
 source_group("assets" FILES  ${ROOT_ASSETS_SRC})
 source_group("caches" FILES  ${ROOT_CACHES_SRC})
 source_group("components" FILES  ${ROOT_COMPONENTS_SRC})
+source_group("lights/components" FILES  ${ROOT_LIGHTS_COMPONENTS_SRC})
+source_group("lights" FILES  ${ROOT_LIGHTS_SRC})
 source_group("core_types" FILES  ${ROOT_CORE_TYPES_SRC})
 source_group("root" FILES  ${ROOT_SRC})
 source_group("reflection" FILES  ${ROOT_REFLECTION_SRC})
 source_group("generated" FILES  ${GENERATED_SRC})
 
 add_library(root.m.model STATIC
-   ${ROOT_COMPONENTS_SRC}         
+   ${ROOT_COMPONENTS_SRC}
    ${ROOT_ASSETS_SRC}
    ${ROOT_DEMO_SRC}
    ${ROOT_SRC}
    ${ROOT_CACHES_SRC}
    ${ROOT_CORE_TYPES_SRC}
+   ${ROOT_LIGHTS_SRC}
+   ${ROOT_LIGHTS_COMPONENTS_SRC}
    ${ROOT_REFLECTION_SRC}        
    ${ROOT_REFLECTION_HANDLERS_SRC}
    

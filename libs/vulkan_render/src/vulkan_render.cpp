@@ -41,12 +41,15 @@ namespace
 const uint32_t GLOBAL_descriptor_sets = 0;
 const uint32_t OBJECTS_descriptor_sets = 1;
 const uint32_t TEXTURES_descriptor_sets = 2;
+const uint32_t LIGHTS_descriptor_sets = 3;
 
 const uint32_t INITIAL_OBJECTS_RANGE_SIZE = 4 * 1024;
 const uint32_t INITIAL_MATERIAL_RANGE_SIZE = 1 * 1024;
+const uint32_t INITIAL_LIGHTS_RANGE_SIZE = 1 * 1024;
 
 const uint32_t SSBO_BUFFER_SIZE = 16 * 1024;
-const uint32_t DYNAMIC_BUFFER_SIZE = 1 * 1024;
+const uint32_t LIGHTS_BUFFER_SIZE = 3 * 1024;
+const uint32_t DYNAMIC_BUFFER_SIZE = 4 * 1024;
 }  // namespace
 
 vulkan_render::vulkan_render()
@@ -71,6 +74,9 @@ vulkan_render::init()
 
         m_frames[i].m_object_buffer = device->create_buffer(
             SSBO_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].m_lights_buffer = device->create_buffer(
+            LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].m_dynamic_data_buffer = device->create_buffer(
             DYNAMIC_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -206,10 +212,37 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
         upload_render_data(current_frame);
     }
 
-    m_scene_parameters.ambient = glm::vec3{0.2f};
-    m_scene_parameters.diffuse = glm::vec3{0.5f};
-    m_scene_parameters.specular = glm::vec3{1.0f};
-    m_scene_parameters.position = m_lighsts.front()->obj_pos;
+    if (get_current_frame_transfer_data().has_light_data())
+    {
+        upload_light_data(current_frame);
+    }
+
+    /*
+    m_scene_parameters.directional.ambient = glm::vec3{0.4f};
+    m_scene_parameters.directional.diffuse = glm::vec3{0.5f};
+    m_scene_parameters.directional.specular = glm::vec3{1.0f};
+    m_scene_parameters.directional.direction = glm::vec3{1.0f};
+
+    m_scene_parameters.points[0].position = glm::vec3{-20.0f};
+    m_scene_parameters.points[0].ambient = glm::vec3{1.0f};
+    m_scene_parameters.points[0].diffuse = glm::vec3{0.5f};
+    m_scene_parameters.points[0].specular = glm::vec3{1.0f};
+    m_scene_parameters.points[0].constant = 1.0f;
+    m_scene_parameters.points[0].linear = 0.014f;
+    m_scene_parameters.points[0].quadratic = 0.0007f;
+
+    m_scene_parameters.spots[0].direction = glm::vec3{1.0f};
+    m_scene_parameters.spots[0].position = glm::vec3{-20.0f};
+    m_scene_parameters.spots[0].ambient = glm::vec3{1.0f};
+    m_scene_parameters.spots[0].diffuse = glm::vec3{0.5f};
+    m_scene_parameters.spots[0].specular = glm::vec3{1.0f};
+    m_scene_parameters.spots[0].constant = 1.0f;
+    m_scene_parameters.spots[0].linear = 0.014f;
+    m_scene_parameters.spots[0].quadratic = 0.0007f;
+    m_scene_parameters.spots[0].cut_off = glm::cos(glm::radians(17.0f));
+    m_scene_parameters.spots[0].outer_cut_off = glm::cos(glm::radians(18.0f));
+    */
+    // m_lighsts.front()->obj_pos;
 
     auto& dyn = current_frame.m_dynamic_data_buffer;
 
@@ -218,32 +251,68 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     dyn.upload_data(m_scene_parameters);
     dyn.end();
 
-    VkDescriptorBufferInfo dynamic_info{};
-    dynamic_info.buffer = current_frame.m_dynamic_data_buffer.buffer();
-    dynamic_info.offset = 0;
-    dynamic_info.range = dyn.get_offset();
-
-    VkDescriptorSet global_set;
-    vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
-                                        current_frame.frame->m_dynamic_descriptor_allocator.get())
-        .bind_buffer(0, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(1, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_FRAGMENT_BIT)
-        .build(global_set);
+    build_global_set(current_frame);
+    build_light_set(current_frame);
 
     for (auto& r : m_default_render_object_queue)
     {
-        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, global_set,
-                           current_frame);
+        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, current_frame);
     }
 
     if (!m_transparent_render_object_queue.empty())
     {
         update_transparent_objects_queue();
         draw_objects_queue(m_transparent_render_object_queue, cmd, current_frame.m_object_buffer,
-                           dyn, global_set, current_frame);
+                           dyn, current_frame);
     }
+}
+
+void
+vulkan_render::build_global_set(render::frame_state& current_frame)
+{
+    VkDescriptorBufferInfo dynamic_info{};
+    dynamic_info.buffer = current_frame.m_dynamic_data_buffer.buffer();
+    dynamic_info.offset = 0;
+    dynamic_info.range = current_frame.m_dynamic_data_buffer.get_offset();
+
+    vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
+                                        current_frame.frame->m_dynamic_descriptor_allocator.get())
+        .bind_buffer(0, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(1, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                     VK_SHADER_STAGE_FRAGMENT_BIT)
+        .build(m_global_set);
+}
+
+void
+vulkan_render::build_light_set(render::frame_state& current_frame)
+{
+    VkDescriptorBufferInfo directional_light_info{};
+    directional_light_info.buffer = current_frame.m_lights_buffer.buffer();
+    directional_light_info.offset = 0;
+    directional_light_info.range = INITIAL_LIGHTS_RANGE_SIZE;
+
+    VkDescriptorBufferInfo point_light_info{};
+    point_light_info.buffer = current_frame.m_lights_buffer.buffer();
+    point_light_info.offset = INITIAL_LIGHTS_RANGE_SIZE;
+    point_light_info.range = INITIAL_LIGHTS_RANGE_SIZE;
+
+    VkDescriptorBufferInfo spot_light_info{};
+    spot_light_info.buffer = current_frame.m_lights_buffer.buffer();
+    spot_light_info.offset = INITIAL_LIGHTS_RANGE_SIZE * 2;
+    spot_light_info.range = INITIAL_LIGHTS_RANGE_SIZE;
+
+    vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
+                                        current_frame.frame->m_dynamic_descriptor_allocator.get())
+        .bind_buffer(0, &directional_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                     VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(1, &point_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                     VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(2, &spot_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                     VK_SHADER_STAGE_FRAGMENT_BIT)
+        .build(m_light_set);
+
+    AGEA_check(m_light_set, "Should never happens");
 }
 
 void
@@ -309,15 +378,54 @@ vulkan_render::upload_render_data(render::frame_state& frame)
 }
 
 void
+vulkan_render::upload_light_data(render::frame_state& frame)
+{
+    auto& buffer_td = frame.m_lights_buffer;
+
+    buffer_td.begin();
+
+    auto direct =
+        (render::gpu_directional_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_RANGE_SIZE);
+
+    auto point_data =
+        (render::gpu_point_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_RANGE_SIZE);
+
+    auto spot_light =
+        (render::gpu_spot_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_RANGE_SIZE);
+
+    for (auto pd : frame.m_lights_queue)
+    {
+        switch (pd->m_type)
+        {
+        case light_type::directional_light_data:
+            direct[pd->m_gpu_id] = pd->m_data.directional;
+            break;
+
+        case light_type::point_light_data:
+            point_data[pd->m_gpu_id] = pd->m_data.point;
+            break;
+        case light_type::spot_light_data:
+            spot_light[pd->m_gpu_id] = pd->m_data.spot;
+            break;
+        default:
+            break;
+        }
+    }
+
+    frame.m_lights_queue.clear();
+
+    buffer_td.end();
+}
+
+void
 vulkan_render::draw_objects_queue(render_line_conteiner& r,
                                   VkCommandBuffer cmd,
                                   vk_utils::vulkan_buffer& ssbo_buffer,
                                   vk_utils::vulkan_buffer& dyn_buffer,
-                                  VkDescriptorSet global_ds,
                                   render::frame_state& current_frame)
 
 {
-    const uint32_t dummy_offest[] = {0, 0};
+    const uint32_t dummy_offest[] = {0, 0, 0};
 
     uint32_t cur_material_idx = INVALID_GPU_INDEX;
     mesh_data* cur_mesh = nullptr;
@@ -331,7 +439,8 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
     object_buffer_info.offset = 0;
     object_buffer_info.range = ssbo_buffer.get_range_alloc_size(0);
 
-    uint32_t objects_to_draw_idx = 0;
+    collect_lights();
+
     for (auto& obj : r)
     {
         if (cur_material_idx != obj->material->gpu_type_idx())
@@ -367,16 +476,20 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
                                     OBJECTS_descriptor_sets, 1, &object_data_set, 2, dummy_offest);
 
-            vkCmdBindDescriptorSets(
-                cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, GLOBAL_descriptor_sets, 1,
-                &global_ds, dyn_buffer.get_dyn_offsets_count(), dyn_buffer.get_dyn_offsets_ptr());
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+                                    LIGHTS_descriptor_sets, 1, &m_light_set, 3, dummy_offest);
 
-            if (cur_material->m_set)
-            {
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                        TEXTURES_descriptor_sets, 1, &cur_material->m_set, 0,
-                                        nullptr);
-            }
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+                                    GLOBAL_descriptor_sets, 1, &m_global_set,
+                                    dyn_buffer.get_dyn_offsets_count(),
+                                    dyn_buffer.get_dyn_offsets_ptr());
+        }
+
+        // TODO, optimize
+        if (obj->material->m_set)
+        {
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+                                    TEXTURES_descriptor_sets, 1, &obj->material->m_set, 0, nullptr);
         }
 
         if (cur_mesh != obj->mesh)
@@ -394,11 +507,11 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
             }
         }
 
-        render::gpu_push_constants c{};
-        c.mat_id = obj->material->gpu_idx();
+        m_obj_config.material_id = obj->material->gpu_idx();
 
-        vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(render::gpu_push_constants), &c);
+        constexpr auto range = sizeof(render::gpu_push_constants);
+        vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
+                           &m_obj_config);
 
         // we can now draw
         if (!cur_mesh->has_indices())
@@ -410,6 +523,16 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
             vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->gpu_index());
         }
     }
+}
+
+void
+vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id)
+{
+    m_obj_config.directional_light_id = 0U;
+    m_obj_config.point_lights_size = 0U;
+    m_obj_config.spot_lights_size = 0U;
+
+    auto& lts = glob::vulkan_render_loader::getr().get_lights();
 }
 
 void
@@ -473,18 +596,44 @@ vulkan_render::schedule_game_data_gpu_upload(render::object_data* obj_date)
 }
 
 void
-vulkan_render::add_point_light_source(render::ligh_data* p)
+vulkan_render::schedule_light_data_gpu_upload(render::light_data* ld)
 {
-    m_lighsts.push_back(p);
+    for (auto& q : m_frames)
+    {
+        q.m_lights_queue.emplace_back(ld);
+    }
 }
 
 void
-vulkan_render::remove_point_light_source(render::ligh_data* p)
+vulkan_render::add_point_light_source(light_type lt, const gpu_light& gl)
 {
-    auto itr = std::remove_if(m_lighsts.begin(), m_lighsts.end(),
-                              [p](render::ligh_data* i) { return p == i; });
+    //     switch (lt)
+    //     {
+    //     case light_type::directional_light_data:
+    //
+    //         m_dir_lights.push_back(gl.directional);
+    //
+    //         break;
+    //
+    //     case light_type::spot_light_data:
+    //         auto id = m_spot_lights_idalloc.alloc_id();
+    //         m_spot_lights.push_back(gl.spot);
+    //         break;
+    //
+    //     case light_type::point_light_data:
+    //         auto id = m_point_lights_idalloc.alloc_id();
+    //         m_point_lights.push_back(gl.point);
+    //         break;
+    //     }
+}
 
-    m_lighsts.erase(itr);
+void
+vulkan_render::remove_point_light_source(light_type lt)
+{
+    //     auto itr = std::remove_if(m_lighsts.begin(), m_lighsts.end(),
+    //                               [p](render::directional_light_data* i) { return p == i; });
+    //
+    //     m_lighsts.erase(itr);
 }
 
 gpu_data_index_type
@@ -511,6 +660,36 @@ vulkan_render::clear_upload_queue()
     for (auto& q : m_frames)
     {
         q.clear_upload_queues();
+    }
+}
+
+void
+vulkan_render::collect_lights()
+{
+    auto& lights = glob::vulkan_render_loader::getr().get_lights();
+
+    m_obj_config.point_lights_size = 0U;
+    m_obj_config.spot_lights_size = 0U;
+
+    for (auto& l : lights)
+    {
+        switch (l.second->m_type)
+        {
+        case light_type::directional_light_data:
+            m_obj_config.directional_light_id = l.second->m_gpu_id;
+            break;
+        case light_type::point_light_data:
+            m_obj_config.point_light_ids[m_obj_config.point_lights_size] = l.second->m_gpu_id;
+            ++m_obj_config.point_lights_size;
+            break;
+        case light_type::spot_light_data:
+            m_obj_config.spot_light_ids[m_obj_config.spot_lights_size] = l.second->m_gpu_id;
+            ++m_obj_config.spot_lights_size;
+
+            break;
+        default:
+            break;
+        }
     }
 }
 
@@ -609,7 +788,7 @@ vulkan_render::prepare_ui_pipeline()
     agea::utils::buffer vert, frag;
 
     auto path = glob::resource_locator::get()->resource(category::packages,
-                                                        "base.apkg/class/shader_effects");
+                                                        "base.apkg/class/shader_effects/ui");
 
     auto vert_path = path / "se_uioverlay.vert";
     agea::utils::buffer::load(vert_path, vert);

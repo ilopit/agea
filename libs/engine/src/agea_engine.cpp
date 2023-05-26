@@ -25,6 +25,7 @@
 #include <core/id_generator.h>
 #include <core/object_constructor.h>
 #include <core/caches/caches_map.h>
+
 #include <render_bridge/render_bridge.h>
 
 #include <demo/demo_module.h>
@@ -33,9 +34,11 @@
 #include <root/components/mesh_component.h>
 #include <root/game_object.h>
 #include <root/assets/shader_effect.h>
-#include <root/point_light.h>
+
+#include <root/lights/directional_light.h>
+#include <root/lights/point_light.h>
+#include <root/lights/spot_light.h>
 #include <root/render/root_render_module.h>
-#include <root/components/light_component.h>
 #include <root/assets/material.h>
 
 #include <demo/example.h>
@@ -311,10 +314,10 @@ vulkan_engine::consume_updated_transforms()
 
                 glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
             }
-            else if (auto m = obj.as<root::light_component>())
-            {
-                m->get_handler()->obj_pos = m->get_world_position();
-            }
+            //             else if (auto m = obj.as<root::light_component>())
+            //             {
+            //                 m->get_handler()->obj_pos = m->get_world_position();
+            //             }
         }
 
         i->set_dirty_transform(false);
@@ -377,20 +380,32 @@ vulkan_engine::init_scene()
 {
     load_level(glob::config::get()->level);
 
-    root::point_light::construct_params plp;
+    {
+        root::spot_light::construct_params plp;
+        plp.pos = {-20.f};
+        glob::level::getr().spawn_object<root::spot_light>(AID("PL1"), plp);
+    }
 
-    plp.pos = {0.f, 20.f, 0.f};
+    {
+        root::point_light::construct_params plp;
+        plp.pos = {20.f};
+        glob::level::getr().spawn_object<root::point_light>(AID("PL2"), plp);
+    }
 
-    glob::level::getr().spawn_object<root::point_light>(AID("PL"), plp);
+    {
+        root::directional_light::construct_params dcp;
+        dcp.pos = {0.f, 20.f, 0.0};
+        glob::level::getr().spawn_object<root::directional_light>(AID("DL"), dcp);
+    }
 
     core::spawn_parameters sp;
 
     auto id1 = AID("decor");
-    auto id2 = AID("decor2");
+    auto id2 = AID("decor");
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 4;
+    int DIM = 1;
 
     for (x = 0; x < DIM; ++x)
     {

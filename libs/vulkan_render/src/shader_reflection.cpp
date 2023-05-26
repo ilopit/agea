@@ -58,9 +58,13 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
         }
         case SpvOpTypeArray:
         {
-            AGEA_check(!member.type_name, "Unsupported");
-            AGEA_check(member.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "only floats");
-            AGEA_check(member.traits.numeric.vector.component_count, "Only vectors supported");
+            if (member.type_name)
+            {
+                continue;
+            }
+
+            // TODO, FIX
+
 
             type = agea::render::gpu_type::id::g_float;
 
@@ -81,7 +85,8 @@ spvr_get_fields(SpvReflectTypeDescription& parent, agea::utils::dynamic_object_l
             break;
         }
         default:
-            AGEA_never("Unhendled op type");
+            // AGEA_never("Unhendled op type");
+            continue;
             break;
         }
         sb.add_field(AID(member.struct_member_name), type, alligment, items_count);

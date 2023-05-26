@@ -9,8 +9,8 @@
 #include "root/assets/simple_texture_material.h"
 #include "root/assets/mesh.h"
 #include "root/mesh_object.h"
-#include "root/point_light.h"
-#include "root/components/light_component.h"
+#include "root/lights/point_light.h"
+#include "root/lights/components/point_light_component.h"
 #include "root/components/mesh_component.h"
 #include "root/root_types_ids.ar.h"
 

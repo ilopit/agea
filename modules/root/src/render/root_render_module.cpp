@@ -9,9 +9,13 @@
 #include "root/assets/simple_texture_material.h"
 #include "root/assets/mesh.h"
 #include "root/mesh_object.h"
-#include "root/point_light.h"
+#include "root/lights/point_light.h"
+#include "root/lights/spot_light.h"
+#include "root/lights/directional_light.h"
 #include "root/game_object.h"
-#include "root/components/light_component.h"
+#include "root/lights/components/directional_light_component.h"
+#include "root/lights/components/spot_light_component.h"
+#include "root/lights/components/point_light_component.h"
 #include "root/components/mesh_component.h"
 #include "root/root_types_ids.ar.h"
 
@@ -392,36 +396,149 @@ render_dtor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_
 /*===============================*/
 
 result_code
-render_ctor__light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+render_ctor__directional_light_component(render_bridge& rb,
+                                         root::smart_object& obj,
+                                         bool sub_object)
 {
-    auto& lc_model = obj.asr<root::light_component>();
+    auto& lc_model = obj.asr<root::point_light_component>();
 
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        rh = new render::ligh_data(lc_model.get_id());
-        rh->obj_pos = lc_model.get_world_position();
+        auto iid = glob::vulkan_render::getr().m_dir_lights_idalloc.alloc_id();
 
-        glob::vulkan_render::getr().add_point_light_source(rh);
+        render::gpu_light ld{};
+
+        ld.directional.ambient = glm::vec3{0.4f};
+        ld.directional.diffuse = glm::vec3{0.5f};
+        ld.directional.specular = glm::vec3{1.0f};
+        ld.directional.direction = glm::vec3{1.0f};
+
+        rh = glob::vulkan_render_loader::get()->create_light_data(
+            lc_model.get_id(), render::light_type::directional_light_data, ld);
+        rh->m_gpu_id = iid;
 
         lc_model.set_handler(rh);
     }
+
+    glob::vulkan_render::getr().schedule_light_data_gpu_upload(rh);
+
     return result_code::ok;
 }
-result_code
-render_dtor__light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
-{
-    auto& se_model = obj.asr<root::light_component>();
 
-    if (auto se_data = se_model.get_handler())
+result_code
+render_dtor__directional_light_component(render_bridge& rb,
+                                         root::smart_object& obj,
+                                         bool sub_object)
+{
+    auto& plc_model = obj.asr<root::directional_light_component>();
+    if (auto h = plc_model.get_handler())
     {
-        glob::vulkan_render::getr().remove_point_light_source(se_data);
-        delete se_data;
+        glob::vulkan_render::getr().m_dir_lights_idalloc.release_id(h->m_gpu_id);
+        glob::vulkan_render_loader::getr().destroy_light_data(h->get_id());
     }
 
     return result_code::ok;
 }
 
+/*===============================*/
+
+result_code
+render_ctor__spot_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+{
+    auto& lc_model = obj.asr<root::spot_light_component>();
+
+    auto rh = lc_model.get_handler();
+    if (!rh)
+    {
+        auto iid = glob::vulkan_render::getr().m_spot_lights_idalloc.alloc_id();
+
+        render::gpu_light ld{};
+
+        ld.spot.position = lc_model.get_world_position();
+        ld.spot.ambient = lc_model.get_ambient();
+        ld.spot.diffuse = lc_model.get_diffuse();
+        ld.spot.specular = lc_model.get_specular();
+        ld.spot.constant = lc_model.get_constant();
+        ld.spot.linear = lc_model.get_linear();
+        ld.spot.quadratic = lc_model.get_quadratic();
+        ld.spot.direction = lc_model.get_direction();
+
+        ld.spot.cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
+        ld.spot.outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
+
+        rh = glob::vulkan_render_loader::get()->create_light_data(
+            lc_model.get_id(), render::light_type::spot_light_data, ld);
+        rh->m_gpu_id = iid;
+
+        lc_model.set_handler(rh);
+    }
+
+    glob::vulkan_render::getr().schedule_light_data_gpu_upload(rh);
+
+    return result_code::ok;
+}
+
+result_code
+render_dtor__spot_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+{
+    auto& slc_model = obj.asr<root::spot_light_component>();
+
+    if (auto h = slc_model.get_handler())
+    {
+        glob::vulkan_render::getr().m_spot_lights_idalloc.release_id(h->m_gpu_id);
+        glob::vulkan_render_loader::getr().destroy_light_data(h->get_id());
+    }
+
+    return result_code::ok;
+}
+
+/*===============================*/
+
+result_code
+render_ctor__point_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+{
+    auto& lc_model = obj.asr<root::point_light_component>();
+
+    auto rh = lc_model.get_handler();
+    if (!rh)
+    {
+        auto iid = glob::vulkan_render::getr().m_point_lights_idalloc.alloc_id();
+
+        render::gpu_light ld{};
+
+        ld.point.position = lc_model.get_world_position();
+        ld.point.ambient = lc_model.get_ambient();
+        ld.point.diffuse = lc_model.get_diffuse();
+        ld.point.specular = lc_model.get_specular();
+        ld.point.constant = lc_model.get_constant();
+        ld.point.linear = lc_model.get_linear();
+        ld.point.quadratic = lc_model.get_quadratic();
+
+        rh = glob::vulkan_render_loader::get()->create_light_data(
+            lc_model.get_id(), render::light_type::point_light_data, ld);
+        rh->m_gpu_id = iid;
+
+        lc_model.set_handler(rh);
+    }
+
+    glob::vulkan_render::getr().schedule_light_data_gpu_upload(rh);
+
+    return result_code::ok;
+}
+
+result_code
+render_dtor__point_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+{
+    auto& plc_model = obj.asr<root::point_light_component>();
+    if (auto h = plc_model.get_handler())
+    {
+        glob::vulkan_render::getr().m_point_lights_idalloc.release_id(h->m_gpu_id);
+        glob::vulkan_render_loader::getr().destroy_light_data(h->get_id());
+    }
+
+    return result_code::ok;
+}
 }  // namespace
 
 bool
@@ -459,9 +576,21 @@ root_render_module::override_reflection_types()
         rt->render_dtor = render_dtor__shader_effect;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__light_component);
-        rt->render_ctor = render_ctor__light_component;
-        rt->render_dtor = render_dtor__light_component;
+        auto rt =
+            glob::reflection_type_registry::getr().get_type(root__directional_light_component);
+        rt->render_ctor = render_ctor__directional_light_component;
+        rt->render_dtor = render_dtor__directional_light_component;
+    }
+    {
+        auto rt = glob::reflection_type_registry::getr().get_type(root__point_light_component);
+        rt->render_ctor = render_ctor__point_light_component;
+        rt->render_dtor = render_dtor__point_light_component;
+    }
+
+    {
+        auto rt = glob::reflection_type_registry::getr().get_type(root__spot_light_component);
+        rt->render_ctor = render_ctor__spot_light_component;
+        rt->render_dtor = render_dtor__spot_light_component;
     }
 
     return true;

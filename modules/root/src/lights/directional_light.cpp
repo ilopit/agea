@@ -1,7 +1,7 @@
-#include "root/point_light.h"
+#include "root/lights/directional_light.h"
 
 #include <root/components/mesh_component.h>
-#include <root/components/light_component.h>
+#include <root/lights/components/directional_light_component.h>
 
 #include <root/assets/mesh.h>
 #include <root/assets/material.h>
@@ -15,25 +15,26 @@ namespace agea
 namespace root
 {
 
-AGEA_gen_class_cd_default(point_light);
+AGEA_gen_class_cd_default(directional_light);
 
 bool
-point_light::construct(construct_params& params)
+directional_light::construct(construct_params& params)
 {
     if (!base_class::construct(params))
     {
         return false;
     }
 
-    spawn_component_with_proto(m_root_component, AID("bulb_component"), AID("AB"));
+    spawn_component_with_proto(m_root_component, AID("directional_light_debug_component"));
 
-    spawn_component<light_component>(m_root_component, AID("lc"), {});
+    auto dl = spawn_component<directional_light_component>(m_root_component,
+                                                           AID("directional_light"), {});
 
     return true;
 }
 
 void
-point_light::on_tick(float dt)
+directional_light::on_tick(float dt)
 {
     static float f = dt;
     static bool dir = true;

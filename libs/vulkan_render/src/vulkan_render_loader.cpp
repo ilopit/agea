@@ -378,6 +378,37 @@ vulkan_render_loader::destroy_object(const agea::utils::id& id)
     }
 }
 
+light_data*
+vulkan_render_loader::create_light_data(const agea::utils::id& id,
+                                        light_type lt,
+                                        const gpu_light& ld)
+{
+    AGEA_check(!get_object_data(id), "Shoudn't exist");
+
+    auto data = std::make_shared<light_data>(id, lt);
+
+    data->m_data = ld;
+
+    m_light_cache[id] = data;
+
+    return data.get();
+}
+
+bool
+vulkan_render_loader::update_light_data(light_data& ld, const gpu_light& gld)
+{
+    return true;
+}
+void
+vulkan_render_loader::destroy_light_data(const agea::utils::id& id)
+{
+    auto itr = m_light_cache.find(id);
+    if (itr != m_light_cache.end())
+    {
+        m_light_cache.erase(itr);
+    }
+}
+
 void
 vulkan_render_loader::destroy_mesh_data(const agea::utils::id& id)
 {

@@ -34,6 +34,7 @@ using render_line_conteiner = ::agea::utils::line_conteiner<render::object_data*
 using materials_update_queue = ::agea::utils::line_conteiner<render::material_data*>;
 using materials_update_queue_set = ::agea::utils::line_conteiner<materials_update_queue>;
 using objects_update_queue = ::agea::utils::line_conteiner<render::object_data*>;
+using lights_update_queue = ::agea::utils::line_conteiner<render::light_data*>;
 
 struct frame_state
 {
@@ -41,6 +42,12 @@ struct frame_state
     has_data() const
     {
         return has_materials || !m_objects_queue.empty();
+    }
+
+    bool
+    has_light_data() const
+    {
+        return !m_lights_queue.empty();
     }
 
     void
@@ -53,6 +60,7 @@ struct frame_state
     clear_upload_queues()
     {
         m_objects_queue.clear();
+        m_lights_queue.clear();
 
         for (auto& m : m_materias_queue_set)
         {
@@ -61,6 +69,7 @@ struct frame_state
     }
 
     vk_utils::vulkan_buffer m_object_buffer;
+    vk_utils::vulkan_buffer m_lights_buffer;
     vk_utils::vulkan_buffer m_dynamic_data_buffer;
 
     vk_utils::vulkan_buffer m_ui_vertex_buffer;
@@ -71,8 +80,10 @@ struct frame_state
 
     objects_update_queue m_objects_queue;
     materials_update_queue_set m_materias_queue_set;
+    lights_update_queue m_lights_queue;
 
     bool has_materials = false;
+    bool has_lights = false;
     frame_data* frame = nullptr;
 };
 
@@ -103,12 +114,16 @@ public:
     schedule_material_data_gpu_upload(render::material_data* md);
 
     void
-    schedule_game_data_gpu_upload(render::object_data* md);
+    schedule_game_data_gpu_upload(render::object_data* od);
 
     void
-    add_point_light_source(render::ligh_data* p);
+    schedule_light_data_gpu_upload(render::light_data* ld);
+
     void
-    remove_point_light_source(render::ligh_data* p);
+    add_point_light_source(light_type lt, const gpu_light& gl);
+
+    void
+    remove_point_light_source(light_type lt);
 
     gpu_data_index_type
     generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size);
@@ -116,20 +131,34 @@ public:
     void
     clear_upload_queue();
 
+    void
+    collect_lights();
+
 private:
     void
     draw_objects(render::frame_state& frame);
 
     void
+    build_global_set(render::frame_state& current_frame);
+
+    void
+    build_light_set(render::frame_state& current_frame);
+
+    void
     upload_render_data(render::frame_state& frame);
+
+    void
+    upload_light_data(render::frame_state& frame);
 
     void
     draw_objects_queue(render_line_conteiner& r,
                        VkCommandBuffer cmd,
                        vk_utils::vulkan_buffer& obj_tb,
                        vk_utils::vulkan_buffer& dyn_tb,
-                       VkDescriptorSet global_ds,
                        render::frame_state& current_frame);
+
+    void
+    push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id);
 
     void
     upload_gpu_object_data(render::gpu_object_data* object_SSBO);
@@ -177,7 +206,15 @@ public:
 
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
-    std::vector<render::ligh_data*> m_lighsts;
+
+    utils::id_allocator m_dir_lights_idalloc;
+    std::vector<render::gpu_directional_light_data> m_dir_lights;
+
+    utils::id_allocator m_spot_lights_idalloc;
+    std::vector<render::gpu_spot_light_data> m_spot_lights;
+
+    utils::id_allocator m_point_lights_idalloc;
+    std::vector<render::gpu_point_light_data> m_point_lights;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
@@ -194,7 +231,7 @@ public:
 
     std::vector<frame_state> m_frames;
 
-    utils::line_conteiner<uint32_t> m_ssbo_range;
+    utils::line_conteiner<VkDeviceSize> m_ssbo_range;
 
     utils::id_allocator m_objects_id;
 
@@ -210,6 +247,13 @@ public:
     };
 
     ui_push_constants m_ui_push_constants;
+
+    // Descriptors
+
+    VkDescriptorSet m_light_set = VK_NULL_HANDLE;
+    VkDescriptorSet m_global_set = VK_NULL_HANDLE;
+
+    render::gpu_push_constants m_obj_config;
 };
 }  // namespace render
 
