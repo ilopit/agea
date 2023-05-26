@@ -63,7 +63,7 @@ protected:
     float m_cut_off = 17.0f;
 
     AGEA_ar_property("category=misc", "serializable=true");
-    float m_outer_cut_off = 17.0f;
+    float m_outer_cut_off = 18.f;
 
     render::light_data* m_handler = nullptr;
 };

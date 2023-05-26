@@ -388,7 +388,7 @@ vulkan_engine::init_scene()
 
     {
         root::point_light::construct_params plp;
-        plp.pos = {20.f};
+        plp.pos = {15.f};
         glob::level::getr().spawn_object<root::point_light>(AID("PL2"), plp);
     }
 

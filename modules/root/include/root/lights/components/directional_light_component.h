@@ -39,13 +39,13 @@ public:
 
 protected:
     AGEA_ar_property("category=misc", "serializable=true");
-    glm::vec3 m_ambient = glm::vec3{1.0f};
+    glm::vec3 m_ambient = glm::vec3{0.1f};
 
     AGEA_ar_property("category=misc", "serializable=true");
-    glm::vec3 m_diffuse = glm::vec3{1.0f};
+    glm::vec3 m_diffuse = glm::vec3{0.1f};
 
     AGEA_ar_property("category=misc", "serializable=true");
-    glm::vec3 m_specular = glm::vec3{1.0f};
+    glm::vec3 m_specular = glm::vec3{0.1f};
 
     AGEA_ar_property("category=misc", "serializable=true");
     glm::vec3 m_direction = glm::vec3{1.0f};

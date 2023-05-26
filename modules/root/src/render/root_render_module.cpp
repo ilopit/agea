@@ -400,7 +400,7 @@ render_ctor__directional_light_component(render_bridge& rb,
                                          root::smart_object& obj,
                                          bool sub_object)
 {
-    auto& lc_model = obj.asr<root::point_light_component>();
+    auto& lc_model = obj.asr<root::directional_light_component>();
 
     auto rh = lc_model.get_handler();
     if (!rh)
@@ -409,10 +409,10 @@ render_ctor__directional_light_component(render_bridge& rb,
 
         render::gpu_light ld{};
 
-        ld.directional.ambient = glm::vec3{0.4f};
-        ld.directional.diffuse = glm::vec3{0.5f};
-        ld.directional.specular = glm::vec3{1.0f};
-        ld.directional.direction = glm::vec3{1.0f};
+        ld.directional.ambient = lc_model.get_ambient();
+        ld.directional.diffuse = lc_model.get_diffuse();
+        ld.directional.specular = lc_model.get_specular();
+        ld.directional.direction = lc_model.get_direction();
 
         rh = glob::vulkan_render_loader::get()->create_light_data(
             lc_model.get_id(), render::light_type::directional_light_data, ld);
