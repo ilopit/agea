@@ -74,5 +74,14 @@ macro(agea_ar_target)
         endif()
 
         write_file(${ar_file} "//ar file do not modify")
+
+        execute_process(
+                  COMMAND python 
+                  ${PROJECT_SOURCE_DIR}/tools/argen.py
+                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/ar/config 
+                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
+                  ${CMAKE_BINARY_DIR}/agea_generated
+                  ${ARGV1}
+                  ${ARGV2})
     endif()
 endmacro()

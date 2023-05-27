@@ -1,5 +1,8 @@
 ﻿cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP" CACHE STRING "Default CXX options" FORCE)
+
 cmake_policy(VERSION 3.13)
 
 

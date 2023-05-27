@@ -1,3 +1,9 @@
+##### Reflection
+add_custom_target(root.m.ar ALL)
+agea_ar_target(root.m.ar root "agea")
+
+
+##### Model
 file(GLOB ROOT_ASSETS_SRC                "include/root/assets/*.h"                     "src/assets/*.cpp")
 file(GLOB ROOT_CACHES_SRC                "include/root/caches/*.h"                     "src/caches/*.cpp")
 file(GLOB ROOT_DEMO_SRC                  "include/root/demo/*.h"                       "src/demo/*.cpp")
@@ -54,8 +60,6 @@ target_link_libraries(root.m.model PUBLIC
 
 agea_finalize_library(root.m.model)
 
-add_custom_target(root.m.ar ALL)
-agea_ar_target(root.m.ar root "agea")
 
 #####  Render
 file(GLOB ROOT_RENDER_SRC "include/render/*.h" "src/render/*.cpp")
@@ -75,6 +79,7 @@ target_link_libraries(root.m.render
 )
 
 agea_finalize_library(root.m.render)
+
 
 #####  Tests
 add_subdirectory(tests)

@@ -1116,7 +1116,7 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
 
     ri = arl.update(module_name, types_count)
 
-    write_file(output_file, context, arl.ranges[ri].dependency)
+    write_file(output_file, context, arl.ranges[ri -1].dependency)
 
     output_file = os.path.join(
         output_dir, module_name,  module_name + "_types_ids.ar.h")

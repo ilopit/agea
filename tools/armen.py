@@ -7,7 +7,7 @@ example_header_template = """
 
 #include "{0}/example.generated.h"
 
-#include "model/model_minimal.h"
+#include "core/model_minimal.h"
 #include "root/core_types/vec3.h"
 #include "root/game_object.h"
 
@@ -59,8 +59,13 @@ example::construct(construct_params& params)
 ar_config = "include/{0}/example.h"
 
 cmake_file = """
-file(GLOB {1}_SOURCES "include/{0}/*.h" "src/*.cpp")
+##### Reflection
+add_custom_target({0}.m.ar ALL)
+agea_ar_target({0}.m.ar {0} " " 100)
 
+
+##### Model
+file(GLOB {1}_SOURCES "include/{0}/*.h" "src/*.cpp")
 file(GLOB GENERATED_SRC "${{CMAKE_BINARY_DIR}}/agea_generated/{0}/*.cpp")
 
 source_group("{0}_sources" FILES  ${{{1}_SOURCES}})
@@ -77,8 +82,8 @@ target_link_libraries({0} PUBLIC
    agea::ar
    agea::utils
    agea::glm_unofficial
-   agea::model
-   agea::root
+   agea::core
+   agea::root.m.model
    agea::serialization
    agea::resource_locator
 
@@ -89,16 +94,12 @@ target_link_libraries({0} PUBLIC
 agea_finalize_library({0})
 
 target_include_directories({0} PUBLIC ${{CMAKE_BINARY_DIR}}/agea_generated)
-
-add_custom_target(generate.{0}.ar ALL)
-agea_ar_target(generate.{0}.ar {0} " " 100)
-
 """
 
 module_template = """
 #pragma once
 
-#include "model/reflection/module.h"
+#include "core/reflection/module.h"
 
 namespace {module_name}
 {{

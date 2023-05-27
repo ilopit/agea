@@ -28,8 +28,6 @@
 
 #include <render_bridge/render_bridge.h>
 
-#include <demo/demo_module.h>
-
 #include <root/assets/mesh.h>
 #include <root/components/mesh_component.h>
 #include <root/game_object.h>
@@ -40,8 +38,6 @@
 #include <root/lights/spot_light.h>
 #include <root/render/root_render_module.h>
 #include <root/assets/material.h>
-
-#include <demo/example.h>
 
 #include <native/native_window.h>
 
@@ -110,7 +106,6 @@ vulkan_engine::init()
     glob::init_global_caches(*m_registry);
 
     glob::module_manager::getr().register_module<root::root_render_module>();
-    glob::module_manager::getr().register_module<demo::demo_module>();
 
     for (auto m : glob::module_manager::getr().modules())
     {

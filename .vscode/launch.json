@@ -9,13 +9,13 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": 
-            ["D:/dev/agea/agea/modules/root/ar/config", 
-            "D:/dev/agea/agea/modules/root", 
-            "D:/dev/agea/agea/build/agea_generated", 
-            "root",
-            " ",
-            "0"],
+            "args": [
+                "D:/dev/agea/agea/modules/root/ar/config",
+                "D:/dev/agea/agea/modules/root",
+                "D:/dev/agea/agea/build/agea_generated",
+                "root",
+                "agea"
+            ],
             "console": "integratedTerminal",
             "justMyCode": true
         }
