@@ -31,7 +31,7 @@ def main():
         print("Removing " + agea_build_dir)
         shutil.rmtree(agea_build_dir)
 
-    config_cmd = "cmake -B{0} -S{1}".format(agea_build_dir, agea_root_dir)
+    config_cmd = "cmake -A x64 -B{0} -S{1}".format(agea_build_dir, agea_root_dir)
     os.system(config_cmd)
 
     if build_engine:
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     for i in range(1, len(sys.argv)):
         if sys.argv[i] == "--clean":
             clean_build = True
-        elif sys.argv[i] == "--openevn":
+        elif sys.argv[i] == "--openenv":
             open_env = True
         elif sys.argv[i] == "--build":
             build_engine = True
