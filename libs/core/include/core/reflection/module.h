@@ -17,15 +17,19 @@ public:
     {
     }
 
-    virtual ~module()
+    virtual ~module() = default;
+
+    virtual bool
+    init_reflection()
     {
+        return true;
     }
 
     virtual bool
-    init_reflection() = 0;
-
-    virtual bool
-    override_reflection_types() = 0;
+    override_reflection_types()
+    {
+        return true;
+    };
 
     const agea::utils::id&
     get_id() const

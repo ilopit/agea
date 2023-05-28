@@ -37,7 +37,6 @@
 #include <root/lights/directional_light.h>
 #include <root/lights/point_light.h>
 #include <root/lights/spot_light.h>
-#include <root/render/root_render_module.h>
 #include <root/assets/material.h>
 
 #include <native/native_window.h>
@@ -105,8 +104,6 @@ vulkan_engine::init()
     glob::render_bridge::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
-
-    glob::module_manager::getr().register_module<root::root_render_module>();
 
     engine::register_modules();
 

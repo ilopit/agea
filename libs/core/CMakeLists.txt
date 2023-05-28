@@ -33,7 +33,7 @@ target_link_libraries(core PUBLIC
    agea::serialization
    agea::resource_locator
 
-   agea::root.m.model
+   agea::root.module.model
 
    lua_static
    agea::sol2_unofficial

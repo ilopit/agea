@@ -1,4 +1,4 @@
-#include "root/render/root_render_module.h"
+#include "root/render/root_module_render_bridge.h"
 
 #include "root/assets/mesh.h"
 #include "root/assets/material.h"
@@ -542,9 +542,8 @@ render_dtor__point_light_component(render_bridge& rb, root::smart_object& obj, b
 }  // namespace
 
 bool
-root_render_module::override_reflection_types()
+root_module_render_bridge::override_reflection_types()
 {
-    root_module::override_reflection_types();
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__game_object_component);
         rt->render_ctor = render_ctor__game_object_component;
@@ -596,10 +595,10 @@ root_render_module::override_reflection_types()
     return true;
 }
 
-root_render_module&
-root_render_module::instance()
+root_module_render_bridge&
+root_module_render_bridge::instance()
 {
-    static root_render_module s_module(AID("root"));
+    static root_module_render_bridge s_module(AID("root.module.render_bridge"));
     return s_module;
 }
 

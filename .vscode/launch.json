@@ -10,10 +10,10 @@
             "request": "launch",
             "program": "${file}",
             "args": [
-                "D:/dev/agea/agea/modules/root/ar/config",
-                "D:/dev/agea/agea/modules/root",
+                "D:/dev/agea/agea/modules/demo/ar/config",
+                "D:/dev/agea/agea/modules/demo",
                 "D:/dev/agea/agea/build/agea_generated",
-                "root",
+                "demo",
                 "agea"
             ],
             "console": "integratedTerminal",

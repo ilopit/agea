@@ -61,19 +61,19 @@ ar_config = "include/{0}/example.h"
 ar_module_config = """
 {
     "dependency" : ["root"],
-    "has_render" : true
+    "has_render" : false
 }
 """
 
 cmake_file = """
 ##### Reflection
-add_custom_target({0}.m.ar ALL)
-agea_ar_target({0}.m.ar {0} " " 100)
+add_custom_target({0}.module.ar ALL)
+agea_ar_target({0}.module.ar {0} " " 100)
 
 
 ##### Model
 
-set(module_model "{0}.m.model")
+set(module_model "{0}.module.model")
 
 file(GLOB {1}_SOURCES "include/{0}/*.h" "src/*.cpp")
 file(GLOB GENERATED_SRC "${{CMAKE_BINARY_DIR}}/agea_generated/{0}/*.cpp")
@@ -96,7 +96,7 @@ target_link_libraries(${{module_model}} PUBLIC
    agea::utils
    agea::glm_unofficial
    agea::core
-   agea::root.m.model
+   agea::root.module.model
    agea::serialization
    agea::resource_locator
 
