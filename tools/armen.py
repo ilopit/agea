@@ -58,6 +58,13 @@ example::construct(construct_params& params)
 
 ar_config = "include/{0}/example.h"
 
+ar_module_config = """
+{
+    "dependency" : ["root"],
+    "has_render" : true
+}
+"""
+
 cmake_file = """
 ##### Reflection
 add_custom_target({0}.m.ar ALL)
@@ -65,20 +72,26 @@ agea_ar_target({0}.m.ar {0} " " 100)
 
 
 ##### Model
+
+set(module_model "{0}.m.model")
+
 file(GLOB {1}_SOURCES "include/{0}/*.h" "src/*.cpp")
 file(GLOB GENERATED_SRC "${{CMAKE_BINARY_DIR}}/agea_generated/{0}/*.cpp")
 
 source_group("{0}_sources" FILES  ${{{1}_SOURCES}})
 
-add_library({0} STATIC
+add_library(${{module_model}} STATIC
    ${{{1}_SOURCES}}         
    
    ${{GENERATED_SRC}}
 )
 
-target_compile_options({0} PRIVATE /bigobj)
+set(AGEA_ACTIVE_MODULES_TARGETS ${{AGEA_ACTIVE_MODULES_TARGETS}} ${{module_model}} CACHE INTERNAL "")
+set(AGEA_ACTIVE_MODULES ${{AGEA_ACTIVE_MODULES}} {0} CACHE INTERNAL "")
 
-target_link_libraries({0} PUBLIC
+target_compile_options(${{module_model}} PRIVATE /bigobj)
+
+target_link_libraries(${{module_model}} PUBLIC
    agea::ar
    agea::utils
    agea::glm_unofficial
@@ -91,9 +104,9 @@ target_link_libraries({0} PUBLIC
    agea::sol2_unofficial
 )
 
-agea_finalize_library({0})
+agea_finalize_library(${{module_model}})
 
-target_include_directories({0} PUBLIC ${{CMAKE_BINARY_DIR}}/agea_generated)
+target_include_directories(${{module_model}} PUBLIC ${{CMAKE_BINARY_DIR}}/agea_generated)
 """
 
 module_template = """
@@ -164,6 +177,9 @@ if __name__ == "__main__":
 
     with open(os.path.join(ar_folder, "config"), "w") as w:
         w.write(ar_config.format(module_name))
+
+    with open(os.path.join(ar_folder, "module"), "w") as w:
+        w.write(ar_module_config)
 
     with open(os.path.join(module_path, "CMakeLists.txt"), "w") as w:
         w.write(cmake_file.format(module_name, module_name.upper()))

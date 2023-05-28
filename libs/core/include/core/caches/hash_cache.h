@@ -41,7 +41,6 @@ public:
         const auto& oid = obj.get_id();
         m_items.erase(oid);
     }
-
     bool
     has_item(const id_t& id)
     {

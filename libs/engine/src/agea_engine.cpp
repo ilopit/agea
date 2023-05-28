@@ -5,6 +5,7 @@
 #include "engine/editor.h"
 #include "engine/config.h"
 #include "engine/engine_counters.h"
+#include "engine/active_modules.h"
 
 #include <vulkan_render/vulkan_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
@@ -106,6 +107,8 @@ vulkan_engine::init()
     glob::init_global_caches(*m_registry);
 
     glob::module_manager::getr().register_module<root::root_render_module>();
+
+    engine::register_modules();
 
     for (auto m : glob::module_manager::getr().modules())
     {

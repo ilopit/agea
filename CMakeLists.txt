@@ -1,7 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP" CACHE STRING "Default CXX options" FORCE)
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
 cmake_policy(VERSION 3.13)
 
@@ -32,9 +31,13 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 find_package(Vulkan REQUIRED)
 
 add_subdirectory(thirdparty)
+
+set(AGEA_ACTIVE_MODULES_TARGETS ""  CACHE INTERNAL "")
+set(AGEA_ACTIVE_MODULES ""  CACHE INTERNAL "")
+
+add_subdirectory(modules)
 add_subdirectory(engine)
 add_subdirectory(libs)
-add_subdirectory(modules)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_SOURCE_DIR}/resources/assets
