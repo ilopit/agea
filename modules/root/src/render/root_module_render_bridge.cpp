@@ -265,15 +265,26 @@ render_ctor__mesh_component(render_bridge& rb, root::smart_object& obj, bool sub
 
     auto& moc = obj.asr<root::mesh_component>();
 
+    if (!moc.get_material() || !moc.get_mesh())
+    {
+        return result_code::ok;
+    }
+
     rc = rb.render_ctor(*moc.get_material(), sub_object);
     AGEA_return_nok(rc);
 
     rc = rb.render_ctor(*moc.get_mesh(), sub_object);
     AGEA_return_nok(rc);
 
-    auto object_data = moc.get_render_object_data();
     auto mat_data = moc.get_material()->get_material_data();
     auto mesh_data = moc.get_mesh()->get_mesh_data();
+
+    if (!mat_data || !mesh_data)
+    {
+        return result_code::ok;
+    }
+
+    auto object_data = moc.get_render_object_data();
 
     moc.update_matrix();
 

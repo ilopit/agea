@@ -24,8 +24,8 @@ public:
 
     AGEA_gen_construct_params
     {
-        std::string material_id;
-        std::string mesh_id;
+        mesh* mesh_handle = nullptr;
+        material* material_handle = nullptr;
     };
     AGEA_gen_meta_api;
 
@@ -41,6 +41,11 @@ public:
     void
     set_material(material* v)
     {
+        if (v == m_material)
+        {
+            return;
+        }
+
         AGEA_check(v, "Should not be NULL!");
         m_material = v;
         mark_render_dirty();
@@ -49,6 +54,11 @@ public:
     void
     set_mesh(mesh* v)
     {
+        if (v == m_mesh)
+        {
+            return;
+        }
+
         AGEA_check(v, "Should not be NULL!");
         m_mesh = v;
         mark_render_dirty();

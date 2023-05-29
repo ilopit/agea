@@ -217,33 +217,6 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
         upload_light_data(current_frame);
     }
 
-    /*
-    m_scene_parameters.directional.ambient = glm::vec3{0.4f};
-    m_scene_parameters.directional.diffuse = glm::vec3{0.5f};
-    m_scene_parameters.directional.specular = glm::vec3{1.0f};
-    m_scene_parameters.directional.direction = glm::vec3{1.0f};
-
-    m_scene_parameters.points[0].position = glm::vec3{-20.0f};
-    m_scene_parameters.points[0].ambient = glm::vec3{1.0f};
-    m_scene_parameters.points[0].diffuse = glm::vec3{0.5f};
-    m_scene_parameters.points[0].specular = glm::vec3{1.0f};
-    m_scene_parameters.points[0].constant = 1.0f;
-    m_scene_parameters.points[0].linear = 0.014f;
-    m_scene_parameters.points[0].quadratic = 0.0007f;
-
-    m_scene_parameters.spots[0].direction = glm::vec3{1.0f};
-    m_scene_parameters.spots[0].position = glm::vec3{-20.0f};
-    m_scene_parameters.spots[0].ambient = glm::vec3{1.0f};
-    m_scene_parameters.spots[0].diffuse = glm::vec3{0.5f};
-    m_scene_parameters.spots[0].specular = glm::vec3{1.0f};
-    m_scene_parameters.spots[0].constant = 1.0f;
-    m_scene_parameters.spots[0].linear = 0.014f;
-    m_scene_parameters.spots[0].quadratic = 0.0007f;
-    m_scene_parameters.spots[0].cut_off = glm::cos(glm::radians(17.0f));
-    m_scene_parameters.spots[0].outer_cut_off = glm::cos(glm::radians(18.0f));
-    */
-    // m_lighsts.front()->obj_pos;
-
     auto& dyn = current_frame.m_dynamic_data_buffer;
 
     dyn.begin();
@@ -559,13 +532,15 @@ vulkan_render::drop_object(render::object_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
 
+    m_objects_id.release_id(obj_data->gpu_index());
+
     const std::string id = obj_data->queue_id;
 
     auto& bucket = m_default_render_object_queue[id];
 
     auto itr = bucket.find(obj_data);
 
-    AGEA_check(itr == bucket.end(), "Dropping from missing bucket");
+    AGEA_check(itr != bucket.end(), "Dropping from missing bucket");
 
     bucket.swap_and_remove(itr);
 

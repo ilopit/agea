@@ -1,4 +1,4 @@
-﻿#include "engine/agea_engine.h"
+#include "engine/agea_engine.h"
 
 #include "engine/ui.h"
 #include "engine/input_manager.h"
@@ -50,6 +50,12 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+
+#if defined(AGEA_demo_module_included)
+
+#include <demo/example.h>
+
+#endif
 
 namespace agea
 {

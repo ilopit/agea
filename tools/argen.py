@@ -351,8 +351,7 @@ class agea_ctor:
         self.name = ""
 
 
-module_register_template = """
-{includes}
+module_register_template = """#include "engine/active_modules.h"
 
 namespace agea
 {{
@@ -383,6 +382,8 @@ class agea_range_list:
         self.path = os.path.join(os.path.dirname(p), "modules")
         self.modules_root = os.path.join(os.path.dirname(p))
         self.active_module_path = os.path.join(a, "active_modules.cpp")
+        self.active_module_include_path = os.path.join(
+            a, "engine",  "active_modules.h")
         self.handled = {}
         self.graph = {}
         self.order = deque()
@@ -445,7 +446,7 @@ class agea_range_list:
                 self.add(module_name, ((types_count//16) + 1) * 16)
                 rearrange = self.find(module_name)
 
-        if rearrange == -1:
+        if rearrange < 1:
             return rearrange
 
         for i in range(rearrange, len(self.ranges)):
@@ -455,6 +456,8 @@ class agea_range_list:
         return rearrange
 
     def gen_register(self):
+
+        self.ranges[0].module = "root"
 
         for r in self.ranges:
 
@@ -466,8 +469,6 @@ class agea_range_list:
                     self.graph[i] = []
 
                 self.graph[i].append(r)
-
-        self.ranges[0].module = "root"
 
         self.handle(self.ranges[0])
 
@@ -510,7 +511,7 @@ class agea_range_list:
 
         self.gen_register()
 
-        mod_includes = ""
+        mod_includes = "#pragma once\n"
         mod_register = ""
 
         for m in self.order:
@@ -525,8 +526,22 @@ class agea_range_list:
                     m.module)
 
         with open(self.active_module_path, 'w') as file:
-            file.write(module_register_template.format(
-                includes=mod_includes, modules=mod_register))
+            file.write(module_register_template.format(modules=mod_register))
+  
+
+        mod_includes += """
+namespace agea
+{
+namespace engine
+{
+void
+register_modules();
+}
+}
+"""
+
+        with open(self.active_module_include_path, 'w') as file:
+            file.write(mod_includes)
 
 
 class agea_property:

@@ -112,6 +112,12 @@ copy_smart_object(AGEA_copy_handler_args)
     {
         auto& obj = reflection::utils::as_type<::agea::root::smart_object*>(from);
         auto& dst_obj = reflection::utils::as_type<::agea::root::smart_object*>(to);
+
+        if (!obj)
+        {
+            return result_code::ok;
+        }
+
         return core::object_constructor::object_clone_create_internal(obj->get_id(), obj->get_id(),
                                                                       ooc, dst_obj);
     }

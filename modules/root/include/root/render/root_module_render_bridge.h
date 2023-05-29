@@ -1,5 +1,7 @@
 #pragma once
 
+#define AGEA_root_module_render_bridge_included
+
 #include "root/root_module.h"
 
 namespace agea

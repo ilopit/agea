@@ -3,17 +3,14 @@ message(STATUS "AGEA_ACTIVE_MODULES_TARGETS : ${AGEA_ACTIVE_MODULES_TARGETS}")
 set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated)
 set(modules_file ${ar_folder}/active_modules.cpp)
 
-
-
 if(EXISTS ${modules_file})
     message("File already exists, skipping")
 else()
 
     file(MAKE_DIRECTORY ${ar_folder})
+    file(MAKE_DIRECTORY ${ar_folder}/engine)
     write_file(${modules_file} "#include \"engine/active_modules.h\"")
 endif()
-
-
 
 
 file(GLOB ENGINE_SRC "include/engine/*.h" "src/*.cpp")
@@ -35,5 +32,7 @@ target_link_libraries(engine PUBLIC
 
     sdl2
 )
+
+target_include_directories(engine PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
 
 agea_finalize_library(engine)

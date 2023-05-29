@@ -1,5 +1,7 @@
 #pragma once
 
+#define AGEA_root_module_included
+
 #include "core/reflection/module.h"
 
 namespace agea

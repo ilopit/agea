@@ -19,11 +19,12 @@ class_obj_mapping:
   - mt_billboard_spot_light: class/materials/mt_billboard_spot_light.aobj
   - mt_billboard_directional_light: class/materials/mt_billboard_directional_light.aobj
   - mt_container: class/materials/mt_container.aobj
+  - mt_wire: class/materials/mt_wire.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
 
-  - root_component: class/components/root_component.aobj
   - bulb_component: class/components/bulb_component.aobj
+  - root_component: class/components/root_component.aobj
   - directional_light_debug_component : class/components/directional_light_debug_component.aobj
   - spot_light_debug_component : class/components/spot_light_debug_component.aobj
   - decor : class/game_objects/decor.aobj

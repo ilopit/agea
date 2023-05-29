@@ -14,6 +14,16 @@ mesh_component::construct(construct_params& c)
 {
     AGEA_return_false(base_class::construct(c));
 
+    if (c.mesh_handle)
+    {
+        m_mesh = c.mesh_handle;
+    }
+
+    if (c.material_handle)
+    {
+        m_material = c.material_handle;
+    }
+
     return true;
 }
 

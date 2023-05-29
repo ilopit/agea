@@ -1,12 +1,6 @@
 #version 450
 
-#include "common_frag.glsl"
-
-layout (location = 0) in vec3 inFragPos;
-layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec3 inColor;
-layout (location = 3) in vec2 inTexCoord;
-
+#include "common_frag.glsl" 
 
 // materials
 struct MaterialData
@@ -21,7 +15,7 @@ layout(std140, set = 1, binding = 1) readonly buffer MaterialBuffer{
 } dyn_material_buffer;
 
 
-layout(set = 2, binding = 0) uniform sampler2D tex1;
+layout(set = 2, binding = 0) uniform sampler2D tex1[2];
 
 void main()
 {

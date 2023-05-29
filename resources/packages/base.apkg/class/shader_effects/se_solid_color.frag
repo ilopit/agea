@@ -22,21 +22,21 @@ layout(set = 2, binding = 0) uniform sampler2D tex1[];
 void main()
 {
     MaterialData material = dyn_material_buffer.objects[constants.material_id];
-
+    PointLight light = dyn_point_lights_buffer.objects[0];
     // ambient
-    vec3 ambient = dyn_scene_data.ambient * material.ambient;
+    vec3 ambient = light.ambient * material.ambient;
 
     // diffuse 
     vec3 norm = normalize(inNormal);
-    vec3 lightDir = normalize(dyn_scene_data.position.xyz - inFragPos);
+    vec3 lightDir = normalize(light.position.xyz - inFragPos);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = dyn_scene_data.ambient.xyz * (diff * material.diffuse);
+    vec3 diffuse = light.ambient.xyz * (diff * material.diffuse);
 
     // specular
     vec3 viewDir = normalize(dyn_camera_data.camPos - inFragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    vec3 specular = dyn_scene_data.ambient.xyz * (spec * material.specular);  
+    vec3 specular = light.ambient.xyz * (spec * material.specular);  
 
     vec3 result = ambient + diffuse + specular;
     outColor = vec4(result, 1.0);
