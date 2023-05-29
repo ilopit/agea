@@ -1,4 +1,4 @@
-#include "engine/agea_engine.h"
+﻿#include "engine/agea_engine.h"
 
 #include "engine/ui.h"
 #include "engine/input_manager.h"
@@ -310,15 +310,14 @@ vulkan_engine::consume_updated_transforms()
             if (auto m = obj.as<root::mesh_component>())
             {
                 auto obj_data = m->get_render_object_data();
+                if (obj_data)
+                {
+                    obj_data->gpu_data.model_matrix = m->get_transofrm_matrix();
 
-                obj_data->gpu_data.model_matrix = i->get_transofrm_matrix();
-
-                glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
+                    glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
+                }
+                m->set_dirty_transform(false);
             }
-            //             else if (auto m = obj.as<root::light_component>())
-            //             {
-            //                 m->get_handler()->obj_pos = m->get_world_position();
-            //             }
         }
 
         i->set_dirty_transform(false);
@@ -399,14 +398,21 @@ vulkan_engine::init_scene()
         glob::level::getr().spawn_object<root::directional_light>(AID("DL"), dcp);
     }
 
-    core::spawn_parameters sp;
+#if defined(AGEA_demo_module_included)
 
+    demo::example::construct_params dcp;
+
+    auto p = glob::level::getr().spawn_object<demo::example>(AID("spawned_example"), dcp);
+
+#endif
+
+    core::spawn_parameters sp;
     auto id1 = AID("decor");
     auto id2 = AID("decor");
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 1;
+    int DIM = 0;
 
     for (x = 0; x < DIM; ++x)
     {
