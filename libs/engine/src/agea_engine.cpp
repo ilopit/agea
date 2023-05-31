@@ -412,7 +412,7 @@ vulkan_engine::init_scene()
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 0;
+    int DIM = 10;
 
     for (x = 0; x < DIM; ++x)
     {
@@ -466,19 +466,6 @@ vulkan_engine::consume_updated_shader_effects()
     for (auto& i : items)
     {
         glob::render_bridge::getr().render_ctor(*i, true);
-    }
-
-    items.clear();
-}
-
-void
-vulkan_engine::consume_updated_light_sources()
-{
-    auto& items = glob::level::getr().get_dirty_shader_effect_queue();
-
-    for (auto& i : items)
-    {
-        // glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
     }
 
     items.clear();

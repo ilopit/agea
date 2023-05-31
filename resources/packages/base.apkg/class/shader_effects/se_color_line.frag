@@ -9,7 +9,7 @@ struct MaterialData
 };
 
 //all object matrices
-layout(std140, set = 1, binding = 1) readonly buffer MaterialBuffer{   
+layout(std140, set = 3, binding = 0) readonly buffer MaterialBuffer{   
 
     MaterialData objects[];
 } dyn_material_buffer;

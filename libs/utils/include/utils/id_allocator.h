@@ -24,7 +24,7 @@ public:
     }
 
     uint64_t
-    get_ids_in_fly()
+    get_ids_in_fly() const
     {
         return m_ids_in_fly;
     }

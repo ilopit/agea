@@ -23,12 +23,9 @@ struct texture_sampler_data
 class material_data
 {
 public:
-    material_data(const ::agea::utils::id& id,
-                  const ::agea::utils::id& type_id,
-                  gpu_data_index_type idx)
+    material_data(const ::agea::utils::id& id, const ::agea::utils::id& type_id)
         : m_id(id)
         , m_type_id(type_id)
-        , m_index(idx)
     {
     }
 
@@ -52,16 +49,17 @@ public:
         return m_index;
     }
 
-    void
-    set_idx(gpu_data_index_type i)
-    {
-        m_type_index = i;
-    }
-
     gpu_data_index_type
     gpu_type_idx() const
     {
         return m_type_index;
+    }
+
+    void
+    set_idexes(gpu_data_index_type index, gpu_data_index_type mat_type_index)
+    {
+        m_index = index;
+        m_type_index = mat_type_index;
     }
 
     agea::utils::dynamic_object gpu_data;

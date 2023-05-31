@@ -19,6 +19,7 @@
 #include <SDL_events.h>
 
 #include <native/native_window.h>
+
 #include <utils/agea_log.h>
 #include <utils/process.h>
 #include <utils/clock.h>
@@ -41,13 +42,16 @@ namespace
 const uint32_t GLOBAL_descriptor_sets = 0;
 const uint32_t OBJECTS_descriptor_sets = 1;
 const uint32_t TEXTURES_descriptor_sets = 2;
-const uint32_t LIGHTS_descriptor_sets = 3;
+const uint32_t MATERIALS_descriptor_sets = 3;
 
 const uint32_t INITIAL_OBJECTS_RANGE_SIZE = 4 * 1024;
-const uint32_t INITIAL_MATERIAL_RANGE_SIZE = 1 * 1024;
-const uint32_t INITIAL_LIGHTS_RANGE_SIZE = 1 * 1024;
+const uint32_t INITIAL_MATERIAL_SEGMENT_RANGE_SIZE = 1024;
+const uint32_t INITIAL_MATERIAL_RANGE_SIZE = 10 * INITIAL_MATERIAL_SEGMENT_RANGE_SIZE;
 
-const uint32_t SSBO_BUFFER_SIZE = 16 * 1024;
+const uint32_t INITIAL_LIGHTS_SEGMENT_SIZE = 1 * 1024;
+const uint32_t INITIAL_LIGHTS_BUFFER_SIZE = 3 * 1024;
+
+const uint32_t OBJECTS_BUFFER_SIZE = 16 * 1024;
 const uint32_t LIGHTS_BUFFER_SIZE = 3 * 1024;
 const uint32_t DYNAMIC_BUFFER_SIZE = 4 * 1024;
 }  // namespace
@@ -63,8 +67,6 @@ vulkan_render::~vulkan_render()
 void
 vulkan_render::init()
 {
-    m_ssbo_range.emplace_back(INITIAL_OBJECTS_RANGE_SIZE);
-
     auto device = glob::render_device::get();
     m_frames.resize(device->frame_size());
 
@@ -73,10 +75,15 @@ vulkan_render::init()
         m_frames[i].frame = &device->frame(i);
 
         m_frames[i].m_object_buffer = device->create_buffer(
-            SSBO_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+            OBJECTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        m_frames[i].m_lights_buffer = device->create_buffer(
-            LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].m_materials_buffer =
+            device->create_buffer(INITIAL_MATERIAL_RANGE_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].m_lights_buffer =
+            device->create_buffer(INITIAL_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].m_dynamic_data_buffer = device->create_buffer(
             DYNAMIC_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -207,14 +214,22 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
 
     auto device = glob::render_device::get();
 
-    if (get_current_frame_transfer_data().has_data())
+    if (current_frame.has_obj_data())
     {
-        upload_render_data(current_frame);
+        upload_obj_data(current_frame);
+        current_frame.reset_obj_data();
     }
 
-    if (get_current_frame_transfer_data().has_light_data())
+    if (current_frame.has_mat_data())
+    {
+        upload_material_data(current_frame);
+        current_frame.reset_mat_data();
+    }
+
+    if (current_frame.has_light_data())
     {
         upload_light_data(current_frame);
+        current_frame.reset_light_data();
     }
 
     auto& dyn = current_frame.m_dynamic_data_buffer;
@@ -263,91 +278,76 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
     VkDescriptorBufferInfo directional_light_info{};
     directional_light_info.buffer = current_frame.m_lights_buffer.buffer();
     directional_light_info.offset = 0;
-    directional_light_info.range = INITIAL_LIGHTS_RANGE_SIZE;
+    directional_light_info.range = INITIAL_LIGHTS_SEGMENT_SIZE;
 
     VkDescriptorBufferInfo point_light_info{};
     point_light_info.buffer = current_frame.m_lights_buffer.buffer();
-    point_light_info.offset = INITIAL_LIGHTS_RANGE_SIZE;
-    point_light_info.range = INITIAL_LIGHTS_RANGE_SIZE;
+    point_light_info.offset = INITIAL_LIGHTS_SEGMENT_SIZE;
+    point_light_info.range = INITIAL_LIGHTS_SEGMENT_SIZE;
 
     VkDescriptorBufferInfo spot_light_info{};
     spot_light_info.buffer = current_frame.m_lights_buffer.buffer();
-    spot_light_info.offset = INITIAL_LIGHTS_RANGE_SIZE * 2;
-    spot_light_info.range = INITIAL_LIGHTS_RANGE_SIZE;
+    spot_light_info.offset = INITIAL_LIGHTS_SEGMENT_SIZE * 2;
+    spot_light_info.range = INITIAL_LIGHTS_SEGMENT_SIZE;
+
+    VkDescriptorBufferInfo object_buffer_info{};
+    object_buffer_info.buffer = current_frame.m_object_buffer.buffer();
+    object_buffer_info.offset = 0;
+    object_buffer_info.range = current_frame.m_object_buffer.get_alloc_size();
 
     vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
                                         current_frame.frame->m_dynamic_descriptor_allocator.get())
-        .bind_buffer(0, &directional_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .bind_buffer(0, &object_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                     VK_SHADER_STAGE_VERTEX_BIT)
+        .bind_buffer(1, &directional_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                      VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(1, &point_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .bind_buffer(2, &point_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                      VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(2, &spot_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .bind_buffer(3, &spot_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                      VK_SHADER_STAGE_FRAGMENT_BIT)
-        .build(m_light_set);
+        .build(m_objects_set);
 
-    AGEA_check(m_light_set, "Should never happens");
+    AGEA_check(m_objects_set, "Should never happens");
 }
 
 void
-vulkan_render::upload_render_data(render::frame_state& frame)
+vulkan_render::upload_obj_data(render::frame_state& frame)
 {
-    auto& buffer_td = frame.m_object_buffer;
-    auto old_total_size = ssbo_size();
+    const auto total_size = m_objects_id.get_ids_in_fly() * sizeof(gpu_object_data);
 
-    bool rearranged = rearrange_ssbo();
-    if (rearranged)
+    bool reallocated = false;
+    if (total_size >= frame.m_object_buffer.get_alloc_size())
     {
-        auto total_size = ssbo_size();
-        if (total_size >= buffer_td.get_alloc_size())
-        {
-            ALOG_INFO("Reallocating SSBO buffer, partisions {2}, size {0}=>{1}", old_total_size,
-                      total_size * 2, m_ssbo_range.get_size());
+        auto old_buffer_tb = std::move(frame.m_object_buffer);
 
-            frame.m_object_buffer = glob::render_device::getr().create_buffer(
-                total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        frame.m_object_buffer = glob::render_device::getr().create_buffer(
+            total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-            buffer_td.begin();
+        ALOG_INFO("Reallocating obj buffer {0} => {1}", old_buffer_tb.get_alloc_size(),
+                  frame.m_object_buffer.get_alloc_size());
 
-            auto gpu_object_data_begin =
-                (render::gpu_object_data*)buffer_td.allocate_data(m_ssbo_range.front());
+        old_buffer_tb.begin();
+        frame.m_object_buffer.begin();
 
-            for (auto& o : glob::vulkan_render_loader::getr().get_objects_cache())
-            {
-                gpu_object_data_begin[o.second->gpu_index()] = o.second->gpu_data;
-            }
+        memcpy(frame.m_object_buffer.get_data(), old_buffer_tb.get_data(),
+               old_buffer_tb.get_alloc_size());
 
-            for (size_t i = 1; i < m_ssbo_range.get_size(); ++i)
-            {
-                auto gpu_material_data_begin = buffer_td.allocate_data(m_ssbo_range[i]);
-                for (auto& o : glob::vulkan_render_loader::getr().get_materials_cache())
-                {
-                    if (o.second->gpu_type_idx() == (i - 1))
-                    {
-                        auto dst_ptr = gpu_material_data_begin +
-                                       o.second->gpu_idx() * o.second->gpu_data.size();
-                        memcpy(dst_ptr, o.second->gpu_data.data(), o.second->gpu_data.size());
-                    }
-                }
-            }
-            buffer_td.end();
-        }
+        old_buffer_tb.end();
+
+        reallocated = true;
     }
 
-    buffer_td.begin();
+    if (!reallocated)
+    {
+        frame.m_object_buffer.begin();
+    }
 
     auto gpu_object_data_begin =
-        (render::gpu_object_data*)buffer_td.allocate_data(m_ssbo_range.front());
+        (render::gpu_object_data*)frame.m_object_buffer.allocate_data(total_size);
 
     upload_gpu_object_data(gpu_object_data_begin);
 
-    for (size_t i = 1; i < m_ssbo_range.get_size(); ++i)
-    {
-        auto gpu_material_data_begin = buffer_td.allocate_data(m_ssbo_range[i]);
-        auto& mat_set = get_current_frame_transfer_data().m_materias_queue_set[i - 1];
-        upload_gpu_materials_data(gpu_material_data_begin, mat_set);
-    }
-    get_current_frame_transfer_data().reset();
-    buffer_td.end();
+    frame.m_object_buffer.end();
 }
 
 void
@@ -358,13 +358,13 @@ vulkan_render::upload_light_data(render::frame_state& frame)
     buffer_td.begin();
 
     auto direct =
-        (render::gpu_directional_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_RANGE_SIZE);
+        (render::gpu_directional_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
 
     auto point_data =
-        (render::gpu_point_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_RANGE_SIZE);
+        (render::gpu_point_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
 
     auto spot_light =
-        (render::gpu_spot_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_RANGE_SIZE);
+        (render::gpu_spot_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
 
     for (auto pd : frame.m_lights_queue)
     {
@@ -391,6 +391,80 @@ vulkan_render::upload_light_data(render::frame_state& frame)
 }
 
 void
+vulkan_render::upload_material_data(render::frame_state& frame)
+{
+    auto total_size = m_materials_layout.calc_new_size();
+
+    bool reallocated = false;
+
+    vk_utils::vulkan_buffer old_buffer_tb;
+
+    if (total_size >= frame.m_materials_buffer.get_alloc_size())
+    {
+        old_buffer_tb = std::move(frame.m_materials_buffer);
+
+        frame.m_materials_buffer = glob::render_device::getr().create_buffer(
+            total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        ALOG_INFO("Reallocating material buffer {0} => {1}", old_buffer_tb.get_alloc_size(),
+                  frame.m_materials_buffer.get_alloc_size());
+
+        reallocated = true;
+    }
+
+    if (reallocated)
+    {
+        old_buffer_tb.begin();
+    }
+
+    frame.m_materials_buffer.begin();
+
+    for (auto i = 0; i < m_materials_layout.get_segments_size(); ++i)
+    {
+        auto& s = m_materials_layout.at(i);
+
+        auto src_offset = s.offset;
+        auto size = s.get_allocated_size();
+
+        m_materials_layout.update_segment(i);
+
+        if (m_materials_layout.dirty_layout())
+        {
+            auto dst_offset = s.offset;
+
+            if (reallocated)
+            {
+                memcpy(frame.m_materials_buffer.get_data() + dst_offset,
+                       old_buffer_tb.get_data() + src_offset, size);
+            }
+            else
+            {
+                memmove(frame.m_materials_buffer.get_data() + dst_offset,
+                        old_buffer_tb.get_data() + src_offset, size);
+            }
+        }
+    }
+
+    if (reallocated)
+    {
+        old_buffer_tb.end();
+    }
+
+    auto mat_begin = frame.m_materials_buffer.get_data();
+
+    for (int i = 0; i < m_materials_layout.get_segments_size(); ++i)
+    {
+        auto& sm = m_materials_layout.at(i);
+        auto& mat_set_queue = frame.m_materias_queue_set[sm.index];
+
+        upload_gpu_materials_data(mat_begin + sm.offset, mat_set_queue);
+    }
+
+    frame.m_materials_buffer.end();
+    m_materials_layout.reset_dirty_layout();
+}
+
+void
 vulkan_render::draw_objects_queue(render_line_conteiner& r,
                                   VkCommandBuffer cmd,
                                   vk_utils::vulkan_buffer& ssbo_buffer,
@@ -398,7 +472,7 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
                                   render::frame_state& current_frame)
 
 {
-    const uint32_t dummy_offest[] = {0, 0, 0};
+    const uint32_t dummy_offest[] = {0, 0, 0, 0};
 
     uint32_t cur_material_idx = INVALID_GPU_INDEX;
     mesh_data* cur_mesh = nullptr;
@@ -406,11 +480,6 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
 
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-
-    VkDescriptorBufferInfo object_buffer_info{};
-    object_buffer_info.buffer = current_frame.m_object_buffer.buffer();
-    object_buffer_info.offset = 0;
-    object_buffer_info.range = ssbo_buffer.get_range_alloc_size(0);
 
     collect_lights();
 
@@ -427,30 +496,26 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
 
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-            auto mat_ssbo_range = cur_material->gpu_type_idx() + 1;
+            auto& sm = m_materials_layout.at(cur_material_idx);
 
             VkDescriptorBufferInfo mat_buffer_info{};
-            mat_buffer_info.buffer = current_frame.m_object_buffer.buffer();
-            mat_buffer_info.offset = ssbo_buffer.get_offsets()[mat_ssbo_range];
-            mat_buffer_info.range = ssbo_buffer.get_range_alloc_size(mat_ssbo_range);
+            mat_buffer_info.buffer = current_frame.m_materials_buffer.buffer();
+            mat_buffer_info.offset = sm.offset;
+            mat_buffer_info.range = sm.get_allocated_size();
 
-            VkDescriptorSet object_data_set{};
+            VkDescriptorSet mat_data_set{};
             vk_utils::descriptor_builder::begin(
                 glob::render_device::getr().descriptor_layout_cache(),
                 current_frame.frame->m_dynamic_descriptor_allocator.get())
-                .bind_buffer(0, &object_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                             VK_SHADER_STAGE_VERTEX_BIT)
-                .bind_buffer(1, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                              VK_SHADER_STAGE_FRAGMENT_BIT)
-                .build(object_data_set);
-
-            AGEA_check(object_data_set, "Should never happens");
+                .build(mat_data_set);
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    OBJECTS_descriptor_sets, 1, &object_data_set, 2, dummy_offest);
+                                    OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    LIGHTS_descriptor_sets, 1, &m_light_set, 3, dummy_offest);
+                                    MATERIALS_descriptor_sets, 1, &mat_data_set, 1, dummy_offest);
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
                                     GLOBAL_descriptor_sets, 1, &m_global_set,
@@ -552,6 +617,34 @@ vulkan_render::drop_object(render::object_data* obj_data)
 }
 
 void
+vulkan_render::add_material(render::material_data* mat_data)
+{
+    auto& mat_id = mat_data->type_id();
+
+    auto segment = m_materials_layout.find(mat_id);
+
+    if (!segment)
+    {
+        segment = m_materials_layout.add(mat_id, mat_data->gpu_data.size(),
+                                         INITIAL_MATERIAL_SEGMENT_RANGE_SIZE);
+
+        for (auto& q : m_frames)
+        {
+            while (segment->index >= q.m_materias_queue_set.get_size())
+            {
+                q.m_materias_queue_set.emplace_back();
+            }
+        }
+    }
+    mat_data->set_idexes(segment->alloc_id(), segment->index);
+}
+
+void
+vulkan_render::drop_material(render::material_data* mat_data)
+{
+}
+
+void
 vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
 {
     for (auto& q : m_frames)
@@ -577,56 +670,6 @@ vulkan_render::schedule_light_data_gpu_upload(render::light_data* ld)
     {
         q.m_lights_queue.emplace_back(ld);
     }
-}
-
-void
-vulkan_render::add_point_light_source(light_type lt, const gpu_light& gl)
-{
-    //     switch (lt)
-    //     {
-    //     case light_type::directional_light_data:
-    //
-    //         m_dir_lights.push_back(gl.directional);
-    //
-    //         break;
-    //
-    //     case light_type::spot_light_data:
-    //         auto id = m_spot_lights_idalloc.alloc_id();
-    //         m_spot_lights.push_back(gl.spot);
-    //         break;
-    //
-    //     case light_type::point_light_data:
-    //         auto id = m_point_lights_idalloc.alloc_id();
-    //         m_point_lights.push_back(gl.point);
-    //         break;
-    //     }
-}
-
-void
-vulkan_render::remove_point_light_source(light_type lt)
-{
-    //     auto itr = std::remove_if(m_lighsts.begin(), m_lighsts.end(),
-    //                               [p](render::directional_light_data* i) { return p == i; });
-    //
-    //     m_lighsts.erase(itr);
-}
-
-gpu_data_index_type
-vulkan_render::generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size)
-{
-    const auto [it, sucess] = m_type_id_range_id.insert(std::make_pair(
-        mat_id, material_type_property{(gpu_data_index_type)m_type_id_range_id.size(), size}));
-
-    while (m_ssbo_range.get_size() <= m_type_id_range_id.size())
-    {
-        for (auto& q : m_frames)
-        {
-            q.m_materias_queue_set.emplace_back();
-        }
-        m_ssbo_range.emplace_back(INITIAL_MATERIAL_RANGE_SIZE);
-    }
-
-    return it->second.type_index;
 }
 
 void
@@ -682,8 +725,6 @@ vulkan_render::upload_gpu_object_data(render::gpu_object_data* object_SSBO)
     {
         object_SSBO[obj->gpu_index()] = obj->gpu_data;
     }
-
-    to_update.clear();
 }
 
 void
@@ -948,48 +989,6 @@ vulkan_render::resize(uint32_t width, uint32_t height)
 {
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)(width), (float)(height));
-}
-
-bool
-vulkan_render::rearrange_ssbo()
-{
-    bool rearanged = false;
-
-    const auto obj_alloc_size = m_objects_id.get_ids_in_fly() * sizeof(gpu_object_data);
-
-    if (m_ssbo_range.front() <= obj_alloc_size)
-    {
-        ALOG_INFO("Reallocing objects SSBO range {0}=>{1}", m_ssbo_range.front(), obj_alloc_size);
-        m_ssbo_range.front() = obj_alloc_size * 2;
-        rearanged = true;
-    }
-
-    for (size_t i = 1; i < m_ssbo_range.get_size(); ++i)
-    {
-        auto mat_size = get_mat_alloc_size(i);
-        if (m_ssbo_range[i] <= mat_size)
-        {
-            ALOG_INFO("Reallocing {0} SSBO range {1}=>{1}", i - 1, m_ssbo_range[i], mat_size);
-            m_ssbo_range[i] = mat_size * 2;
-        }
-        rearanged = true;
-    }
-
-    return rearanged;
-}
-
-VkDeviceSize
-vulkan_render::get_mat_alloc_size(gpu_data_index_type mat_type_index)
-{
-    for (auto& [i, property] : m_type_id_range_id)
-    {
-        if (property.type_index == mat_type_index)
-        {
-            return glob::vulkan_render_loader::getr().last_mat_index(i) * property.alloc_size;
-        }
-    }
-
-    return {};
 }
 
 }  // namespace render

@@ -33,3 +33,5 @@ target_link_libraries(vulkan_render PUBLIC
     sdl2
 )
 agea_finalize_library(vulkan_render)
+
+add_subdirectory(tests)

@@ -74,9 +74,6 @@ private:
     void
     update_cameras();
 
-    void
-    compile_all_shaders();
-
     bool
     load_level(const utils::id& level_id);
 
@@ -85,9 +82,7 @@ private:
     void consume_updated_render_components();
     void consume_updated_render_assets();
     void consume_updated_shader_effects();
-    void consume_updated_light_sources();
 
-    bool prepare_for_rendering(core::package& p);
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on

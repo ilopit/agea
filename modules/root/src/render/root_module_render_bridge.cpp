@@ -144,16 +144,9 @@ render_ctor__material(render_bridge& rb, root::smart_object& obj, bool sub_objec
     {
         mat_data = glob::vulkan_render_loader::get()->create_material(
             mat_model.get_id(), mat_model.get_type_id(), samples_data, *se_data, dyn_gpu_data);
+        glob::vulkan_render::getr().add_material(mat_data);
 
         mat_model.set_material_data(mat_data);
-
-        if (mat_data->gpu_data.size())
-        {
-            auto type_inx = glob::vulkan_render::getr().generate_material_ssbo_data_range(
-                mat_data->type_id(), mat_data->gpu_data.size());
-
-            mat_data->set_idx(type_inx);
-        }
     }
     else
     {
@@ -165,6 +158,7 @@ render_ctor__material(render_bridge& rb, root::smart_object& obj, bool sub_objec
 
     return result_code::ok;
 }
+
 result_code
 render_dtor__material(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {

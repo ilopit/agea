@@ -110,6 +110,12 @@ public:
         return m_offsets;
     }
 
+    std::uint8_t*
+    get_data()
+    {
+        return m_data_begin;
+    }
+
 private:
     vulkan_buffer(vma_allocator_provider alloc,
                   VkBuffer b,

@@ -5,6 +5,7 @@
 #include "vulkan_render/types/vulkan_light_data.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/vulkan_image.h"
+#include "vulkan_render/utils/segments.h"
 
 #include <resource_locator/resource_locator.h>
 
@@ -39,9 +40,15 @@ using lights_update_queue = ::agea::utils::line_conteiner<render::light_data*>;
 struct frame_state
 {
     bool
-    has_data() const
+    has_obj_data() const
     {
-        return has_materials || !m_objects_queue.empty();
+        return !m_objects_queue.empty();
+    }
+
+    void
+    reset_obj_data()
+    {
+        m_objects_queue.clear();
     }
 
     bool
@@ -51,7 +58,19 @@ struct frame_state
     }
 
     void
-    reset()
+    reset_light_data()
+    {
+        m_lights_queue.clear();
+    }
+
+    bool
+    has_mat_data() const
+    {
+        return has_materials;
+    }
+
+    void
+    reset_mat_data()
     {
         has_materials = false;
     }
@@ -68,9 +87,10 @@ struct frame_state
         }
     }
 
+    vk_utils::vulkan_buffer m_dynamic_data_buffer;
     vk_utils::vulkan_buffer m_object_buffer;
     vk_utils::vulkan_buffer m_lights_buffer;
-    vk_utils::vulkan_buffer m_dynamic_data_buffer;
+    vk_utils::vulkan_buffer m_materials_buffer;
 
     vk_utils::vulkan_buffer m_ui_vertex_buffer;
     vk_utils::vulkan_buffer m_ui_index_buffer;
@@ -107,8 +127,15 @@ public:
 
     void
     add_object(render::object_data* obj_data);
+
     void
     drop_object(render::object_data* obj_data);
+
+    void
+    add_material(render::material_data* obj_data);
+
+    void
+    drop_material(render::material_data* obj_data);
 
     void
     schedule_material_data_gpu_upload(render::material_data* md);
@@ -118,15 +145,6 @@ public:
 
     void
     schedule_light_data_gpu_upload(render::light_data* ld);
-
-    void
-    add_point_light_source(light_type lt, const gpu_light& gl);
-
-    void
-    remove_point_light_source(light_type lt);
-
-    gpu_data_index_type
-    generate_material_ssbo_data_range(const utils::id& mat_id, uint64_t size);
 
     void
     clear_upload_queue();
@@ -145,10 +163,13 @@ private:
     build_light_set(render::frame_state& current_frame);
 
     void
-    upload_render_data(render::frame_state& frame);
+    upload_obj_data(render::frame_state& frame);
 
     void
     upload_light_data(render::frame_state& frame);
+
+    void
+    upload_material_data(render::frame_state& frame);
 
     void
     draw_objects_queue(render_line_conteiner& r,
@@ -187,22 +208,8 @@ public:
     void
     resize(uint32_t width, uint32_t height);
 
-    bool
-    rearrange_ssbo();
-
     VkDeviceSize
-    ssbo_size() const
-    {
-        VkDeviceSize result = 0;
-        for (auto i : m_ssbo_range)
-        {
-            result += i;
-        }
-        return result;
-    }
-
-    VkDeviceSize
-    get_mat_alloc_size(gpu_data_index_type mat_type_index);
+    get_mat_buffer_size() const;
 
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
@@ -221,17 +228,11 @@ public:
     std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
     render_line_conteiner m_transparent_render_object_queue;
 
-    struct material_type_property
-    {
-        gpu_data_index_type type_index;
-        VkDeviceSize alloc_size;
-    };
+    utils::id_allocator m_selected_material_alloc;
 
-    std::unordered_map<utils::id, material_type_property> m_type_id_range_id;
+    buffer_layout<material_data*> m_materials_layout;
 
     std::vector<frame_state> m_frames;
-
-    utils::line_conteiner<VkDeviceSize> m_ssbo_range;
 
     utils::id_allocator m_objects_id;
 
@@ -250,7 +251,7 @@ public:
 
     // Descriptors
 
-    VkDescriptorSet m_light_set = VK_NULL_HANDLE;
+    VkDescriptorSet m_objects_set = VK_NULL_HANDLE;
     VkDescriptorSet m_global_set = VK_NULL_HANDLE;
 
     render::gpu_push_constants m_obj_config;

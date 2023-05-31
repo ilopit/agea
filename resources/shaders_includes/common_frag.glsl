@@ -68,17 +68,17 @@ layout(set = 0, binding = 1) uniform SceneData{
     SpotLight spots[10];
 } dyn_scene_data;
 
-layout(std140, set = 3, binding = 0) readonly buffer DirLightBuffer{   
+layout(std140, set = 1, binding = 1) readonly buffer DirLightBuffer{   
 
     DirLight objects[];
 } dyn_directional_lights_buffer;
 
-layout(std140, set = 3, binding = 1) readonly buffer PointLightBuffer{   
+layout(std140, set = 1, binding = 2) readonly buffer PointLightBuffer{   
 
     PointLight objects[];
 } dyn_point_lights_buffer;
 
-layout(std140, set = 3, binding = 2) readonly buffer SpotLightBuffer{   
+layout(std140, set = 1, binding = 3) readonly buffer SpotLightBuffer{   
 
     SpotLight objects[];
 } dyn_spot_lights_buffer;
