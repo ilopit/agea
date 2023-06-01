@@ -38,16 +38,16 @@ public:
     }
 
 protected:
-    AGEA_ar_property("category=misc", "serializable=true");
+    AGEA_ar_property("category=misc", "access=all", "serializable=true");
     glm::vec3 m_ambient = glm::vec3{0.1f};
 
-    AGEA_ar_property("category=misc", "serializable=true");
+    AGEA_ar_property("category=misc", "access=all", "serializable=true");
     glm::vec3 m_diffuse = glm::vec3{0.1f};
 
-    AGEA_ar_property("category=misc", "serializable=true");
+    AGEA_ar_property("category=misc", "access=all", "serializable=true");
     glm::vec3 m_specular = glm::vec3{0.1f};
 
-    AGEA_ar_property("category=misc", "serializable=true");
+    AGEA_ar_property("category=misc", "access=all", "serializable=true");
     glm::vec3 m_direction = glm::vec3{1.0f};
 
     render::light_data* m_handler = nullptr;

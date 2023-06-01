@@ -45,13 +45,13 @@ public:
     }
 
 protected:
-    AGEA_ar_property("category=meta", "serializable=true");
+    AGEA_ar_property("category=meta", "access=all", "serializable=true");
     utils::buffer m_base_color;
 
-    AGEA_ar_property("category=meta", "serializable=true");
+    AGEA_ar_property("category=meta", "access=all", "serializable=true");
     uint32_t m_width;
 
-    AGEA_ar_property("category=meta", "serializable=true");
+    AGEA_ar_property("category=meta", "access=all", "serializable=true");
     uint32_t m_height;
 
     agea::render::texture_data* m_texture_data = nullptr;

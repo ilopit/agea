@@ -62,31 +62,6 @@ void
     return m_{property};
 }}"""
 
-methods_template_ref = """
-void
-{type}::set_{property}({property_type} v)
-{{
-    *m_{property} = v;
-}}
-
-{property_type}
-{type}::get_{property}() const
-{{
-    return *m_{property};
-}}"""
-
-methods_template_decl = """
-{get_access}:\\
-{property_type} get_{property}() const;\\
-{set_access}:\\
-void set_{property}({property_type} v);\\"""
-
-methods_template_decl_ref = """
-{get_access}:\\
-{property_type} get_{property}() const;\\
-{set_access}:\\
-void set_{property}({property_type} v);\\"""
-
 soal_template = """
 
 const ::agea::reflection::reflection_type& 
@@ -277,6 +252,13 @@ lua_binding_template_set_function = """
         lua_type["set_{property}"] = &{type}::set_{property};"""
 
 
+gen_getter = {"cpp_readonly", "cpp_only",
+              "script_readonly", "read_only", "all"}
+
+gen_setter = {"cpp_writeonly", "cpp_only",
+              "script_writeonly", "write_only", "all"}
+
+
 def extstrip(value: str):
     removal_list = [' ', '\t', '\n', '\r']
     for s in removal_list:
@@ -323,13 +305,15 @@ class file_context:
         self.lua_ctor = ""
         self.has_custom_types = False
         self.has_custom_properties = False
+        self.classes = []
+        self.structs = []
 
 
 class agea_class:
     def __init__(self):
         self.name = ""
         self.parent = ""
-        self.properties = []
+        self.properties: list[agea_property] = []
         self.functions = []
         self.architype = ""
 
@@ -381,7 +365,8 @@ class agea_range_list:
         self.ranges = []
         self.path = os.path.join(os.path.dirname(p), "modules")
         self.modules_root = os.path.join(os.path.dirname(p))
-        self.active_module_path = os.path.join(a, "active_modules.cpp")
+        self.active_module_path = os.path.join(
+            a, "engine", "active_modules.cpp")
         self.active_module_include_path = os.path.join(
             a, "engine",  "active_modules.h")
         self.handled = {}
@@ -527,7 +512,6 @@ class agea_range_list:
 
         with open(self.active_module_path, 'w') as file:
             file.write(module_register_template.format(modules=mod_register))
-  
 
         mod_includes += """
 namespace agea
@@ -547,9 +531,10 @@ register_modules();
 class agea_property:
     def __init__(self):
         self.name = ""
+        self.name_cut = ""
         self.category = ""
         self.type = ""
-        self.access = "cpp_only"
+        self.access = "no"
         self.owner = ""
         self.hint = ""
         self.serializable = "false"
@@ -565,29 +550,42 @@ class agea_property:
         self.has_default = "false"
 
 
-def write_properties(context: file_context, prop: agea_property, current_class: agea_class, module_name: str):
+access_setter_impl = """void
+{type}::set_{property}({property_type} v)
+{{
+    m_{property} = v;
+}}
+"""
+access_getter_impl = """{property_type}
+{type}::get_{property}() const
+{{
+    return m_{property};
+}}
+"""
 
-    context.content += property_template_start.format(module_name=module_name,
-                                                      property=prop.name[2:], property_type=prop.type, type=prop.owner)
-    if prop.access != "no":
-        if prop.ref == "false":
-            context.methods += methods_template.format(
-                module_name=module_name,
-                property=prop.name[2:], property_type=prop.type, type=prop.owner)
-        else:
-            context.methods += methods_template_ref.format(
-                module_name=module_name,
-                property=prop.name[2:], property_type=prop.type, type=prop.owner)
+
+def write_properties(context: file_context, prop: agea_property, current_class: agea_class):
+
+    context.content += property_template_start.format(module_name=context.module_name,
+                                                      property=prop.name_cut, property_type=prop.type, type=prop.owner)
+
+    if prop.access in gen_getter:
+        context.methods += access_getter_impl.format(
+            property=prop.name_cut, property_type=prop.type, type=prop.owner)
+
+    if prop.access in gen_setter:
+        context.methods += access_setter_impl.format(
+            property=prop.name_cut, property_type=prop.type, type=prop.owner)
 
     if prop.access == "all" or prop.access == "read_only":
         context.lua_binding += lua_binding_template_get_function.format(
-            module_name=module_name,
-            property=prop.name[2:], property_type=prop.type, type=prop.owner)
+            module_name=context.module_name,
+            property=prop.name_cut, property_type=prop.type, type=prop.owner)
 
     if prop.access == "all":
         context.lua_binding += lua_binding_template_set_function.format(
-            module_name=module_name,
-            property=prop.name[2:], property_type=prop.type, type=prop.owner)
+            module_name=context.module_name,
+            property=prop.name_cut, property_type=prop.type, type=prop.owner)
 
     if prop.category != "":
         context.content += "    "
@@ -641,28 +639,20 @@ def write_properties(context: file_context, prop: agea_property, current_class: 
     context.content += property_template_end
 
 
-def setter_access_kw(w: str):
-    return {"cpp_read_only": "protected", "cpp_only": "public", "read_only": "protected", "all": "public"}.get(w)
-
-
-def getter_access_kw(w: str):
-    return {"cpp_read_only": "public", "cpp_only": "public", "read_only": "public", "all": "public"}.get(w)
-
-
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def write_lua_class_type(context: file_context, current_class: agea_class, module_name):
+def write_lua_class_type(context: file_context, current_class: agea_class):
     if current_class.parent == '':
         context.lua_binding += lua_binding_class_template.format(
-            module_name=module_name, type=current_class.name, lua_end='')
+            module_name=context.module_name, type=current_class.name, lua_end='')
     else:
         context.lua_binding += lua_binding_class_template.format(
-            module_name=module_name, type=current_class.name, lua_end=',sol::base_classes, sol::bases<' + current_class.parent + '>()')
+            module_name=context.module_name, type=current_class.name, lua_end=',sol::base_classes, sol::bases<' + current_class.parent + '>()')
 
 
-def write_lua_struct_type(context: file_context, current_struct: agea_struct, module_name: str):
+def write_lua_struct_type(context: file_context, current_struct: agea_struct):
 
     ctro_line = ''
     for c in current_struct.ctros:
@@ -670,9 +660,8 @@ def write_lua_struct_type(context: file_context, current_struct: agea_struct, mo
         ctro_line += ','
 
     context.lua_binding += lua_binding_struct_template.format(
-        module_name=module_name,
+        module_name=context.module_name,
         type=current_struct.name, ctor_line=ctro_line[:-1]
-
     )
 
 
@@ -683,7 +672,7 @@ def to_type_id(type, is_parent,  context: file_context):
     return context.module_name + "__" + type
 
 
-def process_file(original_file_full_path, original_file_rel_path, module_name, context: file_context):
+def parse_file(original_file_full_path, original_file_rel_path, module_name, context: file_context):
 
     eprint("processing : {0} ...".format(original_file_full_path))
 
@@ -840,8 +829,9 @@ def process_file(original_file_full_path, original_file_rel_path, module_name, c
 
             prop.type = field_tokens[0]
             prop.name = field_tokens[1]
-
+            prop.name_cut = field_tokens[1][2:]
             prop.owner = class_name
+
             current_class.properties.append(prop)
 
         if line.startswith("AGEA_ar_ctor"):
@@ -872,45 +862,10 @@ def process_file(original_file_full_path, original_file_rel_path, module_name, c
         i = i + 1
 
     if current_class:
-        context.soal += soal_template.format(
-            module_name=module_name, type=class_name)
-
-        context.empty_cache += empty_template.format(
-            module_name=module_name, type=class_name, short_type=class_name, child=current_class.name)
-
-        if current_class.architype:
-            context.empty_cache += "    rt.arch         = core::architype::{architype};\n".format(
-                architype=current_class.architype)
-
-        context.reg_types += smart_object_reg_package_type.format(
-            type=class_name, child=current_class.name)
-
-        context.empty_cache += "}\n"
-
-        if len(current_class.parent) > 0:
-            context.parent += empty_template_with_parent.format(
-                module_name=module_name, type=class_name, child=current_class.name, parent=current_class.parent)
-
-        write_lua_class_type(context, current_class, module_name)
-
-        for p in current_class.properties:
-            write_properties(context, p, current_class, module_name)
-
-        for p in current_class.functions:
-            context.lua_binding += """       lua_type["{0}"] = &{1}::{0};
-""".format(p.name, current_class.name)
-
-        context.lua_binding += lua_binding_template_end
-        context.types.append(current_class.name)
+        context.classes.append(current_class)
 
     if current_struct:
-        write_lua_struct_type(context, current_struct, module_name)
-
-        for p in current_struct.functions:
-            context.lua_binding += """       lua_type["{0}"] = &{1}::{0};
-""".format(p.name, current_struct.name)
-
-        context.lua_binding += lua_binding_template_end
+        context.structs.append(current_struct)
 
     include = '#include "' + original_file_rel_path + '"'
 
@@ -1105,80 +1060,41 @@ def write_file(output_file, context: file_context, dependencies):
     output.write("}")
 
 
-def write_single_file(output_dir, file_path, package_name):
-    class_name = os.path.basename(file_path)[:-2]
+access_getter = """public:\\
+{property_type} get_{property}() const;\\
+private:\\
+"""
+access_setter = """public:\\
+void set_{property}({property_type} v);\\
+private:\\
+"""
 
-    full_file_path = os.path.basename(file_path)[:-2] + ".generated.h"
+
+def write_type_include_file(ar_class: agea_class, context: file_context, output_dir):
+
+    full_file_path = os.path.basename(ar_class.name) + ".generated.h"
 
     header_file_content = f"""
 #pragma once
 
-#include "{package_name}/{package_name}_module.h"
+#include "{context.module_name}/{context.module_name}_module.h"
 
-#define AGEA_gen_meta__{class_name}()   \\
-    friend class {package_name}_module; \\"""
+#define AGEA_gen_meta__{ar_class.name}()   \\
+    friend class {context.module_name}_module; \\
+"""
 
-    cfg = open(file_path, 'r')
-    lines = cfg.readlines()
-    lines_count = len(lines)
-    i = 0
-    while i != lines_count:
-        line = lines[i].strip()
+    for prop in ar_class.properties:
 
-        property_like = ""
+        if prop.access in gen_getter:
+            header_file_content += access_getter.format(
+                property=prop.name_cut, property_type=prop.type)
 
-        # TODO, rewrite!
-        if line.startswith("AGEA_ar_property"):
-            property_like += line + " "
+        if prop.access in gen_setter:
+            header_file_content += access_setter.format(
+                property=prop.name_cut, property_type=prop.type)
 
-            while i <= lines_count and lines[i].find(")") == -1:
-                i = i + 1
-                property_like += lines[i].strip() + " "
-
-            i = i + 1
-            field = lines[i].strip()[:-1].split()
-
-            prop = agea_property()
-            property_raw = property_like[property_like.find(
-                "(") + 1:property_like.find(")")].split(", ")
-
-            for pf in property_raw:
-                pf = pf.strip()
-                pairs = pf.split("=")
-                pairs[0] = pairs[0][1:]
-                pairs[1] = pairs[1][:-1]
-
-                if len(pairs) != 2:
-                    eprint("Wrong numbers of pairs! {0}".format(pairs))
-                    exit(-1)
-
-                if pairs[0] == "getter":
-                    prop.getter = pairs[1]
-                elif pairs[0] == "setter":
-                    prop.setter = pairs[1]
-                elif pairs[0] == "ref":
-                    prop.ref = pairs[1]
-                elif pairs[0] == "access":
-                    prop.access = pairs[1]
-                else:
-                    eprint("Unknown property!")
-
-            prop.type = field[0]
-            prop.name = field[1]
-            prop.owner = class_name
-
-            if prop.access != "no":
-                if prop.ref == "false":
-                    header_file_content += methods_template_decl.format(
-                        property_type=prop.type, property=prop.name[2:], get_access=getter_access_kw(prop.access), set_access=setter_access_kw(prop.access))
-                else:
-                    header_file_content += methods_template_decl_ref.format(
-                        property_type=prop.type[:-1], property=prop.name[2:], get_access=getter_access_kw(prop.access), set_access=setter_access_kw(prop.access))
-
-        i = i + 1
-    header_file_content += "\nprivate:"
-
-    full_file_path = os.path.join(output_dir, package_name, full_file_path)
+    full_file_path = os.path.join(
+        output_dir, context.module_name, full_file_path)
     with open(full_file_path, 'w') as file:
         file.write(header_file_content)
 
@@ -1205,11 +1121,54 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
         f = extstrip(f)
         if len(f) > 0:
             file_path = os.path.join(root_dir, f).replace("\\", "/")
-            process_file(file_path, f, module_name, context)
-            write_single_file(output_dir, file_path, module_name)
+            parse_file(file_path, f, module_name, context)
 
-    output_file = os.path.join(
-        output_dir, module_name,  module_name + ".ar.cpp")
+    for c in context.classes:
+        write_type_include_file(c, context, output_dir)
+
+        context.soal += soal_template.format(
+            module_name=module_name, type=c.name)
+
+        context.empty_cache += empty_template.format(
+            module_name=module_name, type=c.name, short_type=c.name, child=c.name)
+
+        if c.architype:
+            context.empty_cache += "    rt.arch         = core::architype::{architype};\n".format(
+                architype=c.architype)
+
+        context.reg_types += smart_object_reg_package_type.format(
+            type=c.name, child=c.name)
+
+        context.empty_cache += "}\n"
+
+        if len(c.parent) > 0:
+            context.parent += empty_template_with_parent.format(
+                module_name=module_name, type=c.name, child=c.name, parent=c.parent)
+
+        write_lua_class_type(context, c)
+
+        for p in c.properties:
+            write_properties(context, p, c)
+
+        for p in c.functions:
+            context.lua_binding += """       lua_type["{0}"] = &{1}::{0};
+    """.format(p.name, c.name)
+
+        context.lua_binding += lua_binding_template_end
+        context.types.append(c.name)
+
+    for s in context.structs:
+
+        write_lua_struct_type(context, s)
+
+        for p in s.functions:
+            context.lua_binding += """       lua_type["{0}"] = &{1}::{0};
+    """.format(p.name, s.name)
+
+        context.lua_binding += lua_binding_template_end
+
+        output_file = os.path.join(
+            output_dir, module_name,  module_name + ".ar.cpp")
 
     context.types.sort()
     context.custom_types.sort()
