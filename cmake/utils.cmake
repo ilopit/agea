@@ -69,8 +69,8 @@ macro(agea_ar_target)
         message("File already exists, skipping")
     else()
 
-        if(NOT EXISTS)
-        file(MAKE_DIRECTORY ${ar_folder})
+        if(NOT EXISTS ${ar_folder})
+            file(MAKE_DIRECTORY ${ar_folder})
         endif()
 
         write_file(${ar_file} "//ar file do not modify")

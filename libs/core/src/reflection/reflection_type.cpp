@@ -93,7 +93,6 @@ reflection::reflection_type::finalize_handlers()
         ui = ui ? ui : parent->ui;
         render_ctor = render_ctor ? render_ctor : parent->render_ctor;
         render_dtor = render_dtor ? render_dtor : parent->render_dtor;
-        instance = instance ? instance : parent->instance;
         alloc = alloc ? alloc : parent->alloc;
     }
 }

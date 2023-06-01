@@ -5,10 +5,9 @@
 #include "core/architype.h"
 #include "core/model_fwds.h"
 
-#include <utils/id.h>
 #include <serialization/serialization_fwds.h>
 
-#include <functional>
+#include <utils/id.h>
 
 #include <vector>
 
@@ -60,8 +59,7 @@ using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
 using type_rendler_ctor = result_code (*)(AGEA_reflection_type_render_ctor_args);
 using type_rendler_dtor = result_code (*)(AGEA_reflection_type_render_dtor_args);
-using type_allocator = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
-using type_instance = const root::smart_object& (*)();
+using type_allocator_handler = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
 
 using property_list = std::vector<std::shared_ptr<property>>;
 
@@ -69,18 +67,6 @@ struct reflection_type
 {
     void
     finalize_handlers();
-
-    int type_id = -1;
-    agea::utils::id module_id;
-    agea::utils::id type_name;
-    uint32_t size = 0;
-    core::architype arch = core::architype::unknown;
-
-    reflection_type* parent = nullptr;
-
-    std::unordered_map<std::string, property_list> m_editor_properties;
-    property_list m_properties;
-    property_list m_serilalization_properties;
 
     void
     update()
@@ -98,6 +84,18 @@ struct reflection_type
         }
     }
 
+    int type_id = -1;
+    agea::utils::id module_id;
+    agea::utils::id type_name;
+    uint32_t size = 0;
+    core::architype arch = core::architype::unknown;
+
+    reflection_type* parent = nullptr;
+
+    std::unordered_map<std::string, property_list> m_editor_properties;
+    property_list m_properties;
+    property_list m_serilalization_properties;
+
     // clang-format off
     type_serialization_handler                  serialization = nullptr;
     type_deserialization_handler                deserialization = nullptr;
@@ -107,8 +105,7 @@ struct reflection_type
     type_ui_handler                             ui = nullptr;
     type_rendler_ctor                           render_ctor = nullptr;
     type_rendler_dtor                           render_dtor = nullptr;
-    type_allocator                              alloc = nullptr;
-    type_instance                               instance = nullptr;
+    type_allocator_handler                      alloc = nullptr;
 
     // clang-format on
 
