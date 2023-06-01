@@ -10,6 +10,7 @@ namespace agea::render::vk_utils
 namespace
 {
 const uint32_t SETS_COUNT = 64;
+
 VkDescriptorPool
 create_pool(const descriptor_allocator::pool_sizes_mapping& pool_sizes,
             uint32_t sets_count,

@@ -7,27 +7,23 @@
 #include "engine/engine_counters.h"
 #include "engine/active_modules.h"
 
-#include <vulkan_render/vulkan_render.h>
-#include <vulkan_render/vulkan_render_loader.h>
-#include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/vk_descriptors.h>
-
+#include <core/caches/caches_map.h>
 #include <core/caches/components_cache.h>
 #include <core/caches/materials_cache.h>
 #include <core/caches/meshes_cache.h>
 #include <core/caches/objects_cache.h>
 #include <core/caches/textures_cache.h>
 #include <core/caches/game_objects_cache.h>
-#include <core/reflection/lua_api.h>
-#include <core/level_manager.h>
+
+#include <core/id_generator.h>
 #include <core/level.h>
+#include <core/level_manager.h>
+#include <core/object_constructor.h>
 #include <core/package.h>
 #include <core/package_manager.h>
-#include <core/id_generator.h>
-#include <core/object_constructor.h>
-#include <core/caches/caches_map.h>
+#include <core/reflection/lua_api.h>
 
-#include <render_bridge/render_bridge.h>
+#include <native/native_window.h>
 
 #include <root/assets/mesh.h>
 #include <root/components/mesh_component.h>
@@ -39,7 +35,12 @@
 #include <root/lights/spot_light.h>
 #include <root/assets/material.h>
 
-#include <native/native_window.h>
+#include <render_bridge/render_bridge.h>
+
+#include <vulkan_render/vulkan_render.h>
+#include <vulkan_render/vulkan_render_loader.h>
+#include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/vk_descriptors.h>
 
 #include <utils/agea_log.h>
 #include <utils/process.h>

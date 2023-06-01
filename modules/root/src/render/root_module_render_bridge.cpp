@@ -8,15 +8,18 @@
 #include "root/assets/solid_color_material.h"
 #include "root/assets/simple_texture_material.h"
 #include "root/assets/mesh.h"
-#include "root/mesh_object.h"
+
+#include "root/components/mesh_component.h"
+#include "root/game_object.h"
+
 #include "root/lights/point_light.h"
 #include "root/lights/spot_light.h"
 #include "root/lights/directional_light.h"
-#include "root/game_object.h"
 #include "root/lights/components/directional_light_component.h"
 #include "root/lights/components/spot_light_component.h"
 #include "root/lights/components/point_light_component.h"
-#include "root/components/mesh_component.h"
+
+#include "root/mesh_object.h"
 #include "root/root_types_ids.ar.h"
 
 #include <core/reflection/reflection_type.h>
