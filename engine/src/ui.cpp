@@ -103,6 +103,7 @@ ui::new_frame(float dt)
     io.DisplaySize = ImVec2(s.w, s.h);
     io.DeltaTime = dt;
 
+    ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
 
