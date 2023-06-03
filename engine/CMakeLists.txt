@@ -23,15 +23,14 @@ target_link_libraries(engine PUBLIC
     sdl2
 )
 
-target_include_directories(engine PUBLIC ${CMAKE_BINARY_DIR}/agea_generated)
+target_include_directories(engine 
+    PUBLIC 
+        ${CMAKE_BINARY_DIR}/agea_generated)
 
 agea_finalize_library(engine)
 
-file(GLOB EXEC_SRC "src/*.cpp")
+add_executable(engine_app "src/main.cpp")
 
-add_executable(engine_app
-   ${EXEC_SRC}
-)
 target_include_directories(engine_app PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_link_libraries(engine_app
