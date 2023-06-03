@@ -113,13 +113,28 @@ protected:
     AGEA_ar_property("category=object", "access=all", "serializable=true", "default=true");
     bool m_visible = false;
 
-    AGEA_ar_property("category=world", "access=all", "serializable=true", "default=true");
+    AGEA_ar_property("category=world",
+                     "access=all",
+                     "check=not_same",
+                     "invalidates=transform",
+                     "serializable=true",
+                     "default=true");
     vec3 m_position = {0.f};
 
-    AGEA_ar_property("category=world", "access=all", "serializable=true", "default=true");
+    AGEA_ar_property("category=world",
+                     "access=all",
+                     "serializable=true",
+                     "check=not_same",
+                     "invalidates=transform",
+                     "default=true");
     vec3 m_rotation = {0.f};
 
-    AGEA_ar_property("category=world", "access=all", "serializable=true", "default=true");
+    AGEA_ar_property("category=world",
+                     "access=all",
+                     "check=not_same",
+                     "invalidates=transform",
+                     "serializable=true",
+                     "default=true");
     vec3 m_scale = {1.f};
 
     glm::mat4 m_transform_matrix;

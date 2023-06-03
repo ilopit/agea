@@ -46,6 +46,8 @@
 #include <utils/process.h>
 #include <utils/clock.h>
 
+#include <sol2_unofficial/sol.h>
+
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -111,6 +113,8 @@ vulkan_engine::init()
     glob::render_bridge::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
+
+    init_default_scripting();
 
     engine::register_modules();
 
@@ -431,6 +435,14 @@ vulkan_engine::init_scene()
             }
         }
     }
+}
+
+void
+vulkan_engine::init_default_scripting()
+{
+    static auto game_object_lua_type =
+        ::agea::glob::lua_api::getr().state().new_usertype<reflection::reflection_type>(
+            "reflection_type", sol::no_constructor);
 }
 
 void

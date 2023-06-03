@@ -50,19 +50,6 @@ modules_instance_template = """
     return s_module;
 }}"""
 
-methods_template = """
-void
-{type}::set_{property}({property_type} v)
-{{
-    m_{property} = v;
-}}
-
-{property_type}
-{type}::get_{property}() const
-{{
-    return m_{property};
-}}"""
-
 soal_template = """
 
 const ::agea::reflection::reflection_type& 
@@ -179,31 +166,53 @@ struct type_resolver<{full_type}>
 }};
 """
 
+class_properties_template_begin = """
+    {{
+        using type       = {type};
+
+        auto td          = ::agea::reflection::agea_type_resolve<{type}>();
+        auto rtype       = ::agea::glob::reflection_type_registry::getr().get_type(td.type_id);
+
+"""
+
+class_properties_template_end = """
+    }
+"""
 
 property_template_start = """
-{{
-    using type       = {type};
+        {{
 
-    auto td          = ::agea::reflection::agea_type_resolve<{type}>();
-    auto property_td = ::agea::reflection::agea_type_resolve<decltype(type::m_{property})>();
+            auto property_td = ::agea::reflection::agea_type_resolve<decltype(type::m_{property})>();
+            auto prop_rtype  = ::agea::glob::reflection_type_registry::getr().get_type(property_td.type_id);
 
-    auto rtype       = ::agea::glob::reflection_type_registry::getr().get_type(td.type_id);
-    auto prop_rtype  = ::agea::glob::reflection_type_registry::getr().get_type(property_td.type_id);
+            auto prop        = std::make_shared<::agea::reflection::property>();
+            auto p           = prop.get();
 
-    auto prop        = std::make_shared<::agea::reflection::property>();
-    auto p           = prop.get();
+            rtype->m_properties.emplace_back(std::move(prop));
 
-    rtype->m_properties.emplace_back(std::move(prop));
-
-    // Main fields
-    p->name                           = "{property}";
-    p->offset                         = offsetof(type, m_{property});
-    p->rtype                          = prop_rtype;
-    // Extra fields
+            // Main fields
+            p->name                           = "{property}";
+            p->offset                         = offsetof(type, m_{property});
+            p->rtype                          = prop_rtype;
 """
 property_template_end = """
-}
+        }
 """
+
+function_template_start = """
+        {{
+            auto func        = std::make_shared<::agea::reflection::function>();
+            auto f           = func.get();
+
+            rtype->m_functions.emplace_back(std::move(func));
+
+            f->name          = "{function}";
+"""
+
+function_template_end = """
+        }
+"""
+
 
 lua_binding_class_template = """
     {{
@@ -315,6 +324,7 @@ class agea_class:
     def __init__(self):
         self.name = ""
         self.parent = ""
+        self.parent_short = ""
         self.properties: list[agea_property] = []
         self.functions = []
         self.architype = ""
@@ -539,6 +549,9 @@ class agea_property:
         self.access = "no"
         self.owner = ""
         self.hint = ""
+        self.invalidates_render = False
+        self.invalidates_transform = False
+        self.check_not_same = False
         self.serializable = "false"
         self.property_ser_handler = ""
         self.property_des_handler = ""
@@ -552,18 +565,42 @@ class agea_property:
         self.has_default = "false"
 
 
-access_setter_impl = """void
-{type}::set_{property}({property_type} v)
-{{
-    m_{property} = v;
-}}
-"""
 access_getter_impl = """{property_type}
 {type}::get_{property}() const
 {{
     return m_{property};
 }}
 """
+
+
+def write_access_setter(p: agea_property):
+    access_setter_impl = """void
+{type}::set_{property}({property_type} v)
+{{
+"""
+    content = access_setter_impl.format(
+        property=p.name_cut, property_type=p.type, type=p.owner)
+
+    if p.check_not_same:
+        content += "    if(m_{property} == v) {{ return; }}\n".format(property=p.name_cut)
+
+    content += "    m_{property} = v;\n".format(property=p.name_cut)
+
+    if p.invalidates_transform:
+        content += "    mark_transform_dirty();\n"
+
+    if p.invalidates_render:
+        content += "    mark_render_dirty();\n"
+
+    content += "}\n"
+
+    return content
+
+
+def write_functions(context: file_context, func: agea_function, current_class: agea_class):
+    context.content += function_template_start.format(function = func.name)
+
+    context.content += function_template_end
 
 
 def write_properties(context: file_context, prop: agea_property, current_class: agea_class):
@@ -576,55 +613,54 @@ def write_properties(context: file_context, prop: agea_property, current_class: 
             property=prop.name_cut, property_type=prop.type, type=prop.owner)
 
     if prop.access in gen_setter:
-        context.methods += access_setter_impl.format(
-            property=prop.name_cut, property_type=prop.type, type=prop.owner)
+        context.methods += write_access_setter(prop)
 
     if prop.category != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->category                       = "{0}";\n'.format(
             prop.category)
 
     if prop.gpu_data != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->gpu_data                       = "{0}";\n'.format(
             prop.gpu_data)
 
     if prop.has_default == "true":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->has_default                    = {0};\n'.format(
             prop.has_default)
 
     if prop.hint != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->hints                          = {{{0}}};\n'.format(
             prop.hint)
 
     if prop.serializable == "true":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->serializable                   = true;\n'
 
     if prop.property_ser_handler != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->serialization_handler          = ::agea::reflection::{0};\n'.format(
             prop.property_ser_handler)
 
     if prop.property_des_handler != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->deserialization_handler        = ::agea::reflection::{0};\n'.format(
             prop.property_des_handler)
 
     if prop.property_prototype_handler != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->protorype_handler              = ::agea::reflection::{0};\n'.format(
             prop.property_prototype_handler)
 
     if prop.property_compare_handler != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->compare_handler                = ::agea::reflection::{0};\n'.format(
             prop.property_compare_handler)
 
     if prop.property_copy_handler != "":
-        context.content += "    "
+        context.content += "            "
         context.content += 'p->copy_handler                   = ::agea::reflection::{0};\n'.format(
             prop.property_copy_handler)
 
@@ -706,6 +742,7 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name, con
             current_class.name = final_tokens[0]
             if len(final_tokens) > 1:
                 current_class.parent = final_tokens[1]
+                current_class.parent_short = final_tokens[1].split("::")[-1]
 
         if line.startswith("AGEA_ar_struct()"):
 
@@ -805,6 +842,20 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name, con
                     prop.copyable = pairs[1]
                 elif pairs[0] == "ref":
                     prop.ref = pairs[1]
+                elif pairs[0] == "invalidates":
+                    tokens = pairs[1].split(",")
+                    for t in tokens:
+                        t = extstrip(t)
+                        if t == "render":
+                            prop.invalidates_render = True
+                        elif t == "transform":
+                            prop.invalidates_transform = True
+                elif pairs[0] == "check":
+                    tokens = pairs[1].split(",")
+                    for t in tokens:
+                        t = extstrip(t)
+                        if t == "not_same":
+                            prop.check_not_same = True
                 elif pairs[0] == "hint":
                     tokens = pairs[1].split(",")
                     prop.hint += ""
@@ -999,6 +1050,7 @@ def write_file(output_file, context: file_context, dependencies):
         f = """#include "{module_name}/{module_name}_module.h"
 #include "{module_name}/{module_name}_types_ids.ar.h"
 #include "{module_name}/{module_name}_types_resolvers.ar.h"
+#include "{module_name}/{module_name}_types_script_importer.ar.h"
 """
         output.write(f.format(module_name=d))
 
@@ -1113,7 +1165,7 @@ void
             type=c.name)
 
         if c.parent != "":
-            usertype_extention_content += "    " + c.parent + \
+            usertype_extention_content += "    " + c.parent_short + \
                 "__lua_script_extention<T, K>(lua_type);\n"
 
         for p in c.properties:
@@ -1189,8 +1241,15 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
 
         write_lua_class_type(context, c)
 
+        context.content += class_properties_template_begin.format(type=c.name)
+
         for p in c.properties:
             write_properties(context, p, c)
+
+        for f in c.functions:
+            write_functions(context, f, c)
+
+        context.content += class_properties_template_end
 
         context.lua_binding += lua_binding_template_end
         context.types.append(c.name)

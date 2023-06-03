@@ -97,4 +97,30 @@ reflection::reflection_type::finalize_handlers()
     }
 }
 
+std::string
+reflection::reflection_type::to_string()
+{
+    std::string result;
+
+    result += std::format("{0}:{1}:{2}\n", module_id.cstr(), type_name.cstr(), type_id);
+    result += "parent:" + (parent ? parent->type_name.str() : "no") + "\n";
+
+    result += "properties:\n";
+
+    for (auto p : m_properties)
+    {
+        result += std::format("  {0}:{1}:{2}\n",
+                              p->rtype ? p->rtype->type_name.str() : std::string("custom"), p->name,
+                              p->rtype ? p->rtype->type_id : -1);
+    }
+    result += "functions:\n";
+
+    for (auto p : m_functions)
+    {
+        result += std::format("  {0}\n", p->name);
+    }
+
+    return result;
+}
+
 }  // namespace agea

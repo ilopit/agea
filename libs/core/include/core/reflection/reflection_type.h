@@ -2,6 +2,7 @@
 
 #include "core/model_minimal.h"
 #include "core/reflection/property.h"
+#include "core/reflection/function.h"
 #include "core/architype.h"
 #include "core/model_fwds.h"
 
@@ -62,6 +63,7 @@ using type_rendler_dtor = result_code (*)(AGEA_AR_render_dtor_args);
 using type_allocator_handler = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
 
 using property_list = std::vector<std::shared_ptr<property>>;
+using function_list = std::vector<std::shared_ptr<function>>;
 
 struct reflection_type
 {
@@ -84,6 +86,9 @@ struct reflection_type
         }
     }
 
+    std::string
+    to_string();
+
     int type_id = -1;
     agea::utils::id module_id;
     agea::utils::id type_name;
@@ -94,6 +99,7 @@ struct reflection_type
 
     std::unordered_map<std::string, property_list> m_editor_properties;
     property_list m_properties;
+    function_list m_functions;
     property_list m_serilalization_properties;
 
     // clang-format off

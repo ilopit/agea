@@ -205,14 +205,15 @@ public:
     core::architype
     get_architype_id() const;
 
-    const utils::id&
-    get_type_id() const;
-
+    AGEA_ar_function("category=reflection");
     const reflection::reflection_type*
     get_reflection() const
     {
         return m_rt;
     }
+
+    const utils::id&
+    get_type_id() const;
 
 protected:
     void
@@ -235,8 +236,6 @@ protected:
 
     const reflection::reflection_type* m_rt = nullptr;
 
-    AGEA_ar_property("category=meta", "access=no", "copyable=no");
-    utils::id m_type_id;
 
     AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
     utils::id m_id;

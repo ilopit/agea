@@ -54,6 +54,9 @@ public:
     void
     init_scene();
 
+    void
+    init_default_scripting();
+
     bool
     unload_render_resources(core::level& l);
 

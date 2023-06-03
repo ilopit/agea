@@ -32,38 +32,6 @@ public:
     bool
     construct(construct_params& c);
 
-    material*
-    get_material() const
-    {
-        return m_material;
-    }
-
-    void
-    set_material(material* v)
-    {
-        if (v == m_material)
-        {
-            return;
-        }
-
-        AGEA_check(v, "Should not be NULL!");
-        m_material = v;
-        mark_render_dirty();
-    }
-
-    void
-    set_mesh(mesh* v)
-    {
-        if (v == m_mesh)
-        {
-            return;
-        }
-
-        AGEA_check(v, "Should not be NULL!");
-        m_mesh = v;
-        mark_render_dirty();
-    }
-
     render::object_data*
     get_render_object_data() const
     {
@@ -75,17 +43,21 @@ public:
         m_render_handle = v;
     }
 
-    mesh*
-    get_mesh() const
-    {
-        return m_mesh;
-    }
-
 protected:
-    AGEA_ar_property("category=assets", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=assets",
+                     "serializable=true",
+                     "check=not_same",
+                     "invalidates=render",
+                     "access=all",
+                     "default=true");
     material* m_material = nullptr;
 
-    AGEA_ar_property("category=assets", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=assets",
+                     "serializable=true",
+                     "check=not_same",
+                     "invalidates=render",
+                     "access=all",
+                     "default=true");
     mesh* m_mesh = nullptr;
 
     render::object_data* m_render_handle = nullptr;

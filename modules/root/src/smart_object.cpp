@@ -30,7 +30,6 @@ smart_object::post_load()
 void
 smart_object::set_state(smart_object_state v)
 {
-    AGEA_check(m_obj_state != v, "");
 
     ALOG_TRACE("{0} {1} => {2}", m_id.cstr(), m_obj_state, v);
     m_obj_state = v;
