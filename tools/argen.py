@@ -587,7 +587,7 @@ def write_access_setter(p: agea_property):
     content += "    m_{property} = v;\n".format(property=p.name_cut)
 
     if p.invalidates_transform:
-        content += "    mark_transform_dirty();\n"
+        content += "    mark_transform_dirty();\n    update_children_matrixes();\n"
 
     if p.invalidates_render:
         content += "    mark_render_dirty();\n"

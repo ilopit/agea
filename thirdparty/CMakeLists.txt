@@ -25,11 +25,15 @@ externalize(imgui_unofficial "imgui")
 add_subdirectory(unofficial/vma)
 externalize(vma_unofficial "vma")
 
+#imgui
+add_subdirectory(unofficial/textedit)
+externalize(textedit_unofficial "textedit")
+
 #stb
 add_subdirectory(unofficial/stb)
 externalize(stb_unofficial "stb")
 
-#imgui
+#sdl2
 add_subdirectory(unofficial/sdl2)
 externalize(sdl2 "sdl2")
 

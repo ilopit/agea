@@ -112,10 +112,14 @@ game_object_component::mark_render_dirty()
     }
 }
 
-
 void
 game_object_component::update_children_matrixes()
 {
+    if (!get_owner())
+    {
+        return;
+    }
+
     auto r = get_owner()->get_components(get_order_idx());
 
     for (auto& obj : r)

@@ -25,6 +25,12 @@ public:
     buffer();
 
     void
+    reset()
+    {
+        m_buffer.clear();
+    }
+
+    void
     wrire_buffer(const char* c, size_t n);
 
 private:

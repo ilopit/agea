@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/ui.h"
+#include "engine/script_editor.h"
 
 #include "engine/console.h"
 #include "engine/property_drawers.h"
@@ -12,6 +13,7 @@
 #include <core/caches/caches_map.h>
 #include <core/caches/materials_cache.h>
 #include <core/reflection/property.h>
+#include <core/reflection/lua_api.h>
 
 #include <native/native_window.h>
 
@@ -25,6 +27,11 @@
 #include <backends/imgui_impl_vulkan.h>
 
 #include <array>
+
+namespace
+{
+
+}  // namespace
 
 namespace agea
 {
@@ -53,6 +60,9 @@ ui::ui()
 
     m_winodws[editor_console::window_title()] = std::make_unique<editor_console>();
     m_winodws[editor_console::window_title()]->m_show = true;
+
+    m_winodws[script_text_editor::window_title()] = std::make_unique<script_text_editor>();
+    m_winodws[script_text_editor::window_title()]->m_show = true;
 
     m_winodws[performance_counters_window::window_title()] =
         std::make_unique<performance_counters_window>();

@@ -136,6 +136,15 @@ struct buffer
         return m_data.data();
     }
 
+    void
+    write(const uint8_t* data, uint64_t size)
+    {
+        auto old_size = m_data.size();
+
+        m_data.resize(m_data.size() + size);
+        memcpy(m_data.data() + old_size, data, size);
+    }
+
     std::vector<uint8_t>&
     full_data()
     {

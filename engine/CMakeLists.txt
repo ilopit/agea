@@ -18,6 +18,8 @@ target_link_libraries(engine PUBLIC
     agea::render_bridge
     agea::native
 
+    agea::textedit_unofficial
+
     ${AGEA_ACTIVE_MODULES_TARGETS}
 
     sdl2
