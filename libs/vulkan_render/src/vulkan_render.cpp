@@ -111,6 +111,15 @@ vulkan_render::draw_objects()
 {
     auto device = glob::render_device::get();
 
+    auto r = SDL_GetWindowFlags(glob::native_window::getr().handle());
+
+    // TODO, rework
+    if ((SDL_WINDOW_MINIMIZED & r) == SDL_WINDOW_MINIMIZED)
+    {
+        int i = 2;
+        return;
+    }
+
     device->switch_frame_indeces();
 
     auto& current_frame = m_frames[device->get_current_frame_index()];
@@ -156,6 +165,11 @@ vulkan_render::draw_objects()
 
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
+
+    if (width == 0 || height == 0)
+    {
+        int i = 2;
+    }
 
     auto rp_info =
         vk_utils::make_renderpass_begin_info(device->render_pass(), VkExtent2D{width, height},

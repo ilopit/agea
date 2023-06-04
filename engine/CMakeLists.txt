@@ -31,7 +31,7 @@ target_include_directories(engine
 
 agea_finalize_library(engine)
 
-add_executable(engine_app "src/main.cpp")
+add_executable(engine_app "src/app/main.cpp")
 
 target_include_directories(engine_app PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/engine" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 

@@ -304,6 +304,7 @@ input_manager::input_manager()
 {
 }
 
+char a = 22;
 bool
 input_manager::input_tick(float dur_seconds)
 {
