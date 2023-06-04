@@ -20,6 +20,7 @@ enum class category : int
     assets,
     components,
     configs,
+    editor,
     fonts,
     levels,
     objects,

@@ -44,6 +44,7 @@ resource_locator::resource_dir(category c)
         // clang-format off
     case category::all:              {                              break;}
     case category::assets:           {path /= "assets";             break;}
+    case category::editor:           {path /= "editor";             break;}
     case category::configs:          {path /= "configs";            break;}
     case category::shaders_raw:      {path /= "shaders";            break;}
     case category::shaders_compiled: {path /= "cache/shaders";      break;}
