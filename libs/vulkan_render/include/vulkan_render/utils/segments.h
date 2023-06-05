@@ -21,6 +21,12 @@ struct buffer_segment
         return id;
     }
 
+    void
+    release_id(gpu_data_index_type id)
+    {
+        id_alloc.release_id(id);
+    }
+
     uint64_t
     get_used_size() const
     {

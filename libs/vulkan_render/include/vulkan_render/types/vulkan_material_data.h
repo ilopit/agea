@@ -62,6 +62,13 @@ public:
         m_type_index = mat_type_index;
     }
 
+    void
+    invalidate_ids()
+    {
+        m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
+        m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
+    }
+
     agea::utils::dynamic_object gpu_data;
 
     std::vector<texture_sampler_data> texture_samples;

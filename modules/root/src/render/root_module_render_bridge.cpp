@@ -170,6 +170,7 @@ render_dtor__material(render_bridge& rb, root::smart_object& obj, bool sub_objec
     if (auto mat_data = mat_model.get_material_data())
     {
         glob::vulkan_render_loader::getr().destroy_material_data(mat_data->get_id());
+        glob::vulkan_render::getr().drop_material(mat_data);
     }
 
     return result_code::ok;

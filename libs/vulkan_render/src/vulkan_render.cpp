@@ -656,6 +656,14 @@ vulkan_render::add_material(render::material_data* mat_data)
 void
 vulkan_render::drop_material(render::material_data* mat_data)
 {
+    auto& mat_id = mat_data->type_id();
+    auto segment = m_materials_layout.find(mat_id);
+
+    if (segment)
+    {
+        segment->release_id(mat_data->gpu_idx());
+        mat_data->invalidate_ids();
+    }
 }
 
 void
