@@ -39,6 +39,12 @@ private:
     void
     ev_reload();
 
+    void
+    ev_spawn();
+
+    void
+    ev_lights();
+
     glm::mat4
     get_rotation_matrix();
 

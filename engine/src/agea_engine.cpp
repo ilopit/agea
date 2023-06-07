@@ -385,24 +385,6 @@ vulkan_engine::init_scene()
 {
     load_level(glob::config::get()->level);
 
-    {
-        root::spot_light::construct_params plp;
-        plp.pos = {-20.f};
-        glob::level::getr().spawn_object<root::spot_light>(AID("PL1"), plp);
-    }
-
-    {
-        root::point_light::construct_params plp;
-        plp.pos = {15.f};
-        glob::level::getr().spawn_object<root::point_light>(AID("PL2"), plp);
-    }
-
-    {
-        root::directional_light::construct_params dcp;
-        dcp.pos = {0.f, 20.f, 0.0};
-        glob::level::getr().spawn_object<root::directional_light>(AID("DL"), dcp);
-    }
-
 #if defined(AGEA_demo_module_included)
 
     demo::example::construct_params dcp;
@@ -410,31 +392,6 @@ vulkan_engine::init_scene()
     auto p = glob::level::getr().spawn_object<demo::example>(AID("spawned_example"), dcp);
 
 #endif
-
-    core::spawn_parameters sp;
-    auto id1 = AID("decor");
-    auto id2 = AID("decor");
-
-    int x = 0, y = 0, z = 0;
-
-    int DIM = 10;
-
-    for (x = 0; x < DIM; ++x)
-    {
-        for (y = 0; y < DIM; ++y)
-        {
-            for (z = 0; z < DIM; ++z)
-            {
-                auto id = std::format("obj_{}_{}_{}", x, y, z);
-
-                sp.positon = root::vec3{x * 40.f, y * 40.f, z * 40.f};
-                sp.scale = root::vec3{10.f};
-                auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
-                    (z & 1) ? id1 : id2, AID(id), sp);
-                ALOG_INFO("Spawned {0}", p->get_id().cstr());
-            }
-        }
-    }
 }
 
 void

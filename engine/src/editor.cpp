@@ -11,6 +11,10 @@
 #include <core/level_manager.h>
 #include <core/package_manager.h>
 #include <core/package.h>
+#include <root/game_object.h>
+#include <root/lights/point_light.h>
+#include <root/lights/directional_light.h>
+#include <root/lights/spot_light.h>
 
 #include <utils/agea_log.h>
 
@@ -37,6 +41,12 @@ game_editor::init()
 
     glob::input_manager::get()->register_fixed_action(AID("level_reload"), true, this,
                                                       &game_editor::ev_reload);
+
+    glob::input_manager::get()->register_fixed_action(AID("spawn"), true, this,
+                                                      &game_editor::ev_spawn);
+
+    glob::input_manager::get()->register_fixed_action(AID("lights"), true, this,
+                                                      &game_editor::ev_lights);
 }
 
 void
@@ -93,6 +103,67 @@ game_editor::ev_reload()
     glob::vulkan_render::getr().m_transparent_render_object_queue.clear();
 
     glob::engine::getr().init_scene();
+}
+
+void
+game_editor::ev_spawn()
+{
+    if (glob::level::getr().find_game_object(AID("obj_0_0_0")))
+    {
+        return;
+    }
+
+    core::spawn_parameters sp;
+    auto id1 = AID("decor");
+    auto id2 = AID("decor");
+
+    int x = 0, y = 0, z = 0;
+
+    int DIM = 10;
+
+    for (x = 0; x < DIM; ++x)
+    {
+        for (y = 0; y < DIM; ++y)
+        {
+            for (z = 0; z < DIM; ++z)
+            {
+                auto id = std::format("obj_{}_{}_{}", x, y, z);
+
+                sp.positon = root::vec3{x * 40.f, y * 40.f, z * 40.f};
+                sp.scale = root::vec3{10.f};
+                auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
+                    (z & 1) ? id1 : id2, AID(id), sp);
+                // ALOG_INFO("Spawned {0}", p->get_id().cstr());
+            }
+        }
+    }
+}
+
+void
+game_editor::ev_lights()
+{
+    if (glob::level::getr().find_game_object(AID("PL1")))
+    {
+        return;
+    }
+
+    {
+        root::spot_light::construct_params plp;
+        plp.pos = {-20.f};
+        glob::level::getr().spawn_object<root::spot_light>(AID("PL1"), plp);
+    }
+
+    {
+        root::point_light::construct_params plp;
+        plp.pos = {15.f};
+        glob::level::getr().spawn_object<root::point_light>(AID("PL2"), plp);
+    }
+
+    {
+        root::directional_light::construct_params dcp;
+        dcp.pos = {0.f, 20.f, 0.0};
+        glob::level::getr().spawn_object<root::directional_light>(AID("DL"), dcp);
+    }
 }
 
 glm::mat4

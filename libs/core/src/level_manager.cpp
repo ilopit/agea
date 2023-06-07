@@ -125,6 +125,11 @@ level_manager::load_level_path(level& l,
         {
             o->post_load();
         }
+
+        if (auto go = obj->as<root::game_object>())
+        {
+            l.add_to_dirty_render_queue(go->get_root_component());
+        }
     }
     l.m_state = level_state::loaded;
 

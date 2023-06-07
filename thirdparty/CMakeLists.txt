@@ -17,6 +17,16 @@ set_target_properties(${ARGV0} PROPERTIES FOLDER "thirdparty/${ARGV1}/${name}")
 message(external/${name})
 endfunction()
 
+#fetch
+add_subdirectory(fetch)
+externalize(boost_chrono "boost")
+externalize(boost_container "boost")
+externalize(boost_context "boost")
+externalize(boost_coroutine "boost")
+externalize(boost_date_time "boost")
+externalize(boost_exception "boost")
+externalize(boost_url "boost")
+
 #imgui
 add_subdirectory(unofficial/imgui)
 externalize(imgui_unofficial "imgui")
@@ -25,7 +35,7 @@ externalize(imgui_unofficial "imgui")
 add_subdirectory(unofficial/vma)
 externalize(vma_unofficial "vma")
 
-#imgui
+#textedit
 add_subdirectory(unofficial/textedit)
 externalize(textedit_unofficial "textedit")
 

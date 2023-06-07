@@ -23,3 +23,9 @@ actions:
   - id: level_reload
     events:
       - trigger: r
+  - id: spawn
+    events:
+      - trigger: t
+  - id: lights
+    events:
+      - trigger: g
