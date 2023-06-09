@@ -910,7 +910,7 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name, con
     if current_struct:
         context.structs.append(current_struct)
 
-    include = '#include "' + original_file_rel_path + '"'
+    include = '#include "' + original_file_rel_path[8:] + '"'
 
     context.includes.add(include)
 
