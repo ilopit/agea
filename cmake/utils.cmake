@@ -13,8 +13,7 @@ macro(agea_finalize_library)
 
     target_include_directories(${ARGV0} 
         PUBLIC 
-            "${CMAKE_CURRENT_SOURCE_DIR}/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}")
+            "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
     add_library(agea::${ARGV0} ALIAS ${ARGV0})
 endmacro()
@@ -25,8 +24,7 @@ macro(agea_finalize_interface_library)
 
     target_include_directories(${ARGV0} 
         INTERFACE 
-            "${CMAKE_CURRENT_SOURCE_DIR}/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}")
+            "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
     add_library(agea::${ARGV0} ALIAS ${ARGV0})
 endmacro()

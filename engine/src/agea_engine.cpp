@@ -7,6 +7,8 @@
 #include "engine/engine_counters.h"
 #include "engine/active_modules.h"
 
+#include "engine/private/sync_service.h"
+
 #include <core/caches/caches_map.h>
 #include <core/caches/components_cache.h>
 #include <core/caches/materials_cache.h>
@@ -66,8 +68,15 @@ glob::engine::type glob::engine::type::s_instance;
 
 vulkan_engine::vulkan_engine(std::unique_ptr<singleton_registry> r)
     : m_registry(std::move(r))
+    , m_sync_service(std::make_unique<sync_service>())
 {
 }
+
+vulkan_engine::vulkan_engine()
+    : m_sync_service()
+{
+}
+
 void
 stupid_sleep(std::chrono::microseconds sleep_for)
 {
@@ -168,6 +177,8 @@ vulkan_engine::init()
 
     init_scene();
 
+    m_sync_service->start();
+
     ALOG_INFO("Initialization completed");
     return true;
 }
@@ -206,7 +217,6 @@ vulkan_engine::run()
 
             glob::input_manager::get()->fire_input_event();
         }
-
         {
             AGEA_make_scope(ui_tick);
             glob::ui::get()->new_frame(frame_time);
@@ -215,7 +225,10 @@ vulkan_engine::run()
             AGEA_make_scope(tick);
             tick(frame_time);
         }
-
+        {
+            AGEA_make_scope(sync);
+            execute_sync_requests();
+        }
         {
             AGEA_make_scope(consume_updates);
 
@@ -251,6 +264,36 @@ vulkan_engine::tick(float dt)
 {
     glob::game_editor::get()->on_tick(dt);
     glob::level::get()->tick(dt);
+}
+
+void
+vulkan_engine::execute_sync_requests()
+{
+    if (!m_sync_service->has_sync_actions())
+    {
+        return;
+    }
+
+    std::vector<sync_action> actions;
+    m_sync_service->extract_data(actions);
+
+    for (auto& sa : actions)
+    {
+        if (sa.p.substr(sa.p.size() - 3) == "lua")
+        {
+            auto lua_r = glob::lua_api::getr().state().script_file(sa.p);
+
+            auto result = glob::lua_api::getr().buffer();
+            glob::lua_api::getr().reset();
+            if (lua_r.status() != sol::call_status::ok)
+            {
+                sol::error err = lua_r;
+                result += err.what();
+            }
+
+            sa.to_signal.set_value(result);
+        }
+    }
 }
 
 bool

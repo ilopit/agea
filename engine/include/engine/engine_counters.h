@@ -17,6 +17,7 @@ struct engine_counters
     utils::counter<16> input;
     utils::counter<16> tick;
     utils::counter<16> ui_tick;
+    utils::counter<16> sync;
 };
 
 template <typename T>

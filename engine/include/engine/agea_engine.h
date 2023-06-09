@@ -10,9 +10,12 @@
 
 #include <core/model_fwds.h>
 
-#include <vector>
+#include <atomic>
 #include <functional>
+#include <future>
 #include <memory>
+#include <mutex>
+#include <vector>
 #include <unordered_map>
 
 union SDL_Event;
@@ -20,6 +23,7 @@ union SDL_Event;
 namespace agea
 {
 class native_window;
+class sync_service;
 
 namespace ui
 {
@@ -34,6 +38,7 @@ class cli;
 class vulkan_engine
 {
 public:
+    vulkan_engine();
     vulkan_engine(std::unique_ptr<singleton_registry> r);
     ~vulkan_engine();
 
@@ -47,6 +52,9 @@ public:
     run();
     void
     tick(float dt);
+
+    void
+    execute_sync_requests();
 
     void
     init_default_resources();
@@ -83,6 +91,8 @@ private:
     render::gpu_camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
+
+    std::unique_ptr<sync_service> m_sync_service;
 };
 
 namespace glob
