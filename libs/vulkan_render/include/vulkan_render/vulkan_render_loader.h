@@ -3,10 +3,11 @@
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_light_data.h"
+#include "vulkan_render/types/vulkan_material_data.h"
 
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
-#include "vulkan_render/types/vulkan_material_data.h"
+#include <error_handling/error_handling.h>
 
 #include <utils/buffer.h>
 #include <utils/id.h>
@@ -15,8 +16,6 @@
 #include <utils/dynamic_object.h>
 #include <utils/line_conteiner.h>
 #include <utils/path.h>
-
-#include <vulkan/vulkan.h>
 
 #include <functional>
 #include <memory>
@@ -194,21 +193,16 @@ public:
         return get_data<shader_effect_data>(m_shaders_effects_cache, id);
     }
 
-    shader_effect_data*
-    create_shader_effect(const agea::utils::id& id, const shader_effect_create_info& info);
+    ::agea::result_code
+    create_shader_effect(const agea::utils::id& id,
+                         const shader_effect_create_info& info,
+                         shader_effect_data*& sed);
 
-    bool
+    ::agea::result_code
     update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info);
 
     void
     destroy_shader_effect_data(const agea::utils::id& id);
-
-    /*************************/
-    shader_data*
-    get_shader_data(const agea::utils::id& id)
-    {
-        return get_data<shader_data>(m_shaders_cache, id);
-    }
 
     /*************************/
     sampler_data*
@@ -288,8 +282,10 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<material_data>> m_materials_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_data>> m_shaders_cache;
+
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
+
     std::unordered_map<agea::utils::id, std::shared_ptr<object_data>> m_objects_cache;
 
     std::unordered_map<agea::utils::id, std::shared_ptr<light_data>> m_light_cache;
@@ -302,8 +298,6 @@ private:
                         std::vector<deleyer_delete_action>,
                         deleyer_delete_action_compare>
         m_ddq;
-
-    gpu_data_index_type m_last_mtt_id = 0U;
 };
 
 }  // namespace render

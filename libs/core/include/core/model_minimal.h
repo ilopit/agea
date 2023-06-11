@@ -5,14 +5,16 @@
 #include "root/core_types/vec4.h"
 #include "root/core_types/color.h"
 
+#include <error_handling/error_handling.h>
+
+#include <resource_locator/resource_locator.h>
+
 #include <utils/check.h>
 #include <utils/defines_utils.h>
 #include <utils/path.h>
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
 #include <utils/dynamic_object_builder.h>
-
-#include <resource_locator/resource_locator.h>
 
 #include <glm_unofficial/glm.h>
 
@@ -25,17 +27,4 @@
 namespace agea
 {
 using blob_ptr = uint8_t*;
-
-enum class result_code
-{
-    nav = 0,
-    ok,
-    failed,
-    proto_doesnt_exist,
-    doesnt_exist,
-    serialization_error,
-    path_not_found,
-    id_not_found
-};
-
 }  // namespace agea

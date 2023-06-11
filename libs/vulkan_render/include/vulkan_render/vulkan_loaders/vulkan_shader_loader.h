@@ -4,11 +4,11 @@
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
+#include <error_handling/error_handling.h>
+
 #include <utils/buffer.h>
 #include <utils/id.h>
 #include <utils/path.h>
-
-#include <vulkan/vulkan.h>
 
 #include <memory>
 
@@ -21,15 +21,15 @@ namespace vulkan_shader_loader
 bool
 create_shader_effect_pipeline_layout(shader_effect_data& se);
 
-bool
+result_code
 update_shader_effect(shader_effect_data& se_data,
                      const shader_effect_create_info& info,
                      std::shared_ptr<render::shader_effect_data>& old_se_data);
 
-bool
+result_code
 create_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info);
 
-bool
+result_code
 create_shader_effect(shader_effect_data& se_data,
                      std::shared_ptr<shader_data>& vert_module,
                      std::shared_ptr<shader_data>& frag_module,

@@ -99,7 +99,7 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
                 new_vert.color.g = g;
                 new_vert.color.b = b;
 
-                verices.at(index_offset + v) = new_vert;
+                verices.at((uint32_t)(index_offset + v)) = new_vert;
             }
             index_offset += fv;
         }

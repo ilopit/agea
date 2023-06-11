@@ -18,7 +18,7 @@ struct buffer_segment
     {
         auto id = id_alloc.alloc_id();
 
-        return id;
+        return (uint32_t)id;
     }
 
     void
@@ -94,9 +94,9 @@ struct buffer_layout
 
             AGEA_check(!result->in_usage, "Should not exists !");
 
-            result->offset = calc_offset(new_id);
+            result->offset = calc_offset((uint32_t)new_id);
             result->reserved_size = reserved_size;
-            result->index = new_id;
+            result->index = (uint32_t)new_id;
         }
         else
         {

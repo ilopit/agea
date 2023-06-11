@@ -32,9 +32,6 @@
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
 
-#include <utils/agea_log.h>
-#include <utils/string_utility.h>
-
 #include <serialization/serialization.h>
 
 #include <assets_importer/mesh_importer.h>
@@ -52,6 +49,7 @@
 #include <vulkan_render/vulkan_render.h>
 
 #include <utils/agea_log.h>
+#include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
 
 #include <render_bridge/render_bridge.h>
@@ -370,7 +368,8 @@ render_ctor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_
 
     if (!se_data)
     {
-        se_data = glob::vulkan_render_loader::get()->create_shader_effect(se_model.get_id(), se_ci);
+        auto rc = glob::vulkan_render_loader::get()->create_shader_effect(se_model.get_id(), se_ci,
+                                                                          se_data);
 
         if (!se_data)
         {
@@ -381,10 +380,11 @@ render_ctor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_
     }
     else
     {
-        if (!glob::vulkan_render_loader::get()->update_shader_effect(*se_data, se_ci))
+        auto rc = glob::vulkan_render_loader::get()->update_shader_effect(*se_data, se_ci);
+        if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;
-            return result_code::failed;
+            return rc;
         }
     }
     return result_code::ok;
@@ -425,7 +425,7 @@ render_ctor__directional_light_component(render_bridge& rb,
 
         rh = glob::vulkan_render_loader::get()->create_light_data(
             lc_model.get_id(), render::light_type::directional_light_data, ld);
-        rh->m_gpu_id = iid;
+        rh->m_gpu_id = (uint32_t)iid;
 
         lc_model.set_handler(rh);
     }
@@ -478,7 +478,7 @@ render_ctor__spot_light_component(render_bridge& rb, root::smart_object& obj, bo
 
         rh = glob::vulkan_render_loader::get()->create_light_data(
             lc_model.get_id(), render::light_type::spot_light_data, ld);
-        rh->m_gpu_id = iid;
+        rh->m_gpu_id = (uint32_t)iid;
 
         lc_model.set_handler(rh);
     }
@@ -526,7 +526,7 @@ render_ctor__point_light_component(render_bridge& rb, root::smart_object& obj, b
 
         rh = glob::vulkan_render_loader::get()->create_light_data(
             lc_model.get_id(), render::light_type::point_light_data, ld);
-        rh->m_gpu_id = iid;
+        rh->m_gpu_id = (uint32_t)iid;
 
         lc_model.set_handler(rh);
     }

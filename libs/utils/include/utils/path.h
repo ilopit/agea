@@ -166,6 +166,12 @@ public:
         return fs() < l.fs();
     }
 
+    bool
+    operator==(const agea::utils::path& l) const
+    {
+        return fs() == l.fs();
+    }
+
 private:
     void
     normalize()
@@ -205,5 +211,20 @@ operator<(const ::agea::utils::path& l, const ::agea::utils::path& r)
 {
     return l.fs() < r.fs();
 }
+
+namespace std
+{
+
+template <>
+struct hash<::agea::utils::path>
+{
+    size_t
+    operator()(const ::agea::utils::path& k) const
+    {
+        return rand();
+    }
+};
+
+}  // namespace std
 
 #define APATH(value) ::agea::utils::path(value)

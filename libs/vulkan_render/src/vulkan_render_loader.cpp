@@ -25,8 +25,6 @@
 
 #include <resource_locator/resource_locator.h>
 
-#include <serialization/serialization.h>
-
 #include <vk_mem_alloc.h>
 #include <stb_unofficial/stb.h>
 
@@ -120,6 +118,7 @@ upload_image(int texWidth,
 
     return new_image;
 }
+
 bool
 load_image_from_file_r(const std::string& file, vk_utils::vulkan_image& outImage)
 {
@@ -520,50 +519,52 @@ vulkan_render_loader::destroy_material_data(const agea::utils::id& id)
     }
 }
 
-shader_effect_data*
+result_code
 vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
-                                           const shader_effect_create_info& info)
+                                           const shader_effect_create_info& info,
+                                           shader_effect_data*& sed)
 {
-    AGEA_check(!get_shader_data(id), "should never happens");
+    AGEA_check(!get_shader_effect_data(id), "should never happens");
 
     auto device = glob::render_device::get();
     auto effect = std::make_shared<shader_effect_data>(id, device->get_vk_device_provider());
 
-    if (!vulkan_shader_loader::create_shader_effect(*effect, info))
+    auto rc = vulkan_shader_loader::create_shader_effect(*effect, info);
+
+    if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
-        return nullptr;
+        return rc;
     }
+
     m_shaders_effects_cache[id] = effect;
 
-    return effect.get();
+    sed = effect.get();
+
+    return result_code::ok;
 }
 
-bool
+result_code
 vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
-    AGEA_check(get_shader_data(se_data.get_id()), "should never happens");
-
-    if (!info.frag_buffer->has_file_updated() && !info.vert_buffer->has_file_updated() &&
-        info.is_wire == se_data.m_is_wire && info.enable_alpha == se_data.m_enable_alpha)
-    {
-        ALOG_TRACE("No need to re-create shader effect");
-    }
+    AGEA_check(get_shader_effect_data(se_data.get_id()), "should never happens");
 
     std::shared_ptr<render::shader_effect_data> old_se_data;
 
-    if (!vulkan_shader_loader::update_shader_effect(se_data, info, old_se_data))
+    auto rc = vulkan_shader_loader::update_shader_effect(se_data, info, old_se_data);
+
+    if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
-        return false;
+        return rc;
     }
 
     auto rd = s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
 
     shedule_to_deltete(std::move(rd));
 
-    return true;
+    return rc;
 }
 
 void
@@ -588,7 +589,6 @@ vulkan_render_loader::clear_caches()
     m_objects_cache.clear();
     m_samplers_cache.clear();
     m_materials_index.clear();
-    m_last_mtt_id = 0;
 
     while (!m_ddq.empty())
     {

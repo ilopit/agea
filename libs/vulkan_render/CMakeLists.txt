@@ -20,6 +20,7 @@ target_link_libraries(vulkan_render PUBLIC
     agea::native
     agea::resource_locator
     agea::serialization
+    agea::error_handling
 
     agea::glm_unofficial
     agea::imgui_unofficial

@@ -28,12 +28,14 @@ target_compile_options(core PRIVATE /bigobj)
 
 target_link_libraries(core PUBLIC
    agea::ar
-   agea::utils
-   agea::glm_unofficial
-   agea::serialization
-   agea::resource_locator
 
    agea::root.module.model
+   
+   agea::glm_unofficial
+   agea::error_handling
+   agea::resource_locator
+   agea::serialization
+   agea::utils
 
    lua_static
    agea::sol2_unofficial

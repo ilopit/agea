@@ -357,7 +357,7 @@ vulkan_render::upload_obj_data(render::frame_state& frame)
     }
 
     auto gpu_object_data_begin =
-        (render::gpu_object_data*)frame.m_object_buffer.allocate_data(total_size);
+        (render::gpu_object_data*)frame.m_object_buffer.allocate_data((uint32_t)total_size);
 
     upload_gpu_object_data(gpu_object_data_begin);
 
@@ -594,7 +594,7 @@ vulkan_render::add_object(render::object_data* obj_data)
 
     auto id = m_objects_id.alloc_id();
 
-    obj_data->set_index(id);
+    obj_data->set_index((uint32_t)id);
 
     if (obj_data->queue_id == "transparent")
     {
@@ -780,6 +780,42 @@ vulkan_render::prepare_system_resources()
 
     glob::vulkan_render_loader::getr().create_sampler(AID("font"),
                                                       VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+
+    agea::utils::buffer vert, frag;
+
+    auto path = glob::resource_locator::get()->resource(category::packages,
+                                                        "base.apkg/class/shader_effects/error");
+
+    auto vert_path = path / "se_error.vert";
+    agea::utils::buffer::load(vert_path, vert);
+
+    auto frag_path = path / "se_error.frag";
+    agea::utils::buffer::load(frag_path, frag);
+
+    utils::dynamic_object_layout_sequence_builder<gpu_type> builder;
+    builder.add_field(AID("pos"), render::gpu_type::g_vec3, 1);
+    builder.add_field(AID("norm"), render::gpu_type::g_vec3, 1);
+    builder.add_field(AID("color"), render::gpu_type::g_vec3, 1);
+    builder.add_field(AID("uv"), render::gpu_type::g_vec2, 1);
+
+    auto dol = builder.get_layout();
+
+    auto vertex_input_description = render::convert_to_vertex_input_description(*dol);
+
+    shader_effect_create_info se_ci;
+    se_ci.vert_buffer = &vert;
+    se_ci.frag_buffer = &frag;
+    se_ci.render_pass = glob::render_device::getr().render_pass();
+    se_ci.vert_input_description = &vertex_input_description;
+    se_ci.is_wire = false;
+    se_ci.enable_dynamic_state = false;
+    se_ci.enable_alpha = false;
+    se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
+
+    shader_effect_data* sed;
+    auto rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_error"), se_ci, sed);
+    (void)sed;
+    AGEA_check(rc == result_code::ok, "Always should be good!");
 }
 
 void
@@ -853,7 +889,7 @@ vulkan_render::prepare_ui_pipeline()
     se_ci.enable_alpha = true;
     se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
 
-    m_ui_se = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci);
+    glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
 
     auto device = glob::render_device::get();
 

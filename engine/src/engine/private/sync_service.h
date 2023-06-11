@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utils/path.h>
+
 #include <thread>
 #include <atomic>
 #include <memory>
@@ -22,7 +24,7 @@ namespace agea
 {
 struct sync_action
 {
-    std::string p;
+    utils::path path_to_resources;
     std::promise<std::string> to_signal;
 };
 

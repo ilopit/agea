@@ -16,6 +16,7 @@
 #include <core/caches/objects_cache.h>
 #include <core/caches/textures_cache.h>
 #include <core/caches/game_objects_cache.h>
+#include <core/caches/shader_effects_cache.h>
 
 #include <core/id_generator.h>
 #include <core/level.h>
@@ -279,11 +280,14 @@ vulkan_engine::execute_sync_requests()
 
     for (auto& sa : actions)
     {
-        if (sa.p.substr(sa.p.size() - 3) == "lua")
-        {
-            auto lua_r = glob::lua_api::getr().state().script_file(sa.p);
+        std::string name, ext;
+        sa.path_to_resources.parse_file_name_and_ext(name, ext);
 
-            auto result = glob::lua_api::getr().buffer();
+        if (ext == "lua")
+        {
+            auto lua_r = glob::lua_api::getr().state().script_file(sa.path_to_resources.str());
+
+            std::string result = glob::lua_api::getr().buffer();
             glob::lua_api::getr().reset();
             if (lua_r.status() != sol::call_status::ok)
             {
@@ -292,6 +296,18 @@ vulkan_engine::execute_sync_requests()
             }
 
             sa.to_signal.set_value(result);
+        }
+        else if (ext == "vert" || ext == "frag")
+        {
+            auto ptr = glob::shader_effects_cache::getr().get_item(AID(name));
+
+            ptr->mark_render_dirty();
+
+            sa.to_signal.set_value("");
+        }
+        else
+        {
+            sa.to_signal.set_value("");
         }
     }
 }

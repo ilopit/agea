@@ -11,11 +11,17 @@
 #include <map>
 #include <stack>
 #include <future>
+#include <unordered_set>
 
 #include <utils/agea_log.h>
 
 namespace agea
 {
+
+namespace
+{
+const std::unordered_set<std::string> s_supported_ext = {"vert", "frag", "lua"};
+}
 
 struct send_lambda
 {
@@ -140,11 +146,25 @@ sync_service::handle_request(sync_service* self,
         }
         else if (c.key == "file")
         {
+            auto pos = c.value.rfind('.');
+
+            if (pos == std::string::npos)
+            {
+                return send(bad_request("Unsupported file"));
+            }
+
+            auto extention = c.value.substr(pos + 1);
+
+            if (s_supported_ext.find(extention) == s_supported_ext.end())
+            {
+                return send(bad_request("Unsupported file"));
+            }
+
             std::promise<std::string> prom;
 
             auto ftr = prom.get_future();
 
-            sync_action sa{c.value, std::move(prom)};
+            sync_action sa{APATH(c.value), std::move(prom)};
 
             self->add_sync_action(std::move(sa));
 

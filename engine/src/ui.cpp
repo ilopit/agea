@@ -110,7 +110,7 @@ ui::new_frame(float dt)
     ImGuiIO& io = ImGui::GetIO();
     auto s = glob::native_window::getr().get_size();
 
-    io.DisplaySize = ImVec2(s.w, s.h);
+    io.DisplaySize = ImVec2((float)s.w, (float)s.h);
     io.DeltaTime = dt;
 
     ImGui_ImplSDL2_NewFrame();

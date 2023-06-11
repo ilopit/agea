@@ -35,7 +35,7 @@ namespace render
 namespace
 {
 
-bool
+result_code
 compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compiled_buffer)
 {
     static int shader_id = 0;
@@ -61,20 +61,23 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
     if (!ipc::run_binary(params, rc) || rc != 0)
     {
         AGEA_never("Shader compilation failed");
-        return false;
+        return result_code::compilation_failed;
     }
 
     if (!agea::utils::buffer::load(compiled_path, compiled_buffer))
     {
         ALOG_FATAL("Shader compilation failed");
-        return false;
+        return result_code::failed;
     }
 
-    return true;
+    return result_code::ok;
 }
 
-std::shared_ptr<shader_data>
-load_data_shader(const agea::utils::buffer& input, bool is_binary, VkShaderStageFlagBits stage_bit)
+agea::result_code
+load_data_shader(const agea::utils::buffer& input,
+                 bool is_binary,
+                 VkShaderStageFlagBits stage_bit,
+                 std::shared_ptr<shader_data>& sd)
 {
     auto device = glob::render_device::get();
 
@@ -82,10 +85,15 @@ load_data_shader(const agea::utils::buffer& input, bool is_binary, VkShaderStage
 
     if (!is_binary)
     {
-        compile_shader(input, compiled_buffer);
+        auto rc = compile_shader(input, compiled_buffer);
+        if (rc != result_code::ok)
+        {
+            return rc;
+        }
     }
     else
     {
+        AGEA_never("Not supported");
         compiled_buffer = input;
     }
 
@@ -100,13 +108,13 @@ load_data_shader(const agea::utils::buffer& input, bool is_binary, VkShaderStage
     if (vkCreateShaderModule(device->vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
     {
         ALOG_LAZY_ERROR;
-        return nullptr;
+        return result_code::failed;
     }
 
-    auto sd = std::make_shared<shader_data>(device->get_vk_device_provider(), module,
-                                            std::move(compiled_buffer), stage_bit);
+    sd = std::make_shared<shader_data>(device->get_vk_device_provider(), module,
+                                       std::move(compiled_buffer), stage_bit);
 
-    return sd;
+    return result_code::ok;
 }
 
 }  // namespace
@@ -201,7 +209,7 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     return se.m_pipeline_layout != VK_NULL_HANDLE;
 }
 
-bool
+result_code
 vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            std::shared_ptr<shader_data>& vert_module,
                                            std::shared_ptr<shader_data>& frag_module,
@@ -218,13 +226,13 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     if (!build_shader_reflection(device, se_data))
     {
         ALOG_LAZY_ERROR;
-        return false;
+        return result_code::failed;
     }
 
     if (!create_shader_effect_pipeline_layout(se_data))
     {
         ALOG_LAZY_ERROR;
-        return false;
+        return result_code::failed;
     }
 
     vk_utils::pipeline_builder pb;
@@ -286,10 +294,10 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     se_data.m_pipeline = pb.build(device->vk_device(), info.render_pass);
 
-    return se_data.m_pipeline != VK_NULL_HANDLE;
+    return se_data.m_pipeline != VK_NULL_HANDLE ? result_code::ok : result_code::failed;
 }
 
-bool
+result_code
 vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info,
                                            std::shared_ptr<render::shader_effect_data>& old_se_data)
@@ -300,29 +308,24 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
                                                                device->get_vk_device_provider());
 
     auto vs = se_data.extract_shader(VK_SHADER_STAGE_VERTEX_BIT);
-    if (info.vert_buffer->consume_file_updated())
-    {
-        old_se_data->add_shader(std::move(vs));
 
-        vs = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT);
-        if (!vs)
-        {
-            ALOG_ERROR("Error");
-            return false;
-        }
+    old_se_data->add_shader(std::move(vs));
+
+    auto rc =
+        load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vs);
+    if (rc != result_code::ok)
+    {
+        return rc;
     }
 
     auto fs = se_data.extract_shader(VK_SHADER_STAGE_FRAGMENT_BIT);
-    if (info.frag_buffer->consume_file_updated())
-    {
-        old_se_data->add_shader(std::move(vs));
 
-        vs = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT);
-        if (!fs)
-        {
-            ALOG_ERROR("Error");
-            return false;
-        }
+    old_se_data->add_shader(std::move(fs));
+
+    rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT, fs);
+    if (rc != result_code::ok)
+    {
+        return rc;
     }
 
     old_se_data->m_set_layout = std::move(se_data.m_set_layout);
@@ -338,26 +341,28 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     return create_shader_effect(se_data, vs, fs, info);
 }
 
-bool
+result_code
 vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
     auto device = glob::render_device::get();
 
-    auto vert_module =
-        load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT);
-    if (!vert_module)
+    std::shared_ptr<shader_data> vert_module;
+    auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
+                               vert_module);
+    if (rc != result_code::ok)
     {
-        ALOG_ERROR("Error");
-        return false;
+        ALOG_LAZY_ERROR;
+        return rc;
     }
 
-    auto frag_module =
-        load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT);
-    if (!frag_module)
+    std::shared_ptr<shader_data> frag_module;
+    rc = load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
+                          frag_module);
+    if (rc != result_code::ok)
     {
-        ALOG_ERROR("Error");
-        return false;
+        ALOG_LAZY_ERROR;
+        return rc;
     }
 
     return create_shader_effect(se_data, vert_module, frag_module, info);
