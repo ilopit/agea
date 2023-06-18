@@ -112,6 +112,8 @@ render_dtor__mesh(render_bridge& rb, root::smart_object& obj, bool sub_object)
 result_code
 render_ctor__material(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
+    auto& dependency_node = rb.get_dependency().get_node(&obj);
+
     auto& mat_model = obj.asr<root::material>();
 
     auto txt_models = mat_model.get_texture_samples();
@@ -128,9 +130,14 @@ render_ctor__material(render_bridge& rb, root::smart_object& obj, bool sub_objec
     }
 
     auto se_model = mat_model.get_shader_effect();
-    if (rb.render_ctor(*se_model, sub_object) != result_code::ok)
+
+    dependency_node.add(se_model);
+
+    auto rc = rb.render_ctor(*se_model, sub_object);
+
+    if (rc != result_code::ok)
     {
-        return result_code::failed;
+        glob::vulkan_render_loader::getr().get_shader_effect_data(AID("se_error"));
     }
 
     auto se_data = se_model->get_shader_effect_data();
@@ -371,11 +378,8 @@ render_ctor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_
         auto rc = glob::vulkan_render_loader::get()->create_shader_effect(se_model.get_id(), se_ci,
                                                                           se_data);
 
-        if (!se_data)
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
+        AGEA_check(se_data, "Should never happen!");
+
         se_model.set_shader_effect_data(se_data);
     }
     else

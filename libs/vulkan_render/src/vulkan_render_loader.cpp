@@ -432,8 +432,8 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
 
     auto mat_data = std::make_shared<material_data>(id, type_id);
 
-    mat_data->effect = &se_data;
-    mat_data->texture_samples = samples;
+    mat_data->set_shader_effect(&se_data);
+    mat_data->set_texture_samples(samples);
 
     auto sampler = get_sampler_data(AID("default"));
     if (!samples.empty())
@@ -447,14 +447,17 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
             image_buffer_info[i].imageView = samples[i].texture->image_view;
         }
 
+        VkDescriptorSet txt_ds = VK_NULL_HANDLE;
         vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                             device->descriptor_allocator())
             .bind_image(0, (uint32_t)image_buffer_info.size(), image_buffer_info.data(),
                         VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .build(mat_data->m_set);
+            .build(txt_ds);
+
+        mat_data->set_textures_ds(txt_ds);
     }
 
-    mat_data->gpu_data = gpu_params;
+    mat_data->set_gpu_data(gpu_params);
 
     m_materials_cache[id] = mat_data;
 
@@ -501,9 +504,9 @@ vulkan_render_loader::update_material(material_data& mat_data,
                                       shader_effect_data& se_data,
                                       const agea::utils::dynamic_object& gpu_params)
 {
-    mat_data.effect = &se_data;
-    mat_data.texture_samples = samples;
-    mat_data.gpu_data = gpu_params;
+    mat_data.set_shader_effect(&se_data);
+    mat_data.set_texture_samples(samples);
+    mat_data.set_gpu_data(gpu_params);
 
     return true;
 }
@@ -533,8 +536,7 @@ vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
 
     if (rc != result_code::ok)
     {
-        ALOG_LAZY_ERROR;
-        return rc;
+        effect->fallback = get_shader_effect_data(AID("se_error"));
     }
 
     m_shaders_effects_cache[id] = effect;
@@ -560,6 +562,7 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
         return rc;
     }
 
+    se_data.fallback = nullptr;
     auto rd = s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
 
     shedule_to_deltete(std::move(rd));

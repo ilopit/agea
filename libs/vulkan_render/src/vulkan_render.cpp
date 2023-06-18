@@ -505,8 +505,8 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
             cur_material_idx = obj->material->gpu_type_idx();
             AGEA_check(cur_material, "Shouldn't be null");
 
-            pipeline = cur_material->effect->m_pipeline;
-            pipeline_layout = cur_material->effect->m_pipeline_layout;
+            pipeline = cur_material->get_shader_effect()->m_pipeline;
+            pipeline_layout = cur_material->get_shader_effect()->m_pipeline_layout;
 
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -538,10 +538,11 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
         }
 
         // TODO, optimize
-        if (obj->material->m_set)
+        if (obj->material->has_textures())
         {
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    TEXTURES_descriptor_sets, 1, &obj->material->m_set, 0, nullptr);
+                                    TEXTURES_descriptor_sets, 1, &obj->material->get_textures_ds(),
+                                    0, nullptr);
         }
 
         if (cur_mesh != obj->mesh)
@@ -633,13 +634,13 @@ vulkan_render::drop_object(render::object_data* obj_data)
 void
 vulkan_render::add_material(render::material_data* mat_data)
 {
-    auto& mat_id = mat_data->type_id();
+    auto& mat_id = mat_data->get_type_id();
 
     auto segment = m_materials_layout.find(mat_id);
 
     if (!segment)
     {
-        segment = m_materials_layout.add(mat_id, mat_data->gpu_data.size(),
+        segment = m_materials_layout.add(mat_id, mat_data->get_gpu_data().size(),
                                          INITIAL_MATERIAL_SEGMENT_RANGE_SIZE);
 
         for (auto& q : m_frames)
@@ -656,13 +657,13 @@ vulkan_render::add_material(render::material_data* mat_data)
 void
 vulkan_render::drop_material(render::material_data* mat_data)
 {
-    auto& mat_id = mat_data->type_id();
+    auto& mat_id = mat_data->get_type_id();
     auto segment = m_materials_layout.find(mat_id);
 
     if (segment)
     {
         segment->release_id(mat_data->gpu_idx());
-        mat_data->invalidate_ids();
+        mat_data->invalidate_gpu_idexes();
     }
 }
 
@@ -759,8 +760,8 @@ vulkan_render::upload_gpu_materials_data(uint8_t* ssbo_data, materials_update_qu
 
     for (auto& m : mats_to_update)
     {
-        auto dst_ptr = ssbo_data + m->gpu_idx() * m->gpu_data.size();
-        memcpy(dst_ptr, m->gpu_data.data(), m->gpu_data.size());
+        auto dst_ptr = ssbo_data + m->gpu_idx() * m->get_gpu_data().size();
+        memcpy(dst_ptr, m->get_gpu_data().data(), m->get_gpu_data().size());
     }
 
     mats_to_update.clear();
@@ -1004,11 +1005,8 @@ vulkan_render::draw_ui(frame_state& fs)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline);
 
-    // for (auto& ts : m_ui_mat->texture_samples)
-    {
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout, 0,
-                                1, &m_ui_mat->m_set, 0, nullptr);
-    }
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout, 0, 1,
+                            &m_ui_mat->get_textures_ds(), 0, nullptr);
 
     m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
     m_ui_push_constants.translate = glm::vec2(-1.0f);

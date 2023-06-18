@@ -60,7 +60,6 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
     uint64_t rc = 0;
     if (!ipc::run_binary(params, rc) || rc != 0)
     {
-        AGEA_never("Shader compilation failed");
         return result_code::compilation_failed;
     }
 

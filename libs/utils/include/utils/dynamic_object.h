@@ -148,7 +148,7 @@ public:
     const uint8_t*
     data() const
     {
-        return data();
+        return m_data->data();
     }
 
     uint32_t

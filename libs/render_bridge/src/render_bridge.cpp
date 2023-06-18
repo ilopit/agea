@@ -136,7 +136,7 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
 std::string
 render_bridge::make_qid(render::material_data& mt_data, render::mesh_data& m_data)
 {
-    if (mt_data.effect->m_enable_alpha)
+    if (mt_data.get_shader_effect()->m_enable_alpha)
     {
         return "transparent";
     }
@@ -168,7 +168,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 
     AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Shoud not happen");
 
-    obj.set_state(root::smart_object_state::render_preparing);
+    obj.set_state(root::smart_object_state::render_prepa    ring);
 
     result_code rc = obj.get_reflection()->render_ctor(*this, obj, sub_objects);
 

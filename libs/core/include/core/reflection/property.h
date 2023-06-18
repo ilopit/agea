@@ -106,6 +106,7 @@ public:
 
     bool serializable                                               = false;
     bool has_default                                                = false;
+    bool render_subobject                                           = false;
 
     reflection_type* rtype = nullptr;
 

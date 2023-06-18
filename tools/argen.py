@@ -639,6 +639,11 @@ def write_properties(context: file_context, prop: agea_property, current_class: 
         context.content += "            "
         context.content += 'p->serializable                   = true;\n'
 
+
+    if prop.invalidates_render:
+        context.content += "            "
+        context.content += 'p->render_subobject               = std::is_base_of_v<::agea::root::smart_object, typename std::remove_pointer_t<{property_type}>> ;\n'.format(property_type = prop.type)
+
     if prop.property_ser_handler != "":
         context.content += "            "
         context.content += 'p->serialization_handler          = ::agea::reflection::{0};\n'.format(

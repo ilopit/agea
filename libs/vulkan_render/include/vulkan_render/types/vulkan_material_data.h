@@ -38,7 +38,7 @@ public:
     }
 
     const agea::utils::id&
-    type_id() const
+    get_type_id() const
     {
         return m_type_id;
     }
@@ -63,23 +63,70 @@ public:
     }
 
     void
-    invalidate_ids()
+    invalidate_gpu_idexes()
     {
         m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
         m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     }
 
-    agea::utils::dynamic_object gpu_data;
+    bool
+    has_textures();
 
-    std::vector<texture_sampler_data> texture_samples;
-    shader_effect_data* effect = nullptr;
-    VkDescriptorSet m_set = VK_NULL_HANDLE;
+    void
+    set_gpu_data(const agea::utils::dynamic_object& gpu_data)
+    {
+        m_gpu_data = gpu_data;
+    }
+
+    const agea::utils::dynamic_object&
+    get_gpu_data()
+    {
+        return m_gpu_data;
+    }
+
+    const VkDescriptorSet&
+    get_textures_ds() const
+    {
+        return m_set;
+    }
+
+    void
+    set_textures_ds(VkDescriptorSet v)
+    {
+        m_set = v;
+    }
+
+    shader_effect_data*
+    get_shader_effect();
+
+    void
+    set_shader_effect(shader_effect_data* v)
+    {
+        m_effect = v;
+    }
+
+    void
+    set_texture_samples(const std::vector<texture_sampler_data>& v)
+    {
+        m_texture_samples = v;
+    }
+
+    const std::vector<texture_sampler_data>&
+    get_texture_samples()
+    {
+        return m_texture_samples;
+    }
 
 private:
     ::agea::utils::id m_id;
     ::agea::utils::id m_type_id;
     gpu_data_index_type m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
+
+    agea::utils::dynamic_object m_gpu_data;
+    VkDescriptorSet m_set = VK_NULL_HANDLE;
+    shader_effect_data* m_effect = nullptr;
+    std::vector<texture_sampler_data> m_texture_samples;
 };
 }  // namespace render
 }  // namespace agea

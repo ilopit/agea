@@ -11,6 +11,9 @@
 #include <root/assets/shader_effect.h>
 
 #include <unordered_map>
+#include <unordered_set>
+
+#include "render_bridge/render_dependency.h"
 
 namespace agea
 {
@@ -62,8 +65,16 @@ public:
     bool
     create_collection_template(root::smart_object& so, access_template& t);
 
+    render_object_dependency_graph&
+    get_dependency()
+    {
+        return m_dependency_graph;
+    }
+
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
+
+    render_object_dependency_graph m_dependency_graph;
 };
 
 namespace glob

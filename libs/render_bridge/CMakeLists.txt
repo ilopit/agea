@@ -12,3 +12,5 @@ target_link_libraries(render_bridge
 )
 
 agea_finalize_library(render_bridge)
+
+add_subdirectory(tests)

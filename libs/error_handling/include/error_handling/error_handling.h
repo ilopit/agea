@@ -6,6 +6,7 @@ enum class result_code
 {
     nav = 0,
     ok,
+    fallback,
     failed,
     compilation_failed,
     proto_doesnt_exist,
