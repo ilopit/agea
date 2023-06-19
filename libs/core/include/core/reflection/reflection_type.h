@@ -109,8 +109,8 @@ struct reflection_type
     type_copy_handler                           copy = nullptr;
     type_compare_handler                        compare = nullptr;
     type_ui_handler                             ui = nullptr;
-    type_rendler_ctor                           render_ctor = nullptr;
-    type_rendler_dtor                           render_dtor = nullptr;
+    type_rendler_ctor                           render_loader = nullptr;
+    type_rendler_dtor                           render_destructor = nullptr;
     type_allocator_handler                      alloc = nullptr;
 
     // clang-format on

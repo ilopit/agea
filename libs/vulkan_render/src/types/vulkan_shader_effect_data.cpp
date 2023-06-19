@@ -11,6 +11,7 @@ shader_effect_data::shader_effect_data(const ::agea::utils::id& id, vk_device_pr
     : m_id(id)
     , m_device(vdp)
 {
+    m_set_layout.fill(VK_NULL_HANDLE);
 }
 
 shader_effect_data::~shader_effect_data()

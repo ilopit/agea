@@ -140,8 +140,8 @@ public:
     std::unordered_map<VkShaderStageFlagBits, std::shared_ptr<shader_data>> m_stages;
     std::unordered_map<VkShaderStageFlagBits, reflection::shader_reflection> m_reflection;
 
-    bool m_is_wire;
-    bool m_enable_alpha;
+    bool m_is_wire = false;
+    bool m_enable_alpha = false;
     bool m_system = false;
     bool m_failed_load = false;
 

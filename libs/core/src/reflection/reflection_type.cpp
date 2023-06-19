@@ -91,8 +91,8 @@ reflection::reflection_type::finalize_handlers()
         copy = copy ? copy : parent->copy;
         compare = compare ? compare : parent->compare;
         ui = ui ? ui : parent->ui;
-        render_ctor = render_ctor ? render_ctor : parent->render_ctor;
-        render_dtor = render_dtor ? render_dtor : parent->render_dtor;
+        render_loader = render_loader ? render_loader : parent->render_loader;
+        render_destructor = render_destructor ? render_destructor : parent->render_destructor;
         alloc = alloc ? alloc : parent->alloc;
     }
 }

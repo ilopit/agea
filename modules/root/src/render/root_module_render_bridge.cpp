@@ -71,7 +71,7 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 /*===============================*/
 
 result_code
-render_ctor__mesh(render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh__root__render_loader(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& msh_model = obj.asr<root::mesh>();
 
@@ -95,7 +95,7 @@ render_ctor__mesh(render_bridge& rb, root::smart_object& obj, bool sub_object)
     return result_code::ok;
 }
 result_code
-render_dtor__mesh(render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& msh_model = obj.asr<root::mesh>();
 
@@ -110,11 +110,11 @@ render_dtor__mesh(render_bridge& rb, root::smart_object& obj, bool sub_object)
 /*===============================*/
 
 result_code
-render_ctor__material(render_bridge& rb, root::smart_object& obj, bool sub_object)
+material__root__render_loader(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& mat_model = obj.asr<root::material>();
 
-    auto txt_models = mat_model.get_texture_samples();
+    auto& txt_models = mat_model.get_texture_samples();
 
     std::vector<render::texture_sampler_data> samples_data;
     for (auto& ts : txt_models)
@@ -161,9 +161,8 @@ render_ctor__material(render_bridge& rb, root::smart_object& obj, bool sub_objec
 
     return result_code::ok;
 }
-
 result_code
-render_dtor__material(render_bridge& rb, root::smart_object& obj, bool sub_object)
+material__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& mat_model = obj.asr<root::material>();
 
@@ -179,7 +178,7 @@ render_dtor__material(render_bridge& rb, root::smart_object& obj, bool sub_objec
 /*===============================*/
 
 result_code
-render_ctor__texture(render_bridge& rb, root::smart_object& obj, bool sub_object)
+texture__root__render_loader(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& t = obj.asr<root::texture>();
 
@@ -208,7 +207,7 @@ render_ctor__texture(render_bridge& rb, root::smart_object& obj, bool sub_object
     return result_code::ok;
 }
 result_code
-render_dtor__texture(render_bridge& rb, root::smart_object& obj, bool sub_object)
+texture__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& txt_model = obj.asr<root::texture>();
 
@@ -223,7 +222,9 @@ render_dtor__texture(render_bridge& rb, root::smart_object& obj, bool sub_object
 /*===============================*/
 
 result_code
-render_ctor__game_object_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+game_object_component__root__render_loader(render_bridge& rb,
+                                           root::smart_object& obj,
+                                           bool sub_object)
 {
     auto& t = obj.asr<root::game_object_component>();
 
@@ -238,7 +239,9 @@ render_ctor__game_object_component(render_bridge& rb, root::smart_object& obj, b
     return result_code::ok;
 }
 result_code
-render_dtor__game_object_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+game_object_component__root__render_destructor(render_bridge& rb,
+                                               root::smart_object& obj,
+                                               bool sub_object)
 {
     auto& t = obj.asr<root::game_object_component>();
 
@@ -256,9 +259,9 @@ render_dtor__game_object_component(render_bridge& rb, root::smart_object& obj, b
 /*===============================*/
 
 result_code
-render_ctor__mesh_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
-    auto rc = render_ctor__game_object_component(rb, obj, sub_object);
+    auto rc = game_object_component__root__render_loader(rb, obj, sub_object);
     AGEA_return_nok(rc);
 
     auto& moc = obj.asr<root::mesh_component>();
@@ -323,7 +326,7 @@ render_ctor__mesh_component(render_bridge& rb, root::smart_object& obj, bool sub
     return result_code::ok;
 }
 result_code
-render_dtor__mesh_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh_component__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& moc = obj.asr<root::mesh_component>();
 
@@ -351,7 +354,7 @@ render_dtor__mesh_component(render_bridge& rb, root::smart_object& obj, bool sub
         glob::vulkan_render_loader::getr().destroy_object(object_data->get_id());
     }
 
-    rc = render_dtor__game_object_component(rb, obj, sub_object);
+    rc = game_object_component__root__render_loader(rb, obj, sub_object);
     AGEA_return_nok(rc);
 
     return result_code::ok;
@@ -360,7 +363,7 @@ render_dtor__mesh_component(render_bridge& rb, root::smart_object& obj, bool sub
 /*===============================*/
 
 result_code
-render_ctor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_object)
+shader_effect__root__render_loader(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& se_model = obj.asr<root::shader_effect>();
 
@@ -391,7 +394,7 @@ render_ctor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_
     return result_code::ok;
 }
 result_code
-render_dtor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_object)
+shader_effect__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
     auto& se_model = obj.asr<root::shader_effect>();
 
@@ -406,9 +409,9 @@ render_dtor__shader_effect(render_bridge& rb, root::smart_object& obj, bool sub_
 /*===============================*/
 
 result_code
-render_ctor__directional_light_component(render_bridge& rb,
-                                         root::smart_object& obj,
-                                         bool sub_object)
+directional_light_component__root__render_loader(render_bridge& rb,
+                                                 root::smart_object& obj,
+                                                 bool sub_object)
 {
     auto& lc_model = obj.asr<root::directional_light_component>();
 
@@ -435,11 +438,10 @@ render_ctor__directional_light_component(render_bridge& rb,
 
     return result_code::ok;
 }
-
 result_code
-render_dtor__directional_light_component(render_bridge& rb,
-                                         root::smart_object& obj,
-                                         bool sub_object)
+directional_light_component__root__render_destructor(render_bridge& rb,
+                                                     root::smart_object& obj,
+                                                     bool sub_object)
 {
     auto& plc_model = obj.asr<root::directional_light_component>();
     if (auto h = plc_model.get_handler())
@@ -454,7 +456,9 @@ render_dtor__directional_light_component(render_bridge& rb,
 /*===============================*/
 
 result_code
-render_ctor__spot_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+spot_light_component__root__render_loader(render_bridge& rb,
+                                          root::smart_object& obj,
+                                          bool sub_object)
 {
     auto& lc_model = obj.asr<root::spot_light_component>();
 
@@ -490,7 +494,9 @@ render_ctor__spot_light_component(render_bridge& rb, root::smart_object& obj, bo
 }
 
 result_code
-render_dtor__spot_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+spot_light_component__root__render_destructor(render_bridge& rb,
+                                              root::smart_object& obj,
+                                              bool sub_object)
 {
     auto& slc_model = obj.asr<root::spot_light_component>();
 
@@ -506,7 +512,9 @@ render_dtor__spot_light_component(render_bridge& rb, root::smart_object& obj, bo
 /*===============================*/
 
 result_code
-render_ctor__point_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+point_light_component__root__render_loader(render_bridge& rb,
+                                           root::smart_object& obj,
+                                           bool sub_object)
 {
     auto& lc_model = obj.asr<root::point_light_component>();
 
@@ -538,7 +546,9 @@ render_ctor__point_light_component(render_bridge& rb, root::smart_object& obj, b
 }
 
 result_code
-render_dtor__point_light_component(render_bridge& rb, root::smart_object& obj, bool sub_object)
+point_light_component__root__render_destructor(render_bridge& rb,
+                                               root::smart_object& obj,
+                                               bool sub_object)
 {
     auto& plc_model = obj.asr<root::point_light_component>();
     if (auto h = plc_model.get_handler())
@@ -556,50 +566,50 @@ root_module_render_bridge::override_reflection_types()
 {
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__game_object_component);
-        rt->render_ctor = render_ctor__game_object_component;
-        rt->render_dtor = render_dtor__game_object_component;
+        rt->render_loader = game_object_component__root__render_loader;
+        rt->render_destructor = game_object_component__root__render_destructor;
     }
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__mesh_component);
-        rt->render_ctor = render_ctor__mesh_component;
-        rt->render_dtor = render_dtor__mesh_component;
+        rt->render_loader = mesh_component__root__render_loader;
+        rt->render_destructor = mesh_component__root__render_destructor;
     }
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__texture);
-        rt->render_ctor = render_ctor__texture;
-        rt->render_dtor = render_dtor__texture;
+        rt->render_loader = texture__root__render_loader;
+        rt->render_destructor = texture__root__render_destructor;
     }
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__material);
-        rt->render_ctor = render_ctor__material;
-        rt->render_dtor = render_dtor__material;
+        rt->render_loader = material__root__render_loader;
+        rt->render_destructor = material__root__render_destructor;
     }
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__mesh);
-        rt->render_ctor = render_ctor__mesh;
-        rt->render_dtor = render_dtor__mesh;
+        rt->render_loader = mesh__root__render_loader;
+        rt->render_destructor = mesh__root__render_destructor;
     }
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__shader_effect);
-        rt->render_ctor = render_ctor__shader_effect;
-        rt->render_dtor = render_dtor__shader_effect;
+        rt->render_loader = shader_effect__root__render_loader;
+        rt->render_destructor = shader_effect__root__render_destructor;
     }
     {
         auto rt =
             glob::reflection_type_registry::getr().get_type(root__directional_light_component);
-        rt->render_ctor = render_ctor__directional_light_component;
-        rt->render_dtor = render_dtor__directional_light_component;
+        rt->render_loader = directional_light_component__root__render_loader;
+        rt->render_destructor = directional_light_component__root__render_destructor;
     }
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__point_light_component);
-        rt->render_ctor = render_ctor__point_light_component;
-        rt->render_dtor = render_dtor__point_light_component;
+        rt->render_loader = point_light_component__root__render_loader;
+        rt->render_destructor = point_light_component__root__render_destructor;
     }
 
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__spot_light_component);
-        rt->render_ctor = render_ctor__spot_light_component;
-        rt->render_dtor = render_dtor__spot_light_component;
+        rt->render_loader = spot_light_component__root__render_loader;
+        rt->render_destructor = spot_light_component__root__render_destructor;
     }
 
     return true;

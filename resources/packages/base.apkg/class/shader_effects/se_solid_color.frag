@@ -31,7 +31,7 @@ void main()
     vec3 lightDir = normalize(light.position.xyz - inFragPos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = light.ambient.xyz * (diff * material.diffuse);
-
+ ff
     // specular
     vec3 viewDir = normalize(dyn_camera_data.camPos - inFragPos);
     vec3 reflectDir = reflect(-lightDir, norm);  
