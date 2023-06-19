@@ -300,8 +300,17 @@ vulkan_engine::execute_sync_requests()
         else if (ext == "vert" || ext == "frag")
         {
             auto ptr = glob::shader_effects_cache::getr().get_item(AID(name));
-
             ptr->mark_render_dirty();
+
+            auto dep = glob::render_bridge::getr().get_dependency().get_node(ptr);
+
+            glob::render_bridge::getr().get_dependency().print(false);
+
+            for (auto o : dep.m_children)
+            {
+                auto mt = o->as<root::asset>();
+                mt->mark_render_dirty();
+            }
 
             sa.to_signal.set_value("");
         }

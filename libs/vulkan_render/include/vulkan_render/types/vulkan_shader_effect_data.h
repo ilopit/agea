@@ -143,7 +143,7 @@ public:
     bool m_is_wire;
     bool m_enable_alpha;
     bool m_system = false;
-    shader_effect_data* fallback = nullptr;
+    bool m_failed_load = false;
 
 private:
     vk_device_provider m_device;

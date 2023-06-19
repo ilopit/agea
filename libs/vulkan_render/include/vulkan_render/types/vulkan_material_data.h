@@ -126,6 +126,7 @@ private:
     agea::utils::dynamic_object m_gpu_data;
     VkDescriptorSet m_set = VK_NULL_HANDLE;
     shader_effect_data* m_effect = nullptr;
+    bool m_using_fallback_shader = false;
     std::vector<texture_sampler_data> m_texture_samples;
 };
 }  // namespace render

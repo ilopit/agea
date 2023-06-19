@@ -307,8 +307,10 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
                                                                device->get_vk_device_provider());
 
     auto vs = se_data.extract_shader(VK_SHADER_STAGE_VERTEX_BIT);
-
-    old_se_data->add_shader(std::move(vs));
+    if (vs)
+    {
+        old_se_data->add_shader(std::move(vs));
+    }
 
     auto rc =
         load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vs);
@@ -318,8 +320,10 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     }
 
     auto fs = se_data.extract_shader(VK_SHADER_STAGE_FRAGMENT_BIT);
-
-    old_se_data->add_shader(std::move(fs));
+    if (fs)
+    {
+        old_se_data->add_shader(std::move(fs));
+    }
 
     rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT, fs);
     if (rc != result_code::ok)
@@ -328,7 +332,6 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     }
 
     old_se_data->m_set_layout = std::move(se_data.m_set_layout);
-
     old_se_data->m_reflection = std::move(se_data.m_reflection);
 
     old_se_data->m_pipeline = se_data.m_pipeline;

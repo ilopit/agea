@@ -534,16 +534,13 @@ vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
 
     auto rc = vulkan_shader_loader::create_shader_effect(*effect, info);
 
-    if (rc != result_code::ok)
-    {
-        effect->fallback = get_shader_effect_data(AID("se_error"));
-    }
+    effect->m_failed_load = rc != result_code::ok;
 
     m_shaders_effects_cache[id] = effect;
 
     sed = effect.get();
 
-    return result_code::ok;
+    return rc;
 }
 
 result_code
@@ -556,13 +553,14 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
 
     auto rc = vulkan_shader_loader::update_shader_effect(se_data, info, old_se_data);
 
+    se_data.m_failed_load = rc != result_code::ok;
+
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return rc;
     }
 
-    se_data.fallback = nullptr;
     auto rd = s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
 
     shedule_to_deltete(std::move(rd));

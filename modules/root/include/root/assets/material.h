@@ -55,7 +55,10 @@ public:
     set_sample(const utils::id& slot, const texture_sample&);
 
 protected:
-    AGEA_ar_property("category=properties", "access=cpp_only", "serializable=true");
+    AGEA_ar_property("category=properties",
+                     "access=cpp_only",
+                     "invalidates=render",
+                     "serializable=true");
     shader_effect* m_shader_effect = nullptr;
 
     std::unordered_map<utils::id, texture_sample> m_texture_samples;

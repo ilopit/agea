@@ -11,7 +11,7 @@ namespace agea
 agea::node&
 render_object_dependency_graph::get_node(root::smart_object* obj)
 {
-    auto& n = m_top_down[obj];
+    auto& n = m_down_top[obj];
 
     return n;
 }

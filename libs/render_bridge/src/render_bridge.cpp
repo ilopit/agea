@@ -168,7 +168,9 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 
     AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Shoud not happen");
 
-    obj.set_state(root::smart_object_state::render_prepa    ring);
+    obj.set_state(root::smart_object_state::render_preparing);
+
+    get_dependency().build_node(&obj);
 
     result_code rc = obj.get_reflection()->render_ctor(*this, obj, sub_objects);
 
