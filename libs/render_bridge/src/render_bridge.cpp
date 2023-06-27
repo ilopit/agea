@@ -48,7 +48,7 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
     auto fitr = ct.layout->get_fields().begin();
     auto src_obj_ptr = so.as_blob();
 
-    utils::dynamic_object dyn_obj(ct.layout, ct.layout->get_object_size());
+    utils::dynamic_object dyn_obj(ct.layout);
 
     AGEA_check(ct.offset_in_object.size() == ct.layout->get_fields().size(), "Should be same!");
 

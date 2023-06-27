@@ -22,7 +22,8 @@ shader_effect_data::~shader_effect_data()
 void
 shader_effect_data::reset()
 {
-    m_stages.clear();
+    m_vertex_stage.reset();
+    m_frag_stage.reset();
 
     for (auto l : m_set_layout)
     {
@@ -31,8 +32,6 @@ shader_effect_data::reset()
 
     vkDestroyPipeline(m_device(), m_pipeline, nullptr);
     vkDestroyPipelineLayout(m_device(), m_pipeline_layout, nullptr);
-
-    m_reflection.clear();
 
     for (size_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
     {
@@ -44,41 +43,38 @@ shader_effect_data::reset()
 }
 
 void
-shader_effect_data::add_shader(std::shared_ptr<shader_data> se_data)
-{
-    m_stages[se_data->stage()] = se_data;
-}
-
-void
 shader_effect_data::generate_set_layouts(
     std::vector<vulkan_descriptor_set_layout_data>& set_layouts)
 {
     size_t size = 0;
 
-    for (auto& shader_reflection : m_reflection)
-    {
-        size += shader_reflection.second.sets.size();
-    }
+    size += m_vertext_stage_reflection.sets.size();
+    size += m_frag_stage_reflection.sets.size();
+
     set_layouts.clear();
 
-    for (auto& shader_reflection : m_reflection)
+    for (auto& s : m_vertext_stage_reflection.sets)
     {
-        for (auto& s : shader_reflection.second.sets)
-        {
-            s.get_descriptor_set_layout_data(set_layouts.emplace_back());
-        }
+        s.get_descriptor_set_layout_data(set_layouts.emplace_back());
+    }
+
+    for (auto& s : m_frag_stage_reflection.sets)
+    {
+        s.get_descriptor_set_layout_data(set_layouts.emplace_back());
     }
 }
 
 void
 shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constants)
 {
-    for (auto& sr : m_reflection)
+    if (!m_vertext_stage_reflection.constants.name.empty())
     {
-        if (!sr.second.constants.name.empty())
-        {
-            constants.push_back(sr.second.constants.as_vk());
-        }
+        constants.push_back(m_vertext_stage_reflection.constants.as_vk());
+    }
+
+    if (!m_frag_stage_reflection.constants.name.empty())
+    {
+        constants.push_back(m_frag_stage_reflection.constants.as_vk());
     }
 }
 

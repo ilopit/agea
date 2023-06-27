@@ -5,22 +5,10 @@ namespace agea
 namespace utils
 {
 
-dynamic_object
-basic_dynamic_object_layout_builder::make_obj()
+std::shared_ptr<agea::utils::dynobj_layout>
+basic_dynamic_object_layout_builder::unwrap_subojb(const std::shared_ptr<dynobj_layout>& obj)
 {
-    return dynamic_object(m_layout, m_layout->get_object_size());
-}
-
-dynamic_object
-basic_dynamic_object_layout_builder::make_empty_obj()
-{
-    return dynamic_object(m_layout);
-}
-
-dynamic_object
-basic_dynamic_object_layout_builder::make_obj(std::vector<uint8_t>* external)
-{
-    return dynamic_object(m_layout, external);
+    return obj->get_fields()[0].sub_field_layout;
 }
 
 }  // namespace utils

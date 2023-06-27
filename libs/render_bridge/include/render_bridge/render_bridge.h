@@ -31,7 +31,7 @@ struct vertex_input_description;
 
 struct access_template
 {
-    std::shared_ptr<utils::dynamic_object_layout> layout;
+    std::shared_ptr<utils::dynobj_layout> layout;
     std::vector<uint32_t> offset_in_object;
 };
 

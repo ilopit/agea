@@ -2,6 +2,7 @@
 
 #include "utils/id.h"
 #include "utils/check.h"
+#include "utils/math_utils.h"
 
 #include <vector>
 #include <string>
@@ -11,163 +12,384 @@ namespace agea
 {
 namespace utils
 {
-class dynamic_object_layout;
+class dynobj_layout;
+struct dynobj_field;
+
+class base_view
+{
+public:
+    base_view() = default;
+
+    bool
+    is_array() const;
+
+    bool
+    is_object() const;
+
+    bool
+    valid() const;
+
+    uint64_t
+    size(uint64_t idx) const;
+
+    uint64_t
+    offset(uint64_t idx) const;
+
+    static const dynobj_field*
+    dyn_field(const std::shared_ptr<dynobj_layout>& layout, uint64_t idx);
+
+protected:
+    base_view(uint64_t offset,
+              uint8_t* data,
+              const dynobj_field* cur_field,
+              const std::shared_ptr<dynobj_layout>& layout);
+
+    static uint32_t
+    get_type_id(const dynobj_field* f);
+
+    static bool
+    is_array(const dynobj_field* f);
+
+    static bool
+    is_object(const dynobj_field* f);
+
+    static uint64_t
+    get_idx_offset(const dynobj_field* f, uint64_t idx);
+
+    bool
+    write_unsafe(const dynobj_field* f, uint64_t offset, uint8_t* src);
+
+    bool
+    read_unsafe(const dynobj_field* f, uint64_t offset, uint8_t* dst);
+
+    uint64_t
+    get_offest(uint64_t idx);
+
+    base_view
+    build_for_subobject(uint64_t field_idx);
+
+    base_view
+    build_for_subobject(uint64_t field_idx, uint64_t idx);
+
+    const dynobj_field*
+    sub_field_by_idx(uint64_t idx) const;
+
+    uint64_t m_offset = 0;
+    uint8_t* m_data = nullptr;
+    const dynobj_field* m_cur_field = nullptr;
+    std::shared_ptr<dynobj_layout> m_layout = nullptr;
+};
+
+template <typename TYPE_DESCRIPTOR>
+class dynobj_view : public base_view
+{
+public:
+    dynobj_view() = default;
+
+    dynobj_view(uint32_t offset,
+                uint8_t* data,
+                const dynobj_field* cur_field,
+                std::shared_ptr<dynobj_layout> layout)
+        : base_view(offset, data, cur_field, layout)
+    {
+    }
+
+    dynobj_view(const base_view& bf)
+        : base_view(bf)
+    {
+    }
+
+    dynobj_view
+    subobj(uint32_t field_idx)
+    {
+        AGEA_check(is_object(), "Should be object!");
+
+        dynobj_view<TYPE_DESCRIPTOR> f(build_for_subobject(field_idx));
+
+        return f;
+    }
+
+    dynobj_view
+    subobj(uint32_t field_idx, uint32_t idx)
+    {
+        AGEA_check(is_object(), "Should be an object!");
+
+        dynobj_view<TYPE_DESCRIPTOR> f(build_for_subobject(field_idx, idx));
+
+        return f;
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    write_from(uint32_t field_idx, const T& v, VARGS&&... args)
+    {
+        AGEA_check(is_object(), "Should be object!");
+
+        auto f = sub_field_by_idx(field_idx);
+
+        if (!f)
+        {
+            return false;
+        }
+
+        if (!write_impl(f, v))
+        {
+            return false;
+        }
+
+        return write_from(++field_idx, args...);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    write(const T& v, VARGS&&... args)
+    {
+        AGEA_check(is_object(), "Should be object!");
+
+        auto f = sub_field_by_idx(0);
+
+        if (!f)
+        {
+            return false;
+        }
+
+        if (!write_impl(f, v))
+        {
+            return false;
+        }
+
+        return write_from(1, args...);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    write_from(uint32_t field_idx, const T& v)
+    {
+        AGEA_check(is_object(), "Should be object!");
+
+        auto f = sub_field_by_idx(field_idx);
+
+        if (!f)
+        {
+            return false;
+        }
+
+        return write_impl(f, v);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    read(uint32_t field_idx, const T& v, VARGS&&... args)
+    {
+        auto f = sub_field_by_idx(field_idx);
+
+        AGEA_check(!is_array(f), "Should not be array!");
+
+        if (!f || !read_impl(f, v))
+        {
+            return false;
+        }
+
+        return read(++field_idx, args...);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    read(uint32_t field_idx, T& v)
+    {
+        auto f = sub_field_by_idx(field_idx);
+
+        AGEA_check(!is_array(f), "Should not be array!");
+
+        if (!f)
+        {
+            return false;
+        }
+
+        return read_impl(f, v);
+    }
+
+    template <typename... VARGS>
+    bool
+    write_array(uint32_t field_idx, uint32_t idx, VARGS&&... args)
+    {
+        AGEA_check(is_object(), "Should be object!");
+
+        auto f = sub_field_by_idx(field_idx);
+
+        if (!f)
+        {
+            return false;
+        }
+
+        AGEA_check(is_array(f), "Should be array!");
+
+        return write_array_impl(f, idx, args...);
+    }
+
+    template <typename... VARGS>
+    bool
+    read_array(uint32_t field_idx, uint32_t idx, VARGS&&... args)
+    {
+        AGEA_check(is_object(), "Should be object!");
+
+        auto f = sub_field_by_idx(field_idx);
+
+        if (!f)
+        {
+            return false;
+        }
+
+        AGEA_check(is_array(f), "Should be object!");
+
+        return read_array_impl(f, idx, args...);
+    }
+
+private:
+    template <typename T>
+    bool
+    write_impl(const dynobj_field* dyn_field, const T& v)
+    {
+        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
+
+        if (get_type_id(dyn_field) != type_id)
+        {
+            return false;
+        }
+
+        return write_unsafe(dyn_field, m_offset, (uint8_t*)&v);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    write_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v, VARGS&&... args)
+    {
+        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
+
+        if (get_type_id(dyn_field) != type_id)
+        {
+            return false;
+        }
+
+        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+
+        if (!write_unsafe(dyn_field, offset, (uint8_t*)&v))
+        {
+            return false;
+        }
+
+        return write_array_impl(dyn_field, ++idx, args...);
+    }
+
+    template <typename T>
+    bool
+    write_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v)
+    {
+        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
+
+        if (get_type_id(dyn_field) != type_id)
+        {
+            return false;
+        }
+
+        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+
+        return write_unsafe(dyn_field, offset, (uint8_t*)&v);
+    }
+
+    template <typename T>
+    bool
+    read_impl(const dynobj_field* dyn_field, T& v)
+    {
+        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
+
+        if (get_type_id(dyn_field) != type_id)
+        {
+            return false;
+        }
+
+        return read_unsafe(dyn_field, m_offset, (uint8_t*)&v);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    read_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v, VARGS&&... args)
+    {
+        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
+
+        if (get_type_id(dyn_field) != type_id)
+        {
+            return false;
+        }
+
+        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+
+        if (!read_unsafe(dyn_field, offset, (uint8_t*)&v))
+        {
+            return false;
+        }
+
+        return read_array_impl(dyn_field, ++idx, args...);
+    }
+
+    template <typename T>
+    bool
+    read_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v)
+    {
+        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
+
+        if (get_type_id(dyn_field) != type_id)
+        {
+            return false;
+        }
+
+        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+
+        return read_unsafe(dyn_field, offset, (uint8_t*)&v);
+    }
+};
 
 class dynamic_object
 {
 public:
-    dynamic_object() = default;
-
-    dynamic_object(const std::shared_ptr<dynamic_object_layout>& l);
-
-    dynamic_object(const std::shared_ptr<dynamic_object_layout>& l, size_t size);
-
-    dynamic_object(const std::shared_ptr<dynamic_object_layout>& l, std::vector<uint8_t>* external);
-
-    dynamic_object(const dynamic_object& other);
-
-    dynamic_object&
-    operator=(const dynamic_object& other);
-
-    template <typename TYPE_DESCRIPTOR, typename T, typename... VARGS>
-    bool
-    write(uint32_t pos, const T& v, VARGS&&... args)
+    dynamic_object()
+        : m_layout()
     {
-        if (!write<TYPE_DESCRIPTOR>(pos, v))
-        {
-            return false;
-        }
-
-        return write<TYPE_DESCRIPTOR>(++pos, args...);
     }
 
-    template <typename TYPE_DESCRIPTOR, typename T>
-    bool
-    write(uint32_t pos, const T& v)
-    {
-        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
-
-        if (get_type_id(pos) != type_id)
-        {
-            return false;
-        }
-
-        write_unsafe(pos, (uint8_t*)&v);
-        return true;
-    }
-
-    template <typename TYPE_DESCRIPTOR, typename... VARGS>
-    bool
-    write_obj(uint32_t field_idx, VARGS&&... args)
-    {
-        auto ojb_size = expected_size();
-
-        if (m_cursor + ojb_size >= m_data->size())
-        {
-            m_data->insert(m_data->end(), m_data->size() - m_cursor + ojb_size, 0u);
-        }
-
-        bool r = write_fields<TYPE_DESCRIPTOR>((uint32_t)m_cursor, field_idx, args...);
-
-        m_cursor += expected_size();
-
-        return true;
-    }
-
-    template <typename TYPE_DESCRIPTOR, typename T, typename... VARGS>
-    bool
-    write_fields(uint32_t offset, uint32_t field_idx, const T& v, VARGS&&... args)
-    {
-        if (!write_fields<TYPE_DESCRIPTOR>(offset, field_idx, v))
-        {
-            return false;
-        }
-
-        return write_fields<TYPE_DESCRIPTOR>(offset, ++field_idx, args...);
-        return true;
-    }
-
-    template <typename TYPE_DESCRIPTOR, typename T>
-    bool
-    write_fields(uint32_t offset, uint32_t field_idx, const T& v)
-    {
-        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
-
-        if (get_type_id(field_idx) != type_id)
-        {
-            return false;
-        }
-
-        write_unsafe(offset, field_idx, (uint8_t*)&v);
-
-        return true;
-    }
-
-    template <typename TYPE_DESCRIPTOR, typename T, typename... VARGS>
-    bool
-    read(uint32_t pos, T& v, VARGS&&... args)
-    {
-        if (!read<TYPE_DESCRIPTOR>(pos, v))
-        {
-            return false;
-        }
-
-        return read<TYPE_DESCRIPTOR>(++pos, args...);
-    }
-
-    template <typename TYPE_DESCRIPTOR, typename T>
-    bool
-    read(uint32_t pos, T& v)
-    {
-        auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
-
-        if (get_type_id(pos) != type_id)
-        {
-            return false;
-        }
-
-        read_unsafe(pos, (uint8_t*)&v);
-        return true;
-    }
-
-    void
-    write_unsafe(uint32_t pos, uint8_t* data);
-
-    void
-    write_unsafe(uint32_t offset, uint32_t field_idx, uint8_t* data);
-
-    void
-    read_unsafe(uint32_t pos, uint8_t* data);
+    dynamic_object(const std::shared_ptr<dynobj_layout>& l);
 
     uint8_t*
     data()
     {
-        return m_data->data();
+        return m_obj_data.data();
     }
 
     const uint8_t*
     data() const
     {
-        return m_data->data();
+        return m_obj_data.data();
     }
 
-    uint32_t
-    size() const;
+    uint64_t
+    size() const
+    {
+        return m_obj_data.size();
+    }
 
-    uint32_t
-    expected_size() const;
-
-    uint32_t
-    get_type_id(uint32_t pos);
+    template <typename TYPE_DESCRIPTOR>
+    dynobj_view<TYPE_DESCRIPTOR>
+    root()
+    {
+        return dynobj_view<TYPE_DESCRIPTOR>(0, data(), base_view::dyn_field(m_layout, 0), m_layout);
+    }
 
 private:
-    uint64_t m_cursor = 0;
+    const dynobj_field*
+    get_dyn_field(uint64_t idx);
 
-    std::vector<uint8_t> m_allocated;
-    std::vector<uint8_t>* m_external_ref = nullptr;
-    std::vector<uint8_t>* m_data = nullptr;
-
-    std::shared_ptr<dynamic_object_layout> m_layout;
+    std::vector<uint8_t> m_obj_data;
+    std::shared_ptr<dynobj_layout> m_layout;
 };
 
 }  // namespace utils

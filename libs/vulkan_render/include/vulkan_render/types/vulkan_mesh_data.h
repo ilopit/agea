@@ -19,7 +19,7 @@ struct vertex_input_description
 };
 
 vertex_input_description
-convert_to_vertex_input_description(agea::utils::dynamic_object_layout& dol);
+convert_to_vertex_input_description(agea::utils::dynobj_layout& dol);
 
 class mesh_data
 {

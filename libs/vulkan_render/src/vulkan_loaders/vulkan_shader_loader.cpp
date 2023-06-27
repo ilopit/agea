@@ -217,12 +217,19 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     se_data.m_is_wire = info.is_wire;
     se_data.m_enable_alpha = info.enable_alpha;
 
-    se_data.add_shader(vert_module);
-    se_data.add_shader(frag_module);
+    se_data.m_vertex_stage = vert_module;
+    se_data.m_frag_stage = frag_module;
 
     auto device = glob::render_device::get();
 
-    if (!build_shader_reflection(device, se_data))
+    if (!build_shader_reflection(device, se_data.m_vertext_stage_reflection,
+                                 se_data.m_vertex_stage))
+    {
+        ALOG_LAZY_ERROR;
+        return result_code::failed;
+    }
+
+    if (!build_shader_reflection(device, se_data.m_frag_stage_reflection, se_data.m_frag_stage))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -306,33 +313,33 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     old_se_data = std::make_shared<render::shader_effect_data>(se_data.get_id(),
                                                                device->get_vk_device_provider());
 
-    auto vs = se_data.extract_shader(VK_SHADER_STAGE_VERTEX_BIT);
-    if (vs)
+    if (se_data.m_vertex_stage)
     {
-        old_se_data->add_shader(std::move(vs));
+        old_se_data->m_vertex_stage = std::move(se_data.m_vertex_stage);
+        se_data.m_vertext_stage_reflection = {};
     }
 
-    auto rc =
-        load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vs);
+    auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
+                               se_data.m_vertex_stage);
     if (rc != result_code::ok)
     {
         return rc;
     }
 
-    auto fs = se_data.extract_shader(VK_SHADER_STAGE_FRAGMENT_BIT);
-    if (fs)
+    if (se_data.m_frag_stage)
     {
-        old_se_data->add_shader(std::move(fs));
+        old_se_data->m_frag_stage = std::move(se_data.m_frag_stage);
+        se_data.m_frag_stage_reflection = {};
     }
 
-    rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT, fs);
+    rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
+                          se_data.m_frag_stage);
     if (rc != result_code::ok)
     {
         return rc;
     }
 
     old_se_data->m_set_layout = std::move(se_data.m_set_layout);
-    old_se_data->m_reflection = std::move(se_data.m_reflection);
 
     old_se_data->m_pipeline = se_data.m_pipeline;
     se_data.m_pipeline = VK_NULL_HANDLE;
@@ -340,7 +347,7 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     old_se_data->m_pipeline_layout = se_data.m_pipeline_layout;
     se_data.m_pipeline_layout = VK_NULL_HANDLE;
 
-    return create_shader_effect(se_data, vs, fs, info);
+    return create_shader_effect(se_data, se_data.m_vertex_stage, se_data.m_frag_stage, info);
 }
 
 result_code

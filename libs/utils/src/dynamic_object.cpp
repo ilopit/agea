@@ -1,96 +1,154 @@
 #include "utils/dynamic_object.h"
 
 #include "utils/dynamic_object_builder.h"
+#include "utils/agea_log.h"
 
 namespace agea
 {
 namespace utils
 {
 
-dynamic_object::dynamic_object(const std::shared_ptr<dynamic_object_layout>& l)
-    : m_external_ref(nullptr)
-    , m_data(nullptr)
-    , m_layout(l)
+base_view::base_view(uint64_t offset,
+                     uint8_t* data,
+                     const dynobj_field* cur_field,
+                     const std::shared_ptr<dynobj_layout>& layout)
+    : m_offset(offset)
+    , m_data(data)
+    , m_cur_field(cur_field)
+    , m_layout(layout)
 {
 }
 
-dynamic_object::dynamic_object(const std::shared_ptr<dynamic_object_layout>& l, size_t size)
-    : m_allocated(size)
-    , m_data(&m_allocated)
-    , m_layout(l)
+uint32_t
+base_view::get_type_id(const dynobj_field* f)
 {
-    int i = 2;
+    return f->type;
 }
 
-dynamic_object::dynamic_object(const std::shared_ptr<dynamic_object_layout>& l,
-                               std::vector<uint8_t>* external)
-    : m_external_ref(external)
-    , m_data(m_external_ref)
-    , m_layout(l)
+uint64_t
+base_view::get_idx_offset(const dynobj_field* f, uint64_t idx)
 {
+    return math_utils::align_as(f->type_size, f->items_alighment) * idx;
 }
 
-dynamic_object::dynamic_object(const dynamic_object& other)
-    : m_allocated(other.m_allocated)
-    , m_external_ref(other.m_external_ref)
-    , m_data(m_external_ref ? m_external_ref : &m_allocated)
-    , m_layout(other.m_layout)
+base_view
+base_view::build_for_subobject(uint64_t field_idx, uint64_t idx)
 {
+    auto sub_field = &m_cur_field->sub_field_layout->get_fields()[field_idx];
+
+    AGEA_check(sub_field->is_array(), "Should be an array!");
+
+    auto offset = get_idx_offset(sub_field, idx);
+
+    return base_view(sub_field->offset + m_offset + offset, m_data, sub_field,
+                     m_cur_field->sub_field_layout);
 }
-dynamic_object&
-dynamic_object::operator=(const dynamic_object& other)
+
+base_view
+base_view::build_for_subobject(uint64_t field_idx)
 {
-    if (this != &other)
+    auto sub_field = &m_cur_field->sub_field_layout->get_fields()[field_idx];
+
+    return base_view(sub_field->offset + m_offset, m_data, sub_field,
+                     m_cur_field->sub_field_layout);
+}
+
+const dynobj_field*
+base_view::sub_field_by_idx(uint64_t idx) const
+{
+    if (idx >= m_cur_field->sub_field_layout->get_fields().size())
     {
-        m_allocated = other.m_allocated;
-        m_external_ref = other.m_external_ref;
-        m_data = m_external_ref ? m_external_ref : &m_allocated;
-        m_layout = other.m_layout;
+        return nullptr;
     }
 
-    return *this;
+    return &m_cur_field->sub_field_layout->get_fields()[idx];
 }
 
-void
-dynamic_object::write_unsafe(uint32_t pos, uint8_t* data)
+bool
+base_view::write_unsafe(const dynobj_field* f, uint64_t offset, uint8_t* data)
 {
-    auto& field = m_layout->get_fields()[pos];
+    ALOG_INFO("W id:{0} from:{1} size:{2}", f->id.cstr(), f->offset + offset, f->type_size);
 
-    memcpy(m_data->data() + field.offset, data, field.size);
+    memcpy(m_data + offset + f->offset, data, f->type_size);
+
+    return true;
 }
 
-void
-dynamic_object::write_unsafe(uint32_t offset, uint32_t field_idx, uint8_t* src)
+bool
+base_view::read_unsafe(const dynobj_field* f, uint64_t offset, uint8_t* dst)
 {
-    auto& field = m_layout->get_fields()[field_idx];
+    ALOG_INFO("R id:{0} from:{1} size:{2}", f->id.cstr(), f->offset + offset, f->type_size);
 
-    memcpy(data() + field.offset + offset, src, field.size);
+    memcpy(dst, m_data + offset + f->offset, f->type_size);
+
+    return true;
 }
 
-void
-dynamic_object::read_unsafe(uint32_t pos, uint8_t* dst)
+bool
+base_view::is_array() const
 {
-    auto& field = m_layout->get_fields()[pos];
-
-    memcpy(dst, data() + field.offset, field.size);
+    return m_cur_field->is_array();
 }
 
-uint32_t
-dynamic_object::size() const
+bool
+base_view::is_array(const dynobj_field* f)
 {
-    return m_data->size();
+    return f->is_array();
 }
 
-uint32_t
-dynamic_object::expected_size() const
+bool
+base_view::is_object() const
 {
-    return m_layout->get_object_size();
+    return (bool)m_cur_field->sub_field_layout;
 }
 
-uint32_t
-dynamic_object::get_type_id(uint32_t pos)
+bool
+base_view::is_object(const dynobj_field* f)
 {
-    return m_layout->get_fields()[pos].type;
+    return f->is_obj();
+}
+
+bool
+base_view::valid() const
+{
+    return m_cur_field;
+}
+
+uint64_t
+base_view::size(uint64_t idx) const
+{
+    return m_layout->get_fields()[idx].size;
+}
+
+uint64_t
+base_view::offset(uint64_t idx) const
+{
+    return m_layout->get_fields()[idx].offset;
+}
+
+const dynobj_field*
+base_view::dyn_field(const std::shared_ptr<dynobj_layout>& layout, uint64_t idx)
+{
+    return &layout->get_fields()[idx];
+}
+
+uint64_t
+base_view::get_offest(uint64_t idx)
+{
+    return m_cur_field->offset +
+           math_utils::align_as(m_cur_field->type_size, m_cur_field->items_alighment) * idx;
+}
+
+dynamic_object::dynamic_object(const std::shared_ptr<dynobj_layout>& l)
+    : m_obj_data(l->get_object_size())
+    , m_layout(l)
+{
+}
+
+const dynobj_field*
+dynamic_object::get_dyn_field(uint64_t pos)
+{
+    return &m_layout->get_fields()[pos];
 }
 
 }  // namespace utils

@@ -447,6 +447,7 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
             image_buffer_info[i].imageView = samples[i].texture->image_view;
         }
 
+        // TODO: Optimize
         VkDescriptorSet txt_ds = VK_NULL_HANDLE;
         vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                             device->descriptor_allocator())

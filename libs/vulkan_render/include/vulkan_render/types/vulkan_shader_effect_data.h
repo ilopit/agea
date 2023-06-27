@@ -48,7 +48,7 @@ struct descriptor_binding
     bool is_array = false;
     VkDescriptorType descriptor_type;
     VkShaderStageFlagBits stage;
-    ::agea::utils::dynamic_object_layout layout;
+    ::agea::utils::dynobj_layout layout;
 };
 
 struct descriptor_set
@@ -97,7 +97,7 @@ struct shader_reflection
     push_constants constants;
     std::vector<reflection::descriptor_set> sets;
 
-    agea::utils::dynamic_object_layout constants_layout;
+    agea::utils::dynobj_layout constants_layout;
 };
 
 }  // namespace reflection
@@ -118,15 +118,6 @@ public:
     reset();
 
     void
-    add_shader(std::shared_ptr<shader_data> se_data);
-
-    std::shared_ptr<shader_data>
-    extract_shader(VkShaderStageFlagBits stage)
-    {
-        return std::move(m_stages[stage]);
-    }
-
-    void
     generate_set_layouts(std::vector<vulkan_descriptor_set_layout_data>& set_layouts);
 
     void
@@ -137,8 +128,11 @@ public:
 
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout;
 
-    std::unordered_map<VkShaderStageFlagBits, std::shared_ptr<shader_data>> m_stages;
-    std::unordered_map<VkShaderStageFlagBits, reflection::shader_reflection> m_reflection;
+    std::shared_ptr<shader_data> m_vertex_stage;
+    reflection::shader_reflection m_vertext_stage_reflection;
+
+    std::shared_ptr<shader_data> m_frag_stage;
+    reflection::shader_reflection m_frag_stage_reflection;
 
     bool m_is_wire = false;
     bool m_enable_alpha = false;
