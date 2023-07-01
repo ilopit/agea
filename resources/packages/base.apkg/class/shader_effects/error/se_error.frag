@@ -19,7 +19,7 @@ const vec3 COLOR[4] = vec3[4] (
 vec3 getColor(vec2 uv)
 {
     int vx = mod(uv.x, 0.2) > 0.1 ? 1: 0;
-    int vy = mod(uv.y, 0.2)> 0.1 ? 1: 0;
+    int vy = mod(uv.y, 0.2) > 0.1 ? 1: 0;
 
     return COLOR[vx*2 + vy];
 }
@@ -52,9 +52,9 @@ vec3 CalcDummyDirLight(vec3 normal, vec3 fragPos, vec3 viewDir)
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);  
     // combine results
-    vec3 ambient = light.ambient * getColor(inTexCoord);
-    vec3 diffuse = light.diffuse * diff * getColor(inTexCoord);
-    vec3 specular = light.specular * spec * getColor(inTexCoord);
+    vec3 ambient = light.ambient * getColor(in_tex_coord);
+    vec3 diffuse = light.diffuse * diff * getColor(in_tex_coord);
+    vec3 specular = light.specular * spec * getColor(in_tex_coord);
 
     return ambient + diffuse + specular;
 }
@@ -90,9 +90,9 @@ vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
     // combine results
-    vec3 ambient = light.ambient * getColor(inTexCoord);
-    vec3 diffuse = light.diffuse * diff * getColor(inTexCoord);
-    vec3 specular = light.specular * spec * getColor(inTexCoord);
+    vec3 ambient = light.ambient * getColor(in_tex_coord);
+    vec3 diffuse = light.diffuse * diff * getColor(in_tex_coord);
+    vec3 specular = light.specular * spec * getColor(in_tex_coord);
     ambient *= attenuation;
     diffuse *= attenuation;
     specular *= attenuation;
@@ -102,11 +102,11 @@ vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
 
 void main()
 {
-    vec3 norm = normalize(inNormal);
-    vec3 viewDir = normalize(dyn_camera_data.camPos - inFragPos);
+    vec3 norm = normalize(in_normal);
+    vec3 view_dir = normalize(dyn_camera_data.camPos - in_world_pos);
 
-    vec3 result = CalcDummyDirLight(norm, inFragPos, viewDir);
-    result += CalcDummyPointLight(norm, inFragPos, viewDir);
+    vec3 result = CalcDummyDirLight(norm, in_world_pos, view_dir);
+    result += CalcDummyPointLight(norm, in_world_pos, view_dir);
 
-    outColor = vec4(result, 1.0);
+    out_color = vec4(result, 1.0);
 }

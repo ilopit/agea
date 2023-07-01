@@ -25,7 +25,7 @@ convert_to_vertex_input_description(agea::utils::dynobj_layout& dol)
     att.binding = 0;
     att.location = 0;
 
-    for (auto& f : dol.get_fields())
+    for (auto& f : dol.get_fields()[0].sub_field_layout->get_fields())
     {
         auto vk_format = vk_utils::convert_to_vk_format((gpu_type::id)f.type);
 

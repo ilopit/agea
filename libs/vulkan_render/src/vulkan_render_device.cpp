@@ -3,7 +3,6 @@
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vk_pipeline_builder.h"
-#include "vulkan_render/shader_reflection.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
 

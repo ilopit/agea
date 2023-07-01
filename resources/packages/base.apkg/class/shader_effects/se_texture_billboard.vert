@@ -26,10 +26,10 @@ void main()
     modelView[2][1] = 0.0; 
     modelView[2][2] = 1.0; 
     
-    outColor    = vColor;
-    outTexCoord = vTexCoord;
-    outNormal   = mat3(normalMatrix) * vNormal;
-    outWorldPos  = vec3(modelMatrix * vec4(vPosition, 1));
+    out_color    = in_color;
+    out_tex_coord = in_tex_coord;
+    out_normal   = mat3(normalMatrix) * in_normal;
+    out_world_pos  = vec3(modelMatrix * vec4(in_position, 1));
 
-    gl_Position = dyn_camera_data.projection * modelView * vec4(vPosition, 1.0);
+    gl_Position = dyn_camera_data.projection * modelView * vec4(in_position, 1.0);
 }

@@ -424,7 +424,7 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
                                       const agea::utils::id& type_id,
                                       std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
-                                      const agea::utils::dynamic_object& gpu_params)
+                                      const agea::utils::dynobj& gpu_params)
 {
     AGEA_check(!get_material_data(id), "Shouldn't exist");
 
@@ -503,7 +503,7 @@ bool
 vulkan_render_loader::update_material(material_data& mat_data,
                                       std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
-                                      const agea::utils::dynamic_object& gpu_params)
+                                      const agea::utils::dynobj& gpu_params)
 {
     mat_data.set_shader_effect(&se_data);
     mat_data.set_texture_samples(samples);

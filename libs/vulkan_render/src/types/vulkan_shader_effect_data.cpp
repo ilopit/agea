@@ -1,6 +1,7 @@
 ﻿#include "vulkan_render/types/vulkan_shader_effect_data.h"
 
 #include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_gpu_types.h"
 
 namespace agea
 {
@@ -10,6 +11,17 @@ namespace render
 shader_effect_data::shader_effect_data(const ::agea::utils::id& id, vk_device_provider vdp)
     : m_id(id)
     , m_device(vdp)
+    , m_expected_vertex_input(get_default_vertex_inout_layout())
+{
+    m_set_layout.fill(VK_NULL_HANDLE);
+}
+
+shader_effect_data::shader_effect_data(const ::agea::utils::id& id,
+                                       vk_device_provider vdp,
+                                       const utils::dynobj_layout_sptr& v)
+    : m_id(id)
+    , m_device(vdp)
+    , m_expected_vertex_input(v)
 {
     m_set_layout.fill(VK_NULL_HANDLE);
 }

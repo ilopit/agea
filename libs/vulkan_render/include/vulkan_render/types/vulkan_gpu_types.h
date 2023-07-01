@@ -79,6 +79,9 @@ struct gpu_vertex_data
     glm::vec2 uv;
 };
 
+std::shared_ptr<utils::dynobj_layout>
+get_default_vertex_inout_layout();
+
 struct gpu_push_constants
 {
     gpu_data_index_type material_id;

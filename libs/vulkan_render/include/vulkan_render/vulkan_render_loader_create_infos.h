@@ -19,8 +19,8 @@ struct shader_effect_create_info
     bool is_wire = false;
     bool enable_alpha = false;
     bool enable_dynamic_state = false;
+    utils::dynobj_layout_sptr expected_input_vertex_layout;
     VkRenderPass render_pass = VK_NULL_HANDLE;
-    const vertex_input_description* vert_input_description = nullptr;
     VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
     VkCullModeFlags cull_mode = VK_CULL_MODE_NONE;
 };

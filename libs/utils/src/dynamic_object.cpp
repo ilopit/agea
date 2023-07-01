@@ -139,14 +139,14 @@ base_view::get_offest(uint64_t idx)
            math_utils::align_as(m_cur_field->type_size, m_cur_field->items_alighment) * idx;
 }
 
-dynamic_object::dynamic_object(const std::shared_ptr<dynobj_layout>& l)
+dynobj::dynobj(const std::shared_ptr<dynobj_layout>& l)
     : m_obj_data(l->get_object_size())
     , m_layout(l)
 {
 }
 
 const dynobj_field*
-dynamic_object::get_dyn_field(uint64_t pos)
+dynobj::get_dyn_field(uint64_t pos)
 {
     return &m_layout->get_fields()[pos];
 }

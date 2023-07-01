@@ -36,5 +36,18 @@ gpu_type::size(gpu_type::id t)
     return 0;
 }
 
+std::shared_ptr<agea::utils::dynobj_layout>
+get_default_vertex_inout_layout()
+{
+    static auto l = gpu_dynobj_builder()
+                        .add_field(AID("in_position"), render::gpu_type::g_vec3, 1)
+                        .add_field(AID("in_normal"), render::gpu_type::g_vec3, 1)
+                        .add_field(AID("in_color"), render::gpu_type::g_vec3, 1)
+                        .add_field(AID("in_tex_coord"), render::gpu_type::g_vec2, 1)
+                        .finalize();
+
+    return l;
+}
+
 }  // namespace render
 }  // namespace agea

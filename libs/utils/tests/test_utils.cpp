@@ -212,7 +212,7 @@ TEST(test_utils, test_dynamic_object_array_2)
                   .add_field(AID("su1"), l0, 16)
                   .finalize();
 
-    dynamic_object dyn_object(l1);
+    dynobj dyn_object(l1);
 
     auto acs = dyn_object.root<test_type>();
 

@@ -48,7 +48,7 @@ struct descriptor_binding
     bool is_array = false;
     VkDescriptorType descriptor_type;
     VkShaderStageFlagBits stage;
-    ::agea::utils::dynobj_layout layout;
+    ::agea::utils::dynobj_layout_sptr layout;
 };
 
 struct descriptor_set
@@ -97,7 +97,9 @@ struct shader_reflection
     push_constants constants;
     std::vector<reflection::descriptor_set> sets;
 
-    agea::utils::dynobj_layout constants_layout;
+    agea::utils::dynobj_layout_sptr constants_layout;
+    agea::utils::dynobj_layout_sptr input_layout;
+    agea::utils::dynobj_layout_sptr output_layout;
 };
 
 }  // namespace reflection
@@ -106,6 +108,10 @@ class shader_effect_data
 {
 public:
     shader_effect_data(const ::agea::utils::id& id, vk_device_provider vdp);
+    shader_effect_data(const ::agea::utils::id& id,
+                       vk_device_provider vdp,
+                       const utils::dynobj_layout_sptr& v);
+
     ~shader_effect_data();
 
     const ::agea::utils::id&
@@ -123,10 +129,18 @@ public:
     void
     generate_constants(std::vector<VkPushConstantRange>& constants);
 
+    void
+    set_expected_vertex_input(const utils::dynobj_layout_sptr& v)
+    {
+        m_expected_vertex_input = v;
+    }
+
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout;
+
+    utils::dynobj_layout_sptr m_expected_vertex_input;
 
     std::shared_ptr<shader_data> m_vertex_stage;
     reflection::shader_reflection m_vertext_stage_reflection;

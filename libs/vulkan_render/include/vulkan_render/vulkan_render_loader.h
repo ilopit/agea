@@ -175,13 +175,13 @@ public:
                     const agea::utils::id& type_id,
                     std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
-                    const agea::utils::dynamic_object& params);
+                    const agea::utils::dynobj& params);
 
     bool
     update_material(material_data& mat_data,
                     std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
-                    const agea::utils::dynamic_object& params);
+                    const agea::utils::dynobj& params);
 
     void
     destroy_material_data(const agea::utils::id& id);

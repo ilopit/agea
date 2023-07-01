@@ -20,5 +20,5 @@ layout(set = 2, binding = 0) uniform sampler2D tex1[];
 
 void main()
 {
-    outColor = texture(tex1[0], inTexCoord);
+    out_color = texture(tex1[0], in_tex_coord);
 }

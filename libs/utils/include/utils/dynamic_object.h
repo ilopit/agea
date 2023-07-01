@@ -349,15 +349,15 @@ private:
     }
 };
 
-class dynamic_object
+class dynobj
 {
 public:
-    dynamic_object()
+    dynobj()
         : m_layout()
     {
     }
 
-    dynamic_object(const std::shared_ptr<dynobj_layout>& l);
+    dynobj(const std::shared_ptr<dynobj_layout>& l);
 
     uint8_t*
     data()

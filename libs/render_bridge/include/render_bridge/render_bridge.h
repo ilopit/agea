@@ -56,10 +56,10 @@ public:
     agea::result_code
     render_dtor(root::smart_object& obj, bool sub_objects);
 
-    utils::dynamic_object
+    utils::dynobj
     collect_gpu_data(root::smart_object& so);
 
-    utils::dynamic_object
+    utils::dynobj
     extract_gpu_data(root::smart_object& so, const access_template& t);
 
     bool

@@ -3,7 +3,7 @@
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vk_pipeline_builder.h"
-#include "vulkan_render/shader_reflection.h"
+#include "vulkan_render/shader_reflection_utils.h"
 #include "vulkan_render/types/vulkan_mesh_data.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_material_data.h"
@@ -220,16 +220,38 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     se_data.m_vertex_stage = vert_module;
     se_data.m_frag_stage = frag_module;
 
+    if (info.expected_input_vertex_layout)
+    {
+        se_data.m_expected_vertex_input = info.expected_input_vertex_layout;
+    }
+
     auto device = glob::render_device::get();
 
-    if (!build_shader_reflection(device, se_data.m_vertext_stage_reflection,
-                                 se_data.m_vertex_stage))
+    if (!shader_reflection_utils::build_shader_reflection(
+            device, se_data.m_vertext_stage_reflection, se_data.m_vertex_stage))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    if (!build_shader_reflection(device, se_data.m_frag_stage_reflection, se_data.m_frag_stage))
+    if (!shader_reflection_utils::are_layouts_compatible(
+            se_data.m_expected_vertex_input, se_data.m_vertext_stage_reflection.input_layout,
+            false))
+    {
+        ALOG_LAZY_ERROR;
+        return result_code::failed;
+    }
+
+    if (!shader_reflection_utils::build_shader_reflection(device, se_data.m_frag_stage_reflection,
+                                                          se_data.m_frag_stage))
+    {
+        ALOG_LAZY_ERROR;
+        return result_code::failed;
+    }
+
+    if (!shader_reflection_utils::are_layouts_compatible(
+            se_data.m_vertext_stage_reflection.output_layout,
+            se_data.m_frag_stage_reflection.input_layout, true))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -270,15 +292,17 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_depth_stencil_ci =
         vk_utils::make_depth_stencil_create_info(true, true, info.depth_compare_op);
 
-    pb.m_vertex_input_info_ci.pVertexAttributeDescriptions =
-        info.vert_input_description->attributes.data();
-    pb.m_vertex_input_info_ci.vertexAttributeDescriptionCount =
-        (uint32_t)info.vert_input_description->attributes.size();
+    auto vert_input_description =
+        render::convert_to_vertex_input_description(*se_data.m_expected_vertex_input);
 
-    pb.m_vertex_input_info_ci.pVertexBindingDescriptions =
-        info.vert_input_description->bindings.data();
+    pb.m_vertex_input_info_ci.pVertexAttributeDescriptions =
+        vert_input_description.attributes.data();
+    pb.m_vertex_input_info_ci.vertexAttributeDescriptionCount =
+        (uint32_t)vert_input_description.attributes.size();
+
+    pb.m_vertex_input_info_ci.pVertexBindingDescriptions = vert_input_description.bindings.data();
     pb.m_vertex_input_info_ci.vertexBindingDescriptionCount =
-        (uint32_t)info.vert_input_description->bindings.size();
+        (uint32_t)vert_input_description.bindings.size();
 
     if (info.enable_dynamic_state)
     {

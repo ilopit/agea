@@ -793,21 +793,10 @@ vulkan_render::prepare_system_resources()
     auto frag_path = path / "se_error.frag";
     agea::utils::buffer::load(frag_path, frag);
 
-    utils::dynamic_object_layout_sequence_builder<gpu_type> builder;
-    builder.add_field(AID("pos"), render::gpu_type::g_vec3, 1);
-    builder.add_field(AID("norm"), render::gpu_type::g_vec3, 1);
-    builder.add_field(AID("color"), render::gpu_type::g_vec3, 1);
-    builder.add_field(AID("uv"), render::gpu_type::g_vec2, 1);
-
-    auto dol = builder.get_layout();
-
-    auto vertex_input_description = render::convert_to_vertex_input_description(*dol);
-
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
     se_ci.render_pass = glob::render_device::getr().render_pass();
-    se_ci.vert_input_description = &vertex_input_description;
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = false;
     se_ci.enable_alpha = false;
@@ -871,24 +860,21 @@ vulkan_render::prepare_ui_pipeline()
     auto frag_path = path / "se_uioverlay.frag";
     agea::utils::buffer::load(frag_path, frag);
 
-    utils::dynamic_object_layout_sequence_builder<gpu_type> builder;
-    builder.add_field(AID("pos"), agea::render::gpu_type::g_vec2, 1);
-    builder.add_field(AID("uv"), agea::render::gpu_type::g_vec2, 1);
-    builder.add_field(AID("color"), agea::render::gpu_type::g_color, 1);
-
-    auto dol = builder.get_layout();
-
-    auto vertex_input_description = render::convert_to_vertex_input_description(*dol);
+    auto layout = utils::dynamic_object_layout_sequence_builder<gpu_type>()
+                      .add_field(AID("in_pos"), agea::render::gpu_type::g_vec2, 1)
+                      .add_field(AID("in_UV"), agea::render::gpu_type::g_vec2, 1)
+                      .add_field(AID("in_color"), agea::render::gpu_type::g_color, 1)
+                      .finalize();
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
     se_ci.render_pass = glob::render_device::getr().render_pass();
-    se_ci.vert_input_description = &vertex_input_description;
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = true;
     se_ci.enable_alpha = true;
     se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+    se_ci.expected_input_vertex_layout = layout;
 
     glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
 
@@ -898,8 +884,8 @@ vulkan_render::prepare_ui_pipeline()
     samples.front().texture = m_ui_txt;
     samples.front().slot = 0;
 
-    m_ui_mat = glob::vulkan_render_loader::getr().create_material(
-        AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynamic_object{});
+    m_ui_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_ui"), AID("ui"), samples,
+                                                                  *m_ui_se, utils::dynobj{});
 }
 
 void

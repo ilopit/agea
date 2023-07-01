@@ -27,17 +27,17 @@ void main()
     vec3 ambient = light.ambient * material.ambient;
 
     // diffuse 
-    vec3 norm = normalize(inNormal);
-    vec3 lightDir = normalize(light.position.xyz - inFragPos);
+    vec3 norm = normalize(in_normal);
+    vec3 lightDir = normalize(light.position.xyz - in_world_pos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = light.ambient.xyz * (diff * material.diffuse);
- ff
+ 
     // specular
-    vec3 viewDir = normalize(dyn_camera_data.camPos - inFragPos);
+    vec3 viewDir = normalize(dyn_camera_data.camPos - in_world_pos);
     vec3 reflectDir = reflect(-lightDir, norm);  
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3 specular = light.ambient.xyz * (spec * material.specular);  
 
     vec3 result = ambient + diffuse + specular;
-    outColor = vec4(result, 1.0);
+    out_color = vec4(result, 1.0);
 }

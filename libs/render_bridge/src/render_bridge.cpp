@@ -23,32 +23,14 @@ namespace agea
 
 glob::render_bridge::type glob::render_bridge::s_instance;
 
-namespace
-{
-
-const render::vertex_input_description DEFAULT_VERTEX_DESCRIPTION = []()
-{
-    agea::utils::dynamic_object_layout_sequence_builder<render::gpu_type> builder;
-    builder.add_field(AID("pos"), render::gpu_type::g_vec3, 1);
-    builder.add_field(AID("norm"), render::gpu_type::g_vec3, 1);
-    builder.add_field(AID("color"), render::gpu_type::g_vec3, 1);
-    builder.add_field(AID("uv"), render::gpu_type::g_vec2, 1);
-
-    auto dol = builder.get_layout();
-
-    return render::convert_to_vertex_input_description(*dol);
-}();
-
-}  // namespace
-
-utils::dynamic_object
+utils::dynobj
 render_bridge::extract_gpu_data(root::smart_object& so, const access_template& ct)
 {
     auto oitr = ct.offset_in_object.begin();
     auto fitr = ct.layout->get_fields().begin();
     auto src_obj_ptr = so.as_blob();
 
-    utils::dynamic_object dyn_obj(ct.layout);
+    utils::dynobj dyn_obj(ct.layout);
 
     AGEA_check(ct.offset_in_object.size() == ct.layout->get_fields().size(), "Should be same!");
 
@@ -99,7 +81,7 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
     return true;
 }
 
-utils::dynamic_object
+utils::dynobj
 render_bridge::collect_gpu_data(root::smart_object& so)
 {
     auto itr = m_gpu_data_collection_templates.find(so.get_type_id());
@@ -126,7 +108,6 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
     se_ci.enable_alpha = se_model.m_enable_alpha_support;
     se_ci.render_pass = glob::render_device::getr().render_pass();
     se_ci.enable_dynamic_state = false;
-    se_ci.vert_input_description = &DEFAULT_VERTEX_DESCRIPTION;
 
     se_ci.cull_mode = se_ci.is_wire ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
 

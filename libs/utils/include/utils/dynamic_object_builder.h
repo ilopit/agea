@@ -15,6 +15,8 @@ namespace utils
 {
 class dynobj_layout;
 
+using dynobj_layout_sptr = std::shared_ptr<dynobj_layout>;
+
 struct dynobj_field
 {
     utils::id id;
@@ -28,7 +30,7 @@ struct dynobj_field
     uint64_t items_count = 0U;
     uint64_t items_alighment = 1U;
 
-    std::shared_ptr<dynobj_layout> sub_field_layout;
+    dynobj_layout_sptr sub_field_layout;
 
     bool
     is_array() const
@@ -76,10 +78,10 @@ public:
         m_id = id;
     }
 
-    dynamic_object
+    dynobj
     make_obj()
     {
-        return dynamic_object(shared_from_this());
+        return dynobj(shared_from_this());
     }
 
     template <typename T>
@@ -95,31 +97,37 @@ private:
     std::vector<dynobj_field> m_fields;
 };
 
-class basic_dynamic_object_layout_builder
+class basic_dynobj_layout_builder
 {
 public:
-    basic_dynamic_object_layout_builder()
+    basic_dynobj_layout_builder()
         : m_layout(std::make_shared<dynobj_layout>())
     {
     }
 
-    std::shared_ptr<dynobj_layout>
+    dynobj_layout_sptr
     get_layout() const
     {
         return m_layout;
     }
 
-    std::shared_ptr<dynobj_layout>
-    unwrap_subojb(const std::shared_ptr<dynobj_layout>& obj);
+    dynobj_layout_sptr
+    unwrap_subojb(const dynobj_layout_sptr& obj);
 
-private:
-    std::shared_ptr<dynobj_layout> m_layout;
+protected:
+    dynobj_layout_sptr m_layout;
 };
 
 template <typename TYPE_DESCRIPTOR>
-class dynamic_object_layout_sequence_builder : public basic_dynamic_object_layout_builder
+class dynamic_object_layout_sequence_builder : public basic_dynobj_layout_builder
 {
 public:
+    void
+    set_id(const utils::id& id)
+    {
+        m_layout->set_id(id);
+    }
+
     dynamic_object_layout_sequence_builder&
     add_field(const utils::id& id, typename TYPE_DESCRIPTOR::id type, uint64_t aligment = 4)
     {
@@ -145,6 +153,7 @@ public:
         field.sub_field_layout = unwrap_subojb(l);
 
         add_field_impl(field, aligment, id);
+
         return *this;
     }
 
@@ -166,6 +175,7 @@ public:
         field.items_alighment = item_aligment;
 
         add_field_impl(field, aligment, id);
+
         return *this;
     }
 
@@ -188,6 +198,7 @@ public:
         field.sub_field_layout = unwrap_subojb(l);
 
         add_field_impl(field, aligment, id);
+
         return *this;
     }
 
@@ -212,7 +223,7 @@ private:
     void
     add_field_impl(dynobj_field& field, uint64_t aligment, const utils::id& id)
     {
-        auto& layout = *basic_dynamic_object_layout_builder::get_layout();
+        auto& layout = *basic_dynobj_layout_builder::get_layout();
 
         field.id = id;
         field.offset = math_utils::align_as(layout.m_object_size, aligment);
@@ -225,7 +236,7 @@ private:
 };
 
 template <typename TYPE_DESCRIPTOR>
-class dynamic_object_layout_random_builder : public basic_dynamic_object_layout_builder
+class dynamic_object_layout_random_builder : public basic_dynobj_layout_builder
 {
 public:
     void
@@ -235,7 +246,7 @@ public:
               uint64_t aligment = 4,
               uint64_t items_count = 1)
     {
-        auto& obj = *basic_dynamic_object_layout_builder::get_layout();
+        auto& obj = *basic_dynobj_layout_builder::get_layout();
 
         dynobj_field field;
         field.id = id;
@@ -258,7 +269,7 @@ public:
     void
     finalize(uint64_t final_size)
     {
-        auto& obj = *basic_dynamic_object_layout_builder::get_layout();
+        auto& obj = *basic_dynobj_layout_builder::get_layout();
         obj.m_object_size = final_size;
     }
 };
