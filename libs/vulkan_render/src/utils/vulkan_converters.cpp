@@ -17,7 +17,7 @@ convert_to_vk_format(render::gpu_type::id t)
         return VK_FORMAT_R32G32B32A32_SFLOAT;
     case agea::render::gpu_type::g_color:
         return VK_FORMAT_R8G8B8A8_UNORM;
-    case agea::render::gpu_type::g_nan:
+    case agea::render::gpu_type::nan:
     default:
         AGEA_never("Should never happens!");
     }

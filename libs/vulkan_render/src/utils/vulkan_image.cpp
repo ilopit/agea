@@ -70,6 +70,16 @@ vulkan_image::create(vma_allocator_provider allocator,
     return new_image;
 }
 
+vulkan_image
+vulkan_image::create(VkImage image)
+{
+    vulkan_image new_image(nullptr, 0);
+
+    new_image.m_image = image;
+
+    return new_image;
+}
+
 void
 vulkan_image::clear()
 {
@@ -78,7 +88,14 @@ vulkan_image::clear()
         return;
     }
 
-    vmaDestroyImage(m_allocator(), m_image, m_allocation);
+    if (m_allocator)
+    {
+        vmaDestroyImage(m_allocator(), m_image, m_allocation);
+    }
+    else
+    {
+        // TODO
+    }
 
     m_image = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;

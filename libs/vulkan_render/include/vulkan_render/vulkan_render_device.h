@@ -54,6 +54,7 @@ public:
     struct construct_params
     {
         SDL_Window* window = nullptr;
+        bool headless = false;
     };
 
     bool
@@ -200,12 +201,12 @@ public:
 
 private:
     bool
-    init_vulkan(SDL_Window* window);
+    init_vulkan(SDL_Window* window, bool headless);
     bool
     deinit_vulkan();
 
     bool
-    init_swapchain();
+    init_swapchain(bool headless, uint32_t width, uint32_t height);
     bool
     deinit_swapchain();
 
@@ -215,7 +216,7 @@ private:
     deinit_default_renderpass();
 
     bool
-    init_framebuffers();
+    init_framebuffers(uint32_t width, uint32_t height);
     bool
     deinit_framebuffers();
 
@@ -237,28 +238,28 @@ private:
     std::unique_ptr<vk_utils::descriptor_allocator> m_descriptor_allocator;
     std::unique_ptr<vk_utils::descriptor_layout_cache> m_descriptor_layout_cache;
 
-    VkInstance m_vk_instance;
-    VkDebugUtilsMessengerEXT m_debug_msg;
-    VkPhysicalDevice m_vk_gpu;
-    VkDevice m_vk_device;
+    VkInstance m_vk_instance = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT m_debug_msg = VK_NULL_HANDLE;
+    VkPhysicalDevice m_vk_gpu = VK_NULL_HANDLE;
+    VkDevice m_vk_device = VK_NULL_HANDLE;
     VkPhysicalDeviceProperties m_gpu_properties;
-    VkSurfaceKHR m_surface;
-    VmaAllocator m_allocator;
+    VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+    VmaAllocator m_allocator = VK_NULL_HANDLE;
     VkQueue m_graphics_queue;
     uint32_t m_graphics_queue_family;
     upload_context m_upload_context;
     std::vector<frame_data> m_frames;
 
-    VkRenderPass m_render_pass;
+    VkRenderPass m_render_pass = VK_NULL_HANDLE;
 
-    VkSwapchainKHR m_swapchain;
+    VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
     VkFormat m_swachain_image_format;
 
     std::vector<VkFramebuffer> m_framebuffers;
-    std::vector<VkImage> m_swapchain_images;
+    std::vector<vk_utils::vulkan_image> m_swapchain_images;
     std::vector<VkImageView> m_swapchain_image_views;
 
-    VkDescriptorSetLayout m_single_texture_set_layout;
+    VkDescriptorSetLayout m_single_texture_set_layout = VK_NULL_HANDLE;
 
     // depth resources
     std::vector<VkImageView> m_depth_image_views;

@@ -23,7 +23,7 @@ material_data::~material_data()
 bool
 material_data::has_textures()
 {
-    return m_set != VK_NULL_HANDLE;
+    return m_samplers_set != VK_NULL_HANDLE;
 }
 
 shader_effect_data*

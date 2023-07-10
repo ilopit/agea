@@ -18,14 +18,14 @@ TEST(SimpleTest, happy)
     auto ptr = bb.find(AID("4"));
 
     auto size_a = bb.size();
-    auto size_n = bb.new_size();
+    auto size_n = bb.calc_new_size();
 
     ptr->alloc_id();
     ptr->alloc_id();
     ptr->alloc_id();
 
     size_a = bb.size();
-    size_n = bb.new_size();
+    size_n = bb.calc_new_size();
 
     for (uint64_t i = 0; i < bb.get_segments_size(); ++i)
     {
@@ -33,7 +33,7 @@ TEST(SimpleTest, happy)
     }
 
     size_a = bb.size();
-    size_n = bb.new_size();
+    size_n = bb.calc_new_size();
 
     int i = 2;
 }

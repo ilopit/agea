@@ -83,13 +83,13 @@ public:
     const VkDescriptorSet&
     get_textures_ds() const
     {
-        return m_set;
+        return m_samplers_set;
     }
 
     void
     set_textures_ds(VkDescriptorSet v)
     {
-        m_set = v;
+        m_samplers_set = v;
     }
 
     shader_effect_data*
@@ -120,7 +120,10 @@ private:
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 
     agea::utils::dynobj m_gpu_data;
-    VkDescriptorSet m_set = VK_NULL_HANDLE;
+
+    utils::dynobj_layout m_expected_constants;
+
+    VkDescriptorSet m_samplers_set = VK_NULL_HANDLE;
     shader_effect_data* m_effect = nullptr;
     std::vector<texture_sampler_data> m_texture_samples;
 };

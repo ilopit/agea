@@ -18,12 +18,6 @@ class render_device;
 
 struct shader_reflection_utils
 {
-    static void
-    spvr_get_fields(SpvReflectTypeDescription& parent, gpu_dynobj_builder& dl);
-
-    static bool
-    spvr_to_dyn_layout(SpvReflectTypeDescription* obj, gpu_dynobj_builder& dl);
-
     static bool
     convert_spvr_to_dyn_layout(const utils::id& field_name,
                                SpvReflectTypeDescription& obj,
@@ -48,17 +42,34 @@ struct shader_reflection_utils
 
     static bool
     build_shader_input_reflection(SpvReflectShaderModule& spv_reflection,
-                                  reflection::shader_reflection& sr,
-                                  std::shared_ptr<shader_data>& sd);
+                                  reflection::shader_reflection& sr);
     static bool
     build_shader_output_reflection(SpvReflectShaderModule& spv_reflection,
-                                   reflection::shader_reflection& sr,
-                                   std::shared_ptr<shader_data>& sd);
+                                   reflection::shader_reflection& sr);
+
+    static bool
+    build_shader_descriptor_sets_reflection(SpvReflectShaderModule& spv_reflection,
+                                            reflection::shader_reflection& sr);
+
+    static bool
+    build_shader_push_constants(SpvReflectShaderModule& spv_reflection,
+                                reflection::shader_reflection& sr);
 
     static bool
     build_shader_reflection(render_device* device,
                             reflection::shader_reflection& sr,
                             std::shared_ptr<shader_data>& sd);
+
+    static VkDescriptorSetLayoutBinding
+    convert_dynobj_to_vk_binding(const utils::dynobj_view<gpu_type>& bind);
+
+    static void
+    convert_dynobj_to_layout_data(const utils::dynobj_view<gpu_type>& set_obj,
+                                  vulkan_descriptor_set_layout_data& layout);
+
+    static void
+    convert_dynobj_to_vk_push_constants(const utils::dynobj_view<gpu_type>& set_obj,
+                                        VkPushConstantRange& range);
 };
 }  // namespace render
 }  // namespace agea

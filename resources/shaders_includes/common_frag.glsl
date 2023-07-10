@@ -62,12 +62,6 @@ struct SpotLight {
     float quadratic;      
 };
 
-layout(set = 0, binding = 1) uniform SceneData{
-    DirLight directional;
-    PointLight points[10];
-    SpotLight spots[10];
-} dyn_scene_data;
-
 layout(std140, set = 1, binding = 1) readonly buffer DirLightBuffer{   
 
     DirLight objects[];

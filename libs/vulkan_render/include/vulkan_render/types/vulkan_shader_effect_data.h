@@ -25,52 +25,6 @@ struct vulkan_descriptor_set_layout_data
 
 namespace reflection
 {
-struct descriptor_binding
-{
-    VkDescriptorSetLayoutBinding
-    as_vk()
-    {
-        VkDescriptorSetLayoutBinding layout_binding;
-
-        layout_binding.binding = binding;
-        layout_binding.stageFlags = stage;
-        layout_binding.descriptorCount = descriptors_count;
-        layout_binding.descriptorType = descriptor_type;
-        layout_binding.pImmutableSamplers = nullptr;
-
-        return layout_binding;
-    }
-
-    std::string name;
-    uint32_t set;
-    uint32_t binding;
-    uint32_t descriptors_count;
-    bool is_array = false;
-    VkDescriptorType descriptor_type;
-    VkShaderStageFlagBits stage;
-    ::agea::utils::dynobj_layout_sptr layout;
-};
-
-struct descriptor_set
-{
-    void
-    get_descriptor_set_layout_data(vulkan_descriptor_set_layout_data& layout)
-    {
-        layout.bindings.resize(binding.size());
-        for (size_t i = 0; i < binding.size(); ++i)
-        {
-            layout.bindings[i] = binding[i].as_vk();
-        }
-
-        layout.set_number = set;
-        layout.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layout.create_info.bindingCount = (uint32_t)binding.size();
-        layout.create_info.pBindings = layout.bindings.data();
-    }
-
-    uint32_t set;
-    std::vector<descriptor_binding> binding;
-};
 
 struct push_constants
 {
@@ -94,12 +48,10 @@ struct push_constants
 
 struct shader_reflection
 {
-    push_constants constants;
-    std::vector<reflection::descriptor_set> sets;
-
     agea::utils::dynobj_layout_sptr constants_layout;
     agea::utils::dynobj_layout_sptr input_layout;
     agea::utils::dynobj_layout_sptr output_layout;
+    agea::utils::dynobj_layout_sptr descriptor_sets;
 };
 
 }  // namespace reflection

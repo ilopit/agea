@@ -25,6 +25,8 @@ public:
            VmaAllocationCreateInfo aci,
            int mips_level = 0);
 
+    static vulkan_image create(VkImage);
+
     AGEA_gen_class_non_copyable(vulkan_image);
 
     vulkan_image(vulkan_image&& other) noexcept;

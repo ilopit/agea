@@ -21,7 +21,7 @@ struct test_type
 {
     enum class id
     {
-        id_nan = 0,
+        nan = 0,
         id_float,
         id_uint32,
         id_vec3,
@@ -41,9 +41,28 @@ struct test_type
             return 12;
         case test_type::id::id_vec4:
             return 16;
-        case test_type::id::id_nan:
+        case test_type::id::nan:
         default:
             return 0;
+        }
+    }
+
+    static const char*
+    name(test_type::id t)
+    {
+        switch (t)
+        {
+        case test_type::id::id_float:
+            return "float";
+        case test_type::id::id_uint32:
+            return "uint32";
+        case test_type::id::id_vec3:
+            return "vec3";
+        case test_type::id::id_vec4:
+            return "vec4";
+        case test_type::id::nan:
+        default:
+            return "nan";
         }
     }
 
@@ -64,7 +83,7 @@ struct test_type
             return id::id_vec3;
         }
 
-        return id::id_nan;
+        return id::nan;
     }
 
     template <typename T>
@@ -253,14 +272,14 @@ TEST(test_utils, test_dynview)
     uint32_t f1 = 0U;
     std::array<uint32_t, 4> f2 = {0};
 
-    ASSERT_TRUE(v.read(0, f0, f1));
+    ASSERT_TRUE(v.read_from(0, f0, f1));
     ASSERT_TRUE(v.read_array(2, 0, f2[0], f2[1], f2[2], f2[3]));
 
     ASSERT_EQ(f0, static_obj.f0);
     ASSERT_EQ(f1, static_obj.f1);
     ASSERT_EQ(f2, static_obj.f2);
 
-    ASSERT_TRUE(v.write(0, 2.f, 4U));
+    ASSERT_TRUE(v.write_from(0, 2.f, 4U));
     ASSERT_TRUE(v.write_array(2, 0, 6U, 8U, 10U, 12U));
 
     std::array<uint32_t, 4> new_f2{6, 8, 10, 12};
@@ -304,7 +323,7 @@ TEST(test_utils, test_dynview_array)
 
     auto v3 = v.subobj(0, 3);
 
-    ASSERT_TRUE(v3.read(0, f0, f1));
+    ASSERT_TRUE(v3.read_from(0, f0, f1));
     ASSERT_TRUE(v3.read_array(2, 0, f2[0], f2[1], f2[2], f2[3]));
 
     ASSERT_EQ(static_obj.a0[3].f0, f0);
@@ -313,14 +332,14 @@ TEST(test_utils, test_dynview_array)
 
     auto v1 = v.subobj(0, 1);
 
-    ASSERT_TRUE(v1.write(0, f0, f1));
+    ASSERT_TRUE(v1.write_from(0, f0, f1));
     ASSERT_TRUE(v1.write_array(2, 0, f2[0], f2[1], f2[2], f2[3]));
 
     f2.fill(0);
     f0 = 0.f;
     f1 = 0U;
 
-    ASSERT_TRUE(v1.read(0, f0, f1));
+    ASSERT_TRUE(v1.read_from(0, f0, f1));
     ASSERT_TRUE(v1.read_array(2, 0, f2[0], f2[1], f2[2], f2[3]));
 
     ASSERT_EQ(static_obj.a0[1].f0, f0);
@@ -341,6 +360,7 @@ struct parent_obj
     alignas(16) uint32_t p0 = 10;
     alignas(16) uint32_t p1 = 12;
     alignas(16) nested_obj p2;
+    alignas(16) nested_obj p3[5];
 };
 
 }  // namespace
@@ -348,45 +368,49 @@ struct parent_obj
 TEST(test_utils, test_dynview_nested)
 {
     auto so = test_dynobj_builder()
+                  .set_id(AID("subobj"))
                   .add_field(AID("f0"), test_type::id::id_float, 16)
                   .add_field(AID("f1"), test_type::id::id_uint32, 16)
                   .add_array(AID("f2"), test_type::id::id_uint32, 16, 4, 1)
                   .finalize();
 
     auto no = test_dynobj_builder()
+                  .set_id(AID("nested"))
                   .add_field(AID("n0"), test_type::id::id_float, 16)
                   .add_field(AID("n1"), so, 16)
                   .finalize();
 
     auto po = test_dynobj_builder()
+                  .set_id(AID("parent"))
                   .add_field(AID("p0"), test_type::id::id_uint32, 16)
                   .add_field(AID("p1"), test_type::id::id_uint32, 16)
                   .add_field(AID("p2"), no, 16)
+                  .add_array(AID("p3"), no, 16, 5, 1)
                   .finalize();
 
     parent_obj static_obj;
 
     auto v = po->make_view<test_type>(&static_obj);
 
-    auto v_simple = v.subobj(2).subobj(1);
+    auto v_simple = v.subobj(3, 1).subobj(1);
 
     float f0 = 0.f;
     uint32_t f1 = 0U;
     std::array<uint32_t, 4> f2 = {0};
 
-    ASSERT_TRUE(v_simple.read(0, f0, f1));
+    ASSERT_TRUE(v_simple.read_from(0, f0, f1));
     ASSERT_TRUE(v_simple.read_array(2, 0, f2[0], f2[1], f2[2], f2[3]));
 
-    ASSERT_EQ(f0, static_obj.p2.n1.f0);
-    ASSERT_EQ(f1, static_obj.p2.n1.f1);
-    ASSERT_EQ(f2, static_obj.p2.n1.f2);
+    ASSERT_EQ(f0, static_obj.p3[1].n1.f0);
+    ASSERT_EQ(f1, static_obj.p3[1].n1.f1);
+    ASSERT_EQ(f2, static_obj.p3[1].n1.f2);
 
-    ASSERT_TRUE(v_simple.write(0, 2.f, 4U));
+    ASSERT_TRUE(v_simple.write_from(0, 2.f, 4U));
     ASSERT_TRUE(v_simple.write_array(2, 0, 6U, 8U, 10U, 12U));
 
     std::array<uint32_t, 4> new_f2{6, 8, 10, 12};
 
-    ASSERT_EQ(static_obj.p2.n1.f0, 2.f);
-    ASSERT_EQ(static_obj.p2.n1.f1, 4);
-    ASSERT_EQ(static_obj.p2.n1.f2, new_f2);
+    ASSERT_EQ(static_obj.p3[1].n1.f0, 2.f);
+    ASSERT_EQ(static_obj.p3[1].n1.f1, 4);
+    ASSERT_EQ(static_obj.p3[1].n1.f2, new_f2);
 }

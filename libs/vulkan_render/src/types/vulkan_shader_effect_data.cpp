@@ -2,6 +2,9 @@
 
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/shader_reflection_utils.h"
+
+#include "utils/agea_log.h"
 
 namespace agea
 {
@@ -58,35 +61,56 @@ void
 shader_effect_data::generate_set_layouts(
     std::vector<vulkan_descriptor_set_layout_data>& set_layouts)
 {
-    size_t size = 0;
-
-    size += m_vertext_stage_reflection.sets.size();
-    size += m_frag_stage_reflection.sets.size();
-
     set_layouts.clear();
 
-    for (auto& s : m_vertext_stage_reflection.sets)
     {
-        s.get_descriptor_set_layout_data(set_layouts.emplace_back());
+        auto v = m_vertext_stage_reflection.descriptor_sets->make_view<gpu_type>();
+
+        auto set_count = v.field_count();
+
+        for (uint64_t set_idx = 0; set_idx < set_count; ++set_idx)
+        {
+            auto& layout = set_layouts.emplace_back();
+
+            shader_reflection_utils::convert_dynobj_to_layout_data(v.subobj(set_idx), layout);
+        }
     }
 
-    for (auto& s : m_frag_stage_reflection.sets)
     {
-        s.get_descriptor_set_layout_data(set_layouts.emplace_back());
+        auto v = m_frag_stage_reflection.descriptor_sets->make_view<gpu_type>();
+
+        auto set_count = v.field_count();
+
+        for (uint64_t set_idx = 0; set_idx < set_count; ++set_idx)
+        {
+            auto& layout = set_layouts.emplace_back();
+
+            shader_reflection_utils::convert_dynobj_to_layout_data(v.subobj(set_idx), layout);
+        }
     }
 }
 
 void
 shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constants)
 {
-    if (!m_vertext_stage_reflection.constants.name.empty())
+    if (m_vertext_stage_reflection.constants_layout)
     {
-        constants.push_back(m_vertext_stage_reflection.constants.as_vk());
+        auto v = m_vertext_stage_reflection.constants_layout->make_view<gpu_type>();
+        {
+            auto& push_range = constants.emplace_back();
+
+            shader_reflection_utils::convert_dynobj_to_vk_push_constants(v.subobj(0), push_range);
+        }
     }
 
-    if (!m_frag_stage_reflection.constants.name.empty())
+    if (m_frag_stage_reflection.constants_layout)
     {
-        constants.push_back(m_frag_stage_reflection.constants.as_vk());
+        auto v = m_frag_stage_reflection.constants_layout->make_view<gpu_type>();
+        {
+            auto& push_range = constants.emplace_back();
+
+            shader_reflection_utils::convert_dynobj_to_vk_push_constants(v.subobj(0), push_range);
+        }
     }
 }
 

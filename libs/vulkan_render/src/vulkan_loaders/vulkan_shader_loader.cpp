@@ -269,8 +269,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_input_assembly_ci =
         vk_utils::make_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
+    auto width = info.width ? info.width : (uint32_t)glob::native_window::get()->get_size().w;
+    auto height = info.height ? info.height : (uint32_t)glob::native_window::get()->get_size().h;
 
     pb.m_viewport.x = 0.0f;
     pb.m_viewport.y = 0.0f;

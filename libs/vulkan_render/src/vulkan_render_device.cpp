@@ -41,13 +41,16 @@ render_device::~render_device() = default;
 bool
 render_device::construct(construct_params& params)
 {
-    init_vulkan(params.window);
+    auto width = params.headless ? 1024U : (uint32_t)glob::native_window::get()->get_size().w;
+    auto height = params.headless ? 1024U : (uint32_t)glob::native_window::get()->get_size().h;
 
-    init_swapchain();
+    init_vulkan(params.window, params.headless);
+
+    init_swapchain(params.headless, width, height);
 
     init_default_renderpass();
 
-    init_framebuffers();
+    init_framebuffers(width, height);
 
     init_commands();
 
@@ -85,7 +88,7 @@ render_device::destruct()
 }
 
 bool
-render_device::init_vulkan(SDL_Window* window)
+render_device::init_vulkan(SDL_Window* window, bool headless)
 {
     vkb::InstanceBuilder builder;
 
@@ -93,6 +96,7 @@ render_device::init_vulkan(SDL_Window* window)
     auto inst_ret = builder.set_app_name("AGEA")
                         .request_validation_layers(true)
                         .use_default_debug_messenger()
+                        .set_headless(headless)
                         .require_api_version(1, 2)
                         .build();
 
@@ -102,7 +106,10 @@ render_device::init_vulkan(SDL_Window* window)
     m_vk_instance = vkb_inst.instance;
     m_debug_msg = vkb_inst.debug_messenger;
 
-    SDL_Vulkan_CreateSurface(window, m_vk_instance, &m_surface);
+    if (!headless)
+    {
+        SDL_Vulkan_CreateSurface(window, m_vk_instance, &m_surface);
+    }
 
     // use vkbootstrap to select a gpu.
     // We want a gpu that can write to the SDL surface and supports vulkan 1.2
@@ -117,7 +124,10 @@ render_device::init_vulkan(SDL_Window* window)
         .set_minimum_version(1, 2)
         .prefer_gpu_device_type(vkb::PreferredDeviceType::integrated);
 
-    selector.set_surface(m_surface);
+    if (!headless)
+    {
+        selector.set_surface(m_surface);
+    }
 
     vkb::PhysicalDevice physicalDevice = selector.select().value();
     // create the final vulkan device
@@ -162,32 +172,68 @@ render_device::deinit_vulkan()
 }
 
 bool
-render_device::init_swapchain()
+render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 {
     m_swachain_image_format = VK_FORMAT_B8G8R8A8_UNORM;
     // hardcoding the depth format to 32 bit float
     m_depth_format = VK_FORMAT_D32_SFLOAT;
 
-    vkb::SwapchainBuilder swapchain_builder{m_vk_gpu, m_vk_device, m_surface};
+    if (!headless)
+    {
+        vkb::SwapchainBuilder swapchain_builder{m_vk_gpu, m_vk_device, m_surface};
 
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
+        VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 
-    VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+        vkb::Swapchain vkb_swapchain = swapchain_builder.use_default_format_selection()
+                                           .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+                                           .set_desired_extent(width, height)
+                                           .set_desired_format(format)
+                                           .build()
+                                           .value();
 
-    vkb::Swapchain vkb_swapchain = swapchain_builder.use_default_format_selection()
-                                       .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
-                                       .set_desired_extent(width, height)
-                                       .set_desired_format(format)
-                                       .build()
-                                       .value();
+        // store swapchain and its related images
+        m_swapchain = vkb_swapchain.swapchain;
 
-    // store swapchain and its related images
-    m_swapchain = vkb_swapchain.swapchain;
-    m_swapchain_images = vkb_swapchain.get_images().value();
-    m_swapchain_image_views = vkb_swapchain.get_image_views().value();
+        auto images = vkb_swapchain.get_images().value();
+        for (auto i : images)
+        {
+            m_swapchain_images.push_back(vk_utils::vulkan_image::create(i));
+        }
 
-    m_swachain_image_format = vkb_swapchain.image_format;
+        m_swapchain_image_views = vkb_swapchain.get_image_views().value();
+        m_swachain_image_format = vkb_swapchain.image_format;
+    }
+    else
+    {
+        // depth image size will match the window
+        VkExtent3D swapchain_image_extent = {width, height, 1};
+
+        // the depth image will be a image with the format we selected and Depth Attachment usage
+        // flag
+        auto simg_info = vk_utils::make_image_create_info(
+            m_swachain_image_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain_image_extent);
+
+        // for the depth image, we want to allocate it from gpu local memory
+        VmaAllocationCreateInfo simg_allocinfo = {};
+        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        simg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        m_swapchain_images.resize(FRAMES_IN_FLYIGNT);
+        m_swapchain_image_views.resize(FRAMES_IN_FLYIGNT);
+        for (auto i = 0; i < m_swapchain_images.size(); ++i)
+        {
+            // allocate and create the image
+            m_swapchain_images[i] = vk_utils::vulkan_image::create(get_vma_allocator_provider(),
+                                                                   simg_info, simg_allocinfo);
+
+            // build a image-view for the depth image to use for rendering
+            auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
+                m_swachain_image_format, m_swapchain_images[i].image(), VK_IMAGE_ASPECT_COLOR_BIT);
+
+            VK_CHECK(vkCreateImageView(m_vk_device, &swapchain_image_view_ci, nullptr,
+                                       &m_swapchain_image_views[i]));
+        }
+    }
 
     m_depth_image_views.resize(m_swapchain_image_views.size());
     m_depth_images.resize(m_swapchain_images.size());
@@ -237,8 +283,19 @@ render_device::deinit_swapchain()
     m_depth_images.clear();
     m_swapchain_image_views.clear();
 
-    vkDestroySwapchainKHR(m_vk_device, m_swapchain, nullptr);
-    vkDestroySurfaceKHR(m_vk_instance, m_surface, nullptr);
+    if (m_swapchain)
+    {
+        vkDestroySwapchainKHR(m_vk_device, m_swapchain, nullptr);
+    }
+
+    if (m_surface)
+    {
+        vkDestroySurfaceKHR(m_vk_instance, m_surface, nullptr);
+    }
+    else
+    {
+        m_swapchain_images.clear();
+    }
 
     return true;
 }
@@ -326,14 +383,11 @@ render_device::deinit_default_renderpass()
 }
 
 bool
-render_device::init_framebuffers()
+render_device::init_framebuffers(uint32_t width, uint32_t height)
 {
     // create the framebuffers for the swapchain images. This will connect the render-pass to the
     // images for rendering
     m_frames.resize(FRAMES_IN_FLYIGNT);
-
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
     auto fb_info = vk_utils::make_framebuffer_create_info(m_render_pass, VkExtent2D{width, height});
 
@@ -397,9 +451,9 @@ render_device::init_commands()
 bool
 render_device::deinit_commands()
 {
-    for (int i = 0; i < FRAMES_IN_FLYIGNT; i++)
+    for (auto& f : m_frames)
     {
-        vkDestroyCommandPool(m_vk_device, m_frames[i].m_command_pool, nullptr);
+        vkDestroyCommandPool(m_vk_device, f.m_command_pool, nullptr);
     }
 
     vkDestroyCommandPool(m_vk_device, m_upload_context.m_command_pool, nullptr);
@@ -440,11 +494,11 @@ render_device::deinit_sync_structures()
 {
     vkDestroyFence(m_vk_device, m_upload_context.m_upload_fence, nullptr);
 
-    for (int i = 0; i < FRAMES_IN_FLYIGNT; i++)
+    for (auto& f : m_frames)
     {
-        vkDestroyFence(m_vk_device, m_frames[i].m_render_fence, nullptr);
-        vkDestroySemaphore(m_vk_device, m_frames[i].m_present_semaphore, nullptr);
-        vkDestroySemaphore(m_vk_device, m_frames[i].m_render_semaphore, nullptr);
+        vkDestroyFence(m_vk_device, f.m_render_fence, nullptr);
+        vkDestroySemaphore(m_vk_device, f.m_present_semaphore, nullptr);
+        vkDestroySemaphore(m_vk_device, f.m_render_semaphore, nullptr);
     }
     return true;
 }

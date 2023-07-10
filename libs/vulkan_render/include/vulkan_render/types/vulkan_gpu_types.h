@@ -98,9 +98,9 @@ struct gpu_type
 {
     enum id
     {
-        g_nan = 1024,
+        nan = 0,
 
-        g_bool,
+        g_bool = 1024,
         g_int,
         g_unsigned,
         g_float,
@@ -122,6 +122,9 @@ struct gpu_type
     static uint32_t
     size(gpu_type::id t);
 
+    static const char*
+    name(gpu_type::id t);
+
     template <typename T>
     static constexpr id
     decode(const T&)
@@ -136,7 +139,7 @@ struct gpu_type
 
         // clang-format on
 
-        return g_nan;
+        return nan;
     }
 
     template <typename T>

@@ -14,6 +14,9 @@ namespace utils
 {
 class dynobj_layout;
 struct dynobj_field;
+struct dynobj_field_context;
+
+using dynobj_layout_sptr = std::shared_ptr<dynobj_layout>;
 
 class base_view
 {
@@ -32,17 +35,54 @@ public:
     uint64_t
     size(uint64_t idx) const;
 
+    static uint64_t
+    size(const dynobj_field* f);
+
+    static dynobj_field_context*
+    context(const dynobj_field* f);
+
+    const utils::id&
+    id() const;
+
     uint64_t
-    offset(uint64_t idx) const;
+    field_count() const;
+
+    uint64_t
+    glob_offset(uint64_t idx) const;
+
+    uint64_t
+    glob_offset(const dynobj_field* f) const;
+
+    uint64_t
+    glob_offset_at_index(const dynobj_field* f, uint64_t idx) const;
+
+    static uint64_t
+    offset_at_index(const dynobj_field* f, uint64_t idx);
 
     static const dynobj_field*
-    dyn_field(const std::shared_ptr<dynobj_layout>& layout, uint64_t idx);
+    field_by_idx(const utils::dynobj_layout_sptr& layout, uint64_t idx);
+
+    void
+    print(std::string& str, bool no_detailds = true) const;
+
+    void
+    print_to_std() const;
+
+    template <typename T>
+    T*
+    context() const
+    {
+        return (T*)context(m_cur_field);
+    }
 
 protected:
+    void
+    print(size_t offset, std::string& str, bool no_detailds) const;
+
     base_view(uint64_t offset,
               uint8_t* data,
               const dynobj_field* cur_field,
-              const std::shared_ptr<dynobj_layout>& layout);
+              const utils::dynobj_layout_sptr& layout);
 
     static uint32_t
     get_type_id(const dynobj_field* f);
@@ -53,31 +93,25 @@ protected:
     static bool
     is_object(const dynobj_field* f);
 
-    static uint64_t
-    get_idx_offset(const dynobj_field* f, uint64_t idx);
-
     bool
     write_unsafe(const dynobj_field* f, uint64_t offset, uint8_t* src);
 
     bool
     read_unsafe(const dynobj_field* f, uint64_t offset, uint8_t* dst);
 
-    uint64_t
-    get_offest(uint64_t idx);
+    base_view
+    build_for_subobject(uint64_t field_idx) const;
 
     base_view
-    build_for_subobject(uint64_t field_idx);
-
-    base_view
-    build_for_subobject(uint64_t field_idx, uint64_t idx);
+    build_for_subobject(uint64_t field_idx, uint64_t idx) const;
 
     const dynobj_field*
-    sub_field_by_idx(uint64_t idx) const;
+    field_by_idx(uint64_t idx) const;
 
     uint64_t m_offset = 0;
     uint8_t* m_data = nullptr;
     const dynobj_field* m_cur_field = nullptr;
-    std::shared_ptr<dynobj_layout> m_layout = nullptr;
+    dynobj_layout_sptr m_layout = nullptr;
 };
 
 template <typename TYPE_DESCRIPTOR>
@@ -86,7 +120,7 @@ class dynobj_view : public base_view
 public:
     dynobj_view() = default;
 
-    dynobj_view(uint32_t offset,
+    dynobj_view(uint64_t offset,
                 uint8_t* data,
                 const dynobj_field* cur_field,
                 std::shared_ptr<dynobj_layout> layout)
@@ -100,7 +134,7 @@ public:
     }
 
     dynobj_view
-    subobj(uint32_t field_idx)
+    subobj(uint64_t field_idx) const
     {
         AGEA_check(is_object(), "Should be object!");
 
@@ -110,7 +144,7 @@ public:
     }
 
     dynobj_view
-    subobj(uint32_t field_idx, uint32_t idx)
+    subobj(uint64_t field_idx, uint64_t idx) const
     {
         AGEA_check(is_object(), "Should be an object!");
 
@@ -121,11 +155,11 @@ public:
 
     template <typename T, typename... VARGS>
     bool
-    write_from(uint32_t field_idx, const T& v, VARGS&&... args)
+    write_from(uint64_t field_idx, const T& v, VARGS&&... args)
     {
         AGEA_check(is_object(), "Should be object!");
 
-        auto f = sub_field_by_idx(field_idx);
+        auto f = field_by_idx(field_idx);
 
         if (!f)
         {
@@ -146,7 +180,7 @@ public:
     {
         AGEA_check(is_object(), "Should be object!");
 
-        auto f = sub_field_by_idx(0);
+        auto f = field_by_idx(0);
 
         if (!f)
         {
@@ -163,11 +197,11 @@ public:
 
     template <typename T, typename... VARGS>
     bool
-    write_from(uint32_t field_idx, const T& v)
+    write_from(uint64_t field_idx, const T& v)
     {
         AGEA_check(is_object(), "Should be object!");
 
-        auto f = sub_field_by_idx(field_idx);
+        auto f = field_by_idx(field_idx);
 
         if (!f)
         {
@@ -179,9 +213,9 @@ public:
 
     template <typename T, typename... VARGS>
     bool
-    read(uint32_t field_idx, const T& v, VARGS&&... args)
+    read(const T& v, VARGS&&... args)
     {
-        auto f = sub_field_by_idx(field_idx);
+        auto f = field_by_idx(0);
 
         AGEA_check(!is_array(f), "Should not be array!");
 
@@ -190,14 +224,30 @@ public:
             return false;
         }
 
-        return read(++field_idx, args...);
+        return read_from(1, args...);
     }
 
     template <typename T, typename... VARGS>
     bool
-    read(uint32_t field_idx, T& v)
+    read_from(uint64_t field_idx, const T& v, VARGS&&... args)
     {
-        auto f = sub_field_by_idx(field_idx);
+        auto f = field_by_idx(field_idx);
+
+        AGEA_check(!is_array(f), "Should not be array!");
+
+        if (!f || !read_impl(f, v))
+        {
+            return false;
+        }
+
+        return read_from(++field_idx, args...);
+    }
+
+    template <typename T, typename... VARGS>
+    bool
+    read_from(uint64_t field_idx, T& v)
+    {
+        auto f = field_by_idx(field_idx);
 
         AGEA_check(!is_array(f), "Should not be array!");
 
@@ -211,11 +261,11 @@ public:
 
     template <typename... VARGS>
     bool
-    write_array(uint32_t field_idx, uint32_t idx, VARGS&&... args)
+    write_array(uint64_t field_idx, uint64_t idx, VARGS&&... args)
     {
         AGEA_check(is_object(), "Should be object!");
 
-        auto f = sub_field_by_idx(field_idx);
+        auto f = field_by_idx(field_idx);
 
         if (!f)
         {
@@ -229,11 +279,11 @@ public:
 
     template <typename... VARGS>
     bool
-    read_array(uint32_t field_idx, uint32_t idx, VARGS&&... args)
+    read_array(uint64_t field_idx, uint64_t idx, VARGS&&... args)
     {
         AGEA_check(is_object(), "Should be object!");
 
-        auto f = sub_field_by_idx(field_idx);
+        auto f = field_by_idx(field_idx);
 
         if (!f)
         {
@@ -257,12 +307,12 @@ private:
             return false;
         }
 
-        return write_unsafe(dyn_field, m_offset, (uint8_t*)&v);
+        return write_unsafe(dyn_field, glob_offset(dyn_field), (uint8_t*)&v);
     }
 
     template <typename T, typename... VARGS>
     bool
-    write_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v, VARGS&&... args)
+    write_array_impl(const dynobj_field* dyn_field, uint64_t idx, const T& v, VARGS&&... args)
     {
         auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
 
@@ -271,7 +321,7 @@ private:
             return false;
         }
 
-        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+        auto offset = glob_offset_at_index(dyn_field, idx);
 
         if (!write_unsafe(dyn_field, offset, (uint8_t*)&v))
         {
@@ -283,7 +333,7 @@ private:
 
     template <typename T>
     bool
-    write_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v)
+    write_array_impl(const dynobj_field* dyn_field, uint64_t idx, const T& v)
     {
         auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
 
@@ -292,7 +342,7 @@ private:
             return false;
         }
 
-        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+        auto offset = glob_offset_at_index(dyn_field, idx);
 
         return write_unsafe(dyn_field, offset, (uint8_t*)&v);
     }
@@ -308,12 +358,12 @@ private:
             return false;
         }
 
-        return read_unsafe(dyn_field, m_offset, (uint8_t*)&v);
+        return read_unsafe(dyn_field, glob_offset(dyn_field), (uint8_t*)&v);
     }
 
     template <typename T, typename... VARGS>
     bool
-    read_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v, VARGS&&... args)
+    read_array_impl(const dynobj_field* dyn_field, uint64_t idx, const T& v, VARGS&&... args)
     {
         auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
 
@@ -322,7 +372,7 @@ private:
             return false;
         }
 
-        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+        auto offset = glob_offset_at_index(dyn_field, idx);
 
         if (!read_unsafe(dyn_field, offset, (uint8_t*)&v))
         {
@@ -334,7 +384,7 @@ private:
 
     template <typename T>
     bool
-    read_array_impl(const dynobj_field* dyn_field, uint32_t idx, const T& v)
+    read_array_impl(const dynobj_field* dyn_field, uint64_t idx, const T& v)
     {
         auto type_id = TYPE_DESCRIPTOR::decode_as_int(v);
 
@@ -343,7 +393,7 @@ private:
             return false;
         }
 
-        auto offset = get_idx_offset(dyn_field, idx) + m_offset;
+        auto offset = glob_offset_at_index(dyn_field, idx);
 
         return read_unsafe(dyn_field, offset, (uint8_t*)&v);
     }
@@ -381,7 +431,8 @@ public:
     dynobj_view<TYPE_DESCRIPTOR>
     root()
     {
-        return dynobj_view<TYPE_DESCRIPTOR>(0, data(), base_view::dyn_field(m_layout, 0), m_layout);
+        return dynobj_view<TYPE_DESCRIPTOR>(0, data(), base_view::field_by_idx(m_layout, 0),
+                                            m_layout);
     }
 
 private:

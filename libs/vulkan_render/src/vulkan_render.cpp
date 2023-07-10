@@ -250,7 +250,6 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
 
     dyn.begin();
     dyn.upload_data(m_camera_data);
-    dyn.upload_data(m_scene_parameters);
     dyn.end();
 
     build_global_set(current_frame);
@@ -281,8 +280,6 @@ vulkan_render::build_global_set(render::frame_state& current_frame)
                                         current_frame.frame->m_dynamic_descriptor_allocator.get())
         .bind_buffer(0, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
                      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(1, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(m_global_set);
 }
 
@@ -860,7 +857,8 @@ vulkan_render::prepare_ui_pipeline()
     auto frag_path = path / "se_uioverlay.frag";
     agea::utils::buffer::load(frag_path, frag);
 
-    auto layout = utils::dynamic_object_layout_sequence_builder<gpu_type>()
+    auto layout = render::gpu_dynobj_builder()
+                      .set_id(AID("interface"))
                       .add_field(AID("in_pos"), agea::render::gpu_type::g_vec2, 1)
                       .add_field(AID("in_UV"), agea::render::gpu_type::g_vec2, 1)
                       .add_field(AID("in_color"), agea::render::gpu_type::g_color, 1)
@@ -874,7 +872,7 @@ vulkan_render::prepare_ui_pipeline()
     se_ci.enable_dynamic_state = true;
     se_ci.enable_alpha = true;
     se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
-    se_ci.expected_input_vertex_layout = layout;
+    se_ci.expected_input_vertex_layout = std::move(layout);
 
     glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
 

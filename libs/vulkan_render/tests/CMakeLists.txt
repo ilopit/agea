@@ -4,13 +4,13 @@ file(GLOB TEST_SOURCES
 )
 source_group("test_sources" FILES ${TEST_SOURCES})
 
-add_executable (render_tests
+add_executable (vulkan_render_tests
     ${TEST_SOURCES}
  )
 
-target_link_libraries(render_tests
+target_link_libraries(vulkan_render_tests
     agea::vulkan_render
     gtest
 )
 
-agea_finalize_executable(render_tests)
+agea_finalize_executable(vulkan_render_tests)
