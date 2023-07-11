@@ -14,6 +14,7 @@
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/types/vulkan_sampler_data.h"
+#include "vulkan_render/shader_reflection_utils.h"
 
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
@@ -431,6 +432,41 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
     auto device = glob::render_device::get();
 
     auto mat_data = std::make_shared<material_data>(id, type_id);
+
+    if (!gpu_params.empty())
+    {
+        reflection::descriptor_set* ds = nullptr;
+
+        for (auto& i : se_data.m_fragment_stage_reflection.descriptors)
+        {
+            if (i.location == 3)
+            {
+                ds = &i;
+            }
+        }
+
+        if (!ds || (ds->bindigns.size() != 1) ||
+            (ds->bindigns.front().name != AID("dyn_material_buffer")))
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
+
+        auto& b = ds->bindigns.front();
+
+        auto expected_material_layout =
+            ds->bindigns[0].layout->make_view<gpu_type>().subobj(0).subobj(0);
+        auto input_material_layout = gpu_params.root<gpu_type>();
+
+        expected_material_layout.print_to_std();
+        input_material_layout.print_to_std();
+        if (!shader_reflection_utils::are_layouts_compatible(
+                expected_material_layout.layout(), input_material_layout.layout(), true, true))
+        {
+            ALOG_LAZY_ERROR;
+            return nullptr;
+        }
+    }
 
     mat_data->set_shader_effect(&se_data);
     mat_data->set_texture_samples(samples);

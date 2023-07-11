@@ -23,66 +23,6 @@ public:
     bool
     construct(this_class::construct_params& p);
 
-    AGEA_ar_function("category=world");
-    void
-    set_albedo(float v)
-    {
-        m_albedo = v;
-        mark_render_dirty();
-    }
-
-    AGEA_ar_function("category=world");
-    float
-    get_albedo()
-    {
-        return m_albedo;
-    }
-
-    AGEA_ar_function("category=world");
-    void
-    set_gamma(float v)
-    {
-        m_gamma = v;
-        mark_render_dirty();
-    }
-
-    AGEA_ar_function("category=world");
-    float
-    get_gamma()
-    {
-        return m_gamma;
-    }
-
-    AGEA_ar_function("category=world");
-    void
-    set_metallic(float v)
-    {
-        m_metallic = v;
-        mark_render_dirty();
-    }
-
-    AGEA_ar_function("category=world");
-    float
-    get_metallic()
-    {
-        return m_metallic;
-    }
-
-    AGEA_ar_function("category=world");
-    void
-    set_roughness(float v)
-    {
-        m_roughness = v;
-        mark_render_dirty();
-    }
-
-    AGEA_ar_function("category=world");
-    float
-    get_roughness()
-    {
-        return m_roughness;
-    }
-
 protected:
     AGEA_ar_property("category=meta",
                      "serializable=true",
@@ -92,34 +32,6 @@ protected:
                      "property_compare_handler=custom::texture_sample_compare",
                      "property_copy_handler=custom::texture_sample_copy");
     texture_sample m_simple_texture;
-
-    AGEA_ar_property("category=properties",
-                     "access=no",
-                     "serializable=true",
-                     "gpu_data=MaterialData",
-                     "default=true");
-    float m_albedo = 0.2f;
-
-    AGEA_ar_property("category=properties",
-                     "access=no",
-                     "serializable=true",
-                     "gpu_data=MaterialData",
-                     "default=true");
-    float m_gamma = 0.4f;
-
-    AGEA_ar_property("category=properties",
-                     "access=no",
-                     "serializable=true",
-                     "gpu_data=MaterialData",
-                     "default=true");
-    float m_metallic = 0.6f;
-
-    AGEA_ar_property("category=properties",
-                     "access=no",
-                     "serializable=true",
-                     "gpu_data=MaterialData",
-                     "default=true");
-    float m_roughness = 0.8f;
 };
 
 }  // namespace root

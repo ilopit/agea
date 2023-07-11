@@ -147,7 +147,6 @@ material__root__render_loader(render_bridge& rb, root::smart_object& obj, bool s
     {
         mat_data = glob::vulkan_render_loader::get()->create_material(
             mat_model.get_id(), mat_model.get_type_id(), samples_data, *se_data, dyn_gpu_data);
-        glob::vulkan_render::getr().add_material(mat_data);
 
         mat_model.set_material_data(mat_data);
     }
@@ -157,7 +156,11 @@ material__root__render_loader(render_bridge& rb, root::smart_object& obj, bool s
                                                            dyn_gpu_data);
     }
 
-    glob::vulkan_render::getr().schedule_material_data_gpu_upload(mat_data);
+    if (!dyn_gpu_data.empty())
+    {
+        glob::vulkan_render::getr().add_material(mat_data);
+        glob::vulkan_render::getr().schedule_material_data_gpu_upload(mat_data);
+    }
 
     return result_code::ok;
 }

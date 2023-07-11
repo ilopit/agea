@@ -31,7 +31,7 @@ public:
                      "property_prototype_handler=custom::texture_sample_prototype",
                      "property_compare_handler=custom::texture_sample_compare",
                      "property_copy_handler=custom::texture_sample_copy");
-    texture_sample m_diffuse;
+    texture_sample m_diffuse_txt;
 
     AGEA_ar_property("category=meta",
                      "serializable=true",
@@ -40,7 +40,30 @@ public:
                      "property_prototype_handler=custom::texture_sample_prototype",
                      "property_compare_handler=custom::texture_sample_compare",
                      "property_copy_handler=custom::texture_sample_copy");
-    texture_sample m_specular;
+    texture_sample m_specular_txt;
+
+    AGEA_ar_property("category=properties",
+                     "serializable=true",
+                     "invalidates=render",
+                     "check=not_same",
+                     "access=all",
+                     "gpu_data=MaterialData",
+                     "default=true");
+    vec3 m_ambient = {.2f, .2f, .2f};
+
+    AGEA_ar_property("category=properties",
+                     "serializable=true",
+                     "access=all",
+                     "gpu_data=MaterialData",
+                     "default=true");
+    vec3 m_diffuse = {.2f, .2f, .2f};
+
+    AGEA_ar_property("category=properties",
+                     "serializable=true",
+                     "access=all",
+                     "gpu_data=MaterialData",
+                     "default=true");
+    vec3 m_specular = 0.5f;
 
     AGEA_ar_property(
         "category=meta", "serializable=true", "access=no", "default=true", "gpu_data=MaterialData");

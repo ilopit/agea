@@ -136,7 +136,14 @@ public:
         return m_layout->back();
     }
 
+    bool
+    empty()
+    {
+        return m_layout->get_fields().empty();
+    }
+
 protected:
+    utils::id m_id;
     dynobj_layout_sptr m_layout;
 };
 
@@ -176,7 +183,7 @@ public:
     dynamic_object_layout_sequence_builder&
     set_id(const utils::id& id)
     {
-        m_layout->set_id(id);
+        get_layout()->set_id(id);
         return *this;
     }
 
@@ -324,7 +331,8 @@ public:
         field.type = uint32_t(TYPE_ID::nan);
         field.size = get_layout()->get_object_size();
         field.type_size = get_layout()->get_object_size();
-        field.id = get_layout()->get_id();
+
+        field.id = m_id.valid() ? m_id : get_layout()->get_id();
 
         root_layout->m_object_size = get_layout()->get_object_size();
 

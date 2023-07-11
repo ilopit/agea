@@ -63,54 +63,32 @@ shader_effect_data::generate_set_layouts(
 {
     set_layouts.clear();
 
+    for (auto& s : m_vertext_stage_reflection.descriptors)
     {
-        auto v = m_vertext_stage_reflection.descriptor_sets->make_view<gpu_type>();
-
-        auto set_count = v.field_count();
-
-        for (uint64_t set_idx = 0; set_idx < set_count; ++set_idx)
-        {
-            auto& layout = set_layouts.emplace_back();
-
-            shader_reflection_utils::convert_dynobj_to_layout_data(v.subobj(set_idx), layout);
-        }
+        shader_reflection_utils::convert_to_ds_layout_data(
+            s, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, set_layouts.emplace_back());
     }
 
+    for (auto& s : m_fragment_stage_reflection.descriptors)
     {
-        auto v = m_frag_stage_reflection.descriptor_sets->make_view<gpu_type>();
-
-        auto set_count = v.field_count();
-
-        for (uint64_t set_idx = 0; set_idx < set_count; ++set_idx)
-        {
-            auto& layout = set_layouts.emplace_back();
-
-            shader_reflection_utils::convert_dynobj_to_layout_data(v.subobj(set_idx), layout);
-        }
+        shader_reflection_utils::convert_to_ds_layout_data(
+            s, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, set_layouts.emplace_back());
     }
 }
 
 void
 shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constants)
 {
-    if (m_vertext_stage_reflection.constants_layout)
+    for (auto& c : m_vertext_stage_reflection.constants)
     {
-        auto v = m_vertext_stage_reflection.constants_layout->make_view<gpu_type>();
-        {
-            auto& push_range = constants.emplace_back();
-
-            shader_reflection_utils::convert_dynobj_to_vk_push_constants(v.subobj(0), push_range);
-        }
+        shader_reflection_utils::convert_to_vk_push_constants(
+            c, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, constants.emplace_back());
     }
 
-    if (m_frag_stage_reflection.constants_layout)
+    for (auto& c : m_fragment_stage_reflection.constants)
     {
-        auto v = m_frag_stage_reflection.constants_layout->make_view<gpu_type>();
-        {
-            auto& push_range = constants.emplace_back();
-
-            shader_reflection_utils::convert_dynobj_to_vk_push_constants(v.subobj(0), push_range);
-        }
+        shader_reflection_utils::convert_to_vk_push_constants(
+            c, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, constants.emplace_back());
     }
 }
 

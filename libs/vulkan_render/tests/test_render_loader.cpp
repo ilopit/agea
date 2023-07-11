@@ -36,7 +36,7 @@ public:
     std::unique_ptr<agea::singleton_registry> m_registry;
 };
 
-TEST_F(render_device_test, load)
+TEST_F(render_device_test, load_se)
 {
     agea::utils::buffer vert, frag;
 

@@ -75,6 +75,15 @@ public:
         return (T*)context(m_cur_field);
     }
 
+    const dynobj_field*
+    field_by_idx(uint64_t idx) const;
+
+    dynobj_layout_sptr
+    layout() const
+    {
+        return m_layout;
+    }
+
 protected:
     void
     print(size_t offset, std::string& str, bool no_detailds) const;
@@ -104,9 +113,6 @@ protected:
 
     base_view
     build_for_subobject(uint64_t field_idx, uint64_t idx) const;
-
-    const dynobj_field*
-    field_by_idx(uint64_t idx) const;
 
     uint64_t m_offset = 0;
     uint8_t* m_data = nullptr;
@@ -429,10 +435,22 @@ public:
 
     template <typename TYPE_DESCRIPTOR>
     dynobj_view<TYPE_DESCRIPTOR>
-    root()
+    root() const
     {
-        return dynobj_view<TYPE_DESCRIPTOR>(0, data(), base_view::field_by_idx(m_layout, 0),
-                                            m_layout);
+        return dynobj_view<TYPE_DESCRIPTOR>(0U, (uint8_t*)data(),
+                                            base_view::field_by_idx(m_layout, 0), m_layout);
+    }
+
+    bool
+    empty() const
+    {
+        return !(bool)m_layout;
+    }
+
+    std::shared_ptr<dynobj_layout>
+    get_layout() const
+    {
+        return m_layout;
     }
 
 private:

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "vulkan_render/types/vulkan_generic.h"
+#include "vulkan_render/shader_reflection_utils.h"
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
@@ -18,43 +19,10 @@ class shader_data;
 
 struct vulkan_descriptor_set_layout_data
 {
-    uint32_t set_number = 0;
+    uint32_t set_idx = 0;
     VkDescriptorSetLayoutCreateInfo create_info;
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 };
-
-namespace reflection
-{
-
-struct push_constants
-{
-    VkPushConstantRange
-    as_vk()
-    {
-        VkPushConstantRange pcs{};
-        pcs.offset = offset;
-        pcs.size = size;
-        pcs.stageFlags = stage;
-
-        return pcs;
-    }
-
-    std::string name;
-
-    uint32_t offset;
-    uint32_t size;
-    VkShaderStageFlagBits stage;
-};
-
-struct shader_reflection
-{
-    agea::utils::dynobj_layout_sptr constants_layout;
-    agea::utils::dynobj_layout_sptr input_layout;
-    agea::utils::dynobj_layout_sptr output_layout;
-    agea::utils::dynobj_layout_sptr descriptor_sets;
-};
-
-}  // namespace reflection
 
 class shader_effect_data
 {
@@ -98,7 +66,7 @@ public:
     reflection::shader_reflection m_vertext_stage_reflection;
 
     std::shared_ptr<shader_data> m_frag_stage;
-    reflection::shader_reflection m_frag_stage_reflection;
+    reflection::shader_reflection m_fragment_stage_reflection;
 
     bool m_is_wire = false;
     bool m_enable_alpha = false;

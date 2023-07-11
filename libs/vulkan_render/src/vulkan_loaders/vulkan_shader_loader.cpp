@@ -133,13 +133,13 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     for (uint32_t i = 0; i < DESCRIPTORS_SETS_COUNT; i++)
     {
         vulkan_descriptor_set_layout_data& ly = merged_layouts[i];
-        ly.set_number = i;
+        ly.set_idx = i;
         ly.create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
         std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> binds;
         for (auto& s : set_layouts)
         {
-            if (s.set_number == i)
+            if (s.set_idx == i)
             {
                 for (auto& b : s.bindings)
                 {
@@ -235,23 +235,23 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     }
 
     if (!shader_reflection_utils::are_layouts_compatible(
-            se_data.m_expected_vertex_input, se_data.m_vertext_stage_reflection.input_layout,
-            false))
+            se_data.m_expected_vertex_input,
+            se_data.m_vertext_stage_reflection.input_interface.layout, false, false))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    if (!shader_reflection_utils::build_shader_reflection(device, se_data.m_frag_stage_reflection,
-                                                          se_data.m_frag_stage))
+    if (!shader_reflection_utils::build_shader_reflection(
+            device, se_data.m_fragment_stage_reflection, se_data.m_frag_stage))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
     if (!shader_reflection_utils::are_layouts_compatible(
-            se_data.m_vertext_stage_reflection.output_layout,
-            se_data.m_frag_stage_reflection.input_layout, true))
+            se_data.m_vertext_stage_reflection.output_interface.layout,
+            se_data.m_fragment_stage_reflection.input_interface.layout, true, false))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -353,7 +353,7 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     if (se_data.m_frag_stage)
     {
         old_se_data->m_frag_stage = std::move(se_data.m_frag_stage);
-        se_data.m_frag_stage_reflection = {};
+        se_data.m_fragment_stage_reflection = {};
     }
 
     rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT,

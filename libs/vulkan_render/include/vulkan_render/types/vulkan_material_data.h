@@ -113,6 +113,12 @@ public:
         return m_texture_samples;
     }
 
+    bool
+    has_gpu_data() const
+    {
+        return !m_gpu_data.empty();
+    }
+
 private:
     ::agea::utils::id m_id;
     ::agea::utils::id m_type_id;
@@ -120,8 +126,6 @@ private:
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 
     agea::utils::dynobj m_gpu_data;
-
-    utils::dynobj_layout m_expected_constants;
 
     VkDescriptorSet m_samplers_set = VK_NULL_HANDLE;
     shader_effect_data* m_effect = nullptr;

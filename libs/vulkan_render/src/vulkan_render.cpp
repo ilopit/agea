@@ -507,26 +507,29 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
 
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-            auto& sm = m_materials_layout.at(cur_material_idx);
+            if (cur_material->has_gpu_data())
+            {
+                auto& sm = m_materials_layout.at(cur_material_idx);
+                VkDescriptorBufferInfo mat_buffer_info{};
+                mat_buffer_info.buffer = current_frame.m_materials_buffer.buffer();
+                mat_buffer_info.offset = sm.offset;
+                mat_buffer_info.range = sm.get_allocated_size();
 
-            VkDescriptorBufferInfo mat_buffer_info{};
-            mat_buffer_info.buffer = current_frame.m_materials_buffer.buffer();
-            mat_buffer_info.offset = sm.offset;
-            mat_buffer_info.range = sm.get_allocated_size();
+                VkDescriptorSet mat_data_set{};
+                vk_utils::descriptor_builder::begin(
+                    glob::render_device::getr().descriptor_layout_cache(),
+                    current_frame.frame->m_dynamic_descriptor_allocator.get())
+                    .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                                 VK_SHADER_STAGE_FRAGMENT_BIT)
+                    .build(mat_data_set);
 
-            VkDescriptorSet mat_data_set{};
-            vk_utils::descriptor_builder::begin(
-                glob::render_device::getr().descriptor_layout_cache(),
-                current_frame.frame->m_dynamic_descriptor_allocator.get())
-                .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                             VK_SHADER_STAGE_FRAGMENT_BIT)
-                .build(mat_data_set);
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+                                        MATERIALS_descriptor_sets, 1, &mat_data_set, 1,
+                                        dummy_offest);
+            }
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
                                     OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
-
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    MATERIALS_descriptor_sets, 1, &mat_data_set, 1, dummy_offest);
 
             vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
                                     GLOBAL_descriptor_sets, 1, &m_global_set,

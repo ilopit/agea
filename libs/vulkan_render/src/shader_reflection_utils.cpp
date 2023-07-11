@@ -25,20 +25,6 @@ struct SpvReflectShaderModuleHandle
     }
 };
 
-struct reflection_context : utils::dynobj_field_context
-{
-    VkDescriptorType descritor_type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-    uint32_t binding_idx = 0;
-    uint32_t set_idx = 0;
-    uint32_t descriptors_count = 0;
-    VkShaderStageFlags stage = VK_SAMPLER_CREATE_FLAG_BITS_MAX_ENUM;
-};
-
-struct push_constant_context : utils::dynobj_field_context
-{
-    VkPushConstantRange vk_constants;
-};
-
 }  // namespace
 
 bool
@@ -170,7 +156,7 @@ shader_reflection_utils::build_shader_input_reflection(SpvReflectShaderModule& s
         return false;
     }
 
-    return extract_interface_variable(inputs, sr.input_layout);
+    return extract_interface_variable(inputs, sr.input_interface.layout);
 }
 
 bool
@@ -230,7 +216,7 @@ shader_reflection_utils::build_shader_output_reflection(SpvReflectShaderModule& 
         return false;
     }
 
-    return extract_interface_variable(inputs, sr.output_layout);
+    return extract_interface_variable(inputs, sr.output_interface.layout);
 }
 
 bool
@@ -244,70 +230,58 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
         return false;
     }
 
-    std::vector<SpvReflectDescriptorSet*> sets(count);
-    result = spvReflectEnumerateDescriptorSets(&spv_reflection, &count, sets.data());
+    std::vector<SpvReflectDescriptorSet*> spv_sets(count);
+    result = spvReflectEnumerateDescriptorSets(&spv_reflection, &count, spv_sets.data());
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
     }
 
-    std::sort(sets.begin(), sets.end(),
+    std::sort(spv_sets.begin(), spv_sets.end(),
               [](SpvReflectDescriptorSet* l, SpvReflectDescriptorSet* r)
               { return l->set < r->set; });
 
-    gpu_dynobj_builder gdb;
-    gdb.set_id(AID("descriptors"));
-
-    for (uint64_t i = 0; i < sets.size(); ++i)
+    for (uint64_t i = 0; i < spv_sets.size(); ++i)
     {
-        auto set_id = AID(std::to_string(sets[i]->set));
+        auto spv_set = spv_sets[i];
 
-        gpu_dynobj_builder set_gdb;
+        auto& refl_ds = sr.descriptors.emplace_back();
+        refl_ds.location = spv_set->set;
 
-        set_gdb.set_id(AID("descriptor_set"));
+        std::vector<SpvReflectDescriptorBinding*> spv_bindings(
+            spv_set->bindings, spv_set->bindings + spv_set->binding_count);
 
-        auto input = sets[i];
-
-        std::vector<SpvReflectDescriptorBinding*> bindings(input->bindings,
-                                                           input->bindings + input->binding_count);
-
-        std::sort(bindings.begin(), bindings.end(),
+        std::sort(spv_bindings.begin(), spv_bindings.end(),
                   [](SpvReflectDescriptorBinding* l, SpvReflectDescriptorBinding* r)
                   { return l->binding < r->binding; });
 
-        for (auto b : bindings)
+        for (auto spv_binding : spv_bindings)
         {
-            gpu_dynobj_builder binding_gdb;
+            auto& refl_binding = refl_ds.bindigns.emplace_back();
+            refl_binding.location = spv_binding->binding;
+            refl_binding.name = AID(spv_binding->name);
+            refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
 
-            auto binding_id = AID(std::to_string(b->binding));
+            gpu_dynobj_builder binding_gdb;
 
             binding_gdb.set_id(AID("binding"));
 
-            if (!convert_spvr_to_dyn_layout(AID(b->name), *b->type_description, binding_gdb))
+            if (!convert_spvr_to_dyn_layout(AID(spv_binding->name), *spv_binding->type_description,
+                                            binding_gdb))
             {
                 return false;
             }
 
-            auto ctx = std::make_unique<reflection_context>();
-            ctx->descritor_type = (VkDescriptorType)b->descriptor_type;
-            ctx->binding_idx = b->binding;
-            ctx->set_idx = input->set;
-            ctx->stage = spv_reflection.shader_stage;
+            refl_binding.descriptors_count = 1;
 
-            ctx->descriptors_count = 1;
-            for (uint32_t dim_idx = 0; dim_idx < b->array.dims_count; ++dim_idx)
+            for (uint32_t dim_idx = 0; dim_idx < spv_binding->array.dims_count; ++dim_idx)
             {
-                ctx->descriptors_count *= b->array.dims[dim_idx];
+                refl_binding.descriptors_count *= spv_binding->array.dims[dim_idx];
             }
 
-            set_gdb.add_field<reflection_context>(binding_id, binding_gdb.finalize(), 1,
-                                                  std::move(ctx));
+            refl_binding.layout = binding_gdb.finalize();
         }
-
-        gdb.add_field(set_id, set_gdb.finalize(), 1);
     }
-
-    sr.descriptor_sets = gdb.finalize();
 
     return true;
 }
@@ -315,7 +289,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
 bool
 shader_reflection_utils::are_layouts_compatible(const utils::dynobj_layout_sptr& l,
                                                 const utils::dynobj_layout_sptr& r,
-                                                bool non_strict_name_check)
+                                                bool non_strict_name_check,
+                                                bool ignore_highlevel_naming)
 {
     if (l.get() == r.get())
     {
@@ -333,7 +308,8 @@ shader_reflection_utils::are_layouts_compatible(const utils::dynobj_layout_sptr&
 
     for (auto i = 0; i < size; ++i)
     {
-        if (!compare_dynfield(l->get_fields()[i], r->get_fields()[i], non_strict_name_check))
+        if (!compare_dynfield(l->get_fields()[i], r->get_fields()[i], non_strict_name_check,
+                              ignore_highlevel_naming))
         {
             return false;
         }
@@ -388,19 +364,20 @@ compare_ids(const utils::id& l, const utils::id& r, bool non_strict_name_check)
 bool
 shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
                                           const utils::dynobj_field& r,
-                                          bool non_strict_name_check)
+                                          bool non_strict_name_check,
+                                          bool ignore_highlevel_naming)
 {
-    if (!compare_ids(l.id, r.id, non_strict_name_check))
+    if (!ignore_highlevel_naming)
     {
-        return false;
+        if (!compare_ids(l.id, r.id, non_strict_name_check))
+        {
+            return false;
+        }
     }
+
+    ignore_highlevel_naming = false;
 
     if (!are_types_compatible(l.type, r.type))
-    {
-        return false;
-    }
-
-    if (l.items_count != r.items_count)
     {
         return false;
     }
@@ -410,7 +387,8 @@ shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
         return false;
     }
 
-    return are_layouts_compatible(l.sub_field_layout, r.sub_field_layout, non_strict_name_check);
+    return are_layouts_compatible(l.sub_field_layout, r.sub_field_layout, non_strict_name_check,
+                                  ignore_highlevel_naming);
 }
 
 bool
@@ -479,30 +457,24 @@ shader_reflection_utils::build_shader_push_constants(SpvReflectShaderModule& spv
         return false;
     }
 
-    auto ctx = std::make_unique<push_constant_context>();
+    auto& constants = sr.constants.emplace_back();
 
-    ctx->vk_constants.offset = pconstants[0]->offset;
-    ctx->vk_constants.size = pconstants[0]->size;
-    ctx->vk_constants.stageFlags = spv_reflection.shader_stage;
-
-    gdb.last_field().context = std::move(ctx);
-
-    sr.constants_layout = gdb.finalize();
+    constants.offset = pconstants[0]->offset;
+    constants.size = pconstants[0]->size;
+    constants.layout = gdb.finalize();
 
     return true;
 }
 
 VkDescriptorSetLayoutBinding
-shader_reflection_utils::convert_dynobj_to_vk_binding(const utils::dynobj_view<gpu_type>& obj)
+shader_reflection_utils::convert_to_vk_binding(const reflection::binding& b,
+                                               VkShaderStageFlags stage)
 {
     VkDescriptorSetLayoutBinding layout_binding;
-    auto t = obj.context<reflection_context>();
 
-    auto id = obj.subobj(0).id().str();
+    layout_binding.descriptorType = b.type;
 
-    layout_binding.descriptorType = t->descritor_type;
-
-    if (agea::string_utils::starts_with(id, "dyn_"))
+    if (agea::string_utils::starts_with(b.name.str(), "dyn_"))
     {
         if (layout_binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
         {
@@ -514,38 +486,35 @@ shader_reflection_utils::convert_dynobj_to_vk_binding(const utils::dynobj_view<g
         }
     }
 
-    layout_binding.binding = t->binding_idx;
-    layout_binding.stageFlags = t->stage;
-    layout_binding.descriptorCount = t->descriptors_count;
+    layout_binding.binding = b.location;
+    layout_binding.stageFlags = stage;
+    layout_binding.descriptorCount = b.descriptors_count;
     layout_binding.pImmutableSamplers = nullptr;
 
     return layout_binding;
 }
 
 void
-shader_reflection_utils::convert_dynobj_to_layout_data(const utils::dynobj_view<gpu_type>& obj,
-                                                       vulkan_descriptor_set_layout_data& layout)
+shader_reflection_utils::convert_to_ds_layout_data(const reflection::descriptor_set& ref_set,
+                                                   VkShaderStageFlags stage,
+                                                   vulkan_descriptor_set_layout_data& layout)
 {
-    auto binds_count = obj.field_count();
+    layout.set_idx = ref_set.location;
 
-    layout.bindings.resize(binds_count);
-    layout.set_number = std::atoi(obj.id().cstr());
-
-    for (uint64_t bind_idx = 0; bind_idx < binds_count; ++bind_idx)
+    for (auto& b : ref_set.bindigns)
     {
-        auto bin_obj = obj.subobj(bind_idx);
-
-        layout.bindings[bind_idx] = convert_dynobj_to_vk_binding(bin_obj);
+        layout.bindings.push_back(convert_to_vk_binding(b, stage));
     }
 }
 
 void
-shader_reflection_utils::convert_dynobj_to_vk_push_constants(
-    const utils::dynobj_view<gpu_type>& obj, VkPushConstantRange& range)
+shader_reflection_utils::convert_to_vk_push_constants(const reflection::push_constants& pc,
+                                                      VkShaderStageFlags stage,
+                                                      VkPushConstantRange& range)
 {
-    range = obj.context<push_constant_context>()->vk_constants;
-
-    obj.print_to_std();
+    range.offset = pc.offset;
+    range.size = pc.size;
+    range.stageFlags = stage;
 }
 
 }  // namespace render

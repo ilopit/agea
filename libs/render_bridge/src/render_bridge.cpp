@@ -26,17 +26,22 @@ glob::render_bridge::type glob::render_bridge::s_instance;
 utils::dynobj
 render_bridge::extract_gpu_data(root::smart_object& so, const access_template& ct)
 {
-    auto oitr = ct.offset_in_object.begin();
-    auto fitr = ct.layout->get_fields().begin();
     auto src_obj_ptr = so.as_blob();
 
     utils::dynobj dyn_obj(ct.layout);
 
-    AGEA_check(ct.offset_in_object.size() == ct.layout->get_fields().size(), "Should be same!");
+    auto v = dyn_obj.root<render::gpu_type>();
 
-    for (; oitr < ct.offset_in_object.end(); ++oitr, ++fitr)
+    auto fn = v.field_count();
+
+    AGEA_check(ct.offset_in_object.size() == fn, "Should be same!");
+
+    auto oitr = ct.offset_in_object.begin();
+    uint64_t idx = 0;
+    while (auto field = v.field_by_idx(idx++))
     {
-        memcpy(dyn_obj.data() + fitr->offset, src_obj_ptr + *oitr, fitr->size);
+        memcpy(dyn_obj.data() + field->offset, src_obj_ptr + *oitr, field->size);
+        ++oitr;
     }
 
     return dyn_obj;
@@ -51,7 +56,9 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
 
     size_t dst_offest = 0;
 
-    utils::dynamic_object_layout_sequence_builder<render::gpu_type> sb;
+    render::gpu_dynobj_builder sb;
+
+    sb.set_id(AID("MaterialData"));
 
     for (auto& p : properties)
     {
@@ -60,23 +67,27 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
             switch (p->rtype->type_id)
             {
             case root::root__float:
-                sb.add_field(AID(""), render::gpu_type::g_float, 1);
+                sb.add_field(AID(p->name), render::gpu_type::g_float, 1);
                 break;
             case root::root__vec3:
-                sb.add_field(AID(""), render::gpu_type::g_vec3, 16);
+                sb.add_field(AID(p->name), render::gpu_type::g_vec3, 16);
                 break;
             case root::root__vec4:
-                sb.add_field(AID(""), render::gpu_type::g_vec4, 16);
+                sb.add_field(AID(p->name), render::gpu_type::g_vec4, 16);
                 break;
             default:
                 break;
+                AGEA_never("Should never happen");
             }
 
             t.offset_in_object.push_back((uint32_t)p->offset);
         }
     }
 
-    t.layout = sb.get_layout();
+    if (!sb.empty())
+    {
+        t.layout = sb.finalize();
+    }
 
     return true;
 }
@@ -91,6 +102,11 @@ render_bridge::collect_gpu_data(root::smart_object& so)
         create_collection_template(so, ct);
 
         itr = m_gpu_data_collection_templates.insert({so.get_type_id(), std::move(ct)}).first;
+    }
+
+    if (!itr->second.layout)
+    {
+        return {};
     }
 
     return extract_gpu_data(so, itr->second);

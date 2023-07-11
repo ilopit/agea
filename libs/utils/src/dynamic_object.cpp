@@ -62,7 +62,10 @@ base_view::print(std::string& str, bool no_detailds) const
                                          : m_cur_field->type_name;
     str += "]\n";
 
-    print(2, str, no_detailds);
+    if (m_cur_field->sub_field_layout)
+    {
+        print(2, str, no_detailds);
+    }
 }
 
 void
