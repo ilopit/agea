@@ -1,7 +1,7 @@
-file(GLOB CORE_SRC         "include/vulkan_render/*.h"                "src/*.cpp")
-file(GLOB VULKAN_LOADERS   "include/vulkan_render/vulkan_loaders/*.h" "src/vulkan_loaders/*.cpp")
-file(GLOB UTILS            "include/vulkan_render/utils/*.h"          "src/utils/*.cpp")
-file(GLOB TYPES            "include/vulkan_render/types/*.h"          "src/types/*.cpp")
+file(GLOB CORE_SRC         "public/include/vulkan_render/*.h"                "private/src/*.cpp")
+file(GLOB VULKAN_LOADERS   "public/include/vulkan_render/vulkan_loaders/*.h" "private/src/vulkan_loaders/*.cpp")
+file(GLOB UTILS            "public/include/vulkan_render/utils/*.h"          "private/src/utils/*.cpp")
+file(GLOB TYPES            "public/include/vulkan_render/types/*.h"          "private/src/types/*.cpp")
 
 source_group("core"    FILES  ${CORE_SRC})
 source_group("loaders" FILES  ${VULKAN_LOADERS})
@@ -35,4 +35,4 @@ target_link_libraries(vulkan_render PUBLIC
 )
 agea_finalize_library(vulkan_render)
 
-add_subdirectory(tests)
+add_subdirectory(private/tests)

@@ -1,4 +1,4 @@
-file(GLOB LIB_SRC "include/utils/*.h" "src/*.cpp")
+file(GLOB LIB_SRC "public/include/utils/*.h" "private/src/*.cpp")
 
 add_library(utils STATIC
    ${LIB_SRC}
@@ -6,4 +6,4 @@ add_library(utils STATIC
 target_link_libraries(utils spdlog)
 agea_finalize_library(utils)
 
-add_subdirectory(tests)
+add_subdirectory(private/tests)

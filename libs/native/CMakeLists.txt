@@ -1,4 +1,4 @@
-file(GLOB LIB_SRC "include/native/*.h" "src/*.cpp")
+file(GLOB LIB_SRC "public/include/native/*.h" "private/src/*.cpp")
 
 add_library(native STATIC
    ${LIB_SRC}

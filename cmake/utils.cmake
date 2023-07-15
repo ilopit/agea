@@ -13,7 +13,14 @@ macro(agea_finalize_library)
 
     target_include_directories(${ARGV0} 
         PUBLIC 
-            "${CMAKE_CURRENT_SOURCE_DIR}/include")
+            "${CMAKE_CURRENT_SOURCE_DIR}/public/include")
+
+    if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/private/include")
+    
+        target_include_directories(${ARGV0} 
+            PUBLIC 
+                "${CMAKE_CURRENT_SOURCE_DIR}/private/include")
+    endif()
 
     add_library(agea::${ARGV0} ALIAS ${ARGV0})
 endmacro()
@@ -52,8 +59,8 @@ macro(agea_ar_target)
         TARGET ${full_name}
         PRE_BUILD
         COMMAND python ${PROJECT_SOURCE_DIR}/tools/argen.py
-                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/ar/config 
-                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
+                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}public/ar/config 
+                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}public/
                        ${CMAKE_BINARY_DIR}/agea_generated
                        ${ARGV1}
                        ${ARGV2})
@@ -76,8 +83,8 @@ macro(agea_ar_target)
         execute_process(
                   COMMAND python 
                   ${PROJECT_SOURCE_DIR}/tools/argen.py
-                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/ar/config 
-                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}
+                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/public/ar/config 
+                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/public
                   ${CMAKE_BINARY_DIR}/agea_generated
                   ${ARGV1}
                   ${ARGV2})

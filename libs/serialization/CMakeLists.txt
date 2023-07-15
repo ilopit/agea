@@ -1,4 +1,4 @@
-file(GLOB LIB_SRC "include/serialization/*.h" "src/*.cpp")
+file(GLOB LIB_SRC "public/include/serialization/*.h" "private/src/*.cpp")
 
 add_library(serialization STATIC
    ${LIB_SRC}

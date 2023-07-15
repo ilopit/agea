@@ -1,4 +1,4 @@
-file(GLOB LIB_SRC "include/render_bridge/*.h" "src/*.cpp")
+file(GLOB LIB_SRC "public/include/render_bridge/*.h" "private/src/*.cpp")
 
 add_library(render_bridge STATIC
    ${LIB_SRC}
@@ -13,4 +13,4 @@ target_link_libraries(render_bridge
 
 agea_finalize_library(render_bridge)
 
-add_subdirectory(tests)
+add_subdirectory(private/tests)

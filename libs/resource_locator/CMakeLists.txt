@@ -1,4 +1,4 @@
-file(GLOB LIB_SRC "include/resource_locator/*.h" "src/*.cpp")
+file(GLOB LIB_SRC "public/include/resource_locator/*.h" "private/src/*.cpp")
 
 file(GLOB_RECURSE  FSHADERS_SRC "${PROJECT_SOURCE_DIR}/resources/packages/*.frag")
 file(GLOB_RECURSE  VSHADERS_SRC "${PROJECT_SOURCE_DIR}/resources/packages/*.vert")

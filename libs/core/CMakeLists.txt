@@ -1,8 +1,8 @@
 
-file(GLOB CORE_CACHES_SRC                "include/core/caches/*.h"                     "src/caches/*.cpp")
-file(GLOB CORE_SRC                       "include/core/*.h"                            "src/*.cpp")
-file(GLOB CORE_REFLECTION_SRC            "include/core/reflection/*.h"                 "src/reflection/*.cpp")
-file(GLOB CORE_REFLECTION_HANDLERS_SRC   "include/core/reflection/type_handlers/*.h"   "src/reflection/type_handlers/*.cpp")
+file(GLOB CORE_CACHES_SRC                "public/include/core/caches/*.h"                     "private/src/caches/*.cpp")
+file(GLOB CORE_SRC                       "public/include/core/*.h"                            "private/src/*.cpp")
+file(GLOB CORE_REFLECTION_SRC            "public/include/core/reflection/*.h"                 "private/src/reflection/*.cpp")
+file(GLOB CORE_REFLECTION_HANDLERS_SRC   "public/include/core/reflection/type_handlers/*.h"   "private/src/reflection/type_handlers/*.cpp")
 
 file(GLOB GENERATED_SRC                   "${CMAKE_BINARY_DIR}/agea_generated/core/*.cpp")
 
@@ -43,4 +43,4 @@ target_link_libraries(core PUBLIC
 
 agea_finalize_library(core)
 
-add_subdirectory(tests)
+add_subdirectory(private/tests)
