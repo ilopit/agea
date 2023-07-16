@@ -172,6 +172,13 @@ private:
     upload_material_data(render::frame_state& frame);
 
     void
+    draw_outline_objects_queue(render_line_conteiner& r,
+                               VkCommandBuffer cmd,
+                               vk_utils::vulkan_buffer& obj_tb,
+                               vk_utils::vulkan_buffer& dyn_tb,
+                               render::frame_state& current_frame);
+
+    void
     draw_objects_queue(render_line_conteiner& r,
                        VkCommandBuffer cmd,
                        vk_utils::vulkan_buffer& obj_tb,
@@ -208,9 +215,6 @@ public:
     void
     resize(uint32_t width, uint32_t height);
 
-    VkDeviceSize
-    get_mat_buffer_size() const;
-
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
@@ -227,6 +231,7 @@ public:
 
     std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
     render_line_conteiner m_transparent_render_object_queue;
+    render_line_conteiner m_outline_object_queue;
 
     utils::id_allocator m_selected_material_alloc;
 
@@ -240,6 +245,7 @@ public:
     shader_effect_data* m_ui_se = nullptr;
     texture_data* m_ui_txt = nullptr;
     material_data* m_ui_mat = nullptr;
+    material_data* m_outline_mat = nullptr;
 
     struct ui_push_constants
     {

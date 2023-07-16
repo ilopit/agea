@@ -1,0 +1,6 @@
+type_id: shader_effect
+id: se_outline
+vert: class/shader_effects/system/se_outline.vert
+is_vert_binary: false
+frag: class/shader_effects/system/se_outline.frag
+is_frag_binary: false

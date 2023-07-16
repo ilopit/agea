@@ -116,7 +116,6 @@ vulkan_render::draw_objects()
     // TODO, rework
     if ((SDL_WINDOW_MINIMIZED & r) == SDL_WINDOW_MINIMIZED)
     {
-        int i = 2;
         return;
     }
 
@@ -254,6 +253,9 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
 
     build_global_set(current_frame);
     build_light_set(current_frame);
+
+    draw_outline_objects_queue(m_outline_object_queue, cmd, current_frame.m_object_buffer, dyn,
+                               current_frame);
 
     for (auto& r : m_default_render_object_queue)
     {
@@ -476,6 +478,62 @@ vulkan_render::upload_material_data(render::frame_state& frame)
 }
 
 void
+vulkan_render::draw_outline_objects_queue(render_line_conteiner& r,
+                                          VkCommandBuffer cmd,
+                                          vk_utils::vulkan_buffer& obj_tb,
+                                          vk_utils::vulkan_buffer& dyn_buffer,
+                                          render::frame_state& current_frame)
+{
+    const uint32_t dummy_offest[] = {0, 0, 0, 0};
+
+    mesh_data* cur_mesh = nullptr;
+
+    VkPipeline pipeline = m_outline_mat->get_shader_effect()->m_pipeline;
+    VkPipelineLayout pipeline_layout = m_outline_mat->get_shader_effect()->m_pipeline_layout;
+
+    for (auto& obj : r)
+    {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+                                OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
+
+        vkCmdBindDescriptorSets(
+            cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, GLOBAL_descriptor_sets, 1,
+            &m_global_set, dyn_buffer.get_dyn_offsets_count(), dyn_buffer.get_dyn_offsets_ptr());
+
+        if (cur_mesh != obj->mesh)
+        {
+            cur_mesh = obj->mesh;
+            AGEA_check(cur_mesh, "Should be null");
+
+            VkDeviceSize offset = 0;
+            vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
+
+            if (cur_mesh->has_indices())
+            {
+                vkCmdBindIndexBuffer(cmd, cur_mesh->m_index_buffer.buffer(), 0,
+                                     VK_INDEX_TYPE_UINT32);
+            }
+        }
+
+        constexpr auto range = sizeof(render::gpu_push_constants);
+        vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
+                           &m_obj_config);
+
+        // we can now draw
+        if (!cur_mesh->has_indices())
+        {
+            vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->gpu_index());
+        }
+        else
+        {
+            vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->gpu_index());
+        }
+    }
+}
+
+void
 vulkan_render::draw_objects_queue(render_line_conteiner& r,
                                   VkCommandBuffer cmd,
                                   vk_utils::vulkan_buffer& ssbo_buffer,
@@ -596,6 +654,11 @@ vulkan_render::add_object(render::object_data* obj_data)
     auto id = m_objects_id.alloc_id();
 
     obj_data->set_index((uint32_t)id);
+
+    if (obj_data->outlined)
+    {
+        m_outline_object_queue.emplace_back(obj_data);
+    }
 
     if (obj_data->queue_id == "transparent")
     {
@@ -785,12 +848,12 @@ vulkan_render::prepare_system_resources()
     agea::utils::buffer vert, frag;
 
     auto path = glob::resource_locator::get()->resource(category::packages,
-                                                        "base.apkg/class/shader_effects/error");
+                                                        "base.apkg/class/shader_effects");
 
-    auto vert_path = path / "se_error.vert";
+    auto vert_path = path / "error/se_error.vert";
     agea::utils::buffer::load(vert_path, vert);
 
-    auto frag_path = path / "se_error.frag";
+    auto frag_path = path / "error/se_error.frag";
     agea::utils::buffer::load(frag_path, frag);
 
     shader_effect_create_info se_ci;
@@ -800,12 +863,27 @@ vulkan_render::prepare_system_resources()
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = false;
     se_ci.enable_alpha = false;
-    se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
+    se_ci.cull_mode = VK_CULL_MODE_NONE;
 
-    shader_effect_data* sed;
+    shader_effect_data* sed = nullptr;
     auto rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_error"), se_ci, sed);
-    (void)sed;
-    AGEA_check(rc == result_code::ok, "Always should be good!");
+    AGEA_check(rc == result_code::ok && sed, "Always should be good!");
+
+    vert_path = path / "system/se_outline.vert";
+    agea::utils::buffer::load(vert_path, vert);
+
+    frag_path = path / "system/se_outline.frag";
+    agea::utils::buffer::load(frag_path, frag);
+
+    se_ci.ds_mode = depth_stencil_mode::outline;
+
+    sed = nullptr;
+    rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_outline"), se_ci, sed);
+    AGEA_check(rc == result_code::ok && sed, "Always should be good!");
+
+    std::vector<texture_sampler_data> sd;
+    m_outline_mat = glob::vulkan_render_loader::getr().create_material(
+        AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
 }
 
 void

@@ -298,6 +298,13 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
             moc.get_id(), *mat_data, *mesh_data, moc.get_transofrm_matrix(),
             moc.get_normal_matrix(), moc.get_position());
 
+        static int ct = 0;
+        if (ct < 2)
+        {
+            object_data->outlined = true;
+            ++ct;
+        }
+
         moc.set_render_object_data(object_data);
 
         auto new_rqid = render_bridge::make_qid(*mat_data, *mesh_data);

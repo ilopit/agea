@@ -20,7 +20,6 @@ public:
     render::gpu_camera_data
     get_camera_data();
 
-private:
     void
     update_camera();
 
@@ -45,6 +44,7 @@ private:
     void
     ev_lights();
 
+private:
     glm::mat4
     get_rotation_matrix();
 

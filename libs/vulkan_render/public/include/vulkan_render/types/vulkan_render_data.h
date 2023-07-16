@@ -47,6 +47,7 @@ public:
     bool visible = true;
     bool rendarable = true;
     float distance_to_camera = 0.f;
+    bool outlined = false;
 
     std::string queue_id;
 

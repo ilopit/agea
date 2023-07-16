@@ -277,20 +277,48 @@ make_imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags as
 }
 
 VkPipelineDepthStencilStateCreateInfo
-make_depth_stencil_create_info(bool depth_test, bool depth_write, VkCompareOp compare_op)
+make_depth_stencil_create_info(bool depth_test,
+                               bool depth_write,
+                               VkCompareOp depth_compare_op,
+                               depth_stencil_mode enable_stencil)
 {
-    VkPipelineDepthStencilStateCreateInfo ci = {};
-    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    ci.pNext = nullptr;
-    ci.depthTestEnable = depth_test ? VK_TRUE : VK_FALSE;
-    ci.depthWriteEnable = depth_write ? VK_TRUE : VK_FALSE;
-    ci.depthCompareOp = compare_op;
-    ci.depthBoundsTestEnable = VK_FALSE;
-    ci.minDepthBounds = 0.0f;  // Optional
-    ci.maxDepthBounds = 1.0f;  // Optional
-    ci.stencilTestEnable = VK_FALSE;
+    VkPipelineDepthStencilStateCreateInfo cci = {};
+    cci.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    cci.pNext = nullptr;
+    cci.depthTestEnable = depth_test ? VK_TRUE : VK_FALSE;
+    cci.depthWriteEnable = depth_write ? VK_TRUE : VK_FALSE;
+    cci.depthCompareOp = depth_compare_op;
+    cci.depthBoundsTestEnable = VK_FALSE;
+    cci.minDepthBounds = 0.0f;  // Optional
+    cci.maxDepthBounds = 1.0f;  // Optional
 
-    return ci;
+    if (enable_stencil == depth_stencil_mode::enable)
+    {
+        cci.stencilTestEnable = VK_TRUE;
+        cci.back.compareOp = VK_COMPARE_OP_ALWAYS;
+        cci.back.failOp = VK_STENCIL_OP_REPLACE;
+        cci.back.depthFailOp = VK_STENCIL_OP_REPLACE;
+        cci.back.passOp = VK_STENCIL_OP_REPLACE;
+        cci.back.compareMask = 0xff;
+        cci.back.writeMask = 0xff;
+        cci.back.reference = 1;
+        cci.front = cci.back;
+    }
+    else if (enable_stencil == depth_stencil_mode::outline)
+    {
+        cci.stencilTestEnable = VK_TRUE;
+        cci.back.compareOp = VK_COMPARE_OP_NOT_EQUAL;
+        cci.back.failOp = VK_STENCIL_OP_KEEP;
+        cci.back.depthFailOp = VK_STENCIL_OP_KEEP;
+        cci.back.passOp = VK_STENCIL_OP_REPLACE;
+        cci.back.compareMask = 0xff;
+        cci.back.writeMask = 0xff;
+        cci.back.reference = 1;
+        cci.front = cci.back;
+        cci.depthTestEnable = VK_FALSE;
+    }
+
+    return cci;
 }
 
 VkDescriptorSetLayoutBinding

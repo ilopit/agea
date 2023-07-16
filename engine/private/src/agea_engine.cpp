@@ -456,6 +456,9 @@ vulkan_engine::init_scene()
 {
     load_level(glob::config::get()->level);
 
+    glob::game_editor::getr().ev_spawn();
+    glob::game_editor::getr().ev_lights();
+
 #if defined(AGEA_demo_module_included)
 
     demo::example::construct_params dcp;

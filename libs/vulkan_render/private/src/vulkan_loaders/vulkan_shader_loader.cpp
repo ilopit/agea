@@ -290,7 +290,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_color_blend_attachment = vk_utils::make_color_blend_attachment_state(info.enable_alpha);
 
     pb.m_depth_stencil_ci =
-        vk_utils::make_depth_stencil_create_info(true, true, info.depth_compare_op);
+        vk_utils::make_depth_stencil_create_info(true, true, info.depth_compare_op, info.ds_mode);
 
     auto vert_input_description =
         render::convert_to_vertex_input_description(*se_data.m_expected_vertex_input);

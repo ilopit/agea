@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <vulkan_render/types/vulkan_render_types_fwds.h>
+
 #include <vector>
 
 namespace agea
@@ -68,7 +70,10 @@ VkImageViewCreateInfo
 make_imageview_create_info(VkFormat format, VkImage image, VkImageAspectFlags aspect_flags);
 
 VkPipelineDepthStencilStateCreateInfo
-make_depth_stencil_create_info(bool depth_test, bool depth_write, VkCompareOp compare_op);
+make_depth_stencil_create_info(bool depth_test,
+                               bool depth_write,
+                               VkCompareOp depth_compare_op,
+                               depth_stencil_mode enable_stencil);
 
 VkDescriptorSetLayoutBinding
 make_descriptor_set_layout_binding(VkDescriptorType type,

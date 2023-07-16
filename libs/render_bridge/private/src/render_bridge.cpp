@@ -124,6 +124,7 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
     se_ci.enable_alpha = se_model.m_enable_alpha_support;
     se_ci.render_pass = glob::render_device::getr().render_pass();
     se_ci.enable_dynamic_state = false;
+    se_ci.ds_mode = render::depth_stencil_mode::none;
 
     se_ci.cull_mode = se_ci.is_wire ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
 
