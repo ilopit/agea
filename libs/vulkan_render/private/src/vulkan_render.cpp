@@ -107,7 +107,7 @@ vulkan_render::set_camera(render::gpu_camera_data c)
 }
 
 void
-vulkan_render::draw_objects()
+vulkan_render::main_draw()
 {
     auto device = glob::render_device::get();
 
@@ -151,12 +151,6 @@ vulkan_render::draw_objects()
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
     // make a clear-color from frame number. This will flash with a 120 frame period.
-    VkClearValue clear_value{};
-    clear_value.color = {{0.0f, 0.0f, 0.0, 1.0f}};
-
-    // clear depth at 1
-    VkClearValue depth_clear{};
-    depth_clear.depthStencil.depth = 1.f;
 
     // start the main renderpass.
     // We will use the clear color from above, and the framebuffer of the index the swapchain gave
@@ -165,19 +159,16 @@ vulkan_render::draw_objects()
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
-    if (width == 0 || height == 0)
-    {
-        int i = 2;
-    }
-
     auto rp_info =
         vk_utils::make_renderpass_begin_info(device->render_pass(), VkExtent2D{width, height},
                                              device->framebuffers(swapchain_image_index));
 
-    // connect clear values
+    VkClearValue clear_values[2];
+    clear_values[0].color = {0.0f, 0.0f, 0.0, 1.0f};
+    clear_values[1].depthStencil = {1.0f, 0};
+
     rp_info.clearValueCount = 2;
-    VkClearValue clear_values[] = {clear_value, depth_clear};
-    rp_info.pClearValues = &clear_values[0];
+    rp_info.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -254,19 +245,34 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     build_global_set(current_frame);
     build_light_set(current_frame);
 
-    draw_outline_objects_queue(m_outline_object_queue, cmd, current_frame.m_object_buffer, dyn,
-                               current_frame);
+    collect_lights();
 
+    // DEFAULT
     for (auto& r : m_default_render_object_queue)
     {
-        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, current_frame);
+        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, current_frame, false);
     }
 
+    // OUTLINE
+    for (auto& r : m_outline_render_object_queue)
+    {
+        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, current_frame, true);
+    }
+
+    pipeline_ctx pctx{};
+    bind_material(cmd, m_outline_mat, current_frame, pctx, dyn, false);
+
+    for (auto& r : m_outline_render_object_queue)
+    {
+        draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
+    }
+
+    // TRANSPATENT
     if (!m_transparent_render_object_queue.empty())
     {
         update_transparent_objects_queue();
-        draw_objects_queue(m_transparent_render_object_queue, cmd, current_frame.m_object_buffer,
-                           dyn, current_frame);
+        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd,
+                                          current_frame.m_object_buffer, dyn, current_frame);
     }
 }
 
@@ -478,58 +484,41 @@ vulkan_render::upload_material_data(render::frame_state& frame)
 }
 
 void
-vulkan_render::draw_outline_objects_queue(render_line_conteiner& r,
-                                          VkCommandBuffer cmd,
-                                          vk_utils::vulkan_buffer& obj_tb,
-                                          vk_utils::vulkan_buffer& dyn_buffer,
-                                          render::frame_state& current_frame)
+vulkan_render::draw_multi_pipeline_objects_queue(render_line_conteiner& r,
+                                                 VkCommandBuffer cmd,
+                                                 vk_utils::vulkan_buffer& obj_tb,
+                                                 vk_utils::vulkan_buffer& dyn_buffer,
+                                                 render::frame_state& current_frame)
 {
-    const uint32_t dummy_offest[] = {0, 0, 0, 0};
-
     mesh_data* cur_mesh = nullptr;
 
-    VkPipeline pipeline = m_outline_mat->get_shader_effect()->m_pipeline;
-    VkPipelineLayout pipeline_layout = m_outline_mat->get_shader_effect()->m_pipeline_layout;
+    pipeline_ctx pctx{};
 
     for (auto& obj : r)
     {
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        if (pctx.cur_material_type_idx != obj->material->gpu_type_idx())
+        {
+            bind_material(cmd, obj->material, current_frame, pctx, dyn_buffer);
+        }
+        else if (pctx.cur_material_idx != obj->material->gpu_idx())
+        {
+            pctx.cur_material_idx = obj->material->gpu_idx();
 
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
-
-        vkCmdBindDescriptorSets(
-            cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, GLOBAL_descriptor_sets, 1,
-            &m_global_set, dyn_buffer.get_dyn_offsets_count(), dyn_buffer.get_dyn_offsets_ptr());
+            if (obj->material->has_textures())
+            {
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
+                                        TEXTURES_descriptor_sets, 1,
+                                        &obj->material->get_textures_ds(), 0, nullptr);
+            }
+        }
 
         if (cur_mesh != obj->mesh)
         {
             cur_mesh = obj->mesh;
-            AGEA_check(cur_mesh, "Should be null");
-
-            VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
-
-            if (cur_mesh->has_indices())
-            {
-                vkCmdBindIndexBuffer(cmd, cur_mesh->m_index_buffer.buffer(), 0,
-                                     VK_INDEX_TYPE_UINT32);
-            }
+            bind_mesh(cmd, cur_mesh);
         }
 
-        constexpr auto range = sizeof(render::gpu_push_constants);
-        vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
-                           &m_obj_config);
-
-        // we can now draw
-        if (!cur_mesh->has_indices())
-        {
-            vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->gpu_index());
-        }
-        else
-        {
-            vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->gpu_index());
-        }
+        draw_object(cmd, pctx, obj);
     }
 }
 
@@ -538,101 +527,139 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
                                   VkCommandBuffer cmd,
                                   vk_utils::vulkan_buffer& ssbo_buffer,
                                   vk_utils::vulkan_buffer& dyn_buffer,
-                                  render::frame_state& current_frame)
+                                  render::frame_state& current_frame,
+                                  bool outlined)
 
 {
-    const uint32_t dummy_offest[] = {0, 0, 0, 0};
+    pipeline_ctx pctx{};
 
-    uint32_t cur_material_idx = INVALID_GPU_INDEX;
+    if (!r.empty())
+    {
+        bind_material(cmd, r.front()->material, current_frame, pctx, dyn_buffer, outlined);
+    }
+
+    draw_same_pipeline_objects_queue(cmd, pctx, r);
+}
+
+void
+vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
+                                                const pipeline_ctx& pctx,
+                                                const render_line_conteiner& r,
+                                                bool rebind_images)
+{
     mesh_data* cur_mesh = nullptr;
-    material_data* cur_material = nullptr;
-
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-
-    collect_lights();
+    uint32_t cur_material_idx = pctx.cur_material_idx;
 
     for (auto& obj : r)
     {
-        if (cur_material_idx != obj->material->gpu_type_idx())
+        if (rebind_images && cur_material_idx != obj->material->gpu_idx())
         {
-            cur_material = obj->material;
-            cur_material_idx = obj->material->gpu_type_idx();
-            AGEA_check(cur_material, "Shouldn't be null");
+            cur_material_idx = obj->material->gpu_idx();
 
-            pipeline = cur_material->get_shader_effect()->m_pipeline;
-            pipeline_layout = cur_material->get_shader_effect()->m_pipeline_layout;
-
-            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-            if (cur_material->has_gpu_data())
+            if (obj->material->has_textures())
             {
-                auto& sm = m_materials_layout.at(cur_material_idx);
-                VkDescriptorBufferInfo mat_buffer_info{};
-                mat_buffer_info.buffer = current_frame.m_materials_buffer.buffer();
-                mat_buffer_info.offset = sm.offset;
-                mat_buffer_info.range = sm.get_allocated_size();
-
-                VkDescriptorSet mat_data_set{};
-                vk_utils::descriptor_builder::begin(
-                    glob::render_device::getr().descriptor_layout_cache(),
-                    current_frame.frame->m_dynamic_descriptor_allocator.get())
-                    .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                                 VK_SHADER_STAGE_FRAGMENT_BIT)
-                    .build(mat_data_set);
-
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                        MATERIALS_descriptor_sets, 1, &mat_data_set, 1,
-                                        dummy_offest);
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
+                                        TEXTURES_descriptor_sets, 1,
+                                        &obj->material->get_textures_ds(), 0, nullptr);
             }
-
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
-
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    GLOBAL_descriptor_sets, 1, &m_global_set,
-                                    dyn_buffer.get_dyn_offsets_count(),
-                                    dyn_buffer.get_dyn_offsets_ptr());
-        }
-
-        // TODO, optimize
-        if (obj->material->has_textures())
-        {
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                    TEXTURES_descriptor_sets, 1, &obj->material->get_textures_ds(),
-                                    0, nullptr);
         }
 
         if (cur_mesh != obj->mesh)
         {
             cur_mesh = obj->mesh;
-            AGEA_check(cur_mesh, "Should be null");
-
-            VkDeviceSize offset = 0;
-            vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
-
-            if (cur_mesh->has_indices())
-            {
-                vkCmdBindIndexBuffer(cmd, cur_mesh->m_index_buffer.buffer(), 0,
-                                     VK_INDEX_TYPE_UINT32);
-            }
+            bind_mesh(cmd, cur_mesh);
         }
 
-        m_obj_config.material_id = obj->material->gpu_idx();
+        draw_object(cmd, pctx, obj);
+    }
+}
 
-        constexpr auto range = sizeof(render::gpu_push_constants);
-        vkCmdPushConstants(cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
-                           &m_obj_config);
+void
+vulkan_render::draw_object(VkCommandBuffer cmd,
+                           const pipeline_ctx& pctx,
+                           const render::object_data* obj)
+{
+    auto cur_mesh = obj->mesh;
+    m_obj_config.material_id = obj->material->gpu_idx();
 
-        // we can now draw
-        if (!cur_mesh->has_indices())
-        {
-            vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->gpu_index());
-        }
-        else
-        {
-            vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->gpu_index());
-        }
+    constexpr auto range = sizeof(render::gpu_push_constants);
+    vkCmdPushConstants(cmd, pctx.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
+                       &m_obj_config);
+
+    // we can now draw
+    if (!obj->mesh->has_indices())
+    {
+        vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->gpu_index());
+    }
+    else
+    {
+        vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->gpu_index());
+    }
+}
+
+void
+vulkan_render::bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh)
+{
+    AGEA_check(cur_mesh, "Should be null");
+
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
+
+    if (cur_mesh->has_indices())
+    {
+        vkCmdBindIndexBuffer(cmd, cur_mesh->m_index_buffer.buffer(), 0, VK_INDEX_TYPE_UINT32);
+    }
+}
+
+void
+vulkan_render::bind_material(VkCommandBuffer cmd,
+                             material_data* cur_material,
+                             render::frame_state& current_frame,
+                             pipeline_ctx& ctx,
+                             vk_utils::vulkan_buffer& dyn_buffer,
+                             bool outline)
+{
+    auto pipeline = outline ? cur_material->get_shader_effect()->m_with_stencil_pipeline
+                            : cur_material->get_shader_effect()->m_pipeline;
+    ctx.pipeline_layout = cur_material->get_shader_effect()->m_pipeline_layout;
+    ctx.cur_material_idx = cur_material->gpu_idx();
+    ctx.cur_material_type_idx = cur_material->gpu_type_idx();
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    const uint32_t dummy_offest[] = {0, 0, 0, 0};
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                            OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                            GLOBAL_descriptor_sets, 1, &m_global_set,
+                            dyn_buffer.get_dyn_offsets_count(), dyn_buffer.get_dyn_offsets_ptr());
+
+    if (cur_material->has_gpu_data())
+    {
+        auto& sm = m_materials_layout.at(cur_material->gpu_idx());
+        VkDescriptorBufferInfo mat_buffer_info{};
+        mat_buffer_info.buffer = current_frame.m_materials_buffer.buffer();
+        mat_buffer_info.offset = sm.offset;
+        mat_buffer_info.range = sm.get_allocated_size();
+
+        VkDescriptorSet mat_data_set{};
+        vk_utils::descriptor_builder::begin(
+            glob::render_device::getr().descriptor_layout_cache(),
+            current_frame.frame->m_dynamic_descriptor_allocator.get())
+            .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                         VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build(mat_data_set);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                MATERIALS_descriptor_sets, 1, &mat_data_set, 1, dummy_offest);
+    }
+
+    if (cur_material->has_textures())
+    {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                TEXTURES_descriptor_sets, 1, &cur_material->get_textures_ds(), 0,
+                                nullptr);
     }
 }
 
@@ -657,7 +684,11 @@ vulkan_render::add_object(render::object_data* obj_data)
 
     if (obj_data->outlined)
     {
-        m_outline_object_queue.emplace_back(obj_data);
+        AGEA_check(obj_data->queue_id != "transparent", "Not supported!");
+
+        m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+
+        return;
     }
 
     if (obj_data->queue_id == "transparent")

@@ -244,7 +244,7 @@ vulkan_engine::run()
         {
             AGEA_make_scope(draw);
 
-            glob::vulkan_render::getr().draw_objects();
+            glob::vulkan_render::getr().main_draw();
         }
 
         glob::vulkan_render_loader::getr().delete_sheduled_actions();

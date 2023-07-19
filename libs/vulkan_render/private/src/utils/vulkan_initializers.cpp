@@ -289,10 +289,8 @@ make_depth_stencil_create_info(bool depth_test,
     cci.depthWriteEnable = depth_write ? VK_TRUE : VK_FALSE;
     cci.depthCompareOp = depth_compare_op;
     cci.depthBoundsTestEnable = VK_FALSE;
-    cci.minDepthBounds = 0.0f;  // Optional
-    cci.maxDepthBounds = 1.0f;  // Optional
 
-    if (enable_stencil == depth_stencil_mode::enable)
+    if (enable_stencil == depth_stencil_mode::stencil)
     {
         cci.stencilTestEnable = VK_TRUE;
         cci.back.compareOp = VK_COMPARE_OP_ALWAYS;

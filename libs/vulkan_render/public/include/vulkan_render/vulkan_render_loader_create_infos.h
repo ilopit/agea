@@ -1,7 +1,6 @@
 #pragma once
 
-#include "vulkan_render/types/vulkan_render_types_fwds.h"
-
+#include "vulkan_render/types/vulkan_shader_effects_presets.h"
 #include <utils/buffer.h>
 
 #include <vulkan/vulkan.h>

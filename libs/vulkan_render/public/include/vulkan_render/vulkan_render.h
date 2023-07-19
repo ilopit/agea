@@ -37,6 +37,13 @@ using materials_update_queue_set = ::agea::utils::line_conteiner<materials_updat
 using objects_update_queue = ::agea::utils::line_conteiner<render::object_data*>;
 using lights_update_queue = ::agea::utils::line_conteiner<render::light_data*>;
 
+struct pipeline_ctx
+{
+    uint32_t cur_material_type_idx = INVALID_GPU_INDEX;
+    uint32_t cur_material_idx = INVALID_GPU_INDEX;
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+};
+
 struct frame_state
 {
     bool
@@ -123,7 +130,7 @@ public:
     set_camera(render::gpu_camera_data d);
 
     void
-    draw_objects();
+    main_draw();
 
     void
     add_object(render::object_data* obj_data);
@@ -172,18 +179,39 @@ private:
     upload_material_data(render::frame_state& frame);
 
     void
-    draw_outline_objects_queue(render_line_conteiner& r,
-                               VkCommandBuffer cmd,
-                               vk_utils::vulkan_buffer& obj_tb,
-                               vk_utils::vulkan_buffer& dyn_tb,
-                               render::frame_state& current_frame);
+    draw_multi_pipeline_objects_queue(render_line_conteiner& r,
+                                      VkCommandBuffer cmd,
+                                      vk_utils::vulkan_buffer& obj_tb,
+                                      vk_utils::vulkan_buffer& dyn_tb,
+                                      render::frame_state& current_frame);
 
     void
     draw_objects_queue(render_line_conteiner& r,
                        VkCommandBuffer cmd,
                        vk_utils::vulkan_buffer& obj_tb,
                        vk_utils::vulkan_buffer& dyn_tb,
-                       render::frame_state& current_frame);
+                       render::frame_state& current_frame,
+                       bool outlined);
+
+    void
+    draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
+                                     const pipeline_ctx& pctx,
+                                     const render_line_conteiner& r,
+                                     bool rebind_images = true);
+
+    void
+    draw_object(VkCommandBuffer cmd, const pipeline_ctx& pctx, const render::object_data* obj);
+
+    void
+    bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh);
+
+    void
+    bind_material(VkCommandBuffer cmd,
+                  material_data* cur_material,
+                  render::frame_state& current_frame,
+                  pipeline_ctx& ctx,
+                  vk_utils::vulkan_buffer& dyn_buffer,
+                  bool outline = false);
 
     void
     push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id);
@@ -230,8 +258,10 @@ public:
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
     std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
+
+    std::unordered_map<std::string, render_line_conteiner> m_outline_render_object_queue;
+
     render_line_conteiner m_transparent_render_object_queue;
-    render_line_conteiner m_outline_object_queue;
 
     utils::id_allocator m_selected_material_alloc;
 

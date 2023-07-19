@@ -119,7 +119,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 2;
+    int DIM = 5;
 
     for (x = 0; x < DIM; ++x)
     {
@@ -133,7 +133,6 @@ game_editor::ev_spawn()
                 sp.scale = root::vec3{10.f};
                 auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
                     (z & 1) ? id1 : id2, AID(id), sp);
-                // ALOG_INFO("Spawned {0}", p->get_id().cstr());
             }
         }
     }

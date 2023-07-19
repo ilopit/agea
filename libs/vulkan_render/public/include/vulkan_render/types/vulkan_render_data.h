@@ -29,7 +29,7 @@ public:
     }
 
     gpu_data_index_type
-    gpu_index()
+    gpu_index() const
     {
         return m_gpu_index;
     }

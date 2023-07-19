@@ -276,6 +276,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_viewport.y = 0.0f;
     pb.m_viewport.width = (float)width;
     pb.m_viewport.height = (float)height;
+
     pb.m_viewport.minDepth = 0.0f;
     pb.m_viewport.maxDepth = 1.0f;
 
@@ -324,6 +325,11 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     se_data.m_pipeline = pb.build(device->vk_device(), info.render_pass);
 
+    pb.m_depth_stencil_ci = vk_utils::make_depth_stencil_create_info(
+        true, true, info.depth_compare_op, depth_stencil_mode::stencil);
+
+    se_data.m_with_stencil_pipeline = pb.build(device->vk_device(), info.render_pass);
+
     return se_data.m_pipeline != VK_NULL_HANDLE ? result_code::ok : result_code::failed;
 }
 
@@ -366,7 +372,9 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     old_se_data->m_set_layout = std::move(se_data.m_set_layout);
 
     old_se_data->m_pipeline = se_data.m_pipeline;
+    old_se_data->m_with_stencil_pipeline = se_data.m_with_stencil_pipeline;
     se_data.m_pipeline = VK_NULL_HANDLE;
+    se_data.m_with_stencil_pipeline = VK_NULL_HANDLE;
 
     old_se_data->m_pipeline_layout = se_data.m_pipeline_layout;
     se_data.m_pipeline_layout = VK_NULL_HANDLE;

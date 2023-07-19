@@ -46,6 +46,7 @@ shader_effect_data::reset()
     }
 
     vkDestroyPipeline(m_device(), m_pipeline, nullptr);
+    vkDestroyPipeline(m_device(), m_with_stencil_pipeline, nullptr);
     vkDestroyPipelineLayout(m_device(), m_pipeline_layout, nullptr);
 
     for (size_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
@@ -54,6 +55,7 @@ shader_effect_data::reset()
     }
 
     m_pipeline = VK_NULL_HANDLE;
+    m_with_stencil_pipeline = VK_NULL_HANDLE;
     m_pipeline_layout = VK_NULL_HANDLE;
 }
 

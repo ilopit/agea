@@ -14,12 +14,5 @@ class sampler_data;
 struct vertex_input_description;
 struct texture_sampler_data;
 
-enum class depth_stencil_mode
-{
-    none = 0,
-    enable,
-    outline
-};
-
 }  // namespace render
 }  // namespace agea

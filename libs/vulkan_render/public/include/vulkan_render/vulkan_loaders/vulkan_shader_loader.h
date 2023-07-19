@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
+
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
