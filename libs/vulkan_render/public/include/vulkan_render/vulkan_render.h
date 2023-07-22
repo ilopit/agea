@@ -130,7 +130,7 @@ public:
     set_camera(render::gpu_camera_data d);
 
     void
-    main_draw();
+    draw_main();
 
     void
     add_object(render::object_data* obj_data);
@@ -181,15 +181,11 @@ private:
     void
     draw_multi_pipeline_objects_queue(render_line_conteiner& r,
                                       VkCommandBuffer cmd,
-                                      vk_utils::vulkan_buffer& obj_tb,
-                                      vk_utils::vulkan_buffer& dyn_tb,
                                       render::frame_state& current_frame);
 
     void
     draw_objects_queue(render_line_conteiner& r,
                        VkCommandBuffer cmd,
-                       vk_utils::vulkan_buffer& obj_tb,
-                       vk_utils::vulkan_buffer& dyn_tb,
                        render::frame_state& current_frame,
                        bool outlined);
 
@@ -210,7 +206,6 @@ private:
                   material_data* cur_material,
                   render::frame_state& current_frame,
                   pipeline_ctx& ctx,
-                  vk_utils::vulkan_buffer& dyn_buffer,
                   bool outline = false);
 
     void

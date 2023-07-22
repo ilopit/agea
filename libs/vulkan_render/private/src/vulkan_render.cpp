@@ -107,7 +107,7 @@ vulkan_render::set_camera(render::gpu_camera_data c)
 }
 
 void
-vulkan_render::main_draw()
+vulkan_render::draw_main()
 {
     auto device = glob::render_device::get();
 
@@ -149,8 +149,6 @@ vulkan_render::main_draw()
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
-
-    // make a clear-color from frame number. This will flash with a 120 frame period.
 
     // start the main renderpass.
     // We will use the clear color from above, and the framebuffer of the index the swapchain gave
@@ -250,17 +248,17 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     // DEFAULT
     for (auto& r : m_default_render_object_queue)
     {
-        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, current_frame, false);
+        draw_objects_queue(r.second, cmd, current_frame, false);
     }
 
     // OUTLINE
     for (auto& r : m_outline_render_object_queue)
     {
-        draw_objects_queue(r.second, cmd, current_frame.m_object_buffer, dyn, current_frame, true);
+        draw_objects_queue(r.second, cmd, current_frame, true);
     }
 
     pipeline_ctx pctx{};
-    bind_material(cmd, m_outline_mat, current_frame, pctx, dyn, false);
+    bind_material(cmd, m_outline_mat, current_frame, pctx,  false);
 
     for (auto& r : m_outline_render_object_queue)
     {
@@ -272,7 +270,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     {
         update_transparent_objects_queue();
         draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd,
-                                          current_frame.m_object_buffer, dyn, current_frame);
+                                          current_frame);
     }
 }
 
@@ -486,8 +484,6 @@ vulkan_render::upload_material_data(render::frame_state& frame)
 void
 vulkan_render::draw_multi_pipeline_objects_queue(render_line_conteiner& r,
                                                  VkCommandBuffer cmd,
-                                                 vk_utils::vulkan_buffer& obj_tb,
-                                                 vk_utils::vulkan_buffer& dyn_buffer,
                                                  render::frame_state& current_frame)
 {
     mesh_data* cur_mesh = nullptr;
@@ -498,7 +494,7 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_conteiner& r,
     {
         if (pctx.cur_material_type_idx != obj->material->gpu_type_idx())
         {
-            bind_material(cmd, obj->material, current_frame, pctx, dyn_buffer);
+            bind_material(cmd, obj->material, current_frame, pctx);
         }
         else if (pctx.cur_material_idx != obj->material->gpu_idx())
         {
@@ -525,8 +521,6 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_conteiner& r,
 void
 vulkan_render::draw_objects_queue(render_line_conteiner& r,
                                   VkCommandBuffer cmd,
-                                  vk_utils::vulkan_buffer& ssbo_buffer,
-                                  vk_utils::vulkan_buffer& dyn_buffer,
                                   render::frame_state& current_frame,
                                   bool outlined)
 
@@ -535,7 +529,7 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
 
     if (!r.empty())
     {
-        bind_material(cmd, r.front()->material, current_frame, pctx, dyn_buffer, outlined);
+        bind_material(cmd, r.front()->material, current_frame, pctx, outlined);
     }
 
     draw_same_pipeline_objects_queue(cmd, pctx, r);
@@ -616,7 +610,6 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
                              material_data* cur_material,
                              render::frame_state& current_frame,
                              pipeline_ctx& ctx,
-                             vk_utils::vulkan_buffer& dyn_buffer,
                              bool outline)
 {
     auto pipeline = outline ? cur_material->get_shader_effect()->m_with_stencil_pipeline
@@ -633,7 +626,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
                             GLOBAL_descriptor_sets, 1, &m_global_set,
-                            dyn_buffer.get_dyn_offsets_count(), dyn_buffer.get_dyn_offsets_ptr());
+        current_frame.m_dynamic_data_buffer.get_dyn_offsets_count(), current_frame.m_dynamic_data_buffer.get_dyn_offsets_ptr());
 
     if (cur_material->has_gpu_data())
     {
