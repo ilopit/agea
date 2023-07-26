@@ -122,7 +122,7 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
     se_ci.is_frag_binary = se_model.m_is_frag_binary;
     se_ci.is_wire = se_model.m_wire_topology;
     se_ci.enable_alpha = se_model.m_enable_alpha_support;
-    se_ci.render_pass = glob::render_device::getr().render_pass();
+    se_ci.render_pass = glob::vulkan_render::getr().m_render_passes[AID("main")]->vk();
     se_ci.enable_dynamic_state = false;
     se_ci.ds_mode = render::depth_stencil_mode::none;
 

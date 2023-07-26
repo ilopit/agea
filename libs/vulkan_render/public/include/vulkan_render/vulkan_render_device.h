@@ -135,18 +135,6 @@ public:
         return m_descriptor_layout_cache.get();
     }
 
-    VkRenderPass
-    render_pass()
-    {
-        return m_render_pass;
-    }
-
-    VkFramebuffer
-    framebuffers(size_t idx)
-    {
-        return m_framebuffers[idx];
-    }
-
     frame_data&
     frame(size_t idx)
     {
@@ -199,6 +187,46 @@ public:
     void
     wait_for_fences();
 
+    VkFormat
+    get_swapchain_format() const
+    {
+        return m_swachain_image_format;
+    }
+
+    VkFormat
+    get_depth_format() const
+    {
+        return m_depth_format;
+    }
+
+    std::vector<vk_utils::vulkan_image_sptr>
+    get_swapchain_images()
+    {
+        return m_swapchain_images;
+    }
+
+    std::vector<vk_utils::vulkan_image_view_sptr>
+    get_swapchain_image_views()
+    {
+        return m_swapchain_image_views;
+    }
+
+    using vk_deleter = std::function<void(VkDevice vkd)>;
+
+    void
+    schedule_to_delete(vk_deleter d)
+    {
+        d(m_vk_device);
+    }
+
+    using vma_deleter = std::function<void(VmaAllocator va)>;
+
+    void
+    schedule_to_delete(vma_deleter d)
+    {
+        d(m_allocator);
+    }
+
 private:
     bool
     init_vulkan(SDL_Window* window, bool headless);
@@ -209,16 +237,6 @@ private:
     init_swapchain(bool headless, uint32_t width, uint32_t height);
     bool
     deinit_swapchain();
-
-    bool
-    init_default_renderpass();
-    bool
-    deinit_default_renderpass();
-
-    bool
-    init_framebuffers(uint32_t width, uint32_t height);
-    bool
-    deinit_framebuffers();
 
     bool
     init_commands();
@@ -248,22 +266,16 @@ private:
     VkQueue m_graphics_queue;
     uint32_t m_graphics_queue_family;
     upload_context m_upload_context;
-    std::vector<frame_data> m_frames;
-
-    VkRenderPass m_render_pass = VK_NULL_HANDLE;
 
     VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
-    VkFormat m_swachain_image_format;
+    VkFormat m_swachain_image_format = VK_FORMAT_UNDEFINED;
 
-    std::vector<VkFramebuffer> m_framebuffers;
-    std::vector<vk_utils::vulkan_image> m_swapchain_images;
-    std::vector<VkImageView> m_swapchain_image_views;
+    std::vector<vk_utils::vulkan_image_sptr> m_swapchain_images;
+    std::vector<vk_utils::vulkan_image_view_sptr> m_swapchain_image_views;
+
+    std::vector<frame_data> m_frames;
 
     VkDescriptorSetLayout m_single_texture_set_layout = VK_NULL_HANDLE;
-
-    // depth resources
-    std::vector<VkImageView> m_depth_image_views;
-    std::vector<vk_utils::vulkan_image> m_depth_images;
 
     // the format for the depth image
     VkFormat m_depth_format;

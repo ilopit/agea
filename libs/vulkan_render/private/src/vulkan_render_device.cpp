@@ -48,10 +48,6 @@ render_device::construct(construct_params& params)
 
     init_swapchain(params.headless, width, height);
 
-    init_default_renderpass();
-
-    init_framebuffers(width, height);
-
     init_commands();
 
     init_sync_structures();
@@ -75,10 +71,6 @@ render_device::destruct()
     deinit_sync_structures();
 
     deinit_commands();
-
-    deinit_framebuffers();
-
-    deinit_default_renderpass();
 
     deinit_swapchain();
 
@@ -197,10 +189,17 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         auto images = vkb_swapchain.get_images().value();
         for (auto i : images)
         {
-            m_swapchain_images.push_back(vk_utils::vulkan_image::create(i));
+            auto himg = vk_utils::vulkan_image::create(i);
+            m_swapchain_images.push_back(std::make_shared<vk_utils::vulkan_image>(std::move(himg)));
         }
 
-        m_swapchain_image_views = vkb_swapchain.get_image_views().value();
+        auto views = vkb_swapchain.get_image_views().value();
+        for (auto v : views)
+        {
+            m_swapchain_image_views.push_back(
+                vk_utils::vulkan_image_view::create_shared(std::move(v)));
+        }
+
         m_swachain_image_format = vkb_swapchain.image_format;
     }
     else
@@ -208,8 +207,6 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         // depth image size will match the window
         VkExtent3D swapchain_image_extent = {width, height, 1};
 
-        // the depth image will be a image with the format we selected and Depth Attachment usage
-        // flag
         auto simg_info = vk_utils::make_image_create_info(
             m_swachain_image_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain_image_extent);
 
@@ -223,47 +220,20 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         for (auto i = 0; i < m_swapchain_images.size(); ++i)
         {
             // allocate and create the image
-            m_swapchain_images[i] = vk_utils::vulkan_image::create(get_vma_allocator_provider(),
-                                                                   simg_info, simg_allocinfo);
+            m_swapchain_images[i] =
+                std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+                    get_vma_allocator_provider(), simg_info, simg_allocinfo));
 
             // build a image-view for the depth image to use for rendering
             auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-                m_swachain_image_format, m_swapchain_images[i].image(), VK_IMAGE_ASPECT_COLOR_BIT);
+                m_swachain_image_format, m_swapchain_images[i]->image(), VK_IMAGE_ASPECT_COLOR_BIT);
 
-            VK_CHECK(vkCreateImageView(m_vk_device, &swapchain_image_view_ci, nullptr,
-                                       &m_swapchain_image_views[i]));
+            m_swapchain_image_views[i] =
+                vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
         }
     }
 
-    m_depth_image_views.resize(m_swapchain_image_views.size());
-    m_depth_images.resize(m_swapchain_images.size());
-
-    // depth image size will match the window
-    VkExtent3D depth_image_extent = {width, height, 1};
-
-    // the depth image will be a image with the format we selected and Depth Attachment usage flag
-    auto dimg_info = vk_utils::make_image_create_info(
-        m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image_extent);
-
-    // for the depth image, we want to allocate it from gpu local memory
-    VmaAllocationCreateInfo dimg_allocinfo = {};
-    dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    for (auto i = 0; i < m_swapchain_images.size(); ++i)
-    {
-        // allocate and create the image
-        m_depth_images[i] =
-            vk_utils::vulkan_image::create(get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
-
-        // build a image-view for the depth image to use for rendering
-        auto depth_image_view_ci = vk_utils::make_imageview_create_info(
-            m_depth_format, m_depth_images[i].image(),
-            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
-
-        VK_CHECK(
-            vkCreateImageView(m_vk_device, &depth_image_view_ci, nullptr, &m_depth_image_views[i]));
-    }
+    m_frames.resize(m_swapchain_images.size());
 
     return true;
 }
@@ -271,17 +241,6 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 bool
 render_device::deinit_swapchain()
 {
-    for (auto i : m_swapchain_image_views)
-    {
-        vkDestroyImageView(m_vk_device, i, nullptr);
-    }
-
-    for (auto i : m_depth_image_views)
-    {
-        vkDestroyImageView(m_vk_device, i, nullptr);
-    }
-
-    m_depth_images.clear();
     m_swapchain_image_views.clear();
 
     if (m_swapchain)
@@ -297,128 +256,6 @@ render_device::deinit_swapchain()
     {
         m_swapchain_images.clear();
     }
-
-    return true;
-}
-
-bool
-render_device::init_default_renderpass()
-{
-    std::array<VkAttachmentDescription, 2> attachments = {};
-    // Color attachment
-    attachments[0].format = m_swachain_image_format;
-    attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-    attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    // Depth attachment
-    attachments[1].format = m_depth_format;
-    attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference colorReference = {};
-    colorReference.attachment = 0;
-    colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-    VkAttachmentReference depthReference = {};
-    depthReference.attachment = 1;
-    depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-    VkSubpassDescription subpassDescription = {};
-    subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpassDescription.colorAttachmentCount = 1;
-    subpassDescription.pColorAttachments = &colorReference;
-    subpassDescription.pDepthStencilAttachment = &depthReference;
-    subpassDescription.inputAttachmentCount = 0;
-    subpassDescription.pInputAttachments = nullptr;
-    subpassDescription.preserveAttachmentCount = 0;
-    subpassDescription.pPreserveAttachments = nullptr;
-    subpassDescription.pResolveAttachments = nullptr;
-
-    // Subpass dependencies for layout transitions
-    std::array<VkSubpassDependency, 2> dependencies;
-
-    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[0].dstSubpass = 0;
-    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    dependencies[0].dstAccessMask =
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-    dependencies[1].srcSubpass = 0;
-    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependencies[1].srcAccessMask =
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-    VkRenderPassCreateInfo renderPassInfo = {};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassInfo.pAttachments = attachments.data();
-    renderPassInfo.subpassCount = 1;
-    renderPassInfo.pSubpasses = &subpassDescription;
-    renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
-    renderPassInfo.pDependencies = dependencies.data();
-
-    VK_CHECK(vkCreateRenderPass(m_vk_device, &renderPassInfo, nullptr, &m_render_pass));
-
-    return true;
-}
-
-bool
-render_device::deinit_default_renderpass()
-{
-    vkDestroyRenderPass(m_vk_device, m_render_pass, nullptr);
-
-    return true;
-}
-
-bool
-render_device::init_framebuffers(uint32_t width, uint32_t height)
-{
-    // create the framebuffers for the swapchain images. This will connect the render-pass to the
-    // images for rendering
-    m_frames.resize(FRAMES_IN_FLYIGNT);
-
-    auto fb_info = vk_utils::make_framebuffer_create_info(m_render_pass, VkExtent2D{width, height});
-
-    const uint32_t swapchain_imagecount = (uint32_t)m_swapchain_images.size();
-    m_framebuffers = std::vector<VkFramebuffer>(swapchain_imagecount);
-
-    for (uint32_t i = 0; i < swapchain_imagecount; i++)
-    {
-        VkImageView attachments[2] = {m_swapchain_image_views[i], m_depth_image_views[i]};
-
-        fb_info.pAttachments = attachments;
-        fb_info.attachmentCount = 2;
-        VK_CHECK(vkCreateFramebuffer(m_vk_device, &fb_info, nullptr, &m_framebuffers[i]));
-    }
-    return true;
-}
-
-bool
-render_device::deinit_framebuffers()
-{
-    const uint32_t swapchain_imagecount = (uint32_t)m_swapchain_images.size();
-    for (uint32_t i = 0; i < swapchain_imagecount; i++)
-    {
-        vkDestroyFramebuffer(m_vk_device, m_framebuffers[i], nullptr);
-    }
-
-    m_frames.clear();
 
     return true;
 }

@@ -6,6 +6,7 @@
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/utils/segments.h"
+#include "vulkan_render/types/vulkan_render_pass.h"
 
 #include <resource_locator/resource_locator.h>
 
@@ -286,6 +287,8 @@ public:
     VkDescriptorSet m_global_set = VK_NULL_HANDLE;
 
     render::gpu_push_constants m_obj_config;
+
+    std::unordered_map<utils::id, render_pass_sptr> m_render_passes;
 };
 }  // namespace render
 

@@ -68,6 +68,28 @@ void
 vulkan_render::init()
 {
     auto device = glob::render_device::get();
+
+    auto width = (uint32_t)glob::native_window::get()->get_size().w;
+    auto height = (uint32_t)glob::native_window::get()->get_size().h;
+
+    auto main_rp =
+        render_pass_builder()
+            .set_color_format(device->get_swapchain_format())
+            .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
+            .set_width_depth(width, height)
+            .set_color_images(device->get_swapchain_image_views(), device->get_swapchain_images())
+            .build();
+
+    m_render_passes[AID("main")] = std::move(main_rp);
+
+    auto main_rp =
+        render_pass_builder()
+            .set_color_format(device->get_swapchain_format())
+            .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
+            .set_width_depth(width, height)
+            .set_color_images(device->get_swapchain_image_views(), device->get_swapchain_images())
+            .build();
+
     m_frames.resize(device->frame_size());
 
     for (size_t i = 0; i < m_frames.size(); ++i)
@@ -97,6 +119,8 @@ vulkan_render::init()
 void
 vulkan_render::deinit()
 {
+    m_render_passes.clear();
+
     m_frames.clear();
 }
 
@@ -157,26 +181,17 @@ vulkan_render::draw_main()
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
-    auto rp_info =
-        vk_utils::make_renderpass_begin_info(device->render_pass(), VkExtent2D{width, height},
-                                             device->framebuffers(swapchain_image_index));
+    auto& rp = m_render_passes[AID("main")];
 
-    VkClearValue clear_values[2];
-    clear_values[0].color = {0.0f, 0.0f, 0.0, 1.0f};
-    clear_values[1].depthStencil = {1.0f, 0};
-
-    rp_info.clearValueCount = 2;
-    rp_info.pClearValues = clear_values;
-
-    vkCmdBeginRenderPass(cmd, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
+    rp->begin(cmd, swapchain_image_index, width, height);
 
     draw_objects(current_frame);
 
     update_ui(current_frame);
     draw_ui(current_frame);
 
-    // finalize the render pass
-    vkCmdEndRenderPass(cmd);
+    rp->end(cmd);
+
     // finalize the command buffer (we can no longer add commands, but it can now be executed)
     VK_CHECK(vkEndCommandBuffer(cmd));
 
@@ -258,7 +273,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     }
 
     pipeline_ctx pctx{};
-    bind_material(cmd, m_outline_mat, current_frame, pctx,  false);
+    bind_material(cmd, m_outline_mat, current_frame, pctx, false);
 
     for (auto& r : m_outline_render_object_queue)
     {
@@ -269,8 +284,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     if (!m_transparent_render_object_queue.empty())
     {
         update_transparent_objects_queue();
-        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd,
-                                          current_frame);
+        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
     }
 }
 
@@ -626,7 +640,8 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
                             GLOBAL_descriptor_sets, 1, &m_global_set,
-        current_frame.m_dynamic_data_buffer.get_dyn_offsets_count(), current_frame.m_dynamic_data_buffer.get_dyn_offsets_ptr());
+                            current_frame.m_dynamic_data_buffer.get_dyn_offsets_count(),
+                            current_frame.m_dynamic_data_buffer.get_dyn_offsets_ptr());
 
     if (cur_material->has_gpu_data())
     {
@@ -883,7 +898,7 @@ vulkan_render::prepare_system_resources()
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
-    se_ci.render_pass = glob::render_device::getr().render_pass();
+    se_ci.render_pass = m_render_passes[AID("main")]->vk();
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = false;
     se_ci.enable_alpha = false;
@@ -972,7 +987,7 @@ vulkan_render::prepare_ui_pipeline()
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
-    se_ci.render_pass = glob::render_device::getr().render_pass();
+    se_ci.render_pass = m_render_passes[AID("main")]->vk();
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = true;
     se_ci.enable_alpha = true;

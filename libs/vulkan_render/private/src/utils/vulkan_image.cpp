@@ -1,6 +1,7 @@
 ﻿#include "vulkan_render/utils/vulkan_image.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/vulkan_render_device.h"
 
 namespace agea::render::vk_utils
 {
@@ -9,6 +10,7 @@ vulkan_image::vulkan_image(vma_allocator_provider a, int mips_level)
     : m_image()
     , m_allocator(a)
     , mipLevels(mips_level)
+    , m_allocation(VK_NULL_HANDLE)
 {
 }
 
@@ -39,6 +41,7 @@ vulkan_image::operator=(vulkan_image&& other) noexcept
     {
         clear();
     }
+
     m_image = other.m_image;
     m_allocation = other.m_allocation;
     mipLevels = other.mipLevels;
@@ -90,7 +93,8 @@ vulkan_image::clear()
 
     if (m_allocator)
     {
-        vmaDestroyImage(m_allocator(), m_image, m_allocation);
+        glob::render_device::getr().schedule_to_delete(
+            [=](VmaAllocator va) { vmaDestroyImage(va, m_image, m_allocation); });
     }
     else
     {
@@ -100,6 +104,77 @@ vulkan_image::clear()
     m_image = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
     m_allocator = nullptr;
+}
+
+vulkan_image_view::~vulkan_image_view()
+{
+    clear();
+}
+
+vulkan_image_view::vulkan_image_view(vulkan_image_view&& other) noexcept
+    : m_vk_handle(other.m_vk_handle)
+{
+    other.m_vk_handle = VK_NULL_HANDLE;
+}
+
+vulkan_image_view::vulkan_image_view(VkImageView vk_handle)
+    : m_vk_handle(vk_handle)
+{
+}
+
+vulkan_image_view&
+vulkan_image_view::operator=(vulkan_image_view&& other) noexcept
+{
+    if (this != &other)
+    {
+        clear();
+
+        m_vk_handle = other.m_vk_handle;
+        other.m_vk_handle = VK_NULL_HANDLE;
+    }
+
+    return *this;
+}
+
+vulkan_image_view
+vulkan_image_view::create(const VkImageViewCreateInfo& iv_ci)
+{
+    VkImageView iv = VK_NULL_HANDLE;
+
+    vkCreateImageView(glob::render_device::getr().vk_device(), &iv_ci, nullptr, &iv);
+
+    return vulkan_image_view(iv);
+}
+
+vulkan_image_view
+vulkan_image_view::create(VkImageView&& vk_handle)
+{
+    vulkan_image_view iv(vk_handle);
+    vk_handle = VK_NULL_HANDLE;
+
+    return iv;
+}
+
+void
+vulkan_image_view::clear()
+{
+    if (m_vk_handle)
+    {
+        glob::render_device::getr().schedule_to_delete(
+            [=](VkDevice vd) { vkDestroyImageView(vd, m_vk_handle, nullptr); });
+    }
+}
+
+vulkan_image_view_sptr
+vulkan_image_view::create_shared(const VkImageViewCreateInfo& iv_ci)
+{
+    return std::make_shared<vulkan_image_view>(vulkan_image_view::create(iv_ci));
+}
+
+vulkan_image_view_sptr
+vulkan_image_view::create_shared(VkImageView&& vk_handle)
+{
+    return std::make_shared<vulkan_image_view>(vulkan_image_view::create(std::move(vk_handle)));
 }
 
 }  // namespace agea::render::vk_utils
