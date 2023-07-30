@@ -207,7 +207,8 @@ private:
                   material_data* cur_material,
                   render::frame_state& current_frame,
                   pipeline_ctx& ctx,
-                  bool outline = false);
+                  bool outline = false,
+                  bool object = true);
 
     void
     push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id);
@@ -269,9 +270,13 @@ public:
 
     // UI
     shader_effect_data* m_ui_se = nullptr;
+    shader_effect_data* m_ui_copy_se = nullptr;
     texture_data* m_ui_txt = nullptr;
+    texture_data* m_ui_copy_txt = nullptr;
     material_data* m_ui_mat = nullptr;
     material_data* m_outline_mat = nullptr;
+
+    material_data* m_ui_copy = nullptr;
 
     struct ui_push_constants
     {

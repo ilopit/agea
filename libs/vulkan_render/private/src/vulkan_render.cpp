@@ -82,13 +82,39 @@ vulkan_render::init()
 
     m_render_passes[AID("main")] = std::move(main_rp);
 
-    auto main_rp =
-        render_pass_builder()
-            .set_color_format(device->get_swapchain_format())
-            .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-            .set_width_depth(width, height)
-            .set_color_images(device->get_swapchain_image_views(), device->get_swapchain_images())
-            .build();
+    vk_utils::vulkan_image_sptr image;
+    vk_utils::vulkan_image_view_sptr image_view;
+
+    {
+        VkExtent3D image_extent = {width, height, 1};
+
+        auto simg_info = vk_utils::make_image_create_info(
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, image_extent);
+
+        VmaAllocationCreateInfo simg_allocinfo = {};
+        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+            glob::render_device::getr().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+
+        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
+            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+
+        image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
+    }
+
+    auto ui_rp = render_pass_builder()
+                     .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
+                     .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                     .set_width_depth(width, height)
+                     .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
+                                       std::vector<vk_utils::vulkan_image_sptr>{image})
+                     .set_render_to_present(false)
+                     .set_enable_stencil(false)
+                     .build();
+
+    m_render_passes[AID("ui")] = std::move(ui_rp);
 
     m_frames.resize(device->frame_size());
 
@@ -181,15 +207,17 @@ vulkan_render::draw_main()
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
-    auto& rp = m_render_passes[AID("main")];
-
-    rp->begin(cmd, swapchain_image_index, width, height);
-
-    draw_objects(current_frame);
-
     update_ui(current_frame);
-    draw_ui(current_frame);
 
+    // auto rp = m_render_passes[AID("main")];
+    auto rp = m_render_passes[AID("ui")];
+    rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
+    draw_ui(current_frame);
+    rp->end(cmd);
+    rp = m_render_passes[AID("main")];
+
+    rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 1.0});
+    draw_objects(current_frame);
     rp->end(cmd);
 
     // finalize the command buffer (we can no longer add commands, but it can now be executed)
@@ -285,6 +313,22 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     {
         update_transparent_objects_queue();
         draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
+    }
+
+    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
+
+    pctx = {};
+    bind_material(cmd, m_ui_copy, current_frame, pctx, false, false);
+    bind_mesh(cmd, m);
+
+    // we can now draw
+    if (!m->has_indices())
+    {
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
+    else
+    {
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
     }
 }
 
@@ -624,7 +668,8 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
                              material_data* cur_material,
                              render::frame_state& current_frame,
                              pipeline_ctx& ctx,
-                             bool outline)
+                             bool outline,
+                             bool object)
 {
     auto pipeline = outline ? cur_material->get_shader_effect()->m_with_stencil_pipeline
                             : cur_material->get_shader_effect()->m_pipeline;
@@ -635,13 +680,17 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     const uint32_t dummy_offest[] = {0, 0, 0, 0};
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                            OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                            GLOBAL_descriptor_sets, 1, &m_global_set,
-                            current_frame.m_dynamic_data_buffer.get_dyn_offsets_count(),
-                            current_frame.m_dynamic_data_buffer.get_dyn_offsets_ptr());
+    if (object)
+    {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                GLOBAL_descriptor_sets, 1, &m_global_set,
+                                current_frame.m_dynamic_data_buffer.get_dyn_offsets_count(),
+                                current_frame.m_dynamic_data_buffer.get_dyn_offsets_ptr());
+    }
 
     if (cur_material->has_gpu_data())
     {
@@ -898,10 +947,10 @@ vulkan_render::prepare_system_resources()
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
-    se_ci.render_pass = m_render_passes[AID("main")]->vk();
+    se_ci.rp = m_render_passes[AID("main")].get();
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = false;
-    se_ci.enable_alpha = false;
+    se_ci.alpha = alpha_mode::none;
     se_ci.cull_mode = VK_CULL_MODE_NONE;
 
     shader_effect_data* sed = nullptr;
@@ -961,49 +1010,81 @@ vulkan_render::prepare_ui_resources()
 
     m_ui_txt = glob::vulkan_render_loader::getr().create_texture(AID("font"), image_raw_buffer,
                                                                  tex_width, tex_height);
+
+    m_ui_copy_txt = glob::vulkan_render_loader::getr().create_texture(
+        AID("ui_copy_txt"), m_render_passes[AID("ui")]->get_color_images()[0],
+        m_render_passes[AID("ui")]->get_color_image_views()[0]);
 }
 
 void
 vulkan_render::prepare_ui_pipeline()
 {
-    agea::utils::buffer vert, frag;
-
     auto path = glob::resource_locator::get()->resource(category::packages,
                                                         "base.apkg/class/shader_effects/ui");
 
-    auto vert_path = path / "se_uioverlay.vert";
-    agea::utils::buffer::load(vert_path, vert);
+    {
+        agea::utils::buffer vert, frag;
 
-    auto frag_path = path / "se_uioverlay.frag";
-    agea::utils::buffer::load(frag_path, frag);
+        auto vert_path = path / "se_uioverlay.vert";
+        agea::utils::buffer::load(vert_path, vert);
 
-    auto layout = render::gpu_dynobj_builder()
-                      .set_id(AID("interface"))
-                      .add_field(AID("in_pos"), agea::render::gpu_type::g_vec2, 1)
-                      .add_field(AID("in_UV"), agea::render::gpu_type::g_vec2, 1)
-                      .add_field(AID("in_color"), agea::render::gpu_type::g_color, 1)
-                      .finalize();
+        auto frag_path = path / "se_uioverlay.frag";
+        agea::utils::buffer::load(frag_path, frag);
 
-    shader_effect_create_info se_ci;
-    se_ci.vert_buffer = &vert;
-    se_ci.frag_buffer = &frag;
-    se_ci.render_pass = m_render_passes[AID("main")]->vk();
-    se_ci.is_wire = false;
-    se_ci.enable_dynamic_state = true;
-    se_ci.enable_alpha = true;
-    se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
-    se_ci.expected_input_vertex_layout = std::move(layout);
+        auto layout = render::gpu_dynobj_builder()
+                          .set_id(AID("interface"))
+                          .add_field(AID("in_pos"), agea::render::gpu_type::g_vec2, 1)
+                          .add_field(AID("in_UV"), agea::render::gpu_type::g_vec2, 1)
+                          .add_field(AID("in_color"), agea::render::gpu_type::g_color, 1)
+                          .finalize();
 
-    glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
+        shader_effect_create_info se_ci;
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.rp = m_render_passes[AID("ui")].get();
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = true;
+        se_ci.alpha = alpha_mode::ui;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.expected_input_vertex_layout = std::move(layout);
 
-    auto device = glob::render_device::get();
+        glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
 
-    std::vector<texture_sampler_data> samples(1);
-    samples.front().texture = m_ui_txt;
-    samples.front().slot = 0;
+        std::vector<texture_sampler_data> samples(1);
+        samples.front().texture = m_ui_txt;
+        samples.front().slot = 0;
 
-    m_ui_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_ui"), AID("ui"), samples,
-                                                                  *m_ui_se, utils::dynobj{});
+        m_ui_mat = glob::vulkan_render_loader::getr().create_material(
+            AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
+    }
+    {
+        agea::utils::buffer vert, frag;
+
+        auto vert_path = path / "se_upload.vert";
+        agea::utils::buffer::load(vert_path, vert);
+
+        auto frag_path = path / "se_upload.frag";
+        agea::utils::buffer::load(frag_path, frag);
+
+        shader_effect_create_info se_ci;
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.rp = m_render_passes[AID("main")].get();
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::ui;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+
+        glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui_copy"), se_ci,
+                                                                m_ui_copy_se);
+
+        std::vector<texture_sampler_data> samples(1);
+        samples.front().texture = m_ui_copy_txt;
+        samples.front().slot = 0;
+
+        m_ui_copy = glob::vulkan_render_loader::getr().create_material(
+            AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
+    }
 }
 
 void

@@ -58,7 +58,7 @@ VkPipelineMultisampleStateCreateInfo
 make_multisampling_state_create_info();
 
 VkPipelineColorBlendAttachmentState
-make_color_blend_attachment_state(bool enable_alpha);
+make_color_blend_attachment_state(alpha_mode enable_alpha);
 
 VkPipelineLayoutCreateInfo
 make_pipeline_layout_create_info();

@@ -39,7 +39,7 @@ namespace render
 
 namespace
 {
-vk_utils::vulkan_image
+vk_utils::vulkan_image_sptr
 upload_image(int texWidth,
              int texHeight,
              VkFormat image_format,
@@ -117,73 +117,7 @@ upload_image(int texWidth,
                                  1, &imageBarrier_toReadable);
         });
 
-    return new_image;
-}
-
-bool
-load_image_from_file_r(const std::string& file, vk_utils::vulkan_image& outImage)
-{
-    auto device = glob::render_device::get();
-
-    int texWidth, texHeight, texChannels;
-
-    stbi_uc* pixels = stbi_load(file.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-    if (!pixels)
-    {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    void* pixel_ptr = pixels;
-    VkDeviceSize imageSize = texWidth * texHeight * 4ULL;
-
-    VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
-
-    auto stagingBuffer = device->create_buffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                               VMA_MEMORY_USAGE_CPU_ONLY);
-
-    void* data;
-    vmaMapMemory(device->allocator(), stagingBuffer.allocation(), &data);
-
-    memcpy(data, pixel_ptr, static_cast<size_t>(imageSize));
-
-    vmaUnmapMemory(device->allocator(), stagingBuffer.allocation());
-
-    stbi_image_free(pixels);
-
-    outImage = upload_image(texWidth, texHeight, image_format, stagingBuffer);
-
-    return true;
-}
-
-bool
-load_1x1_image_from_color(const std::string& color, vk_utils::vulkan_image& outImage)
-{
-    auto device = glob::render_device::get();
-
-    std::array<uint8_t, 4> color_data{};
-
-    string_utils::convert_hext_string_to_bytes(color.size() - 1, (&color.front()) + 1,
-                                               color_data.data());
-
-    VkDeviceSize size = 4ULL;
-
-    VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
-
-    auto stagingBuffer =
-        device->create_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-
-    void* data = nullptr;
-    vmaMapMemory(device->allocator(), stagingBuffer.allocation(), &data);
-
-    memcpy(data, color_data.data(), static_cast<size_t>(size));
-
-    vmaUnmapMemory(device->allocator(), stagingBuffer.allocation());
-
-    outImage = upload_image(1, 1, image_format, stagingBuffer);
-
-    return true;
+    return std::make_shared<vk_utils::vulkan_image>(std::move(new_image));
 }
 
 }  // namespace
@@ -311,9 +245,27 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
     td->image = upload_image(w, h, image_format, staging_buffer);
 
     VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
-        VK_FORMAT_R8G8B8A8_UNORM, td->image.image(), VK_IMAGE_ASPECT_COLOR_BIT);
-    image_info.subresourceRange.levelCount = td->image.get_mip_levels();
-    vkCreateImageView(device->vk_device(), &image_info, nullptr, &td->image_view);
+        VK_FORMAT_R8G8B8A8_UNORM, td->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    image_info.subresourceRange.levelCount = td->image->get_mip_levels();
+
+    td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
+
+    m_textures_cache[texture_id] = td;
+
+    return td.get();
+}
+
+texture_data*
+vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
+                                     agea::render::vk_utils::vulkan_image_sptr image,
+                                     agea::render::vk_utils::vulkan_image_view_sptr view)
+{
+    AGEA_check(!get_texture_data(texture_id), "should never happens");
+
+    auto td = std::make_shared<texture_data>(texture_id, nullptr);
+
+    td->image = image;
+    td->image_view = view;
 
     m_textures_cache[texture_id] = td;
 
@@ -480,7 +432,7 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
         {
             image_buffer_info[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             image_buffer_info[i].sampler = sampler->m_sampler;
-            image_buffer_info[i].imageView = samples[i].texture->image_view;
+            image_buffer_info[i].imageView = samples[i].texture->image_view->vk();
         }
 
         // TODO: Optimize

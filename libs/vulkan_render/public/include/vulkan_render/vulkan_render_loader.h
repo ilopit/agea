@@ -4,7 +4,7 @@
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_light_data.h"
 #include "vulkan_render/types/vulkan_material_data.h"
-
+#include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
 #include <error_handling/error_handling.h>
@@ -108,6 +108,11 @@ public:
                    const agea::utils::buffer& base_color,
                    uint32_t w,
                    uint32_t h);
+
+    texture_data*
+    create_texture(const agea::utils::id& texture_id,
+                   vk_utils::vulkan_image_sptr image,
+                   vk_utils::vulkan_image_view_sptr view);
 
     void
     destroy_texture_data(const agea::utils::id& id);

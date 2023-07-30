@@ -18,7 +18,6 @@ texture_data::texture_data(texture_data&& other) noexcept
     , m_id(std::move(other.m_id))
     , m_device(std::move(m_device))
 {
-    other.image_view = VK_NULL_HANDLE;
     other.format = texture_format::unknown;
 }
 
@@ -27,9 +26,7 @@ texture_data::operator=(texture_data&& other) noexcept
 {
     if (this != &other)
     {
-        image_view = other.image_view;
-        other.image_view = VK_NULL_HANDLE;
-
+        image_view = std::move(other.image_view);
         image = std::move(other.image);
 
         format = other.format;
@@ -44,10 +41,6 @@ texture_data::operator=(texture_data&& other) noexcept
 
 texture_data::~texture_data()
 {
-    if (m_device)
-    {
-        vkDestroyImageView(m_device(), image_view, nullptr);
-    }
 }
 }  // namespace render
 }  // namespace agea

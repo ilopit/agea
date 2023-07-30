@@ -11,6 +11,7 @@
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/types/vulkan_render_pass.h"
 
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
@@ -194,12 +195,23 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     {
         if (se.m_set_layout[i] != VK_NULL_HANDLE)
         {
-            compacted_layouts[s] = se.m_set_layout[i];
-            ++s;
+            compacted_layouts[i] = se.m_set_layout[i];
+        }
+        else
+        {
+            VkDescriptorSetLayoutCreateInfo create_info{};
+            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            create_info.bindingCount = 0;
+            create_info.pBindings = NULL;
+            create_info.flags = 0;
+            create_info.pNext = 0;
+
+            vkCreateDescriptorSetLayout(device->vk_device(), &create_info, nullptr,
+                                        &compacted_layouts[i]);
         }
     }
 
-    pipeline_layout_ci.setLayoutCount = s;
+    pipeline_layout_ci.setLayoutCount = DESCRIPTORS_SETS_COUNT;
     pipeline_layout_ci.pSetLayouts = compacted_layouts.data();
 
     vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr,
@@ -215,7 +227,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
     se_data.m_is_wire = info.is_wire;
-    se_data.m_enable_alpha = info.enable_alpha;
+    se_data.m_enable_alpha = info.alpha != alpha_mode::none;
 
     se_data.m_vertex_stage = vert_module;
     se_data.m_frag_stage = frag_module;
@@ -288,7 +300,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     pb.m_multisampling_ci = vk_utils::make_multisampling_state_create_info();
 
-    pb.m_color_blend_attachment = vk_utils::make_color_blend_attachment_state(info.enable_alpha);
+    pb.m_color_blend_attachment = vk_utils::make_color_blend_attachment_state(info.alpha);
 
     pb.m_depth_stencil_ci =
         vk_utils::make_depth_stencil_create_info(true, true, info.depth_compare_op, info.ds_mode);
@@ -323,12 +335,12 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     pb.m_pipeline_layout = se_data.m_pipeline_layout;
 
-    se_data.m_pipeline = pb.build(device->vk_device(), info.render_pass);
+    se_data.m_pipeline = pb.build(device->vk_device(), info.rp->vk());
 
     pb.m_depth_stencil_ci = vk_utils::make_depth_stencil_create_info(
         true, true, info.depth_compare_op, depth_stencil_mode::stencil);
 
-    se_data.m_with_stencil_pipeline = pb.build(device->vk_device(), info.render_pass);
+    se_data.m_with_stencil_pipeline = pb.build(device->vk_device(), info.rp->vk());
 
     return se_data.m_pipeline != VK_NULL_HANDLE ? result_code::ok : result_code::failed;
 }

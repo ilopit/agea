@@ -39,14 +39,16 @@ bool
 render_pass::begin(VkCommandBuffer cmd,
                    uint64_t swapchain_image_index,
                    uint32_t width,
-                   uint32_t height)
+                   uint32_t height,
+                   VkClearColorValue color)
 {
-    auto rp_info = vk_utils::make_renderpass_begin_info(
-        m_vk_render_pass, VkExtent2D{width, height},
-        m_framebuffers[swapchain_image_index % m_framebuffers.size()]);
+    auto fb_idx = swapchain_image_index % m_framebuffers.size();
+
+    auto rp_info = vk_utils::make_renderpass_begin_info(m_vk_render_pass, VkExtent2D{width, height},
+                                                        m_framebuffers[fb_idx]);
 
     VkClearValue clear_values[2];
-    clear_values[0].color = {0.0f, 0.0f, 0.0, 1.0f};
+    clear_values[0].color = color;
     clear_values[1].depthStencil = {1.0f, 0};
 
     rp_info.clearValueCount = 2;
@@ -69,6 +71,9 @@ render_pass::end(VkCommandBuffer cmd)
 render_pass_sptr
 render_pass_builder::build()
 {
+    AGEA_check(m_width, "Should not be 0!");
+    AGEA_check(m_height, "Should not be 0!");
+
     auto device = glob::render_device::getr().vk_device();
 
     auto rp = std::make_shared<render_pass>();
@@ -83,7 +88,8 @@ render_pass_builder::build()
         attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        attachments[0].finalLayout = !m_render_to_present ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                          : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         // Depth attachment
         attachments[1].format = m_depth_format;
         attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -118,19 +124,26 @@ render_pass_builder::build()
 
         dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        dependencies[0].srcStageMask = !m_render_to_present ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                                                            : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
         dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        dependencies[0].srcAccessMask =
+            !m_render_to_present ? VK_ACCESS_SHADER_READ_BIT : VK_ACCESS_MEMORY_READ_BIT;
         dependencies[0].dstAccessMask =
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            !m_render_to_present
+                ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
         dependencies[1].srcSubpass = 0;
         dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
         dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        dependencies[1].dstStageMask = !m_render_to_present ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                                                            : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
         dependencies[1].srcAccessMask =
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            !m_render_to_present
+                ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
         dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
@@ -172,9 +185,16 @@ render_pass_builder::build()
             glob::render_device::getr().get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
 
         // build a image-view for the depth image to use for rendering
+
+        int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        if (m_enable_stencil)
+        {
+            depth_image_view_flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+
         auto depth_image_view_ci = vk_utils::make_imageview_create_info(
-            m_depth_format, rp->m_depth_images[i].image(),
-            VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+            m_depth_format, rp->m_depth_images[i].image(), depth_image_view_flags);
 
         rp->m_depth_image_views[i] = vk_utils::vulkan_image_view::create(depth_image_view_ci);
     }

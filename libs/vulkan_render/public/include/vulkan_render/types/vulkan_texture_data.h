@@ -35,8 +35,8 @@ public:
         return m_id;
     }
 
-    VkImageView image_view = VK_NULL_HANDLE;
-    vk_utils::vulkan_image image;
+    vk_utils::vulkan_image_sptr image;
+    vk_utils::vulkan_image_view_sptr image_view;
     texture_format format = texture_format::unknown;
 
 private:

@@ -19,7 +19,11 @@ public:
     AGEA_gen_class_non_copyable(render_pass);
 
     bool
-    begin(VkCommandBuffer cmd, uint64_t swapchain_image_index, uint32_t width, uint32_t height);
+    begin(VkCommandBuffer cmd,
+          uint64_t swapchain_image_index,
+          uint32_t width,
+          uint32_t height,
+          VkClearColorValue clear_color);
 
     bool
     end(VkCommandBuffer cmd);
@@ -28,6 +32,18 @@ public:
     vk()
     {
         return m_vk_render_pass;
+    }
+
+    std::vector<vk_utils::vulkan_image_sptr>
+    get_color_images() const
+    {
+        return m_color_images;
+    }
+
+    std::vector<vk_utils::vulkan_image_view_sptr>
+    get_color_image_views() const
+    {
+        return m_color_image_views;
     }
 
 private:
@@ -74,15 +90,34 @@ public:
         return *this;
     }
 
+    render_pass_builder&
+    set_render_to_present(bool render_to_present)
+    {
+        m_render_to_present = render_to_present;
+
+        return *this;
+    }
+
+    render_pass_builder&
+    set_enable_stencil(bool stencil)
+    {
+        m_enable_stencil = stencil;
+
+        return *this;
+    }
+
     render_pass_sptr
     build();
 
 private:
-    VkFormat m_color_format;
-    VkFormat m_depth_format;
+    VkFormat m_color_format = VK_FORMAT_UNDEFINED;
+    VkFormat m_depth_format = VK_FORMAT_UNDEFINED;
 
-    uint32_t m_width;
-    uint32_t m_height;
+    uint32_t m_width = 0U;
+    uint32_t m_height = 0U;
+
+    bool m_render_to_present = true;
+    bool m_enable_stencil = true;
 
     std::vector<vk_utils::vulkan_image_sptr> m_color_images;
     std::vector<vk_utils::vulkan_image_view_sptr> m_color_image_views;

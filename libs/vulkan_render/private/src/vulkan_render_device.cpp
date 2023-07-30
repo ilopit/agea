@@ -114,7 +114,7 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
         .add_required_extension("VK_EXT_graphics_pipeline_library")
         .add_required_extension("VK_KHR_pipeline_library")
         .set_minimum_version(1, 2)
-        .prefer_gpu_device_type(vkb::PreferredDeviceType::integrated);
+        .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
 
     if (!headless)
     {

@@ -199,28 +199,52 @@ make_multisampling_state_create_info()
 }
 
 VkPipelineColorBlendAttachmentState
-make_color_blend_attachment_state(bool enable_alpha)
+make_color_blend_attachment_state(alpha_mode enable_alpha)
 {
     VkPipelineColorBlendAttachmentState state = {};
-    if (!enable_alpha)
+
+    switch (enable_alpha)
+    {
+    case alpha_mode::none:
     {
         state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
         state.blendEnable = VK_FALSE;
-        return state;
+        break;
     }
-    state.blendEnable = VK_TRUE;
+    case alpha_mode::world:
+    {
+        state.blendEnable = VK_TRUE;
 
-    state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 
-    state.alphaBlendOp = VK_BLEND_OP_ADD;
-    state.colorBlendOp = VK_BLEND_OP_ADD;
+        state.alphaBlendOp = VK_BLEND_OP_ADD;
+        state.colorBlendOp = VK_BLEND_OP_ADD;
 
-    state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        break;
+    }
+    case alpha_mode::ui:
+    {
+        state.blendEnable = VK_TRUE;
+
+        state.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+
+        state.alphaBlendOp = VK_BLEND_OP_ADD;
+        state.colorBlendOp = VK_BLEND_OP_ADD;
+
+        state.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        break;
+    }
+    }
 
     return state;
 }
