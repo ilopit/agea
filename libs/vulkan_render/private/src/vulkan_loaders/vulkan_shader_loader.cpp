@@ -77,7 +77,7 @@ agea::result_code
 load_data_shader(const agea::utils::buffer& input,
                  bool is_binary,
                  VkShaderStageFlagBits stage_bit,
-                 std::shared_ptr<shader_data>& sd)
+                 std::shared_ptr<shader_module_data>& sd)
 {
     auto device = glob::render_device::get();
 
@@ -111,8 +111,7 @@ load_data_shader(const agea::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_data>(device->get_vk_device_provider(), module,
-                                       std::move(compiled_buffer), stage_bit);
+    sd = std::make_shared<shader_module_data>(module, std::move(compiled_buffer), stage_bit);
 
     return result_code::ok;
 }
@@ -171,15 +170,8 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
         ly.create_info.flags = 0;
         ly.create_info.pNext = 0;
 
-        if (ly.create_info.bindingCount > 0)
-        {
-            vkCreateDescriptorSetLayout(device->vk_device(), &ly.create_info, nullptr,
-                                        &se.m_set_layout[i]);
-        }
-        else
-        {
-            se.m_set_layout[i] = VK_NULL_HANDLE;
-        }
+        vkCreateDescriptorSetLayout(device->vk_device(), &ly.create_info, nullptr,
+                                    &se.m_set_layout[i]);
     }
 
     VkPipelineLayoutCreateInfo pipeline_layout_ci = vk_utils::make_pipeline_layout_create_info();
@@ -187,32 +179,8 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     pipeline_layout_ci.pPushConstantRanges = constants.data();
     pipeline_layout_ci.pushConstantRangeCount = (uint32_t)constants.size();
 
-    std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> compacted_layouts{};
-
-    uint32_t s = 0;
-
-    for (uint32_t i = 0; i < DESCRIPTORS_SETS_COUNT; i++)
-    {
-        if (se.m_set_layout[i] != VK_NULL_HANDLE)
-        {
-            compacted_layouts[i] = se.m_set_layout[i];
-        }
-        else
-        {
-            VkDescriptorSetLayoutCreateInfo create_info{};
-            create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-            create_info.bindingCount = 0;
-            create_info.pBindings = NULL;
-            create_info.flags = 0;
-            create_info.pNext = 0;
-
-            vkCreateDescriptorSetLayout(device->vk_device(), &create_info, nullptr,
-                                        &compacted_layouts[i]);
-        }
-    }
-
     pipeline_layout_ci.setLayoutCount = DESCRIPTORS_SETS_COUNT;
-    pipeline_layout_ci.pSetLayouts = compacted_layouts.data();
+    pipeline_layout_ci.pSetLayouts = se.m_set_layout.data();
 
     vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr,
                            &se.m_pipeline_layout);
@@ -222,8 +190,8 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
 
 result_code
 vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
-                                           std::shared_ptr<shader_data>& vert_module,
-                                           std::shared_ptr<shader_data>& frag_module,
+                                           std::shared_ptr<shader_module_data>& vert_module,
+                                           std::shared_ptr<shader_module_data>& frag_module,
                                            const shader_effect_create_info& info)
 {
     se_data.m_is_wire = info.is_wire;
@@ -352,8 +320,7 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
 {
     auto device = glob::render_device::get();
 
-    old_se_data = std::make_shared<render::shader_effect_data>(se_data.get_id(),
-                                                               device->get_vk_device_provider());
+    old_se_data = std::make_shared<render::shader_effect_data>(se_data.get_id());
 
     if (se_data.m_vertex_stage)
     {
@@ -400,7 +367,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 {
     auto device = glob::render_device::get();
 
-    std::shared_ptr<shader_data> vert_module;
+    std::shared_ptr<shader_module_data> vert_module;
     auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
                                vert_module);
     if (rc != result_code::ok)
@@ -409,7 +376,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         return rc;
     }
 
-    std::shared_ptr<shader_data> frag_module;
+    std::shared_ptr<shader_module_data> frag_module;
     rc = load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
                           frag_module);
     if (rc != result_code::ok)

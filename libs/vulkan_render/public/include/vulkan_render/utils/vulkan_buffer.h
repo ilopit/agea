@@ -19,7 +19,7 @@ public:
     ~vulkan_buffer();
 
     static vulkan_buffer
-    create(vma_allocator_provider alloc, VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
+    create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
 
     AGEA_gen_class_non_copyable(vulkan_buffer);
 
@@ -40,12 +40,6 @@ public:
     allocation()
     {
         return m_allocation;
-    }
-
-    VmaAllocator
-    allocator()
-    {
-        return m_allocator();
     }
 
     template <typename T>
@@ -117,14 +111,10 @@ public:
     }
 
 private:
-    vulkan_buffer(vma_allocator_provider alloc,
-                  VkBuffer b,
-                  VmaAllocation a,
-                  VkDeviceSize alloc_size);
+    vulkan_buffer(VkBuffer b, VmaAllocation a, VkDeviceSize alloc_size);
 
     VkBuffer m_buffer = VK_NULL_HANDLE;
     VmaAllocation m_allocation = VK_NULL_HANDLE;
-    vma_allocator_provider m_allocator = nullptr;
 
     uint32_t m_offset = 0U;
     VkDeviceSize m_alloc_size = 0U;

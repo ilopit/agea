@@ -1,7 +1,6 @@
-#include "vulkan_render/vulkan_render.h"
+#include "vulkan_render/agea_render.h"
 
 #include "vulkan_render/vulkan_render_device.h"
-#include "vulkan_render/vulkan_render.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/utils/vulkan_converters.h"
@@ -318,7 +317,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
 
     pctx = {};
-    bind_material(cmd, m_ui_copy, current_frame, pctx, false, false);
+    bind_material(cmd, m_ui_dst_mat, current_frame, pctx, false, false);
     bind_mesh(cmd, m);
 
     // we can now draw
@@ -1082,7 +1081,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_copy_txt;
         samples.front().slot = 0;
 
-        m_ui_copy = glob::vulkan_render_loader::getr().create_material(
+        m_ui_dst_mat = glob::vulkan_render_loader::getr().create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 }
@@ -1127,14 +1126,12 @@ vulkan_render::update_ui(frame_state& fs)
         VmaAllocationCreateInfo vma_ci = {};
         vma_ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-        fs.m_ui_vertex_buffer = vk_utils::vulkan_buffer::create(
-            device->get_vma_allocator_provider(), staging_buffer_ci, vma_ci);
+        fs.m_ui_vertex_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
 
         staging_buffer_ci.size = index_buffer_size;
         staging_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-        fs.m_ui_index_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
-                                                               staging_buffer_ci, vma_ci);
+        fs.m_ui_index_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
     }
 
     // Upload data

@@ -394,7 +394,7 @@ shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
 bool
 shader_reflection_utils::build_shader_reflection(render_device* device,
                                                  reflection::shader_reflection& sr,
-                                                 std::shared_ptr<shader_data>& sd)
+                                                 std::shared_ptr<shader_module_data>& sd)
 {
     SpvReflectShaderModuleHandle spvmodule;
 

@@ -28,57 +28,9 @@ namespace render
 {
 class render_device;
 
-struct b_deleter
-{
-    virtual ~b_deleter()
-    {
-    }
-};
-
-template <typename T>
-struct s_deleter : public b_deleter
-{
-    template <typename T>
-    static std::unique_ptr<b_deleter>
-    make(T&& v)
-    {
-        return std::make_unique<s_deleter<T>>(std::move(v));
-    }
-
-    s_deleter(T&& v)
-        : under_delete(std::move(v))
-    {
-    }
-
-    ~s_deleter()
-    {
-        int i = 2;
-    }
-
-    T under_delete;
-};
-
-template <typename T>
-struct rhandle;
-
 class vulkan_render_loader
 {
 public:
-    struct deleyer_delete_action
-    {
-        uint64_t frame_to_delete = 0;
-        std::unique_ptr<b_deleter> deleter = nullptr;
-    };
-
-    struct deleyer_delete_action_compare
-    {
-        bool
-        operator()(const deleyer_delete_action& l, const deleyer_delete_action& r)
-        {
-            return l.frame_to_delete < r.frame_to_delete;
-        }
-    };
-
     /*************************/
 
     mesh_data*
@@ -236,15 +188,15 @@ public:
         return itr != col.end() ? itr->second.get() : nullptr;
     }
 
-    template <typename T>
-    static T*
-    get_data(std::unordered_map<agea::utils::id, std::shared_ptr<rhandle<T>>>& col,
-             const agea::utils::id& id)
-    {
-        auto itr = col.find(id);
-
-        return itr != col.end() ? &(itr->second->handle) : nullptr;
-    }
+    //     template <typename T>
+    //     static T*
+    //     get_data(std::unordered_map<agea::utils::id, std::shared_ptr<rhandle<T>>>& col,
+    //              const agea::utils::id& id)
+    //     {
+    //         auto itr = col.find(id);
+    //
+    //         return itr != col.end() ? &(itr->second->handle) : nullptr;
+    //     }
 
     void
     delete_sheduled_actions();
@@ -259,15 +211,6 @@ public:
     last_mat_index(const agea::utils::id& type_id)
     {
         return m_materials_index.at(type_id);
-    }
-    void
-    shedule_to_deltete(std::unique_ptr<b_deleter> d);
-
-    template <typename T>
-    void
-    shedule_to_deltete_t(T&& v)
-    {
-        shedule_to_deltete(s_deleter<T>::make(std::move(v)));
     }
 
     std::unordered_map<agea::utils::id, std::shared_ptr<light_data>>&
@@ -286,7 +229,7 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
     std::unordered_map<agea::utils::id, std::shared_ptr<material_data>> m_materials_cache;
-    std::unordered_map<agea::utils::id, std::shared_ptr<shader_data>> m_shaders_cache;
+    std::unordered_map<agea::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
 
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
@@ -298,11 +241,6 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 
     std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
-
-    std::priority_queue<deleyer_delete_action,
-                        std::vector<deleyer_delete_action>,
-                        deleyer_delete_action_compare>
-        m_ddq;
 };
 
 }  // namespace render

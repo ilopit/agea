@@ -33,8 +33,8 @@ create_shader_effect(shader_effect_data& se_data, const shader_effect_create_inf
 
 result_code
 create_shader_effect(shader_effect_data& se_data,
-                     std::shared_ptr<shader_data>& vert_module,
-                     std::shared_ptr<shader_data>& frag_module,
+                     std::shared_ptr<shader_module_data>& vert_module,
+                     std::shared_ptr<shader_module_data>& frag_module,
                      const shader_effect_create_info& info);
 
 }  // namespace vulkan_shader_loader

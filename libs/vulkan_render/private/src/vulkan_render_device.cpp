@@ -350,18 +350,6 @@ render_device::init_descriptors()
     m_descriptor_allocator = std::make_unique<vk_utils::descriptor_allocator>();
     m_descriptor_layout_cache = std::make_unique<vk_utils::descriptor_layout_cache>();
 
-    VkDescriptorSetLayoutBinding textureBind = vk_utils::make_descriptor_set_layout_binding(
-        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0);
-
-    VkDescriptorSetLayoutCreateInfo set3info = {};
-    set3info.bindingCount = 1;
-    set3info.flags = 0;
-    set3info.pNext = nullptr;
-    set3info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    set3info.pBindings = &textureBind;
-
-    m_single_texture_set_layout = m_descriptor_layout_cache->create_descriptor_layout(&set3info);
-
     for (auto& frame : m_frames)
     {
         frame.m_dynamic_descriptor_allocator = std::make_unique<vk_utils::descriptor_allocator>();
@@ -396,6 +384,35 @@ render_device::wait_for_fences()
     for (auto& frame : m_frames)
     {
         vkWaitForFences(m_vk_device, 1, &frame.m_render_fence, true, 1'000'000'000);
+    }
+}
+
+void
+render_device::schedule_to_delete(delayed_deleter d)
+{
+    m_delayed_delete_queue.push({m_current_frame_number + FRAMES_IN_FLYIGNT, std::move(d)});
+}
+
+void
+render_device::delete_immidiately(delayed_deleter d)
+{
+    d(m_vk_device, m_allocator);
+}
+
+void
+render_device::delete_sheduled_actions()
+{
+    if (m_delayed_delete_queue.empty())
+    {
+        return;
+    }
+
+    auto device = glob::render_device::get();
+    auto current_frame = device->get_current_frame_number();
+    while (!m_delayed_delete_queue.empty() &&
+           m_delayed_delete_queue.top().frame_idx <= current_frame)
+    {
+        m_delayed_delete_queue.pop();
     }
 }
 
@@ -467,8 +484,7 @@ render_device::create_buffer(size_t alloc_size,
 
     // allocate the buffer
 
-    return vk_utils::vulkan_buffer::create([this]() { return m_allocator; }, buffer_ci,
-                                           vma_alloc_ci);
+    return vk_utils::vulkan_buffer::create(buffer_ci, vma_alloc_ci);
 }
 }  // namespace render
 }  // namespace agea

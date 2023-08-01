@@ -17,7 +17,7 @@ enum class texture_format : uint32_t
 class texture_data
 {
 public:
-    texture_data(const ::agea::utils::id& id, vk_device_provider dbp);
+    texture_data(const ::agea::utils::id& id);
     ~texture_data();
 
     texture_data(const texture_data&) = delete;
@@ -41,7 +41,6 @@ public:
 
 private:
     ::agea::utils::id m_id;
-    vk_device_provider m_device = nullptr;
 };
 
 }  // namespace render

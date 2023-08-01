@@ -19,9 +19,6 @@ vulkan_buffer::operator=(vulkan_buffer&& other) noexcept
         m_allocation = other.m_allocation;
         other.m_allocation = VK_NULL_HANDLE;
 
-        m_allocator = other.m_allocator;
-        other.m_allocator = nullptr;
-
         m_offset = other.m_offset;
         other.m_offset = 0;
 
@@ -40,18 +37,13 @@ vulkan_buffer::operator=(vulkan_buffer&& other) noexcept
 vulkan_buffer::vulkan_buffer()
     : m_buffer(VK_NULL_HANDLE)
     , m_allocation(VK_NULL_HANDLE)
-    , m_allocator(nullptr)
     , m_alloc_size(0)
 {
 }
 
-vulkan_buffer::vulkan_buffer(vma_allocator_provider alloc,
-                             VkBuffer b,
-                             VmaAllocation a,
-                             VkDeviceSize alloc_size)
+vulkan_buffer::vulkan_buffer(VkBuffer b, VmaAllocation a, VkDeviceSize alloc_size)
     : m_buffer(b)
     , m_allocation(a)
-    , m_allocator(alloc)
     , m_alloc_size(alloc_size)
 {
 }
@@ -59,7 +51,6 @@ vulkan_buffer::vulkan_buffer(vma_allocator_provider alloc,
 vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
     : m_buffer(other.m_buffer)
     , m_allocation(other.m_allocation)
-    , m_allocator(other.m_allocator)
     , m_offset(other.m_offset)
     , m_data_begin(other.m_data_begin)
     , m_offsets(std::move(other.m_offsets))
@@ -67,7 +58,6 @@ vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
 {
     other.m_buffer = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
-    other.m_allocator = nullptr;
     other.m_offset = 0;
     other.m_data_begin = nullptr;
     other.m_alloc_size = 0;
@@ -76,30 +66,24 @@ vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
 void
 vulkan_buffer::clear()
 {
-    if (!m_allocator)
-    {
-        return;
-    }
-
-    vmaDestroyBuffer(m_allocator(), m_buffer, m_allocation);
+    glob::render_device::getr().delete_immidiately(
+        [=](VkDevice vkd, VmaAllocator va) { vmaDestroyBuffer(va, m_buffer, m_allocation); });
 
     m_buffer = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
-    m_allocator = nullptr;
     m_alloc_size = 0;
 }
 
 vulkan_buffer
-vulkan_buffer::create(vma_allocator_provider alloc,
-                      VkBufferCreateInfo bci,
-                      VmaAllocationCreateInfo vaci)
+vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
 {
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    vmaCreateBuffer(alloc(), &bci, &vaci, &buffer, &allocation, nullptr);
+    vmaCreateBuffer(glob::render_device::getr().allocator(), &bci, &vaci, &buffer, &allocation,
+                    nullptr);
 
-    return vulkan_buffer{alloc, buffer, allocation, bci.size};
+    return vulkan_buffer{buffer, allocation, bci.size};
 }
 
 vulkan_buffer::~vulkan_buffer()
@@ -112,20 +96,20 @@ vulkan_buffer::begin()
 {
     m_offset = 0;
     m_offsets.clear();
-    vmaMapMemory(allocator(), allocation(), (void**)&m_data_begin);
+    vmaMapMemory(glob::render_device::getr().allocator(), allocation(), (void**)&m_data_begin);
 }
 
 void
 vulkan_buffer::end()
 {
-    vmaUnmapMemory(allocator(), allocation());
+    vmaUnmapMemory(glob::render_device::getr().allocator(), allocation());
     m_data_begin = nullptr;
 }
 
 void
 vulkan_buffer::flush()
 {
-    vmaFlushAllocation(allocator(), allocation(), 0, m_offset);
+    vmaFlushAllocation(glob::render_device::getr().allocator(), allocation(), 0, m_offset);
 }
 
 void

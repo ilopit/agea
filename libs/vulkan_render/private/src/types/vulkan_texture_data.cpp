@@ -5,9 +5,8 @@ namespace agea
 namespace render
 {
 
-texture_data::texture_data(const ::agea::utils::id& id, vk_device_provider vdp)
+texture_data::texture_data(const ::agea::utils::id& id)
     : m_id(id)
-    , m_device(vdp)
 {
 }
 
@@ -16,7 +15,6 @@ texture_data::texture_data(texture_data&& other) noexcept
     , image(std::move(other.image))
     , format(other.format)
     , m_id(std::move(other.m_id))
-    , m_device(std::move(m_device))
 {
     other.format = texture_format::unknown;
 }
@@ -33,7 +31,6 @@ texture_data::operator=(texture_data&& other) noexcept
         other.format = texture_format::unknown;
 
         m_id = std::move(other.m_id);
-        m_device = std::move(m_device);
     }
 
     return *this;

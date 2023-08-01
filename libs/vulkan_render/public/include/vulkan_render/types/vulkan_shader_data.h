@@ -8,15 +8,14 @@ namespace agea
 {
 namespace render
 {
-class shader_data
+class shader_module_data
 {
 public:
-    shader_data(vk_device_provider vk_device,
-                VkShaderModule vk_module,
-                ::agea::utils::buffer code,
-                VkShaderStageFlagBits stage_bit);
+    shader_module_data(VkShaderModule vk_module,
+                       ::agea::utils::buffer code,
+                       VkShaderStageFlagBits stage_bit);
 
-    ~shader_data();
+    ~shader_module_data();
 
     VkShaderModule
     vk_module() const
@@ -38,7 +37,6 @@ public:
 
 private:
     VkShaderStageFlagBits m_stage_bit;
-    vk_device_provider m_vk_device;
     VkShaderModule m_vk_module;
     ::agea::utils::buffer m_code;
 };

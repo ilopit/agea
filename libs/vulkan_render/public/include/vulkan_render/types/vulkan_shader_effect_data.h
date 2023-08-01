@@ -15,7 +15,7 @@ namespace agea
 {
 namespace render
 {
-class shader_data;
+class shader_module_data;
 
 struct vulkan_descriptor_set_layout_data
 {
@@ -27,10 +27,8 @@ struct vulkan_descriptor_set_layout_data
 class shader_effect_data
 {
 public:
-    shader_effect_data(const ::agea::utils::id& id, vk_device_provider vdp);
-    shader_effect_data(const ::agea::utils::id& id,
-                       vk_device_provider vdp,
-                       const utils::dynobj_layout_sptr& v);
+    shader_effect_data(const ::agea::utils::id& id);
+    shader_effect_data(const ::agea::utils::id& id, const utils::dynobj_layout_sptr& v);
 
     ~shader_effect_data();
 
@@ -63,10 +61,10 @@ public:
 
     utils::dynobj_layout_sptr m_expected_vertex_input;
 
-    std::shared_ptr<shader_data> m_vertex_stage;
+    std::shared_ptr<shader_module_data> m_vertex_stage;
     reflection::shader_reflection m_vertext_stage_reflection;
 
-    std::shared_ptr<shader_data> m_frag_stage;
+    std::shared_ptr<shader_module_data> m_frag_stage;
     reflection::shader_reflection m_fragment_stage_reflection;
 
     bool m_is_wire = false;
@@ -75,7 +73,6 @@ public:
     bool m_failed_load = false;
 
 private:
-    vk_device_provider m_device;
     ::agea::utils::id m_id;
 };
 

@@ -103,7 +103,7 @@ struct shader_reflection_utils
     static bool
     build_shader_reflection(render_device* device,
                             reflection::shader_reflection& sr,
-                            std::shared_ptr<shader_data>& sd);
+                            std::shared_ptr<shader_module_data>& sd);
 
     // Converters
     static VkDescriptorSetLayoutBinding

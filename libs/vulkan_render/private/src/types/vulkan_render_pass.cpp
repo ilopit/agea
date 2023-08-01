@@ -22,14 +22,16 @@ render_pass_builder::set_color_images(const std::vector<vk_utils::vulkan_image_v
 
 render_pass::~render_pass()
 {
-    glob::render_device::getr().schedule_to_delete(
-        [=](VkDevice vkd) { vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr); });
+    glob::render_device::getr().delete_immidiately(
+        [=](VkDevice vkd, VmaAllocator)
+        {
+            vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr);
 
-    for (auto f : m_framebuffers)
-    {
-        glob::render_device::getr().schedule_to_delete([=](VkDevice vkd)
-                                                       { vkDestroyFramebuffer(vkd, f, nullptr); });
-    }
+            for (auto f : m_framebuffers)
+            {
+                vkDestroyFramebuffer(vkd, f, nullptr);
+            }
+        });
 
     m_color_image_views.clear();
     m_color_images.clear();

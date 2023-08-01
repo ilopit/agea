@@ -271,20 +271,21 @@ public:
     // UI
     shader_effect_data* m_ui_se = nullptr;
     shader_effect_data* m_ui_copy_se = nullptr;
+
     texture_data* m_ui_txt = nullptr;
     texture_data* m_ui_copy_txt = nullptr;
     material_data* m_ui_mat = nullptr;
-    material_data* m_outline_mat = nullptr;
-
-    material_data* m_ui_copy = nullptr;
+    material_data* m_ui_dst_mat = nullptr;
 
     struct ui_push_constants
     {
         glm::vec2 scale;
         glm::vec2 translate;
     };
-
     ui_push_constants m_ui_push_constants;
+
+    // Generic
+    material_data* m_outline_mat = nullptr;
 
     // Descriptors
 

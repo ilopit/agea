@@ -154,8 +154,7 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
     VmaAllocationCreateInfo vma_alloc_ci = {};
     vma_alloc_ci.usage = VMA_MEMORY_USAGE_CPU_ONLY;
 
-    auto staging_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
-                                                          staging_buffer_ci, vma_alloc_ci);
+    auto staging_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_alloc_ci);
     // copy vertex data
 
     staging_buffer.begin();
@@ -177,8 +176,7 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
     // let the VMA library know that this data should be gpu native
     vma_alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    md->m_vertex_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
-                                                          vertex_buffer_ci, vma_alloc_ci);
+    md->m_vertex_buffer = vk_utils::vulkan_buffer::create(vertex_buffer_ci, vma_alloc_ci);
     // allocate the buffer
     if (index_buffer_size > 0)
     {
@@ -192,8 +190,7 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
         index_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         //         // allocate the buffer
-        md->m_index_buffer = vk_utils::vulkan_buffer::create(device->get_vma_allocator_provider(),
-                                                             index_buffer_ci, vma_alloc_ci);
+        md->m_index_buffer = vk_utils::vulkan_buffer::create(index_buffer_ci, vma_alloc_ci);
     }
 
     device->immediate_submit(
@@ -230,7 +227,7 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
 
     auto device = glob::render_device::get();
 
-    auto td = std::make_shared<texture_data>(texture_id, device->get_vk_device_provider());
+    auto td = std::make_shared<texture_data>(texture_id);
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
@@ -262,7 +259,7 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
 {
     AGEA_check(!get_texture_data(texture_id), "should never happens");
 
-    auto td = std::make_shared<texture_data>(texture_id, nullptr);
+    auto td = std::make_shared<texture_data>(texture_id);
 
     td->image = image;
     td->image_view = view;
@@ -278,7 +275,7 @@ vulkan_render_loader::destroy_texture_data(const agea::utils::id& id)
     auto itr = m_textures_cache.find(id);
     if (itr != m_textures_cache.end())
     {
-        shedule_to_deltete_t(std::move(itr->second));
+        // shedule_to_deltete_t(std::move(itr->second));
         m_textures_cache.erase(itr);
     }
 }
@@ -367,7 +364,7 @@ vulkan_render_loader::destroy_mesh_data(const agea::utils::id& id)
     auto itr = m_meshes_cache.find(id);
     if (itr != m_meshes_cache.end())
     {
-        shedule_to_deltete_t(std::move(itr->second));
+        // shedule_to_deltete_t(std::move(itr->second));
         m_meshes_cache.erase(itr);
     }
 }
@@ -466,7 +463,7 @@ vulkan_render_loader::create_sampler(const agea::utils::id& id, VkBorderColor co
     sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     sampler_ci.borderColor = color;
 
-    auto data = std::make_shared<sampler_data>(id, device->get_vk_device_provider());
+    auto data = std::make_shared<sampler_data>(id);
 
     vkCreateSampler(glob::render_device::get()->vk_device(), &sampler_ci, nullptr,
                     &data->m_sampler);
@@ -482,7 +479,7 @@ vulkan_render_loader::destroy_sampler_data(const agea::utils::id& id)
     auto itr = m_samplers_cache.find(id);
     if (itr != m_samplers_cache.end())
     {
-        shedule_to_deltete_t(std::move(itr->second));
+        // shedule_to_deltete_t(std::move(itr->second));
         m_samplers_cache.erase(itr);
     }
 }
@@ -506,7 +503,7 @@ vulkan_render_loader::destroy_material_data(const agea::utils::id& id)
     auto itr = m_materials_cache.find(id);
     if (itr != m_materials_cache.end())
     {
-        shedule_to_deltete_t(std::move(itr->second));
+        // shedule_to_deltete_t(std::move(itr->second));
         m_materials_cache.erase(itr);
     }
 }
@@ -519,7 +516,7 @@ vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
     AGEA_check(!get_shader_effect_data(id), "should never happens");
 
     auto device = glob::render_device::get();
-    auto effect = std::make_shared<shader_effect_data>(id, device->get_vk_device_provider());
+    auto effect = std::make_shared<shader_effect_data>(id);
 
     auto rc = vulkan_shader_loader::create_shader_effect(*effect, info);
 
@@ -550,9 +547,10 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
         return rc;
     }
 
-    auto rd = s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
-
-    shedule_to_deltete(std::move(rd));
+    //     auto rd =
+    //     s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
+    //
+    //     shedule_to_deltete(std::move(rd));
 
     return rc;
 }
@@ -563,7 +561,7 @@ vulkan_render_loader::destroy_shader_effect_data(const agea::utils::id& id)
     auto itr = m_shaders_effects_cache.find(id);
     if (itr != m_shaders_effects_cache.end())
     {
-        shedule_to_deltete_t(std::move(itr->second));
+        //  shedule_to_deltete_t(std::move(itr->second));
         m_shaders_effects_cache.erase(itr);
     }
 }
@@ -579,35 +577,27 @@ vulkan_render_loader::clear_caches()
     m_objects_cache.clear();
     m_samplers_cache.clear();
     m_materials_index.clear();
-
-    while (!m_ddq.empty())
-    {
-        m_ddq.pop();
-    }
-}
-
-void
-vulkan_render_loader::shedule_to_deltete(std::unique_ptr<b_deleter> d)
-{
-    auto size = glob::render_device::getr().get_current_frame_number() + FRAMES_IN_FLYIGNT * 2;
-
-    m_ddq.emplace(size, std::move(d));
+    //
+    //     while (!m_ddq.empty())
+    //     {
+    //         m_ddq.pop();
+    //     }
 }
 
 void
 vulkan_render_loader::delete_sheduled_actions()
 {
-    if (m_ddq.empty())
-    {
-        return;
-    }
-
-    auto device = glob::render_device::get();
-    auto current_frame = device->get_current_frame_number();
-    while (!m_ddq.empty() && m_ddq.top().frame_to_delete <= current_frame)
-    {
-        m_ddq.pop();
-    }
+    //     if (m_ddq.empty())
+    //     {
+    //         return;
+    //     }
+    //
+    //     auto device = glob::render_device::get();
+    //     auto current_frame = device->get_current_frame_number();
+    //     while (!m_ddq.empty() && m_ddq.top().frame_to_delete <= current_frame)
+    //     {
+    //         m_ddq.pop();
+    //     }
 }
 
 }  // namespace render

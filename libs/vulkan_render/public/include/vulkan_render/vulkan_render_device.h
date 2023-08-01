@@ -11,6 +11,7 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <queue>
 
 struct SDL_Window;
 
@@ -20,7 +21,6 @@ namespace agea
 {
 namespace render
 {
-
 namespace vk_utils
 {
 class descriptor_layout_cache;
@@ -211,21 +211,16 @@ public:
         return m_swapchain_image_views;
     }
 
-    using vk_deleter = std::function<void(VkDevice vkd)>;
+    using delayed_deleter = std::function<void(VkDevice vkd, VmaAllocator va)>;
 
     void
-    schedule_to_delete(vk_deleter d)
-    {
-        d(m_vk_device);
-    }
-
-    using vma_deleter = std::function<void(VmaAllocator va)>;
+    schedule_to_delete(delayed_deleter d);
 
     void
-    schedule_to_delete(vma_deleter d)
-    {
-        d(m_allocator);
-    }
+    delete_immidiately(delayed_deleter d);
+
+    void
+    delete_sheduled_actions();
 
 private:
     bool
@@ -282,10 +277,29 @@ private:
 
     uint64_t m_current_frame_number = UINT64_MAX;
     uint64_t m_current_frame_index = 0ULL;
+
+    struct delayed_delete_action
+    {
+        uint64_t frame_idx = 0;
+        delayed_deleter del = nullptr;
+    };
+
+    struct delayed_delete_action_compare
+    {
+        bool
+        operator()(const delayed_delete_action& l, const delayed_delete_action& r)
+        {
+            return l.frame_idx < r.frame_idx;
+        }
+    };
+
+    std::priority_queue<delayed_delete_action,
+                        std::vector<delayed_delete_action>,
+                        delayed_delete_action_compare>
+        m_delayed_delete_queue;
 };
 
 }  // namespace render
-
 namespace glob
 {
 struct render_device

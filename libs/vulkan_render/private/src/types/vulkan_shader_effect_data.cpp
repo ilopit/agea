@@ -1,29 +1,28 @@
 ﻿#include "vulkan_render/types/vulkan_shader_effect_data.h"
 
+#include "vulkan_render/vulkan_render_device.h"
+
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/shader_reflection_utils.h"
 
-#include "utils/agea_log.h"
+#include <utils/agea_log.h>
 
 namespace agea
 {
 namespace render
 {
 
-shader_effect_data::shader_effect_data(const ::agea::utils::id& id, vk_device_provider vdp)
+shader_effect_data::shader_effect_data(const ::agea::utils::id& id)
     : m_id(id)
-    , m_device(vdp)
     , m_expected_vertex_input(get_default_vertex_inout_layout())
 {
     m_set_layout.fill(VK_NULL_HANDLE);
 }
 
 shader_effect_data::shader_effect_data(const ::agea::utils::id& id,
-                                       vk_device_provider vdp,
                                        const utils::dynobj_layout_sptr& v)
     : m_id(id)
-    , m_device(vdp)
     , m_expected_vertex_input(v)
 {
     m_set_layout.fill(VK_NULL_HANDLE);
@@ -40,23 +39,30 @@ shader_effect_data::reset()
     m_vertex_stage.reset();
     m_frag_stage.reset();
 
-    for (auto l : m_set_layout)
+    if (m_pipeline)
     {
-        vkDestroyDescriptorSetLayout(m_device(), l, nullptr);
+        glob::render_device::getr().delete_immidiately(
+            [=](VkDevice vd, VmaAllocator)
+            {
+                for (auto l : m_set_layout)
+                {
+                    vkDestroyDescriptorSetLayout(vd, l, nullptr);
+                }
+
+                vkDestroyPipeline(vd, m_pipeline, nullptr);
+                vkDestroyPipeline(vd, m_with_stencil_pipeline, nullptr);
+                vkDestroyPipelineLayout(vd, m_pipeline_layout, nullptr);
+            });
+
+        for (size_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
+        {
+            m_set_layout[i] = VK_NULL_HANDLE;
+        }
+
+        m_pipeline = VK_NULL_HANDLE;
+        m_with_stencil_pipeline = VK_NULL_HANDLE;
+        m_pipeline_layout = VK_NULL_HANDLE;
     }
-
-    vkDestroyPipeline(m_device(), m_pipeline, nullptr);
-    vkDestroyPipeline(m_device(), m_with_stencil_pipeline, nullptr);
-    vkDestroyPipelineLayout(m_device(), m_pipeline_layout, nullptr);
-
-    for (size_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
-    {
-        m_set_layout[i] = VK_NULL_HANDLE;
-    }
-
-    m_pipeline = VK_NULL_HANDLE;
-    m_with_stencil_pipeline = VK_NULL_HANDLE;
-    m_pipeline_layout = VK_NULL_HANDLE;
 }
 
 void
