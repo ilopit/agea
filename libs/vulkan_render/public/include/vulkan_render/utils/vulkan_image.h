@@ -42,6 +42,12 @@ public:
         return m_image;
     }
 
+    std::uint8_t*
+    map();
+
+    void
+    unmap();
+
     int
     get_mip_levels()
     {
@@ -55,6 +61,7 @@ private:
     vma_allocator_provider m_allocator;
     VkImage m_image;
     int mipLevels = 1;
+    std::uint8_t* m_data_begin = nullptr;
 };
 
 using vulkan_image_sptr = std::shared_ptr<vulkan_image>;

@@ -66,76 +66,30 @@ vulkan_render::~vulkan_render()
 void
 vulkan_render::init()
 {
-    auto device = glob::render_device::get();
+    auto& device = glob::render_device::getr();
 
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
-
-    auto main_rp =
-        render_pass_builder()
-            .set_color_format(device->get_swapchain_format())
-            .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-            .set_width_depth(width, height)
-            .set_color_images(device->get_swapchain_image_views(), device->get_swapchain_images())
-            .build();
-
-    m_render_passes[AID("main")] = std::move(main_rp);
-
-    vk_utils::vulkan_image_sptr image;
-    vk_utils::vulkan_image_view_sptr image_view;
-
-    {
-        VkExtent3D image_extent = {width, height, 1};
-
-        auto simg_info = vk_utils::make_image_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, image_extent);
-
-        VmaAllocationCreateInfo simg_allocinfo = {};
-        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-        image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::render_device::getr().get_vma_allocator_provider(), simg_info, simg_allocinfo));
-
-        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
-
-        image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
-    }
-
-    auto ui_rp = render_pass_builder()
-                     .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
-                     .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                     .set_width_depth(width, height)
-                     .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
-                                       std::vector<vk_utils::vulkan_image_sptr>{image})
-                     .set_render_to_present(false)
-                     .set_enable_stencil(false)
-                     .build();
-
-    m_render_passes[AID("ui")] = std::move(ui_rp);
-
-    m_frames.resize(device->frame_size());
+    m_frames.resize(device.frame_size());
 
     for (size_t i = 0; i < m_frames.size(); ++i)
     {
-        m_frames[i].frame = &device->frame(i);
+        m_frames[i].frame = &device.frame(i);
 
-        m_frames[i].m_object_buffer = device->create_buffer(
+        m_frames[i].m_object_buffer = device.create_buffer(
             OBJECTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].m_materials_buffer =
-            device->create_buffer(INITIAL_MATERIAL_RANGE_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
+            device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].m_lights_buffer =
-            device->create_buffer(INITIAL_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
+            device.create_buffer(INITIAL_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        m_frames[i].m_dynamic_data_buffer = device->create_buffer(
+        m_frames[i].m_dynamic_data_buffer = device.create_buffer(
             DYNAMIC_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
+    prepare_render_passes();
     prepare_system_resources();
     prepare_ui_resources();
     prepare_ui_pipeline();
@@ -199,22 +153,35 @@ vulkan_render::draw_main()
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
-    // start the main renderpass.
-    // We will use the clear color from above, and the framebuffer of the index the swapchain gave
-    // us
-
     auto width = (uint32_t)glob::native_window::get()->get_size().w;
     auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
     update_ui(current_frame);
+    prepare_draw_resources(current_frame);
 
-    // auto rp = m_render_passes[AID("main")];
     auto rp = m_render_passes[AID("ui")];
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
     draw_ui(current_frame);
     rp->end(cmd);
-    rp = m_render_passes[AID("main")];
 
+    rp = m_render_passes[AID("picking")];
+    rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
+
+    for (auto& r : m_default_render_object_queue)
+    {
+        pipeline_ctx pctx{};
+
+        if (!r.second.empty())
+        {
+            bind_material(cmd, m_pick_mat, current_frame, pctx, false);
+        }
+
+        draw_same_pipeline_objects_queue(cmd, pctx, r.second);
+    }
+
+    rp->end(cmd);
+
+    rp = m_render_passes[AID("main")];
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 1.0});
     draw_objects(current_frame);
     rp->end(cmd);
@@ -258,6 +225,53 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
 
     auto device = glob::render_device::get();
 
+    // DEFAULT
+    for (auto& r : m_default_render_object_queue)
+    {
+        draw_objects_queue(r.second, cmd, current_frame, false);
+    }
+
+    // OUTLINE
+    for (auto& r : m_outline_render_object_queue)
+    {
+        draw_objects_queue(r.second, cmd, current_frame, true);
+    }
+
+    pipeline_ctx pctx{};
+    bind_material(cmd, m_outline_mat, current_frame, pctx, false);
+
+    for (auto& r : m_outline_render_object_queue)
+    {
+        draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
+    }
+
+    // TRANSPATENT
+    if (!m_transparent_render_object_queue.empty())
+    {
+        update_transparent_objects_queue();
+        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
+    }
+
+    // Draw UI
+    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
+
+    pctx = {};
+    bind_material(cmd, m_ui_target_mat, current_frame, pctx, false, false);
+    bind_mesh(cmd, m);
+
+    if (!m->has_indices())
+    {
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
+    else
+    {
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    }
+}
+
+void
+vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
+{
     if (current_frame.has_obj_data())
     {
         upload_obj_data(current_frame);
@@ -286,49 +300,6 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
     build_light_set(current_frame);
 
     collect_lights();
-
-    // DEFAULT
-    for (auto& r : m_default_render_object_queue)
-    {
-        draw_objects_queue(r.second, cmd, current_frame, false);
-    }
-
-    // OUTLINE
-    for (auto& r : m_outline_render_object_queue)
-    {
-        draw_objects_queue(r.second, cmd, current_frame, true);
-    }
-
-    pipeline_ctx pctx{};
-    bind_material(cmd, m_outline_mat, current_frame, pctx, false);
-
-    for (auto& r : m_outline_render_object_queue)
-    {
-        draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
-    }
-
-    // TRANSPATENT
-    if (!m_transparent_render_object_queue.empty())
-    {
-        update_transparent_objects_queue();
-        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
-    }
-
-    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
-
-    pctx = {};
-    bind_material(cmd, m_ui_dst_mat, current_frame, pctx, false, false);
-    bind_mesh(cmd, m);
-
-    // we can now draw
-    if (!m->has_indices())
-    {
-        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
-    }
-    else
-    {
-        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
-    }
 }
 
 void
@@ -924,6 +895,89 @@ vulkan_render::get_current_frame_transfer_data()
 }
 
 void
+vulkan_render::prepare_render_passes()
+{
+    auto& device = glob::render_device::getr();
+
+    auto width = (uint32_t)glob::native_window::get()->get_size().w;
+    auto height = (uint32_t)glob::native_window::get()->get_size().h;
+
+    {
+        auto main_pass =
+            render_pass_builder()
+                .set_color_format(device.get_swapchain_format())
+                .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
+                .set_width_depth(width, height)
+                .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
+                .set_preset(render_pass_builder::presets::swapchain)
+                .build();
+
+        m_render_passes[AID("main")] = std::move(main_pass);
+    }
+
+    VkExtent3D image_extent = {width, height, 1};
+
+    {
+        auto simg_info = vk_utils::make_image_create_info(
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, image_extent);
+
+        VmaAllocationCreateInfo simg_allocinfo = {};
+        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+            glob::render_device::getr().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+
+        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
+            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+
+        auto image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
+
+        auto ui_pass =
+            render_pass_builder()
+                .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
+                .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                .set_width_depth(width, height)
+                .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
+                                  std::vector<vk_utils::vulkan_image_sptr>{image})
+                .set_enable_stencil(false)
+                .set_preset(render_pass_builder::presets::buffer)
+                .build();
+
+        m_render_passes[AID("ui")] = std::move(ui_pass);
+    }
+
+    {
+        auto simg_info = vk_utils::make_image_create_info(
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, image_extent);
+
+        VmaAllocationCreateInfo simg_allocinfo = {};
+        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+            glob::render_device::getr().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+
+        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
+            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+
+        auto image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
+
+        auto picking_pass =
+            render_pass_builder()
+                .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
+                .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                .set_width_depth(width, height)
+                .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
+                                  std::vector<vk_utils::vulkan_image_sptr>{image})
+                .set_preset(render_pass_builder::presets::picking)
+                .build();
+
+        m_render_passes[AID("picking")] = std::move(picking_pass);
+    }
+}
+
+void
 vulkan_render::prepare_system_resources()
 {
     glob::vulkan_render_loader::getr().create_sampler(AID("default"),
@@ -971,6 +1025,22 @@ vulkan_render::prepare_system_resources()
     std::vector<texture_sampler_data> sd;
     m_outline_mat = glob::vulkan_render_loader::getr().create_material(
         AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
+
+    vert_path = path / "system/se_pick.vert";
+    agea::utils::buffer::load(vert_path, vert);
+
+    frag_path = path / "system/se_pick.frag";
+    agea::utils::buffer::load(frag_path, frag);
+
+    se_ci.ds_mode = depth_stencil_mode::none;
+    se_ci.rp = m_render_passes[AID("picking")].get();
+    sed = nullptr;
+
+    rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_pick"), se_ci, sed);
+    AGEA_check(rc == result_code::ok && sed, "Always should be good!");
+
+    m_pick_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_pick"), AID("pick"),
+                                                                    sd, *sed, utils::dynobj{});
 }
 
 void
@@ -1010,7 +1080,7 @@ vulkan_render::prepare_ui_resources()
     m_ui_txt = glob::vulkan_render_loader::getr().create_texture(AID("font"), image_raw_buffer,
                                                                  tex_width, tex_height);
 
-    m_ui_copy_txt = glob::vulkan_render_loader::getr().create_texture(
+    m_ui_target_txt = glob::vulkan_render_loader::getr().create_texture(
         AID("ui_copy_txt"), m_render_passes[AID("ui")]->get_color_images()[0],
         m_render_passes[AID("ui")]->get_color_image_views()[0]);
 }
@@ -1078,10 +1148,10 @@ vulkan_render::prepare_ui_pipeline()
                                                                 m_ui_copy_se);
 
         std::vector<texture_sampler_data> samples(1);
-        samples.front().texture = m_ui_copy_txt;
+        samples.front().texture = m_ui_target_txt;
         samples.front().slot = 0;
 
-        m_ui_dst_mat = glob::vulkan_render_loader::getr().create_material(
+        m_ui_target_mat = glob::vulkan_render_loader::getr().create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 }
@@ -1227,6 +1297,105 @@ vulkan_render::resize(uint32_t width, uint32_t height)
 {
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)(width), (float)(height));
+}
+
+uint32_t
+vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
+{
+    auto width = (uint32_t)glob::native_window::get()->get_size().w;
+    auto height = (uint32_t)glob::native_window::get()->get_size().h;
+
+    // Source for the copy is the last rendered swapchain image
+    auto src_image = m_render_passes[AID("picking")]->get_color_images()[0]->image();
+
+    // Create the linear tiled destination image to copy to and to read the memory from
+
+    auto extent = VkExtent3D{width, height, 1};
+
+    VkImageCreateInfo imageCreateCI =
+        vk_utils::make_image_create_info(VK_FORMAT_R8G8B8A8_UNORM, 0, extent);
+    imageCreateCI.imageType = VK_IMAGE_TYPE_2D;
+    imageCreateCI.arrayLayers = 1;
+    imageCreateCI.mipLevels = 1;
+    imageCreateCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageCreateCI.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateCI.tiling = VK_IMAGE_TILING_LINEAR;
+    imageCreateCI.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    // Create the image
+
+    VmaAllocationCreateInfo vma_allocinfo = {};
+    vma_allocinfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
+    vma_allocinfo.requiredFlags =
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    auto dst_image = vk_utils::vulkan_image::create(
+        glob::render_device::getr().get_vma_allocator_provider(), imageCreateCI, vma_allocinfo);
+
+    auto cmd_buf_ai = vk_utils::make_command_buffer_allocate_info(
+        glob::render_device::getr().m_upload_context.m_command_pool, 1);
+
+    VkCommandBuffer cmd_buffer;
+    vkAllocateCommandBuffers(glob::render_device::getr().vk_device(), &cmd_buf_ai, &cmd_buffer);
+
+    VkCommandBufferBeginInfo cmdBufInfo = vk_utils::make_command_buffer_begin_info();
+    vkBeginCommandBuffer(cmd_buffer, &cmdBufInfo);
+
+    // Transition destination image to transfer destination layout
+    vk_utils::make_insert_image_memory_barrier(
+        cmd_buffer, dst_image.image(), 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    {
+        // Otherwise use image copy (requires us to manually flip components)
+        VkImageCopy image_copy_region{};
+        image_copy_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_copy_region.srcSubresource.layerCount = 1;
+        image_copy_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_copy_region.dstSubresource.layerCount = 1;
+        image_copy_region.extent = extent;
+
+        // Issue the copy command
+        vkCmdCopyImage(cmd_buffer, src_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       dst_image.image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                       &image_copy_region);
+    }
+
+    // Transition destination image to general layout, which is the required layout for mapping the
+    // image memory later on
+    vk_utils::make_insert_image_memory_barrier(
+        cmd_buffer, dst_image.image(), VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+
+    glob::render_device::getr().flush_command_buffer(
+        cmd_buffer, glob::render_device::getr().vk_graphics_queue());
+
+    // Get layout of the image (including row pitch)
+    VkImageSubresource sub_resource{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0};
+    VkSubresourceLayout sub_resource_layout;
+    vkGetImageSubresourceLayout(glob::render_device::getr().vk_device(), dst_image.image(),
+                                &sub_resource, &sub_resource_layout);
+
+    // Map image memory so we can start copying from it
+
+    auto mp = ImGui::GetIO().MousePos;
+
+    auto data = dst_image.map();
+
+    data += sub_resource_layout.offset + (x + y * width) * 4;
+
+    uint32_t pixel = 0;
+
+    memcpy(&pixel, data, 4);
+
+    std::cout << std::format("{:x}", pixel) << std::endl;
+
+    dst_image.unmap();
+
+    return 1;
 }
 
 }  // namespace render

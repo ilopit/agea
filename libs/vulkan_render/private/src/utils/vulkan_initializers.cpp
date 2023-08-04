@@ -422,4 +422,37 @@ make_pipeline_dynamic_state_create_info(const std::vector<VkDynamicState>& dynam
     return ci;
 }
 
+void
+make_insert_image_memory_barrier(VkCommandBuffer cmdbuffer,
+                                 VkImage image,
+                                 VkAccessFlags src_access_mask,
+                                 VkAccessFlags dst_access_mask,
+                                 VkImageLayout old_image_layout,
+                                 VkImageLayout new_image_layout,
+                                 VkPipelineStageFlags src_stage_mask,
+                                 VkPipelineStageFlags dst_stage_mask,
+                                 VkImageSubresourceRange subresource_range)
+{
+    VkImageMemoryBarrier imageMemoryBarrier = make_image_memory_barrier();
+    imageMemoryBarrier.srcAccessMask = src_access_mask;
+    imageMemoryBarrier.dstAccessMask = dst_access_mask;
+    imageMemoryBarrier.oldLayout = old_image_layout;
+    imageMemoryBarrier.newLayout = new_image_layout;
+    imageMemoryBarrier.image = image;
+    imageMemoryBarrier.subresourceRange = subresource_range;
+
+    vkCmdPipelineBarrier(cmdbuffer, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1,
+                         &imageMemoryBarrier);
+}
+
+VkImageMemoryBarrier
+make_image_memory_barrier()
+{
+    VkImageMemoryBarrier imageMemoryBarrier{};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    return imageMemoryBarrier;
+}
+
 }  // namespace agea::render::vk_utils

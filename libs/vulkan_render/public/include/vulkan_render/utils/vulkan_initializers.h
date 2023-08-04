@@ -99,6 +99,21 @@ make_sampler_create_info(VkFilter filters,
 VkPipelineDynamicStateCreateInfo
 make_pipeline_dynamic_state_create_info(const std::vector<VkDynamicState>& dynamic_states,
                                         VkPipelineDynamicStateCreateFlags flags = 0);
+
+VkImageMemoryBarrier
+make_image_memory_barrier();
+
+void
+make_insert_image_memory_barrier(VkCommandBuffer cmdbuffer,
+                                 VkImage image,
+                                 VkAccessFlags src_access_mask,
+                                 VkAccessFlags dst_access_mask,
+                                 VkImageLayout old_image_layout,
+                                 VkImageLayout new_image_layout,
+                                 VkPipelineStageFlags src_stage_mask,
+                                 VkPipelineStageFlags dst_stage_mask,
+                                 VkImageSubresourceRange subresource_range);
+
 }  // namespace vk_utils
 }  // namespace render
 }  // namespace agea

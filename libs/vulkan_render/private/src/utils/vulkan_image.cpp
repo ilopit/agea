@@ -107,6 +107,20 @@ vulkan_image::clear()
     m_allocator = nullptr;
 }
 
+std::uint8_t*
+vulkan_image::map()
+{
+    vmaMapMemory(glob::render_device::getr().allocator(), m_allocation, (void**)&m_data_begin);
+
+    return m_data_begin;
+}
+
+void
+vulkan_image::unmap()
+{
+    vmaUnmapMemory(glob::render_device::getr().allocator(), m_allocation);
+}
+
 vulkan_image_view::~vulkan_image_view()
 {
     clear();

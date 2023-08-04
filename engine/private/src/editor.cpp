@@ -47,6 +47,9 @@ game_editor::init()
 
     glob::input_manager::get()->register_fixed_action(AID("lights"), true, this,
                                                       &game_editor::ev_lights);
+
+    glob::input_manager::get()->register_fixed_action(AID("mouse_pressed"), true, this,
+                                                      &game_editor::ev_mouse_press);
 }
 
 void
@@ -75,6 +78,15 @@ game_editor::ev_look_left(float f)
 {
     look_left_delta = f;
     m_updated = true;
+}
+
+void
+game_editor::ev_mouse_press()
+{
+    uint32_t w = glob::input_manager::getr().get_mouse_state().x;
+    uint32_t h = glob::input_manager::getr().get_mouse_state().y;
+
+    glob::vulkan_render::getr().object_id_under_coordinate(w, h);
 }
 
 void

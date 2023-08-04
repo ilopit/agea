@@ -29,3 +29,6 @@ actions:
   - id: lights
     events:
       - trigger: g
+  - id: mouse_pressed
+    events:
+      - trigger: mouse_button_left

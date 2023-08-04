@@ -366,6 +366,35 @@ render_device::deinit_descriptors()
     return true;
 }
 
+void
+render_device::flush_command_buffer(VkCommandBuffer command_buffer,
+                                    VkQueue queue,
+                                    bool free /*= true*/)
+{
+    if (command_buffer == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    vkEndCommandBuffer(command_buffer);
+
+    VkSubmitInfo submitInfo = vk_utils::make_submit_info(&command_buffer);
+    submitInfo.commandBufferCount = 1;
+    // Create fence to ensure that the command buffer has finished executing
+    VkFenceCreateInfo fenceInfo = vk_utils::make_fence_create_info();
+    VkFence fence;
+    vkCreateFence(m_vk_device, &fenceInfo, nullptr, &fence);
+    // Submit to the queue
+    vkQueueSubmit(queue, 1, &submitInfo, fence);
+    // Wait for the fence to signal that command buffer has finished executing
+    vkWaitForFences(m_vk_device, 1, &fence, VK_TRUE, 100000000000);
+    vkDestroyFence(m_vk_device, fence, nullptr);
+    if (free)
+    {
+        vkFreeCommandBuffers(m_vk_device, m_upload_context.m_command_pool, 1, &command_buffer);
+    }
+}
+
 vk_device_provider
 render_device::get_vk_device_provider()
 {

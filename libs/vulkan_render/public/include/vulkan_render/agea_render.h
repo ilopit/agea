@@ -160,9 +160,15 @@ public:
     void
     collect_lights();
 
+    uint32_t
+    object_id_under_coordinate(uint32_t x, uint32_t y);
+
 private:
     void
     draw_objects(render::frame_state& frame);
+
+    void
+    prepare_draw_resources(render::frame_state& frame);
 
     void
     build_global_set(render::frame_state& current_frame);
@@ -227,6 +233,8 @@ private:
 
 public:
     void
+    prepare_render_passes();
+    void
     prepare_system_resources();
     void
     prepare_ui_pipeline();
@@ -273,9 +281,9 @@ public:
     shader_effect_data* m_ui_copy_se = nullptr;
 
     texture_data* m_ui_txt = nullptr;
-    texture_data* m_ui_copy_txt = nullptr;
+    texture_data* m_ui_target_txt = nullptr;
     material_data* m_ui_mat = nullptr;
-    material_data* m_ui_dst_mat = nullptr;
+    material_data* m_ui_target_mat = nullptr;
 
     struct ui_push_constants
     {
@@ -286,6 +294,7 @@ public:
 
     // Generic
     material_data* m_outline_mat = nullptr;
+    material_data* m_pick_mat = nullptr;
 
     // Descriptors
 

@@ -36,6 +36,9 @@ public:
     ev_look_left(float f);
 
     void
+    ev_mouse_press();
+
+    void
     ev_reload();
 
     void

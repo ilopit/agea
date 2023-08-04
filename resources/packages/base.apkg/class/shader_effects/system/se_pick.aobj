@@ -1,0 +1,6 @@
+type_id: shader_effect
+id: se_pick
+vert: class/shader_effects/system/se_pick.vert
+is_vert_binary: false
+frag: class/shader_effects/system/se_pick.frag
+is_frag_binary: false

@@ -63,6 +63,14 @@ using render_pass_sptr = std::shared_ptr<render_pass>;
 class render_pass_builder
 {
 public:
+    enum class presets
+    {
+        swapchain,
+        buffer,
+        picking
+
+    };
+
     render_pass_builder&
     set_color_format(VkFormat f)
     {
@@ -74,6 +82,13 @@ public:
     set_depth_format(VkFormat f)
     {
         m_depth_format = f;
+        return *this;
+    }
+
+    render_pass_builder&
+    set_preset(presets p)
+    {
+        m_preset = p;
         return *this;
     }
 
@@ -91,14 +106,6 @@ public:
     }
 
     render_pass_builder&
-    set_render_to_present(bool render_to_present)
-    {
-        m_render_to_present = render_to_present;
-
-        return *this;
-    }
-
-    render_pass_builder&
     set_enable_stencil(bool stencil)
     {
         m_enable_stencil = stencil;
@@ -109,6 +116,12 @@ public:
     render_pass_sptr
     build();
 
+    std::array<VkSubpassDependency, 2>
+    get_dependencies();
+
+    std::array<VkAttachmentDescription, 2>
+    get_attachments();
+
 private:
     VkFormat m_color_format = VK_FORMAT_UNDEFINED;
     VkFormat m_depth_format = VK_FORMAT_UNDEFINED;
@@ -116,7 +129,8 @@ private:
     uint32_t m_width = 0U;
     uint32_t m_height = 0U;
 
-    bool m_render_to_present = true;
+    presets m_preset = presets::swapchain;
+
     bool m_enable_stencil = true;
 
     std::vector<vk_utils::vulkan_image_sptr> m_color_images;

@@ -287,7 +287,6 @@ input_manager::transform_from_sdl_event(const SDL_Event& se, std::vector<input_e
         {
             return false;
         }
-
         ie.amp = m_dur_seconds;
         m_input_event_state[ie.id] = se.type == SDL_MOUSEBUTTONDOWN;
         v.push_back(ie);

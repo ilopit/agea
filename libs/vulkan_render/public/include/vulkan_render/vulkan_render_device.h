@@ -178,6 +178,9 @@ public:
         return m_swapchain;
     }
 
+    void
+    flush_command_buffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free = true);
+
     vk_device_provider
     get_vk_device_provider();
 
@@ -222,7 +225,7 @@ public:
     void
     delete_sheduled_actions();
 
-private:
+    // private:
     bool
     init_vulkan(SDL_Window* window, bool headless);
     bool
@@ -269,8 +272,6 @@ private:
     std::vector<vk_utils::vulkan_image_view_sptr> m_swapchain_image_views;
 
     std::vector<frame_data> m_frames;
-
-    VkDescriptorSetLayout m_single_texture_set_layout = VK_NULL_HANDLE;
 
     // the format for the depth image
     VkFormat m_depth_format;

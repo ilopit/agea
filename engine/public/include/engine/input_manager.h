@@ -217,6 +217,12 @@ public:
         return m_input_event_state[id];
     }
 
+    const mouse_state&
+    get_mouse_state()
+    {
+        return m_mouse_axis_state;
+    }
+
 protected:
     void
     drop_fired_event();
