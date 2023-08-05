@@ -212,94 +212,12 @@ from_string(const std::string& s)
 }  // namespace
 
 bool
-operator==(const input_event& lhs, const input_event& rhs) noexcept
+operator==(const input_event_state& lhs, const input_event_state& rhs) noexcept
 {
-    return lhs.id == rhs.id && lhs.type == rhs.type;
-}
-
-bool
-input_manager::transform_from_sdl_event(const SDL_Event& se, std::vector<input_event>& v)
-{
-    input_event ie = {};
-
-    switch (se.type)
-    {
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
-        ie.type = se.type == SDL_KEYDOWN ? input_event_type::press : input_event_type::release;
-
-        if (!from_sdl_kb_sym_code(se.key.keysym.sym, ie.id))
-        {
-            return false;
-        }
-
-        ie.amp = m_dur_seconds;
-
-        v.push_back(ie);
-        m_input_event_state[ie.id] = se.type == SDL_KEYDOWN;
-
-        break;
-    case SDL_MOUSEWHEEL:
-
-        m_mouse_wheel_state.x = se.wheel.x;
-        m_mouse_wheel_state.y = se.wheel.y;
-
-        ie.type = input_event_type::scale;
-        ie.id = input_event_id::mouse_move_wheel;
-
-        if (se.wheel.y)
-        {
-            ie.amp = (float)se.wheel.y * m_dur_seconds;
-            v.push_back(ie);
-        }
-        break;
-    case SDL_MOUSEMOTION:
-
-        m_mouse_axis_state.x = se.motion.x;
-        m_mouse_axis_state.y = se.motion.y;
-        m_mouse_axis_state.xrel = se.motion.xrel;
-        m_mouse_axis_state.yrel = se.motion.yrel;
-
-        ie.type = input_event_type::scale;
-        ie.id = input_event_id::mouse_move_x;
-
-        if (se.motion.xrel)
-        {
-            auto rel = (500.f * se.motion.xrel) / (float)glob::native_window::get()->get_size().w;
-            ie.amp = rel * m_dur_seconds * glob::native_window::get()->aspect_ratio();
-            v.push_back(ie);
-        }
-
-        ie.id = input_event_id::mouse_move_y;
-        if (se.motion.yrel)
-        {
-            auto rel = (500.f * se.motion.yrel) / (float)glob::native_window::get()->get_size().h;
-            ie.amp = rel * m_dur_seconds;
-            v.push_back(ie);
-        }
-        break;
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
-        ie.type =
-            se.type == SDL_MOUSEBUTTONDOWN ? input_event_type::press : input_event_type::release;
-
-        if (!from_sdl_mouse_btm_code(se.button.button, ie.id))
-        {
-            return false;
-        }
-        ie.amp = m_dur_seconds;
-        m_input_event_state[ie.id] = se.type == SDL_MOUSEBUTTONDOWN;
-        v.push_back(ie);
-        break;
-    default:
-        return false;
-    }
-    return true;
+    return lhs.id == rhs.id;
 }
 
 input_manager::input_manager()
-    : m_scaled_value_actions()
-    , m_fixed_actions_mapping((size_t)input_event_type::count)
 {
 }
 
@@ -307,6 +225,7 @@ bool
 input_manager::input_tick(float dur_seconds)
 {
     m_dur_seconds = dur_seconds;
+    m_to_drop_events.clear();
 
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0)
@@ -387,105 +306,170 @@ input_manager::load_actions(const utils::path& path)
 void
 input_manager::fire_input_event()
 {
-    drop_fired_event();
-
-    for (auto& e : m_events_to_fire)
+    for (auto a : m_active_events)
     {
-        switch (e.type)
+        if (a->fire_on_start)
         {
-        case input_event_type::scale:
-        {
-            auto subscribers = m_scaled_value_actions[e.id];
-            for (auto& s : subscribers)
+            for (auto& h : a->m_registered_pres_fixed_handlers)
             {
-                s.fire(e.amp * s.ref->amp);
+                h.fire();
             }
-            break;
+
+            a->fire_on_start = false;
         }
-        case input_event_type::press:
+
+        if (a->to_drop)
         {
+            for (auto& h : a->m_registered_pres_fixed_handlers)
             {
-                auto& subscribers = m_fixed_actions_mapping[(size_t)e.type][e.id];
-                for (auto& s : subscribers)
-                {
-                    s.fire();
-                }
-            }
-            {
-                auto& subscribers = m_scaled_value_actions[e.id];
-                for (auto& s : subscribers)
-                {
-                    s.fire(e.amp * s.ref->amp);
-                }
-            }
-            break;
-        }
-        default:
-        {
-            auto& subscribers = m_fixed_actions_mapping[(size_t)e.type][e.id];
-            for (auto& s : subscribers)
-            {
-                s.fire();
+                h.fire();
             }
         }
+
+        for (auto& h : a->m_registered_scaled_handlers)
+        {
+            h.fire(a->extran_ampl * m_dur_seconds * h.basic_amp);
         }
     }
 
-    drop_obsolete();
+    drop_fired_event();
 }
 
 void
 input_manager::drop_fired_event()
 {
-    auto itr =
-        std::remove_if(m_events_to_fire.begin(), m_events_to_fire.end(),
-                       [this](const input_event& o)
-                       { return o.type == input_event_type::press && !m_input_event_state[o.id]; });
-
-    if (itr != m_events_to_fire.end())
+    for (auto e : m_to_drop_events)
     {
-        m_events_to_fire.erase(itr);
+        m_active_events.erase(e);
+        e->reset();
     }
 }
 
 void
-input_manager::drop_obsolete()
+input_manager::consume_sdl_events(const SDL_Event& sdle)
 {
-    auto itr = std::remove_if(
-        m_events_to_fire.begin(), m_events_to_fire.end(),
-        [this](const input_event& o)
-        { return o.type == input_event_type::release || o.type == input_event_type::scale; });
+    input_event_id id;
 
-    if (itr != m_events_to_fire.end())
+    switch (sdle.type)
     {
-        m_events_to_fire.erase(itr);
-    }
-}
-
-void
-input_manager::consume_sdl_events(const SDL_Event& e)
-{
-    std::vector<input_event> ie_to_add;
-
-    if (transform_from_sdl_event(e, ie_to_add))
+    case SDL_KEYDOWN:
     {
-        for (auto& ie : ie_to_add)
+        if (!from_sdl_kb_sym_code(sdle.key.keysym.sym, id))
         {
-            bool add = true;
-            for (auto& f : m_events_to_fire)
-            {
-                if (ie == f)
-                {
-                    f = ie;
-                    add = false;
-                    break;
-                }
-            }
-            if (add)
-            {
-                m_events_to_fire.push_back(ie);
-            }
+            return;
         }
+
+        auto* es = &m_events_state[id];
+        es->is_active = true;
+        es->to_drop = false;
+
+        m_active_events.insert(es);
+
+        break;
+    }
+    case SDL_KEYUP:
+    {
+        if (!from_sdl_kb_sym_code(sdle.key.keysym.sym, id))
+        {
+            return;
+        }
+
+        auto* es = &m_events_state[id];
+        es->to_drop = true;
+        m_to_drop_events.push_back(es);
+
+        break;
+    }
+    case SDL_MOUSEWHEEL:
+    {
+        m_mouse_wheel_state.x = sdle.wheel.x;
+        m_mouse_wheel_state.y = sdle.wheel.y;
+
+        id = input_event_id::mouse_move_wheel;
+
+        if (sdle.wheel.y)
+        {
+            auto* es = &m_events_state[id];
+
+            es->extran_ampl = (float)sdle.wheel.y;
+
+            es->is_active = true;
+            es->to_drop = false;
+
+            m_active_events.insert(es);
+            m_to_drop_events.push_back(es);
+        }
+        break;
+    }
+    case SDL_MOUSEMOTION:
+
+        m_mouse_axis_state.x = sdle.motion.x;
+        m_mouse_axis_state.y = sdle.motion.y;
+        m_mouse_axis_state.xrel = sdle.motion.xrel;
+        m_mouse_axis_state.yrel = sdle.motion.yrel;
+
+        id = input_event_id::mouse_move_x;
+
+        if (sdle.motion.xrel)
+        {
+            auto* es = &m_events_state[id];
+
+            auto rel = (500.f * sdle.motion.xrel) / (float)glob::native_window::get()->get_size().w;
+            es->extran_ampl = rel * glob::native_window::get()->aspect_ratio();
+
+            es->is_active = true;
+            es->to_drop = false;
+
+            m_active_events.insert(es);
+            m_to_drop_events.push_back(es);
+        }
+
+        id = input_event_id::mouse_move_y;
+        if (sdle.motion.yrel)
+        {
+            auto* es = &m_events_state[id];
+
+            auto rel = (500.f * sdle.motion.yrel) / (float)glob::native_window::get()->get_size().h;
+            es->extran_ampl = rel;
+
+            es->is_active = true;
+            es->to_drop = false;
+
+            m_active_events.insert(es);
+            m_to_drop_events.push_back(es);
+        }
+        break;
+    case SDL_MOUSEBUTTONDOWN:
+    {
+        if (!from_sdl_mouse_btm_code(sdle.button.button, id))
+        {
+            return;
+        }
+
+        auto* es = &m_events_state[id];
+        es->is_active = true;
+        es->to_drop = false;
+
+        m_active_events.insert(es);
+
+        break;
+    }
+    case SDL_MOUSEBUTTONUP:
+    {
+        if (!from_sdl_mouse_btm_code(sdle.button.button, id))
+        {
+            return;
+        }
+
+        auto* es = &m_events_state[id];
+        es->to_drop = true;
+        m_to_drop_events.push_back(es);
+
+        break;
+    }
+
+    default:
+        return;
     }
 }
 

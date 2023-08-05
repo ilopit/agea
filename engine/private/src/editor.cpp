@@ -131,7 +131,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 5;
+    int DIM = 0;
 
     for (x = 0; x < DIM; ++x)
     {

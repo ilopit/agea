@@ -11,6 +11,7 @@
 #include <SDL_events.h>
 
 #include <unordered_map>
+#include <unordered_set>
 
 union SDL_Event;
 
@@ -18,6 +19,9 @@ namespace agea
 {
 namespace engine
 {
+
+struct event_state;
+
 enum class input_event_type
 {
     nan = 0,
@@ -115,21 +119,20 @@ enum input_event_id
     keyboard_delete
 };
 
-struct input_event
+struct input_event_state
 {
-    input_event_type type;
-    input_event_id id;
-    float amp = 0.f;
+    event_state* id = nullptr;
+    bool should_be_dropt = false;
 };
 
 bool
-operator==(const input_event& l, const input_event& r) noexcept;
+operator==(const input_event_state& l, const input_event_state& r) noexcept;
 
 struct input_action_descriptior;
 
 struct input_scaled_action_handler : utils::generic_event_handler<void, float>
 {
-    input_action_descriptior* ref = nullptr;
+    float basic_amp = 1.f;
 };
 
 struct input_fixed_action_handler : utils::generic_event_handler<void>
@@ -169,37 +172,55 @@ public:
     input_manager();
 
     template <typename real_obj, typename real_method>
-    void
+    bool
     register_scaled_action(const utils::id& id, real_obj* o, real_method m)
     {
         input_scaled_action_handler ev;
         ev.assign(o, m);
 
-        auto& e = m_scaled_value_actions;
-        auto& action = m_input_actions[id];
-
-        for (auto& kb_action : action.m_triggers)
+        auto itr = m_input_actions.find(id);
+        if (itr == m_input_actions.end())
         {
-            ev.ref = &kb_action.second;
-            e[kb_action.first].push_back(ev);
+            return false;
         }
+
+        for (auto& t : itr->second.m_triggers)
+        {
+            ev.basic_amp = t.second.amp;
+            m_events_state[t.second.id].m_registered_scaled_handlers.push_back(ev);
+        }
+        return true;
     }
 
     template <typename real_obj, typename real_method>
-    void
+    bool
     register_fixed_action(const utils::id& id, bool pressed, real_obj* o, real_method m)
     {
         input_fixed_action_handler ev;
         ev.assign(o, m);
 
-        auto& action = m_input_actions[id];
-        auto& e = m_fixed_actions_mapping[(size_t)(pressed ? input_event_type::press
-                                                           : input_event_type::release)];
-
-        for (auto& kb_action : action.m_triggers)
+        auto itr = m_input_actions.find(id);
+        if (itr == m_input_actions.end())
         {
-            e[kb_action.first].push_back(ev);
+            return false;
         }
+
+        if (pressed)
+        {
+            for (auto& t : itr->second.m_triggers)
+            {
+                m_events_state[t.second.id].m_registered_pres_fixed_handlers.push_back(ev);
+            }
+        }
+        else
+        {
+            for (auto& t : itr->second.m_triggers)
+            {
+                m_events_state[t.second.id].m_registered_release_fixed_handlers.push_back(ev);
+            }
+        }
+
+        return true;
     }
 
     bool
@@ -214,7 +235,7 @@ public:
     bool
     get_input_state(input_event_id id)
     {
-        return m_input_event_state[id];
+        return m_events_state[id].is_active;
     }
 
     const mouse_state&
@@ -228,30 +249,42 @@ protected:
     drop_fired_event();
 
     void
-    drop_obsolete();
-
-    void
     consume_sdl_events(const SDL_Event& e);
-
-    bool
-    transform_from_sdl_event(const SDL_Event& se, std::vector<input_event>& v);
 
     mouse_state m_mouse_axis_state;
     mouse_wheel_state m_mouse_wheel_state;
 
     float m_dur_seconds = 0.f;
 
-    std::unordered_map<input_event_id, bool> m_input_event_state;
+    struct event_state
+    {
+        bool to_drop = false;
+        bool is_active = false;
+        bool fire_on_start = false;
+        float extran_ampl = 1.f;
+
+        void
+        reset()
+        {
+            to_drop = false;
+            is_active = false;
+            fire_on_start = false;
+            extran_ampl = 1.f;
+        }
+
+        std::vector<input_fixed_action_handler> m_registered_pres_fixed_handlers;
+        std::vector<input_fixed_action_handler> m_registered_release_fixed_handlers;
+
+        std::vector<input_scaled_action_handler> m_registered_scaled_handlers;
+    };
+
+    std::unordered_map<input_event_id, event_state> m_events_state;
 
     std::unordered_map<utils::id, input_action> m_input_actions;
 
-    std::vector<std::unordered_map<input_event_id, std::vector<input_fixed_action_handler>>>
-        m_fixed_actions_mapping;
+    std::unordered_set<event_state*> m_active_events;
+    std::vector<event_state*> m_to_drop_events;
 
-    std::unordered_map<input_event_id, std::vector<input_scaled_action_handler>>
-        m_scaled_value_actions;
-
-    std::vector<input_event> m_events_to_fire;
     bool m_updated = true;
 };
 
