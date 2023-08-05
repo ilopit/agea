@@ -119,15 +119,6 @@ enum input_event_id
     keyboard_delete
 };
 
-struct input_event_state
-{
-    event_state* id = nullptr;
-    bool should_be_dropt = false;
-};
-
-bool
-operator==(const input_event_state& l, const input_event_state& r) noexcept;
-
 struct input_action_descriptior;
 
 struct input_scaled_action_handler : utils::generic_event_handler<void, float>

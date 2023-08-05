@@ -211,12 +211,6 @@ from_string(const std::string& s)
 
 }  // namespace
 
-bool
-operator==(const input_event_state& lhs, const input_event_state& rhs) noexcept
-{
-    return lhs.id == rhs.id;
-}
-
 input_manager::input_manager()
 {
 }
