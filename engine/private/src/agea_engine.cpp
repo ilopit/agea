@@ -172,7 +172,7 @@ vulkan_engine::init()
 
     glob::ui::getr().init();
 
-    glob::vulkan_render::getr().init();
+    glob::vulkan_render::getr().init(rwc.w, rwc.h);
 
     init_default_resources();
 
@@ -246,8 +246,6 @@ vulkan_engine::run()
 
             glob::vulkan_render::getr().draw_main();
         }
-
-        glob::vulkan_render_loader::getr().delete_sheduled_actions();
 
         auto frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);
 

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/vulkan_render.h>
+#include <vulkan_render/agea_render.h>
 
 #include <resource_locator/resource_locator.h>
 
@@ -17,6 +17,7 @@ main(int argc, char** argv)
 
     agea::glob::render_device::create(*registry);
     agea::glob::resource_locator::create(*registry);
+    agea::glob::vulkan_render::create(*registry);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

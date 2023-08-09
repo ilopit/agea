@@ -71,30 +71,13 @@ public:
 
     /*************************/
 
-    object_data*
-    get_object_data(const agea::utils::id& id)
-    {
-        return get_data<object_data>(m_objects_cache, id);
-    }
-
-    object_data*
-    create_object(const agea::utils::id& id,
-                  material_data& mat_data,
-                  mesh_data& mesh_data,
-                  const glm::mat4& model_matrix,
-                  const glm::mat4& normal_matrix,
-                  const glm::vec3& obj_pos);
-
     bool
-    update_object(object_data& obj_data,
+    update_object(vulkan_render_data& obj_data,
                   material_data& mat_data,
                   mesh_data& mesh_data,
                   const glm::mat4& model_matrix,
                   const glm::mat4& normal_matrix,
                   const glm::vec3& obj_pos);
-
-    void
-    destroy_object(const agea::utils::id& id);
 
     /*************************/
 
@@ -188,25 +171,6 @@ public:
         return itr != col.end() ? itr->second.get() : nullptr;
     }
 
-    //     template <typename T>
-    //     static T*
-    //     get_data(std::unordered_map<agea::utils::id, std::shared_ptr<rhandle<T>>>& col,
-    //              const agea::utils::id& id)
-    //     {
-    //         auto itr = col.find(id);
-    //
-    //         return itr != col.end() ? &(itr->second->handle) : nullptr;
-    //     }
-
-    void
-    delete_sheduled_actions();
-
-    std::unordered_map<agea::utils::id, std::shared_ptr<object_data>>&
-    get_objects_cache()
-    {
-        return m_objects_cache;
-    }
-
     gpu_data_index_type
     last_mat_index(const agea::utils::id& type_id)
     {
@@ -234,8 +198,6 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
 
-    std::unordered_map<agea::utils::id, std::shared_ptr<object_data>> m_objects_cache;
-
     std::unordered_map<agea::utils::id, std::shared_ptr<light_data>> m_light_cache;
 
     std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
@@ -252,34 +214,4 @@ struct vulkan_render_loader
 {
 };
 };  // namespace glob
-}  // namespace agea
-
-namespace agea
-{
-namespace render
-{
-
-template <typename T>
-struct rhandle
-{
-    template <typename Args>
-    rhandle(Args&& args)
-        : handle(std::forward<Args>(args))
-    {
-    }
-
-    rhandle(rhandle&&) noexcept = default;
-    rhandle&
-    operator=(rhandle&&) noexcept = default;
-
-    ~rhandle()
-    {
-        agea::glob::vulkan_render_loader::getr().shedule_to_deltete_t(std::move(handle));
-    }
-
-    T handle;
-};
-
-}  // namespace render
-
 }  // namespace agea

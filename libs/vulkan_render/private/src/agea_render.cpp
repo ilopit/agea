@@ -64,8 +64,18 @@ vulkan_render::~vulkan_render()
 }
 
 void
-vulkan_render::init()
+vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 {
+    m_w = w;
+    m_h = h;
+
+    prepare_render_passes();
+
+    if (only_rp)
+    {
+        return;
+    }
+
     auto& device = glob::render_device::getr();
 
     m_frames.resize(device.frame_size());
@@ -89,7 +99,6 @@ vulkan_render::init()
             DYNAMIC_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
-    prepare_render_passes();
     prepare_system_resources();
     prepare_ui_resources();
     prepare_ui_pipeline();
@@ -358,7 +367,7 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
 void
 vulkan_render::upload_obj_data(render::frame_state& frame)
 {
-    const auto total_size = m_objects_id.get_ids_in_fly() * sizeof(gpu_object_data);
+    const auto total_size = m_cache.m_objects.get_size() * sizeof(gpu_object_data);
 
     bool reallocated = false;
     if (total_size >= frame.m_object_buffer.get_alloc_size())
@@ -599,7 +608,7 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
 void
 vulkan_render::draw_object(VkCommandBuffer cmd,
                            const pipeline_ctx& pctx,
-                           const render::object_data* obj)
+                           const render::vulkan_render_data* obj)
 {
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
@@ -611,11 +620,11 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     // we can now draw
     if (!obj->mesh->has_indices())
     {
-        vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->gpu_index());
+        vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->slot());
     }
     else
     {
-        vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->gpu_index());
+        vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->slot());
     }
 }
 
@@ -701,13 +710,9 @@ vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout
 }
 
 void
-vulkan_render::add_object(render::object_data* obj_data)
+vulkan_render::add_object(render::vulkan_render_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
-
-    auto id = m_objects_id.alloc_id();
-
-    obj_data->set_index((uint32_t)id);
 
     if (obj_data->outlined)
     {
@@ -729,11 +734,11 @@ vulkan_render::add_object(render::object_data* obj_data)
 }
 
 void
-vulkan_render::drop_object(render::object_data* obj_data)
+vulkan_render::drop_object(render::vulkan_render_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
 
-    m_objects_id.release_id(obj_data->gpu_index());
+    // m_objects_id.release_id(obj_data->gpu_index());
 
     const std::string id = obj_data->queue_id;
 
@@ -799,7 +804,7 @@ vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
 }
 
 void
-vulkan_render::schedule_game_data_gpu_upload(render::object_data* obj_date)
+vulkan_render::schedule_game_data_gpu_upload(render::vulkan_render_data* obj_date)
 {
     for (auto& q : m_frames)
     {
@@ -867,7 +872,7 @@ vulkan_render::upload_gpu_object_data(render::gpu_object_data* object_SSBO)
 
     for (auto obj : to_update)
     {
-        object_SSBO[obj->gpu_index()] = obj->gpu_data;
+        object_SSBO[obj->slot()] = obj->gpu_data;
     }
 }
 
@@ -894,20 +899,23 @@ vulkan_render::get_current_frame_transfer_data()
     return m_frames[glob::render_device::getr().get_current_frame_index()];
 }
 
+vulkan_render_data*
+vulkan_render::allocate_obj(const utils::id& id)
+{
+    return m_cache.m_objects.alloc(id);
+}
+
 void
 vulkan_render::prepare_render_passes()
 {
     auto& device = glob::render_device::getr();
-
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
 
     {
         auto main_pass =
             render_pass_builder()
                 .set_color_format(device.get_swapchain_format())
                 .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-                .set_width_depth(width, height)
+                .set_width_depth(m_w, m_h)
                 .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
                 .set_preset(render_pass_builder::presets::swapchain)
                 .build();
@@ -915,7 +923,7 @@ vulkan_render::prepare_render_passes()
         m_render_passes[AID("main")] = std::move(main_pass);
     }
 
-    VkExtent3D image_extent = {width, height, 1};
+    VkExtent3D image_extent = {m_w, m_h, 1};
 
     {
         auto simg_info = vk_utils::make_image_create_info(
@@ -937,7 +945,7 @@ vulkan_render::prepare_render_passes()
             render_pass_builder()
                 .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
                 .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(width, height)
+                .set_width_depth(m_w, m_h)
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
                 .set_enable_stencil(false)
@@ -967,10 +975,11 @@ vulkan_render::prepare_render_passes()
             render_pass_builder()
                 .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
                 .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(width, height)
+                .set_width_depth(m_w, m_h)
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
                 .set_preset(render_pass_builder::presets::picking)
+                .set_enable_stencil(false)
                 .build();
 
         m_render_passes[AID("picking")] = std::move(picking_pass);
@@ -1005,6 +1014,8 @@ vulkan_render::prepare_system_resources()
     se_ci.enable_dynamic_state = false;
     se_ci.alpha = alpha_mode::none;
     se_ci.cull_mode = VK_CULL_MODE_NONE;
+    se_ci.height = m_h;
+    se_ci.width = m_w;
 
     shader_effect_data* sed = nullptr;
     auto rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_error"), se_ci, sed);
@@ -1052,7 +1063,7 @@ vulkan_render::update_transparent_objects_queue()
     }
 
     std::sort(m_transparent_render_object_queue.begin(), m_transparent_render_object_queue.end(),
-              [](render::object_data* l, render::object_data* r)
+              [](render::vulkan_render_data* l, render::vulkan_render_data* r)
               { return l->distance_to_camera > r->distance_to_camera; });
 }
 
@@ -1302,25 +1313,21 @@ vulkan_render::resize(uint32_t width, uint32_t height)
 uint32_t
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
-
     // Source for the copy is the last rendered swapchain image
     auto src_image = m_render_passes[AID("picking")]->get_color_images()[0]->image();
 
     // Create the linear tiled destination image to copy to and to read the memory from
 
-    auto extent = VkExtent3D{width, height, 1};
+    auto extent = VkExtent3D{m_w, m_h, 1};
 
-    VkImageCreateInfo imageCreateCI =
-        vk_utils::make_image_create_info(VK_FORMAT_R8G8B8A8_UNORM, 0, extent);
-    imageCreateCI.imageType = VK_IMAGE_TYPE_2D;
-    imageCreateCI.arrayLayers = 1;
-    imageCreateCI.mipLevels = 1;
-    imageCreateCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateCI.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageCreateCI.tiling = VK_IMAGE_TILING_LINEAR;
-    imageCreateCI.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    auto image_ci = vk_utils::make_image_create_info(VK_FORMAT_R8G8B8A8_UNORM, 0, extent);
+    image_ci.imageType = VK_IMAGE_TYPE_2D;
+    image_ci.arrayLayers = 1;
+    image_ci.mipLevels = 1;
+    image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
+    image_ci.tiling = VK_IMAGE_TILING_LINEAR;
+    image_ci.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     // Create the image
 
     VmaAllocationCreateInfo vma_allocinfo = {};
@@ -1329,7 +1336,7 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     auto dst_image = vk_utils::vulkan_image::create(
-        glob::render_device::getr().get_vma_allocator_provider(), imageCreateCI, vma_allocinfo);
+        glob::render_device::getr().get_vma_allocator_provider(), image_ci, vma_allocinfo);
 
     auto cmd_buf_ai = vk_utils::make_command_buffer_allocate_info(
         glob::render_device::getr().m_upload_context.m_command_pool, 1);
@@ -1337,8 +1344,8 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
     VkCommandBuffer cmd_buffer;
     vkAllocateCommandBuffers(glob::render_device::getr().vk_device(), &cmd_buf_ai, &cmd_buffer);
 
-    VkCommandBufferBeginInfo cmdBufInfo = vk_utils::make_command_buffer_begin_info();
-    vkBeginCommandBuffer(cmd_buffer, &cmdBufInfo);
+    auto command_buffer_bi = vk_utils::make_command_buffer_begin_info();
+    vkBeginCommandBuffer(cmd_buffer, &command_buffer_bi);
 
     // Transition destination image to transfer destination layout
     vk_utils::make_insert_image_memory_barrier(
@@ -1373,29 +1380,22 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
     glob::render_device::getr().flush_command_buffer(
         cmd_buffer, glob::render_device::getr().vk_graphics_queue());
 
-    // Get layout of the image (including row pitch)
-    VkImageSubresource sub_resource{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0};
-    VkSubresourceLayout sub_resource_layout;
-    vkGetImageSubresourceLayout(glob::render_device::getr().vk_device(), dst_image.image(),
-                                &sub_resource, &sub_resource_layout);
-
     // Map image memory so we can start copying from it
 
     auto mp = ImGui::GetIO().MousePos;
 
     auto data = dst_image.map();
 
-    data += sub_resource_layout.offset + (x + y * width) * 4;
+    data += (x + y * m_w) * 4;
 
     uint32_t pixel = 0;
 
     memcpy(&pixel, data, 4);
 
-    std::cout << std::format("{:x}", pixel) << std::endl;
-
     dst_image.unmap();
 
-    return 1;
+    return pixel & 0xFFFFFF;
+    ;
 }
 
 }  // namespace render

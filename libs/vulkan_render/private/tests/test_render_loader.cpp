@@ -3,6 +3,7 @@
 
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/agea_render.h>
 
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <resource_locator/resource_locator.h>
@@ -24,11 +25,14 @@ public:
 
         m_registry = std::make_unique<agea::singleton_registry>();
         glob::vulkan_render_loader::create(*m_registry);
+
+        glob::vulkan_render::getr().init(500, 500, true);
     }
 
     void
     TearDown()
     {
+        glob::vulkan_render::get()->deinit();
         glob::vulkan_render_loader::getr().clear_caches();
         glob::render_device::get()->destruct();
     }
@@ -52,10 +56,9 @@ TEST_F(render_device_test, load_se)
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
-    se_ci.render_pass = glob::render_device::getr().render_pass();
-    se_ci.is_wire = false;
+    se_ci.rp = glob::vulkan_render::getr().m_render_passes[AID("main")].get();
     se_ci.enable_dynamic_state = false;
-    se_ci.enable_alpha = false;
+    se_ci.alpha = alpha_mode::none;
     se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
     se_ci.width = 1024;
     se_ci.height = 1024;

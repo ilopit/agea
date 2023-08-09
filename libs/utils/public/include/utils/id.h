@@ -54,6 +54,12 @@ public:
         return m_id[0] != '\0';
     }
 
+    void
+    invalidate()
+    {
+        m_id[0] = '\0';
+    }
+
 private:
     char m_id[id_size_in_bytes() + 1];
 };

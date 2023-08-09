@@ -294,9 +294,15 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
 
     if (!object_data)
     {
-        object_data = glob::vulkan_render_loader::getr().create_object(
-            moc.get_id(), *mat_data, *mesh_data, moc.get_transofrm_matrix(),
-            moc.get_normal_matrix(), moc.get_position());
+        object_data = glob::vulkan_render::getr().allocate_obj(moc.get_id());
+
+        if (!glob::vulkan_render_loader::getr().update_object(
+                *object_data, *mat_data, *mesh_data, moc.get_transofrm_matrix(),
+                moc.get_normal_matrix(), moc.get_position()))
+        {
+            ALOG_LAZY_ERROR;
+            return result_code::failed;
+        }
 
         static int ct = 0;
         if (ct < 2)
@@ -357,12 +363,6 @@ mesh_component__root__render_destructor(render_bridge& rb, root::smart_object& o
         AGEA_return_nok(rc);
     }
     auto object_data = moc.get_render_object_data();
-
-    if (object_data)
-    {
-        glob::vulkan_render::getr().m_objects_id.release_id(object_data->gpu_index());
-        glob::vulkan_render_loader::getr().destroy_object(object_data->get_id());
-    }
 
     rc = game_object_component__root__render_loader(rb, obj, sub_object);
     AGEA_return_nok(rc);

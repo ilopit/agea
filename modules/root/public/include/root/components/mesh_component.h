@@ -32,13 +32,13 @@ public:
     bool
     construct(construct_params& c);
 
-    render::object_data*
+    render::vulkan_render_data*
     get_render_object_data() const
     {
         return m_render_handle;
     }
     void
-    set_render_object_data(render::object_data* v)
+    set_render_object_data(render::vulkan_render_data* v)
     {
         m_render_handle = v;
     }
@@ -60,7 +60,7 @@ protected:
                      "default=true");
     mesh* m_mesh = nullptr;
 
-    render::object_data* m_render_handle = nullptr;
+    render::vulkan_render_data* m_render_handle = nullptr;
 };
 
 }  // namespace root

@@ -280,27 +280,8 @@ vulkan_render_loader::destroy_texture_data(const agea::utils::id& id)
     }
 }
 
-object_data*
-vulkan_render_loader::create_object(const agea::utils::id& id,
-                                    material_data& mat_data,
-                                    mesh_data& mesh_data,
-                                    const glm::mat4& model_matrix,
-                                    const glm::mat4& normal_matrix,
-                                    const glm::vec3& obj_pos)
-{
-    AGEA_check(!get_object_data(id), "Shoudn't exist");
-
-    auto data = std::make_shared<object_data>(id, -1);
-
-    update_object(*data, mat_data, mesh_data, model_matrix, normal_matrix, obj_pos);
-
-    m_objects_cache[id] = data;
-
-    return data.get();
-}
-
 bool
-vulkan_render_loader::update_object(object_data& obj_data,
+vulkan_render_loader::update_object(vulkan_render_data& obj_data,
                                     material_data& mat_data,
                                     mesh_data& mesh_data,
                                     const glm::mat4& model_matrix,
@@ -317,23 +298,11 @@ vulkan_render_loader::update_object(object_data& obj_data,
     return true;
 }
 
-void
-vulkan_render_loader::destroy_object(const agea::utils::id& id)
-{
-    auto itr = m_objects_cache.find(id);
-    if (itr != m_objects_cache.end())
-    {
-        m_objects_cache.erase(itr);
-    }
-}
-
 light_data*
 vulkan_render_loader::create_light_data(const agea::utils::id& id,
                                         light_type lt,
                                         const gpu_light& ld)
 {
-    AGEA_check(!get_object_data(id), "Shoudn't exist");
-
     auto data = std::make_shared<light_data>(id, lt);
 
     data->m_data = ld;
@@ -574,31 +543,10 @@ vulkan_render_loader::clear_caches()
     m_materials_cache.clear();
     m_shaders_cache.clear();
     m_shaders_effects_cache.clear();
-    m_objects_cache.clear();
     m_samplers_cache.clear();
     m_materials_index.clear();
-    //
-    //     while (!m_ddq.empty())
-    //     {
-    //         m_ddq.pop();
-    //     }
-}
-
-void
-vulkan_render_loader::delete_sheduled_actions()
-{
-    //     if (m_ddq.empty())
-    //     {
-    //         return;
-    //     }
-    //
-    //     auto device = glob::render_device::get();
-    //     auto current_frame = device->get_current_frame_number();
-    //     while (!m_ddq.empty() && m_ddq.top().frame_to_delete <= current_frame)
-    //     {
-    //         m_ddq.pop();
-    //     }
-}
 
 }  // namespace render
+}  // namespace render
+
 }  // namespace agea

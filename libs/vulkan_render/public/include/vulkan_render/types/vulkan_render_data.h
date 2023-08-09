@@ -2,6 +2,7 @@
 
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
+#include "vulkan_render/types/vulkan_render_resource.h"
 
 #include <glm_unofficial/glm.h>
 
@@ -13,48 +14,27 @@ namespace agea
 {
 namespace render
 {
-class object_data
+class vulkan_render_data : public vulkan_render_resource
 {
 public:
-    object_data(const ::agea::utils::id& id, gpu_data_index_type idx)
-        : m_id(id)
-        , m_gpu_index(idx)
-    {
-    }
+    vulkan_render_data() = default;
 
-    const utils::id&
-    get_id() const
+    vulkan_render_data(const ::agea::utils::id& id, gpu_data_index_type idx)
+        : vulkan_render_resource(id, idx)
     {
-        return m_id;
-    }
-
-    gpu_data_index_type
-    gpu_index() const
-    {
-        return m_gpu_index;
-    }
-
-    void
-    set_index(gpu_data_index_type v)
-    {
-        m_gpu_index = v;
     }
 
     gpu_object_data gpu_data;
 
     render::mesh_data* mesh = nullptr;
     render::material_data* material = nullptr;
+
     bool visible = true;
     bool rendarable = true;
     float distance_to_camera = 0.f;
     bool outlined = false;
 
     std::string queue_id;
-
-private:
-    ::agea::utils::id m_id;
-
-    gpu_data_index_type m_gpu_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 };
 };  // namespace render
 }  // namespace agea

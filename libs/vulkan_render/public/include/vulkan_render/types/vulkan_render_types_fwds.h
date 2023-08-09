@@ -7,7 +7,7 @@ namespace render
 class mesh_data;
 class material_data;
 class texture_data;
-class object_data;
+class vulkan_render_data;
 class shader_effect_data;
 class shader_module_data;
 class sampler_data;

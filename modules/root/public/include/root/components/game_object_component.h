@@ -10,7 +10,7 @@ namespace agea
 
 namespace render
 {
-class object_data;
+class vulkan_render_data;
 }
 
 namespace root

@@ -7,6 +7,7 @@
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
+#include "vulkan_render/render_cache.h"
 
 #include <resource_locator/resource_locator.h>
 
@@ -31,11 +32,11 @@ class render_device;
 struct frame_data;
 class shader_effect_data;
 
-using render_line_conteiner = ::agea::utils::line_conteiner<render::object_data*>;
+using render_line_conteiner = ::agea::utils::line_conteiner<render::vulkan_render_data*>;
 
 using materials_update_queue = ::agea::utils::line_conteiner<render::material_data*>;
 using materials_update_queue_set = ::agea::utils::line_conteiner<materials_update_queue>;
-using objects_update_queue = ::agea::utils::line_conteiner<render::object_data*>;
+using objects_update_queue = ::agea::utils::line_conteiner<render::vulkan_render_data*>;
 using lights_update_queue = ::agea::utils::line_conteiner<render::light_data*>;
 
 struct pipeline_ctx
@@ -122,7 +123,7 @@ public:
     ~vulkan_render();
 
     void
-    init();
+    init(uint32_t w, uint32_t h, bool only_rp = false);
 
     void
     deinit();
@@ -134,10 +135,10 @@ public:
     draw_main();
 
     void
-    add_object(render::object_data* obj_data);
+    add_object(render::vulkan_render_data* obj_data);
 
     void
-    drop_object(render::object_data* obj_data);
+    drop_object(render::vulkan_render_data* obj_data);
 
     void
     add_material(render::material_data* obj_data);
@@ -149,7 +150,7 @@ public:
     schedule_material_data_gpu_upload(render::material_data* md);
 
     void
-    schedule_game_data_gpu_upload(render::object_data* od);
+    schedule_game_data_gpu_upload(render::vulkan_render_data* od);
 
     void
     schedule_light_data_gpu_upload(render::light_data* ld);
@@ -162,6 +163,9 @@ public:
 
     uint32_t
     object_id_under_coordinate(uint32_t x, uint32_t y);
+
+    vulkan_render_data*
+    allocate_obj(const utils::id& id);
 
 private:
     void
@@ -203,7 +207,9 @@ private:
                                      bool rebind_images = true);
 
     void
-    draw_object(VkCommandBuffer cmd, const pipeline_ctx& pctx, const render::object_data* obj);
+    draw_object(VkCommandBuffer cmd,
+                const pipeline_ctx& pctx,
+                const render::vulkan_render_data* obj);
 
     void
     bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh);
@@ -274,8 +280,6 @@ public:
 
     std::vector<frame_state> m_frames;
 
-    utils::id_allocator m_objects_id;
-
     // UI
     shader_effect_data* m_ui_se = nullptr;
     shader_effect_data* m_ui_copy_se = nullptr;
@@ -304,6 +308,11 @@ public:
     render::gpu_push_constants m_obj_config;
 
     std::unordered_map<utils::id, render_pass_sptr> m_render_passes;
+
+    render_cache m_cache;
+
+    uint32_t m_w = 0;
+    uint32_t m_h = 0;
 };
 }  // namespace render
 
