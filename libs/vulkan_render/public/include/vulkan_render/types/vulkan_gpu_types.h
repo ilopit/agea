@@ -1,7 +1,8 @@
 #pragma once
 
-#include <glm_unofficial/glm.h>
 #include <utils/dynamic_object_builder.h>
+
+#include <glm_unofficial/glm.h>
 
 namespace agea
 {

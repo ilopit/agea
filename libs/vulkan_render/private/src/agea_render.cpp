@@ -66,8 +66,8 @@ vulkan_render::~vulkan_render()
 void
 vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 {
-    m_w = w;
-    m_h = h;
+    m_width = w;
+    m_height = h;
 
     prepare_render_passes();
 
@@ -367,7 +367,7 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
 void
 vulkan_render::upload_obj_data(render::frame_state& frame)
 {
-    const auto total_size = m_cache.m_objects.get_size() * sizeof(gpu_object_data);
+    const auto total_size = m_cache.objects.get_size() * sizeof(gpu_object_data);
 
     bool reallocated = false;
     if (total_size >= frame.m_object_buffer.get_alloc_size())
@@ -420,26 +420,24 @@ vulkan_render::upload_light_data(render::frame_state& frame)
     auto spot_light =
         (render::gpu_spot_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
 
-    for (auto pd : frame.m_lights_queue)
+    for (auto ld : frame.m_dir_light_queue)
     {
-        switch (pd->m_type)
-        {
-        case light_type::directional_light_data:
-            direct[pd->m_gpu_id] = pd->m_data.directional;
-            break;
-
-        case light_type::point_light_data:
-            point_data[pd->m_gpu_id] = pd->m_data.point;
-            break;
-        case light_type::spot_light_data:
-            spot_light[pd->m_gpu_id] = pd->m_data.spot;
-            break;
-        default:
-            break;
-        }
+        direct[ld->slot()] = ld->gpu_data;
     }
 
-    frame.m_lights_queue.clear();
+    for (auto ld : frame.m_point_light_queue)
+    {
+        point_data[ld->slot()] = ld->gpu_data;
+    }
+
+    for (auto ld : frame.m_spot_light_queue)
+    {
+        spot_light[ld->slot()] = ld->gpu_data;
+    }
+
+    frame.m_dir_light_queue.clear();
+    frame.m_spot_light_queue.clear();
+    frame.m_point_light_queue.clear();
 
     buffer_td.end();
 }
@@ -705,12 +703,10 @@ vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout
     m_obj_config.directional_light_id = 0U;
     m_obj_config.point_lights_size = 0U;
     m_obj_config.spot_lights_size = 0U;
-
-    auto& lts = glob::vulkan_render_loader::getr().get_lights();
 }
 
 void
-vulkan_render::add_object(render::vulkan_render_data* obj_data)
+vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
 
@@ -734,26 +730,42 @@ vulkan_render::add_object(render::vulkan_render_data* obj_data)
 }
 
 void
-vulkan_render::drop_object(render::vulkan_render_data* obj_data)
+vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
 
-    // m_objects_id.release_id(obj_data->gpu_index());
-
-    const std::string id = obj_data->queue_id;
-
-    auto& bucket = m_default_render_object_queue[id];
-
-    auto itr = bucket.find(obj_data);
-
-    AGEA_check(itr != bucket.end(), "Dropping from missing bucket");
-
-    bucket.swap_and_remove(itr);
-
-    if (bucket.get_size() == 0)
+    if (obj_data->outlined)
     {
-        ALOG_TRACE("Dropping old queue");
-        m_default_render_object_queue.erase(id);
+        AGEA_check(obj_data->queue_id != "transparent", "Not supported!");
+
+        m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+
+        return;
+    }
+
+    if (obj_data->queue_id == "transparent")
+    {
+        auto itr = m_transparent_render_object_queue.find(obj_data);
+
+        m_transparent_render_object_queue.swap_and_remove(itr);
+    }
+    else
+    {
+        const std::string id = obj_data->queue_id;
+
+        auto& bucket = m_default_render_object_queue[id];
+
+        auto itr = bucket.find(obj_data);
+
+        AGEA_check(itr != bucket.end(), "Dropping from missing bucket");
+
+        bucket.swap_and_remove(itr);
+
+        if (bucket.get_size() == 0)
+        {
+            ALOG_TRACE("Dropping old queue");
+            m_default_render_object_queue.erase(id);
+        }
     }
 }
 
@@ -813,11 +825,29 @@ vulkan_render::schedule_game_data_gpu_upload(render::vulkan_render_data* obj_dat
 }
 
 void
-vulkan_render::schedule_light_data_gpu_upload(render::light_data* ld)
+vulkan_render::schedule_light_data_gpu_upload(render::vulkan_directional_light_data* ld)
 {
     for (auto& q : m_frames)
     {
-        q.m_lights_queue.emplace_back(ld);
+        q.m_dir_light_queue.emplace_back(ld);
+    }
+}
+
+void
+vulkan_render::schedule_light_data_gpu_upload(render::vulkan_spot_light_data* ld)
+{
+    for (auto& q : m_frames)
+    {
+        q.m_spot_light_queue.emplace_back(ld);
+    }
+}
+
+void
+vulkan_render::schedule_light_data_gpu_upload(render::vulkan_point_light_data* ld)
+{
+    for (auto& q : m_frames)
+    {
+        q.m_point_light_queue.emplace_back(ld);
     }
 }
 
@@ -833,30 +863,23 @@ vulkan_render::clear_upload_queue()
 void
 vulkan_render::collect_lights()
 {
-    auto& lights = glob::vulkan_render_loader::getr().get_lights();
-
     m_obj_config.point_lights_size = 0U;
     m_obj_config.spot_lights_size = 0U;
 
-    for (auto& l : lights)
-    {
-        switch (l.second->m_type)
-        {
-        case light_type::directional_light_data:
-            m_obj_config.directional_light_id = l.second->m_gpu_id;
-            break;
-        case light_type::point_light_data:
-            m_obj_config.point_light_ids[m_obj_config.point_lights_size] = l.second->m_gpu_id;
-            ++m_obj_config.point_lights_size;
-            break;
-        case light_type::spot_light_data:
-            m_obj_config.spot_light_ids[m_obj_config.spot_lights_size] = l.second->m_gpu_id;
-            ++m_obj_config.spot_lights_size;
+    m_obj_config.directional_light_id = m_cache.dir_lights.at(0)->slot();
 
-            break;
-        default:
-            break;
-        }
+    for (uint32_t slot = 0; slot < m_cache.point_lights.get_size(); ++slot)
+    {
+        m_obj_config.point_light_ids[m_obj_config.point_lights_size] =
+            m_cache.point_lights.at(slot)->slot();
+        ++m_obj_config.point_lights_size;
+    }
+
+    for (uint32_t slot = 0; slot < m_cache.spot_lights.get_size(); ++slot)
+    {
+        m_obj_config.spot_light_ids[m_obj_config.point_lights_size] =
+            m_cache.spot_lights.at(slot)->slot();
+        ++m_obj_config.spot_lights_size;
     }
 }
 
@@ -899,12 +922,6 @@ vulkan_render::get_current_frame_transfer_data()
     return m_frames[glob::render_device::getr().get_current_frame_index()];
 }
 
-vulkan_render_data*
-vulkan_render::allocate_obj(const utils::id& id)
-{
-    return m_cache.m_objects.alloc(id);
-}
-
 void
 vulkan_render::prepare_render_passes()
 {
@@ -915,7 +932,7 @@ vulkan_render::prepare_render_passes()
             render_pass_builder()
                 .set_color_format(device.get_swapchain_format())
                 .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-                .set_width_depth(m_w, m_h)
+                .set_width_depth(m_width, m_height)
                 .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
                 .set_preset(render_pass_builder::presets::swapchain)
                 .build();
@@ -923,7 +940,7 @@ vulkan_render::prepare_render_passes()
         m_render_passes[AID("main")] = std::move(main_pass);
     }
 
-    VkExtent3D image_extent = {m_w, m_h, 1};
+    VkExtent3D image_extent = {m_width, m_height, 1};
 
     {
         auto simg_info = vk_utils::make_image_create_info(
@@ -945,7 +962,7 @@ vulkan_render::prepare_render_passes()
             render_pass_builder()
                 .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
                 .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(m_w, m_h)
+                .set_width_depth(m_width, m_height)
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
                 .set_enable_stencil(false)
@@ -975,7 +992,7 @@ vulkan_render::prepare_render_passes()
             render_pass_builder()
                 .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
                 .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(m_w, m_h)
+                .set_width_depth(m_width, m_height)
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
                 .set_preset(render_pass_builder::presets::picking)
@@ -1014,8 +1031,8 @@ vulkan_render::prepare_system_resources()
     se_ci.enable_dynamic_state = false;
     se_ci.alpha = alpha_mode::none;
     se_ci.cull_mode = VK_CULL_MODE_NONE;
-    se_ci.height = m_h;
-    se_ci.width = m_w;
+    se_ci.height = m_height;
+    se_ci.width = m_width;
 
     shader_effect_data* sed = nullptr;
     auto rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_error"), se_ci, sed);
@@ -1318,7 +1335,7 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     // Create the linear tiled destination image to copy to and to read the memory from
 
-    auto extent = VkExtent3D{m_w, m_h, 1};
+    auto extent = VkExtent3D{m_width, m_height, 1};
 
     auto image_ci = vk_utils::make_image_create_info(VK_FORMAT_R8G8B8A8_UNORM, 0, extent);
     image_ci.imageType = VK_IMAGE_TYPE_2D;
@@ -1386,7 +1403,7 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     auto data = dst_image.map();
 
-    data += (x + y * m_w) * 4;
+    data += (x + y * m_width) * 4;
 
     uint32_t pixel = 0;
 
@@ -1395,7 +1412,18 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
     dst_image.unmap();
 
     return pixel & 0xFFFFFF;
-    ;
+}
+
+render_cache&
+vulkan_render::get_cache()
+{
+    return m_cache;
+}
+
+render_pass*
+vulkan_render::get_render_pass(const utils::id& id)
+{
+    return m_render_passes.at(id).get();
 }
 
 }  // namespace render

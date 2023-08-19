@@ -44,5 +44,13 @@ protected:
     utils::id m_id;
     gpu_data_index_type m_idx;
 };
+
+template <typename gpu_data_type>
+class generic_vulkan_render_resource : public vulkan_render_resource
+{
+public:
+    gpu_data_type gpu_data;
+};
+
 }  // namespace render
 }  // namespace agea

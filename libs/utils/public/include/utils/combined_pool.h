@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include <utils/id.h>
+#include <utils/agea_log.h>
 
 namespace agea
 {
@@ -21,6 +22,7 @@ public:
 
         if (!result.second)
         {
+            ALOG_ERROR("[{0}] already allocated", id.cstr());
             return nullptr;
         }
 
@@ -63,6 +65,7 @@ public:
 
         if (itr == m_mapping.end())
         {
+            ALOG_ERROR("[{0}] already allocated", obj->id().cstr());
             return;
         }
 

@@ -171,8 +171,8 @@ material__root__render_destructor(render_bridge& rb, root::smart_object& obj, bo
 
     if (auto mat_data = mat_model.get_material_data())
     {
-        glob::vulkan_render_loader::getr().destroy_material_data(mat_data->get_id());
         glob::vulkan_render::getr().drop_material(mat_data);
+        glob::vulkan_render_loader::getr().destroy_material_data(mat_data->get_id());
     }
 
     return result_code::ok;
@@ -294,7 +294,7 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
 
     if (!object_data)
     {
-        object_data = glob::vulkan_render::getr().allocate_obj(moc.get_id());
+        object_data = glob::vulkan_render::getr().get_cache().objects.alloc(moc.get_id());
 
         if (!glob::vulkan_render_loader::getr().update_object(
                 *object_data, *mat_data, *mesh_data, moc.get_transofrm_matrix(),
@@ -315,7 +315,7 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
 
         auto new_rqid = render_bridge::make_qid(*mat_data, *mesh_data);
         object_data->queue_id = new_rqid;
-        glob::vulkan_render::getr().add_object(object_data);
+        glob::vulkan_render::getr().schedule_to_drawing(object_data);
     }
     else
     {
@@ -331,9 +331,9 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
         auto& rqid = object_data->queue_id;
         if (new_rqid != rqid)
         {
-            glob::vulkan_render::getr().drop_object(object_data);
+            glob::vulkan_render::getr().remove_from_drawing(object_data);
             object_data->queue_id = new_rqid;
-            glob::vulkan_render::getr().add_object(object_data);
+            glob::vulkan_render::getr().schedule_to_drawing(object_data);
         }
     }
 
@@ -341,6 +341,7 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
 
     return result_code::ok;
 }
+
 result_code
 mesh_component__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
@@ -364,7 +365,13 @@ mesh_component__root__render_destructor(render_bridge& rb, root::smart_object& o
     }
     auto object_data = moc.get_render_object_data();
 
-    rc = game_object_component__root__render_loader(rb, obj, sub_object);
+    if (object_data)
+    {
+        glob::vulkan_render::getr().remove_from_drawing(object_data);
+        glob::vulkan_render::getr().get_cache().objects.release(object_data);
+    }
+
+    rc = game_object_component__root__render_destructor(rb, obj, sub_object);
     AGEA_return_nok(rc);
 
     return result_code::ok;
@@ -403,6 +410,7 @@ shader_effect__root__render_loader(render_bridge& rb, root::smart_object& obj, b
     }
     return result_code::ok;
 }
+
 result_code
 shader_effect__root__render_destructor(render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
@@ -428,18 +436,12 @@ directional_light_component__root__render_loader(render_bridge& rb,
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        auto iid = glob::vulkan_render::getr().m_dir_lights_idalloc.alloc_id();
+        rh = glob::vulkan_render::getr().get_cache().dir_lights.alloc(lc_model.get_id());
 
-        render::gpu_light ld{};
-
-        ld.directional.ambient = lc_model.get_ambient();
-        ld.directional.diffuse = lc_model.get_diffuse();
-        ld.directional.specular = lc_model.get_specular();
-        ld.directional.direction = lc_model.get_direction();
-
-        rh = glob::vulkan_render_loader::get()->create_light_data(
-            lc_model.get_id(), render::light_type::directional_light_data, ld);
-        rh->m_gpu_id = (uint32_t)iid;
+        rh->gpu_data.ambient = lc_model.get_ambient();
+        rh->gpu_data.diffuse = lc_model.get_diffuse();
+        rh->gpu_data.specular = lc_model.get_specular();
+        rh->gpu_data.direction = lc_model.get_direction();
 
         lc_model.set_handler(rh);
     }
@@ -456,8 +458,7 @@ directional_light_component__root__render_destructor(render_bridge& rb,
     auto& plc_model = obj.asr<root::directional_light_component>();
     if (auto h = plc_model.get_handler())
     {
-        glob::vulkan_render::getr().m_dir_lights_idalloc.release_id(h->m_gpu_id);
-        glob::vulkan_render_loader::getr().destroy_light_data(h->get_id());
+        glob::vulkan_render::getr().get_cache().dir_lights.release(h);
     }
 
     return result_code::ok;
@@ -475,25 +476,18 @@ spot_light_component__root__render_loader(render_bridge& rb,
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        auto iid = glob::vulkan_render::getr().m_spot_lights_idalloc.alloc_id();
+        rh = glob::vulkan_render::getr().get_cache().spot_lights.alloc(lc_model.get_id());
 
-        render::gpu_light ld{};
-
-        ld.spot.position = lc_model.get_world_position();
-        ld.spot.ambient = lc_model.get_ambient();
-        ld.spot.diffuse = lc_model.get_diffuse();
-        ld.spot.specular = lc_model.get_specular();
-        ld.spot.constant = lc_model.get_constant();
-        ld.spot.linear = lc_model.get_linear();
-        ld.spot.quadratic = lc_model.get_quadratic();
-        ld.spot.direction = lc_model.get_direction();
-
-        ld.spot.cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
-        ld.spot.outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
-
-        rh = glob::vulkan_render_loader::get()->create_light_data(
-            lc_model.get_id(), render::light_type::spot_light_data, ld);
-        rh->m_gpu_id = (uint32_t)iid;
+        rh->gpu_data.position = lc_model.get_world_position();
+        rh->gpu_data.ambient = lc_model.get_ambient();
+        rh->gpu_data.diffuse = lc_model.get_diffuse();
+        rh->gpu_data.specular = lc_model.get_specular();
+        rh->gpu_data.constant = lc_model.get_constant();
+        rh->gpu_data.linear = lc_model.get_linear();
+        rh->gpu_data.quadratic = lc_model.get_quadratic();
+        rh->gpu_data.direction = lc_model.get_direction();
+        rh->gpu_data.cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
+        rh->gpu_data.outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
 
         lc_model.set_handler(rh);
     }
@@ -512,8 +506,7 @@ spot_light_component__root__render_destructor(render_bridge& rb,
 
     if (auto h = slc_model.get_handler())
     {
-        glob::vulkan_render::getr().m_spot_lights_idalloc.release_id(h->m_gpu_id);
-        glob::vulkan_render_loader::getr().destroy_light_data(h->get_id());
+        glob::vulkan_render::getr().get_cache().spot_lights.release(h);
     }
 
     return result_code::ok;
@@ -531,21 +524,15 @@ point_light_component__root__render_loader(render_bridge& rb,
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        auto iid = glob::vulkan_render::getr().m_point_lights_idalloc.alloc_id();
+        rh = glob::vulkan_render::getr().get_cache().point_lights.alloc(lc_model.get_id());
 
-        render::gpu_light ld{};
-
-        ld.point.position = lc_model.get_world_position();
-        ld.point.ambient = lc_model.get_ambient();
-        ld.point.diffuse = lc_model.get_diffuse();
-        ld.point.specular = lc_model.get_specular();
-        ld.point.constant = lc_model.get_constant();
-        ld.point.linear = lc_model.get_linear();
-        ld.point.quadratic = lc_model.get_quadratic();
-
-        rh = glob::vulkan_render_loader::get()->create_light_data(
-            lc_model.get_id(), render::light_type::point_light_data, ld);
-        rh->m_gpu_id = (uint32_t)iid;
+        rh->gpu_data.position = lc_model.get_world_position();
+        rh->gpu_data.ambient = lc_model.get_ambient();
+        rh->gpu_data.diffuse = lc_model.get_diffuse();
+        rh->gpu_data.specular = lc_model.get_specular();
+        rh->gpu_data.constant = lc_model.get_constant();
+        rh->gpu_data.linear = lc_model.get_linear();
+        rh->gpu_data.quadratic = lc_model.get_quadratic();
 
         lc_model.set_handler(rh);
     }
@@ -563,8 +550,7 @@ point_light_component__root__render_destructor(render_bridge& rb,
     auto& plc_model = obj.asr<root::point_light_component>();
     if (auto h = plc_model.get_handler())
     {
-        glob::vulkan_render::getr().m_point_lights_idalloc.release_id(h->m_gpu_id);
-        glob::vulkan_render_loader::getr().destroy_light_data(h->get_id());
+        glob::vulkan_render::getr().get_cache().point_lights.release(h);
     }
 
     return result_code::ok;

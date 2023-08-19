@@ -111,9 +111,6 @@ game_editor::ev_reload()
         pm.unload_package(*p);
     }
 
-    glob::vulkan_render::getr().m_default_render_object_queue.clear();
-    glob::vulkan_render::getr().m_transparent_render_object_queue.clear();
-
     glob::engine::getr().init_scene();
 }
 

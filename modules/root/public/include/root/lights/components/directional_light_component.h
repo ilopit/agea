@@ -8,7 +8,7 @@ namespace agea
 {
 namespace render
 {
-class light_data;
+class vulkan_directional_light_data;
 }
 
 namespace root
@@ -26,12 +26,12 @@ public:
     AGEA_gen_meta_api;
 
     void
-    set_handler(render::light_data* h)
+    set_handler(render::vulkan_directional_light_data* h)
     {
         m_handler = h;
     }
 
-    render::light_data*
+    render::vulkan_directional_light_data*
     get_handler()
     {
         return m_handler;
@@ -50,7 +50,7 @@ protected:
     AGEA_ar_property("category=misc", "access=all", "serializable=true");
     glm::vec3 m_direction = glm::vec3{1.0f};
 
-    render::light_data* m_handler = nullptr;
+    render::vulkan_directional_light_data* m_handler = nullptr;
 };
 
 }  // namespace root

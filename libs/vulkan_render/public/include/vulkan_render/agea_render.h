@@ -37,7 +37,11 @@ using render_line_conteiner = ::agea::utils::line_conteiner<render::vulkan_rende
 using materials_update_queue = ::agea::utils::line_conteiner<render::material_data*>;
 using materials_update_queue_set = ::agea::utils::line_conteiner<materials_update_queue>;
 using objects_update_queue = ::agea::utils::line_conteiner<render::vulkan_render_data*>;
-using lights_update_queue = ::agea::utils::line_conteiner<render::light_data*>;
+
+using directional_light_update_queue =
+    ::agea::utils::line_conteiner<render::vulkan_directional_light_data*>;
+using point_light_update_queue = ::agea::utils::line_conteiner<render::vulkan_point_light_data*>;
+using spot_light_update_queue = ::agea::utils::line_conteiner<render::vulkan_spot_light_data*>;
 
 struct pipeline_ctx
 {
@@ -63,13 +67,16 @@ struct frame_state
     bool
     has_light_data() const
     {
-        return !m_lights_queue.empty();
+        return !m_spot_light_queue.empty() || m_dir_light_queue.empty() ||
+               m_point_light_queue.empty();
     }
 
     void
     reset_light_data()
     {
-        m_lights_queue.clear();
+        m_spot_light_queue.clear();
+        m_dir_light_queue.clear();
+        m_point_light_queue.clear();
     }
 
     bool
@@ -88,7 +95,9 @@ struct frame_state
     clear_upload_queues()
     {
         m_objects_queue.clear();
-        m_lights_queue.clear();
+        m_point_light_queue.clear();
+        m_dir_light_queue.clear();
+        m_spot_light_queue.clear();
 
         for (auto& m : m_materias_queue_set)
         {
@@ -109,7 +118,10 @@ struct frame_state
 
     objects_update_queue m_objects_queue;
     materials_update_queue_set m_materias_queue_set;
-    lights_update_queue m_lights_queue;
+
+    directional_light_update_queue m_dir_light_queue;
+    point_light_update_queue m_point_light_queue;
+    spot_light_update_queue m_spot_light_queue;
 
     bool has_materials = false;
     bool has_lights = false;
@@ -135,10 +147,10 @@ public:
     draw_main();
 
     void
-    add_object(render::vulkan_render_data* obj_data);
+    schedule_to_drawing(render::vulkan_render_data* obj_data);
 
     void
-    drop_object(render::vulkan_render_data* obj_data);
+    remove_from_drawing(render::vulkan_render_data* obj_data);
 
     void
     add_material(render::material_data* obj_data);
@@ -153,7 +165,13 @@ public:
     schedule_game_data_gpu_upload(render::vulkan_render_data* od);
 
     void
-    schedule_light_data_gpu_upload(render::light_data* ld);
+    schedule_light_data_gpu_upload(render::vulkan_directional_light_data* ld);
+
+    void
+    schedule_light_data_gpu_upload(render::vulkan_spot_light_data* ld);
+
+    void
+    schedule_light_data_gpu_upload(render::vulkan_point_light_data* ld);
 
     void
     clear_upload_queue();
@@ -164,8 +182,11 @@ public:
     uint32_t
     object_id_under_coordinate(uint32_t x, uint32_t y);
 
-    vulkan_render_data*
-    allocate_obj(const utils::id& id);
+    render_cache&
+    get_cache();
+
+    render_pass*
+    get_render_pass(const utils::id& id);
 
 private:
     void
@@ -237,7 +258,6 @@ private:
     frame_state&
     get_current_frame_transfer_data();
 
-public:
     void
     prepare_render_passes();
     void
@@ -256,15 +276,6 @@ public:
 
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
-
-    utils::id_allocator m_dir_lights_idalloc;
-    std::vector<render::gpu_directional_light_data> m_dir_lights;
-
-    utils::id_allocator m_spot_lights_idalloc;
-    std::vector<render::gpu_spot_light_data> m_spot_lights;
-
-    utils::id_allocator m_point_lights_idalloc;
-    std::vector<render::gpu_point_light_data> m_point_lights;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
@@ -311,8 +322,8 @@ public:
 
     render_cache m_cache;
 
-    uint32_t m_w = 0;
-    uint32_t m_h = 0;
+    uint32_t m_width = 0;
+    uint32_t m_height = 0;
 };
 }  // namespace render
 

@@ -123,7 +123,7 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
     se_ci.is_wire = se_model.m_wire_topology;
     se_ci.alpha =
         se_model.m_enable_alpha_support ? render::alpha_mode::world : render::alpha_mode::none;
-    se_ci.rp = glob::vulkan_render::getr().m_render_passes[AID("main")].get();
+    se_ci.rp = glob::vulkan_render::getr().get_render_pass(AID("main"));
     se_ci.enable_dynamic_state = false;
     se_ci.ds_mode = render::depth_stencil_mode::none;
 
