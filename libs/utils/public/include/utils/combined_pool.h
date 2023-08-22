@@ -15,6 +15,17 @@ template <typename T>
 class combined_pool
 {
 public:
+
+
+    combined_pool() = default;
+
+
+    combined_pool(bool offest)
+    {
+        (void)offest;
+        m_items.emplace_back(AID("INVALID"), 0);
+    }
+
     T*
     alloc(const utils::id& id)
     {

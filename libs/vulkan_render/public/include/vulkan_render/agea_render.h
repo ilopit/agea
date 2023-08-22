@@ -4,23 +4,16 @@
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_light_data.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
-#include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
-
-#include <resource_locator/resource_locator.h>
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
 #include <utils/line_conteiner.h>
 #include <utils/id_allocator.h>
 
-#include <algorithm>
 #include <vector>
-#include <functional>
-#include <memory>
-#include <unordered_map>
 
 namespace agea
 {
@@ -150,6 +143,9 @@ public:
     schedule_to_drawing(render::vulkan_render_data* obj_data);
 
     void
+    reschedule_to_drawing(render::vulkan_render_data* obj_data);
+
+    void
     remove_from_drawing(render::vulkan_render_data* obj_data);
 
     void
@@ -179,7 +175,7 @@ public:
     void
     collect_lights();
 
-    uint32_t
+    vulkan_render_data*
     object_id_under_coordinate(uint32_t x, uint32_t y);
 
     render_cache&

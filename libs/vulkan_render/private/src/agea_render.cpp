@@ -20,7 +20,6 @@
 #include <native/native_window.h>
 
 #include <utils/agea_log.h>
-#include <utils/process.h>
 #include <utils/clock.h>
 #include <utils/dynamic_object.h>
 #include <utils/dynamic_object_builder.h>
@@ -29,6 +28,8 @@
 #include <backends/imgui_impl_sdl.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <backends/imgui_impl_sdl.h>
+
+#include <resource_locator/resource_locator.h>
 
 namespace agea
 {
@@ -177,6 +178,18 @@ vulkan_render::draw_main()
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
 
     for (auto& r : m_default_render_object_queue)
+    {
+        pipeline_ctx pctx{};
+
+        if (!r.second.empty())
+        {
+            bind_material(cmd, m_pick_mat, current_frame, pctx, false);
+        }
+
+        draw_same_pipeline_objects_queue(cmd, pctx, r.second);
+    }
+
+    for (auto& r : m_outline_render_object_queue)
     {
         pipeline_ctx pctx{};
 
@@ -730,17 +743,35 @@ vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
 }
 
 void
+vulkan_render::reschedule_to_drawing(render::vulkan_render_data* obj_data)
+{
+    remove_from_drawing(obj_data);
+    schedule_to_drawing(obj_data);
+}
+
+void
 vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
 {
     AGEA_check(obj_data, "Should be always valid");
 
-    if (obj_data->outlined)
     {
         AGEA_check(obj_data->queue_id != "transparent", "Not supported!");
 
-        m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+        const std::string id = obj_data->queue_id;
 
-        return;
+        auto& bucket = m_outline_render_object_queue[id];
+
+        auto itr = bucket.find(obj_data);
+        if (itr != bucket.end())
+        {
+            bucket.swap_and_remove(itr);
+
+            if (bucket.get_size() == 0)
+            {
+                ALOG_TRACE("Dropping old queue");
+                m_outline_render_object_queue.erase(id);
+            }
+        }
     }
 
     if (obj_data->queue_id == "transparent")
@@ -756,15 +787,15 @@ vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
         auto& bucket = m_default_render_object_queue[id];
 
         auto itr = bucket.find(obj_data);
-
-        AGEA_check(itr != bucket.end(), "Dropping from missing bucket");
-
-        bucket.swap_and_remove(itr);
-
-        if (bucket.get_size() == 0)
+        if (itr != bucket.end())
         {
-            ALOG_TRACE("Dropping old queue");
-            m_default_render_object_queue.erase(id);
+            bucket.swap_and_remove(itr);
+
+            if (bucket.get_size() == 0)
+            {
+                ALOG_TRACE("Dropping old queue");
+                m_default_render_object_queue.erase(id);
+            }
         }
     }
 }
@@ -1327,7 +1358,7 @@ vulkan_render::resize(uint32_t width, uint32_t height)
     io.DisplaySize = ImVec2((float)(width), (float)(height));
 }
 
-uint32_t
+vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
     // Source for the copy is the last rendered swapchain image
@@ -1411,7 +1442,14 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     dst_image.unmap();
 
-    return pixel & 0xFFFFFF;
+    auto obj_slot = pixel & 0xFFFFFF;
+
+    if (!obj_slot)
+    {
+        return nullptr;
+    }
+
+    return m_cache.objects.at(obj_slot);
 }
 
 render_cache&

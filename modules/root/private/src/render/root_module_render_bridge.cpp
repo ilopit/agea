@@ -304,13 +304,6 @@ mesh_component__root__render_loader(render_bridge& rb, root::smart_object& obj, 
             return result_code::failed;
         }
 
-        static int ct = 0;
-        if (ct < 2)
-        {
-            object_data->outlined = true;
-            ++ct;
-        }
-
         moc.set_render_object_data(object_data);
 
         auto new_rqid = render_bridge::make_qid(*mat_data, *mesh_data);

@@ -5,18 +5,14 @@
 
 #include <native/native_window.h>
 #include <vulkan_render/agea_render.h>
-#include <vulkan_render/vulkan_render_loader.h>
 
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package_manager.h>
-#include <core/package.h>
 #include <root/game_object.h>
 #include <root/lights/point_light.h>
 #include <root/lights/directional_light.h>
 #include <root/lights/spot_light.h>
-
-#include <utils/agea_log.h>
 
 namespace agea
 {
@@ -86,7 +82,12 @@ game_editor::ev_mouse_press()
     uint32_t w = glob::input_manager::getr().get_mouse_state().x;
     uint32_t h = glob::input_manager::getr().get_mouse_state().y;
 
-    glob::vulkan_render::getr().object_id_under_coordinate(w, h);
+    auto obj = glob::vulkan_render::getr().object_id_under_coordinate(w, h);
+    if (obj)
+    {
+        obj->outlined = !obj->outlined;
+        glob::vulkan_render::getr().reschedule_to_drawing(obj);
+    }
 }
 
 void
@@ -128,7 +129,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 5;
+    int DIM = 0;
 
     for (x = 0; x < DIM; ++x)
     {

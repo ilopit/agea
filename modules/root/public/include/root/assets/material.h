@@ -5,6 +5,10 @@
 #include "root/assets/asset.h"
 #include "root/assets/texture_sample.h"
 
+#include "utils/id.h"
+
+#include <unordered_map>
+
 namespace agea
 {
 namespace render
