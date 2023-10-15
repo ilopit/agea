@@ -169,12 +169,12 @@ vulkan_render::draw_main()
     update_ui(current_frame);
     prepare_draw_resources(current_frame);
 
-    auto rp = m_render_passes[AID("ui")];
+    auto rp = get_render_pass(AID("ui"));
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
     draw_ui(current_frame);
     rp->end(cmd);
 
-    rp = m_render_passes[AID("picking")];
+    rp = get_render_pass(AID("picking"));
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
 
     for (auto& r : m_default_render_object_queue)
@@ -203,7 +203,8 @@ vulkan_render::draw_main()
 
     rp->end(cmd);
 
-    rp = m_render_passes[AID("main")];
+
+    rp = get_render_pass(AID("main"));
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 1.0});
     draw_objects(current_frame);
     rp->end(cmd);
