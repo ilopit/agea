@@ -898,7 +898,8 @@ vulkan_render::collect_lights()
     m_obj_config.point_lights_size = 0U;
     m_obj_config.spot_lights_size = 0U;
 
-    m_obj_config.directional_light_id = m_cache.dir_lights.at(0)->slot();
+    m_obj_config.directional_light_id =
+        m_cache.dir_lights.get_size() > 0 ? m_cache.dir_lights.at(0)->slot() : 0;
 
     for (uint32_t slot = 0; slot < m_cache.point_lights.get_size(); ++slot)
     {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <model/model_fwds.h>
+#include <core/model_fwds.h>
 
 #include <utils/singleton_instance.h>
 #include <utils/path.h>
