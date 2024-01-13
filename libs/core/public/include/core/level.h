@@ -1,7 +1,5 @@
 #pragma once
 
-#include "root/components/mesh_component.h"
-
 #include "core/model_fwds.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/line_cache.h"
@@ -9,7 +7,8 @@
 #include "core/model_minimal.h"
 #include "core/container.h"
 
-#include <root/core_types/vec3.h>
+#include <packages/root/components/mesh_component.h>
+#include <packages/root/core_types/vec3.h>
 
 #include <utils/singleton_instance.h>
 
@@ -90,6 +89,7 @@ public:
     void
     add_to_dirty_render_queue(root::game_object_component* g)
     {
+        AGEA_check(g, "Should not be NULL");
         m_dirty_render_components.emplace_back(g);
     }
 

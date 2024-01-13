@@ -84,6 +84,8 @@ private:
     void consume_updated_render_assets();
     void consume_updated_shader_effects();
 
+    void register_packages();
+    void register_packages_render_bridges();
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on

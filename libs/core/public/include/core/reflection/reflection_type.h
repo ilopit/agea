@@ -1,10 +1,8 @@
 #pragma once
 
-#include "core/model_minimal.h"
 #include "core/reflection/property.h"
 #include "core/reflection/function.h"
 #include "core/architype.h"
-#include "core/model_fwds.h"
 
 #include <serialization/serialization_fwds.h>
 

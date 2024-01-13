@@ -6,9 +6,9 @@
 #include "core/caches/caches_map.h"
 #include "core/package.h"
 
-#include "root/assets/texture.h"
-#include "root/assets/material.h"
-#include "root/assets/mesh.h"
+#include "packages/root/assets/texture.h"
+#include "packages/root/assets/material.h"
+#include "packages/root/assets/mesh.h"
 
 #include <serialization/serialization.h>
 
@@ -72,7 +72,7 @@ package_manager::load_package(const utils::id& id)
         return false;
     }
 
-    auto new_package = std::make_unique<package>(AID(name), package_type::obj);
+    auto new_package = std::make_unique<package>(AID(name), package_type::pt_dynamic);
     new_package->m_load_path = path;
     new_package->m_save_root_path = path.parent();
 
@@ -124,7 +124,8 @@ package_manager::load_package(const utils::id& id)
     new_package->register_in_global_cache();
     new_package->set_state(package_state::loaded);
 
-    m_packages[id] = std::move(new_package);
+    m_packages[id] = new_package.get();
+    m_dynamic_packages.push_back(std::move(new_package));
 
     return true;
 }
@@ -236,11 +237,11 @@ package_manager::get_package(const utils::id& id)
 {
     auto itr = m_packages.find(id);
 
-    return itr != m_packages.end() ? (itr->second.get()) : nullptr;
+    return itr != m_packages.end() ? (itr->second) : nullptr;
 }
 
 bool
-package_manager::register_package(std::unique_ptr<package>& pkg)
+package_manager::register_static_package(package* pkg)
 {
     auto itr = m_packages.find(pkg->get_id());
     if (itr != m_packages.end())
@@ -248,7 +249,7 @@ package_manager::register_package(std::unique_ptr<package>& pkg)
         return false;
     }
 
-    m_packages[pkg->get_id()] = std::move(pkg);
+    m_packages[pkg->get_id()] = pkg;
 
     return true;
 }

@@ -1,8 +1,8 @@
 #include "core/level.h"
 
-#include "root/game_object.h"
-#include "root/assets/asset.h"
-#include "root/assets/shader_effect.h"
+#include <packages/root/game_object.h>
+#include <packages/root/assets/asset.h>
+#include <packages/root/assets/shader_effect.h>
 
 #include "core/caches/game_objects_cache.h"
 #include "core/caches/caches_map.h"

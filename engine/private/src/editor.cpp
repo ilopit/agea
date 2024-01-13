@@ -9,10 +9,10 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package_manager.h>
-#include <root/game_object.h>
-#include <root/lights/point_light.h>
-#include <root/lights/directional_light.h>
-#include <root/lights/spot_light.h>
+#include <packages/root/game_object.h>
+#include <packages/root/lights/point_light.h>
+#include <packages/root/lights/directional_light.h>
+#include <packages/root/lights/spot_light.h>
 
 namespace agea
 {

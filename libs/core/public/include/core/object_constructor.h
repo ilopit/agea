@@ -6,8 +6,8 @@
 #include "core/model_minimal.h"
 #include "core/model_fwds.h"
 
-#include <root/smart_object.h>
-#include <root/components/component.h>
+#include <packages/root/smart_object.h>
+#include <packages/root/components/component.h>
 
 #include <string>
 #include <memory>

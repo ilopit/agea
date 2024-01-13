@@ -6,7 +6,7 @@ add_library(render_bridge STATIC
 
 target_link_libraries(render_bridge
 
-    agea::root.module.model
+    agea::packages.root.types
     agea::utils
     agea::vulkan_render
 )

@@ -1,19 +1,20 @@
 #include "core/object_constructor.h"
 
-#include "root/components/component.h"
-#include "root/game_object.h"
-#include "root/components/component.h"
 #include "core/package.h"
-#include "root/mesh_object.h"
 #include "core/caches/objects_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/object_load_context.h"
-
 #include "core/level.h"
+#include "core/reflection/reflection_type.h"
 
-#include "serialization/serialization.h"
+#include <packages/root/components/component.h>
+#include <packages/root/game_object.h>
+#include <packages/root/components/component.h>
+#include <packages/root/mesh_object.h>
 
-#include "utils/agea_log.h"
+#include <serialization/serialization.h>
+
+#include <utils/agea_log.h>
 
 #include <fstream>
 

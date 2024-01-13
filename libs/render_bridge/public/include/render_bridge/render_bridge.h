@@ -1,19 +1,20 @@
 #pragma once
 
+#include "render_bridge/render_dependency.h"
+
+#include <packages/root/assets/shader_effect.h>
+
 #include <utils/path.h>
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
 #include <utils/singleton_instance.h>
 
-#include <core/model_minimal.h>
 #include <vulkan_render/vulkan_render_loader_create_infos.h>
 
-#include <root/assets/shader_effect.h>
+#include <core/model_minimal.h>
 
 #include <unordered_map>
 #include <unordered_set>
-
-#include "render_bridge/render_dependency.h"
 
 namespace agea
 {

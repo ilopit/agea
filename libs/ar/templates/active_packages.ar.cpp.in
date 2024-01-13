@@ -1,0 +1,12 @@
+#include "engine/agea_engine.h"
+
+"${INCLUDES}"
+
+namespace agea::engine
+{
+void
+vulkan_engine::register_packages()
+{
+    "${INCLUDES}"
+}
+}

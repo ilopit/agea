@@ -89,6 +89,12 @@ public:
     void
     unload();
 
+    const line_cache<std::shared_ptr<root::smart_object>>
+    get_objects() const
+    {
+        return m_objects;
+    }
+
 protected:
     utils::id m_id;
     mutable utils::path m_load_path;

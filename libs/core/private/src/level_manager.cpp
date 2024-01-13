@@ -1,14 +1,15 @@
 #include "core/level_manager.h"
 
 #include "core/level.h"
-#include "root/mesh_object.h"
-#include "root/components/mesh_component.h"
 #include "core/object_load_context.h"
 #include "core/object_constructor.h"
 #include "core/package_manager.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
+
+#include <packages/root/mesh_object.h>
+#include <packages/root/components/mesh_component.h>
 
 #include <utils/agea_log.h>
 

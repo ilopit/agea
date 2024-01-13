@@ -32,22 +32,25 @@ find_package(Vulkan REQUIRED)
 
 add_subdirectory(thirdparty)
 
-set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/engine)
-set(modules_file ${ar_folder}/active_modules.cpp)
-
-if(EXISTS ${modules_file})
-    message("File already exists, skipping")
-else()
-    file(MAKE_DIRECTORY ${ar_folder})
-    write_file(${ar_folder}/active_modules.h "")
-    write_file(${modules_file} "#include \"engine/active_modules.h\"")
-endif()
-
 set(AGEA_ACTIVE_MODULES_TARGETS ""  CACHE INTERNAL "")
 set(AGEA_ACTIVE_MODULES ""  CACHE INTERNAL "")
 
+SET(agea_gendir ${CMAKE_BINARY_DIR}/agea_generated/engine)
+
+file(MAKE_DIRECTORY ${agea_gendir})
+
+execute_process(
+    COMMAND python 
+    ${PROJECT_SOURCE_DIR}/tools/argen.py
+    --type bind
+    --source ${PROJECT_SOURCE_DIR}/static_packages
+    --output ${CMAKE_BINARY_DIR}/agea_generated)
+
+include(${CMAKE_BINARY_DIR}/agea_generated/engine/CMakeLists.txt)
+
+
+
 add_subdirectory(libs)
-add_subdirectory(modules)
 
 add_subdirectory(engine)
 

@@ -5,8 +5,8 @@
 
 #include <utils/agea_log.h>
 
-#include <root/assets/mesh.h>
-#include <root/assets/texture.h>
+#include <packages/root/assets/mesh.h>
+#include <packages/root/assets/texture.h>
 
 #include <core/object_constructor.h>
 #include <core/package.h>
@@ -45,7 +45,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
 
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
-    core::package p(AID("dummy"), core::package_type::obj);
+    core::package p(AID("dummy"), core::package_type::pt_dynamic);
     p.set_save_root_path(dst_folder_path);
 
     auto mesh = obj->as<root::mesh>();
@@ -85,7 +85,7 @@ convert_image_to_atxt(const utils::path& obj_path,
     auto obj = core::object_constructor::alloc_empty_object<root::texture>();
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
-    core::package p(AID("dummy"), core::package_type::obj);
+    core::package p(AID("dummy"), core::package_type::pt_dynamic);
     p.set_save_root_path(dst_folder_path);
 
     auto txt = obj->as<root::texture>();

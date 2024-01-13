@@ -145,6 +145,27 @@ public:
     root::game_object* m_obj = nullptr;
 };
 
+class package_editor : public window
+{
+public:
+    static const char*
+    window_title()
+    {
+        return "Package editor";
+    }
+
+    package_editor()
+        : window(window_title())
+    {
+    }
+
+    void
+    handle() override;
+
+    void
+    draw_package_obj(core::package* p, selection_context& sc);
+};
+
 class materials_selector : public window
 {
 public:

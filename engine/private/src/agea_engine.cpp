@@ -5,7 +5,6 @@
 #include "engine/editor.h"
 #include "engine/config.h"
 #include "engine/engine_counters.h"
-#include "engine/active_modules.h"
 
 #include "engine/private/sync_service.h"
 
@@ -25,18 +24,19 @@
 #include <core/package.h>
 #include <core/package_manager.h>
 #include <core/reflection/lua_api.h>
+#include <core/reflection/reflection_type.h>
 
 #include <native/native_window.h>
 
-#include <root/assets/mesh.h>
-#include <root/components/mesh_component.h>
-#include <root/game_object.h>
-#include <root/assets/shader_effect.h>
+#include <packages/root/assets/mesh.h>
+#include <packages/root/components/mesh_component.h>
+#include <packages/root/game_object.h>
+#include <packages/root/assets/shader_effect.h>
 
-#include <root/lights/directional_light.h>
-#include <root/lights/point_light.h>
-#include <root/lights/spot_light.h>
-#include <root/assets/material.h>
+#include <packages/root/lights/directional_light.h>
+#include <packages/root/lights/point_light.h>
+#include <packages/root/lights/spot_light.h>
+#include <packages/root/assets/material.h>
 
 #include <render_bridge/render_bridge.h>
 
@@ -118,21 +118,12 @@ vulkan_engine::init()
     glob::vulkan_render::create(*m_registry);
     glob::id_generator::create(*m_registry);
     glob::engine_counters::create(*m_registry);
-    glob::module_manager::create(*m_registry);
     glob::reflection_type_registry::create(*m_registry);
     glob::render_bridge::create(*m_registry);
 
     glob::init_global_caches(*m_registry);
 
     init_default_scripting();
-
-    engine::register_modules();
-
-    for (auto m : glob::module_manager::getr().modules())
-    {
-        m->init_reflection();
-        m->override_reflection_types();
-    }
 
     glob::reflection_type_registry::getr().finilaze();
 
@@ -148,6 +139,9 @@ vulkan_engine::init()
     glob::package_manager::getr().init();
 
     glob::game_editor::get()->init();
+
+    register_packages();
+    register_packages_render_bridges();
 
     native_window::construct_params rwc;
     rwc.w = 1600 * 2;
@@ -456,14 +450,6 @@ vulkan_engine::init_scene()
 
     glob::game_editor::getr().ev_spawn();
     glob::game_editor::getr().ev_lights();
-
-#if defined(AGEA_demo_module_included)
-
-    demo::example::construct_params dcp;
-
-    auto p = glob::level::getr().spawn_object<demo::example>(AID("spawned_example"), dcp);
-
-#endif
 }
 
 void

@@ -2,6 +2,8 @@
 
 #include <type_traits>
 
+#include "type_description.h"
+
 namespace agea::reflection
 {
 template <typename T>

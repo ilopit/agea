@@ -1,8 +1,9 @@
 #include "core/id_generator.h"
 
-#include <core/caches/caches_map.h>
-#include <core/caches/objects_cache.h>
-#include <root/smart_object.h>
+#include "core/caches/caches_map.h"
+#include "core/caches/objects_cache.h"
+
+#include <packages/root/smart_object.h>
 
 #include <utils/agea_log.h>
 

@@ -2,7 +2,7 @@
 
 #include "core/object_load_context.h"
 
-#include "root/smart_object.h"
+#include <packages/root/smart_object.h>
 
 #include "core/caches/objects_cache.h"
 #include "core/caches/textures_cache.h"

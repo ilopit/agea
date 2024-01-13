@@ -8,12 +8,16 @@
 #include "engine/engine_counters.h"
 
 #include <core/level.h>
-#include <root/game_object.h>
-#include <root/assets/material.h>
 #include <core/caches/caches_map.h>
 #include <core/caches/materials_cache.h>
 #include <core/reflection/property.h>
 #include <core/reflection/lua_api.h>
+
+#include <packages/root/game_object.h>
+#include <packages/root/assets/material.h>
+
+#include <core/package.h>
+#include <core/package_manager.h>
 
 #include <native/native_window.h>
 
@@ -61,8 +65,8 @@ ui::ui()
     m_winodws[editor_console::window_title()] = std::make_unique<editor_console>();
     m_winodws[editor_console::window_title()]->m_show = true;
 
-    m_winodws[script_text_editor::window_title()] = std::make_unique<script_text_editor>();
-    m_winodws[script_text_editor::window_title()]->m_show = true;
+    m_winodws[package_editor::window_title()] = std::make_unique<package_editor>();
+    m_winodws[package_editor::window_title()]->m_show = true;
 
     m_winodws[performance_counters_window::window_title()] =
         std::make_unique<performance_counters_window>();
@@ -397,6 +401,64 @@ performance_counters_window::handle()
     ImGui::Text("Draw    : %3.3lf", draw_avg);
 
     --lock;
+}
+
+void
+package_editor::handle()
+{
+    if (!handle_begin())
+    {
+        return;
+    }
+
+    auto& pkgs = glob::package_manager::getr().get_packages();
+
+    // if (ImGui::TreeNode("Packages"))
+    {
+        for (auto& p : glob::package_manager::getr().get_packages())
+        {
+            bool opened = ImGui::TreeNode(p.first.cstr());
+            if (opened)
+            {
+                int i = 0;
+                for (auto& obj : p.second->get_objects())
+                {
+                    if (ImGui::TreeNodeEx((void*)(i), ImGuiTreeNodeFlags_Bullet,
+                                          obj->get_id().cstr()))
+                    {
+                        ImGui::TreePop();
+                    }
+                    ++i;
+                }
+                ImGui::TreePop();
+            }
+        }
+        // ImGui::TreePop();
+    }
+
+    handle_end();
+}
+
+void
+package_editor::draw_package_obj(core::package* p, selection_context& sc)
+{
+    ++sc.i;
+    ImGui::NextColumn();
+    ImGui::AlignTextToFramePadding();
+    // ImGui::Text("%s", root->get_id().cstr());
+    ImGui::NextColumn();
+
+    //     if (open)
+    //     {
+    //         if (!root->get_children().empty())
+    //         {
+    //             for (auto obj : root->get_children())
+    //             {
+    //                 draw_package_obj((root::game_object_component*)obj, sc);
+    //             }
+    //         }
+    //         ImGui::TreePop();
+    //     }
 }
 
 }  // namespace ui

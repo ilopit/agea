@@ -1,13 +1,9 @@
-message(STATUS "AGEA_ACTIVE_MODULES_TARGETS : ${AGEA_ACTIVE_MODULES_TARGETS}")
-
-set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/engine)
-set(modules_file ${ar_folder}/active_modules.cpp)
-
 file(GLOB ENGINE_SRC "public/include/engine/*.h" "private/src/*.cpp")
+file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/agea_generated/engine/*.cpp")
 
 add_library(engine STATIC
    ${ENGINE_SRC}
-   ${modules_file}
+   ${ENGINE_GENERATED_SRC}
 )
 
 target_link_libraries(engine PUBLIC
@@ -31,9 +27,7 @@ target_link_libraries(engine PUBLIC
 target_include_directories(engine 
     PUBLIC 
         ${CMAKE_BINARY_DIR}/agea_generated
-    
 )
-
 
 agea_finalize_library(engine)
 

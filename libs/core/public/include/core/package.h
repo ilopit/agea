@@ -1,8 +1,5 @@
 #pragma once
 
-#include "core/model_minimal.h"
-#include "core/model_fwds.h"
-
 #include "core/caches/cache_set.h"
 #include "core/caches/line_cache.h"
 
@@ -24,9 +21,9 @@ enum class package_state
 
 enum class package_type
 {
-    nan = 0,
-    type,
-    obj
+    pt_nan = 0,
+    pt_static,
+    pt_dynamic
 };
 
 class package : public container
@@ -92,7 +89,7 @@ public:
 
 private:
     package_state m_state = package_state::unloaded;
-    package_type m_type = package_type::nan;
+    package_type m_type = package_type::pt_nan;
 
     cache_set m_proto_local_cs;
 };

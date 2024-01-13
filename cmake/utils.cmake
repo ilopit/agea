@@ -18,7 +18,7 @@ macro(agea_finalize_library)
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/private/include")
     
         target_include_directories(${ARGV0} 
-            PUBLIC 
+            PRIVATE 
                 "${CMAKE_CURRENT_SOURCE_DIR}/private/include")
     endif()
 
@@ -58,14 +58,16 @@ macro(agea_ar_target)
     add_custom_command(
         TARGET ${full_name}
         PRE_BUILD
-        COMMAND python ${PROJECT_SOURCE_DIR}/tools/argen.py
-                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}public/ar/config 
-                       ${PROJECT_SOURCE_DIR}/modules/${ARGV1}public/
-                       ${CMAKE_BINARY_DIR}/agea_generated
-                       ${ARGV1}
-                       ${ARGV2})
+        COMMAND python 
+                       ${PROJECT_SOURCE_DIR}/tools/argen.py
+                       --type package
+                       --config ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public/ar/config 
+                       --source ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public
+                       --output ${CMAKE_BINARY_DIR}/agea_generated
+                       --package_name ${ARGV1}
+                       --namespace ${ARGV2})
 
-    set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/${ARGV1})
+    set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/packages/${ARGV1})
     set(ar_file ${ar_folder}/${ARGV1}.ar.cpp)
 
     agea_ide_path(${full_name})
@@ -81,12 +83,13 @@ macro(agea_ar_target)
         write_file(${ar_file} "//ar file do not modify")
 
         execute_process(
-                  COMMAND python 
-                  ${PROJECT_SOURCE_DIR}/tools/argen.py
-                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/public/ar/config 
-                  ${PROJECT_SOURCE_DIR}/modules/${ARGV1}/public
-                  ${CMAKE_BINARY_DIR}/agea_generated
-                  ${ARGV1}
-                  ${ARGV2})
+            COMMAND python 
+            ${PROJECT_SOURCE_DIR}/tools/argen.py
+            --type package
+            --config ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public/ar/config 
+            --source ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public
+            --output ${CMAKE_BINARY_DIR}/agea_generated
+            --package_name ${ARGV1}
+            --namespace ${ARGV2})
     endif()
 endmacro()

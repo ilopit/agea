@@ -1,19 +1,18 @@
 #include "core/reflection/property.h"
 
-#include <inttypes.h>
-
-#include "root/assets/material.h"
-#include "root/assets/mesh.h"
-
 #include "core/caches/materials_cache.h"
 #include "core/caches/meshes_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/reflection/reflection_type.h"
 
+#include <packages/root/assets/material.h>
+#include <packages/root/assets/mesh.h>
+
 #include <utils/agea_log.h>
 
 #include <serialization/serialization.h>
 
+#include <inttypes.h>
 #include <array>
 
 namespace agea

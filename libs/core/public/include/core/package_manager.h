@@ -35,16 +35,17 @@ public:
     get_package(const utils::id& id);
 
     bool
-    register_package(std::unique_ptr<package>& pkg);
+    register_static_package(package* pkg);
 
-    std::unordered_map<utils::id, std::unique_ptr<package>>&
+    std::unordered_map<utils::id, package*>&
     get_packages()
     {
         return m_packages;
     }
 
 protected:
-    std::unordered_map<utils::id, std::unique_ptr<package>> m_packages;
+    std::unordered_map<utils::id, package*> m_packages;
+    std::vector<std::unique_ptr<package>> m_dynamic_packages;
 };
 
 }  // namespace core

@@ -21,7 +21,7 @@ def main():
     if not isAdmin():
         print("Admin rights required!!")
         exit(-1)
-
+ 
     agea_root_dir = os.path.dirname(
         os.path.dirname(os.path.realpath(__file__)))
 

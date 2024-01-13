@@ -1,6 +1,5 @@
 #pragma once
 
-#include "core/model_minimal.h"
 #include "core/model_fwds.h"
 
 #include <core/caches/caches_map.h>

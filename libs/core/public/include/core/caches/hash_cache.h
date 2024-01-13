@@ -1,9 +1,8 @@
 #pragma once
 
-#include "core/model_fwds.h"
-#include "core/architype.h"
+#include "packages/root/smart_object.h"
 
-#include "root/smart_object.h"
+#include "core/architype.h"
 
 #include <utils/singleton_instance.h>
 

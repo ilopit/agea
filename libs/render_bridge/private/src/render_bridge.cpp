@@ -1,8 +1,10 @@
 #include "render_bridge/render_bridge.h"
 
-#include <root/smart_object.h>
-#include <root/assets/shader_effect.h>
-#include <root/root_types_ids.ar.h>
+#include <core/reflection/reflection_type.h>
+
+#include <packages/root/smart_object.h>
+#include <packages/root/assets/shader_effect.h>
+#include <packages/root/types_ids.ar.h>
 
 #include <vulkan_render/utils/vulkan_initializers.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
