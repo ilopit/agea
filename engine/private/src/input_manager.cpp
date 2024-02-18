@@ -9,7 +9,7 @@
 
 #include <imgui.h>
 
-#include <backends/imgui_impl_sdl.h>
+#include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
 
 namespace agea

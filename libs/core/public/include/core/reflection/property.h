@@ -27,6 +27,8 @@ public:
     property_compare_handler         compare_handler         = default_compare;
     property_copy_handler            copy_handler            = default_copy;
     property_prototype_handler       protorype_handler       = default_prototype;
+    property_to_string_handler       to_string_handler       = default_to_string;
+
 
 
     blob_ptr get_blob(root::smart_object& obj);
@@ -54,6 +56,9 @@ private:
 
     static result_code
     default_prototype(property_prototype_context& context);
+
+    static result_code
+    default_to_string(property_to_string_context& context);
 
     static result_code
     deserialize_collection(reflection::property& p,

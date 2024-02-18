@@ -190,7 +190,7 @@ protected:
     void
     fill_renderable_components();
 
-    AGEA_ar_property("category=meta",
+    AGEA_ar_property("category=Meta",
                      "serializable=true",
                      "property_des_handler=custom::game_object_components_deserialize",
                      "property_ser_handler=custom::game_object_components_serialize",

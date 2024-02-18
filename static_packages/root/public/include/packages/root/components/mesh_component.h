@@ -44,7 +44,7 @@ public:
     }
 
 protected:
-    AGEA_ar_property("category=assets",
+    AGEA_ar_property("category=Assets",
                      "serializable=true",
                      "check=not_same",
                      "invalidates=render",
@@ -52,7 +52,7 @@ protected:
                      "default=true");
     material* m_material = nullptr;
 
-    AGEA_ar_property("category=assets",
+    AGEA_ar_property("category=Assets",
                      "serializable=true",
                      "check=not_same",
                      "invalidates=render",

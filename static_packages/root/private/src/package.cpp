@@ -41,13 +41,14 @@ namespace
 
 // ========  UTILS  ====================================
 
-#define MAKE_POD_TYPE(id, type_name)                                   \
-    {                                                                  \
-        auto rt = glob::reflection_type_registry::getr().get_type(id); \
-        rt->deserialization = default_deserialize<type_name>;          \
-        rt->compare = default_compare<type_name>;                      \
-        rt->copy = default_copy<type_name>;                            \
-        rt->serialization = default_serialize<type_name>;              \
+#define MAKE_POD_TYPE(id, type_name)                          \
+    {                                                         \
+        auto rt = reflection_regestry.get_type(id);           \
+        rt->deserialization = default_deserialize<type_name>; \
+        rt->compare = default_compare<type_name>;             \
+        rt->copy = default_copy<type_name>;                   \
+        rt->serialization = default_serialize<type_name>;     \
+        rt->ui = simple_to_string<type_name>;                 \
     }
 
 template <typename T>
@@ -68,6 +69,24 @@ default_serialize(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     reflection::utils::pack_field<T>(ptr, jc);
+
+    return result_code::ok;
+}
+result_code
+default_to_string(AGEA_reflection_type_ui_args)
+{
+    result = "NaN";
+
+    return result_code::ok;
+}
+
+template <typename T>
+result_code
+simple_to_string(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+    auto& t = reflection::utils::as_type<T>(ptr);
+    result = std::format("{}", t);
 
     return result_code::ok;
 }
@@ -148,6 +167,28 @@ deserialize_t_id(AGEA_deserialization_args)
     return result_code::ok;
 }
 
+result_code
+to_string_t_id(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+    result = reflection::utils::as_type<utils::id>(ptr).str();
+    return result_code::ok;
+}
+
+// ========  VEC2  ====================================
+
+result_code
+to_string_t_vec2(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+
+    auto& field = reflection::utils::as_type<::agea::root::vec3>(ptr);
+
+    result = result = std::format("{} {}", field.x, field.y);
+
+    return result_code::ok;
+}
+
 // ========  VEC3  ====================================
 result_code
 serialize_t_vec3(AGEA_serialization_args)
@@ -175,6 +216,41 @@ deserialize_t_vec3(AGEA_deserialization_args)
     field.y = jc["y"].as<float>();
     field.z = jc["z"].as<float>();
 
+    return result_code::ok;
+}
+
+result_code
+to_string_t_vec3(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+
+    auto& field = reflection::utils::as_type<::agea::root::vec3>(ptr);
+
+    result = result = std::format("{} {} {}", field.x, field.y, field.z);
+
+    return result_code::ok;
+}
+
+// ========  VEC4  ====================================
+
+result_code
+to_string_t_vec4(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+
+    auto& field = reflection::utils::as_type<::agea::root::vec4>(ptr);
+
+    result = result = std::format("{} {} {} {}", field.x, field.y, field.z, field.w);
+
+    return result_code::ok;
+}
+
+// ========  STRING  ====================================
+result_code
+to_string_t_string(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+    result = reflection::utils::as_type<std::string>(ptr);
     return result_code::ok;
 }
 
@@ -310,6 +386,18 @@ copy_t_obj(AGEA_copy_handler_args)
     AGEA_unused(to);
 
     AGEA_never("We should never be here!");
+    return result_code::ok;
+}
+
+result_code
+to_string_t_obj(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+
+    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
+
+    result = field ? field->get_id().str() : "empty";
+
     return result_code::ok;
 }
 
@@ -502,16 +590,37 @@ copy_t_buf(AGEA_copy_handler_args)
 
 }  // namespace
 
-package::package(const ::agea::utils::id& id)
-    : core::package(id, core::package_type::pt_static)
+package::package()
+    : core::static_package(AID("root"))
 {
+}
+
+bool
+package::finilize_objects()
+{
+    auto obj = m_objects;
+    for (auto& o : obj)
+    {
+        auto cparams = o->get_reflection()->cparams_alloc();
+
+        if (!o->META_construct(*cparams))
+        {
+            return false;
+        }
+
+        if (!o->post_construct())
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool
 package::override_reflection_types()
 {
-    auto model_id = AID("root");
-
+    auto& reflection_regestry = ::agea::glob::reflection_type_registry::getr();
     MAKE_POD_TYPE(agea::root::root__string, std::string);
     MAKE_POD_TYPE(agea::root::root__bool, bool);
 
@@ -529,72 +638,88 @@ package::override_reflection_types()
     MAKE_POD_TYPE(agea::root::root__double, double);
 
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__id);
+        auto rt = reflection_regestry.get_type(root__id);
 
         rt->deserialization = deserialize_t_id;
         rt->compare = default_compare<utils::id>;
         rt->copy = default_copy<utils::id>;
         rt->serialization = serialize_t_id;
+        rt->ui = to_string_t_id;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__buffer);
+        auto rt = reflection_regestry.get_type(root__buffer);
 
         rt->deserialization = deserialize_t_buf;
         rt->copy = default_copy<utils::buffer>;
         rt->serialization = serialize_t_buf;
+        rt->ui = default_to_string;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__vec3);
+        auto rt = reflection_regestry.get_type(root__vec3);
 
         rt->deserialization = deserialize_t_vec3;
         rt->compare = default_compare<glm::vec3>;
         rt->copy = default_copy<glm::vec3>;
         rt->serialization = serialize_t_vec3;
     }
-
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__smart_object);
+        auto rt = reflection_regestry.get_type(root__smart_object);
 
         rt->deserialization = deserialize_t_obj;
         rt->compare = default_compare<root::smart_object*>;
         rt->copy = copy_smart_object;
         rt->serialization = serialize_t_obj;
         rt->deserialization_with_proto = deserialize_from_proto_t_obj;
+        rt->ui = to_string_t_obj;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__component);
+        auto rt = reflection_regestry.get_type(root__component);
 
         rt->deserialization = deserialize_t_com;
         rt->compare = default_compare<root::smart_object*>;
         rt->deserialization_with_proto = deserialize_from_proto_t_com;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__texture);
+        auto rt = reflection_regestry.get_type(root__texture);
 
         rt->deserialization = deserialize_t_txt;
         rt->serialization = serialize_t_txt;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__material);
+        auto rt = reflection_regestry.get_type(root__material);
 
         rt->deserialization = deserialize_t_mat;
         rt->serialization = serialize_t_mat;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__mesh);
+        auto rt = reflection_regestry.get_type(root__mesh);
 
         rt->deserialization = deserialize_t_msh;
         rt->serialization = serialize_t_msh;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__shader_effect);
+        auto rt = reflection_regestry.get_type(root__shader_effect);
 
         rt->deserialization = deserialize_t_se;
         rt->serialization = serialize_t_se;
     }
 
+    {
+        auto rt = reflection_regestry.get_type(root__vec2);
+        rt->ui = to_string_t_vec2;
+    }
+
+    {
+        auto rt = reflection_regestry.get_type(root__vec3);
+        rt->ui = to_string_t_vec3;
+    }
+
+    {
+        auto rt = reflection_regestry.get_type(root__vec4);
+        rt->ui = to_string_t_vec4;
+    }
+
     return true;
 }
-
 }  // namespace root
 }  // namespace agea

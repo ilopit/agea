@@ -22,6 +22,8 @@
 #include <unordered_map>
 #include <queue>
 
+struct ImFont;
+
 namespace agea
 {
 namespace render
@@ -128,6 +130,18 @@ public:
     destroy_shader_effect_data(const agea::utils::id& id);
 
     /*************************/
+    void
+    create_font(const agea::utils::id& id, ImFont* font);
+
+    ImFont*
+    get_font(const agea::utils::id& id)
+    {
+        auto itr = m_fonts_cache.find(id);
+
+        return itr != m_fonts_cache.end() ? itr->second : nullptr;
+    }
+
+    /*************************/
     sampler_data*
     get_sampler_data(const agea::utils::id& id)
     {
@@ -178,6 +192,8 @@ private:
     std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 
     std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
+
+    std::unordered_map<agea::utils::id, ImFont*> m_fonts_cache;
 };
 
 }  // namespace render

@@ -59,6 +59,13 @@ struct property_prototype_context
     const serialization::conteiner* sc = nullptr;
 };
 
+struct property_to_string_context
+{
+    property* prop = nullptr;
+    root::smart_object* obj = nullptr;
+    std::string result;
+};
+
 // clang-format off
 
 using property_deserialization_handler  = result_code(*)(deserialize_context&);
@@ -66,6 +73,7 @@ using property_serialization_handler    = result_code(*)(serialize_context&);
 using property_compare_handler          = result_code(*)(compare_context&);
 using property_copy_handler             = result_code(*)(copy_context&);
 using property_prototype_handler        = result_code(*)(property_prototype_context&);
+using property_to_string_handler        = result_code(*)(property_to_string_context&);
 
 // clang-format on
 

@@ -9,13 +9,20 @@
 #include <string>
 #include <array>
 
+#include <imgui.h>
+
 namespace agea
 {
 
 namespace ui
 {
 
-struct selection_context;
+struct selection_context
+{
+    ImGuiTreeNodeFlags base_flags;
+    int i = 0;
+    int selected = -1;
+};
 
 class window
 {
@@ -114,56 +121,6 @@ public:
     handle() override;
 
     root::game_object_component* m_obj = nullptr;
-};
-
-class object_editor : public window
-{
-public:
-    static const char*
-    window_title()
-    {
-        return "Object editor";
-    }
-
-    object_editor()
-        : window(window_title())
-    {
-    }
-
-    void
-    show(root::game_object* obj)
-    {
-        m_obj = obj;
-        m_show = true;
-    }
-
-    void
-    draw_components(root::game_object_component* obj, selection_context& sc);
-    void
-    handle() override;
-
-    root::game_object* m_obj = nullptr;
-};
-
-class package_editor : public window
-{
-public:
-    static const char*
-    window_title()
-    {
-        return "Package editor";
-    }
-
-    package_editor()
-        : window(window_title())
-    {
-    }
-
-    void
-    handle() override;
-
-    void
-    draw_package_obj(core::package* p, selection_context& sc);
 };
 
 class materials_selector : public window

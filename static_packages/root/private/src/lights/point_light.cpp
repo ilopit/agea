@@ -25,22 +25,5 @@ point_light::construct(construct_params& params)
     return true;
 }
 
-void
-point_light::on_tick(float dt)
-{
-    static float f = dt;
-    static bool dir = true;
-
-    f += dt;
-
-    if (f > 30.f)
-    {
-        dir = !dir;
-        f = 0.f;
-    }
-    vec3 g{0.f, dt * (dir ? -1.f : 1.f), 0.f};
-    // move(g);
-}
-
 }  // namespace root
 }  // namespace agea

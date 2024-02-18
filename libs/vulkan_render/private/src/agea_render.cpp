@@ -25,9 +25,8 @@
 #include <utils/dynamic_object_builder.h>
 
 #include <imgui.h>
-#include <backends/imgui_impl_sdl.h>
+#include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
-#include <backends/imgui_impl_sdl.h>
 
 #include <resource_locator/resource_locator.h>
 
@@ -202,7 +201,6 @@ vulkan_render::draw_main()
     }
 
     rp->end(cmd);
-
 
     rp = get_render_pass(AID("main"));
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 1.0});
@@ -1126,7 +1124,11 @@ vulkan_render::prepare_ui_resources()
     auto path = glob::resource_locator::get()->resource(category::fonts, "Roboto-Medium.ttf");
     auto f = path.str();
 
-    io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
+    auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
+    auto f_big = io.Fonts->AddFontFromFileTTF(f.c_str(), 33.0f);
+
+    glob::vulkan_render_loader::getr().create_font(AID("normal"), f_normal);
+    glob::vulkan_render_loader::getr().create_font(AID("big"), f_big);
 
     int tex_width = 0, tex_height = 0;
     unsigned char* font_data = nullptr;

@@ -36,11 +36,11 @@ public:
 
     ~package();
 
+    friend class package_manager;
+
     package(package&&) noexcept;
     package&
     operator=(package&&) noexcept;
-
-    friend class package_manager;
 
     package_state
     get_state() const
@@ -60,20 +60,6 @@ public:
         m_state = v;
     }
 
-    template <typename T>
-    root::smart_object*
-    add_object(const utils::id& id, typename const T::construct_params& p)
-    {
-        return object_constructor::object_construct(T::AR_TYPE_id(), id, p, *m_occ);
-    }
-
-    template <typename T>
-    result_code
-    register_type()
-    {
-        return object_constructor::register_package_type<T>(*m_occ);
-    }
-
     void
     init_global_cache_reference(cache_set* class_global_set = glob::proto_objects_cache_set::get(),
                                 cache_set* instance_global_set = glob::objects_cache_set::get());
@@ -84,14 +70,42 @@ public:
     void
     unregister_in_global_cache();
 
-    void
-    unload();
-
-private:
+protected:
     package_state m_state = package_state::unloaded;
     package_type m_type = package_type::pt_nan;
 
     cache_set m_proto_local_cs;
+};
+
+class static_package : public package
+{
+public:
+    static_package(const utils::id& id);
+
+    template <typename T>
+    result_code
+    register_type()
+    {
+        return object_constructor::register_package_type<T>(*m_occ);
+    }
+
+    template <typename T>
+    root::smart_object*
+    add_object(const utils::id& id, typename const T::construct_params& p)
+    {
+        return object_constructor::object_construct(T::AR_TYPE_id(), id, p, *m_occ);
+    }
+};
+
+class dynamic_package : public package
+{
+public:
+    dynamic_package(const utils::id& id,
+                    cache_set* class_global_set,
+                    cache_set* instance_global_set);
+
+    void
+    unload();
 };
 
 }  // namespace core

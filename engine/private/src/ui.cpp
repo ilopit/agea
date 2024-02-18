@@ -7,6 +7,9 @@
 #include "engine/property_drawers.h"
 #include "engine/engine_counters.h"
 
+#include "engine/private/ui/package_editor.h"
+#include "engine/private/ui/object_editor.h"
+
 #include <core/level.h>
 #include <core/caches/caches_map.h>
 #include <core/caches/materials_cache.h>
@@ -26,8 +29,8 @@
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
-#include <imgui.h>
-#include <backends/imgui_impl_sdl.h>
+
+#include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
 
 #include <array>
@@ -44,12 +47,6 @@ glob::ui::type glob::ui::type::s_instance;
 
 namespace ui
 {
-struct selection_context
-{
-    ImGuiTreeNodeFlags base_flags;
-    int i = 0;
-    int selected = -1;
-};
 
 ui::ui()
 {
@@ -292,89 +289,6 @@ components_editor::handle()
 }
 
 void
-object_editor::handle()
-{
-    if (!handle_begin())
-    {
-        return;
-    }
-
-    ImGui::Columns(2);
-    ImGui::Separator();
-
-    for (auto& categories : m_obj->get_reflection()->m_editor_properties)
-    {
-        ImGui::Separator();
-        ImGui::Text("%s", categories.first.c_str());
-        ImGui::Separator();
-        for (auto& p : categories.second)
-        {
-            ImGui::Text("%s", p->name.data());
-            ImGui::NextColumn();
-            property_drawers::draw_ro(m_obj, *p);
-            ImGui::NextColumn();
-        }
-    }
-
-    ImGui::Columns(1);
-    ImGui::Separator();
-    ImGui::Text("Components :");
-    ImGui::Separator();
-    ImGui::Columns(2);
-
-    static selection_context sc;
-    sc.i = 0;
-    sc.base_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                    ImGuiTreeNodeFlags_SpanAvailWidth;
-    draw_components(m_obj->get_root_component(), sc);
-
-    ImGui::Separator();
-
-    handle_end();
-}
-
-void
-object_editor::draw_components(root::game_object_component* root, selection_context& sc)
-{
-    ImGuiTreeNodeFlags node_flags = sc.base_flags;
-    const bool is_selected = sc.i == sc.selected;
-    if (is_selected)
-    {
-        node_flags |= ImGuiTreeNodeFlags_Selected;
-    }
-
-    if (root->get_children().empty())
-    {
-        node_flags |= ImGuiTreeNodeFlags_Leaf;
-    }
-
-    auto open = ImGui::TreeNodeEx((void*)(intptr_t)sc.i, node_flags, "%s", root->get_id().cstr());
-    if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
-    {
-        sc.selected = sc.i;
-        get_window<components_editor>()->show(root);
-    }
-
-    ++sc.i;
-    ImGui::NextColumn();
-    ImGui::AlignTextToFramePadding();
-    ImGui::Text("%s", root->get_id().cstr());
-    ImGui::NextColumn();
-
-    if (open)
-    {
-        if (!root->get_children().empty())
-        {
-            for (auto obj : root->get_children())
-            {
-                draw_components((root::game_object_component*)obj, sc);
-            }
-        }
-        ImGui::TreePop();
-    }
-}
-
-void
 performance_counters_window::handle()
 {
     if (!lock)
@@ -401,64 +315,6 @@ performance_counters_window::handle()
     ImGui::Text("Draw    : %3.3lf", draw_avg);
 
     --lock;
-}
-
-void
-package_editor::handle()
-{
-    if (!handle_begin())
-    {
-        return;
-    }
-
-    auto& pkgs = glob::package_manager::getr().get_packages();
-
-    // if (ImGui::TreeNode("Packages"))
-    {
-        for (auto& p : glob::package_manager::getr().get_packages())
-        {
-            bool opened = ImGui::TreeNode(p.first.cstr());
-            if (opened)
-            {
-                int i = 0;
-                for (auto& obj : p.second->get_objects())
-                {
-                    if (ImGui::TreeNodeEx((void*)(i), ImGuiTreeNodeFlags_Bullet,
-                                          obj->get_id().cstr()))
-                    {
-                        ImGui::TreePop();
-                    }
-                    ++i;
-                }
-                ImGui::TreePop();
-            }
-        }
-        // ImGui::TreePop();
-    }
-
-    handle_end();
-}
-
-void
-package_editor::draw_package_obj(core::package* p, selection_context& sc)
-{
-    ++sc.i;
-    ImGui::NextColumn();
-    ImGui::AlignTextToFramePadding();
-    // ImGui::Text("%s", root->get_id().cstr());
-    ImGui::NextColumn();
-
-    //     if (open)
-    //     {
-    //         if (!root->get_children().empty())
-    //         {
-    //             for (auto obj : root->get_children())
-    //             {
-    //                 draw_package_obj((root::game_object_component*)obj, sc);
-    //             }
-    //         }
-    //         ImGui::TreePop();
-    //     }
 }
 
 }  // namespace ui

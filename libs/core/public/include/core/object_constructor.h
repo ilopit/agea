@@ -137,6 +137,12 @@ public:
                        uint32_t extra_flags,
                        object_load_context& olc);
 
+    static root::smart_object*
+    alloc_empty_object(const utils::id& id,
+                       reflection::reflection_type* rt,
+                       uint32_t extra_flags,
+                       object_load_context& olc);
+
 private:
     static result_code
     register_package_type_impl(std::shared_ptr<root::smart_object> empty, object_load_context& olc);

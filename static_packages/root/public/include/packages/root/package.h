@@ -7,18 +7,27 @@
 
 namespace agea
 {
+
+namespace reflection
+{
+class reflection_type_registry;
+}
+
 namespace root
 {
-class package : public ::agea::core::package
+class package : public ::agea::core::static_package
 {
 public:
-    package(const ::agea::utils::id& id);
+    package();
 
     static package&
     instance();
 
     bool
     init_reflection();
+
+    bool
+    finilize_objects();
 
     virtual bool
     override_reflection_types();

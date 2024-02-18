@@ -73,6 +73,7 @@ reflection::reflection_type_registry::finilaze()
             {
                 c.second->m_serilalization_properties.push_back(p);
             }
+            c.second->m_editor_properties[p->category].push_back(p);
         }
     }
 }

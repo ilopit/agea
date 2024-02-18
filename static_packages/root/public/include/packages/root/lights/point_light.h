@@ -23,9 +23,6 @@ public:
 
     bool
     construct(construct_params& params);
-
-    virtual void
-    on_tick(float) override;
 };
 
 }  // namespace root

@@ -14,7 +14,7 @@ target_sources(imgui_unofficial PRIVATE
     "${imgui_prefix}/imgui/imgui_tables.cpp"
 
     "${imgui_prefix}/imgui/backends/imgui_impl_vulkan.cpp"
-    "${imgui_prefix}/imgui/backends/imgui_impl_sdl.cpp"
+    "${imgui_prefix}/imgui/backends/imgui_impl_sdl2.cpp"
 )
 
 target_link_libraries(imgui_unofficial sdl2 Vulkan::Vulkan)

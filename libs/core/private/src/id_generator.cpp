@@ -73,8 +73,9 @@ id_generator::generate(const utils::id& old_obj_id, const utils::id& old_compone
         std::string s =
             std::format("{}/{}#{}", old_obj_id.cstr(), old_component_id_raw.c_str(), ctr);
 
-        if (glob::proto_objects_cache::getr().has_item(AID(s)) ||
-            glob::objects_cache::getr().has_item(AID(s)))
+        if (glob::proto_objects_cache::get() &&
+            (glob::proto_objects_cache::getr().has_item(AID(s)) ||
+             glob::objects_cache::getr().has_item(AID(s))))
         {
             continue;
         }

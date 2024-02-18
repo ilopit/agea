@@ -48,7 +48,7 @@ modules_instance_template = """
 package&
 package::instance()
 {{
-    static package s_instance(AID("{module_name}"));
+    static package s_instance;
     return s_instance;
 }}"""
 
@@ -75,6 +75,14 @@ std::shared_ptr<{type}>
     return s;
 }}
 
+std::unique_ptr<::agea::root::base_construct_params>
+{type}::AR_TYPE_create_gen_default_cparams()
+{{
+    auto ptr = std::make_unique<{type}::construct_params>();          
+
+    return ptr;
+}}
+
 ::agea::utils::id
 {type}::AR_TYPE_id()
 {{
@@ -82,7 +90,7 @@ std::shared_ptr<{type}>
 }}
 
 bool
-{type}::META_construct(const ::agea::root::smart_object::construct_params& i)
+{type}::META_construct(const ::agea::root::base_construct_params& i)
 {{
     /* Replace to dynamic cast */
     this_class::construct_params* cp = (this_class::construct_params*)&i;
@@ -115,16 +123,17 @@ empty_template = """
     const int type_id = ::agea::reflection::type_resolver<{type}>::value;
     AGEA_check(type_id != -1, "Type is not defined!");
 
-    auto& rt        = {module_name}_{short_type}_rt;
-    rt.type_id      = type_id;
-    rt.type_name    = AID("{short_type}");
+    auto& rt         = {module_name}_{short_type}_rt;
+    rt.type_id       = type_id;
+    rt.type_name     = AID("{short_type}");
 
     
     ::agea::glob::reflection_type_registry::getr().add_type(&rt);
 
-    rt.module_id    = AID("{module_name}");
-    rt.size         = sizeof({type});
-    rt.alloc        = {type}::AR_TYPE_create_empty_gen_obj;
+    rt.module_id     = AID("{module_name}");
+    rt.size          = sizeof({type});
+    rt.alloc         = {type}::AR_TYPE_create_empty_gen_obj;
+    rt.cparams_alloc = {type}::AR_TYPE_create_gen_default_cparams;
 """
 
 empty_template_no_class = """
@@ -132,14 +141,14 @@ empty_template_no_class = """
     const int type_id = ::agea::reflection::type_resolver<{type}>::value;
     AGEA_check(type_id != -1, "Type is not defined!");
 
-    auto& rt        = {module_name}_{short_type}_rt;
-    rt.type_id      = type_id;
-    rt.type_name    = AID("{short_type}");
+    auto& rt         = {module_name}_{short_type}_rt;
+    rt.type_id       = type_id;
+    rt.type_name     = AID("{short_type}");
 
     ::agea::glob::reflection_type_registry::getr().add_type(&rt);
 
-    rt.module_id    = AID("{module_name}");
-    rt.size         = sizeof({type});
+    rt.module_id     = AID("{module_name}");
+    rt.size          = sizeof({type});
 """
 
 smart_object_reg_package_type = """    pkg->register_type<{type}>();
@@ -1401,6 +1410,7 @@ def bind_packages(source: str, output: str):
         if os.path.isdir(os.path.join(source, d)):
             registered_packages += (
                 f"            {d}::package::instance().init_reflection();\n"
+                f"            {d}::package::instance().override_reflection_types();\n"
             )
             registered_packages_render_bridges += (
                 f"            {d}::package_render_bridge::init();\n"
@@ -1410,7 +1420,9 @@ def bind_packages(source: str, output: str):
             )
             packages_includes += f"#include <packages/root/package.h>\n"
 
-            render_bridges_includes += f"#include <packages/root/render/package_render_bridge.h>\n"
+            render_bridges_includes += (
+                f"#include <packages/root/render/package_render_bridge.h>\n"
+            )
 
     packages_glue = f"""#include <engine/agea_engine.h>
 {packages_includes}

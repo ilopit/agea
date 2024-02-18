@@ -77,6 +77,7 @@ public:
     void
     add_to_dirty_transform_queue(root::game_object_component* g)
     {
+        AGEA_check(g, "Should not be NULL");
         m_dirty_transform_components.emplace_back(g);
     }
 
@@ -102,6 +103,7 @@ public:
     void
     add_to_dirty_render_assets_queue(root::asset* a)
     {
+        AGEA_check(a, "Should not be NULL");
         m_dirty_render_assets.emplace_back(a);
     }
 
@@ -114,6 +116,7 @@ public:
     void
     add_to_dirty_shader_effect_queue(root::shader_effect* se)
     {
+        AGEA_check(se, "Should not be NULL");
         m_dirty_shader_effects.emplace_back(se);
     }
 

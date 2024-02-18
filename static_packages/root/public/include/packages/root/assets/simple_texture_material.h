@@ -24,7 +24,7 @@ public:
     construct(this_class::construct_params& p);
 
 protected:
-    AGEA_ar_property("category=meta",
+    AGEA_ar_property("category=Properties",
                      "serializable=true",
                      "property_des_handler=custom::texture_sample_deserialize",
                      "property_ser_handler=custom::texture_sample_serialize",

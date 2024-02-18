@@ -125,8 +125,6 @@ vulkan_engine::init()
 
     init_default_scripting();
 
-    glob::reflection_type_registry::getr().finilaze();
-
     glob::resource_locator::get()->init_local_dirs();
     auto cfgs_folder = glob::resource_locator::get()->resource_dir(category::configs);
 
@@ -142,6 +140,8 @@ vulkan_engine::init()
 
     register_packages();
     register_packages_render_bridges();
+
+    glob::reflection_type_registry::getr().finilaze();
 
     native_window::construct_params rwc;
     rwc.w = 1600 * 2;
@@ -230,10 +230,13 @@ vulkan_engine::run()
             update_cameras();
             glob::vulkan_render::getr().set_camera(m_camera_data);
 
-            consume_updated_shader_effects();
-            consume_updated_render_assets();
-            consume_updated_render_components();
-            consume_updated_transforms();
+            if (glob::level::get())
+            {
+                consume_updated_shader_effects();
+                consume_updated_render_assets();
+                consume_updated_render_components();
+                consume_updated_transforms();
+            }
         }
         {
             AGEA_make_scope(draw);
@@ -256,7 +259,10 @@ void
 vulkan_engine::tick(float dt)
 {
     glob::game_editor::get()->on_tick(dt);
-    glob::level::get()->tick(dt);
+    if (auto lvl = glob::level::get())
+    {
+        lvl->tick(dt);
+    }
 }
 
 void
@@ -432,32 +438,56 @@ vulkan_engine::init_default_resources()
     v.at(4) = 3;
     v.at(5) = 1;
 
-    auto pkg = glob::package_manager::getr().get_package(AID("root"));
+    auto vertices = vert_buffer.make_view<render::gpu_vertex_data>();
+    auto indices = index_buffer.make_view<render::gpu_index_data>();
 
-    root::mesh::construct_params p;
-    p.indices = index_buffer;
-    p.vertices = vert_buffer;
+    glob::vulkan_render_loader::getr().create_mesh(AID("plane_mesh"), vertices, indices);
 
-    auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
-
-    glob::render_bridge::getr().render_ctor(*obj, true);
+    // auto pkg = glob::package_manager::getr().get_package(AID("root"));
+    //
+    //     root::mesh::construct_params p;
+    //     p.indices = index_buffer;
+    //     p.vertices = vert_buffer;
+    //
+    //     auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
+    //
+    //     glob::render_bridge::getr().render_ctor(*obj, true);
 }
 
 void
 vulkan_engine::init_scene()
 {
-    load_level(glob::config::get()->level);
+    auto level_id = glob::config::get()->level;
+    if (level_id.valid())
+    {
+        load_level(level_id);
 
-    glob::game_editor::getr().ev_spawn();
-    glob::game_editor::getr().ev_lights();
+        glob::game_editor::getr().ev_spawn();
+        glob::game_editor::getr().ev_lights();
+    }
 }
 
 void
 vulkan_engine::init_default_scripting()
 {
-    static auto game_object_lua_type =
+    static auto rt = ::agea::glob::lua_api::getr().state().new_usertype<utils::id>(
+        "reflection_type", sol::no_constructor);
+
+    static auto aid =
         ::agea::glob::lua_api::getr().state().new_usertype<reflection::reflection_type>(
-            "reflection_type", sol::no_constructor);
+            "aid", sol::no_constructor, "i", [](const char* id) -> utils::id { return AID(id); });
+
+    static auto p = ::agea::glob::lua_api::getr().state().new_usertype<core::package>(
+        "package", sol::no_constructor);
+
+    static auto pm = ::agea::glob::lua_api::getr().state().new_usertype<core::package_manager>(
+        "pm", sol::no_constructor, "get_package",
+        [](const char* id) -> core::package*
+        { return glob::package_manager::getr().get_package(AID(id)); },
+        "load",
+        [](const char* id) -> bool { return glob::package_manager::getr().load_package(AID(id)); });
+
+    // pm["load"] = &core::package_manager::load_package;packa
 }
 
 void

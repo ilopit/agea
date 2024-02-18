@@ -26,7 +26,7 @@ public:
         return true;
     };
 
-    AGEA_ar_property("category=meta",
+    AGEA_ar_property("category=Properties",
                      "serializable=true",
                      "property_des_handler=custom::texture_sample_deserialize",
                      "property_ser_handler=custom::texture_sample_serialize",
@@ -35,7 +35,7 @@ public:
                      "property_copy_handler=custom::texture_sample_copy");
     texture_sample m_diffuse_txt;
 
-    AGEA_ar_property("category=meta",
+    AGEA_ar_property("category=Properties",
                      "serializable=true",
                      "property_des_handler=custom::texture_sample_deserialize",
                      "property_ser_handler=custom::texture_sample_serialize",
@@ -44,7 +44,7 @@ public:
                      "property_copy_handler=custom::texture_sample_copy");
     texture_sample m_specular_txt;
 
-    AGEA_ar_property("category=properties",
+    AGEA_ar_property("category=Properties",
                      "serializable=true",
                      "invalidates=render",
                      "check=not_same",
@@ -53,22 +53,25 @@ public:
                      "default=true");
     vec3 m_ambient = {.2f, .2f, .2f};
 
-    AGEA_ar_property("category=properties",
+    AGEA_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
     vec3 m_diffuse = {.2f, .2f, .2f};
 
-    AGEA_ar_property("category=properties",
+    AGEA_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
     vec3 m_specular = 0.5f;
 
-    AGEA_ar_property(
-        "category=meta", "serializable=true", "access=no", "default=true", "gpu_data=MaterialData");
+    AGEA_ar_property("category=Properties",
+                     "serializable=true",
+                     "access=no",
+                     "default=true",
+                     "gpu_data=MaterialData");
     float m_shininess = 64.0f;
 };
 

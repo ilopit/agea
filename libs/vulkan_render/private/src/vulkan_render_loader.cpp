@@ -507,6 +507,12 @@ vulkan_render_loader::destroy_shader_effect_data(const agea::utils::id& id)
 }
 
 void
+vulkan_render_loader::create_font(const agea::utils::id& id, ImFont* font)
+{
+    m_fonts_cache[id] = font;
+}
+
+void
 vulkan_render_loader::clear_caches()
 {
     m_meshes_cache.clear();

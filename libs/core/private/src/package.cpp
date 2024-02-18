@@ -76,8 +76,15 @@ package::unregister_in_global_cache()
     m_occ->set_global_load_mode(false);
 }
 
+dynamic_package::dynamic_package(const utils::id& id,
+                                 cache_set* class_global_set,
+                                 cache_set* instance_global_set)
+    : package(id, package_type::pt_dynamic, class_global_set, instance_global_set)
+{
+}
+
 void
-package::unload()
+dynamic_package::unload()
 {
     container::unload();
 
@@ -85,6 +92,11 @@ package::unload()
     m_proto_local_cs.clear();
 
     m_state = package_state::unloaded;
+}
+
+static_package::static_package(const utils::id& id)
+    : package(id, package_type::pt_static, nullptr, nullptr)
+{
 }
 
 }  // namespace core

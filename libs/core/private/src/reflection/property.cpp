@@ -124,6 +124,19 @@ property::default_prototype(property_prototype_context& ctx)
     return result_code::ok;
 }
 
+agea::result_code
+property::default_to_string(property_to_string_context& ctx)
+{
+    //     AGEA_check(cxt.property == cxt.dst_property, "Should be SAME properties!");
+    //     AGEA_check(cxt.obj != cxt.dst_obj, "Should not be SAME objects!");
+    //
+    //     AGEA_check(!cxt.src_property->type.is_collection, "Not supported!");
+
+    auto from = ::agea::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
+
+    return ctx.prop->rtype->ui(from, ctx.result);
+}
+
 agea::blob_ptr
 property::get_blob(root::smart_object& obj)
 {

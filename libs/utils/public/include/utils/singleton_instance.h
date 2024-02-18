@@ -59,7 +59,6 @@ public:
     static T*
     get()
     {
-        // AGEA_check(s_instance.m_obj, "Instance is empty");
         return s_instance.m_obj;
     }
 

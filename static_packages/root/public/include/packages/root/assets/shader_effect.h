@@ -43,22 +43,22 @@ public:
     void
     mark_render_dirty();
 
-    AGEA_ar_property("category=meta", "serializable=true", "access=no");
+    AGEA_ar_property("category=Properties", "serializable=true", "access=no");
     utils::buffer m_vert;
 
-    AGEA_ar_property("category=meta", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_is_vert_binary = false;
 
-    AGEA_ar_property("category=meta", "serializable=true", "access=no");
+    AGEA_ar_property("category=Properties", "serializable=true", "access=no");
     utils::buffer m_frag;
 
-    AGEA_ar_property("category=meta", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_is_frag_binary = false;
 
-    AGEA_ar_property("category=meta", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_wire_topology = false;
 
-    AGEA_ar_property("category=meta", "serializable=true", "access=no", "default=true");
+    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_enable_alpha_support = false;
 
 private:

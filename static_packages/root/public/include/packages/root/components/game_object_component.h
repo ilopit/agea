@@ -107,13 +107,13 @@ public:
     mark_transform_dirty();
 
 protected:
-    AGEA_ar_property("category=object", "serializable=true", "default=true");
+    AGEA_ar_property("category=Action", "serializable=true", "default=true");
     bool m_tickable = false;
 
-    AGEA_ar_property("category=object", "access=all", "serializable=true", "default=true");
+    AGEA_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
     bool m_visible = false;
 
-    AGEA_ar_property("category=world",
+    AGEA_ar_property("category=Transform",
                      "access=all",
                      "check=not_same",
                      "invalidates=transform",
@@ -121,7 +121,7 @@ protected:
                      "default=true");
     vec3 m_position = {0.f};
 
-    AGEA_ar_property("category=world",
+    AGEA_ar_property("category=Transform",
                      "access=all",
                      "serializable=true",
                      "check=not_same",
@@ -129,7 +129,7 @@ protected:
                      "default=true");
     vec3 m_rotation = {0.f};
 
-    AGEA_ar_property("category=world",
+    AGEA_ar_property("category=Transform",
                      "access=all",
                      "check=not_same",
                      "invalidates=transform",

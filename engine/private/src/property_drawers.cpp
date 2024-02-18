@@ -26,29 +26,29 @@ property_drawers::init()
     using namespace reflection;
     // clang-format off
 
-    ro_drawers()[root::root__string] = property_drawers::draw_ro_str;
-
-    ro_drawers()[root::root__bool] = property_drawers::draw_ro_bool;
-
-    ro_drawers()[root::root__int8_t] = property_drawers::draw_ro_i8;
-    ro_drawers()[root::root__int16_t] = property_drawers::draw_ro_i16;
-    ro_drawers()[root::root__int32_t] = property_drawers::draw_ro_i32;
-    ro_drawers()[root::root__int64_t] = property_drawers::draw_ro_i64;
-
-
-    ro_drawers()[root::root__uint8_t] = property_drawers::draw_ro_i8;
-    ro_drawers()[root::root__uint16_t] = property_drawers::draw_ro_i16;
-    ro_drawers()[root::root__uint32_t] = property_drawers::draw_ro_i32;
-    ro_drawers()[root::root__uint64_t] = property_drawers::draw_ro_i64;
-
-
-    ro_drawers()[root::root__float] = property_drawers::draw_ro_f;
-    ro_drawers()[root::root__double] = property_drawers::draw_ro_d;
-
-    ro_drawers()[root::root__vec3] = property_drawers::draw_ro_vec3;
-
-    ro_drawers()[root::root__material] = property_drawers::draw_ro_mat;
-    ro_drawers()[root::root__mesh] = property_drawers::draw_ro_msh;
+//     ro_drawers()[root::root__string] = property_drawers::draw_ro_str;
+// 
+//     ro_drawers()[root::root__bool] = property_drawers::draw_ro_bool;
+// 
+//     ro_drawers()[root::root__int8_t] = property_drawers::draw_ro_i8;
+//     ro_drawers()[root::root__int16_t] = property_drawers::draw_ro_i16;
+//     ro_drawers()[root::root__int32_t] = property_drawers::draw_ro_i32;
+//     ro_drawers()[root::root__int64_t] = property_drawers::draw_ro_i64;
+// 
+// 
+//     ro_drawers()[root::root__uint8_t] = property_drawers::draw_ro_i8;
+//     ro_drawers()[root::root__uint16_t] = property_drawers::draw_ro_i16;
+//     ro_drawers()[root::root__uint32_t] = property_drawers::draw_ro_i32;
+//     ro_drawers()[root::root__uint64_t] = property_drawers::draw_ro_i64;
+// 
+// 
+//     ro_drawers()[root::root__float] = property_drawers::draw_ro_f;
+//     ro_drawers()[root::root__double] = property_drawers::draw_ro_d;
+// 
+//     ro_drawers()[root::root__vec3] = property_drawers::draw_ro_vec3;
+// 
+//     ro_drawers()[root::root__material] = property_drawers::draw_ro_mat;
+//     ro_drawers()[root::root__mesh] = property_drawers::draw_ro_msh;
 
     // clang-format on
 }
@@ -59,7 +59,8 @@ property_drawers::draw_ro(::agea::root::smart_object* obj, ::agea::reflection::p
     auto ptr = (::agea::blob_ptr)obj;
 
     ptr = ::agea::reflection::utils::reduce_ptr(ptr + p.offset, p.type.is_ptr);
-    ro_drawers()[p.type.type_id](ptr);
+
+    // ro_drawers()[p.type.type_id](ptr);
 
     return result_code::ok;
 }

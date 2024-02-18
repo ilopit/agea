@@ -33,7 +33,7 @@
 
 #define AGEA_compare_handler_args ::agea::blob_ptr from, ::agea::blob_ptr to
 
-#define AGEA_reflection_type_ui_args ::agea::blob_ptr ptr
+#define AGEA_reflection_type_ui_args ::agea::blob_ptr ptr, std::string &result
 
 #define AGEA_AR_render_ctor_args agea::render_bridge &rb, root::smart_object &, bool
 
@@ -45,6 +45,11 @@ namespace agea
 {
 
 class render_bridge;
+
+namespace root
+{
+struct base_construct_params;
+}
 
 namespace reflection
 {
@@ -59,6 +64,8 @@ using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
 using type_rendler_ctor = result_code (*)(AGEA_AR_render_ctor_args);
 using type_rendler_dtor = result_code (*)(AGEA_AR_render_dtor_args);
 using type_allocator_handler = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
+using type_default_construction_params_handler =
+    std::unique_ptr<::agea::root::base_construct_params> (*)();
 
 using property_list = std::vector<std::shared_ptr<property>>;
 using function_list = std::vector<std::shared_ptr<function>>;
@@ -110,6 +117,7 @@ struct reflection_type
     type_rendler_ctor                           render_loader = nullptr;
     type_rendler_dtor                           render_destructor = nullptr;
     type_allocator_handler                      alloc = nullptr;
+    type_default_construction_params_handler    cparams_alloc = nullptr;
 
     // clang-format on
 

@@ -39,12 +39,15 @@
                                                                                               \
     static const ::agea::reflection::reflection_type& AR_TYPE_reflection();                   \
                                                                                               \
-    virtual bool META_construct(const ::agea::root::smart_object::construct_params& i);       \
+    virtual bool META_construct(const ::agea::root::base_construct_params& i);                \
                                                                                               \
     static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::agea::utils::id& id); \
                                                                                               \
     static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
-        const ::agea::utils::id& id);
+        const ::agea::utils::id& id);                                                         \
+                                                                                              \
+    static std::unique_ptr<::agea::root::base_construct_params>                               \
+    AR_TYPE_create_gen_default_cparams();
 
 namespace agea
 {
@@ -77,6 +80,10 @@ extract(const std::optional<T>& o, T& v)
 
 class smart_object;
 
+struct base_construct_params
+{
+};
+
 enum class smart_object_state
 {
     empty = 0,
@@ -105,7 +112,7 @@ class smart_object
     AGEA_gen_meta__smart_object();
 
 public:
-    struct construct_params
+    struct construct_params : public base_construct_params
     {
     };
 
@@ -246,7 +253,7 @@ protected:
 
     const reflection::reflection_type* m_rt = nullptr;
 
-    AGEA_ar_property("category=meta", "access=read_only", "copyable=no");
+    AGEA_ar_property("category=Meta", "access=read_only", "copyable=no");
     utils::id m_id;
 
     const smart_object* m_proto_obj = nullptr;

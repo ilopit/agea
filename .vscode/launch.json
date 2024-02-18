@@ -10,10 +10,10 @@
             "request": "launch",
             "program": "${file}",
             "args": [
-                "D:/dev/agea/agea/modules/demo/ar/config",
-                "D:/dev/agea/agea/modules/demo",
+                "D:/dev/agea/agea/static_packages/root/public/ar/config",
+                "D:/dev/agea/agea/static_packages/root/public/",
                 "D:/dev/agea/agea/build/agea_generated",
-                "demo",
+                "root",
                 "agea"
             ],
             "console": "integratedTerminal",
@@ -21,3 +21,5 @@
         }
     ]
 }
+
+//SOL config - D:/dev/agea/agea/static_packages/root/public/ar/config, root dir - D:/dev/agea/agea/static_packages/root/public/, output - D:/dev/agea/agea/build/agea_generated, package_name - root, module_namespace - a

@@ -2,12 +2,11 @@
 
 #include "packages/root/assets/texture.h"
 
-namespace agea
-{
-namespace root
+namespace agea::root
 {
 class texture;
 
+AGEA_ar_struct();
 struct texture_sample
 {
     uint32_t slot = -1;
@@ -15,5 +14,4 @@ struct texture_sample
     texture* txt = nullptr;
 };
 
-}  // namespace root
-}  // namespace agea
+}  // namespace agea::root

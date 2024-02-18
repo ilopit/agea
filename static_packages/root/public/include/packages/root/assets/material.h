@@ -62,7 +62,7 @@ public:
     set_sample(const utils::id& slot, const texture_sample&);
 
 protected:
-    AGEA_ar_property("category=properties",
+    AGEA_ar_property("category=Properties",
                      "access=cpp_only",
                      "invalidates=render",
                      "serializable=true");

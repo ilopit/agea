@@ -38,17 +38,17 @@ public:
     }
 
 protected:
-    AGEA_ar_property("category=misc", "access=all", "serializable=true");
-    glm::vec3 m_ambient = glm::vec3{0.1f};
+    AGEA_ar_property("category=Light Properties", "access=all", "serializable=true");
+    vec3 m_ambient = glm::vec3{0.1f};
 
-    AGEA_ar_property("category=misc", "access=all", "serializable=true");
-    glm::vec3 m_diffuse = glm::vec3{0.1f};
+    AGEA_ar_property("category=Light Properties", "access=all", "serializable=true");
+    vec3 m_diffuse = glm::vec3{0.1f};
 
-    AGEA_ar_property("category=misc", "access=all", "serializable=true");
-    glm::vec3 m_specular = glm::vec3{0.1f};
+    AGEA_ar_property("category=Light Properties", "access=all", "serializable=true");
+    vec3 m_specular = glm::vec3{0.1f};
 
-    AGEA_ar_property("category=misc", "access=all", "serializable=true");
-    glm::vec3 m_direction = glm::vec3{1.0f};
+    AGEA_ar_property("category=Light Properties", "access=all", "serializable=true");
+    vec3 m_direction = glm::vec3{1.0f};
 
     render::vulkan_directional_light_data* m_handler = nullptr;
 };
