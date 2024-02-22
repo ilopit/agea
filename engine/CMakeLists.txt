@@ -1,5 +1,5 @@
-file(GLOB ENGINE_SRC "public/include/engine/*.h" "private/src/*.cpp")
-file(GLOB ENGINE_UI_SRC "public/include/engine/ui/*.h" "private/src/ui/*.cpp")
+file(GLOB ENGINE_SRC           "public/include/engine/*.h"    "private/src/*.cpp")
+file(GLOB ENGINE_UI_SRC        "public/include/engine/ui/*.h" "private/src/ui/*.cpp")
 file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/agea_generated/engine/*.cpp")
 
 add_library(engine STATIC

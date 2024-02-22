@@ -68,7 +68,7 @@ macro(agea_ar_target)
                        --namespace ${ARGV2})
 
     set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/packages/${ARGV1})
-    set(ar_file ${ar_folder}/${ARGV1}.ar.cpp)
+    set(ar_file   ${ar_folder}/package.${ARGV1}.ar.cpp)
 
     agea_ide_path(${full_name})
 
@@ -79,8 +79,6 @@ macro(agea_ar_target)
         if(NOT EXISTS ${ar_folder})
             file(MAKE_DIRECTORY ${ar_folder})
         endif()
-
-        write_file(${ar_file} "//ar file do not modify")
 
         execute_process(
             COMMAND python 

@@ -1,4 +1,4 @@
-#include "packages/root/render/package_render_bridge.h"
+#include "packages/root/render/package.root.render_bridge.h"
 
 #include <render_bridge/render_bridge.h>
 

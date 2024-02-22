@@ -1002,7 +1002,7 @@ namespace {full_module_name} {{
 """
     output.write(types_template_end)
 
-
+ 
 def write_types_ids_meta_include(output_file, context, offset_r, count_r):
     output = open(output_file, "w")
 
@@ -1372,7 +1372,7 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
 
     if ri != -1:
         output_file = os.path.join(
-            output_dir, "packages", module_name, "package.ar.cpp"
+            output_dir, "packages", module_name, f"package.{module_name}.ar.cpp"
         )
 
         write_file(output_file, context, arl.ranges[ri].dependency)
@@ -1418,10 +1418,10 @@ def bind_packages(source: str, output: str):
             cmake_file += (
                 f"    add_subdirectory(${{PROJECT_SOURCE_DIR}}/static_packages/{d})"
             )
-            packages_includes += f"#include <packages/root/package.h>\n"
+            packages_includes += f"#include <packages/root/package.{d}.h>\n"
 
             render_bridges_includes += (
-                f"#include <packages/root/render/package_render_bridge.h>\n"
+                f"#include <packages/root/render/package.{d}.render_bridge.h>\n"
             )
 
     packages_glue = f"""#include <engine/agea_engine.h>

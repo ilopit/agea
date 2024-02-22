@@ -2,16 +2,17 @@ import os
 import ctypes
 import sys
 import shutil
+import psutil
+import time
 
 clean_build = False
 open_env = False
 build_engine = False
 
 
-
 def isAdmin():
     try:
-        is_admin = (os.getuid() == 0)
+        is_admin = os.getuid() == 0
     except AttributeError:
         is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
     return is_admin
@@ -21,13 +22,25 @@ def main():
     if not isAdmin():
         print("Admin rights required!!")
         exit(-1)
- 
-    agea_root_dir = os.path.dirname(
-        os.path.dirname(os.path.realpath(__file__)))
 
+    should_reopned = False
+    agea_root_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     agea_build_dir = os.path.join(agea_root_dir, "build")
 
-    if clean_build:
+    if clean_build and os.path.exists(agea_build_dir):
+        
+        for proc in psutil.process_iter():
+            # check whether the process name matches
+            if proc.name() == "devenv.exe":
+
+                cmdline = proc.cmdline()
+                print(agea_build_dir)
+
+                if len(cmdline) > 1 and cmdline[1] == (agea_build_dir + "\\agea.sln"):
+                    should_reopned = True
+                    proc.kill()
+                    time.sleep(2)
+
         print("Removing " + agea_build_dir)
         shutil.rmtree(agea_build_dir)
 
@@ -40,6 +53,9 @@ def main():
 
     if open_env:
         os.system("code " + agea_root_dir)
+        os.system("start " + agea_build_dir + "/agea.sln")
+
+    if should_reopned:
         os.system("start " + agea_build_dir + "/agea.sln")
 
 

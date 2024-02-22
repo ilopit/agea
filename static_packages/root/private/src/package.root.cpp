@@ -1,4 +1,4 @@
-#include "packages/root/package.h"
+#include "packages/root/package.root.h"
 
 #include "packages/root/assets/mesh.h"
 #include "packages/root/assets/material.h"
