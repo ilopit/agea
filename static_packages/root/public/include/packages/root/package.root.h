@@ -1,37 +1,26 @@
-
 #pragma once
-
-#define AGEA_root_module_render_bridge_included
 
 #include "core/package.h"
 
-namespace agea
-{
-
-namespace reflection
-{
-class reflection_type_registry;
-}
-
-namespace root
+namespace agea::root
 {
 class package : public ::agea::core::static_package
 {
 public:
     package();
 
+    AGEA_ar_package_types_loader;
+
+    AGEA_ar_package_custom_types_loader;
+
+    AGEA_ar_package_render_types_loader;
+
+    AGEA_ar_package_render_data_loader;
+
+    AGEA_ar_package_object_builder;
+
     static package&
     instance();
-
-    bool
-    init_reflection();
-
-    bool
-    finilize_objects();
-
-    virtual bool
-    override_reflection_types();
 };
 
-}  // namespace root
-}  // namespace agea
+}  // namespace agea::root

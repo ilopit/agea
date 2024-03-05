@@ -13,9 +13,7 @@
 #include <map>
 #include <filesystem>
 
-namespace agea
-{
-namespace core
+namespace agea::core
 {
 
 package::package(package&&) noexcept = default;
@@ -99,5 +97,33 @@ static_package::static_package(const utils::id& id)
 {
 }
 
-}  // namespace core
-}  // namespace agea
+void
+static_package::finilize_objects()
+{
+}
+
+void
+static_package::load_types()
+{
+    m_type_loader->load(*this);
+}
+
+void
+static_package::load_custom_types()
+{
+    m_types_custom_loader->load(*this);
+}
+
+void
+static_package::build_render_objects()
+{
+    m_render_data_loader->load(*this);
+}
+
+void
+static_package::build_model_objects()
+{
+    m_object_builder->build(*this);
+}
+
+}  // namespace agea::core

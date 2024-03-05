@@ -8,6 +8,42 @@
 
 #include "core/container.h"
 
+#define AGEA_ar_package_types_loader                                       \
+    class package_types_loader : public ::agea::core::package_types_loader \
+    {                                                                      \
+    public:                                                                \
+        virtual bool                                                       \
+        load(::agea::core::static_package& sp) override;                   \
+    };
+
+#define AGEA_ar_package_custom_types_loader                                               \
+    struct package_types_custom_loader : public ::agea::core::package_types_custom_loader \
+    {                                                                                     \
+        virtual bool                                                                      \
+        load(static_package& sp) override;                                                \
+    };
+
+#define AGEA_ar_package_render_types_loader                                               \
+    struct package_render_types_loader : public ::agea::core::package_render_types_loader \
+    {                                                                                     \
+        virtual bool                                                                      \
+        load(static_package& sp) override;                                                \
+    };
+
+#define AGEA_ar_package_render_data_loader                                              \
+    struct package_render_data_loader : public ::agea::core::package_render_data_loader \
+    {                                                                                   \
+        virtual bool                                                                    \
+        load(static_package& sp) override;                                              \
+    };
+
+#define AGEA_ar_package_object_builder                                          \
+    struct package_object_builder : public ::agea::core::package_object_builder \
+    {                                                                           \
+        virtual bool                                                            \
+        build(static_package& sp) override;                                     \
+    };
+
 namespace agea
 {
 namespace core
@@ -77,6 +113,53 @@ protected:
     cache_set m_proto_local_cs;
 };
 
+class static_package;
+
+struct package_types_loader
+{
+    virtual bool
+    load(static_package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_render_types_loader
+{
+    virtual bool
+    load(static_package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_types_custom_loader
+{
+    virtual bool
+    load(static_package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_object_builder
+{
+    virtual bool
+    build(static_package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_render_data_loader
+{
+    virtual bool
+    load(static_package& sp)
+    {
+        return true;
+    }
+};
+
 class static_package : public package
 {
 public:
@@ -94,6 +177,71 @@ public:
     add_object(const utils::id& id, typename const T::construct_params& p)
     {
         return object_constructor::object_construct(T::AR_TYPE_id(), id, p, *m_occ);
+    }
+
+    void
+    finilize_objects();
+
+    void
+    load_types();
+
+    template <typename T>
+    void
+    register_package_extention()
+    {
+        static_assert(std::is_base_of_v<package_types_loader, T> ||
+                          std::is_base_of_v<package_types_custom_loader, T> ||
+                          std::is_base_of_v<package_render_types_loader, T> ||
+                          std::is_base_of_v<package_render_data_loader, T> ||
+                          std::is_base_of_v<package_object_builder, T>,
+                      "Unsupported type");
+
+        if constexpr (std::is_base_of_v<package_types_loader, T>)
+        {
+            m_type_loader = std::make_unique<T>();
+        }
+        else if constexpr (std::is_base_of_v<package_types_custom_loader, T>)
+        {
+            m_types_custom_loader = std::make_unique<T>();
+        }
+        else if constexpr (std::is_base_of_v<package_render_types_loader, T>)
+        {
+            m_render_types_builder = std::make_unique<T>();
+        }
+        else if constexpr (std::is_base_of_v<package_render_data_loader, T>)
+        {
+            m_render_data_loader = std::make_unique<T>();
+        }
+        else if constexpr (std::is_base_of_v<package_object_builder, T>)
+        {
+            m_object_builder = std::make_unique<T>();
+        }
+    }
+
+    void
+    load_custom_types();
+
+    void
+    build_render_objects();
+
+    void
+    build_model_objects();
+
+    std::unique_ptr<package_types_loader> m_type_loader;
+    std::unique_ptr<package_types_custom_loader> m_types_custom_loader;
+
+    std::unique_ptr<package_render_types_loader> m_render_types_builder;
+    std::unique_ptr<package_render_data_loader> m_render_data_loader;
+
+    std::unique_ptr<package_object_builder> m_object_builder;
+};
+
+template <typename Pkg, typename Extention>
+struct package_extention_autoregister
+{
+    package_extention_autoregister()
+    {
+        Pkg::instance().register_package_extention<Extention>();
     }
 };
 

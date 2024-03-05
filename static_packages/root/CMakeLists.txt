@@ -78,7 +78,27 @@ target_link_libraries(packages.root.render_bridge
 
 agea_finalize_library(packages.root.render_bridge)
 
-set(AGEA_ACTIVE_MODULES_TARGETS ${AGEA_ACTIVE_MODULES_TARGETS} packages.root.types packages.root.render_bridge CACHE INTERNAL "")
+#####  Builder
+file(GLOB ROOT_BUILDER_SRC                "public/include/packages/root/builder/*.h"                     "private/src/builder/*.cpp")
+
+add_library(packages.root.builder STATIC
+   ${ROOT_BUILDER_SRC}
+)
+
+target_link_libraries(packages.root.builder
+   agea::packages.root.types
+   agea::asset_importer
+   agea::packages.root.render_bridge
+)
+
+agea_finalize_library(packages.root.builder)
+
+set(AGEA_ACTIVE_MODULES_TARGETS 
+	${AGEA_ACTIVE_MODULES_TARGETS}
+	packages.root.types 
+	packages.root.render_bridge 
+	packages.root.builder
+	CACHE INTERNAL "")
 
 #####  Tests
 add_subdirectory(private/tests)

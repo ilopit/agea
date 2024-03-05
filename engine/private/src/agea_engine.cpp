@@ -57,12 +57,6 @@
 #include <chrono>
 #include <thread>
 
-#if defined(AGEA_demo_module_included)
-
-#include <demo/example.h>
-
-#endif
-
 namespace agea
 {
 glob::engine::type glob::engine::type::s_instance;

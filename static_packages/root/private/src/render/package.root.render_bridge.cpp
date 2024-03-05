@@ -1,4 +1,4 @@
-#include "packages/root/render/package.root.render_bridge.h"
+#include "packages/root/package.root.h"
 
 #include <render_bridge/render_bridge.h>
 
@@ -56,10 +56,11 @@
 
 #include <render_bridge/render_bridge.h>
 
-namespace agea
+namespace agea::root
 {
-namespace root
-{
+
+core::package_extention_autoregister<root::package, package::package_render_types_loader>
+    s_custom_loader{};
 
 namespace
 {
@@ -564,8 +565,8 @@ point_light_component__root__render_destructor(::agea::render_bridge& rb,
 }
 }  // namespace
 
-void
-package_render_bridge::init()
+bool
+package::package_render_types_loader::load(static_package&)
 {
     {
         auto rt = glob::reflection_type_registry::getr().get_type(root__game_object_component);
@@ -614,7 +615,8 @@ package_render_bridge::init()
         rt->render_loader = spot_light_component__root__render_loader;
         rt->render_destructor = spot_light_component__root__render_destructor;
     }
+
+    return true;
 }
 
-}  // namespace root
-}  // namespace agea
+}  // namespace agea::root

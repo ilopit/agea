@@ -241,15 +241,15 @@ package_manager::get_package(const utils::id& id)
 }
 
 bool
-package_manager::register_static_package(package* pkg)
+package_manager::register_static_package(package& pkg)
 {
-    auto itr = m_packages.find(pkg->get_id());
+    auto itr = m_packages.find(pkg.get_id());
     if (itr != m_packages.end())
     {
         return false;
     }
 
-    m_packages[pkg->get_id()] = pkg;
+    m_packages[pkg.get_id()] = &pkg;
 
     return true;
 }

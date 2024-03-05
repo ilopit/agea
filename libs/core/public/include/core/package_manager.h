@@ -35,7 +35,7 @@ public:
     get_package(const utils::id& id);
 
     bool
-    register_static_package(package* pkg);
+    register_static_package(package& pkg);
 
     std::unordered_map<utils::id, package*>&
     get_packages()
@@ -57,4 +57,13 @@ struct package_manager
 {
 };
 }  // namespace glob
+
+template <typename Pkg>
+struct package_autoregister
+{
+    package_autoregister()
+    {
+        agea::glob::package_manager::getr().register_static_package(Pkg::instance());
+    }
+};
 }  // namespace agea
