@@ -29,7 +29,7 @@ smart_object::post_load()
 void
 smart_object::set_state(smart_object_state v)
 {
-    ALOG_TRACE("{0} {1} => {2}", m_id.cstr(), m_obj_state, v);
+    ALOG_TRACE("{} {} => {}", m_id.cstr(), (int)m_obj_state, (int)v);
     m_obj_state = v;
 }
 

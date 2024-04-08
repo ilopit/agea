@@ -15,7 +15,7 @@ public:
 
     AGEA_ar_package_render_types_loader;
 
-    AGEA_ar_package_render_data_loader;
+    AGEA_ar_package_render_resources_loader;
 
     AGEA_ar_package_object_builder;
 

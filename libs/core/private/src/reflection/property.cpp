@@ -4,6 +4,7 @@
 #include "core/caches/meshes_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/reflection/reflection_type.h"
+#include "core/reflection/reflection_type_utils.h"
 
 #include <packages/root/assets/material.h>
 #include <packages/root/assets/mesh.h>
@@ -134,7 +135,7 @@ property::default_to_string(property_to_string_context& ctx)
 
     auto from = ::agea::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
 
-    return ctx.prop->rtype->ui(from, ctx.result);
+    return ctx.prop->rtype->to_string(from, ctx.result);
 }
 
 agea::blob_ptr
@@ -175,7 +176,7 @@ property::deserialize_collection(reflection::property& p,
         r.resize(items_size);
     }
 
-    AGEA_check(p.rtype->deserialization, "Should never happens!");
+    AGEA_check(p.rtype->deserialize, "Should never happens!");
 
     for (unsigned i = 0; i < items_size; ++i)
     {
@@ -183,7 +184,7 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        p.rtype->deserialization(obj, (blob_ptr)filed_ptr, item, occ);
+        p.rtype->deserialize(obj, (blob_ptr)filed_ptr, item, occ);
     }
 
     return result_code::ok;
@@ -214,9 +215,9 @@ property::deserialize_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    AGEA_check(p.rtype->deserialization, "Should never happens!");
+    AGEA_check(p.rtype->deserialize, "Should never happens!");
 
-    return p.rtype->deserialization(obj, ptr, jc[p.name], occ);
+    return p.rtype->deserialize(obj, ptr, jc[p.name], occ);
 }
 
 result_code
@@ -230,8 +231,8 @@ property::serialize_item(const reflection::property& p,
 
     serialization::conteiner c;
 
-    AGEA_check(p.rtype->serialization, "Should never happens!");
-    p.rtype->serialization(obj, ptr, c);
+    AGEA_check(p.rtype->serialize, "Should never happens!");
+    p.rtype->serialize(obj, ptr, c);
 
     sc[p.name] = c;
 
@@ -252,13 +253,13 @@ property::deserialize_update_collection(reflection::property& p,
     {
         r.resize(items_size);
     }
-    AGEA_check(p.rtype->deserialization_with_proto, "Should never happens!");
+    AGEA_check(p.rtype->deserialize_with_proto, "Should never happens!");
     for (unsigned i = 0; i < items_size; ++i)
     {
         auto item = items[i];
 
         auto* filed_ptr = &r[i];
-        p.rtype->deserialization_with_proto((blob_ptr)filed_ptr, item, occ);
+        p.rtype->deserialize_with_proto((blob_ptr)filed_ptr, item, occ);
     }
 
     return result_code::ok;
@@ -277,9 +278,10 @@ property::deserialize_update_item(reflection::property& p,
         return result_code::doesnt_exist;
     }
 
-    AGEA_check(p.rtype->deserialization_with_proto, "Should be not a NULL");
+    AGEA_check(p.rtype->deserialize_with_proto, "Should be not a NULL");
 
-    p.rtype->deserialization_with_proto(ptr, jc[p.name], occ);
+    p.rtype->deserialize_with_proto(ptr, jc[p.name], occ);
+
     return result_code::ok;
 }
 

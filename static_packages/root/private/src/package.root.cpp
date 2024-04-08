@@ -5,12 +5,6 @@
 namespace agea::root
 {
 
-namespace
-{
-package_autoregister<root::package> s_package;
-
-}
-
 package::package()
     : core::static_package(AID("root"))
 {

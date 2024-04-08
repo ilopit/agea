@@ -53,17 +53,19 @@
 #include <utils/agea_log.h>
 #include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
+#include <utils/static_initializer.h>
 
 #include <render_bridge/render_bridge.h>
 
 namespace agea::root
 {
 
-core::package_extention_autoregister<root::package, package::package_render_types_loader>
-    s_custom_loader{};
-
 namespace
 {
+
+AGEA_schedule_static_init(
+    []()
+    { package::instance().register_package_extention<package::package_render_types_loader>(); });
 
 bool
 is_same_source(root::smart_object& obj, root::smart_object& sub_obj)

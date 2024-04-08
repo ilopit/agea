@@ -30,11 +30,11 @@
         load(static_package& sp) override;                                                \
     };
 
-#define AGEA_ar_package_render_data_loader                                              \
-    struct package_render_data_loader : public ::agea::core::package_render_data_loader \
-    {                                                                                   \
-        virtual bool                                                                    \
-        load(static_package& sp) override;                                              \
+#define AGEA_ar_package_render_resources_loader                                                   \
+    struct package_render_resources_loader : public ::agea::core::package_render_resources_loader \
+    {                                                                                             \
+        virtual bool                                                                              \
+        load(static_package& sp) override;                                                        \
     };
 
 #define AGEA_ar_package_object_builder                                          \
@@ -151,7 +151,7 @@ struct package_object_builder
     }
 };
 
-struct package_render_data_loader
+struct package_render_resources_loader
 {
     virtual bool
     load(static_package& sp)
@@ -182,9 +182,6 @@ public:
     void
     finilize_objects();
 
-    void
-    load_types();
-
     template <typename T>
     void
     register_package_extention()
@@ -192,7 +189,7 @@ public:
         static_assert(std::is_base_of_v<package_types_loader, T> ||
                           std::is_base_of_v<package_types_custom_loader, T> ||
                           std::is_base_of_v<package_render_types_loader, T> ||
-                          std::is_base_of_v<package_render_data_loader, T> ||
+                          std::is_base_of_v<package_render_resources_loader, T> ||
                           std::is_base_of_v<package_object_builder, T>,
                       "Unsupported type");
 
@@ -206,11 +203,11 @@ public:
         }
         else if constexpr (std::is_base_of_v<package_render_types_loader, T>)
         {
-            m_render_types_builder = std::make_unique<T>();
+            m_render_types_loader = std::make_unique<T>();
         }
-        else if constexpr (std::is_base_of_v<package_render_data_loader, T>)
+        else if constexpr (std::is_base_of_v<package_render_resources_loader, T>)
         {
-            m_render_data_loader = std::make_unique<T>();
+            m_render_resources_loader = std::make_unique<T>();
         }
         else if constexpr (std::is_base_of_v<package_object_builder, T>)
         {
@@ -219,30 +216,27 @@ public:
     }
 
     void
+    load_types();
+
+    void
     load_custom_types();
 
     void
-    build_render_objects();
+    load_render_types();
 
     void
-    build_model_objects();
+    load_render_resources();
+
+    void
+    build_objects();
 
     std::unique_ptr<package_types_loader> m_type_loader;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;
 
-    std::unique_ptr<package_render_types_loader> m_render_types_builder;
-    std::unique_ptr<package_render_data_loader> m_render_data_loader;
+    std::unique_ptr<package_render_types_loader> m_render_types_loader;
+    std::unique_ptr<package_render_resources_loader> m_render_resources_loader;
 
     std::unique_ptr<package_object_builder> m_object_builder;
-};
-
-template <typename Pkg, typename Extention>
-struct package_extention_autoregister
-{
-    package_extention_autoregister()
-    {
-        Pkg::instance().register_package_extention<Extention>();
-    }
 };
 
 class dynamic_package : public package

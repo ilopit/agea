@@ -7,7 +7,13 @@ namespace agea
 {
 namespace root
 {
-
+//     'auto rt = reflection_regestry.get_type(id);
+//         rt->deserialization = default_deserialize<type_name>;
+//     rt->compare = default_compare<type_name>;
+//     rt->copy = default_copy<type_name>;
+//     rt->serialization = default_serialize<type_name>;
+//     rt->ui = simple_to_string<type_name>;
+//     '
 AGEA_ar_struct();
 struct vec3 : ::glm::vec3
 {

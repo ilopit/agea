@@ -2,6 +2,7 @@
 
 #include <utils/agea_log.h>
 #include <utils/singleton_registry.h>
+#include <utils/static_initializer.h>
 
 #include <memory>
 
@@ -16,6 +17,9 @@ int
 main(int, char*)
 {
     agea::utils::setup_logger();
+
+    agea::static_initializer::init();
+
     auto registry = std::make_unique<agea::singleton_registry>();
 
 #if WIN32

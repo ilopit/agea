@@ -34,10 +34,21 @@ package_manager::~package_manager()
 bool
 package_manager::init()
 {
-    for (auto& p : m_packages)
+    for (auto& sp : m_static_packages)
     {
-        p.second->init_global_cache_reference();
-        p.second->register_in_global_cache();
+        sp->init_global_cache_reference();
+
+        sp->register_in_global_cache();
+
+        sp->load_types();
+
+        sp->load_custom_types();
+
+        sp->load_render_resources();
+
+        sp->load_render_types();
+
+        sp->build_objects();
     }
     return true;
 }
@@ -241,7 +252,7 @@ package_manager::get_package(const utils::id& id)
 }
 
 bool
-package_manager::register_static_package(package& pkg)
+package_manager::register_static_package(core::static_package& pkg)
 {
     auto itr = m_packages.find(pkg.get_id());
     if (itr != m_packages.end())
@@ -250,6 +261,7 @@ package_manager::register_static_package(package& pkg)
     }
 
     m_packages[pkg.get_id()] = &pkg;
+    m_static_packages.push_back(&pkg);
 
     return true;
 }

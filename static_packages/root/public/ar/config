@@ -1,4 +1,3 @@
-include/packages/root/types_custom.h
 include/packages/root/game_object.h
 include/packages/root/mesh_object.h
 include/packages/root/smart_object.h
@@ -9,6 +8,7 @@ include/packages/root/components/camera_component.h
 include/packages/root/components/component.h
 include/packages/root/components/game_object_component.h
 include/packages/root/components/mesh_component.h
+include/packages/root/ext/external_types.h
 include/packages/root/lights/components/directional_light_component.h
 include/packages/root/lights/components/point_light_component.h
 include/packages/root/lights/components/spot_light_component.h

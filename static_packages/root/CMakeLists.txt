@@ -7,6 +7,7 @@ agea_ar_target(packages.root.ar root "agea")
 file(GLOB ROOT_ASSETS_SRC                "public/include/packages/root/assets/*.h"                     "private/src/assets/*.cpp")
 file(GLOB ROOT_CACHES_SRC                "public/include/packages/root/caches/*.h"                     "private/src/caches/*.cpp")
 file(GLOB ROOT_DEMO_SRC                  "public/include/packages/root/demo/*.h"                       "private/src/demo/*.cpp")
+file(GLOB ROOT_EXT_SRC                   "public/include/packages/root/ext/*.h"                        "private/src/ext/*.cpp")
 file(GLOB ROOT_CORE_TYPES_SRC            "public/include/packages/root/core_types/*.h"                 "private/src/core_types/*.cpp")
 file(GLOB ROOT_COMPONENTS_SRC            "public/include/packages/root/components/*.h"                 "private/src/components/*.cpp")
 file(GLOB ROOT_LIGHTS_SRC                "public/include/packages/root/lights/*.h"                     "private/src/lights/*.cpp")
@@ -14,6 +15,8 @@ file(GLOB ROOT_SRC                       "public/include/packages/root/*.h"     
 file(GLOB ROOT_LIGHTS_COMPONENTS_SRC     "public/include/packages/root/lights/components/*.h"          "private/src/lights/components/*.cpp")
 file(GLOB ROOT_REFLECTION_SRC            "public/include/packages/root/reflection/*.h"                 "private/src/reflection/*.cpp")
 file(GLOB ROOT_REFLECTION_HANDLERS_SRC   "public/include/packages/root/reflection/type_handlers/*.h"   "private/src/reflection/type_handlers/*.cpp")
+
+
 
 file(GLOB ROOT_GENERATED_SRC             "${CMAKE_BINARY_DIR}/agea_generated/packages/root/*.cpp")
 
@@ -26,6 +29,7 @@ source_group("core_types"        FILES  ${ROOT_CORE_TYPES_SRC})
 source_group("root"              FILES  ${ROOT_SRC})
 source_group("reflection"        FILES  ${ROOT_REFLECTION_SRC})
 source_group("generated"         FILES  ${ROOT_GENERATED_SRC})
+source_group("ext"				 FILES  ${ROOT_EXT_SRC})
 
 add_library(packages.root.types STATIC
    ${ROOT_COMPONENTS_SRC}
@@ -38,6 +42,8 @@ add_library(packages.root.types STATIC
    ${ROOT_LIGHTS_COMPONENTS_SRC}
    ${ROOT_REFLECTION_SRC}        
    ${ROOT_REFLECTION_HANDLERS_SRC}
+   
+   ${ROOT_EXT_SRC}
 
    ${ROOT_GENERATED_SRC}
 )
@@ -65,18 +71,18 @@ file(GLOB ROOT_RENDER_SRC                "public/include/packages/root/render/*.
 
 source_group("render" FILES ${ROOT_RENDER_SRC})
 
-add_library(packages.root.render_bridge STATIC
+add_library(packages.root.render STATIC
    ${ROOT_RENDER_SRC}
 )
 
-target_link_libraries(packages.root.render_bridge
+target_link_libraries(packages.root.render
 
    agea::packages.root.types
    agea::asset_importer
    agea::render_bridge
 )
 
-agea_finalize_library(packages.root.render_bridge)
+agea_finalize_library(packages.root.render)
 
 #####  Builder
 file(GLOB ROOT_BUILDER_SRC                "public/include/packages/root/builder/*.h"                     "private/src/builder/*.cpp")
@@ -88,7 +94,7 @@ add_library(packages.root.builder STATIC
 target_link_libraries(packages.root.builder
    agea::packages.root.types
    agea::asset_importer
-   agea::packages.root.render_bridge
+   agea::packages.root.render
 )
 
 agea_finalize_library(packages.root.builder)
@@ -96,7 +102,7 @@ agea_finalize_library(packages.root.builder)
 set(AGEA_ACTIVE_MODULES_TARGETS 
 	${AGEA_ACTIVE_MODULES_TARGETS}
 	packages.root.types 
-	packages.root.render_bridge 
+	packages.root.render 
 	packages.root.builder
 	CACHE INTERNAL "")
 

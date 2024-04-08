@@ -1,6 +1,7 @@
 #pragma once
 
 #include "packages/root/smart_object.generated.h"
+#include "packages/root/ext/root_custom_types_handlers.h"
 
 #include <core/architype.h>
 #include <core/reflection/types.h>
@@ -106,7 +107,13 @@ enum smart_object_state_flag : uint32_t
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
 
-AGEA_ar_class("architype=smart_object");
+AGEA_ar_class("architype=smart_object",
+              copy_handler = custom::copy_smart_obj,
+              compare_handler = custom::compare_smart_obj,
+              serialize_handler = custom::serialize_smart_obj,
+              deserialize_handler = custom::deserialize_smart_obj,
+              deserialize_from_proto_handler = custom::deserialize_from_proto_smart_obj,
+              to_string_handler = custom::to_string_smart_obj);
 class smart_object
 {
     AGEA_gen_meta__smart_object();

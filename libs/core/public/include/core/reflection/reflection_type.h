@@ -73,26 +73,10 @@ using function_list = std::vector<std::shared_ptr<function>>;
 struct reflection_type
 {
     void
-    finalize_handlers();
-
-    void
-    update()
-    {
-        if (arch != core::architype::unknown)
-        {
-            return;
-        }
-
-        if (parent)
-        {
-            parent->update();
-
-            arch = parent->arch;
-        }
-    }
+    inherit();
 
     std::string
-    to_string();
+    as_string() const;
 
     int type_id = -1;
     agea::utils::id module_id;
@@ -108,12 +92,12 @@ struct reflection_type
     property_list m_serilalization_properties;
 
     // clang-format off
-    type_serialization_handler                  serialization = nullptr;
-    type_deserialization_handler                deserialization = nullptr;
-    type_deserialisation_with_prototype_handler deserialization_with_proto = nullptr;
+    type_serialization_handler                  serialize = nullptr;
+    type_deserialization_handler                deserialize = nullptr;
+    type_deserialisation_with_prototype_handler deserialize_with_proto = nullptr;
     type_copy_handler                           copy = nullptr;
     type_compare_handler                        compare = nullptr;
-    type_ui_handler                             ui = nullptr;
+    type_ui_handler                             to_string = nullptr;
     type_rendler_ctor                           render_loader = nullptr;
     type_rendler_dtor                           render_destructor = nullptr;
     type_allocator_handler                      alloc = nullptr;

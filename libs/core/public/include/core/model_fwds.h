@@ -35,6 +35,7 @@ class class_objects_cache;
 class object_load_context;
 class level;
 class package;
+class static_package;
 class package_manager;
 class object_mapping;
 

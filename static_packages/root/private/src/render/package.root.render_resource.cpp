@@ -5,14 +5,18 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
 
+#include <utils/static_initializer.h>
+
 namespace agea::root
 {
 
-core::package_extention_autoregister<root::package, package::package_render_data_loader>
-    s_custom_loader{};
+AGEA_schedule_static_init(
+    []() {
+        package::instance().register_package_extention<package::package_render_resources_loader>();
+    });
 
 bool
-package::package_render_data_loader::load(core::static_package& s)
+package::package_render_resources_loader::load(core::static_package& s)
 {
     auto vl = render::gpu_dynobj_builder()
                   .add_field(AID("vPosition"), render::gpu_type::g_vec3, 1)

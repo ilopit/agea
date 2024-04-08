@@ -105,25 +105,46 @@ static_package::finilize_objects()
 void
 static_package::load_types()
 {
-    m_type_loader->load(*this);
+    if (m_type_loader)
+    {
+        m_type_loader->load(*this);
+    }
 }
 
 void
 static_package::load_custom_types()
 {
-    m_types_custom_loader->load(*this);
+    if (m_types_custom_loader)
+    {
+        m_types_custom_loader->load(*this);
+    }
 }
 
 void
-static_package::build_render_objects()
+static_package::load_render_resources()
 {
-    m_render_data_loader->load(*this);
+    if (m_render_resources_loader)
+    {
+        m_render_resources_loader->load(*this);
+    }
 }
 
 void
-static_package::build_model_objects()
+static_package::load_render_types()
 {
-    m_object_builder->build(*this);
+    if (m_render_types_loader)
+    {
+        m_render_types_loader->load(*this);
+    }
+}
+
+void
+static_package::build_objects()
+{
+    if (m_object_builder)
+    {
+        m_object_builder->build(*this);
+    }
 }
 
 }  // namespace agea::core

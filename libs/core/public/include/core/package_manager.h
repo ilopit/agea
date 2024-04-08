@@ -6,6 +6,8 @@
 
 #include <utils/singleton_instance.h>
 
+#include <unordered_set>
+
 namespace agea
 {
 namespace core
@@ -35,7 +37,7 @@ public:
     get_package(const utils::id& id);
 
     bool
-    register_static_package(package& pkg);
+    register_static_package(static_package& pkg);
 
     std::unordered_map<utils::id, package*>&
     get_packages()
@@ -43,9 +45,16 @@ public:
         return m_packages;
     }
 
+    std::vector<core::static_package*>&
+    get_static_packages()
+    {
+        return m_static_packages;
+    }
+
 protected:
     std::unordered_map<utils::id, package*> m_packages;
     std::vector<std::unique_ptr<package>> m_dynamic_packages;
+    std::vector<core::static_package*> m_static_packages;
 };
 
 }  // namespace core

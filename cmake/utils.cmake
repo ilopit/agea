@@ -16,7 +16,6 @@ macro(agea_finalize_library)
             "${CMAKE_CURRENT_SOURCE_DIR}/public/include")
 
     if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/private/include")
-    
         target_include_directories(${ARGV0} 
             PRIVATE 
                 "${CMAKE_CURRENT_SOURCE_DIR}/private/include")

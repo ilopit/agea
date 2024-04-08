@@ -79,7 +79,10 @@ add_subdirectory(unofficial/lua_bindings)
 add_subdirectory(upstream/vkbootstrap)
 externalize(vk-bootstrap "vk-bootstrap")
 
-#vkbootstrap
+
+SET(SPDLOG_USE_STD_FORMAT ON)
+
+#spdlog
 add_subdirectory(upstream/spdlog)
 externalize(spdlog "spdlog")
 

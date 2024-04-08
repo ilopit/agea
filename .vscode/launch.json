@@ -8,13 +8,15 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${file}",
+            //"program": "${file}",
+            "program": "D:\\dev\\agea\\agea\\tools\\argen.py",
             "args": [
-                "D:/dev/agea/agea/static_packages/root/public/ar/config",
-                "D:/dev/agea/agea/static_packages/root/public/",
-                "D:/dev/agea/agea/build/agea_generated",
-                "root",
-                "agea"
+                 "--type", "package",
+                 "--config", "D://dev//agea/agea//static_packages//root//public//ar//config", 
+                 "--source", "D://dev/agea//agea//static_packages//root//public",
+                 "--output", "D://dev//agea//agea//build//agea_generated", 
+                 "--package_name", "root", 
+                 "--namespace", "agea"
             ],
             "console": "integratedTerminal",
             "justMyCode": true

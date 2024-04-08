@@ -2,7 +2,6 @@
 
 #include "core/model_minimal.h"
 
-#include "core/reflection/reflection_type_utils.h"
 #include "core/reflection/property_utils.h"
 #include "core/reflection/type_description.h"
 

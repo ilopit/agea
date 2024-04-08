@@ -1,5 +1,7 @@
 #pragma once
 
+#include <core/reflection/reflection_type.h>
+
 #include <serialization/serialization.h>
 
 namespace agea
@@ -44,24 +46,65 @@ default_copy(blob_ptr from, blob_ptr to)
 }
 
 template <typename T>
-void
-fast_copy(blob_ptr from, blob_ptr to)
-{
-    memcpy(to, from, sizeof(T));
-}
-
-template <typename T>
-result_code
-fast_compare(blob_ptr from, blob_ptr to)
-{
-    return memcmp(to, from, sizeof(T)) ? result_code::failed : result_code::ok;
-}
-
-template <typename T>
 result_code
 default_compare(blob_ptr from, blob_ptr to)
 {
     return (as_type<T>(to) == as_type<T>(from)) ? result_code::ok : result_code::failed;
+}
+
+template <typename T>
+result_code
+default_copy(AGEA_copy_handler_args)
+{
+    AGEA_unused(dst_obj);
+    AGEA_unused(src_obj);
+    AGEA_unused(ooc);
+
+    reflection::utils::as_type<T>(to) = reflection::utils::as_type<T>(from);
+    return result_code::ok;
+}
+
+template <typename T>
+result_code
+default_serialize(AGEA_serialization_args)
+{
+    AGEA_unused(ptr);
+    reflection::utils::pack_field<T>(ptr, jc);
+
+    return result_code::ok;
+}
+
+template <typename T>
+result_code
+default_to_string(AGEA_reflection_type_ui_args)
+{
+    AGEA_unused(ptr);
+    auto& t = reflection::utils::as_type<T>(ptr);
+    result = std::format("{}", t);
+
+    return result_code::ok;
+}
+
+template <typename T>
+result_code
+default_deserialize(AGEA_deserialization_args)
+{
+    AGEA_unused(ptr);
+    AGEA_unused(occ);
+    AGEA_unused(jc);
+    reflection::utils::extract_field<T>(ptr, jc);
+    return result_code::ok;
+}
+
+template <typename T>
+result_code
+default_deserialize_from_proto(AGEA_deserialization_update_args)
+{
+    AGEA_unused(ptr);
+    AGEA_unused(occ);
+    AGEA_unused(jc);
+    reflection::utils::extract_field<T>(ptr, jc);
+    return result_code::ok;
 }
 
 }  // namespace utils

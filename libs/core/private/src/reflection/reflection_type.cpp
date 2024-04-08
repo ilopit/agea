@@ -59,8 +59,6 @@ reflection::reflection_type_registry::finilaze()
             to_insert = top->m_properties;
             top->initialized = true;
 
-            top->finalize_handlers();
-
             to_handle.pop();
         }
     }
@@ -79,27 +77,27 @@ reflection::reflection_type_registry::finilaze()
 }
 
 void
-reflection::reflection_type::finalize_handlers()
+reflection::reflection_type::inherit()
 {
     if (parent)
     {
-        serialization = serialization ? serialization : parent->serialization;
-        deserialization = deserialization ? deserialization : parent->deserialization;
-        deserialization_with_proto = deserialization_with_proto
-                                         ? deserialization_with_proto
-                                         : parent->deserialization_with_proto;
+        arch = parent->arch;
 
-        copy = copy ? copy : parent->copy;
-        compare = compare ? compare : parent->compare;
-        ui = ui ? ui : parent->ui;
-        render_loader = render_loader ? render_loader : parent->render_loader;
-        render_destructor = render_destructor ? render_destructor : parent->render_destructor;
-        alloc = alloc ? alloc : parent->alloc;
+        serialize = parent->serialize;
+        deserialize = parent->deserialize;
+        deserialize_with_proto = parent->deserialize_with_proto;
+        copy = parent->copy;
+        compare = parent->compare;
+        to_string = parent->to_string;
+        render_loader = parent->render_loader;
+        render_destructor = parent->render_destructor;
+        alloc = parent->alloc;
+        cparams_alloc = parent->cparams_alloc;
     }
 }
 
 std::string
-reflection::reflection_type::to_string()
+reflection::reflection_type::as_string() const
 {
     std::string result;
 

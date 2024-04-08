@@ -128,12 +128,11 @@ vulkan_engine::init()
     utils::path input_config = cfgs_folder / "inputs.acfg";
     glob::input_manager::get()->load_actions(input_config);
 
-    glob::package_manager::getr().init();
-
     glob::game_editor::get()->init();
 
     register_packages();
-    register_packages_render_bridges();
+
+    glob::package_manager::getr().init();
 
     glob::reflection_type_registry::getr().finilaze();
 
@@ -480,8 +479,6 @@ vulkan_engine::init_default_scripting()
         { return glob::package_manager::getr().get_package(AID(id)); },
         "load",
         [](const char* id) -> bool { return glob::package_manager::getr().load_package(AID(id)); });
-
-    // pm["load"] = &core::package_manager::load_package;packa
 }
 
 void
