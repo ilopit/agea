@@ -19,10 +19,8 @@ endfunction()
 
 #fetch
 add_subdirectory(fetch)
-externalize(boost_chrono "boost")
 externalize(boost_container "boost")
 externalize(boost_context "boost")
-externalize(boost_coroutine "boost")
 externalize(boost_date_time "boost")
 externalize(boost_exception "boost")
 externalize(boost_url "boost")
@@ -56,7 +54,7 @@ externalize(glm_unofficial "glm")
 
 #glm
 add_subdirectory(upstream/glm)
-externalize(glm_static "glm")
+externalize(glm "glm")
 
 #jsoncpp
 set(JSONCPP_WITH_TESTS OFF)
