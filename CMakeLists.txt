@@ -1,8 +1,8 @@
-﻿cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
+﻿cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
 
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 
-cmake_policy(VERSION 3.13)
+cmake_policy(VERSION 4.0)
 
 
 project ("agea")
@@ -33,6 +33,7 @@ find_package(Vulkan REQUIRED)
 add_subdirectory(thirdparty)
 
 set(AGEA_ACTIVE_MODULES_TARGETS ""  CACHE INTERNAL "")
+set(AGEA_ACTIVE_MODULES_TARGETS_LINK ""  CACHE INTERNAL "")
 set(AGEA_ACTIVE_MODULES ""  CACHE INTERNAL "")
 
 SET(agea_gendir ${CMAKE_BINARY_DIR}/agea_generated/engine)
