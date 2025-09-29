@@ -110,7 +110,7 @@ script_text_editor::handle()
 
         ImGui::EndMenuBar();
 
-        if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_F5)))
+        if (ImGui::IsKeyPressed(ImGuiKey_F5))
         {
             std::time_t t = std::time(nullptr);
             char mbstr[100];
@@ -150,7 +150,7 @@ script_text_editor::handle()
             }
         }
 
-        if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_S)))
+        if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
         {
             utils::buffer b;
 

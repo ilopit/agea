@@ -1,14 +1,11 @@
 ﻿cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
-
-add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
-
 cmake_policy(VERSION 4.0)
 
-
 project ("agea")
-# Set a default build type if none was specified
 include(${PROJECT_SOURCE_DIR}/cmake/utils.cmake)
 
+# Set a default build type if none was specified
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 set(default_build_type "Debug")
 if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   set(default_build_type "Debug")
@@ -21,7 +18,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #set up cmake
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(BUILD_SHARED_LIBS OFF)
