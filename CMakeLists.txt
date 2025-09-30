@@ -41,15 +41,11 @@ execute_process(
     COMMAND python 
     ${PROJECT_SOURCE_DIR}/tools/argen.py
     --type bind
-    --source ${PROJECT_SOURCE_DIR}/static_packages
+    --source ${PROJECT_SOURCE_DIR}/packages
     --output ${CMAKE_BINARY_DIR}/agea_generated)
 
-include(${CMAKE_BINARY_DIR}/agea_generated/engine/CMakeLists.txt)
-
-
-
 add_subdirectory(libs)
-
+add_subdirectory(packages)
 add_subdirectory(engine)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink

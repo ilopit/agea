@@ -9,7 +9,7 @@
 #include "packages/root/assets/pbr_material.h"
 #include "packages/root/assets/solid_color_material.h"
 #include "packages/root/assets/simple_texture_material.h"
-#include "packages/root/assets/mesh.h"
+#include "packages/global/type_ids.ar.h"
 
 #include "packages/root/components/mesh_component.h"
 #include "packages/root/game_object.h"
@@ -22,7 +22,7 @@
 #include "packages/root/lights/components/point_light_component.h"
 
 #include "packages/root/mesh_object.h"
-#include "packages/root/types_ids.ar.h"
+
 
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>

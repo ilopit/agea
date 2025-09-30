@@ -5,7 +5,7 @@
 #include <packages/root/game_object.h>
 #include <packages/root/assets/material.h>
 #include <engine/property_drawers.h>
-#include <packages/root/types_ids.ar.h>
+#include <packages/global/type_ids.ar.h>
 
 #include <core/reflection/reflection_type.h>  //
 #include <core/reflection/reflection_type_utils.h>
@@ -187,7 +187,7 @@ object_editor::handle()
 
                 auto type_id = p->rtype->type_id;
 
-                if (type_id == root::root__vec3)
+                if (type_id == ::agea::root__vec3)
                 {
                     ImGui::Text("%s", p->name.c_str());
 

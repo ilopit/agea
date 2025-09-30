@@ -9,12 +9,12 @@
             "type": "python",
             "request": "launch",
             //"program": "${file}",
-            "program": "D:\\dev\\agea\\agea\\tools\\argen.py",
+            "program": "F:\\dev\\agea_root\\agea\\tools\\argen.py",
             "args": [
                  "--type", "package",
-                 "--config", "D://dev//agea/agea//static_packages//root//public//ar//config", 
-                 "--source", "D://dev/agea//agea//static_packages//root//public",
-                 "--output", "D://dev//agea//agea//build//agea_generated", 
+                 "--config", "F://dev//agea_root/agea//packages//root//public//ar//config", 
+                 "--source", "F://dev/agea_root//agea//packages//root//public",
+                 "--output", "F://dev//agea_root//agea//build//agea_generated", 
                  "--package_name", "root", 
                  "--namespace", "agea"
             ],

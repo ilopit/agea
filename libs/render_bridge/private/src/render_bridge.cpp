@@ -4,7 +4,7 @@
 
 #include <packages/root/smart_object.h>
 #include <packages/root/assets/shader_effect.h>
-#include <packages/root/types_ids.ar.h>
+#include <packages/global/type_ids.ar.h>
 
 #include <vulkan_render/utils/vulkan_initializers.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
@@ -68,13 +68,13 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
         {
             switch (p->rtype->type_id)
             {
-            case root::root__float:
+            case agea::root__float:
                 sb.add_field(AID(p->name), render::gpu_type::g_float, 1);
                 break;
-            case root::root__vec3:
+            case agea::root__vec3 :
                 sb.add_field(AID(p->name), render::gpu_type::g_vec3, 16);
                 break;
-            case root::root__vec4:
+            case agea::root__vec4:
                 sb.add_field(AID(p->name), render::gpu_type::g_vec4, 16);
                 break;
             default:

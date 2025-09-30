@@ -1,5 +1,13 @@
+FetchContent_Declare(
+  sdl2_binaries
+  URL      https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-devel-2.32.10-VC.zip
+)
 
-set(sdl2_DIR "$ENV{SDL2_PATH}")
+FetchContent_MakeAvailable(sdl2_binaries)
+
+FetchContent_GetProperties(sdl2_binaries
+  SOURCE_DIR sdl2_DIR
+)
 
 add_library(sdl2 INTERFACE)
 

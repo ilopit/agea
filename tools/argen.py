@@ -197,15 +197,98 @@ def gen_id(type: arapi.types.agea_type, module_name: str):
   type.id = module_name + type_name
 
 
-def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
-  print(
-      "SOLing : SOL config - {0}, root dir - {1}, output - {2}, package_name - {3}, module_namespace - {4}"
-      .format(ar_cfg_path, root_dir, output_dir, module_name, module_namespace))
+def update_global_ids(fc: arapi.types.file_context):
 
+  lines = []
+
+  if not os.path.exists(fc.global_file):
+    with open(fc.global_file, "w+") as gf:
+
+      fl = f"""#pragma once
+// clang-format off
+
+namespace agea {{
+  enum {{
+// root types start
+// root types end
+    agea__total_supported_types_number,
+    agea__invalid_type_id = agea__total_supported_types_number
+  }};
+}}
+"""
+
+      gf.write(fl)
+
+  with open(fc.global_file, "r+") as gf:
+    existing_ids = []
+    lines = gf.readlines()
+
+  add_mode = 0
+
+  before = []
+  existing_ids = []
+  after = []
+  for line in lines:
+
+    if line.startswith(f"// {fc.module_name} types start"):
+      add_mode = 1
+      before.append(line)
+      continue
+
+    if line.startswith(f"// {fc.module_name} types end"):
+      add_mode = 2
+      after.append(line)
+      continue
+
+    if add_mode == 0:
+      before.append(line)
+    elif add_mode == 1:
+      existing_ids.append(line.strip().replace(',',''))
+    elif add_mode == 2:
+      after.append(line)
+
+  existing_ids.sort()
+
+  new_ids = []
+  for t in fc.types:
+    new_ids.append(t.id)
+
+  new_ids.sort()
+
+  if new_ids != existing_ids:
+    with open(fc.global_file, "w+") as gf:
+      gf.writelines(before)
+
+      for ni in new_ids:
+        gf.write(f"    {ni},\n")
+      gf.writelines(after)
+
+
+def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
+  print("""SOLing:
+      cfg          - {0}
+      root         - {1}
+      output       - {2}
+      package_name - {3}
+      namespace    - {4}""".format(ar_cfg_path, root_dir, output_dir, module_name,
+                                   module_namespace))
   module_namespace = module_namespace.strip()
 
   context = arapi.types.file_context(module_name, module_namespace)
   context.output_dir = output_dir
+  context.private_dir = os.path.join(output_dir, "packages", module_name, "private")
+  context.public_dir = os.path.join(output_dir, "packages", module_name, "public")
+  context.global_file = os.path.join(output_dir, "packages", "global", "type_ids.ar.h")
+
+  if not os.path.exists(context.private_dir):
+    os.mkdir(context.private_dir)
+
+  if not os.path.exists(context.public_dir):
+    os.mkdir(context.public_dir)
+
+  global_dir = os.path.join(output_dir, "packages", "global")
+  if not os.path.exists(global_dir):
+    os.mkdir(global_dir)
 
   context.has_custom_types = os.path.exists(
       os.path.join(root_dir, "include", "packages", module_name, "types_custom.h"))
@@ -226,7 +309,7 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
   for t in context.types:
     gen_id(t, context.module_name)
 
-  output_file = os.path.join(output_dir, "packages", module_name, f"package.{module_name}.ar.cpp")
+  output_file = os.path.join(context.private_dir, f"package.{module_name}.ar.cpp")
 
   arapi.writer.write_module_reflection(output_file, context)
 
@@ -234,17 +317,17 @@ def main(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
     if t.kind == arapi.types.agea_type_kind.CLASS:
       arapi.writer.write_ar_class_include_file(t, context, output_dir)
 
+  update_global_ids(context)
+
 
 def bind_packages(source: str, output: str):
   registered_packages = ""
-  cmake_file = ""
   packages_includes = ""
 
   for d in os.listdir(source):
     if os.path.isdir(os.path.join(source, d)):
       registered_packages += f"    ::agea::glob::package_manager::getr().register_static_package({d}::package::instance());"
 
-      cmake_file += (f"    add_subdirectory(${{PROJECT_SOURCE_DIR}}/static_packages/{d})")
       packages_includes += f"#include <packages/root/package.{d}.h>\n"
 
   packages_glue = f"""#include <engine/agea_engine.h>
@@ -264,9 +347,6 @@ vulkan_engine::register_packages()
 
   fd = open(os.path.join(output, "engine", "packages_glue.ar.cpp"), "w")
   fd.write(packages_glue)
-
-  fa = open(os.path.join(output, "engine", "CMakeLists.txt"), "w")
-  fa.write(cmake_file)
 
 
 if __name__ == "__main__":
@@ -289,6 +369,6 @@ if __name__ == "__main__":
   if args.type == "bind":
     bind_packages(args.source, args.output)
   elif args.type == "package":
-    main(args.config, args.source, args.output, args.package_name, args.namespace)
+    build_package(args.config, args.source, args.output, args.package_name, args.namespace)
   else:
     print("Wrong arg")

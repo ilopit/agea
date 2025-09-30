@@ -18,7 +18,7 @@ file(GLOB ROOT_REFLECTION_HANDLERS_SRC   "public/include/packages/root/reflectio
 
 
 
-file(GLOB ROOT_GENERATED_SRC             "${CMAKE_BINARY_DIR}/agea_generated/packages/root/*.cpp")
+file(GLOB ROOT_GENERATED_SRC             "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/*.cpp")
 
 source_group("assets"            FILES  ${ROOT_ASSETS_SRC})
 source_group("caches"            FILES  ${ROOT_CACHES_SRC})
@@ -29,7 +29,7 @@ source_group("core_types"        FILES  ${ROOT_CORE_TYPES_SRC})
 source_group("root"              FILES  ${ROOT_SRC})
 source_group("reflection"        FILES  ${ROOT_REFLECTION_SRC})
 source_group("generated"         FILES  ${ROOT_GENERATED_SRC})
-source_group("ext"				 FILES  ${ROOT_EXT_SRC})
+source_group("ext"			    	FILES  ${ROOT_EXT_SRC})
 
 add_library(packages.root.types STATIC
    ${ROOT_COMPONENTS_SRC}

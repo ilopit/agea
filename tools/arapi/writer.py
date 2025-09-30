@@ -151,27 +151,6 @@ def write_properties(ar_file, fc: arapi.types.file_context, t: arapi.types.agea_
   ar_file.write("    }\n")
 
 
-def write_package_ids_include(fc: arapi.types.file_context):
-
-  include_path = os.path.join(fc.output_dir, "packages", fc.module_name, "types_ids.ar.h")
-
-  with open(include_path, "w+") as include_file:
-
-    include_file.write(f"""#pragma once
-
-#include "packages/{fc.module_name}/types_meta_ids.ar.h"
-
-namespace {fc.full_module_name} {{
-   enum {{
-""")
-
-    for t in fc.types:
-
-      include_file.write(f"            {t.id},\n")
-
-    include_file.write(f"            {fc.module_name}__count\n }};\n }}\n")
-
-
 def write_types_resolvers(fc: arapi.types.file_context):
 
   output_file = os.path.join(fc.output_dir, "packages", fc.module_name, "types_resolvers.ar.h")
@@ -181,7 +160,7 @@ def write_types_resolvers(fc: arapi.types.file_context):
 
 #include "core/reflection/types.h"
 
-#include "packages/{fc.module_name}/types_ids.ar.h"
+#include "packages/global/type_ids.ar.h"
 
 """)
 
@@ -211,7 +190,7 @@ def write_types_resolvers(fc: arapi.types.file_context):
   {{
       enum
       {{
-          value = {fc.full_module_name}::{t.id}
+          value = ::agea::{t.id}
       }};
   }};
   """)
@@ -319,11 +298,11 @@ def write_module_reflection(package_ar_file, fc: arapi.types.file_context):
 
 // clang-format off
 
+#include "packages/global/type_ids.ar.h"
+
 #include "packages/{fc.module_name}/package.{fc.module_name}.h"
-#include "packages/{fc.module_name}/types_ids.ar.h"
 #include "packages/{fc.module_name}/types_resolvers.ar.h"
 #include "packages/{fc.module_name}/types_script_importer.ar.h"
-
 #include "packages/{fc.module_name}/properties_custom.h"
 
 #include <core/caches/caches_map.h>
@@ -509,8 +488,6 @@ package::package_types_loader::load(static_package& sp)
     ar_file.write(fc.properies_access_methods)
 
     ar_file.write("\n}\n")
-
-  write_package_ids_include(fc)
 
   write_types_resolvers(fc)
 

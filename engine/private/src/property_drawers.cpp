@@ -13,7 +13,7 @@
 
 #include "core/reflection/reflection_type_utils.h"
 
-#include "packages/root/types_ids.ar.h"
+#include "packages/global/type_ids.ar.h"
 
 namespace agea
 {

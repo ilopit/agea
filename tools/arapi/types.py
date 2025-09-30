@@ -97,6 +97,9 @@ class file_context:
     self.properies_access_methods: str = ''
     self.output_dir = ''
     self.types: list[agea_type] = []
+    self.public_dir = None
+    self.private_dir = None
+    self.global_file = None
 
   def topo_sort(self, t: agea_type, ordered_types):
 

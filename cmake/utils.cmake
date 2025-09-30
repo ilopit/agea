@@ -60,14 +60,14 @@ macro(agea_ar_target)
         COMMAND python 
                        ${PROJECT_SOURCE_DIR}/tools/argen.py
                        --type package
-                       --config ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public/ar/config 
-                       --source ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public
+                       --config ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public/ar/config 
+                       --source ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public
                        --output ${CMAKE_BINARY_DIR}/agea_generated
                        --package_name ${ARGV1}
                        --namespace ${ARGV2})
 
     set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/packages/${ARGV1})
-    set(ar_file   ${ar_folder}/package.${ARGV1}.ar.cpp)
+    set(ar_file   ${ar_folder}/private/package.${ARGV1}.ar.cpp)
 
     agea_ide_path(${full_name})
 
@@ -83,8 +83,8 @@ macro(agea_ar_target)
             COMMAND python 
             ${PROJECT_SOURCE_DIR}/tools/argen.py
             --type package
-            --config ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public/ar/config 
-            --source ${PROJECT_SOURCE_DIR}/static_packages/${ARGV1}/public
+            --config ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public/ar/config 
+            --source ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public
             --output ${CMAKE_BINARY_DIR}/agea_generated
             --package_name ${ARGV1}
             --namespace ${ARGV2})
