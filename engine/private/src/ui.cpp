@@ -2,7 +2,6 @@
 
 #include "engine/ui.h"
 #include "engine/script_editor.h"
-
 #include "engine/console.h"
 #include "engine/property_drawers.h"
 #include "engine/engine_counters.h"
@@ -12,9 +11,9 @@
 
 #include <core/level.h>
 #include <core/caches/caches_map.h>
-#include <core/caches/materials_cache.h>
 #include <core/reflection/property.h>
 #include <core/reflection/lua_api.h>
+#include <core/global_state.h>
 
 #include <packages/root/game_object.h>
 #include <packages/root/assets/material.h>
@@ -161,7 +160,7 @@ level_editor_window::handle()
         return;
     }
 
-    auto level = ::agea::glob::level::get();
+    auto level = ::agea::glob::state::getr().get_current_level();
 
     if (ImGui::TreeNode("Level Objects"))
     {
@@ -203,7 +202,7 @@ materials_selector::handle()
     ImGui::InputText("##material", m_filtering_text.data(), m_filtering_text.size(), 0);
     ImGui::Separator();
 
-    glob::materials_cache::get()->call_on_items(
+    glob::state::getr().get_class_materials_cache()->call_on_items(
         [this](root::material* m)
         {
             {

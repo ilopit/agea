@@ -7,6 +7,7 @@
 #include "core/caches/cache_set.h"
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
+#include "core/global_state.h"
 
 #include <packages/root/mesh_object.h>
 #include <packages/root/components/mesh_component.h>
@@ -21,9 +22,6 @@
 
 namespace agea
 {
-
-glob::level_manager::type glob::level_manager::type::s_instance;
-
 namespace core
 {
 
@@ -66,7 +64,7 @@ level_manager::load_level_path(level& l,
 
     l.set_load_path(path);
     l.set_save_root_path(path.parent());
-    l.init_global_cache_reference(global_class_cs, global_instances_cs);
+    // l.init_global_cache_reference(global_class_cs, global_instances_cs);
 
     std::string name, extension;
     path.parse_file_name_and_ext(name, extension);
@@ -100,7 +98,7 @@ level_manager::load_level_path(level& l,
         for (size_t idx = 0; idx < packages_count; ++idx)
         {
             auto id = AID(packages[idx].as<std::string>());
-            if (!glob::package_manager::get()->load_package(id))
+            if (!glob::state::getr().get_pm()->load_package(id))
             {
                 ALOG_LAZY_ERROR;
                 return nullptr;

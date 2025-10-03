@@ -59,20 +59,4 @@ protected:
 
 }  // namespace core
 
-namespace glob
-{
-struct package_manager
-    : public ::agea::singleton_instance<::agea::core::package_manager, package_manager>
-{
-};
-}  // namespace glob
-
-template <typename Pkg>
-struct package_autoregister
-{
-    package_autoregister()
-    {
-        agea::glob::package_manager::getr().register_static_package(Pkg::instance());
-    }
-};
 }  // namespace agea

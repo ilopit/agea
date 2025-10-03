@@ -5,7 +5,6 @@
 #include <core/caches/objects_cache.h>
 #include <core/caches/caches_map.h>
 #include <core/object_constructor.h>
-#include <root/smart_object.h>
 
 #include <utils/singleton_registry.h>
 

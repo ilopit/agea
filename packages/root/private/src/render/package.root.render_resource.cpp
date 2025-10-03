@@ -5,13 +5,14 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
 
-#include <utils/static_initializer.h>
+#include <core/global_state.h>
 
 namespace agea::root
 {
 
-AGEA_schedule_static_init(
-    []() {
+AGEA_schedule_static_register(
+    [](core::state&)
+    {
         package::instance().register_package_extention<package::package_render_resources_loader>();
     });
 

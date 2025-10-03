@@ -1,6 +1,8 @@
 #include "engine/script_editor.h"
 
 #include <core/reflection/lua_api.h>
+#include <core/global_state.h>
+
 #include <sol2_unofficial/sol.h>
 #include <chrono>
 #include <utils/buffer.h>
@@ -59,6 +61,8 @@ script_text_editor::handle()
 
     auto& editor = *m_editor_window;
     auto& error_window = *m_output_window;
+
+    auto lua_api = glob::state::getr().get_lua();
 
     ImGui::Begin("Script Editor", &m_show,
                  ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
@@ -122,8 +126,8 @@ script_text_editor::handle()
             output_header +=
                 "------------------------------------------------------------------------\n";
 
-            glob::lua_api::getr().reset();
-            auto result = glob::lua_api::getr().state().script(editor.GetText());
+            lua_api->reset();
+            auto result = lua_api->state().script(editor.GetText());
 
             if (result.status() == sol::call_status::ok)
             {
@@ -133,7 +137,7 @@ script_text_editor::handle()
                     m_selected_output_pallette = &m_output_palette;
                 }
 
-                output_header += glob::lua_api::getr().buffer();
+                output_header += lua_api->buffer();
                 error_window.SetText(output_header);
             }
             else

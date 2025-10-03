@@ -13,12 +13,6 @@ main(int argc, char** argv)
 {
     ::agea::utils::setup_logger();
 
-    auto registry = std::make_unique<agea::singleton_registry>();
-    auto& r = *registry;
-    agea::glob::lua_api::create(r);
-    agea::glob::package_manager::create(r);
-    //   agea::glob::reflection_type_registry::create(r);
-
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

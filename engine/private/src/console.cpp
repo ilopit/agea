@@ -3,6 +3,7 @@
 #include "utils/string_utility.h"
 
 #include "core/reflection/lua_api.h"
+#include "core/global_state.h"
 #include <sol2_unofficial/sol.h>
 
 #include <ctype.h>
@@ -320,15 +321,17 @@ editor_console::exec_command(const std::string& command_line)
     }
     else
     {
-        auto result = glob::lua_api::getr().state().script(command_line);
+        auto lua = glob::state::getr().get_lua();
+
+        auto result = lua->state().script(command_line);
 
         if (result.status() == sol::call_status::ok)
         {
-            auto to_add = glob::lua_api::getr().buffer().substr(t);
+            auto to_add = lua->buffer().substr(t);
             if (!to_add.empty())
             {
                 m_items.push_back(to_add);
-                t = glob::lua_api::getr().buffer().size();
+                t = lua->buffer().size();
             }
             m_history.push_back(command_line);
         }
@@ -518,17 +521,19 @@ editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
 {
     std::string file_name = ctx.tokens[1];
 
-    auto result = glob::lua_api::getr().state().script_file(file_name);
+    auto lua = glob::state::getr().get_lua();
+
+    auto result = lua->state().script_file(file_name);
 
     if (result.status() == sol::call_status::ok)
     {
-        auto to_add = glob::lua_api::getr().buffer().substr(e.t);
+        auto to_add = lua->buffer().substr(e.t);
         if (!to_add.empty())
         {
             e.m_items.push_back(to_add);
         }
 
-        e.t = glob::lua_api::getr().buffer().size();
+        e.t = lua->buffer().size();
     }
     else
     {

@@ -1,6 +1,5 @@
 #include "core/package.h"
 
-#include "core/caches/objects_cache.h"
 #include "core/caches/caches_map.h"
 
 #include "core/object_load_context.h"
@@ -38,20 +37,6 @@ package::package(const utils::id& id,
 
 package::~package()
 {
-}
-
-void
-package::init_global_cache_reference(
-    cache_set* proto_global_set /*= glob::class_objects_cache_set::get()*/,
-    cache_set* instance_global_set /*= glob::objects_cache_set::get()*/)
-{
-    AGEA_check(!(m_proto_global_cs || m_instance_global_cs), "Should be empty!");
-    AGEA_check(proto_global_set && instance_global_set, "Should NOT be empty!");
-
-    m_proto_global_cs = proto_global_set;
-    m_instance_global_cs = instance_global_set;
-
-    m_occ->set_proto_global_set(m_proto_global_cs).set_instance_global_set(m_instance_global_cs);
 }
 
 void
@@ -135,6 +120,15 @@ static_package::load_render_types()
     if (m_render_types_loader)
     {
         m_render_types_loader->load(*this);
+    }
+}
+
+void
+static_package::register_types()
+{
+    if (m_type_register)
+    {
+        m_type_register->build(*this);
     }
 }
 

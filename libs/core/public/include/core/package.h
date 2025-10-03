@@ -44,6 +44,13 @@
         build(static_package& sp) override;                                     \
     };
 
+#define AGEA_ar_package_type_register                                         \
+    struct package_type_register : public ::agea::core::package_type_register \
+    {                                                                         \
+        virtual bool                                                          \
+        build(static_package& sp) override;                                   \
+    };
+
 namespace agea
 {
 namespace core
@@ -97,10 +104,6 @@ public:
     }
 
     void
-    init_global_cache_reference(cache_set* class_global_set = glob::proto_objects_cache_set::get(),
-                                cache_set* instance_global_set = glob::objects_cache_set::get());
-
-    void
     register_in_global_cache();
 
     void
@@ -143,6 +146,15 @@ struct package_types_custom_loader
 };
 
 struct package_object_builder
+{
+    virtual bool
+    build(static_package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_type_register
 {
     virtual bool
     build(static_package& sp)
@@ -225,6 +237,9 @@ public:
     load_render_types();
 
     void
+    register_types();
+
+    void
     load_render_resources();
 
     void
@@ -235,6 +250,8 @@ public:
 
     std::unique_ptr<package_render_types_loader> m_render_types_loader;
     std::unique_ptr<package_render_resources_loader> m_render_resources_loader;
+
+    std::unique_ptr<package_type_register> m_type_register;
 
     std::unique_ptr<package_object_builder> m_object_builder;
 };

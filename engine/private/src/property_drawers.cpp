@@ -4,9 +4,6 @@
 
 #include <inttypes.h>
 
-#include "core/caches/materials_cache.h"
-#include "core/caches/meshes_cache.h"
-
 #include "packages/root/assets/material.h"
 #include "packages/root/assets/mesh.h"
 #include "packages/root/assets/texture.h"

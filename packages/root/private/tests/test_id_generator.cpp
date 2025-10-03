@@ -1,8 +1,7 @@
 #include "base_test.h"
 
 #include <core/id_generator.h>
-#include <core/caches/objects_cache.h>
-#include <core/caches/objects_cache.h>
+
 #include <core/caches/caches_map.h>
 #include <core/object_constructor.h>
 
@@ -21,8 +20,6 @@ struct test_id_generator : base_test
     {
         base_test::SetUp();
         glob::id_generator::create(m_reg);
-        glob::proto_objects_cache::create_ref(&m_class_cache);
-        glob::objects_cache::create_ref(&m_cache);
     }
 
     singleton_registry m_reg;

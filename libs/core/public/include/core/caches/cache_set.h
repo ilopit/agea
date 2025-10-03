@@ -36,22 +36,4 @@ public:
 
 }  // namespace core
 
-namespace glob
-{
-
-struct proto_objects_cache_set
-    : public ::agea::singleton_instance<::agea::core::cache_set, proto_objects_cache_set>
-{
-};
-
-struct objects_cache_set
-    : public ::agea::singleton_instance<::agea::core::cache_set, objects_cache_set>
-{
-};
-
-void
-init_global_caches(singleton_registry& r);
-
-}  // namespace glob
-
 }  // namespace agea

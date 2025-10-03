@@ -4,7 +4,6 @@
 #include <packages/root/assets/asset.h>
 #include <packages/root/assets/shader_effect.h>
 
-#include "core/caches/game_objects_cache.h"
 #include "core/caches/caches_map.h"
 
 #include "core/object_load_context.h"
@@ -105,10 +104,12 @@ level::spawn_object_impl(const utils::id& proto_id,
 {
     auto obj = object_constructor::object_construct(proto_id, object_id, p, *m_occ)
                    ->as<root::game_object>();
+    if (obj)
+    {
+        add_to_dirty_render_queue(obj->get_root_component());
 
-    add_to_dirty_render_queue(obj->get_root_component());
-
-    m_tickable_objects.emplace_back(obj);
+        m_tickable_objects.emplace_back(obj);
+    }
 
     return obj;
 }

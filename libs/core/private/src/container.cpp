@@ -39,19 +39,6 @@ container::get_relative_path(const utils::path& p) const
 }
 
 void
-container::init_global_cache_reference(
-    cache_set* class_global_set /*= glob::class_objects_cache_set::get()*/,
-    cache_set* instance_global_set /*= glob::objects_cache_set::get()*/)
-{
-    AGEA_check(class_global_set && instance_global_set, "Should NOT be empty!");
-
-    m_proto_global_cs = class_global_set;
-    m_instance_global_cs = instance_global_set;
-
-    m_occ->set_proto_global_set(m_proto_global_cs).set_instance_global_set(m_instance_global_cs);
-}
-
-void
 container::register_in_global_cache(cache_set& local,
                                     cache_set& global,
                                     const utils::id& id,

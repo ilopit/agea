@@ -23,15 +23,13 @@
 
 #include "packages/root/mesh_object.h"
 
-
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
 #include <core/caches/cache_set.h>
-#include <core/caches/objects_cache.h>
-#include <core/caches/materials_cache.h>
 #include <core/object_load_context.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
+#include <core/global_state.h>
 #include <core/reflection/reflection_type_utils.h>
 
 #include <serialization/serialization.h>
@@ -53,7 +51,6 @@
 #include <utils/agea_log.h>
 #include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
-#include <utils/static_initializer.h>
 
 #include <render_bridge/render_bridge.h>
 
@@ -63,8 +60,8 @@ namespace agea::root
 namespace
 {
 
-AGEA_schedule_static_init(
-    []()
+AGEA_schedule_static_register(
+    [](core::state&)
     { package::instance().register_package_extention<package::package_render_types_loader>(); });
 
 bool
@@ -570,50 +567,50 @@ point_light_component__root__render_destructor(::agea::render_bridge& rb,
 bool
 package::package_render_types_loader::load(static_package&)
 {
+    auto rm = glob::state::getr().get_rm();
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__game_object_component);
+        auto rt = rm->get_type(root__game_object_component);
         rt->render_loader = game_object_component__root__render_loader;
         rt->render_destructor = game_object_component__root__render_destructor;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__mesh_component);
+        auto rt = rm->get_type(root__mesh_component);
         rt->render_loader = mesh_component__root__render_loader;
         rt->render_destructor = mesh_component__root__render_destructor;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__texture);
+        auto rt = rm->get_type(root__texture);
         rt->render_loader = texture__root__render_loader;
         rt->render_destructor = texture__root__render_destructor;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__material);
+        auto rt = rm->get_type(root__material);
         rt->render_loader = material__root__render_loader;
         rt->render_destructor = material__root__render_destructor;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__mesh);
+        auto rt = rm->get_type(root__mesh);
         rt->render_loader = mesh__root__render_loader;
         rt->render_destructor = mesh__root__render_destructor;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__shader_effect);
+        auto rt = rm->get_type(root__shader_effect);
         rt->render_loader = shader_effect__root__render_loader;
         rt->render_destructor = shader_effect__root__render_destructor;
     }
     {
-        auto rt =
-            glob::reflection_type_registry::getr().get_type(root__directional_light_component);
+        auto rt = rm->get_type(root__directional_light_component);
         rt->render_loader = directional_light_component__root__render_loader;
         rt->render_destructor = directional_light_component__root__render_destructor;
     }
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__point_light_component);
+        auto rt = rm->get_type(root__point_light_component);
         rt->render_loader = point_light_component__root__render_loader;
         rt->render_destructor = point_light_component__root__render_destructor;
     }
 
     {
-        auto rt = glob::reflection_type_registry::getr().get_type(root__spot_light_component);
+        auto rt = rm->get_type(root__spot_light_component);
         rt->render_loader = spot_light_component__root__render_loader;
         rt->render_destructor = spot_light_component__root__render_destructor;
     }

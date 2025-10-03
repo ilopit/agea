@@ -80,4 +80,27 @@ protected:
     T* m_obj = nullptr;
     static singleton_instance s_instance;
 };
+
+template <typename T>
+class simple_singletone
+{
+public:
+    using type = T;
+
+    static T&
+    getr()
+    {
+        return s_instance;
+    }
+
+    static void
+    reset()
+    {
+        s_instance = {};
+    }
+
+protected:
+    static T s_instance;
+};
+
 }  // namespace agea

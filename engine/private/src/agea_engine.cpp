@@ -9,13 +9,6 @@
 #include "engine/private/sync_service.h"
 
 #include <core/caches/caches_map.h>
-#include <core/caches/components_cache.h>
-#include <core/caches/materials_cache.h>
-#include <core/caches/meshes_cache.h>
-#include <core/caches/objects_cache.h>
-#include <core/caches/textures_cache.h>
-#include <core/caches/game_objects_cache.h>
-#include <core/caches/shader_effects_cache.h>
 
 #include <core/id_generator.h>
 #include <core/level.h>
@@ -25,6 +18,7 @@
 #include <core/package_manager.h>
 #include <core/reflection/lua_api.h>
 #include <core/reflection/reflection_type.h>
+#include <core/global_state.h>
 
 #include <native/native_window.h>
 
@@ -98,6 +92,21 @@ vulkan_engine::init()
 {
     ALOG_INFO("Initialization started ...");
 
+    auto& gs = glob::state::getr();
+
+    gs.schedule_create(
+        [](core::state& s)
+        {
+            // state
+            core::state_caches_mutator::set(s);
+            core::state_level_mutator::set(s);
+            core::state_package_mutator::set(s);
+            core::state_reflection_manager_mutator::set(s);
+            core::state_lua_mutator::set(s);
+        });
+
+    gs.run_create();
+
     glob::game_editor::create(*m_registry);
     glob::input_manager::create(*m_registry);
     glob::resource_locator::create(*m_registry);
@@ -105,18 +114,13 @@ vulkan_engine::init()
     glob::render_device::create(*m_registry);
     glob::vulkan_render_loader::create(*m_registry);
     glob::ui::create(*m_registry);
-    glob::level_manager::create(*m_registry);
     glob::native_window::create(*m_registry);
-    glob::package_manager::create(*m_registry);
-    glob::lua_api::create(*m_registry);
     glob::vulkan_render::create(*m_registry);
     glob::id_generator::create(*m_registry);
     glob::engine_counters::create(*m_registry);
-    glob::reflection_type_registry::create(*m_registry);
     glob::render_bridge::create(*m_registry);
 
-    glob::init_global_caches(*m_registry);
-
+    gs.run_register();
     init_default_scripting();
 
     glob::resource_locator::get()->init_local_dirs();
@@ -130,11 +134,8 @@ vulkan_engine::init()
 
     glob::game_editor::get()->init();
 
-    register_packages();
-
-    glob::package_manager::getr().init();
-
-    glob::reflection_type_registry::getr().finilaze();
+    gs.schedule_init([](agea::core::state& s) { s.get_pm()->init(); });
+    gs.run_init();
 
     native_window::construct_params rwc;
     rwc.w = 1600 * 2;
@@ -223,7 +224,7 @@ vulkan_engine::run()
             update_cameras();
             glob::vulkan_render::getr().set_camera(m_camera_data);
 
-            if (glob::level::get())
+            if (glob::state::getr().get_current_level())
             {
                 consume_updated_shader_effects();
                 consume_updated_render_assets();
@@ -252,7 +253,7 @@ void
 vulkan_engine::tick(float dt)
 {
     glob::game_editor::get()->on_tick(dt);
-    if (auto lvl = glob::level::get())
+    if (auto lvl = glob::state::getr().get_current_level())
     {
         lvl->tick(dt);
     }
@@ -276,10 +277,12 @@ vulkan_engine::execute_sync_requests()
 
         if (ext == "lua")
         {
-            auto lua_r = glob::lua_api::getr().state().script_file(sa.path_to_resources.str());
+            auto lua = glob::state::getr().get_lua();
 
-            std::string result = glob::lua_api::getr().buffer();
-            glob::lua_api::getr().reset();
+            auto lua_r = lua->state().script_file(sa.path_to_resources.str());
+
+            std::string result = lua->buffer();
+            lua->reset();
             if (lua_r.status() != sol::call_status::ok)
             {
                 sol::error err = lua_r;
@@ -290,7 +293,9 @@ vulkan_engine::execute_sync_requests()
         }
         else if (ext == "vert" || ext == "frag")
         {
-            auto ptr = glob::shader_effects_cache::getr().get_item(AID(name));
+            auto sec = glob::state::getr().get_class_shader_effects_cache();
+
+            auto ptr = sec->get_item(AID(name));
             ptr->mark_render_dirty();
 
             auto dep = glob::render_bridge::getr().get_dependency().get_node(ptr);
@@ -315,16 +320,18 @@ vulkan_engine::execute_sync_requests()
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto result = glob::level_manager::getr().load_level(glob::config::get()->level,
-                                                         glob::proto_objects_cache_set::get(),
-                                                         glob::objects_cache_set::get());
+    auto lm = glob::state::getr().get_lm();
+    auto cs = glob::state::getr().get_class_set();
+    auto is = glob::state::getr().get_instance_set();
+
+    auto result = lm->load_level(level_id, cs, is);
     if (!result)
     {
         ALOG_FATAL("Nothign to do here!");
         return false;
     }
 
-    glob::level::create_ref(result);
+    core::state_current_level_mutator::set(*result, glob::state::getr());
 
     return true;
 }
@@ -358,7 +365,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 void
 vulkan_engine::consume_updated_transforms()
 {
-    auto& items = glob::level::getr().get_dirty_transforms_components_queue();
+    auto& items = glob::state::getr().get_current_level()->get_dirty_transforms_components_queue();
 
     if (items.empty())
     {
@@ -450,7 +457,7 @@ vulkan_engine::init_default_resources()
 void
 vulkan_engine::init_scene()
 {
-    auto level_id = glob::config::get()->level;
+    auto level_id = AID("light_sandbox");
     if (level_id.valid())
     {
         load_level(level_id);
@@ -463,28 +470,27 @@ vulkan_engine::init_scene()
 void
 vulkan_engine::init_default_scripting()
 {
-    static auto rt = ::agea::glob::lua_api::getr().state().new_usertype<utils::id>(
-        "reflection_type", sol::no_constructor);
+    auto lua = glob::state::getr().get_lua();
 
-    static auto aid =
-        ::agea::glob::lua_api::getr().state().new_usertype<reflection::reflection_type>(
-            "aid", sol::no_constructor, "i", [](const char* id) -> utils::id { return AID(id); });
+    static auto rt = lua->state().new_usertype<utils::id>("reflection_type", sol::no_constructor);
 
-    static auto p = ::agea::glob::lua_api::getr().state().new_usertype<core::package>(
-        "package", sol::no_constructor);
+    static auto aid = lua->state().new_usertype<reflection::reflection_type>(
+        "aid", sol::no_constructor, "i", [](const char* id) -> utils::id { return AID(id); });
 
-    static auto pm = ::agea::glob::lua_api::getr().state().new_usertype<core::package_manager>(
+    static auto p = lua->state().new_usertype<core::package>("package", sol::no_constructor);
+
+    auto pm = glob::state::getr().get_pm();
+
+    static auto lua_pm = lua->state().new_usertype<core::package_manager>(
         "pm", sol::no_constructor, "get_package",
-        [](const char* id) -> core::package*
-        { return glob::package_manager::getr().get_package(AID(id)); },
-        "load",
-        [](const char* id) -> bool { return glob::package_manager::getr().load_package(AID(id)); });
+        [pm](const char* id) -> core::package* { return pm->get_package(AID(id)); }, "load",
+        [pm](const char* id) -> bool { return pm->load_package(AID(id)); });
 }
 
 void
 vulkan_engine::consume_updated_render_components()
 {
-    auto& items = glob::level::getr().get_dirty_render_queue();
+    auto& items = glob::state::getr().get_current_level()->get_dirty_render_queue();
 
     for (auto& i : items)
     {
@@ -497,7 +503,7 @@ vulkan_engine::consume_updated_render_components()
 void
 vulkan_engine::consume_updated_render_assets()
 {
-    auto& items = glob::level::getr().get_dirty_render_assets_queue();
+    auto& items = glob::state::getr().get_current_level()->get_dirty_render_assets_queue();
 
     for (auto& i : items)
     {
@@ -510,7 +516,7 @@ vulkan_engine::consume_updated_render_assets()
 void
 vulkan_engine::consume_updated_shader_effects()
 {
-    auto& items = glob::level::getr().get_dirty_shader_effect_queue();
+    auto& items = glob::state::getr().get_current_level()->get_dirty_shader_effect_queue();
 
     for (auto& i : items)
     {

@@ -9,6 +9,8 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package_manager.h>
+#include <core/global_state.h>
+
 #include <packages/root/game_object.h>
 #include <packages/root/lights/point_light.h>
 #include <packages/root/lights/directional_light.h>
@@ -93,7 +95,7 @@ game_editor::ev_mouse_press()
 void
 game_editor::ev_reload()
 {
-    auto& level = glob::level::getr();
+    auto& level = glob::state::getr().getr_current_level();
 
     level.drop_pending_updates();
 
@@ -102,14 +104,17 @@ game_editor::ev_reload()
     auto pids = level.get_package_ids();
 
     glob::engine::getr().unload_render_resources(level);
-    glob::level_manager::getr().unload_level(level);
 
-    auto& pm = glob::package_manager::getr();
+    auto lm = glob::state::getr().get_lm();
+    auto pm = glob::state::getr().get_pm();
+
+    lm->unload_level(level);
+
     for (auto& id : pids)
     {
-        auto p = pm.get_package(id);
+        auto p = pm->get_package(id);
         glob::engine::getr().unload_render_resources(*p);
-        pm.unload_package(*p);
+        pm->unload_package(*p);
     }
 
     glob::engine::getr().init_scene();
@@ -118,7 +123,7 @@ game_editor::ev_reload()
 void
 game_editor::ev_spawn()
 {
-    if (glob::level::getr().find_game_object(AID("obj_0_0_0")))
+    if (glob::state::getr().getr_current_level().find_game_object(AID("obj_0_0_0")))
     {
         return;
     }
@@ -141,8 +146,10 @@ game_editor::ev_spawn()
 
                 sp.positon = root::vec3{x * 40.f, y * 40.f, z * 40.f};
                 sp.scale = root::vec3{10.f};
-                auto p = glob::level::getr().spawn_object_from_proto<root::game_object>(
-                    (z & 1) ? id1 : id2, AID(id), sp);
+                auto p = glob::state::getr()
+                             .getr_current_level()
+                             .spawn_object_from_proto<root::game_object>((z & 1) ? id1 : id2,
+                                                                         AID(id), sp);
             }
         }
     }
@@ -151,7 +158,9 @@ game_editor::ev_spawn()
 void
 game_editor::ev_lights()
 {
-    if (glob::level::getr().find_game_object(AID("PL1")))
+    auto& lvl = glob::state::getr().getr_current_level();
+
+    if (lvl.find_game_object(AID("PL1")))
     {
         return;
     }
@@ -159,19 +168,19 @@ game_editor::ev_lights()
     {
         root::spot_light::construct_params plp;
         plp.pos = {-20.f};
-        glob::level::getr().spawn_object<root::spot_light>(AID("PL1"), plp);
+        lvl.spawn_object<root::spot_light>(AID("PL1"), plp);
     }
 
     {
         root::point_light::construct_params plp;
         plp.pos = {15.f};
-        glob::level::getr().spawn_object<root::point_light>(AID("PL2"), plp);
+        lvl.spawn_object<root::point_light>(AID("PL2"), plp);
     }
 
     {
         root::directional_light::construct_params dcp;
         dcp.pos = {0.f, 20.f, 0.0};
-        glob::level::getr().spawn_object<root::directional_light>(AID("DL"), dcp);
+        lvl.spawn_object<root::directional_light>(AID("DL"), dcp);
     }
 }
 

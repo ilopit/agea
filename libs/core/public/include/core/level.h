@@ -176,10 +176,4 @@ private:
 
 }  // namespace core
 
-namespace glob
-{
-class level : public ::agea::singleton_instance<::agea::core::level, level>
-{
-};
-}  // namespace glob
 }  // namespace agea

@@ -19,6 +19,8 @@ public:
 
     AGEA_ar_package_object_builder;
 
+    AGEA_ar_package_type_register;
+
     static package&
     instance();
 };

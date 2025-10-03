@@ -1,5 +1,6 @@
 #include "core/reflection/lua_api.h"
 
+#include <core/global_state.h>
 #include <sol2_unofficial/sol.h>
 
 namespace
@@ -10,6 +11,9 @@ l_my_print(lua_State* L)
 {
     int n = lua_gettop(L); /* number of arguments */
     int i;
+
+    auto* lua = agea::glob::state::getr().get_lua();
+
     for (i = 1; i <= n; i++)
     { /* for each argument */
         size_t l;
@@ -17,10 +21,10 @@ l_my_print(lua_State* L)
         if (i > 1)
         {                             /* not the first element? */
             lua_writestring("\t", 1); /* add a tab before it */
-            agea::glob::lua_api::getr().wrire_buffer("\t", 1);
+            lua->wrire_buffer("\t", 1);
         }
         lua_writestring(s, l); /* print it */
-        agea::glob::lua_api::getr().wrire_buffer(s, l);
+        lua->wrire_buffer(s, l);
         lua_pop(L, 1); /* pop result */
     }
     lua_writeline();
@@ -44,8 +48,6 @@ luaopen_luamylib(lua_State* L)
 
 namespace agea
 {
-
-glob::lua_api::type glob::lua_api::type::s_instance;
 
 namespace reflection
 {

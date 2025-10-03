@@ -7,8 +7,6 @@
 #include <packages/root/assets/material.h>
 
 #include <core/caches/cache_set.h>
-#include <core/caches/materials_cache.h>
-#include <core/caches/meshes_cache.h>
 
 namespace agea
 {

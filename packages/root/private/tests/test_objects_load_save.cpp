@@ -1,6 +1,5 @@
 #include "base_test.h"
 
-#include <core/caches/game_objects_cache.h>
 #include <core/caches/caches_map.h>
 
 #include <core/object_constructor.h>

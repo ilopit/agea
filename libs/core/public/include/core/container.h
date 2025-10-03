@@ -70,10 +70,6 @@ public:
         return *m_occ.get();
     }
 
-    void
-    init_global_cache_reference(cache_set* class_global_set = glob::proto_objects_cache_set::get(),
-                                cache_set* instance_global_set = glob::objects_cache_set::get());
-
     static void
     register_in_global_cache(cache_set& local,
                              cache_set& global,

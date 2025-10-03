@@ -1,7 +1,7 @@
 #include "core/id_generator.h"
 
 #include "core/caches/caches_map.h"
-#include "core/caches/objects_cache.h"
+#include "core/global_state.h"
 
 #include <packages/root/smart_object.h>
 
@@ -47,8 +47,8 @@ id_generator::generate(const utils::id& obj_id)
         auto ctr = m_mapping[AID(obj_id_raw)].ctr++;
         std::string s = std::format("{}#{}", obj_id_raw.c_str(), ctr);
 
-        if (glob::proto_objects_cache::getr().has_item(AID(s)) ||
-            glob::objects_cache::getr().has_item(AID(s)))
+        if (glob::state::getr().get_instance_objects_cache()->has_item(AID(s)) ||
+            glob::state::getr().get_class_objects_cache()->has_item(AID(s)))
         {
             continue;
         }
@@ -73,9 +73,8 @@ id_generator::generate(const utils::id& old_obj_id, const utils::id& old_compone
         std::string s =
             std::format("{}/{}#{}", old_obj_id.cstr(), old_component_id_raw.c_str(), ctr);
 
-        if (glob::proto_objects_cache::get() &&
-            (glob::proto_objects_cache::getr().has_item(AID(s)) ||
-             glob::objects_cache::getr().has_item(AID(s))))
+        if (glob::state::getr().get_instance_objects_cache()->has_item(AID(s)) ||
+            glob::state::getr().get_class_objects_cache()->has_item(AID(s)))
         {
             continue;
         }

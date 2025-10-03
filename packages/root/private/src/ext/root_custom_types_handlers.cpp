@@ -14,12 +14,9 @@
 #include "packages/root/lights/components/point_light_component.h"
 #include "packages/root/components/mesh_component.h"
 
-
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
 #include <core/caches/cache_set.h>
-#include <core/caches/objects_cache.h>
-#include <core/caches/materials_cache.h>
 #include <core/object_load_context.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
@@ -95,7 +92,7 @@ deserialize_smart_obj(AGEA_deserialization_args)
 
     auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
 
-    auto id = AID(jc["id"].as<std::string>());
+    // auto id = AID(jc["id"].as<std::string>());
 
     //     auto pstr = ::agea::glob::class_objects_cache::get()->get_item(id);
     //

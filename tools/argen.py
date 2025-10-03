@@ -319,36 +319,6 @@ def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespa
 
   update_global_ids(context)
 
-
-def bind_packages(source: str, output: str):
-  registered_packages = ""
-  packages_includes = ""
-
-  for d in os.listdir(source):
-    if os.path.isdir(os.path.join(source, d)):
-      registered_packages += f"    ::agea::glob::package_manager::getr().register_static_package({d}::package::instance());"
-
-      packages_includes += f"#include <packages/root/package.{d}.h>\n"
-
-  packages_glue = f"""#include <engine/agea_engine.h>
-#include <core/package_manager.h>
-
-{packages_includes}
-
-namespace agea
-{{
-void
-vulkan_engine::register_packages()
-{{
-{registered_packages}        
-}}  
-}}
-"""
-
-  fd = open(os.path.join(output, "engine", "packages_glue.ar.cpp"), "w")
-  fd.write(packages_glue)
-
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Optional app description")
 
@@ -366,9 +336,7 @@ if __name__ == "__main__":
 
   args = parser.parse_args()
 
-  if args.type == "bind":
-    bind_packages(args.source, args.output)
-  elif args.type == "package":
+  if args.type == "package":
     build_package(args.config, args.source, args.output, args.package_name, args.namespace)
   else:
     print("Wrong arg")

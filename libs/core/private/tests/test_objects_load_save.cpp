@@ -8,13 +8,7 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package.h>
-#include <root/game_object.h>
 #include <core/objects_mapping.h>
-#include <root/components/mesh_component.h>
-#include <root/assets/material.h>
-#include <root/assets/mesh.h>
-#include <root/assets/texture.h>
-#include <root/assets/shader_effect.h>
 
 #include <serialization/serialization.h>
 

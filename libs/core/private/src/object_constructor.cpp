@@ -1,10 +1,10 @@
 #include "core/object_constructor.h"
 
 #include "core/package.h"
-#include "core/caches/objects_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/object_load_context.h"
 #include "core/level.h"
+#include "core/global_state.h"
 #include "core/reflection/reflection_type.h"
 
 #include <packages/root/components/component.h>
@@ -121,7 +121,7 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
                                        uint32_t extra_flags,
                                        object_load_context& olc)
 {
-    auto rt = glob::reflection_type_registry::getr().get_type(type_id);
+    auto rt = glob::state::getr().get_rm()->get_type(type_id);
 
     AGEA_check(rt, "Should exist!");
 
@@ -295,7 +295,8 @@ object_constructor::object_properties_save(const root::smart_object& obj,
 {
     auto& properties = obj.get_reflection()->m_serilalization_properties;
 
-    auto empty_obj = glob::proto_objects_cache::getr().get_item(obj.get_reflection()->type_name);
+    auto empty_obj =
+        glob::state::getr().get_class_objects_cache()->get_item(obj.get_reflection()->type_name);
 
     reflection::serialize_context sc;
     reflection::compare_context cc;

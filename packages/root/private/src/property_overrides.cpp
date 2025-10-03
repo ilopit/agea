@@ -6,7 +6,6 @@
 #include "core/object_load_context.h"
 #include "core/caches/cache_set.h"
 #include "core/object_constructor.h"
-#include "core/caches/objects_cache.h"
 #include "core/id_generator.h"
 
 #include "packages/root/smart_object.h"

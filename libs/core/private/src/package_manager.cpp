@@ -5,6 +5,7 @@
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/package.h"
+#include "core/global_state.h"
 
 #include "packages/root/assets/texture.h"
 #include "packages/root/assets/material.h"
@@ -17,8 +18,6 @@
 
 namespace agea
 {
-
-glob::package_manager::type glob::package_manager::type::s_instance;
 
 namespace core
 {
@@ -36,20 +35,25 @@ package_manager::init()
 {
     for (auto& sp : m_static_packages)
     {
-        sp->init_global_cache_reference();
-
-        sp->register_in_global_cache();
-
         sp->load_types();
+    }
 
-        sp->load_custom_types();
+    glob::state::getr().get_rm()->finilaze();
 
+    for (auto& sp : m_static_packages)
+    {
+        sp->register_types();
+    }
+    /*
         sp->load_render_resources();
 
-        sp->load_render_types();
+    sp->load_render_types();
 
-        sp->build_objects();
-    }
+    sp->build_objects();
+}
+
+    */
+
     return true;
 }
 
@@ -88,7 +92,7 @@ package_manager::load_package(const utils::id& id)
     new_package->m_save_root_path = path.parent();
 
     new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
-    new_package->init_global_cache_reference();
+    // new_package->init_global_cache_reference();
 
     std::vector<root::smart_object*> loaded_obj;
     for (auto& i : mapping->m_items)

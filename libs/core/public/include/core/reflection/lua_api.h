@@ -39,10 +39,3 @@ private:
 };
 
 }  // namespace agea::reflection
-
-namespace agea::glob
-{
-struct lua_api : public ::agea::singleton_instance<::agea::reflection::lua_api, lua_api>
-{
-};
-}  // namespace agea::glob

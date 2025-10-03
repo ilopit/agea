@@ -4,7 +4,6 @@
 
 namespace agea
 {
-glob::reflection_type_registry::type glob::reflection_type_registry::s_instance;
 
 void
 reflection::reflection_type_registry::add_type(reflection_type* t)
@@ -58,6 +57,7 @@ reflection::reflection_type_registry::finilaze()
 
             to_insert = top->m_properties;
             top->initialized = true;
+            top->override();
 
             to_handle.pop();
         }
@@ -79,20 +79,29 @@ reflection::reflection_type_registry::finilaze()
 void
 reflection::reflection_type::inherit()
 {
+}
+#define AGEA_override_if_null(prop) prop = prop ? prop : parent->prop
+
+void
+reflection::reflection_type::override()
+{
     if (parent)
     {
-        arch = parent->arch;
+        if (arch == core::architype::unknown)
+        {
+            arch = parent->arch;
+        }
 
-        serialize = parent->serialize;
-        deserialize = parent->deserialize;
-        deserialize_with_proto = parent->deserialize_with_proto;
-        copy = parent->copy;
-        compare = parent->compare;
-        to_string = parent->to_string;
-        render_loader = parent->render_loader;
-        render_destructor = parent->render_destructor;
-        alloc = parent->alloc;
-        cparams_alloc = parent->cparams_alloc;
+        AGEA_override_if_null(serialize);
+        AGEA_override_if_null(deserialize);
+        AGEA_override_if_null(deserialize_with_proto);
+        AGEA_override_if_null(copy);
+        AGEA_override_if_null(compare);
+        AGEA_override_if_null(to_string);
+        AGEA_override_if_null(render_loader);
+        AGEA_override_if_null(render_destructor);
+        AGEA_override_if_null(alloc);
+        AGEA_override_if_null(cparams_alloc);
     }
 }
 

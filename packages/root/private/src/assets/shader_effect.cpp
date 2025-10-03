@@ -1,6 +1,7 @@
 #include "packages/root/assets/shader_effect.h"
 
 #include "core/level.h"
+#include <core/global_state.h>
 
 namespace agea
 {
@@ -14,7 +15,7 @@ shader_effect::mark_render_dirty()
 {
     if (get_state() != smart_object_state::constructed)
     {
-        glob::level::getr().add_to_dirty_shader_effect_queue(this);
+        glob::state::getr().get_current_level()->add_to_dirty_shader_effect_queue(this);
         set_state(smart_object_state::constructed);
     }
 }

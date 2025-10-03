@@ -97,7 +97,7 @@ def write_properties(ar_file, fc: arapi.types.file_context, t: arapi.types.agea_
         using type       = {p.owner};
 
         auto property_td = ::agea::reflection::agea_type_resolve<decltype(type::m_{p.name_cut})>();
-        auto prop_rtype  = ::agea::glob::reflection_type_registry::getr().get_type(property_td.type_id);
+        auto prop_rtype  = ::agea::glob::state::getr().get_rm()->get_type(property_td.type_id);
 
         auto prop        = std::make_shared<::agea::reflection::property>();
         auto p           = prop.get();
@@ -201,12 +201,12 @@ def write_types_resolvers(fc: arapi.types.file_context):
 def write_lua_class_type(file, fc: arapi.types.file_context, t: arapi.types.agea_type):
   file.write(f"""
     {{
-        {t.name}_lua_type = ::agea::glob::lua_api::getr().state().new_usertype<{t.get_full_type_name()}>(
+        {t.name}_lua_type = ::agea::glob::state::getr().get_lua()->state().new_usertype<{t.get_full_type_name()}>(
         "{t.name}", sol::no_constructor,
             "i",
             [](const char* id) -> {t.get_full_type_name()}*
             {{
-                auto item = ::agea::glob::objects_cache::get()->get_item(AID(id));
+                auto item = ::agea::glob::state::getr().get_instance_objects_cache()->get_item(AID(id));
 
                 if(!item)
                 {{
@@ -218,7 +218,7 @@ def write_lua_class_type(file, fc: arapi.types.file_context, t: arapi.types.agea
             "c",
             [](const char* id) -> {t.get_full_type_name()}*
             {{
-                auto item = ::agea::glob::proto_objects_cache::get()->get_item(AID(id));
+                auto item = ::agea::glob::state::getr().get_class_objects_cache()->get_item(AID(id));
 
                 if(!item)
                 {{
@@ -248,7 +248,7 @@ def write_lua_struct_type(file, fc: arapi.types.file_context, t: arapi.types.age
     ctro_line += ","
 
   file.write(f"""
-         {t.name}_lua_type = ::agea::glob::lua_api::getr().state().new_usertype<{t.get_full_type_name()}>(
+         {t.name}_lua_type = ::agea::glob::state::getr().get_lua()->state().new_usertype<{t.get_full_type_name()}>(
         "{t.get_full_type_name()}", sol::constructors<{ctro_line[:-1]}>());
   """)
 
@@ -306,17 +306,13 @@ def write_module_reflection(package_ar_file, fc: arapi.types.file_context):
 #include "packages/{fc.module_name}/properties_custom.h"
 
 #include <core/caches/caches_map.h>
-#include <core/caches/objects_cache.h>
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/lua_api.h>
 #include <core/object_constructor.h>
 #include <core/package_manager.h>
 #include <core/package.h>
-
-
-
-#include <utils/static_initializer.h>
+#include <core/global_state.h>
 
 #include <sol2_unofficial/sol.h>
 
@@ -392,9 +388,17 @@ bool
     ar_file.write(reflection_methods)
 
     ar_file.write(f"""
-AGEA_schedule_static_init(
-    []()
-    {{ package::instance().register_package_extention<package::package_types_loader>(); }});
+AGEA_schedule_static_create(
+    [](agea::core::state& s)
+    {{
+      package::instance().register_package_extention<package::package_types_loader>(); 
+    }});
+                  
+AGEA_schedule_static_register(
+    [](agea::core::state& s)
+    {{
+      s.get_pm()->register_static_package({fc.module_name}::package::instance());
+    }});
 
 bool
 package::package_types_loader::load(static_package& sp)
@@ -413,7 +417,7 @@ package::package_types_loader::load(static_package& sp)
     rt.type_name     = AID("{t.name}");
 
     
-    ::agea::glob::reflection_type_registry::getr().add_type(&rt);
+     ::agea::glob::state::getr().get_rm()->add_type(&rt);
 
     rt.module_id     = AID("{fc.module_name}");
     rt.size          = sizeof({t.get_full_type_name()});
@@ -433,7 +437,7 @@ package::package_types_loader::load(static_package& sp)
     int parent_type_id = ::agea::reflection::type_resolver<{ t.parent_type.name}>::value;
     AGEA_check(parent_type_id != -1, "Type is not defined!");
 
-    auto parent_rt = ::agea::glob::reflection_type_registry::getr().get_type(parent_type_id);
+    auto parent_rt =  ::agea::glob::state::getr().get_rm()->get_type(parent_type_id);
     AGEA_check(parent_rt, "Type is not defined!");
 
     rt.parent = parent_rt;
@@ -479,6 +483,14 @@ package::package_types_loader::load(static_package& sp)
 
     ar_file.write("\n")
 
+    ar_file.write("\n    return true;\n}\n\n")
+
+    ar_file.write(f"""
+bool
+package::package_type_register::build(static_package& sp)
+{{
+    auto pkg = &::agea::{fc.module_name}::package::instance();
+""")
     for t in fc.types:
       if t.kind == arapi.types.agea_type_kind.CLASS:
         ar_file.write(f"    pkg->register_type<{t.get_full_type_name()}>();\n")

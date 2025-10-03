@@ -5,9 +5,7 @@
 #include "core/model_minimal.h"
 #include "core/caches/cache_set.h"
 
-namespace agea
-{
-namespace core
+namespace agea::core
 {
 class level_manager
 {
@@ -30,12 +28,4 @@ private:
 
     std::unordered_map<utils::id, std::unique_ptr<level>> m_levels;
 };
-}  // namespace core
-
-namespace glob
-{
-struct level_manager : public ::agea::singleton_instance<::agea::core::level_manager, level_manager>
-{
-};
-}  // namespace glob
-}  // namespace agea
+}  // namespace agea::core

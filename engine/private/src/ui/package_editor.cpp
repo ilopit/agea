@@ -4,6 +4,7 @@
 
 #include <core/package.h>
 #include <core/package_manager.h>
+#include <core/global_state.h>
 
 #include <packages/root/game_object.h>
 #include <packages/root/assets/material.h>
@@ -21,11 +22,13 @@ package_editor::handle()
         return;
     }
 
-    auto& pkgs = glob::package_manager::getr().get_packages();
+    auto pm = glob::state::getr().get_pm();
+
+    auto& pkgs = pm->get_packages();
 
     // if (ImGui::TreeNode("Packages"))
     {
-        for (auto& p : glob::package_manager::getr().get_packages())
+        for (auto& p : pm->get_packages())
         {
             bool opened = ImGui::TreeNode(p.first.cstr(), "[%s] %s", "s", p.first.cstr());
             if (opened)

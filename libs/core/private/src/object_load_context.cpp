@@ -4,11 +4,6 @@
 
 #include <packages/root/smart_object.h>
 
-#include "core/caches/objects_cache.h"
-#include "core/caches/textures_cache.h"
-#include "core/caches/materials_cache.h"
-#include "core/caches/meshes_cache.h"
-#include "core/caches/caches_map.h"
 #include "core/package.h"
 
 #include "utils/agea_log.h"

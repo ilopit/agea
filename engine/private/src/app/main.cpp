@@ -18,8 +18,6 @@ main(int, char*)
 {
     agea::utils::setup_logger();
 
-    agea::static_initializer::init();
-
     auto registry = std::make_unique<agea::singleton_registry>();
 
 #if WIN32

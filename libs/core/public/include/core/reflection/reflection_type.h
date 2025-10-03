@@ -75,6 +75,9 @@ struct reflection_type
     void
     inherit();
 
+    void
+    override();
+
     std::string
     as_string() const;
 
@@ -130,13 +133,4 @@ private:
 
 }  // namespace reflection
 
-namespace glob
-{
-struct reflection_type_registry
-    : public ::agea::singleton_instance<::agea::reflection::reflection_type_registry,
-                                        reflection_type_registry>
-{
-};
-
-}  // namespace glob
 }  // namespace agea
