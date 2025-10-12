@@ -29,7 +29,7 @@ target_compile_options(core PRIVATE /bigobj)
 target_link_libraries(core PUBLIC
    agea::ar
 
-   agea::packages.root.types
+   agea::packages.root.model
    
    agea::glm_unofficial
    agea::error_handling

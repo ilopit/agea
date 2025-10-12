@@ -2,7 +2,7 @@
 
 #include "core/object_load_context.h"
 
-#include <packages/root/smart_object.h>
+#include <packages/root/model/smart_object.h>
 
 #include "core/package.h"
 

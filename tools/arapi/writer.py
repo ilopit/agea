@@ -14,6 +14,17 @@ lua_binding_template_end = """
 }"""
 
 
+def kind_to_string(kind: arapi.types.agea_type_kind):
+  if kind == arapi.types.agea_type_kind.CLASS:
+    return "agea_class"
+  elif kind == arapi.types.agea_type_kind.STRUCT:
+    return "agea_struct"
+  elif kind == arapi.types.agea_type_kind.EXTERNAL:
+    return "agea_external"
+  else:
+    exit(-1)
+
+
 def write_ar_class_include_file(ar_type: arapi.types.agea_type, context: arapi.types.file_context,
                                 output_dir):
 
@@ -21,10 +32,8 @@ def write_ar_class_include_file(ar_type: arapi.types.agea_type, context: arapi.t
     exit(-1)
 
   include_path = os.path.join(
-      output_dir,
-      "packages",
-      context.module_name,
-      os.path.basename(ar_type.name) + ".generated.h",
+      context.model_header_dir,
+      os.path.basename(ar_type.name) + ".ar.h",
   )
 
   print("generating : " + include_path)
@@ -48,6 +57,59 @@ private:\\
               void set_{p.name_cut}({p.type} v);\\
               private:\\
               """)
+
+
+def generate_builder(should_generate: bool, name: str):
+  if not should_generate:
+    return ""
+
+  return f"""struct package_{name}_builder : public ::agea::core::package_{name}_builder\\
+{{                                                                                      \\
+    public:                                                                             \\
+        virtual bool build(::agea::core::static_package& sp) override;                  \\
+}};                                                                                     \\
+"""
+
+
+def write_ar_package_include_file(context: arapi.types.file_context, output_dir):
+
+  include_path = os.path.join(context.package_header_dir, "package.ar.h")
+
+  print("generating : " + include_path)
+
+  with open(include_path, "w+") as ar_class_include:
+    ar_class_include.write(f"""#pragma once\n\n""")
+
+    ar_class_include.write(f"""
+#define AGEA_gen_meta__{context.module_name}_package_model                        
+#define AGEA_gen_meta__{context.module_name}_package_render
+#define AGEA_gen_meta__{context.module_name}_package_builder
+
+#if defined(AGEA_build__model)
+#undef  AGEA_gen_meta__{context.module_name}_package_model
+#define AGEA_gen_meta__{context.module_name}_package_model \\
+{generate_builder(True, "types")}{generate_builder(True, "types_register")}
+#endif
+
+#if defined(AGEA_build__render)
+#undef  AGEA_gen_meta__{context.module_name}_package_render
+#define AGEA_gen_meta__{context.module_name}_package_render \\
+{generate_builder(context.render_has_types_overrides,"render_types")}{generate_builder(context.render_has_custom_resources,"render_custom_resource")}
+#endif
+
+#if defined(AGEA_build__builder)
+#undef  AGEA_gen_meta__{context.module_name}_package_builder
+#define AGEA_gen_meta__{context.module_name}_package_builder \\
+
+#endif
+""")
+
+    ar_class_include.write(f"""
+#define AGEA_gen_meta__{context.module_name}_package \\
+  AGEA_gen_meta__{context.module_name}_package_model\\
+  AGEA_gen_meta__{context.module_name}_package_render\\
+  AGEA_gen_meta__{context.module_name}_package_builder
+""")
 
 
 def write_property_access_methods(fc: arapi.types.file_context, p: arapi.types.agea_property):
@@ -128,23 +190,19 @@ def write_properties(ar_file, fc: arapi.types.file_context, t: arapi.types.agea_
       )
 
     if p.property_ser_handler != "":
-      ar_file.write(
-          f"        p->serialization_handler  = ::agea::reflection::{p.property_ser_handler};\n")
+      ar_file.write(f"        p->serialization_handler  = {p.property_ser_handler};\n")
 
     if p.property_des_handler != "":
-      ar_file.write(
-          f"        p->deserialization_handler  = ::agea::reflection::{p.property_des_handler};\n")
+      ar_file.write(f"        p->deserialization_handler  = {p.property_des_handler};\n")
 
     if p.property_prototype_handler != "":
-      ar_file.write(
-          f"        p->protorype_handler  = ::agea::reflection::{p.property_prototype_handler};\n")
+      ar_file.write(f"        p->protorype_handler  = {p.property_prototype_handler};\n")
 
     if p.property_compare_handler != "":
-      ar_file.write(
-          f"        p->compare_handler  = ::agea::reflection::{p.property_compare_handler};\n")
+      ar_file.write(f"        p->compare_handler  = {p.property_compare_handler};\n")
 
     if p.property_copy_handler != "":
-      ar_file.write(f"        p->copy_handler  = ::agea::reflection::{p.property_copy_handler};\n")
+      ar_file.write(f"        p->copy_handler  = {p.property_copy_handler};\n")
 
     ar_file.write("    }\n")
 
@@ -153,14 +211,14 @@ def write_properties(ar_file, fc: arapi.types.file_context, t: arapi.types.agea_
 
 def write_types_resolvers(fc: arapi.types.file_context):
 
-  output_file = os.path.join(fc.output_dir, "packages", fc.module_name, "types_resolvers.ar.h")
+  output_file = os.path.join(fc.package_header_dir, "types_resolvers.ar.h")
   with open(output_file, "w") as output:
 
     output.write(f"""#pragma once
 
-#include "core/reflection/types.h"
+#include <core/reflection/types.h>
 
-#include "packages/global/type_ids.ar.h"
+#include <glue/type_ids.ar.h>
 
 """)
 
@@ -255,7 +313,7 @@ def write_lua_struct_type(file, fc: arapi.types.file_context, t: arapi.types.age
 
 def write_lua_usertype_extention(fc: arapi.types.file_context):
 
-  file_path = os.path.join(fc.output_dir, "packages", fc.module_name, "types_script_importer.ar.h")
+  file_path = os.path.join(fc.package_header_dir, "types_script_importer.ar.h")
 
   with open(file_path, "w") as file:
     file.write("""#pragma once
@@ -290,20 +348,30 @@ void
 """)
 
 
-def write_module_reflection(package_ar_file, fc: arapi.types.file_context):
+def model_generate_overrides_headers(fc: arapi.types.file_context):
+  overrides = ""
+  for include in fc.model_overrides:
+    overrides += "#include <" + include + ">\n"
+
+  return overrides
+
+
+def write_object_model_reflection(package_ar_file, fc: arapi.types.file_context):
 
   with open(package_ar_file, "w+") as ar_file:
+
+    model_conditional_header = model_generate_overrides_headers(fc)
 
     ar_file.write(f"""// Smart Object Autogenerated Reflection Layout
 
 // clang-format off
 
-#include "packages/global/type_ids.ar.h"
+#include "glue/type_ids.ar.h"
 
 #include "packages/{fc.module_name}/package.{fc.module_name}.h"
 #include "packages/{fc.module_name}/types_resolvers.ar.h"
 #include "packages/{fc.module_name}/types_script_importer.ar.h"
-#include "packages/{fc.module_name}/properties_custom.h"
+{model_conditional_header}
 
 #include <core/caches/caches_map.h>
 #include <core/reflection/reflection_type.h>
@@ -388,20 +456,20 @@ bool
     ar_file.write(reflection_methods)
 
     ar_file.write(f"""
-AGEA_schedule_static_create(
+AGEA_gen__static_schedule(::agea::core::state::state_stage::create,
     [](agea::core::state& s)
     {{
-      package::instance().register_package_extention<package::package_types_loader>(); 
+      package::instance().register_package_extention<package::package_types_builder>(); 
     }});
                   
-AGEA_schedule_static_register(
+AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
     [](agea::core::state& s)
     {{
       s.get_pm()->register_static_package({fc.module_name}::package::instance());
     }});
 
 bool
-package::package_types_loader::load(static_package& sp)
+package::package_types_builder::build(static_package& sp)
 {{
     auto pkg = &::agea::{fc.module_name}::package::instance();
 """)
@@ -415,6 +483,7 @@ package::package_types_loader::load(static_package& sp)
     auto& rt         = {fc.module_name}_{t.name}_rt; 
     rt.type_id       = type_id;
     rt.type_name     = AID("{t.name}");
+    rt.type_class    = ::agea::reflection::reflection_type::reflection_type_class::{kind_to_string(t.kind)};
 
     
      ::agea::glob::state::getr().get_rm()->add_type(&rt);
@@ -443,31 +512,23 @@ package::package_types_loader::load(static_package& sp)
     rt.parent = parent_rt;
 """)
 
-      ar_file.write(f"    rt.inherit();\n")
+      if t.compare_handler:
+        ar_file.write(f"    rt.compare = {t.compare_handler};\n")
 
-      if t.compare_handler or t.default_handlers:
-        h = t.compare_handler if t.compare_handler else f'::agea::reflection::utils::default_compare<{t.get_full_type_name()}>'
-        ar_file.write(f"    rt.compare = {h};\n")
+      if t.copy_handler:
+        ar_file.write(f"    rt.copy = {t.copy_handler};\n")
 
-      if t.copy_handler or t.default_handlers:
-        h = t.copy_handler if t.copy_handler else f'::agea::reflection::utils::default_copy<{t.get_full_type_name()}>'
-        ar_file.write(f"    rt.copy = {h};\n")
+      if t.serialize_handler:
+        ar_file.write(f"    rt.serialize = {t.serialize_handler};\n")
 
-      if t.serialize_handler or t.default_handlers:
-        h = t.serialize_handler if t.serialize_handler else f'::agea::reflection::utils::default_serialize<{t.get_full_type_name()}>'
-        ar_file.write(f"    rt.serialize = {h};\n")
+      if t.deserialize_handler:
+        ar_file.write(f"    rt.deserialize = {t.deserialize_handler};\n")
 
-      if t.deserialize_handler or t.default_handlers:
-        h = t.deserialize_handler if t.deserialize_handler else f'::agea::reflection::utils::default_deserialize<{t.get_full_type_name()}>'
-        ar_file.write(f"    rt.deserialize = {h};\n")
+      if t.deserialize_from_proto_handle:
+        ar_file.write(f"    rt.deserialize_with_proto = {t.deserialize_from_proto_handle};\n")
 
-      if t.deserialize_from_proto_handle or t.default_handlers:
-        h = t.deserialize_from_proto_handle if t.deserialize_from_proto_handle else f'::agea::reflection::utils::default_deserialize_from_proto<{t.get_full_type_name()}>'
-        ar_file.write(f"    rt.deserialize_with_proto = {h};\n")
-
-      if t.to_string_handle or t.default_handlers:
-        h = t.to_string_handle if t.to_string_handle else f'::agea::reflection::utils::default_to_string<{t.get_full_type_name()}>'
-        ar_file.write(f"    rt.to_string = {h};\n")
+      if t.to_string_handle:
+        ar_file.write(f"    rt.to_string = {t.to_string_handle};\n")
 
       ar_file.write("}\n")
 
@@ -487,7 +548,7 @@ package::package_types_loader::load(static_package& sp)
 
     ar_file.write(f"""
 bool
-package::package_type_register::build(static_package& sp)
+package::package_types_register_builder::build(static_package& sp)
 {{
     auto pkg = &::agea::{fc.module_name}::package::instance();
 """)
@@ -504,3 +565,84 @@ package::package_type_register::build(static_package& sp)
   write_types_resolvers(fc)
 
   write_lua_usertype_extention(fc)
+
+
+def write_render_types_reflection(package_ar_file, fc: arapi.types.file_context):
+
+  with open(package_ar_file, "w+") as ar_file:
+
+    render_overrides = ""
+    for include in fc.render_overrides:
+      render_overrides += "#include <" + include + ">\n"
+
+    ar_file.write(f"""// Smart Object Autogenerated Reflection Layout
+
+// clang-format off
+
+
+#include "packages/{fc.module_name}/package.{fc.module_name}.h"
+#include "packages/{fc.module_name}/types_resolvers.ar.h"
+#include "packages/{fc.module_name}/types_script_importer.ar.h"
+
+{render_overrides}
+
+#include <core/caches/caches_map.h>
+#include <core/reflection/reflection_type.h>
+#include <core/reflection/reflection_type_utils.h>
+#include <core/reflection/lua_api.h>
+#include <core/object_constructor.h>
+#include <core/package_manager.h>
+#include <core/package.h>
+#include <core/global_state.h>
+#include <glue/type_ids.ar.h>
+
+namespace agea::{fc.module_name} {{
+""")
+
+    if fc.render_has_custom_resources:
+      ar_file.write("""
+AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
+    [](::agea::core::state& s)
+    {{
+      package::instance().register_package_extention<package::package_render_custom_resource_builder>(); 
+    }});
+""")
+
+    if fc.render_has_types_overrides:
+      ar_file.write("""
+AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
+    [](::agea::core::state& s)
+    {{
+      package::instance().register_package_extention<package::package_render_types_builder>(); 
+    }});
+""")
+
+    if fc.render_has_types_overrides:
+
+      ar_file.write(f"""
+bool
+package::package_render_types_builder::build(::agea::core::static_package& sp)
+{{
+  auto pkg = &::agea::{fc.module_name}::package::instance();
+""")
+      for t in fc.types:
+        if t.kind == arapi.types.agea_type_kind.CLASS and (t.render_constructor
+                                                           or t.render_destructor):
+
+          ar_file.write(f"""
+{{                  
+  auto type_rt =  ::agea::glob::state::getr().get_rm()->get_type(::agea::{t.id});
+  AGEA_check(type_rt, "Type is not defined!");
+""")
+          if t.render_constructor:
+            ar_file.write(f"""  type_rt->render_constructor = {t.render_constructor};
+""")
+          if t.render_destructor:
+            ar_file.write(f"""  type_rt->render_destructor  = {t.render_destructor};\n""")
+          ar_file.write("}")
+
+      ar_file.write(f"""
+  return true;
+}}
+                  
+}}""")

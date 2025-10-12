@@ -1,6 +1,6 @@
 #include <render_bridge/render_dependency.h>
 
-#include <packages/root/smart_object.h>
+#include <packages/root/model/smart_object.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/reflection_type.h>
 

@@ -16,6 +16,8 @@ namespace agea
 namespace core
 {
 
+class object_load_context;
+
 class container
 {
 public:
@@ -91,13 +93,13 @@ public:
         return m_objects;
     }
 
+    void
+    set_occ(std::unique_ptr<object_load_context> occ);
+
 protected:
     utils::id m_id;
     mutable utils::path m_load_path;
     mutable utils::path m_save_root_path;
-
-    cache_set* m_proto_global_cs = nullptr;
-    cache_set* m_instance_global_cs = nullptr;
 
     cache_set m_instance_local_cs;
 

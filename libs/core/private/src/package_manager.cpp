@@ -7,9 +7,10 @@
 #include "core/package.h"
 #include "core/global_state.h"
 
-#include "packages/root/assets/texture.h"
-#include "packages/root/assets/material.h"
-#include "packages/root/assets/mesh.h"
+#include "packages/root/model/assets/texture.h"
+#include "packages/root/model/assets/material.h"
+#include "packages/root/model/assets/mesh.h"
+#include "core/reflection/reflection_type.h"
 
 #include <serialization/serialization.h>
 
@@ -35,6 +36,10 @@ package_manager::init()
 {
     for (auto& sp : m_static_packages)
     {
+        sp->init();
+    }
+    for (auto& sp : m_static_packages)
+    {
         sp->load_types();
     }
 
@@ -43,7 +48,9 @@ package_manager::init()
     for (auto& sp : m_static_packages)
     {
         sp->register_types();
+        sp->register_in_global_cache();
     }
+
     /*
         sp->load_render_resources();
 
@@ -90,9 +97,9 @@ package_manager::load_package(const utils::id& id)
     auto new_package = std::make_unique<package>(AID(name), package_type::pt_dynamic);
     new_package->m_load_path = path;
     new_package->m_save_root_path = path.parent();
+    new_package->init();
 
     new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
-    // new_package->init_global_cache_reference();
 
     std::vector<root::smart_object*> loaded_obj;
     for (auto& i : mapping->m_items)

@@ -1,18 +1,29 @@
-file(GLOB TEST_SOURCES
-    "*.h"
-    "*.cpp"
-)
-source_group("test_sources" FILES ${TEST_SOURCES})
+## model
+file(GLOB TEST_SOURCES "model/*.h" "model/*.cpp")
+source_group("model" FILES ${TEST_SOURCES})
 
-add_executable (packages.root.tests
-    ${TEST_SOURCES}
- )
+add_executable (packages.root.model.tests ${TEST_SOURCES} )
 
-target_link_libraries(packages.root.tests
+target_link_libraries(packages.root.model.tests
     agea::core
-    agea::packages.root.types
+    agea::packages.root.model
     
     gtest
 )
 
-agea_finalize_executable(packages.root.tests)
+agea_finalize_executable(packages.root.model.tests)
+
+## render
+file(GLOB RENDER_TEST_SOURCES "render/*.h" "render/*.cpp")
+source_group("render" FILES ${RENDER_TEST_SOURCES})
+
+add_executable (packages.root.render.tests ${RENDER_TEST_SOURCES} )
+
+target_link_libraries(packages.root.render.tests
+    agea::core
+    agea::packages.root.model
+    agea::packages.root.render
+    gtest
+)
+
+agea_finalize_executable(packages.root.render.tests)

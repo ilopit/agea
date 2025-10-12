@@ -2,9 +2,9 @@
 
 #include <core/reflection/reflection_type.h>
 
-#include <packages/root/smart_object.h>
-#include <packages/root/assets/shader_effect.h>
-#include <packages/global/type_ids.ar.h>
+#include <packages/root/model/smart_object.h>
+#include <packages/root/model/assets/shader_effect.h>
+#include <glue/type_ids.ar.h>
 
 #include <vulkan_render/utils/vulkan_initializers.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
@@ -71,7 +71,7 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
             case agea::root__float:
                 sb.add_field(AID(p->name), render::gpu_type::g_float, 1);
                 break;
-            case agea::root__vec3 :
+            case agea::root__vec3:
                 sb.add_field(AID(p->name), render::gpu_type::g_vec3, 16);
                 break;
             case agea::root__vec4:
@@ -173,7 +173,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 
     get_dependency().build_node(&obj);
 
-    result_code rc = obj.get_reflection()->render_loader(*this, obj, sub_objects);
+    result_code rc = obj.get_reflection()->render_constructor(*this, obj, sub_objects);
 
     obj.set_state(root::smart_object_state::render_ready);
 

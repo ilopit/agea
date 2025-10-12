@@ -2,7 +2,7 @@
 
 #include "render_bridge/render_dependency.h"
 
-#include <packages/root/assets/shader_effect.h>
+#include <packages/root/model/assets/shader_effect.h>
 
 #include <utils/path.h>
 #include <utils/id.h>

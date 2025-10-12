@@ -9,8 +9,8 @@
 #include "core/caches/caches_map.h"
 #include "core/global_state.h"
 
-#include <packages/root/mesh_object.h>
-#include <packages/root/components/mesh_component.h>
+#include <packages/root/model/mesh_object.h>
+#include <packages/root/model/components/mesh_component.h>
 
 #include <utils/agea_log.h>
 

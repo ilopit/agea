@@ -22,15 +22,15 @@
 
 #include <native/native_window.h>
 
-#include <packages/root/assets/mesh.h>
-#include <packages/root/components/mesh_component.h>
-#include <packages/root/game_object.h>
-#include <packages/root/assets/shader_effect.h>
+#include <packages/root/model/assets/mesh.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/game_object.h>
+#include <packages/root/model/assets/shader_effect.h>
 
-#include <packages/root/lights/directional_light.h>
-#include <packages/root/lights/point_light.h>
-#include <packages/root/lights/spot_light.h>
-#include <packages/root/assets/material.h>
+#include <packages/root/model/lights/directional_light.h>
+#include <packages/root/model/lights/point_light.h>
+#include <packages/root/model/lights/spot_light.h>
+#include <packages/root/model/assets/material.h>
 
 #include <render_bridge/render_bridge.h>
 
@@ -94,16 +94,17 @@ vulkan_engine::init()
 
     auto& gs = glob::state::getr();
 
-    gs.schedule_create(
-        [](core::state& s)
-        {
-            // state
-            core::state_caches_mutator::set(s);
-            core::state_level_mutator::set(s);
-            core::state_package_mutator::set(s);
-            core::state_reflection_manager_mutator::set(s);
-            core::state_lua_mutator::set(s);
-        });
+    gs.schedule_action(core::state::state_stage::create,
+                       [](core::state& s)
+                       {
+                           // state
+                           core::state_mutator__caches::set(s);
+                           core::state_mutator__level_manager::set(s);
+                           core::state_mutator__package_manager::set(s);
+                           core::state_mutator__reflection_manager::set(s);
+                           core::state_mutator__lua_api::set(s);
+                           core::state_mutator__id_generator::set(s);
+                       });
 
     gs.run_create();
 
@@ -116,11 +117,10 @@ vulkan_engine::init()
     glob::ui::create(*m_registry);
     glob::native_window::create(*m_registry);
     glob::vulkan_render::create(*m_registry);
-    glob::id_generator::create(*m_registry);
     glob::engine_counters::create(*m_registry);
     glob::render_bridge::create(*m_registry);
 
-    gs.run_register();
+    gs.run_connect();
     init_default_scripting();
 
     glob::resource_locator::get()->init_local_dirs();
@@ -134,7 +134,8 @@ vulkan_engine::init()
 
     glob::game_editor::get()->init();
 
-    gs.schedule_init([](agea::core::state& s) { s.get_pm()->init(); });
+    gs.schedule_action(core::state::state_stage::init,
+                       [](agea::core::state& s) { s.get_pm()->init(); });
     gs.run_init();
 
     native_window::construct_params rwc;
@@ -331,7 +332,7 @@ vulkan_engine::load_level(const utils::id& level_id)
         return false;
     }
 
-    core::state_current_level_mutator::set(*result, glob::state::getr());
+    core::state_mutator__current_level::set(*result, glob::state::getr());
 
     return true;
 }

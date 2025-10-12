@@ -1,6 +1,6 @@
 #pragma once
 
-#include "packages/root/smart_object.h"
+#include "packages/root/model/smart_object.h"
 
 #include "core/architype.h"
 

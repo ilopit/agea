@@ -25,7 +25,7 @@ TEST_F(test_global_state, all)
 
     auto& gs = agea::glob::state::getr();
 
-    core::state_caches_mutator::set(gs);
+    core::state_mutator__caches::set(gs);
     ASSERT_TRUE(gs.get_class_cache_map());
     ASSERT_TRUE(gs.get_instance_cache_map());
 

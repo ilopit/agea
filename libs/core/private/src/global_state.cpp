@@ -7,6 +7,7 @@
 #include <core/package_manager.h>
 #include <core/level.h>
 #include <core/package.h>
+#include <core/id_generator.h>
 
 agea::glob::state::type agea::glob::state::s_instance;
 
@@ -18,61 +19,39 @@ state::state()
 }
 
 int
-state::schedule_create(create_action action)
+state::schedule_action(state_stage stage, scheduled_action action)
 {
-    m_create_actions.push_back(std::move(action));
-    return (int)m_create_actions.size();
-}
-
-int
-state::schedule_register(register_action action)
-{
-    m_register_actions.push_back(std::move(action));
-    return (int)m_register_actions.size();
-}
-
-int
-state::schedule_init(init_action action)
-{
-    m_init_actions.push_back(std::move(action));
-    return (int)m_init_actions.size();
+    auto& node = m_scheduled_actions[(size_t)stage];
+    node.push_back(std::move(action));
+    return (int)node.size();
 }
 
 void
 state::run_create()
 {
-    AGEA_check(m_stage == stage_stage::create, "Expected proper state!");
-    for (auto& a : m_create_actions)
-    {
-        a(*this);
-    }
-    m_stage = stage_stage::regs;
+    AGEA_check(m_stage == state_stage::create, "Expected proper state!");
+    run_items(m_stage);
+    m_stage = state_stage::connect;
 }
 
 void
-state::run_register()
+state::run_connect()
 {
-    AGEA_check(m_stage == stage_stage::regs, "Expected proper state!");
-    for (auto& a : m_register_actions)
-    {
-        a(*this);
-    }
-    m_stage = stage_stage::init;
+    AGEA_check(m_stage == state_stage::connect, "Expected proper state!");
+    run_items(m_stage);
+    m_stage = state_stage::init;
 }
 
 void
 state::run_init()
 {
-    AGEA_check(m_stage == stage_stage::init, "Expected proper state!");
-    for (auto& a : m_init_actions)
-    {
-        a(*this);
-    }
-    m_stage = stage_stage::ready;
+    AGEA_check(m_stage == state_stage::init, "Expected proper state!");
+    run_items(m_stage);
+    m_stage = state_stage::ready;
 }
 
 void
-state_caches_mutator::set(state& es)
+state_mutator__caches::set(state& es)
 {
     auto class_cache = es.create_box<cache_set>();
     auto instance_cache = es.create_box<cache_set>();
@@ -101,33 +80,51 @@ state_caches_mutator::set(state& es)
 }
 
 void
-state_package_mutator::set(state& es)
+state_mutator__package_manager::set(state& es)
 {
     es.m_pm = es.create_box<package_manager>();
 }
 
 void
-state_level_mutator::set(state& es)
+state_mutator__level_manager::set(state& es)
 {
     es.m_lm = es.create_box<level_manager>();
 }
 
 void
-state_reflection_manager_mutator::set(state& es)
+state_mutator__reflection_manager::set(state& es)
 {
     es.m_rm = es.create_box<reflection::reflection_type_registry>();
 }
 
 void
-state_lua_mutator::set(state& es)
+state_mutator__lua_api::set(state& es)
 {
     es.m_lua = es.create_box<reflection::lua_api>();
 }
 
 void
-state_current_level_mutator::set(level& lvl, state& es)
+state_mutator__id_generator::set(state& es)
+{
+    es.m_id_generator = es.create_box<core::id_generator>();
+}
+
+void
+state_mutator__current_level::set(level& lvl, state& es)
 {
     es.m_current_level = &lvl;
+}
+
+void
+state::run_items(state_stage stage)
+{
+    auto& node = m_scheduled_actions[(size_t)stage];
+    for (auto& a : node)
+    {
+        a(*this);
+    }
+
+    node.clear();
 }
 
 }  // namespace agea::core

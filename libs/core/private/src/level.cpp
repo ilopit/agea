@@ -1,18 +1,17 @@
 #include "core/level.h"
 
-#include <packages/root/game_object.h>
-#include <packages/root/assets/asset.h>
-#include <packages/root/assets/shader_effect.h>
+#include <packages/root/model/game_object.h>
+#include <packages/root/model/assets/asset.h>
+#include <packages/root/model/assets/shader_effect.h>
 
-#include "core/caches/caches_map.h"
+#include <core/caches/caches_map.h>
+#include <core/object_load_context.h>
+#include <core/object_constructor.h>
 
-#include "core/object_load_context.h"
-#include "core/object_constructor.h"
+#include <core/global_state.h>
 
 namespace agea
 {
-
-glob::level::type glob::level::type::s_instance;
 
 namespace core
 {
@@ -20,6 +19,7 @@ namespace core
 level::level(const utils::id& id, cache_set* class_global_set, cache_set* instance_global_set)
     : container(id)
 {
+    m_occ = std::make_unique<object_load_context>();
     m_occ->set_instance_local_set(&m_instance_local_cs)
         .set_ownable_cache(&m_objects)
         .set_objects_mapping(m_mapping)
@@ -139,8 +139,8 @@ level::drop_pending_updates()
 void
 level::unregister_objects()
 {
-    container::unregister_in_global_cache(m_instance_local_cs, *m_instance_global_cs, m_id,
-                                          "instance");
+    container::unregister_in_global_cache(m_instance_local_cs, *glob::state::getr().get_class_set(),
+                                          m_id, "instance");
 }
 
 void

@@ -6,8 +6,8 @@
 #include <core/package_manager.h>
 #include <core/global_state.h>
 
-#include <packages/root/game_object.h>
-#include <packages/root/assets/material.h>
+#include <packages/root/model/game_object.h>
+#include <packages/root/model/assets/material.h>
 
 #include <imgui.h>
 

@@ -26,6 +26,44 @@ def is_bool(value: str):
     exit(1)
 
 
+def extract_type_config(type: arapi.types.agea_type, tokens, fc: arapi.types.file_context):
+  for t in tokens:
+
+    pairs = t.strip().split("=")
+
+    if len(pairs) == 1:
+      key = arapi.utils.extstrip(pairs[0])
+
+    if len(pairs) == 2:
+      key = arapi.utils.extstrip(pairs[0])
+      value = arapi.utils.extstrip(pairs[1])
+
+      if fc.model_has_types_overrides:
+        if key == 'copy_handler':
+          type.copy_handler = value
+        elif key == 'compare_handler':
+          type.compare_handler = value
+        elif key == 'serialize_handler':
+          type.serialize_handler = value
+        elif key == 'deserialize_handler':
+          type.deserialize_handler = value
+        elif key == 'deserialize_from_proto_handler':
+          type.deserialize_from_proto_handle = value
+        elif key == 'to_string_handler':
+          type.to_string_handle = value
+        elif key == "architype":
+          type.architype = value
+      if type.kind == arapi.types.agea_type_kind.EXTERNAL:
+        if key == 'built_in':
+          type.built_in = True
+
+      if fc.render_has_types_overrides and type.kind == arapi.types.agea_type_kind.CLASS:
+        if key == 'render_constructor':
+          type.render_constructor = value
+        elif key == 'render_destructor':
+          type.render_destructor = value
+
+
 def parse_file(original_file_full_path, original_file_rel_path, module_name,
                context: arapi.types.file_context):
   arapi.utils.eprint("processing : {0} ...".format(original_file_full_path))
@@ -44,6 +82,16 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
   while i != lines_count:
     line = lines[i].strip()
 
+    if line.startswith("AGEA_ar_model_overrides()"):
+      context.model_overrides.append(original_file_rel_path.removeprefix("include/"))
+      i = i + 1
+      continue
+
+    if line.startswith("AGEA_ar_render_overrides()"):
+      context.render_overrides.append(original_file_rel_path.removeprefix("include/"))
+      i = i + 1
+      continue
+
     if line.startswith("AGEA_ar_class"):
       current_class = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
       current_class.has_namespace = True
@@ -51,33 +99,7 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
       i, tokens = arapi.parser.parse_attributes("AGEA_ar_class(", lines, i, lines_count)
       i = i + 1
 
-      for t in tokens:
-
-        pairs = t.strip().split("=")
-
-        if len(pairs) == 1:
-          key = arapi.utils.extstrip(pairs[0])
-          if key == 'use-default-handlers':
-            current_class.default_handlers = True
-
-        if len(pairs) == 2:
-          key = arapi.utils.extstrip(pairs[0])
-          value = arapi.utils.extstrip(pairs[1])
-
-          if key == 'architype':
-            current_class.architype = value
-          elif key == 'copy_handler':
-            current_class.copy_handler = value
-          elif key == 'compare_handler':
-            current_class.compare_handler = value
-          elif key == 'serialize_handler':
-            current_class.serialize_handler = value
-          elif key == 'deserialize_handler':
-            current_class.deserialize_handler = value
-          elif key == 'deserialize_from_proto_handler':
-            current_class.deserialize_from_proto_handle = value
-          elif key == 'to_string_handler':
-            current_class.to_string_handle = value
+      extract_type_config(current_class, tokens, context)
 
       final_tokens = []
       class_tokens = (lines[i].replace(" : ", " ").replace("\n", " ").replace(",", " ").split(" "))
@@ -97,12 +119,15 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
         current_class.parent_name = final_tokens[1]
         current_class.parent_short = final_tokens[1].split("::")[-1]
 
-    if line.startswith("AGEA_ar_struct()"):
-      if current_struct is None:
-        current_struct = arapi.types.agea_type(arapi.types.agea_type_kind.STRUCT)
-        current_struct.has_namespace = True
+    if line.startswith("AGEA_ar_struct"):
+      current_struct = arapi.types.agea_type(arapi.types.agea_type_kind.STRUCT)
+      current_struct.has_namespace = True
 
+      i, tokens = arapi.parser.parse_attributes("AGEA_ar_struct(", lines, i, lines_count)
       i = i + 1
+
+      extract_type_config(current_struct, tokens, context)
+
       final_tokens = []
       class_tokens = (lines[i].replace(" : ", " ").replace("\n", " ").replace(",", " ").split(" "))
       for t in class_tokens:
@@ -252,44 +277,43 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
 
       extrnal_type = arapi.types.agea_type(arapi.types.agea_type_kind.EXTERNAL)
 
-      for pf in tokens:
-        pairs = pf.strip().split("=")
-        arapi.utils.eprint("DBG! {0}".format(pairs))
-        if len(pairs) == 2:
-          key = arapi.utils.extstrip(pairs[0])
-          value = arapi.utils.extstrip(pairs[1])
+      extract_type_config(extrnal_type, tokens, context)
+      i = i + 1
 
-          if key == 'script-support':
-            extrnal_type.script_support = is_bool(value)
-          elif key == 'architype':
-            extrnal_type.architype = value
-          elif key == 'copy_handler':
-            extrnal_type.copy_handler = value
-          elif key == 'compare_handler':
-            extrnal_type.compare_handler = value
-          elif key == 'serialize_handler':
-            extrnal_type.serialize_handler = value
-          elif key == 'deserialize_handler':
-            extrnal_type.deserialize_handler = value
-          elif key == 'deserialize_from_proto_handler':
-            extrnal_type.deserialize_from_proto_handle = value
-          elif key == 'to_string_handler':
-            extrnal_type.to_string_handle = value
+      final_tokens = []
+      external_line = lines[i]
+      class_tokens = (external_line.replace(";", " ").replace("\n", " ").replace(",", " ").replace(
+          "(", " ").replace(")", " ").split(" "))
+      for t in class_tokens:
+        if t not in {"struct", "public", "private", "AGEA_ar_external_define", str()}:
+          final_tokens.append(t)
 
-        elif len(pairs) == 1:
-          key = arapi.utils.extstrip(pairs[0])
-          if key == 'built-in':
-            extrnal_type.built_in = True
-          elif key == 'use-default-handlers':
-            extrnal_type.default_handlers = True
-          else:
-            extrnal_type.full_name = pairs[0].removeprefix('::')
-            extrnal_type.name = extrnal_type.full_name.split('::')[-1]
+      extrnal_type.full_name = final_tokens[0].removeprefix('::')
+      extrnal_type.name = extrnal_type.full_name.split('::')[-1]
 
       context.types.append(extrnal_type)
 
-    i = i + 1
+    if line.startswith("AGEA_ar_package"):
 
+      i, tokens = arapi.parser.parse_attributes("AGEA_ar_package(", lines, i, lines_count)
+      i = i + 1
+
+      for t in tokens:
+        pairs = t.strip().split("=")
+
+        if len(pairs) == 2:
+          key = arapi.utils.extstrip(pairs[0])
+          value = bool(arapi.utils.extstrip(pairs[1]))
+
+          if key == "model.has_types_overrides":
+            context.model_has_types_overrides = value
+          elif key == "model.has_properties_overrides":
+            context.model_has_properties_overrides = value
+          elif key == "render.has_overrides":
+            context.render_has_types_overrides = value
+          elif key == "render.has_resources":
+            context.render_has_custom_resources = value
+    i = i + 1
   if current_class:
     context.types.append(current_class)
 

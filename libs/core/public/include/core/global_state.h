@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <functional>
+#include <array>
 
 namespace agea
 {
@@ -59,80 +60,80 @@ struct state_type_box : public state_base_box
 };
 class state;
 
-struct state_caches_mutator
+struct state_mutator__caches
 {
     static void
     set(state& es);
 };
 
-struct state_level_mutator
+struct state_mutator__level_manager
 {
     static void
     set(state& es);
 };
 
-struct state_package_mutator
+struct state_mutator__package_manager
 {
     static void
     set(state& es);
 };
 
-struct state_reflection_manager_mutator
+struct state_mutator__id_generator
 {
     static void
     set(state& es);
 };
 
-struct state_lua_mutator
+struct state_mutator__reflection_manager
 {
     static void
     set(state& es);
 };
 
-struct state_current_level_mutator
+struct state_mutator__lua_api
+{
+    static void
+    set(state& es);
+};
+
+struct state_mutator__current_level
 {
     static void
     set(level& lvl, state& es);
 };
 
-using create_action = std::function<void(state& s)>;
-using register_action = std::function<void(state& s)>;
-using init_action = std::function<void(state& s)>;
+using scheduled_action = std::function<void(state& s)>;
 
 class state
 {
-    friend class state_caches_mutator;
-    friend class state_level_mutator;
-    friend class state_package_mutator;
-    friend class state_reflection_manager_mutator;
-    friend class state_lua_mutator;
-    friend class state_current_level_mutator;
+    friend class state_mutator__caches;
+    friend class state_mutator__current_level;
+    friend class state_mutator__id_generator;
+    friend class state_mutator__level_manager;
+    friend class state_mutator__lua_api;
+    friend class state_mutator__package_manager;
+    friend class state_mutator__reflection_manager;
 
 public:
-    enum class stage_stage
+    enum class state_stage
     {
         create = 0,
-        regs,
+        connect,
         init,
-        ready
+        ready,
+        number_of_stages
     };
 
     state();
 
     int
-    schedule_create(create_action action);
-
-    int
-    schedule_register(register_action action);
-
-    int
-    schedule_init(init_action action);
+    schedule_action(state_stage execute_at, scheduled_action action);
 
     void
     run_create();
 
     void
-    run_register();
+    run_connect();
 
     void
     run_init();
@@ -162,6 +163,7 @@ public:
     AGEA_gen_getter(pm, package_manager);
     AGEA_gen_getter(lua, reflection::lua_api);
     AGEA_gen_getter(rm, reflection::reflection_type_registry);
+    AGEA_gen_getter(id_generator, id_generator);
 
     template <typename T>
     T*
@@ -178,6 +180,9 @@ public:
     }
 
 private:
+    void
+    run_items(state_stage stage);
+
     // clang-format off
 
     // Caches
@@ -207,16 +212,16 @@ private:
     package_manager*          m_pm = nullptr;
     reflection::lua_api*      m_lua = nullptr;
     reflection::reflection_type_registry* m_rm = nullptr;
+    id_generator* m_id_generator = nullptr;
 
     // clang-format on
 
     std::vector<std::unique_ptr<state_base_box>> m_boxes;
 
-    std::vector<create_action> m_create_actions;
-    std::vector<register_action> m_register_actions;
-    std::vector<init_action> m_init_actions;
+    std::array<std::vector<scheduled_action>, (size_t)state_stage::number_of_stages>
+        m_scheduled_actions;
 
-    stage_stage m_stage = stage_stage::create;
+    state_stage m_stage = state_stage::create;
 };
 
 }  // namespace agea::core
@@ -228,14 +233,6 @@ struct state : public simple_singletone<::agea::core::state>
 };
 }  // namespace agea::glob
 
-#define AGEA_schedule_static_create(action)                     \
+#define AGEA_gen__static_schedule(when, action)                 \
     const static int AGEA_concat2(si_identifier, __COUNTER__) = \
-        ::agea::glob::state::getr().schedule_create(action)
-
-#define AGEA_schedule_static_register(action)                   \
-    const static int AGEA_concat2(si_identifier, __COUNTER__) = \
-        ::agea::glob::state::getr().schedule_register(action)
-
-#define AGEA_schedule_static_init(action)                       \
-    const static int AGEA_concat2(si_identifier, __COUNTER__) = \
-        ::agea::glob::state::getr().schedule_init(action)
+        ::agea::glob::state::getr().schedule_action(when, action)

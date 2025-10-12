@@ -4,8 +4,8 @@
 #include "core/reflection/reflection_type.h"
 #include "core/reflection/reflection_type_utils.h"
 
-#include <packages/root/assets/material.h>
-#include <packages/root/assets/mesh.h>
+#include <packages/root/model/assets/material.h>
+#include <packages/root/model/assets/mesh.h>
 
 #include <utils/agea_log.h>
 

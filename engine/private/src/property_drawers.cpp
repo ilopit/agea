@@ -4,13 +4,13 @@
 
 #include <inttypes.h>
 
-#include "packages/root/assets/material.h"
-#include "packages/root/assets/mesh.h"
-#include "packages/root/assets/texture.h"
+#include "packages/root/model/assets/material.h"
+#include "packages/root/model/assets/mesh.h"
+#include "packages/root/model/assets/texture.h"
 
 #include "core/reflection/reflection_type_utils.h"
 
-#include "packages/global/type_ids.ar.h"
+#include "glue/type_ids.ar.h"
 
 namespace agea
 {

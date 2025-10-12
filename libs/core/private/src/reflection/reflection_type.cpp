@@ -1,5 +1,7 @@
 #include "core/reflection/reflection_type.h"
 
+#include "core/reflection/reflection_type_utils.h"
+
 #include <stack>
 
 namespace agea
@@ -76,10 +78,6 @@ reflection::reflection_type_registry::finilaze()
     }
 }
 
-void
-reflection::reflection_type::inherit()
-{
-}
 #define AGEA_override_if_null(prop) prop = prop ? prop : parent->prop
 
 void
@@ -98,10 +96,8 @@ reflection::reflection_type::override()
         AGEA_override_if_null(copy);
         AGEA_override_if_null(compare);
         AGEA_override_if_null(to_string);
-        AGEA_override_if_null(render_loader);
+        AGEA_override_if_null(render_constructor);
         AGEA_override_if_null(render_destructor);
-        AGEA_override_if_null(alloc);
-        AGEA_override_if_null(cparams_alloc);
     }
 }
 

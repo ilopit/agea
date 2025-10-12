@@ -61,8 +61,8 @@ using type_deserialisation_with_prototype_handler =
 using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
-using type_rendler_ctor = result_code (*)(AGEA_AR_render_ctor_args);
-using type_rendler_dtor = result_code (*)(AGEA_AR_render_dtor_args);
+using type_render_ctor = result_code (*)(AGEA_AR_render_ctor_args);
+using type_render_dtor = result_code (*)(AGEA_AR_render_dtor_args);
 using type_allocator_handler = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
 using type_default_construction_params_handler =
     std::unique_ptr<::agea::root::base_construct_params> (*)();
@@ -72,8 +72,13 @@ using function_list = std::vector<std::shared_ptr<function>>;
 
 struct reflection_type
 {
-    void
-    inherit();
+    enum class reflection_type_class
+    {
+        agea_unknown = 0,
+        agea_class,
+        agea_struct,
+        agea_external
+    };
 
     void
     override();
@@ -85,7 +90,9 @@ struct reflection_type
     agea::utils::id module_id;
     agea::utils::id type_name;
     uint32_t size = 0;
+
     core::architype arch = core::architype::unknown;
+    reflection_type_class type_class = reflection_type_class::agea_unknown;
 
     reflection_type* parent = nullptr;
 
@@ -95,16 +102,18 @@ struct reflection_type
     property_list m_serilalization_properties;
 
     // clang-format off
+    type_allocator_handler                      alloc = nullptr;
+    type_default_construction_params_handler    cparams_alloc = nullptr;
+
     type_serialization_handler                  serialize = nullptr;
     type_deserialization_handler                deserialize = nullptr;
     type_deserialisation_with_prototype_handler deserialize_with_proto = nullptr;
     type_copy_handler                           copy = nullptr;
     type_compare_handler                        compare = nullptr;
     type_ui_handler                             to_string = nullptr;
-    type_rendler_ctor                           render_loader = nullptr;
-    type_rendler_dtor                           render_destructor = nullptr;
-    type_allocator_handler                      alloc = nullptr;
-    type_default_construction_params_handler    cparams_alloc = nullptr;
+
+    type_render_ctor                           render_constructor = nullptr;
+    type_render_dtor                           render_destructor = nullptr;
 
     // clang-format on
 

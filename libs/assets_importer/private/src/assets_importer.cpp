@@ -5,8 +5,8 @@
 
 #include <utils/agea_log.h>
 
-#include <packages/root/assets/mesh.h>
-#include <packages/root/assets/texture.h>
+#include <packages/root/model/assets/mesh.h>
+#include <packages/root/model/assets/texture.h>
 
 #include <core/object_constructor.h>
 #include <core/package.h>

@@ -7,10 +7,10 @@
 #include "core/global_state.h"
 #include "core/reflection/reflection_type.h"
 
-#include <packages/root/components/component.h>
-#include <packages/root/game_object.h>
-#include <packages/root/components/component.h>
-#include <packages/root/mesh_object.h>
+#include <packages/root/model/components/component.h>
+#include <packages/root/model/game_object.h>
+#include <packages/root/model/components/component.h>
+#include <packages/root/model/mesh_object.h>
 
 #include <serialization/serialization.h>
 

@@ -40,21 +40,21 @@ reduce_ptr(blob_ptr ptr, bool is_ptr)
 
 template <typename T>
 void
-default_copy(blob_ptr from, blob_ptr to)
+cpp_copy(blob_ptr from, blob_ptr to)
 {
     as_type<T>(to) = as_type<T>(from);
 }
 
 template <typename T>
 result_code
-default_compare(blob_ptr from, blob_ptr to)
+cpp_compare(blob_ptr from, blob_ptr to)
 {
     return (as_type<T>(to) == as_type<T>(from)) ? result_code::ok : result_code::failed;
 }
 
 template <typename T>
 result_code
-default_copy(AGEA_copy_handler_args)
+cpp_copy(AGEA_copy_handler_args)
 {
     AGEA_unused(dst_obj);
     AGEA_unused(src_obj);
@@ -66,7 +66,7 @@ default_copy(AGEA_copy_handler_args)
 
 template <typename T>
 result_code
-default_serialize(AGEA_serialization_args)
+cpp_serialize(AGEA_serialization_args)
 {
     AGEA_unused(ptr);
     reflection::utils::pack_field<T>(ptr, jc);
@@ -76,7 +76,7 @@ default_serialize(AGEA_serialization_args)
 
 template <typename T>
 result_code
-default_to_string(AGEA_reflection_type_ui_args)
+cpp_to_string(AGEA_reflection_type_ui_args)
 {
     AGEA_unused(ptr);
     auto& t = reflection::utils::as_type<T>(ptr);
@@ -87,7 +87,7 @@ default_to_string(AGEA_reflection_type_ui_args)
 
 template <typename T>
 result_code
-default_deserialize(AGEA_deserialization_args)
+cpp_deserialize(AGEA_deserialization_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(occ);
@@ -98,7 +98,7 @@ default_deserialize(AGEA_deserialization_args)
 
 template <typename T>
 result_code
-default_deserialize_from_proto(AGEA_deserialization_update_args)
+cpp_deserialize_from_proto(AGEA_deserialization_update_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(occ);

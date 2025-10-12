@@ -2,10 +2,10 @@
 
 #include "engine/private/ui/object_editor.h"
 
-#include <packages/root/game_object.h>
-#include <packages/root/assets/material.h>
+#include <packages/root/model/game_object.h>
+#include <packages/root/model/assets/material.h>
 #include <engine/property_drawers.h>
-#include <packages/global/type_ids.ar.h>
+#include <glue/type_ids.ar.h>
 
 #include <core/reflection/reflection_type.h>  //
 #include <core/reflection/reflection_type_utils.h>

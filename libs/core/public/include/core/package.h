@@ -8,49 +8,6 @@
 
 #include "core/container.h"
 
-#define AGEA_ar_package_types_loader                                       \
-    class package_types_loader : public ::agea::core::package_types_loader \
-    {                                                                      \
-    public:                                                                \
-        virtual bool                                                       \
-        load(::agea::core::static_package& sp) override;                   \
-    };
-
-#define AGEA_ar_package_custom_types_loader                                               \
-    struct package_types_custom_loader : public ::agea::core::package_types_custom_loader \
-    {                                                                                     \
-        virtual bool                                                                      \
-        load(static_package& sp) override;                                                \
-    };
-
-#define AGEA_ar_package_render_types_loader                                               \
-    struct package_render_types_loader : public ::agea::core::package_render_types_loader \
-    {                                                                                     \
-        virtual bool                                                                      \
-        load(static_package& sp) override;                                                \
-    };
-
-#define AGEA_ar_package_render_resources_loader                                                   \
-    struct package_render_resources_loader : public ::agea::core::package_render_resources_loader \
-    {                                                                                             \
-        virtual bool                                                                              \
-        load(static_package& sp) override;                                                        \
-    };
-
-#define AGEA_ar_package_object_builder                                          \
-    struct package_object_builder : public ::agea::core::package_object_builder \
-    {                                                                           \
-        virtual bool                                                            \
-        build(static_package& sp) override;                                     \
-    };
-
-#define AGEA_ar_package_type_register                                         \
-    struct package_type_register : public ::agea::core::package_type_register \
-    {                                                                         \
-        virtual bool                                                          \
-        build(static_package& sp) override;                                   \
-    };
-
 namespace agea
 {
 namespace core
@@ -72,10 +29,7 @@ enum class package_type
 class package : public container
 {
 public:
-    package(const utils::id& id,
-            package_type t,
-            cache_set* class_global_set = nullptr,
-            cache_set* instance_global_set = nullptr);
+    package(const utils::id& id, package_type t);
 
     ~package();
 
@@ -84,6 +38,9 @@ public:
     package(package&&) noexcept;
     package&
     operator=(package&&) noexcept;
+
+    void
+    init();
 
     package_state
     get_state() const
@@ -118,19 +75,19 @@ protected:
 
 class static_package;
 
-struct package_types_loader
+struct package_types_builder
 {
     virtual bool
-    load(static_package& sp)
+    build(static_package& sp)
     {
         return true;
     }
 };
 
-struct package_render_types_loader
+struct package_render_types_builder
 {
     virtual bool
-    load(static_package& sp)
+    build(static_package& sp)
     {
         return true;
     }
@@ -154,7 +111,7 @@ struct package_object_builder
     }
 };
 
-struct package_type_register
+struct package_types_register_builder
 {
     virtual bool
     build(static_package& sp)
@@ -163,10 +120,10 @@ struct package_type_register
     }
 };
 
-struct package_render_resources_loader
+struct package_render_custom_resource_builder
 {
     virtual bool
-    load(static_package& sp)
+    build(static_package& sp)
     {
         return true;
     }
@@ -185,41 +142,36 @@ public:
     }
 
     template <typename T>
-    root::smart_object*
-    add_object(const utils::id& id, typename const T::construct_params& p)
-    {
-        return object_constructor::object_construct(T::AR_TYPE_id(), id, p, *m_occ);
-    }
-
-    void
-    finilize_objects();
-
-    template <typename T>
     void
     register_package_extention()
     {
-        static_assert(std::is_base_of_v<package_types_loader, T> ||
+        static_assert(std::is_base_of_v<package_types_builder, T> ||
                           std::is_base_of_v<package_types_custom_loader, T> ||
-                          std::is_base_of_v<package_render_types_loader, T> ||
-                          std::is_base_of_v<package_render_resources_loader, T> ||
+                          std::is_base_of_v<package_render_types_builder, T> ||
+                          std::is_base_of_v<package_types_register_builder, T> ||
+                          std::is_base_of_v<package_render_custom_resource_builder, T> ||
                           std::is_base_of_v<package_object_builder, T>,
                       "Unsupported type");
 
-        if constexpr (std::is_base_of_v<package_types_loader, T>)
+        if constexpr (std::is_base_of_v<package_types_builder, T>)
         {
-            m_type_loader = std::make_unique<T>();
+            m_type_builder = std::make_unique<T>();
         }
         else if constexpr (std::is_base_of_v<package_types_custom_loader, T>)
         {
             m_types_custom_loader = std::make_unique<T>();
         }
-        else if constexpr (std::is_base_of_v<package_render_types_loader, T>)
+        else if constexpr (std::is_base_of_v<package_render_types_builder, T>)
         {
             m_render_types_loader = std::make_unique<T>();
         }
-        else if constexpr (std::is_base_of_v<package_render_resources_loader, T>)
+        else if constexpr (std::is_base_of_v<package_render_custom_resource_builder, T>)
         {
             m_render_resources_loader = std::make_unique<T>();
+        }
+        else if constexpr (std::is_base_of_v<package_types_register_builder, T>)
+        {
+            m_type_register = std::make_unique<T>();
         }
         else if constexpr (std::is_base_of_v<package_object_builder, T>)
         {
@@ -245,13 +197,11 @@ public:
     void
     build_objects();
 
-    std::unique_ptr<package_types_loader> m_type_loader;
+    std::unique_ptr<package_types_builder> m_type_builder;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;
-
-    std::unique_ptr<package_render_types_loader> m_render_types_loader;
-    std::unique_ptr<package_render_resources_loader> m_render_resources_loader;
-
-    std::unique_ptr<package_type_register> m_type_register;
+    std::unique_ptr<package_render_types_builder> m_render_types_loader;
+    std::unique_ptr<package_render_custom_resource_builder> m_render_resources_loader;
+    std::unique_ptr<package_types_register_builder> m_type_register;
 
     std::unique_ptr<package_object_builder> m_object_builder;
 };
@@ -259,9 +209,7 @@ public:
 class dynamic_package : public package
 {
 public:
-    dynamic_package(const utils::id& id,
-                    cache_set* class_global_set,
-                    cache_set* instance_global_set);
+    dynamic_package(const utils::id& id);
 
     void
     unload();

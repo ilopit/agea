@@ -7,8 +7,8 @@
 #include "core/model_minimal.h"
 #include "core/container.h"
 
-#include <packages/root/components/mesh_component.h>
-#include <packages/root/core_types/vec3.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/core_types/vec3.h>
 
 #include <utils/singleton_instance.h>
 

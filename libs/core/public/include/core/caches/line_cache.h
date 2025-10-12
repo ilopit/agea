@@ -2,7 +2,7 @@
 
 #include "core/model_minimal.h"
 
-#include <packages/root/smart_object.h>
+#include <packages/root/model/smart_object.h>
 
 #include <utils/line_conteiner.h>
 

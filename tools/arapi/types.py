@@ -44,7 +44,7 @@ class agea_type:
     self.architype = ""
     self.kind = kind
     self.script_support = False
-    self.default_handlers = False  
+    self.default_handlers = False
 
     self.properties: list[agea_property] = []
     self.functions = []
@@ -60,6 +60,8 @@ class agea_type:
     self.deserialize_from_proto_handle = ""
     self.serialize_handler = ""
     self.to_string_handle = ""
+    self.render_constructor = ""
+    self.render_destructor = ""
 
     self.ordered = False
 
@@ -92,14 +94,24 @@ class file_context:
     self.methods = ""
     self.lua_binding = ""
     self.lua_ctor = ""
-    self.has_custom_properties = False
-    self.has_custom_type_handlers = False
+
+    self.model_has_types_overrides: bool = False
+    self.model_has_properties_overrides: bool = False
+    self.render_has_types_overrides: bool = False
+    self.render_has_custom_resources: bool = False
+
     self.properies_access_methods: str = ''
     self.output_dir = ''
+    self.root_dir = ''
     self.types: list[agea_type] = []
-    self.public_dir = None
-    self.private_dir = None
-    self.global_file = None
+    self.model_overrides: list[str] = []
+    self.render_overrides: list[str] = []
+    self.model_header_dir = None
+    self.package_header_dir = None
+    self.model_sources_dir = None
+    self.render_header_dir = None
+    self.render_sources_dir = None
+    self.global_dir = None
 
   def topo_sort(self, t: agea_type, ordered_types):
 

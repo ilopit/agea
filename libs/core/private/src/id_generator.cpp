@@ -3,7 +3,7 @@
 #include "core/caches/caches_map.h"
 #include "core/global_state.h"
 
-#include <packages/root/smart_object.h>
+#include <packages/root/model/smart_object.h>
 
 #include <utils/agea_log.h>
 
@@ -11,8 +11,6 @@
 
 namespace agea
 {
-
-glob::id_generator::type glob::id_generator::type::s_instance;
 
 namespace core
 {

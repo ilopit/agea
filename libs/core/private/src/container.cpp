@@ -15,8 +15,7 @@ container&
 container::operator=(container&&) noexcept = default;
 
 container::container(const utils::id& id)
-    : m_occ(std::make_unique<object_load_context>())
-    , m_mapping(std::make_shared<core::object_mapping>())
+    : m_mapping(std::make_shared<core::object_mapping>())
     , m_id(id)
 {
 }
@@ -78,6 +77,12 @@ container::unload()
     m_objects.clear();
     m_mapping->clear();
     m_occ->set_construction_type(object_load_type::nav);
+}
+
+void
+container::set_occ(std::unique_ptr<object_load_context> occ)
+{
+    m_occ = std::move(std::move(occ));
 }
 
 }  // namespace core

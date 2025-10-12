@@ -201,8 +201,9 @@ def update_global_ids(fc: arapi.types.file_context):
 
   lines = []
 
-  if not os.path.exists(fc.global_file):
-    with open(fc.global_file, "w+") as gf:
+  global_file = os.path.join(fc.global_dir, "type_ids.ar.h")
+  if not os.path.exists(global_file):
+    with open(global_file, "w+") as gf:
 
       fl = f"""#pragma once
 // clang-format off
@@ -219,7 +220,7 @@ namespace agea {{
 
       gf.write(fl)
 
-  with open(fc.global_file, "r+") as gf:
+  with open(global_file, "r+") as gf:
     existing_ids = []
     lines = gf.readlines()
 
@@ -243,7 +244,7 @@ namespace agea {{
     if add_mode == 0:
       before.append(line)
     elif add_mode == 1:
-      existing_ids.append(line.strip().replace(',',''))
+      existing_ids.append(line.strip().replace(',', ''))
     elif add_mode == 2:
       after.append(line)
 
@@ -256,7 +257,7 @@ namespace agea {{
   new_ids.sort()
 
   if new_ids != existing_ids:
-    with open(fc.global_file, "w+") as gf:
+    with open(global_file, "w+") as gf:
       gf.writelines(before)
 
       for ni in new_ids:
@@ -265,7 +266,7 @@ namespace agea {{
 
 
 def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
-  print("""SOLing:
+  print("""AR generator :
       cfg          - {0}
       root         - {1}
       output       - {2}
@@ -276,25 +277,25 @@ def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespa
 
   context = arapi.types.file_context(module_name, module_namespace)
   context.output_dir = output_dir
-  context.private_dir = os.path.join(output_dir, "packages", module_name, "private")
-  context.public_dir = os.path.join(output_dir, "packages", module_name, "public")
-  context.global_file = os.path.join(output_dir, "packages", "global", "type_ids.ar.h")
+  context.root_dir = root_dir
+  context.package_header_dir = os.path.join(output_dir, "packages", module_name, "public",
+                                            "include", "packages", module_name)
+  context.model_sources_dir = os.path.join(output_dir, "packages", module_name, "private", "model")
+  context.model_header_dir = os.path.join(output_dir, "packages", module_name, "public", "include",
+                                          "packages", module_name, "model")
+  context.render_sources_dir = os.path.join(output_dir, "packages", module_name, "private",
+                                            "render")
+  context.render_header_dir = os.path.join(output_dir, "packages", module_name, "render", "public")
 
-  if not os.path.exists(context.private_dir):
-    os.mkdir(context.private_dir)
+  context.global_dir = os.path.join(output_dir, "packages/glue/public/include/glue")
 
-  if not os.path.exists(context.public_dir):
-    os.mkdir(context.public_dir)
-
-  global_dir = os.path.join(output_dir, "packages", "global")
-  if not os.path.exists(global_dir):
-    os.mkdir(global_dir)
-
-  context.has_custom_types = os.path.exists(
-      os.path.join(root_dir, "include", "packages", module_name, "types_custom.h"))
-
-  context.has_custom_properties = os.path.exists(
-      os.path.join(root_dir, "include", "packages", module_name, "properties_custom.h"))
+  # init folder structure
+  for d in [
+      context.model_sources_dir, context.model_header_dir, context.render_sources_dir,
+      context.render_header_dir, context.package_header_dir, context.global_dir
+  ]:
+    if not os.path.exists(d):
+      os.makedirs(d)
 
   cfg = open(ar_cfg_path, "r", newline="\n")
   lines = cfg.readlines()
@@ -309,15 +310,27 @@ def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespa
   for t in context.types:
     gen_id(t, context.module_name)
 
-  output_file = os.path.join(context.private_dir, f"package.{module_name}.ar.cpp")
+  # write object model reflection
+  output_file = os.path.join(context.model_sources_dir, f"package.{module_name}.ar.cpp")
 
-  arapi.writer.write_module_reflection(output_file, context)
+  arapi.writer.write_object_model_reflection(output_file, context)
 
   for t in context.types:
     if t.kind == arapi.types.agea_type_kind.CLASS:
       arapi.writer.write_ar_class_include_file(t, context, output_dir)
 
   update_global_ids(context)
+
+  # write rendering reflection
+
+  arapi.writer.write_ar_package_include_file(context, output_dir)
+
+  if context.render_has_types_overrides or context.render_has_custom_resources:
+    output_file = os.path.join(context.render_sources_dir, f"package.{module_name}.render.ar.cpp")
+    arapi.writer.write_render_types_reflection(output_file, context)
+
+  #for t in context.types:
+
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Optional app description")

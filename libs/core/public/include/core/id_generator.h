@@ -29,10 +29,4 @@ public:
 
 }  // namespace core
 
-namespace glob
-{
-struct id_generator : public singleton_instance<::agea::core::id_generator, id_generator>
-{
-};
-}  // namespace glob
 }  // namespace agea
