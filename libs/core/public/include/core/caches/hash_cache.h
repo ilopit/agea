@@ -35,7 +35,7 @@ public:
     }
 
     void
-    remove_item(root::smart_object& obj)
+    remove_item(const root::smart_object& obj)
     {
         const auto& oid = obj.get_id();
         m_items.erase(oid);
@@ -86,7 +86,7 @@ public:
     }
 
     void
-    remove_item(root::smart_object& obj)
+    remove_item(const root::smart_object& obj)
     {
         AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
                    "Should have same architype!");

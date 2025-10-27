@@ -10,7 +10,7 @@ namespace utils
 {
 bool is_initialized = false;
 void
-setup_logger()
+setup_logger(spdlog::level::level_enum lvl)
 {
     if (!is_initialized)
     {
@@ -21,6 +21,7 @@ setup_logger()
 
         auto logger = std::make_shared<spdlog::logger>(
             "multi_sink", spdlog::sinks_init_list{console_sink, file_sink});
+        logger->set_level(lvl);
 
         spdlog::set_default_logger(logger);
         spdlog::set_pattern("[%Y:%m:%d %T] [%z] [%P] %v");

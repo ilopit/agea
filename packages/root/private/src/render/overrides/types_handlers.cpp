@@ -260,7 +260,7 @@ game_object_component__render_destructor(::agea::render_bridge& rb,
 result_code
 mesh_component__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
 {
-    auto rc = mesh_component__render_loader(rb, obj, sub_object);
+    auto rc = game_object_component__render_loader(rb, obj, sub_object);
     AGEA_return_nok(rc);
 
     auto& moc = obj.asr<root::mesh_component>();

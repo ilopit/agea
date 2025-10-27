@@ -133,7 +133,7 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
     auto ptr = empty.get();
     update_flags(olc.get_construction_type(), *empty);
 
-    olc.add_obj(std::move(empty), olc.get_global_load_mode());
+    olc.add_obj(std::move(empty));
     olc.push_object_loaded(ptr);
 
     return ptr;
@@ -155,7 +155,7 @@ object_constructor::alloc_empty_object(const utils::id& id,
     auto ptr = empty.get();
     update_flags(olc.get_construction_type(), *empty);
 
-    olc.add_obj(std::move(empty), olc.get_global_load_mode());
+    olc.add_obj(std::move(empty));
     olc.push_object_loaded(ptr);
 
     return ptr;
@@ -190,17 +190,6 @@ object_constructor::object_construct(const utils::id& type_id,
             return nullptr;
         }
 
-        olc.set_construction_type(object_load_type::mirror_copy);
-        obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
-        if (!obj->META_construct(params))
-        {
-            return nullptr;
-        }
-        if (!obj->post_construct())
-        {
-            return nullptr;
-        }
-
         olc.set_construction_type(prev_ct);
     }
     else if (level)
@@ -230,8 +219,8 @@ object_constructor::object_construct(const utils::id& type_id,
 }
 
 result_code
-object_constructor::register_package_type_impl(std::shared_ptr<root::smart_object> empty,
-                                               object_load_context& olc)
+object_constructor::create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
+                                                  object_load_context& olc)
 {
     AGEA_check(olc.get_construction_type() == object_load_type::nav, "Should be nav!");
     AGEA_check(olc.get_package(), "Should exist");
@@ -242,17 +231,31 @@ object_constructor::register_package_type_impl(std::shared_ptr<root::smart_objec
 
     olc.set_construction_type(object_load_type::class_obj);
     empty->set_package(olc.get_package());
-    olc.add_obj(empty, false);
+    olc.add_obj(empty);
     olc.set_construction_type(object_load_type::nav);
-    //     if (!empty->META_construct(p))
-    //     {
-    //         return result_code::failed;
-    //     }
-    //
-    //     if (!empty->post_construct())
-    //     {
-    //         return result_code::failed;
-    //    }
+
+    auto rt = empty->get_reflection();
+
+    auto p = rt->cparams_alloc();
+    if (!empty->META_construct(*p))
+    {
+        return result_code::failed;
+    }
+
+    if (!empty->post_construct())
+    {
+        return result_code::failed;
+    }
+
+    return result_code::ok;
+}
+
+result_code
+object_constructor::destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc)
+{
+    auto obj = olc.find_proto_obj(id);
+
+    olc.remove_obj(*obj);
 
     return result_code::ok;
 }
@@ -512,6 +515,8 @@ object_constructor::object_clone_create_internal(root::smart_object& proto_obj,
                                                  object_load_context& occ,
                                                  root::smart_object*& obj)
 {
+    AGEA_check(&proto_obj, "Should exist!");
+
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
     obj = alloc_empty_object(proto_obj.get_type_id(), new_object_id,

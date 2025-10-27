@@ -67,6 +67,7 @@ def generate_builder(should_generate: bool, name: str):
 {{                                                                                      \\
     public:                                                                             \\
         virtual bool build(::agea::core::static_package& sp) override;                  \\
+        virtual bool destroy(::agea::core::static_package& sp) override;                \\
 }};                                                                                     \\
 """
 
@@ -88,13 +89,35 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir)
 #if defined(AGEA_build__model)
 #undef  AGEA_gen_meta__{context.module_name}_package_model
 #define AGEA_gen_meta__{context.module_name}_package_model \\
-{generate_builder(True, "types")}{generate_builder(True, "types_register")}
+public: \\
+static void \\
+reset_instance() \\
+{{ \\
+    s_instance.reset(); \\
+}} \\
+static void \\
+init_instance() \\
+{{ \\
+    AGEA_check(!s_instance, "using on existed"); \\
+    s_instance = std::make_unique<package>(); \\
+}} \\
+static package& \\
+instance()\\
+{{ \\
+    AGEA_check(s_instance, "empty instance"); \\
+    return *s_instance; \\
+}} \\
+{generate_builder(True, "types")}{generate_builder(True, "types_default_objects")} \\
+private: \\
+    static std::unique_ptr<package> s_instance;
 #endif
 
 #if defined(AGEA_build__render)
 #undef  AGEA_gen_meta__{context.module_name}_package_render
 #define AGEA_gen_meta__{context.module_name}_package_render \\
-{generate_builder(context.render_has_types_overrides,"render_types")}{generate_builder(context.render_has_custom_resources,"render_custom_resource")}
+public: \\
+{generate_builder(context.render_has_types_overrides,"render_types")}{generate_builder(context.render_has_custom_resources,"render_custom_resource")} \\
+private: 
 #endif
 
 #if defined(AGEA_build__builder)
@@ -106,8 +129,8 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir)
 
     ar_class_include.write(f"""
 #define AGEA_gen_meta__{context.module_name}_package \\
-  AGEA_gen_meta__{context.module_name}_package_model\\
-  AGEA_gen_meta__{context.module_name}_package_render\\
+  AGEA_gen_meta__{context.module_name}_package_model \\
+  AGEA_gen_meta__{context.module_name}_package_render \\
   AGEA_gen_meta__{context.module_name}_package_builder
 """)
 
@@ -164,7 +187,7 @@ def write_properties(ar_file, fc: arapi.types.file_context, t: arapi.types.agea_
         auto prop        = std::make_shared<::agea::reflection::property>();
         auto p           = prop.get();
 
-        {fc.module_name}_{t.name}_rt.m_properties.emplace_back(std::move(prop));
+        {fc.module_name}_{t.name}_rt->m_properties.emplace_back(std::move(prop));
 
         // Main fields
         p->name                           = "{p.name_cut}";
@@ -259,7 +282,7 @@ def write_types_resolvers(fc: arapi.types.file_context):
 def write_lua_class_type(file, fc: arapi.types.file_context, t: arapi.types.agea_type):
   file.write(f"""
     {{
-        {t.name}_lua_type = ::agea::glob::state::getr().get_lua()->state().new_usertype<{t.get_full_type_name()}>(
+        *{t.name}_lua_type = ::agea::glob::state::getr().get_lua()->state().new_usertype<{t.get_full_type_name()}>(
         "{t.name}", sol::no_constructor,
             "i",
             [](const char* id) -> {t.get_full_type_name()}*
@@ -291,7 +314,7 @@ def write_lua_class_type(file, fc: arapi.types.file_context, t: arapi.types.agea
                """)
     file.write(f""");
              
-    {t.name}__lua_script_extention<sol::usertype<{t.get_full_type_name()}>, {t.get_full_type_name()}>({t.name}_lua_type);
+    {t.name}__lua_script_extention<sol::usertype<{t.get_full_type_name()}>, {t.get_full_type_name()}>(*{t.name}_lua_type);
 
 }}""")
   else:
@@ -306,7 +329,7 @@ def write_lua_struct_type(file, fc: arapi.types.file_context, t: arapi.types.age
     ctro_line += ","
 
   file.write(f"""
-         {t.name}_lua_type = ::agea::glob::state::getr().get_lua()->state().new_usertype<{t.get_full_type_name()}>(
+         *{t.name}_lua_type = ::agea::glob::state::getr().get_lua()->state().new_usertype<{t.get_full_type_name()}>(
         "{t.get_full_type_name()}", sol::constructors<{ctro_line[:-1]}>());
   """)
 
@@ -386,22 +409,17 @@ def write_object_model_reflection(package_ar_file, fc: arapi.types.file_context)
 
 namespace agea::{fc.module_name} {{
 
-package&
-package::instance()
-{{
-    static package s_instance;
-    return s_instance;
-}}
+std::unique_ptr<package> package::s_instance;
 
 """)
     reflection_methods = ""
     for type in fc.types:
       ar_file.write(f"""
-static ::agea::reflection::reflection_type {fc.module_name}_{type.name}_rt;""")
+static std::unique_ptr<::agea::reflection::reflection_type> {fc.module_name}_{type.name}_rt;""")
 
       if type.kind != arapi.types.agea_type_kind.EXTERNAL or type.script_support:
         ar_file.write(f"""
-static sol::usertype<{type.get_full_type_name()}> {type.name}_lua_type;""")
+static std::unique_ptr<sol::usertype<{type.get_full_type_name()}>> {type.name}_lua_type;""")
 
       if type.kind != arapi.types.agea_type_kind.CLASS:
         continue
@@ -410,7 +428,7 @@ static sol::usertype<{type.get_full_type_name()}> {type.name}_lua_type;""")
 const ::agea::reflection::reflection_type& 
 {type.name}::AR_TYPE_reflection()
 {{
-    return {fc.module_name}_{type.name}_rt;
+    return *{fc.module_name}_{type.name}_rt;
 }}                  
 
 std::shared_ptr<::agea::root::smart_object> 
@@ -459,6 +477,7 @@ bool
 AGEA_gen__static_schedule(::agea::core::state::state_stage::create,
     [](agea::core::state& s)
     {{
+      package::init_instance();
       package::instance().register_package_extention<package::package_types_builder>(); 
     }});
                   
@@ -479,18 +498,16 @@ package::package_types_builder::build(static_package& sp)
 {{      
     const int type_id = ::agea::reflection::type_resolver<{t.get_full_type_name()}>::value;
     AGEA_check(type_id != -1, "Type is not defined!");
-
-    auto& rt         = {fc.module_name}_{t.name}_rt; 
+    {fc.module_name}_{t.name}_rt = std::make_unique<::agea::reflection::reflection_type>(type_id, AID("{t.name}"));
+    auto& rt         = *add(sp, {fc.module_name}_{t.name}_rt.get());
     rt.type_id       = type_id;
-    rt.type_name     = AID("{t.name}");
     rt.type_class    = ::agea::reflection::reflection_type::reflection_type_class::{kind_to_string(t.kind)};
-
-    
-     ::agea::glob::state::getr().get_rm()->add_type(&rt);
 
     rt.module_id     = AID("{fc.module_name}");
     rt.size          = sizeof({t.get_full_type_name()});
 """)
+      if t.kind != arapi.types.agea_type_kind.EXTERNAL or t.script_support:
+        ar_file.write(f"""    {t.name}_lua_type = std::make_unique<sol::usertype<{t.get_full_type_name()}>>();\n""")
 
       if t.kind == arapi.types.agea_type_kind.CLASS:
         ar_file.write(f"""
@@ -513,22 +530,22 @@ package::package_types_builder::build(static_package& sp)
 """)
 
       if t.compare_handler:
-        ar_file.write(f"    rt.compare = {t.compare_handler};\n")
+        ar_file.write(f"    rt.compare                = {t.compare_handler};\n")
 
       if t.copy_handler:
-        ar_file.write(f"    rt.copy = {t.copy_handler};\n")
+        ar_file.write(f"    rt.copy                   = {t.copy_handler};\n")
 
       if t.serialize_handler:
-        ar_file.write(f"    rt.serialize = {t.serialize_handler};\n")
+        ar_file.write(f"    rt.serialize              = {t.serialize_handler};\n")
 
       if t.deserialize_handler:
-        ar_file.write(f"    rt.deserialize = {t.deserialize_handler};\n")
+        ar_file.write(f"    rt.deserialize            = {t.deserialize_handler};\n")
 
       if t.deserialize_from_proto_handle:
         ar_file.write(f"    rt.deserialize_with_proto = {t.deserialize_from_proto_handle};\n")
 
       if t.to_string_handle:
-        ar_file.write(f"    rt.to_string = {t.to_string_handle};\n")
+        ar_file.write(f"    rt.to_string              = {t.to_string_handle};\n")
 
       ar_file.write("}\n")
 
@@ -548,15 +565,44 @@ package::package_types_builder::build(static_package& sp)
 
     ar_file.write(f"""
 bool
-package::package_types_register_builder::build(static_package& sp)
+package::package_types_builder::destroy(static_package& sp)
+{{
+""")
+    for t in reversed(fc.types):
+      ar_file.write(f"""  {fc.module_name}_{t.name}_rt.reset();\n""")
+
+      if t.kind != arapi.types.agea_type_kind.EXTERNAL or t.script_support:
+        ar_file.write(f"""  {t.name}_lua_type.reset();\n""")
+
+      if t.kind != arapi.types.agea_type_kind.CLASS:
+        continue
+
+    ar_file.write(f"""   return true;
+}}
+bool
+package::package_types_default_objects_builder::build(static_package& sp)
 {{
     auto pkg = &::agea::{fc.module_name}::package::instance();
 """)
     for t in fc.types:
       if t.kind == arapi.types.agea_type_kind.CLASS:
-        ar_file.write(f"    pkg->register_type<{t.get_full_type_name()}>();\n")
+        ar_file.write(f"    pkg->create_default_class_obj<{t.get_full_type_name()}>();\n")
 
     ar_file.write("\n    return true;\n}\n\n")
+
+    ar_file.write(f"""
+bool
+package::package_types_default_objects_builder::destroy(static_package& sp)
+{{
+    auto pkg = &::agea::{fc.module_name}::package::instance();
+""")
+    for t in fc.types:
+      if t.kind == arapi.types.agea_type_kind.CLASS:
+        ar_file.write(f"    pkg->destroy_default_class_obj<{t.get_full_type_name()}>();\n")
+
+    ar_file.write("\n    return true;\n}\n\n")
+
+
 
     ar_file.write(fc.properies_access_methods)
 

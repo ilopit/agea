@@ -73,12 +73,6 @@ public:
     }
 
     static void
-    register_in_global_cache(cache_set& local,
-                             cache_set& global,
-                             const utils::id& id,
-                             const char* extra);
-
-    static void
     unregister_in_global_cache(cache_set& local,
                                cache_set& global,
                                const utils::id& id,

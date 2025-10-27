@@ -10,7 +10,7 @@ namespace agea
 namespace utils
 {
 void
-setup_logger();
+setup_logger(spdlog::level::level_enum lvl = spdlog::level::info);
 
 extern bool is_initialized;
 }  // namespace utils

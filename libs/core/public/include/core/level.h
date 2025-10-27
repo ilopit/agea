@@ -40,7 +40,7 @@ class level : public container
 public:
     friend class level_manager;
 
-    level(const utils::id& id, cache_set* class_global_set, cache_set* instance_global_set);
+    level(const utils::id& id);
     ~level();
 
     root::game_object*
@@ -67,7 +67,7 @@ public:
 
     void
     tick(float dt);
-
+    
     game_objects_cache&
     get_game_objects()
     {

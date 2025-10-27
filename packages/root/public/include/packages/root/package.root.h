@@ -20,9 +20,6 @@ public:
     package();
 
     AGEA_gen_meta__root_package;
-
-    static package&
-    instance();
 };
 
 }  // namespace agea::root

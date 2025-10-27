@@ -9,8 +9,9 @@
 
 #include <serialization/serialization.h>
 #include <core/global_state.h>
-
+#include <core/reflection/reflection_type.h>
 #include <map>
+#include <stack>
 #include <filesystem>
 
 namespace agea::core
@@ -21,7 +22,7 @@ package::package(package&&) noexcept = default;
 package&
 package::operator=(package&&) noexcept = default;
 
-void
+bool
 package::init()
 {
     m_occ = std::make_unique<object_load_context>();
@@ -31,6 +32,8 @@ package::init()
         .set_proto_global_set(glob::state::getr().get_class_set())
         .set_instance_global_set(glob::state::getr().get_instance_set())
         .set_instance_local_set(&m_instance_local_cs);
+
+    return true;
 }
 
 package::package(const utils::id& id, package_type t)
@@ -44,25 +47,12 @@ package::~package()
 }
 
 void
-package::register_in_global_cache()
-{
-    container::register_in_global_cache(m_instance_local_cs,
-                                        *glob::state::getr().get_instance_set(), m_id, "instance");
-    container::register_in_global_cache(m_proto_local_cs, *glob::state::getr().get_class_set(),
-                                        m_id, "proto");
-
-    m_occ->set_global_load_mode(true);
-}
-
-void
 package::unregister_in_global_cache()
 {
     container::unregister_in_global_cache(
         m_instance_local_cs, *glob::state::getr().get_instance_set(), m_id, "instance");
     container::unregister_in_global_cache(m_proto_local_cs, *glob::state::getr().get_class_set(),
                                           m_id, "proto");
-
-    m_occ->set_global_load_mode(false);
 }
 
 dynamic_package::dynamic_package(const utils::id& id)
@@ -87,12 +77,49 @@ static_package::static_package(const utils::id& id)
 {
 }
 
+bool
+static_package::init()
+{
+    package::init();
+    auto path = glob::resource_locator::get()->resource(category::packages, m_id.str() + ".apkg");
+
+    ALOG_INFO("Loading package [{0}] at path [{1}]", m_id.cstr(), path.str());
+
+    std::string name, extension;
+    path.parse_file_name_and_ext(name, extension);
+
+    if (name.empty() || extension.empty() || extension != "apkg")
+    {
+        ALOG_ERROR("Loading package failed, {0} {1}", name, extension);
+        return false;
+    }
+
+    auto mapping = std::make_shared<object_mapping>();
+    if (!mapping->buiild_object_mapping(path / "package.acfg"))
+    {
+        ALOG_LAZY_ERROR;
+        return false;
+    }
+    m_occ->set_prefix_path(path).set_objects_mapping(mapping);
+
+    return true;
+}
+
 void
 static_package::load_types()
 {
     if (m_type_builder)
     {
         m_type_builder->build(*this);
+    }
+}
+
+void
+static_package::destroy_types()
+{
+    if (m_type_builder)
+    {
+        m_type_builder->destroy(*this);
     }
 }
 
@@ -106,11 +133,28 @@ static_package::load_custom_types()
 }
 
 void
+static_package::destroy_custom_types()
+{
+    if (m_types_custom_loader)
+    {
+        m_types_custom_loader->destroy(*this);
+    }
+}
+
+void
 static_package::load_render_resources()
 {
     if (m_render_resources_loader)
     {
         m_render_resources_loader->build(*this);
+    }
+}
+void
+static_package::destroy_render_resources()
+{
+    if (m_render_resources_loader)
+    {
+        m_render_resources_loader->destroy(*this);
     }
 }
 
@@ -124,11 +168,76 @@ static_package::load_render_types()
 }
 
 void
-static_package::register_types()
+static_package::destroy_render_types()
 {
-    if (m_type_register)
+    if (m_render_types_loader)
     {
-        m_type_register->build(*this);
+        m_render_types_loader->destroy(*this);
+    }
+}
+
+void
+static_package::finalize_relfection()
+{
+    for (auto rt : m_rts)
+    {
+        std::stack<reflection::reflection_type*> to_handle;
+
+        while (rt)
+        {
+            to_handle.push(rt);
+
+            if (rt->initialized)
+            {
+                break;
+            }
+            rt = rt->parent;
+        }
+
+        reflection::property_list to_insert;
+
+        while (!to_handle.empty())
+        {
+            auto& top = to_handle.top();
+
+            top->m_properties.insert(top->m_properties.end(), to_insert.begin(), to_insert.end());
+
+            to_insert = top->m_properties;
+            top->initialized = true;
+            top->override();
+
+            to_handle.pop();
+        }
+    }
+
+    for (auto& c : m_rts)
+    {
+        for (auto& p : c->m_properties)
+        {
+            if (p->serializable)
+            {
+                c->m_serilalization_properties.push_back(p);
+            }
+            c->m_editor_properties[p->category].push_back(p);
+        }
+    }
+}
+
+void
+static_package::create_default_types_objects()
+{
+    if (m_default_object_builder)
+    {
+        m_default_object_builder->build(*this);
+    }
+}
+
+void
+static_package::destroy_default_types_objects()
+{
+    if (m_default_object_builder)
+    {
+        m_default_object_builder->destroy(*this);
     }
 }
 
@@ -139,6 +248,13 @@ static_package::build_objects()
     {
         m_object_builder->build(*this);
     }
+}
+
+::agea::reflection::reflection_type*
+package_types_builder::add(static_package& sp, ::agea::reflection::reflection_type* rt)
+{
+    sp.m_rts.push_back(rt);
+    return sp.m_rts.back();
 }
 
 }  // namespace agea::core

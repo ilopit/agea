@@ -38,22 +38,6 @@ container::get_relative_path(const utils::path& p) const
 }
 
 void
-container::register_in_global_cache(cache_set& local,
-                                    cache_set& global,
-                                    const utils::id& id,
-                                    const char* extra)
-{
-    for (auto& i : local.objects->get_items())
-    {
-        auto& obj = *i.second;
-
-        global.map->add_item(obj);
-    }
-
-    ALOG_INFO("[PKG:{0}], Registered {2} {1} object", id.cstr(), local.objects->get_size(), extra);
-}
-
-void
 container::unregister_in_global_cache(cache_set& local,
                                       cache_set& global,
                                       const utils::id& id,
@@ -82,7 +66,7 @@ container::unload()
 void
 container::set_occ(std::unique_ptr<object_load_context> occ)
 {
-    m_occ = std::move(std::move(occ));
+    m_occ = std::move(occ);
 }
 
 }  // namespace core

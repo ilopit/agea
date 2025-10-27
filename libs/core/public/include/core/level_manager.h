@@ -11,7 +11,7 @@ class level_manager
 {
 public:
     level*
-    load_level(const utils::id& id, cache_set* global_class_cs, cache_set* global_instances_cs);
+    load_level(const utils::id& id);
 
     void
     unload_level(level& l);
@@ -21,10 +21,7 @@ public:
 
 private:
     level*
-    load_level_path(level& l,
-                    const utils::path& path,
-                    cache_set* global_class_cs,
-                    cache_set* global_instances_cs);
+    load_level_path(level& l, const utils::path& path);
 
     std::unordered_map<utils::id, std::unique_ptr<level>> m_levels;
 };

@@ -39,7 +39,7 @@ public:
     package&
     operator=(package&&) noexcept;
 
-    void
+    virtual bool
     init();
 
     package_state
@@ -61,9 +61,6 @@ public:
     }
 
     void
-    register_in_global_cache();
-
-    void
     unregister_in_global_cache();
 
 protected:
@@ -82,12 +79,26 @@ struct package_types_builder
     {
         return true;
     }
+    virtual bool
+    destroy(static_package& sp)
+    {
+        return true;
+    }
+
+    ::agea::reflection::reflection_type*
+    add(static_package& sp, ::agea::reflection::reflection_type* rt);
 };
 
 struct package_render_types_builder
 {
     virtual bool
     build(static_package& sp)
+    {
+        return true;
+    }
+
+    virtual bool
+    destroy(static_package& sp)
     {
         return true;
     }
@@ -100,6 +111,11 @@ struct package_types_custom_loader
     {
         return true;
     }
+    virtual bool
+    destroy(static_package& sp)
+    {
+        return true;
+    }
 };
 
 struct package_object_builder
@@ -109,12 +125,22 @@ struct package_object_builder
     {
         return true;
     }
+    virtual bool
+    destroy(static_package& sp)
+    {
+        return true;
+    }
 };
 
-struct package_types_register_builder
+struct package_types_default_objects_builder
 {
     virtual bool
     build(static_package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(static_package& sp)
     {
         return true;
     }
@@ -127,18 +153,35 @@ struct package_render_custom_resource_builder
     {
         return true;
     }
+    virtual bool
+    destroy(static_package& sp)
+    {
+        return true;
+    }
 };
 
 class static_package : public package
 {
 public:
+    friend class package_types_builder;
+
     static_package(const utils::id& id);
+
+    virtual bool
+    init() override;
 
     template <typename T>
     result_code
-    register_type()
+    create_default_class_obj()
     {
-        return object_constructor::register_package_type<T>(*m_occ);
+        return object_constructor::create_default_class_obj_impl<T>(*m_occ);
+    }
+
+    template <typename T>
+    result_code
+    destroy_default_class_obj()
+    {
+        return object_constructor::destroy_default_class_obj_impl<T>(*m_occ);
     }
 
     template <typename T>
@@ -148,7 +191,7 @@ public:
         static_assert(std::is_base_of_v<package_types_builder, T> ||
                           std::is_base_of_v<package_types_custom_loader, T> ||
                           std::is_base_of_v<package_render_types_builder, T> ||
-                          std::is_base_of_v<package_types_register_builder, T> ||
+                          std::is_base_of_v<package_types_default_objects_builder, T> ||
                           std::is_base_of_v<package_render_custom_resource_builder, T> ||
                           std::is_base_of_v<package_object_builder, T>,
                       "Unsupported type");
@@ -169,9 +212,9 @@ public:
         {
             m_render_resources_loader = std::make_unique<T>();
         }
-        else if constexpr (std::is_base_of_v<package_types_register_builder, T>)
+        else if constexpr (std::is_base_of_v<package_types_default_objects_builder, T>)
         {
-            m_type_register = std::make_unique<T>();
+            m_default_object_builder = std::make_unique<T>();
         }
         else if constexpr (std::is_base_of_v<package_object_builder, T>)
         {
@@ -183,27 +226,53 @@ public:
     load_types();
 
     void
+    destroy_types();
+
+    void
     load_custom_types();
+
+    void
+    destroy_custom_types();
 
     void
     load_render_types();
 
     void
-    register_types();
+    destroy_render_types();
+
+    void
+    finalize_relfection();
+
+    void
+    create_default_types_objects();
+
+    void
+    destroy_default_types_objects();
 
     void
     load_render_resources();
 
     void
+    destroy_render_resources();
+
+    void
     build_objects();
 
+    const std::vector<reflection::reflection_type*>
+    get_reflection_types() const
+    {
+        return m_rts;
+    }
+
+private:
     std::unique_ptr<package_types_builder> m_type_builder;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;
     std::unique_ptr<package_render_types_builder> m_render_types_loader;
     std::unique_ptr<package_render_custom_resource_builder> m_render_resources_loader;
-    std::unique_ptr<package_types_register_builder> m_type_register;
+    std::unique_ptr<package_types_default_objects_builder> m_default_object_builder;
 
     std::unique_ptr<package_object_builder> m_object_builder;
+    std::vector<reflection::reflection_type*> m_rts;
 };
 
 class dynamic_package : public package

@@ -61,9 +61,18 @@ public:
 
     template <typename T>
     static result_code
-    register_package_type(object_load_context& occ)
+    create_default_class_obj_impl(object_load_context& occ)
     {
-        return register_package_type_impl(alloc_empty_object<T>(), occ);
+        return create_default_class_obj_impl(alloc_empty_object<T>(), occ);
+    }
+
+    template <typename T>
+    static result_code
+    destroy_default_class_obj_impl(object_load_context& occ)
+    {
+        destroy_default_class_obj_impl(T::AR_TYPE_reflection().type_name, occ);
+
+        return result_code::ok;
     }
 
     static result_code
@@ -145,7 +154,11 @@ public:
 
 private:
     static result_code
-    register_package_type_impl(std::shared_ptr<root::smart_object> empty, object_load_context& olc);
+    create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
+                                  object_load_context& olc);
+
+    static result_code
+    destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
 
     static result_code
     object_load_full(serialization::conteiner& sc,

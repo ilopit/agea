@@ -26,9 +26,7 @@ namespace core
 {
 
 level*
-level_manager::load_level(const utils::id& id,
-                          cache_set* global_class_cs,
-                          cache_set* global_instances_cs)
+level_manager::load_level(const utils::id& id)
 {
     ALOG_INFO("Begin level loading with id {0}", id.cstr());
 
@@ -44,21 +42,18 @@ level_manager::load_level(const utils::id& id,
     }
     else
     {
-        l = std::make_unique<level>(id, global_class_cs, global_instances_cs);
+        l = std::make_unique<level>(id);
     }
 
     auto level_id = id.str() + ".alvl";
 
     auto path = glob::resource_locator::get()->resource(category::levels, level_id);
 
-    return load_level_path(*l, path, global_class_cs, global_instances_cs);
+    return load_level_path(*l, path);
 }
 
 level*
-level_manager::load_level_path(level& l,
-                               const utils::path& path,
-                               cache_set* global_class_cs,
-                               cache_set* global_instances_cs)
+level_manager::load_level_path(level& l, const utils::path& path)
 {
     ALOG_INFO("Begin level loading with path {0}", path.str());
 

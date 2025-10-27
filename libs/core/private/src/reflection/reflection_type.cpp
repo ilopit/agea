@@ -1,17 +1,44 @@
 #include "core/reflection/reflection_type.h"
 
 #include "core/reflection/reflection_type_utils.h"
-
+#include "core/global_state.h"
+#include <utils/agea_log.h>
 #include <stack>
 
-namespace agea
+namespace agea::reflection
 {
 
-void
-reflection::reflection_type_registry::add_type(reflection_type* t)
+reflection_type::reflection_type(int i, const agea::utils::id& n)
+    : type_id(i)
+    , type_name(n)
 {
-    m_types[t->type_id] = t;
-    m_types_by_name[t->type_name] = t;
+    ::agea::glob::state::getr().get_rm()->add_type(this);
+}
+
+reflection_type::~reflection_type()
+{
+    auto& rm = glob::state::getr().getr_rm();
+
+    rm.unload_type(type_id, type_name);
+}
+
+void
+reflection::reflection_type_registry::add_type(reflection_type* rt)
+{
+    ALOG_TRACE("Loaded {} {}", rt->type_id, rt->type_name.cstr());
+
+    {
+        auto& v = m_types[rt->type_id];
+
+        AGEA_check(!v, "Shound't exist");
+        v = rt;
+    }
+    {
+        auto& v = m_types_by_name[rt->type_name];
+
+        AGEA_check(!v, "Shound't exist");
+        v = rt;
+    }
 }
 
 reflection::reflection_type*
@@ -22,6 +49,35 @@ reflection::reflection_type_registry::get_type(const agea::utils::id& id)
     return itr != m_types_by_name.end() ? itr->second : nullptr;
 }
 
+void
+reflection::reflection_type_registry::unload_type(const int type_id, const agea::utils::id& id)
+{
+    ALOG_TRACE("Unloading {} {}", type_id, id.cstr());
+    {
+        auto itr = m_types.find(type_id);
+        if (itr != m_types.end())
+        {
+            auto& rt = itr->second;
+            AGEA_check(rt->type_class != reflection_type::reflection_type_class::agea_class ||
+                           AID("smart_object") == id || get_type(rt->parent->type_id),
+                       "Parent for classes should always exist");
+            m_types.erase(itr);
+        }
+    }
+    {
+        auto itr = m_types_by_name.find(id);
+        if (itr != m_types_by_name.end())
+        {
+            auto& rt = itr->second;
+
+            AGEA_check(rt->type_class != reflection_type::reflection_type_class::agea_class ||
+                           AID("smart_object") == id || get_type(rt->parent->type_id),
+                       "Parent for classes should always exist");
+            m_types_by_name.erase(itr);
+        }
+    }
+}
+
 reflection::reflection_type*
 reflection::reflection_type_registry::get_type(const int id)
 {
@@ -30,58 +86,10 @@ reflection::reflection_type_registry::get_type(const int id)
     return itr != m_types.end() ? itr->second : nullptr;
 }
 
-void
-reflection::reflection_type_registry::finilaze()
-{
-    for (auto& t : m_types)
-    {
-        auto* rt = t.second;
-        std::stack<reflection_type*> to_handle;
-
-        while (rt)
-        {
-            to_handle.push(rt);
-
-            if (rt->initialized)
-            {
-                break;
-            }
-            rt = rt->parent;
-        }
-
-        property_list to_insert;
-
-        while (!to_handle.empty())
-        {
-            auto& top = to_handle.top();
-
-            top->m_properties.insert(top->m_properties.end(), to_insert.begin(), to_insert.end());
-
-            to_insert = top->m_properties;
-            top->initialized = true;
-            top->override();
-
-            to_handle.pop();
-        }
-    }
-
-    for (auto& c : m_types)
-    {
-        for (auto& p : c.second->m_properties)
-        {
-            if (p->serializable)
-            {
-                c.second->m_serilalization_properties.push_back(p);
-            }
-            c.second->m_editor_properties[p->category].push_back(p);
-        }
-    }
-}
-
 #define AGEA_override_if_null(prop) prop = prop ? prop : parent->prop
 
 void
-reflection::reflection_type::override()
+reflection_type::override()
 {
     if (parent)
     {
@@ -102,7 +110,7 @@ reflection::reflection_type::override()
 }
 
 std::string
-reflection::reflection_type::as_string() const
+reflection_type::as_string() const
 {
     std::string result;
 
@@ -127,4 +135,4 @@ reflection::reflection_type::as_string() const
     return result;
 }
 
-}  // namespace agea
+}  // namespace agea::reflection

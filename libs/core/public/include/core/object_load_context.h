@@ -27,7 +27,10 @@ public:
     make_full_path(const utils::id& id, utils::path& p) const;
 
     bool
-    add_obj(std::shared_ptr<root::smart_object> obj, bool add_global);
+    add_obj(std::shared_ptr<root::smart_object> obj);
+
+    bool
+    remove_obj(const root::smart_object& obj);
 
     root::smart_object*
     find_proto_obj(const utils::id& id);
@@ -45,7 +48,6 @@ public:
     object_load_context& set_proto_global_set    (cache_set* v)                             { m_proto_global_set = v; return *this; }
     object_load_context& set_proto_local_set     (cache_set* v)                             { m_proto_local_set = v; return *this; }
     object_load_context& set_construction_type   (object_load_type t)                       { m_construction_type = t; return *this; }
-    object_load_context& set_global_load_mode    (bool v)                                   { m_is_global_load_mode = v; return *this; }
     object_load_context& set_instance_global_set (cache_set* v)                             { m_instance_global_set = v; return *this; }
     object_load_context& set_instance_local_set  (cache_set* v)                             { m_instance_local_set = v; return *this; }
     object_load_context& set_level               (level* l)                                 { m_level = l; return *this; }
@@ -57,7 +59,6 @@ public:
     cache_set*          get_proto_global_set() const    { return m_proto_global_set; }
     cache_set*          get_proto_local_set() const     { return m_proto_local_set; }
     object_load_type    get_construction_type()         { return m_construction_type; }
-    bool                get_global_load_mode()          { return m_is_global_load_mode; }
     cache_set*          get_instance_global_set() const { return m_instance_global_set; }
     cache_set*          get_instance_local_set() const  { return m_instance_local_set; }
     package*            get_package() const             { return m_package; }
@@ -87,7 +88,6 @@ public:
 private:
     object_load_type m_construction_type = object_load_type::nav;
     utils::path m_path_prefix;
-    bool m_is_global_load_mode = false;
 
     cache_set* m_proto_global_set = nullptr;
     cache_set* m_proto_local_set = nullptr;

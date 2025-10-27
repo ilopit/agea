@@ -43,12 +43,24 @@ package_manager::init()
         sp->load_types();
     }
 
-    glob::state::getr().get_rm()->finilaze();
+    for (auto& sp : m_static_packages)
+    {
+        sp->load_render_types();
+    }
 
     for (auto& sp : m_static_packages)
     {
-        sp->register_types();
-        sp->register_in_global_cache();
+        sp->finalize_relfection();
+    }
+
+    for (auto& sp : m_static_packages)
+    {
+        sp->load_render_resources();
+    }
+
+    for (auto& sp : m_static_packages)
+    {
+        sp->create_default_types_objects();
     }
 
     /*
@@ -143,7 +155,6 @@ package_manager::load_package(const utils::id& id)
         }
     }
 
-    new_package->register_in_global_cache();
     new_package->set_state(package_state::loaded);
 
     m_packages[id] = new_package.get();
@@ -169,7 +180,6 @@ package_manager::unload_package(const utils::id& id)
 bool
 package_manager::unload_package(package& p)
 {
-    p.unregister_in_global_cache();
     p.unload();
 
     return true;

@@ -81,7 +81,7 @@ public:
     }
 
     void
-    remove_item(root::smart_object& obj)
+    remove_item(const root::smart_object& obj)
     {
         ALOG_INFO("Removing {0}", obj.get_id().cstr());
 
@@ -106,16 +106,4 @@ private:
     std::unordered_map<architype, architype_cache*> m_mapping;
 };
 }  // namespace core
-
-namespace glob
-{
-struct object_caches_map : public singleton_instance<::agea::core::caches_map, object_caches_map>
-{
-};
-
-struct proto_object_caches_map
-    : public singleton_instance<::agea::core::caches_map, proto_object_caches_map>
-{
-};
-}  // namespace glob
 }  // namespace agea

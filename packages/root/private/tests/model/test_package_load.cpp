@@ -6,6 +6,7 @@
 #include <core/level_manager.h>
 #include <core/global_state.h>
 #include <core/reflection/reflection_type.h>
+#include <core/architype.h>
 
 #include "packages/root/package.root.h"
 
@@ -18,24 +19,38 @@
 
 using namespace agea;
 
-struct test_load_level : public base_test
+void
+validate_empty_cache(core::state& gs)
+{
+    for (auto i = core::architype::first; i < core::architype::last;
+         i = (core::architype)((uint8_t)i + 1))
+    {
+        ASSERT_TRUE(gs.getr_class_cache_map().get_cache(i)->get_items().empty())
+            << "Failed at " << ::agea::core::to_string(i);
+    }
+}
+
+struct test_root_package : public base_test
 {
     void
     SetUp()
     {
-        agea::glob::state::reset();
         base_test::SetUp();
+
+        agea::glob::state::reset();
     }
 
     void
     TearDown()
     {
+        root::package::reset_instance();
         agea::glob::state::reset();
+
         base_test::TearDown();
     }
 };
 
-TEST_F(test_load_level, basic_load)
+TEST_F(test_root_package, basic_load)
 {
     auto& gs = glob::state::getr();
 
@@ -58,9 +73,25 @@ TEST_F(test_load_level, basic_load)
     pkg.register_package_extention<root::package::package_types_builder>();
     pkg.register_package_extention<root::package::package_types_default_objects_builder>();
 
-    auto& lm = gs.getr_lm();
+    validate_empty_cache(gs);
 
-    auto l = lm.load_level(AID(""));
+    pkg.init();
 
-    int i = 2;
+    pkg.load_types();
+    pkg.load_render_types();
+    pkg.load_render_resources();
+    pkg.finalize_relfection();
+    pkg.create_default_types_objects();
+
+    ASSERT_EQ(pkg.get_reflection_types().size(), 38);
+    auto s = pkg.get_local_cache().objects->get_size();
+
+    pkg.destroy_default_types_objects();
+    pkg.destroy_render_resources();
+    pkg.destroy_render_types();
+    pkg.destroy_types();
+
+    ASSERT_TRUE(gs.getr_rm().get_types_to_id().empty());
+    ASSERT_TRUE(gs.getr_rm().get_types_to_name().empty());
+    validate_empty_cache(gs);
 }

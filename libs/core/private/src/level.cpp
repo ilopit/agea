@@ -16,7 +16,7 @@ namespace agea
 namespace core
 {
 
-level::level(const utils::id& id, cache_set* class_global_set, cache_set* instance_global_set)
+level::level(const utils::id& id)
     : container(id)
 {
     m_occ = std::make_unique<object_load_context>();
@@ -24,9 +24,8 @@ level::level(const utils::id& id, cache_set* class_global_set, cache_set* instan
         .set_ownable_cache(&m_objects)
         .set_objects_mapping(m_mapping)
         .set_level(this)
-        .set_global_load_mode(true)
-        .set_proto_global_set(class_global_set)
-        .set_instance_global_set(instance_global_set);
+        .set_proto_global_set(glob::state::getr().get_class_set())
+        .set_instance_global_set(glob::state::getr().get_instance_set());
 }
 
 level::~level()

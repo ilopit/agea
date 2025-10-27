@@ -80,6 +80,9 @@ struct reflection_type
         agea_external
     };
 
+    reflection_type(int type_id, const agea::utils::id& type_name);
+    ~reflection_type();
+
     void
     override();
 
@@ -133,7 +136,19 @@ public:
     get_type(const agea::utils::id& id);
 
     void
-    finilaze();
+    unload_type(const int type_id, const agea::utils::id& id);
+
+    const auto&
+    get_types_to_id() const
+    {
+        return m_types;
+    }
+
+    const auto&
+    get_types_to_name() const
+    {
+        return m_types_by_name;
+    }
 
 private:
     std::unordered_map<int, reflection_type*> m_types;

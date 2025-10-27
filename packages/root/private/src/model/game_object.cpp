@@ -79,16 +79,34 @@ game_object::spawn_component_with_proto(component* parent,
 {
     auto& occ = m_package ? m_package->get_load_context() : m_level->get_load_context();
 
+    result_code rc = result_code::failed;
+
     auto proto_obj = occ.find_obj(proto_id);
 
+    std::vector<root::smart_object*> loaded_obj;
     if (!proto_obj)
     {
-        return nullptr;
+        ALOG_TRACE("Proto [{}] doesn't exist", proto_id.cstr());
+
+        rc = core::object_constructor::object_load(proto_id, core::object_load_type::class_obj, occ,
+                                                   proto_obj, loaded_obj);
+
+        if (rc != result_code::ok)
+        {
+            return nullptr;
+        }
+
+        for (auto obj : loaded_obj)
+        {
+            obj->post_load();
+        }
     }
+
+    loaded_obj.clear();
 
     root::smart_object* result = nullptr;
 
-    auto rc = core::object_constructor::object_clone_create_internal(*proto_obj, id, occ, result);
+    rc = core::object_constructor::object_clone(*proto_obj, id, occ, result, loaded_obj);
     if (rc != result_code::ok)
     {
         return nullptr;

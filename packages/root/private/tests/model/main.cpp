@@ -11,7 +11,7 @@
 int
 main(int argc, char** argv)
 {
-    ::agea::utils::setup_logger();
+    ::agea::utils::setup_logger(spdlog::level::level_enum::trace);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
