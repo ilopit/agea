@@ -21,7 +21,7 @@ TEST_F(test_global_state, all)
 
     int executing_ctr = 0;
 
-    agea::glob::state::getr().schedule_register([&executing_ctr]() { ++executing_ctr; });
+    agea::glob::glob_state().schedule_register([&executing_ctr]() { ++executing_ctr; });
 
     auto& gs = agea::glob::state::getr();
 

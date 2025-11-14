@@ -7,7 +7,6 @@
 #include "core/model_minimal.h"
 #include "core/container.h"
 
-#include <packages/root/model/components/mesh_component.h>
 #include <packages/root/model/core_types/vec3.h>
 
 #include <utils/singleton_instance.h>
@@ -67,11 +66,11 @@ public:
 
     void
     tick(float dt);
-    
+
     game_objects_cache&
     get_game_objects()
     {
-        return *m_instance_local_cs.game_objects.get();
+        return m_instance_local_cs.game_objects;
     }
 
     void

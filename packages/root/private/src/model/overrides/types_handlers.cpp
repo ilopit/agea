@@ -6,21 +6,14 @@
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/texture.h"
 #include "packages/root/model/assets/shader_effect.h"
-#include "packages/root/model/assets/pbr_material.h"
-#include "packages/root/model/assets/solid_color_material.h"
-#include "packages/root/model/assets/simple_texture_material.h"
-#include "packages/root/model/mesh_object.h"
-#include "packages/root/model/lights/point_light.h"
-#include "packages/root/model/lights/components/point_light_component.h"
-#include "packages/root/model/components/mesh_component.h"
 
-#include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
 #include <core/caches/cache_set.h>
 #include <core/object_load_context.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
+#include <core/global_state.h>
 
 #include <utils/agea_log.h>
 #include <utils/string_utility.h>
@@ -125,15 +118,7 @@ smart_obj__deserialize(AGEA_deserialization_args)
 {
     AGEA_unused(occ);
 
-    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-
-    // auto id = AID(jc["id"].as<std::string>());
-
-    //     auto pstr = ::agea::glob::class_objects_cache::get()->get_item(id);
-    //
-    //     field = pstr;
-
-    return result_code::ok;
+    return load_smart_object(ptr, jc, occ, core::architype::smart_object);
 }
 
 agea::result_code
@@ -164,6 +149,18 @@ agea::result_code
 smart_obj__compare(AGEA_compare_handler_args)
 {
     return result_code::failed;
+}
+
+agea::result_code
+smart_obj__load_derive(AGEA_deserialization_update_args)
+{
+    AGEA_unused(occ);
+
+    auto& field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
+
+    ::agea::core::object_constructor::update_object_properties(*field, jc, occ);
+
+    return result_code::ok;
 }
 
 agea::result_code

@@ -23,9 +23,7 @@ level::level(const utils::id& id)
     m_occ->set_instance_local_set(&m_instance_local_cs)
         .set_ownable_cache(&m_objects)
         .set_objects_mapping(m_mapping)
-        .set_level(this)
-        .set_proto_global_set(glob::state::getr().get_class_set())
-        .set_instance_global_set(glob::state::getr().get_instance_set());
+        .set_level(this);
 }
 
 level::~level()
@@ -35,13 +33,13 @@ level::~level()
 root::game_object*
 level::find_game_object(const utils::id& id)
 {
-    return m_instance_local_cs.game_objects->get_item(id);
+    return m_instance_local_cs.game_objects.get_item(id);
 }
 
 root::component*
 level::find_component(const utils::id& id)
 {
-    return m_instance_local_cs.components->get_item(id);
+    return m_instance_local_cs.components.get_item(id);
 }
 
 root::smart_object*
@@ -138,7 +136,7 @@ level::drop_pending_updates()
 void
 level::unregister_objects()
 {
-    container::unregister_in_global_cache(m_instance_local_cs, *glob::state::getr().get_class_set(),
+    container::unregister_in_global_cache(m_instance_local_cs, *glob::glob_state().get_class_set(),
                                           m_id, "instance");
 }
 

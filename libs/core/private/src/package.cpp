@@ -29,8 +29,6 @@ package::init()
     m_occ->set_package(this)
         .set_proto_local_set(&m_proto_local_cs)
         .set_ownable_cache(&m_objects)
-        .set_proto_global_set(glob::state::getr().get_class_set())
-        .set_instance_global_set(glob::state::getr().get_instance_set())
         .set_instance_local_set(&m_instance_local_cs);
 
     return true;
@@ -49,9 +47,9 @@ package::~package()
 void
 package::unregister_in_global_cache()
 {
-    container::unregister_in_global_cache(
-        m_instance_local_cs, *glob::state::getr().get_instance_set(), m_id, "instance");
-    container::unregister_in_global_cache(m_proto_local_cs, *glob::state::getr().get_class_set(),
+    container::unregister_in_global_cache(m_instance_local_cs,
+                                          *glob::glob_state().get_instance_set(), m_id, "instance");
+    container::unregister_in_global_cache(m_proto_local_cs, *glob::glob_state().get_class_set(),
                                           m_id, "proto");
 }
 
@@ -81,7 +79,8 @@ bool
 static_package::init()
 {
     package::init();
-    auto path = glob::resource_locator::get()->resource(category::packages, m_id.str() + ".apkg");
+    auto path = glob::glob_state().get_resource_locator()->resource(category::packages,
+                                                                    m_id.str() + ".apkg");
 
     ALOG_INFO("Loading package [{0}] at path [{1}]", m_id.cstr(), path.str());
 

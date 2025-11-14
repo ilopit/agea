@@ -160,7 +160,7 @@ level_editor_window::handle()
         return;
     }
 
-    auto level = ::agea::glob::state::getr().get_current_level();
+    auto level = ::agea::glob::glob_state().get_current_level();
 
     if (ImGui::TreeNode("Level Objects"))
     {
@@ -202,7 +202,7 @@ materials_selector::handle()
     ImGui::InputText("##material", m_filtering_text.data(), m_filtering_text.size(), 0);
     ImGui::Separator();
 
-    glob::state::getr().get_class_materials_cache()->call_on_items(
+    glob::glob_state().get_class_materials_cache()->call_on_items(
         [this](root::material* m)
         {
             {

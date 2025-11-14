@@ -76,10 +76,10 @@ game_object_components_prototype(::agea::reflection::property_prototype_context&
     auto& sc = *ctx.sc;
 
     auto items = sc[ctx.dst_property->name];
-    auto items_size = items.size();
+    auto number_of_components = items.size();
 
     auto layout = sc["layout"];
-    auto layout_size = items_size;
+    auto layout_size = number_of_components;
 
     std::vector<int> layout_mapping;
     for (unsigned i = 0; i < layout_size; ++i)
@@ -99,11 +99,11 @@ game_object_components_prototype(::agea::reflection::property_prototype_context&
         ctx.dst_obj->as_blob() + ctx.dst_property->offset);
 
     AGEA_check(dst_properties.empty(), "Should alway be empty!!");
-    AGEA_check(items_size == src_properties.size(), "Should alway be same!!");
+    AGEA_check(number_of_components == src_properties.size(), "Should alway be same!!");
 
     dst_properties.resize(src_properties.size());
 
-    for (unsigned i = 0; i < items_size; ++i)
+    for (unsigned i = 0; i < number_of_components; ++i)
     {
         auto item = items[i];
 
@@ -128,7 +128,7 @@ game_object_components_serialize(::agea::reflection::serialize_context& dc)
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (class_obj.has_flag(root::smart_object_state_flag::standalone))
+    if (class_obj.get_flags().standalone)
     {
         serialization::conteiner components_conteiner;
         serialization::conteiner components_layout;
@@ -232,7 +232,7 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
         ctx.dst_property->get_blob(*ctx.dst_obj));
 
     dst_col.resize(src_col.size());
-    auto gen = glob::state::getr().get_id_generator();
+    auto gen = glob::glob_state().get_id_generator();
 
     for (int i = 0; i < src_col.size(); ++i)
     {
@@ -246,7 +246,7 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
         }
         else
         {
-            auto id = gen->generate(ctx.src_obj->get_id(), src_col[i]->get_id());
+            auto id = gen->generate(ctx.src_obj->get_id());
 
             rc = core::object_constructor::object_clone_create_internal(*src_col[i], id, *ctx.occ,
                                                                         obj);
@@ -261,6 +261,83 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
         comp->set_order_parent_idx(src_col[i]->get_order_idx(), src_col[i]->get_parent_idx());
 
         dst_col[i] = comp;
+    }
+
+    return result_code::ok;
+}
+
+result_code
+game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
+{
+    AGEA_check(ctx.dst_property->name == "components", "Only compoentns expected");
+
+    auto& sc = *ctx.sc;
+
+    auto components = sc[ctx.dst_property->name];
+    auto layout = sc["layout"];
+
+    if ((!components) != (!layout))
+    {
+        ALOG_ERROR("Both layout and components should exist/not exist");
+        return result_code::failed;
+    }
+
+    auto& src_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+        ctx.src_obj->as_blob() + ctx.dst_property->offset);
+
+    auto& dst_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+        ctx.dst_obj->as_blob() + ctx.dst_property->offset);
+
+    AGEA_check(dst_components.empty(), "Should alway be empty!!");
+
+    if (components)
+    {
+        auto components_size = components.size();
+        auto layout_size = layout.size();
+
+        if (components_size != layout_size)
+        {
+            ALOG_ERROR("Missconfigured layout");
+            return result_code::failed;
+        }
+
+        dst_components.resize(components_size);
+
+        for (unsigned i = 0; i < components_size; ++i)
+        {
+            auto item = components[i];
+
+            root::smart_object* obj = nullptr;
+            auto rc = core::object_constructor::object_load_internal(item, *ctx.occ, obj);
+
+            if (rc != result_code::ok || !obj ||
+                obj->get_architype_id() != core::architype::component)
+            {
+                ALOG_LAZY_ERROR;
+                return result_code::failed;
+            }
+
+            dst_components[i] = obj->as<root::component>();
+            dst_components[i]->set_order_parent_idx(i, layout[i].as<int>());
+        }
+    }
+    else
+    {
+        for (auto c : src_components)
+        {
+            AGEA_check(c->get_flags().proto_obj, "Only protos are alowed");
+
+            auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
+
+            root::smart_object* obj = nullptr;
+            if (core::object_constructor::object_clone_create_internal(*c, gid, *ctx.occ, obj) !=
+                result_code::ok)
+            {
+                return result_code::fallback;
+            }
+
+            dst_components.push_back(obj->as<root::component>());
+        }
     }
 
     return result_code::ok;
@@ -338,6 +415,39 @@ texture_sample_copy(::agea::reflection::copy_context& ctx)
 
         dst->get_sample(id).txt = obj->as<root::texture>();
     }
+
+    return result_code::ok;
+}
+
+result_code
+texture_load_derive(reflection::property_load_derive_context& ctx)
+{
+    auto src = ctx.dst_obj->as<root::material>();
+
+    auto& sc = *ctx.sc;
+
+    auto item = sc[ctx.src_property->name];
+
+    const auto id = AID(ctx.src_property->name);
+    const auto texture_id = AID(item["texture"].as<std::string>());
+
+    root::smart_object* obj = nullptr;
+    auto rc = core::object_constructor::object_load_internal(texture_id, *ctx.occ, obj);
+
+    if (rc != result_code::ok)
+    {
+        ALOG_ERROR("Texture doesn't exist");
+        return rc;
+    }
+
+    auto& s = obj->get_flags();
+
+    const auto slot = item["slot"].as<uint32_t>();
+
+    auto& sample = src->get_sample(id);
+    sample.txt = obj->as<root::texture>();
+    sample.sampler_id = AID(item["sampler"].as<std::string>());
+    sample.slot = slot;
 
     return result_code::ok;
 }

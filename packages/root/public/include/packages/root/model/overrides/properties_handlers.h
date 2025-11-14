@@ -7,16 +7,15 @@ namespace agea::root
 {
 // clang-format off
 result_code game_object_components_deserialize(reflection::deserialize_context& dc);
-result_code game_object_components_prototype(reflection::property_prototype_context& dc);
 result_code game_object_components_serialize(reflection::serialize_context& dc);
 result_code game_object_components_compare(reflection::compare_context& ctx);
 result_code game_object_components_copy(reflection::copy_context& ctx);
+result_code game_object_load_derive(reflection::property_load_derive_context& ctx);
 
 result_code texture_sample_deserialize(reflection::deserialize_context& dc);
-
-result_code texture_sample_prototype(reflection::property_prototype_context& dc);
 result_code texture_sample_serialize(reflection::serialize_context& dc);
 result_code texture_sample_compare(reflection::compare_context& ctx);
 result_code texture_sample_copy(reflection::copy_context& ctx);
+result_code texture_load_derive(reflection::property_load_derive_context& ctx);
 
 }  // namespace agea::root

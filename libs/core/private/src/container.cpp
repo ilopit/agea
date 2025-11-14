@@ -43,15 +43,14 @@ container::unregister_in_global_cache(cache_set& local,
                                       const utils::id& id,
                                       const char* extra)
 {
-    for (auto& i : local.objects->get_items())
+    for (auto& i : local.objects.get_items())
     {
         auto& obj = *i.second;
 
-        global.map->remove_item(obj);
+        global.map.remove_item(obj);
     }
 
-    ALOG_INFO("[PKG:{0}], Unregistered {2} {1} object", id.cstr(), local.objects->get_size(),
-              extra);
+    ALOG_INFO("[PKG:{0}], Unregistered {2} {1} object", id.cstr(), local.objects.get_size(), extra);
 }
 
 void

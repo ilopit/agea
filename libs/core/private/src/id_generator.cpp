@@ -42,37 +42,13 @@ id_generator::generate(const utils::id& obj_id)
 
     for (;;)
     {
-        auto ctr = m_mapping[AID(obj_id_raw)].ctr++;
-        std::string s = std::format("{}#{}", obj_id_raw.c_str(), ctr);
+        auto& node = m_mapping[AID(obj_id_raw)];
 
-        if (glob::state::getr().get_instance_objects_cache()->has_item(AID(s)) ||
-            glob::state::getr().get_class_objects_cache()->has_item(AID(s)))
-        {
-            continue;
-        }
-        new_id = AID(s);
-        break;
-    }
+        std::string s = std::format("{}#{}", obj_id_raw.c_str(), node.ctr);
+        ++node.ctr;
 
-    return new_id;
-}
-
-utils::id
-id_generator::generate(const utils::id& old_obj_id, const utils::id& old_component_id)
-{
-    auto old_component_id_raw = old_component_id.str();
-    clear_numbered_part(old_component_id_raw);
-
-    utils::id new_id;
-
-    for (;;)
-    {
-        auto ctr = m_mapping[AID(old_component_id_raw)].ctr++;
-        std::string s =
-            std::format("{}/{}#{}", old_obj_id.cstr(), old_component_id_raw.c_str(), ctr);
-
-        if (glob::state::getr().get_instance_objects_cache()->has_item(AID(s)) ||
-            glob::state::getr().get_class_objects_cache()->has_item(AID(s)))
+        if (glob::glob_state().get_instance_objects_cache()->has_item(AID(s)) ||
+            glob::glob_state().get_class_objects_cache()->has_item(AID(s)))
         {
             continue;
         }

@@ -72,12 +72,4 @@ private:
     std::filesystem::path m_root = std::filesystem::current_path().parent_path();
 };
 
-namespace glob
-{
-struct resource_locator
-    : public ::agea::singleton_instance<::agea::resource_locator, resource_locator>
-{
-};
-}  // namespace glob
-
 }  // namespace agea

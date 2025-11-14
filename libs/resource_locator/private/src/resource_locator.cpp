@@ -8,8 +8,6 @@
 namespace agea
 {
 
-glob::resource_locator::type glob::resource_locator::type::s_instance;
-
 temp_dir_context::~temp_dir_context()
 {
     if (folder)

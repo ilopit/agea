@@ -12,12 +12,12 @@ reflection_type::reflection_type(int i, const agea::utils::id& n)
     : type_id(i)
     , type_name(n)
 {
-    ::agea::glob::state::getr().get_rm()->add_type(this);
+    ::agea::glob::glob_state().get_rm()->add_type(this);
 }
 
 reflection_type::~reflection_type()
 {
-    auto& rm = glob::state::getr().getr_rm();
+    auto& rm = glob::glob_state().getr_rm();
 
     rm.unload_type(type_id, type_name);
 }
@@ -101,6 +101,7 @@ reflection_type::override()
         AGEA_override_if_null(serialize);
         AGEA_override_if_null(deserialize);
         AGEA_override_if_null(deserialize_with_proto);
+        AGEA_override_if_null(load_derive);
         AGEA_override_if_null(copy);
         AGEA_override_if_null(compare);
         AGEA_override_if_null(to_string);

@@ -16,6 +16,9 @@ class reflection_type_registry;
 class lua_api;
 
 }  // namespace reflection
+
+class resource_locator;
+
 }  // namespace agea
 
 namespace agea::core
@@ -102,6 +105,12 @@ struct state_mutator__current_level
     set(level& lvl, state& es);
 };
 
+struct state_mutator__resource_locator
+{
+    static void
+    set(state& es);
+};
+
 using scheduled_action = std::function<void(state& s)>;
 
 class state
@@ -113,6 +122,7 @@ class state
     friend class state_mutator__lua_api;
     friend class state_mutator__package_manager;
     friend class state_mutator__reflection_manager;
+    friend class state_mutator__resource_locator;
 
 public:
     enum class state_stage
@@ -164,6 +174,7 @@ public:
     AGEA_gen_getter(lua, reflection::lua_api);
     AGEA_gen_getter(rm, reflection::reflection_type_registry);
     AGEA_gen_getter(id_generator, id_generator);
+    AGEA_gen_getter(resource_locator, resource_locator);
 
     template <typename T>
     T*
@@ -211,8 +222,9 @@ private:
     level_manager*            m_lm = nullptr;
     package_manager*          m_pm = nullptr;
     reflection::lua_api*      m_lua = nullptr;
-    reflection::reflection_type_registry* m_rm = nullptr;
-    id_generator* m_id_generator = nullptr;
+    reflection::reflection_type_registry* m_rm   = nullptr;
+    id_generator*             m_id_generator     = nullptr;
+    resource_locator*         m_resource_locator = nullptr;
 
     // clang-format on
 
@@ -228,11 +240,15 @@ private:
 
 namespace agea::glob
 {
-struct state : public simple_singletone<::agea::core::state>
-{
-};
+// extern ::agea::core::state glob_state;
+
+::agea::core::state&
+glob_state();
+
+void
+glob_state_reset();
 }  // namespace agea::glob
 
 #define AGEA_gen__static_schedule(when, action)                 \
     const static int AGEA_concat2(si_identifier, __COUNTER__) = \
-        ::agea::glob::state::getr().schedule_action(when, action)
+        agea::glob::glob_state().schedule_action(when, action)

@@ -18,7 +18,6 @@ class mesh;
 class material;
 class smart_object;
 class shader_effect;
-class light_component;
 
 }  // namespace root
 namespace core

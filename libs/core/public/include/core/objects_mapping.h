@@ -29,6 +29,9 @@ public:
     void
     clear();
 
+    object_mapping&
+    add(const utils::id& id, bool is_class, const utils::path& p);
+
     std::unordered_map<utils::id, item> m_items;
 };
 }  // namespace core

@@ -5,6 +5,7 @@
 #include <packages/root/model/smart_object.h>
 
 #include "core/package.h"
+#include "core/global_state.h"
 
 #include "utils/agea_log.h"
 #include "utils/check.h"
@@ -16,9 +17,7 @@ namespace core
 
 object_load_context::object_load_context()
     : m_path_prefix()
-    , m_proto_global_set()
     , m_proto_local_set()
-    , m_instance_global_set()
     , m_instance_local_set()
     , m_ownable_cache_ptr(nullptr)
 {
@@ -75,16 +74,17 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
     {
     case object_load_type::class_obj:
     {
-        m_proto_local_set->map->add_item(obj_ref);
-        m_proto_global_set->map->add_item(obj_ref);
+        m_proto_local_set->map.add_item(obj_ref);
+
+        glob::glob_state().get_class_cache_map()->add_item(obj_ref);
 
         break;
     }
     case object_load_type::instance_obj:
     case object_load_type::mirror_copy:
     {
-        m_instance_local_set->map->add_item(obj_ref);
-        m_instance_global_set->map->add_item(obj_ref);
+        m_instance_local_set->map.add_item(obj_ref);
+        glob::glob_state().get_instance_cache_map()->add_item(obj_ref);
         break;
     }
     default:
@@ -98,8 +98,9 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 bool
 object_load_context::remove_obj(const root::smart_object& obj)
 {
-    m_proto_local_set->map->remove_item(obj);
-    m_proto_global_set->map->remove_item(obj);
+    m_proto_local_set->map.remove_item(obj);
+
+    glob::glob_state().get_class_cache_map()->remove_item(obj);
 
     return false;
 }
@@ -107,35 +108,38 @@ object_load_context::remove_obj(const root::smart_object& obj)
 root::smart_object*
 object_load_context::find_proto_obj(const utils::id& id)
 {
-    auto obj = m_proto_local_set ? m_proto_local_set->objects->get_item(id) : nullptr;
+    auto obj = m_proto_local_set ? m_proto_local_set->objects.get_item(id) : nullptr;
 
-    if (obj)
+    if (!obj)
     {
-        return obj;
+        obj = glob::glob_state().get_class_objects_cache()->get_item(id);
     }
 
-    return m_proto_global_set ? m_proto_global_set->objects->get_item(id) : nullptr;
+    AGEA_check(!obj || obj->get_flags().proto_obj, "Should always be proto!");
+    AGEA_check(!obj || !obj->get_flags().instance_obj, "Should always be proto!");
+    return obj;
 }
 
 root::smart_object*
 object_load_context::find_obj(const utils::id& id)
 {
-    auto obj =
-        m_instance_local_set->objects ? m_instance_local_set->objects->get_item(id) : nullptr;
+    auto obj = m_instance_local_set ? m_instance_local_set->objects.get_item(id) : nullptr;
 
-    if (obj)
+    if (!obj)
     {
-        return obj;
+        obj = glob::glob_state().get_instance_objects_cache()->get_item(id);
     }
 
-    return m_instance_global_set ? m_instance_global_set->objects->get_item(id) : nullptr;
+    AGEA_check(!obj || obj->get_flags().instance_obj, "Should always be instance_obj!");
+    AGEA_check(!obj || !obj->get_flags().proto_obj, "Should always be instance_obj!");
+    return obj;
 }
 
 root::smart_object*
 object_load_context::find_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
-    auto c = m_instance_local_set ? m_instance_local_set->map->get_cache(a_type) : nullptr;
+    auto c = m_instance_local_set ? m_instance_local_set->map.get_cache(a_type) : nullptr;
 
     if (c)
     {
@@ -146,11 +150,7 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
         }
     }
 
-    c = m_instance_global_set ? m_instance_global_set->map->get_cache(a_type) : nullptr;
-    if (c)
-    {
-        obj = c->get_item(id);
-    }
+    obj = glob::glob_state().get_class_objects_cache()->get_item(id);
 
     return obj;
 }
@@ -159,7 +159,7 @@ root::smart_object*
 object_load_context::find_proto_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
-    auto c = m_proto_local_set ? m_proto_local_set->map->get_cache(a_type) : nullptr;
+    auto c = m_proto_local_set ? m_proto_local_set->map.get_cache(a_type) : nullptr;
 
     if (c)
     {
@@ -170,11 +170,7 @@ object_load_context::find_proto_obj(const utils::id& id, architype a_type)
         }
     }
 
-    c = m_proto_global_set ? m_proto_global_set->map->get_cache(a_type) : nullptr;
-    if (c)
-    {
-        obj = c->get_item(id);
-    }
+    obj = glob::glob_state().get_class_objects_cache()->get_item(id);
 
     return obj;
 }

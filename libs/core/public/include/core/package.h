@@ -63,6 +63,12 @@ public:
     void
     unregister_in_global_cache();
 
+    cache_set&
+    get_proto_local_cs()
+    {
+        return m_proto_local_cs;
+    }
+
 protected:
     package_state m_state = package_state::unloaded;
     package_type m_type = package_type::pt_nan;
@@ -262,6 +268,26 @@ public:
     get_reflection_types() const
     {
         return m_rts;
+    }
+
+    void
+    complete_load()
+    {
+        init();
+        load_types();
+        load_render_types();
+        finalize_relfection();
+        load_render_resources();
+        create_default_types_objects();
+    }
+
+    void
+    complete_unload()
+    {
+        destroy_default_types_objects();
+        destroy_render_resources();
+        destroy_render_types();
+        destroy_types();
     }
 
 private:

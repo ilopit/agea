@@ -88,7 +88,7 @@ property::default_copy(copy_context& cxt)
 }
 
 result_code
-property::default_prototype(property_prototype_context& ctx)
+property::default_load_derive(property_load_derive_context& ctx)
 {
     if (!ctx.src_property->rtype->copy)
     {

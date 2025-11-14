@@ -1,0 +1,7 @@
+class_id: simple_texture_material
+id: test_material
+shader_effect: shader_effect
+simple_texture:
+    texture: texture
+    slot: 0
+    sampler: default

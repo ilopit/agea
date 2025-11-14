@@ -60,5 +60,15 @@ object_mapping::clear()
     m_items.clear();
 }
 
+object_mapping&
+object_mapping::add(const utils::id& id, bool is_class, const utils::path& p)
+{
+    auto& i = m_items[id];
+    i.is_class = is_class;
+    i.p = p;
+
+    return *this;
+}
+
 }  // namespace core
 }  // namespace agea

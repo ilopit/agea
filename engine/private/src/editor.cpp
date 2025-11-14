@@ -12,9 +12,9 @@
 #include <core/global_state.h>
 
 #include <packages/root/model/game_object.h>
-#include <packages/root/model/lights/point_light.h>
-#include <packages/root/model/lights/directional_light.h>
-#include <packages/root/model/lights/spot_light.h>
+#include <packages/base/model/lights/point_light.h>
+#include <packages/base/model/lights/directional_light.h>
+#include <packages/base/model/lights/spot_light.h>
 
 namespace agea
 {
@@ -95,7 +95,7 @@ game_editor::ev_mouse_press()
 void
 game_editor::ev_reload()
 {
-    auto& level = glob::state::getr().getr_current_level();
+    auto& level = glob::glob_state().getr_current_level();
 
     level.drop_pending_updates();
 
@@ -105,8 +105,8 @@ game_editor::ev_reload()
 
     glob::engine::getr().unload_render_resources(level);
 
-    auto lm = glob::state::getr().get_lm();
-    auto pm = glob::state::getr().get_pm();
+    auto lm = glob::glob_state().get_lm();
+    auto pm = glob::glob_state().get_pm();
 
     lm->unload_level(level);
 
@@ -123,7 +123,7 @@ game_editor::ev_reload()
 void
 game_editor::ev_spawn()
 {
-    if (glob::state::getr().getr_current_level().find_game_object(AID("obj_0_0_0")))
+    if (glob::glob_state().getr_current_level().find_game_object(AID("obj_0_0_0")))
     {
         return;
     }
@@ -146,7 +146,7 @@ game_editor::ev_spawn()
 
                 sp.positon = root::vec3{x * 40.f, y * 40.f, z * 40.f};
                 sp.scale = root::vec3{10.f};
-                auto p = glob::state::getr()
+                auto p = glob::glob_state()
                              .getr_current_level()
                              .spawn_object_from_proto<root::game_object>((z & 1) ? id1 : id2,
                                                                          AID(id), sp);
@@ -158,7 +158,7 @@ game_editor::ev_spawn()
 void
 game_editor::ev_lights()
 {
-    auto& lvl = glob::state::getr().getr_current_level();
+    auto& lvl = glob::glob_state().getr_current_level();
 
     if (lvl.find_game_object(AID("PL1")))
     {
@@ -166,21 +166,21 @@ game_editor::ev_lights()
     }
 
     {
-        root::spot_light::construct_params plp;
+        base::spot_light::construct_params plp;
         plp.pos = {-20.f};
-        lvl.spawn_object<root::spot_light>(AID("PL1"), plp);
+        lvl.spawn_object<base::spot_light>(AID("PL1"), plp);
     }
 
     {
-        root::point_light::construct_params plp;
+        base::point_light::construct_params plp;
         plp.pos = {15.f};
-        lvl.spawn_object<root::point_light>(AID("PL2"), plp);
+        lvl.spawn_object<base::point_light>(AID("PL2"), plp);
     }
 
     {
-        root::directional_light::construct_params dcp;
+        base::directional_light::construct_params dcp;
         dcp.pos = {0.f, 20.f, 0.0};
-        lvl.spawn_object<root::directional_light>(AID("DL"), dcp);
+        lvl.spawn_object<base::directional_light>(AID("DL"), dcp);
     }
 }
 

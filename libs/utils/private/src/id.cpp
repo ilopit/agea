@@ -49,6 +49,28 @@ id::make_id(const std::string& id_str)
     return result;
 }
 
+id
+id::make_id(const id& left, const id& right)
+{
+    id result = left;
+
+    size_t size = strlen(result.m_id);
+    size_t right_size = strlen(right.m_id);
+
+    // Prevent buffer overflow: only copy up to remaining capacity, leaving space for null
+    // terminator
+    size_t copy_len = std::min(right_size, id_size_in_bytes() - size);
+
+    if (copy_len > 0)
+    {
+        result.m_id[size] = '/';
+        memcpy(result.m_id + size + 1, right.m_id, copy_len);
+        result.m_id[size + copy_len + 1] = '\0';
+    }
+
+    return result;
+}
+
 id::id(const id& other)
 {
     memcpy(m_id, other.m_id, id_size_in_bytes() + 1);

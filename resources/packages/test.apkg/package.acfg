@@ -1,5 +1,5 @@
 class_obj_mapping:
-  - cube_mesh_component: class/components/cube_mesh_component.aobj
-  - cube_mesh_component_derived: class/components/cube_mesh_component_derived.aobj
-  - cubes_chain: class/game_objects/cubes_chain.aobj
+  - test_complex_mesh_component: class/test_complex_mesh_component.aobj
+  - test_material: class/test_material.aobj
+  - test_mesh: class/test_mesh.aobj
   

@@ -12,10 +12,10 @@
             "program": "F:\\dev\\agea_root\\agea\\tools\\argen.py",
             "args": [
                  "--type", "package",
-                 "--config", "F://dev//agea_root/agea//packages//root//public//ar//config", 
-                 "--source", "F://dev/agea_root//agea//packages//root//public",
+                 "--config", "F://dev//agea_root/agea//packages//test//public//ar//config", 
+                 "--source", "F://dev/agea_root//agea//packages//test//public",
                  "--output", "F://dev//agea_root//agea//build//agea_generated", 
-                 "--package_name", "root", 
+                 "--package_name", "test", 
                  "--namespace", "agea"
             ],
             "console": "integratedTerminal",

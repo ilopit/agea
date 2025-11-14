@@ -26,12 +26,12 @@ public:
     }
 
     void
-    add_item(root::smart_object& obj)
+    add_item(const root::smart_object& obj)
     {
         auto& item = m_items[obj.get_id()];
 
         AGEA_check(item == nullptr, "Should not re-assign!");
-        item = &obj;
+        item = (root::smart_object*)&obj;
     }
 
     void
@@ -47,13 +47,13 @@ public:
     }
 
     uint32_t
-    get_size()
+    get_size() const
     {
         return (uint32_t)m_items.size();
     }
 
     const std::unordered_map<id_t, root::smart_object*>&
-    get_items()
+    get_items() const
     {
         return m_items;
     }
@@ -77,7 +77,7 @@ public:
     }
 
     void
-    add_item(root::smart_object& obj)
+    add_item(const root::smart_object& obj)
     {
         AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
                    "Should have same architype!");

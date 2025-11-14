@@ -13,15 +13,12 @@ class id_generator
 {
     struct name_counter
     {
-        uint32_t ctr = 2;
+        uint32_t ctr = 1;
     };
 
 public:
     utils::id
     generate(const utils::id& obj_id);
-
-    utils::id
-    generate(const utils::id& obj_id, const utils::id& component_id);
 
 public:
     std::unordered_map<utils::id, name_counter> m_mapping;

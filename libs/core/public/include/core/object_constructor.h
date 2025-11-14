@@ -40,12 +40,6 @@ public:
                 root::smart_object*& obj,
                 std::vector<root::smart_object*>& loaded_obj);
 
-    static result_code
-    mirror_object(const utils::id& class_object_id,
-                  object_load_context& occ,
-                  root::smart_object*& obj,
-                  std::vector<root::smart_object*>& loaded_obj);
-
     static root::smart_object*
     object_construct(const utils::id& type_id,
                      const utils::id& id,
@@ -58,6 +52,13 @@ public:
                  object_load_context& occ,
                  root::smart_object*& obj,
                  std::vector<root::smart_object*>& loaded_obj);
+
+    static result_code
+    object_mirror(root::smart_object& src,
+                  const utils::id& new_object_id,
+                  object_load_context& occ,
+                  root::smart_object*& obj,
+                  std::vector<root::smart_object*>& loaded_obj);
 
     template <typename T>
     static result_code
@@ -74,19 +75,6 @@ public:
 
         return result_code::ok;
     }
-
-    static result_code
-    object_load_internal(const utils::path& path_in_package,
-                         object_load_context& occ,
-                         root::smart_object*& obj);
-
-    static result_code
-    object_load_internal(const utils::id& id, object_load_context& occ, root::smart_object*& obj);
-
-    static result_code
-    object_load_internal(serialization::conteiner& c,
-                         object_load_context& occ,
-                         root::smart_object*& obj);
 
     // Utils
     static result_code
@@ -108,11 +96,13 @@ public:
     update_object_properties(root::smart_object& g,
                              const serialization::conteiner& c,
                              object_load_context& occ);
+
     static result_code
-    prototype_object_properties(root::smart_object& from,
-                                root::smart_object& to,
-                                const serialization::conteiner& c,
-                                object_load_context& occ);
+    derive_object_properties(root::smart_object& from,
+                             root::smart_object& to,
+                             const serialization::conteiner& c,
+                             object_load_context& occ);
+
     static result_code
     clone_object_properties(root::smart_object& from,
                             root::smart_object& to,
@@ -152,6 +142,19 @@ public:
                        uint32_t extra_flags,
                        object_load_context& olc);
 
+    static result_code
+    object_load_internal(const utils::id& id, object_load_context& occ, root::smart_object*& obj);
+
+    static result_code
+    object_load_internal(const utils::path& path_in_package,
+                         object_load_context& occ,
+                         root::smart_object*& obj);
+
+    static result_code
+    object_load_internal(serialization::conteiner& c,
+                         object_load_context& occ,
+                         root::smart_object*& obj);
+
 private:
     static result_code
     create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
@@ -173,6 +176,12 @@ private:
                         serialization::conteiner& sc,
                         object_load_context& occ,
                         root::smart_object*& obj);
+
+    static result_code
+    object_load_derive(root::smart_object& prototype_obj,
+                       serialization::conteiner& sc,
+                       object_load_context& occ,
+                       root::smart_object*& obj);
 
     static result_code
     object_save_partial(serialization::conteiner& sc, const root::smart_object& obj);

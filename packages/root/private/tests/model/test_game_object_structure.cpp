@@ -1,4 +1,4 @@
-#include "base_test.h"
+#include "testing/testing.h"
 
 #include <core/id_generator.h>
 #include <core/caches/caches_map.h>
@@ -15,21 +15,13 @@ using namespace root;
 
 struct test_game_object_structure : base_test
 {
-    void
-    SetUp()
+    template <typename T>
+    auto
+    aeo(const utils::id& id)
     {
-        base_test::SetUp();
+        return core::object_constructor::alloc_empty_object<T>(id);
     }
-
-    singleton_registry m_reg;
 };
-
-template <typename T>
-auto
-aeo(const utils::id& id)
-{
-    return core::object_constructor::alloc_empty_object<T>(id);
-}
 
 TEST_F(test_game_object_structure, generate_from_ids)
 {

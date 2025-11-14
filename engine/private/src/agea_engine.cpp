@@ -23,13 +23,13 @@
 #include <native/native_window.h>
 
 #include <packages/root/model/assets/mesh.h>
-#include <packages/root/model/components/mesh_component.h>
+#include <packages/base/model/components/mesh_component.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/shader_effect.h>
 
-#include <packages/root/model/lights/directional_light.h>
-#include <packages/root/model/lights/point_light.h>
-#include <packages/root/model/lights/spot_light.h>
+#include <packages/base/model/lights/directional_light.h>
+#include <packages/base/model/lights/point_light.h>
+#include <packages/base/model/lights/spot_light.h>
 #include <packages/root/model/assets/material.h>
 
 #include <render_bridge/render_bridge.h>
@@ -92,7 +92,7 @@ vulkan_engine::init()
 {
     ALOG_INFO("Initialization started ...");
 
-    auto& gs = glob::state::getr();
+    auto& gs = glob::glob_state();
 
     gs.schedule_action(core::state::state_stage::create,
                        [](core::state& s)
@@ -225,7 +225,7 @@ vulkan_engine::run()
             update_cameras();
             glob::vulkan_render::getr().set_camera(m_camera_data);
 
-            if (glob::state::getr().get_current_level())
+            if (glob::glob_state().get_current_level())
             {
                 consume_updated_shader_effects();
                 consume_updated_render_assets();
@@ -254,7 +254,7 @@ void
 vulkan_engine::tick(float dt)
 {
     glob::game_editor::get()->on_tick(dt);
-    if (auto lvl = glob::state::getr().get_current_level())
+    if (auto lvl = glob::glob_state().get_current_level())
     {
         lvl->tick(dt);
     }
@@ -278,7 +278,7 @@ vulkan_engine::execute_sync_requests()
 
         if (ext == "lua")
         {
-            auto lua = glob::state::getr().get_lua();
+            auto lua = glob::glob_state().get_lua();
 
             auto lua_r = lua->state().script_file(sa.path_to_resources.str());
 
@@ -294,7 +294,7 @@ vulkan_engine::execute_sync_requests()
         }
         else if (ext == "vert" || ext == "frag")
         {
-            auto sec = glob::state::getr().get_class_shader_effects_cache();
+            auto sec = glob::glob_state().get_class_shader_effects_cache();
 
             auto ptr = sec->get_item(AID(name));
             ptr->mark_render_dirty();
@@ -321,18 +321,18 @@ vulkan_engine::execute_sync_requests()
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto lm = glob::state::getr().get_lm();
-    auto cs = glob::state::getr().get_class_set();
-    auto is = glob::state::getr().get_instance_set();
+    auto lm = glob::glob_state().get_lm();
+    auto cs = glob::glob_state().get_class_set();
+    auto is = glob::glob_state().get_instance_set();
 
-    auto result = lm->load_level(level_id, cs, is);
+    auto result = lm->load_level(level_id);
     if (!result)
     {
         ALOG_FATAL("Nothign to do here!");
         return false;
     }
 
-    core::state_mutator__current_level::set(*result, glob::state::getr());
+    core::state_mutator__current_level::set(*result, glob::glob_state());
 
     return true;
 }
@@ -342,7 +342,7 @@ vulkan_engine::unload_render_resources(core::level& l)
 {
     auto& cs = l.get_local_cache();
 
-    for (auto& t : cs.objects->get_items())
+    for (auto& t : cs.objects.get_items())
     {
         glob::render_bridge::getr().render_dtor(*t.second, true);
     }
@@ -355,7 +355,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 {
     auto& cs = l.get_local_cache();
 
-    for (auto& t : cs.objects->get_items())
+    for (auto& t : cs.objects.get_items())
     {
         glob::render_bridge::getr().render_dtor(*t.second, true);
     }
@@ -366,7 +366,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 void
 vulkan_engine::consume_updated_transforms()
 {
-    auto& items = glob::state::getr().get_current_level()->get_dirty_transforms_components_queue();
+    auto& items = glob::glob_state().get_current_level()->get_dirty_transforms_components_queue();
 
     if (items.empty())
     {
@@ -379,7 +379,7 @@ vulkan_engine::consume_updated_transforms()
 
         for (auto& obj : r)
         {
-            if (auto m = obj.as<root::mesh_component>())
+            if (auto m = obj.as<base::mesh_component>())
             {
                 auto obj_data = m->get_render_object_data();
                 if (obj_data)
@@ -471,7 +471,7 @@ vulkan_engine::init_scene()
 void
 vulkan_engine::init_default_scripting()
 {
-    auto lua = glob::state::getr().get_lua();
+    auto lua = glob::glob_state().get_lua();
 
     static auto rt = lua->state().new_usertype<utils::id>("reflection_type", sol::no_constructor);
 
@@ -480,7 +480,7 @@ vulkan_engine::init_default_scripting()
 
     static auto p = lua->state().new_usertype<core::package>("package", sol::no_constructor);
 
-    auto pm = glob::state::getr().get_pm();
+    auto pm = glob::glob_state().get_pm();
 
     static auto lua_pm = lua->state().new_usertype<core::package_manager>(
         "pm", sol::no_constructor, "get_package",
@@ -491,7 +491,7 @@ vulkan_engine::init_default_scripting()
 void
 vulkan_engine::consume_updated_render_components()
 {
-    auto& items = glob::state::getr().get_current_level()->get_dirty_render_queue();
+    auto& items = glob::glob_state().get_current_level()->get_dirty_render_queue();
 
     for (auto& i : items)
     {
@@ -504,7 +504,7 @@ vulkan_engine::consume_updated_render_components()
 void
 vulkan_engine::consume_updated_render_assets()
 {
-    auto& items = glob::state::getr().get_current_level()->get_dirty_render_assets_queue();
+    auto& items = glob::glob_state().get_current_level()->get_dirty_render_assets_queue();
 
     for (auto& i : items)
     {
@@ -517,7 +517,7 @@ vulkan_engine::consume_updated_render_assets()
 void
 vulkan_engine::consume_updated_shader_effects()
 {
-    auto& items = glob::state::getr().get_current_level()->get_dirty_shader_effect_queue();
+    auto& items = glob::glob_state().get_current_level()->get_dirty_shader_effect_queue();
 
     for (auto& i : items)
     {

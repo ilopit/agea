@@ -47,8 +47,8 @@ def extract_type_config(type: arapi.types.agea_type, tokens, fc: arapi.types.fil
           type.serialize_handler = value
         elif key == 'deserialize_handler':
           type.deserialize_handler = value
-        elif key == 'deserialize_from_proto_handler':
-          type.deserialize_from_proto_handle = value
+        elif key == 'load_derive_handler':
+          type.load_derive_handler = value
         elif key == 'to_string_handler':
           type.to_string_handle = value
         elif key == "architype":
@@ -84,11 +84,13 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
 
     if line.startswith("AGEA_ar_model_overrides()"):
       context.model_overrides.append(original_file_rel_path.removeprefix("include/"))
+      context.includes.add(f"""#include "{original_file_rel_path.removeprefix("include/")}\"""")
       i = i + 1
       continue
 
     if line.startswith("AGEA_ar_render_overrides()"):
       context.render_overrides.append(original_file_rel_path.removeprefix("include/"))
+      context.includes.add(f"""#include "{original_file_rel_path.removeprefix("include/")}\"""")
       i = i + 1
       continue
 
@@ -117,7 +119,6 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
 
       if len(final_tokens) > 1:
         current_class.parent_name = final_tokens[1]
-        current_class.parent_short = final_tokens[1].split("::")[-1]
 
     if line.startswith("AGEA_ar_struct"):
       current_struct = arapi.types.agea_type(arapi.types.agea_type_kind.STRUCT)
@@ -202,8 +203,8 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
           prop.property_ser_handler = pairs[1]
         elif pairs[0] == "property_des_handler":
           prop.property_des_handler = pairs[1]
-        elif pairs[0] == "property_prototype_handler":
-          prop.property_prototype_handler = pairs[1]
+        elif pairs[0] == "property_load_derive_handler":
+          prop.property_load_derive_handler = pairs[1]
         elif pairs[0] == "property_compare_handler":
           prop.property_compare_handler = pairs[1]
         elif pairs[0] == "property_copy_handler":
@@ -303,16 +304,18 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
 
         if len(pairs) == 2:
           key = arapi.utils.extstrip(pairs[0])
-          value = bool(arapi.utils.extstrip(pairs[1]))
+          value = arapi.utils.extstrip(pairs[1])
 
           if key == "model.has_types_overrides":
-            context.model_has_types_overrides = value
+            context.model_has_types_overrides = bool(value)
           elif key == "model.has_properties_overrides":
-            context.model_has_properties_overrides = value
+            context.model_has_properties_overrides = bool(value)
           elif key == "render.has_overrides":
-            context.render_has_types_overrides = value
+            context.render_has_types_overrides = bool(value)
           elif key == "render.has_resources":
-            context.render_has_custom_resources = value
+            context.render_has_custom_resources = bool(value)
+          elif key == "dependancies":
+            context.dependencies = value.split(":")
     i = i + 1
   if current_class:
     context.types.append(current_class)

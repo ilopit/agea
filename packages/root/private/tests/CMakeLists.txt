@@ -9,6 +9,7 @@ target_link_libraries(packages.root.model.tests
     agea::packages.root.model
     
     gtest
+    testing
 )
 
 agea_finalize_executable(packages.root.model.tests)
@@ -24,6 +25,7 @@ target_link_libraries(packages.root.render.tests
     agea::packages.root.model
     agea::packages.root.render
     gtest
+    testing
 )
 
 agea_finalize_executable(packages.root.render.tests)

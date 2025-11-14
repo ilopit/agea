@@ -6,6 +6,7 @@
 #include <core/level_manager.h>
 #include <core/global_state.h>
 #include <core/reflection/reflection_type.h>
+#include <testing/testing.h>
 
 #include "packages/root/package.root.h"
 
@@ -14,8 +15,6 @@
 
 #include <gtest/gtest.h>
 
-#include "base_test.h"
-
 using namespace agea;
 
 struct test_load_level : public base_test
@@ -23,21 +22,21 @@ struct test_load_level : public base_test
     void
     SetUp()
     {
-        agea::glob::state::reset();
+        glob::glob_state_reset();
         base_test::SetUp();
     }
 
     void
     TearDown()
     {
-        agea::glob::state::reset();
+        glob::glob_state_reset();
         base_test::TearDown();
     }
 };
 
 TEST_F(test_load_level, basic_load)
 {
-    auto& gs = glob::state::getr();
+    auto& gs = glob::glob_state();
 
     ///
     gs.schedule_action(core::state::state_stage::create,

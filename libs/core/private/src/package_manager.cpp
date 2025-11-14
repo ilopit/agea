@@ -6,6 +6,7 @@
 #include "core/caches/caches_map.h"
 #include "core/package.h"
 #include "core/global_state.h"
+#include "glue/dependency_tree.ar.h"
 
 #include "packages/root/model/assets/texture.h"
 #include "packages/root/model/assets/material.h"
@@ -34,44 +35,33 @@ package_manager::~package_manager()
 bool
 package_manager::init()
 {
-    for (auto& sp : m_static_packages)
+    std::sort(m_static_packages.begin(), m_static_packages.end(),
+              [](static_package* l, static_package* r)
+              { return l->get_id().str() < r->get_id().str(); });
+
+    auto handle_dapandancy = [this](auto self, static_package* p) -> void
     {
-        sp->init();
-    }
-    for (auto& sp : m_static_packages)
+        if (p->m_state == package_state::loaded)
+        {
+            return;
+        }
+
+        auto depds = get_dapendency(p->get_id());
+        for (auto& d : depds)
+        {
+            auto sp = (static_package*)get_package(d);
+
+            self(self, sp);
+        }
+
+        p->complete_load();
+        p->m_state = package_state::loaded;
+    };
+
+    for (auto p : m_static_packages)
     {
-        sp->load_types();
+        handle_dapandancy(handle_dapandancy, p);
     }
-
-    for (auto& sp : m_static_packages)
-    {
-        sp->load_render_types();
-    }
-
-    for (auto& sp : m_static_packages)
-    {
-        sp->finalize_relfection();
-    }
-
-    for (auto& sp : m_static_packages)
-    {
-        sp->load_render_resources();
-    }
-
-    for (auto& sp : m_static_packages)
-    {
-        sp->create_default_types_objects();
-    }
-
-    /*
-        sp->load_render_resources();
-
-    sp->load_render_types();
-
-    sp->build_objects();
-}
-
-    */
 
     return true;
 }
@@ -86,7 +76,7 @@ package_manager::load_package(const utils::id& id)
         return true;
     }
 
-    auto path = glob::resource_locator::get()->resource(category::packages, id.str());
+    auto path = glob::glob_state().get_resource_locator()->resource(category::packages, id.str());
 
     ALOG_INFO("Loading package [{0}] at path [{1}]", id.cstr(), path.str());
 
@@ -138,21 +128,22 @@ package_manager::load_package(const utils::id& id)
         auto mirror_id = obj->get_id();
         obj = nullptr;
 
-        rc = object_constructor::mirror_object(mirror_id, new_package->get_load_context(), obj,
-                                               loaded_obj);
-        if (rc != result_code::ok)
-        {
-            ALOG_LAZY_ERROR;
-            return false;
-        }
-
-        for (auto o : loaded_obj)
-        {
-            if (o->get_state() != root::smart_object_state::constructed)
-            {
-                o->post_load();
-            }
-        }
+        //         rc = object_constructor::mirror_object(mirror_id,
+        //         new_package->get_load_context(), obj,
+        //                                                loaded_obj);
+        //         if (rc != result_code::ok)
+        //         {
+        //             ALOG_LAZY_ERROR;
+        //             return false;
+        //         }
+        //
+        //         for (auto o : loaded_obj)
+        //         {
+        //             if (o->get_state() != root::smart_object_state::constructed)
+        //             {
+        //                 o->post_load();
+        //             }
+        //         }
     }
 
     new_package->set_state(package_state::loaded);

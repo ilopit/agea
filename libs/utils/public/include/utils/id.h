@@ -36,6 +36,9 @@ public:
     static id
     make_id(const char* id_cstr);
 
+    static id
+    make_id(const id& left, const id& right);
+
     std::string
     str() const
     {

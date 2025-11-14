@@ -8,6 +8,7 @@ import arapi.types
 import arapi.writer
 import arapi.parser
 from collections import deque
+from collections import OrderedDict
 
 function_template_start = """
         {{
@@ -210,10 +211,10 @@ def update_global_ids(fc: arapi.types.file_context):
 
 namespace agea {{
   enum {{
-// root types start
-// root types end
+// block start zzero
     agea__total_supported_types_number,
     agea__invalid_type_id = agea__total_supported_types_number
+// block end zzero
   }};
 }}
 """
@@ -221,48 +222,141 @@ namespace agea {{
       gf.write(fl)
 
   with open(global_file, "r+") as gf:
-    existing_ids = []
     lines = gf.readlines()
 
-  add_mode = 0
+    mapping = OrderedDict()
 
-  before = []
-  existing_ids = []
-  after = []
-  for line in lines:
+    for i in range(0, len(lines)):
+      start_index = None
+      end_index = None
+      line = lines[i].strip()
+      if line.startswith("// block start "):
+        start_index = i
+        while not line.startswith("// block end "):
+          i = i + 1
+          if i == len(lines):
+            exit(-1)
 
-    if line.startswith(f"// {fc.module_name} types start"):
-      add_mode = 1
-      before.append(line)
-      continue
+          line = lines[i].strip()
+        end_index = i
+        tokens = line.split(" ")
+        mapping[tokens[3]] = (start_index, end_index)
 
-    if line.startswith(f"// {fc.module_name} types end"):
-      add_mode = 2
-      after.append(line)
-      continue
+    start_index = None
+    end_index = None
+    for item in mapping.items():
+      if item[0] == fc.module_name:
+        start_index = item[1][0]
+        end_index = item[1][1] + 1
+        break
+      elif item[0] > fc.module_name:
+        start_index = item[1][0]
+        end_index = item[1][0]
+        break
 
-    if add_mode == 0:
-      before.append(line)
-    elif add_mode == 1:
-      existing_ids.append(line.strip().replace(',', ''))
-    elif add_mode == 2:
-      after.append(line)
+    new_ids = []
+    for t in fc.types:
+      new_ids.append(f"    {fc.module_name}__{t.name},\n")
 
-  existing_ids.sort()
+    new_ids.sort()
+    new_ids.insert(0, f"// block start {fc.module_name}\n")
+    new_ids.append(f"// block end {fc.module_name}\n")
+    lines[start_index:end_index] = new_ids
 
-  new_ids = []
-  for t in fc.types:
-    new_ids.append(t.id)
+    # Write the result back to the file
+    with open(global_file, "w", encoding="utf-8") as f:
+      f.writelines(lines)
 
-  new_ids.sort()
 
-  if new_ids != existing_ids:
+def update_dependancy_tree(fc: arapi.types.file_context):
+
+  lines = []
+
+  global_file = os.path.join(fc.global_dir, "dependency_tree.ar.h")
+  if os.path.exists(global_file):
     with open(global_file, "w+") as gf:
-      gf.writelines(before)
 
-      for ni in new_ids:
-        gf.write(f"    {ni},\n")
-      gf.writelines(after)
+      fl = f"""// clang-format off
+#pragma once
+
+#include <vector>
+#include <utils/id.h>
+
+namespace agea
+{{
+
+std::vector<utils::id>
+get_dapendency(const utils::id& package_id)
+{{
+    // block start root
+    if (package_id == AID("root"))
+    {{
+        return {{}};
+    }}
+    // block end root
+    return {{}};
+}}
+
+}}  // namespace agea
+"""
+
+      gf.write(fl)
+
+  with open(global_file, "r+") as gf:
+    lines = gf.readlines()
+
+    mapping = OrderedDict()
+
+    for i in range(0, len(lines)):
+      start_index = None
+      end_index = None
+      line = lines[i].strip()
+      if line.startswith("// block start "):
+        start_index = i
+        while not line.startswith("// block end "):
+          i = i + 1
+          if i == len(lines):
+            exit(-1)
+
+          line = lines[i].strip()
+        end_index = i
+        tokens = line.split(" ")
+        mapping[tokens[3]] = (start_index, end_index)
+
+    start_index = None
+    end_index = None
+    for item in mapping.items():
+      if item[0] == fc.module_name:
+        start_index = item[1][0]
+        end_index = item[1][1] + 1
+        break
+      elif item[0] > fc.module_name:
+        start_index = item[1][0]
+        end_index = item[1][0]
+        break
+      elif item[0] < fc.module_name:
+        start_index = item[1][0]
+        end_index = item[1][0]
+
+    new_ids = []
+    new_ids.append(f"//    block start {fc.module_name}\n")
+    new_ids.append(f"""    if( package_id == AID("{fc.module_name}"))\n""")
+    new_ids.append(f"""    {{\n""")
+    new_ids.append(f"""        return {{""")
+    for d in fc.dependencies:
+      new_ids.append(f"""AID("{d}"),""")
+
+    if new_ids[-1][-1] == ",":
+      new_ids[-1] = new_ids[-1][:-1]
+
+    new_ids.append(f"""}};\n""")
+    new_ids.append(f"""    }};\n""")
+    new_ids.append(f"    // block end {fc.module_name}\n")
+    lines[start_index:end_index] = new_ids
+
+    # Write the result back to the file
+    with open(global_file, "w", encoding="utf-8") as f:
+      f.writelines(lines)
 
 
 def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespace):
@@ -320,7 +414,7 @@ def build_package(ar_cfg_path, root_dir, output_dir, module_name, module_namespa
       arapi.writer.write_ar_class_include_file(t, context, output_dir)
 
   update_global_ids(context)
-
+  update_dependancy_tree(context)
   # write rendering reflection
 
   arapi.writer.write_ar_package_include_file(context, output_dir)

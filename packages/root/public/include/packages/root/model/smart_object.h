@@ -93,15 +93,12 @@ enum class smart_object_state
     render_ready
 };
 
-enum smart_object_state_flag : uint32_t
+struct smart_object_flags
 {
-    empty = 0,
-    proto_obj = 1,
-    instance_obj = 2,
-    standalone = 4,
-    inhereted = 8,
-    mirror = 16,
-    empty_obj = 32
+    bool proto_obj : 1 = false;
+    bool instance_obj : 1 = false;
+    bool standalone : 1 = false;
+    bool inhereted : 1 = false;
 };
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
@@ -110,8 +107,8 @@ AGEA_ar_class(architype                      = smart_object,
               copy_handler                   = smart_obj__copy,
               compare_handler                = smart_obj__compare,
               serialize_handler              = smart_obj__serialize,
+              load_derive                    = smart_obj__load_derive,
               deserialize_handler            = smart_obj__deserialize,
-              deserialize_from_proto_handler = smart_obj__deserialize_from_proto,
               to_string_handler              = smart_obj__to_string);
 class smart_object
 // clang-format on
@@ -202,16 +199,16 @@ public:
     void
     set_state(smart_object_state v);
 
-    void
-    set_flag(uint32_t f)
+    smart_object_flags&
+    get_flags()
     {
-        m_obj_internal_state |= f;
+        return m_flags;
     }
 
-    bool
-    has_flag(uint32_t f) const
+    const smart_object_flags&
+    get_flags() const
     {
-        return m_obj_internal_state & f;
+        return m_flags;
     }
 
     void
@@ -268,7 +265,7 @@ protected:
     core::level* m_level = nullptr;
 
     smart_object_state m_obj_state = smart_object_state::empty;
-    uint32_t m_obj_internal_state = smart_object_state_flag::empty;
+    smart_object_flags m_flags;
 };
 
 template <typename To, typename From>

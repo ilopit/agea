@@ -5,51 +5,21 @@ agea_ar_target(packages.root.ar root "agea")
 SET(ROOT_MODEL_PREFIX "public/include/packages/root/model")
 
 ##### Types
-file(GLOB ROOT_ASSETS_SRC "${ROOT_MODEL_PREFIX}/assets/*.h" "private/src/model/assets/*.cpp")
-file(GLOB ROOT_CACHES_SRC "${ROOT_MODEL_PREFIX}/caches/*.h" "private/src/model/caches/*.cpp")
-file(GLOB ROOT_DEMO_SRC "${ROOT_MODEL_PREFIX}/demo/*.h" "private/src/model/demo/*.cpp")
-file(GLOB ROOT_EXT_SRC "${ROOT_MODEL_PREFIX}/ext/*.h" "private/src/model/ext/*.cpp")
-file(GLOB ROOT_CORE_TYPES_SRC "${ROOT_MODEL_PREFIX}/core_types/*.h" "private/src/model/core_types/*.cpp")
-file(GLOB ROOT_COMPONENTS_SRC "${ROOT_MODEL_PREFIX}/components/*.h" "private/src/model/components/*.cpp")
-file(GLOB ROOT_LIGHTS_SRC "${ROOT_MODEL_PREFIX}/lights/*.h" "private/src/model/lights/*.cpp")
-file(GLOB ROOT_OVERRIDES "${ROOT_MODEL_PREFIX}/overrides/*.h" "private/src/model/overrides/*.cpp")
-file(GLOB ROOT_MODEL_SRC "${ROOT_MODEL_PREFIX}/*.h" "private/src/model/*.cpp")
-file(GLOB ROOT_LIGHTS_COMPONENTS_SRC "${ROOT_MODEL_PREFIX}/lights/components/*.h" "private/src/model/lights/components/*.cpp")
-file(GLOB ROOT_REFLECTION_SRC "${ROOT_MODEL_PREFIX}/reflection/*.h" "private/src/model/reflection/*.cpp")
-file(GLOB ROOT_REFLECTION_HANDLERS_SRC "${ROOT_MODEL_PREFIX}/reflection/type_handlers/*.h" "private/src/model/reflection/type_handlers/*.cpp")
-
-file(GLOB ROOT_SRC "public/include/packages/root/*.h" "private/src/model/*.cpp")
-
-file(GLOB ROOT_MODEL_GENERATED_SRC "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/model/*.cpp")
-
-source_group("assets" FILES ${ROOT_ASSETS_SRC})
-source_group("caches" FILES ${ROOT_CACHES_SRC})
-source_group("components" FILES ${ROOT_COMPONENTS_SRC})
-source_group("lights/components" FILES ${ROOT_LIGHTS_COMPONENTS_SRC})
-source_group("lights" FILES ${ROOT_LIGHTS_SRC})
-source_group("core_types" FILES ${ROOT_CORE_TYPES_SRC})
-source_group("root" FILES ${ROOT_SRC})
-source_group("reflection" FILES ${ROOT_REFLECTION_SRC})
-source_group("generated" FILES ${ROOT_GENERATED_SRC})
-source_group("ext" FILES ${ROOT_EXT_SRC})
-source_group("overrides" FILES ${ROOT_OVERRIDES})
+agea_gather_sources(ROOT_ASSETS_SRC "assets" "${ROOT_MODEL_PREFIX}/assets/*.h" "private/src/model/assets/*.cpp")
+agea_gather_sources(ROOT_COMPONENTS_SRC "components" "${ROOT_MODEL_PREFIX}/components/*.h" "private/src/model/components/*.cpp")
+agea_gather_sources(ROOT_CORE_TYPES_SRC "core_types" "${ROOT_MODEL_PREFIX}/core_types/*.h" "private/src/model/core_types/*.cpp")
+agea_gather_sources(ROOT_EXT_SRC "ext" "${ROOT_MODEL_PREFIX}/ext/*.h" "private/src/model/ext/*.cpp")
+agea_gather_sources(ROOT_OVERRIDES_SRC "overrides" "${ROOT_MODEL_PREFIX}/overrides/*.h" "private/src/model/overrides/*.cpp")
+agea_gather_sources(ROOT_MODEL_SRC "root" "${ROOT_MODEL_PREFIX}/*.h" "private/src/model/*.cpp")
+agea_gather_sources(ROOT_MODEL_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/model/*.cpp")
 
 add_library(packages.root.model STATIC
-   ${ROOT_COMPONENTS_SRC}
    ${ROOT_ASSETS_SRC}
-   ${ROOT_DEMO_SRC}
-   ${ROOT_SRC}
-   ${ROOT_MODEL_SRC}
-   ${ROOT_CACHES_SRC}
+   ${ROOT_COMPONENTS_SRC}
    ${ROOT_CORE_TYPES_SRC}
-   ${ROOT_OVERRIDES}
-   ${ROOT_LIGHTS_SRC}
-   ${ROOT_LIGHTS_COMPONENTS_SRC}
-   ${ROOT_REFLECTION_SRC}
-   ${ROOT_REFLECTION_HANDLERS_SRC}
-
    ${ROOT_EXT_SRC}
-
+   ${ROOT_OVERRIDES_SRC}
+   ${ROOT_MODEL_SRC}
    ${ROOT_MODEL_GENERATED_SRC}
 )
 
@@ -74,17 +44,17 @@ target_compile_definitions(packages.root.model PUBLIC AGEA_build__model)
 agea_finalize_library(packages.root.model)
 
 #####  Render
-file(GLOB ROOT_RENDER_SRC "public/include/packages/root/render/*.h" "private/src/render/*.cpp")
-file(GLOB ROOT_RENDER_OVERRIDES_SRC "public/include/packages/root/render/overriders/*.h" "private/src/render/overrides/*.cpp")
-file(GLOB ROOT_RENDER_GENERATED_SRC "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/render/*.cpp")
+set(ROOT_RENDER_PREFIX "public/include/packages/root/render")
+agea_gather_sources(ROOT_RENDER_SRC "render" "${ROOT_RENDER_PREFIX}/*.h" "private/src/render/*.cpp")
+agea_gather_sources(ROOT_RENDER_OVERRIDES_SRC "overrides" "${ROOT_RENDER_PREFIX}/overrides/*.h" "private/src/render/overrides/*.cpp")
+agea_gather_sources(ROOT_RENDER_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/render/*.cpp")
 
 add_library(packages.root.render STATIC
-   ${ROOT_RENDER_GENERATED_SRC}
    ${ROOT_RENDER_SRC}
    ${ROOT_RENDER_OVERRIDES_SRC}
+   ${ROOT_RENDER_GENERATED_SRC}
 )
 
-source_group("render" FILES ${ROOT_RENDER_SRC})
 target_compile_options(packages.root.render PRIVATE /bigobj)
 target_link_libraries(packages.root.render
 

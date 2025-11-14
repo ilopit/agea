@@ -51,7 +51,7 @@ public:
                     const utils::id& id,
                     const typename T::construct_params& params)
     {
-        auto gid = glob::state::getr().get_id_generator()->generate(id, T::AR_TYPE_id());
+        auto gid = glob::glob_state().get_id_generator()->generate(id);
 
         return spawn_component(parent, T::AR_TYPE_id(), gid, params)->as<T>();
     }
@@ -182,6 +182,12 @@ public:
     void
     move(const vec3& v);
 
+    const std::vector<component*>&
+    get_subcomponents()
+    {
+        return m_components;
+    }
+
 protected:
     void
     recreate_structure_form_layout_impl(component* parent,
@@ -195,9 +201,9 @@ protected:
                      "serializable=true",
                      "property_des_handler=game_object_components_deserialize",
                      "property_ser_handler=game_object_components_serialize",
-                     "property_prototype_handler=game_object_components_prototype",
                      "property_compare_handler=game_object_components_compare",
-                     "property_copy_handler=game_object_components_copy");
+                     "property_copy_handler=game_object_components_copy",
+                     "property_load_derive_handler=game_object_load_derive");
     std::vector<component*> m_components;
 
     std::vector<game_object_component*> m_renderable_components;

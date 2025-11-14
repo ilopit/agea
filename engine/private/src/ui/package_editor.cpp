@@ -22,7 +22,7 @@ package_editor::handle()
         return;
     }
 
-    auto pm = glob::state::getr().get_pm();
+    auto pm = glob::glob_state().get_pm();
 
     auto& pkgs = pm->get_packages();
 

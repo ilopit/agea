@@ -45,10 +45,8 @@ public:
     find_obj(const utils::id& id, architype a_type);
 
     // clang-format off
-    object_load_context& set_proto_global_set    (cache_set* v)                             { m_proto_global_set = v; return *this; }
     object_load_context& set_proto_local_set     (cache_set* v)                             { m_proto_local_set = v; return *this; }
     object_load_context& set_construction_type   (object_load_type t)                       { m_construction_type = t; return *this; }
-    object_load_context& set_instance_global_set (cache_set* v)                             { m_instance_global_set = v; return *this; }
     object_load_context& set_instance_local_set  (cache_set* v)                             { m_instance_local_set = v; return *this; }
     object_load_context& set_level               (level* l)                                 { m_level = l; return *this; }
     object_load_context& set_objects_mapping     (const std::shared_ptr<object_mapping>& v) { m_object_mapping = v; return *this; }
@@ -56,10 +54,9 @@ public:
     object_load_context& set_package             (package* p)                               { m_package = p; return *this; }
     object_load_context& set_prefix_path         (const utils::path& v)                     { m_path_prefix = v; return *this; }
 
-    cache_set*          get_proto_global_set() const    { return m_proto_global_set; }
-    cache_set*          get_proto_local_set() const     { return m_proto_local_set; }
+    //cache_set*          get_proto_global_set() const    { return m_proto_global_set; }
+    //cache_set*          get_proto_local_set() const     { return m_proto_local_set; }
     object_load_type    get_construction_type()         { return m_construction_type; }
-    cache_set*          get_instance_global_set() const { return m_instance_global_set; }
     cache_set*          get_instance_local_set() const  { return m_instance_local_set; }
     package*            get_package() const             { return m_package; }
     const utils::path&  get_prefix_path() const         { return m_path_prefix; }
@@ -89,9 +86,7 @@ private:
     object_load_type m_construction_type = object_load_type::nav;
     utils::path m_path_prefix;
 
-    cache_set* m_proto_global_set = nullptr;
     cache_set* m_proto_local_set = nullptr;
-    cache_set* m_instance_global_set = nullptr;
     cache_set* m_instance_local_set = nullptr;
 
     package* m_package = nullptr;

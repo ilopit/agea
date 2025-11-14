@@ -24,8 +24,8 @@ class agea_property:
     self.serializable = "false"
     self.property_ser_handler = ""
     self.property_des_handler = ""
-    self.property_prototype_handler = ""
     self.property_compare_handler = ""
+    self.property_load_derive_handler = ""
     self.property_copy_handler = ""
     self.gpu_data = ""
     self.copyable = "yes"
@@ -57,7 +57,7 @@ class agea_type:
     self.compare_handler = ""
     self.copy_handler = ""
     self.deserialize_handler = ""
-    self.deserialize_from_proto_handle = ""
+    self.load_derive_handler = ""
     self.serialize_handler = ""
     self.to_string_handle = ""
     self.render_constructor = ""
@@ -99,6 +99,7 @@ class file_context:
     self.model_has_properties_overrides: bool = False
     self.render_has_types_overrides: bool = False
     self.render_has_custom_resources: bool = False
+    self.dependencies: list[str] = []
 
     self.properies_access_methods: str = ''
     self.output_dir = ''

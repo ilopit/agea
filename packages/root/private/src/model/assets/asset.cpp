@@ -15,7 +15,7 @@ asset::mark_render_dirty()
 {
     if (get_state() != smart_object_state::constructed)
     {
-        glob::state::getr().get_current_level()->add_to_dirty_render_assets_queue(this);
+        glob::glob_state().get_current_level()->add_to_dirty_render_assets_queue(this);
         set_state(smart_object_state::constructed);
     }
 }

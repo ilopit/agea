@@ -132,7 +132,7 @@ game_object::spawn_component_with_proto(component* parent,
 component*
 game_object::spawn_component_with_proto(component* parent, const utils::id& proto_id)
 {
-    auto id = glob::state::getr().get_id_generator()->generate(m_id, proto_id);
+    auto id = glob::glob_state().get_id_generator()->generate(m_id);
 
     return spawn_component_with_proto(parent, proto_id, id);
 }

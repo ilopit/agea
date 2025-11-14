@@ -1,0 +1,18 @@
+class_id: mesh_object
+id: test_complex_mesh_object
+layout: [-1, 0]
+components: 
+  - id: test_root_component_0
+    class_id: game_object_component
+  - id: test_root_component_1
+    class_id: mesh_component
+    material: test_material
+    mesh: test_mesh
+    position:
+      x: 0
+      y: 0
+      z: 0
+    scale:
+      x: 10
+      y: 10
+      z: 10

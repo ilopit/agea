@@ -1,0 +1,3 @@
+include/packages/test/package.test.h
+include/packages/test/model/test_mesh_object.h
+include/packages/test/model/test_mesh_component.h

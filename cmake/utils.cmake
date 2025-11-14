@@ -90,3 +90,18 @@ macro(agea_ar_target)
             --namespace ${ARGV2})
     endif()
 endmacro()
+
+function(agea_gather_sources out_var group_name)
+    set(_ag_srcs)
+
+    foreach(_pattern IN LISTS ARGN)
+        file(GLOB _files LIST_DIRECTORIES false "${_pattern}")
+        list(APPEND _ag_srcs ${_files})
+    endforeach()
+
+    if(_ag_srcs)
+        source_group(${group_name} FILES ${_ag_srcs})
+    endif()
+
+    set(${out_var} ${_ag_srcs} PARENT_SCOPE)
+endfunction()

@@ -62,7 +62,7 @@ script_text_editor::handle()
     auto& editor = *m_editor_window;
     auto& error_window = *m_output_window;
 
-    auto lua_api = glob::state::getr().get_lua();
+    auto lua_api = glob::glob_state().get_lua();
 
     ImGui::Begin("Script Editor", &m_show,
                  ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);

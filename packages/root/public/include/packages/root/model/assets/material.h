@@ -26,7 +26,7 @@ class texture;
 // clang-format off
 AGEA_ar_class("architype=material",
               render_constructor = material__render_loader,
-              render_destructor =  material__render_destructor);
+              render_destructor  = material__render_destructor);
 class material : public asset
 // clang-format on
 {

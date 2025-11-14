@@ -8,8 +8,23 @@
 #include <core/level.h>
 #include <core/package.h>
 #include <core/id_generator.h>
+#include <resource_locator/resource_locator.h>
 
-agea::glob::state::type agea::glob::state::s_instance;
+namespace agea::glob
+{
+
+::agea::core::state&
+glob_state()
+{
+    static ::agea::core::state g_glob_state;
+    return g_glob_state;
+}
+void
+glob_state_reset()
+{
+    glob_state() = {};
+}
+}  // namespace agea::glob
 
 namespace agea::core
 {
@@ -22,7 +37,10 @@ int
 state::schedule_action(state_stage stage, scheduled_action action)
 {
     auto& node = m_scheduled_actions[(size_t)stage];
-    node.push_back(std::move(action));
+
+    node.push_back(action);
+    std::cerr << std::format("Scheduling action state {:x}  at {}, total {} \n", (int)this,
+                             (size_t)stage, node.size());
     return (int)node.size();
 }
 
@@ -58,25 +76,25 @@ state_mutator__caches::set(state& es)
 
     es.m_class_set = class_cache;
 
-    es.m_class_objects_cache = class_cache->objects.get();
-    es.m_class_components_cache = class_cache->components.get();
-    es.m_class_game_objects_cache = class_cache->game_objects.get();
-    es.m_class_materials_cache = class_cache->materials.get();
-    es.m_class_meshes_cache = class_cache->meshes.get();
-    es.m_class_textures_cache = class_cache->textures.get();
-    es.m_class_shader_effects_cache = class_cache->shader_effects.get();
-    es.m_class_cache_map = class_cache->map.get();
+    es.m_class_objects_cache = &class_cache->objects;
+    es.m_class_components_cache = &class_cache->components;
+    es.m_class_game_objects_cache = &class_cache->game_objects;
+    es.m_class_materials_cache = &class_cache->materials;
+    es.m_class_meshes_cache = &class_cache->meshes;
+    es.m_class_textures_cache = &class_cache->textures;
+    es.m_class_shader_effects_cache = &class_cache->shader_effects;
+    es.m_class_cache_map = &class_cache->map;
 
     es.m_instance_set = instance_cache;
 
-    es.m_instance_objects_cache = instance_cache->objects.get();
-    es.m_instance_components_cache = instance_cache->components.get();
-    es.m_instance_game_objects_cache = instance_cache->game_objects.get();
-    es.m_instance_materials_cache = instance_cache->materials.get();
-    es.m_instance_meshes_cache = instance_cache->meshes.get();
-    es.m_instance_textures_cache = instance_cache->textures.get();
-    es.m_instance_shader_effects_cache = instance_cache->shader_effects.get();
-    es.m_instance_cache_map = instance_cache->map.get();
+    es.m_instance_objects_cache = &instance_cache->objects;
+    es.m_instance_components_cache = &instance_cache->components;
+    es.m_instance_game_objects_cache = &instance_cache->game_objects;
+    es.m_instance_materials_cache = &instance_cache->materials;
+    es.m_instance_meshes_cache = &instance_cache->meshes;
+    es.m_instance_textures_cache = &instance_cache->textures;
+    es.m_instance_shader_effects_cache = &instance_cache->shader_effects;
+    es.m_instance_cache_map = &instance_cache->map;
 }
 
 void
@@ -113,6 +131,12 @@ void
 state_mutator__current_level::set(level& lvl, state& es)
 {
     es.m_current_level = &lvl;
+}
+
+void
+state_mutator__resource_locator::set(state& es)
+{
+    es.m_resource_locator = es.create_box<resource_locator>();
 }
 
 void

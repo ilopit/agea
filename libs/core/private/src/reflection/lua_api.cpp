@@ -12,7 +12,7 @@ l_my_print(lua_State* L)
     int n = lua_gettop(L); /* number of arguments */
     int i;
 
-    auto* lua = agea::glob::state::getr().get_lua();
+    auto* lua = agea::glob::glob_state().get_lua();
 
     for (i = 1; i <= n; i++)
     { /* for each argument */

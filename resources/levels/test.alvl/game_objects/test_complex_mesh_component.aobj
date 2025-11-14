@@ -1,0 +1,12 @@
+class_id: mesh_component
+id: test_complex_mesh_component
+material: test_material
+mesh: test_mesh
+position:
+  x: 0
+  y: 0
+  z: 0
+scale:
+  x: 10
+  y: 10
+  z: 10

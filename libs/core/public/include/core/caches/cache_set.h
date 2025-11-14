@@ -23,15 +23,17 @@ public:
     void
     clear();
 
-    std::unique_ptr<objects_cache> objects;
-    std::unique_ptr<components_cache> components;
-    std::unique_ptr<game_objects_cache> game_objects;
-    std::unique_ptr<materials_cache> materials;
-    std::unique_ptr<meshes_cache> meshes;
-    std::unique_ptr<textures_cache> textures;
-    std::unique_ptr<shader_effects_cache> shader_effects;
+    // clang-format off
+    objects_cache        objects;
+    components_cache     components;
+    game_objects_cache   game_objects;
+    materials_cache      materials;
+    meshes_cache         meshes;
+    textures_cache       textures;
+    shader_effects_cache shader_effects;
+    // clang-format on
 
-    std::unique_ptr<caches_map> map;
+    caches_map map;
 };
 
 }  // namespace core

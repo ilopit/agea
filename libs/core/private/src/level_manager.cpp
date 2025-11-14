@@ -9,8 +9,8 @@
 #include "core/caches/caches_map.h"
 #include "core/global_state.h"
 
-#include <packages/root/model/mesh_object.h>
-#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/components/game_object_component.h>
+#include <packages/root/model/game_object.h>
 
 #include <utils/agea_log.h>
 
@@ -47,7 +47,7 @@ level_manager::load_level(const utils::id& id)
 
     auto level_id = id.str() + ".alvl";
 
-    auto path = glob::resource_locator::get()->resource(category::levels, level_id);
+    auto path = glob::glob_state().get_resource_locator()->resource(category::levels, level_id);
 
     return load_level_path(*l, path);
 }
@@ -93,7 +93,7 @@ level_manager::load_level_path(level& l, const utils::path& path)
         for (size_t idx = 0; idx < packages_count; ++idx)
         {
             auto id = AID(packages[idx].as<std::string>());
-            if (!glob::state::getr().get_pm()->load_package(id))
+            if (!glob::glob_state().get_pm()->load_package(id))
             {
                 ALOG_LAZY_ERROR;
                 return nullptr;

@@ -321,7 +321,7 @@ editor_console::exec_command(const std::string& command_line)
     }
     else
     {
-        auto lua = glob::state::getr().get_lua();
+        auto lua = glob::glob_state().get_lua();
 
         auto result = lua->state().script(command_line);
 
@@ -521,7 +521,7 @@ editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
 {
     std::string file_name = ctx.tokens[1];
 
-    auto lua = glob::state::getr().get_lua();
+    auto lua = glob::glob_state().get_lua();
 
     auto result = lua->state().script_file(file_name);
 

@@ -18,6 +18,10 @@
     ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
         const ::agea::serialization::conteiner &jc, ::agea::core::object_load_context &occ
 
+#define AGEA_load_derive_args                              \
+    ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
+        const ::agea::serialization::conteiner &jc, ::agea::core::object_load_context &occ
+
 #define AGEA_deserialization_update_args                              \
     ::agea::blob_ptr ptr, const ::agea::serialization::conteiner &jc, \
         ::agea::core::object_load_context &occ
@@ -56,6 +60,7 @@ namespace reflection
 
 using type_serialization_handler = result_code (*)(AGEA_serialization_args);
 using type_deserialization_handler = result_code (*)(AGEA_deserialization_args);
+using type_load_derive_handler = result_code (*)(AGEA_load_derive_args);
 using type_deserialisation_with_prototype_handler =
     result_code (*)(AGEA_deserialization_update_args);
 using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
@@ -111,12 +116,13 @@ struct reflection_type
     type_serialization_handler                  serialize = nullptr;
     type_deserialization_handler                deserialize = nullptr;
     type_deserialisation_with_prototype_handler deserialize_with_proto = nullptr;
+    type_load_derive_handler                    load_derive = nullptr;
     type_copy_handler                           copy = nullptr;
     type_compare_handler                        compare = nullptr;
     type_ui_handler                             to_string = nullptr;
 
-    type_render_ctor                           render_constructor = nullptr;
-    type_render_dtor                           render_destructor = nullptr;
+    type_render_ctor                            render_constructor = nullptr;
+    type_render_dtor                            render_destructor = nullptr;
 
     // clang-format on
 
