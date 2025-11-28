@@ -70,7 +70,7 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 
     m_ownable_cache_ptr->emplace_back(std::move(obj));
 
-    switch (m_construction_type)
+    switch (get_construction_type())
     {
     case object_load_type::class_obj:
     {
@@ -81,7 +81,6 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
         break;
     }
     case object_load_type::instance_obj:
-    case object_load_type::mirror_copy:
     {
         m_instance_local_set->map.add_item(obj_ref);
         glob::glob_state().get_instance_cache_map()->add_item(obj_ref);

@@ -224,8 +224,11 @@ def write_properties(ar_file, fc: arapi.types.file_context, t: arapi.types.agea_
     if p.property_compare_handler != "":
       ar_file.write(f"        p->compare_handler  = {p.property_compare_handler};\n")
 
-    if p.property_copy_handler != "":
-      ar_file.write(f"        p->copy_handler  = {p.property_copy_handler};\n")
+      if p.property_copy_handler != "":
+        ar_file.write(f"        p->copy_handler  = {p.property_copy_handler};\n")
+
+    if p.property_instantiate_handler != "":
+      ar_file.write(f"        p->instantiate_handler  = {p.property_instantiate_handler};\n")
 
     ar_file.write("    }\n")
 
@@ -549,6 +552,9 @@ package::package_types_builder::build(static_package& sp)
 
       if t.to_string_handle:
         ar_file.write(f"    rt.to_string              = {t.to_string_handle};\n")
+
+      if t.instantiate_handler:
+        ar_file.write(f"    rt.instantiate            = {t.instantiate_handler};\n")
 
       ar_file.write("}\n")
 

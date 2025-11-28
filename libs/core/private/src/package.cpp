@@ -31,6 +31,8 @@ package::init()
         .set_ownable_cache(&m_objects)
         .set_instance_local_set(&m_instance_local_cs);
 
+    m_occ->push_construction_type(object_load_type::class_obj);
+
     return true;
 }
 

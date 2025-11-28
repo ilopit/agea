@@ -48,17 +48,18 @@ public:
 
     static result_code
     object_clone(root::smart_object& src,
+                 object_load_type type,
                  const utils::id& new_object_id,
                  object_load_context& occ,
                  root::smart_object*& obj,
                  std::vector<root::smart_object*>& loaded_obj);
 
     static result_code
-    object_mirror(root::smart_object& src,
-                  const utils::id& new_object_id,
-                  object_load_context& occ,
-                  root::smart_object*& obj,
-                  std::vector<root::smart_object*>& loaded_obj);
+    object_instantiate(root::smart_object& proto_obj,
+                       const utils::id& new_object_id,
+                       object_load_context& occ,
+                       root::smart_object*& result,
+                       std::vector<root::smart_object*>& loaded_obj);
 
     template <typename T>
     static result_code
@@ -93,20 +94,31 @@ public:
                                  root::smart_object*& obj);
 
     static result_code
+    object_instanciate_internal(root::smart_object& src,
+                                const utils::id& new_object_id,
+                                object_load_context& occ,
+                                root::smart_object*& obj);
+
+    static result_code
     update_object_properties(root::smart_object& g,
                              const serialization::conteiner& c,
                              object_load_context& occ);
 
     static result_code
-    derive_object_properties(root::smart_object& from,
-                             root::smart_object& to,
-                             const serialization::conteiner& c,
-                             object_load_context& occ);
+    load_derive_object_properties(root::smart_object& from,
+                                  root::smart_object& to,
+                                  const serialization::conteiner& c,
+                                  object_load_context& occ);
 
     static result_code
     clone_object_properties(root::smart_object& from,
                             root::smart_object& to,
                             object_load_context& occ);
+
+    static result_code
+    instantiate_object_properties(root::smart_object& from,
+                                  root::smart_object& to,
+                                  object_load_context& occ);
 
     static result_code
     diff_object_properties(const root::smart_object& left,

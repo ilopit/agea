@@ -103,6 +103,7 @@ reflection_type::override()
         AGEA_override_if_null(deserialize_with_proto);
         AGEA_override_if_null(load_derive);
         AGEA_override_if_null(copy);
+        AGEA_override_if_null(instantiate);
         AGEA_override_if_null(compare);
         AGEA_override_if_null(to_string);
         AGEA_override_if_null(render_constructor);

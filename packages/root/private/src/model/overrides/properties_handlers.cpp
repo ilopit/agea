@@ -239,18 +239,8 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
         root::smart_object* obj = nullptr;
         result_code rc = result_code::nav;
 
-        if (ctx.occ->get_construction_type() == core::object_load_type::mirror_copy)
-        {
-            rc = core::object_constructor::object_clone_create_internal(
-                *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
-        }
-        else
-        {
-            auto id = gen->generate(ctx.src_obj->get_id());
-
-            rc = core::object_constructor::object_clone_create_internal(*src_col[i], id, *ctx.occ,
-                                                                        obj);
-        }
+        rc = core::object_constructor::object_clone_create_internal(
+            *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
 
         if (rc != result_code::ok)
         {
@@ -344,7 +334,7 @@ game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
 }
 
 result_code
-texture_sample_deserialize(::agea::reflection::deserialize_context& dc)
+property_texture_sample__deserialize(::agea::reflection::deserialize_context& dc)
 {
     auto src = dc.obj->as<root::material>();
 
@@ -379,19 +369,19 @@ texture_sample_prototype(::agea::reflection::property_prototype_context& dc)
 }
 
 result_code
-texture_sample_serialize(::agea::reflection::serialize_context& dc)
+property_texture_sample__serialize(::agea::reflection::serialize_context& dc)
 {
     return result_code::ok;
 }
 
 result_code
-texture_sample_compare(::agea::reflection::compare_context& ctx)
+property_texture_sample__compare(::agea::reflection::compare_context& ctx)
 {
     return result_code::ok;
 }
 
 result_code
-texture_sample_copy(::agea::reflection::copy_context& ctx)
+property_texture_sample__copy(::agea::reflection::copy_context& ctx)
 {
     auto src = ctx.src_obj->as<root::material>();
     auto dst = ctx.dst_obj->as<root::material>();
@@ -400,27 +390,48 @@ texture_sample_copy(::agea::reflection::copy_context& ctx)
 
     result_code rc = result_code::ok;
 
-    if (ctx.occ->get_construction_type() != core::object_load_type::mirror_copy)
-    {
-        dst->set_sample(id, src->get_sample(id));
-    }
-    else
-    {
-        dst->set_sample(id, src->get_sample(id));
+    dst->set_sample(id, src->get_sample(id));
 
-        root::smart_object* obj = nullptr;
+    root::smart_object* obj = nullptr;
 
-        rc = core::object_constructor::object_clone_create_internal(
-            src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ, obj);
+    rc = core::object_constructor::object_clone_create_internal(
+        src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ, obj);
 
-        dst->get_sample(id).txt = obj->as<root::texture>();
-    }
+    dst->get_sample(id).txt = obj->as<root::texture>();
 
     return result_code::ok;
 }
 
 result_code
-texture_load_derive(reflection::property_load_derive_context& ctx)
+property_texture_sample__instantiate(::agea::reflection::instantiate_context& ctx)
+{
+    auto src = ctx.src_obj->as<root::material>();
+    auto dst = ctx.dst_obj->as<root::material>();
+
+    auto id = AID(ctx.src_property->name);
+
+    result_code rc = result_code::ok;
+
+    auto& src_sample = src->get_sample(id);
+
+    dst->set_sample(id, src_sample);
+
+    root::smart_object* obj = ctx.occ->find_obj(src_sample.txt->get_id());
+
+    if (!obj)
+    {
+        std::vector<smart_object*> objs;
+        rc = core::object_constructor::object_instantiate(*src_sample.txt, src_sample.txt->get_id(),
+                                                          *ctx.occ, obj, objs);
+    }
+
+    dst->get_sample(id).txt = obj->as<root::texture>();
+
+    return result_code::ok;
+}
+
+result_code
+property_texture_sample__load_derive(reflection::property_load_derive_context& ctx)
 {
     auto src = ctx.dst_obj->as<root::material>();
 

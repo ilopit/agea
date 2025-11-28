@@ -25,6 +25,7 @@ public:
     property_serialization_handler   serialization_handler   = default_serialize;
     property_compare_handler         compare_handler         = default_compare;
     property_copy_handler            copy_handler            = default_copy;
+    property_instantiate_handler     instantiate_handler     = default_instantiate;
     property_load_derive_handler     load_derive             = default_load_derive;
     property_to_string_handler       to_string_handler       = default_to_string;
 
@@ -52,6 +53,9 @@ private:
 
     static result_code
     default_copy(copy_context& context);
+
+    static result_code
+    default_instantiate(instantiate_context& context);
 
     static result_code
     default_load_derive(property_load_derive_context& context);

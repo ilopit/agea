@@ -81,7 +81,7 @@ game_object::spawn_component_with_proto(component* parent,
 
     result_code rc = result_code::failed;
 
-    auto proto_obj = occ.find_obj(proto_id);
+    auto proto_obj = occ.find_proto_obj(proto_id);
 
     std::vector<root::smart_object*> loaded_obj;
     if (!proto_obj)
@@ -104,19 +104,41 @@ game_object::spawn_component_with_proto(component* parent,
 
     loaded_obj.clear();
 
+    auto type = occ.get_construction_type();
+
     root::smart_object* result = nullptr;
-
-    rc = core::object_constructor::object_clone(*proto_obj, id, occ, result, loaded_obj);
-    if (rc != result_code::ok)
+    if (type == core::object_load_type::class_obj)
     {
-        return nullptr;
+        std::vector<root::smart_object*> objects;
+        rc = core::object_constructor::object_clone(*proto_obj, core::object_load_type::class_obj,
+                                                    id, occ, result, objects);
+        if (rc != result_code::ok)
+        {
+            return nullptr;
+        }
+
+        occ.reset_loaded_objects();
+
+        if (!result->post_load())
+        {
+            return nullptr;
+        }
     }
-
-    occ.reset_loaded_objects();
-
-    if (!result->post_load())
+    else if (type == core::object_load_type::instance_obj)
     {
-        return nullptr;
+        std::vector<root::smart_object*> objects;
+        rc = core::object_constructor::object_instantiate(*proto_obj, id, occ, result, objects);
+        if (rc != result_code::ok)
+        {
+            return nullptr;
+        }
+
+        occ.reset_loaded_objects();
+
+        if (!result->post_load())
+        {
+            return nullptr;
+        }
     }
 
     auto com = result->as<component>();

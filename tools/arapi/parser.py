@@ -41,6 +41,8 @@ def extract_type_config(type: arapi.types.agea_type, tokens, fc: arapi.types.fil
       if fc.model_has_types_overrides:
         if key == 'copy_handler':
           type.copy_handler = value
+        elif key == 'instantiate_handler':
+          type.instantiate_handler = value
         elif key == 'compare_handler':
           type.compare_handler = value
         elif key == 'serialize_handler':
@@ -209,6 +211,8 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
           prop.property_compare_handler = pairs[1]
         elif pairs[0] == "property_copy_handler":
           prop.property_copy_handler = pairs[1]
+        elif pairs[0] == "property_instantiate_handler":
+          prop.property_instantiate_handler = pairs[1]
         elif pairs[0] == "access":
           prop.access = pairs[1]
         elif pairs[0] == "default":

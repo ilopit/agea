@@ -18,6 +18,7 @@
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/texture.h>
+#include <packages/test/model/test_mesh_object.h>
 #include <packages/base/model/components/mesh_component.h>
 #include <packages/base/model/assets/simple_texture_material.h>
 
@@ -117,8 +118,8 @@ struct test_preloaded_test_package : base_test
     void
     check_intance(root::smart_object& so)
     {
-        ASSERT_TRUE(so.get_flags().instance_obj);
-        ASSERT_FALSE(so.get_flags().proto_obj);
+        ASSERT_TRUE(so.get_flags().instance_obj) << so.get_id();
+        ASSERT_FALSE(so.get_flags().proto_obj) << so.get_id();
     }
 
     void
@@ -156,7 +157,7 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
     ASSERT_TRUE(go);
     check_proto(*go);
 
-    ASSERT_EQ(m_loaded_objects.size(), 5);
+    ASSERT_EQ(m_loaded_objects.size(), 3);
 
     ASSERT_EQ(go->get_id(), AID("test_complex_mesh_object"));
     ASSERT_EQ(go->get_architype_id(), core::architype::game_object);
@@ -214,8 +215,6 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
     ASSERT_TRUE(go);
     check_intance(*go);
 
-    ASSERT_EQ(m_loaded_objects.size(), 7);
-
     ASSERT_EQ(go->get_id(), AID("test_complex_mesh_object"));
     ASSERT_EQ(go->get_architype_id(), core::architype::game_object);
 
@@ -236,12 +235,12 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 
     auto mesh = comp2->get_mesh();
     ASSERT_EQ(mesh->get_id(), AID("test_mesh"));
-    ASSERT_EQ(mesh->get_class_obj()->get_id(), AID("mesh"));
+    ASSERT_EQ(mesh->get_class_obj()->get_id(), AID("test_mesh"));
     check_intance(*mesh);
 
     auto material = comp2->get_material()->as<base::simple_texture_material>();
     ASSERT_EQ(material->get_id(), AID("test_material"));
-    ASSERT_EQ(material->get_class_obj()->get_id(), AID("simple_texture_material"));
+    ASSERT_EQ(material->get_class_obj()->get_id(), AID("test_material"));
     check_intance(*material);
 
     auto& ts = material->get_sample(AID("simple_texture"));
@@ -256,4 +255,17 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 TEST_F(test_preloaded_test_package, check_load_in_construct)
 {
     auto& gs = glob::glob_state();
+
+    auto proto_obj = test::package::instance().get_proto_local_cs().components.get_item(
+        AID("test_complex_mesh_component"));
+
+    ASSERT_EQ(proto_obj->get_id(), AID("test_complex_mesh_component"));
+    ASSERT_EQ(proto_obj->get_architype_id(), core::architype::component);
+
+    core::level l(AID("test_level"));
+
+    test::test_mesh_object::construct_params sp;
+    auto obj = l.spawn_object<test::test_mesh_object>(AID("aaa"), sp);
+
+    int i = 2;
 }

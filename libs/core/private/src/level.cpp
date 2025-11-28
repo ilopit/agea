@@ -57,7 +57,7 @@ level::spawn_object_impl(const utils::id& proto_id,
     root::smart_object* result = nullptr;
     std::vector<root::smart_object*> loaded_obj;
 
-    m_occ->set_construction_type(object_load_type::instance_obj);
+    m_occ->push_construction_type(object_load_type::instance_obj);
 
     auto rc =
         object_constructor::object_clone_create_internal(*proto_obj, object_id, *m_occ, result);
@@ -66,6 +66,7 @@ level::spawn_object_impl(const utils::id& proto_id,
         return nullptr;
     }
 
+    m_occ->pop_construction_type();
     m_occ->reset_loaded_objects(loaded_obj);
 
     auto obj = result->as<root::game_object>();

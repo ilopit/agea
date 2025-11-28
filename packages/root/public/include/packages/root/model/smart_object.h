@@ -105,6 +105,7 @@ using smart_object_ptr = std::shared_ptr<smart_object>;
 // clang-format off
 AGEA_ar_class(architype                      = smart_object,
               copy_handler                   = smart_obj__copy,
+              instantiate_handler            = smart_obj__instantiate,
               compare_handler                = smart_obj__compare,
               serialize_handler              = smart_obj__serialize,
               load_derive                    = smart_obj__load_derive,

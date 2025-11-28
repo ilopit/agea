@@ -10,6 +10,8 @@
 
 #include <utils/path.h>
 
+#include <stack>
+
 namespace agea
 {
 namespace core
@@ -46,7 +48,6 @@ public:
 
     // clang-format off
     object_load_context& set_proto_local_set     (cache_set* v)                             { m_proto_local_set = v; return *this; }
-    object_load_context& set_construction_type   (object_load_type t)                       { m_construction_type = t; return *this; }
     object_load_context& set_instance_local_set  (cache_set* v)                             { m_instance_local_set = v; return *this; }
     object_load_context& set_level               (level* l)                                 { m_level = l; return *this; }
     object_load_context& set_objects_mapping     (const std::shared_ptr<object_mapping>& v) { m_object_mapping = v; return *this; }
@@ -54,9 +55,6 @@ public:
     object_load_context& set_package             (package* p)                               { m_package = p; return *this; }
     object_load_context& set_prefix_path         (const utils::path& v)                     { m_path_prefix = v; return *this; }
 
-    //cache_set*          get_proto_global_set() const    { return m_proto_global_set; }
-    //cache_set*          get_proto_local_set() const     { return m_proto_local_set; }
-    object_load_type    get_construction_type()         { return m_construction_type; }
     cache_set*          get_instance_local_set() const  { return m_instance_local_set; }
     package*            get_package() const             { return m_package; }
     const utils::path&  get_prefix_path() const         { return m_path_prefix; }
@@ -82,8 +80,29 @@ public:
         m_loaded_objects.push_back(o);
     }
 
+    void
+    push_construction_type(object_load_type v)
+    {
+        m_types.push(v);
+    }
+
+    object_load_type
+    get_construction_type()
+    {
+        AGEA_check(!m_types.empty(), "Shoudn't be empty");
+        return m_types.top();
+    }
+
+    void
+    pop_construction_type()
+    {
+        if (!m_types.empty())
+        {
+            m_types.pop();
+        }
+    }
+
 private:
-    object_load_type m_construction_type = object_load_type::nav;
     utils::path m_path_prefix;
 
     cache_set* m_proto_local_set = nullptr;
@@ -96,6 +115,7 @@ private:
     std::shared_ptr<object_mapping> m_object_mapping;
 
     line_cache<root::smart_object_ptr>* m_ownable_cache_ptr;
+    std::stack<object_load_type> m_types;
 };
 }  // namespace core
 }  // namespace agea

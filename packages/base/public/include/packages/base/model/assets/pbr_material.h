@@ -25,20 +25,24 @@ public:
         return true;
     };
 
-    AGEA_ar_property("category=Properties",
-                     "serializable=true",
-                     "property_des_handler=::agea::root::texture_sample_deserialize",
-                     "property_ser_handler=::agea::root::texture_sample_serialize",
-                     "property_compare_handler=::agea::root::texture_sample_compare",
-                     "property_copy_handler=::agea::root::texture_sample_copy");
+    AGEA_ar_property(
+        "category=Properties",
+        "serializable=true",
+        "property_des_handler=::agea::root::property_texture_sample__deserialize",
+        "property_ser_handler=::agea::root::property_texture_sample__serialize",
+        "property_compare_handler=::agea::root::property_texture_sample__compare",
+        "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
+        "property_copy_handler=::agea::root::property_texture_sample___copy");
     ::agea::root::texture_sample m_diffuse_txt;
 
-    AGEA_ar_property("category=Properties",
-                     "serializable=true",
-                     "property_des_handler=::agea::root::texture_sample_deserialize",
-                     "property_ser_handler=::agea::root::texture_sample_serialize",
-                     "property_compare_handler=::agea::root::texture_sample_compare",
-                     "property_copy_handler=::agea::root::texture_sample_copy");
+    AGEA_ar_property(
+        "category=Properties",
+        "serializable=true",
+        "property_des_handler=::agea::root::property_texture_sample__deserialize",
+        "property_ser_handler=::agea::root::property_texture_sample__serialize",
+        "property_compare_handler=::agea::root::property_texture_sample__compare",
+        "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
+        "property_copy_handler=::agea::root::property_texture_sample__copy");
     ::agea::root::texture_sample m_specular_txt;
 
     AGEA_ar_property("category=Properties",

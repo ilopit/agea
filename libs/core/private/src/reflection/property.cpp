@@ -88,6 +88,31 @@ property::default_copy(copy_context& cxt)
 }
 
 result_code
+property::default_instantiate(instantiate_context& cxt)
+{
+    AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
+    AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
+    AGEA_check(!cxt.src_property->type.is_collection, "Not supported!");
+
+    AGEA_check(cxt.src_property->rtype->instantiate || cxt.src_property->rtype->copy,
+               "Should be valid!");
+    AGEA_check(cxt.dst_property->rtype->instantiate || cxt.dst_property->rtype->copy,
+               "Should never happens!");
+
+    auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
+                                               cxt.src_property->type.is_ptr);
+    auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
+                                             cxt.dst_property->type.is_ptr);
+
+    if (cxt.dst_property->rtype->instantiate)
+    {
+        return cxt.dst_property->rtype->instantiate(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
+    }
+
+    return cxt.dst_property->rtype->copy(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
+}
+
+result_code
 property::default_load_derive(property_load_derive_context& ctx)
 {
     if (!ctx.src_property->rtype->copy)

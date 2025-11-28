@@ -46,11 +46,9 @@ object_constructor::object_load(const utils::path& path_in_package,
                                 root::smart_object*& obj,
                                 std::vector<root::smart_object*>& loaded_obj)
 {
-    AGEA_check(occ.get_construction_type() == object_load_type::nav, "Should be nav!");
-
-    occ.set_construction_type(type);
+    occ.push_construction_type(type);
     auto rc = object_load_internal(path_in_package, occ, obj);
-    occ.set_construction_type(object_load_type::nav);
+    occ.pop_construction_type();
 
     occ.reset_loaded_objects(loaded_obj);
 
@@ -64,11 +62,9 @@ object_constructor::object_load(const utils::id& id,
                                 root::smart_object*& obj,
                                 std::vector<root::smart_object*>& loaded_obj)
 {
-    AGEA_check(occ.get_construction_type() == object_load_type::nav, "Should be nav!");
-
-    occ.set_construction_type(type);
+    occ.push_construction_type(type);
     auto rc = object_load_internal(id, occ, obj);
-    occ.set_construction_type(object_load_type::nav);
+    occ.pop_construction_type();
 
     occ.reset_loaded_objects(loaded_obj);
 
@@ -77,19 +73,33 @@ object_constructor::object_load(const utils::id& id,
 
 result_code
 object_constructor::object_clone(root::smart_object& src,
+                                 object_load_type type,
                                  const utils::id& new_object_id,
                                  object_load_context& occ,
                                  root::smart_object*& obj,
                                  std::vector<root::smart_object*>& loaded_obj)
 {
-    AGEA_check(occ.get_construction_type() == object_load_type::nav, "Should be nav!");
-
-    occ.set_construction_type(core::object_load_type::instance_obj);
+    occ.push_construction_type(type);
     auto rc = object_clone_create_internal(src, new_object_id, occ, obj);
-    occ.set_construction_type(core::object_load_type::nav);
+    occ.pop_construction_type();
 
     occ.reset_loaded_objects(loaded_obj);
 
+    return rc;
+}
+
+result_code
+object_constructor::object_instantiate(root::smart_object& src,
+                                       const utils::id& new_object_id,
+                                       object_load_context& occ,
+                                       root::smart_object*& obj,
+                                       std::vector<root::smart_object*>& loaded_obj)
+{
+    occ.push_construction_type(core::object_load_type::instance_obj);
+    auto rc = object_instanciate_internal(src, new_object_id, occ, obj);
+    occ.pop_construction_type();
+
+    occ.reset_loaded_objects(loaded_obj);
     return rc;
 }
 
@@ -152,11 +162,7 @@ object_constructor::object_construct(const utils::id& type_id,
 
     if (package)
     {
-        auto prev_ct = olc.get_construction_type();
-
-        AGEA_check(prev_ct != object_load_type::instance_obj, "ct missmatch!");
-
-        olc.set_construction_type(object_load_type::class_obj);
+        olc.push_construction_type(object_load_type::class_obj);
         obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
         if (!obj->META_construct(params))
         {
@@ -168,15 +174,11 @@ object_constructor::object_construct(const utils::id& type_id,
             return nullptr;
         }
 
-        olc.set_construction_type(prev_ct);
+        olc.pop_construction_type();
     }
     else if (level)
     {
-        auto prev_ct = olc.get_construction_type();
-
-        AGEA_check(olc.get_construction_type() != object_load_type::mirror_copy, "ct missmatch!");
-
-        olc.set_construction_type(object_load_type::instance_obj);
+        olc.push_construction_type(object_load_type::instance_obj);
         obj = object_constructor::alloc_empty_object(type_id, id, 0, olc);
 
         if (!obj->META_construct(params))
@@ -188,7 +190,7 @@ object_constructor::object_construct(const utils::id& type_id,
             return nullptr;
         }
 
-        olc.set_construction_type(prev_ct);
+        olc.pop_construction_type();
     }
 
     olc.reset_loaded_objects();
@@ -200,16 +202,16 @@ result_code
 object_constructor::create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
                                                   object_load_context& olc)
 {
-    AGEA_check(olc.get_construction_type() == object_load_type::nav, "Should be nav!");
+    AGEA_check(olc.get_construction_type() == object_load_type::class_obj, "Should be class!");
     AGEA_check(olc.get_package(), "Should exist");
     AGEA_check(!olc.get_level(), "Should exist");
 
     empty->get_flags().proto_obj = true;
 
-    olc.set_construction_type(object_load_type::class_obj);
+    olc.push_construction_type(object_load_type::class_obj);
     empty->set_package(olc.get_package());
     olc.add_obj(empty);
-    olc.set_construction_type(object_load_type::nav);
+    olc.pop_construction_type();
 
     auto rt = empty->get_reflection();
 
@@ -376,9 +378,8 @@ object_constructor::object_clone_create_internal(const utils::id& object_id,
         return result_code::ok;
     }
 
-    obj = occ.get_construction_type() == object_load_type::mirror_copy
-              ? occ.find_proto_obj(object_id)
-              : occ.find_obj(object_id);
+    obj = occ.get_construction_type() == object_load_type::class_obj ? occ.find_proto_obj(object_id)
+                                                                     : occ.find_obj(object_id);
 
     if (!obj)
     {
@@ -397,13 +398,37 @@ object_constructor::object_clone_create_internal(root::smart_object& proto_obj,
 {
     AGEA_check(&proto_obj, "Should exist!");
 
+    obj = alloc_empty_object(proto_obj.get_type_id(), new_object_id, 0, occ);
+
+    obj->META_set_class_obj(&proto_obj);
+
+    auto rc = clone_object_properties(proto_obj, *obj, occ);
+    if (rc != result_code::ok)
+    {
+        ALOG_LAZY_ERROR;
+        return rc;
+    }
+
+    obj->set_state(root::smart_object_state::loaded);
+
+    return result_code::ok;
+}
+
+result_code
+object_constructor::object_instanciate_internal(root::smart_object& proto_obj,
+                                                const utils::id& new_object_id,
+                                                object_load_context& occ,
+                                                root::smart_object*& obj)
+{
+    AGEA_check(&proto_obj, "Should exist!");
+
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
     obj = alloc_empty_object(proto_obj.get_type_id(), new_object_id, 0, occ);
 
     obj->META_set_class_obj(&proto_obj);
 
-    auto rc = clone_object_properties(proto_obj, *obj, occ);
+    auto rc = instantiate_object_properties(proto_obj, *obj, occ);
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
@@ -448,10 +473,10 @@ object_constructor::update_object_properties(root::smart_object& obj,
 }
 
 result_code
-object_constructor::derive_object_properties(root::smart_object& from,
-                                             root::smart_object& to,
-                                             const serialization::conteiner& c,
-                                             object_load_context& occ)
+object_constructor::load_derive_object_properties(root::smart_object& from,
+                                                  root::smart_object& to,
+                                                  const serialization::conteiner& c,
+                                                  object_load_context& occ)
 {
     auto& properties = from.get_reflection()->m_serilalization_properties;
 
@@ -499,6 +524,47 @@ object_constructor::clone_object_properties(root::smart_object& from,
 }
 
 result_code
+object_constructor::instantiate_object_properties(root::smart_object& from,
+                                                  root::smart_object& to,
+                                                  object_load_context& occ)
+{
+    auto& properties = from.get_reflection()->m_serilalization_properties;
+
+    reflection::instantiate_context ictx{nullptr, nullptr, &from, &to, &occ};
+    reflection::copy_context cctx{nullptr, nullptr, &from, &to, &occ};
+
+    for (auto& p : properties)
+    {
+        if (p->instantiate_handler)
+        {
+            ictx.dst_property = p.get();
+            ictx.src_property = p.get();
+
+            auto result = p->instantiate_handler(ictx);
+            if (result != result_code::ok)
+            {
+                ALOG_LAZY_ERROR;
+                return result;
+            }
+        }
+        else
+        {
+            cctx.dst_property = p.get();
+            cctx.src_property = p.get();
+
+            auto result = p->copy_handler(cctx);
+            if (result != result_code::ok)
+            {
+                ALOG_LAZY_ERROR;
+                return result;
+            }
+        }
+    }
+
+    return result_code::ok;
+}
+
+result_code
 object_constructor::diff_object_properties(const root::smart_object& left,
                                            const root::smart_object& right,
                                            std::vector<reflection::property*>& diff)
@@ -532,8 +598,6 @@ object_constructor::object_load_full(serialization::conteiner& sc,
                                      object_load_context& occ,
                                      root::smart_object*& obj)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::mirror_copy, "Should not be here!");
-
     auto type_id = AID(sc["type_id"].as<std::string>());
     auto obj_id = AID(sc["id"].as<std::string>());
 
@@ -561,15 +625,13 @@ object_constructor::object_load_partial(root::smart_object& prototype_obj,
                                         object_load_context& occ,
                                         root::smart_object*& obj)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::mirror_copy, "Should not be here!");
-
     auto obj_id = AID(sc["id"].as<std::string>());
 
     obj = alloc_empty_object(prototype_obj.get_type_id(), obj_id, 0, occ);
 
     obj->META_set_class_obj(&prototype_obj);
 
-    auto rc = derive_object_properties(prototype_obj, *obj, sc, occ);
+    auto rc = load_derive_object_properties(prototype_obj, *obj, sc, occ);
 
     if (rc != result_code::ok)
     {
@@ -587,15 +649,13 @@ object_constructor::object_load_derive(root::smart_object& prototype_obj,
                                        object_load_context& occ,
                                        root::smart_object*& obj)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::mirror_copy, "Should not be here!");
-
     auto obj_id = AID(sc["id"].as<std::string>());
 
     obj = alloc_empty_object(prototype_obj.get_type_id(), obj_id, 0, occ);
 
     obj->META_set_class_obj(&prototype_obj);
 
-    auto rc = derive_object_properties(prototype_obj, *obj, sc, occ);
+    auto rc = load_derive_object_properties(prototype_obj, *obj, sc, occ);
 
     if (rc != result_code::ok)
     {
@@ -659,7 +719,7 @@ object_constructor::object_load_internal(const utils::id& id,
         // proto as instance
         if (auto proto = occ.find_proto_obj(id))
         {
-            auto rc = object_clone_create_internal(*proto, proto->get_id(), occ, obj);
+            auto rc = object_instanciate_internal(*proto, proto->get_id(), occ, obj);
             if (rc == result_code::ok)
             {
                 return rc;

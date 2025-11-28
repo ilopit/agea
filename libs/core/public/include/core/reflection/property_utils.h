@@ -49,6 +49,15 @@ struct copy_context
     core::object_load_context* occ = nullptr;
 };
 
+struct instantiate_context
+{
+    property* src_property = nullptr;
+    property* dst_property = nullptr;
+    root::smart_object* src_obj = nullptr;
+    root::smart_object* dst_obj = nullptr;
+    core::object_load_context* occ = nullptr;
+};
+
 struct property_prototype_context
 {
     property* src_property = nullptr;
@@ -82,6 +91,7 @@ using property_deserialization_handler  = result_code(*)(deserialize_context&);
 using property_serialization_handler    = result_code(*)(serialize_context&);
 using property_compare_handler          = result_code(*)(compare_context&);
 using property_copy_handler             = result_code(*)(copy_context&);
+using property_instantiate_handler      = result_code(*)(instantiate_context&);
 using property_load_derive_handler      = result_code(*)(property_load_derive_context&);
 using property_to_string_handler        = result_code(*)(property_to_string_context&);
 

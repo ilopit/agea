@@ -27,6 +27,7 @@ class agea_property:
     self.property_compare_handler = ""
     self.property_load_derive_handler = ""
     self.property_copy_handler = ""
+    self.property_instantiate_handler = ""
     self.gpu_data = ""
     self.copyable = "yes"
     self.updatable = "yes"
@@ -60,6 +61,7 @@ class agea_type:
     self.load_derive_handler = ""
     self.serialize_handler = ""
     self.to_string_handle = ""
+    self.instantiate_handler = ""
     self.render_constructor = ""
     self.render_destructor = ""
 

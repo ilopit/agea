@@ -59,7 +59,6 @@ container::unload()
     m_instance_local_cs.clear();
     m_objects.clear();
     m_mapping->clear();
-    m_occ->set_construction_type(object_load_type::nav);
 }
 
 void

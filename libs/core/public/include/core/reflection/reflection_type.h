@@ -30,6 +30,8 @@
     ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj, \
         ::agea::blob_ptr from, ::agea::blob_ptr to, ::agea::core::object_load_context &ooc
 
+#define AGEA_instantiate_handler_args AGEA_copy_handler_args
+
 #define AGEA_protorype_handler_args                                                             \
     ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj,                   \
         ::agea::blob_ptr from, ::agea::blob_ptr to, const ::agea::serialization::conteiner &jc, \
@@ -64,6 +66,7 @@ using type_load_derive_handler = result_code (*)(AGEA_load_derive_args);
 using type_deserialisation_with_prototype_handler =
     result_code (*)(AGEA_deserialization_update_args);
 using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
+using type_instantiate_handler = result_code (*)(AGEA_instantiate_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
 using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
 using type_render_ctor = result_code (*)(AGEA_AR_render_ctor_args);
@@ -118,6 +121,7 @@ struct reflection_type
     type_deserialisation_with_prototype_handler deserialize_with_proto = nullptr;
     type_load_derive_handler                    load_derive = nullptr;
     type_copy_handler                           copy = nullptr;
+    type_instantiate_handler                    instantiate = nullptr;
     type_compare_handler                        compare = nullptr;
     type_ui_handler                             to_string = nullptr;
 
