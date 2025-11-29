@@ -15,6 +15,8 @@ AGEA_gen_class_cd_default(smart_object);
 bool
 smart_object::post_construct()
 {
+    ALOG_INFO("post_construct {}", get_id().cstr());
+
     set_state(smart_object_state::constructed);
     return true;
 }
@@ -22,6 +24,8 @@ smart_object::post_construct()
 bool
 smart_object::post_load()
 {
+    ALOG_INFO("post_construct {}", get_id().cstr());
+
     set_state(smart_object_state::constructed);
     return true;
 }
@@ -29,7 +33,8 @@ smart_object::post_load()
 void
 smart_object::set_state(smart_object_state v)
 {
-    ALOG_TRACE("{} {} => {}", m_id.cstr(), (int)m_obj_state, (int)v);
+    AGEA_check(m_obj_state != v, "Should go to the same state");
+
     m_obj_state = v;
 }
 

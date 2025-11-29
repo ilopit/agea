@@ -116,34 +116,6 @@ package_manager::load_package(const utils::id& id)
             ALOG_LAZY_ERROR;
             return false;
         }
-
-        for (auto& o : loaded_obj)
-        {
-            if (o->get_state() != root::smart_object_state::constructed)
-            {
-                o->post_load();
-            }
-        }
-
-        auto mirror_id = obj->get_id();
-        obj = nullptr;
-
-        //         rc = object_constructor::mirror_object(mirror_id,
-        //         new_package->get_load_context(), obj,
-        //                                                loaded_obj);
-        //         if (rc != result_code::ok)
-        //         {
-        //             ALOG_LAZY_ERROR;
-        //             return false;
-        //         }
-        //
-        //         for (auto o : loaded_obj)
-        //         {
-        //             if (o->get_state() != root::smart_object_state::constructed)
-        //             {
-        //                 o->post_load();
-        //             }
-        //         }
     }
 
     new_package->set_state(package_state::loaded);

@@ -62,16 +62,23 @@ public:
 
     // clang-format on
     void
-    reset_loaded_objects(std::vector<root::smart_object*>& objs)
+    reset_loaded_objects(std::vector<root::smart_object*>& old_object,
+                         std::vector<root::smart_object*>& result)
     {
-        objs = std::move(m_loaded_objects);
-        m_loaded_objects.clear();
+        result = std::move(m_loaded_objects);
+        m_loaded_objects = std::move(old_object);
     }
 
     void
+    reset_loaded_objects(std::vector<root::smart_object*>& old_object)
+    {
+        m_loaded_objects = std::move(old_object);
+    }
+
+    std::vector<root::smart_object*>
     reset_loaded_objects()
     {
-        m_loaded_objects.clear();
+        return std::move(m_loaded_objects);
     }
 
     void

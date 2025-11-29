@@ -22,10 +22,12 @@ class property;
 
 namespace core
 {
+
 class object_constructor
 {
 public:
     // Public API
+
     static result_code
     object_load(const utils::path& path_in_package,
                 object_load_type type,

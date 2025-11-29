@@ -46,11 +46,18 @@ object_constructor::object_load(const utils::path& path_in_package,
                                 root::smart_object*& obj,
                                 std::vector<root::smart_object*>& loaded_obj)
 {
+    auto old_objects = occ.reset_loaded_objects();
+
     occ.push_construction_type(type);
     auto rc = object_load_internal(path_in_package, occ, obj);
     occ.pop_construction_type();
 
-    occ.reset_loaded_objects(loaded_obj);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+
+    for (auto obj : loaded_obj)
+    {
+        obj->post_load();
+    }
 
     return rc;
 }
@@ -62,11 +69,18 @@ object_constructor::object_load(const utils::id& id,
                                 root::smart_object*& obj,
                                 std::vector<root::smart_object*>& loaded_obj)
 {
+    auto old_objects = occ.reset_loaded_objects();
+
     occ.push_construction_type(type);
     auto rc = object_load_internal(id, occ, obj);
     occ.pop_construction_type();
 
-    occ.reset_loaded_objects(loaded_obj);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+
+    for (auto obj : loaded_obj)
+    {
+        obj->post_load();
+    }
 
     return rc;
 }
@@ -79,11 +93,18 @@ object_constructor::object_clone(root::smart_object& src,
                                  root::smart_object*& obj,
                                  std::vector<root::smart_object*>& loaded_obj)
 {
+    auto old_objects = occ.reset_loaded_objects();
+
     occ.push_construction_type(type);
     auto rc = object_clone_create_internal(src, new_object_id, occ, obj);
     occ.pop_construction_type();
 
-    occ.reset_loaded_objects(loaded_obj);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+
+    for (auto obj : loaded_obj)
+    {
+        obj->post_load();
+    }
 
     return rc;
 }
@@ -95,11 +116,18 @@ object_constructor::object_instantiate(root::smart_object& src,
                                        root::smart_object*& obj,
                                        std::vector<root::smart_object*>& loaded_obj)
 {
+    auto old_objects = occ.reset_loaded_objects();
+
     occ.push_construction_type(core::object_load_type::instance_obj);
     auto rc = object_instanciate_internal(src, new_object_id, occ, obj);
     occ.pop_construction_type();
 
-    occ.reset_loaded_objects(loaded_obj);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+
+    for (auto o : loaded_obj)
+    {
+        o->post_load();
+    }
     return rc;
 }
 

@@ -95,11 +95,6 @@ game_object::spawn_component_with_proto(component* parent,
         {
             return nullptr;
         }
-
-        for (auto obj : loaded_obj)
-        {
-            obj->post_load();
-        }
     }
 
     loaded_obj.clear();
@@ -118,11 +113,6 @@ game_object::spawn_component_with_proto(component* parent,
         }
 
         occ.reset_loaded_objects();
-
-        if (!result->post_load())
-        {
-            return nullptr;
-        }
     }
     else if (type == core::object_load_type::instance_obj)
     {
@@ -134,11 +124,6 @@ game_object::spawn_component_with_proto(component* parent,
         }
 
         occ.reset_loaded_objects();
-
-        if (!result->post_load())
-        {
-            return nullptr;
-        }
     }
 
     auto com = result->as<component>();
@@ -179,11 +164,6 @@ game_object::post_load()
     AGEA_check(get_state() == smart_object_state::loaded, "Should be in proper place");
 
     recreate_structure_from_ids();
-
-    for (auto c : m_components)
-    {
-        c->set_state(smart_object_state::constructed);
-    }
 
     set_state(smart_object_state::constructed);
 
