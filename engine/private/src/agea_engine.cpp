@@ -9,7 +9,6 @@
 #include "engine/private/sync_service.h"
 
 #include <core/caches/caches_map.h>
-
 #include <core/id_generator.h>
 #include <core/level.h>
 #include <core/level_manager.h>
@@ -19,6 +18,9 @@
 #include <core/reflection/lua_api.h>
 #include <core/reflection/reflection_type.h>
 #include <core/global_state.h>
+#include <core/core_state.h>
+
+#include <global_state/global_state.h>
 
 #include <native/native_window.h>
 
@@ -32,7 +34,12 @@
 #include <packages/base/model/lights/spot_light.h>
 #include <packages/root/model/assets/material.h>
 
+#include <packages/root/package.root.h>
+#include <packages/base/package.base.h>
+
 #include <render_bridge/render_bridge.h>
+
+#include <resource_locator/resource_locator_state.h>
 
 #include <vulkan_render/agea_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
@@ -94,10 +101,12 @@ vulkan_engine::init()
 
     auto& gs = glob::glob_state();
 
-    gs.schedule_action(core::state::state_stage::create,
-                       [](core::state& s)
+    gs.schedule_action(gs::state::state_stage::create,
+                       [](gs::state& s)
                        {
                            // state
+                           state_mutator__resource_locator::set(s);
+
                            core::state_mutator__caches::set(s);
                            core::state_mutator__level_manager::set(s);
                            core::state_mutator__package_manager::set(s);
@@ -110,7 +119,6 @@ vulkan_engine::init()
 
     glob::game_editor::create(*m_registry);
     glob::input_manager::create(*m_registry);
-    glob::resource_locator::create(*m_registry);
     glob::config::create(*m_registry);
     glob::render_device::create(*m_registry);
     glob::vulkan_render_loader::create(*m_registry);
@@ -123,8 +131,8 @@ vulkan_engine::init()
     gs.run_connect();
     init_default_scripting();
 
-    glob::resource_locator::get()->init_local_dirs();
-    auto cfgs_folder = glob::resource_locator::get()->resource_dir(category::configs);
+    glob::glob_state().get_resource_locator()->init_local_dirs();
+    auto cfgs_folder = glob::glob_state().get_resource_locator()->resource_dir(category::configs);
 
     utils::path main_config = cfgs_folder / "agea.acfg";
     glob::config::get()->load(main_config);
@@ -134,8 +142,8 @@ vulkan_engine::init()
 
     glob::game_editor::get()->init();
 
-    gs.schedule_action(core::state::state_stage::init,
-                       [](agea::core::state& s) { s.get_pm()->init(); });
+    gs.schedule_action(gs::state::state_stage::init,
+                       [](agea::gs::state& s) { s.get_pm()->init(); });
     gs.run_init();
 
     native_window::construct_params rwc;

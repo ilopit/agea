@@ -251,9 +251,9 @@ spot_light_component__render_loader(::agea::render_bridge& rb,
 }
 
 result_code
-spot_light_component__root__render_destructor(::agea::render_bridge& rb,
-                                              root::smart_object& obj,
-                                              bool sub_object)
+spot_light_component__render_destructor(::agea::render_bridge& rb,
+                                        root::smart_object& obj,
+                                        bool sub_object)
 {
     auto& slc_model = obj.asr<base::spot_light_component>();
 

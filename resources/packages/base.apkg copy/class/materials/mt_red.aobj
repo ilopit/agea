@@ -1,0 +1,7 @@
+type_id: simple_texture_material
+id: mt_red
+shader_effect: se_simple_texture
+simple_texture:
+    texture: txt_red
+    slot: 0
+    sampler: default

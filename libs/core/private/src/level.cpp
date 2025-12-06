@@ -8,7 +8,7 @@
 #include <core/object_load_context.h>
 #include <core/object_constructor.h>
 
-#include <core/global_state.h>
+#include <global_state/global_state.h>
 
 namespace agea
 {

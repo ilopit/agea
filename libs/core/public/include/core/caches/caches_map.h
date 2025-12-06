@@ -49,6 +49,30 @@ public:
     }
 };
 
+struct objects_cache : public cache<root::smart_object, architype::smart_object>
+{
+};
+
+struct components_cache : public cache<root::component, architype::component>
+{
+};
+
+struct game_objects_cache : public cache<root::game_object, architype::game_object>
+{
+};
+struct textures_cache : public cache<root::texture, architype::texture>
+{
+};
+struct meshes_cache : public cache<root::mesh, architype::mesh>
+{
+};
+struct materials_cache : public cache<root::material, architype::material>
+{
+};
+struct shader_effects_cache : public cache<root::shader_effect, architype::shader_effect>
+{
+};
+
 class caches_map
 {
 public:

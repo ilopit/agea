@@ -3,6 +3,8 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
+#include <global_state/global_state.h>
+
 #include <resource_locator/resource_locator.h>
 
 #include <stb_unofficial/stb.h>
@@ -23,8 +25,8 @@ native_window::construct(construct_params& c)
 
     m_window = SDL_CreateWindow("AGEA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w,
                                 c.h, window_flags);
-
-    auto icon_path = glob::resource_locator::getr().resource(category::editor, "icon_256.png");
+    auto icon_path =
+        glob::glob_state().get_resource_locator()->resource(category::editor, "icon_256.png");
 
     int tex_width = 0, tex_height = 0, tex_channels = 0;
     void* pixels =

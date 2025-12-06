@@ -1,0 +1,6 @@
+type_id: shader_effect
+id: se_simple_texture_lit
+vert: class/shader_effects/lit/se_simple_texture_lit.vert
+is_vert_binary: false
+frag: class/shader_effects/lit/se_simple_texture_lit.frag
+is_frag_binary: false

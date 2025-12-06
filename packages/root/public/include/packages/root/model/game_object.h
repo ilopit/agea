@@ -8,7 +8,7 @@
 
 #include <core/model_minimal.h>
 #include <core/id_generator.h>
-#include <core/global_state.h>
+#include <global_state/global_state.h>
 
 namespace agea
 {
@@ -203,6 +203,7 @@ protected:
                      "property_ser_handler=game_object_components_serialize",
                      "property_compare_handler=game_object_components_compare",
                      "property_copy_handler=game_object_components_copy",
+                     "property_instantiate_handler=game_object_components_instantiate",
                      "property_load_derive_handler=game_object_load_derive");
     std::vector<component*> m_components;
 

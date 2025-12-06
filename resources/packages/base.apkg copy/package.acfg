@@ -1,0 +1,32 @@
+class_obj_mapping:
+  - se_simple_texture: class/shader_effects/se_simple_texture.aobj
+  - se_solid_color: class/shader_effects/se_solid_color.aobj
+  - se_texture_billboard: class/shader_effects/se_texture_billboard.aobj
+  - se_color_line: class/shader_effects/se_color_line.aobj
+  - se_simple_texture_lit : class/shader_effects/lit/se_simple_texture_lit.aobj
+
+  - txt_directional_light: class/textures/txt_directional_light.aobj
+  - txt_container: class/textures/txt_container.aobj
+  - txt_container_spec: class/textures/txt_container_spec.aobj
+  - txt_lamp: class/textures/txt_lamp.aobj
+  - txt_red: class/textures/txt_red.aobj
+  - txt_spot_light: class/textures/txt_spot_light.aobj
+
+  - mt_red: class/materials/mt_red.aobj
+  - mt_solid_color: class/materials/mt_solid_color.aobj
+  - mt_solid_color_2: class/materials/mt_solid_color_2.aobj
+  - mt_billboard_bulb: class/materials/mt_billboard_bulb.aobj
+  - mt_billboard_spot_light: class/materials/mt_billboard_spot_light.aobj
+  - mt_billboard_directional_light: class/materials/mt_billboard_directional_light.aobj
+  - mt_container: class/materials/mt_container.aobj
+  - mt_wire: class/materials/mt_wire.aobj
+
+  - cube_mesh: class/meshes/cube_mesh.aobj
+
+  - bulb_component: class/components/bulb_component.aobj
+  - root_component: class/components/root_component.aobj
+  - directional_light_debug_component : class/components/directional_light_debug_component.aobj
+  - spot_light_debug_component : class/components/spot_light_debug_component.aobj
+  - decor : class/game_objects/decor.aobj
+  - decor2 : class/game_objects/decor2.aobj
+  - plane : class/game_objects/plane.aobj

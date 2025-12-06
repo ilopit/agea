@@ -4,11 +4,13 @@
 #include <core/package_manager.h>
 #include <core/level.h>
 #include <core/level_manager.h>
-#include <core/global_state.h>
+#include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
 #include <core/architype.h>
 #include <core/object_load_context.h>
 #include <testing/testing.h>
+#include <core/core_state.h>
+#include <resource_locator/resource_locator_state.h>
 
 #include "packages/root/package.root.h"
 #include "packages/base/package.base.h"
@@ -33,7 +35,7 @@ namespace
 {
 
 void
-validate_empty_cache(core::state& gs)
+validate_empty_cache(gs::state& gs)
 {
     for (auto i = core::architype::first; i < core::architype::last;
          i = (core::architype)((uint8_t)i + 1))
@@ -59,8 +61,8 @@ struct test_preloaded_test_package : base_test
         auto& gs = glob::glob_state();
 
         ///
-        gs.schedule_action(core::state::state_stage::create,
-                           [](core::state& s)
+        gs.schedule_action(gs::state::state_stage::create,
+                           [](gs::state& s)
                            {
                                // state
                                core::state_mutator__caches::set(s);
@@ -69,7 +71,7 @@ struct test_preloaded_test_package : base_test
                                core::state_mutator__reflection_manager::set(s);
                                core::state_mutator__id_generator::set(s);
                                core::state_mutator__lua_api::set(s);
-                               core::state_mutator__resource_locator::set(s);
+                               state_mutator__resource_locator::set(s);
                            });
         gs.run_create();
         validate_empty_cache(gs);

@@ -1,0 +1,18 @@
+type_id: game_object
+id: plane
+layout: [-1, 0]
+components: 
+  - id: plane__root_component
+    class_id: root_component
+  - id: plane__component
+    type_id: mesh_component
+    material: mt_solid_color_2
+    mesh: plane_mesh
+    position:
+      x: 0
+      y: 0
+      z: 0
+    scale:
+      x: 10
+      y: 10
+      z: 10

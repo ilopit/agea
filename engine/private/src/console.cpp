@@ -3,7 +3,7 @@
 #include "utils/string_utility.h"
 
 #include "core/reflection/lua_api.h"
-#include "core/global_state.h"
+#include "global_state/global_state.h"
 #include <sol2_unofficial/sol.h>
 
 #include <ctype.h>

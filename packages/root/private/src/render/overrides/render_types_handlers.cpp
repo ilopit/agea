@@ -42,14 +42,6 @@
 namespace agea
 {
 
-bool
-is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
-{
-    return obj.get_package() == sub_obj.get_package() || obj.get_level() == sub_obj.get_level();
-}
-
-/*===============================*/
-
 namespace root
 {
 

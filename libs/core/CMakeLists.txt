@@ -31,6 +31,7 @@ target_link_libraries(core PUBLIC
 
    agea::packages.root.model
    
+   agea::global_state
    agea::glm_unofficial
    agea::error_handling
    agea::resource_locator

@@ -311,13 +311,13 @@ def parse_file(original_file_full_path, original_file_rel_path, module_name,
           value = arapi.utils.extstrip(pairs[1])
 
           if key == "model.has_types_overrides":
-            context.model_has_types_overrides = bool(value)
+            context.model_has_types_overrides = value == "true"
           elif key == "model.has_properties_overrides":
-            context.model_has_properties_overrides = bool(value)
+            context.model_has_properties_overrides = value == "true"
           elif key == "render.has_overrides":
-            context.render_has_types_overrides = bool(value)
+            context.render_has_types_overrides = value == "true"
           elif key == "render.has_resources":
-            context.render_has_custom_resources = bool(value)
+            context.render_has_custom_resources = value == "true"
           elif key == "dependancies":
             context.dependencies = value.split(":")
     i = i + 1

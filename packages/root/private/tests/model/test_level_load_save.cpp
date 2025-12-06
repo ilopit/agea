@@ -3,8 +3,9 @@
 
 #include <core/package_manager.h>
 #include <core/level.h>
+#include <core/core_state.h>
 #include <core/level_manager.h>
-#include <core/global_state.h>
+#include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
 #include <testing/testing.h>
 
@@ -39,8 +40,8 @@ TEST_F(test_load_level, basic_load)
     auto& gs = glob::glob_state();
 
     ///
-    gs.schedule_action(core::state::state_stage::create,
-                       [](core::state& s)
+    gs.schedule_action(gs::state::state_stage::create,
+                       [](gs::state& s)
                        {
                            // state
                            core::state_mutator__caches::set(s);

@@ -22,6 +22,7 @@ class_obj_mapping:
   - mt_wire: class/materials/mt_wire.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
+  - plane_mesh: class/meshes/plane_mesh.aobj
 
   - bulb_component: class/components/bulb_component.aobj
   - root_component: class/components/root_component.aobj

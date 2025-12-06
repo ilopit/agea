@@ -1,7 +1,7 @@
 #include "core/id_generator.h"
 
 #include "core/caches/caches_map.h"
-#include "core/global_state.h"
+#include "global_state/global_state.h"
 
 #include <packages/root/model/smart_object.h>
 

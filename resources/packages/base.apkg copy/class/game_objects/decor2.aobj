@@ -1,0 +1,18 @@
+type_id: game_object
+id: decor2
+layout: [-1, 0]
+components: 
+  - id: decor2__root_component
+    class_id: root_component
+  - id: decor2__floor
+    type_id: mesh_component
+    material: mt_solid_color_2
+    mesh: cube_mesh
+    position:
+      x: 0
+      y: 0
+      z: 0
+    scale:
+      x: 1
+      y: 1
+      z: 1

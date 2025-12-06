@@ -90,6 +90,8 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir)
 #undef  AGEA_gen_meta__{context.module_name}_package_model
 #define AGEA_gen_meta__{context.module_name}_package_model \\
 public: \\
+static bool package_model_enforcer(); \\
+static inline bool has_model_types = package_model_enforcer(); \\
 static void \\
 reset_instance() \\
 {{ \\
@@ -115,7 +117,10 @@ private: \\
 #if defined(AGEA_build__render)
 #undef  AGEA_gen_meta__{context.module_name}_package_render
 #define AGEA_gen_meta__{context.module_name}_package_render \\
-public: \\
+private:\\
+  static bool package_render_enforcer();\\
+  static inline bool has_render_types = package_render_enforcer();\\
+public:\\
 {generate_builder(context.render_has_types_overrides,"render_types")}{generate_builder(context.render_has_custom_resources,"render_custom_resource")} \\
 private: 
 #endif
@@ -483,18 +488,24 @@ bool
     ar_file.write(reflection_methods)
 
     ar_file.write(f"""
-AGEA_gen__static_schedule(::agea::core::state::state_stage::create,
-    [](agea::core::state& s)
+AGEA_gen__static_schedule(::agea::gs::state::state_stage::create,
+    [](agea::gs::state& s)
     {{
       package::init_instance();
       package::instance().register_package_extention<package::package_types_builder>(); 
     }});
                   
-AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
-    [](agea::core::state& s)
+AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
+    [](agea::gs::state& s)
     {{
       s.get_pm()->register_static_package({fc.module_name}::package::instance());
     }});
+
+bool package::package_model_enforcer()
+{{
+  volatile bool has_render_types = false;
+  return has_render_types;
+}}
 
 bool
 package::package_types_builder::build(static_package& sp)
@@ -516,7 +527,9 @@ package::package_types_builder::build(static_package& sp)
     rt.size          = sizeof({t.get_full_type_name()});
 """)
       if t.kind != arapi.types.agea_type_kind.EXTERNAL or t.script_support:
-        ar_file.write(f"""    {t.name}_lua_type = std::make_unique<sol::usertype<{t.get_full_type_name()}>>();\n""")
+        ar_file.write(
+            f"""    {t.name}_lua_type = std::make_unique<sol::usertype<{t.get_full_type_name()}>>();\n"""
+        )
 
       if t.kind == arapi.types.agea_type_kind.CLASS:
         ar_file.write(f"""
@@ -611,8 +624,6 @@ package::package_types_default_objects_builder::destroy(static_package& sp)
 
     ar_file.write("\n    return true;\n}\n\n")
 
-
-
     ar_file.write(fc.properies_access_methods)
 
     ar_file.write("\n}\n")
@@ -648,16 +659,22 @@ def write_render_types_reflection(package_ar_file, fc: arapi.types.file_context)
 #include <core/object_constructor.h>
 #include <core/package_manager.h>
 #include <core/package.h>
-#include <core/global_state.h>
+#include <global_state/global_state.h>
 #include <glue/type_ids.ar.h>
 
 namespace agea::{fc.module_name} {{
+
+bool package::package_render_enforcer()
+{{
+  volatile bool has_render_types = false;
+  return has_render_types;
+}}
 """)
 
     if fc.render_has_custom_resources:
       ar_file.write("""
-AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
-    [](::agea::core::state& s)
+AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
+    [](::agea::gs::state& s)
     {{
       package::instance().register_package_extention<package::package_render_custom_resource_builder>(); 
     }});
@@ -665,8 +682,8 @@ AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
 
     if fc.render_has_types_overrides:
       ar_file.write("""
-AGEA_gen__static_schedule(::agea::core::state::state_stage::connect,
-    [](::agea::core::state& s)
+AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
+    [](::agea::gs::state& s)
     {{
       package::instance().register_package_extention<package::package_render_types_builder>(); 
     }});
@@ -697,6 +714,11 @@ package::package_render_types_builder::build(::agea::core::static_package& sp)
           ar_file.write("}")
 
       ar_file.write(f"""
+  return true;
+}}
+bool
+package::package_render_types_builder::destroy(::agea::core::static_package&)
+{{
   return true;
 }}
                   

@@ -12,6 +12,7 @@
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/mesh.h"
 #include "core/reflection/reflection_type.h"
+#include <global_state/global_state.h>
 
 #include <serialization/serialization.h>
 

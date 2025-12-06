@@ -1,0 +1,6 @@
+type_id: shader_effect
+id: se_solid_color
+vert: class/shader_effects/se_solid_color.vert
+is_vert_binary: false
+frag: class/shader_effects/se_solid_color.frag
+is_frag_binary: false

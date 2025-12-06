@@ -1,0 +1,6 @@
+type_id: shader_effect
+id: se_error
+vert: class/shader_effects/error/se_error.vert
+is_vert_binary: false
+frag: class/shader_effects/error/se_error.frag
+is_frag_binary: false

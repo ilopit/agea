@@ -3,6 +3,8 @@
 #include <utils/string_utility.h>
 #include <utils/agea_log.h>
 
+#include <global_state/global_state.h>
+
 #include <cassert>
 
 namespace agea

@@ -41,16 +41,13 @@ class level_manager;
 class object_mapping;
 class id_generator;
 
-template <typename T, architype ID>
-class cache;
-
-using objects_cache = cache<::agea::root::smart_object, architype::smart_object>;
-using components_cache = cache<::agea::root::component, architype::component>;
-using game_objects_cache = cache<::agea::root::game_object, architype::game_object>;
-using textures_cache = cache<::agea::root::texture, architype::texture>;
-using meshes_cache = cache<::agea::root::mesh, architype::mesh>;
-using materials_cache = cache<::agea::root::material, architype::material>;
-using shader_effects_cache = cache<::agea::root::shader_effect, architype::shader_effect>;
+struct objects_cache;
+struct components_cache;
+struct game_objects_cache;
+struct textures_cache;
+struct meshes_cache;
+struct materials_cache;
+struct shader_effects_cache;
 
 }  // namespace core
 }  // namespace agea

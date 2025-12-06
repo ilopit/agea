@@ -29,6 +29,7 @@
 #include <backends/imgui_impl_vulkan.h>
 
 #include <resource_locator/resource_locator.h>
+#include <global_state/global_state.h>
 
 namespace agea
 {
@@ -1045,8 +1046,8 @@ vulkan_render::prepare_system_resources()
 
     agea::utils::buffer vert, frag;
 
-    auto path = glob::resource_locator::get()->resource(category::packages,
-                                                        "base.apkg/class/shader_effects");
+    auto path = glob::glob_state().get_resource_locator()->resource(
+        category::packages, "base.apkg/class/shader_effects");
 
     auto vert_path = path / "error/se_error.vert";
     agea::utils::buffer::load(vert_path, vert);
@@ -1121,7 +1122,8 @@ vulkan_render::prepare_ui_resources()
     ImGuiIO& io = ImGui::GetIO();
 
     // Create font texture
-    auto path = glob::resource_locator::get()->resource(category::fonts, "Roboto-Medium.ttf");
+    auto path =
+        glob::glob_state().get_resource_locator()->resource(category::fonts, "Roboto-Medium.ttf");
     auto f = path.str();
 
     auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
@@ -1151,8 +1153,8 @@ vulkan_render::prepare_ui_resources()
 void
 vulkan_render::prepare_ui_pipeline()
 {
-    auto path = glob::resource_locator::get()->resource(category::packages,
-                                                        "base.apkg/class/shader_effects/ui");
+    auto path = glob::glob_state().get_resource_locator()->resource(
+        category::packages, "base.apkg/class/shader_effects/ui");
 
     {
         agea::utils::buffer vert, frag;

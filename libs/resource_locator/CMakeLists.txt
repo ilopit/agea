@@ -13,6 +13,7 @@ add_library(resource_locator STATIC
 
 target_link_libraries(resource_locator
     agea::utils
+    agea::global_state
 
     spdlog 
 )

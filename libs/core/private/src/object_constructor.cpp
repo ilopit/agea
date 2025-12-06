@@ -4,7 +4,7 @@
 #include "core/caches/caches_map.h"
 #include "core/object_load_context.h"
 #include "core/level.h"
-#include "core/global_state.h"
+#include "global_state/global_state.h"
 #include "core/reflection/reflection_type.h"
 
 #include <packages/root/model/components/component.h>
@@ -289,10 +289,7 @@ object_constructor::object_properties_load(root::smart_object& obj,
 {
     auto& properties = obj.get_reflection()->m_serilalization_properties;
 
-    reflection::deserialize_context dc;
-    dc.occ = &occ;
-    dc.sc = &jc;
-    dc.obj = &obj;
+    reflection::deserialize_context dc{.p = nullptr, .obj = &obj, .sc = &jc, .occ = &occ};
 
     for (auto& p : properties)
     {

@@ -1,5 +1,6 @@
 ﻿add_subdirectory(ar)
 add_subdirectory(assets_importer)
+add_subdirectory(global_state)
 add_subdirectory(core)
 add_subdirectory(error_handling)
 add_subdirectory(native)

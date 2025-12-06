@@ -5,7 +5,7 @@
 #include <packages/root/model/smart_object.h>
 
 #include "core/package.h"
-#include "core/global_state.h"
+#include "global_state/global_state.h"
 
 #include "utils/agea_log.h"
 #include "utils/check.h"

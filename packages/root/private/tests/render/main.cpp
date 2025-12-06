@@ -5,6 +5,7 @@
 #include <core/reflection/property.h>
 #include <core/reflection/lua_api.h>
 #include <core/package_manager.h>
+#include <packages/root/package.root.h>
 
 #include <utils/singleton_registry.h>
 

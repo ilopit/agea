@@ -19,6 +19,8 @@
 #include <utils/process.h>
 #include <utils/agea_log.h>
 
+#include <global_state/global_state.h>
+
 #include <native/native_window.h>
 
 #include <resource_locator/resource_locator.h>
@@ -43,9 +45,9 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
 
     ipc::construct_params params;
     params.path_to_binary =
-        (glob::resource_locator::get()->resource_dir(category::tools) / "glslc.exe");
+        (glob::glob_state().get_resource_locator()->resource_dir(category::tools) / "glslc.exe");
 
-    static auto td = glob::resource_locator::get()->temp_dir();
+    static auto td = glob::glob_state().get_resource_locator()->temp_dir();
     params.working_dir = *td.folder;
 
     auto shader_name = APATH(std::to_string(shader_id));
@@ -53,7 +55,8 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
     agea::utils::path compiled_path = *td.folder / shader_name.str();
     compiled_path.add(".spv");
 
-    auto includes = glob::resource_locator::get()->resource_dir(category::shaders_includes);
+    auto includes =
+        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
     params.arguments =
         std::format("-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2}",
                     raw_buffer.get_file().str(), compiled_path.str(), includes.str());

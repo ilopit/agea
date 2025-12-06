@@ -1,0 +1,11 @@
+type_id: pbr_material
+id: mt_container
+shader_effect: se_simple_texture_lit
+diffuse_txt:
+    texture: txt_container
+    slot: 0
+    sampler: default
+specular_txt:
+    texture: txt_container_spec
+    slot: 1
+    sampler: default

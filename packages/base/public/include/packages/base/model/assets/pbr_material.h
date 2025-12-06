@@ -32,7 +32,7 @@ public:
         "property_ser_handler=::agea::root::property_texture_sample__serialize",
         "property_compare_handler=::agea::root::property_texture_sample__compare",
         "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
-        "property_copy_handler=::agea::root::property_texture_sample___copy");
+        "property_copy_handler=::agea::root::property_texture_sample__copy");
     ::agea::root::texture_sample m_diffuse_txt;
 
     AGEA_ar_property(

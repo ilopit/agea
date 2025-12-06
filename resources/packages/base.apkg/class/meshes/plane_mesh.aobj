@@ -1,0 +1,4 @@
+---
+type_id: mesh
+id: plane_mesh
+external: class/meshes/plane_mesh.obj

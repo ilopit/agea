@@ -1,7 +1,7 @@
 #include "core/reflection/reflection_type.h"
 
 #include "core/reflection/reflection_type_utils.h"
-#include "core/global_state.h"
+#include "global_state/global_state.h"
 #include <utils/agea_log.h>
 #include <stack>
 

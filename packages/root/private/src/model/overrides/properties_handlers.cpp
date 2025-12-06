@@ -3,6 +3,7 @@
 #include "core/reflection/property.h"
 #include "core/reflection/reflection_type_utils.h"
 
+#include <global_state/global_state.h>
 #include "core/object_load_context.h"
 #include "core/caches/cache_set.h"
 #include "core/object_constructor.h"
@@ -240,6 +241,38 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
         result_code rc = result_code::nav;
 
         rc = core::object_constructor::object_clone_create_internal(
+            *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
+
+        if (rc != result_code::ok)
+        {
+            return rc;
+        }
+
+        auto comp = obj->as<root::component>();
+        comp->set_order_parent_idx(src_col[i]->get_order_idx(), src_col[i]->get_parent_idx());
+
+        dst_col[i] = comp;
+    }
+
+    return result_code::ok;
+}
+
+result_code
+game_object_components_instantiate(reflection::instantiate_context& ctx)
+{
+    auto& src_col = reflection::utils::as_type<std::vector<root::component*>>(
+        ctx.src_property->get_blob(*ctx.src_obj));
+    auto& dst_col = reflection::utils::as_type<std::vector<root::component*>>(
+        ctx.dst_property->get_blob(*ctx.dst_obj));
+
+    dst_col.resize(src_col.size());
+
+    for (int i = 0; i < src_col.size(); ++i)
+    {
+        root::smart_object* obj = nullptr;
+        result_code rc = result_code::nav;
+
+        rc = core::object_constructor::object_instanciate_internal(
             *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
 
         if (rc != result_code::ok)
