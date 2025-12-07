@@ -12,12 +12,30 @@
             "program": "F:\\dev\\agea_root\\agea\\tools\\argen.py",
             "args": [
                  "--type", "package",
-                 "--config", "F://dev//agea_root/agea//packages//test//public//ar//config", 
-                 "--source", "F://dev/agea_root//agea//packages//test//public",
+                 "--config", "F://dev//agea_root/agea//packages//root//public//ar//config", 
+                 "--source", "F://dev/agea_root//agea//packages//root//public",
                  "--output", "F://dev//agea_root//agea//build//agea_generated", 
-                 "--package_name", "test", 
+                 "--package_name", "root", 
                  "--namespace", "agea"
             ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: test_parser.py",
+            "type": "python",
+            "request": "launch",
+            //"program": "${file}",
+            "program": "F:\\dev\\agea_root\\agea\\tools\\test_parser.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: test_writer.py",
+            "type": "python",
+            "request": "launch",
+            //"program": "${file}",
+            "program": "F:\\dev\\agea_root\\agea\\tools\\test_writer.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
