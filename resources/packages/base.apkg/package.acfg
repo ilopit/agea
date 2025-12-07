@@ -28,6 +28,3 @@ class_obj_mapping:
   - root_component: class/components/root_component.aobj
   - directional_light_debug_component : class/components/directional_light_debug_component.aobj
   - spot_light_debug_component : class/components/spot_light_debug_component.aobj
-  - decor : class/game_objects/decor.aobj
-  - decor2 : class/game_objects/decor2.aobj
-  - plane : class/game_objects/plane.aobj

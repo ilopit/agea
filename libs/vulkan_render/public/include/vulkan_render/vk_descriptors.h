@@ -34,7 +34,7 @@ private:
     grab_pool();
 
     VkDescriptorPool m_current_pool = VK_NULL_HANDLE;
-    pool_sizes_mapping m_descriptor_sizes;
+    pool_sizes_mapping m_descriptor_sizes = get_default_pool_size();
     std::vector<VkDescriptorPool> m_used_pools;
     std::vector<VkDescriptorPool> m_free_pools;
 };

@@ -95,23 +95,28 @@ static inline bool has_model_types = package_model_enforcer(); \\
 static void \\
 reset_instance() \\
 {{ \\
-    s_instance.reset(); \\
+    instance_impl().reset(); \\
 }} \\
 static void \\
 init_instance() \\
 {{ \\
-    AGEA_check(!s_instance, "using on existed"); \\
-    s_instance = std::make_unique<package>(); \\
+    AGEA_check(!instance_impl(), "using on existed"); \\
+    instance_impl() = std::make_unique<package>(); \\
+}} \\
+static std::unique_ptr<package>& \\
+instance_impl() \\
+{{ \\
+    static auto instance = std::make_unique<package>(); \\
+    return instance; \\
 }} \\
 static package& \\
-instance()\\
+instance() \\
 {{ \\
-    AGEA_check(s_instance, "empty instance"); \\
-    return *s_instance; \\
+    AGEA_check(instance_impl(), "empty instance"); \\
+    return *instance_impl(); \\
 }} \\
 {generate_builder(True, "types")}{generate_builder(True, "types_default_objects")} \\
-private: \\
-    static std::unique_ptr<package> s_instance;
+private:
 #endif
 
 #if defined(AGEA_build__render)
@@ -423,8 +428,6 @@ def write_object_model_reflection(package_ar_file, fc: arapi.types.file_context)
 
 namespace agea::{fc.module_name} {{
 
-std::unique_ptr<package> package::s_instance;
-
 """)
     reflection_methods = ""
     for type in fc.types:
@@ -491,8 +494,8 @@ bool
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::create,
     [](agea::gs::state& s)
     {{
-      package::init_instance();
-      package::instance().register_package_extention<package::package_types_builder>(); 
+      package::instance().register_package_extention<package::package_types_builder>();
+      package::instance().register_package_extention<package::package_types_default_objects_builder>();
     }});
                   
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,

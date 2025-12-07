@@ -1,5 +1,5 @@
-class_id: decor
-id: mesh_object
+class_id: mesh_object
+id: decor
 layout: [-1, 0]
 components: 
   - id: decor__root_component_2

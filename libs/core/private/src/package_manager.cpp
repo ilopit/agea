@@ -47,6 +47,8 @@ package_manager::init()
             return;
         }
 
+        ALOG_INFO("Loading {}", p->get_id().str());
+
         auto depds = get_dapendency(p->get_id());
         for (auto& d : depds)
         {

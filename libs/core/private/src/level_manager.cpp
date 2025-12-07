@@ -59,7 +59,6 @@ level_manager::load_level_path(level& l, const utils::path& path)
 
     l.set_load_path(path);
     l.set_save_root_path(path.parent());
-    // l.init_global_cache_reference(global_class_cs, global_instances_cs);
 
     std::string name, extension;
     path.parse_file_name_and_ext(name, extension);
