@@ -38,6 +38,15 @@
             "program": "F:\\dev\\agea_root\\agea\\tools\\test_writer.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Python: test_utils.py",
+            "type": "python",
+            "request": "launch",
+            //"program": "${file}",
+            "program": "F:\\dev\\agea_root\\agea\\tools\\test_utils.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

@@ -125,6 +125,40 @@ namespace agea {{
   with open(global_file, "w", encoding="utf-8") as f:
     f.writelines(lines)
 
+def replace_named_blocks(text: str, replacements: dict) -> str:
+  """
+    Replace sections in `text` that are wrapped by:
+        // block start <name>
+        ...
+        // block end <name>
+
+    Parameters:
+        text (str): original file text
+        replacements (dict): { "blockname": "new content" }
+
+    Returns:
+        str: text with replacements applied
+    """
+  for name, new_content in replacements.items():
+    # Regex that captures:
+    #   (start marker) (any content, non-greedy) (end marker)
+    pattern = (
+        rf"(// block start {re.escape(name)}\s*)"    # group 1: start marker
+        r"(.*?)"                                      # group 2: block body
+        rf"(\s*// block end {re.escape(name)})"       # group 3: end marker
+    )
+
+    # Build replacement text
+    replacement = r"\1" + "\n" + new_content + "\n" + r"\3"
+
+    # Perform substitution (DOTALL so '.' matches newlines)
+    text, count = re.subn(pattern, replacement, text, flags=re.DOTALL)
+
+    if count == 0:
+      print(f"Warning: block '{name}' not found.")
+
+  return text
+
 
 def update_dependancy_tree(fc: arapi.types.file_context) -> None:
   """Update dependency tree file with module dependencies.
@@ -146,83 +180,46 @@ def update_dependancy_tree(fc: arapi.types.file_context) -> None:
 #include <utils/id.h>
 
 namespace agea
-{{
+{
 
 std::vector<utils::id>
 get_dapendency(const utils::id& package_id)
-{{
+{
     // block start root
     if (package_id == AID("root"))
-    {{
-        return {{}};
-    }}
+    {
+        return {};
+    }
     // block end root
-    return {{}};
-}}
+    return {};
+}
 
-}}  // namespace agea
+}  // namespace agea
 """
       gf.write(file_content)
 
-  # Read and update file
-  with open(global_file, "r+", encoding="utf-8") as gf:
-    lines = gf.readlines()
+  # Generate dependency block content for this module
+  # Note: replace_blocks_with_sorted_insert adds indentation automatically:
+  # - For existing blocks: uses indentation from block start line (4 spaces in template)
+  # - For new blocks: uses 4 spaces default
+  # So we provide content WITHOUT leading indentation - it will be added by the function
+  dependency_lines = []
+  dependency_lines.append(f'    if( package_id == AID("{fc.module_name}"))')
+  dependency_lines.append("    {")
 
-  mapping = OrderedDict()
+  if not fc.dependencies:
+    dependency_lines.append("      return {};")
+  else:
+    dep_list = "      return {" + ",".join(f'AID("{dep}")' for dep in fc.dependencies) + "};"
+    dependency_lines.append(dep_list)
 
-  # Find all blocks
-  for i in range(len(lines)):
-    line = lines[i].strip()
-    if line.startswith(BLOCK_START_PREFIX):
-      start_index = i
-      while not line.startswith(BLOCK_END_PREFIX):
-        i += 1
-        if i == len(lines):
-          exit(-1)
-        line = lines[i].strip()
-      end_index = i
-      tokens = line.split(" ")
-      mapping[tokens[3]] = (start_index, end_index)
+  dependency_lines.append("    }")
 
-  # Find insertion point for this module
-  start_index = None
-  end_index = None
-  for module_name, (block_start, block_end) in mapping.items():
-    if module_name == fc.module_name:
-      start_index = block_start
-      end_index = block_end + 1
-      break
-    elif module_name > fc.module_name:
-      start_index = block_start
-      end_index = block_start
-      break
-    elif module_name < fc.module_name:
-      start_index = block_start
-      end_index = block_start
+  replacement_content = "\n".join(dependency_lines)
 
-  # Generate new dependency block
-  new_ids: List[str] = []
-  new_ids.append(f"//    block start {fc.module_name}\n")
-  new_ids.append(f'    if( package_id == AID("{fc.module_name}"))\n')
-  new_ids.append(f"    {{\n")
-  new_ids.append(f"        return {{")
-
-  for dep in fc.dependencies:
-    new_ids.append(f'AID("{dep}"),')
-
-  if new_ids[-1][-1] == ",":
-    new_ids[-1] = new_ids[-1][:-1]
-
-  new_ids.append(f"}};\n")
-  new_ids.append(f"    }};\n")
-  new_ids.append(f"    // block end {fc.module_name}\n")
-
-  if start_index is not None and end_index is not None:
-    lines[start_index:end_index] = new_ids
-
-  # Write the result back to the file
-  with open(global_file, "w", encoding="utf-8") as f:
-    f.writelines(lines)
+  # Use the new function to replace/insert the block
+  replacements = {fc.module_name: replacement_content}
+  arapi.utils.replace_blocks_with_sorted_insert(global_file, replacements)
 
 
 def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name: str,
