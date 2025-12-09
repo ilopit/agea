@@ -50,8 +50,9 @@ class TestIsBool(unittest.TestCase):
         self.assertFalse(arapi.parser.is_bool('false'))
 
     def test_invalid_value(self):
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(arapi.parser.InvalidBoolValueError) as ctx:
             arapi.parser.is_bool('invalid')
+        self.assertIn("invalid", str(ctx.exception))
 
 
 class TestExtractTypeConfig(unittest.TestCase):
@@ -364,12 +365,12 @@ class TestParseFile(unittest.TestCase):
             f.write('  AGEA_ar_property("updatable=no")\n')
             f.write('  int m_value;\n')
             f.write('};\n')
-        
+
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         prop = self.context.types[0].properties[0]
-        # Note: There's a bug in the current parser where "updatable" sets copyable instead
-        # This test verifies the current (buggy) behavior
-        self.assertEqual(prop.copyable, "no")
+        self.assertEqual(prop.updatable, "no")
+        # Verify copyable remains at default value
+        self.assertEqual(prop.copyable, "yes")
 
     def test_parse_property_handlers(self):
         test_file = os.path.join(self.temp_dir, "test.h")
@@ -396,11 +397,52 @@ class TestParseFile(unittest.TestCase):
             f.write('AGEA_ar_class(copy_handler=my_copy, serialize_handler=my_serialize)\n')
             f.write('class TestClass {\n')
             f.write('};\n')
-        
+
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         type_obj = self.context.types[0]
         self.assertEqual(type_obj.copy_handler, "my_copy")
         self.assertEqual(type_obj.serialize_handler, "my_serialize")
+
+    def test_parse_property_invalid_access(self):
+        test_file = os.path.join(self.temp_dir, "test.h")
+        with open(test_file, 'w') as f:
+            f.write('AGEA_ar_class()\n')
+            f.write('class TestClass {\n')
+            f.write('  AGEA_ar_property("access=invalid_access")\n')
+            f.write('  int m_value;\n')
+            f.write('};\n')
+
+        with self.assertRaises(arapi.parser.InvalidPropertyError) as ctx:
+            arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
+        self.assertIn("access", str(ctx.exception))
+        self.assertIn("invalid_access", str(ctx.exception))
+
+    def test_parse_property_invalid_serializable(self):
+        test_file = os.path.join(self.temp_dir, "test.h")
+        with open(test_file, 'w') as f:
+            f.write('AGEA_ar_class()\n')
+            f.write('class TestClass {\n')
+            f.write('  AGEA_ar_property("serializable=yes")\n')
+            f.write('  int m_value;\n')
+            f.write('};\n')
+
+        with self.assertRaises(arapi.parser.InvalidPropertyError) as ctx:
+            arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
+        self.assertIn("serializable", str(ctx.exception))
+
+    def test_parse_property_invalid_copyable(self):
+        test_file = os.path.join(self.temp_dir, "test.h")
+        with open(test_file, 'w') as f:
+            f.write('AGEA_ar_class()\n')
+            f.write('class TestClass {\n')
+            f.write('  AGEA_ar_property("copyable=true")\n')
+            f.write('  int m_value;\n')
+            f.write('};\n')
+
+        with self.assertRaises(arapi.parser.InvalidPropertyError) as ctx:
+            arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
+        self.assertIn("copyable", str(ctx.exception))
+        self.assertIn("yes", str(ctx.exception))
 
     def test_include_path_generation(self):
         test_file = os.path.join(self.temp_dir, "test.h")
@@ -428,7 +470,7 @@ class TestParseFile(unittest.TestCase):
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         self.assertEqual(len(self.context.types), 0)
 
-    def test_multiple_classes(self):
+    def test_multiple_classes_raises_error(self):
         test_file = os.path.join(self.temp_dir, "test.h")
         with open(test_file, 'w') as f:
             f.write('AGEA_ar_class()\n')
@@ -437,11 +479,11 @@ class TestParseFile(unittest.TestCase):
             f.write('AGEA_ar_class()\n')
             f.write('class Class2 {\n')
             f.write('};\n')
-        
-        arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
-        # Only the last class should be in types (since they overwrite current_class)
-        self.assertEqual(len(self.context.types), 1)
-        self.assertEqual(self.context.types[0].name, "Class2")
+
+        with self.assertRaises(arapi.parser.ParserError) as ctx:
+            arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
+        self.assertIn("Nested class declaration not allowed", str(ctx.exception))
+        self.assertIn("Class1", str(ctx.exception))
 
     def test_class_and_struct_together(self):
         test_file = os.path.join(self.temp_dir, "test.h")

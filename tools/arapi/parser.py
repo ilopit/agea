@@ -4,6 +4,7 @@ This module parses C++ header files annotated with AGEA macros to extract
 type information, properties, functions, and other metadata.
 """
 import os
+from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 
 import arapi.types
@@ -70,6 +71,19 @@ INVALIDATES_TRANSFORM = "transform"
 # Check values
 CHECK_NOT_SAME = "not_same"
 
+# Valid property access values
+VALID_ACCESS_VALUES = frozenset({
+    "no", "cpp_readonly", "cpp_only", "cpp_writeonly",
+    "script_readonly", "script_writeonly",
+    "read_only", "write_only", "all"
+})
+
+# Valid boolean string values
+VALID_BOOL_VALUES = frozenset({"true", "false"})
+
+# Valid yes/no values
+VALID_YES_NO_VALUES = frozenset({"yes", "no"})
+
 # C++ keywords to filter
 CXX_KEYWORDS = {"class", "struct", "public", "private", "AGEA_ar_external_define", ""}
 
@@ -123,29 +137,47 @@ def parse_attributes(name: str, lines: List[str], index: int,
 
 def is_bool(value: str) -> bool:
   """Convert string to boolean value.
-    
+
     Args:
         value: String value to convert
-        
+
     Returns:
         Boolean value
-        
+
     Raises:
-        SystemExit: If value is not 'true' or 'false' (for backward compatibility)
+        InvalidBoolValueError: If value is not 'true' or 'false'
     """
   if value == 'true':
     return True
   elif value == 'false':
     return False
   else:
-    arapi.utils.eprint('UNSUPPORTED!')
-    exit(1)
+    raise InvalidBoolValueError(f"Expected 'true' or 'false', got '{value}'")
+
+
+# Mapping from type config keys to attribute names for model overrides
+_MODEL_TYPE_ATTR_MAP = {
+    TYPE_KEY_COPY_HANDLER: 'copy_handler',
+    TYPE_KEY_INSTANTIATE_HANDLER: 'instantiate_handler',
+    TYPE_KEY_COMPARE_HANDLER: 'compare_handler',
+    TYPE_KEY_SERIALIZE_HANDLER: 'serialize_handler',
+    TYPE_KEY_DESERIALIZE_HANDLER: 'deserialize_handler',
+    TYPE_KEY_LOAD_DERIVE_HANDLER: 'load_derive_handler',
+    TYPE_KEY_TO_STRING_HANDLER: 'to_string_handle',
+    TYPE_KEY_ARCHITYPE: 'architype',
+}
+
+# Mapping from type config keys to attribute names for render overrides
+_RENDER_TYPE_ATTR_MAP = {
+    TYPE_KEY_RENDER_CONSTRUCTOR: 'render_constructor',
+    TYPE_KEY_RENDER_DESTRUCTOR: 'render_destructor',
+}
 
 
 def extract_type_config(type_obj: arapi.types.agea_type, tokens: List[str],
                         context: arapi.types.file_context) -> None:
   """Extract and apply type configuration from tokens.
-    
+
     Args:
         type_obj: The type object to configure
         tokens: List of key=value token strings
@@ -154,52 +186,34 @@ def extract_type_config(type_obj: arapi.types.agea_type, tokens: List[str],
   for token in tokens:
     pairs = token.strip().split("=", 1)    # Split only on first '='
 
-    if len(pairs) == 1:
-      key = arapi.utils.extstrip(pairs[0])
+    if len(pairs) != 2:
       continue
 
-    if len(pairs) == 2:
-      key = arapi.utils.extstrip(pairs[0])
-      value = arapi.utils.extstrip(pairs[1])
+    key = arapi.utils.extstrip(pairs[0])
+    value = arapi.utils.extstrip(pairs[1])
 
-      # Model type overrides
-      if context.model_has_types_overrides:
-        if key == TYPE_KEY_COPY_HANDLER:
-          type_obj.copy_handler = value
-        elif key == TYPE_KEY_INSTANTIATE_HANDLER:
-          type_obj.instantiate_handler = value
-        elif key == TYPE_KEY_COMPARE_HANDLER:
-          type_obj.compare_handler = value
-        elif key == TYPE_KEY_SERIALIZE_HANDLER:
-          type_obj.serialize_handler = value
-        elif key == TYPE_KEY_DESERIALIZE_HANDLER:
-          type_obj.deserialize_handler = value
-        elif key == TYPE_KEY_LOAD_DERIVE_HANDLER:
-          type_obj.load_derive_handler = value
-        elif key == TYPE_KEY_TO_STRING_HANDLER:
-          type_obj.to_string_handle = value
-        elif key == TYPE_KEY_ARCHITYPE:
-          type_obj.architype = value
+    # Model type overrides
+    if context.model_has_types_overrides and key in _MODEL_TYPE_ATTR_MAP:
+      setattr(type_obj, _MODEL_TYPE_ATTR_MAP[key], value)
 
-      # External type configuration
-      if type_obj.kind == arapi.types.agea_type_kind.EXTERNAL:
-        if key == TYPE_KEY_BUILT_IN:
-          type_obj.built_in = True
+    # External type configuration
+    if type_obj.kind == arapi.types.agea_type_kind.EXTERNAL:
+      if key == TYPE_KEY_BUILT_IN:
+        type_obj.built_in = True
 
-      # Render type overrides
-      if context.render_has_types_overrides and type_obj.kind == arapi.types.agea_type_kind.CLASS:
-        if key == TYPE_KEY_RENDER_CONSTRUCTOR:
-          type_obj.render_constructor = value
-        elif key == TYPE_KEY_RENDER_DESTRUCTOR:
-          type_obj.render_destructor = value
+    # Render type overrides
+    if context.render_has_types_overrides and type_obj.kind == arapi.types.agea_type_kind.CLASS:
+      if key in _RENDER_TYPE_ATTR_MAP:
+        setattr(type_obj, _RENDER_TYPE_ATTR_MAP[key], value)
 
 
-def _extract_class_name_from_line(line: str) -> Tuple[str, Optional[str]]:
+def _extract_class_name_from_line(line: str, line_number: int) -> Tuple[str, Optional[str]]:
   """Extract class name and optional parent name from a class declaration line.
-    
+
     Args:
         line: Class declaration line
-        
+        line_number: Line number for error reporting (1-based)
+
     Returns:
         Tuple of (class_name, parent_name or None)
     """
@@ -210,7 +224,7 @@ def _extract_class_name_from_line(line: str) -> Tuple[str, Optional[str]]:
   tokens = [t for t in normalized if t not in CXX_KEYWORDS]
 
   if not tokens:
-    raise ParserError(f"Could not extract class name from line: {line}")
+    raise ParserError(f"Could not extract class name at line {line_number}: {line}")
 
   class_name = tokens[0].split('::')[-1]
   parent_name = tokens[1] if len(tokens) > 1 else None
@@ -259,9 +273,9 @@ def _parse_class(lines: List[str], index: int, lines_count: int, module_name: st
   extract_type_config(class_type, tokens, context)
 
   if index >= lines_count:
-    raise ParserError("Unexpected end of file after AGEA_ar_class")
+    raise ParserError(f"Unexpected end of file after AGEA_ar_class at line {index + 1}")
 
-  class_name, parent_name = _extract_class_name_from_line(lines[index])
+  class_name, parent_name = _extract_class_name_from_line(lines[index], index + 1)
   class_type.name = class_name
   class_type.full_name = _build_full_type_name(module_name, class_name, context.root_namespace)
 
@@ -294,9 +308,9 @@ def _parse_struct(lines: List[str], index: int, lines_count: int, module_name: s
   extract_type_config(struct_type, tokens, context)
 
   if index >= lines_count:
-    raise ParserError("Unexpected end of file after AGEA_ar_struct")
+    raise ParserError(f"Unexpected end of file after AGEA_ar_struct at line {index + 1}")
 
-  struct_name, _ = _extract_class_name_from_line(lines[index])
+  struct_name, _ = _extract_class_name_from_line(lines[index], index + 1)
   struct_type.name = struct_name
   struct_type.full_name = _build_full_type_name(module_name, struct_name, context.root_namespace)
 
@@ -332,7 +346,7 @@ def _parse_function(lines: List[str], index: int,
   index += 1
 
   if index >= lines_count:
-    raise ParserError("Unexpected end of file after AGEA_ar_function header")
+    raise ParserError(f"Unexpected end of file after AGEA_ar_function header at line {index + 1}")
 
   # Start function body with current line
   function_body += lines[index] + " "
@@ -351,7 +365,7 @@ def _parse_function(lines: List[str], index: int,
     function_token = next(token for token in tokens if token.find("(") != -1)
     function.name = function_token[:function_token.find("(")]
   except StopIteration:
-    raise ParserError(f"Could not extract function name from: {function_body}")
+    raise ParserError(f"Could not extract function name at line {index + 1}: {function_body}")
 
   return index, function
 
@@ -386,6 +400,8 @@ def _parse_property_metadata(prop: arapi.types.agea_property, metadata_tokens: L
     if key == PROP_KEY_CATEGORY:
       prop.category = value
     elif key == PROP_KEY_SERIALIZABLE:
+      if value not in VALID_BOOL_VALUES:
+        raise InvalidPropertyError(f"serializable must be 'true' or 'false', got '{value}'")
       prop.serializable = value
     elif key == PROP_KEY_PROPERTY_SER_HANDLER:
       prop.property_ser_handler = value
@@ -400,16 +416,27 @@ def _parse_property_metadata(prop: arapi.types.agea_property, metadata_tokens: L
     elif key == PROP_KEY_PROPERTY_INSTANTIATE_HANDLER:
       prop.property_instantiate_handler = value
     elif key == PROP_KEY_ACCESS:
+      if value not in VALID_ACCESS_VALUES:
+        raise InvalidPropertyError(
+            f"access must be one of {sorted(VALID_ACCESS_VALUES)}, got '{value}'")
       prop.access = value
     elif key == PROP_KEY_DEFAULT:
+      if value not in VALID_BOOL_VALUES:
+        raise InvalidPropertyError(f"default must be 'true' or 'false', got '{value}'")
       prop.has_default = value
     elif key == PROP_KEY_GPU_DATA:
       prop.gpu_data = value
     elif key == PROP_KEY_COPYABLE:
+      if value not in VALID_YES_NO_VALUES:
+        raise InvalidPropertyError(f"copyable must be 'yes' or 'no', got '{value}'")
       prop.copyable = value
     elif key == PROP_KEY_UPDATABLE:
-      prop.copyable = value    # Note: Bug preserved for backward compatibility
+      if value not in VALID_YES_NO_VALUES:
+        raise InvalidPropertyError(f"updatable must be 'yes' or 'no', got '{value}'")
+      prop.updatable = value
     elif key == PROP_KEY_REF:
+      if value not in VALID_BOOL_VALUES:
+        raise InvalidPropertyError(f"ref must be 'true' or 'false', got '{value}'")
       prop.ref = value
     elif key == PROP_KEY_INVALIDATES:
       _parse_invalidates(prop, value)
@@ -489,7 +516,7 @@ def _parse_property(lines: List[str], index: int, lines_count: int,
   index += 1
 
   if index >= lines_count:
-    raise ParserError("Unexpected end of file after AGEA_ar_property")
+    raise ParserError(f"Unexpected end of file after AGEA_ar_property at line {index + 1}")
 
   # Parse property declaration line
   property_line = lines[index].strip()
@@ -541,7 +568,7 @@ def _parse_constructor(lines: List[str], index: int,
   index += 1
 
   if index >= lines_count:
-    raise ParserError("Unexpected end of file after AGEA_ar_ctor header")
+    raise ParserError(f"Unexpected end of file after AGEA_ar_ctor header at line {index + 1}")
 
   # Parse constructor body (second set of parentheses)
   ctor_body = lines[index]
@@ -577,7 +604,7 @@ def _parse_external_type(lines: List[str], index: int, lines_count: int,
   index += 1
 
   if index >= lines_count:
-    raise ParserError("Unexpected end of file after AGEA_ar_external_type")
+    raise ParserError(f"Unexpected end of file after AGEA_ar_external_type at line {index + 1}")
 
   # Parse external type declaration
   external_line = lines[index]
@@ -587,7 +614,7 @@ def _parse_external_type(lines: List[str], index: int, lines_count: int,
   tokens = [t for t in normalized if t not in CXX_KEYWORDS]
 
   if not tokens:
-    raise ParserError(f"Could not extract external type name from: {external_line}")
+    raise ParserError(f"Could not extract external type name at line {index + 1}: {external_line}")
 
   external_type.full_name = tokens[0].removeprefix('::')
   external_type.name = external_type.full_name.split('::')[-1]
@@ -634,7 +661,7 @@ def _parse_package(lines: List[str], index: int, lines_count: int,
 
 def _add_include(context: arapi.types.file_context, file_rel_path: str) -> None:
   """Add include statement to context.
-    
+
     Args:
         context: File context
         file_rel_path: Relative file path
@@ -647,29 +674,74 @@ def _add_include(context: arapi.types.file_context, file_rel_path: str) -> None:
   context.includes.add(f'#include "{include_path}"')
 
 
+@dataclass
+class _ParserState:
+  """Internal state for file parsing."""
+  lines: List[str]
+  lines_count: int
+  module_name: str
+  class_name: str
+  context: arapi.types.file_context
+  original_file_rel_path: str
+  current_class: Optional[arapi.types.agea_type] = None
+  current_struct: Optional[arapi.types.agea_type] = None
+
+
+def _read_file(file_path: str) -> Tuple[List[str], int]:
+  """Read file and return lines with count.
+
+    Args:
+        file_path: Path to file to read
+
+    Returns:
+        Tuple of (lines, line_count)
+    """
+  with open(file_path, "r", encoding="utf-8") as f:
+    lines = f.readlines()
+  return lines, len(lines)
+
+
+def _finalize_parsing(state: _ParserState) -> None:
+  """Finalize parsing by adding types and includes to context.
+
+    Args:
+        state: Parser state with parsed types
+    """
+  if state.current_class:
+    state.context.types.append(state.current_class)
+
+  if state.current_struct:
+    state.context.types.append(state.current_struct)
+
+  _add_include(state.context, state.original_file_rel_path)
+
+
 def parse_file(original_file_full_path: str, original_file_rel_path: str, module_name: str,
                context: arapi.types.file_context) -> None:
   """Parse a C++ header file and extract AGEA reflection metadata.
-    
+
     Args:
         original_file_full_path: Full path to the file
         original_file_rel_path: Relative path to the file
         module_name: Name of the module
         context: File context to populate
-        
+
     Raises:
         ParserError: If parsing fails
     """
   arapi.utils.eprint(f"processing : {original_file_full_path} ...")
 
+  lines, lines_count = _read_file(original_file_full_path)
   class_name = os.path.basename(original_file_full_path)[:-2]    # Remove '.h' extension
 
-  with open(original_file_full_path, "r", encoding="utf-8") as cfg:
-    lines = cfg.readlines()
-    lines_count = len(lines)
-
-  current_class: Optional[arapi.types.agea_type] = None
-  current_struct: Optional[arapi.types.agea_type] = None
+  state = _ParserState(
+      lines=lines,
+      lines_count=lines_count,
+      module_name=module_name,
+      class_name=class_name,
+      context=context,
+      original_file_rel_path=original_file_rel_path,
+  )
 
   i = 0
   while i < lines_count:
@@ -693,48 +765,56 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
 
     # Handle class declaration
     if line.startswith(MACRO_CLASS):
-      i, current_class = _parse_class(lines, i, lines_count, module_name, context)
+      if state.current_class:
+        raise ParserError(
+            f"Nested class declaration not allowed at line {i + 1}. "
+            f"Already parsing '{state.current_class.name}'")
+      i, state.current_class = _parse_class(lines, i, lines_count, module_name, context)
       i += 1
       continue
 
     # Handle struct declaration
     if line.startswith(MACRO_STRUCT):
-      i, current_struct = _parse_struct(lines, i, lines_count, module_name, context)
+      if state.current_struct:
+        raise ParserError(
+            f"Nested struct declaration not allowed at line {i + 1}. "
+            f"Already parsing '{state.current_struct.name}'")
+      i, state.current_struct = _parse_struct(lines, i, lines_count, module_name, context)
       i += 1
       continue
 
     # Handle function declaration
     if line.startswith(MACRO_FUNCTION):
-      if not current_class and not current_struct:
-        raise ParserError("AGEA_ar_function found outside of class or struct")
+      if not state.current_class and not state.current_struct:
+        raise ParserError(f"AGEA_ar_function found outside of class or struct at line {i + 1}")
 
       i, function = _parse_function(lines, i, lines_count)
 
-      if current_class:
-        current_class.functions.append(function)
-      if current_struct:
-        current_struct.functions.append(function)
+      if state.current_class:
+        state.current_class.functions.append(function)
+      if state.current_struct:
+        state.current_struct.functions.append(function)
 
       i += 1
       continue
 
     # Handle property declaration
     if line.startswith(MACRO_PROPERTY):
-      if not current_class:
-        raise ParserError("AGEA_ar_property found outside of class")
+      if not state.current_class:
+        raise ParserError(f"AGEA_ar_property found outside of class at line {i + 1}")
 
       i, prop = _parse_property(lines, i, lines_count, class_name)
-      current_class.properties.append(prop)
+      state.current_class.properties.append(prop)
       i += 1
       continue
 
     # Handle constructor declaration
     if line.startswith(MACRO_CTOR):
-      if not current_struct:
-        raise ParserError("AGEA_ar_ctor found outside of struct")
+      if not state.current_struct:
+        raise ParserError(f"AGEA_ar_ctor found outside of struct at line {i + 1}")
 
       i, ctor = _parse_constructor(lines, i, lines_count)
-      current_struct.ctros.append(ctor)
+      state.current_struct.ctros.append(ctor)
       i += 1
       continue
 
@@ -752,12 +832,4 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
 
     i += 1
 
-  # Add final types to context
-  if current_class:
-    context.types.append(current_class)
-
-  if current_struct:
-    context.types.append(current_struct)
-
-  # Add include statement
-  _add_include(context, original_file_rel_path)
+  _finalize_parsing(state)
