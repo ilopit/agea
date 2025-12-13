@@ -192,5 +192,3 @@ class FileBuffer:
       print(f"Writing changes to {self.path}")
       with open(self.path, "w", encoding="utf-8") as f:
         f.write(self._buffer)
-    else:
-      print(f"No changes to {self.path}")

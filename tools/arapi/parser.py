@@ -766,7 +766,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
     Raises:
         ParserError: If parsing fails
     """
-  arapi.utils.eprint(f"processing : {original_file_full_path} ...")
+  #arapi.utils.eprint(f"processing : {original_file_full_path} ...")
 
   lines, lines_count = _read_file(original_file_full_path)
   class_name = Path(original_file_full_path).stem    # Filename without extension

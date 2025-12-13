@@ -136,8 +136,8 @@ class file_context:
     for t in self.types:
       self.topo_sort(t, ordered_types)
 
-    for t in ordered_types:
-      print(f"{t.name}")
+    #for t in ordered_types:
+      #print(f"{t.name}")
 
     self.types = ordered_types
 
