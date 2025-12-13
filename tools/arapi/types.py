@@ -60,7 +60,7 @@ class agea_type:
     self.deserialize_handler = ""
     self.load_derive_handler = ""
     self.serialize_handler = ""
-    self.to_string_handle = ""
+    self.to_string_handler = ""
     self.instantiate_handler = ""
     self.render_constructor = ""
     self.render_destructor = ""

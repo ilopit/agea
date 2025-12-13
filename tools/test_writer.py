@@ -333,8 +333,9 @@ class TestWriteLuaStructType(unittest.TestCase):
         ctor2.name = "TestStruct(float)"
         struct_type.ctros.append(ctor2)
 
-        with open(self.temp_file.name, 'w') as f:
-            arapi.writer.write_lua_struct_type(f, self.context, struct_type)
+        file_buffer = arapi.utils.FileBuffer(self.temp_file.name)
+        arapi.writer.write_lua_struct_type(file_buffer, self.context, struct_type)
+        file_buffer.write_if_changed()
 
         with open(self.temp_file.name, 'r') as f:
             content = f.read()
@@ -361,8 +362,9 @@ class TestWriteLuaClassType(unittest.TestCase):
         class_type.name = "TestClass"
         class_type.full_name = "test_module::TestClass"
 
-        with open(self.temp_file.name, 'w') as f:
-            arapi.writer.write_lua_class_type(f, self.context, class_type)
+        file_buffer = arapi.utils.FileBuffer(self.temp_file.name)
+        arapi.writer.write_lua_class_type(file_buffer, self.context, class_type)
+        file_buffer.write_if_changed()
 
         with open(self.temp_file.name, 'r') as f:
             content = f.read()
@@ -381,8 +383,9 @@ class TestWriteLuaClassType(unittest.TestCase):
         class_type.full_name = "test_module::TestClass"
         class_type.parent_type = parent_type
 
-        with open(self.temp_file.name, 'w') as f:
-            arapi.writer.write_lua_class_type(f, self.context, class_type)
+        file_buffer = arapi.utils.FileBuffer(self.temp_file.name)
+        arapi.writer.write_lua_class_type(file_buffer, self.context, class_type)
+        file_buffer.write_if_changed()
 
         with open(self.temp_file.name, 'r') as f:
             content = f.read()

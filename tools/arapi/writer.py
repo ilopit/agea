@@ -8,6 +8,7 @@ import os
 from typing import TextIO, Set, List, Optional, Tuple, Dict
 from collections import OrderedDict, deque
 import arapi.types
+import arapi.utils
 
 # Constants for property access modes
 SHOULD_HAVE_GETTER: Set[str] = {"cpp_readonly", "cpp_only", "script_readonly", "read_only", "all"}
@@ -634,8 +635,8 @@ def _write_type_registration(file_buffer: arapi.utils.FileBuffer, fc: arapi.type
   if type_obj.deserialize_handler:
     file_buffer.append(f"    rt.deserialize            = {type_obj.deserialize_handler};\n")
 
-  if type_obj.to_string_handle:
-    file_buffer.append(f"    rt.to_string              = {type_obj.to_string_handle};\n")
+  if type_obj.to_string_handler:
+    file_buffer.append(f"    rt.to_string              = {type_obj.to_string_handler};\n")
 
   if type_obj.instantiate_handler:
     file_buffer.append(f"    rt.instantiate            = {type_obj.instantiate_handler};\n")

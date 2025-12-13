@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(cat:*)",
-      "Bash(python -m unittest:*)"
+      "Bash(python -m unittest:*)",
+      "Bash(cmake --build:*)",
+      "Bash(./project_Debug/bin/packages.test.model.tests.exe)",
+      "Bash(./build/project_Debug/bin/packages.test.model.tests.exe)",
+      "Bash(./project_Debug/bin/packages.test.model.tests.exe:*)"
     ]
   }
 }

@@ -269,5 +269,101 @@ TEST_F(test_preloaded_test_package, check_load_in_construct)
     test::test_mesh_object::construct_params sp;
     auto obj = l.spawn_object<test::test_mesh_object>(AID("aaa"), sp);
 
-    int i = 2;
+    ASSERT_TRUE(obj);
+    ASSERT_EQ(obj->get_id(), AID("aaa"));
+    check_intance(*obj);
+}
+
+TEST_F(test_preloaded_test_package, object_clone_creates_copy_with_new_id)
+{
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    m_olc.set_prefix_path(obj_path);
+
+    m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
+        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
+
+    // First load source object as class/proto
+    root::smart_object* src_obj = nullptr;
+    auto rc = core::object_constructor::object_load(
+        obj_path / "game_objects/test_complex_mesh_object.aobj", core::object_load_type::class_obj,
+        m_olc, src_obj, m_loaded_objects);
+    ASSERT_EQ(rc, result_code::ok);
+    ASSERT_TRUE(src_obj);
+
+    // Clone it with a new ID
+    root::smart_object* cloned_obj = nullptr;
+    std::vector<root::smart_object*> cloned_loaded;
+    rc = core::object_constructor::object_clone(*src_obj, core::object_load_type::instance_obj,
+                                                AID("cloned_mesh_object"), m_olc, cloned_obj,
+                                                cloned_loaded);
+
+    ASSERT_EQ(rc, result_code::ok);
+    ASSERT_TRUE(cloned_obj);
+    ASSERT_NE(src_obj, cloned_obj);
+
+    // Verify cloned object has new ID but same type
+    ASSERT_EQ(cloned_obj->get_id(), AID("cloned_mesh_object"));
+    ASSERT_EQ(cloned_obj->get_type_id(), src_obj->get_type_id());
+    check_intance(*cloned_obj);
+
+    // Verify cloned object references original as class_obj
+    ASSERT_EQ(cloned_obj->get_class_obj(), src_obj);
+
+    // Verify game object structure was cloned
+    auto src_go = src_obj->as<root::game_object>();
+    auto cloned_go = cloned_obj->as<root::game_object>();
+    ASSERT_TRUE(cloned_go);
+    ASSERT_EQ(cloned_go->get_subcomponents().size(), src_go->get_subcomponents().size());
+}
+
+TEST_F(test_preloaded_test_package, object_instantiate_creates_instance_from_proto)
+{
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    m_olc.set_prefix_path(obj_path);
+
+    m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
+        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
+
+    // Load proto object
+    root::smart_object* proto_obj = nullptr;
+    auto rc = core::object_constructor::object_load(
+        obj_path / "game_objects/test_complex_mesh_object.aobj", core::object_load_type::class_obj,
+        m_olc, proto_obj, m_loaded_objects);
+    ASSERT_EQ(rc, result_code::ok);
+    check_proto(*proto_obj);
+
+    // Instantiate from proto
+    root::smart_object* instance_obj = nullptr;
+    std::vector<root::smart_object*> instance_loaded;
+    rc = core::object_constructor::object_instantiate(*proto_obj, AID("instance_mesh_object"),
+                                                      m_olc, instance_obj, instance_loaded);
+
+    ASSERT_EQ(rc, result_code::ok);
+    ASSERT_TRUE(instance_obj);
+    ASSERT_NE(proto_obj, instance_obj);
+
+    // Verify instance properties
+    ASSERT_EQ(instance_obj->get_id(), AID("instance_mesh_object"));
+    ASSERT_EQ(instance_obj->get_type_id(), proto_obj->get_type_id());
+    check_intance(*instance_obj);
+
+    // Instance should reference proto as class_obj
+    ASSERT_EQ(instance_obj->get_class_obj(), proto_obj);
+
+    // Verify components were instantiated
+    auto proto_go = proto_obj->as<root::game_object>();
+    auto instance_go = instance_obj->as<root::game_object>();
+    ASSERT_TRUE(instance_go);
+    ASSERT_EQ(instance_go->get_subcomponents().size(), proto_go->get_subcomponents().size());
+
+    // Verify each component is an instance, not the same object
+    for (size_t i = 0; i < proto_go->get_subcomponents().size(); ++i)
+    {
+        auto proto_comp = proto_go->get_subcomponents()[i];
+        auto instance_comp = instance_go->get_subcomponents()[i];
+        ASSERT_NE(proto_comp, instance_comp);
+        check_intance(*instance_comp);
+    }
 }

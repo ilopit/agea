@@ -3,12 +3,24 @@
 This module parses C++ header files annotated with AGEA macros to extract
 type information, properties, functions, and other metadata.
 """
-import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Tuple, Optional
 
 import arapi.types
 import arapi.utils
+
+__all__ = [
+    # Exceptions
+    'ParserError',
+    'InvalidBoolValueError',
+    'InvalidPropertyError',
+    # Main API
+    'parse_file',
+    'parse_attributes',
+    'is_bool',
+    'extract_type_config',
+]
 
 # Constants
 INCLUDE_PREFIX = "include/"
@@ -62,6 +74,7 @@ PKG_KEY_MODEL_TYPES_OVERRIDES = "model.has_types_overrides"
 PKG_KEY_MODEL_PROPERTIES_OVERRIDES = "model.has_properties_overrides"
 PKG_KEY_RENDER_OVERRIDES = "render.has_overrides"
 PKG_KEY_RENDER_RESOURCES = "render.has_resources"
+# Note: "dependancies" is intentionally misspelled to match C++ macro API
 PKG_KEY_DEPENDENCIES = "dependancies"
 
 # Invalidates values
@@ -163,7 +176,7 @@ _MODEL_TYPE_ATTR_MAP = {
     TYPE_KEY_SERIALIZE_HANDLER: 'serialize_handler',
     TYPE_KEY_DESERIALIZE_HANDLER: 'deserialize_handler',
     TYPE_KEY_LOAD_DERIVE_HANDLER: 'load_derive_handler',
-    TYPE_KEY_TO_STRING_HANDLER: 'to_string_handle',
+    TYPE_KEY_TO_STRING_HANDLER: 'to_string_handler',
     TYPE_KEY_ARCHITYPE: 'architype',
 }
 
@@ -674,6 +687,30 @@ def _add_include(context: arapi.types.file_context, file_rel_path: str) -> None:
   context.includes.add(f'#include "{include_path}"')
 
 
+def _handle_model_overrides(context: arapi.types.file_context, file_rel_path: str) -> None:
+  """Handle AGEA_ar_model_overrides macro.
+
+    Args:
+        context: File context to update
+        file_rel_path: Relative file path
+    """
+  include_path = file_rel_path.removeprefix(INCLUDE_PREFIX)
+  context.model_overrides.append(include_path)
+  context.includes.add(f'#include "{include_path}"')
+
+
+def _handle_render_overrides(context: arapi.types.file_context, file_rel_path: str) -> None:
+  """Handle AGEA_ar_render_overrides macro.
+
+    Args:
+        context: File context to update
+        file_rel_path: Relative file path
+    """
+  include_path = file_rel_path.removeprefix(INCLUDE_PREFIX)
+  context.render_overrides.append(include_path)
+  context.includes.add(f'#include "{include_path}"')
+
+
 @dataclass
 class _ParserState:
   """Internal state for file parsing."""
@@ -732,7 +769,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
   arapi.utils.eprint(f"processing : {original_file_full_path} ...")
 
   lines, lines_count = _read_file(original_file_full_path)
-  class_name = os.path.basename(original_file_full_path)[:-2]    # Remove '.h' extension
+  class_name = Path(original_file_full_path).stem    # Filename without extension
 
   state = _ParserState(
       lines=lines,
@@ -749,17 +786,13 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
 
     # Handle model overrides
     if line.startswith(MACRO_MODEL_OVERRIDES):
-      include_path = original_file_rel_path.removeprefix(INCLUDE_PREFIX)
-      context.model_overrides.append(include_path)
-      context.includes.add(f'#include "{include_path}"')
+      _handle_model_overrides(context, original_file_rel_path)
       i += 1
       continue
 
     # Handle render overrides
     if line.startswith(MACRO_RENDER_OVERRIDES):
-      include_path = original_file_rel_path.removeprefix(INCLUDE_PREFIX)
-      context.render_overrides.append(include_path)
-      context.includes.add(f'#include "{include_path}"')
+      _handle_render_overrides(context, original_file_rel_path)
       i += 1
       continue
 
