@@ -155,19 +155,19 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir:
   ar_class_include = arapi.utils.FileBuffer(include_path)
   ar_class_include.append("#pragma once\n\n")
 
-  # Generate per-type static method declarations for the 3 phases
+  # Generate per-type member method declarations for the 3 phases
   type_methods = ""
   for type_obj in context.types:
-    # Phase 1: register_type_* (needs builder ref to call add())
-    type_methods += f"        static void register_type_{type_obj.name}(::agea::core::static_package& sp, package_types_builder& b); \\\n"
+    # Phase 1: register_type_*
+    type_methods += f"        void register_type_{type_obj.name}(::agea::core::static_package& sp);       \\\n"
   for type_obj in context.types:
     # Phase 2: register_properties_* (only for types with properties)
     if type_obj.kind == arapi.types.agea_type_kind.CLASS and len(type_obj.properties) > 0:
-      type_methods += f"        static void register_properties_{type_obj.name}();                        \\\n"
+      type_methods += f"        void register_properties_{type_obj.name}();                               \\\n"
   for type_obj in context.types:
     # Phase 3: lua_bind_*
     if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
-      type_methods += f"        static void lua_bind_{type_obj.name}();                                   \\\n"
+      type_methods += f"        void lua_bind_{type_obj.name}();                                          \\\n"
 
   ar_class_include.append(f"""
 #define AGEA_gen_meta__{context.module_name}_package_model
@@ -604,7 +604,7 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}const int type_id = ::agea::reflection::type_resolver<{type_obj.get_full_type_name()}>::value;
 {indent}AGEA_check(type_id != -1, "Type is not defined!");
 {indent}{fc.module_name}_{type_obj.name}_rt = std::make_unique<::agea::reflection::reflection_type>(type_id, AID("{type_obj.name}"));
-{indent}auto& rt         = *b.add(sp, {fc.module_name}_{type_obj.name}_rt.get());
+{indent}auto& rt         = *add(sp, {fc.module_name}_{type_obj.name}_rt.get());
 {indent}rt.type_id       = type_id;
 {indent}rt.type_class    = ::agea::reflection::reflection_type::reflection_type_class::{kind_to_string(type_obj.kind)};
 
@@ -668,7 +668,7 @@ def _write_type_registration_function(file_buffer: arapi.utils.FileBuffer, fc: a
   """
   file_buffer.append(f"""
 void
-package::package_types_builder::register_type_{type_obj.name}(::agea::core::static_package& sp, package_types_builder& b)
+package::package_types_builder::register_type_{type_obj.name}(::agea::core::static_package& sp)
 {{""")
   _write_type_registration_body(file_buffer, fc, type_obj, "    ")
   file_buffer.append("}\n")
@@ -872,7 +872,7 @@ package::package_types_builder::build(static_package& sp)
 """)
 
   for type_obj in fc.types:
-    file_buffer.append(f"    register_type_{type_obj.name}(sp, *this);\n")
+    file_buffer.append(f"    register_type_{type_obj.name}(sp);\n")
 
   file_buffer.append("""
     // Phase 2: Register properties

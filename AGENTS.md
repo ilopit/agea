@@ -12,11 +12,10 @@ When responding to ideas or proposals:
 
 ## Build
 ```bash
-mkdir build
-cd build
-cmake -A x64 ..
-cmake --build .
+tools/configure.sh      # or: tools\configure (Windows cmd)
+tools/build.sh          # or: tools\build (Windows cmd)
 ```
+Options: `-v` verbose, `-c` clean (configure), `-r` release, `-j N` parallel jobs, `-a` all targets (build)
 
 ## Repository overview
  - 'engine': Main folder for game engine.
@@ -43,3 +42,5 @@ cmake --build .
 ## Essential Information
  - This repo uses cmake
  - NEVER change dependency versions
+ - Use `tools/build.sh` and `tools/configure.sh` - they suppress verbose output by default
+ - Do not read generated *.ar.cpp files without permission (they are large)
