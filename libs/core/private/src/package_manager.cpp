@@ -37,10 +37,9 @@ bool
 package_manager::init()
 {
     std::sort(m_static_packages.begin(), m_static_packages.end(),
-              [](static_package* l, static_package* r)
-              { return l->get_id().str() < r->get_id().str(); });
+              [](package* l, package* r) { return l->get_id().str() < r->get_id().str(); });
 
-    auto handle_dapandancy = [this](auto self, static_package* p) -> void
+    auto handle_dapandancy = [this](auto self, package* p) -> void
     {
         if (p->m_state == package_state::loaded)
         {
@@ -52,7 +51,7 @@ package_manager::init()
         auto depds = get_dapendency(p->get_id());
         for (auto& d : depds)
         {
-            auto sp = (static_package*)get_package(d);
+            auto sp = (package*)get_package(d);
 
             self(self, sp);
         }
@@ -99,7 +98,7 @@ package_manager::load_package(const utils::id& id)
         return false;
     }
 
-    auto new_package = std::make_unique<package>(AID(name), package_type::pt_dynamic);
+    auto new_package = std::make_unique<package>(AID(name));
     new_package->m_load_path = path;
     new_package->m_save_root_path = path.parent();
     new_package->init();
@@ -111,10 +110,9 @@ package_manager::load_package(const utils::id& id)
     {
         AGEA_check(i.second.is_class, "Load only package!");
 
-        root::smart_object* obj = nullptr;
-        auto rc = object_constructor::object_load(i.first, object_load_type::class_obj,
-                                                  new_package->get_load_context(), obj, loaded_obj);
-        if (rc != result_code::ok)
+        auto result = object_constructor::object_load(i.first, object_load_type::class_obj,
+                                                      new_package->get_load_context(), loaded_obj);
+        if (!result)
         {
             ALOG_LAZY_ERROR;
             return false;
@@ -239,7 +237,7 @@ package_manager::get_package(const utils::id& id)
 }
 
 bool
-package_manager::register_static_package(core::static_package& pkg)
+package_manager::register_package(core::package& pkg)
 {
     auto itr = m_packages.find(pkg.get_id());
     if (itr != m_packages.end())

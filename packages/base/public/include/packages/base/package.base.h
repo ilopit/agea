@@ -14,7 +14,7 @@ AGEA_ar_package(model.has_types_overrides = true,
                 dependancies = "root",
                 render.has_overrides = true,
                 render.has_resources = false);
-class package : public ::agea::core::static_package
+class package : public ::agea::core::package
 // clang-format on
 {
 public:

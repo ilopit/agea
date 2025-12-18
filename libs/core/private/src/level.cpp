@@ -54,17 +54,17 @@ level::spawn_object_impl(const utils::id& proto_id,
         return nullptr;
     }
 
-    root::smart_object* result = nullptr;
     std::vector<root::smart_object*> loaded_obj;
 
     m_occ->push_construction_type(object_load_type::instance_obj);
 
-    auto rc =
-        object_constructor::object_clone_create_internal(*proto_obj, object_id, *m_occ, result);
-    if (rc != result_code::ok)
+    auto clone_result = object_constructor::object_clone_create_internal(*proto_obj, object_id, *m_occ);
+    if (!clone_result)
     {
+        m_occ->pop_construction_type();
         return nullptr;
     }
+    auto result = clone_result.value();
 
     m_occ->pop_construction_type();
     m_occ->reset_loaded_objects(loaded_obj);
@@ -100,8 +100,13 @@ level::spawn_object_impl(const utils::id& proto_id,
                          const utils::id& object_id,
                          const root::smart_object::construct_params& p)
 {
-    auto obj = object_constructor::object_construct(proto_id, object_id, p, *m_occ)
-                   ->as<root::game_object>();
+    auto result = object_constructor::object_construct(proto_id, object_id, p, *m_occ);
+    if (!result)
+    {
+        return nullptr;
+    }
+
+    auto obj = result.value()->as<root::game_object>();
     if (obj)
     {
         add_to_dirty_render_queue(obj->get_root_component());
@@ -109,7 +114,7 @@ level::spawn_object_impl(const utils::id& proto_id,
         m_tickable_objects.emplace_back(obj);
     }
 
-    return obj;
+    return result.value();
 }
 
 void

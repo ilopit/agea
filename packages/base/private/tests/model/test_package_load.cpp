@@ -135,13 +135,12 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
     m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load(obj_path / "game_objects/test_mesh_obj.aobj",
-                                                    core::object_load_type::class_obj, m_olc, obj,
-                                                    m_loaded_objects);
+    auto result = core::object_constructor::object_load(obj_path / "game_objects/test_mesh_obj.aobj",
+                                                        core::object_load_type::class_obj, m_olc,
+                                                        m_loaded_objects);
 
-    ASSERT_EQ(rc, result_code::ok);
-    auto go = obj->as<root::game_object>();
+    ASSERT_TRUE(result.has_value());
+    auto go = result.value()->as<root::game_object>();
     ASSERT_TRUE(go);
     check_proto(*go);
 
@@ -193,13 +192,12 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
     m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load(obj_path / "game_objects/test_mesh_obj.aobj",
-                                                    core::object_load_type::instance_obj, m_olc,
-                                                    obj, m_loaded_objects);
+    auto result = core::object_constructor::object_load(obj_path / "game_objects/test_mesh_obj.aobj",
+                                                        core::object_load_type::instance_obj, m_olc,
+                                                        m_loaded_objects);
 
-    ASSERT_EQ(rc, result_code::ok);
-    auto go = obj->as<root::game_object>();
+    ASSERT_TRUE(result.has_value());
+    auto go = result.value()->as<root::game_object>();
     ASSERT_TRUE(go);
     check_intance(*go);
 

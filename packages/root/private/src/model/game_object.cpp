@@ -59,10 +59,16 @@ game_object::spawn_component(component* parent,
 {
     AGEA_check(((bool)m_package != (bool)m_level), "Only one should be set!");
 
-    auto comp = core::object_constructor::object_construct(
-                    type_id, id, params,
-                    m_package ? m_package->get_load_context() : m_level->get_load_context())
-                    ->as<component>();
+    auto result = core::object_constructor::object_construct(
+        type_id, id, params,
+        m_package ? m_package->get_load_context() : m_level->get_load_context());
+
+    if (!result)
+    {
+        return nullptr;
+    }
+
+    auto comp = result.value()->as<component>();
 
     if (parent)
     {
@@ -79,8 +85,6 @@ game_object::spawn_component_with_proto(component* parent,
 {
     auto& occ = m_package ? m_package->get_load_context() : m_level->get_load_context();
 
-    result_code rc = result_code::failed;
-
     auto proto_obj = occ.find_proto_obj(proto_id);
 
     std::vector<root::smart_object*> loaded_obj;
@@ -88,13 +92,14 @@ game_object::spawn_component_with_proto(component* parent,
     {
         ALOG_TRACE("Proto [{}] doesn't exist", proto_id.cstr());
 
-        rc = core::object_constructor::object_load(proto_id, core::object_load_type::class_obj, occ,
-                                                   proto_obj, loaded_obj);
+        auto load_result = core::object_constructor::object_load(
+            proto_id, core::object_load_type::class_obj, occ, loaded_obj);
 
-        if (rc != result_code::ok)
+        if (!load_result)
         {
             return nullptr;
         }
+        proto_obj = load_result.value();
     }
 
     loaded_obj.clear();
@@ -105,23 +110,25 @@ game_object::spawn_component_with_proto(component* parent,
     if (type == core::object_load_type::class_obj)
     {
         std::vector<root::smart_object*> objects;
-        rc = core::object_constructor::object_clone(*proto_obj, core::object_load_type::class_obj,
-                                                    id, occ, result, objects);
-        if (rc != result_code::ok)
+        auto clone_result = core::object_constructor::object_clone(
+            *proto_obj, core::object_load_type::class_obj, id, occ, objects);
+        if (!clone_result)
         {
             return nullptr;
         }
+        result = clone_result.value();
 
         occ.reset_loaded_objects();
     }
     else if (type == core::object_load_type::instance_obj)
     {
         std::vector<root::smart_object*> objects;
-        rc = core::object_constructor::object_instantiate(*proto_obj, id, occ, result, objects);
-        if (rc != result_code::ok)
+        auto inst_result = core::object_constructor::object_instantiate(*proto_obj, id, occ, objects);
+        if (!inst_result)
         {
             return nullptr;
         }
+        result = inst_result.value();
 
         occ.reset_loaded_objects();
     }

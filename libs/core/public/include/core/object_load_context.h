@@ -59,6 +59,7 @@ public:
     package*            get_package() const             { return m_package; }
     const utils::path&  get_prefix_path() const         { return m_path_prefix; }
     level*              get_level() const               { return m_level; }
+    object_mapping&     get_objects_mapping() const     { return *m_object_mapping; }
 
     // clang-format on
     void

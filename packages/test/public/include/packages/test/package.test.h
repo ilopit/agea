@@ -14,7 +14,7 @@ AGEA_ar_package(model.has_types_overrides = false,
                 dependancies = "base:root",
                 render.has_overrides = false,
                 render.has_resources = false);
-class package : public ::agea::core::static_package
+class package : public ::agea::core::package
 // clang-format on
 {
 public:
@@ -23,4 +23,4 @@ public:
     AGEA_gen_meta__test_package;
 };
 
-}  // namespace agea::root
+}  // namespace agea::test

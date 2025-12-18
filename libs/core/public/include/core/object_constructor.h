@@ -11,6 +11,7 @@
 
 #include <string>
 #include <memory>
+#include <expected>
 
 namespace agea
 {
@@ -28,47 +29,36 @@ class object_constructor
 public:
     // Public API
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load(const utils::path& path_in_package,
                 object_load_type type,
                 object_load_context& occ,
-                root::smart_object*& obj,
                 std::vector<root::smart_object*>& loaded_obj);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load(const utils::id& id,
                 object_load_type type,
                 object_load_context& occ,
-                root::smart_object*& obj,
                 std::vector<root::smart_object*>& loaded_obj);
 
-    static root::smart_object*
+    static std::expected<root::smart_object*, result_code>
     object_construct(const utils::id& type_id,
                      const utils::id& id,
                      const root::smart_object::construct_params& p,
                      object_load_context& olc);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_clone(root::smart_object& src,
                  object_load_type type,
                  const utils::id& new_object_id,
                  object_load_context& occ,
-                 root::smart_object*& obj,
                  std::vector<root::smart_object*>& loaded_obj);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_instantiate(root::smart_object& proto_obj,
                        const utils::id& new_object_id,
                        object_load_context& occ,
-                       root::smart_object*& result,
                        std::vector<root::smart_object*>& loaded_obj);
-
-    template <typename T>
-    static result_code
-    create_default_class_obj_impl(object_load_context& occ)
-    {
-        return create_default_class_obj_impl(alloc_empty_object<T>(), occ);
-    }
 
     template <typename T>
     static result_code
@@ -83,23 +73,20 @@ public:
     static result_code
     object_save(const root::smart_object& obj, const utils::path& object_path);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_clone_create_internal(const utils::id& src_object_id,
                                  const utils::id& new_object_id,
-                                 object_load_context& occ,
-                                 root::smart_object*& obj);
+                                 object_load_context& occ);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_clone_create_internal(root::smart_object& src,
                                  const utils::id& new_object_id,
-                                 object_load_context& occ,
-                                 root::smart_object*& obj);
+                                 object_load_context& occ);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_instanciate_internal(root::smart_object& src,
                                 const utils::id& new_object_id,
-                                object_load_context& occ,
-                                root::smart_object*& obj);
+                                object_load_context& occ);
 
     static result_code
     update_object_properties(root::smart_object& g,
@@ -144,58 +131,59 @@ public:
         return empty;
     }
 
-    static root::smart_object*
+    static std::expected<root::smart_object*, result_code>
     alloc_empty_object(const utils::id& proto_id,
                        const utils::id& id,
                        uint32_t extra_flags,
                        object_load_context& olc);
 
-    static root::smart_object*
+    static std::expected<root::smart_object*, result_code>
     alloc_empty_object(const utils::id& id,
                        reflection::reflection_type* rt,
                        uint32_t extra_flags,
                        object_load_context& olc);
 
-    static result_code
-    object_load_internal(const utils::id& id, object_load_context& occ, root::smart_object*& obj);
+    static std::expected<root::smart_object*, result_code>
+    object_load_internal(const utils::id& id, object_load_context& occ);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load_internal(const utils::path& path_in_package,
-                         object_load_context& occ,
-                         root::smart_object*& obj);
+                         object_load_context& occ);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load_internal(serialization::conteiner& c,
-                         object_load_context& occ,
-                         root::smart_object*& obj);
+                         object_load_context& occ);
+
+    static std::expected<root::smart_object*, result_code>
+    preload_proto(const utils::id& id, object_load_context& occ);
+
+    static std::expected<root::smart_object*, result_code>
+    create_default_default_class_proto(const utils::id& id, object_load_context& olc);
 
 private:
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
                                   object_load_context& olc);
 
     static result_code
     destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load_full(serialization::conteiner& sc,
-                     object_load_context& occ,
-                     root::smart_object*& obj);
+                     object_load_context& occ);
 
     static result_code
     object_save_full(serialization::conteiner& sc, const root::smart_object& obj);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load_partial(root::smart_object& prototype_obj,
                         serialization::conteiner& sc,
-                        object_load_context& occ,
-                        root::smart_object*& obj);
+                        object_load_context& occ);
 
-    static result_code
+    static std::expected<root::smart_object*, result_code>
     object_load_derive(root::smart_object& prototype_obj,
                        serialization::conteiner& sc,
-                       object_load_context& occ,
-                       root::smart_object*& obj);
+                       object_load_context& occ);
 
     static result_code
     object_save_partial(serialization::conteiner& sc, const root::smart_object& obj);

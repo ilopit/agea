@@ -6,7 +6,7 @@ namespace agea::base
 {
 
 package::package()
-    : core::static_package(AID("base"))
+    : core::package(AID("base"))
 {
 }
 

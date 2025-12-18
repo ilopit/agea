@@ -91,8 +91,8 @@ def generate_builder(should_generate: bool, name: str, extra_methods: str = "") 
   return f"""struct package_{name}_builder : public ::agea::core::package_{name}_builder\\
 {{                                                                                      \\
     public:                                                                             \\
-        virtual bool build(::agea::core::static_package& sp) override;                  \\
-        virtual bool destroy(::agea::core::static_package& sp) override;                \\
+        virtual bool build(::agea::core::package& sp) override;                  \\
+        virtual bool destroy(::agea::core::package& sp) override;                \\
 {extra_methods}}};                                                                                     \\
 """
 
@@ -159,10 +159,10 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir:
   type_methods = ""
   for type_obj in context.types:
     # Phase 1: register_type_*
-    type_methods += f"        void register_type_{type_obj.name}(::agea::core::static_package& sp);       \\\n"
+    type_methods += f"        void register_type_{type_obj.name}(::agea::core::package& sp);             \\\n"
   for type_obj in context.types:
     # Phase 2: register_properties_* (only for types with properties)
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS and len(type_obj.properties) > 0:
+    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
       type_methods += f"        void register_properties_{type_obj.name}();                               \\\n"
   for type_obj in context.types:
     # Phase 3: lua_bind_*
@@ -287,6 +287,10 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
 
         auto property_td = ::agea::reflection::agea_type_resolve<decltype(type::m_{prop.name_cut})>();
         auto prop_rtype  = ::agea::glob::glob_state().get_rm()->get_type(property_td.type_id);
+        if(!prop_rtype)
+        {{
+            ALOG_WARN("Property doesn't have a type {prop.owner}:{prop.name_cut}");
+        }}
 
         auto prop        = std::make_shared<::agea::reflection::property>();
         auto p           = prop.get();
@@ -668,7 +672,7 @@ def _write_type_registration_function(file_buffer: arapi.utils.FileBuffer, fc: a
   """
   file_buffer.append(f"""
 void
-package::package_types_builder::register_type_{type_obj.name}(::agea::core::static_package& sp)
+package::package_types_builder::register_type_{type_obj.name}(::agea::core::package& sp)
 {{""")
   _write_type_registration_body(file_buffer, fc, type_obj, "    ")
   file_buffer.append("}\n")
@@ -683,8 +687,6 @@ def _write_properties_member_function(file_buffer: arapi.utils.FileBuffer, fc: a
         fc: File context
         type_obj: Type to register properties for
   """
-  if len(type_obj.properties) == 0:
-    return
 
   file_buffer.append(f"""
 void
@@ -833,7 +835,7 @@ static std::unique_ptr<sol::usertype<{type_obj.get_full_type_name()}>> {type_obj
 
   # Phase 2: Write register_properties_* member functions
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS and len(type_obj.properties) > 0:
+    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
       _write_properties_member_function(file_buffer, fc, type_obj)
 
   # Phase 3: Write lua_bind_* functions
@@ -853,7 +855,7 @@ AGEA_gen__static_schedule(::agea::gs::state::state_stage::create,
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
     [](agea::gs::state& s)
     {{
-      s.get_pm()->register_static_package({fc.module_name}::package::instance());
+      s.get_pm()->register_package({fc.module_name}::package::instance());
     }});
 
 bool package::package_model_enforcer()
@@ -863,7 +865,7 @@ bool package::package_model_enforcer()
 }}
 
 bool
-package::package_types_builder::build(static_package& sp)
+package::package_types_builder::build(::agea::core::package& sp)
 {{
     auto pkg = &::agea::{fc.module_name}::package::instance();
     (void)pkg;
@@ -879,7 +881,7 @@ package::package_types_builder::build(static_package& sp)
 """)
 
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS and len(type_obj.properties) > 0:
+    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
       file_buffer.append(f"    register_properties_{type_obj.name}();\n")
 
   file_buffer.append("""
@@ -896,7 +898,7 @@ package::package_types_builder::build(static_package& sp)
 """)
   file_buffer.append(f"""
 bool
-package::package_types_builder::destroy(static_package& sp)
+package::package_types_builder::destroy(::agea::core::package& sp)
 {{
 """)
   for type_obj in reversed(fc.types):
@@ -908,20 +910,16 @@ package::package_types_builder::destroy(static_package& sp)
   file_buffer.append(f"""   return true;
 }}
 bool
-package::package_types_default_objects_builder::build(static_package& sp)
+package::package_types_default_objects_builder::build(::agea::core::package& sp)
 {{
     auto pkg = &::agea::{fc.module_name}::package::instance();
 """)
-
-  for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
-      file_buffer.append(f"    pkg->create_default_class_obj<{type_obj.get_full_type_name()}>();\n")
 
   file_buffer.append("\n    return true;\n}\n\n")
 
   file_buffer.append(f"""
 bool
-package::package_types_default_objects_builder::destroy(static_package& sp)
+package::package_types_default_objects_builder::destroy(::agea::core::package& sp)
 {{
     auto pkg = &::agea::{fc.module_name}::package::instance();
 """)
@@ -1005,7 +1003,7 @@ AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
   if fc.render_has_types_overrides:
     file_buffer.append(f"""
 bool
-package::package_render_types_builder::build(::agea::core::static_package& sp)
+package::package_render_types_builder::build(::agea::core::package& sp)
 {{
   auto pkg = &::agea::{fc.module_name}::package::instance();
 """)
@@ -1029,7 +1027,7 @@ package::package_render_types_builder::build(::agea::core::static_package& sp)
   return true;
 }}
 bool
-package::package_render_types_builder::destroy(::agea::core::static_package&)
+package::package_render_types_builder::destroy(::agea::core::package&)
 {{
   return true;
 }}

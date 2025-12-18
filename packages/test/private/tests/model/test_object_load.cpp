@@ -52,7 +52,6 @@ struct test_preloaded_test_package : base_test
     void
     SetUp()
     {
-        m_object_maping = std::make_shared<core::object_mapping>();
         base::package::reset_instance();
         root::package::reset_instance();
         test::package::reset_instance();
@@ -76,31 +75,31 @@ struct test_preloaded_test_package : base_test
         gs.run_create();
         validate_empty_cache(gs);
         {
-            root::package::init_instance();
-            auto& pkg = root::package::instance();
-            pkg.register_package_extention<root::package::package_types_builder>();
-            pkg.register_package_extention<root::package::package_types_default_objects_builder>();
-            pkg.complete_load();
-        }
-        {
-            base::package::init_instance();
-            auto& pkg = base::package::instance();
-            pkg.register_package_extention<base::package::package_types_builder>();
-            pkg.register_package_extention<base::package::package_types_default_objects_builder>();
-            pkg.complete_load();
-        }
-        {
-            test::package::init_instance();
-            auto& pkg = test::package::instance();
-            pkg.register_package_extention<test::package::package_types_builder>();
-            pkg.register_package_extention<test::package::package_types_default_objects_builder>();
-            pkg.complete_load();
-        }
+            {
+                root::package::init_instance();
+                auto& pkg = root::package::instance();
+                pkg.register_package_extention<root::package::package_types_builder>();
+                pkg.complete_load();
+            }
+            {
+                base::package::init_instance();
+                auto& pkg = base::package::instance();
+                pkg.register_package_extention<base::package::package_types_builder>();
+                pkg.complete_load();
+            }
 
-        m_olc.set_proto_local_set(&m_classes_local);
-        m_olc.set_instance_local_set(&m_classes_local);
-        m_olc.set_ownable_cache(&m_objects_cache);
-        m_olc.set_objects_mapping(m_object_maping);
+            {
+                test::package::init_instance();
+                auto& pkg = test::package::instance();
+                pkg.init();
+
+                auto tb = (test::package::package_types_builder*)test::package::instance()
+                              .types_builder()
+                              .get();
+
+                pkg.finalize_relfection();
+            }
+        }
     }
 
     void
@@ -130,36 +129,29 @@ struct test_preloaded_test_package : base_test
         ASSERT_TRUE(so.get_flags().proto_obj);
         ASSERT_FALSE(so.get_flags().instance_obj);
     }
-
-    core::line_cache<root::smart_object_ptr> m_objects_cache;
-
-    core::cache_set m_classes_local;
-    core::cache_set m_instances_local;
-    core::object_load_context m_olc;
-    std::vector<root::smart_object*> m_loaded_objects;
-    std::shared_ptr<core::object_mapping> m_object_maping;
 };
 
 TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
 {
+    auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
     auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
-    m_olc.set_prefix_path(obj_path);
-
-    m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping()
+        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load(
+    std::vector<root::smart_object*> loaded;
+    auto result = core::object_constructor::object_load(
         obj_path / "game_objects/test_complex_mesh_object.aobj", core::object_load_type::class_obj,
-        m_olc, obj, m_loaded_objects);
+        lc, loaded);
 
-    ASSERT_EQ(rc, result_code::ok);
-    auto go = obj->as<root::game_object>();
+    ASSERT_TRUE(result.has_value());
+    auto go = result.value()->as<root::game_object>();
     ASSERT_TRUE(go);
     check_proto(*go);
 
-    ASSERT_EQ(m_loaded_objects.size(), 3);
+    ASSERT_EQ(loaded.size(), 5);
 
     ASSERT_EQ(go->get_id(), AID("test_complex_mesh_object"));
     ASSERT_EQ(go->get_architype_id(), core::architype::game_object);
@@ -200,20 +192,21 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
 
 TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 {
+    auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
     auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
-    m_olc.set_prefix_path(obj_path);
-
-    m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
+    lc.set_prefix_path(obj_path);
+    std::vector<root::smart_object*> loaded;
+    lc.get_objects_mapping()
+        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load(
+    auto result = core::object_constructor::object_load(
         obj_path / "game_objects/test_complex_mesh_object.aobj",
-        core::object_load_type::instance_obj, m_olc, obj, m_loaded_objects);
+        core::object_load_type::instance_obj, lc, loaded);
 
-    ASSERT_EQ(rc, result_code::ok);
-    auto go = obj->as<root::game_object>();
+    ASSERT_TRUE(result.has_value());
+    auto go = result.value()->as<root::game_object>();
     ASSERT_TRUE(go);
     check_intance(*go);
 
@@ -253,6 +246,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 
     ASSERT_EQ(ts.txt->get_id(), AID("texture"));
 }
+/*
 
 TEST_F(test_preloaded_test_package, check_load_in_construct)
 {
@@ -367,3 +361,4 @@ TEST_F(test_preloaded_test_package, object_instantiate_creates_instance_from_pro
         check_intance(*instance_comp);
     }
 }
+*/

@@ -35,7 +35,13 @@ load_smart_object(blob_ptr ptr,
 
     const auto id = AID(jc.as<std::string>());
 
-    return core::object_constructor::object_load_internal(id, occ, field);
+    auto result = core::object_constructor::object_load_internal(id, occ);
+    if (!result)
+    {
+        return result.error();
+    }
+    field = result.value();
+    return result_code::ok;
 }
 
 result_code
@@ -89,13 +95,22 @@ smart_obj__copy(AGEA_copy_handler_args)
             return result_code::ok;
         }
 
-        root::smart_object* cobj = nullptr;
         std::vector<root::smart_object*> objs;
-        core::object_constructor::object_load(obj->get_id(), core::object_load_type::class_obj, ooc,
-                                              cobj, objs);
+        auto load_result = core::object_constructor::object_load(obj->get_id(), core::object_load_type::class_obj, ooc,
+                                                                  objs);
+        if (!load_result)
+        {
+            return load_result.error();
+        }
 
-        return core::object_constructor::object_clone_create_internal(obj->get_id(), obj->get_id(),
-                                                                      ooc, dst_obj);
+        auto clone_result = core::object_constructor::object_clone_create_internal(
+            obj->get_id(), obj->get_id(), ooc);
+        if (!clone_result)
+        {
+            return clone_result.error();
+        }
+        dst_obj = clone_result.value();
+        return result_code::ok;
     }
     else
     {
@@ -120,8 +135,14 @@ smart_obj__instantiate(AGEA_copy_handler_args)
 
     std::vector<root::smart_object*> objs;
 
-    return core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(), ooc,
-                                                        dst_subobj, objs);
+    auto result = core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(),
+                                                               ooc, objs);
+    if (!result)
+    {
+        return result.error();
+    }
+    dst_subobj = result.value();
+    return result_code::ok;
 }
 
 agea::result_code
@@ -194,17 +215,16 @@ texture_sample__deserialize(AGEA_deserialization_args)
 
     const auto texture_id = AID(jc["texture"].as<std::string>());
 
-    root::smart_object* result = nullptr;
-    auto rc = ::agea::core::object_constructor::object_load_internal(texture_id, occ, result);
-    if (rc != result_code::ok)
+    auto load_result = ::agea::core::object_constructor::object_load_internal(texture_id, occ);
+    if (!load_result)
     {
-        return rc;
+        return load_result.error();
     }
 
     const auto slot = jc["slot"].as<uint32_t>();
 
     auto& sample = src->get_sample(src->get_id());
-    sample.txt = result->as<root::texture>();
+    sample.txt = load_result.value()->as<root::texture>();
     sample.sampler_id = AID(jc["sampler"].as<std::string>());
     sample.slot = slot;
 
@@ -229,17 +249,18 @@ texture_sample__copy(AGEA_copy_handler_args)
     auto src = src_obj.as<root::material>();
     auto dst = dst_obj.as<root::material>();
 
-    result_code rc = result_code::ok;
-
     dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
 
-    root::smart_object* obj = nullptr;
-
-    rc = core::object_constructor::object_clone_create_internal(
+    auto clone_result = core::object_constructor::object_clone_create_internal(
         src->get_sample(src->get_id()).txt->get_id(), src->get_sample(src->get_id()).txt->get_id(),
-        ooc, obj);
+        ooc);
 
-    dst->get_sample(src->get_id()).txt = obj->as<root::texture>();
+    if (!clone_result)
+    {
+        return clone_result.error();
+    }
+
+    dst->get_sample(src->get_id()).txt = clone_result.value()->as<root::texture>();
 
     return result_code::ok;
 }
@@ -250,17 +271,18 @@ texture_sample__instantiate(AGEA_instantiate_handler_args)
     auto src = src_obj.as<root::material>();
     auto dst = dst_obj.as<root::material>();
 
-    result_code rc = result_code::ok;
-
     dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
 
-    root::smart_object* obj = nullptr;
-
-    rc = core::object_constructor::object_clone_create_internal(
+    auto clone_result = core::object_constructor::object_clone_create_internal(
         src->get_sample(src->get_id()).txt->get_id(), src->get_sample(src->get_id()).txt->get_id(),
-        ooc, obj);
+        ooc);
 
-    dst->get_sample(src->get_id()).txt = obj->as<root::texture>();
+    if (!clone_result)
+    {
+        return clone_result.error();
+    }
+
+    dst->get_sample(src->get_id()).txt = clone_result.value()->as<root::texture>();
 
     return result_code::ok;
 }
@@ -277,14 +299,15 @@ texture_sample__load_derive(reflection::property_load_derive_context& ctx)
     const auto id = AID(ctx.src_property->name);
     const auto texture_id = AID(item["texture"].as<std::string>());
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load_internal(texture_id, *ctx.occ, obj);
+    auto result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
 
-    if (rc != result_code::ok)
+    if (!result)
     {
         ALOG_ERROR("Texture doesn't exist");
-        return rc;
+        return result.error();
     }
+
+    auto obj = result.value();
 
     auto& s = obj->get_flags();
 

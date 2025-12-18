@@ -6,7 +6,7 @@ namespace agea::test
 {
 
 package::package()
-    : core::static_package(AID("test"))
+    : core::package(AID("test"))
 {
 }
 

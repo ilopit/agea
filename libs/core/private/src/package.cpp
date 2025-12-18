@@ -22,23 +22,8 @@ package::package(package&&) noexcept = default;
 package&
 package::operator=(package&&) noexcept = default;
 
-bool
-package::init()
-{
-    m_occ = std::make_unique<object_load_context>();
-    m_occ->set_package(this)
-        .set_proto_local_set(&m_proto_local_cs)
-        .set_ownable_cache(&m_objects)
-        .set_instance_local_set(&m_instance_local_cs);
-
-    m_occ->push_construction_type(object_load_type::class_obj);
-
-    return true;
-}
-
-package::package(const utils::id& id, package_type t)
+package::package(const utils::id& id)
     : container(id)
-    , m_type(t)
 {
 }
 
@@ -55,14 +40,8 @@ package::unregister_in_global_cache()
                                           m_id, "proto");
 }
 
-dynamic_package::dynamic_package(const utils::id& id)
-    : package(id, package_type::pt_dynamic)
-{
-    set_occ(std::make_unique<object_load_context>());
-}
-
 void
-dynamic_package::unload()
+package::unload()
 {
     container::unload();
 
@@ -72,15 +51,17 @@ dynamic_package::unload()
     m_state = package_state::unloaded;
 }
 
-static_package::static_package(const utils::id& id)
-    : package(id, package_type::pt_static)
-{
-}
-
 bool
-static_package::init()
+package::init()
 {
-    package::init();
+    m_occ = std::make_unique<object_load_context>();
+    m_occ->set_package(this)
+        .set_proto_local_set(&m_proto_local_cs)
+        .set_ownable_cache(&m_objects)
+        .set_instance_local_set(&m_instance_local_cs);
+
+    m_occ->push_construction_type(object_load_type::class_obj);
+
     auto path = glob::glob_state().get_resource_locator()->resource(category::packages,
                                                                     m_id.str() + ".apkg");
 
@@ -107,7 +88,7 @@ static_package::init()
 }
 
 void
-static_package::load_types()
+package::load_types()
 {
     if (m_type_builder)
     {
@@ -116,7 +97,7 @@ static_package::load_types()
 }
 
 void
-static_package::destroy_types()
+package::destroy_types()
 {
     if (m_type_builder)
     {
@@ -125,7 +106,7 @@ static_package::destroy_types()
 }
 
 void
-static_package::load_custom_types()
+package::load_custom_types()
 {
     if (m_types_custom_loader)
     {
@@ -134,7 +115,7 @@ static_package::load_custom_types()
 }
 
 void
-static_package::destroy_custom_types()
+package::destroy_custom_types()
 {
     if (m_types_custom_loader)
     {
@@ -143,7 +124,7 @@ static_package::destroy_custom_types()
 }
 
 void
-static_package::load_render_resources()
+package::load_render_resources()
 {
     if (m_render_resources_loader)
     {
@@ -151,7 +132,7 @@ static_package::load_render_resources()
     }
 }
 void
-static_package::destroy_render_resources()
+package::destroy_render_resources()
 {
     if (m_render_resources_loader)
     {
@@ -160,7 +141,7 @@ static_package::destroy_render_resources()
 }
 
 void
-static_package::load_render_types()
+package::load_render_types()
 {
     if (m_render_types_loader)
     {
@@ -169,7 +150,7 @@ static_package::load_render_types()
 }
 
 void
-static_package::destroy_render_types()
+package::destroy_render_types()
 {
     if (m_render_types_loader)
     {
@@ -178,9 +159,9 @@ static_package::destroy_render_types()
 }
 
 void
-static_package::finalize_relfection()
+package::finalize_relfection()
 {
-    for (auto rt : m_rts)
+    for (auto [id, rt] : m_rts)
     {
         std::stack<reflection::reflection_type*> to_handle;
 
@@ -211,30 +192,37 @@ static_package::finalize_relfection()
         }
     }
 
-    for (auto& c : m_rts)
+    for (auto& [id, rt] : m_rts)
     {
-        for (auto& p : c->m_properties)
+        for (auto& p : rt->m_properties)
         {
             if (p->serializable)
             {
-                c->m_serilalization_properties.push_back(p);
+                rt->m_serilalization_properties.push_back(p);
             }
-            c->m_editor_properties[p->category].push_back(p);
+            rt->m_editor_properties[p->category].push_back(p);
         }
     }
 }
 
 void
-static_package::create_default_types_objects()
+package::create_default_types_objects()
 {
-    if (m_default_object_builder)
+    for (auto [id, rt] : m_rts)
     {
-        m_default_object_builder->build(*this);
+        if (rt->type_class == reflection::reflection_type::reflection_type_class::agea_class)
+        {
+            auto result = object_constructor::create_default_default_class_proto(id, *m_occ);
+            if (!result)
+            {
+                ALOG_ERROR("Failed to create default type object for {}", id.str());
+            }
+        }
     }
 }
 
 void
-static_package::destroy_default_types_objects()
+package::destroy_default_types_objects()
 {
     if (m_default_object_builder)
     {
@@ -243,7 +231,7 @@ static_package::destroy_default_types_objects()
 }
 
 void
-static_package::build_objects()
+package::build_objects()
 {
     if (m_object_builder)
     {
@@ -252,10 +240,10 @@ static_package::build_objects()
 }
 
 ::agea::reflection::reflection_type*
-package_types_builder::add(static_package& sp, ::agea::reflection::reflection_type* rt)
+package_types_builder::add(package& sp, ::agea::reflection::reflection_type* rt)
 {
-    sp.m_rts.push_back(rt);
-    return sp.m_rts.back();
+    sp.m_rts[rt->type_name] = rt;
+    return rt;
 }
 
 }  // namespace agea::core

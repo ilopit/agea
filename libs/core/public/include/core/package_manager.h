@@ -12,6 +12,9 @@ namespace agea
 {
 namespace core
 {
+
+class package;
+
 class package_manager
 {
 public:
@@ -37,7 +40,7 @@ public:
     get_package(const utils::id& id);
 
     bool
-    register_static_package(static_package& pkg);
+    register_package(package& pkg);
 
     std::unordered_map<utils::id, package*>&
     get_packages()
@@ -45,7 +48,7 @@ public:
         return m_packages;
     }
 
-    std::vector<core::static_package*>&
+    std::vector<core::package*>&
     get_static_packages()
     {
         return m_static_packages;
@@ -54,7 +57,7 @@ public:
 protected:
     std::unordered_map<utils::id, package*> m_packages;
     std::vector<std::unique_ptr<package>> m_dynamic_packages;
-    std::vector<core::static_package*> m_static_packages;
+    std::vector<core::package*> m_static_packages;
 };
 
 }  // namespace core

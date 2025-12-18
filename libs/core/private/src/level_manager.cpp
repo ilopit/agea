@@ -105,16 +105,15 @@ level_manager::load_level_path(level& l, const utils::path& path)
 
     for (auto& i : l.m_mapping->m_items)
     {
-        root::smart_object* obj = nullptr;
-        auto rc = object_constructor::object_load(i.first, object_load_type::instance_obj, *l.m_occ,
-                                                  obj, loaded_obj);
+        auto result = object_constructor::object_load(i.first, object_load_type::instance_obj,
+                                                      *l.m_occ, loaded_obj);
 
-        if (rc != result_code::ok)
+        if (!result)
         {
             return nullptr;
         }
 
-        if (auto go = obj->as<root::game_object>())
+        if (auto go = result.value()->as<root::game_object>())
         {
             l.add_to_dirty_render_queue(go->get_root_component());
         }

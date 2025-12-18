@@ -55,16 +55,16 @@ game_object_components_deserialize(::agea::reflection::deserialize_context& dc)
     {
         auto item = items[i];
 
-        root::smart_object* obj = nullptr;
-        auto rc = core::object_constructor::object_load_internal(item, *dc.occ, obj);
+        auto result = core::object_constructor::object_load_internal(item, *dc.occ);
 
-        if (rc != result_code::ok || !obj || obj->get_architype_id() != core::architype::component)
+        if (!result || !result.value() ||
+            result.value()->get_architype_id() != core::architype::component)
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
         }
 
-        r[i] = obj->as<root::component>();
+        r[i] = result.value()->as<root::component>();
         r[i]->set_order_parent_idx(i, layout_mapping[i]);
     }
 
@@ -108,16 +108,16 @@ game_object_components_prototype(::agea::reflection::property_prototype_context&
     {
         auto item = items[i];
 
-        root::smart_object* obj = nullptr;
-        auto rc = core::object_constructor::object_load_internal(item, *ctx.occ, obj);
+        auto result = core::object_constructor::object_load_internal(item, *ctx.occ);
 
-        if (rc != result_code::ok || !obj || obj->get_architype_id() != core::architype::component)
+        if (!result || !result.value() ||
+            result.value()->get_architype_id() != core::architype::component)
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
         }
 
-        dst_properties[i] = obj->as<root::component>();
+        dst_properties[i] = result.value()->as<root::component>();
         dst_properties[i]->set_order_parent_idx(i, layout_mapping[i]);
     }
     return result_code::ok;
@@ -237,18 +237,15 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        root::smart_object* obj = nullptr;
-        result_code rc = result_code::nav;
+        auto result = core::object_constructor::object_clone_create_internal(
+            *src_col[i], src_col[i]->get_id(), *ctx.occ);
 
-        rc = core::object_constructor::object_clone_create_internal(
-            *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
-
-        if (rc != result_code::ok)
+        if (!result)
         {
-            return rc;
+            return result.error();
         }
 
-        auto comp = obj->as<root::component>();
+        auto comp = result.value()->as<root::component>();
         comp->set_order_parent_idx(src_col[i]->get_order_idx(), src_col[i]->get_parent_idx());
 
         dst_col[i] = comp;
@@ -269,18 +266,15 @@ game_object_components_instantiate(reflection::instantiate_context& ctx)
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        root::smart_object* obj = nullptr;
-        result_code rc = result_code::nav;
+        auto result = core::object_constructor::object_instanciate_internal(
+            *src_col[i], src_col[i]->get_id(), *ctx.occ);
 
-        rc = core::object_constructor::object_instanciate_internal(
-            *src_col[i], src_col[i]->get_id(), *ctx.occ, obj);
-
-        if (rc != result_code::ok)
+        if (!result)
         {
-            return rc;
+            return result.error();
         }
 
-        auto comp = obj->as<root::component>();
+        auto comp = result.value()->as<root::component>();
         comp->set_order_parent_idx(src_col[i]->get_order_idx(), src_col[i]->get_parent_idx());
 
         dst_col[i] = comp;
@@ -330,17 +324,16 @@ game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
         {
             auto item = components[i];
 
-            root::smart_object* obj = nullptr;
-            auto rc = core::object_constructor::object_load_internal(item, *ctx.occ, obj);
+            auto result = core::object_constructor::object_load_internal(item, *ctx.occ);
 
-            if (rc != result_code::ok || !obj ||
-                obj->get_architype_id() != core::architype::component)
+            if (!result || !result.value() ||
+                result.value()->get_architype_id() != core::architype::component)
             {
                 ALOG_LAZY_ERROR;
                 return result_code::failed;
             }
 
-            dst_components[i] = obj->as<root::component>();
+            dst_components[i] = result.value()->as<root::component>();
             dst_components[i]->set_order_parent_idx(i, layout[i].as<int>());
         }
     }
@@ -352,14 +345,13 @@ game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
 
             auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
 
-            root::smart_object* obj = nullptr;
-            if (core::object_constructor::object_clone_create_internal(*c, gid, *ctx.occ, obj) !=
-                result_code::ok)
+            auto result = core::object_constructor::object_clone_create_internal(*c, gid, *ctx.occ);
+            if (!result)
             {
                 return result_code::fallback;
             }
 
-            dst_components.push_back(obj->as<root::component>());
+            dst_components.push_back(result.value()->as<root::component>());
         }
     }
 
@@ -378,17 +370,16 @@ property_texture_sample__deserialize(::agea::reflection::deserialize_context& dc
     const auto id = AID(dc.p->name);
     const auto texture_id = AID(item["texture"].as<std::string>());
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load_internal(texture_id, *dc.occ, obj);
-    if (rc != result_code::ok)
+    auto result = core::object_constructor::object_load_internal(texture_id, *dc.occ);
+    if (!result)
     {
-        return rc;
+        return result.error();
     }
 
     const auto slot = item["slot"].as<uint32_t>();
 
     auto& sample = src->get_sample(id);
-    sample.txt = obj->as<root::texture>();
+    sample.txt = result.value()->as<root::texture>();
     sample.sampler_id = AID(item["sampler"].as<std::string>());
     sample.slot = slot;
 
@@ -421,16 +412,17 @@ property_texture_sample__copy(::agea::reflection::copy_context& ctx)
 
     auto id = AID(ctx.src_property->name);
 
-    result_code rc = result_code::ok;
-
     dst->set_sample(id, src->get_sample(id));
 
-    root::smart_object* obj = nullptr;
+    auto result = core::object_constructor::object_clone_create_internal(
+        src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ);
 
-    rc = core::object_constructor::object_clone_create_internal(
-        src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ, obj);
+    if (!result)
+    {
+        return result.error();
+    }
 
-    dst->get_sample(id).txt = obj->as<root::texture>();
+    dst->get_sample(id).txt = result.value()->as<root::texture>();
 
     return result_code::ok;
 }
@@ -443,8 +435,6 @@ property_texture_sample__instantiate(::agea::reflection::instantiate_context& ct
 
     auto id = AID(ctx.src_property->name);
 
-    result_code rc = result_code::ok;
-
     auto& src_sample = src->get_sample(id);
 
     dst->set_sample(id, src_sample);
@@ -454,8 +444,13 @@ property_texture_sample__instantiate(::agea::reflection::instantiate_context& ct
     if (!obj)
     {
         std::vector<smart_object*> objs;
-        rc = core::object_constructor::object_instantiate(*src_sample.txt, src_sample.txt->get_id(),
-                                                          *ctx.occ, obj, objs);
+        auto result = core::object_constructor::object_instantiate(*src_sample.txt, src_sample.txt->get_id(),
+                                                                   *ctx.occ, objs);
+        if (!result)
+        {
+            return result.error();
+        }
+        obj = result.value();
     }
 
     dst->get_sample(id).txt = obj->as<root::texture>();
@@ -475,14 +470,15 @@ property_texture_sample__load_derive(reflection::property_load_derive_context& c
     const auto id = AID(ctx.src_property->name);
     const auto texture_id = AID(item["texture"].as<std::string>());
 
-    root::smart_object* obj = nullptr;
-    auto rc = core::object_constructor::object_load_internal(texture_id, *ctx.occ, obj);
+    auto result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
 
-    if (rc != result_code::ok)
+    if (!result)
     {
         ALOG_ERROR("Texture doesn't exist");
-        return rc;
+        return result.error();
     }
+
+    auto obj = result.value();
 
     auto& s = obj->get_flags();
 

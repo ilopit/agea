@@ -26,10 +26,98 @@ enum class package_type
     pt_dynamic
 };
 
+struct package_types_builder
+{
+    virtual bool
+    build(package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+
+    ::agea::reflection::reflection_type*
+    add(package& sp, ::agea::reflection::reflection_type* rt);
+};
+
+struct package_render_types_builder
+{
+    virtual bool
+    build(package& sp)
+    {
+        return true;
+    }
+
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_types_custom_loader
+{
+    virtual bool
+    load(package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_object_builder
+{
+    virtual bool
+    build(package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_types_default_objects_builder
+{
+    virtual bool
+    build(package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+};
+
+struct package_render_custom_resource_builder
+{
+    virtual bool
+    build(package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+};
+
 class package : public container
 {
 public:
-    package(const utils::id& id, package_type t);
+    package(const utils::id& id);
 
     ~package();
 
@@ -41,6 +129,9 @@ public:
 
     virtual bool
     init();
+
+    void
+    unload();
 
     package_state
     get_state() const
@@ -69,119 +160,7 @@ public:
         return m_proto_local_cs;
     }
 
-protected:
-    package_state m_state = package_state::unloaded;
-    package_type m_type = package_type::pt_nan;
-
-    cache_set m_proto_local_cs;
-};
-
-class static_package;
-
-struct package_types_builder
-{
-    virtual bool
-    build(static_package& sp)
-    {
-        return true;
-    }
-    virtual bool
-    destroy(static_package& sp)
-    {
-        return true;
-    }
-
-    ::agea::reflection::reflection_type*
-    add(static_package& sp, ::agea::reflection::reflection_type* rt);
-};
-
-struct package_render_types_builder
-{
-    virtual bool
-    build(static_package& sp)
-    {
-        return true;
-    }
-
-    virtual bool
-    destroy(static_package& sp)
-    {
-        return true;
-    }
-};
-
-struct package_types_custom_loader
-{
-    virtual bool
-    load(static_package& sp)
-    {
-        return true;
-    }
-    virtual bool
-    destroy(static_package& sp)
-    {
-        return true;
-    }
-};
-
-struct package_object_builder
-{
-    virtual bool
-    build(static_package& sp)
-    {
-        return true;
-    }
-    virtual bool
-    destroy(static_package& sp)
-    {
-        return true;
-    }
-};
-
-struct package_types_default_objects_builder
-{
-    virtual bool
-    build(static_package& sp)
-    {
-        return true;
-    }
-    virtual bool
-    destroy(static_package& sp)
-    {
-        return true;
-    }
-};
-
-struct package_render_custom_resource_builder
-{
-    virtual bool
-    build(static_package& sp)
-    {
-        return true;
-    }
-    virtual bool
-    destroy(static_package& sp)
-    {
-        return true;
-    }
-};
-
-class static_package : public package
-{
-public:
     friend class package_types_builder;
-
-    static_package(const utils::id& id);
-
-    virtual bool
-    init() override;
-
-    template <typename T>
-    result_code
-    create_default_class_obj()
-    {
-        return object_constructor::create_default_class_obj_impl<T>(*m_occ);
-    }
 
     template <typename T>
     result_code
@@ -228,43 +207,31 @@ public:
         }
     }
 
-    void
-    load_types();
+    // clang-format off
+    void load_types();
+    void destroy_types();
+    
+    std::unique_ptr<package_types_builder>& 
+    types_builder()
+    {
+        return m_type_builder;
+    }
 
-    void
-    destroy_types();
+    void load_custom_types();
+    void destroy_custom_types();
 
-    void
-    load_custom_types();
+    void load_render_types();
+    void destroy_render_types();
 
-    void
-    destroy_custom_types();
+    void finalize_relfection();
+    void create_default_types_objects();
+    void destroy_default_types_objects();
+    void load_render_resources();
+    void destroy_render_resources();
 
-    void
-    load_render_types();
+    void build_objects();
 
-    void
-    destroy_render_types();
-
-    void
-    finalize_relfection();
-
-    void
-    create_default_types_objects();
-
-    void
-    destroy_default_types_objects();
-
-    void
-    load_render_resources();
-
-    void
-    destroy_render_resources();
-
-    void
-    build_objects();
-
-    const std::vector<reflection::reflection_type*>
+    const std::unordered_map<utils::id, reflection::reflection_type*>&
     get_reflection_types() const
     {
         return m_rts;
@@ -290,7 +257,14 @@ public:
         destroy_types();
     }
 
+    // clang-format on
+
 private:
+    package_state m_state = package_state::unloaded;
+    package_type m_type = package_type::pt_nan;
+
+    cache_set m_proto_local_cs;
+
     std::unique_ptr<package_types_builder> m_type_builder;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;
     std::unique_ptr<package_render_types_builder> m_render_types_loader;
@@ -298,18 +272,8 @@ private:
     std::unique_ptr<package_types_default_objects_builder> m_default_object_builder;
 
     std::unique_ptr<package_object_builder> m_object_builder;
-    std::vector<reflection::reflection_type*> m_rts;
-};
-
-class dynamic_package : public package
-{
-public:
-    dynamic_package(const utils::id& id);
-
-    void
-    unload();
+    std::unordered_map<utils::id, reflection::reflection_type*> m_rts;
 };
 
 }  // namespace core
-
 }  // namespace agea
