@@ -572,3 +572,118 @@ TEST_F(test_preloaded_test_package, object_construct_in_level_context)
     ASSERT_TRUE(go);
     ASSERT_EQ(go->get_position(), root::vec3(5.0f, 6.0f, 7.0f));
 }
+
+// ============================================================================
+// object_save round-trip tests
+// ============================================================================
+
+TEST_F(test_preloaded_test_package, object_save_and_reload_full)
+{
+    auto& lc = test::package::instance().get_load_context();
+
+    // 1. Construct an object (same pattern as working test)
+    root::game_object::construct_params params;
+    params.pos = {10.0f, 20.0f, 30.0f};
+
+    auto construct_result = core::object_constructor::object_construct(
+        AID("game_object"), AID("save_test_object"), params, lc);
+    ASSERT_TRUE(construct_result.has_value());
+
+    auto obj = construct_result.value();
+    ASSERT_TRUE(obj);
+
+    auto original = obj->as<root::game_object>();
+    ASSERT_TRUE(original);
+
+    // 2. Save to a temp file
+    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
+    auto save_path = temp_dir / "test_save_object.aobj";
+
+    auto save_result = core::object_constructor::object_save(*original, save_path);
+    ASSERT_EQ(save_result, result_code::ok);
+    ASSERT_TRUE(save_path.exists());
+
+    // 3. Load it back using a fresh load context
+    core::level reload_level(AID("reload_test_level"));
+    auto& reload_lc = reload_level.get_load_context();
+    reload_lc.set_prefix_path(temp_dir);
+
+    std::vector<root::smart_object*> loaded_objs;
+    auto load_result = core::object_constructor::object_load(APATH("test_save_object.aobj"),
+                                                             core::object_load_type::instance_obj,
+                                                             reload_lc, loaded_objs);
+
+    ASSERT_TRUE(load_result.has_value());
+    auto reloaded = load_result.value()->as<root::game_object>();
+    ASSERT_TRUE(reloaded);
+
+    // 4. Verify basic properties match
+    ASSERT_EQ(reloaded->get_id(), AID("save_test_object"));
+    ASSERT_EQ(reloaded->get_type_id(), AID("game_object"));
+
+    // Cleanup
+    std::filesystem::remove(save_path.fs());
+}
+
+TEST_F(test_preloaded_test_package, object_save_and_reload_partial_inherited)
+{
+    auto& lc = test::package::instance().get_load_context();
+
+    // 1. Create a proto object first (same pattern as working test)
+    root::game_object::construct_params proto_params;
+    proto_params.pos = {0.0f, 0.0f, 0.0f};
+
+    auto proto_result = core::object_constructor::object_construct(
+        AID("game_object"), AID("inherited_proto"), proto_params, lc);
+    ASSERT_TRUE(proto_result.has_value());
+
+    auto proto_obj = proto_result.value();
+    ASSERT_TRUE(proto_obj);
+
+    auto proto = proto_obj->as<root::game_object>();
+    ASSERT_TRUE(proto);
+
+    // 2. Instantiate from proto
+    std::vector<root::smart_object*> instantiated_objs;
+    auto inst_result = core::object_constructor::object_instantiate(
+        *proto, AID("inherited_instance"), lc, instantiated_objs);
+    ASSERT_TRUE(inst_result.has_value());
+
+    auto inst_obj = inst_result.value();
+    ASSERT_TRUE(inst_obj);
+
+    auto instance = inst_obj->as<root::game_object>();
+    ASSERT_TRUE(instance);
+    ASSERT_EQ(instance->get_class_obj(), proto);
+
+    // 3. Set inhereted flag to use partial save path
+    instance->get_flags().inhereted = true;
+
+    // 4. Save to temp file
+    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
+    auto save_path = temp_dir / "test_inherited_object.aobj";
+
+    auto save_result = core::object_constructor::object_save(*instance, save_path);
+    ASSERT_EQ(save_result, result_code::ok);
+    ASSERT_TRUE(save_path.exists());
+
+    // 5. Load it back
+    core::level reload_level(AID("reload_inherited_level"));
+    auto& reload_lc = reload_level.get_load_context();
+    reload_lc.set_prefix_path(temp_dir);
+
+    std::vector<root::smart_object*> loaded_objs;
+    auto load_result = core::object_constructor::object_load(APATH("test_inherited_object.aobj"),
+                                                             core::object_load_type::instance_obj,
+                                                             reload_lc, loaded_objs);
+
+    ASSERT_TRUE(load_result.has_value());
+    auto reloaded = load_result.value()->as<root::game_object>();
+    ASSERT_TRUE(reloaded);
+
+    // 6. Verify basic properties
+    ASSERT_EQ(reloaded->get_id(), AID("inherited_instance"));
+
+    // Cleanup
+    std::filesystem::remove(save_path.fs());
+}

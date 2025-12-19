@@ -141,7 +141,6 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
     }
 
     auto empty = rt->alloc(id);
-    // empty->set_flag(extra_flags);
     empty->set_package(olc.get_package());
     empty->set_level(olc.get_level());
 
