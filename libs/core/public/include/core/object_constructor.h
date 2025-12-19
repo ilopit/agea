@@ -147,12 +147,10 @@ public:
     object_load_internal(const utils::id& id, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
-    object_load_internal(const utils::path& path_in_package,
-                         object_load_context& occ);
+    object_load_internal(const utils::path& path_in_package, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
-    object_load_internal(serialization::conteiner& c,
-                         object_load_context& occ);
+    object_load_internal(serialization::conteiner& c, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
     preload_proto(const utils::id& id, object_load_context& occ);
@@ -169,8 +167,7 @@ private:
     destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
 
     static std::expected<root::smart_object*, result_code>
-    object_load_full(serialization::conteiner& sc,
-                     object_load_context& occ);
+    object_load_full(serialization::conteiner& sc, object_load_context& occ);
 
     static result_code
     object_save_full(serialization::conteiner& sc, const root::smart_object& obj);

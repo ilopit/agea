@@ -1,2 +1,6 @@
 class_id: game_object
 id: test_obj
+layout: [-1]
+components: 
+  - id: test_component
+    class_id: game_object_component

@@ -620,6 +620,11 @@ object_constructor::diff_object_properties(const root::smart_object& left,
                                            const root::smart_object& right,
                                            std::vector<reflection::property*>& diff)
 {
+    if (&left == &right)
+    {
+        return result_code::ok;
+    }
+
     if (left.get_type_id() != right.get_type_id())
     {
         return result_code::failed;
@@ -645,8 +650,7 @@ object_constructor::diff_object_properties(const root::smart_object& left,
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::object_load_full(serialization::conteiner& sc,
-                                     object_load_context& occ)
+object_constructor::object_load_full(serialization::conteiner& sc, object_load_context& occ)
 {
     auto type_id = AID(sc["type_id"].as<std::string>());
     auto obj_id = AID(sc["id"].as<std::string>());
@@ -766,8 +770,7 @@ object_constructor::object_save_partial(serialization::conteiner& sc, const root
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::object_load_internal(const utils::id& id,
-                                         object_load_context& occ)
+object_constructor::object_load_internal(const utils::id& id, object_load_context& occ)
 {
     AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
 
@@ -783,17 +786,14 @@ object_constructor::object_load_internal(const utils::id& id,
     {
         // We don't want to work with proto objects directly.We have to make sure that we clone
         // proto as instance
-        if (auto proto = occ.find_proto_obj(id))
+
+        if (auto proto = preload_proto(id, occ))
         {
-            auto result = object_instanciate_internal(*proto, proto->get_id(), occ);
-            if (result)
-            {
-                return result;
-            }
+            return object_instanciate_internal(*proto.value(), proto.value()->get_id(), occ);
         }
         else
         {
-            int i = 2;
+            return std::unexpected(result_code::proto_doesnt_exist);
         }
     }
 

@@ -190,6 +190,266 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
     ASSERT_EQ(ts.txt->get_id(), AID("texture"));
 }
 
+TEST_F(test_preloaded_test_package, load_class_object_by_id)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded;
+    auto result = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+
+    ASSERT_TRUE(result.has_value());
+    auto go = result.value()->as<root::game_object>();
+    ASSERT_TRUE(go);
+    check_proto(*go);
+
+    ASSERT_EQ(go->get_id(), AID("test_obj"));
+    ASSERT_EQ(go->get_class_obj()->get_id(), AID("game_object"));
+}
+
+TEST_F(test_preloaded_test_package, load_instance_object_by_id)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded;
+    auto result = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::instance_obj, lc, loaded);
+
+    ASSERT_TRUE(result.has_value());
+    auto go = result.value()->as<root::game_object>();
+    ASSERT_TRUE(go);
+    check_intance(*go);
+
+    ASSERT_EQ(go->get_id(), AID("test_obj"));
+}
+
+TEST_F(test_preloaded_test_package, object_clone_class_object)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded;
+    auto load_result = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    ASSERT_TRUE(load_result.has_value());
+
+    auto src = load_result.value();
+
+    std::vector<root::smart_object*> cloned_objs;
+    auto clone_result = core::object_constructor::object_clone(
+        *src, core::object_load_type::class_obj, AID("test_obj_clone"), lc, cloned_objs);
+
+    ASSERT_TRUE(clone_result.has_value());
+    auto cloned = clone_result.value();
+    ASSERT_NE(cloned, src);
+    ASSERT_EQ(cloned->get_id(), AID("test_obj_clone"));
+    ASSERT_EQ(cloned->get_type_id(), src->get_type_id());
+    check_proto(*cloned);
+}
+
+TEST_F(test_preloaded_test_package, object_clone_as_instance)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded;
+    auto load_result = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    ASSERT_TRUE(load_result.has_value());
+
+    auto src = load_result.value();
+
+    std::vector<root::smart_object*> cloned_objs;
+    auto clone_result =
+        core::object_constructor::object_clone(*src, core::object_load_type::instance_obj,
+                                               AID("test_obj_instance_clone"), lc, cloned_objs);
+
+    ASSERT_TRUE(clone_result.has_value());
+    auto cloned = clone_result.value();
+    ASSERT_NE(cloned, src);
+    ASSERT_EQ(cloned->get_id(), AID("test_obj_instance_clone"));
+    check_intance(*cloned);
+}
+
+TEST_F(test_preloaded_test_package, object_instantiate_from_proto)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded;
+    auto load_result = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    ASSERT_TRUE(load_result.has_value());
+
+    auto proto = load_result.value();
+    check_proto(*proto);
+
+    std::vector<root::smart_object*> instantiated_objs;
+    auto inst_result = core::object_constructor::object_instantiate(
+        *proto, AID("test_obj_instance"), lc, instantiated_objs);
+
+    ASSERT_TRUE(inst_result.has_value());
+    auto instance = inst_result.value();
+    ASSERT_NE(instance, proto);
+    ASSERT_EQ(instance->get_id(), AID("test_obj_instance"));
+    ASSERT_EQ(instance->get_class_obj(), proto);
+    check_intance(*instance);
+}
+
+TEST_F(test_preloaded_test_package, diff_object_properties_same_objects)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded1;
+    auto result1 = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
+    ASSERT_TRUE(result1.has_value());
+
+    std::vector<reflection::property*> diff;
+    auto rc =
+        core::object_constructor::diff_object_properties(*result1.value(), *result1.value(), diff);
+
+    ASSERT_EQ(rc, result_code::ok);
+    ASSERT_TRUE(diff.empty());
+}
+
+TEST_F(test_preloaded_test_package, diff_object_properties_different_types_fails)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping()
+        .add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"))
+        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"));
+
+    std::vector<root::smart_object*> loaded1, loaded2;
+    auto result1 = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
+    auto result2 = core::object_constructor::object_load(
+        AID("test_mesh"), core::object_load_type::class_obj, lc, loaded2);
+
+    ASSERT_TRUE(result1.has_value());
+    ASSERT_TRUE(result2.has_value());
+
+    std::vector<reflection::property*> diff;
+    auto rc =
+        core::object_constructor::diff_object_properties(*result1.value(), *result2.value(), diff);
+
+    ASSERT_EQ(rc, result_code::failed);
+}
+
+TEST_F(test_preloaded_test_package, load_nonexistent_object_fails)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+
+    std::vector<root::smart_object*> loaded;
+    auto result = core::object_constructor::object_load(
+        AID("nonexistent_object"), core::object_load_type::class_obj, lc, loaded);
+
+    ASSERT_FALSE(result.has_value());
+    ASSERT_EQ(result.error(), result_code::path_not_found);
+}
+
+TEST_F(test_preloaded_test_package, load_invalid_path_fails)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+
+    std::vector<root::smart_object*> loaded;
+    auto result =
+        core::object_constructor::object_load(obj_path / "game_objects/does_not_exist.aobj",
+                                              core::object_load_type::class_obj, lc, loaded);
+
+    ASSERT_FALSE(result.has_value());
+}
+
+TEST_F(test_preloaded_test_package, cached_object_returns_same_pointer)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+
+    std::vector<root::smart_object*> loaded1, loaded2;
+    auto result1 = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
+    auto result2 = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded2);
+
+    ASSERT_TRUE(result1.has_value());
+    ASSERT_TRUE(result2.has_value());
+    ASSERT_EQ(result1.value(), result2.value());
+}
+
+TEST_F(test_preloaded_test_package, object_instantiate_complex_object_with_components)
+{
+    auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping()
+        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
+        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
+
+    std::vector<root::smart_object*> loaded;
+    auto load_result = core::object_constructor::object_load(
+        obj_path / "game_objects/test_complex_mesh_object.aobj", core::object_load_type::class_obj,
+        lc, loaded);
+    ASSERT_TRUE(load_result.has_value());
+
+    auto proto = load_result.value()->as<root::game_object>();
+    ASSERT_TRUE(proto);
+    check_proto(*proto);
+
+    std::vector<root::smart_object*> instantiated_objs;
+    auto inst_result = core::object_constructor::object_instantiate(*proto, AID("complex_instance"),
+                                                                    lc, instantiated_objs);
+
+    ASSERT_TRUE(inst_result.has_value());
+    auto instance = inst_result.value()->as<root::game_object>();
+    ASSERT_TRUE(instance);
+    check_intance(*instance);
+
+    ASSERT_EQ(instance->get_id(), AID("complex_instance"));
+
+    auto proto_components = proto->get_subcomponents();
+    auto instance_components = instance->get_subcomponents();
+    ASSERT_EQ(instance_components.size(), proto_components.size());
+
+    for (auto comp : instance_components)
+    {
+        check_intance(*comp);
+    }
+}
+
 TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 {
     auto& lc = test::package::instance().get_load_context();
@@ -246,119 +506,69 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 
     ASSERT_EQ(ts.txt->get_id(), AID("texture"));
 }
-/*
 
-TEST_F(test_preloaded_test_package, check_load_in_construct)
+TEST_F(test_preloaded_test_package, object_construct_in_package_context)
 {
-    auto& gs = glob::glob_state();
+    auto& lc = test::package::instance().get_load_context();
 
-    auto proto_obj = test::package::instance().get_proto_local_cs().components.get_item(
-        AID("test_complex_mesh_component"));
+    root::game_object::construct_params params;
+    params.pos = {1.0f, 2.0f, 3.0f};
 
-    ASSERT_EQ(proto_obj->get_id(), AID("test_complex_mesh_component"));
-    ASSERT_EQ(proto_obj->get_architype_id(), core::architype::component);
+    auto result = core::object_constructor::object_construct(
+        AID("game_object"), AID("constructed_game_object"), params, lc);
 
-    core::level l(AID("test_level"));
-
-    test::test_mesh_object::construct_params sp;
-    auto obj = l.spawn_object<test::test_mesh_object>(AID("aaa"), sp);
-
+    ASSERT_TRUE(result.has_value());
+    auto obj = result.value();
     ASSERT_TRUE(obj);
-    ASSERT_EQ(obj->get_id(), AID("aaa"));
+
+    ASSERT_EQ(obj->get_id(), AID("constructed_game_object"));
+    ASSERT_EQ(obj->get_type_id(), AID("game_object"));
+
+    // Package context creates proto objects
+    check_proto(*obj);
+
+    auto go = obj->as<root::game_object>();
+    ASSERT_TRUE(go);
+    ASSERT_EQ(go->get_position(), root::vec3(1.0f, 2.0f, 3.0f));
+}
+
+TEST_F(test_preloaded_test_package, object_construct_invalid_type_fails)
+{
+    auto& lc = test::package::instance().get_load_context();
+
+    root::smart_object::construct_params params;
+
+    auto result = core::object_constructor::object_construct(AID("nonexistent_type_xyz"),
+                                                             AID("should_fail"), params, lc);
+
+    ASSERT_FALSE(result.has_value());
+    ASSERT_EQ(result.error(), result_code::id_not_found);
+}
+
+TEST_F(test_preloaded_test_package, object_construct_in_level_context)
+{
+    // Create a level - its constructor sets up load context automatically
+    core::level test_level(AID("test_construct_level"));
+
+    auto& lc = test_level.get_load_context();
+
+    root::game_object::construct_params params;
+    params.pos = {5.0f, 6.0f, 7.0f};
+
+    auto result = core::object_constructor::object_construct(
+        AID("game_object"), AID("level_constructed_object"), params, lc);
+
+    ASSERT_TRUE(result.has_value());
+    auto obj = result.value();
+    ASSERT_TRUE(obj);
+
+    ASSERT_EQ(obj->get_id(), AID("level_constructed_object"));
+    ASSERT_EQ(obj->get_type_id(), AID("game_object"));
+
+    // Level context creates instance objects
     check_intance(*obj);
+
+    auto go = obj->as<root::game_object>();
+    ASSERT_TRUE(go);
+    ASSERT_EQ(go->get_position(), root::vec3(5.0f, 6.0f, 7.0f));
 }
-
-TEST_F(test_preloaded_test_package, object_clone_creates_copy_with_new_id)
-{
-    auto& gs = glob::glob_state();
-    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
-    m_olc.set_prefix_path(obj_path);
-
-    m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
-
-    // First load source object as class/proto
-    root::smart_object* src_obj = nullptr;
-    auto rc = core::object_constructor::object_load(
-        obj_path / "game_objects/test_complex_mesh_object.aobj", core::object_load_type::class_obj,
-        m_olc, src_obj, m_loaded_objects);
-    ASSERT_EQ(rc, result_code::ok);
-    ASSERT_TRUE(src_obj);
-
-    // Clone it with a new ID
-    root::smart_object* cloned_obj = nullptr;
-    std::vector<root::smart_object*> cloned_loaded;
-    rc = core::object_constructor::object_clone(*src_obj, core::object_load_type::instance_obj,
-                                                AID("cloned_mesh_object"), m_olc, cloned_obj,
-                                                cloned_loaded);
-
-    ASSERT_EQ(rc, result_code::ok);
-    ASSERT_TRUE(cloned_obj);
-    ASSERT_NE(src_obj, cloned_obj);
-
-    // Verify cloned object has new ID but same type
-    ASSERT_EQ(cloned_obj->get_id(), AID("cloned_mesh_object"));
-    ASSERT_EQ(cloned_obj->get_type_id(), src_obj->get_type_id());
-    check_intance(*cloned_obj);
-
-    // Verify cloned object references original as class_obj
-    ASSERT_EQ(cloned_obj->get_class_obj(), src_obj);
-
-    // Verify game object structure was cloned
-    auto src_go = src_obj->as<root::game_object>();
-    auto cloned_go = cloned_obj->as<root::game_object>();
-    ASSERT_TRUE(cloned_go);
-    ASSERT_EQ(cloned_go->get_subcomponents().size(), src_go->get_subcomponents().size());
-}
-
-TEST_F(test_preloaded_test_package, object_instantiate_creates_instance_from_proto)
-{
-    auto& gs = glob::glob_state();
-    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
-    m_olc.set_prefix_path(obj_path);
-
-    m_object_maping->add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"));
-
-    // Load proto object
-    root::smart_object* proto_obj = nullptr;
-    auto rc = core::object_constructor::object_load(
-        obj_path / "game_objects/test_complex_mesh_object.aobj", core::object_load_type::class_obj,
-        m_olc, proto_obj, m_loaded_objects);
-    ASSERT_EQ(rc, result_code::ok);
-    check_proto(*proto_obj);
-
-    // Instantiate from proto
-    root::smart_object* instance_obj = nullptr;
-    std::vector<root::smart_object*> instance_loaded;
-    rc = core::object_constructor::object_instantiate(*proto_obj, AID("instance_mesh_object"),
-                                                      m_olc, instance_obj, instance_loaded);
-
-    ASSERT_EQ(rc, result_code::ok);
-    ASSERT_TRUE(instance_obj);
-    ASSERT_NE(proto_obj, instance_obj);
-
-    // Verify instance properties
-    ASSERT_EQ(instance_obj->get_id(), AID("instance_mesh_object"));
-    ASSERT_EQ(instance_obj->get_type_id(), proto_obj->get_type_id());
-    check_intance(*instance_obj);
-
-    // Instance should reference proto as class_obj
-    ASSERT_EQ(instance_obj->get_class_obj(), proto_obj);
-
-    // Verify components were instantiated
-    auto proto_go = proto_obj->as<root::game_object>();
-    auto instance_go = instance_obj->as<root::game_object>();
-    ASSERT_TRUE(instance_go);
-    ASSERT_EQ(instance_go->get_subcomponents().size(), proto_go->get_subcomponents().size());
-
-    // Verify each component is an instance, not the same object
-    for (size_t i = 0; i < proto_go->get_subcomponents().size(); ++i)
-    {
-        auto proto_comp = proto_go->get_subcomponents()[i];
-        auto instance_comp = instance_go->get_subcomponents()[i];
-        ASSERT_NE(proto_comp, instance_comp);
-        check_intance(*instance_comp);
-    }
-}
-*/

@@ -238,7 +238,7 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
     for (int i = 0; i < src_col.size(); ++i)
     {
         auto result = core::object_constructor::object_clone_create_internal(
-            *src_col[i], src_col[i]->get_id(), *ctx.occ);
+            *src_col[i], gen->generate(src_col[i]->get_id()), *ctx.occ);
 
         if (!result)
         {
@@ -444,8 +444,8 @@ property_texture_sample__instantiate(::agea::reflection::instantiate_context& ct
     if (!obj)
     {
         std::vector<smart_object*> objs;
-        auto result = core::object_constructor::object_instantiate(*src_sample.txt, src_sample.txt->get_id(),
-                                                                   *ctx.occ, objs);
+        auto result = core::object_constructor::object_instantiate(
+            *src_sample.txt, src_sample.txt->get_id(), *ctx.occ, objs);
         if (!result)
         {
             return result.error();
