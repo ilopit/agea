@@ -50,7 +50,6 @@ PROP_KEY_INVALIDATES = "invalidates"
 PROP_KEY_CHECK = "check"
 PROP_KEY_HINT = "hint"
 PROP_KEY_PROPERTY_SER_HANDLER = "property_ser_handler"
-PROP_KEY_PROPERTY_DES_HANDLER = "property_des_handler"
 PROP_KEY_PROPERTY_LOAD_DERIVE_HANDLER = "property_load_derive_handler"
 PROP_KEY_PROPERTY_COMPARE_HANDLER = "property_compare_handler"
 PROP_KEY_PROPERTY_COPY_HANDLER = "property_copy_handler"
@@ -418,8 +417,6 @@ def _parse_property_metadata(prop: arapi.types.agea_property, metadata_tokens: L
       prop.serializable = value
     elif key == PROP_KEY_PROPERTY_SER_HANDLER:
       prop.property_ser_handler = value
-    elif key == PROP_KEY_PROPERTY_DES_HANDLER:
-      prop.property_des_handler = value
     elif key == PROP_KEY_PROPERTY_LOAD_DERIVE_HANDLER:
       prop.property_load_derive_handler = value
     elif key == PROP_KEY_PROPERTY_COMPARE_HANDLER:

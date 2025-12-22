@@ -377,14 +377,13 @@ class TestParseFile(unittest.TestCase):
         with open(test_file, 'w') as f:
             f.write('AGEA_ar_class()\n')
             f.write('class TestClass {\n')
-            f.write('  AGEA_ar_property("property_ser_handler=ser", "property_des_handler=des", "property_compare_handler=cmp", "property_copy_handler=cpy", "property_instantiate_handler=inst", "property_load_derive_handler=load")\n')
+            f.write('  AGEA_ar_property("property_ser_handler=ser", "property_compare_handler=cmp", "property_copy_handler=cpy", "property_instantiate_handler=inst", "property_load_derive_handler=load")\n')
             f.write('  int m_value;\n')
             f.write('};\n')
         
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         prop = self.context.types[0].properties[0]
         self.assertEqual(prop.property_ser_handler, "ser")
-        self.assertEqual(prop.property_des_handler, "des")
         self.assertEqual(prop.property_compare_handler, "cmp")
         self.assertEqual(prop.property_copy_handler, "cpy")
         self.assertEqual(prop.property_instantiate_handler, "inst")

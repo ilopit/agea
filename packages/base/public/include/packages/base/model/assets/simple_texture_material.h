@@ -33,7 +33,6 @@ protected:
     // clang-format off
     AGEA_ar_property("category=Properties",
                      "serializable=true",
-                     "property_des_handler=::agea::root::property_texture_sample__deserialize",
                      "property_ser_handler=::agea::root::property_texture_sample__serialize",
                      "property_compare_handler=::agea::root::property_texture_sample__compare",
                      "property_copy_handler=::agea::root::property_texture_sample__copy",

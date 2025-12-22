@@ -21,7 +21,6 @@ class property
 {
 public:
     // clang-format off
-    property_deserialization_handler deserialization_handler = default_deserialize;
     property_serialization_handler   serialization_handler   = default_serialize;
     property_compare_handler         compare_handler         = default_compare;
     property_copy_handler            copy_handler            = default_copy;
@@ -44,9 +43,6 @@ public:
 private:
     static result_code
     default_compare(compare_context& context);
-
-    static result_code
-    default_deserialize(deserialize_context& context);
 
     static result_code
     default_serialize(serialize_context& context);

@@ -199,7 +199,6 @@ protected:
 
     AGEA_ar_property("category=Meta",
                      "serializable=true",
-                     "property_des_handler=game_object_components_deserialize",
                      "property_ser_handler=game_object_components_serialize",
                      "property_compare_handler=game_object_components_compare",
                      "property_copy_handler=game_object_components_copy",

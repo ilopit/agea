@@ -321,9 +321,6 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
   if prop.property_ser_handler != EMPTY_STRING:
     file_buffer.append(f"        p->serialization_handler  = {prop.property_ser_handler};\n")
 
-  if prop.property_des_handler != EMPTY_STRING:
-    file_buffer.append(f"        p->deserialization_handler  = {prop.property_des_handler};\n")
-
   if prop.property_load_derive_handler != EMPTY_STRING:
     file_buffer.append(f"        p->load_derive  = {prop.property_load_derive_handler};\n")
 

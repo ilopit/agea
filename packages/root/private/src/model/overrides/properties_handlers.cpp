@@ -23,55 +23,6 @@ namespace agea::root
 {
 
 result_code
-game_object_components_deserialize(::agea::reflection::deserialize_context& dc)
-{
-    auto ptr = (blob_ptr)dc.obj;
-
-    auto& sc = *dc.sc;
-
-    auto items = sc[dc.p->name];
-    auto items_size = items.size();
-    auto& r = ::agea::reflection::utils::as_type<std::vector<root::component*>>(ptr + dc.p->offset);
-
-    if (r.empty())
-    {
-        r.resize(items_size);
-    }
-    else
-    {
-        ALOG_LAZY_ERROR;
-    }
-
-    auto layout = sc["layout"];
-    auto layout_size = items_size;
-
-    std::vector<int> layout_mapping;
-    for (unsigned i = 0; i < layout_size; ++i)
-    {
-        layout_mapping.push_back(layout[i].as<int>());
-    }
-
-    for (unsigned i = 0; i < items_size; ++i)
-    {
-        auto item = items[i];
-
-        auto result = core::object_constructor::object_load_internal(item, *dc.occ);
-
-        if (!result || !result.value() ||
-            result.value()->get_architype_id() != core::architype::component)
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
-
-        r[i] = result.value()->as<root::component>();
-        r[i]->set_order_parent_idx(i, layout_mapping[i]);
-    }
-
-    return result_code::ok;
-}
-
-result_code
 game_object_components_prototype(::agea::reflection::property_prototype_context& ctx)
 {
     auto& sc = *ctx.sc;
@@ -354,34 +305,6 @@ game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
             dst_components.push_back(result.value()->as<root::component>());
         }
     }
-
-    return result_code::ok;
-}
-
-result_code
-property_texture_sample__deserialize(::agea::reflection::deserialize_context& dc)
-{
-    auto src = dc.obj->as<root::material>();
-
-    auto& sc = *dc.sc;
-
-    auto item = sc[dc.p->name];
-
-    const auto id = AID(dc.p->name);
-    const auto texture_id = AID(item["texture"].as<std::string>());
-
-    auto result = core::object_constructor::object_load_internal(texture_id, *dc.occ);
-    if (!result)
-    {
-        return result.error();
-    }
-
-    const auto slot = item["slot"].as<uint32_t>();
-
-    auto& sample = src->get_sample(id);
-    sample.txt = result.value()->as<root::texture>();
-    sample.sampler_id = AID(item["sampler"].as<std::string>());
-    sample.slot = slot;
 
     return result_code::ok;
 }

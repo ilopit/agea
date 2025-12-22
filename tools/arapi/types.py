@@ -23,7 +23,6 @@ class agea_property:
     self.check_not_same = False
     self.serializable = "false"
     self.property_ser_handler = ""
-    self.property_des_handler = ""
     self.property_compare_handler = ""
     self.property_load_derive_handler = ""
     self.property_copy_handler = ""

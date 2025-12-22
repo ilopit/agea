@@ -18,14 +18,6 @@ namespace reflection
 
 class property;
 
-struct deserialize_context
-{
-    property* p = nullptr;
-    root::smart_object* obj = nullptr;
-    const serialization::conteiner* sc = nullptr;
-    core::object_load_context* occ = nullptr;
-};
-
 struct serialize_context
 {
     property* p = nullptr;
@@ -87,7 +79,6 @@ struct property_to_string_context
 
 // clang-format off
 
-using property_deserialization_handler  = result_code(*)(deserialize_context&);
 using property_serialization_handler    = result_code(*)(serialize_context&);
 using property_compare_handler          = result_code(*)(compare_context&);
 using property_copy_handler             = result_code(*)(copy_context&);

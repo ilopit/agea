@@ -43,19 +43,6 @@ property::default_compare(compare_context& context)
 }
 
 result_code
-property::default_deserialize(deserialize_context& ctx)
-{
-    if (ctx.p->type.is_collection)
-    {
-        return deserialize_collection(*ctx.p, *ctx.obj, *ctx.sc, *ctx.occ);
-    }
-    else
-    {
-        return deserialize_item(*ctx.p, *ctx.obj, *ctx.sc, *ctx.occ);
-    }
-}
-
-result_code
 property::default_serialize(serialize_context& ctx)
 {
     if (ctx.p->type.is_collection)
