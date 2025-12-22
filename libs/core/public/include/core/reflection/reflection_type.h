@@ -22,10 +22,6 @@
     ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
         const ::agea::serialization::conteiner &jc, ::agea::core::object_load_context &occ
 
-#define AGEA_deserialization_update_args                              \
-    ::agea::blob_ptr ptr, const ::agea::serialization::conteiner &jc, \
-        ::agea::core::object_load_context &occ
-
 #define AGEA_copy_handler_args                                                \
     ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj, \
         ::agea::blob_ptr from, ::agea::blob_ptr to, ::agea::core::object_load_context &ooc
@@ -63,8 +59,6 @@ namespace reflection
 using type_serialization_handler = result_code (*)(AGEA_serialization_args);
 using type_deserialization_handler = result_code (*)(AGEA_deserialization_args);
 using type_load_derive_handler = result_code (*)(AGEA_load_derive_args);
-using type_deserialisation_with_prototype_handler =
-    result_code (*)(AGEA_deserialization_update_args);
 using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
 using type_instantiate_handler = result_code (*)(AGEA_instantiate_handler_args);
 using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
@@ -118,7 +112,6 @@ struct reflection_type
 
     type_serialization_handler                  serialize = nullptr;
     type_deserialization_handler                deserialize = nullptr;
-    type_deserialisation_with_prototype_handler deserialize_with_proto = nullptr;
     type_load_derive_handler                    load_derive = nullptr;
     type_copy_handler                           copy = nullptr;
     type_instantiate_handler                    instantiate = nullptr;

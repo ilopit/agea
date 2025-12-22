@@ -32,13 +32,6 @@ public:
 
     blob_ptr get_blob(root::smart_object& obj);
 
-    // clang-format on
-
-    static result_code
-    deserialize_update(reflection::property& p,
-                       blob_ptr ptr,
-                       const serialization::conteiner& sc,
-                       core::object_load_context& occ);
 
 private:
     static result_code
@@ -80,18 +73,6 @@ private:
     serialize_item(const reflection::property& p,
                    const root::smart_object& obj,
                    serialization::conteiner& sc);
-
-    static result_code
-    deserialize_update_collection(reflection::property& p,
-                                  blob_ptr ptr,
-                                  const serialization::conteiner& sc,
-                                  core::object_load_context& occ);
-
-    static result_code
-    deserialize_update_item(reflection::property& p,
-                            blob_ptr ptr,
-                            const serialization::conteiner& sc,
-                            core::object_load_context& occ);
 
     static result_code
     compare_collection(compare_context& context);

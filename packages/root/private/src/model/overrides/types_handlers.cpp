@@ -96,8 +96,8 @@ smart_obj__copy(AGEA_copy_handler_args)
         }
 
         std::vector<root::smart_object*> objs;
-        auto load_result = core::object_constructor::object_load(obj->get_id(), core::object_load_type::class_obj, ooc,
-                                                                  objs);
+        auto load_result = core::object_constructor::object_load(
+            obj->get_id(), core::object_load_type::class_obj, ooc, objs);
         if (!load_result)
         {
             return load_result.error();
@@ -135,8 +135,8 @@ smart_obj__instantiate(AGEA_copy_handler_args)
 
     std::vector<root::smart_object*> objs;
 
-    auto result = core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(),
-                                                               ooc, objs);
+    auto result =
+        core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(), ooc, objs);
     if (!result)
     {
         return result.error();
@@ -167,18 +167,6 @@ smart_obj__deserialize(AGEA_deserialization_args)
 }
 
 agea::result_code
-smart_obj__deserialize_from_proto(AGEA_deserialization_update_args)
-{
-    AGEA_unused(occ);
-
-    auto& field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-
-    ::agea::core::object_constructor::update_object_properties(*field, jc, occ);
-
-    return result_code::ok;
-}
-
-agea::result_code
 smart_obj__to_string(AGEA_reflection_type_ui_args)
 {
     AGEA_unused(ptr);
@@ -197,13 +185,9 @@ smart_obj__compare(AGEA_compare_handler_args)
 }
 
 agea::result_code
-smart_obj__load_derive(AGEA_deserialization_update_args)
+smart_obj__load_derive(AGEA_load_derive_args)
 {
-    AGEA_unused(occ);
-
-    auto& field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-
-    ::agea::core::object_constructor::update_object_properties(*field, jc, occ);
+    AGEA_unused(obj);
 
     return result_code::ok;
 }

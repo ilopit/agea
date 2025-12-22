@@ -33,7 +33,6 @@ result_code smart_obj__compare(AGEA_compare_handler_args);
 result_code smart_obj__load_derive(AGEA_load_derive_args);
 result_code smart_obj__serialize(AGEA_serialization_args);
 result_code smart_obj__deserialize(AGEA_deserialization_args);
-result_code smart_obj__deserialize_from_proto(AGEA_deserialization_update_args);
 result_code smart_obj__to_string(AGEA_reflection_type_ui_args);
 
 result_code texture_sample__deserialize(AGEA_deserialization_args);

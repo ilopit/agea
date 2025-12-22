@@ -402,37 +402,6 @@ object_constructor::object_instanciate_internal(root::smart_object& proto_obj,
     return obj;
 }
 
-result_code
-object_constructor::update_object_properties(root::smart_object& obj,
-                                             const serialization::conteiner& jc,
-                                             object_load_context& occ)
-{
-    auto& reflection = *obj.get_reflection();
-
-    for (auto k : jc)
-    {
-        auto key_name = k.first.as<std::string>();
-        auto itr = std::find_if(reflection.m_properties.begin(), reflection.m_properties.end(),
-                                [&key_name](const std::shared_ptr<::agea::reflection::property>& p)
-                                { return p->name == key_name; });
-
-        if (itr == reflection.m_properties.end())
-        {
-            ALOG_WARN("Redundant key - [{0}:{1}] exist", obj.get_id().cstr(), key_name);
-            continue;
-        }
-
-        auto& p = *itr;
-        auto result = reflection::property::deserialize_update(*p, (blob_ptr)&obj, jc, occ);
-        if (result != result_code::ok)
-        {
-            ALOG_ERROR("Property update [{0}:{1}] failed", obj.get_id().str(), key_name);
-            return result;
-        }
-    }
-
-    return result_code::ok;
-}
 
 result_code
 object_constructor::load_derive_object_properties(root::smart_object& from,

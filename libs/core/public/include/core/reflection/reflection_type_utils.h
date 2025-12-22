@@ -98,7 +98,7 @@ cpp_deserialize(AGEA_deserialization_args)
 
 template <typename T>
 result_code
-cpp_deserialize_from_proto(AGEA_deserialization_update_args)
+cpp_load_derive(AGEA_load_derive_args)
 {
     AGEA_unused(ptr);
     AGEA_unused(occ);

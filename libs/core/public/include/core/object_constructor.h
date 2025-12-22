@@ -125,11 +125,6 @@ public:
                                 object_load_context& occ);
 
     static result_code
-    update_object_properties(root::smart_object& g,
-                             const serialization::conteiner& c,
-                             object_load_context& occ);
-
-    static result_code
     load_derive_object_properties(root::smart_object& from,
                                   root::smart_object& to,
                                   const serialization::conteiner& c,

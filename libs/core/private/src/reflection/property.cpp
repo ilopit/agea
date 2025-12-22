@@ -155,22 +155,6 @@ property::get_blob(root::smart_object& obj)
 }
 
 result_code
-property::deserialize_update(reflection::property& p,
-                             blob_ptr ptr,
-                             const serialization::conteiner& jc,
-                             core::object_load_context& occ)
-{
-    if (p.type.is_collection)
-    {
-        return deserialize_update_collection(p, ptr, jc, occ);
-    }
-    else
-    {
-        return deserialize_update_item(p, ptr, jc, occ);
-    }
-}
-
-result_code
 property::deserialize_collection(reflection::property& p,
                                  root::smart_object& obj,
                                  const serialization::conteiner& jc,
@@ -245,52 +229,6 @@ property::serialize_item(const reflection::property& p,
     p.rtype->serialize(obj, ptr, c);
 
     sc[p.name] = c;
-
-    return result_code::ok;
-}
-
-result_code
-property::deserialize_update_collection(reflection::property& p,
-                                        blob_ptr ptr,
-                                        const serialization::conteiner& jc,
-                                        core::object_load_context& occ)
-{
-    auto items = jc[p.name];
-    auto items_size = items.size();
-    auto& r = utils::as_type<std::vector<root::component*>>(ptr + p.offset);
-
-    if (r.empty())
-    {
-        r.resize(items_size);
-    }
-    AGEA_check(p.rtype->deserialize_with_proto, "Should never happens!");
-    for (unsigned i = 0; i < items_size; ++i)
-    {
-        auto item = items[i];
-
-        auto* filed_ptr = &r[i];
-        p.rtype->deserialize_with_proto((blob_ptr)filed_ptr, item, occ);
-    }
-
-    return result_code::ok;
-}
-
-result_code
-property::deserialize_update_item(reflection::property& p,
-                                  blob_ptr ptr,
-                                  const serialization::conteiner& jc,
-                                  core::object_load_context& occ)
-{
-    ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
-
-    if (!jc[p.name])
-    {
-        return result_code::doesnt_exist;
-    }
-
-    AGEA_check(p.rtype->deserialize_with_proto, "Should be not a NULL");
-
-    p.rtype->deserialize_with_proto(ptr, jc[p.name], occ);
 
     return result_code::ok;
 }
