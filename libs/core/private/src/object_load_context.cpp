@@ -114,7 +114,6 @@ object_load_context::find_proto_obj(const utils::id& id)
         obj = glob::glob_state().get_class_objects_cache()->get_item(id);
     }
 
-    AGEA_check(!obj || obj->get_flags().proto_obj, "Should always be proto!");
     AGEA_check(!obj || !obj->get_flags().instance_obj, "Should always be proto!");
     return obj;
 }
@@ -130,7 +129,6 @@ object_load_context::find_obj(const utils::id& id)
     }
 
     AGEA_check(!obj || obj->get_flags().instance_obj, "Should always be instance_obj!");
-    AGEA_check(!obj || !obj->get_flags().proto_obj, "Should always be instance_obj!");
     return obj;
 }
 

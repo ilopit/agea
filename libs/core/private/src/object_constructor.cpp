@@ -22,45 +22,6 @@ namespace agea
 namespace core
 {
 
-namespace
-{
-void
-update_flags(object_load_type type, root::smart_object& obj)
-{
-    if (type == object_load_type::instance_obj)
-    {
-        obj.get_flags().instance_obj = true;
-    }
-    else if (type == object_load_type::class_obj)
-    {
-        obj.get_flags().proto_obj = true;
-    }
-}
-
-}  // namespace
-
-std::expected<root::smart_object*, result_code>
-object_constructor::object_load(const utils::path& path_in_package,
-                                object_load_type type,
-                                object_load_context& occ,
-                                std::vector<root::smart_object*>& loaded_obj)
-{
-    auto old_objects = occ.reset_loaded_objects();
-
-    occ.push_construction_type(type);
-    auto result = object_load_internal(path_in_package, occ);
-    occ.pop_construction_type();
-
-    occ.reset_loaded_objects(old_objects, loaded_obj);
-
-    for (auto o : loaded_obj)
-    {
-        o->post_load();
-    }
-
-    return result;
-}
-
 std::expected<root::smart_object*, result_code>
 object_constructor::object_load(const utils::id& id,
                                 object_load_type type,
@@ -130,7 +91,8 @@ object_constructor::object_instantiate(root::smart_object& src,
 std::expected<root::smart_object*, result_code>
 object_constructor::alloc_empty_object(const utils::id& type_id,
                                        const utils::id& id,
-                                       uint32_t extra_flags,
+                                       root::smart_object_flags flags,
+                                       root::smart_object* parent_object,
                                        object_load_context& olc)
 {
     auto rt = glob::glob_state().get_rm()->get_type(type_id);
@@ -143,35 +105,10 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
     auto empty = rt->alloc(id);
     empty->set_package(olc.get_package());
     empty->set_level(olc.get_level());
+    empty->META_set_class_obj(parent_object);
+    empty->get_flags() = flags;
 
     auto ptr = empty.get();
-    update_flags(olc.get_construction_type(), *empty);
-
-    olc.add_obj(std::move(empty));
-    olc.push_object_loaded(ptr);
-
-    return ptr;
-}
-
-std::expected<root::smart_object*, result_code>
-object_constructor::alloc_empty_object(const utils::id& id,
-                                       reflection::reflection_type* rt,
-                                       uint32_t extra_flags,
-                                       object_load_context& olc)
-{
-    if (!rt)
-    {
-        return std::unexpected(result_code::id_not_found);
-    }
-
-    auto empty = rt->alloc(id);
-    // empty->set_flag(extra_flags);
-    empty->set_package(olc.get_package());
-    empty->set_level(olc.get_level());
-
-    auto ptr = empty.get();
-    update_flags(olc.get_construction_type(), *empty);
-
     olc.add_obj(std::move(empty));
     olc.push_object_loaded(ptr);
 
@@ -192,11 +129,12 @@ object_constructor::object_construct(const utils::id& type_id,
     if (package)
     {
         olc.push_construction_type(object_load_type::class_obj);
-        auto alloc_result = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+        auto alloc_result =
+            object_constructor::alloc_empty_object(type_id, id, ks_class_constructed, nullptr, olc);
         if (!alloc_result)
         {
             olc.pop_construction_type();
-            return std::unexpected(alloc_result.error());
+            return alloc_result;
         }
         obj = alloc_result.value();
 
@@ -217,23 +155,24 @@ object_constructor::object_construct(const utils::id& type_id,
     else if (level)
     {
         olc.push_construction_type(object_load_type::instance_obj);
-        auto alloc_result = object_constructor::alloc_empty_object(type_id, id, 0, olc);
+        auto alloc_result = object_constructor::alloc_empty_object(
+            type_id, id, ks_instance_constructed, nullptr, olc);
         if (!alloc_result)
         {
             olc.pop_construction_type();
-            return std::unexpected(alloc_result.error());
+            return alloc_result;
         }
         obj = alloc_result.value();
 
         if (!obj->META_construct(params))
         {
             olc.pop_construction_type();
-            return std::unexpected(result_code::failed);
+            return alloc_result;
         }
         if (!obj->post_construct())
         {
             olc.pop_construction_type();
-            return std::unexpected(result_code::failed);
+            return alloc_result;
         }
 
         olc.pop_construction_type();
@@ -252,7 +191,7 @@ object_constructor::create_default_class_obj_impl(std::shared_ptr<root::smart_ob
     AGEA_check(olc.get_package(), "Should exist");
     AGEA_check(!olc.get_level(), "Should exist");
 
-    empty->get_flags().proto_obj = true;
+    empty->get_flags() = ks_class_default;
 
     olc.push_construction_type(object_load_type::class_obj);
     empty->set_package(olc.get_package());
@@ -296,35 +235,6 @@ object_constructor::destroy_default_class_obj_impl(const utils::id& id, object_l
     }
 
     olc.remove_obj(*obj);
-
-    return result_code::ok;
-}
-
-result_code
-object_constructor::object_properties_load(root::smart_object& obj,
-                                           const serialization::conteiner& jc,
-                                           object_load_context& occ)
-{
-    auto& properties = obj.get_reflection()->m_serilalization_properties;
-
-    reflection::deserialize_context dc{.p = nullptr, .obj = &obj, .sc = &jc, .occ = &occ};
-
-    for (auto& p : properties)
-    {
-        dc.p = p.get();
-
-        auto result = p->deserialization_handler(dc);
-
-        auto has_deserialized =
-            result == result_code::ok || (result == result_code::doesnt_exist && p->has_default);
-
-        if (!has_deserialized)
-        {
-            ALOG_ERROR("Failed to load [{0}:{1}] [{2}]", obj.get_type_id().cstr(), p->name.c_str(),
-                       obj.get_id().cstr());
-            return result;
-        }
-    }
 
     return result_code::ok;
 }
@@ -376,7 +286,7 @@ object_constructor::object_save(const root::smart_object& obj, const utils::path
 {
     serialization::conteiner conteiner;
 
-    auto has_parent_obj = obj.get_flags().inhereted;
+    auto has_parent_obj = obj.get_flags().derived_obj;
 
     if (has_parent_obj)
     {
@@ -439,14 +349,17 @@ object_constructor::object_clone_create_internal(root::smart_object& proto_obj,
 {
     AGEA_check(&proto_obj, "Should exist!");
 
-    auto alloc_result = alloc_empty_object(proto_obj.get_type_id(), new_object_id, 0, occ);
+    root::smart_object_flags flags{.derived_obj = true};
+    if (occ.get_construction_type() == object_load_type::instance_obj)
+        flags.instance_obj = true;
+
+    auto alloc_result =
+        alloc_empty_object(proto_obj.get_type_id(), new_object_id, flags, &proto_obj, occ);
     if (!alloc_result)
     {
         return std::unexpected(alloc_result.error());
     }
     auto obj = alloc_result.value();
-
-    obj->META_set_class_obj(&proto_obj);
 
     auto rc = clone_object_properties(proto_obj, *obj, occ);
     if (rc != result_code::ok)
@@ -469,14 +382,13 @@ object_constructor::object_instanciate_internal(root::smart_object& proto_obj,
 
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
-    auto alloc_result = alloc_empty_object(proto_obj.get_type_id(), new_object_id, 0, occ);
+    auto alloc_result = alloc_empty_object(proto_obj.get_type_id(), new_object_id,
+                                           ks_instance_derived, &proto_obj, occ);
     if (!alloc_result)
     {
-        return std::unexpected(alloc_result.error());
+        return alloc_result;
     }
     auto obj = alloc_result.value();
-
-    obj->META_set_class_obj(&proto_obj);
 
     auto rc = instantiate_object_properties(proto_obj, *obj, occ);
     if (rc != result_code::ok)
@@ -648,30 +560,6 @@ object_constructor::diff_object_properties(const root::smart_object& left,
     return result_code::ok;
 }
 
-std::expected<root::smart_object*, result_code>
-object_constructor::object_load_full(serialization::conteiner& sc, object_load_context& occ)
-{
-    auto type_id = AID(sc["type_id"].as<std::string>());
-    auto obj_id = AID(sc["id"].as<std::string>());
-
-    auto alloc_result = alloc_empty_object(type_id, obj_id, 0, occ);
-    if (!alloc_result)
-    {
-        return std::unexpected(alloc_result.error());
-    }
-    auto obj = alloc_result.value();
-
-    auto rc = object_properties_load(*obj, sc, occ);
-    if (rc != result_code::ok)
-    {
-        return std::unexpected(rc);
-    }
-
-    obj->set_state(root::smart_object_state::loaded);
-
-    return obj;
-}
-
 result_code
 object_constructor::object_save_full(serialization::conteiner& sc, const root::smart_object& obj)
 {
@@ -682,48 +570,22 @@ object_constructor::object_save_full(serialization::conteiner& sc, const root::s
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::object_load_partial(root::smart_object& prototype_obj,
-                                        serialization::conteiner& sc,
-                                        object_load_context& occ)
-{
-    auto obj_id = AID(sc["id"].as<std::string>());
-
-    auto alloc_result = alloc_empty_object(prototype_obj.get_type_id(), obj_id, 0, occ);
-    if (!alloc_result)
-    {
-        return std::unexpected(alloc_result.error());
-    }
-    auto obj = alloc_result.value();
-
-    obj->META_set_class_obj(&prototype_obj);
-
-    auto rc = load_derive_object_properties(prototype_obj, *obj, sc, occ);
-
-    if (rc != result_code::ok)
-    {
-        return std::unexpected(rc);
-    }
-
-    obj->set_state(root::smart_object_state::loaded);
-
-    return obj;
-}
-
-std::expected<root::smart_object*, result_code>
 object_constructor::object_load_derive(root::smart_object& prototype_obj,
                                        serialization::conteiner& sc,
                                        object_load_context& occ)
 {
     auto obj_id = AID(sc["id"].as<std::string>());
 
-    auto alloc_result = alloc_empty_object(prototype_obj.get_type_id(), obj_id, 0, occ);
+    auto flags = occ.get_construction_type() == object_load_type::instance_obj ? ks_instance_derived
+                                                                               : ks_class_derived;
+
+    auto alloc_result =
+        alloc_empty_object(prototype_obj.get_type_id(), obj_id, flags, &prototype_obj, occ);
     if (!alloc_result)
     {
-        return std::unexpected(alloc_result.error());
+        return alloc_result;
     }
     auto obj = alloc_result.value();
-
-    obj->META_set_class_obj(&prototype_obj);
 
     auto rc = load_derive_object_properties(prototype_obj, *obj, sc, occ);
 
@@ -790,10 +652,6 @@ object_constructor::object_load_internal(const utils::id& id, object_load_contex
         {
             return object_instanciate_internal(*proto.value(), proto.value()->get_id(), occ);
         }
-        else
-        {
-            return std::unexpected(result_code::proto_doesnt_exist);
-        }
     }
 
     utils::path full_path;
@@ -814,29 +672,6 @@ object_constructor::object_load_internal(const utils::id& id, object_load_contex
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::object_load_internal(const utils::path& path_in_package,
-                                         object_load_context& occ)
-{
-    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
-
-    utils::path full_path;
-    if (!occ.make_full_path(path_in_package, full_path))
-    {
-        ALOG_LAZY_ERROR;
-        return std::unexpected(result_code::path_not_found);
-    }
-
-    serialization::conteiner conteiner;
-    if (!serialization::read_container(full_path, conteiner))
-    {
-        ALOG_LAZY_ERROR;
-        return std::unexpected(result_code::serialization_error);
-    }
-
-    return object_load_internal(conteiner, occ);
-}
-
-std::expected<root::smart_object*, result_code>
 object_constructor::preload_proto(const utils::id& id, object_load_context& occ)
 {
     if (auto proto_obj = occ.find_proto_obj(id))
@@ -848,6 +683,11 @@ object_constructor::preload_proto(const utils::id& id, object_load_context& occ)
     {
         ALOG_INFO("Creating default object {}", id.str());
         return object_constructor::create_default_class_obj_impl(rt->alloc(id), occ);
+    }
+
+    if (!occ.get_package())
+    {
+        return std::unexpected(result_code::failed);
     }
 
     std::vector<root::smart_object*> objcts;
@@ -877,42 +717,26 @@ object_constructor::object_load_internal(serialization::conteiner& conteiner,
 {
     AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
 
-    auto has_prototype_object = conteiner["class_id"].IsDefined();
     auto id = AID(conteiner["id"].as<std::string>());
 
     root::smart_object* obj = nullptr;
+    auto proto_id = conteiner["class_id"].IsDefined() ? AID(conteiner["class_id"].as<std::string>())
+                                                      : AID(conteiner["type_id"].as<std::string>());
 
-    if (has_prototype_object)
+    auto src_result = preload_proto(proto_id, occ);
+    if (!src_result)
     {
-        AGEA_check(!conteiner["type_id"].IsDefined(), "Should not be here");
-
-        auto class_id = AID(conteiner["class_id"].as<std::string>());
-        auto src_result = preload_proto(class_id, occ);
-
-        if (!src_result)
-        {
-            ALOG_ERROR("Proto object [{}] doesn't exist", class_id.cstr());
-            return std::unexpected(result_code::proto_doesnt_exist);
-        }
-
-        auto result = object_load_partial(*src_result.value(), conteiner, occ);
-        if (!result)
-        {
-            ALOG_LAZY_ERROR;
-            return result;
-        }
-        obj = result.value();
+        ALOG_ERROR("Proto object [{}] doesn't exist", proto_id.cstr());
+        return src_result;
     }
-    else
+
+    auto result = object_load_derive(*src_result.value(), conteiner, occ);
+    if (!result)
     {
-        auto result = object_load_full(conteiner, occ);
-        if (!result)
-        {
-            ALOG_LAZY_ERROR;
-            return result;
-        }
-        obj = result.value();
+        ALOG_LAZY_ERROR;
+        return result;
     }
+    obj = result.value();
 
     if (obj && (obj->get_id() != id))
     {

@@ -160,7 +160,7 @@ render_bridge::is_agea_mesh(const utils::path& p)
 agea::result_code
 render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 {
-    AGEA_check(!obj.get_flags().proto_obj, "");
+    AGEA_check(obj.get_flags().instance_obj, "");
 
     if (obj.get_state() == root::smart_object_state::render_ready)
     {
@@ -183,7 +183,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 agea::result_code
 render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
 {
-    AGEA_check(!obj.get_flags().proto_obj, "");
+    AGEA_check(obj.get_flags().instance_obj, "");
 
     if (obj.get_state() == root::smart_object_state::constructed)
     {

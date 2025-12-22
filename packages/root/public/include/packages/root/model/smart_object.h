@@ -95,10 +95,11 @@ enum class smart_object_state
 
 struct smart_object_flags
 {
-    bool proto_obj : 1 = false;
     bool instance_obj : 1 = false;
-    bool standalone : 1 = false;
-    bool inhereted : 1 = false;
+    bool derived_obj : 1 = false;
+    bool runtime_obj : 1 = false;
+    bool mirror_obj : 1 = false;
+    bool default_obj : 1 = false;
 };
 
 using smart_object_ptr = std::shared_ptr<smart_object>;

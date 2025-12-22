@@ -129,7 +129,7 @@ game_object_components_serialize(::agea::reflection::serialize_context& dc)
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (class_obj.get_flags().standalone)
+    if (!class_obj.get_flags().derived_obj)
     {
         serialization::conteiner components_conteiner;
         serialization::conteiner components_layout;
@@ -341,7 +341,7 @@ game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
     {
         for (auto c : src_components)
         {
-            AGEA_check(c->get_flags().proto_obj, "Only protos are alowed");
+            AGEA_check(!c->get_flags().instance_obj, "Only protos are alowed");
 
             auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
 

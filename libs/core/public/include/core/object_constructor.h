@@ -24,16 +24,52 @@ class property;
 namespace core
 {
 
+static inline const auto ks_class_constructed = root::smart_object_flags{.instance_obj = false,
+                                                                         .derived_obj = false,
+                                                                         .runtime_obj = true,
+                                                                         .mirror_obj = false,
+                                                                         .default_obj = false};
+
+static inline const auto ks_instance_constructed = root::smart_object_flags{.instance_obj = true,
+                                                                            .derived_obj = false,
+                                                                            .runtime_obj = true,
+                                                                            .mirror_obj = false,
+                                                                            .default_obj = false};
+
+static inline const auto ks_class_default = root::smart_object_flags{.instance_obj = false,
+                                                                     .derived_obj = false,
+                                                                     .runtime_obj = true,
+                                                                     .mirror_obj = false,
+                                                                     .default_obj = true};
+
+static inline const auto ks_class = root::smart_object_flags{.instance_obj = false,
+                                                             .derived_obj = false,
+                                                             .runtime_obj = false,
+                                                             .mirror_obj = false,
+                                                             .default_obj = false};
+
+static inline const auto ks_class_derived = root::smart_object_flags{.instance_obj = false,
+                                                                     .derived_obj = true,
+                                                                     .runtime_obj = false,
+                                                                     .mirror_obj = false,
+                                                                     .default_obj = false};
+
+static inline const auto ks_instance_derived = root::smart_object_flags{.instance_obj = true,
+                                                                        .derived_obj = true,
+                                                                        .runtime_obj = false,
+                                                                        .mirror_obj = false,
+                                                                        .default_obj = false};
+
+static inline const auto ks_instance_mirror = root::smart_object_flags{.instance_obj = true,
+                                                                       .derived_obj = false,
+                                                                       .runtime_obj = true,
+                                                                       .mirror_obj = true,
+                                                                       .default_obj = false};
+
 class object_constructor
 {
 public:
     // Public API
-
-    static std::expected<root::smart_object*, result_code>
-    object_load(const utils::path& path_in_package,
-                object_load_type type,
-                object_load_context& occ,
-                std::vector<root::smart_object*>& loaded_obj);
 
     static std::expected<root::smart_object*, result_code>
     object_load(const utils::id& id,
@@ -115,39 +151,17 @@ public:
                            std::vector<reflection::property*>& diff);
 
     static result_code
-    object_properties_load(root::smart_object& obj,
-                           const serialization::conteiner& jc,
-                           object_load_context& occ);
-
-    static result_code
     object_properties_save(const root::smart_object& obj, serialization::conteiner& jc);
 
-    template <typename T>
-    static std::shared_ptr<T>
-    alloc_empty_object(const utils::id& id = T::AR_TYPE_id())
-    {
-        auto empty = T::AR_TYPE_create_empty_obj(id);
-
-        return empty;
-    }
-
     static std::expected<root::smart_object*, result_code>
-    alloc_empty_object(const utils::id& proto_id,
+    alloc_empty_object(const utils::id& type_id,
                        const utils::id& id,
-                       uint32_t extra_flags,
-                       object_load_context& olc);
-
-    static std::expected<root::smart_object*, result_code>
-    alloc_empty_object(const utils::id& id,
-                       reflection::reflection_type* rt,
-                       uint32_t extra_flags,
+                       root::smart_object_flags flags,
+                       root::smart_object* parent_object,
                        object_load_context& olc);
 
     static std::expected<root::smart_object*, result_code>
     object_load_internal(const utils::id& id, object_load_context& occ);
-
-    static std::expected<root::smart_object*, result_code>
-    object_load_internal(const utils::path& path_in_package, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
     object_load_internal(serialization::conteiner& c, object_load_context& occ);
@@ -158,6 +172,15 @@ public:
     static std::expected<root::smart_object*, result_code>
     create_default_default_class_proto(const utils::id& id, object_load_context& olc);
 
+    template <typename T>
+    static std::shared_ptr<T>
+    alloc_empty_object(const utils::id& id = T::AR_TYPE_id())
+    {
+        auto empty = T::AR_TYPE_create_empty_obj(id);
+
+        return empty;
+    }
+
 private:
     static std::expected<root::smart_object*, result_code>
     create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
@@ -166,16 +189,8 @@ private:
     static result_code
     destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
 
-    static std::expected<root::smart_object*, result_code>
-    object_load_full(serialization::conteiner& sc, object_load_context& occ);
-
     static result_code
     object_save_full(serialization::conteiner& sc, const root::smart_object& obj);
-
-    static std::expected<root::smart_object*, result_code>
-    object_load_partial(root::smart_object& prototype_obj,
-                        serialization::conteiner& sc,
-                        object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
     object_load_derive(root::smart_object& prototype_obj,

@@ -208,7 +208,7 @@ package::finalize_relfection()
 void
 package::create_default_types_objects()
 {
-    for (auto [id, rt] : m_rts)
+    for (auto& [id, rt] : m_rts)
     {
         if (rt->type_class == reflection::reflection_type::reflection_type_class::agea_class)
         {
