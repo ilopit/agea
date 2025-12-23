@@ -40,71 +40,56 @@ reduce_ptr(blob_ptr ptr, bool is_ptr)
 
 template <typename T>
 void
-cpp_copy(blob_ptr from, blob_ptr to)
+cpp_default__copy(blob_ptr from, blob_ptr to)
 {
     as_type<T>(to) = as_type<T>(from);
 }
 
 template <typename T>
 result_code
-cpp_compare(blob_ptr from, blob_ptr to)
+cpp_default__compare(blob_ptr from, blob_ptr to)
 {
     return (as_type<T>(to) == as_type<T>(from)) ? result_code::ok : result_code::failed;
 }
 
 template <typename T>
 result_code
-cpp_copy(AGEA_copy_handler_args)
+cpp_default__copy(type_copy_context& ctx)
 {
-    AGEA_unused(dst_obj);
-    AGEA_unused(src_obj);
-    AGEA_unused(ooc);
-
-    reflection::utils::as_type<T>(to) = reflection::utils::as_type<T>(from);
+    reflection::utils::as_type<T>(ctx.to) = reflection::utils::as_type<T>(ctx.from);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_serialize(AGEA_serialization_args)
+cpp_default__serialize(type_serialization_context& ctx)
 {
-    AGEA_unused(ptr);
-    reflection::utils::pack_field<T>(ptr, jc);
-
+    reflection::utils::pack_field<T>(ctx.ptr, *ctx.jc);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_to_string(AGEA_reflection_type_ui_args)
+cpp_default__to_string(type_ui_context& ctx)
 {
-    AGEA_unused(ptr);
-    auto& t = reflection::utils::as_type<T>(ptr);
-    result = std::format("{}", t);
-
+    auto& t = reflection::utils::as_type<T>(ctx.ptr);
+    *ctx.result = std::format("{}", t);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_deserialize(AGEA_deserialization_args)
+cpp_default__load(type_load_derive_context& ctx)
 {
-    AGEA_unused(ptr);
-    AGEA_unused(occ);
-    AGEA_unused(jc);
-    reflection::utils::extract_field<T>(ptr, jc);
+    reflection::utils::extract_field<T>(ctx.ptr, *ctx.jc);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_load_derive(AGEA_load_derive_args)
+cpp_default__compare(type_compare_context& ctx)
 {
-    AGEA_unused(ptr);
-    AGEA_unused(occ);
-    AGEA_unused(jc);
-    reflection::utils::extract_field<T>(ptr, jc);
-    return result_code::ok;
+    return (as_type<T>(ctx.to) == as_type<T>(ctx.from)) ? result_code::ok : result_code::failed;
 }
 
 }  // namespace utils

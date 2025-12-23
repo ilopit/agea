@@ -10,39 +10,6 @@
 
 #include <vector>
 
-#define AGEA_serialization_args                                  \
-    const ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
-        ::agea::serialization::conteiner &jc
-
-#define AGEA_deserialization_args                          \
-    ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
-        const ::agea::serialization::conteiner &jc, ::agea::core::object_load_context &occ
-
-#define AGEA_load_derive_args                              \
-    ::agea::root::smart_object &obj, ::agea::blob_ptr ptr, \
-        const ::agea::serialization::conteiner &jc, ::agea::core::object_load_context &occ
-
-#define AGEA_copy_handler_args                                                \
-    ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj, \
-        ::agea::blob_ptr from, ::agea::blob_ptr to, ::agea::core::object_load_context &ooc
-
-#define AGEA_instantiate_handler_args AGEA_copy_handler_args
-
-#define AGEA_protorype_handler_args                                                             \
-    ::agea::root::smart_object &src_obj, ::agea::root::smart_object &dst_obj,                   \
-        ::agea::blob_ptr from, ::agea::blob_ptr to, const ::agea::serialization::conteiner &jc, \
-        ::agea::core::object_load_context &ooc
-
-#define AGEA_compare_handler_args ::agea::blob_ptr from, ::agea::blob_ptr to
-
-#define AGEA_reflection_type_ui_args ::agea::blob_ptr ptr, std::string &result
-
-#define AGEA_AR_render_ctor_args agea::render_bridge &rb, root::smart_object &, bool
-
-#define AGEA_AR_render_dtor_args agea::render_bridge &rb, root::smart_object &, bool
-
-#define AGEA_AR_alloc_args const agea::utils::id& id
-
 namespace agea
 {
 
@@ -56,16 +23,64 @@ struct base_construct_params;
 namespace reflection
 {
 
-using type_serialization_handler = result_code (*)(AGEA_serialization_args);
-using type_deserialization_handler = result_code (*)(AGEA_deserialization_args);
-using type_load_derive_handler = result_code (*)(AGEA_load_derive_args);
-using type_copy_handler = result_code (*)(AGEA_copy_handler_args);
-using type_instantiate_handler = result_code (*)(AGEA_instantiate_handler_args);
-using type_compare_handler = result_code (*)(AGEA_compare_handler_args);
-using type_ui_handler = result_code (*)(AGEA_reflection_type_ui_args);
-using type_render_ctor = result_code (*)(AGEA_AR_render_ctor_args);
-using type_render_dtor = result_code (*)(AGEA_AR_render_dtor_args);
-using type_allocator_handler = std::shared_ptr<root::smart_object> (*)(AGEA_AR_alloc_args);
+// Type-level context structures for reflection handlers
+struct type_serialization_context
+{
+    const root::smart_object* obj = nullptr;
+    blob_ptr ptr = nullptr;
+    serialization::conteiner* jc = nullptr;
+};
+
+struct type_load_derive_context
+{
+    root::smart_object* obj = nullptr;
+    blob_ptr ptr = nullptr;
+    const serialization::conteiner* jc = nullptr;
+    core::object_load_context* occ = nullptr;
+};
+
+struct type_copy_context
+{
+    root::smart_object* src_obj = nullptr;
+    root::smart_object* dst_obj = nullptr;
+    blob_ptr from = nullptr;
+    blob_ptr to = nullptr;
+    core::object_load_context* occ = nullptr;
+};
+
+struct type_compare_context
+{
+    blob_ptr from = nullptr;
+    blob_ptr to = nullptr;
+};
+
+struct type_ui_context
+{
+    blob_ptr ptr = nullptr;
+    std::string* result = nullptr;
+};
+
+struct type_render_context
+{
+    render_bridge* rb = nullptr;
+    root::smart_object* obj = nullptr;
+    bool flag = false;
+};
+
+struct type_alloc_context
+{
+    const utils::id* id = nullptr;
+};
+
+using type_serialization_handler = result_code (*)(type_serialization_context&);
+using type_load_derive_handler = result_code (*)(type_load_derive_context&);
+using type_copy_handler = result_code (*)(type_copy_context&);
+using type_instantiate_handler = result_code (*)(type_copy_context&);
+using type_compare_handler = result_code (*)(type_compare_context&);
+using type_ui_handler = result_code (*)(type_ui_context&);
+using type_render_ctor = result_code (*)(type_render_context&);
+using type_render_dtor = result_code (*)(type_render_context&);
+using type_allocator_handler = std::shared_ptr<root::smart_object> (*)(type_alloc_context&);
 using type_default_construction_params_handler =
     std::unique_ptr<::agea::root::base_construct_params> (*)();
 
@@ -111,7 +126,6 @@ struct reflection_type
     type_default_construction_params_handler    cparams_alloc = nullptr;
 
     type_serialization_handler                  serialize = nullptr;
-    type_deserialization_handler                deserialize = nullptr;
     type_load_derive_handler                    load_derive = nullptr;
     type_copy_handler                           copy = nullptr;
     type_instantiate_handler                    instantiate = nullptr;

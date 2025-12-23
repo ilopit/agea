@@ -9,10 +9,10 @@ namespace agea
 namespace root
 {
 // clang-format off
-AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_copy<::agea::core::color>,
-               compare_handler     = ::agea::reflection::utils::cpp_compare<::agea::core::color>,
+AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_default__copy<::agea::core::color>,
+               compare_handler     = ::agea::reflection::utils::cpp_default__compare<::agea::core::color>,
                serialize_handler   = ::agea::root::custom::color__serialize,
-               deserialize_handler = ::agea::root::custom::color__deserialize);
+               deserialize_handler = ::agea::root::custom::color__load_derive);
 struct color : ::glm::vec4
 // clang-format on
 {

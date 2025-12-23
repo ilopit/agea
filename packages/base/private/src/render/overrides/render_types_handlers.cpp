@@ -65,22 +65,22 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 /*===============================*/
 
 result_code
-mesh_component__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh_component__render_loader(reflection::type_render_context& ctx)
 {
-    auto rc = root::game_object_component__render_loader(rb, obj, sub_object);
+    auto rc = root::game_object_component__render_loader(ctx);
     AGEA_return_nok(rc);
 
-    auto& moc = obj.asr<base::mesh_component>();
+    auto& moc = ctx.obj->asr<base::mesh_component>();
 
     if (!moc.get_material() || !moc.get_mesh())
     {
         return result_code::ok;
     }
 
-    rc = rb.render_ctor(*moc.get_material(), sub_object);
+    rc = ctx.rb->render_ctor(*moc.get_material(), ctx.flag);
     AGEA_return_nok(rc);
 
-    rc = rb.render_ctor(*moc.get_mesh(), sub_object);
+    rc = ctx.rb->render_ctor(*moc.get_mesh(), ctx.flag);
     AGEA_return_nok(rc);
 
     auto mat_data = moc.get_material()->get_material_data();
@@ -139,26 +139,24 @@ mesh_component__render_loader(::agea::render_bridge& rb, root::smart_object& obj
 }
 
 result_code
-mesh_component__render_destructor(::agea::render_bridge& rb,
-                                  root::smart_object& obj,
-                                  bool sub_object)
+mesh_component__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& moc = obj.asr<base::mesh_component>();
+    auto& moc = ctx.obj->asr<base::mesh_component>();
 
     auto mat_model = moc.get_material();
 
     result_code rc = result_code::nav;
-    if (mat_model && is_same_source(obj, *mat_model))
+    if (mat_model && is_same_source(*ctx.obj, *mat_model))
     {
-        rc = rb.render_dtor(*moc.get_material(), sub_object);
+        rc = ctx.rb->render_dtor(*moc.get_material(), ctx.flag);
         AGEA_return_nok(rc);
     }
 
     auto mesh_model = moc.get_mesh();
 
-    if (mesh_model && is_same_source(obj, *mesh_model))
+    if (mesh_model && is_same_source(*ctx.obj, *mesh_model))
     {
-        rc = rb.render_dtor(*moc.get_mesh(), sub_object);
+        rc = ctx.rb->render_dtor(*moc.get_mesh(), ctx.flag);
         AGEA_return_nok(rc);
     }
     auto object_data = moc.get_render_object_data();
@@ -169,7 +167,7 @@ mesh_component__render_destructor(::agea::render_bridge& rb,
         glob::vulkan_render::getr().get_cache().objects.release(object_data);
     }
 
-    rc = mesh_component__render_destructor(rb, obj, sub_object);
+    rc = root::game_object_component__render_destructor(ctx);
     AGEA_return_nok(rc);
 
     return result_code::ok;
@@ -180,11 +178,9 @@ mesh_component__render_destructor(::agea::render_bridge& rb,
 /*===============================*/
 
 result_code
-directional_light_component__render_loader(::agea::render_bridge& rb,
-                                           root::smart_object& obj,
-                                           bool sub_object)
+directional_light_component__render_loader(reflection::type_render_context& ctx)
 {
-    auto& lc_model = obj.asr<base::directional_light_component>();
+    auto& lc_model = ctx.obj->asr<base::directional_light_component>();
 
     auto rh = lc_model.get_handler();
     if (!rh)
@@ -204,11 +200,9 @@ directional_light_component__render_loader(::agea::render_bridge& rb,
     return result_code::ok;
 }
 result_code
-directional_light_component__render_destructor(::agea::render_bridge& rb,
-                                               root::smart_object& obj,
-                                               bool sub_object)
+directional_light_component__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& plc_model = obj.asr<base::directional_light_component>();
+    auto& plc_model = ctx.obj->asr<base::directional_light_component>();
     if (auto h = plc_model.get_handler())
     {
         glob::vulkan_render::getr().get_cache().dir_lights.release(h);
@@ -220,11 +214,9 @@ directional_light_component__render_destructor(::agea::render_bridge& rb,
 /*===============================*/
 
 result_code
-spot_light_component__render_loader(::agea::render_bridge& rb,
-                                    root::smart_object& obj,
-                                    bool sub_object)
+spot_light_component__render_loader(reflection::type_render_context& ctx)
 {
-    auto& lc_model = obj.asr<base::spot_light_component>();
+    auto& lc_model = ctx.obj->asr<base::spot_light_component>();
 
     auto rh = lc_model.get_handler();
     if (!rh)
@@ -251,11 +243,9 @@ spot_light_component__render_loader(::agea::render_bridge& rb,
 }
 
 result_code
-spot_light_component__render_destructor(::agea::render_bridge& rb,
-                                        root::smart_object& obj,
-                                        bool sub_object)
+spot_light_component__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& slc_model = obj.asr<base::spot_light_component>();
+    auto& slc_model = ctx.obj->asr<base::spot_light_component>();
 
     if (auto h = slc_model.get_handler())
     {
@@ -268,11 +258,9 @@ spot_light_component__render_destructor(::agea::render_bridge& rb,
 /*===============================*/
 
 result_code
-point_light_component__render_loader(::agea::render_bridge& rb,
-                                     root::smart_object& obj,
-                                     bool sub_object)
+point_light_component__render_loader(reflection::type_render_context& ctx)
 {
-    auto& lc_model = obj.asr<base::point_light_component>();
+    auto& lc_model = ctx.obj->asr<base::point_light_component>();
 
     auto rh = lc_model.get_handler();
     if (!rh)
@@ -296,11 +284,9 @@ point_light_component__render_loader(::agea::render_bridge& rb,
 }
 
 result_code
-point_light_component__render_destructor(::agea::render_bridge& rb,
-                                         root::smart_object& obj,
-                                         bool sub_object)
+point_light_component__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& plc_model = obj.asr<base::point_light_component>();
+    auto& plc_model = ctx.obj->asr<base::point_light_component>();
     if (auto h = plc_model.get_handler())
     {
         glob::vulkan_render::getr().get_cache().point_lights.release(h);

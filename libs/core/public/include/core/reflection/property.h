@@ -28,10 +28,10 @@ public:
     property_load_derive_handler     load_derive             = default_load_derive;
     property_to_string_handler       to_string_handler       = default_to_string;
 
+    // clang-format on
 
-
-    blob_ptr get_blob(root::smart_object& obj);
-
+    blob_ptr
+    get_blob(root::smart_object& obj);
 
 private:
     static result_code
@@ -59,10 +59,10 @@ private:
                            core::object_load_context& occ);
 
     static result_code
-    deserialize_item(reflection::property& p,
-                     root::smart_object& obj,
-                     const serialization::conteiner& sc,
-                     core::object_load_context& occ);
+    load_item(reflection::property& p,
+              root::smart_object& obj,
+              const serialization::conteiner& sc,
+              core::object_load_context& occ);
 
     static result_code
     serialize_collection(const reflection::property& p,

@@ -44,7 +44,7 @@
     static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::agea::utils::id& id); \
                                                                                               \
     static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
-        const ::agea::utils::id& id);                                                         \
+        ::agea::reflection::type_alloc_context& ctx);                                         \
                                                                                               \
     static std::unique_ptr<::agea::root::base_construct_params>                               \
     AR_TYPE_create_gen_default_cparams();
@@ -55,7 +55,8 @@ namespace agea
 namespace reflection
 {
 struct reflection_type;
-}
+struct type_alloc_context;
+}  // namespace reflection
 
 namespace core
 {
@@ -109,8 +110,7 @@ AGEA_ar_class(architype                      = smart_object,
               instantiate_handler            = smart_obj__instantiate,
               compare_handler                = smart_obj__compare,
               serialize_handler              = smart_obj__serialize,
-              load_derive                    = smart_obj__load_derive,
-              deserialize_handler            = smart_obj__deserialize,
+              load_derive_handler            = smart_obj__load_derive,
               to_string_handler              = smart_obj__to_string);
 class smart_object
 // clang-format on

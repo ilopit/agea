@@ -102,7 +102,8 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
         return std::unexpected(result_code::id_not_found);
     }
 
-    auto empty = rt->alloc(id);
+    reflection::type_alloc_context alloc_ctx{&id};
+    auto empty = rt->alloc(alloc_ctx);
     empty->set_package(olc.get_package());
     empty->set_level(olc.get_level());
     empty->META_set_class_obj(parent_object);
@@ -651,7 +652,8 @@ object_constructor::preload_proto(const utils::id& id, object_load_context& occ)
     if (auto rt = glob::glob_state().get_rm()->get_type(id))
     {
         ALOG_INFO("Creating default object {}", id.str());
-        return object_constructor::create_default_class_obj_impl(rt->alloc(id), occ);
+        reflection::type_alloc_context alloc_ctx{&id};
+        return object_constructor::create_default_class_obj_impl(rt->alloc(alloc_ctx), occ);
     }
 
     if (!occ.get_package())
@@ -671,7 +673,8 @@ object_constructor::create_default_default_class_proto(const utils::id& id,
     if (auto rt = glob::glob_state().get_rm()->get_type(id))
     {
         ALOG_INFO("Creating default object {}", id.str());
-        auto result = object_constructor::create_default_class_obj_impl(rt->alloc(id), olc);
+        reflection::type_alloc_context alloc_ctx{&id};
+        auto result = object_constructor::create_default_class_obj_impl(rt->alloc(alloc_ctx), olc);
         olc.pop_construction_type();
         return result;
     }

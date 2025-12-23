@@ -551,10 +551,10 @@ const ::agea::reflection::reflection_type&
     return *{fc.module_name}_{type_obj.name}_rt;
 }}                  
 
-std::shared_ptr<::agea::root::smart_object> 
-{type_obj.name}::AR_TYPE_create_empty_gen_obj(const ::agea::utils::id& id)
-{{    
-    return {type_obj.name}::AR_TYPE_create_empty_obj(id);
+std::shared_ptr<::agea::root::smart_object>
+{type_obj.name}::AR_TYPE_create_empty_gen_obj(::agea::reflection::type_alloc_context& ctx)
+{{
+    return {type_obj.name}::AR_TYPE_create_empty_obj(*ctx.id);
 }}
 
 std::shared_ptr<{type_obj.name}>
@@ -648,8 +648,8 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
   if type_obj.serialize_handler:
     file_buffer.append(f"{indent}rt.serialize              = {type_obj.serialize_handler};\n")
 
-  if type_obj.deserialize_handler:
-    file_buffer.append(f"{indent}rt.deserialize            = {type_obj.deserialize_handler};\n")
+  if type_obj.load_derive_handler:
+    file_buffer.append(f"{indent}rt.load_derive            = {type_obj.load_derive_handler};\n")
 
   if type_obj.to_string_handler:
     file_buffer.append(f"{indent}rt.to_string              = {type_obj.to_string_handler};\n")

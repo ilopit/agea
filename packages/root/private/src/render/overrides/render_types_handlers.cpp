@@ -46,9 +46,9 @@ namespace root
 {
 
 result_code
-mesh__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh__render_loader(reflection::type_render_context& ctx)
 {
-    auto& msh_model = obj.asr<root::mesh>();
+    auto& msh_model = ctx.obj->asr<root::mesh>();
 
     auto vertices = msh_model.get_vertices_buffer().make_view<render::gpu_vertex_data>();
     auto indices = msh_model.get_indicess_buffer().make_view<render::gpu_index_data>();
@@ -70,9 +70,9 @@ mesh__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub
     return result_code::ok;
 }
 result_code
-mesh__render_destructor(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+mesh__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& msh_model = obj.asr<root::mesh>();
+    auto& msh_model = ctx.obj->asr<root::mesh>();
 
     if (auto msh_data = msh_model.get_mesh_data())
     {
@@ -85,16 +85,16 @@ mesh__render_destructor(::agea::render_bridge& rb, root::smart_object& obj, bool
 /*===============================*/
 
 result_code
-material__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+material__render_loader(reflection::type_render_context& ctx)
 {
-    auto& mat_model = obj.asr<root::material>();
+    auto& mat_model = ctx.obj->asr<root::material>();
 
     auto& txt_models = mat_model.get_texture_samples();
 
     std::vector<render::texture_sampler_data> samples_data;
     for (auto& ts : txt_models)
     {
-        if (rb.render_ctor(*ts.second.txt, sub_object) != result_code::ok)
+        if (ctx.rb->render_ctor(*ts.second.txt, ctx.flag) != result_code::ok)
         {
             return result_code::failed;
         }
@@ -104,7 +104,7 @@ material__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool
 
     auto se_model = mat_model.get_shader_effect();
 
-    auto rc = rb.render_ctor(*se_model, sub_object);
+    auto rc = ctx.rb->render_ctor(*se_model, ctx.flag);
 
     auto se_data = se_model->get_shader_effect_data();
     if (rc != result_code::ok || se_data->m_failed_load)
@@ -116,7 +116,7 @@ material__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool
 
     auto mat_data = glob::vulkan_render_loader::get()->get_material_data(mat_model.get_id());
 
-    auto dyn_gpu_data = rb.collect_gpu_data(mat_model);
+    auto dyn_gpu_data = ctx.rb->collect_gpu_data(mat_model);
 
     if (!mat_data)
     {
@@ -140,9 +140,9 @@ material__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool
     return result_code::ok;
 }
 result_code
-material__render_destructor(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+material__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& mat_model = obj.asr<root::material>();
+    auto& mat_model = ctx.obj->asr<root::material>();
 
     if (auto mat_data = mat_model.get_material_data())
     {
@@ -156,9 +156,9 @@ material__render_destructor(::agea::render_bridge& rb, root::smart_object& obj, 
 /*===============================*/
 
 result_code
-texture__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+texture__render_loader(reflection::type_render_context& ctx)
 {
-    auto& t = obj.asr<root::texture>();
+    auto& t = ctx.obj->asr<root::texture>();
 
     auto& bc = t.get_mutable_base_color();
     auto w = t.get_width();
@@ -185,9 +185,9 @@ texture__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool 
     return result_code::ok;
 }
 result_code
-texture__render_destructor(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+texture__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& txt_model = obj.asr<root::texture>();
+    auto& txt_model = ctx.obj->asr<root::texture>();
 
     if (auto txt_data = txt_model.get_texture_data())
     {
@@ -200,34 +200,30 @@ texture__render_destructor(::agea::render_bridge& rb, root::smart_object& obj, b
 /*===============================*/
 
 result_code
-game_object_component__render_loader(::agea::render_bridge& rb,
-                                     root::smart_object& obj,
-                                     bool sub_object)
+game_object_component__render_loader(reflection::type_render_context& ctx)
 {
-    auto& t = obj.asr<root::game_object_component>();
+    auto& t = ctx.obj->asr<root::game_object_component>();
 
     auto r = t.get_owner()->asr<root::game_object>().get_components(t.get_order_idx() + 1);
 
     for (auto& o : r)
     {
-        auto rc = rb.render_ctor(o, false);
+        auto rc = ctx.rb->render_ctor(o, false);
         AGEA_return_nok(rc);
     }
 
     return result_code::ok;
 }
 result_code
-game_object_component__render_destructor(::agea::render_bridge& rb,
-                                         root::smart_object& obj,
-                                         bool sub_object)
+game_object_component__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& t = obj.asr<root::game_object_component>();
+    auto& t = ctx.obj->asr<root::game_object_component>();
 
     auto r = t.get_owner()->asr<root::game_object>().get_components(t.get_order_idx() + 1);
 
     for (auto& o : r)
     {
-        auto rc = rb.render_dtor(o, false);
+        auto rc = ctx.rb->render_dtor(o, false);
         AGEA_return_nok(rc);
     }
 
@@ -235,9 +231,9 @@ game_object_component__render_destructor(::agea::render_bridge& rb,
 }
 
 result_code
-shader_effect__render_loader(::agea::render_bridge& rb, root::smart_object& obj, bool sub_object)
+shader_effect__render_loader(reflection::type_render_context& ctx)
 {
-    auto& se_model = obj.asr<root::shader_effect>();
+    auto& se_model = ctx.obj->asr<root::shader_effect>();
 
     auto se_data = glob::vulkan_render_loader::get()->get_shader_effect_data(se_model.get_id());
 
@@ -267,11 +263,9 @@ shader_effect__render_loader(::agea::render_bridge& rb, root::smart_object& obj,
 }
 
 result_code
-shader_effect__render_destructor(::agea::render_bridge& rb,
-                                 root::smart_object& obj,
-                                 bool sub_object)
+shader_effect__render_destructor(reflection::type_render_context& ctx)
 {
-    auto& se_model = obj.asr<root::shader_effect>();
+    auto& se_model = ctx.obj->asr<root::shader_effect>();
 
     if (auto se_data = se_model.get_shader_effect_data())
     {

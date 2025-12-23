@@ -9,8 +9,8 @@ namespace root
 {
 
 // clang-format off
-AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_copy<::agea::root::vec2>,
-               compare_handler     = ::agea::reflection::utils::cpp_compare<::agea::root::vec2>,
+AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_default__copy<::agea::root::vec2>,
+               compare_handler     = ::agea::reflection::utils::cpp_default__compare<::agea::root::vec2>,
                to_string_handler   = ::agea::root::vec2__to_string);
 struct vec2 : ::glm::vec2
 // clang-format on

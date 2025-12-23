@@ -45,20 +45,18 @@ load_smart_object(blob_ptr ptr,
 }
 
 result_code
-color__serialize(AGEA_serialization_args)
+color__serialize(reflection::type_serialization_context& ctx)
 {
-    AGEA_unused(ptr);
-    AGEA_unused(jc);
-
-    auto& field = reflection::utils::as_type<::agea::root::color>(ptr);
+    auto& field = reflection::utils::as_type<::agea::root::color>(ctx.ptr);
+    AGEA_unused(field);
 
     return result_code::ok;
 }
 
 result_code
-color__deserialize(AGEA_deserialization_args)
+color__load_derive(reflection::type_load_derive_context& ctx)
 {
-    auto str_color = jc.as<std::string>();
+    auto str_color = ctx.jc->as<std::string>();
 
     if (str_color.size() != 0)
     {
@@ -70,7 +68,7 @@ color__deserialize(AGEA_deserialization_args)
 
     agea::string_utils::convert_hext_string_to_bytes(8, str_color.data(), rgba);
 
-    auto& field = reflection::utils::as_type<::agea::root::color>(ptr);
+    auto& field = reflection::utils::as_type<::agea::root::color>(ctx.ptr);
 
     field.m_data.r = rgba[0] ? (rgba[0] / 255.f) : 0.f;
     field.m_data.g = rgba[1] ? (rgba[1] / 255.f) : 0.f;
@@ -81,50 +79,49 @@ color__deserialize(AGEA_deserialization_args)
 }
 
 result_code
-smart_obj__copy(AGEA_copy_handler_args)
+smart_obj__copy(reflection::type_copy_context& ctx)
 {
-    auto& s = src_obj;
-    auto type = ooc.get_construction_type();
+    auto type = ctx.occ->get_construction_type();
     if (type != core::object_load_type::class_obj)
     {
-        auto& obj = reflection::utils::as_type<::agea::root::smart_object*>(from);
-        auto& dst_obj = reflection::utils::as_type<::agea::root::smart_object*>(to);
+        auto& obj = reflection::utils::as_type<::agea::root::smart_object*>(ctx.from);
+        auto& dst = reflection::utils::as_type<::agea::root::smart_object*>(ctx.to);
 
-        if (!dst_obj)
+        if (!dst)
         {
             return result_code::ok;
         }
 
         std::vector<root::smart_object*> objs;
         auto load_result = core::object_constructor::object_load(
-            obj->get_id(), core::object_load_type::class_obj, ooc, objs);
+            obj->get_id(), core::object_load_type::class_obj, *ctx.occ, objs);
         if (!load_result)
         {
             return load_result.error();
         }
 
         auto clone_result = core::object_constructor::object_clone_create_internal(
-            obj->get_id(), obj->get_id(), ooc);
+            obj->get_id(), obj->get_id(), *ctx.occ);
         if (!clone_result)
         {
             return clone_result.error();
         }
-        dst_obj = clone_result.value();
+        dst = clone_result.value();
         return result_code::ok;
     }
     else
     {
-        reflection::utils::cpp_copy<root::smart_object*>(from, to);
+        reflection::utils::cpp_default__copy<root::smart_object*>(ctx.from, ctx.to);
     }
 
     return result_code::ok;
 }
 
 result_code
-smart_obj__instantiate(AGEA_copy_handler_args)
+smart_obj__instantiate(reflection::type_copy_context& ctx)
 {
-    auto& src_subobj = reflection::utils::as_type<::agea::root::smart_object*>(from);
-    auto& dst_subobj = reflection::utils::as_type<::agea::root::smart_object*>(to);
+    auto& src_subobj = reflection::utils::as_type<::agea::root::smart_object*>(ctx.from);
+    auto& dst_subobj = reflection::utils::as_type<::agea::root::smart_object*>(ctx.to);
 
     if (!src_subobj)
     {
@@ -135,8 +132,8 @@ smart_obj__instantiate(AGEA_copy_handler_args)
 
     std::vector<root::smart_object*> objs;
 
-    auto result =
-        core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(), ooc, objs);
+    auto result = core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(),
+                                                               *ctx.occ, objs);
     if (!result)
     {
         return result.error();
@@ -146,98 +143,63 @@ smart_obj__instantiate(AGEA_copy_handler_args)
 }
 
 agea::result_code
-smart_obj__serialize(AGEA_serialization_args)
+smart_obj__serialize(reflection::type_serialization_context& ctx)
 {
-    AGEA_unused(ptr);
-    AGEA_unused(jc);
+    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ctx.ptr);
 
-    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-
-    jc["id"] = field->get_id().str();
+    (*ctx.jc)["id"] = field->get_id().str();
 
     return result_code::ok;
 }
 
 agea::result_code
-smart_obj__deserialize(AGEA_deserialization_args)
+smart_obj__load_derive(reflection::type_load_derive_context& ctx)
 {
-    AGEA_unused(occ);
-
-    return load_smart_object(ptr, jc, occ, core::architype::smart_object);
+    return load_smart_object(ctx.ptr, *ctx.jc, *ctx.occ, core::architype::smart_object);
 }
 
 agea::result_code
-smart_obj__to_string(AGEA_reflection_type_ui_args)
+smart_obj__to_string(reflection::type_ui_context& ctx)
 {
-    AGEA_unused(ptr);
+    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ctx.ptr);
 
-    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-
-    result = field ? field->get_id().str() : "empty";
+    *ctx.result = field ? field->get_id().str() : "empty";
 
     return result_code::ok;
 }
 
 agea::result_code
-smart_obj__compare(AGEA_compare_handler_args)
+smart_obj__compare(reflection::type_compare_context& ctx)
 {
+    AGEA_unused(ctx);
     return result_code::failed;
 }
 
-agea::result_code
-smart_obj__load_derive(AGEA_load_derive_args)
+result_code
+texture_sample__serialize(reflection::type_serialization_context& ctx)
 {
-    AGEA_unused(obj);
-
+    AGEA_unused(ctx);
     return result_code::ok;
 }
 
 result_code
-texture_sample__deserialize(AGEA_deserialization_args)
+texture_sample__compare(reflection::type_compare_context& ctx)
 {
-    auto src = obj.as<root::material>();
-
-    const auto texture_id = AID(jc["texture"].as<std::string>());
-
-    auto load_result = ::agea::core::object_constructor::object_load_internal(texture_id, occ);
-    if (!load_result)
-    {
-        return load_result.error();
-    }
-
-    const auto slot = jc["slot"].as<uint32_t>();
-
-    auto& sample = src->get_sample(src->get_id());
-    sample.txt = load_result.value()->as<root::texture>();
-    sample.sampler_id = AID(jc["sampler"].as<std::string>());
-    sample.slot = slot;
-
+    AGEA_unused(ctx);
     return result_code::ok;
 }
 
 result_code
-texture_sample__serialize(AGEA_serialization_args)
+texture_sample__copy(reflection::type_copy_context& ctx)
 {
-    return result_code::ok;
-}
-
-result_code
-texture_sample__compare(AGEA_compare_handler_args)
-{
-    return result_code::ok;
-}
-
-result_code
-texture_sample__copy(AGEA_copy_handler_args)
-{
-    auto src = src_obj.as<root::material>();
-    auto dst = dst_obj.as<root::material>();
+    auto src = ctx.src_obj->as<root::material>();
+    auto dst = ctx.dst_obj->as<root::material>();
 
     dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
 
     auto clone_result = core::object_constructor::object_clone_create_internal(
         src->get_sample(src->get_id()).txt->get_id(), src->get_sample(src->get_id()).txt->get_id(),
-        ooc);
+        *ctx.occ);
 
     if (!clone_result)
     {
@@ -250,16 +212,16 @@ texture_sample__copy(AGEA_copy_handler_args)
 }
 
 result_code
-texture_sample__instantiate(AGEA_instantiate_handler_args)
+texture_sample__instantiate(reflection::type_copy_context& ctx)
 {
-    auto src = src_obj.as<root::material>();
-    auto dst = dst_obj.as<root::material>();
+    auto src = ctx.src_obj->as<root::material>();
+    auto dst = ctx.dst_obj->as<root::material>();
 
     dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
 
     auto clone_result = core::object_constructor::object_clone_create_internal(
         src->get_sample(src->get_id()).txt->get_id(), src->get_sample(src->get_id()).txt->get_id(),
-        ooc);
+        *ctx.occ);
 
     if (!clone_result)
     {
@@ -272,16 +234,11 @@ texture_sample__instantiate(AGEA_instantiate_handler_args)
 }
 
 result_code
-texture_sample__load_derive(reflection::property_load_derive_context& ctx)
+texture_sample__load_derive(reflection::type_load_derive_context& ctx)
 {
-    auto src = ctx.dst_obj->as<root::material>();
+    auto src = ctx.obj->as<root::material>();
 
-    auto& sc = *ctx.sc;
-
-    auto item = sc[ctx.src_property->name];
-
-    const auto id = AID(ctx.src_property->name);
-    const auto texture_id = AID(item["texture"].as<std::string>());
+    const auto texture_id = AID((*ctx.jc)["texture"].as<std::string>());
 
     auto result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
 
@@ -291,26 +248,24 @@ texture_sample__load_derive(reflection::property_load_derive_context& ctx)
         return result.error();
     }
 
-    auto obj = result.value();
+    auto loaded_obj = result.value();
 
-    auto& s = obj->get_flags();
+    const auto slot = (*ctx.jc)["slot"].as<uint32_t>();
 
-    const auto slot = item["slot"].as<uint32_t>();
-
-    auto& sample = src->get_sample(id);
-    sample.txt = obj->as<root::texture>();
-    sample.sampler_id = AID(item["sampler"].as<std::string>());
+    auto& sample = src->get_sample(src->get_id());
+    sample.txt = loaded_obj->as<root::texture>();
+    sample.sampler_id = AID((*ctx.jc)["sampler"].as<std::string>());
     sample.slot = slot;
 
     return result_code::ok;
 }
 
 agea::result_code
-buffer__serialize(AGEA_serialization_args)
+buffer__serialize(reflection::type_serialization_context& ctx)
 {
-    auto& field = reflection::utils::as_type<::agea::utils::buffer>(ptr);
+    auto& field = reflection::utils::as_type<::agea::utils::buffer>(ctx.ptr);
 
-    auto package_path = obj.get_package()->get_relative_path(field.get_file());
+    auto package_path = ctx.obj->get_package()->get_relative_path(field.get_file());
 
     if (!utils::buffer::save(field))
     {
@@ -318,25 +273,25 @@ buffer__serialize(AGEA_serialization_args)
         return result_code::failed;
     }
 
-    jc = package_path.str();
+    *ctx.jc = package_path.str();
 
     return result_code::ok;
 }
 
 agea::result_code
-buffer__deserialize(AGEA_deserialization_args)
+buffer__load_derive(reflection::type_load_derive_context& ctx)
 {
-    auto rel_path = APATH(jc.as<std::string>());
+    auto rel_path = APATH(ctx.jc->as<std::string>());
 
     utils::path package_path;
 
-    if (!occ.make_full_path(rel_path, package_path))
+    if (!ctx.occ->make_full_path(rel_path, package_path))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    auto& f = reflection::utils::as_type<::agea::utils::buffer>(ptr);
+    auto& f = reflection::utils::as_type<::agea::utils::buffer>(ctx.ptr);
     f.set_file(package_path);
 
     if (!utils::buffer::load(package_path, f))
@@ -349,21 +304,19 @@ buffer__deserialize(AGEA_deserialization_args)
 }
 
 agea::result_code
-buffer__copy(AGEA_copy_handler_args)
+buffer__copy(reflection::type_copy_context& ctx)
 {
-    AGEA_unused(src_obj);
-
-    reflection::utils::cpp_copy<::agea::utils::buffer>(from, to);
+    reflection::utils::cpp_default__copy<::agea::utils::buffer>(ctx.from, ctx.to);
 
     return result_code::ok;
 }
 
 agea::result_code
-buffer__to_string(AGEA_reflection_type_ui_args)
+buffer__to_string(reflection::type_ui_context& ctx)
 {
-    auto& field = reflection::utils::as_type<::agea::utils::buffer>(ptr);
+    auto& field = reflection::utils::as_type<::agea::utils::buffer>(ctx.ptr);
 
-    result = field.get_file().str();
+    *ctx.result = field.get_file().str();
 
     return result_code::ok;
 }
@@ -371,83 +324,69 @@ buffer__to_string(AGEA_reflection_type_ui_args)
 //
 // // ========  ID  ====================================
 agea::result_code
-id__serialize(AGEA_serialization_args)
+id__serialize(reflection::type_serialization_context& ctx)
 {
-    AGEA_unused(ptr);
-    jc = agea::reflection::utils::as_type<agea::utils::id>(ptr).str();
+    *ctx.jc = agea::reflection::utils::as_type<agea::utils::id>(ctx.ptr).str();
     return agea::result_code::ok;
 }
 
 agea::result_code
-id__deserialize(AGEA_deserialization_args)
+id__load_derive(reflection::type_load_derive_context& ctx)
 {
-    AGEA_unused(ptr);
-    AGEA_unused(occ);
-    AGEA_unused(jc);
-    agea::reflection::utils::as_type<agea::utils::id>(ptr) = AID(jc.as<std::string>());
+    agea::reflection::utils::as_type<agea::utils::id>(ctx.ptr) = AID(ctx.jc->as<std::string>());
     return agea::result_code::ok;
 }
 
 agea::result_code
-id__to_string(AGEA_reflection_type_ui_args)
+id__to_string(reflection::type_ui_context& ctx)
 {
-    AGEA_unused(ptr);
-    result = agea::reflection::utils::as_type<agea::utils::id>(ptr).str();
+    *ctx.result = agea::reflection::utils::as_type<agea::utils::id>(ctx.ptr).str();
     return agea::result_code::ok;
 }
 
 // ========  VEC2  ====================================
 
 agea::result_code
-vec2__to_string(AGEA_reflection_type_ui_args)
+vec2__to_string(reflection::type_ui_context& ctx)
 {
-    AGEA_unused(ptr);
+    auto& field = agea::reflection::utils::as_type<::agea::root::vec3>(ctx.ptr);
 
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec3>(ptr);
-
-    result = result = std::format("{} {}", field.x, field.y);
+    *ctx.result = std::format("{} {}", field.x, field.y);
 
     return agea::result_code::ok;
 }
 
 // ========  VEC3  ====================================
 agea::result_code
-vec3__serialize(AGEA_serialization_args)
+vec3__serialize(reflection::type_serialization_context& ctx)
 {
-    AGEA_unused(ptr);
-    AGEA_unused(jc);
+    auto& field = agea::reflection::utils::as_type<agea::root::vec3>(ctx.ptr);
 
-    auto& field = agea::reflection::utils::as_type<agea::root::vec3>(ptr);
-
-    jc["x"] = field.x;
-    jc["y"] = field.y;
-    jc["z"] = field.z;
+    (*ctx.jc)["x"] = field.x;
+    (*ctx.jc)["y"] = field.y;
+    (*ctx.jc)["z"] = field.z;
 
     return agea::result_code::ok;
 }
 
 agea::result_code
-vec3__deserialize(AGEA_deserialization_args)
+vec3__load_derive(reflection::type_load_derive_context& ctx)
 {
-    AGEA_unused(occ);
+    auto& field = agea::reflection::utils::as_type<agea::root::vec3>(ctx.ptr);
 
-    auto& field = agea::reflection::utils::as_type<agea::root::vec3>(ptr);
-
-    field.x = jc["x"].as<float>();
-    field.y = jc["y"].as<float>();
-    field.z = jc["z"].as<float>();
+    field.x = (*ctx.jc)["x"].as<float>();
+    field.y = (*ctx.jc)["y"].as<float>();
+    field.z = (*ctx.jc)["z"].as<float>();
 
     return agea::result_code::ok;
 }
 
 agea::result_code
-vec3__to_string(AGEA_reflection_type_ui_args)
+vec3__to_string(reflection::type_ui_context& ctx)
 {
-    AGEA_unused(ptr);
+    auto& field = agea::reflection::utils::as_type<::agea::root::vec3>(ctx.ptr);
 
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec3>(ptr);
-
-    result = result = std::format("{} {} {}", field.x, field.y, field.z);
+    *ctx.result = std::format("{} {} {}", field.x, field.y, field.z);
 
     return agea::result_code::ok;
 }
@@ -455,349 +394,13 @@ vec3__to_string(AGEA_reflection_type_ui_args)
 // ========  VEC4  ====================================
 
 agea::result_code
-vec4__to_string(AGEA_reflection_type_ui_args)
+vec4__to_string(reflection::type_ui_context& ctx)
 {
-    AGEA_unused(ptr);
+    auto& field = agea::reflection::utils::as_type<::agea::root::vec4>(ctx.ptr);
 
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec4>(ptr);
-
-    result = result = std::format("{} {} {} {}", field.x, field.y, field.z, field.w);
+    *ctx.result = std::format("{} {} {} {}", field.x, field.y, field.z, field.w);
 
     return agea::result_code::ok;
 }
 
-//
-// // ========  STRING  ====================================
-// result_code
-// to_string_t_string(AGEA_reflection_type_ui_args)
-// {
-//     AGEA_unused(ptr);
-//     result = reflection::utils::as_type<std::string>(ptr);
-//     return result_code::ok;
-// }
-//
-// // ========  TEXTURE  ====================================
-// result_code
-// serialize_t_txt(AGEA_serialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//
-//     auto field = reflection::utils::as_type<::agea::root::texture*>(ptr);
-//     jc = field->get_id().str();
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_t_txt(AGEA_deserialization_args)
-// {
-//     return load_smart_object(ptr, jc, occ, core::architype::texture);
-// }
-//
-// // ========  MATERIAL  ====================================
-// result_code
-// serialize_t_mat(AGEA_serialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//
-//     auto field = reflection::utils::as_type<::agea::root::material*>(ptr);
-//     jc = field->get_id().str();
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_t_mat(AGEA_deserialization_args)
-// {
-//     return load_smart_object(ptr, jc, occ, core::architype::material);
-// }
-//
-// result_code
-// copy_t_mat(AGEA_copy_handler_args)
-// {
-//     AGEA_unused(dst_obj);
-//     AGEA_unused(src_obj);
-//     AGEA_unused(ooc);
-//
-//     reflection::utils::default_copy<root::smart_object*>(from, to);
-//     return result_code::ok;
-// }
-//
-// // ========  MESH  ====================================
-// result_code
-// serialize_t_msh(AGEA_serialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//
-//     auto field = reflection::utils::as_type<::agea::root::mesh*>(ptr);
-//     jc = field->get_id().str();
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_t_msh(AGEA_deserialization_args)
-// {
-//     return load_smart_object(ptr, jc, occ, core::architype::mesh);
-// }
-//
-// result_code
-// copy_t_msh(AGEA_copy_handler_args)
-// {
-//     AGEA_unused(dst_obj);
-//     AGEA_unused(src_obj);
-//     AGEA_unused(ooc);
-//
-//     reflection::utils::default_copy<root::smart_object*>(from, to);
-//     return result_code::ok;
-// }
-//
-// // ========  OBJ  ====================================
-// result_code
-// serialize_t_obj(AGEA_serialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//
-//     auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//
-//     jc["id"] = field->get_id().str();
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_t_obj(AGEA_deserialization_args)
-// {
-//     AGEA_unused(occ);
-//
-//     auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//
-//     auto id = AID(jc["id"].as<std::string>());
-//
-//     //     auto pstr = ::agea::glob::class_objects_cache::get()->get_item(id);
-//     //
-//     //     field = pstr;
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_from_proto_t_obj(AGEA_deserialization_update_args)
-// {
-//     AGEA_unused(occ);
-//
-//     auto& field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//
-//     ::agea::core::object_constructor::update_object_properties(*field, jc, occ);
-//
-//     return result_code::ok;
-// }
-//
-//
-// result_code
-// to_string_t_obj(AGEA_reflection_type_ui_args)
-// {
-//     AGEA_unused(ptr);
-//
-//     auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//
-//     result = field ? field->get_id().str() : "empty";
-//
-//     return result_code::ok;
-// }
-//
-// // ========  SHADER_EFFECT  ====================================
-// result_code
-// serialize_t_se(AGEA_serialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//
-//     auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//     jc = field->get_id().str();
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_t_se(AGEA_deserialization_args)
-// {
-//     return load_smart_object(ptr, jc, occ, core::architype::shader_effect);
-// }
-//
-// result_code
-// copy_t_se(AGEA_copy_handler_args)
-// {
-//     return copy_smart_object(src_obj, dst_obj, from, to, ooc);
-// }  // namespace
-//
-// // ========  COMPONENT  ====================================
-// result_code
-// serialize_t_com(AGEA_serialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//
-//     auto field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//
-//     jc["id"] = field->get_id().str();
-//     jc["object_class"] = field->get_class_obj()->get_id().str();
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_t_com(AGEA_deserialization_args)
-// {
-//     AGEA_unused(ptr);
-//     AGEA_unused(jc);
-//     AGEA_unused(occ);
-//
-//     AGEA_not_implemented;
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// deserialize_from_proto_t_com(AGEA_deserialization_update_args)
-// {
-//     AGEA_unused(occ);
-//
-//     auto& field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
-//
-//     ::agea::core::object_constructor::update_object_properties(*field, jc, occ);
-//
-//     return result_code::ok;
-// }
-//
-// result_code
-// copy_t_com(AGEA_copy_handler_args)
-// {
-//     AGEA_unused(src_obj);
-//
-//     auto& f = reflection::utils::as_type<::agea::root::smart_object*>(from);
-//     auto& t = reflection::utils::as_type<::agea::root::smart_object*>(to);
-//
-//     auto new_id = AID(dst_obj.get_id().str() + "/" + f->get_class_obj()->get_id().str());
-//
-//     auto p = core::object_constructor::object_clone_create_internal(*f, new_id, ooc, t);
-//
-//     t = (::agea::root::component*)p;
-//
-//     return result_code::ok;
-// }
-
-//
-// }  // namespace
-//
-// bool
-// package::package_types_custom_loader::load(static_package& p)
-// {
-//     auto& reflection_regestry = ::agea::glob::reflection_type_registry::getr();
-//     MAKE_POD_TYPE(agea::root::root__string, std::string);
-//     MAKE_POD_TYPE(agea::root::root__bool, bool);
-//
-//     MAKE_POD_TYPE(agea::root::root__int8_t, std::int8_t);
-//     MAKE_POD_TYPE(agea::root::root__int16_t, std::int16_t);
-//     MAKE_POD_TYPE(agea::root::root__int32_t, std::int32_t);
-//     MAKE_POD_TYPE(agea::root::root__int64_t, std::int64_t);
-//
-//     MAKE_POD_TYPE(agea::root::root__uint8_t, std::uint8_t);
-//     MAKE_POD_TYPE(agea::root::root__uint16_t, std::uint16_t);
-//     MAKE_POD_TYPE(agea::root::root__uint32_t, std::uint32_t);
-//     MAKE_POD_TYPE(agea::root::root__uint64_t, std::uint64_t);
-//
-//     MAKE_POD_TYPE(agea::root::root__float, float);
-//     MAKE_POD_TYPE(agea::root::root__double, double);
-//
-//     {
-//         auto rt = reflection_regestry.get_type(root__id);
-//
-//         rt->deserialization = deserialize_t_id;
-//         rt->compare = default_compare<utils::id>;
-//         rt->copy = default_copy<utils::id>;
-//         rt->serialization = serialize_t_id;
-//         rt->ui = to_string_t_id;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__buffer);
-//
-//         rt->deserialization = deserialize_t_buf;
-//         rt->copy = default_copy<utils::buffer>;
-//         rt->serialization = serialize_t_buf;
-//         rt->ui = default_to_string;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__vec3);
-//
-//         rt->deserialization = deserialize_t_vec3;
-//         rt->compare = default_compare<glm::vec3>;
-//         rt->copy = default_copy<glm::vec3>;
-//         rt->serialization = serialize_t_vec3;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__smart_object);
-//
-//         rt->deserialization = deserialize_t_obj;
-//         rt->compare = default_compare<root::smart_object*>;
-//         rt->copy = copy_smart_object;
-//         rt->serialization = serialize_t_obj;
-//         rt->deserialization_with_proto = deserialize_from_proto_t_obj;
-//         rt->ui = to_string_t_obj;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__component);
-//
-//         rt->deserialization = deserialize_t_com;
-//         rt->compare = default_compare<root::smart_object*>;
-//         rt->deserialization_with_proto = deserialize_from_proto_t_com;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__texture);
-//
-//         rt->deserialization = deserialize_t_txt;
-//         rt->serialization = serialize_t_txt;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__material);
-//
-//         rt->deserialization = deserialize_t_mat;
-//         rt->serialization = serialize_t_mat;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__mesh);
-//
-//         rt->deserialization = deserialize_t_msh;
-//         rt->serialization = serialize_t_msh;
-//     }
-//     {
-//         auto rt = reflection_regestry.get_type(root__shader_effect);
-//
-//         rt->deserialization = deserialize_t_se;
-//         rt->serialization = serialize_t_se;
-//     }
-//
-//     {
-//         auto rt = reflection_regestry.get_type(root__vec2);
-//         rt->ui = to_string_t_vec2;
-//     }
-//
-//     {
-//         auto rt = reflection_regestry.get_type(root__vec3);
-//         rt->ui = to_string_t_vec3;
-//     }
-//
-//     {
-//         auto rt = reflection_regestry.get_type(root__vec4);
-//         rt->ui = to_string_t_vec4;
-//     }
-//
-//     return true;
-// }
-//
-// }  // namespace agea::root
 }  // namespace agea::root

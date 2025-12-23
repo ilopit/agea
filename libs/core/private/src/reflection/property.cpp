@@ -71,7 +71,8 @@ property::default_copy(copy_context& cxt)
     auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
-    return cxt.dst_property->rtype->copy(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
+    type_copy_context type_ctx{cxt.src_obj, cxt.dst_obj, from, to, cxt.occ};
+    return cxt.dst_property->rtype->copy(type_ctx);
 }
 
 result_code
@@ -91,12 +92,14 @@ property::default_instantiate(instantiate_context& cxt)
     auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
+    type_copy_context type_ctx{cxt.src_obj, cxt.dst_obj, from, to, cxt.occ};
+
     if (cxt.dst_property->rtype->instantiate)
     {
-        return cxt.dst_property->rtype->instantiate(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
+        return cxt.dst_property->rtype->instantiate(type_ctx);
     }
 
-    return cxt.dst_property->rtype->copy(*cxt.src_obj, *cxt.dst_obj, from, to, *cxt.occ);
+    return cxt.dst_property->rtype->copy(type_ctx);
 }
 
 result_code
@@ -119,7 +122,7 @@ property::default_load_derive(property_load_derive_context& ctx)
         auto& conteiner = *ctx.sc;
         if (conteiner[ctx.dst_property->name].IsDefined())
         {
-            return deserialize_item(*ctx.src_property, *ctx.dst_obj, *ctx.sc, *ctx.occ);
+            return load_item(*ctx.src_property, *ctx.dst_obj, *ctx.sc, *ctx.occ);
         }
         else
         {
@@ -129,7 +132,8 @@ property::default_load_derive(property_load_derive_context& ctx)
                                                      ctx.dst_property->type.is_ptr);
 
             AGEA_check(ctx.dst_property->rtype->copy, "Should never happens!");
-            ctx.dst_property->rtype->copy(*ctx.src_obj, *ctx.dst_obj, from, to, *ctx.occ);
+            type_copy_context type_ctx{ctx.src_obj, ctx.dst_obj, from, to, ctx.occ};
+            ctx.dst_property->rtype->copy(type_ctx);
         }
     }
     return result_code::ok;
@@ -138,14 +142,10 @@ property::default_load_derive(property_load_derive_context& ctx)
 agea::result_code
 property::default_to_string(property_to_string_context& ctx)
 {
-    //     AGEA_check(cxt.property == cxt.dst_property, "Should be SAME properties!");
-    //     AGEA_check(cxt.obj != cxt.dst_obj, "Should not be SAME objects!");
-    //
-    //     AGEA_check(!cxt.src_property->type.is_collection, "Not supported!");
-
     auto from = ::agea::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
 
-    return ctx.prop->rtype->to_string(from, ctx.result);
+    type_ui_context type_ctx{from, &ctx.result};
+    return ctx.prop->rtype->to_string(type_ctx);
 }
 
 agea::blob_ptr
@@ -170,7 +170,7 @@ property::deserialize_collection(reflection::property& p,
         r.resize(items_size);
     }
 
-    AGEA_check(p.rtype->deserialize, "Should never happens!");
+    AGEA_check(p.rtype->load_derive, "Should never happens!");
 
     for (unsigned i = 0; i < items_size; ++i)
     {
@@ -178,7 +178,8 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        p.rtype->deserialize(obj, (blob_ptr)filed_ptr, item, occ);
+        type_load_derive_context type_ctx{&obj, (blob_ptr)filed_ptr, &item, &occ};
+        p.rtype->load_derive(type_ctx);
     }
 
     return result_code::ok;
@@ -193,10 +194,10 @@ property::serialize_collection(const reflection::property&,
 }
 
 result_code
-property::deserialize_item(reflection::property& p,
-                           root::smart_object& obj,
-                           const serialization::conteiner& jc,
-                           core::object_load_context& occ)
+property::load_item(reflection::property& p,
+                    root::smart_object& obj,
+                    const serialization::conteiner& jc,
+                    core::object_load_context& occ)
 {
     if (!jc[p.name])
     {
@@ -209,9 +210,11 @@ property::deserialize_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    AGEA_check(p.rtype->deserialize, "Should never happens!");
+    AGEA_check(p.rtype->load_derive, "Should never happens!");
 
-    return p.rtype->deserialize(obj, ptr, jc[p.name], occ);
+    auto sub_jc = jc[p.name];
+    type_load_derive_context type_ctx{&obj, ptr, &sub_jc, &occ};
+    return p.rtype->load_derive(type_ctx);
 }
 
 result_code
@@ -226,7 +229,8 @@ property::serialize_item(const reflection::property& p,
     serialization::conteiner c;
 
     AGEA_check(p.rtype->serialize, "Should never happens!");
-    p.rtype->serialize(obj, ptr, c);
+    type_serialization_context type_ctx{&obj, ptr, &c};
+    p.rtype->serialize(type_ctx);
 
     sc[p.name] = c;
 
@@ -249,9 +253,8 @@ property::compare_item(compare_context& context)
     auto dst_ptr = ::agea::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
                                                   context.p->type.is_ptr);
 
-    // AGEA_check(context.p->types_compare_handler, "Should be not a NULL");
-
-    return context.p->rtype->compare(src_ptr, dst_ptr);
+    type_compare_context type_ctx{src_ptr, dst_ptr};
+    return context.p->rtype->compare(type_ctx);
 }
 
 }  // namespace reflection
