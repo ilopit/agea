@@ -80,86 +80,55 @@ game_object_components_save(::agea::reflection::save_context& dc)
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
 
-    if (!class_obj.get_flags().derived_obj)
+    serialization::conteiner components_conteiner;
+    serialization::conteiner components_layout;
+    components_layout.SetStyle(YAML::EmitterStyle::Flow);
+
+    auto& obj_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+        class_obj.as_blob() + dc.p->offset);
+
+    auto& parent_components = ::agea::reflection::utils::as_type<std::vector<root::smart_object*>>(
+        class_obj.get_class_obj()->as_blob() + dc.p->offset);
+
+    AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
+
+    for (size_t i = 0; i < obj_components.size(); ++i)
     {
-        serialization::conteiner components_conteiner;
-        serialization::conteiner components_layout;
-        components_layout.SetStyle(YAML::EmitterStyle::Flow);
+        auto class_component = parent_components[i];
+        auto obj_component = obj_components[i];
 
-        auto& components = agea::reflection::utils::as_type<std::vector<root::component*>>(
-            class_obj.as_blob() + dc.p->offset);
+        serialization::conteiner component_conteiner;
 
-        int i = 0;
-        for (auto instance_component : components)
+        auto id = obj_component->get_id().str();
+        component_conteiner["id"] = id;
+
+        auto pid = obj_component->get_class_obj()->get_id().str();
+        component_conteiner["class_id"] = pid;
+
+        reflection::save_context internal_sc{nullptr, obj_component, &component_conteiner};
+        std::vector<reflection::property*> diff;
+
+        if (auto rc = core::object_constructor::diff_object_properties(*class_component,
+                                                                       *obj_component, diff);
+            rc != result_code::failed)
         {
-            auto class_component = instance_component->get_class_obj();
-            serialization::conteiner component_conteiner;
-
-            component_conteiner["id"] = instance_component->get_id().str();
-            component_conteiner["class_id"] = class_component->get_id().str();
-
-            reflection::save_context internal_sc{nullptr, instance_component,
-                                                      &component_conteiner};
-            reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
-
-            std::vector<reflection::property*> diff;
-            core::object_constructor::diff_object_properties(*class_component, *instance_component,
-                                                             diff);
-
-            for (auto& p : diff)
-            {
-                internal_sc.p = p;
-                p->save_handler(internal_sc);
-            }
-            components_conteiner[i++] = component_conteiner;
-            components_layout.push_back((int)instance_component->get_parent_idx());
+            return rc;
         }
-        conteiner["layout"] = components_layout;
-        conteiner[dc.p->name] = components_conteiner;
-    }
-    else
-    {
-        serialization::conteiner components_conteiner;
-        serialization::conteiner components_layout;
-        components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
-        auto& obj_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
-            class_obj.as_blob() + dc.p->offset);
-
-        auto& parent_components =
-            ::agea::reflection::utils::as_type<std::vector<root::smart_object*>>(
-                class_obj.get_class_obj()->as_blob() + dc.p->offset);
-
-        AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
-
-        for (size_t i = 0; i < obj_components.size(); ++i)
+        for (auto& p : diff)
         {
-            auto class_component = parent_components[i];
-            auto obj_component = obj_components[i];
-
-            serialization::conteiner component_conteiner;
-
-            component_conteiner["id"] = obj_component->get_id().str();
-            component_conteiner["class_id"] = class_component->get_id().str();
-
-            reflection::save_context internal_sc{nullptr, obj_component, &component_conteiner};
-
-            std::vector<reflection::property*> diff;
-            core::object_constructor::diff_object_properties(*class_component, *obj_component,
-                                                             diff);
-
-            for (auto& p : diff)
+            internal_sc.p = p;
+            if (auto rc = p->save_handler(internal_sc); rc != result_code::failed)
             {
-                internal_sc.p = p;
-                p->save_handler(internal_sc);
+                return rc;
             }
-
-            components_conteiner[i++] = component_conteiner;
-            components_layout.push_back((int)obj_component->get_parent_idx());
         }
-        conteiner["layout"] = components_layout;
-        conteiner[dc.p->name] = components_conteiner;
+
+        components_conteiner[i++] = component_conteiner;
+        components_layout.push_back((int)obj_component->get_parent_idx());
     }
+    conteiner["layout"] = components_layout;
+    conteiner[dc.p->name] = components_conteiner;
 
     return result_code::ok;
 }

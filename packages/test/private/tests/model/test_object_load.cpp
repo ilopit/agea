@@ -29,6 +29,7 @@
 
 #include <gtest/gtest.h>
 #include <sstream>
+#include <fstream>
 
 using namespace agea;
 
@@ -44,6 +45,62 @@ validate_empty_cache(gs::state& gs)
         ASSERT_TRUE(gs.getr_class_cache_map().get_cache(i)->get_items().empty())
             << "Failed at " << ::agea::core::to_string(i);
     }
+}
+
+testing::AssertionResult
+compare_files_line_by_line(const utils::path& expected_path, const utils::path& actual_path)
+{
+    std::ifstream expected_file(expected_path.fs());
+    std::ifstream actual_file(actual_path.fs());
+
+    if (!expected_file.is_open())
+    {
+        return testing::AssertionFailure() << "Failed to open expected file: " << expected_path.str();
+    }
+
+    if (!actual_file.is_open())
+    {
+        return testing::AssertionFailure() << "Failed to open actual file: " << actual_path.str();
+    }
+
+    std::string expected_line, actual_line;
+    int line_num = 0;
+
+    while (true)
+    {
+        bool has_expected = static_cast<bool>(std::getline(expected_file, expected_line));
+        bool has_actual = static_cast<bool>(std::getline(actual_file, actual_line));
+        ++line_num;
+
+        if (!has_expected && !has_actual)
+        {
+            break;  // Both files ended
+        }
+
+        if (!has_expected)
+        {
+            return testing::AssertionFailure()
+                   << "Actual file has extra lines starting at line " << line_num << ": \""
+                   << actual_line << "\"";
+        }
+
+        if (!has_actual)
+        {
+            return testing::AssertionFailure()
+                   << "Expected file has extra lines starting at line " << line_num << ": \""
+                   << expected_line << "\"";
+        }
+
+        if (expected_line != actual_line)
+        {
+            return testing::AssertionFailure()
+                   << "Line " << line_num << " differs:\n"
+                   << "  expected: \"" << expected_line << "\"\n"
+                   << "  actual:   \"" << actual_line << "\"";
+        }
+    }
+
+    return testing::AssertionSuccess();
 }
 
 }  // namespace
@@ -655,54 +712,37 @@ TEST_F(test_preloaded_test_package, object_construct_in_level_context)
 // object_save round-trip tests
 // ============================================================================
 
-TEST_F(test_preloaded_test_package, DISABLED_object_save_and_reload_full)
+TEST_F(test_preloaded_test_package, object_save_and_reload_full)
 {
     auto& lc = test::package::instance().get_load_context();
+    auto& gs = glob::glob_state();
 
-    // 1. Construct an object (same pattern as working test)
-    root::game_object::construct_params params;
-    params.pos = {10.0f, 20.0f, 30.0f};
+    // 1. Load object from existing test file
+    auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+    lc.set_prefix_path(obj_path);
+    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
-    auto construct_result = core::object_constructor::object_construct(
-        AID("game_object"), AID("save_test_object"), params, lc);
-    ASSERT_TRUE(construct_result.has_value());
+    std::vector<root::smart_object*> loaded;
+    auto load_result = core::object_constructor::object_load(
+        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
 
-    auto obj = construct_result.value();
+    ASSERT_TRUE(load_result.has_value());
+    auto obj = load_result.value()->as<root::game_object>();
     ASSERT_TRUE(obj);
-
-    auto original = obj->as<root::game_object>();
-    ASSERT_TRUE(original);
-    ASSERT_TRUE(verify_flags(*original, {.instance_obj = false, .derived_obj = true}));
-    ASSERT_TRUE(validate_class_obj(*original));
+    ASSERT_TRUE(verify_flags(*obj, core::ks_class_derived));
+    ASSERT_TRUE(validate_class_obj(*obj));
 
     // 2. Save to a temp file
     auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_save_object.aobj";
+    auto save_path = temp_dir / "test_obj_saved.aobj";
 
-    auto save_result = core::object_constructor::object_save(*original, save_path);
+    auto save_result = core::object_constructor::object_save(*obj, save_path);
     ASSERT_EQ(save_result, result_code::ok);
     ASSERT_TRUE(save_path.exists());
 
-    // 3. Load it back using a fresh load context
-    core::level reload_level(AID("reload_test_level"));
-    auto& reload_lc = reload_level.get_load_context();
-    reload_lc.set_prefix_path(temp_dir);
-    reload_lc.get_objects_mapping().add(AID("save_test_object"), false,
-                                        APATH("test_save_object.aobj"));
-
-    std::vector<root::smart_object*> loaded_objs;
-    auto load_result = core::object_constructor::object_load(
-        AID("save_test_object"), core::object_load_type::instance_obj, reload_lc, loaded_objs);
-
-    ASSERT_TRUE(load_result.has_value());
-    auto reloaded = load_result.value()->as<root::game_object>();
-    ASSERT_TRUE(reloaded);
-    ASSERT_TRUE(verify_flags(*reloaded, {.instance_obj = true, .derived_obj = true}));
-    ASSERT_TRUE(validate_class_obj(*reloaded));
-
-    // 4. Verify basic properties match
-    ASSERT_EQ(reloaded->get_id(), AID("save_test_object"));
-    ASSERT_EQ(reloaded->get_type_id(), AID("game_object"));
+    // 3. Compare saved file with original line by line
+    auto expected_path = obj_path / "game_objects/test_obj.aobj";
+    ASSERT_TRUE(compare_files_line_by_line(expected_path, save_path));
 
     // Cleanup
     std::filesystem::remove(save_path.fs());

@@ -287,25 +287,11 @@ object_constructor::object_save(const root::smart_object& obj, const utils::path
 {
     serialization::conteiner conteiner;
 
-    auto has_parent_obj = obj.get_flags().derived_obj;
-
-    if (has_parent_obj)
+    auto rc = object_save_partial(conteiner, obj);
+    if (rc != result_code::ok)
     {
-        auto rc = object_save_partial(conteiner, obj);
-        if (rc != result_code::ok)
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
-    }
-    else
-    {
-        auto rc = object_save_full(conteiner, obj);
-        if (rc != result_code::ok)
-        {
-            ALOG_LAZY_ERROR;
-            return rc;
-        }
+        ALOG_LAZY_ERROR;
+        return result_code::failed;
     }
 
     if (!serialization::write_container(object_path, conteiner))
@@ -402,7 +388,6 @@ object_constructor::object_instanciate_internal(root::smart_object& proto_obj,
 
     return obj;
 }
-
 
 result_code
 object_constructor::load_derive_object_properties(root::smart_object& from,
@@ -573,9 +558,11 @@ result_code
 object_constructor::object_save_partial(serialization::conteiner& sc, const root::smart_object& obj)
 {
     auto proto_obj = obj.get_class_obj();
+    auto cid = proto_obj->get_id().str();
+    sc["class_id"] = cid;
 
-    sc["class_id"] = proto_obj->get_id().str();
-    sc["id"] = obj.get_id().str();
+    auto id = obj.get_id().str();
+    sc["id"] = id;
 
     std::vector<reflection::property*> diff;
     auto rc = core::object_constructor::diff_object_properties(*proto_obj, obj, diff);
