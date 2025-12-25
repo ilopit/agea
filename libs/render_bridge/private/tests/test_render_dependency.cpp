@@ -19,7 +19,7 @@ make_obj(const utils::id& id)
 {
     static auto r = glob::reflection_type_registry::getr().get_type(T::AR_TYPE_id());
 
-    reflection::type_alloc_context ctx{&id};
+    reflection::type_context__alloc ctx{&id};
     return cast_ref<T>(r->alloc(ctx));
 }
 }  // namespace

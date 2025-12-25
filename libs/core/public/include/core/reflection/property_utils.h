@@ -18,21 +18,21 @@ namespace reflection
 
 class property;
 
-struct save_context
+struct property_context__save
 {
     property* p = nullptr;
     const root::smart_object* obj = nullptr;
     serialization::conteiner* sc = nullptr;
 };
 
-struct compare_context
+struct property_context__compare
 {
     property* p = nullptr;
     const root::smart_object* src_obj = nullptr;
     const root::smart_object* dst_obj = nullptr;
 };
 
-struct copy_context
+struct property_context__copy
 {
     property* src_property = nullptr;
     property* dst_property = nullptr;
@@ -41,7 +41,7 @@ struct copy_context
     core::object_load_context* occ = nullptr;
 };
 
-struct instantiate_context
+struct property_context__instantiate
 {
     property* src_property = nullptr;
     property* dst_property = nullptr;
@@ -50,17 +50,7 @@ struct instantiate_context
     core::object_load_context* occ = nullptr;
 };
 
-struct property_prototype_context
-{
-    property* src_property = nullptr;
-    property* dst_property = nullptr;
-    root::smart_object* src_obj = nullptr;
-    root::smart_object* dst_obj = nullptr;
-    core::object_load_context* occ = nullptr;
-    const serialization::conteiner* sc = nullptr;
-};
-
-struct property_load_context
+struct property_context__prototype
 {
     property* src_property = nullptr;
     property* dst_property = nullptr;
@@ -70,7 +60,17 @@ struct property_load_context
     const serialization::conteiner* sc = nullptr;
 };
 
-struct property_to_string_context
+struct property_context__load
+{
+    property* src_property = nullptr;
+    property* dst_property = nullptr;
+    root::smart_object* src_obj = nullptr;
+    root::smart_object* dst_obj = nullptr;
+    core::object_load_context* occ = nullptr;
+    const serialization::conteiner* sc = nullptr;
+};
+
+struct property_context__to_string
 {
     property* prop = nullptr;
     root::smart_object* obj = nullptr;
@@ -79,12 +79,12 @@ struct property_to_string_context
 
 // clang-format off
 
-using property_save_handler             = result_code(*)(save_context&);
-using property_compare_handler          = result_code(*)(compare_context&);
-using property_copy_handler             = result_code(*)(copy_context&);
-using property_instantiate_handler      = result_code(*)(instantiate_context&);
-using property_load_handler             = result_code(*)(property_load_context&);
-using property_to_string_handler        = result_code(*)(property_to_string_context&);
+using property_handler__save            = result_code(*)(property_context__save&);
+using property_handler__compare         = result_code(*)(property_context__compare&);
+using property_handler__copy            = result_code(*)(property_context__copy&);
+using property_handler__instantiate     = result_code(*)(property_context__instantiate&);
+using property_handler__load            = result_code(*)(property_context__load&);
+using property_handler__to_string       = result_code(*)(property_context__to_string&);
 
 // clang-format on
 

@@ -30,7 +30,7 @@ reduce_ptr(uint8_t* ptr, bool is_ptr)
 }  // namespace
 
 result_code
-property::default_compare(compare_context& context)
+property::default_compare(property_context__compare& context)
 {
     if (context.p->type.is_collection)
     {
@@ -43,7 +43,7 @@ property::default_compare(compare_context& context)
 }
 
 result_code
-property::default_save(save_context& ctx)
+property::default_save(property_context__save& ctx)
 {
     if (ctx.p->type.is_collection)
     {
@@ -56,7 +56,7 @@ property::default_save(save_context& ctx)
 }
 
 result_code
-property::default_copy(copy_context& cxt)
+property::default_copy(property_context__copy& cxt)
 {
     AGEA_check(cxt.src_property->rtype->copy, "Should be valid!");
     AGEA_check(cxt.dst_property->rtype->copy, "Should never happens!");
@@ -71,12 +71,12 @@ property::default_copy(copy_context& cxt)
     auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
-    type_copy_context type_ctx{cxt.src_obj, cxt.dst_obj, from, to, cxt.occ};
+    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.occ};
     return cxt.dst_property->rtype->copy(type_ctx);
 }
 
 result_code
-property::default_instantiate(instantiate_context& cxt)
+property::default_instantiate(property_context__instantiate& cxt)
 {
     AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
     AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
@@ -92,7 +92,7 @@ property::default_instantiate(instantiate_context& cxt)
     auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
-    type_copy_context type_ctx{cxt.src_obj, cxt.dst_obj, from, to, cxt.occ};
+    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.occ};
 
     if (cxt.dst_property->rtype->instantiate)
     {
@@ -103,7 +103,7 @@ property::default_instantiate(instantiate_context& cxt)
 }
 
 result_code
-property::default_load(property_load_context& ctx)
+property::default_load(property_context__load& ctx)
 {
     if (!ctx.src_property->rtype->copy)
     {
@@ -132,7 +132,7 @@ property::default_load(property_load_context& ctx)
                                                      ctx.dst_property->type.is_ptr);
 
             AGEA_check(ctx.dst_property->rtype->copy, "Should never happens!");
-            type_copy_context type_ctx{ctx.src_obj, ctx.dst_obj, from, to, ctx.occ};
+            type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.occ};
             ctx.dst_property->rtype->copy(type_ctx);
         }
     }
@@ -140,11 +140,11 @@ property::default_load(property_load_context& ctx)
 }
 
 agea::result_code
-property::default_to_string(property_to_string_context& ctx)
+property::default_to_string(property_context__to_string& ctx)
 {
     auto from = ::agea::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
 
-    type_ui_context type_ctx{from, &ctx.result};
+    type_context__to_string type_ctx{nullptr, from, &ctx.result};
     return ctx.prop->rtype->to_string(type_ctx);
 }
 
@@ -178,7 +178,7 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        type_load_context type_ctx{&obj, (blob_ptr)filed_ptr, &item, &occ};
+        type_context__load type_ctx{nullptr, (blob_ptr)filed_ptr, &item, &occ};
         p.rtype->load(type_ctx);
     }
 
@@ -213,7 +213,7 @@ property::load_item(reflection::property& p,
     AGEA_check(p.rtype->load, "Should never happens!");
 
     auto sub_jc = jc[p.name];
-    type_load_context type_ctx{&obj, ptr, &sub_jc, &occ};
+    type_context__load type_ctx{nullptr, ptr, &sub_jc, &occ};
     return p.rtype->load(type_ctx);
 }
 
@@ -229,7 +229,7 @@ property::serialize_item(const reflection::property& p,
     serialization::conteiner c;
 
     AGEA_check(p.rtype->save, "Should never happens!");
-    type_save_context type_ctx{&obj, ptr, &c};
+    type_context__save type_ctx{&obj, ptr, &c};
     p.rtype->save(type_ctx);
 
     sc[p.name] = c;
@@ -238,7 +238,7 @@ property::serialize_item(const reflection::property& p,
 }
 
 result_code
-property::compare_collection(compare_context&)
+property::compare_collection(property_context__compare&)
 {
     AGEA_not_implemented;
 
@@ -246,14 +246,14 @@ property::compare_collection(compare_context&)
 }
 
 result_code
-property::compare_item(compare_context& context)
+property::compare_item(property_context__compare& context)
 {
     auto src_ptr = ::agea::reflection::reduce_ptr(context.src_obj->as_blob() + context.p->offset,
                                                   context.p->type.is_ptr);
     auto dst_ptr = ::agea::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
                                                   context.p->type.is_ptr);
 
-    type_compare_context type_ctx{src_ptr, dst_ptr};
+    type_context__compare type_ctx{src_ptr, dst_ptr};
     return context.p->rtype->compare(type_ctx);
 }
 

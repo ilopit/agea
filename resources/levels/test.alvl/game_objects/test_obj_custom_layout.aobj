@@ -1,16 +1,16 @@
 class_id: game_object
 id: test_obj_custom_layout
 layout: [-1, 0]
-components: 
+components:
   - id: test_component_1
     class_id: game_object_component
   - id: test_component_2
     class_id: game_object_component
     position:
       x: 0
-      y: 0
-      z: 0
+      y: 1
+      z: 2
     scale:
-      x: 10
-      y: 10
-      z: 10
+      x: 4
+      y: 5
+      z: 6

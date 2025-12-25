@@ -199,7 +199,7 @@ object_editor::handle()
                 }
                 else
                 {
-                    reflection::property_to_string_context pts;
+                    reflection::property_context__to_string pts;
                     pts.obj = m_obj;
                     pts.prop = p.get();
                     p->to_string_handler(pts);

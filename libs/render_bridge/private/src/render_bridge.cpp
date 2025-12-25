@@ -173,7 +173,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 
     get_dependency().build_node(&obj);
 
-    reflection::type_render_context render_ctx{this, &obj, sub_objects};
+    reflection::type_context__render render_ctx{this, &obj, sub_objects};
     result_code rc = obj.get_reflection()->render_constructor(render_ctx);
 
     obj.set_state(root::smart_object_state::render_ready);
@@ -195,7 +195,7 @@ render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
 
     obj.set_state(root::smart_object_state::render_preparing);
 
-    reflection::type_render_context render_ctx{this, &obj, sub_objects};
+    reflection::type_context__render render_ctx{this, &obj, sub_objects};
     result_code rc = obj.get_reflection()->render_destructor(render_ctx);
 
     obj.set_state(root::smart_object_state::constructed);

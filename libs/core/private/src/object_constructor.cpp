@@ -102,7 +102,7 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
         return std::unexpected(result_code::id_not_found);
     }
 
-    reflection::type_alloc_context alloc_ctx{&id};
+    reflection::type_context__alloc alloc_ctx{&id};
     auto empty = rt->alloc(alloc_ctx);
     empty->set_package(olc.get_package());
     empty->set_level(olc.get_level());
@@ -249,8 +249,8 @@ object_constructor::object_properties_save(const root::smart_object& obj,
     auto empty_obj =
         glob::glob_state().get_class_objects_cache()->get_item(obj.get_reflection()->type_name);
 
-    reflection::save_context sc;
-    reflection::compare_context cc;
+    reflection::property_context__save sc;
+    reflection::property_context__compare cc;
     sc.sc = &jc;
     sc.obj = &obj;
 
@@ -287,8 +287,7 @@ object_constructor::object_save(const root::smart_object& obj, const utils::path
 {
     serialization::conteiner conteiner;
 
-    auto rc = object_save_partial(conteiner, obj);
-    if (rc != result_code::ok)
+    if (auto rc = object_save_internal(conteiner, obj); rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -397,7 +396,7 @@ object_constructor::load_derive_object_properties(root::smart_object& from,
 {
     auto& properties = from.get_reflection()->m_serilalization_properties;
 
-    reflection::property_load_context ctx{nullptr, nullptr, &from, &to, &occ, &c};
+    reflection::property_context__load ctx{nullptr, nullptr, &from, &to, &occ, &c};
 
     for (auto& p : properties)
     {
@@ -422,7 +421,7 @@ object_constructor::clone_object_properties(root::smart_object& from,
 {
     auto& properties = from.get_reflection()->m_serilalization_properties;
 
-    reflection::copy_context ctx{nullptr, nullptr, &from, &to, &occ};
+    reflection::property_context__copy ctx{nullptr, nullptr, &from, &to, &occ};
 
     for (auto& p : properties)
     {
@@ -447,8 +446,8 @@ object_constructor::instantiate_object_properties(root::smart_object& from,
 {
     auto& properties = from.get_reflection()->m_serilalization_properties;
 
-    reflection::instantiate_context ictx{nullptr, nullptr, &from, &to, &occ};
-    reflection::copy_context cctx{nullptr, nullptr, &from, &to, &occ};
+    reflection::property_context__instantiate ictx{nullptr, nullptr, &from, &to, &occ};
+    reflection::property_context__copy cctx{nullptr, nullptr, &from, &to, &occ};
 
     for (auto& p : properties)
     {
@@ -498,7 +497,7 @@ object_constructor::diff_object_properties(const root::smart_object& left,
 
     auto& properties = left.get_reflection()->m_serilalization_properties;
 
-    reflection::compare_context compare_ctx{nullptr, &left, &right};
+    reflection::property_context__compare compare_ctx{nullptr, &left, &right};
 
     for (auto& p : properties)
     {
@@ -555,7 +554,8 @@ object_constructor::object_load_derive(root::smart_object& prototype_obj,
 }
 
 result_code
-object_constructor::object_save_partial(serialization::conteiner& sc, const root::smart_object& obj)
+object_constructor::object_save_internal(serialization::conteiner& sc,
+                                         const root::smart_object& obj)
 {
     auto proto_obj = obj.get_class_obj();
     auto cid = proto_obj->get_id().str();
@@ -571,7 +571,7 @@ object_constructor::object_save_partial(serialization::conteiner& sc, const root
         return rc;
     }
 
-    reflection::save_context ser_ctx{nullptr, &obj, &sc};
+    reflection::property_context__save ser_ctx{nullptr, &obj, &sc};
 
     for (auto& p : diff)
     {
@@ -639,7 +639,7 @@ object_constructor::preload_proto(const utils::id& id, object_load_context& occ)
     if (auto rt = glob::glob_state().get_rm()->get_type(id))
     {
         ALOG_INFO("Creating default object {}", id.str());
-        reflection::type_alloc_context alloc_ctx{&id};
+        reflection::type_context__alloc alloc_ctx{&id};
         return object_constructor::create_default_class_obj_impl(rt->alloc(alloc_ctx), occ);
     }
 
@@ -660,7 +660,7 @@ object_constructor::create_default_default_class_proto(const utils::id& id,
     if (auto rt = glob::glob_state().get_rm()->get_type(id))
     {
         ALOG_INFO("Creating default object {}", id.str());
-        reflection::type_alloc_context alloc_ctx{&id};
+        reflection::type_context__alloc alloc_ctx{&id};
         auto result = object_constructor::create_default_class_obj_impl(rt->alloc(alloc_ctx), olc);
         olc.pop_construction_type();
         return result;

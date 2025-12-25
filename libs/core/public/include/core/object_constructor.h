@@ -193,7 +193,7 @@ private:
                        object_load_context& occ);
 
     static result_code
-    object_save_partial(serialization::conteiner& sc, const root::smart_object& obj);
+    object_save_internal(serialization::conteiner& sc, const root::smart_object& obj);
 };
 
 }  // namespace core

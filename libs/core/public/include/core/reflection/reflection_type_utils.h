@@ -54,42 +54,43 @@ cpp_default__compare(blob_ptr from, blob_ptr to)
 
 template <typename T>
 result_code
-cpp_default__copy(type_copy_context& ctx)
+cpp_default__copy(type_context__copy& ctx)
 {
-    reflection::utils::as_type<T>(ctx.to) = reflection::utils::as_type<T>(ctx.from);
+    reflection::utils::as_type<T>(ctx.dst_obj) = reflection::utils::as_type<T>(ctx.src_obj);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_default__save(type_save_context& ctx)
+cpp_default__save(type_context__save& ctx)
 {
-    reflection::utils::pack_field<T>(ctx.ptr, *ctx.jc);
+    reflection::utils::pack_field<T>(ctx.obj, *ctx.jc);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_default__to_string(type_ui_context& ctx)
+cpp_default__to_string(type_context__to_string& ctx)
 {
-    auto& t = reflection::utils::as_type<T>(ctx.ptr);
+    auto& t = reflection::utils::as_type<T>(ctx.obj);
     *ctx.result = std::format("{}", t);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_default__load(type_load_context& ctx)
+cpp_default__load(type_context__load& ctx)
 {
-    reflection::utils::extract_field<T>(ctx.ptr, *ctx.jc);
+    reflection::utils::extract_field<T>(ctx.obj, *ctx.jc);
     return result_code::ok;
 }
 
 template <typename T>
 result_code
-cpp_default__compare(type_compare_context& ctx)
+cpp_default__compare(type_context__compare& ctx)
 {
-    return (as_type<T>(ctx.to) == as_type<T>(ctx.from)) ? result_code::ok : result_code::failed;
+    return (as_type<T>(ctx.right_obj) == as_type<T>(ctx.left_obj)) ? result_code::ok
+                                                                   : result_code::failed;
 }
 
 }  // namespace utils

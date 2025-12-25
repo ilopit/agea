@@ -55,7 +55,8 @@ compare_files_line_by_line(const utils::path& expected_path, const utils::path& 
 
     if (!expected_file.is_open())
     {
-        return testing::AssertionFailure() << "Failed to open expected file: " << expected_path.str();
+        return testing::AssertionFailure()
+               << "Failed to open expected file: " << expected_path.str();
     }
 
     if (!actual_file.is_open())
@@ -79,24 +80,21 @@ compare_files_line_by_line(const utils::path& expected_path, const utils::path& 
 
         if (!has_expected)
         {
-            return testing::AssertionFailure()
-                   << "Actual file has extra lines starting at line " << line_num << ": \""
-                   << actual_line << "\"";
+            return testing::AssertionFailure() << "Actual file has extra lines starting at line "
+                                               << line_num << ": \"" << actual_line << "\"";
         }
 
         if (!has_actual)
         {
-            return testing::AssertionFailure()
-                   << "Expected file has extra lines starting at line " << line_num << ": \""
-                   << expected_line << "\"";
+            return testing::AssertionFailure() << "Expected file has extra lines starting at line "
+                                               << line_num << ": \"" << expected_line << "\"";
         }
 
         if (expected_line != actual_line)
         {
-            return testing::AssertionFailure()
-                   << "Line " << line_num << " differs:\n"
-                   << "  expected: \"" << expected_line << "\"\n"
-                   << "  actual:   \"" << actual_line << "\"";
+            return testing::AssertionFailure() << "Line " << line_num << " differs:\n"
+                                               << "  expected: \"" << expected_line << "\"\n"
+                                               << "  actual:   \"" << actual_line << "\"";
         }
     }
 
@@ -708,10 +706,6 @@ TEST_F(test_preloaded_test_package, object_construct_in_level_context)
     ASSERT_EQ(go->get_position(), root::vec3(5.0f, 6.0f, 7.0f));
 }
 
-// ============================================================================
-// object_save round-trip tests
-// ============================================================================
-
 TEST_F(test_preloaded_test_package, object_save_and_reload_full)
 {
     auto& lc = test::package::instance().get_load_context();
@@ -720,7 +714,8 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
     // 1. Load object from existing test file
     auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
     lc.set_prefix_path(obj_path);
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    lc.get_objects_mapping().add(AID("test_obj"), false,
+                                 APATH("game_objects/test_obj_custom_layout.aobj"));
 
     std::vector<root::smart_object*> loaded;
     auto load_result = core::object_constructor::object_load(
@@ -734,85 +729,15 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
 
     // 2. Save to a temp file
     auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_obj_saved.aobj";
+    auto save_path = temp_dir / "test_obj_custom_layout_saved.aobj";
 
     auto save_result = core::object_constructor::object_save(*obj, save_path);
     ASSERT_EQ(save_result, result_code::ok);
     ASSERT_TRUE(save_path.exists());
 
     // 3. Compare saved file with original line by line
-    auto expected_path = obj_path / "game_objects/test_obj.aobj";
+    auto expected_path = obj_path / "game_objects/test_obj_custom_layout.aobj";
     ASSERT_TRUE(compare_files_line_by_line(expected_path, save_path));
-
-    // Cleanup
-    std::filesystem::remove(save_path.fs());
-}
-
-TEST_F(test_preloaded_test_package, DISABLED_object_save_and_reload_partial_inherited)
-{
-    auto& lc = test::package::instance().get_load_context();
-
-    // 1. Create a proto object first (same pattern as working test)
-    root::game_object::construct_params proto_params;
-    proto_params.pos = {0.0f, 0.0f, 0.0f};
-
-    auto proto_result = core::object_constructor::object_construct(
-        AID("game_object"), AID("inherited_proto"), proto_params, lc);
-    ASSERT_TRUE(proto_result.has_value());
-
-    auto proto_obj = proto_result.value();
-    ASSERT_TRUE(proto_obj);
-
-    auto proto = proto_obj->as<root::game_object>();
-    ASSERT_TRUE(proto);
-    ASSERT_TRUE(verify_flags(*proto, {.instance_obj = false, .derived_obj = true}));
-    ASSERT_TRUE(validate_class_obj(*proto));
-
-    // 2. Instantiate from proto
-    std::vector<root::smart_object*> instantiated_objs;
-    auto inst_result = core::object_constructor::object_instantiate(
-        *proto, AID("inherited_instance"), lc, instantiated_objs);
-    ASSERT_TRUE(inst_result.has_value());
-
-    auto inst_obj = inst_result.value();
-    ASSERT_TRUE(inst_obj);
-
-    auto instance = inst_obj->as<root::game_object>();
-    ASSERT_TRUE(instance);
-    ASSERT_EQ(instance->get_class_obj(), proto);
-    ASSERT_TRUE(verify_flags(*instance, {.instance_obj = true, .derived_obj = true}));
-    ASSERT_TRUE(validate_class_obj(*instance));
-
-    // 3. Set inhereted flag to use partial save path
-    // instance->get_flags().inhereted = true;
-
-    // 4. Save to temp file
-    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_inherited_object.aobj";
-
-    auto save_result = core::object_constructor::object_save(*instance, save_path);
-    ASSERT_EQ(save_result, result_code::ok);
-    ASSERT_TRUE(save_path.exists());
-
-    // 5. Load it back
-    core::level reload_level(AID("reload_inherited_level"));
-    auto& reload_lc = reload_level.get_load_context();
-    reload_lc.set_prefix_path(temp_dir);
-    reload_lc.get_objects_mapping().add(AID("inherited_instance"), false,
-                                        APATH("test_inherited_object.aobj"));
-
-    std::vector<root::smart_object*> loaded_objs;
-    auto load_result = core::object_constructor::object_load(
-        AID("inherited_instance"), core::object_load_type::instance_obj, reload_lc, loaded_objs);
-
-    ASSERT_TRUE(load_result.has_value());
-    auto reloaded = load_result.value()->as<root::game_object>();
-    ASSERT_TRUE(reloaded);
-    ASSERT_TRUE(verify_flags(*reloaded, {.instance_obj = true, .derived_obj = true}));
-    ASSERT_TRUE(validate_class_obj(*reloaded));
-
-    // 6. Verify basic properties
-    ASSERT_EQ(reloaded->get_id(), AID("inherited_instance"));
 
     // Cleanup
     std::filesystem::remove(save_path.fs());

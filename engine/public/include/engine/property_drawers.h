@@ -115,10 +115,10 @@ public:
     static result_code
     write_t_msh(::agea::blob_ptr ptr);
 
-    static std::unordered_map<int, reflection::type_ui_handler>&
+    static std::unordered_map<int, reflection::type_handler__to_string>&
     ro_drawers()
     {
-        static std::unordered_map<int, reflection::type_ui_handler> s_readers;
+        static std::unordered_map<int, reflection::type_handler__to_string> s_readers;
         return s_readers;
     }
 };

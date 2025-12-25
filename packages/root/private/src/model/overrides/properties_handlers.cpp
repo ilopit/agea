@@ -23,7 +23,7 @@ namespace agea::root
 {
 
 result_code
-game_object_components_prototype(::agea::reflection::property_prototype_context& ctx)
+game_object_components_prototype(::agea::reflection::property_context__prototype& ctx)
 {
     auto& sc = *ctx.sc;
 
@@ -75,7 +75,7 @@ game_object_components_prototype(::agea::reflection::property_prototype_context&
 }
 
 result_code
-game_object_components_save(::agea::reflection::save_context& dc)
+game_object_components_save(::agea::reflection::property_context__save& dc)
 {
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
@@ -87,14 +87,11 @@ game_object_components_save(::agea::reflection::save_context& dc)
     auto& obj_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
         class_obj.as_blob() + dc.p->offset);
 
-    auto& parent_components = ::agea::reflection::utils::as_type<std::vector<root::smart_object*>>(
-        class_obj.get_class_obj()->as_blob() + dc.p->offset);
-
-    AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
-
-    for (size_t i = 0; i < obj_components.size(); ++i)
+    // AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
+    auto size = obj_components.size();
+    for (size_t i = 0; i < size; ++i)
     {
-        auto class_component = parent_components[i];
+        // auto class_component = parent_components[i];
         auto obj_component = obj_components[i];
 
         serialization::conteiner component_conteiner;
@@ -105,12 +102,13 @@ game_object_components_save(::agea::reflection::save_context& dc)
         auto pid = obj_component->get_class_obj()->get_id().str();
         component_conteiner["class_id"] = pid;
 
-        reflection::save_context internal_sc{nullptr, obj_component, &component_conteiner};
+        reflection::property_context__save internal_sc{nullptr, obj_component,
+                                                       &component_conteiner};
         std::vector<reflection::property*> diff;
 
-        if (auto rc = core::object_constructor::diff_object_properties(*class_component,
-                                                                       *obj_component, diff);
-            rc != result_code::failed)
+        if (auto rc = core::object_constructor::diff_object_properties(
+                *obj_component->get_class_obj(), *obj_component, diff);
+            rc != result_code::ok)
         {
             return rc;
         }
@@ -118,13 +116,13 @@ game_object_components_save(::agea::reflection::save_context& dc)
         for (auto& p : diff)
         {
             internal_sc.p = p;
-            if (auto rc = p->save_handler(internal_sc); rc != result_code::failed)
+            if (auto rc = p->save_handler(internal_sc); rc != result_code::ok)
             {
                 return rc;
             }
         }
 
-        components_conteiner[i++] = component_conteiner;
+        components_conteiner[i] = component_conteiner;
         components_layout.push_back((int)obj_component->get_parent_idx());
     }
     conteiner["layout"] = components_layout;
@@ -134,14 +132,14 @@ game_object_components_save(::agea::reflection::save_context& dc)
 }
 
 result_code
-game_object_components_compare(::agea::reflection::compare_context&)
+game_object_components_compare(::agea::reflection::property_context__compare&)
 {
     // Always different because of IDS
     return result_code::failed;
 }
 
 result_code
-game_object_components_copy(::agea::reflection::copy_context& ctx)
+game_object_components_copy(::agea::reflection::property_context__copy& ctx)
 {
     //     AGEA_check(ctx.occ->get_construction_type() ==
     //                    model::object_constructor_context::construction_type::mirror_obj,
@@ -175,7 +173,7 @@ game_object_components_copy(::agea::reflection::copy_context& ctx)
 }
 
 result_code
-game_object_components_instantiate(reflection::instantiate_context& ctx)
+game_object_components_instantiate(reflection::property_context__instantiate& ctx)
 {
     auto& src_col = reflection::utils::as_type<std::vector<root::component*>>(
         ctx.src_property->get_blob(*ctx.src_obj));
@@ -204,7 +202,7 @@ game_object_components_instantiate(reflection::instantiate_context& ctx)
 }
 
 result_code
-game_object_load(::agea::reflection::property_load_context& ctx)
+game_object_components__load(::agea::reflection::property_context__load& ctx)
 {
     AGEA_check(ctx.dst_property->name == "components", "Only compoentns expected");
 
@@ -279,25 +277,25 @@ game_object_load(::agea::reflection::property_load_context& ctx)
 }
 
 result_code
-texture_sample_prototype(::agea::reflection::property_prototype_context& dc)
+texture_sample_prototype(::agea::reflection::property_context__prototype& dc)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__save(::agea::reflection::save_context& dc)
+property_texture_sample__save(::agea::reflection::property_context__save& dc)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__compare(::agea::reflection::compare_context& ctx)
+property_texture_sample__compare(::agea::reflection::property_context__compare& ctx)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__copy(::agea::reflection::copy_context& ctx)
+property_texture_sample__copy(::agea::reflection::property_context__copy& ctx)
 {
     auto src = ctx.src_obj->as<root::material>();
     auto dst = ctx.dst_obj->as<root::material>();
@@ -320,7 +318,7 @@ property_texture_sample__copy(::agea::reflection::copy_context& ctx)
 }
 
 result_code
-property_texture_sample__instantiate(::agea::reflection::instantiate_context& ctx)
+property_texture_sample__instantiate(::agea::reflection::property_context__instantiate& ctx)
 {
     auto src = ctx.src_obj->as<root::material>();
     auto dst = ctx.dst_obj->as<root::material>();
@@ -351,7 +349,7 @@ property_texture_sample__instantiate(::agea::reflection::instantiate_context& ct
 }
 
 result_code
-property_texture_sample__load(reflection::property_load_context& ctx)
+property_texture_sample__load(reflection::property_context__load& ctx)
 {
     auto src = ctx.dst_obj->as<root::material>();
 

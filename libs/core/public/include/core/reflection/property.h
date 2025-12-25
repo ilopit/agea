@@ -21,12 +21,12 @@ class property
 {
 public:
     // clang-format off
-    property_save_handler            save_handler            = default_save;
-    property_compare_handler         compare_handler         = default_compare;
-    property_copy_handler            copy_handler            = default_copy;
-    property_instantiate_handler     instantiate_handler     = default_instantiate;
-    property_load_handler            load_handler            = default_load;
-    property_to_string_handler       to_string_handler       = default_to_string;
+    property_handler__save           save_handler            = default_save;
+    property_handler__compare        compare_handler         = default_compare;
+    property_handler__copy           copy_handler            = default_copy;
+    property_handler__instantiate    instantiate_handler     = default_instantiate;
+    property_handler__load           load_handler            = default_load;
+    property_handler__to_string      to_string_handler       = default_to_string;
 
     // clang-format on
 
@@ -35,22 +35,22 @@ public:
 
 private:
     static result_code
-    default_compare(compare_context& context);
+    default_compare(property_context__compare& context);
 
     static result_code
-    default_save(save_context& context);
+    default_save(property_context__save& context);
 
     static result_code
-    default_copy(copy_context& context);
+    default_copy(property_context__copy& context);
 
     static result_code
-    default_instantiate(instantiate_context& context);
+    default_instantiate(property_context__instantiate& context);
 
     static result_code
-    default_load(property_load_context& context);
+    default_load(property_context__load& context);
 
     static result_code
-    default_to_string(property_to_string_context& context);
+    default_to_string(property_context__to_string& context);
 
     static result_code
     deserialize_collection(reflection::property& p,
@@ -75,10 +75,10 @@ private:
                    serialization::conteiner& sc);
 
     static result_code
-    compare_collection(compare_context& context);
+    compare_collection(property_context__compare& context);
 
     static result_code
-    compare_item(compare_context& context);
+    compare_item(property_context__compare& context);
 
 public:
     // clang-format off

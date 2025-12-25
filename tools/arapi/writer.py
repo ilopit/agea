@@ -552,7 +552,7 @@ const ::agea::reflection::reflection_type&
 }}                  
 
 std::shared_ptr<::agea::root::smart_object>
-{type_obj.name}::AR_TYPE_create_empty_gen_obj(::agea::reflection::type_alloc_context& ctx)
+{type_obj.name}::AR_TYPE_create_empty_gen_obj(::agea::reflection::type_context__alloc& ctx)
 {{
     return {type_obj.name}::AR_TYPE_create_empty_obj(*ctx.id);
 }}

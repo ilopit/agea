@@ -46,7 +46,7 @@ namespace root
 {
 
 result_code
-mesh__render_loader(reflection::type_render_context& ctx)
+mesh__render_loader(reflection::type_context__render& ctx)
 {
     auto& msh_model = ctx.obj->asr<root::mesh>();
 
@@ -70,7 +70,7 @@ mesh__render_loader(reflection::type_render_context& ctx)
     return result_code::ok;
 }
 result_code
-mesh__render_destructor(reflection::type_render_context& ctx)
+mesh__render_destructor(reflection::type_context__render& ctx)
 {
     auto& msh_model = ctx.obj->asr<root::mesh>();
 
@@ -85,7 +85,7 @@ mesh__render_destructor(reflection::type_render_context& ctx)
 /*===============================*/
 
 result_code
-material__render_loader(reflection::type_render_context& ctx)
+material__render_loader(reflection::type_context__render& ctx)
 {
     auto& mat_model = ctx.obj->asr<root::material>();
 
@@ -140,7 +140,7 @@ material__render_loader(reflection::type_render_context& ctx)
     return result_code::ok;
 }
 result_code
-material__render_destructor(reflection::type_render_context& ctx)
+material__render_destructor(reflection::type_context__render& ctx)
 {
     auto& mat_model = ctx.obj->asr<root::material>();
 
@@ -156,7 +156,7 @@ material__render_destructor(reflection::type_render_context& ctx)
 /*===============================*/
 
 result_code
-texture__render_loader(reflection::type_render_context& ctx)
+texture__render_loader(reflection::type_context__render& ctx)
 {
     auto& t = ctx.obj->asr<root::texture>();
 
@@ -185,7 +185,7 @@ texture__render_loader(reflection::type_render_context& ctx)
     return result_code::ok;
 }
 result_code
-texture__render_destructor(reflection::type_render_context& ctx)
+texture__render_destructor(reflection::type_context__render& ctx)
 {
     auto& txt_model = ctx.obj->asr<root::texture>();
 
@@ -200,7 +200,7 @@ texture__render_destructor(reflection::type_render_context& ctx)
 /*===============================*/
 
 result_code
-game_object_component__render_loader(reflection::type_render_context& ctx)
+game_object_component__render_loader(reflection::type_context__render& ctx)
 {
     auto& t = ctx.obj->asr<root::game_object_component>();
 
@@ -215,7 +215,7 @@ game_object_component__render_loader(reflection::type_render_context& ctx)
     return result_code::ok;
 }
 result_code
-game_object_component__render_destructor(reflection::type_render_context& ctx)
+game_object_component__render_destructor(reflection::type_context__render& ctx)
 {
     auto& t = ctx.obj->asr<root::game_object_component>();
 
@@ -231,7 +231,7 @@ game_object_component__render_destructor(reflection::type_render_context& ctx)
 }
 
 result_code
-shader_effect__render_loader(reflection::type_render_context& ctx)
+shader_effect__render_loader(reflection::type_context__render& ctx)
 {
     auto& se_model = ctx.obj->asr<root::shader_effect>();
 
@@ -263,7 +263,7 @@ shader_effect__render_loader(reflection::type_render_context& ctx)
 }
 
 result_code
-shader_effect__render_destructor(reflection::type_render_context& ctx)
+shader_effect__render_destructor(reflection::type_context__render& ctx)
 {
     auto& se_model = ctx.obj->asr<root::shader_effect>();
 

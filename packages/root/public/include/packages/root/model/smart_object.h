@@ -44,7 +44,7 @@
     static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::agea::utils::id& id); \
                                                                                               \
     static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
-        ::agea::reflection::type_alloc_context& ctx);                                         \
+        ::agea::reflection::type_context__alloc& ctx);                                         \
                                                                                               \
     static std::unique_ptr<::agea::root::base_construct_params>                               \
     AR_TYPE_create_gen_default_cparams();
@@ -55,7 +55,7 @@ namespace agea
 namespace reflection
 {
 struct reflection_type;
-struct type_alloc_context;
+struct type_context__alloc;
 }  // namespace reflection
 
 namespace core

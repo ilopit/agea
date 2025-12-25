@@ -65,7 +65,7 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 /*===============================*/
 
 result_code
-mesh_component__render_loader(reflection::type_render_context& ctx)
+mesh_component__render_loader(reflection::type_context__render& ctx)
 {
     auto rc = root::game_object_component__render_loader(ctx);
     AGEA_return_nok(rc);
@@ -139,7 +139,7 @@ mesh_component__render_loader(reflection::type_render_context& ctx)
 }
 
 result_code
-mesh_component__render_destructor(reflection::type_render_context& ctx)
+mesh_component__render_destructor(reflection::type_context__render& ctx)
 {
     auto& moc = ctx.obj->asr<base::mesh_component>();
 
@@ -178,7 +178,7 @@ mesh_component__render_destructor(reflection::type_render_context& ctx)
 /*===============================*/
 
 result_code
-directional_light_component__render_loader(reflection::type_render_context& ctx)
+directional_light_component__render_loader(reflection::type_context__render& ctx)
 {
     auto& lc_model = ctx.obj->asr<base::directional_light_component>();
 
@@ -200,7 +200,7 @@ directional_light_component__render_loader(reflection::type_render_context& ctx)
     return result_code::ok;
 }
 result_code
-directional_light_component__render_destructor(reflection::type_render_context& ctx)
+directional_light_component__render_destructor(reflection::type_context__render& ctx)
 {
     auto& plc_model = ctx.obj->asr<base::directional_light_component>();
     if (auto h = plc_model.get_handler())
@@ -214,7 +214,7 @@ directional_light_component__render_destructor(reflection::type_render_context& 
 /*===============================*/
 
 result_code
-spot_light_component__render_loader(reflection::type_render_context& ctx)
+spot_light_component__render_loader(reflection::type_context__render& ctx)
 {
     auto& lc_model = ctx.obj->asr<base::spot_light_component>();
 
@@ -243,7 +243,7 @@ spot_light_component__render_loader(reflection::type_render_context& ctx)
 }
 
 result_code
-spot_light_component__render_destructor(reflection::type_render_context& ctx)
+spot_light_component__render_destructor(reflection::type_context__render& ctx)
 {
     auto& slc_model = ctx.obj->asr<base::spot_light_component>();
 
@@ -258,7 +258,7 @@ spot_light_component__render_destructor(reflection::type_render_context& ctx)
 /*===============================*/
 
 result_code
-point_light_component__render_loader(reflection::type_render_context& ctx)
+point_light_component__render_loader(reflection::type_context__render& ctx)
 {
     auto& lc_model = ctx.obj->asr<base::point_light_component>();
 
@@ -284,7 +284,7 @@ point_light_component__render_loader(reflection::type_render_context& ctx)
 }
 
 result_code
-point_light_component__render_destructor(reflection::type_render_context& ctx)
+point_light_component__render_destructor(reflection::type_context__render& ctx)
 {
     auto& plc_model = ctx.obj->asr<base::point_light_component>();
     if (auto h = plc_model.get_handler())
