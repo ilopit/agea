@@ -109,8 +109,8 @@ AGEA_ar_class(architype                      = smart_object,
               copy_handler                   = smart_obj__copy,
               instantiate_handler            = smart_obj__instantiate,
               compare_handler                = smart_obj__compare,
-              serialize_handler              = smart_obj__serialize,
-              load_derive_handler            = smart_obj__load_derive,
+              serialize_handler              = smart_obj__save,
+              load_derive_handler            = smart_obj__load,
               to_string_handler              = smart_obj__to_string);
 class smart_object
 // clang-format on

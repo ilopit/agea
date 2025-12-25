@@ -24,14 +24,14 @@ namespace reflection
 {
 
 // Type-level context structures for reflection handlers
-struct type_serialization_context
+struct type_save_context
 {
     const root::smart_object* obj = nullptr;
     blob_ptr ptr = nullptr;
     serialization::conteiner* jc = nullptr;
 };
 
-struct type_load_derive_context
+struct type_load_context
 {
     root::smart_object* obj = nullptr;
     blob_ptr ptr = nullptr;
@@ -72,8 +72,8 @@ struct type_alloc_context
     const utils::id* id = nullptr;
 };
 
-using type_serialization_handler = result_code (*)(type_serialization_context&);
-using type_load_derive_handler = result_code (*)(type_load_derive_context&);
+using type_save_handler = result_code (*)(type_save_context&);
+using type_load_handler = result_code (*)(type_load_context&);
 using type_copy_handler = result_code (*)(type_copy_context&);
 using type_instantiate_handler = result_code (*)(type_copy_context&);
 using type_compare_handler = result_code (*)(type_compare_context&);
@@ -125,8 +125,8 @@ struct reflection_type
     type_allocator_handler                      alloc = nullptr;
     type_default_construction_params_handler    cparams_alloc = nullptr;
 
-    type_serialization_handler                  serialize = nullptr;
-    type_load_derive_handler                    load_derive = nullptr;
+    type_save_handler                           save = nullptr;
+    type_load_handler                           load = nullptr;
     type_copy_handler                           copy = nullptr;
     type_instantiate_handler                    instantiate = nullptr;
     type_compare_handler                        compare = nullptr;

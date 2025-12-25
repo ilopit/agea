@@ -33,11 +33,11 @@ protected:
     // clang-format off
     AGEA_ar_property("category=Properties",
                      "serializable=true",
-                     "property_ser_handler=::agea::root::property_texture_sample__serialize",
+                     "property_ser_handler=::agea::root::property_texture_sample__save",
                      "property_compare_handler=::agea::root::property_texture_sample__compare",
                      "property_copy_handler=::agea::root::property_texture_sample__copy",
                      "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
-                     "property_load_derive_handler=::agea::root::property_texture_sample__load_derive");
+                     "property_load_derive_handler=::agea::root::property_texture_sample__load");
     ::agea::root::texture_sample m_simple_texture;
     //clang-format off
 };

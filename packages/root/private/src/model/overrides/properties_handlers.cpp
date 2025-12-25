@@ -75,7 +75,7 @@ game_object_components_prototype(::agea::reflection::property_prototype_context&
 }
 
 result_code
-game_object_components_serialize(::agea::reflection::serialize_context& dc)
+game_object_components_save(::agea::reflection::save_context& dc)
 {
     auto& class_obj = *dc.obj;
     auto& conteiner = *dc.sc;
@@ -98,7 +98,7 @@ game_object_components_serialize(::agea::reflection::serialize_context& dc)
             component_conteiner["id"] = instance_component->get_id().str();
             component_conteiner["class_id"] = class_component->get_id().str();
 
-            reflection::serialize_context internal_sc{nullptr, instance_component,
+            reflection::save_context internal_sc{nullptr, instance_component,
                                                       &component_conteiner};
             reflection::compare_context compare_ctx{nullptr, class_component, instance_component};
 
@@ -109,7 +109,7 @@ game_object_components_serialize(::agea::reflection::serialize_context& dc)
             for (auto& p : diff)
             {
                 internal_sc.p = p;
-                p->serialization_handler(internal_sc);
+                p->save_handler(internal_sc);
             }
             components_conteiner[i++] = component_conteiner;
             components_layout.push_back((int)instance_component->get_parent_idx());
@@ -142,7 +142,7 @@ game_object_components_serialize(::agea::reflection::serialize_context& dc)
             component_conteiner["id"] = obj_component->get_id().str();
             component_conteiner["class_id"] = class_component->get_id().str();
 
-            reflection::serialize_context internal_sc{nullptr, obj_component, &component_conteiner};
+            reflection::save_context internal_sc{nullptr, obj_component, &component_conteiner};
 
             std::vector<reflection::property*> diff;
             core::object_constructor::diff_object_properties(*class_component, *obj_component,
@@ -151,7 +151,7 @@ game_object_components_serialize(::agea::reflection::serialize_context& dc)
             for (auto& p : diff)
             {
                 internal_sc.p = p;
-                p->serialization_handler(internal_sc);
+                p->save_handler(internal_sc);
             }
 
             components_conteiner[i++] = component_conteiner;
@@ -235,7 +235,7 @@ game_object_components_instantiate(reflection::instantiate_context& ctx)
 }
 
 result_code
-game_object_load_derive(::agea::reflection::property_load_derive_context& ctx)
+game_object_load(::agea::reflection::property_load_context& ctx)
 {
     AGEA_check(ctx.dst_property->name == "components", "Only compoentns expected");
 
@@ -316,7 +316,7 @@ texture_sample_prototype(::agea::reflection::property_prototype_context& dc)
 }
 
 result_code
-property_texture_sample__serialize(::agea::reflection::serialize_context& dc)
+property_texture_sample__save(::agea::reflection::save_context& dc)
 {
     return result_code::ok;
 }
@@ -382,7 +382,7 @@ property_texture_sample__instantiate(::agea::reflection::instantiate_context& ct
 }
 
 result_code
-property_texture_sample__load_derive(reflection::property_load_derive_context& ctx)
+property_texture_sample__load(reflection::property_load_context& ctx)
 {
     auto src = ctx.dst_obj->as<root::material>();
 

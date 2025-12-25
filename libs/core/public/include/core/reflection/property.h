@@ -21,11 +21,11 @@ class property
 {
 public:
     // clang-format off
-    property_serialization_handler   serialization_handler   = default_serialize;
+    property_save_handler            save_handler            = default_save;
     property_compare_handler         compare_handler         = default_compare;
     property_copy_handler            copy_handler            = default_copy;
     property_instantiate_handler     instantiate_handler     = default_instantiate;
-    property_load_derive_handler     load_derive             = default_load_derive;
+    property_load_handler            load_handler            = default_load;
     property_to_string_handler       to_string_handler       = default_to_string;
 
     // clang-format on
@@ -38,7 +38,7 @@ private:
     default_compare(compare_context& context);
 
     static result_code
-    default_serialize(serialize_context& context);
+    default_save(save_context& context);
 
     static result_code
     default_copy(copy_context& context);
@@ -47,7 +47,7 @@ private:
     default_instantiate(instantiate_context& context);
 
     static result_code
-    default_load_derive(property_load_derive_context& context);
+    default_load(property_load_context& context);
 
     static result_code
     default_to_string(property_to_string_context& context);

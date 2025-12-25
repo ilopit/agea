@@ -98,8 +98,8 @@ reflection_type::override()
             arch = parent->arch;
         }
 
-        AGEA_override_if_null(serialize);
-        AGEA_override_if_null(load_derive);
+        AGEA_override_if_null(save);
+        AGEA_override_if_null(load);
         AGEA_override_if_null(copy);
         AGEA_override_if_null(instantiate);
         AGEA_override_if_null(compare);

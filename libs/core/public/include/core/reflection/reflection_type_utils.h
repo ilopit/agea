@@ -62,7 +62,7 @@ cpp_default__copy(type_copy_context& ctx)
 
 template <typename T>
 result_code
-cpp_default__serialize(type_serialization_context& ctx)
+cpp_default__save(type_save_context& ctx)
 {
     reflection::utils::pack_field<T>(ctx.ptr, *ctx.jc);
     return result_code::ok;
@@ -79,7 +79,7 @@ cpp_default__to_string(type_ui_context& ctx)
 
 template <typename T>
 result_code
-cpp_default__load(type_load_derive_context& ctx)
+cpp_default__load(type_load_context& ctx)
 {
     reflection::utils::extract_field<T>(ctx.ptr, *ctx.jc);
     return result_code::ok;

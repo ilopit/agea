@@ -43,7 +43,7 @@ property::default_compare(compare_context& context)
 }
 
 result_code
-property::default_serialize(serialize_context& ctx)
+property::default_save(save_context& ctx)
 {
     if (ctx.p->type.is_collection)
     {
@@ -103,7 +103,7 @@ property::default_instantiate(instantiate_context& cxt)
 }
 
 result_code
-property::default_load_derive(property_load_derive_context& ctx)
+property::default_load(property_load_context& ctx)
 {
     if (!ctx.src_property->rtype->copy)
     {
@@ -170,7 +170,7 @@ property::deserialize_collection(reflection::property& p,
         r.resize(items_size);
     }
 
-    AGEA_check(p.rtype->load_derive, "Should never happens!");
+    AGEA_check(p.rtype->load, "Should never happens!");
 
     for (unsigned i = 0; i < items_size; ++i)
     {
@@ -178,8 +178,8 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* filed_ptr = &r[idx];
-        type_load_derive_context type_ctx{&obj, (blob_ptr)filed_ptr, &item, &occ};
-        p.rtype->load_derive(type_ctx);
+        type_load_context type_ctx{&obj, (blob_ptr)filed_ptr, &item, &occ};
+        p.rtype->load(type_ctx);
     }
 
     return result_code::ok;
@@ -210,11 +210,11 @@ property::load_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    AGEA_check(p.rtype->load_derive, "Should never happens!");
+    AGEA_check(p.rtype->load, "Should never happens!");
 
     auto sub_jc = jc[p.name];
-    type_load_derive_context type_ctx{&obj, ptr, &sub_jc, &occ};
-    return p.rtype->load_derive(type_ctx);
+    type_load_context type_ctx{&obj, ptr, &sub_jc, &occ};
+    return p.rtype->load(type_ctx);
 }
 
 result_code
@@ -228,9 +228,9 @@ property::serialize_item(const reflection::property& p,
 
     serialization::conteiner c;
 
-    AGEA_check(p.rtype->serialize, "Should never happens!");
-    type_serialization_context type_ctx{&obj, ptr, &c};
-    p.rtype->serialize(type_ctx);
+    AGEA_check(p.rtype->save, "Should never happens!");
+    type_save_context type_ctx{&obj, ptr, &c};
+    p.rtype->save(type_ctx);
 
     sc[p.name] = c;
 

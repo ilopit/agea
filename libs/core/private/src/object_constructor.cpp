@@ -249,7 +249,7 @@ object_constructor::object_properties_save(const root::smart_object& obj,
     auto empty_obj =
         glob::glob_state().get_class_objects_cache()->get_item(obj.get_reflection()->type_name);
 
-    reflection::serialize_context sc;
+    reflection::save_context sc;
     reflection::compare_context cc;
     sc.sc = &jc;
     sc.obj = &obj;
@@ -271,7 +271,7 @@ object_constructor::object_properties_save(const root::smart_object& obj,
             }
         }
 
-        auto r = p->serialization_handler(sc);
+        auto r = p->save_handler(sc);
         if (r != result_code::ok)
         {
             ALOG_LAZY_ERROR;
@@ -412,14 +412,14 @@ object_constructor::load_derive_object_properties(root::smart_object& from,
 {
     auto& properties = from.get_reflection()->m_serilalization_properties;
 
-    reflection::property_load_derive_context ctx{nullptr, nullptr, &from, &to, &occ, &c};
+    reflection::property_load_context ctx{nullptr, nullptr, &from, &to, &occ, &c};
 
     for (auto& p : properties)
     {
         ctx.dst_property = p.get();
         ctx.src_property = p.get();
 
-        auto result = p->load_derive(ctx);
+        auto result = p->load_handler(ctx);
         if (result != result_code::ok)
         {
             ALOG_LAZY_ERROR;
@@ -584,13 +584,13 @@ object_constructor::object_save_partial(serialization::conteiner& sc, const root
         return rc;
     }
 
-    reflection::serialize_context ser_ctx{nullptr, &obj, &sc};
+    reflection::save_context ser_ctx{nullptr, &obj, &sc};
 
     for (auto& p : diff)
     {
         ser_ctx.p = p;
 
-        auto rc = p->serialization_handler(ser_ctx);
+        auto rc = p->save_handler(ser_ctx);
         if (rc != result_code::ok)
         {
             return rc;

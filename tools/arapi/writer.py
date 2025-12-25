@@ -319,10 +319,10 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
     file_buffer.append(f"        p->render_subobject  = std::is_base_of_v<::agea::root::smart_object, typename std::remove_pointer_t<{prop.type}>>;\n")
 
   if prop.property_ser_handler != EMPTY_STRING:
-    file_buffer.append(f"        p->serialization_handler  = {prop.property_ser_handler};\n")
+    file_buffer.append(f"        p->save_handler  = {prop.property_ser_handler};\n")
 
   if prop.property_load_derive_handler != EMPTY_STRING:
-    file_buffer.append(f"        p->load_derive  = {prop.property_load_derive_handler};\n")
+    file_buffer.append(f"        p->load_handler  = {prop.property_load_derive_handler};\n")
 
   if prop.property_compare_handler != EMPTY_STRING:
     file_buffer.append(f"        p->compare_handler  = {prop.property_compare_handler};\n")
@@ -646,10 +646,10 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
     file_buffer.append(f"{indent}rt.copy                   = {type_obj.copy_handler};\n")
 
   if type_obj.serialize_handler:
-    file_buffer.append(f"{indent}rt.serialize              = {type_obj.serialize_handler};\n")
+    file_buffer.append(f"{indent}rt.save                   = {type_obj.serialize_handler};\n")
 
   if type_obj.load_derive_handler:
-    file_buffer.append(f"{indent}rt.load_derive            = {type_obj.load_derive_handler};\n")
+    file_buffer.append(f"{indent}rt.load                   = {type_obj.load_derive_handler};\n")
 
   if type_obj.to_string_handler:
     file_buffer.append(f"{indent}rt.to_string              = {type_obj.to_string_handler};\n")

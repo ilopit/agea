@@ -10,8 +10,8 @@ class texture;
 AGEA_ar_struct(copy_handler                  = texture_sample__copy,
               instantiate_handler            = texture_sample__instantiate,
               compare_handler                = texture_sample__compare,
-              serialize_handler              = texture_sample__serialize,
-              load_derive                    = texture_sample__load_derive,
+              serialize_handler              = texture_sample__save,
+              load_derive_handler            = texture_sample__load,
               deserialize_handler            = texture_sample__deserialize);
 struct texture_sample
 {

@@ -18,7 +18,7 @@ namespace reflection
 
 class property;
 
-struct serialize_context
+struct save_context
 {
     property* p = nullptr;
     const root::smart_object* obj = nullptr;
@@ -60,7 +60,7 @@ struct property_prototype_context
     const serialization::conteiner* sc = nullptr;
 };
 
-struct property_load_derive_context
+struct property_load_context
 {
     property* src_property = nullptr;
     property* dst_property = nullptr;
@@ -79,11 +79,11 @@ struct property_to_string_context
 
 // clang-format off
 
-using property_serialization_handler    = result_code(*)(serialize_context&);
+using property_save_handler             = result_code(*)(save_context&);
 using property_compare_handler          = result_code(*)(compare_context&);
 using property_copy_handler             = result_code(*)(copy_context&);
 using property_instantiate_handler      = result_code(*)(instantiate_context&);
-using property_load_derive_handler      = result_code(*)(property_load_derive_context&);
+using property_load_handler             = result_code(*)(property_load_context&);
 using property_to_string_handler        = result_code(*)(property_to_string_context&);
 
 // clang-format on

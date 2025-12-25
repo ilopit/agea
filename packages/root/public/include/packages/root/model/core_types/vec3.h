@@ -10,8 +10,8 @@ namespace root
 // clang-format off
 AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_default__copy<::agea::root::vec2>,
                compare_handler     = ::agea::reflection::utils::cpp_default__compare<::agea::root::vec2>,
-               serialize_handler   = ::agea::root::vec3__serialize,
-               load_derive_handler = ::agea::root::vec3__load_derive,
+               serialize_handler   = ::agea::root::vec3__save,
+               load_derive_handler = ::agea::root::vec3__load,
                to_string_handler   = ::agea::root::vec3__to_string);
 struct vec3 : ::glm::vec3
 // clang-format on
