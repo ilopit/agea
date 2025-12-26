@@ -54,9 +54,14 @@ public:
     T*
     get_item(const utils::id& id)
     {
-        auto itr = find_if([&id](const T& o) { return o->get_id() == id; });
+        auto itr = this->find_if([&id](const T& o) { return o->get_id() == id; });
 
-        if (itr == std::is_pointer<T>::value)
+        if (itr == this->end())
+        {
+            return nullptr;
+        }
+
+        if constexpr (std::is_pointer<T>::value)
         {
             return &(*itr);
         }

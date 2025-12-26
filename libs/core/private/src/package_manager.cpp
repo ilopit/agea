@@ -229,8 +229,9 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
 
     auto itr = m_packages.find(id);
 
-    if (itr != m_packages.end())
+    if (itr == m_packages.end())
     {
+        ALOG_ERROR("Package not found: {0}", id.cstr());
         return;
     }
 

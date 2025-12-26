@@ -27,6 +27,7 @@ struct utils
         {
             return false;
         }
+        return true;
     }
 
     template <typename T>

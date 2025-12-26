@@ -82,7 +82,7 @@ ui::init()
 {
     // Init ImGui
     ImGui::CreateContext();
-    ImGui_ImplSDL2_InitForSDLRenderer(glob::native_window::getr().handle(), nullptr);
+    ImGui_ImplSDL2_InitForVulkan(glob::native_window::getr().handle());
 
     // Color scheme
     ImGuiStyle& style = ImGui::GetStyle();

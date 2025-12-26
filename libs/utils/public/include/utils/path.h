@@ -221,7 +221,7 @@ struct hash<::agea::utils::path>
     size_t
     operator()(const ::agea::utils::path& k) const
     {
-        return rand();
+        return std::hash<std::string>{}(k.str());
     }
 };
 
