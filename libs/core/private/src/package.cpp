@@ -29,6 +29,7 @@ package::package(const utils::id& id)
 
 package::~package()
 {
+    unload();
 }
 
 void
@@ -43,6 +44,17 @@ package::unregister_in_global_cache()
 void
 package::unload()
 {
+    if (m_state == package_state::unloaded)
+    {
+        return;
+    }
+    ALOG_INFO("Unload {}", get_id().str());
+
+    destroy_default_types_objects();
+    destroy_render_resources();
+    destroy_render_types();
+    destroy_types();
+
     container::unload();
 
     m_mapping->clear();

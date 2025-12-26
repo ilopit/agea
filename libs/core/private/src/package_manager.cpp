@@ -16,6 +16,7 @@
 
 #include <serialization/serialization.h>
 
+#include <deque>
 #include <map>
 #include <utils/agea_log.h>
 
@@ -31,41 +32,113 @@ package_manager::package_manager()
 
 package_manager::~package_manager()
 {
+    deinit();
+}
+
+static_package_context::static_package_context()
+{
+}
+
+static_package_context::~static_package_context()
+{
 }
 
 bool
 package_manager::init()
 {
-    std::sort(m_static_packages.begin(), m_static_packages.end(),
-              [](package* l, package* r) { return l->get_id().str() < r->get_id().str(); });
-
-    auto handle_dapandancy = [this](auto self, package* p) -> void
+    // Collect all static packages
+    std::vector<package*> packages;
+    for (auto& p : m_static_packages)
     {
-        if (p->m_state == package_state::loaded)
-        {
-            return;
-        }
+        packages.push_back(p.second.pkg.get());
+    }
 
-        ALOG_INFO("Loading {}", p->get_id().str());
+    // Topological sort using Kahn's algorithm
+    std::unordered_map<utils::id, int> in_degree;
+    std::unordered_map<utils::id, std::vector<utils::id>> dependents;
 
-        auto depds = get_dapendency(p->get_id());
-        for (auto& d : depds)
-        {
-            auto sp = (package*)get_package(d);
-
-            self(self, sp);
-        }
-
-        p->complete_load();
-        p->m_state = package_state::loaded;
-    };
-
-    for (auto p : m_static_packages)
+    // Initialize in-degree for all packages
+    for (auto* pkg : packages)
     {
-        handle_dapandancy(handle_dapandancy, p);
+        in_degree[pkg->get_id()] = 0;
+    }
+
+    // Build dependency graph and calculate in-degrees
+    for (auto* pkg : packages)
+    {
+        auto deps = get_dapendency(pkg->get_id());
+        in_degree[pkg->get_id()] = static_cast<int>(deps.size());
+
+        for (const auto& dep_id : deps)
+        {
+            dependents[dep_id].push_back(pkg->get_id());
+        }
+    }
+
+    // Find all packages with no dependencies (in_degree == 0)
+
+    std::deque<package*> queue;
+
+    for (auto* pkg : packages)
+    {
+        if (in_degree[pkg->get_id()] == 0)
+        {
+            queue.push_back(pkg);
+        }
+    }
+
+    // Process packages in topological order
+    while (!queue.empty())
+    {
+        auto* pkg = queue.front();
+        queue.pop_front();
+        m_sorted_static_packages.push_back(pkg);
+
+        // Reduce in-degree for all dependents
+        for (const auto& dep_id : dependents[pkg->get_id()])
+        {
+            in_degree[dep_id]--;
+            if (in_degree[dep_id] == 0)
+            {
+                auto* dep_pkg = get_package(dep_id);
+                if (dep_pkg)
+                {
+                    queue.push_back(dep_pkg);
+                }
+            }
+        }
+    }
+
+    // Load packages in topological order
+    for (auto* pkg : m_sorted_static_packages)
+    {
+        ALOG_INFO("Loading {}", pkg->get_id().str());
+        pkg->complete_load();
     }
 
     return true;
+}
+
+bool
+package_manager::deinit()
+{
+    for (auto itr = m_sorted_static_packages.rbegin(); itr != m_sorted_static_packages.rend();
+         ++itr)
+    {
+        (*itr)->unload();
+    }
+
+    return true;
+}
+
+package&
+package_manager::load_static_package(const utils::id& package_id)
+{
+    auto& ctx = m_static_packages[package_id];
+    ctx.pkg = ctx.loader();
+    m_packages[ctx.pkg->get_id()] = ctx.pkg.get();
+
+    return *ctx.pkg.get();
 }
 
 bool
@@ -246,7 +319,7 @@ package_manager::register_package(core::package& pkg)
     }
 
     m_packages[pkg.get_id()] = &pkg;
-    m_static_packages.push_back(&pkg);
+    //  m_static_packages.push_back(&pkg);
 
     return true;
 }

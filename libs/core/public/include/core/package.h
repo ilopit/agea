@@ -28,6 +28,10 @@ enum class package_type
 
 struct package_types_builder
 {
+    virtual ~package_types_builder()
+    {
+    }
+
     virtual bool
     build(package& sp)
     {
@@ -45,6 +49,10 @@ struct package_types_builder
 
 struct package_render_types_builder
 {
+    virtual ~package_render_types_builder()
+    {
+    }
+
     virtual bool
     build(package& sp)
     {
@@ -60,6 +68,10 @@ struct package_render_types_builder
 
 struct package_types_custom_loader
 {
+    virtual ~package_types_custom_loader()
+    {
+    }
+
     virtual bool
     load(package& sp)
     {
@@ -74,6 +86,10 @@ struct package_types_custom_loader
 
 struct package_object_builder
 {
+    virtual ~package_object_builder()
+    {
+    }
+
     virtual bool
     build(package& sp)
     {
@@ -88,6 +104,10 @@ struct package_object_builder
 
 struct package_types_default_objects_builder
 {
+    virtual ~package_types_default_objects_builder()
+    {
+    }
+
     virtual bool
     build(package& sp)
     {
@@ -102,6 +122,10 @@ struct package_types_default_objects_builder
 
 struct package_render_custom_resource_builder
 {
+    virtual ~package_render_custom_resource_builder()
+    {
+    }
+
     virtual bool
     build(package& sp)
     {
@@ -246,15 +270,7 @@ public:
         finalize_relfection();
         load_render_resources();
         create_default_types_objects();
-    }
-
-    void
-    complete_unload()
-    {
-        destroy_default_types_objects();
-        destroy_render_resources();
-        destroy_render_types();
-        destroy_types();
+       m_state = package_state::loaded;
     }
 
     // clang-format on

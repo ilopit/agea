@@ -16,7 +16,7 @@
 int
 main(int, char*)
 {
-    agea::utils::setup_logger();
+    agea::utils::setup_logger(spdlog::level::level_enum::trace);
 
     auto registry = std::make_unique<agea::singleton_registry>();
 

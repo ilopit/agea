@@ -2,10 +2,12 @@
 
 #include <utils/singleton_instance.h>
 #include <utils/defines_utils.h>
+#include <utils/agea_log.h>
 
 #include <memory>
 #include <functional>
 #include <array>
+#include <string>
 
 #define AGEA_gen_getter(n, t)                           \
     t* get_##n() const                                  \
@@ -68,9 +70,18 @@ namespace gs
 
 struct state_base_box
 {
+    state_base_box(std::string name)
+        : box_name(std::move(name))
+    {
+        ALOG_TRACE("Box [{}] created ", box_name);
+    }
+
     virtual ~state_base_box()
     {
+        ALOG_TRACE("Box [{}] destroyed ", box_name);
     }
+
+    std::string box_name;
 };
 
 template <typename T>
@@ -79,8 +90,9 @@ struct state_type_box : public state_base_box
     state_type_box() = default;
 
     template <typename... Args>
-    state_type_box(Args... args)
-        : m_data(std::forward<Args>(args)...)
+    state_type_box(std::string name, Args... args)
+        : state_base_box(std::move(name))
+        , m_data(std::forward<Args>(args)...)
     {
     }
 
@@ -118,6 +130,15 @@ public:
     };
 
     state();
+    ~state();
+
+    state(const state&) = delete;
+    state&
+    operator=(const state&) = delete;
+    state(state&&) = default;
+
+    state&
+    operator=(state&& other);
 
     int
     schedule_action(state_stage execute_at, scheduled_action action);
@@ -161,9 +182,23 @@ public:
 
     template <typename T>
     T*
-    create_box()
+    create_box(std::string name)
     {
-        state_type_box<T>* box = new state_type_box<T>();
+        state_type_box<T>* box = new state_type_box<T>(std::move(name));
+        auto obj = box->get();
+
+        std::unique_ptr<state_base_box> ubox(box);
+
+        m_boxes.emplace_back(std::move(ubox));
+
+        return obj;
+    }
+
+    template <typename T>
+    T*
+    create_box_with_obj(std::string name, T value)
+    {
+        state_type_box<T>* box = new state_type_box<T>(std::move(name), std::move(value));
         auto obj = box->get();
 
         std::unique_ptr<state_base_box> ubox(box);
@@ -176,6 +211,9 @@ public:
 private:
     void
     run_items(state_stage stage);
+
+    void
+    cleanup();
 
     // clang-format off
 

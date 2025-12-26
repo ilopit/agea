@@ -13,7 +13,9 @@
 #include <resource_locator/resource_locator_state.h>
 
 #include "packages/root/package.root.h"
+#include "packages/root/package.root.types_builder.ar.h"
 #include "packages/base/package.base.h"
+#include "packages/base/package.base.types_builder.ar.h"
 #include "packages/test/package.test.h"
 
 #include <packages/root/model/game_object.h>
@@ -108,51 +110,47 @@ struct test_preloaded_test_package : base_test
     void
     SetUp()
     {
-        base::package::reset_instance();
-        root::package::reset_instance();
-        test::package::reset_instance();
         glob::glob_state_reset();
 
         auto& gs = glob::glob_state();
+        core::state_mutator__id_generator::set(gs);
+        state_mutator__resource_locator::set(gs);
+        core::state_mutator__caches::set(gs);
+        core::state_mutator__reflection_manager::set(gs);
+        core::state_mutator__lua_api::set(gs);
+        core::state_mutator__package_manager::set(gs);
+        auto& pm = gs.getr_pm();
 
         ///
         gs.schedule_action(gs::state::state_stage::create,
                            [](gs::state& s)
                            {
                                // state
-                               core::state_mutator__caches::set(s);
+
                                core::state_mutator__level_manager::set(s);
-                               core::state_mutator__package_manager::set(s);
-                               core::state_mutator__reflection_manager::set(s);
-                               core::state_mutator__id_generator::set(s);
-                               core::state_mutator__lua_api::set(s);
-                               state_mutator__resource_locator::set(s);
                            });
         gs.run_create();
         validate_empty_cache(gs);
         {
             {
-                root::package::init_instance();
-                auto& pkg = root::package::instance();
+                pm.register_static_package_loader<root::package>();
+                auto& pkg = pm.load_static_package<root::package>();
+
+                pkg.init();
                 pkg.register_package_extention<root::package::package_types_builder>();
                 pkg.complete_load();
             }
             {
-                base::package::init_instance();
-                auto& pkg = base::package::instance();
+                pm.register_static_package_loader<base::package>();
+                auto& pkg = pm.load_static_package<base::package>();
+                pkg.init();
                 pkg.register_package_extention<base::package::package_types_builder>();
                 pkg.complete_load();
             }
-
             {
-                test::package::init_instance();
-                auto& pkg = test::package::instance();
+                pm.register_static_package_loader<test::package>();
+                auto& pkg = pm.load_static_package<test::package>();
                 pkg.init();
-
-                auto tb = (test::package::package_types_builder*)test::package::instance()
-                              .types_builder()
-                              .get();
-
                 pkg.finalize_relfection();
             }
         }
@@ -161,12 +159,9 @@ struct test_preloaded_test_package : base_test
     void
     TearDown()
     {
-        test::package::instance().complete_unload();
-        test::package::reset_instance();
-        base::package::instance().complete_unload();
-        base::package::reset_instance();
-        root::package::instance().complete_unload();
-        root::package::reset_instance();
+        test::package::instance().unload();
+        base::package::instance().unload();
+        root::package::instance().unload();
         glob::glob_state_reset();
 
         base_test::TearDown();

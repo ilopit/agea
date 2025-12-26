@@ -107,6 +107,11 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
   output_file = os.path.join(context.model_sources_dir, f"package.{module_name}.ar.cpp")
   arapi.writer.write_object_model_reflection(output_file, context)
 
+  # Write types builder header (for tests that need to instantiate the builder)
+  types_builder_header = os.path.join(context.package_header_dir,
+                                      f"package.{module_name}.types_builder.ar.h")
+  arapi.writer.write_types_builder_header(types_builder_header, context)
+
   # Write class include files
   for type_obj in context.types:
     if type_obj.kind == arapi.types.agea_type_kind.CLASS:

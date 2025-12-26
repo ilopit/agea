@@ -100,18 +100,16 @@ vulkan_engine::init()
     ALOG_INFO("Initialization started ...");
 
     auto& gs = glob::glob_state();
+    core::state_mutator__lua_api::set(gs);
+    core::state_mutator__caches::set(gs);
+    core::state_mutator__reflection_manager::set(gs);
+    core::state_mutator__package_manager::set(gs);
 
     gs.schedule_action(gs::state::state_stage::create,
                        [](gs::state& s)
                        {
-                           // state
                            state_mutator__resource_locator::set(s);
-
-                           core::state_mutator__caches::set(s);
                            core::state_mutator__level_manager::set(s);
-                           core::state_mutator__package_manager::set(s);
-                           core::state_mutator__reflection_manager::set(s);
-                           core::state_mutator__lua_api::set(s);
                            core::state_mutator__id_generator::set(s);
                        });
 
@@ -190,6 +188,8 @@ vulkan_engine::cleanup()
     glob::vulkan_render_loader::get()->clear_caches();
 
     glob::render_device::get()->destruct();
+
+    glob::glob_state_reset();
 }
 
 void
@@ -479,21 +479,27 @@ vulkan_engine::init_scene()
 void
 vulkan_engine::init_default_scripting()
 {
-    auto lua = glob::glob_state().get_lua();
+    auto& gs = glob::glob_state();
 
-    static auto rt = lua->state().new_usertype<utils::id>("reflection_type", sol::no_constructor);
+    auto lua = gs.get_lua();
 
-    static auto aid = lua->state().new_usertype<reflection::reflection_type>(
+    auto rt = lua->state().new_usertype<utils::id>("reflection_type", sol::no_constructor);
+    gs.create_box_with_obj("rt", std::move(rt));
+
+    auto aid = lua->state().new_usertype<reflection::reflection_type>(
         "aid", sol::no_constructor, "i", [](const char* id) -> utils::id { return AID(id); });
+    gs.create_box_with_obj("aid", std::move(aid));
 
-    static auto p = lua->state().new_usertype<core::package>("package", sol::no_constructor);
+    auto package = lua->state().new_usertype<core::package>("package", sol::no_constructor);
+    gs.create_box_with_obj("package", std::move(package));
 
     auto pm = glob::glob_state().get_pm();
-
-    static auto lua_pm = lua->state().new_usertype<core::package_manager>(
+    auto lua_pm = lua->state().new_usertype<core::package_manager>(
         "pm", sol::no_constructor, "get_package",
         [pm](const char* id) -> core::package* { return pm->get_package(AID(id)); }, "load",
         [pm](const char* id) -> bool { return pm->load_package(AID(id)); });
+
+    gs.create_box_with_obj("lua_pm", std::move(lua_pm));
 }
 
 void

@@ -203,7 +203,7 @@ protected:
                      "property_compare_handler=game_object_components_compare",
                      "property_copy_handler=game_object_components_copy",
                      "property_instantiate_handler=game_object_components_instantiate",
-                     "property_load_derive_handler=game_object_load");
+                     "property_load_derive_handler=game_object_components__load");
     std::vector<component*> m_components;
 
     std::vector<game_object_component*> m_renderable_components;

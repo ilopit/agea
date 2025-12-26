@@ -25,6 +25,38 @@ state::state()
 {
 }
 
+state::~state()
+{
+    cleanup();
+}
+
+state&
+state::operator=(state&& other)
+{
+    if (this != &other)
+    {
+        cleanup();
+        m_stage = state_stage::create;
+    }
+
+    return *this;
+}
+
+void
+state::cleanup()
+{
+    if (m_boxes.empty())
+    {
+        return;
+    }
+
+    ALOG_INFO("GS cleanup");
+    while (!m_boxes.empty())
+    {
+        m_boxes.pop_back();
+    }
+}
+
 int
 state::schedule_action(state_stage stage, scheduled_action action)
 {

@@ -88,6 +88,13 @@ def generate_builder(should_generate: bool, name: str, extra_methods: str = "") 
   if not should_generate:
     return EMPTY_STRING
 
+  # For types builder, we only need a forward declaration in header.
+  # The full class definition (with members) goes in the .cpp file.
+  # This makes the builder itself act as the PIMPL.
+  if name == "types":
+    return """struct package_types_builder;                                              \\
+"""
+
   return f"""struct package_{name}_builder : public ::agea::core::package_{name}_builder\\
 {{                                                                                      \\
     public:                                                                             \\
@@ -180,22 +187,25 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir:
 public: \\
 static bool package_model_enforcer(); \\
 static inline bool has_model_types = package_model_enforcer(); \\
-static void \\
-reset_instance() \\
+static ::agea::utils::id \\
+package_id() \\
 {{ \\
-    instance_impl().reset(); \\
+    return AID("{context.module_name}"); \\
 }} \\
-static void \\
-init_instance() \\
+static auto \\
+package_loader() -> std::unique_ptr<::agea::core::package>(*)() \\
 {{ \\
-    AGEA_check(!instance_impl(), "using on existed"); \\
-    instance_impl() = std::make_unique<package>(); \\
+    return +[]() -> std::unique_ptr<::agea::core::package> {{ \\
+        auto pkg = std::make_unique<package>(); \\
+        instance_impl() = pkg.get(); \\
+        return pkg; \\
+    }}; \\
 }} \\
-static std::unique_ptr<package>& \\
+static package*& \\
 instance_impl() \\
 {{ \\
-    static auto instance = std::make_unique<package>(); \\
-    return instance; \\
+    static package* s_instance = nullptr; \\
+    return s_instance; \\
 }} \\
 static package& \\
 instance() \\
@@ -604,8 +614,9 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
   file_buffer.append(f"""
 {indent}const int type_id = ::agea::reflection::type_resolver<{type_obj.get_full_type_name()}>::value;
 {indent}AGEA_check(type_id != -1, "Type is not defined!");
-{indent}{fc.module_name}_{type_obj.name}_rt = std::make_unique<::agea::reflection::reflection_type>(type_id, AID("{type_obj.name}"));
-{indent}auto& rt         = *add(sp, {fc.module_name}_{type_obj.name}_rt.get());
+{indent}m_rt_{type_obj.name} = std::make_unique<::agea::reflection::reflection_type>(type_id, AID("{type_obj.name}"));
+{indent}{fc.module_name}_{type_obj.name}_rt = m_rt_{type_obj.name}.get();
+{indent}auto& rt         = *add(*m_package, {fc.module_name}_{type_obj.name}_rt);
 {indent}rt.type_id       = type_id;
 {indent}rt.type_class    = ::agea::reflection::reflection_type::reflection_type_class::{kind_to_string(type_obj.kind)};
 
@@ -613,10 +624,7 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}rt.size          = sizeof({type_obj.get_full_type_name()});
 """)
 
-  if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
-    file_buffer.append(f"""
-{indent}{type_obj.name}_lua_type = std::make_unique<sol::usertype<{type_obj.get_full_type_name()}>>();
-""")
+  # lua_storage already contains the sol::usertype fields, no need to allocate
 
   if type_obj.kind == arapi.types.agea_type_kind.CLASS:
     file_buffer.append(f"""
@@ -669,7 +677,7 @@ def _write_type_registration_function(file_buffer: arapi.utils.FileBuffer, fc: a
   """
   file_buffer.append(f"""
 void
-package::package_types_builder::register_type_{type_obj.name}(::agea::core::package& sp)
+package::package_types_builder::register_type_{type_obj.name}()
 {{""")
   _write_type_registration_body(file_buffer, fc, type_obj, "    ")
   file_buffer.append("}\n")
@@ -715,7 +723,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
 
   if type_obj.kind == arapi.types.agea_type_kind.CLASS:
     # Write lua class type binding inline
-    file_buffer.append(f"""    *{type_obj.name}_lua_type = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
+    file_buffer.append(f"""    m_lua_{type_obj.name} = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
     "{type_obj.name}", sol::no_constructor,
         "i",
         [](const char* id) -> {type_obj.get_full_type_name()}*
@@ -748,7 +756,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
            """)
       file_buffer.append(f""");
 
-    {type_obj.name}__lua_script_extention<sol::usertype<{type_obj.get_full_type_name()}>, {type_obj.get_full_type_name()}>(*{type_obj.name}_lua_type);
+    {type_obj.name}__lua_script_extention<sol::usertype<{type_obj.get_full_type_name()}>, {type_obj.get_full_type_name()}>(m_lua_{type_obj.name});
 """)
     else:
       file_buffer.append(""");
@@ -756,19 +764,104 @@ package::package_types_builder::lua_bind_{type_obj.name}()
 
   elif type_obj.kind == arapi.types.agea_type_kind.STRUCT:
     ctor_line = ",".join(ctor.name for ctor in type_obj.ctros)
-    file_buffer.append(f"""    *{type_obj.name}_lua_type = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
+    file_buffer.append(f"""    m_lua_{type_obj.name} = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
     "{type_obj.get_full_type_name()}", sol::constructors<{ctor_line}>());
 """)
 
   file_buffer.append("}\n")
 
 
+def write_types_builder_header(header_file: str, fc: arapi.types.file_context) -> None:
+  """Write package_types_builder header file.
+
+    Generates a header with the full class definition for package_types_builder.
+    This can be included by tests or other code that needs to instantiate the builder.
+
+    Args:
+        header_file: Path to output header file
+        fc: File context with all type information
+  """
+  file_buffer = arapi.utils.FileBuffer(header_file)
+
+  # Generate member declarations
+  rt_members = ""
+  for type_obj in fc.types:
+    rt_members += f"    std::unique_ptr<::agea::reflection::reflection_type> m_rt_{type_obj.name};\n"
+
+  lua_members = ""
+  for type_obj in fc.types:
+    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+      lua_members += f"    sol::usertype<{type_obj.get_full_type_name()}> m_lua_{type_obj.name};\n"
+
+  # Generate per-type method declarations
+  type_method_decls = ""
+  for type_obj in fc.types:
+    type_method_decls += f"    void register_type_{type_obj.name}();\n"
+  for type_obj in fc.types:
+    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+      type_method_decls += f"    void register_properties_{type_obj.name}();\n"
+  for type_obj in fc.types:
+    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+      type_method_decls += f"    void lua_bind_{type_obj.name}();\n"
+
+  # Collect type includes (needed for sol::usertype<T> to have complete types)
+  type_includes = ""
+  includes_list = sorted(fc.includes)
+  for include in includes_list:
+    type_includes += include + "\n"
+
+  # Collect dependency resolver includes
+  dependency_includes = ""
+  for dep in fc.dependencies:
+    dependency_includes += f'#include "packages/{dep}/types_resolvers.ar.h"\n'
+
+  file_buffer.append(f"""// Auto-generated package_types_builder definition
+// Include this header when you need to instantiate the builder (e.g., in tests)
+
+#pragma once
+
+// clang-format off
+
+#include "packages/{fc.module_name}/package.{fc.module_name}.h"
+#include "packages/{fc.module_name}/types_resolvers.ar.h"
+{dependency_includes}
+{type_includes}
+#include <core/package.h>
+#include <core/reflection/reflection_type.h>
+#include <sol2_unofficial/sol.h>
+
+#include <memory>
+
+namespace agea::{fc.module_name} {{
+
+struct package::package_types_builder : public ::agea::core::package_types_builder
+{{
+public:
+    bool build(::agea::core::package& sp) override;
+    bool destroy(::agea::core::package& sp) override;
+
+private:
+{type_method_decls}
+    // Package context (set in build())
+    ::agea::core::package* m_package = nullptr;
+
+    // Reflection type storage
+{rt_members}
+    // Lua usertype storage
+{lua_members}}};
+
+}} // namespace agea::{fc.module_name}
+""")
+
+  file_buffer.write_if_changed()
+
+
 def write_object_model_reflection(package_ar_file: str, fc: arapi.types.file_context) -> None:
   """Write object model reflection implementation file.
-    
+
     This is the main function that generates the complete model reflection
     source file including type registrations, property reflections, and Lua bindings.
-    
+
     Args:
         package_ar_file: Path to output file
         fc: File context with all type information
@@ -806,20 +899,59 @@ namespace agea::{fc.module_name} {{
 
 """)
 
-  # Write static variable declarations
+  # Write static raw pointer declarations for reflection types
   for type_obj in fc.types:
     file_buffer.append(f"""
-static std::unique_ptr<::agea::reflection::reflection_type> {fc.module_name}_{type_obj.name}_rt;""")
+static ::agea::reflection::reflection_type* {fc.module_name}_{type_obj.name}_rt = nullptr;""")
 
+  # Generate member declarations for the class
+  # Use m_rt_ prefix for reflection types to avoid C++ keyword conflicts (bool, float, etc.)
+  rt_members = ""
+  for type_obj in fc.types:
+    rt_members += f"    std::unique_ptr<::agea::reflection::reflection_type> m_rt_{type_obj.name};\n"
+
+  # Use m_lua_ prefix for lua types
+  lua_members = ""
+  for type_obj in fc.types:
     if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
-      file_buffer.append(f"""
-static std::unique_ptr<sol::usertype<{type_obj.get_full_type_name()}>> {type_obj.name}_lua_type;""")
+      lua_members += f"    sol::usertype<{type_obj.get_full_type_name()}> m_lua_{type_obj.name};\n"
 
-    # Generate reflection methods for classes
-    reflection_methods = ""
-    for type_obj in fc.types:
-      if type_obj.kind == arapi.types.agea_type_kind.CLASS:
-        reflection_methods += _write_reflection_methods(fc, type_obj)
+  # Generate per-type method declarations (no package param - use m_package member)
+  type_method_decls = ""
+  for type_obj in fc.types:
+    type_method_decls += f"    void register_type_{type_obj.name}();\n"
+  for type_obj in fc.types:
+    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+      type_method_decls += f"    void register_properties_{type_obj.name}();\n"
+  for type_obj in fc.types:
+    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+      type_method_decls += f"    void lua_bind_{type_obj.name}();\n"
+
+  # Write the full class definition - the builder IS the pimpl
+  file_buffer.append(f"""
+
+struct package::package_types_builder : public ::agea::core::package_types_builder
+{{
+public:
+    bool build(::agea::core::package& sp) override;
+    bool destroy(::agea::core::package& sp) override;
+
+private:
+{type_method_decls}
+    // Package context (set in build())
+    ::agea::core::package* m_package = nullptr;
+
+    // Reflection type storage
+{rt_members}
+    // Lua usertype storage
+{lua_members}}};
+""")
+
+  # Generate reflection methods for classes
+  reflection_methods = ""
+  for type_obj in fc.types:
+    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+      reflection_methods += _write_reflection_methods(fc, type_obj)
 
   file_buffer.append("\n\n")
   file_buffer.append(reflection_methods)
@@ -844,15 +976,17 @@ static std::unique_ptr<sol::usertype<{type_obj.get_full_type_name()}>> {type_obj
   file_buffer.append(f"""
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::create,
     [](agea::gs::state& s)
-    {{
-      package::instance().register_package_extention<package::package_types_builder>();
-      package::instance().register_package_extention<package::package_types_default_objects_builder>();
+    {{                     
+        s.get_pm()->register_static_package_loader<package>();
+        auto& pkg = s.get_pm()->load_static_package<package>();
+
     }});
 
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
     [](agea::gs::state& s)
     {{
-      s.get_pm()->register_package({fc.module_name}::package::instance());
+       {fc.module_name}::package::instance().register_package_extention<package::package_types_builder>();
+       {fc.module_name}::package::instance().register_package_extention<package::package_types_default_objects_builder>();
     }});
 
 bool package::package_model_enforcer()
@@ -864,14 +998,13 @@ bool package::package_model_enforcer()
 bool
 package::package_types_builder::build(::agea::core::package& sp)
 {{
-    auto pkg = &::agea::{fc.module_name}::package::instance();
-    (void)pkg;
+    m_package = &sp;
 
     // Phase 1: Register types
 """)
 
   for type_obj in fc.types:
-    file_buffer.append(f"    register_type_{type_obj.name}(sp);\n")
+    file_buffer.append(f"    register_type_{type_obj.name}();\n")
 
   file_buffer.append("""
     // Phase 2: Register properties
@@ -898,13 +1031,12 @@ bool
 package::package_types_builder::destroy(::agea::core::package& sp)
 {{
 """)
+  # Clear raw pointers and reset members
   for type_obj in reversed(fc.types):
-    file_buffer.append(f"  {fc.module_name}_{type_obj.name}_rt.reset();\n")
+    file_buffer.append(f"    {fc.module_name}_{type_obj.name}_rt = nullptr;\n")
+    file_buffer.append(f"    m_rt_{type_obj.name}.reset();\n")
 
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
-      file_buffer.append(f"  {type_obj.name}_lua_type.reset();\n")
-
-  file_buffer.append(f"""   return true;
+  file_buffer.append(f"""    return true;
 }}
 bool
 package::package_types_default_objects_builder::build(::agea::core::package& sp)

@@ -17,8 +17,8 @@ namespace agea::core
 void
 state_mutator__caches::set(gs::state& es)
 {
-    auto class_cache = es.create_box<core::cache_set>();
-    auto instance_cache = es.create_box<core::cache_set>();
+    auto class_cache = es.create_box<core::cache_set>("class_cache");
+    auto instance_cache = es.create_box<core::cache_set>("class_cache");
 
     es.m_class_set = class_cache;
 
@@ -46,31 +46,31 @@ state_mutator__caches::set(gs::state& es)
 void
 state_mutator__package_manager::set(gs::state& es)
 {
-    es.m_pm = es.create_box<package_manager>();
+    es.m_pm = es.create_box<package_manager>("package_manager");
 }
 
 void
 state_mutator__level_manager::set(gs::state& es)
 {
-    es.m_lm = es.create_box<level_manager>();
+    es.m_lm = es.create_box<level_manager>("level_manager");
 }
 
 void
 state_mutator__reflection_manager::set(gs::state& es)
 {
-    es.m_rm = es.create_box<reflection::reflection_type_registry>();
+    es.m_rm = es.create_box<reflection::reflection_type_registry>("reflection_type_registry");
 }
 
 void
 state_mutator__lua_api::set(gs::state& es)
 {
-    es.m_lua = es.create_box<reflection::lua_api>();
+    es.m_lua = es.create_box<reflection::lua_api>("lua_api");
 }
 
 void
 state_mutator__id_generator::set(gs::state& es)
 {
-    es.m_id_generator = es.create_box<core::id_generator>();
+    es.m_id_generator = es.create_box<core::id_generator>("id_generator");
 }
 
 void
