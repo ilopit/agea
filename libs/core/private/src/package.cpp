@@ -222,7 +222,8 @@ package::create_default_types_objects()
 {
     for (auto& [id, rt] : m_rts)
     {
-        if (rt->type_class == reflection::reflection_type::reflection_type_class::agea_class)
+        if (rt->type_class == reflection::reflection_type::reflection_type_class::agea_class &&
+            !m_occ->find_proto_obj(id))
         {
             auto result = object_constructor::create_default_class_proto(id, *m_occ);
             if (!result)

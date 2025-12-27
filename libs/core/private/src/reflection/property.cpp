@@ -133,7 +133,10 @@ property::default_load(property_context__load& ctx)
 
             AGEA_check(ctx.dst_property->rtype->copy, "Should never happen!");
             type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.occ};
-            ctx.dst_property->rtype->copy(type_ctx);
+            if (auto rc = ctx.dst_property->rtype->copy(type_ctx); rc != result_code::ok)
+            {
+                return rc;
+            }
         }
     }
     return result_code::ok;
@@ -179,7 +182,10 @@ property::deserialize_collection(reflection::property& p,
 
         auto* field_ptr = &r[idx];
         type_context__load type_ctx{nullptr, (blob_ptr)field_ptr, &item, &occ};
-        p.rtype->load(type_ctx);
+        if (auto rc = p.rtype->load(type_ctx); rc != result_code::ok)
+        {
+            return rc;
+        }
     }
 
     return result_code::ok;
@@ -230,7 +236,10 @@ property::serialize_item(const reflection::property& p,
 
     AGEA_check(p.rtype->save, "Should never happen!");
     type_context__save type_ctx{&obj, ptr, &c};
-    p.rtype->save(type_ctx);
+    if (auto rc = p.rtype->save(type_ctx); rc != result_code::ok)
+    {
+        return rc;
+    }
 
     sc[p.name] = c;
 

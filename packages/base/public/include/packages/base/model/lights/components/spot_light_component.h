@@ -14,7 +14,8 @@ class vulkan_spot_light_data;
 namespace base
 {
 
-AGEA_ar_class();
+AGEA_ar_class(render_constructor = spot_light_component__render_loader,
+              render_destructor = spot_light_component__render_destructor);
 class spot_light_component : public ::agea::root::game_object_component
 {
     AGEA_gen_meta__spot_light_component();

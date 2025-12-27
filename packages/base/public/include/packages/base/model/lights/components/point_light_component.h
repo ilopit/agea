@@ -14,7 +14,8 @@ class vulkan_point_light_data;
 namespace base
 {
 
-AGEA_ar_class();
+AGEA_ar_class(render_constructor = point_light_component__render_loader,
+              render_destructor = point_light_component__render_destructor);
 class point_light_component : public ::agea::root::game_object_component
 {
     AGEA_gen_meta__point_light_component();

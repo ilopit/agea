@@ -18,12 +18,9 @@ point_light::construct(construct_params& params)
         return false;
     }
 
-    /*
-
-    spawn_component_with_proto(m_root_component, AID("bulb_component"));
+    // spawn_component_with_proto(m_root_component, AID("bulb_component"));
 
     spawn_component<point_light_component>(m_root_component, AID("lc"), {});
-    */
 
     return true;
 }

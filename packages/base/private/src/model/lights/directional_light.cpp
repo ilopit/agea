@@ -23,14 +23,9 @@ directional_light::construct(construct_params& params)
         return false;
     }
 
-    /*
+    // spawn_component_with_proto(m_root_component, AID("directional_light_debug_component"));
 
-
-    spawn_component_with_proto(m_root_component, AID("directional_light_debug_component"));
-
-    auto dl = spawn_component<directional_light_component>(m_root_component,
-                                                           AID("directional_light"), {});
-    */
+    auto dl = spawn_component_with_proto(m_root_component, AID("directional_light_component"));
 
     return true;
 }

@@ -327,10 +327,9 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 void
 vulkan_render::build_global_set(render::frame_state& current_frame)
 {
-    VkDescriptorBufferInfo dynamic_info{};
-    dynamic_info.buffer = current_frame.m_dynamic_data_buffer.buffer();
-    dynamic_info.offset = 0;
-    dynamic_info.range = current_frame.m_dynamic_data_buffer.get_offset();
+    VkDescriptorBufferInfo dynamic_info{.buffer = current_frame.m_dynamic_data_buffer.buffer(),
+                                        .offset = 0,
+                                        .range = current_frame.m_dynamic_data_buffer.get_offset()};
 
     vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
                                         current_frame.frame->m_dynamic_descriptor_allocator.get())
@@ -342,25 +341,22 @@ vulkan_render::build_global_set(render::frame_state& current_frame)
 void
 vulkan_render::build_light_set(render::frame_state& current_frame)
 {
-    VkDescriptorBufferInfo directional_light_info{};
-    directional_light_info.buffer = current_frame.m_lights_buffer.buffer();
-    directional_light_info.offset = 0;
-    directional_light_info.range = INITIAL_LIGHTS_SEGMENT_SIZE;
+    VkDescriptorBufferInfo directional_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
+                                                  .offset = 0,
+                                                  .range = INITIAL_LIGHTS_SEGMENT_SIZE};
 
-    VkDescriptorBufferInfo point_light_info{};
-    point_light_info.buffer = current_frame.m_lights_buffer.buffer();
-    point_light_info.offset = INITIAL_LIGHTS_SEGMENT_SIZE;
-    point_light_info.range = INITIAL_LIGHTS_SEGMENT_SIZE;
+    VkDescriptorBufferInfo point_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
+                                            .offset = INITIAL_LIGHTS_SEGMENT_SIZE,
+                                            .range = INITIAL_LIGHTS_SEGMENT_SIZE};
 
-    VkDescriptorBufferInfo spot_light_info{};
-    spot_light_info.buffer = current_frame.m_lights_buffer.buffer();
-    spot_light_info.offset = INITIAL_LIGHTS_SEGMENT_SIZE * 2;
-    spot_light_info.range = INITIAL_LIGHTS_SEGMENT_SIZE;
+    VkDescriptorBufferInfo spot_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
+                                           .offset = INITIAL_LIGHTS_SEGMENT_SIZE * 2,
+                                           .range = INITIAL_LIGHTS_SEGMENT_SIZE};
 
-    VkDescriptorBufferInfo object_buffer_info{};
-    object_buffer_info.buffer = current_frame.m_object_buffer.buffer();
-    object_buffer_info.offset = 0;
-    object_buffer_info.range = current_frame.m_object_buffer.get_alloc_size();
+    VkDescriptorBufferInfo object_buffer_info{
+        .buffer = current_frame.m_object_buffer.buffer(),
+        .offset = 0,
+        .range = current_frame.m_object_buffer.get_alloc_size()};
 
     vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
                                         current_frame.frame->m_dynamic_descriptor_allocator.get())
@@ -685,10 +681,9 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     if (cur_material->has_gpu_data())
     {
         auto& sm = m_materials_layout.at(cur_material->gpu_idx());
-        VkDescriptorBufferInfo mat_buffer_info{};
-        mat_buffer_info.buffer = current_frame.m_materials_buffer.buffer();
-        mat_buffer_info.offset = sm.offset;
-        mat_buffer_info.range = sm.get_allocated_size();
+        VkDescriptorBufferInfo mat_buffer_info{.buffer = current_frame.m_materials_buffer.buffer(),
+                                               .offset = sm.offset,
+                                               .range = sm.get_allocated_size()};
 
         VkDescriptorSet mat_data_set{};
         vk_utils::descriptor_builder::begin(

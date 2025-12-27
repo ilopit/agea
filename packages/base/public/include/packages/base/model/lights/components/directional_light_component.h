@@ -13,10 +13,12 @@ class vulkan_directional_light_data;
 
 namespace base
 {
-
-AGEA_ar_class();
+// clang-format off
+AGEA_ar_class(render_constructor = directional_light_component__render_loader,
+              render_destructor  = directional_light_component__render_destructor);
 class directional_light_component : public ::agea::root::game_object_component
 {
+    // clang-format on
     AGEA_gen_meta__directional_light_component();
 
 public:
