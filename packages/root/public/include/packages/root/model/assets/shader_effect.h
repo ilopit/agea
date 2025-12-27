@@ -20,7 +20,7 @@ class texture;
 AGEA_ar_class("architype=shader_effect",
               render_constructor = shader_effect__render_loader,
               render_destructor = shader_effect__render_destructor);
-class shader_effect : public smart_object
+class shader_effect : public asset
 {
     AGEA_gen_meta__shader_effect();
 

@@ -9,7 +9,7 @@ namespace agea
 {
 namespace serialization
 {
-using conteiner = YAML::Node;
+using container = YAML::Node;
 
 }  // namespace serialization
 }  // namespace agea

@@ -45,7 +45,7 @@ public:
     bool
     unload_package(package& p);
 
-    void
+    bool
     save_package(const utils::id& id, const utils::path& root_folder);
 
     package*

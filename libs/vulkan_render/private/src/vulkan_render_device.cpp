@@ -423,13 +423,13 @@ render_device::schedule_to_delete(delayed_deleter d)
 }
 
 void
-render_device::delete_immidiately(delayed_deleter d)
+render_device::delete_immediately(delayed_deleter d)
 {
     d(m_vk_device, m_allocator);
 }
 
 void
-render_device::delete_sheduled_actions()
+render_device::delete_scheduled_actions()
 {
     if (m_delayed_delete_queue.empty())
     {

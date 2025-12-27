@@ -22,13 +22,13 @@ namespace root
 AGEA_ar_class("architype=mesh",
               render_constructor = mesh__render_loader,
               render_destructor  = mesh__render_destructor);
-class mesh : public smart_object
+class mesh : public asset
 // clang-format on
 {
     AGEA_gen_meta__mesh();
 
 public:
-    AGEA_gen_class_meta(mesh, smart_object);
+    AGEA_gen_class_meta(mesh, asset);
     AGEA_gen_construct_params
     {
         utils::buffer vertices;

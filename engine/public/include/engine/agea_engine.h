@@ -5,7 +5,7 @@
 #include <resource_locator/resource_locator.h>
 
 #include <utils/id.h>
-#include <utils/line_conteiner.h>
+#include <utils/line_container.h>
 #include <utils/singleton_instance.h>
 
 #include <core/model_fwds.h>

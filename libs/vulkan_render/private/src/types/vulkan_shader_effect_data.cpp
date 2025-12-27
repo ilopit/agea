@@ -41,7 +41,7 @@ shader_effect_data::reset()
 
     if (m_pipeline)
     {
-        glob::render_device::getr().delete_immidiately(
+        glob::render_device::getr().delete_immediately(
             [=](VkDevice vd, VmaAllocator)
             {
                 for (auto l : m_set_layout)

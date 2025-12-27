@@ -7,7 +7,7 @@ namespace agea
 namespace utils
 {
 template <typename T>
-class line_conteiner
+class line_container
 {
     using itr = std::vector<T>::iterator;
     using citr = std::vector<T>::const_iterator;

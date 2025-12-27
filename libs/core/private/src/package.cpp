@@ -89,7 +89,7 @@ package::init()
     }
 
     auto mapping = std::make_shared<object_mapping>();
-    if (!mapping->buiild_object_mapping(path / "package.acfg"))
+    if (!mapping->build_object_mapping(path / "package.acfg"))
     {
         ALOG_LAZY_ERROR;
         return false;

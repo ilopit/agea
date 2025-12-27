@@ -22,7 +22,7 @@ render_pass_builder::set_color_images(const std::vector<vk_utils::vulkan_image_v
 
 render_pass::~render_pass()
 {
-    glob::render_device::getr().delete_immidiately(
+    glob::render_device::getr().delete_immediately(
         [=](VkDevice vkd, VmaAllocator)
         {
             vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr);

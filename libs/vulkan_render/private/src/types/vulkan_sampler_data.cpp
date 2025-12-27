@@ -15,7 +15,7 @@ sampler_data::~sampler_data()
 {
     if (m_sampler)
     {
-        glob::render_device::getr().delete_immidiately(
+        glob::render_device::getr().delete_immediately(
             [=](VkDevice vkd, VmaAllocator va) { vkDestroySampler(vkd, m_sampler, nullptr); });
     }
 }

@@ -17,7 +17,7 @@ shader_module_data::shader_module_data(VkShaderModule vk_module,
 
 shader_module_data::~shader_module_data()
 {
-    glob::render_device::getr().delete_immidiately(
+    glob::render_device::getr().delete_immediately(
         [=](VkDevice vkd, VmaAllocator) { vkDestroyShaderModule(vkd, m_vk_module, nullptr); });
 }
 }  // namespace render

@@ -66,7 +66,7 @@ vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
 void
 vulkan_buffer::clear()
 {
-    glob::render_device::getr().delete_immidiately(
+    glob::render_device::getr().delete_immediately(
         [=](VkDevice vkd, VmaAllocator va) { vmaDestroyBuffer(va, m_buffer, m_allocation); });
 
     m_buffer = VK_NULL_HANDLE;

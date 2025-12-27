@@ -78,10 +78,10 @@ result_code
 game_object_components_save(::agea::reflection::property_context__save& dc)
 {
     auto& class_obj = *dc.obj;
-    auto& conteiner = *dc.sc;
+    auto& container = *dc.sc;
 
-    serialization::conteiner components_conteiner;
-    serialization::conteiner components_layout;
+    serialization::container components_container;
+    serialization::container components_layout;
     components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
     auto& obj_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
@@ -94,16 +94,16 @@ game_object_components_save(::agea::reflection::property_context__save& dc)
         // auto class_component = parent_components[i];
         auto obj_component = obj_components[i];
 
-        serialization::conteiner component_conteiner;
+        serialization::container component_container;
 
         auto id = obj_component->get_id().str();
-        component_conteiner["id"] = id;
+        component_container["id"] = id;
 
         auto pid = obj_component->get_class_obj()->get_id().str();
-        component_conteiner["class_id"] = pid;
+        component_container["class_id"] = pid;
 
         reflection::property_context__save internal_sc{nullptr, obj_component,
-                                                       &component_conteiner};
+                                                       &component_container};
         std::vector<reflection::property*> diff;
 
         if (auto rc = core::object_constructor::diff_object_properties(
@@ -122,11 +122,11 @@ game_object_components_save(::agea::reflection::property_context__save& dc)
             }
         }
 
-        components_conteiner[i] = component_conteiner;
+        components_container[i] = component_container;
         components_layout.push_back((int)obj_component->get_parent_idx());
     }
-    conteiner["layout"] = components_layout;
-    conteiner[dc.p->name] = components_conteiner;
+    container["layout"] = components_layout;
+    container[dc.p->name] = components_container;
 
     return result_code::ok;
 }

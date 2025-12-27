@@ -43,7 +43,7 @@ public:
     }
 
     void
-    set_load_path(const utils::path& p) const;
+    set_load_path(const utils::path& p);
 
     const utils::path&
     get_save_path() const
@@ -52,7 +52,7 @@ public:
     }
 
     void
-    set_save_root_path(const utils::path& p) const
+    set_save_root_path(const utils::path& p)
     {
         m_save_root_path = p;
     }
@@ -92,8 +92,8 @@ public:
 
 protected:
     utils::id m_id;
-    mutable utils::path m_load_path;
-    mutable utils::path m_save_root_path;
+    utils::path m_load_path;
+    utils::path m_save_root_path;
 
     cache_set m_instance_local_cs;
 

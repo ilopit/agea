@@ -165,7 +165,7 @@ package_manager::load_package(const utils::id& id)
     }
 
     auto mapping = std::make_shared<object_mapping>();
-    if (!mapping->buiild_object_mapping(path / "package.acfg"))
+    if (!mapping->build_object_mapping(path / "package.acfg"))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -222,7 +222,7 @@ package_manager::unload_package(package& p)
     return true;
 }
 
-void
+bool
 package_manager::save_package(const utils::id& id, const utils::path& root_folder)
 {
     ALOG_INFO("Saving package {0}", root_folder.str());
@@ -232,7 +232,7 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
     if (itr == m_packages.end())
     {
         ALOG_ERROR("Package not found: {0}", id.cstr());
-        return;
+        return false;
     }
 
     auto& p = *itr->second;
@@ -254,7 +254,7 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
         if (itr == p.m_mapping->m_items.end())
         {
             ALOG_LAZY_ERROR;
-            return;
+            return false;
         }
 
         auto& mapping = itr->second;
@@ -280,26 +280,26 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
         if (result != result_code::ok)
         {
             ALOG_LAZY_ERROR;
-            return;
+            return false;
         }
     }
 
     auto meta_file = full_path / "package.cfg";
-    serialization::conteiner meta_conteiner;
+    serialization::container meta_container;
 
     int i = 0;
     for (auto& c : class_pathes)
     {
-        meta_conteiner["class_obj_mapping"][i++][c.first] = c.second;
+        meta_container["class_obj_mapping"][i++][c.first] = c.second;
     }
 
-    if (!serialization::write_container(meta_file, meta_conteiner))
+    if (!serialization::write_container(meta_file, meta_container))
     {
         ALOG_LAZY_ERROR;
-        return;
+        return false;
     }
 
-    return;
+    return true;
 }
 
 package*

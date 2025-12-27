@@ -4,7 +4,7 @@
 
 #include <packages/root/model/smart_object.h>
 
-#include <utils/line_conteiner.h>
+#include <utils/line_container.h>
 
 #include <type_traits>
 
@@ -38,7 +38,7 @@ namespace core
 {
 
 template <typename T>
-class line_cache : public utils::line_conteiner<T>
+class line_cache : public utils::line_container<T>
 {
 public:
     line_cache()

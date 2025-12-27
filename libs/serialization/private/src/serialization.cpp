@@ -10,11 +10,11 @@ namespace serialization
 {
 
 bool
-read_container(const utils::path& path, serialization::conteiner& conteiner)
+read_container(const utils::path& path, serialization::container& container)
 {
     try
     {
-        conteiner = YAML::LoadFile(path.str());
+        container = YAML::LoadFile(path.str());
     }
     catch (const std::exception& e)
     {
@@ -22,7 +22,7 @@ read_container(const utils::path& path, serialization::conteiner& conteiner)
         return false;
     }
 
-    if (!conteiner)
+    if (!container)
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -32,7 +32,7 @@ read_container(const utils::path& path, serialization::conteiner& conteiner)
 }
 
 bool
-write_container(const utils::path& path, const serialization::conteiner& conteiner)
+write_container(const utils::path& path, const serialization::container& container)
 {
     std::ofstream file(path.fs());
 
@@ -41,7 +41,7 @@ write_container(const utils::path& path, const serialization::conteiner& contein
         return false;
     }
 
-    file << conteiner;
+    file << container;
 
     return true;
 }

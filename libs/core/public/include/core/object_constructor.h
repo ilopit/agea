@@ -127,7 +127,7 @@ public:
     static result_code
     load_derive_object_properties(root::smart_object& from,
                                   root::smart_object& to,
-                                  const serialization::conteiner& c,
+                                  const serialization::container& c,
                                   object_load_context& occ);
 
     static result_code
@@ -146,7 +146,7 @@ public:
                            std::vector<reflection::property*>& diff);
 
     static result_code
-    object_properties_save(const root::smart_object& obj, serialization::conteiner& jc);
+    object_properties_save(const root::smart_object& obj, serialization::container& jc);
 
     static std::expected<root::smart_object*, result_code>
     alloc_empty_object(const utils::id& type_id,
@@ -159,7 +159,7 @@ public:
     object_load_internal(const utils::id& id, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
-    object_load_internal(serialization::conteiner& c, object_load_context& occ);
+    object_load_internal(serialization::container& c, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
     preload_proto(const utils::id& id, object_load_context& occ);
@@ -185,15 +185,15 @@ private:
     destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
 
     static result_code
-    object_save_full(serialization::conteiner& sc, const root::smart_object& obj);
+    object_save_full(serialization::container& sc, const root::smart_object& obj);
 
     static std::expected<root::smart_object*, result_code>
     object_load_derive(root::smart_object& prototype_obj,
-                       serialization::conteiner& sc,
+                       serialization::container& sc,
                        object_load_context& occ);
 
     static result_code
-    object_save_internal(serialization::conteiner& sc, const root::smart_object& obj);
+    object_save_internal(serialization::container& sc, const root::smart_object& obj);
 };
 
 }  // namespace core

@@ -73,21 +73,21 @@ level_manager::load_level_path(level& l, const utils::path& path)
 
     auto root_path = path / "root.cfg";
 
-    serialization::conteiner conteiner;
-    if (!serialization::read_container(root_path, conteiner))
+    serialization::container container;
+    if (!serialization::read_container(root_path, container))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
     }
 
-    if (!l.m_mapping->buiild_object_mapping(root_path))
+    if (!l.m_mapping->build_object_mapping(root_path))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
     };
 
     {
-        auto packages = conteiner["packages"];
+        auto packages = container["packages"];
         auto packages_count = packages.size();
         for (size_t idx = 0; idx < packages_count; ++idx)
         {
@@ -143,13 +143,13 @@ level_manager::save_level(level& l, const utils::path& path)
         std::filesystem::create_directories(full_path.fs());
     }
 
-    serialization::conteiner conteiner;
+    serialization::container container;
     for (auto& id : l.m_package_ids)
     {
-        conteiner["packages"].push_back(id.str());
+        container["packages"].push_back(id.str());
     }
     auto root_path = full_path / "root.cfg";
-    if (!serialization::write_container(root_path, conteiner))
+    if (!serialization::write_container(root_path, container))
     {
         return false;
     }

@@ -530,7 +530,7 @@ vulkan_render::upload_material_data(render::frame_state& frame)
 }
 
 void
-vulkan_render::draw_multi_pipeline_objects_queue(render_line_conteiner& r,
+vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
                                                  VkCommandBuffer cmd,
                                                  render::frame_state& current_frame)
 {
@@ -567,7 +567,7 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_conteiner& r,
 }
 
 void
-vulkan_render::draw_objects_queue(render_line_conteiner& r,
+vulkan_render::draw_objects_queue(render_line_container& r,
                                   VkCommandBuffer cmd,
                                   render::frame_state& current_frame,
                                   bool outlined)
@@ -586,7 +586,7 @@ vulkan_render::draw_objects_queue(render_line_conteiner& r,
 void
 vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
                                                 const pipeline_ctx& pctx,
-                                                const render_line_conteiner& r,
+                                                const render_line_container& r,
                                                 bool rebind_images)
 {
     mesh_data* cur_mesh = nullptr;

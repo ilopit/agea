@@ -25,7 +25,7 @@ container::~container()
 }
 
 void
-container::set_load_path(const utils::path& p) const
+container::set_load_path(const utils::path& p)
 {
     m_load_path = p;
     m_occ->set_prefix_path(p);

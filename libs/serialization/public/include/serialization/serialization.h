@@ -13,10 +13,10 @@ namespace serialization
 {
 
 bool
-read_container(const utils::path& path, serialization::conteiner& conteiner);
+read_container(const utils::path& path, serialization::container& container);
 
 bool
-write_container(const utils::path& path, const serialization::conteiner& conteiner);
+write_container(const utils::path& path, const serialization::container& container);
 
 }  // namespace serialization
 }  // namespace agea

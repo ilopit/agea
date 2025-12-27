@@ -243,7 +243,7 @@ input_manager::input_tick(float dur_seconds)
 bool
 input_manager::load_actions(const utils::path& path)
 {
-    serialization::conteiner c;
+    serialization::container c;
 
     if (!serialization::read_container(path, c))
     {

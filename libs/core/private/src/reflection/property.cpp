@@ -119,8 +119,8 @@ property::default_load(property_context__load& ctx)
     }
     else
     {
-        auto& conteiner = *ctx.sc;
-        if (conteiner[ctx.dst_property->name].IsDefined())
+        auto& container = *ctx.sc;
+        if (container[ctx.dst_property->name].IsDefined())
         {
             return load_item(*ctx.src_property, *ctx.dst_obj, *ctx.sc, *ctx.occ);
         }
@@ -157,7 +157,7 @@ property::get_blob(root::smart_object& obj)
 result_code
 property::deserialize_collection(reflection::property& p,
                                  root::smart_object& obj,
-                                 const serialization::conteiner& jc,
+                                 const serialization::container& jc,
                                  core::object_load_context& occ)
 {
     auto ptr = (blob_ptr)&obj;
@@ -188,7 +188,7 @@ property::deserialize_collection(reflection::property& p,
 result_code
 property::serialize_collection(const reflection::property&,
                                const root::smart_object&,
-                               serialization::conteiner&)
+                               serialization::container&)
 {
     return result_code::ok;
 }
@@ -196,7 +196,7 @@ property::serialize_collection(const reflection::property&,
 result_code
 property::load_item(reflection::property& p,
                     root::smart_object& obj,
-                    const serialization::conteiner& jc,
+                    const serialization::container& jc,
                     core::object_load_context& occ)
 {
     if (!jc[p.name])
@@ -220,13 +220,13 @@ property::load_item(reflection::property& p,
 result_code
 property::serialize_item(const reflection::property& p,
                          const root::smart_object& obj,
-                         serialization::conteiner& sc)
+                         serialization::container& sc)
 {
     auto ptr = (blob_ptr)&obj;
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    serialization::conteiner c;
+    serialization::container c;
 
     AGEA_check(p.rtype->save, "Should never happens!");
     type_context__save type_ctx{&obj, ptr, &c};

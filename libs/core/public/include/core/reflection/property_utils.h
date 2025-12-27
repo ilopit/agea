@@ -22,7 +22,7 @@ struct property_context__save
 {
     property* p = nullptr;
     const root::smart_object* obj = nullptr;
-    serialization::conteiner* sc = nullptr;
+    serialization::container* sc = nullptr;
 };
 
 struct property_context__compare
@@ -57,7 +57,7 @@ struct property_context__prototype
     root::smart_object* src_obj = nullptr;
     root::smart_object* dst_obj = nullptr;
     core::object_load_context* occ = nullptr;
-    const serialization::conteiner* sc = nullptr;
+    const serialization::container* sc = nullptr;
 };
 
 struct property_context__load
@@ -67,7 +67,7 @@ struct property_context__load
     root::smart_object* src_obj = nullptr;
     root::smart_object* dst_obj = nullptr;
     core::object_load_context* occ = nullptr;
-    const serialization::conteiner* sc = nullptr;
+    const serialization::container* sc = nullptr;
 };
 
 struct property_context__to_string

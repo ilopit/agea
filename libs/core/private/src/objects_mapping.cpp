@@ -10,21 +10,21 @@ namespace core
 {
 
 bool
-object_mapping::buiild_object_mapping(const utils::path& p)
+object_mapping::build_object_mapping(const utils::path& p)
 {
-    serialization::conteiner c;
+    serialization::container c;
     if (!serialization::read_container(p, c))
     {
         return false;
     }
 
-    if (!buiild_object_mapping(c, true))
+    if (!build_object_mapping(c, true))
     {
         ALOG_LAZY_ERROR;
         return false;
     }
 
-    if (!buiild_object_mapping(c, false))
+    if (!build_object_mapping(c, false))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -34,7 +34,7 @@ object_mapping::buiild_object_mapping(const utils::path& p)
 }
 
 bool
-object_mapping::buiild_object_mapping(serialization::conteiner& c, bool is_class)
+object_mapping::build_object_mapping(serialization::container& c, bool is_class)
 {
     auto mapping = c[is_class ? "class_obj_mapping" : "instance_obj_mapping"];
     auto mapping_size = mapping.size();

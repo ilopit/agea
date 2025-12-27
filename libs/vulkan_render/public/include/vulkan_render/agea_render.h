@@ -10,7 +10,7 @@
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
-#include <utils/line_conteiner.h>
+#include <utils/line_container.h>
 #include <utils/id_allocator.h>
 
 #include <vector>
@@ -25,16 +25,16 @@ class render_device;
 struct frame_data;
 class shader_effect_data;
 
-using render_line_conteiner = ::agea::utils::line_conteiner<render::vulkan_render_data*>;
+using render_line_container = ::agea::utils::line_container<render::vulkan_render_data*>;
 
-using materials_update_queue = ::agea::utils::line_conteiner<render::material_data*>;
-using materials_update_queue_set = ::agea::utils::line_conteiner<materials_update_queue>;
-using objects_update_queue = ::agea::utils::line_conteiner<render::vulkan_render_data*>;
+using materials_update_queue = ::agea::utils::line_container<render::material_data*>;
+using materials_update_queue_set = ::agea::utils::line_container<materials_update_queue>;
+using objects_update_queue = ::agea::utils::line_container<render::vulkan_render_data*>;
 
 using directional_light_update_queue =
-    ::agea::utils::line_conteiner<render::vulkan_directional_light_data*>;
-using point_light_update_queue = ::agea::utils::line_conteiner<render::vulkan_point_light_data*>;
-using spot_light_update_queue = ::agea::utils::line_conteiner<render::vulkan_spot_light_data*>;
+    ::agea::utils::line_container<render::vulkan_directional_light_data*>;
+using point_light_update_queue = ::agea::utils::line_container<render::vulkan_point_light_data*>;
+using spot_light_update_queue = ::agea::utils::line_container<render::vulkan_spot_light_data*>;
 
 struct pipeline_ctx
 {
@@ -207,12 +207,12 @@ private:
     upload_material_data(render::frame_state& frame);
 
     void
-    draw_multi_pipeline_objects_queue(render_line_conteiner& r,
+    draw_multi_pipeline_objects_queue(render_line_container& r,
                                       VkCommandBuffer cmd,
                                       render::frame_state& current_frame);
 
     void
-    draw_objects_queue(render_line_conteiner& r,
+    draw_objects_queue(render_line_container& r,
                        VkCommandBuffer cmd,
                        render::frame_state& current_frame,
                        bool outlined);
@@ -220,7 +220,7 @@ private:
     void
     draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
                                      const pipeline_ctx& pctx,
-                                     const render_line_conteiner& r,
+                                     const render_line_container& r,
                                      bool rebind_images = true);
 
     void
@@ -275,11 +275,11 @@ private:
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
-    std::unordered_map<std::string, render_line_conteiner> m_default_render_object_queue;
+    std::unordered_map<std::string, render_line_container> m_default_render_object_queue;
 
-    std::unordered_map<std::string, render_line_conteiner> m_outline_render_object_queue;
+    std::unordered_map<std::string, render_line_container> m_outline_render_object_queue;
 
-    render_line_conteiner m_transparent_render_object_queue;
+    render_line_container m_transparent_render_object_queue;
 
     utils::id_allocator m_selected_material_alloc;
 

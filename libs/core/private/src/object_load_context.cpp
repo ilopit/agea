@@ -101,7 +101,7 @@ object_load_context::remove_obj(const root::smart_object& obj)
 
     glob::glob_state().get_class_cache_map()->remove_item(obj);
 
-    return false;
+    return true;
 }
 
 root::smart_object*
@@ -147,7 +147,7 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
         }
     }
 
-    obj = glob::glob_state().get_class_objects_cache()->get_item(id);
+    obj = glob::glob_state().get_instance_objects_cache()->get_item(id);
 
     return obj;
 }

@@ -55,24 +55,24 @@ private:
     static result_code
     deserialize_collection(reflection::property& p,
                            root::smart_object& obj,
-                           const serialization::conteiner& sc,
+                           const serialization::container& sc,
                            core::object_load_context& occ);
 
     static result_code
     load_item(reflection::property& p,
               root::smart_object& obj,
-              const serialization::conteiner& sc,
+              const serialization::container& sc,
               core::object_load_context& occ);
 
     static result_code
     serialize_collection(const reflection::property& p,
                          const root::smart_object& obj,
-                         serialization::conteiner& sc);
+                         serialization::container& sc);
 
     static result_code
     serialize_item(const reflection::property& p,
                    const root::smart_object& obj,
-                   serialization::conteiner& sc);
+                   serialization::container& sc);
 
     static result_code
     compare_collection(property_context__compare& context);

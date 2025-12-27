@@ -21,10 +21,10 @@ class object_mapping
 
 public:
     bool
-    buiild_object_mapping(const utils::path& p);
+    build_object_mapping(const utils::path& p);
 
     bool
-    buiild_object_mapping(serialization::conteiner& c, bool is_class);
+    build_object_mapping(serialization::container& c, bool is_class);
 
     void
     clear();

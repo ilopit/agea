@@ -9,7 +9,7 @@ namespace agea::root
 
 result_code
 load_smart_object(blob_ptr ptr,
-                  const serialization::conteiner& jc,
+                  const serialization::container& jc,
                   core::object_load_context& occ,
                   core::architype a_type);
 

@@ -242,7 +242,7 @@ object_constructor::destroy_default_class_obj_impl(const utils::id& id, object_l
 
 result_code
 object_constructor::object_properties_save(const root::smart_object& obj,
-                                           serialization::conteiner& jc)
+                                           serialization::container& jc)
 {
     auto& properties = obj.get_reflection()->m_serilalization_properties;
 
@@ -285,15 +285,15 @@ object_constructor::object_properties_save(const root::smart_object& obj,
 result_code
 object_constructor::object_save(const root::smart_object& obj, const utils::path& object_path)
 {
-    serialization::conteiner conteiner;
+    serialization::container container;
 
-    if (auto rc = object_save_internal(conteiner, obj); rc != result_code::ok)
+    if (auto rc = object_save_internal(container, obj); rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    if (!serialization::write_container(object_path, conteiner))
+    if (!serialization::write_container(object_path, container))
     {
         ALOG_LAZY_ERROR;
         return result_code::serialization_error;
@@ -391,7 +391,7 @@ object_constructor::object_instanciate_internal(root::smart_object& proto_obj,
 result_code
 object_constructor::load_derive_object_properties(root::smart_object& from,
                                                   root::smart_object& to,
-                                                  const serialization::conteiner& c,
+                                                  const serialization::container& c,
                                                   object_load_context& occ)
 {
     auto& properties = from.get_reflection()->m_serilalization_properties;
@@ -515,7 +515,7 @@ object_constructor::diff_object_properties(const root::smart_object& left,
 }
 
 result_code
-object_constructor::object_save_full(serialization::conteiner& sc, const root::smart_object& obj)
+object_constructor::object_save_full(serialization::container& sc, const root::smart_object& obj)
 {
     sc["type_id"] = obj.get_type_id().str();
     sc["id"] = obj.get_id().str();
@@ -525,7 +525,7 @@ object_constructor::object_save_full(serialization::conteiner& sc, const root::s
 
 std::expected<root::smart_object*, result_code>
 object_constructor::object_load_derive(root::smart_object& prototype_obj,
-                                       serialization::conteiner& sc,
+                                       serialization::container& sc,
                                        object_load_context& occ)
 {
     auto obj_id = AID(sc["id"].as<std::string>());
@@ -554,7 +554,7 @@ object_constructor::object_load_derive(root::smart_object& prototype_obj,
 }
 
 result_code
-object_constructor::object_save_internal(serialization::conteiner& sc,
+object_constructor::object_save_internal(serialization::container& sc,
                                          const root::smart_object& obj)
 {
     auto proto_obj = obj.get_class_obj();
@@ -618,7 +618,7 @@ object_constructor::object_load_internal(const utils::id& id, object_load_contex
         return std::unexpected(result_code::path_not_found);
     }
 
-    serialization::conteiner c;
+    serialization::container c;
     if (!serialization::read_container(full_path, c))
     {
         ALOG_LAZY_ERROR;
@@ -671,16 +671,16 @@ object_constructor::create_default_default_class_proto(const utils::id& id,
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::object_load_internal(serialization::conteiner& conteiner,
+object_constructor::object_load_internal(serialization::container& container,
                                          object_load_context& occ)
 {
     AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
 
-    auto id = AID(conteiner["id"].as<std::string>());
+    auto id = AID(container["id"].as<std::string>());
 
     root::smart_object* obj = nullptr;
-    auto proto_id = conteiner["class_id"].IsDefined() ? AID(conteiner["class_id"].as<std::string>())
-                                                      : AID(conteiner["type_id"].as<std::string>());
+    auto proto_id = container["class_id"].IsDefined() ? AID(container["class_id"].as<std::string>())
+                                                      : AID(container["type_id"].as<std::string>());
 
     auto src_result = preload_proto(proto_id, occ);
     if (!src_result)
@@ -689,7 +689,7 @@ object_constructor::object_load_internal(serialization::conteiner& conteiner,
         return src_result;
     }
 
-    auto result = object_load_derive(*src_result.value(), conteiner, occ);
+    auto result = object_load_derive(*src_result.value(), container, occ);
     if (!result)
     {
         ALOG_LAZY_ERROR;

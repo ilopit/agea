@@ -12,7 +12,7 @@ struct utils
 {
     template <typename T>
     static void
-    read_if_exists(const std::string& key, conteiner& s, T& p)
+    read_if_exists(const std::string& key, container& s, T& p)
     {
         if (s.isMember(key))
         {
@@ -21,7 +21,7 @@ struct utils
     }
 
     static bool
-    has_key(const std::string& key, conteiner& s)
+    has_key(const std::string& key, container& s)
     {
         if (!s[key])
         {
@@ -32,7 +32,7 @@ struct utils
 
     template <typename T>
     static bool
-    read(const std::string& key, conteiner& s, T& p)
+    read(const std::string& key, container& s, T& p)
     {
         if (!s[key])
         {
@@ -47,7 +47,7 @@ struct utils
     template <typename T>
     static bool
     read_3vec(const std::string& key,
-              conteiner& s,
+              container& s,
               const std::string& akey,
               const std::string& bkey,
               const std::string& ckey,

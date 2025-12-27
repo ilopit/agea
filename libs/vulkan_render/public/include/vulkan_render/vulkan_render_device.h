@@ -220,10 +220,10 @@ public:
     schedule_to_delete(delayed_deleter d);
 
     void
-    delete_immidiately(delayed_deleter d);
+    delete_immediately(delayed_deleter d);
 
     void
-    delete_sheduled_actions();
+    delete_scheduled_actions();
 
     // private:
     bool

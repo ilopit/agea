@@ -20,14 +20,14 @@ as_type(blob_ptr ptr)
 
 template <typename T>
 void
-pack_field(blob_ptr ptr, serialization::conteiner& jc)
+pack_field(blob_ptr ptr, serialization::container& jc)
 {
     jc = as_type<T>(ptr);
 }
 
 template <typename T>
 void
-extract_field(blob_ptr ptr, const serialization::conteiner& jc)
+extract_field(blob_ptr ptr, const serialization::container& jc)
 {
     as_type<T>(ptr) = jc.as<T>();
 }

@@ -38,7 +38,7 @@ struct test_object_constructor : base_test
 
             std::shared_ptr<core::object_mapping> om = std::make_shared<core::object_mapping>();
 
-            om->buiild_object_mapping(prefix / APATH("package.acfg"));
+            om->build_object_mapping(prefix / APATH("package.acfg"));
 
             occ.set_prefix_path(prefix)
                 .set_proto_global_set(&global_class_objects_cs)
