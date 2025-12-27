@@ -73,9 +73,9 @@ level::spawn_object_impl(const utils::id& proto_id,
 
     obj->update_root();
 
-    if (prms.positon)
+    if (prms.position)
     {
-        obj->set_position(prms.positon.value());
+        obj->set_position(prms.position.value());
     }
     if (prms.rotation)
     {

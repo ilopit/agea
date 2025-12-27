@@ -1,4 +1,4 @@
-﻿#include "packages/root/model/assets/mesh.h"
+#include "packages/root/model/assets/mesh.h"
 
 namespace agea
 {

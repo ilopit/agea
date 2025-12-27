@@ -141,7 +141,7 @@ public:
     T*
     as()
     {
-        AGEA_check(this, "Doesn't make sense to call as on dead object rigth?");
+        AGEA_check(this, "Doesn't make sense to call as on dead object right?");
 
         if (!castable_to<T>())
         {
@@ -155,14 +155,14 @@ public:
     T&
     asr()
     {
-        AGEA_check(this, "Doesn't make sense to call as on dead object rigth?");
+        AGEA_check(this, "Doesn't make sense to call as on dead object right?");
         return *((T*)this);
     }
 
     uint8_t*
     as_blob() const
     {
-        AGEA_check(this, "Doesn't make sense to call as on dead object rigth?");
+        AGEA_check(this, "Doesn't make sense to call as on dead object right?");
         return (uint8_t*)this;
     }
 

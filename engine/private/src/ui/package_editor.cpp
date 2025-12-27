@@ -24,8 +24,6 @@ package_editor::handle()
 
     auto pm = glob::glob_state().get_pm();
 
-    auto& pkgs = pm->get_packages();
-
     // if (ImGui::TreeNode("Packages"))
     {
         for (auto& p : pm->get_packages())

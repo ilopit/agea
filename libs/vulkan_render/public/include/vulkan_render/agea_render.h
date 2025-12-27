@@ -60,8 +60,8 @@ struct frame_state
     bool
     has_light_data() const
     {
-        return !m_spot_light_queue.empty() || m_dir_light_queue.empty() ||
-               m_point_light_queue.empty();
+        return !m_spot_light_queue.empty() || !m_dir_light_queue.empty() ||
+               !m_point_light_queue.empty();
     }
 
     void

@@ -121,7 +121,7 @@ struct reflection_type
     std::unordered_map<std::string, property_list> m_editor_properties;
     property_list m_properties;
     function_list m_functions;
-    property_list m_serilalization_properties;
+    property_list m_serialization_properties;
 
     // clang-format off
     type_handler__alloc                         alloc = nullptr;

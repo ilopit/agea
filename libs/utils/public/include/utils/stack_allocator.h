@@ -53,7 +53,7 @@ public:
     desc(uint8_t* ptr);
 
     memdescr*
-    desc(uint32_t offst) const;
+    desc(uint32_t offset) const;
 
     memdescr*
     next_desc(uint32_t size);

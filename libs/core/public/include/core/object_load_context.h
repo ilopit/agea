@@ -97,7 +97,7 @@ public:
     object_load_type
     get_construction_type()
     {
-        AGEA_check(!m_types.empty(), "Shoudn't be empty");
+        AGEA_check(!m_types.empty(), "Shouldn't be empty");
         return m_types.top();
     }
 

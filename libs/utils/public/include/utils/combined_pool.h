@@ -20,9 +20,9 @@ public:
     combined_pool() = default;
 
 
-    combined_pool(bool offest)
+    combined_pool(bool offset)
     {
-        (void)offest;
+        (void)offset;
         m_items.emplace_back(AID("INVALID"), 0);
     }
 

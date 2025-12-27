@@ -51,7 +51,7 @@ mesh__render_loader(reflection::type_context__render& ctx)
     auto& msh_model = ctx.obj->asr<root::mesh>();
 
     auto vertices = msh_model.get_vertices_buffer().make_view<render::gpu_vertex_data>();
-    auto indices = msh_model.get_indicess_buffer().make_view<render::gpu_index_data>();
+    auto indices = msh_model.get_indices_buffer().make_view<render::gpu_index_data>();
 
     if (!msh_model.get_vertices_buffer().size())
     {

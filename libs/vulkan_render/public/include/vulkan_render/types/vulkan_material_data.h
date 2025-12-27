@@ -52,14 +52,14 @@ public:
     }
 
     void
-    set_idexes(gpu_data_index_type index, gpu_data_index_type mat_type_index)
+    set_indexes(gpu_data_index_type index, gpu_data_index_type mat_type_index)
     {
         m_index = index;
         m_type_index = mat_type_index;
     }
 
     void
-    invalidate_gpu_idexes()
+    invalidate_gpu_indexes()
     {
         m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
         m_index = INVALID_GPU_MATERIAL_DATA_INDEX;

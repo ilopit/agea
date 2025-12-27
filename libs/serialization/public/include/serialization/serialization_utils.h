@@ -14,7 +14,7 @@ struct utils
     static void
     read_if_exists(const std::string& key, container& s, T& p)
     {
-        if (s.isMember(key))
+        if (s[key].IsDefined())
         {
             p = s[key].as<T>();
         }
@@ -55,7 +55,7 @@ struct utils
               T& b,
               T& c)
     {
-        if (!s.isMember(key))
+        if (!s[key].IsDefined())
         {
             return false;
         }

@@ -51,16 +51,16 @@ private:
     glm::mat4
     get_rotation_matrix();
 
-    glm::vec3 position;
-    glm::vec3 velocity;
+    glm::vec3 m_position;
+    glm::vec3 m_velocity;
 
-    float pitch = -12.f;
-    float yaw = 0.f;
+    float m_pitch = -12.f;
+    float m_yaw = 0.f;
 
-    float forward_delta = 0.f;
-    float left_delta = 0.f;
-    float look_up_delta = 0.f;
-    float look_left_delta = 0.f;
+    float m_forward_delta = 0.f;
+    float m_left_delta = 0.f;
+    float m_look_up_delta = 0.f;
+    float m_look_left_delta = 0.f;
 
     render::gpu_camera_data m_camera_data;
 

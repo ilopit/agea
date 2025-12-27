@@ -391,11 +391,11 @@ class TestWriteLuaClassType(unittest.TestCase):
             content = f.read()
             self.assertIn("sol::base_classes", content)
             self.assertIn("BaseClass", content)
-            self.assertIn("lua_script_extention", content)
+            self.assertIn("lua_script_extension", content)
 
 
-class TestWriteLuaUsertypeExtention(unittest.TestCase):
-    """Test write_lua_usertype_extention function."""
+class TestWriteLuaUsertypeExtension(unittest.TestCase):
+    """Test write_lua_usertype_extension function."""
 
     def setUp(self):
         self.temp_dir = tempfile.mkdtemp()
@@ -406,7 +406,7 @@ class TestWriteLuaUsertypeExtention(unittest.TestCase):
         import shutil
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
-    def test_write_lua_usertype_extention_basic(self):
+    def test_write_lua_usertype_extension_basic(self):
         class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
         class_type.name = "TestClass"
         class_type.full_name = "test_module::TestClass"
@@ -423,7 +423,7 @@ class TestWriteLuaUsertypeExtention(unittest.TestCase):
 
         self.context.types.append(class_type)
 
-        arapi.writer.write_lua_usertype_extention(self.context)
+        arapi.writer.write_lua_usertype_extension(self.context)
 
         output_file = os.path.join(self.temp_dir, "types_script_importer.ar.h")
         self.assertTrue(os.path.exists(output_file))
@@ -431,12 +431,12 @@ class TestWriteLuaUsertypeExtention(unittest.TestCase):
         with open(output_file, "r") as f:
             content = f.read()
             self.assertIn("#pragma once", content)
-            self.assertIn("TestClass__lua_script_extention", content)
+            self.assertIn("TestClass__lua_script_extension", content)
             self.assertIn("get_value", content)
             self.assertIn("set_value", content)
             self.assertIn("testFunction", content)
 
-    def test_write_lua_usertype_extention_with_parent(self):
+    def test_write_lua_usertype_extension_with_parent(self):
         parent_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
         parent_type.name = "BaseClass"
         self.context.types.append(parent_type)
@@ -446,12 +446,12 @@ class TestWriteLuaUsertypeExtention(unittest.TestCase):
         class_type.parent_type = parent_type
         self.context.types.append(class_type)
 
-        arapi.writer.write_lua_usertype_extention(self.context)
+        arapi.writer.write_lua_usertype_extension(self.context)
 
         output_file = os.path.join(self.temp_dir, "types_script_importer.ar.h")
         with open(output_file, "r") as f:
             content = f.read()
-            self.assertIn("BaseClass__lua_script_extention", content)
+            self.assertIn("BaseClass__lua_script_extension", content)
 
 
 if __name__ == '__main__':

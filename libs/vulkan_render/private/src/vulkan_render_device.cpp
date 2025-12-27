@@ -166,7 +166,7 @@ render_device::deinit_vulkan()
 bool
 render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 {
-    m_swachain_image_format = VK_FORMAT_B8G8R8A8_UNORM;
+    m_swapchain_image_format = VK_FORMAT_B8G8R8A8_UNORM;
     // hardcoding the depth format to 32 bit float
     m_depth_format = VK_FORMAT_D32_SFLOAT_S8_UINT;
 
@@ -200,7 +200,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
                 vk_utils::vulkan_image_view::create_shared(std::move(v)));
         }
 
-        m_swachain_image_format = vkb_swapchain.image_format;
+        m_swapchain_image_format = vkb_swapchain.image_format;
     }
     else
     {
@@ -208,15 +208,15 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         VkExtent3D swapchain_image_extent = {width, height, 1};
 
         auto simg_info = vk_utils::make_image_create_info(
-            m_swachain_image_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain_image_extent);
+            m_swapchain_image_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain_image_extent);
 
         // for the depth image, we want to allocate it from gpu local memory
         VmaAllocationCreateInfo simg_allocinfo = {};
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         simg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        m_swapchain_images.resize(FRAMES_IN_FLYIGNT);
-        m_swapchain_image_views.resize(FRAMES_IN_FLYIGNT);
+        m_swapchain_images.resize(FRAMES_IN_FLIGHT);
+        m_swapchain_image_views.resize(FRAMES_IN_FLIGHT);
         for (auto i = 0; i < m_swapchain_images.size(); ++i)
         {
             // allocate and create the image
@@ -226,7 +226,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 
             // build a image-view for the depth image to use for rendering
             auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-                m_swachain_image_format, m_swapchain_images[i]->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+                m_swapchain_image_format, m_swapchain_images[i]->image(), VK_IMAGE_ASPECT_COLOR_BIT);
 
             m_swapchain_image_views[i] =
                 vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
@@ -419,7 +419,7 @@ render_device::wait_for_fences()
 void
 render_device::schedule_to_delete(delayed_deleter d)
 {
-    m_delayed_delete_queue.push({m_current_frame_number + FRAMES_IN_FLYIGNT, std::move(d)});
+    m_delayed_delete_queue.push({m_current_frame_number + FRAMES_IN_FLIGHT, std::move(d)});
 }
 
 void

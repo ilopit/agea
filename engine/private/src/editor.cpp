@@ -26,7 +26,7 @@ void
 game_editor::init()
 {
     m_camera_data = {};
-    position = {20.f, 6.f, 60.f};
+    m_position = {20.f, 6.f, 60.f};
 
     glob::input_manager::get()->register_scaled_action(AID("move_forward"), this,
                                                        &game_editor::ev_move_forward);
@@ -53,28 +53,28 @@ game_editor::init()
 void
 game_editor::ev_move_forward(float f)
 {
-    forward_delta = f;
+    m_forward_delta = f;
     m_updated = true;
 }
 
 void
 game_editor::ev_move_left(float f)
 {
-    left_delta = f;
+    m_left_delta = f;
     m_updated = true;
 }
 
 void
 game_editor::ev_look_up(float f)
 {
-    look_up_delta = f;
+    m_look_up_delta = f;
     m_updated = true;
 }
 
 void
 game_editor::ev_look_left(float f)
 {
-    look_left_delta = f;
+    m_look_left_delta = f;
     m_updated = true;
 }
 
@@ -144,7 +144,7 @@ game_editor::ev_spawn()
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
 
-                sp.positon = root::vec3{x * 40.f, y * 40.f, z * 40.f};
+                sp.position = root::vec3{x * 40.f, y * 40.f, z * 40.f};
                 sp.scale = root::vec3{10.f};
                 auto p = glob::glob_state()
                              .getr_current_level()
@@ -187,8 +187,8 @@ game_editor::ev_lights()
 glm::mat4
 game_editor::get_rotation_matrix()
 {
-    glm::mat4 yaw_rot = glm::rotate(glm::mat4{1}, glm::radians(yaw), {0, 1, 0});
-    glm::mat4 pitch_rot = glm::rotate(yaw_rot, glm::radians(pitch), {1, 0, 0});
+    glm::mat4 yaw_rot = glm::rotate(glm::mat4{1}, glm::radians(m_yaw), {0, 1, 0});
+    glm::mat4 pitch_rot = glm::rotate(yaw_rot, glm::radians(m_pitch), {1, 0, 0});
 
     return pitch_rot;
 }
@@ -209,10 +209,10 @@ game_editor::update_camera()
 
     if (glob::input_manager::get()->get_input_state(agea::engine::mouse_right))
     {
-        yaw += look_left_delta;
-        pitch += look_up_delta;
+        m_yaw += m_look_left_delta;
+        m_pitch += m_look_up_delta;
 
-        pitch = glm::clamp(pitch, -85.f, 85.f);
+        m_pitch = glm::clamp(m_pitch, -85.f, 85.f);
     }
 
     glm::mat4 cam_rot = get_rotation_matrix();
@@ -223,15 +223,15 @@ game_editor::update_camera()
     forward = cam_rot * glm::vec4(forward, 0.f);
     right = cam_rot * glm::vec4(right, 0.f);
 
-    velocity = forward_delta * forward + left_delta * right;
-    position += velocity;
+    m_velocity = m_forward_delta * forward + m_left_delta * right;
+    m_position += m_velocity;
 
-    forward_delta = 0.f;
-    left_delta = 0.f;
-    look_left_delta = 0.f;
-    look_up_delta = 0.f;
+    m_forward_delta = 0.f;
+    m_left_delta = 0.f;
+    m_look_left_delta = 0.f;
+    m_look_up_delta = 0.f;
 
-    glm::mat4 view = glm::translate(glm::mat4{1}, position) * cam_rot;
+    glm::mat4 view = glm::translate(glm::mat4{1}, m_position) * cam_rot;
 
     view = glm::inverse(view);
 
@@ -241,7 +241,7 @@ game_editor::update_camera()
 
     m_camera_data.projection = projection;
     m_camera_data.view = view;
-    m_camera_data.position = position;
+    m_camera_data.position = m_position;
 
     m_updated = false;
 }

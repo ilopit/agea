@@ -14,7 +14,7 @@
 #endif
 
 int
-main(int, char*)
+main(int argc, char** argv)
 {
     agea::utils::setup_logger(spdlog::level::level_enum::trace);
 

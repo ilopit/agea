@@ -153,9 +153,9 @@ sync_service::handle_request(sync_service* self,
                 return send(bad_request("Unsupported file"));
             }
 
-            auto extention = c.value.substr(pos + 1);
+            auto extension = c.value.substr(pos + 1);
 
-            if (s_supported_ext.find(extention) == s_supported_ext.end())
+            if (s_supported_ext.find(extension) == s_supported_ext.end())
             {
                 return send(bad_request("Unsupported file"));
             }
@@ -170,7 +170,7 @@ sync_service::handle_request(sync_service* self,
 
             ftr.wait();
 
-            std::string output = "";
+            std::string output;
             if (ftr.valid())
             {
                 output = ftr.get();

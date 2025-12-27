@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <vulkan_render/types/vulkan_gpu_types.h>
 
@@ -83,7 +83,6 @@ private:
     void consume_updated_render_components();
     void consume_updated_render_assets();
     void consume_updated_shader_effects();
-
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on

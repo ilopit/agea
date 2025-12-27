@@ -1,5 +1,3 @@
-#pragma once
-
 #include "core/caches/cache_set.h"
 
 #include "core/caches/caches_map.h"

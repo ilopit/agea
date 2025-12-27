@@ -22,7 +22,7 @@ namespace core
 {
 struct spawn_parameters
 {
-    std::optional<root::vec3> positon;
+    std::optional<root::vec3> position;
     std::optional<root::vec3> scale;
     std::optional<root::vec3> rotation;
 };

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/utils/vulkan_buffer.h"

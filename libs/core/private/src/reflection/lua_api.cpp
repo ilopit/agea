@@ -21,10 +21,10 @@ l_my_print(lua_State* L)
         if (i > 1)
         {                             /* not the first element? */
             lua_writestring("\t", 1); /* add a tab before it */
-            lua->wrire_buffer("\t", 1);
+            lua->write_buffer("\t", 1);
         }
         lua_writestring(s, l); /* print it */
-        lua->wrire_buffer(s, l);
+        lua->write_buffer(s, l);
         lua_pop(L, 1); /* pop result */
     }
     lua_writeline();
@@ -71,7 +71,7 @@ lua_api::state()
 }
 
 void
-lua_api::wrire_buffer(const char* c, size_t n)
+lua_api::write_buffer(const char* c, size_t n)
 {
     m_buffer.append(c, n);
 }

@@ -50,8 +50,8 @@ game_object_components_prototype(::agea::reflection::property_context__prototype
     auto& dst_properties = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
         ctx.dst_obj->as_blob() + ctx.dst_property->offset);
 
-    AGEA_check(dst_properties.empty(), "Should alway be empty!!");
-    AGEA_check(number_of_components == src_properties.size(), "Should alway be same!!");
+    AGEA_check(dst_properties.empty(), "Should always be empty!!");
+    AGEA_check(number_of_components == src_properties.size(), "Should always be same!!");
 
     dst_properties.resize(src_properties.size());
 
@@ -143,7 +143,7 @@ game_object_components_copy(::agea::reflection::property_context__copy& ctx)
 {
     //     AGEA_check(ctx.occ->get_construction_type() ==
     //                    model::object_constructor_context::construction_type::mirror_obj,
-    //                "Should alway be empty!!");
+    //                "Should always be empty!!");
 
     auto& src_col = reflection::utils::as_type<std::vector<root::component*>>(
         ctx.src_property->get_blob(*ctx.src_obj));
@@ -184,7 +184,7 @@ game_object_components_instantiate(reflection::property_context__instantiate& ct
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto result = core::object_constructor::object_instanciate_internal(
+        auto result = core::object_constructor::object_instantiate_internal(
             *src_col[i], src_col[i]->get_id(), *ctx.occ);
 
         if (!result)
@@ -204,7 +204,7 @@ game_object_components_instantiate(reflection::property_context__instantiate& ct
 result_code
 game_object_components__load(::agea::reflection::property_context__load& ctx)
 {
-    AGEA_check(ctx.dst_property->name == "components", "Only compoentns expected");
+    AGEA_check(ctx.dst_property->name == "components", "Only components expected");
 
     auto& sc = *ctx.sc;
 
@@ -223,7 +223,7 @@ game_object_components__load(::agea::reflection::property_context__load& ctx)
     auto& dst_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
         ctx.dst_obj->as_blob() + ctx.dst_property->offset);
 
-    AGEA_check(dst_components.empty(), "Should alway be empty!!");
+    AGEA_check(dst_components.empty(), "Should always be empty!!");
 
     if (components)
     {
@@ -232,7 +232,7 @@ game_object_components__load(::agea::reflection::property_context__load& ctx)
 
         if (components_size != layout_size)
         {
-            ALOG_ERROR("Missconfigured layout");
+            ALOG_ERROR("Misconfigured layout");
             return result_code::failed;
         }
 
@@ -259,7 +259,7 @@ game_object_components__load(::agea::reflection::property_context__load& ctx)
     {
         for (auto c : src_components)
         {
-            AGEA_check(!c->get_flags().instance_obj, "Only protos are alowed");
+            AGEA_check(!c->get_flags().instance_obj, "Only protos are allowed");
 
             auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
 

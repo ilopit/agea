@@ -171,7 +171,7 @@ package::destroy_render_types()
 }
 
 void
-package::finalize_relfection()
+package::finalize_reflection()
 {
     for (auto [id, rt] : m_rts)
     {
@@ -210,7 +210,7 @@ package::finalize_relfection()
         {
             if (p->serializable)
             {
-                rt->m_serilalization_properties.push_back(p);
+                rt->m_serialization_properties.push_back(p);
             }
             rt->m_editor_properties[p->category].push_back(p);
         }
@@ -224,7 +224,7 @@ package::create_default_types_objects()
     {
         if (rt->type_class == reflection::reflection_type::reflection_type_class::agea_class)
         {
-            auto result = object_constructor::create_default_default_class_proto(id, *m_occ);
+            auto result = object_constructor::create_default_class_proto(id, *m_occ);
             if (!result)
             {
                 ALOG_ERROR("Failed to create default type object for {}", id.str());

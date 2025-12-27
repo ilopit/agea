@@ -8,7 +8,6 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
-#include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/config.hpp>
@@ -17,11 +16,11 @@
 #include <future>
 #include <mutex>
 
+namespace agea
+{
 namespace http = boost::beast::http;  // from <boost/beast/http.hpp>
 using tcp = boost::asio::ip::tcp;     // from <boost/asio/ip/tcp.hpp>
 
-namespace agea
-{
 struct sync_action
 {
     utils::path path_to_resources;
@@ -40,7 +39,7 @@ public:
     bool
     has_sync_actions()
     {
-        return m_is_running;
+        return m_has_sync_actions.load();
     }
 
     void

@@ -95,19 +95,17 @@ file_utils::compare_folders(const utils::path& a, const utils::path& b)
 {
     auto left_files = get_files(a);
     auto right_files = get_files(b);
-    auto lb = left_files.begin();
-    auto rb = right_files.begin();
 
     if (left_files != right_files)
     {
-        ALOG_INFO("size missmatch {0} != {1}", left_files.size(), right_files.size());
+        ALOG_INFO("size mismatch {0} != {1}", left_files.size(), right_files.size());
         return false;
     }
 
     for (auto& f : left_files)
     {
         auto left = a / f;
-        auto right = a / f;
+        auto right = b / f;
 
         if (!compare_files(left, right))
         {

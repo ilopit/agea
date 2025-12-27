@@ -365,7 +365,7 @@ public:
     void
     add_field(const utils::id& id,
               typename TYPE_DESCRIPTOR::id type_id,
-              uint64_t offest,
+              uint64_t offset,
               uint64_t aligment = 4,
               uint64_t items_count = 1)
     {
@@ -380,7 +380,7 @@ public:
 
         auto mod = obj.m_object_size % aligment;
 
-        field.offset = offest;
+        field.offset = offset;
 
         obj.m_object_size = field.offset + field.size;
 

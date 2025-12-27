@@ -1,5 +1,3 @@
-#pragma once
-
 #include "engine/private/ui/object_editor.h"
 
 #include <packages/root/model/game_object.h>
@@ -7,7 +5,7 @@
 #include <engine/property_drawers.h>
 #include <glue/type_ids.ar.h>
 
-#include <core/reflection/reflection_type.h>  //
+#include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/types.h>
 #include <vulkan_render/vulkan_render_loader.h>
@@ -130,20 +128,19 @@ object_editor::handle()
         return;
     }
 
-    auto rt = m_obj->get_reflection();
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
     auto f = glob::vulkan_render_loader::getr().get_font(AID("big"));
 
     ImGui::PushFont(f);
-    ImGui::Text("%s", m_obj->get_id().cstr());
+    ImGui::Text("%s", current_object->get_id().cstr());
     ImGui::PopFont();
 
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
     if (ImGui::CollapsingHeader("Hierarchy"))
     {
-        if (auto obj = m_obj->as<root::game_object>())
+        if (auto obj = current_object->as<root::game_object>())
         {
             if (obj->get_root_component())
             {
@@ -158,9 +155,9 @@ object_editor::handle()
         }
     }
 
-    auto& categories = m_obj->get_reflection()->m_editor_properties;
+    auto& categories = current_object->get_reflection()->m_editor_properties;
     int uid = 0;
-    if (auto obj = m_obj->as<root::game_object_component>())
+    if (auto obj = current_object->as<root::game_object_component>())
     {
         draw_transformation(categories, uid, *obj);
     }
@@ -194,13 +191,13 @@ object_editor::handle()
                     ImGui::NextColumn();
 
                     root::vec3 v3;
-                    read_value<root::vec3>(*p, *m_obj, v3);
+                    read_value<root::vec3>(*p, *current_object, v3);
                     draw_v3(uid, v3);
                 }
                 else
                 {
                     reflection::property_context__to_string pts;
-                    pts.obj = m_obj;
+                    pts.obj = current_object;
                     pts.prop = p.get();
                     p->to_string_handler(pts);
 

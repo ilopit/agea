@@ -30,13 +30,13 @@ reflection::reflection_type_registry::add_type(reflection_type* rt)
     {
         auto& v = m_types[rt->type_id];
 
-        AGEA_check(!v, "Shound't exist");
+        AGEA_check(!v, "Shouldn't exist");
         v = rt;
     }
     {
         auto& v = m_types_by_name[rt->type_name];
 
-        AGEA_check(!v, "Shound't exist");
+        AGEA_check(!v, "Shouldn't exist");
         v = rt;
     }
 }

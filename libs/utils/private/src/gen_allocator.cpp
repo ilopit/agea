@@ -1,6 +1,6 @@
 #include "utils/gen_allocator.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <format>
 #include <iostream>
 

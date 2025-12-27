@@ -56,8 +56,6 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
 
     t.offset_in_object.clear();
 
-    size_t dst_offest = 0;
-
     render::gpu_dynobj_builder sb;
 
     sb.set_id(AID("MaterialData"));
@@ -78,8 +76,8 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
                 sb.add_field(AID(p->name), render::gpu_type::g_vec4, 16);
                 break;
             default:
-                break;
                 AGEA_never("Should never happen");
+                break;
             }
 
             t.offset_in_object.push_back((uint32_t)p->offset);
@@ -148,13 +146,13 @@ render_bridge::make_qid(render::material_data& mt_data, render::mesh_data& m_dat
 bool
 render_bridge::is_agea_texture(const utils::path& p)
 {
-    return p.has_extention(".atbc");
+    return p.has_extension(".atbc");
 }
 
 bool
 render_bridge::is_agea_mesh(const utils::path& p)
 {
-    return p.has_extention(".avrt") || p.has_extention(".aind");
+    return p.has_extension(".avrt") || p.has_extension(".aind");
 }
 
 agea::result_code
@@ -167,7 +165,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
         return result_code::ok;
     }
 
-    AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Shoud not happen");
+    AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
 
     obj.set_state(root::smart_object_state::render_preparing);
 
@@ -191,7 +189,7 @@ render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
         return result_code::ok;
     }
 
-    AGEA_check(obj.get_state() == root::smart_object_state::render_ready, "Shoud not happen");
+    AGEA_check(obj.get_state() == root::smart_object_state::render_ready, "Should not happen");
 
     obj.set_state(root::smart_object_state::render_preparing);
 

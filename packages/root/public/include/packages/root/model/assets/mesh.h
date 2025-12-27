@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "packages/root/model/mesh.ar.h"
 
@@ -62,7 +62,7 @@ public:
     }
 
     utils::buffer&
-    get_indicess_buffer()
+    get_indices_buffer()
     {
         return m_indices;
     }

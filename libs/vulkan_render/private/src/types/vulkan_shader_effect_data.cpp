@@ -1,4 +1,4 @@
-﻿#include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
 
 #include "vulkan_render/vulkan_render_device.h"
 

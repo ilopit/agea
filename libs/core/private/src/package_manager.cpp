@@ -66,7 +66,7 @@ package_manager::init()
     // Build dependency graph and calculate in-degrees
     for (auto* pkg : packages)
     {
-        auto deps = get_dapendency(pkg->get_id());
+        auto deps = get_dependency(pkg->get_id());
         in_degree[pkg->get_id()] = static_cast<int>(deps.size());
 
         for (const auto& dep_id : deps)
@@ -244,7 +244,7 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
     std::string name = p.get_id().str() + ".apkg";
     auto full_path = root_folder / name;
 
-    std::map<std::string, std::string> class_pathes;
+    std::map<std::string, std::string> class_paths;
 
     for (auto& i : p.m_objects)
     {
@@ -266,15 +266,10 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
             std::filesystem::create_directories(parent.fs());
         }
 
-        result_code result = result_code::failed;
+        auto result = object_constructor::object_save(*i, full_obj_path);
         if (mapping.is_class)
         {
-            result = object_constructor::object_save(*i, full_obj_path);
-            class_pathes[i->get_id().str()] = mapping.p.str();
-        }
-        else
-        {
-            result = object_constructor::object_save(*i, full_obj_path);
+            class_paths[i->get_id().str()] = mapping.p.str();
         }
 
         if (result != result_code::ok)
@@ -284,11 +279,11 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
         }
     }
 
-    auto meta_file = full_path / "package.cfg";
+    auto meta_file = full_path / "package.acfg";
     serialization::container meta_container;
 
     int i = 0;
-    for (auto& c : class_pathes)
+    for (auto& c : class_paths)
     {
         meta_container["class_obj_mapping"][i++][c.first] = c.second;
     }

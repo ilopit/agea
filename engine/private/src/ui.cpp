@@ -1,5 +1,3 @@
-#pragma once
-
 #include "engine/ui.h"
 #include "engine/script_editor.h"
 #include "engine/console.h"
@@ -34,11 +32,6 @@
 
 #include <array>
 
-namespace
-{
-
-}  // namespace
-
 namespace agea
 {
 
@@ -51,22 +44,22 @@ ui::ui()
 {
     property_drawers::init();
 
-    m_winodws[level_editor_window::window_title()] = std::make_unique<level_editor_window>();
-    m_winodws[level_editor_window::window_title()]->m_show = true;
+    m_windows[level_editor_window::window_title()] = std::make_unique<level_editor_window>();
+    m_windows[level_editor_window::window_title()]->m_show = true;
 
-    m_winodws[materials_selector::window_title()] = std::make_unique<materials_selector>();
-    m_winodws[object_editor::window_title()] = std::make_unique<object_editor>();
-    m_winodws[components_editor::window_title()] = std::make_unique<components_editor>();
+    m_windows[materials_selector::window_title()] = std::make_unique<materials_selector>();
+    m_windows[object_editor::window_title()] = std::make_unique<object_editor>();
+    m_windows[components_editor::window_title()] = std::make_unique<components_editor>();
 
-    m_winodws[editor_console::window_title()] = std::make_unique<editor_console>();
-    m_winodws[editor_console::window_title()]->m_show = true;
+    m_windows[editor_console::window_title()] = std::make_unique<editor_console>();
+    m_windows[editor_console::window_title()]->m_show = true;
 
-    m_winodws[package_editor::window_title()] = std::make_unique<package_editor>();
-    m_winodws[package_editor::window_title()]->m_show = true;
+    m_windows[package_editor::window_title()] = std::make_unique<package_editor>();
+    m_windows[package_editor::window_title()]->m_show = true;
 
-    m_winodws[performance_counters_window::window_title()] =
+    m_windows[performance_counters_window::window_title()] =
         std::make_unique<performance_counters_window>();
-    m_winodws[performance_counters_window::window_title()]->m_show = true;
+    m_windows[performance_counters_window::window_title()]->m_show = true;
 }
 
 ui::~ui()
@@ -117,7 +110,7 @@ ui::new_frame(float dt)
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
 
-    for (auto& w : m_winodws)
+    for (auto& w : m_windows)
     {
         w.second->handle();
     }
@@ -168,7 +161,7 @@ level_editor_window::handle()
         {
             if (auto game_obj = o.second->as<root::game_object>())
             {
-                draw_oject(game_obj);
+                draw_object(game_obj);
             }
         }
         ImGui::TreePop();
@@ -177,7 +170,7 @@ level_editor_window::handle()
 }
 
 void
-level_editor_window::draw_oject(root::game_object* obj)
+level_editor_window::draw_object(root::game_object* obj)
 {
     bool opened = ImGui::TreeNode(obj->get_id().cstr());
     if (ImGui::IsItemClicked())

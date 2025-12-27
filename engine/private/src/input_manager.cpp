@@ -22,6 +22,8 @@ namespace engine
 namespace
 {
 
+constexpr float k_mouse_sensitivity = 500.f;
+
 const std::unordered_map<std::string, input_event_id> mapping{
     {"mouse_move_x", input_event_id::mouse_move_x},
     {"mouse_move_y", input_event_id::mouse_move_y},
@@ -57,7 +59,7 @@ const std::unordered_map<std::string, input_event_id> mapping{
     {"g", input_event_id::keyboard_g},
     {"h", input_event_id::keyboard_h},
     {"i", input_event_id::keyboard_i},
-    {"g", input_event_id::keyboard_j},
+    {"j", input_event_id::keyboard_j},
     {"k", input_event_id::keyboard_k},
     {"l", input_event_id::keyboard_l},
     {"m", input_event_id::keyboard_m},
@@ -106,6 +108,8 @@ const std::unordered_map<std::string, input_event_id> mapping{
 
 };
 
+// TODO: Replace C-style casts with static_cast<input_event_id>
+// TODO: Verify SDL keycode contiguity for PRINTSCREEN-PAGEUP and END-UP ranges
 bool
 from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
 {
@@ -190,6 +194,7 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
     return false;
 }
 
+// TODO: Replace C-style cast with static_cast<input_event_id>
 bool
 from_sdl_mouse_btm_code(Uint8 mouse_button, input_event_id& eie)
 {
@@ -278,7 +283,7 @@ input_manager::load_actions(const utils::path& path)
 
             if (native_code == input_event_id::nan)
             {
-                ALOG_WARN("unknow trigger {0}", trigger);
+                ALOG_WARN("unknown trigger {0}", trigger);
                 continue;
             }
 
@@ -322,7 +327,7 @@ input_manager::fire_input_event()
 
         for (auto& h : a->m_registered_scaled_handlers)
         {
-            h.fire(a->extran_ampl * m_dur_seconds * h.basic_amp);
+            h.fire(a->extra_ampl * m_dur_seconds * h.basic_amp);
         }
     }
 
@@ -385,7 +390,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            es->extran_ampl = (float)sdle.wheel.y;
+            es->extra_ampl = (float)sdle.wheel.y;
 
             es->is_active = true;
             es->to_drop = false;
@@ -408,8 +413,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            auto rel = (500.f * sdle.motion.xrel) / (float)glob::native_window::get()->get_size().w;
-            es->extran_ampl = rel * glob::native_window::get()->aspect_ratio();
+            auto rel = (k_mouse_sensitivity * sdle.motion.xrel) / (float)glob::native_window::get()->get_size().w;
+            es->extra_ampl = rel * glob::native_window::get()->aspect_ratio();
 
             es->is_active = true;
             es->to_drop = false;
@@ -423,8 +428,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            auto rel = (500.f * sdle.motion.yrel) / (float)glob::native_window::get()->get_size().h;
-            es->extran_ampl = rel;
+            auto rel = (k_mouse_sensitivity * sdle.motion.yrel) / (float)glob::native_window::get()->get_size().h;
+            es->extra_ampl = rel;
 
             es->is_active = true;
             es->to_drop = false;

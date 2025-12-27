@@ -21,7 +21,7 @@ script_text_editor::script_text_editor()
     , m_editor_palette(TextEditor::GetDarkPalette())
     , m_output_palette(TextEditor::GetDarkPalette())
     , m_output_palette_error(TextEditor::GetDarkPalette())
-    , m_selected_output_pallette(nullptr)
+    , m_selected_output_palette(nullptr)
 {
     m_editor_palette[(int)TextEditor::PaletteIndex::LineNumber] = ImU32(0xfcfcfcff);
     m_editor_window->SetPalette(m_editor_palette);
@@ -39,7 +39,7 @@ script_text_editor::script_text_editor()
 
     m_output_window->SetPalette(m_output_palette);
     m_output_window->SetReadOnly(true);
-    m_selected_output_pallette = &m_output_palette;
+    m_selected_output_palette = &m_output_palette;
 
     if (m_selected_file.exists())
     {
@@ -131,10 +131,10 @@ script_text_editor::handle()
 
             if (result.status() == sol::call_status::ok)
             {
-                if (m_selected_output_pallette != &m_output_palette)
+                if (m_selected_output_palette != &m_output_palette)
                 {
                     m_output_window->SetPalette(m_output_palette);
-                    m_selected_output_pallette = &m_output_palette;
+                    m_selected_output_palette = &m_output_palette;
                 }
 
                 output_header += lua_api->buffer();
@@ -142,10 +142,10 @@ script_text_editor::handle()
             }
             else
             {
-                if (m_selected_output_pallette != &m_output_palette_error)
+                if (m_selected_output_palette != &m_output_palette_error)
                 {
                     m_output_window->SetPalette(m_output_palette_error);
-                    m_selected_output_pallette = &m_output_palette_error;
+                    m_selected_output_palette = &m_output_palette_error;
                 }
 
                 sol::error err = result;

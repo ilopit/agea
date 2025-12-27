@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "vulkan_render/utils/vulkan_image.h"
 

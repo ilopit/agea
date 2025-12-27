@@ -1,4 +1,4 @@
-﻿#include "packages/root/model/assets/texture.h"
+#include "packages/root/model/assets/texture.h"
 
 namespace agea
 {

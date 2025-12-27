@@ -119,7 +119,7 @@ enum input_event_id
     keyboard_delete
 };
 
-struct input_action_descriptior;
+struct input_action_descriptor;
 
 struct input_scaled_action_handler : utils::generic_event_handler<void, float>
 {
@@ -130,7 +130,7 @@ struct input_fixed_action_handler : utils::generic_event_handler<void>
 {
 };
 
-struct input_action_descriptior
+struct input_action_descriptor
 {
     input_event_id id;
     float amp = 0.f;
@@ -140,7 +140,7 @@ struct input_action
 {
     utils::id id;
 
-    std::unordered_map<input_event_id, input_action_descriptior> m_triggers;
+    std::unordered_map<input_event_id, input_action_descriptor> m_triggers;
 };
 
 struct mouse_state
@@ -252,7 +252,7 @@ protected:
         bool to_drop = false;
         bool is_active = false;
         bool fire_on_start = false;
-        float extran_ampl = 1.f;
+        float extra_ampl = 1.f;
 
         void
         reset()
@@ -260,7 +260,7 @@ protected:
             to_drop = false;
             is_active = false;
             fire_on_start = false;
-            extran_ampl = 1.f;
+            extra_ampl = 1.f;
         }
 
         std::vector<input_fixed_action_handler> m_registered_pres_fixed_handlers;

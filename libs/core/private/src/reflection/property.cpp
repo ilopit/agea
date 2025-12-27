@@ -11,7 +11,7 @@
 
 #include <serialization/serialization.h>
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <array>
 
 namespace agea
@@ -59,7 +59,7 @@ result_code
 property::default_copy(property_context__copy& cxt)
 {
     AGEA_check(cxt.src_property->rtype->copy, "Should be valid!");
-    AGEA_check(cxt.dst_property->rtype->copy, "Should never happens!");
+    AGEA_check(cxt.dst_property->rtype->copy, "Should never happen!");
 
     AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
     AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
@@ -85,7 +85,7 @@ property::default_instantiate(property_context__instantiate& cxt)
     AGEA_check(cxt.src_property->rtype->instantiate || cxt.src_property->rtype->copy,
                "Should be valid!");
     AGEA_check(cxt.dst_property->rtype->instantiate || cxt.dst_property->rtype->copy,
-               "Should never happens!");
+               "Should never happen!");
 
     auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
                                                cxt.src_property->type.is_ptr);
@@ -131,7 +131,7 @@ property::default_load(property_context__load& ctx)
             auto to = ::agea::reflection::reduce_ptr(ctx.dst_property->get_blob(*ctx.dst_obj),
                                                      ctx.dst_property->type.is_ptr);
 
-            AGEA_check(ctx.dst_property->rtype->copy, "Should never happens!");
+            AGEA_check(ctx.dst_property->rtype->copy, "Should never happen!");
             type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.occ};
             ctx.dst_property->rtype->copy(type_ctx);
         }
@@ -170,15 +170,15 @@ property::deserialize_collection(reflection::property& p,
         r.resize(items_size);
     }
 
-    AGEA_check(p.rtype->load, "Should never happens!");
+    AGEA_check(p.rtype->load, "Should never happen!");
 
-    for (unsigned i = 0; i < items_size; ++i)
+    for (size_t i = 0; i < items_size; ++i)
     {
         auto item = items[i];
         auto idx = item["order_idx"].as<std::uint32_t>();
 
-        auto* filed_ptr = &r[idx];
-        type_context__load type_ctx{nullptr, (blob_ptr)filed_ptr, &item, &occ};
+        auto* field_ptr = &r[idx];
+        type_context__load type_ctx{nullptr, (blob_ptr)field_ptr, &item, &occ};
         p.rtype->load(type_ctx);
     }
 
@@ -210,7 +210,7 @@ property::load_item(reflection::property& p,
 
     ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    AGEA_check(p.rtype->load, "Should never happens!");
+    AGEA_check(p.rtype->load, "Should never happen!");
 
     auto sub_jc = jc[p.name];
     type_context__load type_ctx{nullptr, ptr, &sub_jc, &occ};
@@ -228,7 +228,7 @@ property::serialize_item(const reflection::property& p,
 
     serialization::container c;
 
-    AGEA_check(p.rtype->save, "Should never happens!");
+    AGEA_check(p.rtype->save, "Should never happen!");
     type_context__save type_ctx{&obj, ptr, &c};
     p.rtype->save(type_ctx);
 

@@ -195,7 +195,7 @@ public:
 
     template <typename T>
     void
-    register_package_extention()
+    register_package_extension()
     {
         static_assert(std::is_base_of_v<package_types_builder, T> ||
                           std::is_base_of_v<package_types_custom_loader, T> ||
@@ -247,7 +247,7 @@ public:
     void load_render_types();
     void destroy_render_types();
 
-    void finalize_relfection();
+    void finalize_reflection();
     void create_default_types_objects();
     void destroy_default_types_objects();
     void load_render_resources();
@@ -267,7 +267,7 @@ public:
         init();
         load_types();
         load_render_types();
-        finalize_relfection();
+        finalize_reflection();
         load_render_resources();
         create_default_types_objects();
        m_state = package_state::loaded;

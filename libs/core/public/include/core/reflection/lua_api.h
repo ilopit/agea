@@ -31,7 +31,7 @@ public:
     }
 
     void
-    wrire_buffer(const char* c, size_t n);
+    write_buffer(const char* c, size_t n);
 
 private:
     std::unique_ptr<sol::state> m_state;

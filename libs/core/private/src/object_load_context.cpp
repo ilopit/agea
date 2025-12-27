@@ -1,5 +1,3 @@
-#pragma once
-
 #include "core/object_load_context.h"
 
 #include <packages/root/model/smart_object.h>
@@ -87,7 +85,7 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
         break;
     }
     default:
-        AGEA_never("Unsupported type type");
+        AGEA_never("Unsupported type");
         break;
     }
 
@@ -97,9 +95,22 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 bool
 object_load_context::remove_obj(const root::smart_object& obj)
 {
-    m_proto_local_set->map.remove_item(obj);
-
-    glob::glob_state().get_class_cache_map()->remove_item(obj);
+    if (obj.get_flags().instance_obj)
+    {
+        if (m_instance_local_set)
+        {
+            m_instance_local_set->map.remove_item(obj);
+        }
+        glob::glob_state().get_instance_cache_map()->remove_item(obj);
+    }
+    else
+    {
+        if (m_proto_local_set)
+        {
+            m_proto_local_set->map.remove_item(obj);
+        }
+        glob::glob_state().get_class_cache_map()->remove_item(obj);
+    }
 
     return true;
 }

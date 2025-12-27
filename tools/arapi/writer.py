@@ -457,7 +457,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
                """)
     file_buffer.append(f""");
              
-    {type_obj.name}__lua_script_extention<sol::usertype<{type_obj.get_full_type_name()}>, {type_obj.get_full_type_name()}>(*{type_obj.name}_lua_type);
+    {type_obj.name}__lua_script_extension<sol::usertype<{type_obj.get_full_type_name()}>, {type_obj.get_full_type_name()}>(*{type_obj.name}_lua_type);
 
 }}""")
   else:
@@ -482,7 +482,7 @@ def write_lua_struct_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.f
   """)
 
 
-def write_lua_usertype_extention(fc: arapi.types.file_context) -> None:
+def write_lua_usertype_extension(fc: arapi.types.file_context) -> None:
   """Write Lua user type extension functions.
     
     Args:
@@ -501,12 +501,12 @@ def write_lua_usertype_extention(fc: arapi.types.file_context) -> None:
   for type_obj in fc.types:
     file_buffer.append(f"""template <typename T, typename K>
 void
-{type_obj.name}__lua_script_extention(T& lua_type)
+{type_obj.name}__lua_script_extension(T& lua_type)
 {{
 """)
     if type_obj.parent_type:
       file_buffer.append(
-          f"    {type_obj.parent_type.name}__lua_script_extention<T, K>(lua_type);\n")
+          f"    {type_obj.parent_type.name}__lua_script_extension<T, K>(lua_type);\n")
 
     for prop in type_obj.properties:
       if prop.access == ACCESS_ALL or prop.access == ACCESS_READ_ONLY:
@@ -756,7 +756,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
            """)
       file_buffer.append(f""");
 
-    {type_obj.name}__lua_script_extention<sol::usertype<{type_obj.get_full_type_name()}>, {type_obj.get_full_type_name()}>(m_lua_{type_obj.name});
+    {type_obj.name}__lua_script_extension<sol::usertype<{type_obj.get_full_type_name()}>, {type_obj.get_full_type_name()}>(m_lua_{type_obj.name});
 """)
     else:
       file_buffer.append(""");
@@ -985,8 +985,8 @@ AGEA_gen__static_schedule(::agea::gs::state::state_stage::create,
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
     [](agea::gs::state& s)
     {{
-       {fc.module_name}::package::instance().register_package_extention<package::package_types_builder>();
-       {fc.module_name}::package::instance().register_package_extention<package::package_types_default_objects_builder>();
+       {fc.module_name}::package::instance().register_package_extension<package::package_types_builder>();
+       {fc.module_name}::package::instance().register_package_extension<package::package_types_default_objects_builder>();
     }});
 
 bool package::package_model_enforcer()
@@ -1066,7 +1066,7 @@ package::package_types_default_objects_builder::destroy(::agea::core::package& s
   file_buffer.write_if_changed()
 
   write_types_resolvers(fc)
-  write_lua_usertype_extention(fc)
+  write_lua_usertype_extension(fc)
 
 
 def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_context) -> None:
@@ -1116,7 +1116,7 @@ bool package::package_render_enforcer()
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
     [](::agea::gs::state& s)
     {{
-      package::instance().register_package_extention<package::package_render_custom_resource_builder>(); 
+      package::instance().register_package_extension<package::package_render_custom_resource_builder>(); 
     }});
 """)
 
@@ -1125,7 +1125,7 @@ AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
 AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
     [](::agea::gs::state& s)
     {{
-      package::instance().register_package_extention<package::package_render_types_builder>(); 
+      package::instance().register_package_extension<package::package_render_types_builder>(); 
     }});
 """)
 
@@ -1265,7 +1265,7 @@ namespace agea
 {
 
 std::vector<utils::id>
-get_dapendency(const utils::id& package_id)
+get_dependency(const utils::id& package_id)
 {
     // block start root
     if (package_id == AID("root"))

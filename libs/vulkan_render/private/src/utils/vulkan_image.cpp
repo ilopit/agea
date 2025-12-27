@@ -1,4 +1,4 @@
-﻿#include "vulkan_render/utils/vulkan_image.h"
+#include "vulkan_render/utils/vulkan_image.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"

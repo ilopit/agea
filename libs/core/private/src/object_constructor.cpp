@@ -9,7 +9,6 @@
 
 #include <packages/root/model/components/component.h>
 #include <packages/root/model/game_object.h>
-#include <packages/root/model/components/component.h>
 
 #include <serialization/serialization.h>
 
@@ -76,7 +75,7 @@ object_constructor::object_instantiate(root::smart_object& src,
     auto old_objects = occ.reset_loaded_objects();
 
     occ.push_construction_type(core::object_load_type::instance_obj);
-    auto result = object_instanciate_internal(src, new_object_id, occ);
+    auto result = object_instantiate_internal(src, new_object_id, occ);
     occ.pop_construction_type();
 
     occ.reset_loaded_objects(old_objects, loaded_obj);
@@ -168,12 +167,12 @@ object_constructor::object_construct(const utils::id& type_id,
         if (!obj->META_construct(params))
         {
             olc.pop_construction_type();
-            return alloc_result;
+            return std::unexpected(result_code::failed);
         }
         if (!obj->post_construct())
         {
             olc.pop_construction_type();
-            return alloc_result;
+            return std::unexpected(result_code::failed);
         }
 
         olc.pop_construction_type();
@@ -190,7 +189,7 @@ object_constructor::create_default_class_obj_impl(std::shared_ptr<root::smart_ob
 {
     AGEA_check(olc.get_construction_type() == object_load_type::class_obj, "Should be class!");
     AGEA_check(olc.get_package(), "Should exist");
-    AGEA_check(!olc.get_level(), "Should exist");
+    AGEA_check(!olc.get_level(), "Should NOT exist");
 
     empty->get_flags() = ks_class_default;
 
@@ -230,8 +229,8 @@ object_constructor::destroy_default_class_obj_impl(const utils::id& id, object_l
 
         for (auto ritr = comps.rbegin(); ritr != comps.rend(); ++ritr)
         {
-            auto& obj = **ritr;
-            olc.remove_obj(obj);
+            auto& comp_obj = **ritr;
+            olc.remove_obj(comp_obj);
         }
     }
 
@@ -244,7 +243,7 @@ result_code
 object_constructor::object_properties_save(const root::smart_object& obj,
                                            serialization::container& jc)
 {
-    auto& properties = obj.get_reflection()->m_serilalization_properties;
+    auto& properties = obj.get_reflection()->m_serialization_properties;
 
     auto empty_obj =
         glob::glob_state().get_class_objects_cache()->get_item(obj.get_reflection()->type_name);
@@ -333,7 +332,6 @@ object_constructor::object_clone_create_internal(root::smart_object& proto_obj,
                                                  const utils::id& new_object_id,
                                                  object_load_context& occ)
 {
-    AGEA_check(&proto_obj, "Should exist!");
 
     root::smart_object_flags flags{.derived_obj = true};
     if (occ.get_construction_type() == object_load_type::instance_obj)
@@ -360,11 +358,10 @@ object_constructor::object_clone_create_internal(root::smart_object& proto_obj,
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::object_instanciate_internal(root::smart_object& proto_obj,
+object_constructor::object_instantiate_internal(root::smart_object& proto_obj,
                                                 const utils::id& new_object_id,
                                                 object_load_context& occ)
 {
-    AGEA_check(&proto_obj, "Should exist!");
 
     AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
@@ -394,7 +391,7 @@ object_constructor::load_derive_object_properties(root::smart_object& from,
                                                   const serialization::container& c,
                                                   object_load_context& occ)
 {
-    auto& properties = from.get_reflection()->m_serilalization_properties;
+    auto& properties = from.get_reflection()->m_serialization_properties;
 
     reflection::property_context__load ctx{nullptr, nullptr, &from, &to, &occ, &c};
 
@@ -419,7 +416,7 @@ object_constructor::clone_object_properties(root::smart_object& from,
                                             root::smart_object& to,
                                             object_load_context& occ)
 {
-    auto& properties = from.get_reflection()->m_serilalization_properties;
+    auto& properties = from.get_reflection()->m_serialization_properties;
 
     reflection::property_context__copy ctx{nullptr, nullptr, &from, &to, &occ};
 
@@ -444,7 +441,7 @@ object_constructor::instantiate_object_properties(root::smart_object& from,
                                                   root::smart_object& to,
                                                   object_load_context& occ)
 {
-    auto& properties = from.get_reflection()->m_serilalization_properties;
+    auto& properties = from.get_reflection()->m_serialization_properties;
 
     reflection::property_context__instantiate ictx{nullptr, nullptr, &from, &to, &occ};
     reflection::property_context__copy cctx{nullptr, nullptr, &from, &to, &occ};
@@ -495,7 +492,7 @@ object_constructor::diff_object_properties(const root::smart_object& left,
         return result_code::failed;
     }
 
-    auto& properties = left.get_reflection()->m_serilalization_properties;
+    auto& properties = left.get_reflection()->m_serialization_properties;
 
     reflection::property_context__compare compare_ctx{nullptr, &left, &right};
 
@@ -590,7 +587,7 @@ object_constructor::object_save_internal(serialization::container& sc,
 std::expected<root::smart_object*, result_code>
 object_constructor::object_load_internal(const utils::id& id, object_load_context& occ)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
+    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should not be nav!");
 
     auto obj = occ.get_construction_type() == object_load_type::class_obj ? occ.find_proto_obj(id)
                                                                           : occ.find_obj(id);
@@ -607,7 +604,7 @@ object_constructor::object_load_internal(const utils::id& id, object_load_contex
 
         if (auto proto = preload_proto(id, occ))
         {
-            return object_instanciate_internal(*proto.value(), proto.value()->get_id(), occ);
+            return object_instantiate_internal(*proto.value(), proto.value()->get_id(), occ);
         }
     }
 
@@ -648,13 +645,13 @@ object_constructor::preload_proto(const utils::id& id, object_load_context& occ)
         return std::unexpected(result_code::failed);
     }
 
-    std::vector<root::smart_object*> objcts;
-    return object_load(id, object_load_type::class_obj, occ, objcts);
+    std::vector<root::smart_object*> objects;
+    return object_load(id, object_load_type::class_obj, occ, objects);
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::create_default_default_class_proto(const utils::id& id,
-                                                       object_load_context& olc)
+object_constructor::create_default_class_proto(const utils::id& id,
+                                               object_load_context& olc)
 {
     olc.push_construction_type(object_load_type::class_obj);
     if (auto rt = glob::glob_state().get_rm()->get_type(id))
@@ -674,7 +671,7 @@ std::expected<root::smart_object*, result_code>
 object_constructor::object_load_internal(serialization::container& container,
                                          object_load_context& occ)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should be nav!");
+    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should not be nav!");
 
     auto id = AID(container["id"].as<std::string>());
 

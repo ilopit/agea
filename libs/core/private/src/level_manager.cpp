@@ -84,7 +84,7 @@ level_manager::load_level_path(level& l, const utils::path& path)
     {
         ALOG_LAZY_ERROR;
         return nullptr;
-    };
+    }
 
     {
         auto packages = container["packages"];

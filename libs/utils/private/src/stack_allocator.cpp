@@ -1,6 +1,6 @@
 #include "utils/stack_allocator.h"
 
-#include <stdlib.h>
+#include <cstdlib>
 #include <cstring>
 
 namespace agea::utils
@@ -44,9 +44,9 @@ stack_allocator::next_desc(uint32_t size)
 }
 
 agea::utils::stack_allocator::memdescr*
-stack_allocator::desc(uint32_t offst) const
+stack_allocator::desc(uint32_t offset) const
 {
-    return (memdescr*)(m_sysmem + offst);
+    return (memdescr*)(m_sysmem + offset);
 }
 
 agea::utils::stack_allocator::memdescr*

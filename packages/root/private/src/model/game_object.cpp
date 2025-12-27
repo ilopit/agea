@@ -189,7 +189,7 @@ game_object::update_position()
 }
 
 void
-game_object::recreate_structure_form_layout_impl(component* parent,
+game_object::recreate_structure_from_layout_impl(component* parent,
                                                  uint32_t& position,
                                                  uint32_t& total_subojects_count)
 {
@@ -204,7 +204,7 @@ game_object::recreate_structure_form_layout_impl(component* parent,
         ++position;
 
         uint32_t subojects_count = 0;
-        recreate_structure_form_layout_impl(child, position, subojects_count);
+        recreate_structure_from_layout_impl(child, position, subojects_count);
         parent->m_total_subcomponents += subojects_count;
     }
 
@@ -227,7 +227,7 @@ game_object::recreate_structure_from_layout()
 
     m_components.clear();
 
-    recreate_structure_form_layout_impl(m_root_component, last_obj_id, subobj_count);
+    recreate_structure_from_layout_impl(m_root_component, last_obj_id, subobj_count);
     fill_renderable_components();
 }
 

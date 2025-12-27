@@ -18,7 +18,7 @@ void
 state_mutator__caches::set(gs::state& es)
 {
     auto class_cache = es.create_box<core::cache_set>("class_cache");
-    auto instance_cache = es.create_box<core::cache_set>("class_cache");
+    auto instance_cache = es.create_box<core::cache_set>("instance_cache");
 
     es.m_class_set = class_cache;
 

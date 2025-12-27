@@ -6,8 +6,8 @@
 #include "global_state/global_state.h"
 #include <sol2_unofficial/sol.h>
 
-#include <ctype.h>
-#include <stdlib.h>
+#include <cctype>
+#include <cstdlib>
 #include <fstream>
 #include <filesystem>
 
@@ -23,7 +23,7 @@ const std::string HISTORY_FILE = "editor_console.history.log";
 }  // namespace
 
 static void
-Strtrim(char* s)
+strtrim(char* s)
 {
     char* str_end = s + strlen(s);
     while (str_end > s && str_end[-1] == ' ') str_end--;
@@ -90,25 +90,24 @@ editor_console::save_to_file()
 
     std::string buf;
 
-    for (auto i : m_items)
+    for (const auto& i : m_items)
     {
-        if (i.back() != '\n')
-        {
-            i += '\n';
-        }
-
         file << i;
+        if (i.empty() || i.back() != '\n')
+        {
+            file << '\n';
+        }
     }
     file.close();
 
     file.open(HISTORY_FILE);
-    for (auto i : m_history)
+    for (const auto& i : m_history)
     {
-        if (i.back() != '\n')
-        {
-            i += '\n';
-        }
         file << i;
+        if (i.empty() || i.back() != '\n')
+        {
+            file << '\n';
+        }
     }
 }
 
@@ -267,7 +266,7 @@ editor_console::handle()
                          &text_edit_callback_stub, (void*)this))
     {
         char* s = m_buf.data();
-        Strtrim(s);
+        strtrim(s);
         if (s[0])
         {
             exec_command(s);
@@ -327,11 +326,11 @@ editor_console::exec_command(const std::string& command_line)
 
         if (result.status() == sol::call_status::ok)
         {
-            auto to_add = lua->buffer().substr(t);
+            auto to_add = lua->buffer().substr(m_lua_buffer_offset);
             if (!to_add.empty())
             {
                 m_items.push_back(to_add);
-                t = lua->buffer().size();
+                m_lua_buffer_offset = lua->buffer().size();
             }
             m_history.push_back(command_line);
         }
@@ -384,7 +383,7 @@ editor_console::text_edit_callback(ImGuiInputTextCallbackData* data)
         std::vector<std::string> candidates;
         auto depth = m_commands.hints(m_context.tokens, candidates);
 
-        if (candidates.size() == 0)
+        if (candidates.empty())
         {
             if (depth == 0)
             {
@@ -519,6 +518,11 @@ editor_console::handle_cmd_help(editor_console& e, const command_context&)
 void
 editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
 {
+    if (ctx.tokens.size() < 2)
+    {
+        e.add_log("[error] --run requires a file path argument\n");
+        return;
+    }
     std::string file_name = ctx.tokens[1];
 
     auto lua = glob::glob_state().get_lua();
@@ -527,13 +531,13 @@ editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
 
     if (result.status() == sol::call_status::ok)
     {
-        auto to_add = lua->buffer().substr(e.t);
+        auto to_add = lua->buffer().substr(e.m_lua_buffer_offset);
         if (!to_add.empty())
         {
             e.m_items.push_back(to_add);
         }
 
-        e.t = lua->buffer().size();
+        e.m_lua_buffer_offset = lua->buffer().size();
     }
     else
     {

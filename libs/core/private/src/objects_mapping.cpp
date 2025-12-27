@@ -39,10 +39,10 @@ object_mapping::build_object_mapping(serialization::container& c, bool is_class)
     auto mapping = c[is_class ? "class_obj_mapping" : "instance_obj_mapping"];
     auto mapping_size = mapping.size();
 
-    for (unsigned i = 0; i < mapping_size; ++i)
+    for (size_t i = 0; i < mapping_size; ++i)
     {
         auto item = mapping[i];
-        for (auto ss : item)
+        for (const auto& ss : item)
         {
             auto f = AID(ss.first.as<std::string>());
             auto s = APATH(ss.second.as<std::string>());

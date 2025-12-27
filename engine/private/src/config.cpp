@@ -3,10 +3,6 @@
 #include <utils/defines_utils.h>
 #include <serialization/serialization.h>
 
-#define extract(conf, value, type) conf##.##.value = container[AGEA_stringify(value)].as<type>()
-#define extract_id(conf, value) \
-    conf##.##.value = utils::id::from(container[AGEA_stringify(value)].as<type>())
-
 namespace agea
 {
 glob::config::type glob::config::type::s_instance;

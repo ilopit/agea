@@ -15,7 +15,7 @@
 
 struct SDL_Window;
 
-constexpr uint64_t FRAMES_IN_FLYIGNT = 3ULL;
+constexpr uint64_t FRAMES_IN_FLIGHT = 3ULL;
 
 namespace agea
 {
@@ -193,7 +193,7 @@ public:
     VkFormat
     get_swapchain_format() const
     {
-        return m_swachain_image_format;
+        return m_swapchain_image_format;
     }
 
     VkFormat
@@ -266,7 +266,7 @@ public:
     upload_context m_upload_context;
 
     VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
-    VkFormat m_swachain_image_format = VK_FORMAT_UNDEFINED;
+    VkFormat m_swapchain_image_format = VK_FORMAT_UNDEFINED;
 
     std::vector<vk_utils::vulkan_image_sptr> m_swapchain_images;
     std::vector<vk_utils::vulkan_image_view_sptr> m_swapchain_image_views;

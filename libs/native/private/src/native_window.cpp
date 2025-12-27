@@ -34,7 +34,7 @@ native_window::construct(construct_params& c)
 
     Uint32 rmask, gmask, bmask, amask;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
-    int shift = (my_icon.bytes_per_pixel == 3) ? 8 : 0;
+    int shift = (tex_channels == 3) ? 8 : 0;
     rmask = 0xff000000 >> shift;
     gmask = 0x00ff0000 >> shift;
     bmask = 0x0000ff00 >> shift;
@@ -43,7 +43,7 @@ native_window::construct(construct_params& c)
     rmask = 0x000000ff;
     gmask = 0x0000ff00;
     bmask = 0x00ff0000;
-    amask = (4 == 3) ? 0 : 0xff000000;
+    amask = (tex_channels == 3) ? 0 : 0xff000000;
 #endif
 
     SDL_Surface* icon = SDL_CreateRGBSurfaceFrom((void*)pixels, tex_width, tex_height, 4 * 8,

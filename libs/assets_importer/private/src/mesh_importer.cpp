@@ -17,7 +17,7 @@ namespace mesh_importer
 {
 bool
 extract_mesh_data_from_3do(const utils::path& obj_path,
-                           utils::buffer_view<render::gpu_vertex_data> verices,
+                           utils::buffer_view<render::gpu_vertex_data> vertices,
                            utils::buffer_view<render::gpu_index_data> indices)
 {
     // attrib will contain the vertex arrays of the file
@@ -50,7 +50,7 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
     for (size_t s = 0; s < shapes.size(); s++)
     {
         // Loop over faces(polygon)
-        verices.resize(3 * shapes[s].mesh.num_face_vertices.size());
+        vertices.resize(3 * shapes[s].mesh.num_face_vertices.size());
 
         size_t index_offset = 0;
         for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++)
@@ -99,15 +99,15 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
                 new_vert.color.g = g;
                 new_vert.color.b = b;
 
-                verices.at((uint32_t)(index_offset + v)) = new_vert;
+                vertices.at((uint32_t)(index_offset + v)) = new_vert;
             }
             index_offset += fv;
         }
     }
 
-    indices.resize(verices.size());
+    indices.resize(vertices.size());
 
-    for (uint32_t i = 0; i < verices.size(); i++)
+    for (uint32_t i = 0; i < vertices.size(); i++)
     {
         indices.at(i) = render::gpu_index_data(i);
     }

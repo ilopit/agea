@@ -33,7 +33,7 @@ string_utils::split(const std::string& s, const std::string& del, std::vector<st
 }
 
 std::string
-string_utils::file_extention(const std::string& file_path)
+string_utils::file_extension(const std::string& file_path)
 {
     auto pos = file_path.rfind('.');
 
@@ -130,7 +130,7 @@ char_to_int(char c)
 }  // namespace
 
 bool
-string_utils::convert_hext_string_to_bytes(size_t size, const char* s, uint8_t* ptr)
+string_utils::convert_hex_string_to_bytes(size_t size, const char* s, uint8_t* ptr)
 {
     if (size == 0 || (size & 1))
     {

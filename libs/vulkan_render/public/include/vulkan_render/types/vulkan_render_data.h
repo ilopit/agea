@@ -30,7 +30,7 @@ public:
     render::material_data* material = nullptr;
 
     bool visible = true;
-    bool rendarable = true;
+    bool renderable = true;
     float distance_to_camera = 0.f;
     bool outlined = false;
 

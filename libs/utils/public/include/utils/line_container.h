@@ -9,8 +9,8 @@ namespace utils
 template <typename T>
 class line_container
 {
-    using itr = std::vector<T>::iterator;
-    using citr = std::vector<T>::const_iterator;
+    using itr = typename std::vector<T>::iterator;
+    using citr = typename std::vector<T>::const_iterator;
     using item_type = T;
 
 public:
@@ -37,13 +37,13 @@ public:
         m_items.pop_back();
     }
 
-    _NODISCARD constexpr T&
+    [[nodiscard]] constexpr T&
     operator[](const uint64_t idx) noexcept
     {
         return m_items[idx];
     }
 
-    _NODISCARD constexpr const T&
+    [[nodiscard]] constexpr const T&
     operator[](const uint64_t idx) const noexcept
     {
         return m_items[idx];
@@ -62,37 +62,37 @@ public:
         return std::find_if(m_items.begin(), m_items.end(), p);
     }
 
-    _NODISCARD constexpr itr
+    [[nodiscard]] constexpr itr
     begin() noexcept
     {
         return m_items.begin();
     }
 
-    _NODISCARD constexpr itr
+    [[nodiscard]] constexpr itr
     end() noexcept
     {
         return m_items.end();
     }
 
-    _NODISCARD constexpr citr
+    [[nodiscard]] constexpr citr
     begin() const noexcept
     {
         return m_items.begin();
     }
 
-    _NODISCARD constexpr citr
+    [[nodiscard]] constexpr citr
     end() const noexcept
     {
         return m_items.end();
     }
 
-    _NODISCARD constexpr citr
+    [[nodiscard]] constexpr citr
     cbegin() const noexcept
     {
         return m_items.begin();
     }
 
-    _NODISCARD constexpr citr
+    [[nodiscard]] constexpr citr
     cend() const noexcept
     {
         return m_items.end();

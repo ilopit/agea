@@ -1,6 +1,6 @@
-#pragma
+#pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <utils/singleton_instance.h>
 #include <utils/agea_log.h>
@@ -48,4 +48,4 @@ struct engine_counters : public singleton_instance<::agea::engine_counters, engi
 
 #define AGEA_make_scope(VAR)                                        \
     volatile scope<decltype(::agea::engine_counters::VAR)> scope_s( \
-        ::agea::glob::engine_counters::getr().##VAR)
+        ::agea::glob::engine_counters::getr().VAR)

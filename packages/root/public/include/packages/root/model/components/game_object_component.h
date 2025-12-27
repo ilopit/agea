@@ -52,7 +52,7 @@ public:
     rotate(const vec3& delta);
 
     const glm::mat4&
-    get_transofrm_matrix() const
+    get_transform_matrix() const
     {
         return m_transform_matrix;
     }

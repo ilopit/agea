@@ -58,7 +58,7 @@ color__load(reflection::type_context__load& ctx)
 {
     auto str_color = ctx.jc->as<std::string>();
 
-    if (str_color.size() != 0)
+    if (str_color.empty())
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -66,7 +66,7 @@ color__load(reflection::type_context__load& ctx)
 
     uint8_t rgba[4] = {0, 0, 0, 255};
 
-    agea::string_utils::convert_hext_string_to_bytes(8, str_color.data(), rgba);
+    agea::string_utils::convert_hex_string_to_bytes(8, str_color.data(), rgba);
 
     auto& field = reflection::utils::as_type<::agea::root::color>(ctx.obj);
 
@@ -349,7 +349,7 @@ id__to_string(reflection::type_context__to_string& ctx)
 agea::result_code
 vec2__to_string(reflection::type_context__to_string& ctx)
 {
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec3>(ctx.obj);
+    auto& field = agea::reflection::utils::as_type<::agea::root::vec2>(ctx.obj);
 
     *ctx.result = std::format("{} {}", field.x, field.y);
 

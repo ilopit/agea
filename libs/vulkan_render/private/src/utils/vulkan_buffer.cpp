@@ -113,7 +113,7 @@ vulkan_buffer::flush()
 }
 
 void
-vulkan_buffer::upload_data(uint8_t* src, uint32_t size, bool use_alligment)
+vulkan_buffer::upload_data(uint8_t* src, uint32_t size, bool use_alignment)
 {
     auto device = glob::render_device::get();
 
@@ -123,7 +123,7 @@ vulkan_buffer::upload_data(uint8_t* src, uint32_t size, bool use_alligment)
     memcpy(data, src, size);
 
     auto new_offset = m_offset + size;
-    m_offset = use_alligment ? device->pad_uniform_buffer_size(new_offset) : new_offset;
+    m_offset = use_alignment ? device->pad_uniform_buffer_size(new_offset) : new_offset;
 }
 
 uint8_t*

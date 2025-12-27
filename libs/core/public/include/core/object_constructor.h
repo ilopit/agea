@@ -120,7 +120,7 @@ public:
                                  object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
-    object_instanciate_internal(root::smart_object& src,
+    object_instantiate_internal(root::smart_object& src,
                                 const utils::id& new_object_id,
                                 object_load_context& occ);
 
@@ -165,7 +165,7 @@ public:
     preload_proto(const utils::id& id, object_load_context& occ);
 
     static std::expected<root::smart_object*, result_code>
-    create_default_default_class_proto(const utils::id& id, object_load_context& olc);
+    create_default_class_proto(const utils::id& id, object_load_context& olc);
 
     template <typename T>
     static std::shared_ptr<T>

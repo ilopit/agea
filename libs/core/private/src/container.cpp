@@ -28,7 +28,10 @@ void
 container::set_load_path(const utils::path& p)
 {
     m_load_path = p;
-    m_occ->set_prefix_path(p);
+    if (m_occ)
+    {
+        m_occ->set_prefix_path(p);
+    }
 }
 
 utils::path

@@ -267,7 +267,7 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
         draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
     }
 
-    // TRANSPATENT
+    // TRANSPARENT
     if (!m_transparent_render_object_queue.empty())
     {
         update_transparent_objects_queue();
@@ -374,7 +374,7 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
                      VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(m_objects_set);
 
-    AGEA_check(m_objects_set, "Should never happens");
+    AGEA_check(m_objects_set, "Should never happen");
 }
 
 void
@@ -642,7 +642,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
 void
 vulkan_render::bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh)
 {
-    AGEA_check(cur_mesh, "Should be null");
+    AGEA_check(cur_mesh, "Should not be null");
 
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
@@ -669,12 +669,12 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    const uint32_t dummy_offest[] = {0, 0, 0, 0};
+    const uint32_t dummy_offset[] = {0, 0, 0, 0};
 
     if (object)
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offest);
+                                OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offset);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
                                 GLOBAL_descriptor_sets, 1, &m_global_set,
@@ -699,7 +699,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
             .build(mat_data_set);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                MATERIALS_descriptor_sets, 1, &mat_data_set, 1, dummy_offest);
+                                MATERIALS_descriptor_sets, 1, &mat_data_set, 1, dummy_offset);
     }
 
     if (cur_material->has_textures())
@@ -820,7 +820,7 @@ vulkan_render::add_material(render::material_data* mat_data)
             }
         }
     }
-    mat_data->set_idexes(segment->alloc_id(), segment->index);
+    mat_data->set_indexes(segment->alloc_id(), segment->index);
 }
 
 void
@@ -832,7 +832,7 @@ vulkan_render::drop_material(render::material_data* mat_data)
     if (segment)
     {
         segment->release_id(mat_data->gpu_idx());
-        mat_data->invalidate_gpu_idexes();
+        mat_data->invalidate_gpu_indexes();
     }
 }
 

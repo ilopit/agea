@@ -14,7 +14,7 @@ struct string_utils
     split(const std::string& s, const std::string& del);
 
     static std::string
-    file_extention(const std::string& file_path);
+    file_extension(const std::string& file_path);
 
     static bool
     ends_with(const std::string& src, const std::string& ending);
@@ -23,6 +23,6 @@ struct string_utils
     starts_with(const std::string& src, const std::string& begin);
 
     static bool
-    convert_hext_string_to_bytes(size_t size, const char* s, uint8_t* ptr);
+    convert_hex_string_to_bytes(size_t size, const char* s, uint8_t* ptr);
 };
 }  // namespace agea

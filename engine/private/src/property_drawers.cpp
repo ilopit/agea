@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-#include <inttypes.h>
+#include <cinttypes>
 
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/mesh.h"

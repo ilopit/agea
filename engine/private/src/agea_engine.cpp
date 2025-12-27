@@ -1,4 +1,4 @@
-﻿#include "engine/agea_engine.h"
+#include "engine/agea_engine.h"
 
 #include "engine/ui.h"
 #include "engine/input_manager.h"
@@ -178,6 +178,7 @@ vulkan_engine::init()
     ALOG_INFO("Initialization completed");
     return true;
 }
+
 void
 vulkan_engine::cleanup()
 {
@@ -336,7 +337,7 @@ vulkan_engine::load_level(const utils::id& level_id)
     auto result = lm->load_level(level_id);
     if (!result)
     {
-        ALOG_FATAL("Nothign to do here!");
+        ALOG_FATAL("Nothing to do here!");
         return false;
     }
 
@@ -392,7 +393,7 @@ vulkan_engine::consume_updated_transforms()
                 auto obj_data = m->get_render_object_data();
                 if (obj_data)
                 {
-                    obj_data->gpu_data.model_matrix = m->get_transofrm_matrix();
+                    obj_data->gpu_data.model_matrix = m->get_transform_matrix();
 
                     glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
                 }

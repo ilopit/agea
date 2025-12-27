@@ -1,4 +1,4 @@
-﻿#include "packages/base/model/assets/pbr_material.h"
+#include "packages/base/model/assets/pbr_material.h"
 
 namespace agea
 {

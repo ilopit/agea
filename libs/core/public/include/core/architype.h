@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <string_view>
 
@@ -42,7 +42,7 @@ to_string(architype a)
     case agea::core::architype::material:
         return std::string_view("material");
     default:
-        return std::string_view("unknowns");
+        return std::string_view("unknown");
     }
 }
 

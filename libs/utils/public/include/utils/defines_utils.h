@@ -31,7 +31,7 @@
 
 #define AGEA_gen_class_non_moveable(c) \
     c(c&&) = delete;                   \
-    c& operator=(c&&)) = delete
+    c& operator=(c&&) = delete
 
 #define AGEA_gen_class_non_copyble_non_moveable(c) \
     AGEA_gen_class_non_copyable(c);                \

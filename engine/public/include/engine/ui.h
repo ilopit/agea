@@ -93,7 +93,7 @@ public:
     handle() override;
 
     void
-    draw_oject(root::game_object* obj);
+    draw_object(root::game_object* obj);
 };
 
 class components_editor : public window
@@ -167,7 +167,7 @@ public:
     void
     new_frame(float dt);
 
-    std::unordered_map<std::string, std::unique_ptr<window>> m_winodws;
+    std::unordered_map<std::string, std::unique_ptr<window>> m_windows;
 };
 
 }  // namespace ui
@@ -185,7 +185,7 @@ template <typename T>
 static T*
 get_window()
 {
-    return (T*)glob::ui::get()->m_winodws[T::window_title()].get();
+    return (T*)glob::ui::get()->m_windows[T::window_title()].get();
 }
 }  // namespace ui
 }  // namespace agea

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 #include <ar/ar_defines.h>
 
 #include <utils/id.h>

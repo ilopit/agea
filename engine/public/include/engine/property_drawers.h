@@ -7,12 +7,6 @@
 
 namespace agea
 {
-
-namespace core
-{
-class smart_object;
-}  // namespace core
-
 namespace ui
 {
 

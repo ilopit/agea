@@ -190,7 +190,7 @@ public:
 
 protected:
     void
-    recreate_structure_form_layout_impl(component* parent,
+    recreate_structure_from_layout_impl(component* parent,
                                         uint32_t& position,
                                         uint32_t& total_subojects_count);
 

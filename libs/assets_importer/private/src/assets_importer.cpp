@@ -94,7 +94,6 @@ convert_image_to_atxt(const utils::path& obj_path,
     txt->set_width(w);
     txt->set_height(h);
 
-    serialization::container c;
     if (core::object_constructor::object_save(*txt, full_obj_path) != result_code::ok)
     {
         ALOG_LAZY_ERROR;

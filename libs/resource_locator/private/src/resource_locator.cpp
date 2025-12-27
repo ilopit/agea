@@ -65,7 +65,7 @@ resource_locator::resource_dir(category c)
 }
 
 bool
-resource_locator::run_over_folder(category c, const cb& callback, const std::string& extention)
+resource_locator::run_over_folder(category c, const cb& callback, const std::string& extension)
 {
     for (auto& p : std::filesystem::recursive_directory_iterator(resource_dir(c).fs()))
     {
@@ -76,7 +76,7 @@ resource_locator::run_over_folder(category c, const cb& callback, const std::str
 
         auto file_path = p.path().generic_string();
 
-        if (string_utils::ends_with(file_path, extention) && !callback(file_path))
+        if (string_utils::ends_with(file_path, extension) && !callback(file_path))
         {
             return false;
         }

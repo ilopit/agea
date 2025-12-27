@@ -26,7 +26,7 @@ clear_numbered_part(std::string& id)
         return;
     }
 
-    AGEA_check(pos, "Shoud not be first");
+    AGEA_check(pos, "Should not be first");
 
     id.resize(pos);
 }

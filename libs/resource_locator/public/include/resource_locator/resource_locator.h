@@ -60,7 +60,7 @@ public:
     resource_dir(category c);
 
     bool
-    run_over_folder(category c, const cb& callback, const std::string& extention);
+    run_over_folder(category c, const cb& callback, const std::string& extension);
 
     temp_dir_context
     temp_dir();

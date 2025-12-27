@@ -22,7 +22,7 @@ public:
     void
     show(root::smart_object* obj)
     {
-        m_obj = obj;
+        current_object = obj;
         m_show = true;
     }
 
@@ -32,7 +32,7 @@ public:
     void
     handle() override;
 
-    root::smart_object* m_obj = nullptr;
+    root::smart_object* current_object = nullptr;
 };
 
 }  // namespace agea::ui

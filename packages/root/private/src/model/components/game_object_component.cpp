@@ -85,8 +85,8 @@ game_object_component::update_matrix()
 
     if (m_render_root)
     {
-        m_transform_matrix = m_render_root->get_transofrm_matrix() * m_transform_matrix;
-        m_world_position = m_render_root->get_transofrm_matrix() * s * r * m_world_position;
+        m_transform_matrix = m_render_root->get_transform_matrix() * m_transform_matrix;
+        m_world_position = m_render_root->get_transform_matrix() * s * r * m_world_position;
     }
 
     m_normal_matrix = glm::transpose(glm::inverse(m_transform_matrix));

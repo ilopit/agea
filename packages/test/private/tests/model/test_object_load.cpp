@@ -137,21 +137,21 @@ struct test_preloaded_test_package : base_test
                 auto& pkg = pm.load_static_package<root::package>();
 
                 pkg.init();
-                pkg.register_package_extention<root::package::package_types_builder>();
+                pkg.register_package_extension<root::package::package_types_builder>();
                 pkg.complete_load();
             }
             {
                 pm.register_static_package_loader<base::package>();
                 auto& pkg = pm.load_static_package<base::package>();
                 pkg.init();
-                pkg.register_package_extention<base::package::package_types_builder>();
+                pkg.register_package_extension<base::package::package_types_builder>();
                 pkg.complete_load();
             }
             {
                 pm.register_static_package_loader<test::package>();
                 auto& pkg = pm.load_static_package<test::package>();
                 pkg.init();
-                pkg.finalize_relfection();
+                pkg.finalize_reflection();
             }
         }
     }

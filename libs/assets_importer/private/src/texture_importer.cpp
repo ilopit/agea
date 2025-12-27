@@ -1,4 +1,4 @@
-#include "assets_importer/assets_importer.h "
+#include "assets_importer/assets_importer.h"
 
 #include <utils/agea_log.h>
 #include <utils/buffer.h>
@@ -34,7 +34,7 @@ extract_texture_from_image(const utils::path& obj_path,
 
     const uint64_t image_size = tex_width * tex_height * 4ULL;
     w = (uint32_t)tex_width;
-    w = (uint32_t)tex_height;
+    h = (uint32_t)tex_height;
 
     image.resize(image_size);
 
@@ -63,7 +63,7 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
     }
     const uint64_t image_size = tex_width * tex_height * 4ULL;
     w = (uint32_t)tex_width;
-    w = (uint32_t)tex_height;
+    h = (uint32_t)tex_height;
 
     image.resize(image_size);
 

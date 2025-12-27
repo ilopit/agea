@@ -30,7 +30,7 @@ public:
     TextEditor::Palette m_editor_palette;
     TextEditor::Palette m_output_palette;
     TextEditor::Palette m_output_palette_error;
-    TextEditor::Palette* m_selected_output_pallette = nullptr;
+    TextEditor::Palette* m_selected_output_palette = nullptr;
 
     utils::path m_selected_file = APATH("temp.lua");
 

@@ -113,7 +113,7 @@ private:
     ImGuiTextFilter m_filter;
     bool m_auto_scroll;
     bool m_scroll_to_bottom;
-    size_t t = 0;
+    size_t m_lua_buffer_offset = 0;
 };
 }  // namespace ui
 }  // namespace agea
