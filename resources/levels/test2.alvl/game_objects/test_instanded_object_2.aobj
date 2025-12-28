@@ -1,5 +1,0 @@
-class_id: test_class_object
-id: test_instanded_object_2
-components:
-  - id: test_instanded_object_2__test_root_component
-  - id: test_instanded_object_2__test_component
