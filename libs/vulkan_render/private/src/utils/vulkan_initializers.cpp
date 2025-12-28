@@ -395,16 +395,16 @@ make_write_descriptor_image(VkDescriptorType type,
 
 VkSamplerCreateInfo
 make_sampler_create_info(
-    VkFilter filters, VkSamplerAddressMode sampler_adress_mode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/)
+    VkFilter filters, VkSamplerAddressMode sampler_address_mode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/)
 {
     VkSamplerCreateInfo ci = {};
     ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     ci.pNext = nullptr;
     ci.magFilter = filters;
     ci.minFilter = filters;
-    ci.addressModeU = sampler_adress_mode;
-    ci.addressModeV = sampler_adress_mode;
-    ci.addressModeW = sampler_adress_mode;
+    ci.addressModeU = sampler_address_mode;
+    ci.addressModeV = sampler_address_mode;
+    ci.addressModeW = sampler_address_mode;
 
     return ci;
 }

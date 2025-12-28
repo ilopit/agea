@@ -94,7 +94,7 @@ make_write_descriptor_image(VkDescriptorType type,
 
 VkSamplerCreateInfo
 make_sampler_create_info(VkFilter filters,
-                         VkSamplerAddressMode sampler_adress_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+                         VkSamplerAddressMode sampler_address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 VkPipelineDynamicStateCreateInfo
 make_pipeline_dynamic_state_create_info(const std::vector<VkDynamicState>& dynamic_states,

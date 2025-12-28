@@ -37,7 +37,7 @@ public:
             return nullptr;
         }
 
-        T* obj = result.first->second;
+        T* obj = nullptr;
 
         if (!m_free_slots.empty())
         {
@@ -54,6 +54,7 @@ public:
             obj = &m_items.emplace_back(id, idx);
         }
 
+        result.first->second = obj;
         return obj;
     }
 
@@ -76,7 +77,7 @@ public:
 
         if (itr == m_mapping.end())
         {
-            ALOG_ERROR("[{0}] already allocated", obj->id().cstr());
+            ALOG_ERROR("[{0}] not found in pool", obj->id().cstr());
             return;
         }
 

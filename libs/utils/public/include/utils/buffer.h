@@ -3,6 +3,7 @@
 #include "utils/path.h"
 #include "utils/file_utils.h"
 
+#include <cstring>
 #include <vector>
 #include <string>
 
