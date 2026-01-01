@@ -1,5 +1,0 @@
-type_id: texture
-id: txt_directional_light
-base_color: class/textures/txt_directional_light.png
-width: 128
-height: 128

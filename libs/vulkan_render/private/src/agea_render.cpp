@@ -49,7 +49,7 @@ const uint32_t INITIAL_MATERIAL_SEGMENT_RANGE_SIZE = 1024;
 const uint32_t INITIAL_MATERIAL_RANGE_SIZE = 10 * INITIAL_MATERIAL_SEGMENT_RANGE_SIZE;
 
 const uint32_t INITIAL_LIGHTS_SEGMENT_SIZE = 1 * 1024;
-const uint32_t INITIAL_LIGHTS_BUFFER_SIZE = 3 * 1024;
+const uint32_t INITIAL_LIGHTS_BUFFER_SIZE = 2 * 1024;
 
 const uint32_t OBJECTS_BUFFER_SIZE = 16 * 1024;
 const uint32_t LIGHTS_BUFFER_SIZE = 3 * 1024;
@@ -103,6 +103,8 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     prepare_system_resources();
     prepare_ui_resources();
     prepare_ui_pipeline();
+
+    set_light_grid_cell_size();
 }
 
 void
@@ -321,7 +323,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     build_global_set(current_frame);
     build_light_set(current_frame);
 
-    collect_lights();
+    rebuild_light_grid();
 }
 
 void
@@ -345,13 +347,9 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
                                                   .offset = 0,
                                                   .range = INITIAL_LIGHTS_SEGMENT_SIZE};
 
-    VkDescriptorBufferInfo point_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
-                                            .offset = INITIAL_LIGHTS_SEGMENT_SIZE,
-                                            .range = INITIAL_LIGHTS_SEGMENT_SIZE};
-
-    VkDescriptorBufferInfo spot_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
-                                           .offset = INITIAL_LIGHTS_SEGMENT_SIZE * 2,
-                                           .range = INITIAL_LIGHTS_SEGMENT_SIZE};
+    VkDescriptorBufferInfo universal_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
+                                                .offset = INITIAL_LIGHTS_SEGMENT_SIZE,
+                                                .range = INITIAL_LIGHTS_SEGMENT_SIZE};
 
     VkDescriptorBufferInfo object_buffer_info{
         .buffer = current_frame.m_object_buffer.buffer(),
@@ -364,9 +362,7 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
                      VK_SHADER_STAGE_VERTEX_BIT)
         .bind_buffer(1, &directional_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                      VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(2, &point_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(3, &spot_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        .bind_buffer(2, &universal_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                      VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(m_objects_set);
 
@@ -423,30 +419,22 @@ vulkan_render::upload_light_data(render::frame_state& frame)
     auto direct =
         (render::gpu_directional_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
 
-    auto point_data =
-        (render::gpu_point_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
-
-    auto spot_light =
-        (render::gpu_spot_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
+    auto universal_light_data =
+        (render::gpu_universal_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
 
     for (auto ld : frame.m_dir_light_queue)
     {
         direct[ld->slot()] = ld->gpu_data;
     }
 
-    for (auto ld : frame.m_point_light_queue)
+    // Upload local lights to appropriate buffer based on type
+    for (auto ld : frame.m_local_light_queue)
     {
-        point_data[ld->slot()] = ld->gpu_data;
-    }
-
-    for (auto ld : frame.m_spot_light_queue)
-    {
-        spot_light[ld->slot()] = ld->gpu_data;
+        universal_light_data[ld->slot()] = ld->gpu_data;
     }
 
     frame.m_dir_light_queue.clear();
-    frame.m_spot_light_queue.clear();
-    frame.m_point_light_queue.clear();
+    frame.m_local_light_queue.clear();
 
     buffer_td.end();
 }
@@ -617,6 +605,8 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
                            const pipeline_ctx& pctx,
                            const render::vulkan_render_data* obj)
 {
+    collect_lights_for_object(obj);
+
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
 
@@ -670,7 +660,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     if (object)
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                OBJECTS_descriptor_sets, 1, &m_objects_set, 4, dummy_offset);
+                                OBJECTS_descriptor_sets, 1, &m_objects_set, 3, dummy_offset);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
                                 GLOBAL_descriptor_sets, 1, &m_global_set,
@@ -709,8 +699,7 @@ void
 vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id)
 {
     m_obj_config.directional_light_id = 0U;
-    m_obj_config.point_lights_size = 0U;
-    m_obj_config.spot_lights_size = 0U;
+    m_obj_config.local_lights_size = 0U;
 }
 
 void
@@ -860,20 +849,11 @@ vulkan_render::schedule_light_data_gpu_upload(render::vulkan_directional_light_d
 }
 
 void
-vulkan_render::schedule_light_data_gpu_upload(render::vulkan_spot_light_data* ld)
+vulkan_render::schedule_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
 {
     for (auto& q : m_frames)
     {
-        q.m_spot_light_queue.emplace_back(ld);
-    }
-}
-
-void
-vulkan_render::schedule_light_data_gpu_upload(render::vulkan_point_light_data* ld)
-{
-    for (auto& q : m_frames)
-    {
-        q.m_point_light_queue.emplace_back(ld);
+        q.m_local_light_queue.emplace_back(ld);
     }
 }
 
@@ -889,25 +869,58 @@ vulkan_render::clear_upload_queue()
 void
 vulkan_render::collect_lights()
 {
-    m_obj_config.point_lights_size = 0U;
-    m_obj_config.spot_lights_size = 0U;
+    m_obj_config.local_lights_size = 0U;
 
     m_obj_config.directional_light_id =
         m_cache.dir_lights.get_size() > 0 ? m_cache.dir_lights.at(0)->slot() : 0;
 
-    for (uint32_t slot = 0; slot < m_cache.point_lights.get_size(); ++slot)
+    // Add all local lights (point and spot)
+    for (uint32_t i = 0; i < m_cache.local_lights.get_size() && m_obj_config.local_lights_size < 16;
+         ++i)
     {
-        m_obj_config.point_light_ids[m_obj_config.point_lights_size] =
-            m_cache.point_lights.at(slot)->slot();
-        ++m_obj_config.point_lights_size;
+        auto* light = m_cache.local_lights.at(i);
+        m_obj_config.local_light_ids[m_obj_config.local_lights_size] = light->slot();
+        ++m_obj_config.local_lights_size;
     }
+}
 
-    for (uint32_t slot = 0; slot < m_cache.spot_lights.get_size(); ++slot)
+void
+vulkan_render::set_light_grid_cell_size(float cell_size)
+{
+    m_light_grid.init(cell_size);
+}
+
+void
+vulkan_render::rebuild_light_grid()
+{
+    if (!m_light_grid.is_initialized())
+        return;
+
+    m_light_grid.clear();
+
+    // Insert all local lights
+    for (uint32_t i = 0; i < m_cache.local_lights.get_size(); ++i)
     {
-        m_obj_config.spot_light_ids[m_obj_config.point_lights_size] =
-            m_cache.spot_lights.at(slot)->slot();
-        ++m_obj_config.spot_lights_size;
+        auto* light = m_cache.local_lights.at(i);
+        float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
+                                         light->gpu_data.quadratic,
+                                         0.02f,  // 2% threshold
+                                         1.05f   // 5% margin
+        );
+        m_light_grid.insert_light(light->slot(), light->gpu_data.position, radius);
     }
+}
+
+void
+vulkan_render::collect_lights_for_object(const render::vulkan_render_data* obj)
+{
+    // Set directional light (global, always affects all objects)
+    m_obj_config.directional_light_id =
+        m_cache.dir_lights.get_size() > 0 ? m_cache.dir_lights.at(0)->slot() : 0;
+
+    // Query unified light grid for this object
+    m_obj_config.local_lights_size = m_light_grid.query_lights(
+        obj->gpu_data.obj_pos, obj->bounding_radius, m_obj_config.local_light_ids, 16);
 }
 
 void

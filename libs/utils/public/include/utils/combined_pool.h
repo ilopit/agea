@@ -26,8 +26,9 @@ public:
         m_items.emplace_back(AID("INVALID"), 0);
     }
 
+    template <typename... Args>
     T*
-    alloc(const utils::id& id)
+    alloc(const utils::id& id, Args&&... args)
     {
         auto result = m_mapping.insert(std::pair<utils::id, T*>{id, nullptr});
 
@@ -46,12 +47,12 @@ public:
 
             obj = &m_items.at(slot);
 
-            obj = new (obj) T(id, slot);
+            obj = new (obj) T(id, slot, std::forward<Args>(args)...);
         }
         else
         {
             auto idx = (uint32_t)m_items.size();
-            obj = &m_items.emplace_back(id, idx);
+            obj = &m_items.emplace_back(id, idx, std::forward<Args>(args)...);
         }
 
         result.first->second = obj;

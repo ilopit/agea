@@ -8,8 +8,8 @@ namespace agea
 {
 namespace render
 {
-class vulkan_spot_light_data;
-}
+class vulkan_universal_light_data;
+}  // namespace render
 
 namespace base
 {
@@ -27,12 +27,12 @@ public:
     AGEA_gen_meta_api;
 
     void
-    set_handler(render::vulkan_spot_light_data* h)
+    set_handler(render::vulkan_universal_light_data* h)
     {
         m_handler = h;
     }
 
-    render::vulkan_spot_light_data*
+    render::vulkan_universal_light_data*
     get_handler()
     {
         return m_handler;
@@ -66,7 +66,7 @@ protected:
     AGEA_ar_property("category=Light Properties", "access=all", "serializable=true");
     float m_outer_cut_off = 18.f;
 
-    render::vulkan_spot_light_data* m_handler = nullptr;
+    render::vulkan_universal_light_data* m_handler = nullptr;
 };
 
 }  // namespace base

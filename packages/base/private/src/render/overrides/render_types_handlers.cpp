@@ -95,6 +95,11 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
 
     moc.update_matrix();
 
+    // Calculate scaled bounding radius
+    auto scale = moc.get_scale();
+    float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+    float scaled_radius = mesh_data->m_bounding_radius * max_scale;
+
     if (!object_data)
     {
         object_data = glob::vulkan_render::getr().get_cache().objects.alloc(moc.get_id());
@@ -107,6 +112,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
             return result_code::failed;
         }
 
+        object_data->bounding_radius = scaled_radius;
         moc.set_render_object_data(object_data);
 
         auto new_rqid = ::agea::render_bridge::make_qid(*mat_data, *mesh_data);
@@ -122,6 +128,8 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
             ALOG_LAZY_ERROR;
             return result_code::failed;
         }
+
+        object_data->bounding_radius = scaled_radius;
 
         auto new_rqid = ::agea::render_bridge::make_qid(*mat_data, *mesh_data);
         auto& rqid = object_data->queue_id;
@@ -221,7 +229,8 @@ spot_light_component__render_loader(reflection::type_context__render& ctx)
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        rh = glob::vulkan_render::getr().get_cache().spot_lights.alloc(lc_model.get_id());
+        rh = glob::vulkan_render::getr().get_cache().local_lights.alloc(lc_model.get_id(),
+                                                                        render::light_type::spot);
 
         rh->gpu_data.position = lc_model.get_world_position();
         rh->gpu_data.ambient = lc_model.get_ambient();
@@ -249,7 +258,7 @@ spot_light_component__render_destructor(reflection::type_context__render& ctx)
 
     if (auto h = slc_model.get_handler())
     {
-        glob::vulkan_render::getr().get_cache().spot_lights.release(h);
+        glob::vulkan_render::getr().get_cache().local_lights.release(h);
     }
 
     return result_code::ok;
@@ -265,7 +274,8 @@ point_light_component__render_loader(reflection::type_context__render& ctx)
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        rh = glob::vulkan_render::getr().get_cache().point_lights.alloc(lc_model.get_id());
+        rh = glob::vulkan_render::getr().get_cache().local_lights.alloc(lc_model.get_id(),
+                                                                        render::light_type::point);
 
         rh->gpu_data.position = lc_model.get_world_position();
         rh->gpu_data.ambient = lc_model.get_ambient();
@@ -289,7 +299,7 @@ point_light_component__render_destructor(reflection::type_context__render& ctx)
     auto& plc_model = ctx.obj->asr<base::point_light_component>();
     if (auto h = plc_model.get_handler())
     {
-        glob::vulkan_render::getr().get_cache().point_lights.release(h);
+        glob::vulkan_render::getr().get_cache().local_lights.release(h);
     }
 
     return result_code::ok;

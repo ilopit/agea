@@ -59,6 +59,15 @@ public:
 
     template <typename T>
     auto
+    spawn_object_as_clone(const utils::id& proto_id,
+                          const utils::id& id,
+                          const spawn_parameters& prms)
+    {
+        return spawn_object_as_clone_impl(proto_id, id, prms)->as<T>();
+    }
+
+    template <typename T>
+    auto
     spawn_object(const utils::id& id, const typename T::construct_params& prms)
     {
         return spawn_object_impl(T::AR_TYPE_id(), id, prms)->as<T>();
@@ -155,6 +164,11 @@ public:
 private:
     root::smart_object*
     spawn_object_impl(const utils::id& proto_id, const utils::id& id, const spawn_parameters& prms);
+
+    root::smart_object*
+    spawn_object_as_clone_impl(const utils::id& proto_id,
+                               const utils::id& id,
+                               const spawn_parameters& prms);
 
     root::smart_object*
     spawn_object_impl(const utils::id& proto_id,

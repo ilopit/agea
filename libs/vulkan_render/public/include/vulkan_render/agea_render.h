@@ -7,6 +7,7 @@
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
+#include "render_utils/light_grid.h"
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
@@ -33,8 +34,8 @@ using objects_update_queue = ::agea::utils::line_container<render::vulkan_render
 
 using directional_light_update_queue =
     ::agea::utils::line_container<render::vulkan_directional_light_data*>;
-using point_light_update_queue = ::agea::utils::line_container<render::vulkan_point_light_data*>;
-using spot_light_update_queue = ::agea::utils::line_container<render::vulkan_spot_light_data*>;
+using universal_light_update_queue =
+    ::agea::utils::line_container<render::vulkan_universal_light_data*>;
 
 struct pipeline_ctx
 {
@@ -60,16 +61,14 @@ struct frame_state
     bool
     has_light_data() const
     {
-        return !m_spot_light_queue.empty() || !m_dir_light_queue.empty() ||
-               !m_point_light_queue.empty();
+        return !m_local_light_queue.empty() || !m_dir_light_queue.empty();
     }
 
     void
     reset_light_data()
     {
-        m_spot_light_queue.clear();
+        m_local_light_queue.clear();
         m_dir_light_queue.clear();
-        m_point_light_queue.clear();
     }
 
     bool
@@ -88,9 +87,8 @@ struct frame_state
     clear_upload_queues()
     {
         m_objects_queue.clear();
-        m_point_light_queue.clear();
+        m_local_light_queue.clear();
         m_dir_light_queue.clear();
-        m_spot_light_queue.clear();
 
         for (auto& m : m_materias_queue_set)
         {
@@ -113,8 +111,7 @@ struct frame_state
     materials_update_queue_set m_materias_queue_set;
 
     directional_light_update_queue m_dir_light_queue;
-    point_light_update_queue m_point_light_queue;
-    spot_light_update_queue m_spot_light_queue;
+    universal_light_update_queue m_local_light_queue;
 
     bool has_materials = false;
     bool has_lights = false;
@@ -164,16 +161,17 @@ public:
     schedule_light_data_gpu_upload(render::vulkan_directional_light_data* ld);
 
     void
-    schedule_light_data_gpu_upload(render::vulkan_spot_light_data* ld);
-
-    void
-    schedule_light_data_gpu_upload(render::vulkan_point_light_data* ld);
+    schedule_light_data_gpu_upload(render::vulkan_universal_light_data* ld);
 
     void
     clear_upload_queue();
 
     void
     collect_lights();
+
+    // Light grid configuration for spatial culling
+    void
+    set_light_grid_cell_size(float cell_size = 100.0f);
 
     vulkan_render_data*
     object_id_under_coordinate(uint32_t x, uint32_t y);
@@ -205,6 +203,12 @@ private:
 
     void
     upload_material_data(render::frame_state& frame);
+
+    void
+    rebuild_light_grid();
+
+    void
+    collect_lights_for_object(const render::vulkan_render_data* obj);
 
     void
     draw_multi_pipeline_objects_queue(render_line_container& r,
@@ -317,6 +321,9 @@ private:
     std::unordered_map<utils::id, render_pass_sptr> m_render_passes;
 
     render_cache m_cache;
+
+    // Light grid for spatial culling
+    light_grid m_light_grid;
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;

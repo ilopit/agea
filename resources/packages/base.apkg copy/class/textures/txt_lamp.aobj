@@ -1,5 +1,0 @@
-type_id: texture
-id: txt_lamp
-base_color: class/textures/txt_lamp.png
-width: 128
-height: 128

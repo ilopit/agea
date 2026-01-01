@@ -135,6 +135,16 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
     md->m_indices_size = (uint32_t)ibv.size();
     md->m_vertices_size = (uint32_t)vbv.size();
 
+    // Calculate bounding radius from vertices (distance from origin)
+    float max_dist_sq = 0.0f;
+    for (uint32_t i = 0; i < vbv.size(); ++i)
+    {
+        const auto& pos = vbv.at(i).position;
+        float dist_sq = glm::dot(pos, pos);
+        max_dist_sq = std::max(max_dist_sq, dist_sq);
+    }
+    md->m_bounding_radius = std::sqrt(max_dist_sq);
+
     const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
     const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
 

@@ -1,7 +1,0 @@
-type_id: shader_effect
-id: se_texture_billboard
-vert: class/shader_effects/se_texture_billboard.vert
-is_vert_binary: false
-frag: class/shader_effects/se_texture_billboard.frag
-is_frag_binary: false
-enable_alpha_support: true

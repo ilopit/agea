@@ -22,6 +22,7 @@ target_link_libraries(vulkan_render PUBLIC
     agea::serialization
     agea::error_handling
     agea::global_state
+    agea::render_utils
 
     agea::glm_unofficial
     agea::imgui_unofficial

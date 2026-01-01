@@ -81,38 +81,7 @@ color__load(reflection::type_context__load& ctx)
 result_code
 smart_obj__copy(reflection::type_context__copy& ctx)
 {
-    auto type = ctx.occ->get_construction_type();
-    if (type != core::object_load_type::class_obj)
-    {
-        auto& obj = reflection::utils::as_type<::agea::root::smart_object*>(ctx.src_obj);
-        auto& dst = reflection::utils::as_type<::agea::root::smart_object*>(ctx.dst_obj);
-
-        if (!dst)
-        {
-            return result_code::ok;
-        }
-
-        std::vector<root::smart_object*> objs;
-        auto load_result = core::object_constructor::object_load(
-            obj->get_id(), core::object_load_type::class_obj, *ctx.occ, objs);
-        if (!load_result)
-        {
-            return load_result.error();
-        }
-
-        auto clone_result = core::object_constructor::object_clone_create_internal(
-            obj->get_id(), obj->get_id(), *ctx.occ);
-        if (!clone_result)
-        {
-            return clone_result.error();
-        }
-        dst = clone_result.value();
-        return result_code::ok;
-    }
-    else
-    {
-        reflection::utils::cpp_default__copy<root::smart_object*>(ctx.src_obj, ctx.dst_obj);
-    }
+    reflection::utils::cpp_default__copy<root::smart_object*>(ctx.src_obj, ctx.dst_obj);
 
     return result_code::ok;
 }

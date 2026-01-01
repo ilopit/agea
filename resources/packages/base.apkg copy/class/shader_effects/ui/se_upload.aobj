@@ -1,6 +1,0 @@
-type_id: shader_effect
-id: se_upload
-vert: class/shader_effects/ui/se_upload.vert
-is_vert_binary: false
-frag: class/shader_effects/ui/se_upload.frag
-is_frag_binary: false

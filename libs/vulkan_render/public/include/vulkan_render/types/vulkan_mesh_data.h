@@ -60,6 +60,7 @@ public:
 
     uint32_t m_vertices_size = 0U;
     uint32_t m_indices_size = 0U;
+    float m_bounding_radius = 0.0f;
 
     vk_utils::vulkan_buffer m_vertex_buffer;
     vk_utils::vulkan_buffer m_index_buffer;

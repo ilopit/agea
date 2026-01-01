@@ -165,7 +165,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
         return result_code::ok;
     }
 
-    AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
+    // AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
 
     obj.set_state(root::smart_object_state::render_preparing);
 

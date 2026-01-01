@@ -47,7 +47,7 @@ level::spawn_object_impl(const utils::id& proto_id,
                          const utils::id& object_id,
                          const spawn_parameters& prms)
 {
-    auto proto_obj = m_occ->find_obj(proto_id);
+    auto proto_obj = m_occ->find_proto_obj(proto_id);
 
     if (!proto_obj)
     {
@@ -58,7 +58,63 @@ level::spawn_object_impl(const utils::id& proto_id,
 
     m_occ->push_construction_type(object_load_type::instance_obj);
 
-    auto clone_result = object_constructor::object_clone_create_internal(*proto_obj, object_id, *m_occ);
+    auto clone_result =
+        object_constructor::object_instantiate_internal(*proto_obj, object_id, *m_occ);
+    if (!clone_result)
+    {
+        m_occ->pop_construction_type();
+        return nullptr;
+    }
+    auto result = clone_result.value();
+
+    m_occ->pop_construction_type();
+    m_occ->reset_loaded_objects(loaded_obj);
+
+    auto obj = result->as<root::game_object>();
+
+    obj->update_root();
+
+    if (prms.position)
+    {
+        obj->set_position(prms.position.value());
+    }
+    if (prms.rotation)
+    {
+        obj->set_rotation(prms.rotation.value());
+    }
+    if (prms.scale)
+    {
+        obj->set_scale(prms.scale.value());
+    }
+
+    result->post_load();
+
+    add_to_dirty_render_queue(obj->get_root_component());
+
+    m_tickable_objects.emplace_back(obj);
+
+    return result;
+}
+
+root::smart_object*
+level::spawn_object_as_clone_impl(const utils::id& proto_id,
+                                  const utils::id& id,
+                                  const spawn_parameters& prms)
+{
+    auto obj_to_clone = m_occ->find_obj(proto_id);
+
+    if (!obj_to_clone)
+    {
+        return nullptr;
+    }
+
+    AGEA_check(obj_to_clone->get_flags().instance_obj, "Should be always instance");
+
+    std::vector<root::smart_object*> loaded_obj;
+
+    m_occ->push_construction_type(object_load_type::instance_obj);
+
+    auto clone_result = object_constructor::object_clone_create_internal(*obj_to_clone, id, *m_occ);
     if (!clone_result)
     {
         m_occ->pop_construction_type();

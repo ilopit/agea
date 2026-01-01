@@ -1,5 +1,0 @@
-type_id: texture
-id: txt_container_spec
-base_color: class/textures/txt_container_spec.png
-width: 500
-height: 500

@@ -1,3 +1,0 @@
-type_id: solid_color_material 
-id: mt_solid_color
-shader_effect: se_solid_color

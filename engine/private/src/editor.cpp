@@ -12,6 +12,8 @@
 #include <core/global_state.h>
 
 #include <packages/root/model/game_object.h>
+#include <packages/base/model/mesh_object.h>
+#include <packages/base/model/components/mesh_component.h>
 #include <packages/base/model/lights/point_light.h>
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/spot_light.h>
@@ -129,27 +131,47 @@ game_editor::ev_spawn()
     }
 
     core::spawn_parameters sp;
-    auto id1 = AID("decor");
-    auto id2 = AID("decor");
 
     int x = 0, y = 0, z = 0;
 
-    int DIM = 0;
+    int obj_DIM = 10;
 
-    for (x = 0; x < DIM; ++x)
+    for (x = 0; x < obj_DIM; ++x)
     {
-        for (y = 0; y < DIM; ++y)
+        for (y = 0; y < obj_DIM; ++y)
         {
-            for (z = 0; z < DIM; ++z)
+            for (z = 0; z < obj_DIM; ++z)
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
 
-                sp.position = root::vec3{x * 40.f, y * 40.f, z * 40.f};
-                sp.scale = root::vec3{10.f};
-                auto p = glob::glob_state()
-                             .getr_current_level()
-                             .spawn_object_from_proto<root::game_object>((z & 1) ? id1 : id2,
-                                                                         AID(id), sp);
+                sp.position = root::vec3{x * 10.f, y * 10.f, z * 10.f};
+                sp.scale = root::vec3{2};
+                auto pp =
+                    glob::glob_state()
+                        .getr_current_level()
+                        .spawn_object_as_clone<base::mesh_object>(AID("test_cube"), AID(id), sp);
+                auto mc = pp->get_component_at(1)->as<base::mesh_component>();
+                mc->set_visible(true);
+            }
+        }
+    }
+
+    int light_DIM = 2;
+
+    base::point_light::construct_params prms;
+
+    for (x = 0; x < light_DIM; ++x)
+    {
+        for (y = 0; y < light_DIM; ++y)
+        {
+            for (z = 0; z < light_DIM; ++z)
+            {
+                auto id = std::format("pl_{}_{}_{}", x, y, z);
+
+                prms.pos = root::vec3{x * 20.f, y * 20.f, z * 20.f};
+                auto pp = glob::glob_state().getr_current_level().spawn_object<base::point_light>(
+                    AID(id), prms);
+                int i = 2;
             }
         }
     }

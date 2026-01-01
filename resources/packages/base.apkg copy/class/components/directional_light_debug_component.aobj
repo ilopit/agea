@@ -1,4 +1,0 @@
-type_id: mesh_component
-id: directional_light_debug_component
-material: mt_billboard_directional_light
-mesh: plane_mesh

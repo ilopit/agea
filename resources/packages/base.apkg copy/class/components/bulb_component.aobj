@@ -1,4 +1,0 @@
-type_id: mesh_component
-id: bulb_component
-material: mt_billboard_bulb
-mesh: plane_mesh

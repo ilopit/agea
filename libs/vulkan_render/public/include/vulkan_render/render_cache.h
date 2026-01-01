@@ -20,8 +20,7 @@ public:
 
     utils::combined_pool<vulkan_render_data> objects;
     utils::combined_pool<vulkan_directional_light_data> dir_lights;
-    utils::combined_pool<vulkan_spot_light_data> spot_lights;
-    utils::combined_pool<vulkan_point_light_data> point_lights;
+    utils::combined_pool<vulkan_universal_light_data> local_lights;
 };
 
 }  // namespace render
