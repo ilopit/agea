@@ -106,7 +106,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
 
         if (!glob::vulkan_render_loader::getr().update_object(
                 *object_data, *mat_data, *mesh_data, moc.get_transform_matrix(),
-                moc.get_normal_matrix(), moc.get_position()))
+                moc.get_normal_matrix(), glm::vec3(moc.get_world_position())))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -123,7 +123,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
     {
         if (!glob::vulkan_render_loader::getr().update_object(
                 *object_data, *mat_data, *mesh_data, moc.get_transform_matrix(),
-                moc.get_normal_matrix(), moc.get_position()))
+                moc.get_normal_matrix(), glm::vec3(moc.get_world_position())))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;

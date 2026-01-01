@@ -15,10 +15,7 @@ template <typename T>
 class combined_pool
 {
 public:
-
-
     combined_pool() = default;
-
 
     combined_pool(bool offset)
     {
@@ -39,7 +36,7 @@ public:
         }
 
         T* obj = nullptr;
-
+        ++m_active_size;
         if (!m_free_slots.empty())
         {
             auto slot = m_free_slots.back();
@@ -65,6 +62,12 @@ public:
         return m_items.size();
     }
 
+    uint64_t
+    get_actual_size() const
+    {
+        return m_active_size;
+    }
+
     T*
     at(uint32_t slot)
     {
@@ -81,7 +84,7 @@ public:
             ALOG_ERROR("[{0}] not found in pool", obj->id().cstr());
             return;
         }
-
+        --m_active_size;
         m_mapping.erase(itr);
 
         auto slot_id = obj->slot();
@@ -96,6 +99,7 @@ private:
 
     std::deque<uint32_t> m_free_slots;
     std::unordered_map<utils::id, T*> m_mapping;
+    uint64_t m_active_size = 0;
 };
 }  // namespace utils
 }  // namespace agea

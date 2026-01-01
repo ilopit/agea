@@ -11,13 +11,16 @@ namespace agea
 
 struct engine_counters
 {
-    utils::counter<16> consume_updates;
-    utils::counter<16> draw;
-    utils::counter<16> frame;
-    utils::counter<16> input;
-    utils::counter<16> tick;
-    utils::counter<16> ui_tick;
-    utils::counter<16> sync;
+    utils::counter<24> consume_updates;
+    utils::counter<24> draw;
+    utils::counter<24> frame;
+    utils::counter<24> input;
+    utils::counter<24> tick;
+    utils::counter<24> ui_tick;
+    utils::counter<24> sync;
+    utils::counter<24> objects;
+    utils::counter<24> culled_draws;
+    utils::counter<24> all_draws;
 };
 
 template <typename T>

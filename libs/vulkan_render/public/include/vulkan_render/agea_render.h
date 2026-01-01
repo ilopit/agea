@@ -8,6 +8,7 @@
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
 #include "render_utils/light_grid.h"
+#include "render_utils/frustum.h"
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
@@ -182,6 +183,18 @@ public:
     render_pass*
     get_render_pass(const utils::id& id);
 
+    uint32_t
+    get_all_draws() const
+    {
+        return m_all_draws;
+    }
+
+    uint32_t
+    get_culled_draws() const
+    {
+        return m_culled_draws;
+    }
+
 private:
     void
     draw_objects(render::frame_state& frame);
@@ -274,6 +287,9 @@ private:
     void
     resize(uint32_t width, uint32_t height);
 
+    uint32_t m_all_draws = 0;
+    uint32_t m_culled_draws = 0;
+
     render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
@@ -324,6 +340,9 @@ private:
 
     // Light grid for spatial culling
     light_grid m_light_grid;
+
+    // Frustum for view culling
+    frustum m_frustum;
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;

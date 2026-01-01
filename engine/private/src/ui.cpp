@@ -292,7 +292,10 @@ performance_counters_window::handle()
         ui_tick_avg = glob::engine_counters::getr().ui_tick.avg / 1000;
         consume_updates_avg = glob::engine_counters::getr().consume_updates.avg / 1000;
         draw_avg = glob::engine_counters::getr().draw.avg / 1000;
-        lock = 30;
+        culled_draws_avg = glob::engine_counters::getr().culled_draws.avg;
+        all_draws_avg = glob::engine_counters::getr().all_draws.avg;
+        objects_avg = glob::engine_counters::getr().objects.avg;
+        lock = 24;
     }
 
     ImGui::Separator();
@@ -305,6 +308,10 @@ performance_counters_window::handle()
     ImGui::Text("Update  : %3.3lf", consume_updates_avg);
     ImGui::Separator();
     ImGui::Text("Draw    : %3.3lf", draw_avg);
+    ImGui::Separator();
+    ImGui::Text("Objects : %3.3lf", objects_avg);
+    ImGui::Text("Draws   : %3.3lf", all_draws_avg);
+    ImGui::Text("Cull %  : %3.3lf", culled_draws_avg / all_draws_avg * 100);
 
     --lock;
 }

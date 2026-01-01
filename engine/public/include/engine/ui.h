@@ -33,7 +33,7 @@ public:
     {
     }
 
-    virtual ~window(){};
+    virtual ~window() {};
 
     virtual void
     handle();
@@ -72,6 +72,9 @@ public:
     double ui_tick_avg = 0.0;
     double consume_updates_avg = 0.0;
     double draw_avg = 0.0;
+    double culled_draws_avg = 0.0;
+    double all_draws_avg = 0.0;
+    double objects_avg = 0.0;
     int lock = 0;
 };
 

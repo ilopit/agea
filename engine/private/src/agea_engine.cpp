@@ -246,6 +246,13 @@ vulkan_engine::run()
             AGEA_make_scope(draw);
 
             glob::vulkan_render::getr().draw_main();
+
+            auto& ctrs = ::agea::glob::engine_counters::getr();
+            auto& vr = glob::vulkan_render::getr();
+
+            ctrs.all_draws.update(vr.get_all_draws());
+            ctrs.culled_draws.update(vr.get_culled_draws());
+            ctrs.objects.update(vr.get_cache().objects.get_actual_size());
         }
 
         auto frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "render_utils/light_grid.h"
+#include "render_utils/frustum.h"
 
 using namespace agea::render;
 
@@ -286,4 +287,69 @@ TEST(LightGrid, reinit_clears_existing_data)
 
     // Old data should be cleared
     EXPECT_EQ(count, 0u);
+}
+
+// ============================================================================
+// Frustum tests
+// ============================================================================
+
+TEST(Frustum, sphere_at_origin_visible_with_identity_projection)
+{
+    frustum f;
+    // Simple perspective-like frustum looking down -Z
+    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
+    glm::mat4 view = glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+
+    f.extract_planes(proj * view);
+
+    // Sphere at origin should be visible
+    EXPECT_TRUE(f.is_sphere_visible(glm::vec3(0, 0, 0), 1.0f));
+}
+
+TEST(Frustum, sphere_behind_camera_not_visible)
+{
+    frustum f;
+    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
+    glm::mat4 view = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+
+    f.extract_planes(proj * view);
+
+    // Sphere behind camera should not be visible
+    EXPECT_FALSE(f.is_sphere_visible(glm::vec3(0, 0, 10), 1.0f));
+}
+
+TEST(Frustum, sphere_far_left_not_visible)
+{
+    frustum f;
+    glm::mat4 proj = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 100.0f);
+    glm::mat4 view = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+
+    f.extract_planes(proj * view);
+
+    // Sphere far to the left should not be visible
+    EXPECT_FALSE(f.is_sphere_visible(glm::vec3(-100, 0, -10), 1.0f));
+}
+
+TEST(Frustum, sphere_beyond_far_plane_not_visible)
+{
+    frustum f;
+    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 50.0f);
+    glm::mat4 view = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+
+    f.extract_planes(proj * view);
+
+    // Sphere beyond far plane should not be visible
+    EXPECT_FALSE(f.is_sphere_visible(glm::vec3(0, 0, -200), 1.0f));
+}
+
+TEST(Frustum, large_sphere_partially_inside_visible)
+{
+    frustum f;
+    glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
+    glm::mat4 view = glm::lookAt(glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0));
+
+    f.extract_planes(proj * view);
+
+    // Large sphere that intersects frustum should be visible
+    EXPECT_TRUE(f.is_sphere_visible(glm::vec3(-50, 0, -10), 45.0f));
 }

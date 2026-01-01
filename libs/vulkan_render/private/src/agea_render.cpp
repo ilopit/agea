@@ -119,6 +119,7 @@ void
 vulkan_render::set_camera(render::gpu_camera_data c)
 {
     m_camera_data = c;
+    m_frustum.extract_planes(c.projection * c.view);
 }
 
 void
@@ -135,6 +136,8 @@ vulkan_render::draw_main()
     }
 
     device->switch_frame_indeces();
+    m_culled_draws = 0;
+    m_all_draws = 0;
 
     auto& current_frame = m_frames[device->get_current_frame_index()];
 
@@ -524,6 +527,14 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
 
     for (auto& obj : r)
     {
+        ++m_all_draws;
+        // Frustum culling
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        {
+            ++m_culled_draws;
+            continue;
+        }
+
         if (pctx.cur_material_type_idx != obj->material->gpu_type_idx())
         {
             bind_material(cmd, obj->material, current_frame, pctx);
@@ -578,6 +589,14 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
 
     for (auto& obj : r)
     {
+        ++m_all_draws;
+        // Frustum culling
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        {
+            ++m_culled_draws;
+            continue;
+        }
+
         if (rebind_images && cur_material_idx != obj->material->gpu_idx())
         {
             cur_material_idx = obj->material->gpu_idx();
@@ -875,7 +894,7 @@ vulkan_render::collect_lights()
         m_cache.dir_lights.get_size() > 0 ? m_cache.dir_lights.at(0)->slot() : 0;
 
     // Add all local lights (point and spot)
-    for (uint32_t i = 0; i < m_cache.local_lights.get_size() && m_obj_config.local_lights_size < 16;
+    for (uint32_t i = 0; i < m_cache.local_lights.get_size() && m_obj_config.local_lights_size < 8;
          ++i)
     {
         auto* light = m_cache.local_lights.at(i);
@@ -893,8 +912,7 @@ vulkan_render::set_light_grid_cell_size(float cell_size)
 void
 vulkan_render::rebuild_light_grid()
 {
-    if (!m_light_grid.is_initialized())
-        return;
+    AGEA_check(m_light_grid.is_initialized(), "");
 
     m_light_grid.clear();
 

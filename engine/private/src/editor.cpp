@@ -156,9 +156,9 @@ game_editor::ev_spawn()
         }
     }
 
-    int light_DIM = 2;
+    int light_DIM = 5;
 
-    base::point_light::construct_params prms;
+    base::spot_light::construct_params prms;
 
     for (x = 0; x < light_DIM; ++x)
     {
@@ -169,9 +169,8 @@ game_editor::ev_spawn()
                 auto id = std::format("pl_{}_{}_{}", x, y, z);
 
                 prms.pos = root::vec3{x * 20.f, y * 20.f, z * 20.f};
-                auto pp = glob::glob_state().getr_current_level().spawn_object<base::point_light>(
+                auto pp = glob::glob_state().getr_current_level().spawn_object<base::spot_light>(
                     AID(id), prms);
-                int i = 2;
             }
         }
     }

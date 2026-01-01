@@ -226,7 +226,8 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 
             // build a image-view for the depth image to use for rendering
             auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-                m_swapchain_image_format, m_swapchain_images[i]->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+                m_swapchain_image_format, m_swapchain_images[i]->image(),
+                VK_IMAGE_ASPECT_COLOR_BIT);
 
             m_swapchain_image_views[i] =
                 vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
