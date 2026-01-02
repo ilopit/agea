@@ -13,6 +13,8 @@
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/types/vulkan_render_data.h"
 
+#include <gpu_types/gpu_generic_constants.h>
+
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <SDL_events.h>
@@ -39,10 +41,6 @@ namespace render
 {
 namespace
 {
-const uint32_t GLOBAL_descriptor_sets = 0;
-const uint32_t OBJECTS_descriptor_sets = 1;
-const uint32_t TEXTURES_descriptor_sets = 2;
-const uint32_t MATERIALS_descriptor_sets = 3;
 
 const uint32_t INITIAL_OBJECTS_RANGE_SIZE = 4 * 1024;
 const uint32_t INITIAL_MATERIAL_SEGMENT_RANGE_SIZE = 1024;
@@ -546,7 +544,7 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
             if (obj->material->has_textures())
             {
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
-                                        TEXTURES_descriptor_sets, 1,
+                                        KGPU_textures_descriptor_sets, 1,
                                         &obj->material->get_textures_ds(), 0, nullptr);
             }
         }
@@ -604,7 +602,7 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
             if (obj->material->has_textures())
             {
                 vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
-                                        TEXTURES_descriptor_sets, 1,
+                                        KGPU_textures_descriptor_sets, 1,
                                         &obj->material->get_textures_ds(), 0, nullptr);
             }
         }
@@ -629,7 +627,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
 
-    constexpr auto range = sizeof(render::gpu_push_constants);
+    constexpr auto range = sizeof(gpu::push_constants);
     vkCmdPushConstants(cmd, pctx.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
                        &m_obj_config);
 
@@ -679,10 +677,10 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     if (object)
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                OBJECTS_descriptor_sets, 1, &m_objects_set, 3, dummy_offset);
+                                KGPU_objects_descriptor_sets, 1, &m_objects_set, 3, dummy_offset);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                GLOBAL_descriptor_sets, 1, &m_global_set,
+                                KGPU_global_descriptor_sets, 1, &m_global_set,
                                 current_frame.m_dynamic_data_buffer.get_dyn_offsets_count(),
                                 current_frame.m_dynamic_data_buffer.get_dyn_offsets_ptr());
     }
@@ -703,14 +701,14 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
             .build(mat_data_set);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                MATERIALS_descriptor_sets, 1, &mat_data_set, 1, dummy_offset);
+                                KGPU_materials_descriptor_sets, 1, &mat_data_set, 1, dummy_offset);
     }
 
     if (cur_material->has_textures())
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                TEXTURES_descriptor_sets, 1, &cur_material->get_textures_ds(), 0,
-                                nullptr);
+                                KGPU_textures_descriptor_sets, 1, &cur_material->get_textures_ds(),
+                                0, nullptr);
     }
 }
 

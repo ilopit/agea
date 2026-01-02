@@ -13,7 +13,7 @@ void main()
     mat4 modelMatrix   = dyn_object_buffer.objects[gl_InstanceIndex].model;
     mat4 normalMatrix  = dyn_object_buffer.objects[gl_InstanceIndex].normal;
 
-    mat4 modelView = dyn_camera_data.view * modelMatrix;
+    mat4 modelView = dyn_camera_data.obj.view * modelMatrix;
 
     out_color      = in_color;
     out_tex_coord  = in_tex_coord;
@@ -23,5 +23,5 @@ void main()
 
 	vec4 pos = vec4(in_position.xyz * 1.025, 1);
 
-    gl_Position =  dyn_camera_data.projection * modelView * pos;
+    gl_Position =  dyn_camera_data.obj.projection * modelView * pos;
 }

@@ -1,4 +1,5 @@
 ﻿add_subdirectory(ar)
+add_subdirectory(gpu_types)
 add_subdirectory(assets_importer)
 add_subdirectory(global_state)
 add_subdirectory(core)

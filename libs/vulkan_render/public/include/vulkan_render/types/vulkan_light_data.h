@@ -19,11 +19,11 @@ namespace render
 class vulkan_directional_light_data : public vulkan_render_resource
 {
 public:
-    vulkan_directional_light_data(const utils::id& id, gpu_data_index_type idx)
+    vulkan_directional_light_data(const utils::id& id, gpu::uint idx)
         : vulkan_render_resource(id, idx)
     {
     }
-    gpu_directional_light_data gpu_data;
+    gpu::directional_light_data gpu_data;
 };
 
 // Unified local light (point + spot combined)
@@ -40,7 +40,7 @@ public:
         gpu_data.outer_cut_off = -1.0f;
     }
 
-    gpu_universal_light_data gpu_data;
+    gpu::universal_light_data gpu_data;
 };
 
 }  // namespace render

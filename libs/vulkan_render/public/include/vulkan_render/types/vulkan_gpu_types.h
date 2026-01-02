@@ -2,6 +2,12 @@
 
 #include <utils/dynamic_object_builder.h>
 
+#include <gpu_types/gpu_light_types.h>
+#include <gpu_types/gpu_camera_types.h>
+#include <gpu_types/gpu_object_types.h>
+#include <gpu_types/gpu_vertex_types.h>
+#include <gpu_types/gpu_push_constants.h>
+
 #include <glm_unofficial/glm.h>
 
 namespace agea
@@ -15,73 +21,15 @@ using gpu_index_data = uint32_t;
 constexpr gpu_data_index_type INVALID_GPU_MATERIAL_DATA_INDEX = 1024;
 constexpr gpu_data_index_type INVALID_GPU_INDEX = uint32_t(-1);
 
-struct gpu_camera_data
-{
-    glm::mat4 projection;
-    glm::mat4 view;
-    glm::vec3 position;
-};
-
-struct gpu_directional_light_data
-{
-    alignas(16) glm::vec3 direction;
-    alignas(16) glm::vec3 ambient;
-    alignas(16) glm::vec3 diffuse;
-    alignas(16) glm::vec3 specular;
-};
-
-// Unified local light data (point + spot combined)
-// type: 0 = point, 1 = spot
-struct gpu_universal_light_data
-{
-    alignas(16) glm::vec3 position;
-    alignas(16) glm::vec3 direction;  // unused for point lights
-    alignas(16) glm::vec3 ambient;
-    alignas(16) glm::vec3 diffuse;
-    alignas(16) glm::vec3 specular;
-
-    uint32_t type;        // 0 = point, 1 = spot
-    float cut_off;        // unused for point lights (set to -1)
-    float outer_cut_off;  // unused for point lights
-    float constant;
-    float linear;
-    float quadratic;
-    float _pad[2];  // padding to 16-byte alignment
-};
-
-struct gpu_scene_data
-{
-    gpu_directional_light_data directional;
-    gpu_universal_light_data points[10];
-};
-
-struct gpu_object_data
-{
-    glm::mat4 model_matrix;
-    glm::mat4 normal_matrix;
-    glm::vec3 obj_pos;
-    float dummy;
-};
-
-struct gpu_vertex_data
-{
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec3 color;
-    glm::vec2 uv;
-};
+// Import GPU types from gpu_types library into render namespace
+using gpu_camera_data = gpu::camera_data;
+using gpu_directional_light_data = gpu::directional_light_data;
+using gpu_universal_light_data = gpu::universal_light_data;
+using gpu_object_data = gpu::object_data;
+using gpu_vertex_data = gpu::vertex_data;
 
 std::shared_ptr<utils::dynobj_layout>
 get_default_vertex_inout_layout();
-
-struct gpu_push_constants
-{
-    gpu_data_index_type material_id;
-    gpu_data_index_type directional_light_id;
-
-    gpu_data_index_type local_lights_size = 0;
-    gpu_data_index_type local_light_ids[8];  // slot in respective buffer
-};
 
 struct gpu_type
 {

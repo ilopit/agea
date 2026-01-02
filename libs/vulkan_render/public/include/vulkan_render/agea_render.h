@@ -290,7 +290,6 @@ private:
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
-    render::gpu_scene_data m_scene_parameters;
     render::gpu_camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
@@ -332,7 +331,7 @@ private:
     VkDescriptorSet m_objects_set = VK_NULL_HANDLE;
     VkDescriptorSet m_global_set = VK_NULL_HANDLE;
 
-    render::gpu_push_constants m_obj_config;
+    gpu::push_constants m_obj_config;
 
     std::unordered_map<utils::id, render_pass_sptr> m_render_passes;
 

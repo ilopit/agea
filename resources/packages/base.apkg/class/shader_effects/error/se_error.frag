@@ -18,7 +18,7 @@ vec3 getColor(vec2 uv)
 
 vec3 CalcDummyDirLight(vec3 normal, vec3 fragPos, vec3 viewDir)
 {
-    DirLight light;
+    directional_light_data light;
 
     light.direction = vec3(0, -1, 0.5);
     light.ambient = vec3(1.0);
@@ -44,9 +44,9 @@ vec3 CalcDummyDirLight(vec3 normal, vec3 fragPos, vec3 viewDir)
 // calculates the color when using a point light.
 vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
 {
-    gpu_universal_light_data light;
+    universal_light_data light;
 
-    light.position = dyn_camera_data.camPos;
+    light.position = dyn_camera_data.obj.position;
     light.ambient = vec3(1.0);
     light.diffuse = vec3(1.0);
     light.specular = vec3(1.0);
@@ -55,7 +55,7 @@ vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
     light.linear = 0.014;
     light.quadratic = 0.0007;
 
-    vec3 lightDir = normalize(dyn_camera_data.camPos - fragPos);
+    vec3 lightDir = normalize(dyn_camera_data.obj.position - fragPos);
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
 
@@ -84,7 +84,7 @@ vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
 void main()
 {
     vec3 norm = normalize(in_normal);
-    vec3 view_dir = normalize(dyn_camera_data.camPos - in_world_pos);
+    vec3 view_dir = normalize(dyn_camera_data.obj.position - in_world_pos);
 
     vec3 result = CalcDummyDirLight(norm, in_world_pos, view_dir);
     result += CalcDummyPointLight(norm, in_world_pos, view_dir);

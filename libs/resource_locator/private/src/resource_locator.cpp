@@ -49,6 +49,7 @@ resource_locator::resource_dir(category c)
     case category::shaders_raw:      {path /= "shaders";            break;}
     case category::shaders_compiled: {path /= "cache/shaders";      break;}
     case category::shaders_includes: {path /= "shaders_includes";   break;}
+    case category::shaders_gpu_data: {path /= "gpu_types";          break;}
     case category::tmp:              {path /= "tmp";                break;}
     case category::tools:            {path /= "tools";              break;}
     case category::levels:           {path /= "levels";             break;}

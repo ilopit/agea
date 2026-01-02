@@ -301,8 +301,8 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
     obj_data.material = &mat_data;
     obj_data.mesh = &mesh_data;
 
-    obj_data.gpu_data.model_matrix = model_matrix;
-    obj_data.gpu_data.normal_matrix = normal_matrix;
+    obj_data.gpu_data.model = model_matrix;
+    obj_data.gpu_data.normal = normal_matrix;
     obj_data.gpu_data.obj_pos = obj_pos;
 
     return true;

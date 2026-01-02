@@ -1,3 +1,9 @@
+#extension GL_GOOGLE_include_directive: enable
+#include "gpu_types/gpu_light_types.h"
+#include "gpu_types/gpu_camera_types.h"
+#include "gpu_types/gpu_generic_constants.h"
+#include "gpu_types/gpu_push_constants.h"
+
 // Input
 layout (location = 0) in vec3 in_world_pos;
 layout (location = 1) in vec3 in_normal;
@@ -7,53 +13,24 @@ layout (location = 3) in vec2 in_tex_coord;
 // Output
 layout (location = 0) out vec4 out_color;
 
-// Bindings
-layout (set = 0, binding = 0) uniform CameraData 
-{
-    mat4 projection;
-    mat4 view;
-    vec3 camPos;
-} dyn_camera_data;
-
 // Constants
 layout(push_constant) uniform Constants
-{
-    uint material_id;
-    uint directional_light_id;
-
-    uint local_lights_size;
-    uint local_light_ids[8];  // slot in respective buffer
+{   
+    push_constants obj;
 } constants;
 
-struct DirLight {
-    vec3 direction;
-	
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
-
-struct gpu_universal_light_data
+// Bindings
+layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo 
 {
-    vec3 position;
-    vec3 direction;  // unused for point lights
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    uint type;
-    float cut_off;
-    float outer_cut_off;
-    float constant;
-    float linear;
-    float quadratic;
-};
+   camera_data obj;
+} dyn_camera_data;
 
-layout(std140, set = 1, binding = 1) readonly buffer DirLightBuffer{   
+layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_directional_light_binding) readonly buffer DirLightBuffer{
 
-    DirLight objects[];
+    directional_light_data objects[];
 } dyn_directional_lights_buffer;
 
-layout(std140, set = 1, binding = 2) readonly buffer LightDataBuffer{   
+layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_universal_light_binding) readonly buffer LightDataBuffer{
 
-    gpu_universal_light_data objects[];
+    universal_light_data objects[];
 } dyn_gpu_universal_light_data;

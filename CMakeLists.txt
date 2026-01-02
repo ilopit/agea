@@ -61,6 +61,10 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders_includes)
 
 execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${PROJECT_SOURCE_DIR}/libs/gpu_types/public/include
+    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/gpu_types)
+
+execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
     ${PROJECT_SOURCE_DIR}/resources/shaders
     ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders)
 

@@ -1,4 +1,5 @@
 #version 450
+#extension GL_GOOGLE_include_directive: enable
 #include "common_frag.glsl"
 
 // materials
@@ -22,7 +23,7 @@ layout(set = 2, binding = 0) uniform sampler2D tex1[];
 void main()
 {
     MaterialData material = dyn_material_buffer.objects[constants.material_id];
-    PointLight light = dyn_point_lights_buffer.objects[0];
+    directional_light_data light = dyn_point_lights_buffer.objects[0];
     // ambient
     vec3 ambient = light.ambient * material.ambient;
 

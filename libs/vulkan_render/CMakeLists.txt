@@ -17,6 +17,7 @@ add_library(vulkan_render STATIC
 
 target_link_libraries(vulkan_render PUBLIC
     agea::utils
+    agea::gpu_types
     agea::native
     agea::resource_locator
     agea::serialization

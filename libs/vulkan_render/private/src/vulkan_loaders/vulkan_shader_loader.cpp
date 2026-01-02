@@ -57,9 +57,12 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
 
     auto includes =
         glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
-    params.arguments =
-        std::format("-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2}",
-                    raw_buffer.get_file().str(), compiled_path.str(), includes.str());
+    auto gpu_includes =
+        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_gpu_data);
+
+    params.arguments = std::format(
+        "-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3}",
+        raw_buffer.get_file().str(), compiled_path.str(), includes.str(), gpu_includes.str());
 
     uint64_t rc = 0;
     if (!ipc::run_binary(params, rc) || rc != 0)
