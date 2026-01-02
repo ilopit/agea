@@ -193,7 +193,7 @@ directional_light_component__render_loader(reflection::type_context__render& ctx
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        rh = glob::vulkan_render::getr().get_cache().dir_lights.alloc(lc_model.get_id());
+        rh = glob::vulkan_render::getr().get_cache().directional_lights.alloc(lc_model.get_id());
 
         rh->gpu_data.ambient = lc_model.get_ambient();
         rh->gpu_data.diffuse = lc_model.get_diffuse();
@@ -203,7 +203,7 @@ directional_light_component__render_loader(reflection::type_context__render& ctx
         lc_model.set_handler(rh);
     }
 
-    glob::vulkan_render::getr().schedule_light_data_gpu_upload(rh);
+    glob::vulkan_render::getr().schedule_directional_light_data_gpu_upload(rh);
 
     return result_code::ok;
 }
@@ -213,7 +213,7 @@ directional_light_component__render_destructor(reflection::type_context__render&
     auto& plc_model = ctx.obj->asr<base::directional_light_component>();
     if (auto h = plc_model.get_handler())
     {
-        glob::vulkan_render::getr().get_cache().dir_lights.release(h);
+        glob::vulkan_render::getr().get_cache().directional_lights.release(h);
     }
 
     return result_code::ok;
@@ -229,8 +229,8 @@ spot_light_component__render_loader(reflection::type_context__render& ctx)
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        rh = glob::vulkan_render::getr().get_cache().local_lights.alloc(lc_model.get_id(),
-                                                                        render::light_type::spot);
+        rh = glob::vulkan_render::getr().get_cache().universal_lights.alloc(
+            lc_model.get_id(), render::light_type::spot);
 
         rh->gpu_data.position = lc_model.get_world_position();
         rh->gpu_data.ambient = lc_model.get_ambient();
@@ -246,7 +246,7 @@ spot_light_component__render_loader(reflection::type_context__render& ctx)
         lc_model.set_handler(rh);
     }
 
-    glob::vulkan_render::getr().schedule_light_data_gpu_upload(rh);
+    glob::vulkan_render::getr().schedule_universal_light_data_gpu_upload(rh);
 
     return result_code::ok;
 }
@@ -258,7 +258,7 @@ spot_light_component__render_destructor(reflection::type_context__render& ctx)
 
     if (auto h = slc_model.get_handler())
     {
-        glob::vulkan_render::getr().get_cache().local_lights.release(h);
+        glob::vulkan_render::getr().get_cache().universal_lights.release(h);
     }
 
     return result_code::ok;
@@ -274,8 +274,8 @@ point_light_component__render_loader(reflection::type_context__render& ctx)
     auto rh = lc_model.get_handler();
     if (!rh)
     {
-        rh = glob::vulkan_render::getr().get_cache().local_lights.alloc(lc_model.get_id(),
-                                                                        render::light_type::point);
+        rh = glob::vulkan_render::getr().get_cache().universal_lights.alloc(
+            lc_model.get_id(), render::light_type::point);
 
         rh->gpu_data.position = lc_model.get_world_position();
         rh->gpu_data.ambient = lc_model.get_ambient();
@@ -288,7 +288,7 @@ point_light_component__render_loader(reflection::type_context__render& ctx)
         lc_model.set_handler(rh);
     }
 
-    glob::vulkan_render::getr().schedule_light_data_gpu_upload(rh);
+    glob::vulkan_render::getr().schedule_universal_light_data_gpu_upload(rh);
 
     return result_code::ok;
 }
@@ -299,7 +299,7 @@ point_light_component__render_destructor(reflection::type_context__render& ctx)
     auto& plc_model = ctx.obj->asr<base::point_light_component>();
     if (auto h = plc_model.get_handler())
     {
-        glob::vulkan_render::getr().get_cache().local_lights.release(h);
+        glob::vulkan_render::getr().get_cache().universal_lights.release(h);
     }
 
     return result_code::ok;

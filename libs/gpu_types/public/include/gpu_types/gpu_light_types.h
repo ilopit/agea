@@ -6,7 +6,7 @@
 
 #include <gpu_types/gpu_port.h>
 
-#define KGPU_light_type_spot  0
+#define KGPU_light_type_spot 0
 #define KGPU_light_type_point 1
 
 GPU_BEGIN_NAMESPACE

@@ -42,16 +42,47 @@ namespace render
 namespace
 {
 
-const uint32_t INITIAL_OBJECTS_RANGE_SIZE = 4 * 1024;
 const uint32_t INITIAL_MATERIAL_SEGMENT_RANGE_SIZE = 1024;
 const uint32_t INITIAL_MATERIAL_RANGE_SIZE = 10 * INITIAL_MATERIAL_SEGMENT_RANGE_SIZE;
 
-const uint32_t INITIAL_LIGHTS_SEGMENT_SIZE = 1 * 1024;
-const uint32_t INITIAL_LIGHTS_BUFFER_SIZE = 2 * 1024;
-
 const uint32_t OBJECTS_BUFFER_SIZE = 16 * 1024;
-const uint32_t LIGHTS_BUFFER_SIZE = 3 * 1024;
-const uint32_t DYNAMIC_BUFFER_SIZE = 4 * 1024;
+const uint32_t UNIVERSAL_LIGHTS_BUFFER_SIZE = 1024;
+const uint32_t DIRECT_LIGHTS_BUFFER_SIZE = 512;
+
+const uint32_t DYNAMIC_BUFFER_SIZE = 1024;
+
+void*
+ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
+                               size_t required_size,
+                               const char* name)
+{
+    AGEA_check(required_size, "Should never happen");
+
+    if (required_size >= buffer.get_alloc_size())
+    {
+        auto old_buffer = std::move(buffer);
+
+        buffer = glob::render_device::getr().create_buffer(
+            required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        ALOG_INFO("Reallocating {0} buffer {1} => {2}", name, old_buffer.get_alloc_size(),
+                  buffer.get_alloc_size());
+
+        old_buffer.begin();
+        buffer.begin();
+
+        memcpy(buffer.get_data(), old_buffer.get_data(), old_buffer.get_alloc_size());
+
+        old_buffer.end();
+    }
+    else
+    {
+        buffer.begin();
+    }
+
+    return buffer.allocate_data((uint32_t)required_size);
+}
+
 }  // namespace
 
 vulkan_render::vulkan_render()
@@ -90,8 +121,12 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
             device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        m_frames[i].m_lights_buffer =
-            device.create_buffer(INITIAL_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        m_frames[i].m_universal_lights_buffer =
+            device.create_buffer(UNIVERSAL_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].m_directional_lights_buffer =
+            device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].m_dynamic_data_buffer = device.create_buffer(
@@ -303,16 +338,23 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         current_frame.reset_obj_data();
     }
 
+    if (current_frame.has_universal_light_data())
+    {
+        upload_universal_light_data(current_frame);
+        current_frame.reset_universal_light_data();
+        rebuild_light_grid();
+    }
+
+    if (current_frame.has_directional_light_data())
+    {
+        upload_directional_light_data(current_frame);
+        current_frame.reset_directional_light_data();
+    }
+
     if (current_frame.has_mat_data())
     {
         upload_material_data(current_frame);
         current_frame.reset_mat_data();
-    }
-
-    if (current_frame.has_light_data())
-    {
-        upload_light_data(current_frame);
-        current_frame.reset_light_data();
     }
 
     auto& dyn = current_frame.m_dynamic_data_buffer;
@@ -322,9 +364,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     dyn.end();
 
     build_global_set(current_frame);
-    build_light_set(current_frame);
-
-    rebuild_light_grid();
+    build_ssbo_sets(current_frame);
 }
 
 void
@@ -342,15 +382,17 @@ vulkan_render::build_global_set(render::frame_state& current_frame)
 }
 
 void
-vulkan_render::build_light_set(render::frame_state& current_frame)
+vulkan_render::build_ssbo_sets(render::frame_state& current_frame)
 {
-    VkDescriptorBufferInfo directional_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
-                                                  .offset = 0,
-                                                  .range = INITIAL_LIGHTS_SEGMENT_SIZE};
+    VkDescriptorBufferInfo directional_light_info{
+        .buffer = current_frame.m_directional_lights_buffer.buffer(),
+        .offset = 0,
+        .range = current_frame.m_directional_lights_buffer.get_alloc_size()};
 
-    VkDescriptorBufferInfo universal_light_info{.buffer = current_frame.m_lights_buffer.buffer(),
-                                                .offset = INITIAL_LIGHTS_SEGMENT_SIZE,
-                                                .range = INITIAL_LIGHTS_SEGMENT_SIZE};
+    VkDescriptorBufferInfo universal_light_info{
+        .buffer = current_frame.m_universal_lights_buffer.buffer(),
+        .offset = 0,
+        .range = current_frame.m_universal_lights_buffer.get_alloc_size()};
 
     VkDescriptorBufferInfo object_buffer_info{
         .buffer = current_frame.m_object_buffer.buffer(),
@@ -359,12 +401,12 @@ vulkan_render::build_light_set(render::frame_state& current_frame)
 
     vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
                                         current_frame.frame->m_dynamic_descriptor_allocator.get())
-        .bind_buffer(0, &object_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_VERTEX_BIT)
-        .bind_buffer(1, &directional_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(2, &universal_light_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(KGPU_objects_objects_binding, &object_buffer_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+        .bind_buffer(KGPU_objects_directional_light_binding, &directional_light_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(KGPU_objects_universal_light_binding, &universal_light_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(m_objects_set);
 
     AGEA_check(m_objects_set, "Should never happen");
@@ -375,69 +417,40 @@ vulkan_render::upload_obj_data(render::frame_state& frame)
 {
     const auto total_size = m_cache.objects.get_size() * sizeof(gpu_object_data);
 
-    bool reallocated = false;
-    if (total_size >= frame.m_object_buffer.get_alloc_size())
-    {
-        auto old_buffer_tb = std::move(frame.m_object_buffer);
+    auto* data = (gpu_object_data*)ensure_buffer_capacity_and_map(frame.m_object_buffer, total_size,
+                                                                  "objects");
+    AGEA_check(data, "Should never happen");
 
-        frame.m_object_buffer = glob::render_device::getr().create_buffer(
-            total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-        ALOG_INFO("Reallocating obj buffer {0} => {1}", old_buffer_tb.get_alloc_size(),
-                  frame.m_object_buffer.get_alloc_size());
-
-        old_buffer_tb.begin();
-        frame.m_object_buffer.begin();
-
-        memcpy(frame.m_object_buffer.get_data(), old_buffer_tb.get_data(),
-               old_buffer_tb.get_alloc_size());
-
-        old_buffer_tb.end();
-
-        reallocated = true;
-    }
-
-    if (!reallocated)
-    {
-        frame.m_object_buffer.begin();
-    }
-
-    auto gpu_object_data_begin =
-        (render::gpu_object_data*)frame.m_object_buffer.allocate_data((uint32_t)total_size);
-
-    upload_gpu_object_data(gpu_object_data_begin);
-
+    upload_gpu_object_data(data);
     frame.m_object_buffer.end();
 }
 
 void
-vulkan_render::upload_light_data(render::frame_state& frame)
+vulkan_render::upload_universal_light_data(render::frame_state& frame)
 {
-    auto& buffer_td = frame.m_lights_buffer;
+    const auto total_size = m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
 
-    buffer_td.begin();
+    auto* data = (gpu::universal_light_data*)ensure_buffer_capacity_and_map(
+        frame.m_universal_lights_buffer, total_size, "universal lights");
+    AGEA_check(data, "Should never happen");
 
-    auto direct =
-        (render::gpu_directional_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
+    upload_gpu_universal_light_data(data);
+    frame.m_universal_lights_buffer.end();
+}
 
-    auto universal_light_data =
-        (render::gpu_universal_light_data*)buffer_td.allocate_data(INITIAL_LIGHTS_SEGMENT_SIZE);
+void
+vulkan_render::upload_directional_light_data(render::frame_state& frame)
+{
+    const auto total_size =
+        m_cache.directional_lights.get_size() * sizeof(gpu::directional_light_data);
 
-    for (auto ld : frame.m_dir_light_queue)
-    {
-        direct[ld->slot()] = ld->gpu_data;
-    }
+    auto* data = (gpu::directional_light_data*)ensure_buffer_capacity_and_map(
+        frame.m_directional_lights_buffer, total_size, "directional lights");
 
-    // Upload local lights to appropriate buffer based on type
-    for (auto ld : frame.m_local_light_queue)
-    {
-        universal_light_data[ld->slot()] = ld->gpu_data;
-    }
+    AGEA_check(data, "Should never happen");
 
-    frame.m_dir_light_queue.clear();
-    frame.m_local_light_queue.clear();
-
-    buffer_td.end();
+    upload_gpu_directional_light_data(data);
+    frame.m_directional_lights_buffer.end();
 }
 
 void
@@ -677,7 +690,8 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     if (object)
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
-                                KGPU_objects_descriptor_sets, 1, &m_objects_set, 3, dummy_offset);
+                                KGPU_objects_descriptor_sets, 1, &m_objects_set,
+                                KGPU_objects_max_binding + 1, dummy_offset);
 
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
                                 KGPU_global_descriptor_sets, 1, &m_global_set,
@@ -857,20 +871,20 @@ vulkan_render::schedule_game_data_gpu_upload(render::vulkan_render_data* obj_dat
 }
 
 void
-vulkan_render::schedule_light_data_gpu_upload(render::vulkan_directional_light_data* ld)
+vulkan_render::schedule_directional_light_data_gpu_upload(render::vulkan_directional_light_data* ld)
 {
     for (auto& q : m_frames)
     {
-        q.m_dir_light_queue.emplace_back(ld);
+        q.m_directional_light_queue.emplace_back(ld);
     }
 }
 
 void
-vulkan_render::schedule_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
+vulkan_render::schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
 {
     for (auto& q : m_frames)
     {
-        q.m_local_light_queue.emplace_back(ld);
+        q.m_universal_light_queue.emplace_back(ld);
     }
 }
 
@@ -889,13 +903,13 @@ vulkan_render::collect_lights()
     m_obj_config.local_lights_size = 0U;
 
     m_obj_config.directional_light_id =
-        m_cache.dir_lights.get_size() > 0 ? m_cache.dir_lights.at(0)->slot() : 0;
+        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
 
     // Add all local lights (point and spot)
-    for (uint32_t i = 0; i < m_cache.local_lights.get_size() && m_obj_config.local_lights_size < 8;
-         ++i)
+    for (uint32_t i = 0;
+         i < m_cache.universal_lights.get_size() && m_obj_config.local_lights_size < 8; ++i)
     {
-        auto* light = m_cache.local_lights.at(i);
+        auto* light = m_cache.universal_lights.at(i);
         m_obj_config.local_light_ids[m_obj_config.local_lights_size] = light->slot();
         ++m_obj_config.local_lights_size;
     }
@@ -915,9 +929,9 @@ vulkan_render::rebuild_light_grid()
     m_light_grid.clear();
 
     // Insert all local lights
-    for (uint32_t i = 0; i < m_cache.local_lights.get_size(); ++i)
+    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
-        auto* light = m_cache.local_lights.at(i);
+        auto* light = m_cache.universal_lights.at(i);
         float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
                                          light->gpu_data.quadratic,
                                          0.02f,  // 2% threshold
@@ -932,17 +946,50 @@ vulkan_render::collect_lights_for_object(const render::vulkan_render_data* obj)
 {
     // Set directional light (global, always affects all objects)
     m_obj_config.directional_light_id =
-        m_cache.dir_lights.get_size() > 0 ? m_cache.dir_lights.at(0)->slot() : 0;
+        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
 
     // Query unified light grid for this object
-    m_obj_config.local_lights_size = m_light_grid.query_lights(
-        obj->gpu_data.obj_pos, obj->bounding_radius, m_obj_config.local_light_ids, 16);
+    m_obj_config.local_lights_size =
+        m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->bounding_radius,
+                                  m_obj_config.local_light_ids, KGPU_max_lights_per_object);
 }
 
 void
 vulkan_render::upload_gpu_object_data(render::gpu_object_data* object_SSBO)
 {
     auto& to_update = get_current_frame_transfer_data().m_objects_queue;
+
+    if (to_update.empty())
+    {
+        return;
+    }
+
+    for (auto obj : to_update)
+    {
+        object_SSBO[obj->slot()] = obj->gpu_data;
+    }
+}
+
+void
+vulkan_render::upload_gpu_universal_light_data(gpu::universal_light_data* object_SSBO)
+{
+    auto& to_update = get_current_frame_transfer_data().m_universal_light_queue;
+
+    if (to_update.empty())
+    {
+        return;
+    }
+
+    for (auto obj : to_update)
+    {
+        object_SSBO[obj->slot()] = obj->gpu_data;
+    }
+}
+
+void
+vulkan_render::upload_gpu_directional_light_data(gpu::directional_light_data* object_SSBO)
+{
+    auto& to_update = get_current_frame_transfer_data().m_directional_light_queue;
 
     if (to_update.empty())
     {

@@ -60,16 +60,27 @@ struct frame_state
     }
 
     bool
-    has_light_data() const
+    has_universal_light_data() const
     {
-        return !m_local_light_queue.empty() || !m_dir_light_queue.empty();
+        return !m_universal_light_queue.empty();
+    }
+
+    bool
+    has_directional_light_data() const
+    {
+        return !m_directional_light_queue.empty();
     }
 
     void
-    reset_light_data()
+    reset_universal_light_data()
     {
-        m_local_light_queue.clear();
-        m_dir_light_queue.clear();
+        m_universal_light_queue.clear();
+    }
+
+    void
+    reset_directional_light_data()
+    {
+        m_directional_light_queue.clear();
     }
 
     bool
@@ -88,8 +99,8 @@ struct frame_state
     clear_upload_queues()
     {
         m_objects_queue.clear();
-        m_local_light_queue.clear();
-        m_dir_light_queue.clear();
+        m_universal_light_queue.clear();
+        m_directional_light_queue.clear();
 
         for (auto& m : m_materias_queue_set)
         {
@@ -98,8 +109,11 @@ struct frame_state
     }
 
     vk_utils::vulkan_buffer m_dynamic_data_buffer;
+
+    // SSBOs
     vk_utils::vulkan_buffer m_object_buffer;
-    vk_utils::vulkan_buffer m_lights_buffer;
+    vk_utils::vulkan_buffer m_universal_lights_buffer;
+    vk_utils::vulkan_buffer m_directional_lights_buffer;
     vk_utils::vulkan_buffer m_materials_buffer;
 
     vk_utils::vulkan_buffer m_ui_vertex_buffer;
@@ -110,9 +124,8 @@ struct frame_state
 
     objects_update_queue m_objects_queue;
     materials_update_queue_set m_materias_queue_set;
-
-    directional_light_update_queue m_dir_light_queue;
-    universal_light_update_queue m_local_light_queue;
+    directional_light_update_queue m_directional_light_queue;
+    universal_light_update_queue m_universal_light_queue;
 
     bool has_materials = false;
     bool has_lights = false;
@@ -152,17 +165,12 @@ public:
     void
     drop_material(render::material_data* obj_data);
 
-    void
-    schedule_material_data_gpu_upload(render::material_data* md);
-
-    void
-    schedule_game_data_gpu_upload(render::vulkan_render_data* od);
-
-    void
-    schedule_light_data_gpu_upload(render::vulkan_directional_light_data* ld);
-
-    void
-    schedule_light_data_gpu_upload(render::vulkan_universal_light_data* ld);
+    // clang-format off
+    void schedule_material_data_gpu_upload(render::material_data* md);
+    void schedule_game_data_gpu_upload(render::vulkan_render_data* od);
+    void schedule_directional_light_data_gpu_upload(render::vulkan_directional_light_data* ld);
+    void schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld);
+    // clang-format on
 
     void
     clear_upload_queue();
@@ -206,16 +214,14 @@ private:
     build_global_set(render::frame_state& current_frame);
 
     void
-    build_light_set(render::frame_state& current_frame);
+    build_ssbo_sets(render::frame_state& current_frame);
 
-    void
-    upload_obj_data(render::frame_state& frame);
-
-    void
-    upload_light_data(render::frame_state& frame);
-
-    void
-    upload_material_data(render::frame_state& frame);
+    // clang-format off
+    void upload_obj_data(render::frame_state& frame);
+    void upload_universal_light_data(render::frame_state& frame);
+    void upload_directional_light_data(render::frame_state& frame);
+    void upload_material_data(render::frame_state& frame);
+    // clang-format on
 
     void
     rebuild_light_grid();
@@ -259,11 +265,12 @@ private:
     void
     push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id);
 
-    void
-    upload_gpu_object_data(render::gpu_object_data* object_SSBO);
-
-    void
-    upload_gpu_materials_data(uint8_t* object_SSBO, materials_update_queue& queue);
+    // clang-format off
+    void upload_gpu_object_data(gpu::object_data* object_SSBO);
+    void upload_gpu_universal_light_data(gpu::universal_light_data* lights_SSBO);
+    void upload_gpu_directional_light_data(gpu::directional_light_data* lights_SSBO);
+    void upload_gpu_materials_data(uint8_t* object_SSBO, materials_update_queue& queue);
+    // clang-format on
 
     void
     update_transparent_objects_queue();

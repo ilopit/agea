@@ -19,8 +19,8 @@ public:
     ~render_cache();
 
     utils::combined_pool<vulkan_render_data> objects;
-    utils::combined_pool<vulkan_directional_light_data> dir_lights;
-    utils::combined_pool<vulkan_universal_light_data> local_lights;
+    utils::combined_pool<vulkan_directional_light_data> directional_lights;
+    utils::combined_pool<vulkan_universal_light_data> universal_lights;
 };
 
 }  // namespace render

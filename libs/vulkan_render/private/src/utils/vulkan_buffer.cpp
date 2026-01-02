@@ -80,8 +80,8 @@ vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    vmaCreateBuffer(glob::render_device::getr().allocator(), &bci, &vaci, &buffer, &allocation,
-                    nullptr);
+    VK_CHECK(vmaCreateBuffer(glob::render_device::getr().allocator(), &bci, &vaci, &buffer,
+                             &allocation, nullptr));
 
     return vulkan_buffer{buffer, allocation, bci.size};
 }
