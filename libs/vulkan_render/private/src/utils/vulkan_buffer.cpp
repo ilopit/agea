@@ -3,7 +3,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 
 vulkan_buffer&
@@ -136,4 +136,4 @@ vulkan_buffer::allocate_data(uint32_t size)
     return data;
 }
 
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

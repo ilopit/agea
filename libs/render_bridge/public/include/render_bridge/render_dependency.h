@@ -5,7 +5,7 @@
 
 #include <core/model_minimal.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace root
@@ -67,4 +67,4 @@ private:
     std::unordered_map<root::smart_object*, node> m_down_top;
 };
 
-}  // namespace agea
+}  // namespace kryga

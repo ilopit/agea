@@ -26,7 +26,7 @@
 #include <iostream>
 #include <fstream>
 
-namespace agea
+namespace kryga
 {
 
 glob::render_device::type glob::render_device::type::s_instance;
@@ -85,7 +85,7 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     vkb::InstanceBuilder builder;
 
     // make the vulkan instance, with basic debug features
-    auto inst_ret = builder.set_app_name("AGEA")
+    auto inst_ret = builder.set_app_name("KRYGA")
                         .request_validation_layers(true)
                         .use_default_debug_messenger()
                         .set_headless(headless)
@@ -517,4 +517,4 @@ render_device::create_buffer(size_t alloc_size,
     return vk_utils::vulkan_buffer::create(buffer_ci, vma_alloc_ci);
 }
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

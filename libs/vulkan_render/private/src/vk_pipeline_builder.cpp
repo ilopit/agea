@@ -1,6 +1,6 @@
 #include "vulkan_render/vk_pipeline_builder.h"
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 VkPipeline
 pipeline_builder::build(VkDevice device, VkRenderPass pass)
@@ -62,4 +62,4 @@ pipeline_builder::build(VkDevice device, VkRenderPass pass)
         return pipeline;
     }
 }
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

@@ -9,8 +9,8 @@ add_executable (render_utils_tests
  )
 
 target_link_libraries(render_utils_tests
-    agea::render_utils
+    kryga::render_utils
     gtest
 )
 
-agea_finalize_executable(render_utils_tests)
+kryga_finalize_executable(render_utils_tests)

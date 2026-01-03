@@ -2,7 +2,7 @@
 
 #include <windows.h>
 
-namespace agea
+namespace kryga
 {
 namespace ipc
 {
@@ -54,4 +54,4 @@ run_binary(construct_params p, std::uint64_t& result_code)
     return false;
 }
 }  // namespace ipc
-}  // namespace agea
+}  // namespace kryga

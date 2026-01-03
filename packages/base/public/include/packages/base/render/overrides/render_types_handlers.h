@@ -5,7 +5,7 @@
 #include <error_handling/error_handling.h>
 #include <core/reflection/reflection_type.h>
 
-namespace agea
+namespace kryga
 {
 class render_bridge;
 
@@ -14,7 +14,7 @@ namespace root
 class smart_object;
 }
 
-AGEA_ar_render_overrides();
+KRG_ar_render_overrides();
 
 result_code
 mesh_component__render_loader(reflection::type_context__render& ctx);
@@ -38,4 +38,4 @@ point_light_component__render_loader(reflection::type_context__render& ctx);
 result_code
 point_light_component__render_destructor(reflection::type_context__render& ctx);
 
-}  // namespace agea
+}  // namespace kryga

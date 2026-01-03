@@ -11,7 +11,7 @@
 
 #include <utils/id.h>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -104,4 +104,4 @@ protected:
 
 }  // namespace core
 
-}  // namespace agea
+}  // namespace kryga

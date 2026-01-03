@@ -1,6 +1,6 @@
 #include "utils/singleton_registry.h"
 
-namespace agea
+namespace kryga
 {
 
 singleton_registry::~singleton_registry()
@@ -16,7 +16,7 @@ singleton_registry::add(base_singleton_instance* obj)
 {
     auto itr = m_refs.find(obj);
 
-    AGEA_check(itr == m_refs.end(), "Should be here");
+    KRG_check(itr == m_refs.end(), "Should be here");
 
     m_refs.emplace_back(obj);
 }
@@ -26,7 +26,7 @@ singleton_registry::remove(base_singleton_instance* obj)
 {
     auto itr = m_refs.find(obj);
 
-    AGEA_check(itr != m_refs.end(), "Should not be here");
+    KRG_check(itr != m_refs.end(), "Should not be here");
 }
 
-}  // namespace agea
+}  // namespace kryga

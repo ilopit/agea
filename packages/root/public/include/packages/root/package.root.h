@@ -6,20 +6,20 @@
 
 #include <ar/ar_defines.h>
 
-namespace agea::root
+namespace kryga::root
 {
 // clang-format off
-AGEA_ar_package(model.has_types_overrides = true,
+KRG_ar_package(model.has_types_overrides = true,
                 model.has_properties_overrides = true,
                 render.has_overrides = true,
                 render.has_resources = false);
-class package : public ::agea::core::package
+class package : public ::kryga::core::package
 // clang-format on
 {
 public:
     package();
 
-    AGEA_gen_meta__root_package;
+    KRG_gen_meta__root_package;
 };
 
-}  // namespace agea::root
+}  // namespace kryga::root

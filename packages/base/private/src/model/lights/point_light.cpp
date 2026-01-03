@@ -3,12 +3,12 @@
 #include <packages/base/model/components/mesh_component.h>
 #include <packages/base/model/lights/components/point_light_component.h>
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(point_light);
+KRG_gen_class_cd_default(point_light);
 
 bool
 point_light::construct(construct_params& params)
@@ -26,4 +26,4 @@ point_light::construct(construct_params& params)
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

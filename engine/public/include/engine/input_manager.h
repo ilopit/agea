@@ -15,7 +15,7 @@
 
 union SDL_Event;
 
-namespace agea
+namespace kryga
 {
 namespace engine
 {
@@ -283,8 +283,8 @@ protected:
 
 namespace glob
 {
-struct input_manager : public singleton_instance<::agea::engine::input_manager, input_manager>
+struct input_manager : public singleton_instance<::kryga::engine::input_manager, input_manager>
 {
 };
 }  // namespace glob
-}  // namespace agea
+}  // namespace kryga

@@ -6,7 +6,7 @@
 
 #include <utils/buffer.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -16,17 +16,17 @@ class texture_data;
 namespace root
 {
 
-AGEA_ar_class("architype=texture",
+KRG_ar_class("architype=texture",
               render_constructor = texture__render_loader,
               render_destructor = texture__render_destructor);
 class texture : public asset
 {
-    AGEA_gen_meta__texture();
+    KRG_gen_meta__texture();
 
 public:
-    AGEA_gen_class_meta(texture, asset);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(texture, asset);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     utils::buffer&
     get_mutable_base_color()
@@ -47,17 +47,17 @@ public:
     }
 
 protected:
-    AGEA_ar_property("category=meta", "access=all", "serializable=true");
+    KRG_ar_property("category=meta", "access=all", "serializable=true");
     utils::buffer m_base_color;
 
-    AGEA_ar_property("category=meta", "access=all", "serializable=true");
+    KRG_ar_property("category=meta", "access=all", "serializable=true");
     uint32_t m_width;
 
-    AGEA_ar_property("category=meta", "access=all", "serializable=true");
+    KRG_ar_property("category=meta", "access=all", "serializable=true");
     uint32_t m_height;
 
-    agea::render::texture_data* m_texture_data = nullptr;
+    kryga::render::texture_data* m_texture_data = nullptr;
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

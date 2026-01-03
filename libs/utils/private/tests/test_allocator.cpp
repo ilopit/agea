@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <format>
 
-using namespace agea::utils;
+using namespace kryga::utils;
 
 TEST(test_allocator, simple)
 {

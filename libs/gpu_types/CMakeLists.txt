@@ -7,6 +7,6 @@ target_include_directories(gpu_types INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(gpu_types INTERFACE agea::glm_unofficial)
+target_link_libraries(gpu_types INTERFACE kryga::glm_unofficial)
 
-add_library(agea::gpu_types ALIAS gpu_types)
+add_library(kryga::gpu_types ALIAS gpu_types)

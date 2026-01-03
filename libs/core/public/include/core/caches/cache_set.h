@@ -6,7 +6,7 @@
 
 #include <utils/singleton_instance.h>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -38,4 +38,4 @@ public:
 
 }  // namespace core
 
-}  // namespace agea
+}  // namespace kryga

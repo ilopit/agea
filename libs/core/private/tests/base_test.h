@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <gtest/gtest.h>
 
-namespace agea
+namespace kryga
 {
 struct base_test : public testing::Test
 {
@@ -18,9 +18,9 @@ struct base_test : public testing::Test
     void
     TearDown();
 
-    agea::utils::path
+    kryga::utils::path
     get_current_workspace();
 
-    agea::singleton_registry m_regestry;
+    kryga::singleton_registry m_regestry;
 };
-};  // namespace agea
+};  // namespace kryga

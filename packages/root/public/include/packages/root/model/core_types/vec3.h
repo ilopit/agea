@@ -3,16 +3,16 @@
 #include <ar/ar_defines.h>
 #include <glm_unofficial/glm.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 // clang-format off
-AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_default__copy<::agea::root::vec2>,
-               compare_handler     = ::agea::reflection::utils::cpp_default__compare<::agea::root::vec2>,
-               serialize_handler   = ::agea::root::vec3__save,
-               load_derive_handler = ::agea::root::vec3__load,
-               to_string_handler   = ::agea::root::vec3__to_string);
+KRG_ar_struct(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::kryga::root::vec2>,
+               compare_handler     = ::kryga::reflection::utils::cpp_default__compare<::kryga::root::vec2>,
+               serialize_handler   = ::kryga::root::vec3__save,
+               load_derive_handler = ::kryga::root::vec3__load,
+               to_string_handler   = ::kryga::root::vec3__to_string);
 struct vec3 : ::glm::vec3
 // clang-format on
 {
@@ -26,13 +26,13 @@ struct vec3 : ::glm::vec3
     {
     }
 
-    AGEA_ar_ctor("category=world");
+    KRG_ar_ctor("category=world");
     vec3(float x, float y, float z)
         : glm::vec3(x, y, z)
     {
     }
 
-    AGEA_ar_ctor("category=world");
+    KRG_ar_ctor("category=world");
     vec3(float v)
         : glm::vec3(v)
     {
@@ -51,14 +51,14 @@ struct vec3 : ::glm::vec3
     }
 
     // x
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     void
     set_x(float v)
     {
         x = v;
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     float
     get_x() const
     {
@@ -66,14 +66,14 @@ struct vec3 : ::glm::vec3
     }
 
     // y
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     void
     set_y(float v)
     {
         y = v;
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     float
     get_y() const
     {
@@ -81,14 +81,14 @@ struct vec3 : ::glm::vec3
     }
 
     // z
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     void
     set_z(float v)
     {
         z = v;
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     float
     get_z() const
     {
@@ -97,4 +97,4 @@ struct vec3 : ::glm::vec3
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

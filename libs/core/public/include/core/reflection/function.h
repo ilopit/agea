@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace reflection
 {
@@ -21,4 +21,4 @@ public:
     std::string category;
 };
 }  // namespace reflection
-}  // namespace agea
+}  // namespace kryga

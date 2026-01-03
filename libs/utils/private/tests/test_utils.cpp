@@ -2,17 +2,17 @@
 #include "utils/dynamic_object.h"
 #include "utils/dynamic_object_builder.h"
 #include "utils/math_utils.h"
-#include "utils/agea_log.h"
+#include "utils/kryga_log.h"
 
 #include <gtest/gtest.h>
 
-using namespace agea::utils;
+using namespace kryga::utils;
 
 namespace
 {
 auto r = []()
 {
-    agea::utils::setup_logger();
+    kryga::utils::setup_logger();
     return true;
 }();
 }

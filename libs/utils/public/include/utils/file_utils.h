@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -25,4 +25,4 @@ struct file_utils
     compare_folders(const path& a, const path& b);
 };
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

@@ -5,12 +5,12 @@
 
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
 
-material_data::material_data(const ::agea::utils::id& id, const ::agea::utils::id& type_id)
+material_data::material_data(const ::kryga::utils::id& id, const ::kryga::utils::id& type_id)
     : m_id(id)
     , m_type_id(type_id)
 {
@@ -33,4 +33,4 @@ material_data::get_shader_effect()
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

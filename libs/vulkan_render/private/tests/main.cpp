@@ -1,23 +1,23 @@
 #include <gtest/gtest.h>
 
 #include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 
 #include <resource_locator/resource_locator.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/singleton_registry.h>
 
 int
 main(int argc, char** argv)
 {
-    ::agea::utils::setup_logger();
+    ::kryga::utils::setup_logger();
 
-    auto registry = std::make_unique<agea::singleton_registry>();
+    auto registry = std::make_unique<kryga::singleton_registry>();
 
-    agea::glob::render_device::create(*registry);
-    agea::glob::resource_locator::create(*registry);
-    agea::glob::vulkan_render::create(*registry);
+    kryga::glob::render_device::create(*registry);
+    kryga::glob::resource_locator::create(*registry);
+    kryga::glob::vulkan_render::create(*registry);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

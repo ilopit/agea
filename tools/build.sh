@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for agea - runs cmake build
+# Build script for kryga - runs cmake build
 # Usage: ./tools/build.sh [options] [target]
 #   -a, --all        Build all targets (default: engine_app)
 #   -v, --verbose    Show full build output

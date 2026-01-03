@@ -11,7 +11,7 @@
 //
 // #include <gtest/gtest.h>
 //
-// using namespace agea;
+// using namespace kryga;
 //
 // struct test_game_object_structure : base_test
 // {

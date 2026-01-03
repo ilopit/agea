@@ -11,7 +11,7 @@
 
 #include <imgui.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace ui
@@ -177,7 +177,7 @@ public:
 
 namespace glob
 {
-struct ui : public ::agea::singleton_instance<::agea::ui::ui, ui>
+struct ui : public ::kryga::singleton_instance<::kryga::ui::ui, ui>
 {
 };
 }  // namespace glob
@@ -191,4 +191,4 @@ get_window()
     return (T*)glob::ui::get()->m_windows[T::window_title()].get();
 }
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

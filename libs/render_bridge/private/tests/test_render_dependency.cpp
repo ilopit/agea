@@ -8,7 +8,7 @@
 
 #include "core/reflection/reflection_type.h"
 
-using namespace agea;
+using namespace kryga;
 
 namespace
 {

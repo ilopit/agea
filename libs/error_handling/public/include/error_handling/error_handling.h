@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 enum class result_code
 {
@@ -18,4 +18,4 @@ enum class result_code
 
 const char*
 to_cstr(result_code rc);
-}  // namespace agea
+}  // namespace kryga

@@ -4,8 +4,8 @@
 #include <utils/simple_allocator.h>
 #include <vulkan_render/types/vulkan_render_data.h>
 
-using namespace agea;
-using namespace agea::render;
+using namespace kryga;
+using namespace kryga::render;
 
 TEST(render_data_allocator_test, happy_pass)
 {

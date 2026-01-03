@@ -1,5 +1,5 @@
 #!/bin/bash
-# Configure script for agea - runs cmake configuration
+# Configure script for kryga - runs cmake configuration
 # Usage: ./tools/configure.sh [options]
 #   -v, --verbose    Show full cmake output
 #   -c, --clean      Clean build directory before configure

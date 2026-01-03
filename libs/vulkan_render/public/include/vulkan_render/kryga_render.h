@@ -17,7 +17,7 @@
 
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -27,16 +27,16 @@ class render_device;
 struct frame_data;
 class shader_effect_data;
 
-using render_line_container = ::agea::utils::line_container<render::vulkan_render_data*>;
+using render_line_container = ::kryga::utils::line_container<render::vulkan_render_data*>;
 
-using materials_update_queue = ::agea::utils::line_container<render::material_data*>;
-using materials_update_queue_set = ::agea::utils::line_container<materials_update_queue>;
-using objects_update_queue = ::agea::utils::line_container<render::vulkan_render_data*>;
+using materials_update_queue = ::kryga::utils::line_container<render::material_data*>;
+using materials_update_queue_set = ::kryga::utils::line_container<materials_update_queue>;
+using objects_update_queue = ::kryga::utils::line_container<render::vulkan_render_data*>;
 
 using directional_light_update_queue =
-    ::agea::utils::line_container<render::vulkan_directional_light_data*>;
+    ::kryga::utils::line_container<render::vulkan_directional_light_data*>;
 using universal_light_update_queue =
-    ::agea::utils::line_container<render::vulkan_universal_light_data*>;
+    ::kryga::utils::line_container<render::vulkan_universal_light_data*>;
 
 struct pipeline_ctx
 {
@@ -357,9 +357,9 @@ private:
 
 namespace glob
 {
-struct vulkan_render : public singleton_instance<::agea::render::vulkan_render, vulkan_render>
+struct vulkan_render : public singleton_instance<::kryga::render::vulkan_render, vulkan_render>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga

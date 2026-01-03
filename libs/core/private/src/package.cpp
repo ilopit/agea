@@ -5,7 +5,7 @@
 #include "core/object_load_context.h"
 #include "core/object_constructor.h"
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <serialization/serialization.h>
 #include <global_state/global_state.h>
@@ -14,7 +14,7 @@
 #include <stack>
 #include <filesystem>
 
-namespace agea::core
+namespace kryga::core
 {
 
 package::package(package&&) noexcept = default;
@@ -222,7 +222,7 @@ package::create_default_types_objects()
 {
     for (auto& [id, rt] : m_rts)
     {
-        if (rt->type_class == reflection::reflection_type::reflection_type_class::agea_class &&
+        if (rt->type_class == reflection::reflection_type::reflection_type_class::kryga_class &&
             !m_occ->find_proto_obj(id))
         {
             auto result = object_constructor::create_default_class_proto(id, *m_occ);
@@ -252,11 +252,11 @@ package::build_objects()
     }
 }
 
-::agea::reflection::reflection_type*
-package_types_builder::add(package& sp, ::agea::reflection::reflection_type* rt)
+::kryga::reflection::reflection_type*
+package_types_builder::add(package& sp, ::kryga::reflection::reflection_type* rt)
 {
     sp.m_rts[rt->type_name] = rt;
     return rt;
 }
 
-}  // namespace agea::core
+}  // namespace kryga::core

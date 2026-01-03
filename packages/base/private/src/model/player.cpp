@@ -1,8 +1,8 @@
 #include "packages/base/model/player.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

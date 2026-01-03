@@ -1,6 +1,6 @@
 #include "utils/string_utility.h"
 
-namespace agea
+namespace kryga
 {
 std::vector<std::string>
 string_utils::split(const std::string& s, const std::string& del)
@@ -156,4 +156,4 @@ string_utils::convert_hex_string_to_bytes(size_t size, const char* s, uint8_t* p
     return true;
 }
 
-}  // namespace agea
+}  // namespace kryga

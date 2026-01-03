@@ -5,7 +5,7 @@
 #include <functional>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -50,4 +50,4 @@ struct materials_cache;
 struct shader_effects_cache;
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

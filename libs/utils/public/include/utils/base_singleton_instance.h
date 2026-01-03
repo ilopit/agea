@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 class singleton_registry;
 
@@ -22,4 +22,4 @@ protected:
 
     singleton_registry* m_reg = nullptr;
 };
-}  // namespace agea
+}  // namespace kryga

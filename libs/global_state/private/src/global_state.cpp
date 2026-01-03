@@ -2,13 +2,13 @@
 
 #include <iostream>
 
-namespace agea::glob
+namespace kryga::glob
 {
 
-::agea::gs::state&
+::kryga::gs::state&
 glob_state()
 {
-    static ::agea::gs::state g_glob_state;
+    static ::kryga::gs::state g_glob_state;
     return g_glob_state;
 }
 void
@@ -16,9 +16,9 @@ glob_state_reset()
 {
     glob_state() = {};
 }
-}  // namespace agea::glob
+}  // namespace kryga::glob
 
-namespace agea::gs
+namespace kryga::gs
 {
 
 state::state()
@@ -71,7 +71,7 @@ state::schedule_action(state_stage stage, scheduled_action action)
 void
 state::run_create()
 {
-    AGEA_check(m_stage == state_stage::create, "Expected proper state!");
+    KRG_check(m_stage == state_stage::create, "Expected proper state!");
     run_items(m_stage);
     m_stage = state_stage::connect;
 }
@@ -79,7 +79,7 @@ state::run_create()
 void
 state::run_connect()
 {
-    AGEA_check(m_stage == state_stage::connect, "Expected proper state!");
+    KRG_check(m_stage == state_stage::connect, "Expected proper state!");
     run_items(m_stage);
     m_stage = state_stage::init;
 }
@@ -87,7 +87,7 @@ state::run_connect()
 void
 state::run_init()
 {
-    AGEA_check(m_stage == state_stage::init, "Expected proper state!");
+    KRG_check(m_stage == state_stage::init, "Expected proper state!");
     run_items(m_stage);
     m_stage = state_stage::ready;
 }
@@ -104,4 +104,4 @@ state::run_items(state_stage stage)
     node.clear();
 }
 
-}  // namespace agea::gs
+}  // namespace kryga::gs

@@ -11,7 +11,7 @@
 #include <core/package.h>
 #include <core/id_generator.h>
 
-namespace agea::core
+namespace kryga::core
 {
 
 void
@@ -79,4 +79,4 @@ state_mutator__current_level::set(level& lvl, gs::state& es)
     es.m_current_level = &lvl;
 }
 
-}  // namespace agea::core
+}  // namespace kryga::core

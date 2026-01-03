@@ -18,7 +18,7 @@
 #include "model/package.h"
 #include "model/game_object.h"
 
-#include "utils/agea_log.h"
+#include "utils/kryga_log.h"
 #include "utils/file_utils.h"
 #include "utils/path.h"
 
@@ -26,8 +26,8 @@
 
 #include "base_test.h"
 
-#define ID(val) ::agea::utils::id::from(val)
-using namespace agea;
+#define ID(val) ::kryga::utils::id::from(val)
+using namespace kryga;
 
 struct test_luad_binding : public base_test
 {
@@ -44,8 +44,8 @@ struct test_luad_binding : public base_test
         base_test::TearDown();
     }
 
-    agea::singletone_autodeleter m_objects_cache_set;
-    agea::singletone_autodeleter m_class_objects_cache_set;
+    kryga::singletone_autodeleter m_objects_cache_set;
+    kryga::singletone_autodeleter m_class_objects_cache_set;
 };
 
 TEST_F(test_luad_binding, load_package)

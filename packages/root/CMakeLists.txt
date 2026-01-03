@@ -1,17 +1,17 @@
 ##### Reflection
 add_custom_target(packages.root.ar ALL)
-agea_ar_target(packages.root.ar root "agea")
+kryga_ar_target(packages.root.ar root "kryga")
 
 SET(ROOT_MODEL_PREFIX "public/include/packages/root/model")
 
 ##### Types
-agea_gather_sources(ROOT_ASSETS_SRC "assets" "${ROOT_MODEL_PREFIX}/assets/*.h" "private/src/model/assets/*.cpp")
-agea_gather_sources(ROOT_COMPONENTS_SRC "components" "${ROOT_MODEL_PREFIX}/components/*.h" "private/src/model/components/*.cpp")
-agea_gather_sources(ROOT_CORE_TYPES_SRC "core_types" "${ROOT_MODEL_PREFIX}/core_types/*.h" "private/src/model/core_types/*.cpp")
-agea_gather_sources(ROOT_EXT_SRC "ext" "${ROOT_MODEL_PREFIX}/ext/*.h" "private/src/model/ext/*.cpp")
-agea_gather_sources(ROOT_OVERRIDES_SRC "overrides" "${ROOT_MODEL_PREFIX}/overrides/*.h" "private/src/model/overrides/*.cpp")
-agea_gather_sources(ROOT_MODEL_SRC "root" "${ROOT_MODEL_PREFIX}/*.h" "private/src/model/*.cpp")
-agea_gather_sources(ROOT_MODEL_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/model/*.cpp")
+kryga_gather_sources(ROOT_ASSETS_SRC "assets" "${ROOT_MODEL_PREFIX}/assets/*.h" "private/src/model/assets/*.cpp")
+kryga_gather_sources(ROOT_COMPONENTS_SRC "components" "${ROOT_MODEL_PREFIX}/components/*.h" "private/src/model/components/*.cpp")
+kryga_gather_sources(ROOT_CORE_TYPES_SRC "core_types" "${ROOT_MODEL_PREFIX}/core_types/*.h" "private/src/model/core_types/*.cpp")
+kryga_gather_sources(ROOT_EXT_SRC "ext" "${ROOT_MODEL_PREFIX}/ext/*.h" "private/src/model/ext/*.cpp")
+kryga_gather_sources(ROOT_OVERRIDES_SRC "overrides" "${ROOT_MODEL_PREFIX}/overrides/*.h" "private/src/model/overrides/*.cpp")
+kryga_gather_sources(ROOT_MODEL_SRC "root" "${ROOT_MODEL_PREFIX}/*.h" "private/src/model/*.cpp")
+kryga_gather_sources(ROOT_MODEL_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/kryga_generated/packages/root/private/model/*.cpp")
 
 add_library(packages.root.model STATIC
    ${ROOT_ASSETS_SRC}
@@ -25,29 +25,29 @@ add_library(packages.root.model STATIC
 
 target_compile_options(packages.root.model PRIVATE /bigobj)
 target_include_directories(packages.root.model PUBLIC
-   ${CMAKE_BINARY_DIR}/agea_generated/packages/root/public/include
-   ${CMAKE_BINARY_DIR}/agea_generated/packages/glue/public/include)
+   ${CMAKE_BINARY_DIR}/kryga_generated/packages/root/public/include
+   ${CMAKE_BINARY_DIR}/kryga_generated/packages/glue/public/include)
 
 target_link_libraries(packages.root.model PUBLIC
-   agea::ar
-   agea::core
-   agea::glm_unofficial
-   agea::serialization
-   agea::resource_locator
-   agea::utils
+   kryga::ar
+   kryga::core
+   kryga::glm_unofficial
+   kryga::serialization
+   kryga::resource_locator
+   kryga::utils
 
-   agea::sol2_unofficial
+   kryga::sol2_unofficial
 
    lua_static
 )
-target_compile_definitions(packages.root.model PUBLIC AGEA_build__model)
-agea_finalize_library(packages.root.model)
+target_compile_definitions(packages.root.model PUBLIC KRG_build__model)
+kryga_finalize_library(packages.root.model)
 
 #####  Render
 set(ROOT_RENDER_PREFIX "public/include/packages/root/render")
-agea_gather_sources(ROOT_RENDER_SRC "render" "${ROOT_RENDER_PREFIX}/*.h" "private/src/render/*.cpp")
-agea_gather_sources(ROOT_RENDER_OVERRIDES_SRC "overrides" "${ROOT_RENDER_PREFIX}/overrides/*.h" "private/src/render/overrides/*.cpp")
-agea_gather_sources(ROOT_RENDER_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/agea_generated/packages/root/private/render/*.cpp")
+kryga_gather_sources(ROOT_RENDER_SRC "render" "${ROOT_RENDER_PREFIX}/*.h" "private/src/render/*.cpp")
+kryga_gather_sources(ROOT_RENDER_OVERRIDES_SRC "overrides" "${ROOT_RENDER_PREFIX}/overrides/*.h" "private/src/render/overrides/*.cpp")
+kryga_gather_sources(ROOT_RENDER_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/kryga_generated/packages/root/private/render/*.cpp")
 
 add_library(packages.root.render STATIC
    ${ROOT_RENDER_SRC}
@@ -58,12 +58,12 @@ add_library(packages.root.render STATIC
 target_compile_options(packages.root.render PRIVATE /bigobj)
 target_link_libraries(packages.root.render
 
-   agea::packages.root.model
-   agea::asset_importer
-   agea::render_bridge
+   kryga::packages.root.model
+   kryga::asset_importer
+   kryga::render_bridge
 )
-target_compile_definitions(packages.root.render PUBLIC AGEA_build__render)
-agea_finalize_library(packages.root.render)
+target_compile_definitions(packages.root.render PUBLIC KRG_build__render)
+kryga_finalize_library(packages.root.render)
 
 #####  Builder
 file(GLOB ROOT_BUILDER_SRC "public/include/packages/root/builder/*.h" "private/src/builder/*.cpp")
@@ -73,17 +73,17 @@ add_library(packages.root.builder STATIC
 )
 
 target_link_libraries(packages.root.builder
-   agea::packages.root.model
-   agea::asset_importer
-   agea::packages.root.render
+   kryga::packages.root.model
+   kryga::asset_importer
+   kryga::packages.root.render
 )
 
-target_compile_definitions(packages.root.render PUBLIC AGEA_build__builder)
-agea_finalize_library(packages.root.builder)
+target_compile_definitions(packages.root.render PUBLIC KRG_build__builder)
+kryga_finalize_library(packages.root.builder)
 
 
-set(AGEA_ACTIVE_MODULES_TARGETS
-   ${AGEA_ACTIVE_MODULES_TARGETS}
+set(KRG_ACTIVE_MODULES_TARGETS
+   ${KRG_ACTIVE_MODULES_TARGETS}
    packages.root.model
    packages.root.render
    packages.root.builder

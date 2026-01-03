@@ -6,7 +6,7 @@
 
 #include <utils/buffer.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -17,17 +17,17 @@ namespace root
 {
 class texture;
 
-AGEA_ar_class("architype=shader_effect",
+KRG_ar_class("architype=shader_effect",
               render_constructor = shader_effect__render_loader,
               render_destructor = shader_effect__render_destructor);
 class shader_effect : public asset
 {
-    AGEA_gen_meta__shader_effect();
+    KRG_gen_meta__shader_effect();
 
 public:
-    AGEA_gen_class_meta(shader_effect, asset);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(shader_effect, asset);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     render::shader_effect_data*
     get_shader_effect_data()
@@ -44,22 +44,22 @@ public:
     void
     mark_render_dirty();
 
-    AGEA_ar_property("category=Properties", "serializable=true", "access=no");
+    KRG_ar_property("category=Properties", "serializable=true", "access=no");
     utils::buffer m_vert;
 
-    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_is_vert_binary = false;
 
-    AGEA_ar_property("category=Properties", "serializable=true", "access=no");
+    KRG_ar_property("category=Properties", "serializable=true", "access=no");
     utils::buffer m_frag;
 
-    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_is_frag_binary = false;
 
-    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_wire_topology = false;
 
-    AGEA_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_enable_alpha_support = false;
 
 private:
@@ -67,4 +67,4 @@ private:
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

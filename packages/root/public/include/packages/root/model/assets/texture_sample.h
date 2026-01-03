@@ -2,12 +2,12 @@
 
 #include "packages/root/model/assets/texture.h"
 
-namespace agea::root
+namespace kryga::root
 {
 class texture;
 
 // clang-format off
-AGEA_ar_struct(copy_handler                  = texture_sample__copy,
+KRG_ar_struct(copy_handler                  = texture_sample__copy,
               instantiate_handler            = texture_sample__instantiate,
               compare_handler                = texture_sample__compare,
               serialize_handler              = texture_sample__save,
@@ -20,4 +20,4 @@ struct texture_sample
     texture* txt = nullptr;
 };
 
-}  // namespace agea::root
+}  // namespace kryga::root

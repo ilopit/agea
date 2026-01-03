@@ -10,7 +10,7 @@
 
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 
 class render_bridge;
@@ -84,7 +84,7 @@ using type_handler__to_string = result_code (*)(type_context__to_string&);
 using type_handler__render_ctor = result_code (*)(type_context__render&);
 using type_handler__render_dtor = result_code (*)(type_context__render&);
 using type_handler__alloc = std::shared_ptr<root::smart_object> (*)(type_context__alloc&);
-using type_handler__cparams_alloc = std::unique_ptr<::agea::root::base_construct_params> (*)();
+using type_handler__cparams_alloc = std::unique_ptr<::kryga::root::base_construct_params> (*)();
 
 using property_list = std::vector<std::shared_ptr<property>>;
 using function_list = std::vector<std::shared_ptr<function>>;
@@ -93,13 +93,13 @@ struct reflection_type
 {
     enum class reflection_type_class
     {
-        agea_unknown = 0,
-        agea_class,
-        agea_struct,
-        agea_external
+        kryga_unknown = 0,
+        kryga_class,
+        kryga_struct,
+        kryga_external
     };
 
-    reflection_type(int type_id, const agea::utils::id& type_name);
+    reflection_type(int type_id, const kryga::utils::id& type_name);
     ~reflection_type();
 
     void
@@ -109,12 +109,12 @@ struct reflection_type
     as_string() const;
 
     int type_id = -1;
-    agea::utils::id module_id;
-    agea::utils::id type_name;
+    kryga::utils::id module_id;
+    kryga::utils::id type_name;
     uint32_t size = 0;
 
     core::architype arch = core::architype::unknown;
-    reflection_type_class type_class = reflection_type_class::agea_unknown;
+    reflection_type_class type_class = reflection_type_class::kryga_unknown;
 
     reflection_type* parent = nullptr;
 
@@ -152,10 +152,10 @@ public:
     get_type(const int id);
 
     reflection_type*
-    get_type(const agea::utils::id& id);
+    get_type(const kryga::utils::id& id);
 
     void
-    unload_type(const int type_id, const agea::utils::id& id);
+    unload_type(const int type_id, const kryga::utils::id& id);
 
     const auto&
     get_types_to_id() const
@@ -171,9 +171,9 @@ public:
 
 private:
     std::unordered_map<int, reflection_type*> m_types;
-    std::unordered_map<agea::utils::id, reflection_type*> m_types_by_name;
+    std::unordered_map<kryga::utils::id, reflection_type*> m_types_by_name;
 };
 
 }  // namespace reflection
 
-}  // namespace agea
+}  // namespace kryga

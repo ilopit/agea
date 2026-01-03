@@ -1,11 +1,11 @@
 #include "packages/base/model/lights/components/spot_light_component.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(spot_light_component);
+KRG_gen_class_cd_default(spot_light_component);
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

@@ -5,7 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -14,9 +14,9 @@ class render_pass;
 
 struct shader_effect_create_info
 {
-    agea::utils::buffer* vert_buffer = nullptr;
+    kryga::utils::buffer* vert_buffer = nullptr;
     bool is_vert_binary = false;
-    agea::utils::buffer* frag_buffer = nullptr;
+    kryga::utils::buffer* frag_buffer = nullptr;
     bool is_frag_binary = false;
     bool is_wire = false;
     alpha_mode alpha = alpha_mode::none;
@@ -31,4 +31,4 @@ struct shader_effect_create_info
     uint32_t height = 0;
 };
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

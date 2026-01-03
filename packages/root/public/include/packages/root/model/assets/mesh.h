@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -19,23 +19,23 @@ class mesh_data;
 namespace root
 {
 // clang-format off
-AGEA_ar_class("architype=mesh",
+KRG_ar_class("architype=mesh",
               render_constructor = mesh__render_loader,
               render_destructor  = mesh__render_destructor);
 class mesh : public asset
 // clang-format on
 {
-    AGEA_gen_meta__mesh();
+    KRG_gen_meta__mesh();
 
 public:
-    AGEA_gen_class_meta(mesh, asset);
-    AGEA_gen_construct_params
+    KRG_gen_class_meta(mesh, asset);
+    KRG_gen_construct_params
     {
         utils::buffer vertices;
         utils::buffer indices;
         utils::buffer external;
     };
-    AGEA_gen_meta_api;
+    KRG_gen_meta_api;
 
     render::mesh_data*
     get_mesh_data()
@@ -89,17 +89,17 @@ public:
     construct(this_class::construct_params& params);
 
 protected:
-    AGEA_ar_property("category=assets", "serializable=true", "default=true");
+    KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_vertices = {};
 
-    AGEA_ar_property("category=assets", "serializable=true", "default=true");
+    KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_indices = {};
 
-    AGEA_ar_property("category=assets", "serializable=true", "default=true");
+    KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_external = {};
 
     render::mesh_data* m_mesh_data = nullptr;
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

@@ -3,9 +3,9 @@
 #include <fstream>
 #include <filesystem>
 #include <set>
-#include "utils/agea_log.h"
+#include "utils/kryga_log.h"
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -117,4 +117,4 @@ file_utils::compare_folders(const utils::path& a, const utils::path& b)
     return true;
 }
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

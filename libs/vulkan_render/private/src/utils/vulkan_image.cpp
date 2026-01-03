@@ -3,7 +3,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 
 vulkan_image::vulkan_image(vma_allocator_provider a, int mips_level)
@@ -192,4 +192,4 @@ vulkan_image_view::create_shared(VkImageView&& vk_handle)
     return std::make_shared<vulkan_image_view>(vulkan_image_view::create(std::move(vk_handle)));
 }
 
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

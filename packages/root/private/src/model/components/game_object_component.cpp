@@ -4,7 +4,7 @@
 
 #include <core/level.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -23,7 +23,7 @@ game_object_component::~game_object_component()
 bool
 game_object_component::construct(construct_params& c)
 {
-    AGEA_return_false(base_class::construct(c));
+    KRG_return_false(base_class::construct(c));
 
     extract<vec3>(c.position, m_position);
     extract<vec3>(c.rotation, m_rotation);
@@ -132,4 +132,4 @@ game_object_component::update_children_matrixes()
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

@@ -12,7 +12,7 @@
 #include <packages/root/model/components/game_object_component.h>
 #include <packages/root/model/game_object.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <resource_locator/resource_locator.h>
 
@@ -20,7 +20,7 @@
 
 #include <fstream>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -69,7 +69,7 @@ level_manager::load_level_path(level& l, const utils::path& path)
         return nullptr;
     }
 
-    AGEA_check(l.m_id == AID(name), "Should be same");
+    KRG_check(l.m_id == AID(name), "Should be same");
 
     auto root_path = path / "root.cfg";
 
@@ -158,4 +158,4 @@ level_manager::save_level(level& l, const utils::path& path)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

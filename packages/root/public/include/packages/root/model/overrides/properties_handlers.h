@@ -2,8 +2,8 @@
 
 #include "core/reflection/property_utils.h"
 
-AGEA_ar_model_overrides();
-namespace agea::root
+KRG_ar_model_overrides();
+namespace kryga::root
 {
 // clang-format off
 result_code game_object_components_save(reflection::property_context__save& dc);
@@ -18,4 +18,4 @@ result_code property_texture_sample__copy(reflection::property_context__copy& ct
 result_code property_texture_sample__instantiate(reflection::property_context__instantiate& ctx);
 result_code property_texture_sample__load(reflection::property_context__load& ctx);
 
-}  // namespace agea::root
+}  // namespace kryga::root

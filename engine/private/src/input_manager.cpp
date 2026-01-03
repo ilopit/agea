@@ -2,7 +2,7 @@
 
 #include <serialization/serialization.h>
 #include <native/native_window.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -12,7 +12,7 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
 
-namespace agea
+namespace kryga
 {
 glob::input_manager::type glob::input_manager::type::s_instance;
 
@@ -270,7 +270,7 @@ input_manager::load_actions(const utils::path& path)
 
         auto& action = m_input_actions[id];
 
-        AGEA_check(!action.id.valid(), "Should not duplicate");
+        KRG_check(!action.id.valid(), "Should not duplicate");
 
         action.id = id;
 
@@ -287,7 +287,7 @@ input_manager::load_actions(const utils::path& path)
                 continue;
             }
 
-            AGEA_check(native_code, "Should be valid");
+            KRG_check(native_code, "Should be valid");
 
             action.m_triggers[native_code].id = native_code;
 
@@ -473,4 +473,4 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
 }
 
 }  // namespace engine
-}  // namespace agea
+}  // namespace kryga

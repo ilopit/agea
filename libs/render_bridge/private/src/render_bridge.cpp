@@ -15,12 +15,12 @@
 #include <vulkan_render/types/vulkan_shader_data.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/dynamic_object_builder.h>
 
-namespace agea
+namespace kryga
 {
 
 glob::render_bridge::type glob::render_bridge::s_instance;
@@ -36,7 +36,7 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
 
     auto fn = v.field_count();
 
-    AGEA_check(ct.offset_in_object.size() == fn, "Should be same!");
+    KRG_check(ct.offset_in_object.size() == fn, "Should be same!");
 
     auto oitr = ct.offset_in_object.begin();
     uint64_t idx = 0;
@@ -66,17 +66,17 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
         {
             switch (p->rtype->type_id)
             {
-            case agea::root__float:
+            case kryga::root__float:
                 sb.add_field(AID(p->name), render::gpu_type::g_float, 1);
                 break;
-            case agea::root__vec3:
+            case kryga::root__vec3:
                 sb.add_field(AID(p->name), render::gpu_type::g_vec3, 16);
                 break;
-            case agea::root__vec4:
+            case kryga::root__vec4:
                 sb.add_field(AID(p->name), render::gpu_type::g_vec4, 16);
                 break;
             default:
-                AGEA_never("Should never happen");
+                KRG_never("Should never happen");
                 break;
             }
 
@@ -144,28 +144,28 @@ render_bridge::make_qid(render::material_data& mt_data, render::mesh_data& m_dat
 }
 
 bool
-render_bridge::is_agea_texture(const utils::path& p)
+render_bridge::is_kryga_texture(const utils::path& p)
 {
     return p.has_extension(".atbc");
 }
 
 bool
-render_bridge::is_agea_mesh(const utils::path& p)
+render_bridge::is_kryga_mesh(const utils::path& p)
 {
     return p.has_extension(".avrt") || p.has_extension(".aind");
 }
 
-agea::result_code
+kryga::result_code
 render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 {
-    AGEA_check(obj.get_flags().instance_obj, "");
+    KRG_check(obj.get_flags().instance_obj, "");
 
     if (obj.get_state() == root::smart_object_state::render_ready)
     {
         return result_code::ok;
     }
 
-    // AGEA_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
+    // KRG_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
 
     obj.set_state(root::smart_object_state::render_preparing);
 
@@ -179,17 +179,17 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
     return rc;
 }
 
-agea::result_code
+kryga::result_code
 render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
 {
-    AGEA_check(obj.get_flags().instance_obj, "");
+    KRG_check(obj.get_flags().instance_obj, "");
 
     if (obj.get_state() == root::smart_object_state::constructed)
     {
         return result_code::ok;
     }
 
-    AGEA_check(obj.get_state() == root::smart_object_state::render_ready, "Should not happen");
+    KRG_check(obj.get_state() == root::smart_object_state::render_ready, "Should not happen");
 
     obj.set_state(root::smart_object_state::render_preparing);
 
@@ -201,4 +201,4 @@ render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
     return rc;
 }
 
-}  // namespace agea
+}  // namespace kryga

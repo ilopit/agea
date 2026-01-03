@@ -24,7 +24,7 @@
 
 struct ImFont;
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -36,40 +36,40 @@ public:
     /*************************/
 
     mesh_data*
-    get_mesh_data(const agea::utils::id& id)
+    get_mesh_data(const kryga::utils::id& id)
     {
         return get_data<mesh_data>(m_meshes_cache, id);
     }
 
     mesh_data*
-    create_mesh(const agea::utils::id& mesh_id,
-                agea::utils::buffer_view<render::gpu_vertex_data> vertices,
-                agea::utils::buffer_view<render::gpu_index_data> indices);
+    create_mesh(const kryga::utils::id& mesh_id,
+                kryga::utils::buffer_view<render::gpu_vertex_data> vertices,
+                kryga::utils::buffer_view<render::gpu_index_data> indices);
 
     void
-    destroy_mesh_data(const agea::utils::id& id);
+    destroy_mesh_data(const kryga::utils::id& id);
 
     /*************************/
 
     texture_data*
-    get_texture_data(const agea::utils::id& id)
+    get_texture_data(const kryga::utils::id& id)
     {
         return get_data<texture_data>(m_textures_cache, id);
     }
 
     texture_data*
-    create_texture(const agea::utils::id& texture_id,
-                   const agea::utils::buffer& base_color,
+    create_texture(const kryga::utils::id& texture_id,
+                   const kryga::utils::buffer& base_color,
                    uint32_t w,
                    uint32_t h);
 
     texture_data*
-    create_texture(const agea::utils::id& texture_id,
+    create_texture(const kryga::utils::id& texture_id,
                    vk_utils::vulkan_image_sptr image,
                    vk_utils::vulkan_image_view_sptr view);
 
     void
-    destroy_texture_data(const agea::utils::id& id);
+    destroy_texture_data(const kryga::utils::id& id);
 
     /*************************/
 
@@ -84,57 +84,57 @@ public:
     /*************************/
 
     material_data*
-    get_material_data(const agea::utils::id& id)
+    get_material_data(const kryga::utils::id& id)
     {
         return get_data<material_data>(m_materials_cache, id);
     }
 
-    std::unordered_map<agea::utils::id, std::shared_ptr<material_data>>&
+    std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>>&
     get_materials_cache()
     {
         return m_materials_cache;
     }
 
     material_data*
-    create_material(const agea::utils::id& id,
-                    const agea::utils::id& type_id,
+    create_material(const kryga::utils::id& id,
+                    const kryga::utils::id& type_id,
                     std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
-                    const agea::utils::dynobj& params);
+                    const kryga::utils::dynobj& params);
 
     bool
     update_material(material_data& mat_data,
                     std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
-                    const agea::utils::dynobj& params);
+                    const kryga::utils::dynobj& params);
 
     void
-    destroy_material_data(const agea::utils::id& id);
+    destroy_material_data(const kryga::utils::id& id);
 
     /*************************/
     shader_effect_data*
-    get_shader_effect_data(const agea::utils::id& id)
+    get_shader_effect_data(const kryga::utils::id& id)
     {
         return get_data<shader_effect_data>(m_shaders_effects_cache, id);
     }
 
-    ::agea::result_code
-    create_shader_effect(const agea::utils::id& id,
+    ::kryga::result_code
+    create_shader_effect(const kryga::utils::id& id,
                          const shader_effect_create_info& info,
                          shader_effect_data*& sed);
 
-    ::agea::result_code
+    ::kryga::result_code
     update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info);
 
     void
-    destroy_shader_effect_data(const agea::utils::id& id);
+    destroy_shader_effect_data(const kryga::utils::id& id);
 
     /*************************/
     void
-    create_font(const agea::utils::id& id, ImFont* font);
+    create_font(const kryga::utils::id& id, ImFont* font);
 
     ImFont*
-    get_font(const agea::utils::id& id)
+    get_font(const kryga::utils::id& id)
     {
         auto itr = m_fonts_cache.find(id);
 
@@ -143,16 +143,16 @@ public:
 
     /*************************/
     sampler_data*
-    get_sampler_data(const agea::utils::id& id)
+    get_sampler_data(const kryga::utils::id& id)
     {
         return get_data<sampler_data>(m_samplers_cache, id);
     }
 
     sampler_data*
-    create_sampler(const agea::utils::id& id, VkBorderColor color);
+    create_sampler(const kryga::utils::id& id, VkBorderColor color);
 
     void
-    destroy_sampler_data(const agea::utils::id& id);
+    destroy_sampler_data(const kryga::utils::id& id);
 
     /*************************/
     void
@@ -160,8 +160,8 @@ public:
 
     template <typename T>
     static T*
-    get_data(std::unordered_map<agea::utils::id, std::shared_ptr<T>>& col,
-             const agea::utils::id& id)
+    get_data(std::unordered_map<kryga::utils::id, std::shared_ptr<T>>& col,
+             const kryga::utils::id& id)
     {
         auto itr = col.find(id);
 
@@ -169,31 +169,31 @@ public:
     }
 
     gpu_data_index_type
-    last_mat_index(const agea::utils::id& type_id)
+    last_mat_index(const kryga::utils::id& type_id)
     {
         return m_materials_index.at(type_id);
     }
 
 private:
     gpu_data_index_type
-    generate_mt_idx(const agea::utils::id& type_id)
+    generate_mt_idx(const kryga::utils::id& type_id)
     {
         return m_materials_index[type_id]++;
     }
 
-    std::unordered_map<agea::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
-    std::unordered_map<agea::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
-    std::unordered_map<agea::utils::id, std::shared_ptr<material_data>> m_materials_cache;
-    std::unordered_map<agea::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
+    std::unordered_map<kryga::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
+    std::unordered_map<kryga::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
+    std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>> m_materials_cache;
+    std::unordered_map<kryga::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
 
-    std::unordered_map<agea::utils::id, std::shared_ptr<shader_effect_data>>
+    std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>>
         m_shaders_effects_cache;
 
-    std::unordered_map<agea::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
+    std::unordered_map<kryga::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 
-    std::unordered_map<agea::utils::id, gpu_data_index_type> m_materials_index;
+    std::unordered_map<kryga::utils::id, gpu_data_index_type> m_materials_index;
 
-    std::unordered_map<agea::utils::id, ImFont*> m_fonts_cache;
+    std::unordered_map<kryga::utils::id, ImFont*> m_fonts_cache;
 };
 
 }  // namespace render
@@ -201,8 +201,8 @@ private:
 namespace glob
 {
 struct vulkan_render_loader
-    : public ::agea::singleton_instance<::agea::render::vulkan_render_loader, vulkan_render_loader>
+    : public ::kryga::singleton_instance<::kryga::render::vulkan_render_loader, vulkan_render_loader>
 {
 };
 };  // namespace glob
-}  // namespace agea
+}  // namespace kryga

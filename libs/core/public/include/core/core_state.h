@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 namespace gs
 {
@@ -52,4 +52,4 @@ struct state_mutator__current_level
     set(class level& lvl, gs::state& es);
 };
 }  // namespace core
-};  // namespace agea
+};  // namespace kryga

@@ -4,7 +4,7 @@
 
 #include "core/model_fwds.h"
 
-namespace agea
+namespace kryga
 {
 
 namespace core
@@ -41,4 +41,4 @@ cache_set::~cache_set() = default;
 
 }  // namespace core
 
-}  // namespace agea
+}  // namespace kryga

@@ -2,7 +2,7 @@
 
 #include "engine/ui.h"
 
-namespace agea::ui
+namespace kryga::ui
 {
 
 class package_editor : public window
@@ -26,4 +26,4 @@ public:
     draw_package_obj(core::package* p, selection_context& sc);
 };
 
-}  // namespace agea::ui
+}  // namespace kryga::ui

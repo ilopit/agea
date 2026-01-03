@@ -1,14 +1,14 @@
 from enum import Enum
 
 
-class agea_type_kind(Enum):
+class kryga_type_kind(Enum):
   NONE = 0
   CLASS = 1
   STRUCT = 2
   EXTERNAL = 3
 
 
-class agea_property:
+class kryga_property:
 
   def __init__(self):
     self.name = ""
@@ -34,9 +34,9 @@ class agea_property:
     self.has_default = "false"
 
 
-class agea_type:
+class kryga_type:
 
-  def __init__(self, kind: agea_type_kind):
+  def __init__(self, kind: kryga_type_kind):
     self.name = ""
     self.full_name = ""
     self.built_in = False
@@ -46,12 +46,12 @@ class agea_type:
     self.script_support = False
     self.default_handlers = False
 
-    self.properties: list[agea_property] = []
+    self.properties: list[kryga_property] = []
     self.functions = []
     self.ctros = []
 
     self.parent_name = ""
-    self.parent_type: agea_type = None
+    self.parent_type: kryga_type = None
     self.ctro_line = ""
 
     self.compare_handler = ""
@@ -105,7 +105,7 @@ class file_context:
     self.properies_access_methods: str = ''
     self.output_dir = ''
     self.root_dir = ''
-    self.types: list[agea_type] = []
+    self.types: list[kryga_type] = []
     self.model_overrides: list[str] = []
     self.render_overrides: list[str] = []
     self.model_header_dir = None
@@ -115,7 +115,7 @@ class file_context:
     self.render_sources_dir = None
     self.global_dir = None
 
-  def topo_sort(self, t: agea_type, ordered_types):
+  def topo_sort(self, t: kryga_type, ordered_types):
 
     if not t.ordered:
       if t.parent_type:
@@ -141,13 +141,13 @@ class file_context:
     self.types = ordered_types
 
 
-class agea_function:
+class kryga_function:
 
   def __init__(self):
     self.name = ""
 
 
-class agea_ctor:
+class kryga_ctor:
 
   def __init__(self):
     self.name = ""

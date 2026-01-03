@@ -5,12 +5,12 @@ add_library(asset_importer STATIC
 )
 
 target_link_libraries(asset_importer PUBLIC
-    agea::utils
-    agea::serialization
-    agea::stb_unofficial
-    agea::vulkan_render
-    agea::core
+    kryga::utils
+    kryga::serialization
+    kryga::stb_unofficial
+    kryga::vulkan_render
+    kryga::core
 
     tinyobjloader
 )
-agea_finalize_library(asset_importer)
+kryga_finalize_library(asset_importer)

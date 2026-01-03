@@ -1,6 +1,6 @@
 #include "engine/private/sync_service.h"
 
-#include "engine/agea_engine.h"
+#include "engine/kryga_engine.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -13,9 +13,9 @@
 #include <future>
 #include <unordered_set>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace
@@ -262,4 +262,4 @@ sync_service::server_main(sync_service* self)
     return 0;
 }
 
-}  // namespace agea
+}  // namespace kryga

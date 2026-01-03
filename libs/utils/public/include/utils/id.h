@@ -4,7 +4,7 @@
 #include <string>
 #include <iostream>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -68,24 +68,24 @@ private:
 };
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga
 
 std::ostream&
-operator<<(std::ostream& os, const agea::utils::id& right);
+operator<<(std::ostream& os, const kryga::utils::id& right);
 
 namespace std
 {
 
 template <>
-struct hash<::agea::utils::id>
+struct hash<::kryga::utils::id>
 {
     std::size_t
-    operator()(const ::agea::utils::id& k) const
+    operator()(const ::kryga::utils::id& k) const
     {
         size_t result = 0;
         const size_t prime = 31;
 
-        for (size_t i = 0; i < ::agea::utils::id_size_in_bytes(); ++i)
+        for (size_t i = 0; i < ::kryga::utils::id_size_in_bytes(); ++i)
         {
             if (k.cstr()[i] == '\0')
             {
@@ -100,4 +100,4 @@ struct hash<::agea::utils::id>
 
 }  // namespace std
 
-#define AID(value) ::agea::utils::id::make_id(value)
+#define AID(value) ::kryga::utils::id::make_id(value)

@@ -20,7 +20,7 @@
 
 union SDL_Event;
 
-namespace agea
+namespace kryga
 {
 class native_window;
 class sync_service;
@@ -96,9 +96,9 @@ private:
 
 namespace glob
 {
-struct engine : public singleton_instance<::agea::vulkan_engine, engine>
+struct engine : public singleton_instance<::kryga::vulkan_engine, engine>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga

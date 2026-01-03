@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 namespace gs
 {
@@ -13,4 +13,4 @@ struct state_mutator__resource_locator
     set(gs::state& es);
 };
 
-}  // namespace agea
+}  // namespace kryga

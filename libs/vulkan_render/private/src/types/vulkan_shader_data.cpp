@@ -2,12 +2,12 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
 shader_module_data::shader_module_data(VkShaderModule vk_module,
-                                       ::agea::utils::buffer code,
+                                       ::kryga::utils::buffer code,
                                        VkShaderStageFlagBits stage_bit)
     : m_vk_module(vk_module)
     , m_code(code)
@@ -21,4 +21,4 @@ shader_module_data::~shader_module_data()
         [=](VkDevice vkd, VmaAllocator) { vkDestroyShaderModule(vkd, m_vk_module, nullptr); });
 }
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

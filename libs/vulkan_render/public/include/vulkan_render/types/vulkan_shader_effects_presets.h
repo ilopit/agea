@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -19,4 +19,4 @@ enum class alpha_mode
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

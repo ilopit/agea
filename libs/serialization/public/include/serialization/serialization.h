@@ -7,7 +7,7 @@
 #include <yaml-cpp/yaml.h>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace serialization
 {
@@ -19,4 +19,4 @@ bool
 write_container(const utils::path& path, const serialization::container& container);
 
 }  // namespace serialization
-}  // namespace agea
+}  // namespace kryga

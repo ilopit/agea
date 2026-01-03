@@ -1,8 +1,8 @@
-#include "engine/agea_engine.h"
+#include "engine/kryga_engine.h"
 
 "${INCLUDES}"
 
-namespace agea::engine
+namespace kryga::engine
 {
 void
 vulkan_engine::register_packages()

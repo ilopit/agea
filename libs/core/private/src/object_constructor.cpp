@@ -12,11 +12,11 @@
 
 #include <serialization/serialization.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <fstream>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -187,9 +187,9 @@ std::expected<root::smart_object*, result_code>
 object_constructor::create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
                                                   object_load_context& olc)
 {
-    AGEA_check(olc.get_construction_type() == object_load_type::class_obj, "Should be class!");
-    AGEA_check(olc.get_package(), "Should exist");
-    AGEA_check(!olc.get_level(), "Should NOT exist");
+    KRG_check(olc.get_construction_type() == object_load_type::class_obj, "Should be class!");
+    KRG_check(olc.get_package(), "Should exist");
+    KRG_check(!olc.get_level(), "Should NOT exist");
 
     empty->get_flags() = ks_class_default;
 
@@ -219,7 +219,7 @@ object_constructor::destroy_default_class_obj_impl(const utils::id& id, object_l
 {
     auto obj = olc.find_proto_obj(id);
 
-    AGEA_check(obj, "Should exists");
+    KRG_check(obj, "Should exists");
 
     auto go = obj->as<root::game_object>();
 
@@ -306,7 +306,7 @@ object_constructor::object_clone_create_internal(const utils::id& object_id,
                                                  const utils::id& new_object_id,
                                                  object_load_context& occ)
 {
-    AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
+    KRG_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
     auto obj = occ.find_obj(new_object_id);
 
@@ -363,7 +363,7 @@ object_constructor::object_instantiate_internal(root::smart_object& proto_obj,
                                                 object_load_context& occ)
 {
 
-    AGEA_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
+    KRG_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
 
     auto alloc_result = alloc_empty_object(proto_obj.get_type_id(), new_object_id,
                                            ks_instance_derived, &proto_obj, occ);
@@ -587,7 +587,7 @@ object_constructor::object_save_internal(serialization::container& sc,
 std::expected<root::smart_object*, result_code>
 object_constructor::object_load_internal(const utils::id& id, object_load_context& occ)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should not be nav!");
+    KRG_check(occ.get_construction_type() != object_load_type::nav, "Should not be nav!");
 
     auto obj = occ.get_construction_type() == object_load_type::class_obj ? occ.find_proto_obj(id)
                                                                           : occ.find_obj(id);
@@ -671,7 +671,7 @@ std::expected<root::smart_object*, result_code>
 object_constructor::object_load_internal(serialization::container& container,
                                          object_load_context& occ)
 {
-    AGEA_check(occ.get_construction_type() != object_load_type::nav, "Should not be nav!");
+    KRG_check(occ.get_construction_type() != object_load_type::nav, "Should not be nav!");
 
     auto id = AID(container["id"].as<std::string>());
 
@@ -703,4 +703,4 @@ object_constructor::object_load_internal(serialization::container& container,
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

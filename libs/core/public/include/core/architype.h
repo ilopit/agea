@@ -4,7 +4,7 @@
 
 #include <string_view>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -27,19 +27,19 @@ to_string(architype a)
 {
     switch (a)
     {
-    case agea::core::architype::smart_object:
+    case kryga::core::architype::smart_object:
         return std::string_view("smart_object");
-    case agea::core::architype::game_object:
+    case kryga::core::architype::game_object:
         return std::string_view("game_object");
-    case agea::core::architype::component:
+    case kryga::core::architype::component:
         return std::string_view("component");
-    case agea::core::architype::mesh:
+    case kryga::core::architype::mesh:
         return std::string_view("mesh");
-    case agea::core::architype::texture:
+    case kryga::core::architype::texture:
         return std::string_view("texture");
-    case agea::core::architype::shader_effect:
+    case kryga::core::architype::shader_effect:
         return std::string_view("shader_effect");
-    case agea::core::architype::material:
+    case kryga::core::architype::material:
         return std::string_view("material");
     default:
         return std::string_view("unknown");
@@ -47,4 +47,4 @@ to_string(architype a)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

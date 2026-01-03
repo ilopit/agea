@@ -4,9 +4,9 @@
 #include <unordered_map>
 
 #include <utils/id.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -102,4 +102,4 @@ private:
     uint64_t m_active_size = 0;
 };
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

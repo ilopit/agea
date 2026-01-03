@@ -6,46 +6,46 @@
 #include "packages/root/model/assets/texture_sample.h"
 #include "packages/root/model/core_types/vec3.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_ar_class();
-class solid_color_material : public ::agea::root::material
+KRG_ar_class();
+class solid_color_material : public ::kryga::root::material
 {
-    AGEA_gen_meta__solid_color_material();
+    KRG_gen_meta__solid_color_material();
 
 public:
-    AGEA_gen_class_meta(solid_color_material, material);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(solid_color_material, material);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
 protected:
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "invalidates=render",
                      "check=not_same",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
-    ::agea::root::vec3 m_ambient = {.2f, .2f, .2f};
+    ::kryga::root::vec3 m_ambient = {.2f, .2f, .2f};
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
-    ::agea::root::vec3 m_diffuse = {.2f, .2f, .2f};
+    ::kryga::root::vec3 m_diffuse = {.2f, .2f, .2f};
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
-    ::agea::root::vec3 m_specular = 0.5f;
+    ::kryga::root::vec3 m_specular = 0.5f;
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
@@ -54,4 +54,4 @@ protected:
 };
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

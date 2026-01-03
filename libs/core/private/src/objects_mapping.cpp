@@ -2,9 +2,9 @@
 
 #include <serialization/serialization.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -71,4 +71,4 @@ object_mapping::add(const utils::id& id, bool is_class, const utils::path& p)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

@@ -6,7 +6,7 @@
 
 #include <utils/path.h>
 
-namespace agea
+namespace kryga
 {
 namespace ui
 {
@@ -37,4 +37,4 @@ public:
     bool m_output_visible = false;
 };
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

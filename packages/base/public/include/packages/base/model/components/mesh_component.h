@@ -4,7 +4,7 @@
 
 #include "packages/root/model/components/game_object_component.h"
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -16,22 +16,22 @@ class material;
 namespace base
 {
 // clang-format off
-AGEA_ar_class(render_constructor = mesh_component__render_loader,
+KRG_ar_class(render_constructor = mesh_component__render_loader,
               render_destructor  = mesh_component__render_destructor);
-class mesh_component : public ::agea::root::game_object_component
+class mesh_component : public ::kryga::root::game_object_component
 // clang-format on
 {
-    AGEA_gen_meta__mesh_component();
+    KRG_gen_meta__mesh_component();
 
 public:
-    AGEA_gen_class_meta(mesh_component, ::agea::root::game_object_component);
+    KRG_gen_class_meta(mesh_component, ::kryga::root::game_object_component);
 
-    AGEA_gen_construct_params
+    KRG_gen_construct_params
     {
-        ::agea::root::mesh* mesh_handle = nullptr;
-        ::agea::root::material* material_handle = nullptr;
+        ::kryga::root::mesh* mesh_handle = nullptr;
+        ::kryga::root::material* material_handle = nullptr;
     };
-    AGEA_gen_meta_api;
+    KRG_gen_meta_api;
 
     bool
     construct(construct_params& c);
@@ -48,24 +48,24 @@ public:
     }
 
 protected:
-    AGEA_ar_property("category=Assets",
+    KRG_ar_property("category=Assets",
                      "serializable=true",
                      "check=not_same",
                      "invalidates=render",
                      "access=all",
                      "default=true");
-    ::agea::root::material* m_material = nullptr;
+    ::kryga::root::material* m_material = nullptr;
 
-    AGEA_ar_property("category=Assets",
+    KRG_ar_property("category=Assets",
                      "serializable=true",
                      "check=not_same",
                      "invalidates=render",
                      "access=all",
                      "default=true");
-    ::agea::root::mesh* m_mesh = nullptr;
+    ::kryga::root::mesh* m_mesh = nullptr;
 
     render::vulkan_render_data* m_render_handle = nullptr;
 };
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

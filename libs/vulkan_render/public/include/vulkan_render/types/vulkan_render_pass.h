@@ -4,7 +4,7 @@
 
 #include <vulkan_render/utils/vulkan_image.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -16,7 +16,7 @@ public:
     render_pass() = default;
     ~render_pass();
 
-    AGEA_gen_class_non_copyable(render_pass);
+    KRG_gen_class_non_copyable(render_pass);
 
     bool
     begin(VkCommandBuffer cmd,
@@ -138,4 +138,4 @@ private:
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

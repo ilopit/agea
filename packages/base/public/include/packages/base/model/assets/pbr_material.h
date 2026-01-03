@@ -5,19 +5,19 @@
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/core_types/vec3.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
-AGEA_ar_class();
-class pbr_material : public ::agea::root::material
+KRG_ar_class();
+class pbr_material : public ::kryga::root::material
 {
-    AGEA_gen_meta__pbr_material();
+    KRG_gen_meta__pbr_material();
 
 public:
-    AGEA_gen_class_meta(pbr_material, ::agea::root::material);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(pbr_material, ::kryga::root::material);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     bool
     construct(this_class::construct_params& p)
@@ -25,50 +25,50 @@ public:
         return true;
     };
 
-    AGEA_ar_property(
+    KRG_ar_property(
         "category=Properties",
         "serializable=true",
-        "property_ser_handler=::agea::root::property_texture_sample__save",
-        "property_compare_handler=::agea::root::property_texture_sample__compare",
-        "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
-        "property_load_derive_handler=::agea::root::property_texture_sample__load",
-        "property_copy_handler=::agea::root::property_texture_sample__copy");
-    ::agea::root::texture_sample m_diffuse_txt;
+        "property_ser_handler=::kryga::root::property_texture_sample__save",
+        "property_compare_handler=::kryga::root::property_texture_sample__compare",
+        "property_instantiate_handler=::kryga::root::property_texture_sample__instantiate",
+        "property_load_derive_handler=::kryga::root::property_texture_sample__load",
+        "property_copy_handler=::kryga::root::property_texture_sample__copy");
+    ::kryga::root::texture_sample m_diffuse_txt;
 
-    AGEA_ar_property(
+    KRG_ar_property(
         "category=Properties",
         "serializable=true",
-        "property_ser_handler=::agea::root::property_texture_sample__save",
-        "property_compare_handler=::agea::root::property_texture_sample__compare",
-        "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
-        "property_load_derive_handler=::agea::root::property_texture_sample__load",
-        "property_copy_handler=::agea::root::property_texture_sample__copy");
-    ::agea::root::texture_sample m_specular_txt;
+        "property_ser_handler=::kryga::root::property_texture_sample__save",
+        "property_compare_handler=::kryga::root::property_texture_sample__compare",
+        "property_instantiate_handler=::kryga::root::property_texture_sample__instantiate",
+        "property_load_derive_handler=::kryga::root::property_texture_sample__load",
+        "property_copy_handler=::kryga::root::property_texture_sample__copy");
+    ::kryga::root::texture_sample m_specular_txt;
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "invalidates=render",
                      "check=not_same",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
-    ::agea::root::vec3 m_ambient = {.2f, .2f, .2f};
+    ::kryga::root::vec3 m_ambient = {.2f, .2f, .2f};
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
-    ::agea::root::vec3 m_diffuse = {.2f, .2f, .2f};
+    ::kryga::root::vec3 m_diffuse = {.2f, .2f, .2f};
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "access=all",
                      "gpu_data=MaterialData",
                      "default=true");
-    ::agea::root::vec3 m_specular = 0.5f;
+    ::kryga::root::vec3 m_specular = 0.5f;
 
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
                      "access=no",
                      "default=true",
@@ -77,4 +77,4 @@ public:
 };
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

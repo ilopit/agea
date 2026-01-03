@@ -6,7 +6,7 @@
 
 #include <imgui.h>
 
-namespace agea
+namespace kryga
 {
 namespace ui
 {
@@ -116,4 +116,4 @@ private:
     size_t m_lua_buffer_offset = 0;
 };
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

@@ -1,6 +1,6 @@
 ﻿#include "vulkan_render/utils/vulkan_initializers.h"
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 
 VkCommandPoolCreateInfo
@@ -455,4 +455,4 @@ make_image_memory_barrier()
     return imageMemoryBarrier;
 }
 
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

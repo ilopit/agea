@@ -4,7 +4,7 @@
 
 #include <array>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -59,4 +59,4 @@ private:
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

@@ -4,12 +4,12 @@
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/reflection_type.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 
-agea::node&
+kryga::node&
 render_object_dependency_graph::get_node(root::smart_object* obj)
 {
     auto& n = m_down_top[obj];
@@ -83,4 +83,4 @@ render_object_dependency_graph::print(bool top_down)
     }
 }
 
-}  // namespace agea
+}  // namespace kryga

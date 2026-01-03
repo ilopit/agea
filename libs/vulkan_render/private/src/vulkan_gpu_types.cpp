@@ -1,6 +1,6 @@
 #include "vulkan_render/types/vulkan_gpu_types.h"
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -31,7 +31,7 @@ gpu_type::size(gpu_type::id t)
         break;
     }
 
-    AGEA_never("Should be never here!");
+    KRG_never("Should be never here!");
 
     return 0;
 }
@@ -70,7 +70,7 @@ gpu_type::name(gpu_type::id t)
     return "nan";
 }
 
-std::shared_ptr<agea::utils::dynobj_layout>
+std::shared_ptr<kryga::utils::dynobj_layout>
 get_default_vertex_inout_layout()
 {
     static auto l = gpu_dynobj_builder()
@@ -85,4 +85,4 @@ get_default_vertex_inout_layout()
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

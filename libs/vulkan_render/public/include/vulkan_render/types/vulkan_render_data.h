@@ -10,7 +10,7 @@
 
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -19,7 +19,7 @@ class vulkan_render_data : public vulkan_render_resource
 public:
     vulkan_render_data() = default;
 
-    vulkan_render_data(const ::agea::utils::id& id, gpu_data_index_type idx)
+    vulkan_render_data(const ::kryga::utils::id& id, gpu_data_index_type idx)
         : vulkan_render_resource(id, idx)
     {
     }
@@ -38,4 +38,4 @@ public:
     std::string queue_id;
 };
 };  // namespace render
-}  // namespace agea
+}  // namespace kryga

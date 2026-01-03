@@ -10,7 +10,7 @@
 #include <core/reflection/types.h>
 #include <vulkan_render/vulkan_render_loader.h>
 
-namespace agea::ui
+namespace kryga::ui
 {
 
 namespace
@@ -20,7 +20,7 @@ template <typename T>
 static result_code
 read_value(reflection::property& p, root::smart_object& obj, T& value)
 {
-    // AGEA_check(p.rtype->type_id == reflection::agea_type_resolve<T>().type_id, "Wrong type");
+    // KRG_check(p.rtype->type_id == reflection::kryga_type_resolve<T>().type_id, "Wrong type");
 
     value = reflection::utils::as_type<T>(p.get_blob(obj));
 
@@ -184,7 +184,7 @@ object_editor::handle()
 
                 auto type_id = p->rtype->type_id;
 
-                if (type_id == ::agea::root__vec3)
+                if (type_id == ::kryga::root__vec3)
                 {
                     ImGui::Text("%s", p->name.c_str());
 
@@ -266,4 +266,4 @@ object_editor::draw_components(root::game_object_component* root, selection_cont
     }
 }
 
-}  // namespace agea::ui
+}  // namespace kryga::ui

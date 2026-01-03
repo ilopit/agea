@@ -4,13 +4,13 @@
 
 #include <utils/dynamic_object_builder.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
 
 vertex_input_description
-convert_to_vertex_input_description(agea::utils::dynobj_layout& dol)
+convert_to_vertex_input_description(kryga::utils::dynobj_layout& dol)
 {
     render::vertex_input_description description{};
 
@@ -29,7 +29,7 @@ convert_to_vertex_input_description(agea::utils::dynobj_layout& dol)
     {
         auto vk_format = vk_utils::convert_to_vk_format((gpu_type::id)f.type);
 
-        AGEA_check(vk_format != VK_FORMAT_UNDEFINED, "Should never happens");
+        KRG_check(vk_format != VK_FORMAT_UNDEFINED, "Should never happens");
 
         att.format = vk_format;
         att.offset = (uint32_t)f.offset;
@@ -46,4 +46,4 @@ mesh_data::~mesh_data()
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

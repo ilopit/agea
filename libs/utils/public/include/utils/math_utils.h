@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -22,4 +22,4 @@ struct math_utils
     }
 };
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

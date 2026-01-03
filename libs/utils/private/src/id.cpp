@@ -1,6 +1,6 @@
 #include "utils/id.h"
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -88,10 +88,10 @@ id::operator=(const id& other)
 }
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga
 
 std::ostream&
-operator<<(std::ostream& os, const agea::utils::id& right)
+operator<<(std::ostream& os, const kryga::utils::id& right)
 {
     os << right.cstr();
 

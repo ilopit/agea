@@ -4,4 +4,4 @@ add_library(testing STATIC
    ${LIB_SRC}
 )
 target_link_libraries(testing spdlog gtest utils)
-agea_finalize_library(testing)
+kryga_finalize_library(testing)

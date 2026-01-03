@@ -1,6 +1,6 @@
 #include "utils/path.h"
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -25,4 +25,4 @@ path::empty() const
 
 }  // namespace utils
 
-}  // namespace agea
+}  // namespace kryga

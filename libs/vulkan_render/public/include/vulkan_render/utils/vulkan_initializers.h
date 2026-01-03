@@ -6,7 +6,7 @@
 
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -116,4 +116,4 @@ make_insert_image_memory_barrier(VkCommandBuffer cmdbuffer,
 
 }  // namespace vk_utils
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

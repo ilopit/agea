@@ -14,7 +14,7 @@
 
 #include <memory>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -39,4 +39,4 @@ create_shader_effect(shader_effect_data& se_data,
 
 }  // namespace vulkan_shader_loader
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

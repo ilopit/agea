@@ -2,14 +2,14 @@
 
 #include <packages/base/package.base.h>
 
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
 
 #include <core/global_state.h>
 
-namespace agea::base
+namespace kryga::base
 {
 
 bool
@@ -55,4 +55,4 @@ root_package_render_resources_loader::load(core::static_package& s)
     return true;
 }
 
-}  // namespace agea::base
+}  // namespace kryga::base

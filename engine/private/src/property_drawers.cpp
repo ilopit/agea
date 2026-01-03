@@ -12,7 +12,7 @@
 
 #include "glue/type_ids.ar.h"
 
-namespace agea
+namespace kryga
 {
 namespace ui
 {
@@ -51,11 +51,11 @@ property_drawers::init()
 }
 
 result_code
-property_drawers::draw_ro(::agea::root::smart_object* obj, ::agea::reflection::property& p)
+property_drawers::draw_ro(::kryga::root::smart_object* obj, ::kryga::reflection::property& p)
 {
-    auto ptr = (::agea::blob_ptr)obj;
+    auto ptr = (::kryga::blob_ptr)obj;
 
-    ptr = ::agea::reflection::utils::reduce_ptr(ptr + p.offset, p.type.is_ptr);
+    ptr = ::kryga::reflection::utils::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
     // ro_drawers()[p.type.type_id](ptr);
 
@@ -63,9 +63,9 @@ property_drawers::draw_ro(::agea::root::smart_object* obj, ::agea::reflection::p
 }
 
 result_code
-property_drawers::draw_ro_str(::agea::blob_ptr ptr)
+property_drawers::draw_ro_str(::kryga::blob_ptr ptr)
 {
-    auto& p = agea::reflection::utils::as_type<std::string>(ptr);
+    auto& p = kryga::reflection::utils::as_type<std::string>(ptr);
 
     ImGui::Text("%s", p.c_str());
 
@@ -73,129 +73,129 @@ property_drawers::draw_ro_str(::agea::blob_ptr ptr)
 }
 
 result_code
-property_drawers::draw_ro_bool(::agea::blob_ptr ptr)
+property_drawers::draw_ro_bool(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<bool>(ptr);
+    auto p = kryga::reflection::utils::as_type<bool>(ptr);
     ImGui::Text("%s", (p ? "true" : "false"));
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_i8(::agea::blob_ptr ptr)
+property_drawers::draw_ro_i8(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::int8_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::int8_t>(ptr);
     ImGui::Text("%" PRIi8 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_i16(::agea::blob_ptr ptr)
+property_drawers::draw_ro_i16(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::int16_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::int16_t>(ptr);
     ImGui::Text("%" PRIi16 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_i32(::agea::blob_ptr ptr)
+property_drawers::draw_ro_i32(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::int32_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::int32_t>(ptr);
     ImGui::Text("%" PRIi32 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_i64(::agea::blob_ptr ptr)
+property_drawers::draw_ro_i64(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::int64_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::int64_t>(ptr);
     ImGui::Text("%" PRIi64 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_u8(::agea::blob_ptr ptr)
+property_drawers::draw_ro_u8(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::uint8_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::uint8_t>(ptr);
     ImGui::Text("%" PRIu8 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_u16(::agea::blob_ptr ptr)
+property_drawers::draw_ro_u16(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::uint16_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::uint16_t>(ptr);
     ImGui::Text("%" PRIu16 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_u32(::agea::blob_ptr ptr)
+property_drawers::draw_ro_u32(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::uint32_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::uint32_t>(ptr);
     ImGui::Text("%" PRIu32 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_u64(::agea::blob_ptr ptr)
+property_drawers::draw_ro_u64(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<std::uint64_t>(ptr);
+    auto p = kryga::reflection::utils::as_type<std::uint64_t>(ptr);
     ImGui::Text("%" PRIu64 "", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_f(::agea::blob_ptr ptr)
+property_drawers::draw_ro_f(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<float>(ptr);
+    auto p = kryga::reflection::utils::as_type<float>(ptr);
     ImGui::Text("%f", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_d(::agea::blob_ptr ptr)
+property_drawers::draw_ro_d(::kryga::blob_ptr ptr)
 {
-    auto p = agea::reflection::utils::as_type<double>(ptr);
+    auto p = kryga::reflection::utils::as_type<double>(ptr);
     ImGui::Text("%lf", p);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_vec3(::agea::blob_ptr ptr)
+property_drawers::draw_ro_vec3(::kryga::blob_ptr ptr)
 {
-    auto& p = agea::reflection::utils::as_type<glm::vec3>(ptr);
+    auto& p = kryga::reflection::utils::as_type<glm::vec3>(ptr);
     ImGui::Text("%f %f %f", (p)[0], (p)[1], (p)[2]);
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_mat(::agea::blob_ptr ptr)
+property_drawers::draw_ro_mat(::kryga::blob_ptr ptr)
 {
-    auto& t = agea::reflection::utils::as_type<std::shared_ptr<root::material>>(ptr);
+    auto& t = kryga::reflection::utils::as_type<std::shared_ptr<root::material>>(ptr);
     ImGui::Text("%s", t->get_id().cstr());
 
     return result_code::ok;
 }
 
 result_code
-property_drawers::draw_ro_msh(::agea::blob_ptr ptr)
+property_drawers::draw_ro_msh(::kryga::blob_ptr ptr)
 {
-    auto& t = agea::reflection::utils::as_type<root::mesh*>(ptr);
+    auto& t = kryga::reflection::utils::as_type<root::mesh*>(ptr);
     ImGui::Text("%s", t->get_id().cstr());
 
     return result_code::ok;
 }
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

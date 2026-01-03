@@ -17,7 +17,7 @@ struct SDL_Window;
 
 constexpr uint64_t FRAMES_IN_FLIGHT = 3ULL;
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -304,9 +304,9 @@ public:
 namespace glob
 {
 struct render_device
-    : public ::agea::singleton_instance<::agea::render::render_device, render_device>
+    : public ::kryga::singleton_instance<::kryga::render::render_device, render_device>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga

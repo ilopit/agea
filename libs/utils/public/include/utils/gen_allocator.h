@@ -4,7 +4,7 @@
 
 #include <utils/math_utils.h>
 
-namespace agea::utils
+namespace kryga::utils
 {
 
 class gen_allocator
@@ -93,4 +93,4 @@ public:
     print_free();
 };
 
-}  // namespace agea::utils
+}  // namespace kryga::utils

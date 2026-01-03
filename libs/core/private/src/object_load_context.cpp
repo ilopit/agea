@@ -5,10 +5,10 @@
 #include "core/package.h"
 #include "global_state/global_state.h"
 
-#include "utils/agea_log.h"
+#include "utils/kryga_log.h"
 #include "utils/check.h"
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -61,8 +61,8 @@ object_load_context::make_full_path(const utils::id& id, utils::path& p) const
 bool
 object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 {
-    AGEA_check(m_ownable_cache_ptr, "Should exists!");
-    AGEA_check(obj, "Should exists!");
+    KRG_check(m_ownable_cache_ptr, "Should exists!");
+    KRG_check(obj, "Should exists!");
 
     auto& obj_ref = *obj.get();
 
@@ -85,7 +85,7 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
         break;
     }
     default:
-        AGEA_never("Unsupported type");
+        KRG_never("Unsupported type");
         break;
     }
 
@@ -125,7 +125,7 @@ object_load_context::find_proto_obj(const utils::id& id)
         obj = glob::glob_state().get_class_objects_cache()->get_item(id);
     }
 
-    AGEA_check(!obj || !obj->get_flags().instance_obj, "Should always be proto!");
+    KRG_check(!obj || !obj->get_flags().instance_obj, "Should always be proto!");
     return obj;
 }
 
@@ -139,7 +139,7 @@ object_load_context::find_obj(const utils::id& id)
         obj = glob::glob_state().get_instance_objects_cache()->get_item(id);
     }
 
-    AGEA_check(!obj || obj->get_flags().instance_obj, "Should always be instance_obj!");
+    KRG_check(!obj || obj->get_flags().instance_obj, "Should always be instance_obj!");
     return obj;
 }
 
@@ -184,4 +184,4 @@ object_load_context::find_proto_obj(const utils::id& id, architype a_type)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

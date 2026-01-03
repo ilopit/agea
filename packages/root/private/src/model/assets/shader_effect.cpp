@@ -3,12 +3,12 @@
 #include "core/level.h"
 #include <global_state/global_state.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 
-AGEA_gen_class_cd_default(shader_effect);
+KRG_gen_class_cd_default(shader_effect);
 
 void
 shader_effect::mark_render_dirty()
@@ -21,4 +21,4 @@ shader_effect::mark_render_dirty()
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

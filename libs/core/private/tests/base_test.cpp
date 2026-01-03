@@ -4,7 +4,7 @@
 
 #include <resource_locator/resource_locator.h>
 
-namespace agea
+namespace kryga
 {
 
 void
@@ -14,7 +14,7 @@ base_test::SetUp()
     std::filesystem::remove_all(get_current_workspace().fs(), ec);
     std::filesystem::create_directories(get_current_workspace().fs(), ec);
 
-    agea::glob::resource_locator::create(m_regestry);
+    kryga::glob::resource_locator::create(m_regestry);
 }
 
 void
@@ -22,11 +22,11 @@ base_test::TearDown()
 {
 }
 
-agea::utils::path
+kryga::utils::path
 base_test::get_current_workspace()
 {
     static auto path = std::filesystem::current_path() / "test_workspace";
 
-    return agea::utils::path(path);
+    return kryga::utils::path(path);
 }
-}  // namespace agea
+}  // namespace kryga

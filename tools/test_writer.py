@@ -10,20 +10,20 @@ class TestKindToString(unittest.TestCase):
     """Test kind_to_string function."""
 
     def test_class_kind(self):
-        result = arapi.writer.kind_to_string(arapi.types.agea_type_kind.CLASS)
-        self.assertEqual(result, "agea_class")
+        result = arapi.writer.kind_to_string(arapi.types.kryga_type_kind.CLASS)
+        self.assertEqual(result, "kryga_class")
 
     def test_struct_kind(self):
-        result = arapi.writer.kind_to_string(arapi.types.agea_type_kind.STRUCT)
-        self.assertEqual(result, "agea_struct")
+        result = arapi.writer.kind_to_string(arapi.types.kryga_type_kind.STRUCT)
+        self.assertEqual(result, "kryga_struct")
 
     def test_external_kind(self):
-        result = arapi.writer.kind_to_string(arapi.types.agea_type_kind.EXTERNAL)
-        self.assertEqual(result, "agea_external")
+        result = arapi.writer.kind_to_string(arapi.types.kryga_type_kind.EXTERNAL)
+        self.assertEqual(result, "kryga_external")
 
     def test_invalid_kind(self):
         with self.assertRaises(SystemExit):
-            arapi.writer.kind_to_string(arapi.types.agea_type_kind.NONE)
+            arapi.writer.kind_to_string(arapi.types.kryga_type_kind.NONE)
 
 
 class TestGenerateBuilder(unittest.TestCase):
@@ -54,7 +54,7 @@ class TestWriteArClassIncludeFile(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_write_class_include_basic(self):
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
 
         arapi.writer.write_ar_class_include_file(class_type, self.context, self.temp_dir)
@@ -65,21 +65,21 @@ class TestWriteArClassIncludeFile(unittest.TestCase):
         with open(output_file, "r") as f:
             content = f.read()
             self.assertIn("#pragma once", content)
-            self.assertIn("AGEA_gen_meta__TestClass", content)
+            self.assertIn("KRG_gen_meta__TestClass", content)
             self.assertIn("friend class package", content)
 
     def test_write_class_include_with_properties(self):
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
 
-        prop1 = arapi.types.agea_property()
+        prop1 = arapi.types.kryga_property()
         prop1.name = "m_value1"
         prop1.name_cut = "value1"
         prop1.type = "int"
         prop1.access = "all"
         class_type.properties.append(prop1)
 
-        prop2 = arapi.types.agea_property()
+        prop2 = arapi.types.kryga_property()
         prop2.name = "m_value2"
         prop2.name_cut = "value2"
         prop2.type = "float"
@@ -97,7 +97,7 @@ class TestWriteArClassIncludeFile(unittest.TestCase):
             self.assertNotIn("set_value2", content)
 
     def test_write_class_include_invalid_kind(self):
-        struct_type = arapi.types.agea_type(arapi.types.agea_type_kind.STRUCT)
+        struct_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.STRUCT)
         struct_type.name = "TestStruct"
 
         with self.assertRaises(SystemExit):
@@ -112,7 +112,7 @@ class TestWritePropertyAccessMethods(unittest.TestCase):
         self.context.properies_access_methods = ""
 
     def test_getter_all_access(self):
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.type = "int"
@@ -128,7 +128,7 @@ class TestWritePropertyAccessMethods(unittest.TestCase):
         self.assertIn("return m_value", self.context.properies_access_methods)
 
     def test_getter_read_only(self):
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.type = "int"
@@ -141,7 +141,7 @@ class TestWritePropertyAccessMethods(unittest.TestCase):
         self.assertNotIn("set_value", self.context.properies_access_methods)
 
     def test_setter_write_only(self):
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.type = "int"
@@ -154,7 +154,7 @@ class TestWritePropertyAccessMethods(unittest.TestCase):
         self.assertIn("set_value", self.context.properies_access_methods)
 
     def test_setter_with_check_not_same(self):
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.type = "int"
@@ -168,7 +168,7 @@ class TestWritePropertyAccessMethods(unittest.TestCase):
         self.assertIn("return;", self.context.properies_access_methods)
 
     def test_setter_with_invalidates_transform(self):
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.type = "int"
@@ -182,7 +182,7 @@ class TestWritePropertyAccessMethods(unittest.TestCase):
         self.assertIn("update_children_matrixes", self.context.properies_access_methods)
 
     def test_setter_with_invalidates_render(self):
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.type = "int"
@@ -241,7 +241,7 @@ class TestWriteArPackageIncludeFile(unittest.TestCase):
             content = f.read()
             self.assertIn("#pragma once", content)
             self.assertIn("test_module", content)
-            self.assertIn("AGEA_gen_meta__test_module_package", content)
+            self.assertIn("KRG_gen_meta__test_module_package", content)
 
     def test_write_package_include_with_render_overrides(self):
         self.context.render_has_types_overrides = True
@@ -271,7 +271,7 @@ class TestWriteTypesResolvers(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_write_types_resolvers_basic(self):
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
         class_type.full_name = "test_module::TestClass"
         class_type.id = "test_id"
@@ -291,7 +291,7 @@ class TestWriteTypesResolvers(unittest.TestCase):
             self.assertIn("#include \"test2.h\"", content)
 
     def test_write_types_resolvers_built_in(self):
-        external_type = arapi.types.agea_type(arapi.types.agea_type_kind.EXTERNAL)
+        external_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.EXTERNAL)
         external_type.name = "ExternalType"
         external_type.full_name = "ExternalType"
         external_type.built_in = True
@@ -321,15 +321,15 @@ class TestWriteLuaStructType(unittest.TestCase):
             os.unlink(self.temp_file.name)
 
     def test_write_lua_struct_type_with_constructors(self):
-        struct_type = arapi.types.agea_type(arapi.types.agea_type_kind.STRUCT)
+        struct_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.STRUCT)
         struct_type.name = "TestStruct"
         struct_type.full_name = "test_module::TestStruct"
 
-        ctor1 = arapi.types.agea_ctor()
+        ctor1 = arapi.types.kryga_ctor()
         ctor1.name = "TestStruct(int)"
         struct_type.ctros.append(ctor1)
 
-        ctor2 = arapi.types.agea_ctor()
+        ctor2 = arapi.types.kryga_ctor()
         ctor2.name = "TestStruct(float)"
         struct_type.ctros.append(ctor2)
 
@@ -358,7 +358,7 @@ class TestWriteLuaClassType(unittest.TestCase):
             os.unlink(self.temp_file.name)
 
     def test_write_lua_class_type_no_parent(self):
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
         class_type.full_name = "test_module::TestClass"
 
@@ -374,11 +374,11 @@ class TestWriteLuaClassType(unittest.TestCase):
             self.assertNotIn("sol::base_classes", content)
 
     def test_write_lua_class_type_with_parent(self):
-        parent_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        parent_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         parent_type.name = "BaseClass"
         parent_type.full_name = "test_module::BaseClass"
 
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
         class_type.full_name = "test_module::TestClass"
         class_type.parent_type = parent_type
@@ -407,17 +407,17 @@ class TestWriteLuaUsertypeExtension(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     def test_write_lua_usertype_extension_basic(self):
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
         class_type.full_name = "test_module::TestClass"
 
-        prop = arapi.types.agea_property()
+        prop = arapi.types.kryga_property()
         prop.name = "m_value"
         prop.name_cut = "value"
         prop.access = "all"
         class_type.properties.append(prop)
 
-        func = arapi.types.agea_function()
+        func = arapi.types.kryga_function()
         func.name = "testFunction"
         class_type.functions.append(func)
 
@@ -437,11 +437,11 @@ class TestWriteLuaUsertypeExtension(unittest.TestCase):
             self.assertIn("testFunction", content)
 
     def test_write_lua_usertype_extension_with_parent(self):
-        parent_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        parent_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         parent_type.name = "BaseClass"
         self.context.types.append(parent_type)
 
-        class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+        class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         class_type.name = "TestClass"
         class_type.parent_type = parent_type
         self.context.types.append(class_type)

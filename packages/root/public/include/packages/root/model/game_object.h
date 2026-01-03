@@ -10,25 +10,25 @@
 #include <core/id_generator.h>
 #include <global_state/global_state.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 class component;
 
-AGEA_ar_class("architype=game_object");
+KRG_ar_class("architype=game_object");
 class game_object : public smart_object
 {
-    AGEA_gen_meta__game_object();
+    KRG_gen_meta__game_object();
 
 public:
     // Meta part
-    AGEA_gen_class_meta(game_object, smart_object);
-    AGEA_gen_construct_params
+    KRG_gen_class_meta(game_object, smart_object);
+    KRG_gen_construct_params
     {
         vec3 pos = {0.f};
     };
-    AGEA_gen_meta_api;
+    KRG_gen_meta_api;
 
     bool
     construct(construct_params& params);
@@ -75,32 +75,32 @@ public:
     component*
     get_component_at(size_t idx) const
     {
-        AGEA_check(idx < m_components.size(), "Index should be in range");
+        KRG_check(idx < m_components.size(), "Index should be in range");
         return m_components[idx];
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     glm::quat
     get_rotation_quat() const
     {
         return m_root_component->get_rotation();
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     vec3
     get_forward_vector() const
     {
         return m_root_component->get_forward_vector();
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     vec3
     get_up_vector() const
     {
         return m_root_component->get_up_vector();
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     vec3
     get_right_vector() const
     {
@@ -197,7 +197,7 @@ protected:
     void
     fill_renderable_components();
 
-    AGEA_ar_property("category=Meta",
+    KRG_ar_property("category=Meta",
                      "serializable=true",
                      "property_ser_handler=game_object_components_save",
                      "property_compare_handler=game_object_components_compare",
@@ -212,4 +212,4 @@ protected:
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

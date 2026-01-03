@@ -1,11 +1,11 @@
 #include "packages/base/model/assets/simple_texture_material.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(simple_texture_material);
+KRG_gen_class_cd_default(simple_texture_material);
 
 bool
 simple_texture_material::construct(this_class::construct_params&)
@@ -14,4 +14,4 @@ simple_texture_material::construct(this_class::construct_params&)
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

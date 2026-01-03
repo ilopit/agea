@@ -7,7 +7,7 @@
 #include <chrono>
 #include <iostream>
 
-namespace agea::utils
+namespace kryga::utils
 {
 
 // Type IDs for testing
@@ -291,4 +291,4 @@ TEST(dynamic_object_benchmark, DISABLED_object_creation)
     }
 }
 
-} // namespace agea::utils
+} // namespace kryga::utils

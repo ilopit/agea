@@ -8,7 +8,7 @@
 
 #include "core/container.h"
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -43,8 +43,8 @@ struct package_types_builder
         return true;
     }
 
-    ::agea::reflection::reflection_type*
-    add(package& sp, ::agea::reflection::reflection_type* rt);
+    ::kryga::reflection::reflection_type*
+    add(package& sp, ::kryga::reflection::reflection_type* rt);
 };
 
 struct package_render_types_builder
@@ -292,4 +292,4 @@ private:
 };
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/singleton_registry.h>
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/lua_api.h>
@@ -8,13 +8,13 @@
 #include <root/root_module.h>
 #include <resource_locator/resource_locator.h>
 
-using namespace agea;
+using namespace kryga;
 int
 main(int argc, char** argv)
 {
-    ::agea::utils::setup_logger();
+    ::kryga::utils::setup_logger();
 
-    auto registry = std::make_unique<agea::singleton_registry>();
+    auto registry = std::make_unique<kryga::singleton_registry>();
 
     glob::module_manager::create(*registry);
     glob::lua_api::create(*registry);

@@ -17,7 +17,7 @@
 #include <utils/file_utils.h>
 #include <utils/buffer.h>
 #include <utils/process.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <global_state/global_state.h>
 
@@ -29,7 +29,7 @@
 #include <vk_mem_alloc.h>
 #include <stb_unofficial/stb.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace render
@@ -39,7 +39,7 @@ namespace
 {
 
 result_code
-compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compiled_buffer)
+compile_shader(const kryga::utils::buffer& raw_buffer, kryga::utils::buffer& compiled_buffer)
 {
     static int shader_id = 0;
 
@@ -52,7 +52,7 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
 
     auto shader_name = APATH(std::to_string(shader_id));
 
-    agea::utils::path compiled_path = *td.folder / shader_name.str();
+    kryga::utils::path compiled_path = *td.folder / shader_name.str();
     compiled_path.add(".spv");
 
     auto includes =
@@ -70,7 +70,7 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
         return result_code::compilation_failed;
     }
 
-    if (!agea::utils::buffer::load(compiled_path, compiled_buffer))
+    if (!kryga::utils::buffer::load(compiled_path, compiled_buffer))
     {
         ALOG_FATAL("Shader compilation failed");
         return result_code::failed;
@@ -79,15 +79,15 @@ compile_shader(const agea::utils::buffer& raw_buffer, agea::utils::buffer& compi
     return result_code::ok;
 }
 
-agea::result_code
-load_data_shader(const agea::utils::buffer& input,
+kryga::result_code
+load_data_shader(const kryga::utils::buffer& input,
                  bool is_binary,
                  VkShaderStageFlagBits stage_bit,
                  std::shared_ptr<shader_module_data>& sd)
 {
     auto device = glob::render_device::get();
 
-    agea::utils::buffer compiled_buffer;
+    kryga::utils::buffer compiled_buffer;
 
     if (!is_binary)
     {
@@ -99,7 +99,7 @@ load_data_shader(const agea::utils::buffer& input,
     }
     else
     {
-        AGEA_never("Not supported");
+        KRG_never("Not supported");
         compiled_buffer = input;
     }
 
@@ -395,4 +395,4 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

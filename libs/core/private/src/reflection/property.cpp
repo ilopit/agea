@@ -7,14 +7,14 @@
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/mesh.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <serialization/serialization.h>
 
 #include <cinttypes>
 #include <array>
 
-namespace agea
+namespace kryga
 {
 namespace reflection
 {
@@ -58,17 +58,17 @@ property::default_save(property_context__save& ctx)
 result_code
 property::default_copy(property_context__copy& cxt)
 {
-    AGEA_check(cxt.src_property->rtype->copy, "Should be valid!");
-    AGEA_check(cxt.dst_property->rtype->copy, "Should never happen!");
+    KRG_check(cxt.src_property->rtype->copy, "Should be valid!");
+    KRG_check(cxt.dst_property->rtype->copy, "Should never happen!");
 
-    AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
-    AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
+    KRG_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
+    KRG_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
 
-    AGEA_check(!cxt.src_property->type.is_collection, "Not supported!");
+    KRG_check(!cxt.src_property->type.is_collection, "Not supported!");
 
-    auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
+    auto from = ::kryga::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
                                                cxt.src_property->type.is_ptr);
-    auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
+    auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
     type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.occ};
@@ -78,18 +78,18 @@ property::default_copy(property_context__copy& cxt)
 result_code
 property::default_instantiate(property_context__instantiate& cxt)
 {
-    AGEA_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
-    AGEA_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
-    AGEA_check(!cxt.src_property->type.is_collection, "Not supported!");
+    KRG_check(cxt.src_property == cxt.dst_property, "Should be SAME properties!");
+    KRG_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
+    KRG_check(!cxt.src_property->type.is_collection, "Not supported!");
 
-    AGEA_check(cxt.src_property->rtype->instantiate || cxt.src_property->rtype->copy,
+    KRG_check(cxt.src_property->rtype->instantiate || cxt.src_property->rtype->copy,
                "Should be valid!");
-    AGEA_check(cxt.dst_property->rtype->instantiate || cxt.dst_property->rtype->copy,
+    KRG_check(cxt.dst_property->rtype->instantiate || cxt.dst_property->rtype->copy,
                "Should never happen!");
 
-    auto from = ::agea::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
+    auto from = ::kryga::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
                                                cxt.src_property->type.is_ptr);
-    auto to = ::agea::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
+    auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
     type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.occ};
@@ -110,12 +110,12 @@ property::default_load(property_context__load& ctx)
         return result_code::failed;
     }
 
-    AGEA_check(ctx.src_property == ctx.dst_property, "Should be SAME properties!");
-    AGEA_check(ctx.src_obj != ctx.dst_obj, "Should not be SAME objects!");
+    KRG_check(ctx.src_property == ctx.dst_property, "Should be SAME properties!");
+    KRG_check(ctx.src_obj != ctx.dst_obj, "Should not be SAME objects!");
 
     if (ctx.src_property->type.is_collection)
     {
-        AGEA_not_implemented;
+        KRG_not_implemented;
     }
     else
     {
@@ -126,12 +126,12 @@ property::default_load(property_context__load& ctx)
         }
         else
         {
-            auto from = ::agea::reflection::reduce_ptr(ctx.src_property->get_blob(*ctx.src_obj),
+            auto from = ::kryga::reflection::reduce_ptr(ctx.src_property->get_blob(*ctx.src_obj),
                                                        ctx.src_property->type.is_ptr);
-            auto to = ::agea::reflection::reduce_ptr(ctx.dst_property->get_blob(*ctx.dst_obj),
+            auto to = ::kryga::reflection::reduce_ptr(ctx.dst_property->get_blob(*ctx.dst_obj),
                                                      ctx.dst_property->type.is_ptr);
 
-            AGEA_check(ctx.dst_property->rtype->copy, "Should never happen!");
+            KRG_check(ctx.dst_property->rtype->copy, "Should never happen!");
             type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.occ};
             if (auto rc = ctx.dst_property->rtype->copy(type_ctx); rc != result_code::ok)
             {
@@ -142,16 +142,16 @@ property::default_load(property_context__load& ctx)
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 property::default_to_string(property_context__to_string& ctx)
 {
-    auto from = ::agea::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
+    auto from = ::kryga::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
 
     type_context__to_string type_ctx{nullptr, from, &ctx.result};
     return ctx.prop->rtype->to_string(type_ctx);
 }
 
-agea::blob_ptr
+kryga::blob_ptr
 property::get_blob(root::smart_object& obj)
 {
     return obj.as_blob() + offset;
@@ -173,7 +173,7 @@ property::deserialize_collection(reflection::property& p,
         r.resize(items_size);
     }
 
-    AGEA_check(p.rtype->load, "Should never happen!");
+    KRG_check(p.rtype->load, "Should never happen!");
 
     for (size_t i = 0; i < items_size; ++i)
     {
@@ -214,9 +214,9 @@ property::load_item(reflection::property& p,
 
     auto ptr = obj.as_blob();
 
-    ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
+    ptr = ::kryga::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
-    AGEA_check(p.rtype->load, "Should never happen!");
+    KRG_check(p.rtype->load, "Should never happen!");
 
     auto sub_jc = jc[p.name];
     type_context__load type_ctx{nullptr, ptr, &sub_jc, &occ};
@@ -230,11 +230,11 @@ property::serialize_item(const reflection::property& p,
 {
     auto ptr = (blob_ptr)&obj;
 
-    ptr = ::agea::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
+    ptr = ::kryga::reflection::reduce_ptr(ptr + p.offset, p.type.is_ptr);
 
     serialization::container c;
 
-    AGEA_check(p.rtype->save, "Should never happen!");
+    KRG_check(p.rtype->save, "Should never happen!");
     type_context__save type_ctx{&obj, ptr, &c};
     if (auto rc = p.rtype->save(type_ctx); rc != result_code::ok)
     {
@@ -249,7 +249,7 @@ property::serialize_item(const reflection::property& p,
 result_code
 property::compare_collection(property_context__compare&)
 {
-    AGEA_not_implemented;
+    KRG_not_implemented;
 
     return result_code::failed;
 }
@@ -257,9 +257,9 @@ property::compare_collection(property_context__compare&)
 result_code
 property::compare_item(property_context__compare& context)
 {
-    auto src_ptr = ::agea::reflection::reduce_ptr(context.src_obj->as_blob() + context.p->offset,
+    auto src_ptr = ::kryga::reflection::reduce_ptr(context.src_obj->as_blob() + context.p->offset,
                                                   context.p->type.is_ptr);
-    auto dst_ptr = ::agea::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
+    auto dst_ptr = ::kryga::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
                                                   context.p->type.is_ptr);
 
     type_context__compare type_ctx{src_ptr, dst_ptr};
@@ -267,4 +267,4 @@ property::compare_item(property_context__compare& context)
 }
 
 }  // namespace reflection
-}  // namespace agea
+}  // namespace kryga

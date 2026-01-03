@@ -2,11 +2,11 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
-sampler_data::sampler_data(const ::agea::utils::id& id)
+sampler_data::sampler_data(const ::kryga::utils::id& id)
     : m_id(id)
 {
 }
@@ -21,4 +21,4 @@ sampler_data::~sampler_data()
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

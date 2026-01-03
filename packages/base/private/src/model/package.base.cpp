@@ -2,7 +2,7 @@
 
 #include <core/package_manager.h>
 
-namespace agea::base
+namespace kryga::base
 {
 
 package::package()
@@ -10,4 +10,4 @@ package::package()
 {
 }
 
-}  // namespace agea::base
+}  // namespace kryga::base

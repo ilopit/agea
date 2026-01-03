@@ -16,14 +16,14 @@
 
 #include <serialization/serialization.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <error_handling/error_handling.h>
 
-namespace agea::root
+namespace kryga::root
 {
 
 result_code
-game_object_components_prototype(::agea::reflection::property_context__prototype& ctx)
+game_object_components_prototype(::kryga::reflection::property_context__prototype& ctx)
 {
     auto& sc = *ctx.sc;
 
@@ -39,7 +39,7 @@ game_object_components_prototype(::agea::reflection::property_context__prototype
         layout_mapping.push_back(layout[i].as<int>());
     }
 
-    auto& src_properties = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+    auto& src_properties = ::kryga::reflection::utils::as_type<std::vector<root::component*>>(
         ctx.src_obj->as_blob() + ctx.dst_property->offset);
 
     if (src_properties.empty())
@@ -47,11 +47,11 @@ game_object_components_prototype(::agea::reflection::property_context__prototype
         return result_code::ok;
     }
 
-    auto& dst_properties = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+    auto& dst_properties = ::kryga::reflection::utils::as_type<std::vector<root::component*>>(
         ctx.dst_obj->as_blob() + ctx.dst_property->offset);
 
-    AGEA_check(dst_properties.empty(), "Should always be empty!!");
-    AGEA_check(number_of_components == src_properties.size(), "Should always be same!!");
+    KRG_check(dst_properties.empty(), "Should always be empty!!");
+    KRG_check(number_of_components == src_properties.size(), "Should always be same!!");
 
     dst_properties.resize(src_properties.size());
 
@@ -75,7 +75,7 @@ game_object_components_prototype(::agea::reflection::property_context__prototype
 }
 
 result_code
-game_object_components_save(::agea::reflection::property_context__save& dc)
+game_object_components_save(::kryga::reflection::property_context__save& dc)
 {
     auto& class_obj = *dc.obj;
     auto& container = *dc.sc;
@@ -84,10 +84,10 @@ game_object_components_save(::agea::reflection::property_context__save& dc)
     serialization::container components_layout;
     components_layout.SetStyle(YAML::EmitterStyle::Flow);
 
-    auto& obj_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+    auto& obj_components = ::kryga::reflection::utils::as_type<std::vector<root::component*>>(
         class_obj.as_blob() + dc.p->offset);
 
-    // AGEA_check(obj_components.size() == parent_components.size(), "Should be same size!");
+    // KRG_check(obj_components.size() == parent_components.size(), "Should be same size!");
     auto size = obj_components.size();
     for (size_t i = 0; i < size; ++i)
     {
@@ -132,16 +132,16 @@ game_object_components_save(::agea::reflection::property_context__save& dc)
 }
 
 result_code
-game_object_components_compare(::agea::reflection::property_context__compare&)
+game_object_components_compare(::kryga::reflection::property_context__compare&)
 {
     // Always different because of IDS
     return result_code::failed;
 }
 
 result_code
-game_object_components_copy(::agea::reflection::property_context__copy& ctx)
+game_object_components_copy(::kryga::reflection::property_context__copy& ctx)
 {
-    //     AGEA_check(ctx.occ->get_construction_type() ==
+    //     KRG_check(ctx.occ->get_construction_type() ==
     //                    model::object_constructor_context::construction_type::mirror_obj,
     //                "Should always be empty!!");
 
@@ -202,9 +202,9 @@ game_object_components_instantiate(reflection::property_context__instantiate& ct
 }
 
 result_code
-game_object_components__load(::agea::reflection::property_context__load& ctx)
+game_object_components__load(::kryga::reflection::property_context__load& ctx)
 {
-    AGEA_check(ctx.dst_property->name == "components", "Only components expected");
+    KRG_check(ctx.dst_property->name == "components", "Only components expected");
 
     auto& sc = *ctx.sc;
 
@@ -217,13 +217,13 @@ game_object_components__load(::agea::reflection::property_context__load& ctx)
         return result_code::failed;
     }
 
-    auto& src_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+    auto& src_components = ::kryga::reflection::utils::as_type<std::vector<root::component*>>(
         ctx.src_obj->as_blob() + ctx.dst_property->offset);
 
-    auto& dst_components = ::agea::reflection::utils::as_type<std::vector<root::component*>>(
+    auto& dst_components = ::kryga::reflection::utils::as_type<std::vector<root::component*>>(
         ctx.dst_obj->as_blob() + ctx.dst_property->offset);
 
-    AGEA_check(dst_components.empty(), "Should always be empty!!");
+    KRG_check(dst_components.empty(), "Should always be empty!!");
 
     if (components)
     {
@@ -259,7 +259,7 @@ game_object_components__load(::agea::reflection::property_context__load& ctx)
     {
         for (auto c : src_components)
         {
-            AGEA_check(!c->get_flags().instance_obj, "Only protos are allowed");
+            KRG_check(!c->get_flags().instance_obj, "Only protos are allowed");
 
             auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
 
@@ -277,25 +277,25 @@ game_object_components__load(::agea::reflection::property_context__load& ctx)
 }
 
 result_code
-texture_sample_prototype(::agea::reflection::property_context__prototype& dc)
+texture_sample_prototype(::kryga::reflection::property_context__prototype& dc)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__save(::agea::reflection::property_context__save& dc)
+property_texture_sample__save(::kryga::reflection::property_context__save& dc)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__compare(::agea::reflection::property_context__compare& ctx)
+property_texture_sample__compare(::kryga::reflection::property_context__compare& ctx)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__copy(::agea::reflection::property_context__copy& ctx)
+property_texture_sample__copy(::kryga::reflection::property_context__copy& ctx)
 {
     auto src = ctx.src_obj->as<root::material>();
     auto dst = ctx.dst_obj->as<root::material>();
@@ -318,7 +318,7 @@ property_texture_sample__copy(::agea::reflection::property_context__copy& ctx)
 }
 
 result_code
-property_texture_sample__instantiate(::agea::reflection::property_context__instantiate& ctx)
+property_texture_sample__instantiate(::kryga::reflection::property_context__instantiate& ctx)
 {
     auto src = ctx.src_obj->as<root::material>();
     auto dst = ctx.dst_obj->as<root::material>();
@@ -382,4 +382,4 @@ property_texture_sample__load(reflection::property_context__load& ctx)
     return result_code::ok;
 }
 
-}  // namespace agea::root
+}  // namespace kryga::root

@@ -7,7 +7,7 @@
 
 #include <memory>
 
-namespace agea
+namespace kryga
 {
 template <typename T, typename S>
 class singleton_instance : public base_singleton_instance
@@ -65,7 +65,7 @@ public:
     static T&
     getr()
     {
-        AGEA_check(s_instance.m_obj, "Instance is empty");
+        KRG_check(s_instance.m_obj, "Instance is empty");
         return *s_instance.m_obj;
     }
 
@@ -103,4 +103,4 @@ protected:
     static T s_instance;
 };
 
-}  // namespace agea
+}  // namespace kryga

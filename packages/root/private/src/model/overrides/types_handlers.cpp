@@ -15,14 +15,14 @@
 #include <core/reflection/reflection_type_utils.h>
 #include <core/global_state.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/string_utility.h>
 
 #include <serialization/serialization.h>
 #include <utils/dynamic_object_builder.h>
 #include <utils/static_initializer.h>
 
-namespace agea::root
+namespace kryga::root
 {
 
 result_code
@@ -31,7 +31,7 @@ load_smart_object(blob_ptr ptr,
                   core::object_load_context& occ,
                   core::architype a_type)
 {
-    auto& field = reflection::utils::as_type<::agea::root::smart_object*>(ptr);
+    auto& field = reflection::utils::as_type<::kryga::root::smart_object*>(ptr);
 
     const auto id = AID(jc.as<std::string>());
 
@@ -47,8 +47,8 @@ load_smart_object(blob_ptr ptr,
 result_code
 color__save(reflection::type_context__save& ctx)
 {
-    auto& field = reflection::utils::as_type<::agea::root::color>(ctx.obj);
-    AGEA_unused(field);
+    auto& field = reflection::utils::as_type<::kryga::root::color>(ctx.obj);
+    KRG_unused(field);
 
     return result_code::ok;
 }
@@ -66,9 +66,9 @@ color__load(reflection::type_context__load& ctx)
 
     uint8_t rgba[4] = {0, 0, 0, 255};
 
-    agea::string_utils::convert_hex_string_to_bytes(8, str_color.data(), rgba);
+    kryga::string_utils::convert_hex_string_to_bytes(8, str_color.data(), rgba);
 
-    auto& field = reflection::utils::as_type<::agea::root::color>(ctx.obj);
+    auto& field = reflection::utils::as_type<::kryga::root::color>(ctx.obj);
 
     field.m_data.r = rgba[0] ? (rgba[0] / 255.f) : 0.f;
     field.m_data.g = rgba[1] ? (rgba[1] / 255.f) : 0.f;
@@ -89,15 +89,15 @@ smart_obj__copy(reflection::type_context__copy& ctx)
 result_code
 smart_obj__instantiate(reflection::type_context__copy& ctx)
 {
-    auto& src_subobj = reflection::utils::as_type<::agea::root::smart_object*>(ctx.src_obj);
-    auto& dst_subobj = reflection::utils::as_type<::agea::root::smart_object*>(ctx.dst_obj);
+    auto& src_subobj = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.src_obj);
+    auto& dst_subobj = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.dst_obj);
 
     if (!src_subobj)
     {
         return result_code::ok;
     }
 
-    AGEA_check(!dst_subobj, "dst_subobj");
+    KRG_check(!dst_subobj, "dst_subobj");
 
     std::vector<root::smart_object*> objs;
 
@@ -111,58 +111,58 @@ smart_obj__instantiate(reflection::type_context__copy& ctx)
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 smart_obj__save(reflection::type_context__save& ctx)
 {
-    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ctx.obj);
+    auto field = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.obj);
 
     (*ctx.jc)["id"] = field->get_id().str();
 
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 smart_obj__load(reflection::type_context__load& ctx)
 {
     return load_smart_object(ctx.obj, *ctx.jc, *ctx.occ, core::architype::smart_object);
 }
 
-agea::result_code
+kryga::result_code
 smart_obj__to_string(reflection::type_context__to_string& ctx)
 {
-    auto field = reflection::utils::as_type<::agea::root::smart_object*>(ctx.obj);
+    auto field = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.obj);
 
     *ctx.result = field ? field->get_id().str() : "empty";
 
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 smart_obj__compare(reflection::type_context__compare& ctx)
 {
-    AGEA_unused(ctx);
+    KRG_unused(ctx);
     return result_code::failed;
 }
 
 result_code
 texture_sample__save(reflection::type_context__save& ctx)
 {
-    AGEA_unused(ctx);
+    KRG_unused(ctx);
     return result_code::ok;
 }
 
 result_code
 texture_sample__compare(reflection::type_context__compare& ctx)
 {
-    AGEA_unused(ctx);
+    KRG_unused(ctx);
     return result_code::ok;
 }
 
 result_code
 texture_sample__copy(reflection::type_context__copy& ctx)
 {
-    auto& src = reflection::utils::as_type<::agea::root::material*>(ctx.src_obj);
-    auto& dst = reflection::utils::as_type<::agea::root::material*>(ctx.dst_obj);
+    auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.src_obj);
+    auto& dst = reflection::utils::as_type<::kryga::root::material*>(ctx.dst_obj);
 
     dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
 
@@ -183,8 +183,8 @@ texture_sample__copy(reflection::type_context__copy& ctx)
 result_code
 texture_sample__instantiate(reflection::type_context__copy& ctx)
 {
-    auto& src = reflection::utils::as_type<::agea::root::material*>(ctx.src_obj);
-    auto& dst = reflection::utils::as_type<::agea::root::material*>(ctx.dst_obj);
+    auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.src_obj);
+    auto& dst = reflection::utils::as_type<::kryga::root::material*>(ctx.dst_obj);
 
     dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
 
@@ -205,7 +205,7 @@ texture_sample__instantiate(reflection::type_context__copy& ctx)
 result_code
 texture_sample__load(reflection::type_context__load& ctx)
 {
-    auto& src = reflection::utils::as_type<::agea::root::material*>(ctx.obj);
+    auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.obj);
 
     const auto texture_id = AID((*ctx.jc)["texture"].as<std::string>());
 
@@ -229,10 +229,10 @@ texture_sample__load(reflection::type_context__load& ctx)
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 buffer__save(reflection::type_context__save& ctx)
 {
-    auto& field = reflection::utils::as_type<::agea::utils::buffer>(ctx.obj);
+    auto& field = reflection::utils::as_type<::kryga::utils::buffer>(ctx.obj);
 
     auto package_path = ctx.owner_obj->get_package()->get_relative_path(field.get_file());
 
@@ -247,7 +247,7 @@ buffer__save(reflection::type_context__save& ctx)
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 buffer__load(reflection::type_context__load& ctx)
 {
     auto rel_path = APATH(ctx.jc->as<std::string>());
@@ -260,7 +260,7 @@ buffer__load(reflection::type_context__load& ctx)
         return result_code::failed;
     }
 
-    auto& f = reflection::utils::as_type<::agea::utils::buffer>(ctx.obj);
+    auto& f = reflection::utils::as_type<::kryga::utils::buffer>(ctx.obj);
     f.set_file(package_path);
 
     if (!utils::buffer::load(package_path, f))
@@ -272,18 +272,18 @@ buffer__load(reflection::type_context__load& ctx)
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 buffer__copy(reflection::type_context__copy& ctx)
 {
-    reflection::utils::cpp_default__copy<::agea::utils::buffer>(ctx.src_obj, ctx.dst_obj);
+    reflection::utils::cpp_default__copy<::kryga::utils::buffer>(ctx.src_obj, ctx.dst_obj);
 
     return result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 buffer__to_string(reflection::type_context__to_string& ctx)
 {
-    auto& field = reflection::utils::as_type<::agea::utils::buffer>(ctx.obj);
+    auto& field = reflection::utils::as_type<::kryga::utils::buffer>(ctx.obj);
 
     *ctx.result = field.get_file().str();
 
@@ -292,84 +292,84 @@ buffer__to_string(reflection::type_context__to_string& ctx)
 
 //
 // // ========  ID  ====================================
-agea::result_code
+kryga::result_code
 id__save(reflection::type_context__save& ctx)
 {
-    *ctx.jc = agea::reflection::utils::as_type<agea::utils::id>(ctx.obj).str();
-    return agea::result_code::ok;
+    *ctx.jc = kryga::reflection::utils::as_type<kryga::utils::id>(ctx.obj).str();
+    return kryga::result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 id__load(reflection::type_context__load& ctx)
 {
-    agea::reflection::utils::as_type<agea::utils::id>(ctx.obj) = AID(ctx.jc->as<std::string>());
-    return agea::result_code::ok;
+    kryga::reflection::utils::as_type<kryga::utils::id>(ctx.obj) = AID(ctx.jc->as<std::string>());
+    return kryga::result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 id__to_string(reflection::type_context__to_string& ctx)
 {
-    *ctx.result = agea::reflection::utils::as_type<agea::utils::id>(ctx.obj).str();
-    return agea::result_code::ok;
+    *ctx.result = kryga::reflection::utils::as_type<kryga::utils::id>(ctx.obj).str();
+    return kryga::result_code::ok;
 }
 
 // ========  VEC2  ====================================
 
-agea::result_code
+kryga::result_code
 vec2__to_string(reflection::type_context__to_string& ctx)
 {
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec2>(ctx.obj);
+    auto& field = kryga::reflection::utils::as_type<::kryga::root::vec2>(ctx.obj);
 
     *ctx.result = std::format("{} {}", field.x, field.y);
 
-    return agea::result_code::ok;
+    return kryga::result_code::ok;
 }
 
 // ========  VEC3  ====================================
-agea::result_code
+kryga::result_code
 vec3__save(reflection::type_context__save& ctx)
 {
-    auto& field = agea::reflection::utils::as_type<agea::root::vec3>(ctx.obj);
+    auto& field = kryga::reflection::utils::as_type<kryga::root::vec3>(ctx.obj);
 
     (*ctx.jc)["x"] = field.x;
     (*ctx.jc)["y"] = field.y;
     (*ctx.jc)["z"] = field.z;
 
-    return agea::result_code::ok;
+    return kryga::result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 vec3__load(reflection::type_context__load& ctx)
 {
-    auto& field = agea::reflection::utils::as_type<agea::root::vec3>(ctx.obj);
+    auto& field = kryga::reflection::utils::as_type<kryga::root::vec3>(ctx.obj);
 
     field.x = (*ctx.jc)["x"].as<float>();
     field.y = (*ctx.jc)["y"].as<float>();
     field.z = (*ctx.jc)["z"].as<float>();
 
-    return agea::result_code::ok;
+    return kryga::result_code::ok;
 }
 
-agea::result_code
+kryga::result_code
 vec3__to_string(reflection::type_context__to_string& ctx)
 {
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec3>(ctx.obj);
+    auto& field = kryga::reflection::utils::as_type<::kryga::root::vec3>(ctx.obj);
 
     *ctx.result = std::format("{} {} {}", field.x, field.y, field.z);
 
-    return agea::result_code::ok;
+    return kryga::result_code::ok;
 }
 
 // ========  VEC4  ====================================
 
-agea::result_code
+kryga::result_code
 vec4__to_string(reflection::type_context__to_string& ctx)
 {
-    auto& field = agea::reflection::utils::as_type<::agea::root::vec4>(ctx.obj);
+    auto& field = kryga::reflection::utils::as_type<::kryga::root::vec4>(ctx.obj);
 
     *ctx.result = std::format("{} {} {} {}", field.x, field.y, field.z, field.w);
 
-    return agea::result_code::ok;
+    return kryga::result_code::ok;
 }
 
-}  // namespace agea::root
+}  // namespace kryga::root

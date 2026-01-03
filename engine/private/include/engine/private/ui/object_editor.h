@@ -2,7 +2,7 @@
 
 #include "engine/ui.h"
 
-namespace agea::ui
+namespace kryga::ui
 {
 
 class object_editor : public window
@@ -35,4 +35,4 @@ public:
     root::smart_object* current_object = nullptr;
 };
 
-}  // namespace agea::ui
+}  // namespace kryga::ui

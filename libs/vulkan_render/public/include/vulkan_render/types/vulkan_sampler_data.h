@@ -4,17 +4,17 @@
 
 #include <utils/id.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
 class sampler_data
 {
 public:
-    sampler_data(const ::agea::utils::id& id);
+    sampler_data(const ::kryga::utils::id& id);
     ~sampler_data();
 
-    const ::agea::utils::id&
+    const ::kryga::utils::id&
     get_id()
     {
         return m_id;
@@ -23,7 +23,7 @@ public:
     VkSampler m_sampler = VK_NULL_HANDLE;
 
 private:
-    ::agea::utils::id m_id;
+    ::kryga::utils::id m_id;
 };
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

@@ -1,9 +1,9 @@
 #include "utils/dynamic_object.h"
 
 #include "utils/dynamic_object_builder.h"
-#include "utils/agea_log.h"
+#include "utils/kryga_log.h"
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -84,7 +84,7 @@ base_view::context(const dynobj_field* f)
     return f->context.get();
 }
 
-const agea::utils::id&
+const kryga::utils::id&
 base_view::id() const
 {
     return m_cur_field->id;
@@ -112,7 +112,7 @@ base_view::build_for_subobject(uint64_t field_idx, uint64_t idx) const
 {
     auto sub_field = field_by_idx(m_cur_field->sub_field_layout, field_idx);
 
-    AGEA_check(sub_field->is_array, "Should be an array!");
+    KRG_check(sub_field->is_array, "Should be an array!");
 
     auto offset = glob_offset_at_index(sub_field, idx);
 
@@ -233,7 +233,7 @@ base_view::offset_at_index(const dynobj_field* f, uint64_t idx)
 const dynobj_field*
 base_view::field_by_idx(const utils::dynobj_layout_sptr& layout, uint64_t idx)
 {
-    AGEA_check(idx < layout->get_fields().size(), "Should be in index range");
+    KRG_check(idx < layout->get_fields().size(), "Should be in index range");
 
     return &layout->get_fields()[idx];
 }
@@ -251,4 +251,4 @@ dynobj::get_dyn_field(uint64_t pos)
 }
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

@@ -2,12 +2,12 @@
 
 #include "packages/root/model/game_object.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(camera_component);
+KRG_gen_class_cd_default(camera_component);
 
 void
 camera_component::set_rotation_speed(float rs)
@@ -93,4 +93,4 @@ camera_component::set_aspect_ratio(float aspect_ratio)
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

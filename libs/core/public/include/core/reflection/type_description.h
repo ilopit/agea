@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea::reflection
+namespace kryga::reflection
 {
 
 struct type_description
@@ -29,4 +29,4 @@ struct type_description
     bool is_ptr = false;
     bool is_collection = false;
 };
-}  // namespace agea::reflection
+}  // namespace kryga::reflection

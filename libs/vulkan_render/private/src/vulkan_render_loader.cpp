@@ -20,7 +20,7 @@
 #include <utils/file_utils.h>
 #include <utils/buffer.h>
 #include <utils/process.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <native/native_window.h>
 
@@ -29,7 +29,7 @@
 #include <vk_mem_alloc.h>
 #include <stb_unofficial/stb.h>
 
-namespace agea
+namespace kryga
 {
 
 glob::vulkan_render_loader::type glob::vulkan_render_loader::type::s_instance;
@@ -123,11 +123,11 @@ upload_image(int texWidth,
 }  // namespace
 
 mesh_data*
-vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
-                                  agea::utils::buffer_view<render::gpu_vertex_data> vbv,
-                                  agea::utils::buffer_view<render::gpu_index_data> ibv)
+vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
+                                  kryga::utils::buffer_view<render::gpu_vertex_data> vbv,
+                                  kryga::utils::buffer_view<render::gpu_index_data> ibv)
 {
-    AGEA_check(!get_mesh_data(mesh_id), "should never happens");
+    KRG_check(!get_mesh_data(mesh_id), "should never happens");
 
     auto device = glob::render_device::get();
 
@@ -228,12 +228,12 @@ vulkan_render_loader::create_mesh(const agea::utils::id& mesh_id,
 }
 
 texture_data*
-vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
-                                     const agea::utils::buffer& base_color,
+vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
+                                     const kryga::utils::buffer& base_color,
                                      uint32_t w,
                                      uint32_t h)
 {
-    AGEA_check(!get_texture_data(texture_id), "should never happens");
+    KRG_check(!get_texture_data(texture_id), "should never happens");
 
     auto device = glob::render_device::get();
 
@@ -263,11 +263,11 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
 }
 
 texture_data*
-vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
-                                     agea::render::vk_utils::vulkan_image_sptr image,
-                                     agea::render::vk_utils::vulkan_image_view_sptr view)
+vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
+                                     kryga::render::vk_utils::vulkan_image_sptr image,
+                                     kryga::render::vk_utils::vulkan_image_view_sptr view)
 {
-    AGEA_check(!get_texture_data(texture_id), "should never happens");
+    KRG_check(!get_texture_data(texture_id), "should never happens");
 
     auto td = std::make_shared<texture_data>(texture_id);
 
@@ -280,7 +280,7 @@ vulkan_render_loader::create_texture(const agea::utils::id& texture_id,
 }
 
 void
-vulkan_render_loader::destroy_texture_data(const agea::utils::id& id)
+vulkan_render_loader::destroy_texture_data(const kryga::utils::id& id)
 {
     auto itr = m_textures_cache.find(id);
     if (itr != m_textures_cache.end())
@@ -309,7 +309,7 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
 }
 
 void
-vulkan_render_loader::destroy_mesh_data(const agea::utils::id& id)
+vulkan_render_loader::destroy_mesh_data(const kryga::utils::id& id)
 {
     auto itr = m_meshes_cache.find(id);
     if (itr != m_meshes_cache.end())
@@ -320,13 +320,13 @@ vulkan_render_loader::destroy_mesh_data(const agea::utils::id& id)
 }
 
 material_data*
-vulkan_render_loader::create_material(const agea::utils::id& id,
-                                      const agea::utils::id& type_id,
+vulkan_render_loader::create_material(const kryga::utils::id& id,
+                                      const kryga::utils::id& type_id,
                                       std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
-                                      const agea::utils::dynobj& gpu_params)
+                                      const kryga::utils::dynobj& gpu_params)
 {
-    AGEA_check(!get_material_data(id), "Shouldn't exist");
+    KRG_check(!get_material_data(id), "Shouldn't exist");
 
     auto device = glob::render_device::get();
 
@@ -401,9 +401,9 @@ vulkan_render_loader::create_material(const agea::utils::id& id,
 }
 
 sampler_data*
-vulkan_render_loader::create_sampler(const agea::utils::id& id, VkBorderColor color)
+vulkan_render_loader::create_sampler(const kryga::utils::id& id, VkBorderColor color)
 {
-    AGEA_check(!get_sampler_data(id), "Shouldn't exist");
+    KRG_check(!get_sampler_data(id), "Shouldn't exist");
 
     auto device = glob::render_device::get();
 
@@ -424,7 +424,7 @@ vulkan_render_loader::create_sampler(const agea::utils::id& id, VkBorderColor co
 }
 
 void
-vulkan_render_loader::destroy_sampler_data(const agea::utils::id& id)
+vulkan_render_loader::destroy_sampler_data(const kryga::utils::id& id)
 {
     auto itr = m_samplers_cache.find(id);
     if (itr != m_samplers_cache.end())
@@ -438,7 +438,7 @@ bool
 vulkan_render_loader::update_material(material_data& mat_data,
                                       std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
-                                      const agea::utils::dynobj& gpu_params)
+                                      const kryga::utils::dynobj& gpu_params)
 {
     mat_data.set_shader_effect(&se_data);
     mat_data.set_texture_samples(samples);
@@ -448,7 +448,7 @@ vulkan_render_loader::update_material(material_data& mat_data,
 }
 
 void
-vulkan_render_loader::destroy_material_data(const agea::utils::id& id)
+vulkan_render_loader::destroy_material_data(const kryga::utils::id& id)
 {
     auto itr = m_materials_cache.find(id);
     if (itr != m_materials_cache.end())
@@ -459,11 +459,11 @@ vulkan_render_loader::destroy_material_data(const agea::utils::id& id)
 }
 
 result_code
-vulkan_render_loader::create_shader_effect(const agea::utils::id& id,
+vulkan_render_loader::create_shader_effect(const kryga::utils::id& id,
                                            const shader_effect_create_info& info,
                                            shader_effect_data*& sed)
 {
-    AGEA_check(!get_shader_effect_data(id), "should never happens");
+    KRG_check(!get_shader_effect_data(id), "should never happens");
 
     auto device = glob::render_device::get();
     auto effect = std::make_shared<shader_effect_data>(id);
@@ -483,7 +483,7 @@ result_code
 vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
-    AGEA_check(get_shader_effect_data(se_data.get_id()), "should never happens");
+    KRG_check(get_shader_effect_data(se_data.get_id()), "should never happens");
 
     std::shared_ptr<render::shader_effect_data> old_se_data;
 
@@ -506,7 +506,7 @@ vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
 }
 
 void
-vulkan_render_loader::destroy_shader_effect_data(const agea::utils::id& id)
+vulkan_render_loader::destroy_shader_effect_data(const kryga::utils::id& id)
 {
     auto itr = m_shaders_effects_cache.find(id);
     if (itr != m_shaders_effects_cache.end())
@@ -517,7 +517,7 @@ vulkan_render_loader::destroy_shader_effect_data(const agea::utils::id& id)
 }
 
 void
-vulkan_render_loader::create_font(const agea::utils::id& id, ImFont* font)
+vulkan_render_loader::create_font(const kryga::utils::id& id, ImFont* font)
 {
     m_fonts_cache[id] = font;
 }
@@ -536,4 +536,4 @@ vulkan_render_loader::clear_caches()
 }  // namespace render
 }  // namespace render
 
-}  // namespace agea
+}  // namespace kryga

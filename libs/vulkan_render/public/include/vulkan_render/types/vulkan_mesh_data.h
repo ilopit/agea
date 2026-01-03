@@ -6,7 +6,7 @@
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -19,12 +19,12 @@ struct vertex_input_description
 };
 
 vertex_input_description
-convert_to_vertex_input_description(agea::utils::dynobj_layout& dol);
+convert_to_vertex_input_description(kryga::utils::dynobj_layout& dol);
 
 class mesh_data
 {
 public:
-    mesh_data(const ::agea::utils::id& id)
+    mesh_data(const ::kryga::utils::id& id)
         : m_id(id)
     {
     }
@@ -52,7 +52,7 @@ public:
         return m_indices_size;
     }
 
-    const ::agea::utils::id&
+    const ::kryga::utils::id&
     get_id()
     {
         return m_id;
@@ -66,8 +66,8 @@ public:
     vk_utils::vulkan_buffer m_index_buffer;
 
 private:
-    ::agea::utils::id m_id;
+    ::kryga::utils::id m_id;
 };
 }  // namespace render
 
-}  // namespace agea
+}  // namespace kryga

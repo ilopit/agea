@@ -27,11 +27,11 @@ Options: `-v` verbose, `-c` clean (configure), `-r` release, `-j N` parallel job
  - 'cmake': cmake extension scripts
 
 ## libs/ Structure
- - 'ar': Reflection macros (AGEA_ar_class, AGEA_ar_property, etc.) - parsed by argen.py to generate reflection code
- - 'assets_importer': Converts external assets to agea formats (.amsh meshes, .atxt textures)
+ - 'ar': Reflection macros (KRG_ar_class, KRG_ar_property, etc.) - parsed by argen.py to generate reflection code
+ - 'assets_importer': Converts external assets to kryga formats (.amsh meshes, .atxt textures)
  - 'core': Central engine systems - reflection registry, package/level managers, object caches, architypes
  - 'error_handling': Result codes (ok, failed, serialization_error, etc.)
- - 'global_state': Global singleton state - holds caches, managers, resource_locator. Access via `agea::glob::glob_state()`
+ - 'global_state': Global singleton state - holds caches, managers, resource_locator. Access via `kryga::glob::glob_state()`
  - 'native': SDL window wrapper
  - 'render_bridge': Connects model objects to Vulkan render data, manages render dependencies
  - 'resource_locator': Resolves paths by category (assets, shaders, levels, etc.)

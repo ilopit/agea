@@ -3,10 +3,10 @@
 #include <cstdint>
 
 #include <utils/singleton_instance.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/clock.h>
 
-namespace agea
+namespace kryga
 {
 
 struct engine_counters
@@ -42,13 +42,13 @@ struct scope
 
 namespace glob
 {
-struct engine_counters : public singleton_instance<::agea::engine_counters, engine_counters>
+struct engine_counters : public singleton_instance<::kryga::engine_counters, engine_counters>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga
 
-#define AGEA_make_scope(VAR)                                        \
-    volatile scope<decltype(::agea::engine_counters::VAR)> scope_s( \
-        ::agea::glob::engine_counters::getr().VAR)
+#define KRG_make_scope(VAR)                                        \
+    volatile scope<decltype(::kryga::engine_counters::VAR)> scope_s( \
+        ::kryga::glob::engine_counters::getr().VAR)

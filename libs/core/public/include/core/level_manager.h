@@ -5,7 +5,7 @@
 #include "core/model_minimal.h"
 #include "core/caches/cache_set.h"
 
-namespace agea::core
+namespace kryga::core
 {
 class level_manager
 {
@@ -25,4 +25,4 @@ private:
 
     std::unordered_map<utils::id, std::unique_ptr<level>> m_levels;
 };
-}  // namespace agea::core
+}  // namespace kryga::core

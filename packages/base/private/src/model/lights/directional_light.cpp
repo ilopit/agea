@@ -8,12 +8,12 @@
 
 #include <core/caches/cache_set.h>
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(directional_light);
+KRG_gen_class_cd_default(directional_light);
 
 bool
 directional_light::construct(construct_params& params)
@@ -43,9 +43,9 @@ directional_light::on_tick(float dt)
         dir = !dir;
         f = 0.f;
     }
-    ::agea::root::vec3 g{0.f, dt * (dir ? -1.f : 1.f), 0.f};
+    ::kryga::root::vec3 g{0.f, dt * (dir ? -1.f : 1.f), 0.f};
     // move(g);
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

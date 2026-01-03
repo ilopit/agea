@@ -5,7 +5,7 @@
 #include <utils/id.h>
 #include <utils/id_allocator.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -80,7 +80,7 @@ struct buffer_layout
     buffer_segment<T>*
     add(const utils::id& name, uint64_t type_size, uint64_t reserved_size)
     {
-        AGEA_check(!find(name), "Should not exists !");
+        KRG_check(!find(name), "Should not exists !");
 
         auto new_id = m_id_alloc.alloc_id();
 
@@ -92,7 +92,7 @@ struct buffer_layout
 
             result = &m_segments[new_id];
 
-            AGEA_check(!result->in_usage, "Should not exists !");
+            KRG_check(!result->in_usage, "Should not exists !");
 
             result->offset = calc_offset((uint32_t)new_id);
             result->reserved_size = reserved_size;
@@ -102,7 +102,7 @@ struct buffer_layout
         {
             result = &m_segments[new_id];
 
-            AGEA_check(!result->in_usage, "Should not exists !");
+            KRG_check(!result->in_usage, "Should not exists !");
         }
 
         result->in_usage = true;
@@ -203,4 +203,4 @@ private:
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

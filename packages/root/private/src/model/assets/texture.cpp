@@ -1,11 +1,11 @@
 #include "packages/root/model/assets/texture.h"
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 
-AGEA_gen_class_cd_default(texture);
+KRG_gen_class_cd_default(texture);
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

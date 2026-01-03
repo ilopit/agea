@@ -5,11 +5,11 @@
 
 #include <packages/root/model/smart_object.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <format>
 
-namespace agea
+namespace kryga
 {
 
 namespace core
@@ -26,13 +26,13 @@ clear_numbered_part(std::string& id)
         return;
     }
 
-    AGEA_check(pos, "Should not be first");
+    KRG_check(pos, "Should not be first");
 
     id.resize(pos);
 }
 }  // namespace
 
-agea::utils::id
+kryga::utils::id
 id_generator::generate(const utils::id& obj_id)
 {
     auto obj_id_raw = obj_id.str();
@@ -60,4 +60,4 @@ id_generator::generate(const utils::id& obj_id)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

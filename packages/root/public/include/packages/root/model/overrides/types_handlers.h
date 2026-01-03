@@ -2,8 +2,8 @@
 
 #include <core/reflection/reflection_type_utils.h>
 
-AGEA_ar_model_overrides();
-namespace agea::root
+KRG_ar_model_overrides();
+namespace kryga::root
 {
 // clang-format off
 
@@ -50,4 +50,4 @@ result_code vec4__to_string(reflection::type_context__to_string& ctx);
 
 // clang-format on
 
-}  // namespace agea::root
+}  // namespace kryga::root

@@ -9,8 +9,8 @@ add_executable (model_tests
  )
 
 target_link_libraries(model_tests
-    agea::core
+    kryga::core
     gtest
 )
 
-agea_finalize_executable(model_tests)
+kryga_finalize_executable(model_tests)

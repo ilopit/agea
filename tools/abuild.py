@@ -24,39 +24,39 @@ def main():
         exit(-1)
 
     should_reopned = False
-    agea_root_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    agea_build_dir = os.path.join(agea_root_dir, "build")
+    kryga_root_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    kryga_build_dir = os.path.join(kryga_root_dir, "build")
 
-    if clean_build and os.path.exists(agea_build_dir):
+    if clean_build and os.path.exists(kryga_build_dir):
         
         for proc in psutil.process_iter():
             # check whether the process name matches
             if proc.name() == "devenv.exe":
 
                 cmdline = proc.cmdline()
-                print(agea_build_dir)
+                print(kryga_build_dir)
 
-                if len(cmdline) > 1 and cmdline[1] == (agea_build_dir + "\\agea.sln"):
+                if len(cmdline) > 1 and cmdline[1] == (kryga_build_dir + "\\kryga.sln"):
                     should_reopned = True
                     proc.kill()
                     time.sleep(2)
 
-        print("Removing " + agea_build_dir)
-        shutil.rmtree(agea_build_dir)
+        print("Removing " + kryga_build_dir)
+        shutil.rmtree(kryga_build_dir)
 
-    config_cmd = "cmake -A x64 -B{0} -S{1}".format(agea_build_dir, agea_root_dir)
+    config_cmd = "cmake -A x64 -B{0} -S{1}".format(kryga_build_dir, kryga_root_dir)
     os.system(config_cmd)
 
     if build_engine:
-        build_cmd = "cmake --build {0} --target engine_app".format(agea_build_dir)
+        build_cmd = "cmake --build {0} --target engine_app".format(kryga_build_dir)
         os.system(build_cmd)
 
     if open_env:
-        os.system("code " + agea_root_dir)
-        os.system("start " + agea_build_dir + "/agea.sln")
+        os.system("code " + kryga_root_dir)
+        os.system("start " + kryga_build_dir + "/kryga.sln")
 
     if should_reopned:
-        os.system("start " + agea_build_dir + "/agea.sln")
+        os.system("start " + kryga_build_dir + "/kryga.sln")
 
 
 if __name__ == "__main__":

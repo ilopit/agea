@@ -26,14 +26,14 @@
 #include <packages/base/model/components/mesh_component.h>
 #include <packages/base/model/assets/simple_texture_material.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/file_utils.h>
 
 #include <gtest/gtest.h>
 #include <sstream>
 #include <fstream>
 
-using namespace agea;
+using namespace kryga;
 
 namespace
 {
@@ -45,7 +45,7 @@ validate_empty_cache(gs::state& gs)
          i = (core::architype)((uint8_t)i + 1))
     {
         ASSERT_TRUE(gs.getr_class_cache_map().get_cache(i)->get_items().empty())
-            << "Failed at " << ::agea::core::to_string(i);
+            << "Failed at " << ::kryga::core::to_string(i);
     }
 }
 

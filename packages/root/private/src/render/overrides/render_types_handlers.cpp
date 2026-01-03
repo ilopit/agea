@@ -33,13 +33,13 @@
 #include <vulkan_render/types/vulkan_shader_data.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace root
@@ -112,7 +112,7 @@ material__render_loader(reflection::type_context__render& ctx)
         se_data = glob::vulkan_render_loader::getr().get_shader_effect_data(AID("se_error"));
     }
 
-    AGEA_check(se_data, "Should exist");
+    KRG_check(se_data, "Should exist");
 
     auto mat_data = glob::vulkan_render_loader::get()->get_material_data(mat_model.get_id());
 
@@ -166,14 +166,14 @@ texture__render_loader(reflection::type_context__render& ctx)
 
     render::texture_data* txt_data = nullptr;
 
-    if (::agea::render_bridge::is_agea_texture(bc.get_file()))
+    if (::kryga::render_bridge::is_kryga_texture(bc.get_file()))
     {
         txt_data = glob::vulkan_render_loader::get()->create_texture(t.get_id(), bc, w, h);
     }
     else
     {
         utils::buffer b;
-        if (!agea::asset_importer::texture_importer::extract_texture_from_buffer(bc, b, w, h))
+        if (!kryga::asset_importer::texture_importer::extract_texture_from_buffer(bc, b, w, h))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -209,7 +209,7 @@ game_object_component__render_loader(reflection::type_context__render& ctx)
     for (auto& o : r)
     {
         auto rc = ctx.rb->render_ctor(o, false);
-        AGEA_return_nok(rc);
+        KRG_return_nok(rc);
     }
 
     return result_code::ok;
@@ -224,7 +224,7 @@ game_object_component__render_destructor(reflection::type_context__render& ctx)
     for (auto& o : r)
     {
         auto rc = ctx.rb->render_dtor(o, false);
-        AGEA_return_nok(rc);
+        KRG_return_nok(rc);
     }
 
     return result_code::ok;
@@ -237,14 +237,14 @@ shader_effect__render_loader(reflection::type_context__render& ctx)
 
     auto se_data = glob::vulkan_render_loader::get()->get_shader_effect_data(se_model.get_id());
 
-    auto se_ci = ::agea::render_bridge::make_se_ci(se_model);
+    auto se_ci = ::kryga::render_bridge::make_se_ci(se_model);
 
     if (!se_data)
     {
         auto rc = glob::vulkan_render_loader::get()->create_shader_effect(se_model.get_id(), se_ci,
                                                                           se_data);
 
-        AGEA_check(se_data, "Should never happen!");
+        KRG_check(se_data, "Should never happen!");
 
         se_model.set_shader_effect_data(se_data);
 
@@ -278,4 +278,4 @@ shader_effect__render_destructor(reflection::type_context__render& ctx)
 /*===============================*/
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

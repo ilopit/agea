@@ -4,22 +4,22 @@
 
 #include "packages/root/model/smart_object.h"
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
-AGEA_ar_class();
+KRG_ar_class();
 class asset : public smart_object
 {
-    AGEA_gen_meta__asset();
+    KRG_gen_meta__asset();
 
 public:
-    AGEA_gen_class_meta(asset, smart_object);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(asset, smart_object);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     void
     mark_render_dirty();
 };
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

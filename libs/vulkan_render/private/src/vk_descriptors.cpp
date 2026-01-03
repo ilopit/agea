@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 
 namespace
@@ -106,7 +106,7 @@ descriptor_allocator::allocate(VkDescriptorSet* set, VkDescriptorSetLayout layou
         }
     }
 
-    AGEA_never("Should never happens!");
+    KRG_never("Should never happens!");
 
     return false;
 }
@@ -374,4 +374,4 @@ descriptor_layout_cache::descriptor_layout_info::hash() const
     return result;
 }
 
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

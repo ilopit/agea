@@ -7,7 +7,7 @@
 #include <vector>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -177,4 +177,4 @@ private:
 };
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

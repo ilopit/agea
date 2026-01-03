@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -41,4 +41,4 @@ private:
     std::vector<uint64_t> m_free_ids;
 };
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

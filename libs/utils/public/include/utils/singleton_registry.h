@@ -7,7 +7,7 @@
 
 #include <memory>
 
-namespace agea
+namespace kryga
 {
 
 class singleton_registry
@@ -25,4 +25,4 @@ private:
     utils::line_container<base_singleton_instance*> m_refs;
 };
 
-}  // namespace agea
+}  // namespace kryga

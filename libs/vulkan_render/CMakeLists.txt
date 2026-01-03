@@ -16,19 +16,19 @@ add_library(vulkan_render STATIC
 )
 
 target_link_libraries(vulkan_render PUBLIC
-    agea::utils
-    agea::gpu_types
-    agea::native
-    agea::resource_locator
-    agea::serialization
-    agea::error_handling
-    agea::global_state
-    agea::render_utils
+    kryga::utils
+    kryga::gpu_types
+    kryga::native
+    kryga::resource_locator
+    kryga::serialization
+    kryga::error_handling
+    kryga::global_state
+    kryga::render_utils
 
-    agea::glm_unofficial
-    agea::imgui_unofficial
-    agea::stb_unofficial
-    agea::vma_unofficial
+    kryga::glm_unofficial
+    kryga::imgui_unofficial
+    kryga::stb_unofficial
+    kryga::vma_unofficial
 
     Vulkan::Vulkan
     vk-bootstrap::vk-bootstrap
@@ -36,6 +36,6 @@ target_link_libraries(vulkan_render PUBLIC
     tinyobjloader
     sdl2
 )
-agea_finalize_library(vulkan_render)
+kryga_finalize_library(vulkan_render)
 
 add_subdirectory(private/tests)

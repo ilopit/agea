@@ -2,17 +2,17 @@
 
 #include "core/level.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(mesh_component);
+KRG_gen_class_cd_default(mesh_component);
 
 bool
 mesh_component::construct(construct_params& c)
 {
-    AGEA_return_false(base_class::construct(c));
+    KRG_return_false(base_class::construct(c));
 
     if (c.mesh_handle)
     {
@@ -28,4 +28,4 @@ mesh_component::construct(construct_params& c)
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

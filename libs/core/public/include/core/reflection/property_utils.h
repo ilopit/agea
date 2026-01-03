@@ -10,7 +10,7 @@ namespace YAML
 class Node;
 }
 
-namespace agea
+namespace kryga
 {
 
 namespace reflection
@@ -90,4 +90,4 @@ using property_handler__to_string       = result_code(*)(property_context__to_st
 
 }  // namespace reflection
 
-}  // namespace agea
+}  // namespace kryga

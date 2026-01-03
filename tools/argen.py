@@ -1,4 +1,4 @@
-"""AR (Agea Reflection) code generator.
+"""AR (KRYGA Reflection) code generator.
 
 This module is the main entry point for generating reflection code.
 It manages module ranges, dependencies, type IDs, and orchestrates
@@ -21,10 +21,10 @@ import arapi.writer
 MODULE_ROOT = "root"
 
 # Namespace tokens to exclude from type IDs
-EXCLUDED_NAMESPACE_TOKENS = {MODULE_ROOT, 'std', 'agea', ''}
+EXCLUDED_NAMESPACE_TOKENS = {MODULE_ROOT, 'std', 'kryga', ''}
 
 
-def gen_id(type_obj: arapi.types.agea_type, module_name: str) -> None:
+def gen_id(type_obj: arapi.types.kryga_type, module_name: str) -> None:
   """Generate type ID for a type.
     
     Args:
@@ -114,7 +114,7 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
 
   # Write class include files
   for type_obj in context.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       arapi.writer.write_ar_class_include_file(type_obj, context, output_dir)
 
   # Update global files
@@ -132,7 +132,7 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
 
 def main() -> None:
   """Main entry point for AR generator."""
-  parser = argparse.ArgumentParser(description="AR (Agea Reflection) code generator")
+  parser = argparse.ArgumentParser(description="AR (KRYGA Reflection) code generator")
 
   parser.add_argument("--type", type=str, help="Generation type (e.g., 'package')")
   parser.add_argument("--config", type=str, help="Configuration file path")

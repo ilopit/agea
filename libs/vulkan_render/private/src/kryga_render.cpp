@@ -1,4 +1,4 @@
-#include "vulkan_render/agea_render.h"
+#include "vulkan_render/kryga_render.h"
 
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
@@ -21,7 +21,7 @@
 
 #include <native/native_window.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/clock.h>
 #include <utils/dynamic_object.h>
 #include <utils/dynamic_object_builder.h>
@@ -33,7 +33,7 @@
 #include <resource_locator/resource_locator.h>
 #include <global_state/global_state.h>
 
-namespace agea
+namespace kryga
 {
 glob::vulkan_render::type glob::vulkan_render::type::s_instance;
 
@@ -56,7 +56,7 @@ ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
                                size_t required_size,
                                const char* name)
 {
-    AGEA_check(required_size, "Should never happen");
+    KRG_check(required_size, "Should never happen");
 
     if (required_size >= buffer.get_alloc_size())
     {
@@ -409,7 +409,7 @@ vulkan_render::build_ssbo_sets(render::frame_state& current_frame)
                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(m_objects_set);
 
-    AGEA_check(m_objects_set, "Should never happen");
+    KRG_check(m_objects_set, "Should never happen");
 }
 
 void
@@ -419,7 +419,7 @@ vulkan_render::upload_obj_data(render::frame_state& frame)
 
     auto* data = (gpu_object_data*)ensure_buffer_capacity_and_map(frame.m_object_buffer, total_size,
                                                                   "objects");
-    AGEA_check(data, "Should never happen");
+    KRG_check(data, "Should never happen");
 
     upload_gpu_object_data(data);
     frame.m_object_buffer.end();
@@ -432,7 +432,7 @@ vulkan_render::upload_universal_light_data(render::frame_state& frame)
 
     auto* data = (gpu::universal_light_data*)ensure_buffer_capacity_and_map(
         frame.m_universal_lights_buffer, total_size, "universal lights");
-    AGEA_check(data, "Should never happen");
+    KRG_check(data, "Should never happen");
 
     upload_gpu_universal_light_data(data);
     frame.m_universal_lights_buffer.end();
@@ -447,7 +447,7 @@ vulkan_render::upload_directional_light_data(render::frame_state& frame)
     auto* data = (gpu::directional_light_data*)ensure_buffer_capacity_and_map(
         frame.m_directional_lights_buffer, total_size, "directional lights");
 
-    AGEA_check(data, "Should never happen");
+    KRG_check(data, "Should never happen");
 
     upload_gpu_directional_light_data(data);
     frame.m_directional_lights_buffer.end();
@@ -658,7 +658,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
 void
 vulkan_render::bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh)
 {
-    AGEA_check(cur_mesh, "Should not be null");
+    KRG_check(cur_mesh, "Should not be null");
 
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
@@ -736,11 +736,11 @@ vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout
 void
 vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
 {
-    AGEA_check(obj_data, "Should be always valid");
+    KRG_check(obj_data, "Should be always valid");
 
     if (obj_data->outlined)
     {
-        AGEA_check(obj_data->queue_id != "transparent", "Not supported!");
+        KRG_check(obj_data->queue_id != "transparent", "Not supported!");
 
         m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
 
@@ -767,10 +767,10 @@ vulkan_render::reschedule_to_drawing(render::vulkan_render_data* obj_data)
 void
 vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
 {
-    AGEA_check(obj_data, "Should be always valid");
+    KRG_check(obj_data, "Should be always valid");
 
     {
-        AGEA_check(obj_data->queue_id != "transparent", "Not supported!");
+        KRG_check(obj_data->queue_id != "transparent", "Not supported!");
 
         const std::string id = obj_data->queue_id;
 
@@ -924,7 +924,7 @@ vulkan_render::set_light_grid_cell_size(float cell_size)
 void
 vulkan_render::rebuild_light_grid()
 {
-    AGEA_check(m_light_grid.is_initialized(), "");
+    KRG_check(m_light_grid.is_initialized(), "");
 
     m_light_grid.clear();
 
@@ -1115,16 +1115,16 @@ vulkan_render::prepare_system_resources()
     glob::vulkan_render_loader::getr().create_sampler(AID("font"),
                                                       VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
-    agea::utils::buffer vert, frag;
+    kryga::utils::buffer vert, frag;
 
     auto path = glob::glob_state().get_resource_locator()->resource(
         category::packages, "base.apkg/class/shader_effects");
 
     auto vert_path = path / "error/se_error.vert";
-    agea::utils::buffer::load(vert_path, vert);
+    kryga::utils::buffer::load(vert_path, vert);
 
     auto frag_path = path / "error/se_error.frag";
-    agea::utils::buffer::load(frag_path, frag);
+    kryga::utils::buffer::load(frag_path, frag);
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
@@ -1139,36 +1139,36 @@ vulkan_render::prepare_system_resources()
 
     shader_effect_data* sed = nullptr;
     auto rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_error"), se_ci, sed);
-    AGEA_check(rc == result_code::ok && sed, "Always should be good!");
+    KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     vert_path = path / "system/se_outline.vert";
-    agea::utils::buffer::load(vert_path, vert);
+    kryga::utils::buffer::load(vert_path, vert);
 
     frag_path = path / "system/se_outline.frag";
-    agea::utils::buffer::load(frag_path, frag);
+    kryga::utils::buffer::load(frag_path, frag);
 
     se_ci.ds_mode = depth_stencil_mode::outline;
 
     sed = nullptr;
     rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_outline"), se_ci, sed);
-    AGEA_check(rc == result_code::ok && sed, "Always should be good!");
+    KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     std::vector<texture_sampler_data> sd;
     m_outline_mat = glob::vulkan_render_loader::getr().create_material(
         AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
 
     vert_path = path / "system/se_pick.vert";
-    agea::utils::buffer::load(vert_path, vert);
+    kryga::utils::buffer::load(vert_path, vert);
 
     frag_path = path / "system/se_pick.frag";
-    agea::utils::buffer::load(frag_path, frag);
+    kryga::utils::buffer::load(frag_path, frag);
 
     se_ci.ds_mode = depth_stencil_mode::none;
     se_ci.rp = m_render_passes[AID("picking")].get();
     sed = nullptr;
 
     rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_pick"), se_ci, sed);
-    AGEA_check(rc == result_code::ok && sed, "Always should be good!");
+    KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     m_pick_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_pick"), AID("pick"),
                                                                     sd, *sed, utils::dynobj{});
@@ -1209,7 +1209,7 @@ vulkan_render::prepare_ui_resources()
 
     auto size = tex_width * tex_height * 4 * sizeof(char);
 
-    agea::utils::buffer image_raw_buffer;
+    kryga::utils::buffer image_raw_buffer;
     image_raw_buffer.resize(size);
     memcpy(image_raw_buffer.data(), font_data, size);
 
@@ -1228,19 +1228,19 @@ vulkan_render::prepare_ui_pipeline()
         category::packages, "base.apkg/class/shader_effects/ui");
 
     {
-        agea::utils::buffer vert, frag;
+        kryga::utils::buffer vert, frag;
 
         auto vert_path = path / "se_uioverlay.vert";
-        agea::utils::buffer::load(vert_path, vert);
+        kryga::utils::buffer::load(vert_path, vert);
 
         auto frag_path = path / "se_uioverlay.frag";
-        agea::utils::buffer::load(frag_path, frag);
+        kryga::utils::buffer::load(frag_path, frag);
 
         auto layout = render::gpu_dynobj_builder()
                           .set_id(AID("interface"))
-                          .add_field(AID("in_pos"), agea::render::gpu_type::g_vec2, 1)
-                          .add_field(AID("in_UV"), agea::render::gpu_type::g_vec2, 1)
-                          .add_field(AID("in_color"), agea::render::gpu_type::g_color, 1)
+                          .add_field(AID("in_pos"), kryga::render::gpu_type::g_vec2, 1)
+                          .add_field(AID("in_UV"), kryga::render::gpu_type::g_vec2, 1)
+                          .add_field(AID("in_color"), kryga::render::gpu_type::g_color, 1)
                           .finalize();
 
         shader_effect_create_info se_ci;
@@ -1263,13 +1263,13 @@ vulkan_render::prepare_ui_pipeline()
             AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
     }
     {
-        agea::utils::buffer vert, frag;
+        kryga::utils::buffer vert, frag;
 
         auto vert_path = path / "se_upload.vert";
-        agea::utils::buffer::load(vert_path, vert);
+        kryga::utils::buffer::load(vert_path, vert);
 
         auto frag_path = path / "se_upload.frag";
-        agea::utils::buffer::load(frag_path, frag);
+        kryga::utils::buffer::load(frag_path, frag);
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
@@ -1542,4 +1542,4 @@ vulkan_render::get_render_pass(const utils::id& id)
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

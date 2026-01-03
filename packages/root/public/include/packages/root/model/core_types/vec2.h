@@ -3,15 +3,15 @@
 #include <ar/ar_defines.h>
 #include <glm_unofficial/glm.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 
 // clang-format off
-AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_default__copy<::agea::root::vec2>,
-               compare_handler     = ::agea::reflection::utils::cpp_default__compare<::agea::root::vec2>,
-               to_string_handler   = ::agea::root::vec2__to_string);
+KRG_ar_struct(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::kryga::root::vec2>,
+               compare_handler     = ::kryga::reflection::utils::cpp_default__compare<::kryga::root::vec2>,
+               to_string_handler   = ::kryga::root::vec2__to_string);
 struct vec2 : ::glm::vec2
 // clang-format on
 {
@@ -25,7 +25,7 @@ struct vec2 : ::glm::vec2
     {
     }
 
-    AGEA_ar_ctor("category=world");
+    KRG_ar_ctor("category=world");
     vec2(float x, float y)
         : glm::vec2(x, y)
     {
@@ -44,14 +44,14 @@ struct vec2 : ::glm::vec2
     }
 
     // x
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     void
     set_x(float v)
     {
         x = v;
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     float
     get_x() const
     {
@@ -59,14 +59,14 @@ struct vec2 : ::glm::vec2
     }
 
     // y
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     void
     set_y(float v)
     {
         y = v;
     }
 
-    AGEA_ar_function("category=world");
+    KRG_ar_function("category=world");
     float
     get_y() const
     {
@@ -75,4 +75,4 @@ struct vec2 : ::glm::vec2
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

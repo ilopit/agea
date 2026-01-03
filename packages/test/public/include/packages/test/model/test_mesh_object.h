@@ -6,24 +6,24 @@
 
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace test
 {
 
-AGEA_ar_class();
-class test_mesh_object : public ::agea::base::mesh_object
+KRG_ar_class();
+class test_mesh_object : public ::kryga::base::mesh_object
 {
-    AGEA_gen_meta__test_mesh_object();
+    KRG_gen_meta__test_mesh_object();
 
 public:
-    AGEA_gen_class_meta(test_mesh_object, ::agea::base::mesh_object);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(test_mesh_object, ::kryga::base::mesh_object);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     bool
     construct(construct_params& params);
 };
 
 }  // namespace test
-}  // namespace agea
+}  // namespace kryga

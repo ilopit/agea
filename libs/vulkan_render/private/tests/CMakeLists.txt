@@ -9,8 +9,8 @@ add_executable (vulkan_render_tests
  )
 
 target_link_libraries(vulkan_render_tests
-    agea::vulkan_render
+    kryga::vulkan_render
     gtest
 )
 
-agea_finalize_executable(vulkan_render_tests)
+kryga_finalize_executable(vulkan_render_tests)

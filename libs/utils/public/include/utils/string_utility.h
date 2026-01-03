@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 struct string_utils
 {
@@ -25,4 +25,4 @@ struct string_utils
     static bool
     convert_hex_string_to_bytes(size_t size, const char* s, uint8_t* ptr);
 };
-}  // namespace agea
+}  // namespace kryga

@@ -12,7 +12,7 @@
 
 #include <stack>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -97,7 +97,7 @@ public:
     object_load_type
     get_construction_type()
     {
-        AGEA_check(!m_types.empty(), "Shouldn't be empty");
+        KRG_check(!m_types.empty(), "Shouldn't be empty");
         return m_types.top();
     }
 
@@ -126,4 +126,4 @@ private:
     std::stack<object_load_type> m_types;
 };
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

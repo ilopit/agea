@@ -1,11 +1,11 @@
 #include "packages/root/model/assets/mesh.h"
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 
-AGEA_gen_class_cd_default(mesh);
+KRG_gen_class_cd_default(mesh);
 
 bool
 mesh::construct(this_class::construct_params& params)
@@ -22,4 +22,4 @@ mesh::construct(this_class::construct_params& params)
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

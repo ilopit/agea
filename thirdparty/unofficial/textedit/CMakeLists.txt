@@ -11,5 +11,5 @@ target_sources(textedit_unofficial PRIVATE
     "${textedit_prefix}/textedit/ImGuiDebugPanel.cpp"
     "${textedit_prefix}/textedit/LanguageDefinitions.cpp"
 )
-target_link_libraries(textedit_unofficial agea::imgui_unofficial)
-add_library(agea::textedit_unofficial ALIAS textedit_unofficial)
+target_link_libraries(textedit_unofficial kryga::imgui_unofficial)
+add_library(kryga::textedit_unofficial ALIAS textedit_unofficial)

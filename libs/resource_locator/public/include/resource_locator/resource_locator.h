@@ -7,7 +7,7 @@
 #include <optional>
 #include <functional>
 
-namespace agea
+namespace kryga
 {
 
 extern const std::string TEXTURE_EXT;
@@ -73,4 +73,4 @@ private:
     std::filesystem::path m_root = std::filesystem::current_path().parent_path();
 };
 
-}  // namespace agea
+}  // namespace kryga

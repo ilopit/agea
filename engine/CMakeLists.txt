@@ -1,6 +1,6 @@
 file(GLOB ENGINE_SRC           "public/include/engine/*.h"    "private/src/*.cpp")
 file(GLOB ENGINE_UI_SRC        "public/include/engine/ui/*.h" "private/src/ui/*.cpp")
-file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/agea_generated/engine/*.cpp")
+file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/kryga_generated/engine/*.cpp")
 
 add_library(engine STATIC
    ${ENGINE_SRC}
@@ -9,16 +9,16 @@ add_library(engine STATIC
 )
 
 target_link_libraries(engine PUBLIC
-    agea::utils
-    agea::core
-    agea::vulkan_render
-    agea::asset_importer
-    agea::render_bridge
-    agea::native
+    kryga::utils
+    kryga::core
+    kryga::vulkan_render
+    kryga::asset_importer
+    kryga::render_bridge
+    kryga::native
 
-    agea::textedit_unofficial
+    kryga::textedit_unofficial
 
-    ${AGEA_ACTIVE_MODULES_TARGETS}
+    ${KRG_ACTIVE_MODULES_TARGETS}
 
     boost_beast
     Boost::url
@@ -28,12 +28,12 @@ target_link_libraries(engine PUBLIC
 
 target_include_directories(engine 
     PUBLIC 
-        ${CMAKE_BINARY_DIR}/agea_generated
+        ${CMAKE_BINARY_DIR}/kryga_generated
     PRIVATE 
         "${CMAKE_CURRENT_SOURCE_DIR}/private/include" 
 )
 
-agea_finalize_library(engine)
+kryga_finalize_library(engine)
 
 add_executable(engine_app "private/src/app/main.cpp")
 
@@ -46,4 +46,4 @@ target_link_libraries(engine_app
     engine
 )
 
-agea_finalize_executable(engine_app)
+kryga_finalize_executable(engine_app)

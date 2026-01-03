@@ -10,7 +10,7 @@
 #include <vector>
 #include <functional>
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 class vulkan_buffer
 {
@@ -21,7 +21,7 @@ public:
     static vulkan_buffer
     create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
 
-    AGEA_gen_class_non_copyable(vulkan_buffer);
+    KRG_gen_class_non_copyable(vulkan_buffer);
 
     vulkan_buffer(vulkan_buffer&& other) noexcept;
     vulkan_buffer&
@@ -123,4 +123,4 @@ private:
     std::vector<uint32_t> m_offsets;
 };
 
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

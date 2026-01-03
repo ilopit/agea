@@ -3,14 +3,14 @@
 #include <core/reflection/reflection_type.h>
 
 #include <utils/defines_utils.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 
-AGEA_gen_class_cd_default(smart_object);
+KRG_gen_class_cd_default(smart_object);
 
 bool
 smart_object::post_construct()
@@ -33,7 +33,7 @@ smart_object::post_load()
 void
 smart_object::set_state(smart_object_state v)
 {
-    AGEA_check(m_obj_state != v, "Should NOT go to the same state");
+    KRG_check(m_obj_state != v, "Should NOT go to the same state");
 
     m_obj_state = v;
 }
@@ -44,11 +44,11 @@ smart_object::get_architype_id() const
     return m_rt->arch;
 }
 
-const agea::utils::id&
+const kryga::utils::id&
 smart_object::get_type_id() const
 {
     return m_rt->type_name;
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

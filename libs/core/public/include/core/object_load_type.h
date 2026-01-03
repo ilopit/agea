@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -11,4 +11,4 @@ enum class object_load_type
     instance_obj,
 };
 }
-}  // namespace agea
+}  // namespace kryga

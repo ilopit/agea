@@ -9,7 +9,7 @@
 
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -53,4 +53,4 @@ public:
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

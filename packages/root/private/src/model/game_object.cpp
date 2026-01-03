@@ -9,7 +9,7 @@
 #include <core/object_load_context.h>
 #include <core/global_state.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -44,7 +44,7 @@ game_object::attach(component* c)
     if (c->get_parent_idx() == -1)
     {
         m_root_component = c->as<game_object_component>();
-        AGEA_check(m_root_component, "Root should be valid");
+        KRG_check(m_root_component, "Root should be valid");
     }
 
     m_components.push_back(c);
@@ -57,7 +57,7 @@ game_object::spawn_component(component* parent,
                              const utils::id& id,
                              const component::construct_params& params)
 {
-    AGEA_check(((bool)m_package != (bool)m_level), "Only one should be set!");
+    KRG_check(((bool)m_package != (bool)m_level), "Only one should be set!");
 
     auto result = core::object_constructor::object_construct(
         type_id, id, params,
@@ -154,7 +154,7 @@ game_object::spawn_component_with_proto(component* parent, const utils::id& prot
 bool
 game_object::post_construct()
 {
-    AGEA_check(get_state() != smart_object_state::constructed, "Should be in proper place");
+    KRG_check(get_state() != smart_object_state::constructed, "Should be in proper place");
 
     recreate_structure_from_layout();
 
@@ -168,7 +168,7 @@ game_object::post_construct()
 bool
 game_object::post_load()
 {
-    AGEA_check(get_state() == smart_object_state::loaded, "Should be in proper place");
+    KRG_check(get_state() == smart_object_state::loaded, "Should be in proper place");
 
     recreate_structure_from_ids();
 
@@ -266,7 +266,7 @@ game_object::recreate_structure_from_ids()
         }
         else
         {
-            AGEA_check(!m_root_component, "Should not be reassigned");
+            KRG_check(!m_root_component, "Should not be reassigned");
             m_root_component = n->as<game_object_component>();
             m_root_component->set_owner(this);
         }
@@ -291,4 +291,4 @@ game_object::move(const vec3& v)
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

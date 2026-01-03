@@ -8,7 +8,7 @@
 #include <string>
 #include <memory>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -142,7 +142,7 @@ public:
     dynobj_view
     subobj(uint64_t field_idx) const
     {
-        AGEA_check(is_object(), "Should be object!");
+        KRG_check(is_object(), "Should be object!");
 
         dynobj_view<TYPE_DESCRIPTOR> f(build_for_subobject(field_idx));
 
@@ -152,7 +152,7 @@ public:
     dynobj_view
     subobj(uint64_t field_idx, uint64_t idx) const
     {
-        AGEA_check(is_object(), "Should be an object!");
+        KRG_check(is_object(), "Should be an object!");
 
         dynobj_view<TYPE_DESCRIPTOR> f(build_for_subobject(field_idx, idx));
 
@@ -163,7 +163,7 @@ public:
     bool
     write_from(uint64_t field_idx, const T& v, VARGS&&... args)
     {
-        AGEA_check(is_object(), "Should be object!");
+        KRG_check(is_object(), "Should be object!");
 
         auto f = field_by_idx(field_idx);
 
@@ -184,7 +184,7 @@ public:
     bool
     write(const T& v, VARGS&&... args)
     {
-        AGEA_check(is_object(), "Should be object!");
+        KRG_check(is_object(), "Should be object!");
 
         auto f = field_by_idx(0);
 
@@ -205,7 +205,7 @@ public:
     bool
     write_from(uint64_t field_idx, const T& v)
     {
-        AGEA_check(is_object(), "Should be object!");
+        KRG_check(is_object(), "Should be object!");
 
         auto f = field_by_idx(field_idx);
 
@@ -223,7 +223,7 @@ public:
     {
         auto f = field_by_idx(0);
 
-        AGEA_check(!is_array(f), "Should not be array!");
+        KRG_check(!is_array(f), "Should not be array!");
 
         if (!f || !read_impl(f, v))
         {
@@ -239,7 +239,7 @@ public:
     {
         auto f = field_by_idx(field_idx);
 
-        AGEA_check(!is_array(f), "Should not be array!");
+        KRG_check(!is_array(f), "Should not be array!");
 
         if (!f || !read_impl(f, v))
         {
@@ -255,7 +255,7 @@ public:
     {
         auto f = field_by_idx(field_idx);
 
-        AGEA_check(!is_array(f), "Should not be array!");
+        KRG_check(!is_array(f), "Should not be array!");
 
         if (!f)
         {
@@ -269,7 +269,7 @@ public:
     bool
     write_array(uint64_t field_idx, uint64_t idx, VARGS&&... args)
     {
-        AGEA_check(is_object(), "Should be object!");
+        KRG_check(is_object(), "Should be object!");
 
         auto f = field_by_idx(field_idx);
 
@@ -278,7 +278,7 @@ public:
             return false;
         }
 
-        AGEA_check(is_array(f), "Should be array!");
+        KRG_check(is_array(f), "Should be array!");
 
         return write_array_impl(f, idx, args...);
     }
@@ -287,7 +287,7 @@ public:
     bool
     read_array(uint64_t field_idx, uint64_t idx, VARGS&&... args)
     {
-        AGEA_check(is_object(), "Should be object!");
+        KRG_check(is_object(), "Should be object!");
 
         auto f = field_by_idx(field_idx);
 
@@ -296,7 +296,7 @@ public:
             return false;
         }
 
-        AGEA_check(is_array(f), "Should be object!");
+        KRG_check(is_array(f), "Should be object!");
 
         return read_array_impl(f, idx, args...);
     }
@@ -462,4 +462,4 @@ private:
 };
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

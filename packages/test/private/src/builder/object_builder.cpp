@@ -4,10 +4,10 @@
 
 #include <utils/static_initializer.h>
 
-namespace agea::root
+namespace kryga::root
 {
 
-// AGEA_schedule_static_register(
+// KRG_schedule_static_register(
 //     [](core::state&)
 //     { package::instance().register_package_extension<package::package_object_builder>(); });
 //
@@ -17,4 +17,4 @@ namespace agea::root
 //     return true;
 // }
 
-}  // namespace agea::root
+}  // namespace kryga::root

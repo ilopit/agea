@@ -15,7 +15,7 @@
 #include <memory>
 #include <bitset>
 
-#define AGEA_gen_class_meta_super(t) \
+#define KRG_gen_class_meta_super(t) \
     using this_class = t;            \
     using base_class = t;            \
     t();                             \
@@ -23,7 +23,7 @@
     t(t&) = delete;                  \
     t& operator=(t&) = delete;
 
-#define AGEA_gen_class_meta(t, b)     \
+#define KRG_gen_class_meta(t, b)     \
     using this_class = t;             \
     using base_class = b::this_class; \
     t();                              \
@@ -31,25 +31,25 @@
     t(t&) = delete;                   \
     t& operator=(t&) = delete;
 
-#define AGEA_gen_construct_params struct construct_params : base_class::construct_params
+#define KRG_gen_construct_params struct construct_params : base_class::construct_params
 
-#define AGEA_gen_meta_api                                                                     \
+#define KRG_gen_meta_api                                                                     \
                                                                                               \
-    static ::agea::utils::id AR_TYPE_id();                                                    \
+    static ::kryga::utils::id AR_TYPE_id();                                                    \
                                                                                               \
-    static const ::agea::reflection::reflection_type& AR_TYPE_reflection();                   \
+    static const ::kryga::reflection::reflection_type& AR_TYPE_reflection();                   \
                                                                                               \
-    virtual bool META_construct(const ::agea::root::base_construct_params& i);                \
+    virtual bool META_construct(const ::kryga::root::base_construct_params& i);                \
                                                                                               \
-    static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::agea::utils::id& id); \
+    static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::kryga::utils::id& id); \
                                                                                               \
-    static std::shared_ptr<::agea::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
-        ::agea::reflection::type_context__alloc& ctx);                                         \
+    static std::shared_ptr<::kryga::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
+        ::kryga::reflection::type_context__alloc& ctx);                                         \
                                                                                               \
-    static std::unique_ptr<::agea::root::base_construct_params>                               \
+    static std::unique_ptr<::kryga::root::base_construct_params>                               \
     AR_TYPE_create_gen_default_cparams();
 
-namespace agea
+namespace kryga
 {
 
 namespace reflection
@@ -105,7 +105,7 @@ struct smart_object_flags
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
 // clang-format off
-AGEA_ar_class(architype                      = smart_object,
+KRG_ar_class(architype                      = smart_object,
               copy_handler                   = smart_obj__copy,
               instantiate_handler            = smart_obj__instantiate,
               compare_handler                = smart_obj__compare,
@@ -115,16 +115,16 @@ AGEA_ar_class(architype                      = smart_object,
 class smart_object
 // clang-format on
 {
-    AGEA_gen_meta__smart_object();
+    KRG_gen_meta__smart_object();
 
 public:
     struct construct_params : public base_construct_params
     {
     };
 
-    AGEA_gen_class_meta_super(smart_object);
+    KRG_gen_class_meta_super(smart_object);
 
-    AGEA_gen_meta_api;
+    KRG_gen_meta_api;
 
     friend class core::object_constructor;
 
@@ -141,7 +141,7 @@ public:
     T*
     as()
     {
-        AGEA_check(this, "Doesn't make sense to call as on dead object right?");
+        KRG_check(this, "Doesn't make sense to call as on dead object right?");
 
         if (!castable_to<T>())
         {
@@ -155,14 +155,14 @@ public:
     T&
     asr()
     {
-        AGEA_check(this, "Doesn't make sense to call as on dead object right?");
+        KRG_check(this, "Doesn't make sense to call as on dead object right?");
         return *((T*)this);
     }
 
     uint8_t*
     as_blob() const
     {
-        AGEA_check(this, "Doesn't make sense to call as on dead object right?");
+        KRG_check(this, "Doesn't make sense to call as on dead object right?");
         return (uint8_t*)this;
     }
 
@@ -232,7 +232,7 @@ public:
     core::architype
     get_architype_id() const;
 
-    AGEA_ar_function("category=reflection");
+    KRG_ar_function("category=reflection");
     const reflection::reflection_type*
     get_reflection() const
     {
@@ -263,7 +263,7 @@ protected:
 
     const reflection::reflection_type* m_rt = nullptr;
 
-    AGEA_ar_property("category=Meta", "access=read_only", "copyable=no");
+    KRG_ar_property("category=Meta", "access=read_only", "copyable=no");
     utils::id m_id;
 
     const smart_object* m_proto_obj = nullptr;
@@ -305,4 +305,4 @@ cast_ref(From* ref)
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

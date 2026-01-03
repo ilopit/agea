@@ -1,6 +1,6 @@
 #include "render_utils/frustum.h"
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -81,4 +81,4 @@ frustum::is_sphere_visible(const glm::vec3& center, float radius) const
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

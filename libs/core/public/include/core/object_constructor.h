@@ -13,7 +13,7 @@
 #include <memory>
 #include <expected>
 
-namespace agea
+namespace kryga
 {
 
 namespace reflection
@@ -197,4 +197,4 @@ private:
 };
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

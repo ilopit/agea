@@ -1,10 +1,10 @@
 #include "engine/editor.h"
 
 #include "engine/input_manager.h"
-#include "engine/agea_engine.h"
+#include "engine/kryga_engine.h"
 
 #include <native/native_window.h>
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 
 #include <core/level.h>
 #include <core/level_manager.h>
@@ -18,7 +18,7 @@
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/spot_light.h>
 
-namespace agea
+namespace kryga
 {
 glob::game_editor::type glob::game_editor::type::s_instance;
 namespace engine
@@ -134,7 +134,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 20;
+    int obj_DIM = 4;
 
     for (x = 0; x < obj_DIM; ++x)
     {
@@ -156,7 +156,7 @@ game_editor::ev_spawn()
         }
     }
 
-    int light_DIM = 15;
+    int light_DIM = 2;
 
     base::point_light::construct_params prms;
 
@@ -228,7 +228,7 @@ game_editor::update_camera()
         return;
     }
 
-    if (glob::input_manager::get()->get_input_state(agea::engine::mouse_right))
+    if (glob::input_manager::get()->get_input_state(kryga::engine::mouse_right))
     {
         m_yaw += m_look_left_delta;
         m_pitch += m_look_up_delta;
@@ -275,4 +275,4 @@ game_editor::get_camera_data()
 
 }  // namespace engine
 
-}  // namespace agea
+}  // namespace kryga

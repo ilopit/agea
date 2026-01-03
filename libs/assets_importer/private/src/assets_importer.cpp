@@ -3,7 +3,7 @@
 #include "assets_importer/mesh_importer.h"
 #include "assets_importer/texture_importer.h"
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/texture.h>
@@ -13,7 +13,7 @@
 
 #include <serialization/serialization.h>
 
-namespace agea
+namespace kryga
 {
 namespace
 {
@@ -104,4 +104,4 @@ convert_image_to_atxt(const utils::path& obj_path,
 }
 
 }  // namespace
-}  // namespace agea
+}  // namespace kryga

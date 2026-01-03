@@ -12,9 +12,9 @@ add_library(resource_locator STATIC
 )
 
 target_link_libraries(resource_locator
-    agea::utils
-    agea::global_state
+    kryga::utils
+    kryga::global_state
 
     spdlog 
 )
-agea_finalize_library(resource_locator)
+kryga_finalize_library(resource_locator)

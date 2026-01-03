@@ -1,40 +1,40 @@
 #pragma once
 
-#define AGEA_return_false(cond) \
+#define KRG_return_false(cond) \
     if (!(cond))                \
     {                           \
         return false;           \
     }
 
-#define AGEA_return_nok(rc)    \
+#define KRG_return_nok(rc)    \
     if (rc != result_code::ok) \
     {                          \
         return rc;             \
     }
 
-#define AGEA_stringify_impl(s) #s
-#define AGEA_stringify(s) AGEA_stringify_impl(s)
+#define KRG_stringify_impl(s) #s
+#define KRG_stringify(s) KRG_stringify_impl(s)
 
-#define AGEA_concat_impl2(x, y) x##y
-#define AGEA_concat2(x, y) AGEA_concat_impl2(x, y)
+#define KRG_concat_impl2(x, y) x##y
+#define KRG_concat2(x, y) KRG_concat_impl2(x, y)
 
-#define AGEA_concat_impl3(x, y, z) x##y##z
-#define AGEA_concat3(x, y, z) AGEA_concat_impl3(x, y, z)
+#define KRG_concat_impl3(x, y, z) x##y##z
+#define KRG_concat3(x, y, z) KRG_concat_impl3(x, y, z)
 
-#define AGEA_gen_class_cd_default(c) \
+#define KRG_gen_class_cd_default(c) \
     c## ::##c() = default;           \
     c## ::##~c() = default;
 
-#define AGEA_gen_class_non_copyable(c) \
+#define KRG_gen_class_non_copyable(c) \
     c(const c&) = delete;              \
     c& operator=(const c&) = delete
 
-#define AGEA_gen_class_non_moveable(c) \
+#define KRG_gen_class_non_moveable(c) \
     c(c&&) = delete;                   \
     c& operator=(c&&) = delete
 
-#define AGEA_gen_class_non_copyble_non_moveable(c) \
-    AGEA_gen_class_non_copyable(c);                \
-    AGEA_gen_class_non_moveable(c);
+#define KRG_gen_class_non_copyble_non_moveable(c) \
+    KRG_gen_class_non_copyable(c);                \
+    KRG_gen_class_non_moveable(c);
 
-#define AGEA_unused(val) (void)(val)
+#define KRG_unused(val) (void)(val)

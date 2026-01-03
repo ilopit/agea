@@ -10,7 +10,7 @@ namespace sol
 class state;
 }
 
-namespace agea::reflection
+namespace kryga::reflection
 {
 class lua_api
 {
@@ -38,4 +38,4 @@ private:
     std::string m_buffer;
 };
 
-}  // namespace agea::reflection
+}  // namespace kryga::reflection

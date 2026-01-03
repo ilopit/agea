@@ -3,7 +3,7 @@
 #include "render_utils/light_grid.h"
 #include "render_utils/frustum.h"
 
-using namespace agea::render;
+using namespace kryga::render;
 
 // ============================================================================
 // calc_light_radius tests

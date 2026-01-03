@@ -4,7 +4,7 @@
 
 #include "type_description.h"
 
-namespace agea::reflection
+namespace kryga::reflection
 {
 template <typename T>
 struct type_resolver
@@ -17,7 +17,7 @@ struct type_resolver
 
 template <typename T>
 type_description
-agea_type_resolve()
+kryga_type_resolve()
 {
     if constexpr (std::is_pointer<T>::value)
     {
@@ -28,4 +28,4 @@ agea_type_resolve()
     return type_description{type_resolver<T>::value, false};
 }
 
-}  // namespace agea::reflection
+}  // namespace kryga::reflection

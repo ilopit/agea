@@ -7,7 +7,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 
-namespace agea::render
+namespace kryga::render
 {
 
 render_pass_builder&
@@ -73,8 +73,8 @@ render_pass::end(VkCommandBuffer cmd)
 render_pass_sptr
 render_pass_builder::build()
 {
-    AGEA_check(m_width, "Should not be 0!");
-    AGEA_check(m_height, "Should not be 0!");
+    KRG_check(m_width, "Should not be 0!");
+    KRG_check(m_height, "Should not be 0!");
 
     auto device = glob::render_device::getr().vk_device();
 
@@ -314,4 +314,4 @@ render_pass_builder::get_dependencies()
 
     return dependencies;
 }
-}  // namespace agea::render
+}  // namespace kryga::render

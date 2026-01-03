@@ -1,5 +1,5 @@
 
-macro(agea_ide_path)
+macro(kryga_ide_path)
 
     get_filename_component(PARENT_DIR_1 ${PROJECT_SOURCE_DIR} DIRECTORY)
     file(RELATIVE_PATH rel ${PARENT_DIR_1} ${CMAKE_CURRENT_LIST_DIR})
@@ -7,9 +7,9 @@ macro(agea_ide_path)
 
 endmacro()
 
-macro(agea_finalize_library)
+macro(kryga_finalize_library)
 
-    agea_ide_path(${ARGV0})
+    kryga_ide_path(${ARGV0})
 
     target_include_directories(${ARGV0} 
         PUBLIC 
@@ -21,23 +21,23 @@ macro(agea_finalize_library)
                 "${CMAKE_CURRENT_SOURCE_DIR}/private/include")
     endif()
 
-    add_library(agea::${ARGV0} ALIAS ${ARGV0})
+    add_library(kryga::${ARGV0} ALIAS ${ARGV0})
 endmacro()
 
-macro(agea_finalize_interface_library)
+macro(kryga_finalize_interface_library)
 
-    agea_ide_path(${ARGV0})
+    kryga_ide_path(${ARGV0})
 
     target_include_directories(${ARGV0} 
         INTERFACE 
             "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
-    add_library(agea::${ARGV0} ALIAS ${ARGV0})
+    add_library(kryga::${ARGV0} ALIAS ${ARGV0})
 endmacro()
 
-macro(agea_finalize_executable)
+macro(kryga_finalize_executable)
 
-    agea_ide_path(${ARGV0})
+    kryga_ide_path(${ARGV0})
 
     set_target_properties(${ARGV0}  PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_BINARY_DIR}/project_Debug/bin"
@@ -50,7 +50,7 @@ macro(agea_finalize_executable)
 
 endmacro()
 
-macro(agea_ar_target)
+macro(kryga_ar_target)
 
     set(full_name ${ARGV0})
 
@@ -62,14 +62,14 @@ macro(agea_ar_target)
                        --type package
                        --config ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public/ar/config 
                        --source ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public
-                       --output ${CMAKE_BINARY_DIR}/agea_generated
+                       --output ${CMAKE_BINARY_DIR}/kryga_generated
                        --package_name ${ARGV1}
                        --namespace ${ARGV2})
 
-    set(ar_folder ${CMAKE_BINARY_DIR}/agea_generated/packages/${ARGV1})
+    set(ar_folder ${CMAKE_BINARY_DIR}/kryga_generated/packages/${ARGV1})
     set(ar_file   ${ar_folder}/private/package.${ARGV1}.ar.cpp)
 
-    agea_ide_path(${full_name})
+    kryga_ide_path(${full_name})
 
     if(EXISTS ${ar_file})
         message("File already exists, skipping")
@@ -85,13 +85,13 @@ macro(agea_ar_target)
             --type package
             --config ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public/ar/config 
             --source ${PROJECT_SOURCE_DIR}/packages/${ARGV1}/public
-            --output ${CMAKE_BINARY_DIR}/agea_generated
+            --output ${CMAKE_BINARY_DIR}/kryga_generated
             --package_name ${ARGV1}
             --namespace ${ARGV2})
     endif()
 endmacro()
 
-function(agea_gather_sources out_var group_name)
+function(kryga_gather_sources out_var group_name)
     set(_ag_srcs)
 
     foreach(_pattern IN LISTS ARGN)

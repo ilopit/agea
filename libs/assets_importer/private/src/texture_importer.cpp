@@ -1,6 +1,6 @@
 #include "assets_importer/assets_importer.h"
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
 #include <vulkan_render/types/vulkan_render_types_fwds.h>
@@ -10,7 +10,7 @@
 
 #include <iostream>
 
-namespace agea
+namespace kryga
 {
 namespace asset_importer
 {
@@ -77,4 +77,4 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
 }  // namespace texture_importer
 
 }  // namespace asset_importer
-}  // namespace agea
+}  // namespace kryga

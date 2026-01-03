@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -30,7 +30,7 @@ public:
     {
         auto& item = m_items[obj.get_id()];
 
-        AGEA_check(item == nullptr, "Should not re-assign!");
+        KRG_check(item == nullptr, "Should not re-assign!");
         item = (root::smart_object*)&obj;
     }
 
@@ -79,7 +79,7 @@ public:
     void
     add_item(const root::smart_object& obj)
     {
-        AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
+        KRG_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
                    "Should have same architype!");
 
         hash_cache::add_item(obj);
@@ -88,7 +88,7 @@ public:
     void
     remove_item(const root::smart_object& obj)
     {
-        AGEA_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
+        KRG_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
                    "Should have same architype!");
 
         hash_cache::remove_item(obj);
@@ -104,4 +104,4 @@ protected:
     architype m_id;
 };
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

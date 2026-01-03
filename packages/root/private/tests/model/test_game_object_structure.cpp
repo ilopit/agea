@@ -9,7 +9,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace agea;
+using namespace kryga;
 using namespace core;
 using namespace root;
 

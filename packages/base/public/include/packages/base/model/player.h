@@ -2,15 +2,15 @@
 
 #include "packages/root/model/game_object.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
-class player : public ::agea::root::game_object
+class player : public ::kryga::root::game_object
 {
 public:
-    AGEA_gen_class_meta(player, ::agea::root::game_object);
-    AGEA_gen_construct_params{};
+    KRG_gen_class_meta(player, ::kryga::root::game_object);
+    KRG_gen_construct_params{};
 
     bool
     construct(construct_params& params)
@@ -23,4 +23,4 @@ public:
 private:
 };
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

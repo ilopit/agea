@@ -5,7 +5,7 @@ add_library(serialization STATIC
 )
 target_link_libraries(serialization 
     PUBLIC
-    agea::utils 
+    kryga::utils 
     yaml-cpp
 )
-agea_finalize_library(serialization)
+kryga_finalize_library(serialization)

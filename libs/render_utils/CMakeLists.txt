@@ -5,9 +5,9 @@ add_library(render_utils STATIC
 )
 
 target_link_libraries(render_utils PUBLIC
-    agea::glm_unofficial
+    kryga::glm_unofficial
 )
 
-agea_finalize_library(render_utils)
+kryga_finalize_library(render_utils)
 
 add_subdirectory(private/tests)

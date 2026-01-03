@@ -1,13 +1,13 @@
 #include "resource_locator/resource_locator.h"
 
 #include <utils/string_utility.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <global_state/global_state.h>
 
 #include <cassert>
 
-namespace agea
+namespace kryga
 {
 
 temp_dir_context::~temp_dir_context()
@@ -59,7 +59,7 @@ resource_locator::resource_dir(category c)
     case category::fonts:            {path /= "fonts";              break;}
         // clang-format on
     default:
-        AGEA_never("Not supported category");
+        KRG_never("Not supported category");
         return {};
     }
     return utils::path(path);
@@ -127,4 +127,4 @@ resource_locator::init_local_dirs()
     return true;
 }
 
-}  // namespace agea
+}  // namespace kryga

@@ -5,11 +5,11 @@
 #include "model/architype.h"
 #include <functional>
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 class light_component;
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

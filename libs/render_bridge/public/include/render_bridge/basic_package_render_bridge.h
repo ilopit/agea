@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 class basic_package_render_bridge
 {
@@ -8,4 +8,4 @@ public:
     virtual void
     init(){};
 };
-}  // namespace agea
+}  // namespace kryga

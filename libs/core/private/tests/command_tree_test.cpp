@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace agea;
+using namespace kryga;
 
 struct commands_tree_test : public testing::Test
 {

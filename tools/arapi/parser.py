@@ -1,6 +1,6 @@
-"""Parser module for AGEA reflection system.
+"""Parser module for KRYGA reflection system.
 
-This module parses C++ header files annotated with AGEA macros to extract
+This module parses C++ header files annotated with KRYGA macros to extract
 type information, properties, functions, and other metadata.
 """
 from dataclasses import dataclass, field
@@ -26,16 +26,16 @@ __all__ = [
 INCLUDE_PREFIX = "include/"
 INCLUDE_PREFIX_LEN = len(INCLUDE_PREFIX)
 
-# AGEA macro markers
-MACRO_MODEL_OVERRIDES = "AGEA_ar_model_overrides()"
-MACRO_RENDER_OVERRIDES = "AGEA_ar_render_overrides()"
-MACRO_CLASS = "AGEA_ar_class"
-MACRO_STRUCT = "AGEA_ar_struct"
-MACRO_FUNCTION = "AGEA_ar_function"
-MACRO_PROPERTY = "AGEA_ar_property"
-MACRO_CTOR = "AGEA_ar_ctor"
-MACRO_EXTERNAL_TYPE = "AGEA_ar_external_type("
-MACRO_PACKAGE = "AGEA_ar_package"
+# KRYGA macro markers
+MACRO_MODEL_OVERRIDES = "KRG_ar_model_overrides()"
+MACRO_RENDER_OVERRIDES = "KRG_ar_render_overrides()"
+MACRO_CLASS = "KRG_ar_class"
+MACRO_STRUCT = "KRG_ar_struct"
+MACRO_FUNCTION = "KRG_ar_function"
+MACRO_PROPERTY = "KRG_ar_property"
+MACRO_CTOR = "KRG_ar_ctor"
+MACRO_EXTERNAL_TYPE = "KRG_ar_external_type("
+MACRO_PACKAGE = "KRG_ar_package"
 
 # Property metadata keys
 PROP_KEY_CATEGORY = "category"
@@ -97,7 +97,7 @@ VALID_BOOL_VALUES = frozenset({"true", "false"})
 VALID_YES_NO_VALUES = frozenset({"yes", "no"})
 
 # C++ keywords to filter
-CXX_KEYWORDS = {"class", "struct", "public", "private", "AGEA_ar_external_define", ""}
+CXX_KEYWORDS = {"class", "struct", "public", "private", "KRG_ar_external_define", ""}
 
 
 class ParserError(Exception):
@@ -186,7 +186,7 @@ _RENDER_TYPE_ATTR_MAP = {
 }
 
 
-def extract_type_config(type_obj: arapi.types.agea_type, tokens: List[str],
+def extract_type_config(type_obj: arapi.types.kryga_type, tokens: List[str],
                         context: arapi.types.file_context) -> None:
   """Extract and apply type configuration from tokens.
 
@@ -209,12 +209,12 @@ def extract_type_config(type_obj: arapi.types.agea_type, tokens: List[str],
       setattr(type_obj, _MODEL_TYPE_ATTR_MAP[key], value)
 
     # External type configuration
-    if type_obj.kind == arapi.types.agea_type_kind.EXTERNAL:
+    if type_obj.kind == arapi.types.kryga_type_kind.EXTERNAL:
       if key == TYPE_KEY_BUILT_IN:
         type_obj.built_in = True
 
     # Render type overrides
-    if context.render_has_types_overrides and type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if context.render_has_types_overrides and type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       if key in _RENDER_TYPE_ATTR_MAP:
         setattr(type_obj, _RENDER_TYPE_ATTR_MAP[key], value)
 
@@ -263,8 +263,8 @@ def _build_full_type_name(module_name: str, type_name: str, root_namespace: Opti
 
 
 def _parse_class(lines: List[str], index: int, lines_count: int, module_name: str,
-                 context: arapi.types.file_context) -> Tuple[int, arapi.types.agea_type]:
-  """Parse an AGEA_ar_class declaration.
+                 context: arapi.types.file_context) -> Tuple[int, arapi.types.kryga_type]:
+  """Parse an KRG_ar_class declaration.
     
     Args:
         lines: List of source lines
@@ -274,9 +274,9 @@ def _parse_class(lines: List[str], index: int, lines_count: int, module_name: st
         context: File context
         
     Returns:
-        Tuple of (new_index, agea_type object)
+        Tuple of (new_index, kryga_type object)
     """
-  class_type = arapi.types.agea_type(arapi.types.agea_type_kind.CLASS)
+  class_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
   class_type.has_namespace = True
 
   index, tokens = parse_attributes(MACRO_CLASS, lines, index, lines_count)
@@ -285,7 +285,7 @@ def _parse_class(lines: List[str], index: int, lines_count: int, module_name: st
   extract_type_config(class_type, tokens, context)
 
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after AGEA_ar_class at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_class at line {index + 1}")
 
   class_name, parent_name = _extract_class_name_from_line(lines[index], index + 1)
   class_type.name = class_name
@@ -298,8 +298,8 @@ def _parse_class(lines: List[str], index: int, lines_count: int, module_name: st
 
 
 def _parse_struct(lines: List[str], index: int, lines_count: int, module_name: str,
-                  context: arapi.types.file_context) -> Tuple[int, arapi.types.agea_type]:
-  """Parse an AGEA_ar_struct declaration.
+                  context: arapi.types.file_context) -> Tuple[int, arapi.types.kryga_type]:
+  """Parse an KRG_ar_struct declaration.
     
     Args:
         lines: List of source lines
@@ -309,9 +309,9 @@ def _parse_struct(lines: List[str], index: int, lines_count: int, module_name: s
         context: File context
         
     Returns:
-        Tuple of (new_index, agea_type object)
+        Tuple of (new_index, kryga_type object)
     """
-  struct_type = arapi.types.agea_type(arapi.types.agea_type_kind.STRUCT)
+  struct_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.STRUCT)
   struct_type.has_namespace = True
 
   index, tokens = parse_attributes(MACRO_STRUCT, lines, index, lines_count)
@@ -320,7 +320,7 @@ def _parse_struct(lines: List[str], index: int, lines_count: int, module_name: s
   extract_type_config(struct_type, tokens, context)
 
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after AGEA_ar_struct at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_struct at line {index + 1}")
 
   struct_name, _ = _extract_class_name_from_line(lines[index], index + 1)
   struct_type.name = struct_name
@@ -330,22 +330,22 @@ def _parse_struct(lines: List[str], index: int, lines_count: int, module_name: s
 
 
 def _parse_function(lines: List[str], index: int,
-                    lines_count: int) -> Tuple[int, arapi.types.agea_function]:
-  """Parse an AGEA_ar_function declaration.
+                    lines_count: int) -> Tuple[int, arapi.types.kryga_function]:
+  """Parse an KRG_ar_function declaration.
     
     Args:
         lines: List of source lines
-        index: Current line index (pointing to line with AGEA_ar_function)
+        index: Current line index (pointing to line with KRG_ar_function)
         lines_count: Total number of lines
         
     Returns:
-        Tuple of (new_index, agea_function object)
+        Tuple of (new_index, kryga_function object)
     """
-  function = arapi.types.agea_function()
+  function = arapi.types.kryga_function()
   function_header = ""
   function_body = ""
 
-  # Start with current line (contains AGEA_ar_function)
+  # Start with current line (contains KRG_ar_function)
   function_header += lines[index] + " "
 
   # Find closing parenthesis of function header (matching original logic)
@@ -358,7 +358,7 @@ def _parse_function(lines: List[str], index: int,
   index += 1
 
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after AGEA_ar_function header at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_function header at line {index + 1}")
 
   # Start function body with current line
   function_body += lines[index] + " "
@@ -382,7 +382,7 @@ def _parse_function(lines: List[str], index: int,
   return index, function
 
 
-def _parse_property_metadata(prop: arapi.types.agea_property, metadata_tokens: List[str]) -> None:
+def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: List[str]) -> None:
   """Parse and apply property metadata tokens.
     
     Args:
@@ -458,7 +458,7 @@ def _parse_property_metadata(prop: arapi.types.agea_property, metadata_tokens: L
       raise InvalidPropertyError(f"Unsupported property key: '{key}'")
 
 
-def _parse_invalidates(prop: arapi.types.agea_property, value: str) -> None:
+def _parse_invalidates(prop: arapi.types.kryga_property, value: str) -> None:
   """Parse invalidates property metadata.
     
     Args:
@@ -474,7 +474,7 @@ def _parse_invalidates(prop: arapi.types.agea_property, value: str) -> None:
       prop.invalidates_transform = True
 
 
-def _parse_check(prop: arapi.types.agea_property, value: str) -> None:
+def _parse_check(prop: arapi.types.kryga_property, value: str) -> None:
   """Parse check property metadata.
     
     Args:
@@ -488,7 +488,7 @@ def _parse_check(prop: arapi.types.agea_property, value: str) -> None:
       prop.check_not_same = True
 
 
-def _parse_hint(prop: arapi.types.agea_property, value: str) -> None:
+def _parse_hint(prop: arapi.types.kryga_property, value: str) -> None:
   """Parse hint property metadata.
     
     Args:
@@ -505,8 +505,8 @@ def _parse_hint(prop: arapi.types.agea_property, value: str) -> None:
 
 
 def _parse_property(lines: List[str], index: int, lines_count: int,
-                    class_name: str) -> Tuple[int, arapi.types.agea_property]:
-  """Parse an AGEA_ar_property declaration.
+                    class_name: str) -> Tuple[int, arapi.types.kryga_property]:
+  """Parse an KRG_ar_property declaration.
     
     Args:
         lines: List of source lines
@@ -515,18 +515,18 @@ def _parse_property(lines: List[str], index: int, lines_count: int,
         class_name: Name of the owning class
         
     Returns:
-        Tuple of (new_index, agea_property object)
+        Tuple of (new_index, kryga_property object)
         
     Raises:
         InvalidPropertyError: If property parsing fails
     """
-  prop = arapi.types.agea_property()
+  prop = arapi.types.kryga_property()
 
   index, metadata_tokens = parse_attributes(MACRO_PROPERTY, lines, index, lines_count)
   index += 1
 
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after AGEA_ar_property at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_property at line {index + 1}")
 
   # Parse property declaration line
   property_line = lines[index].strip()
@@ -558,8 +558,8 @@ def _parse_property(lines: List[str], index: int, lines_count: int,
 
 
 def _parse_constructor(lines: List[str], index: int,
-                       lines_count: int) -> Tuple[int, arapi.types.agea_ctor]:
-  """Parse an AGEA_ar_ctor declaration.
+                       lines_count: int) -> Tuple[int, arapi.types.kryga_ctor]:
+  """Parse an KRG_ar_ctor declaration.
     
     Args:
         lines: List of source lines
@@ -567,9 +567,9 @@ def _parse_constructor(lines: List[str], index: int,
         lines_count: Total number of lines
         
     Returns:
-        Tuple of (new_index, agea_ctor object)
+        Tuple of (new_index, kryga_ctor object)
     """
-  ctor = arapi.types.agea_ctor()
+  ctor = arapi.types.kryga_ctor()
 
   # Skip constructor header (first set of parentheses)
   while index < lines_count and ")" not in lines[index]:
@@ -578,7 +578,7 @@ def _parse_constructor(lines: List[str], index: int,
   index += 1
 
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after AGEA_ar_ctor header at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_ctor header at line {index + 1}")
 
   # Parse constructor body (second set of parentheses)
   ctor_body = lines[index]
@@ -594,8 +594,8 @@ def _parse_constructor(lines: List[str], index: int,
 
 
 def _parse_external_type(lines: List[str], index: int, lines_count: int,
-                         context: arapi.types.file_context) -> Tuple[int, arapi.types.agea_type]:
-  """Parse an AGEA_ar_external_type declaration.
+                         context: arapi.types.file_context) -> Tuple[int, arapi.types.kryga_type]:
+  """Parse an KRG_ar_external_type declaration.
     
     Args:
         lines: List of source lines
@@ -604,17 +604,17 @@ def _parse_external_type(lines: List[str], index: int, lines_count: int,
         context: File context
         
     Returns:
-        Tuple of (new_index, agea_type object)
+        Tuple of (new_index, kryga_type object)
     """
   index, tokens = parse_attributes(MACRO_EXTERNAL_TYPE, lines, index, lines_count)
 
-  external_type = arapi.types.agea_type(arapi.types.agea_type_kind.EXTERNAL)
+  external_type = arapi.types.kryga_type(arapi.types.kryga_type_kind.EXTERNAL)
   extract_type_config(external_type, tokens, context)
 
   index += 1
 
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after AGEA_ar_external_type at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_external_type at line {index + 1}")
 
   # Parse external type declaration
   external_line = lines[index]
@@ -634,7 +634,7 @@ def _parse_external_type(lines: List[str], index: int, lines_count: int,
 
 def _parse_package(lines: List[str], index: int, lines_count: int,
                    context: arapi.types.file_context) -> int:
-  """Parse an AGEA_ar_package declaration.
+  """Parse an KRG_ar_package declaration.
     
     Args:
         lines: List of source lines
@@ -685,7 +685,7 @@ def _add_include(context: arapi.types.file_context, file_rel_path: str) -> None:
 
 
 def _handle_model_overrides(context: arapi.types.file_context, file_rel_path: str) -> None:
-  """Handle AGEA_ar_model_overrides macro.
+  """Handle KRG_ar_model_overrides macro.
 
     Args:
         context: File context to update
@@ -697,7 +697,7 @@ def _handle_model_overrides(context: arapi.types.file_context, file_rel_path: st
 
 
 def _handle_render_overrides(context: arapi.types.file_context, file_rel_path: str) -> None:
-  """Handle AGEA_ar_render_overrides macro.
+  """Handle KRG_ar_render_overrides macro.
 
     Args:
         context: File context to update
@@ -717,8 +717,8 @@ class _ParserState:
   class_name: str
   context: arapi.types.file_context
   original_file_rel_path: str
-  current_class: Optional[arapi.types.agea_type] = None
-  current_struct: Optional[arapi.types.agea_type] = None
+  current_class: Optional[arapi.types.kryga_type] = None
+  current_struct: Optional[arapi.types.kryga_type] = None
 
 
 def _read_file(file_path: str) -> Tuple[List[str], int]:
@@ -752,7 +752,7 @@ def _finalize_parsing(state: _ParserState) -> None:
 
 def parse_file(original_file_full_path: str, original_file_rel_path: str, module_name: str,
                context: arapi.types.file_context) -> None:
-  """Parse a C++ header file and extract AGEA reflection metadata.
+  """Parse a C++ header file and extract KRYGA reflection metadata.
 
     Args:
         original_file_full_path: Full path to the file
@@ -816,7 +816,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
     # Handle function declaration
     if line.startswith(MACRO_FUNCTION):
       if not state.current_class and not state.current_struct:
-        raise ParserError(f"AGEA_ar_function found outside of class or struct at line {i + 1}")
+        raise ParserError(f"KRG_ar_function found outside of class or struct at line {i + 1}")
 
       i, function = _parse_function(lines, i, lines_count)
 
@@ -831,7 +831,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
     # Handle property declaration
     if line.startswith(MACRO_PROPERTY):
       if not state.current_class:
-        raise ParserError(f"AGEA_ar_property found outside of class at line {i + 1}")
+        raise ParserError(f"KRG_ar_property found outside of class at line {i + 1}")
 
       i, prop = _parse_property(lines, i, lines_count, class_name)
       state.current_class.properties.append(prop)
@@ -841,7 +841,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
     # Handle constructor declaration
     if line.startswith(MACRO_CTOR):
       if not state.current_struct:
-        raise ParserError(f"AGEA_ar_ctor found outside of struct at line {i + 1}")
+        raise ParserError(f"KRG_ar_ctor found outside of struct at line {i + 1}")
 
       i, ctor = _parse_constructor(lines, i, lines_count)
       state.current_struct.ctros.append(ctor)

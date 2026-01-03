@@ -6,21 +6,21 @@
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/shader_reflection_utils.h"
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
 
-shader_effect_data::shader_effect_data(const ::agea::utils::id& id)
+shader_effect_data::shader_effect_data(const ::kryga::utils::id& id)
     : m_id(id)
     , m_expected_vertex_input(get_default_vertex_inout_layout())
 {
     m_set_layout.fill(VK_NULL_HANDLE);
 }
 
-shader_effect_data::shader_effect_data(const ::agea::utils::id& id,
+shader_effect_data::shader_effect_data(const ::kryga::utils::id& id,
                                        const utils::dynobj_layout_sptr& v)
     : m_id(id)
     , m_expected_vertex_input(v)
@@ -101,4 +101,4 @@ shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constan
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

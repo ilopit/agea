@@ -1,6 +1,6 @@
 #pragma once
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -15,4 +15,4 @@ struct vertex_input_description;
 struct texture_sampler_data;
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

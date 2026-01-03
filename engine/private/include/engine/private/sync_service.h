@@ -16,7 +16,7 @@
 #include <future>
 #include <mutex>
 
-namespace agea
+namespace kryga
 {
 namespace http = boost::beast::http;  // from <boost/beast/http.hpp>
 using tcp = boost::asio::ip::tcp;     // from <boost/asio/ip/tcp.hpp>
@@ -69,4 +69,4 @@ private:
     std::vector<sync_action> m_actions;
 };
 
-}  // namespace agea
+}  // namespace kryga

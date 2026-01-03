@@ -18,9 +18,9 @@
 
 #include <deque>
 #include <map>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace core
@@ -181,7 +181,7 @@ package_manager::load_package(const utils::id& id)
     std::vector<root::smart_object*> loaded_obj;
     for (auto& i : mapping->m_items)
     {
-        AGEA_check(i.second.is_class, "Load only package!");
+        KRG_check(i.second.is_class, "Load only package!");
 
         auto result = object_constructor::object_load(i.first, object_load_type::class_obj,
                                                       new_package->get_load_context(), loaded_obj);
@@ -321,4 +321,4 @@ package_manager::register_package(core::package& pkg)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

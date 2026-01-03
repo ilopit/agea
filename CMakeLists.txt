@@ -1,7 +1,7 @@
 ﻿cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
 cmake_policy(VERSION 4.0)
 
-project ("agea")
+project ("kryga")
 include(${PROJECT_SOURCE_DIR}/cmake/utils.cmake)
 
 # Set a default build type if none was specified
@@ -29,20 +29,20 @@ find_package(Vulkan REQUIRED)
 
 add_subdirectory(thirdparty)
 
-set(AGEA_ACTIVE_MODULES_TARGETS ""  CACHE INTERNAL "")
-set(AGEA_ACTIVE_MODULES_TARGETS_LINK ""  CACHE INTERNAL "")
-set(AGEA_ACTIVE_MODULES ""  CACHE INTERNAL "")
+set(KRG_ACTIVE_MODULES_TARGETS ""  CACHE INTERNAL "")
+set(KRG_ACTIVE_MODULES_TARGETS_LINK ""  CACHE INTERNAL "")
+set(KRG_ACTIVE_MODULES ""  CACHE INTERNAL "")
 
-SET(agea_gendir ${CMAKE_BINARY_DIR}/agea_generated/engine)
+SET(kryga_gendir ${CMAKE_BINARY_DIR}/kryga_generated/engine)
 
-file(MAKE_DIRECTORY ${agea_gendir})
+file(MAKE_DIRECTORY ${kryga_gendir})
 
 execute_process(
     COMMAND python 
     ${PROJECT_SOURCE_DIR}/tools/argen.py
     --type bind
     --source ${PROJECT_SOURCE_DIR}/packages
-    --output ${CMAKE_BINARY_DIR}/agea_generated)
+    --output ${CMAKE_BINARY_DIR}/kryga_generated)
 
 add_subdirectory(libs)
 add_subdirectory(packages)

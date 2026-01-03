@@ -2,7 +2,7 @@
 
 #include "utils/singleton_registry.h"
 
-namespace agea
+namespace kryga
 {
 void
 base_singleton_instance::add()
@@ -19,4 +19,4 @@ base_singleton_instance::remove()
 base_singleton_instance::~base_singleton_instance()
 {
 }
-}  // namespace agea
+}  // namespace kryga

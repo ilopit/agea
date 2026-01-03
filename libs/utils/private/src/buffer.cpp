@@ -1,8 +1,8 @@
 #include "utils/buffer.h"
 
-#include "utils/agea_log.h"
+#include "utils/kryga_log.h"
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -55,4 +55,4 @@ buffer::consume_file_updated()
     return updated;
 }
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

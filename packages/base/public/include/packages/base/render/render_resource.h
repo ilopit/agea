@@ -2,11 +2,11 @@
 
 #include <core/package.h>
 
-namespace agea::base
+namespace kryga::base
 {
-struct root_package_render_resources_loader : ::agea::core::package_render_custom_resource_builder
+struct root_package_render_resources_loader : ::kryga::core::package_render_custom_resource_builder
 {
     virtual bool
-    load(::agea::core::static_package& sp);
+    load(::kryga::core::static_package& sp);
 };
-}  // namespace agea::base
+}  // namespace kryga::base

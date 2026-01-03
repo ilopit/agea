@@ -5,25 +5,25 @@
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/texture_sample.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_ar_class();
-class simple_texture_material : public ::agea::root::material
+KRG_ar_class();
+class simple_texture_material : public ::kryga::root::material
 {
-    AGEA_gen_meta__simple_texture_material();
+    KRG_gen_meta__simple_texture_material();
 
 public:
-    AGEA_gen_class_meta(simple_texture_material, material);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(simple_texture_material, material);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     bool
     construct(this_class::construct_params& p);
 
-    const ::agea::root::texture_sample&
+    const ::kryga::root::texture_sample&
     simple_texture() const
     {
         return m_simple_texture;
@@ -31,16 +31,16 @@ public:
 
 protected:
     // clang-format off
-    AGEA_ar_property("category=Properties",
+    KRG_ar_property("category=Properties",
                      "serializable=true",
-                     "property_ser_handler=::agea::root::property_texture_sample__save",
-                     "property_compare_handler=::agea::root::property_texture_sample__compare",
-                     "property_copy_handler=::agea::root::property_texture_sample__copy",
-                     "property_instantiate_handler=::agea::root::property_texture_sample__instantiate",
-                     "property_load_derive_handler=::agea::root::property_texture_sample__load");
-    ::agea::root::texture_sample m_simple_texture;
+                     "property_ser_handler=::kryga::root::property_texture_sample__save",
+                     "property_compare_handler=::kryga::root::property_texture_sample__compare",
+                     "property_copy_handler=::kryga::root::property_texture_sample__copy",
+                     "property_instantiate_handler=::kryga::root::property_texture_sample__instantiate",
+                     "property_load_derive_handler=::kryga::root::property_texture_sample__load");
+    ::kryga::root::texture_sample m_simple_texture;
     //clang-format off
 };
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

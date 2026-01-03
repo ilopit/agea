@@ -11,7 +11,7 @@
 #include <vector>
 #include <functional>
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 class vulkan_image
 {
@@ -27,7 +27,7 @@ public:
 
     static vulkan_image create(VkImage);
 
-    AGEA_gen_class_non_copyable(vulkan_image);
+    KRG_gen_class_non_copyable(vulkan_image);
 
     vulkan_image(vulkan_image&& other) noexcept;
     vulkan_image&
@@ -106,7 +106,7 @@ private:
     VkImageView m_vk_handle = VK_NULL_HANDLE;
 };
 
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils
 
 #define VK_CHECK(x)                       \
     do                                    \
@@ -114,6 +114,6 @@ private:
         VkResult err = x;                 \
         if (err)                          \
         {                                 \
-            AGEA_never("Vulkan failed!"); \
+            KRG_never("Vulkan failed!"); \
         }                                 \
     } while (0)

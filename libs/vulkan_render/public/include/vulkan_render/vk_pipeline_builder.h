@@ -2,7 +2,7 @@
 
 #include "vulkan_render/types/vulkan_generic.h"
 
-namespace agea::render::vk_utils
+namespace kryga::render::vk_utils
 {
 
 class pipeline_builder
@@ -26,4 +26,4 @@ public:
 
     VkPipelineLayout m_pipeline_layout{};
 };
-}  // namespace agea::render::vk_utils
+}  // namespace kryga::render::vk_utils

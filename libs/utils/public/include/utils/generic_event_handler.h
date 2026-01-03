@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -46,4 +46,4 @@ struct generic_event_handler
 };
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

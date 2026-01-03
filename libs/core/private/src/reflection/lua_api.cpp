@@ -12,7 +12,7 @@ l_my_print(lua_State* L)
     int n = lua_gettop(L); /* number of arguments */
     int i;
 
-    auto* lua = agea::glob::glob_state().get_lua();
+    auto* lua = kryga::glob::glob_state().get_lua();
 
     for (i = 1; i <= n; i++)
     { /* for each argument */
@@ -46,7 +46,7 @@ luaopen_luamylib(lua_State* L)
 }
 }  // namespace
 
-namespace agea
+namespace kryga
 {
 
 namespace reflection
@@ -57,7 +57,7 @@ lua_api::lua_api()
 {
     m_state->open_libraries(sol::lib::base, sol::lib::io);
 
-    m_state->require("agea", luaopen_luamylib, true);
+    m_state->require("kryga", luaopen_luamylib, true);
 }
 
 lua_api::~lua_api()
@@ -83,4 +83,4 @@ lua_api::buffer()
 }
 
 }  // namespace reflection
-}  // namespace agea
+}  // namespace kryga

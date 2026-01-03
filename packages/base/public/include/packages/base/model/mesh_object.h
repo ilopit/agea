@@ -4,21 +4,21 @@
 
 #include "packages/root/model/game_object.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 class component;
 
-AGEA_ar_class();
-class mesh_object : public ::agea::root::game_object
+KRG_ar_class();
+class mesh_object : public ::kryga::root::game_object
 {
 public:
     // Meta part
-    AGEA_gen_class_meta(mesh_object, game_object);
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(mesh_object, game_object);
+    KRG_gen_meta_api;
 
-    AGEA_gen_construct_params{};
+    KRG_gen_construct_params{};
 
 protected:
     bool
@@ -26,4 +26,4 @@ protected:
 };
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

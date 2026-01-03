@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -30,8 +30,8 @@ public:
     void
     swap_and_remove(itr pos)
     {
-        AGEA_check(!m_items.empty(), "Should not be empty!");
-        AGEA_check(pos >= m_items.begin(), "Should not be empty!");
+        KRG_check(!m_items.empty(), "Should not be empty!");
+        KRG_check(pos >= m_items.begin(), "Should not be empty!");
 
         std::swap(*m_items.rbegin(), *pos);
         m_items.pop_back();
@@ -121,4 +121,4 @@ protected:
 };
 }  // namespace utils
 
-}  // namespace agea
+}  // namespace kryga

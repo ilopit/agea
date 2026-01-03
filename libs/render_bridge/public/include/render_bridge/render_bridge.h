@@ -16,7 +16,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -46,15 +46,15 @@ public:
     make_qid(render::material_data& mt_data, render::mesh_data& m_data);
 
     static bool
-    is_agea_texture(const utils::path& p);
+    is_kryga_texture(const utils::path& p);
 
     static bool
-    is_agea_mesh(const utils::path& p);
+    is_kryga_mesh(const utils::path& p);
 
-    agea::result_code
+    kryga::result_code
     render_ctor(root::smart_object& obj, bool sub_objects);
 
-    agea::result_code
+    kryga::result_code
     render_dtor(root::smart_object& obj, bool sub_objects);
 
     utils::dynobj
@@ -80,9 +80,9 @@ private:
 
 namespace glob
 {
-class render_bridge : public singleton_instance<::agea::render_bridge, render_bridge>
+class render_bridge : public singleton_instance<::kryga::render_bridge, render_bridge>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga

@@ -24,7 +24,7 @@
 #include <memory>
 #include <unordered_map>
 
-namespace agea
+namespace kryga
 {
 using blob_ptr = uint8_t*;
-}  // namespace agea
+}  // namespace kryga

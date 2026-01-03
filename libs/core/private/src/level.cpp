@@ -10,7 +10,7 @@
 
 #include <global_state/global_state.h>
 
-namespace agea
+namespace kryga
 {
 
 namespace core
@@ -108,7 +108,7 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
         return nullptr;
     }
 
-    AGEA_check(obj_to_clone->get_flags().instance_obj, "Should be always instance");
+    KRG_check(obj_to_clone->get_flags().instance_obj, "Should be always instance");
 
     std::vector<root::smart_object*> loaded_obj;
 
@@ -214,4 +214,4 @@ level::unload()
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

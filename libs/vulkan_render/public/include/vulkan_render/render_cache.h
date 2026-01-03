@@ -5,7 +5,7 @@
 #include <vulkan_render/types/vulkan_render_data.h>
 #include <vulkan_render/types/vulkan_light_data.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -24,4 +24,4 @@ public:
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

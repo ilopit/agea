@@ -4,7 +4,7 @@
 #include <format>
 #include <iostream>
 
-namespace agea::utils
+namespace kryga::utils
 {
 
 namespace
@@ -300,4 +300,4 @@ gen_allocator::print_all()
     } while (head != start);
 }
 
-}  // namespace agea::utils
+}  // namespace kryga::utils

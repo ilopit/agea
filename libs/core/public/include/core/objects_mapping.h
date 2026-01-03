@@ -7,7 +7,7 @@
 
 #include <unordered_map>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -35,4 +35,4 @@ public:
     std::unordered_map<utils::id, item> m_items;
 };
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

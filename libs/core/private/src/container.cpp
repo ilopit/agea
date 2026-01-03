@@ -4,7 +4,7 @@
 
 #include "core/object_load_context.h"
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -71,4 +71,4 @@ container::set_occ(std::unique_ptr<object_load_context> occ)
 }
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

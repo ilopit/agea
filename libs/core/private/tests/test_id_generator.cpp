@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace agea;
+using namespace kryga;
 
 struct test_id_generator : base_test
 {

@@ -4,4 +4,4 @@ add_library(error_handling STATIC
    ${LIB_SRC}
 )
 
-agea_finalize_library(error_handling)
+kryga_finalize_library(error_handling)

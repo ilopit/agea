@@ -1,6 +1,6 @@
 #include "error_handling/error_handling.h"
 
-namespace agea
+namespace kryga
 {
 const char*
 to_cstr(result_code rc)
@@ -21,4 +21,4 @@ to_cstr(result_code rc)
     }
     return "";
 }
-}  // namespace agea
+}  // namespace kryga

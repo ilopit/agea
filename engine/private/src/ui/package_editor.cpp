@@ -13,7 +13,7 @@
 
 #include <cstdint>
 
-namespace agea::ui
+namespace kryga::ui
 {
 
 void
@@ -79,4 +79,4 @@ package_editor::draw_package_obj(core::package* p, selection_context& sc)
     //     }
 }
 
-}  // namespace agea::ui
+}  // namespace kryga::ui

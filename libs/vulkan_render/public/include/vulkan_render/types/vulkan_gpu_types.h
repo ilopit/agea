@@ -10,7 +10,7 @@
 
 #include <glm_unofficial/glm.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -90,4 +90,4 @@ struct gpu_type
 using gpu_dynobj_builder = utils::dynamic_object_layout_sequence_builder<gpu_type>;
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

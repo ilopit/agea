@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -15,4 +15,4 @@ get_current_time_mks()
 }
 
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

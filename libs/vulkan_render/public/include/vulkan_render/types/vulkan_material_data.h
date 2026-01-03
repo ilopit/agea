@@ -7,7 +7,7 @@
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -24,16 +24,16 @@ struct texture_sampler_data
 class material_data
 {
 public:
-    material_data(const ::agea::utils::id& id, const ::agea::utils::id& type_id);
+    material_data(const ::kryga::utils::id& id, const ::kryga::utils::id& type_id);
     ~material_data();
 
-    const agea::utils::id&
+    const kryga::utils::id&
     get_id() const
     {
         return m_id;
     }
 
-    const agea::utils::id&
+    const kryga::utils::id&
     get_type_id() const
     {
         return m_type_id;
@@ -69,12 +69,12 @@ public:
     has_textures();
 
     void
-    set_gpu_data(const agea::utils::dynobj& gpu_data)
+    set_gpu_data(const kryga::utils::dynobj& gpu_data)
     {
         m_gpu_data = gpu_data;
     }
 
-    const agea::utils::dynobj&
+    const kryga::utils::dynobj&
     get_gpu_data() const
     {
         return m_gpu_data;
@@ -120,16 +120,16 @@ public:
     }
 
 private:
-    ::agea::utils::id m_id;
-    ::agea::utils::id m_type_id;
+    ::kryga::utils::id m_id;
+    ::kryga::utils::id m_type_id;
     gpu_data_index_type m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 
-    agea::utils::dynobj m_gpu_data;
+    kryga::utils::dynobj m_gpu_data;
 
     VkDescriptorSet m_samplers_set = VK_NULL_HANDLE;
     shader_effect_data* m_effect = nullptr;
     std::vector<texture_sampler_data> m_texture_samples;
 };
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

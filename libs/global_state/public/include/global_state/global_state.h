@@ -2,25 +2,25 @@
 
 #include <utils/singleton_instance.h>
 #include <utils/defines_utils.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <memory>
 #include <functional>
 #include <array>
 #include <string>
 
-#define AGEA_gen_getter(n, t)                           \
+#define KRG_gen_getter(n, t)                           \
     t* get_##n() const                                  \
     {                                                   \
         return m_##n;                                   \
     }                                                   \
     t& getr_##n() const                                 \
     {                                                   \
-        AGEA_check(m_##n, "Instance should be alive!"); \
+        KRG_check(m_##n, "Instance should be alive!"); \
         return *m_##n;                                  \
     }
 
-namespace agea
+namespace kryga
 {
 
 namespace core
@@ -152,33 +152,33 @@ public:
     void
     run_init();
 
-    AGEA_gen_getter(class_set, core::cache_set);
-    AGEA_gen_getter(class_objects_cache, core::objects_cache);
-    AGEA_gen_getter(class_components_cache, core::components_cache);
-    AGEA_gen_getter(class_game_objects_cache, core::game_objects_cache);
-    AGEA_gen_getter(class_materials_cache, core::materials_cache);
-    AGEA_gen_getter(class_meshes_cache, core::meshes_cache);
-    AGEA_gen_getter(class_textures_cache, core::textures_cache);
-    AGEA_gen_getter(class_shader_effects_cache, core::shader_effects_cache);
-    AGEA_gen_getter(class_cache_map, core::caches_map);
+    KRG_gen_getter(class_set, core::cache_set);
+    KRG_gen_getter(class_objects_cache, core::objects_cache);
+    KRG_gen_getter(class_components_cache, core::components_cache);
+    KRG_gen_getter(class_game_objects_cache, core::game_objects_cache);
+    KRG_gen_getter(class_materials_cache, core::materials_cache);
+    KRG_gen_getter(class_meshes_cache, core::meshes_cache);
+    KRG_gen_getter(class_textures_cache, core::textures_cache);
+    KRG_gen_getter(class_shader_effects_cache, core::shader_effects_cache);
+    KRG_gen_getter(class_cache_map, core::caches_map);
 
-    AGEA_gen_getter(instance_set, core::cache_set);
-    AGEA_gen_getter(instance_objects_cache, core::objects_cache);
-    AGEA_gen_getter(instance_components_cache, core::components_cache);
-    AGEA_gen_getter(instance_game_objects_cache, core::game_objects_cache);
-    AGEA_gen_getter(instance_materials_cache, core::materials_cache);
-    AGEA_gen_getter(instance_meshes_cache, core::meshes_cache);
-    AGEA_gen_getter(instance_textures_cache, core::textures_cache);
-    AGEA_gen_getter(instance_shader_effects_cache, core::shader_effects_cache);
-    AGEA_gen_getter(instance_cache_map, core::caches_map);
+    KRG_gen_getter(instance_set, core::cache_set);
+    KRG_gen_getter(instance_objects_cache, core::objects_cache);
+    KRG_gen_getter(instance_components_cache, core::components_cache);
+    KRG_gen_getter(instance_game_objects_cache, core::game_objects_cache);
+    KRG_gen_getter(instance_materials_cache, core::materials_cache);
+    KRG_gen_getter(instance_meshes_cache, core::meshes_cache);
+    KRG_gen_getter(instance_textures_cache, core::textures_cache);
+    KRG_gen_getter(instance_shader_effects_cache, core::shader_effects_cache);
+    KRG_gen_getter(instance_cache_map, core::caches_map);
 
-    AGEA_gen_getter(current_level, core::level);
-    AGEA_gen_getter(lm, core::level_manager);
-    AGEA_gen_getter(pm, core::package_manager);
-    AGEA_gen_getter(lua, reflection::lua_api);
-    AGEA_gen_getter(rm, reflection::reflection_type_registry);
-    AGEA_gen_getter(id_generator, core::id_generator);
-    AGEA_gen_getter(resource_locator, resource_locator);
+    KRG_gen_getter(current_level, core::level);
+    KRG_gen_getter(lm, core::level_manager);
+    KRG_gen_getter(pm, core::package_manager);
+    KRG_gen_getter(lua, reflection::lua_api);
+    KRG_gen_getter(rm, reflection::reflection_type_registry);
+    KRG_gen_getter(id_generator, core::id_generator);
+    KRG_gen_getter(resource_locator, resource_locator);
 
     template <typename T>
     T*
@@ -262,14 +262,14 @@ private:
 namespace glob
 {
 
-::agea::gs::state&
+::kryga::gs::state&
 glob_state();
 
 void
 glob_state_reset();
 }  // namespace glob
-}  // namespace agea
+}  // namespace kryga
 
-#define AGEA_gen__static_schedule(when, action)          \
-    const int AGEA_concat2(si_identifier, __COUNTER__) = \
-        agea::glob::glob_state().schedule_action(when, action)
+#define KRG_gen__static_schedule(when, action)          \
+    const int KRG_concat2(si_identifier, __COUNTER__) = \
+        kryga::glob::glob_state().schedule_action(when, action)

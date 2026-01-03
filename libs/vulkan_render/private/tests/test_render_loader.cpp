@@ -3,13 +3,13 @@
 
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <resource_locator/resource_locator.h>
 
-using namespace agea;
-using namespace agea::render;
+using namespace kryga;
+using namespace kryga::render;
 
 class render_device_test : public ::testing::Test
 {
@@ -23,7 +23,7 @@ public:
         auto device = glob::render_device::get();
         ASSERT_TRUE(device->construct(rdc));
 
-        m_registry = std::make_unique<agea::singleton_registry>();
+        m_registry = std::make_unique<kryga::singleton_registry>();
         glob::vulkan_render_loader::create(*m_registry);
 
         glob::vulkan_render::getr().init(500, 500, true);
@@ -37,21 +37,21 @@ public:
         glob::render_device::get()->destruct();
     }
 
-    std::unique_ptr<agea::singleton_registry> m_registry;
+    std::unique_ptr<kryga::singleton_registry> m_registry;
 };
 
 TEST_F(render_device_test, load_se)
 {
-    agea::utils::buffer vert, frag;
+    kryga::utils::buffer vert, frag;
 
     auto path = glob::resource_locator::get()->resource(category::packages,
                                                         "base.apkg/class/shader_effects/error");
 
     auto vert_path = path / "se_error.vert";
-    agea::utils::buffer::load(vert_path, vert);
+    kryga::utils::buffer::load(vert_path, vert);
 
     auto frag_path = path / "se_error.frag";
-    agea::utils::buffer::load(frag_path, frag);
+    kryga::utils::buffer::load(frag_path, frag);
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;

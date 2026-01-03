@@ -6,7 +6,7 @@
 #include <vector>
 #include <functional>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -17,4 +17,4 @@ using vk_device_provider = std::function<VkDevice()>;
 using vma_allocator_provider = std::function<VmaAllocator()>;
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

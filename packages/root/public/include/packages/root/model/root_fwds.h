@@ -5,7 +5,7 @@
 #include "model/architype.h"
 #include <functional>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -44,4 +44,4 @@ using materials_cache = cache<root::material, architype::material>;
 using shader_effects_cache = cache<root::shader_effect, architype::shader_effect>;
 
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

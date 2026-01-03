@@ -4,7 +4,7 @@
 
 #include <serialization/serialization.h>
 
-namespace agea
+namespace kryga
 {
 namespace reflection
 {
@@ -95,4 +95,4 @@ cpp_default__compare(type_context__compare& ctx)
 
 }  // namespace utils
 }  // namespace reflection
-}  // namespace agea
+}  // namespace kryga

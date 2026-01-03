@@ -4,15 +4,15 @@
 
 #include <glm_unofficial/glm.h>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 // clang-format off
-AGEA_ar_struct(copy_handler        = ::agea::reflection::utils::cpp_default__copy<::agea::core::color>,
-               compare_handler     = ::agea::reflection::utils::cpp_default__compare<::agea::core::color>,
-               serialize_handler   = ::agea::root::custom::color__save,
-               deserialize_handler = ::agea::root::custom::color__load);
+KRG_ar_struct(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::kryga::core::color>,
+               compare_handler     = ::kryga::reflection::utils::cpp_default__compare<::kryga::core::color>,
+               serialize_handler   = ::kryga::root::custom::color__save,
+               deserialize_handler = ::kryga::root::custom::color__load);
 struct color : ::glm::vec4
 // clang-format on
 {
@@ -20,4 +20,4 @@ struct color : ::glm::vec4
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

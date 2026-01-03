@@ -5,7 +5,7 @@
 
 #include <utils/singleton_instance.h>
 
-namespace agea
+namespace kryga
 {
 namespace editor
 {
@@ -25,8 +25,8 @@ public:
 
 namespace glob
 {
-struct config : public singleton_instance<::agea::editor::config, config>
+struct config : public singleton_instance<::kryga::editor::config, config>
 {
 };
 }  // namespace glob
-}  // namespace agea
+}  // namespace kryga

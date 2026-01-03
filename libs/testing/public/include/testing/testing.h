@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-namespace agea
+namespace kryga
 {
 
 struct testing_base
@@ -18,7 +18,7 @@ struct testing_base
     void
     Do_TearDown();
 
-    agea::utils::path
+    kryga::utils::path
     get_current_workspace();
 };
 
@@ -63,4 +63,4 @@ PrintTo(const id& p, std::ostream* os)
 
 }  // namespace utils
 
-};  // namespace agea
+};  // namespace kryga

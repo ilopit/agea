@@ -4,7 +4,7 @@
 
 struct SDL_Window;
 
-namespace agea
+namespace kryga
 {
 class native_window
 {
@@ -45,9 +45,9 @@ private:
 
 namespace glob
 {
-struct native_window : public ::agea::singleton_instance<::agea::native_window, native_window>
+struct native_window : public ::kryga::singleton_instance<::kryga::native_window, native_window>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga

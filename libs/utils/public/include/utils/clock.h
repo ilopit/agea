@@ -4,7 +4,7 @@
 
 #include <array>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -35,4 +35,4 @@ private:
     size_t idx = 0;
 };
 }  // namespace utils
-}  // namespace agea
+}  // namespace kryga

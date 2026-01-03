@@ -4,4 +4,4 @@ add_library(ar INTERFACE
    ${LIB_SRC}
 )
 
-agea_finalize_interface_library(ar)
+kryga_finalize_interface_library(ar)

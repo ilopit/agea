@@ -47,13 +47,13 @@
 #include <vulkan_render/types/vulkan_shader_data.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
 
-namespace agea
+namespace kryga
 {
 
 bool
@@ -68,7 +68,7 @@ result_code
 mesh_component__render_loader(reflection::type_context__render& ctx)
 {
     auto rc = root::game_object_component__render_loader(ctx);
-    AGEA_return_nok(rc);
+    KRG_return_nok(rc);
 
     auto& moc = ctx.obj->asr<base::mesh_component>();
 
@@ -78,10 +78,10 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
     }
 
     rc = ctx.rb->render_ctor(*moc.get_material(), ctx.flag);
-    AGEA_return_nok(rc);
+    KRG_return_nok(rc);
 
     rc = ctx.rb->render_ctor(*moc.get_mesh(), ctx.flag);
-    AGEA_return_nok(rc);
+    KRG_return_nok(rc);
 
     auto mat_data = moc.get_material()->get_material_data();
     auto mesh_data = moc.get_mesh()->get_mesh_data();
@@ -115,7 +115,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
         object_data->bounding_radius = scaled_radius;
         moc.set_render_object_data(object_data);
 
-        auto new_rqid = ::agea::render_bridge::make_qid(*mat_data, *mesh_data);
+        auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
         object_data->queue_id = new_rqid;
         glob::vulkan_render::getr().schedule_to_drawing(object_data);
     }
@@ -131,7 +131,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
 
         object_data->bounding_radius = scaled_radius;
 
-        auto new_rqid = ::agea::render_bridge::make_qid(*mat_data, *mesh_data);
+        auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
         auto& rqid = object_data->queue_id;
         if (new_rqid != rqid)
         {
@@ -157,7 +157,7 @@ mesh_component__render_destructor(reflection::type_context__render& ctx)
     if (mat_model && is_same_source(*ctx.obj, *mat_model))
     {
         rc = ctx.rb->render_dtor(*moc.get_material(), ctx.flag);
-        AGEA_return_nok(rc);
+        KRG_return_nok(rc);
     }
 
     auto mesh_model = moc.get_mesh();
@@ -165,7 +165,7 @@ mesh_component__render_destructor(reflection::type_context__render& ctx)
     if (mesh_model && is_same_source(*ctx.obj, *mesh_model))
     {
         rc = ctx.rb->render_dtor(*moc.get_mesh(), ctx.flag);
-        AGEA_return_nok(rc);
+        KRG_return_nok(rc);
     }
     auto object_data = moc.get_render_object_data();
 
@@ -176,7 +176,7 @@ mesh_component__render_destructor(reflection::type_context__render& ctx)
     }
 
     rc = root::game_object_component__render_destructor(ctx);
-    AGEA_return_nok(rc);
+    KRG_return_nok(rc);
 
     return result_code::ok;
 }
@@ -305,4 +305,4 @@ point_light_component__render_destructor(reflection::type_context__render& ctx)
     return result_code::ok;
 }
 
-}  // namespace agea
+}  // namespace kryga

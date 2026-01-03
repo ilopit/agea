@@ -1,11 +1,11 @@
 #include "packages/root/model/assets/material.h"
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
 
-AGEA_gen_class_cd_default(material);
+KRG_gen_class_cd_default(material);
 
 bool
 material::construct(this_class::construct_params&)
@@ -26,4 +26,4 @@ material::set_sample(const utils::id& slot, const texture_sample& ts)
 }
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

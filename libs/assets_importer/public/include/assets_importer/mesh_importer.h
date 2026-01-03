@@ -7,7 +7,7 @@
 
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace asset_importer
 {
@@ -21,4 +21,4 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
 }
 }  // namespace asset_importer
 
-}  // namespace agea
+}  // namespace kryga

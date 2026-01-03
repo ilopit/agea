@@ -4,7 +4,7 @@
 
 #include <utils/id.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -17,7 +17,7 @@ enum class texture_format : uint32_t
 class texture_data
 {
 public:
-    texture_data(const ::agea::utils::id& id);
+    texture_data(const ::kryga::utils::id& id);
     ~texture_data();
 
     texture_data(const texture_data&) = delete;
@@ -29,7 +29,7 @@ public:
     texture_data&
     operator=(texture_data&& other) noexcept;
 
-    const ::agea::utils::id&
+    const ::kryga::utils::id&
     get_id() const
     {
         return m_id;
@@ -40,8 +40,8 @@ public:
     texture_format format = texture_format::unknown;
 
 private:
-    ::agea::utils::id m_id;
+    ::kryga::utils::id m_id;
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

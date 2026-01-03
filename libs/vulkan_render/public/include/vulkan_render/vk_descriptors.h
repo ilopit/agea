@@ -6,7 +6,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -107,4 +107,4 @@ private:
 }  // namespace vk_utils
 }  // namespace render
 
-}  // namespace agea
+}  // namespace kryga

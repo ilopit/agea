@@ -32,7 +32,7 @@
 
 #include <array>
 
-namespace agea
+namespace kryga
 {
 
 glob::ui::type glob::ui::type::s_instance;
@@ -153,7 +153,7 @@ level_editor_window::handle()
         return;
     }
 
-    auto level = ::agea::glob::glob_state().get_current_level();
+    auto level = ::kryga::glob::glob_state().get_current_level();
 
     if (ImGui::TreeNode("Level Objects"))
     {
@@ -317,4 +317,4 @@ performance_counters_window::handle()
 }
 
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

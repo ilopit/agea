@@ -9,7 +9,7 @@
 
 #include <TextEditor.h>
 
-namespace agea
+namespace kryga
 {
 namespace ui
 {
@@ -179,4 +179,4 @@ script_text_editor::handle()
 }
 
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

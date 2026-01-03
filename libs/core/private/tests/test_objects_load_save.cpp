@@ -13,12 +13,12 @@
 #include <serialization/serialization.h>
 
 #include <utils/file_utils.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <list>
 
 #include <gtest/gtest.h>
 
-using namespace agea;
+using namespace kryga;
 
 #if 0
 namespace
@@ -175,11 +175,11 @@ TEST_F(test_object_constructor, load_and_save_class_component__subobjects_are_in
 {
     auto mt_red = core::object_constructor::alloc_empty_object<core::material>(AID("mt_red"));
     occ.get_instance_global_set()->map->add_item(*mt_red);
-    mt_red->set_flag(agea::core::smart_object_state_flag::instance_obj);
+    mt_red->set_flag(kryga::core::smart_object_state_flag::instance_obj);
 
     auto cube_mesh = core::object_constructor::alloc_empty_object<core::mesh>(AID("cube_mesh"));
     occ.get_instance_global_set()->map->add_item(*cube_mesh);
-    cube_mesh->set_flag(agea::core::smart_object_state_flag::instance_obj);
+    cube_mesh->set_flag(kryga::core::smart_object_state_flag::instance_obj);
 
     core::smart_object* obj = nullptr;
     auto rc = core::object_constructor::object_load(

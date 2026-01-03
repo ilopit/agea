@@ -5,10 +5,10 @@ add_library(native STATIC
 )
 
 target_link_libraries(native
-    agea::utils
+    kryga::utils
     sdl2
-    agea::stb_unofficial
-    agea::resource_locator
+    kryga::stb_unofficial
+    kryga::resource_locator
 )
 
-agea_finalize_library(native)
+kryga_finalize_library(native)

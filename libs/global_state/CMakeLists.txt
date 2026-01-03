@@ -5,7 +5,7 @@ add_library(global_state STATIC
 )
 
 target_link_libraries(global_state
-    agea::utils
+    kryga::utils
 )
 
-agea_finalize_library(global_state)
+kryga_finalize_library(global_state)

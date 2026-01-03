@@ -1,4 +1,4 @@
-#include "engine/agea_engine.h"
+#include "engine/kryga_engine.h"
 
 #include "engine/ui.h"
 #include "engine/input_manager.h"
@@ -41,12 +41,12 @@
 
 #include <resource_locator/resource_locator_state.h>
 
-#include <vulkan_render/agea_render.h>
+#include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/process.h>
 #include <utils/clock.h>
 
@@ -58,7 +58,7 @@
 #include <chrono>
 #include <thread>
 
-namespace agea
+namespace kryga
 {
 glob::engine::type glob::engine::type::s_instance;
 
@@ -132,7 +132,7 @@ vulkan_engine::init()
     glob::glob_state().get_resource_locator()->init_local_dirs();
     auto cfgs_folder = glob::glob_state().get_resource_locator()->resource_dir(category::configs);
 
-    utils::path main_config = cfgs_folder / "agea.acfg";
+    utils::path main_config = cfgs_folder / "kryga.acfg";
     glob::config::get()->load(main_config);
 
     utils::path input_config = cfgs_folder / "inputs.acfg";
@@ -141,7 +141,7 @@ vulkan_engine::init()
     glob::game_editor::get()->init();
 
     gs.schedule_action(gs::state::state_stage::init,
-                       [](agea::gs::state& s) { s.get_pm()->init(); });
+                       [](kryga::gs::state& s) { s.get_pm()->init(); });
     gs.run_init();
 
     native_window::construct_params rwc;
@@ -202,12 +202,12 @@ vulkan_engine::run()
     // main loop
     for (;;)
     {
-        AGEA_make_scope(frame);
+        KRG_make_scope(frame);
 
         auto start_ts = utils::get_current_time_mks();
 
         {
-            AGEA_make_scope(input);
+            KRG_make_scope(input);
 
             if (!glob::input_manager::get()->input_tick(frame_time))
             {
@@ -217,19 +217,19 @@ vulkan_engine::run()
             glob::input_manager::get()->fire_input_event();
         }
         {
-            AGEA_make_scope(ui_tick);
+            KRG_make_scope(ui_tick);
             glob::ui::get()->new_frame(frame_time);
         }
         {
-            AGEA_make_scope(tick);
+            KRG_make_scope(tick);
             tick(frame_time);
         }
         {
-            AGEA_make_scope(sync);
+            KRG_make_scope(sync);
             execute_sync_requests();
         }
         {
-            AGEA_make_scope(consume_updates);
+            KRG_make_scope(consume_updates);
 
             update_cameras();
             glob::vulkan_render::getr().set_camera(m_camera_data);
@@ -243,11 +243,11 @@ vulkan_engine::run()
             }
         }
         {
-            AGEA_make_scope(draw);
+            KRG_make_scope(draw);
 
             glob::vulkan_render::getr().draw_main();
 
-            auto& ctrs = ::agea::glob::engine_counters::getr();
+            auto& ctrs = ::kryga::glob::engine_counters::getr();
             auto& vr = glob::vulkan_render::getr();
 
             ctrs.all_draws.update(vr.get_all_draws());
@@ -549,4 +549,4 @@ vulkan_engine::consume_updated_shader_effects()
     items.clear();
 }
 
-}  // namespace agea
+}  // namespace kryga

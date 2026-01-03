@@ -5,7 +5,7 @@
 
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -30,4 +30,4 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
 
 }  // namespace texture_importer
 }  // namespace asset_importer
-}  // namespace agea
+}  // namespace kryga

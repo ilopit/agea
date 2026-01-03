@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 
-namespace agea
+namespace kryga
 {
 namespace ipc
 {
@@ -20,4 +20,4 @@ bool
 run_binary(construct_params params, std::uint64_t& result_code);
 }  // namespace ipc
 
-}  // namespace agea
+}  // namespace kryga

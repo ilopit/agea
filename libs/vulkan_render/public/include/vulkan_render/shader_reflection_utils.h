@@ -9,7 +9,7 @@
 
 #include <spirv_reflect.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -25,7 +25,7 @@ struct push_constants
     uint32_t offset = 0;
     uint32_t size = 0;
 
-    ::agea::utils::dynobj_layout_sptr layout;
+    ::kryga::utils::dynobj_layout_sptr layout;
 };
 
 struct binding
@@ -46,7 +46,7 @@ struct descriptor_set
 
 struct interface_variables
 {
-    ::agea::utils::dynobj_layout_sptr layout;
+    ::kryga::utils::dynobj_layout_sptr layout;
 };
 
 struct shader_reflection
@@ -120,4 +120,4 @@ struct shader_reflection_utils
                                  VkPushConstantRange& range);
 };
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

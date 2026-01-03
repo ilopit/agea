@@ -8,12 +8,12 @@
 
 #include <core/caches/cache_set.h>
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(spot_light);
+KRG_gen_class_cd_default(spot_light);
 
 bool
 spot_light::construct(construct_params& params)
@@ -48,4 +48,4 @@ spot_light::on_tick(float dt)
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

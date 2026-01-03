@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <functional>
 
-namespace agea
+namespace kryga
 {
 namespace reflection
 {
@@ -100,4 +100,4 @@ public:
 };
 
 }  // namespace reflection
-}  // namespace agea
+}  // namespace kryga

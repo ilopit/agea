@@ -4,7 +4,7 @@
 
 #include <filesystem>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -20,7 +20,7 @@ public:
     explicit path(const char* c)
         : m_value(c)
     {
-        AGEA_check(c, "Should not be NULL");
+        KRG_check(c, "Should not be NULL");
         normalize();
     }
 
@@ -71,7 +71,7 @@ public:
     path&
     append(const char* p)
     {
-        AGEA_check(p, "Should not be NULL");
+        KRG_check(p, "Should not be NULL");
 
         m_value /= p;
         normalize();
@@ -89,7 +89,7 @@ public:
     path&
     add(const char* p)
     {
-        AGEA_check(p, "Should not be NULL");
+        KRG_check(p, "Should not be NULL");
         m_value += p;
         normalize();
 
@@ -161,13 +161,13 @@ public:
     }
 
     bool
-    operator<(const agea::utils::path& l) const
+    operator<(const kryga::utils::path& l) const
     {
         return fs() < l.fs();
     }
 
     bool
-    operator==(const agea::utils::path& l) const
+    operator==(const kryga::utils::path& l) const
     {
         return fs() == l.fs();
     }
@@ -183,31 +183,31 @@ private:
 };
 }  // namespace utils
 
-}  // namespace agea
+}  // namespace kryga
 
-inline agea::utils::path
-operator/(const agea::utils::path& l, const agea::utils::path& r)
+inline kryga::utils::path
+operator/(const kryga::utils::path& l, const kryga::utils::path& r)
 {  // append a pair of paths together
-    agea::utils::path tmp = l;
+    kryga::utils::path tmp = l;
     return tmp.append(r);
 }
 
-inline agea::utils::path
-operator/(const agea::utils::path& l, const char* r)
+inline kryga::utils::path
+operator/(const kryga::utils::path& l, const char* r)
 {  // append a pair of paths together
-    agea::utils::path tmp = l;
+    kryga::utils::path tmp = l;
     return tmp.append(r);
 }
 
-inline agea::utils::path
-operator/(const agea::utils::path& l, const std::string& r)
+inline kryga::utils::path
+operator/(const kryga::utils::path& l, const std::string& r)
 {  // append a pair of paths together
-    agea::utils::path tmp = l;
+    kryga::utils::path tmp = l;
     return tmp.append(r);
 }
 
 inline bool
-operator<(const ::agea::utils::path& l, const ::agea::utils::path& r)
+operator<(const ::kryga::utils::path& l, const ::kryga::utils::path& r)
 {
     return l.fs() < r.fs();
 }
@@ -216,10 +216,10 @@ namespace std
 {
 
 template <>
-struct hash<::agea::utils::path>
+struct hash<::kryga::utils::path>
 {
     size_t
-    operator()(const ::agea::utils::path& k) const
+    operator()(const ::kryga::utils::path& k) const
     {
         return std::hash<std::string>{}(k.str());
     }
@@ -227,4 +227,4 @@ struct hash<::agea::utils::path>
 
 }  // namespace std
 
-#define APATH(value) ::agea::utils::path(value)
+#define APATH(value) ::kryga::utils::path(value)

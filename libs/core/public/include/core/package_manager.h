@@ -7,7 +7,7 @@
 
 #include <unordered_set>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -87,4 +87,4 @@ protected:
 
 }  // namespace core
 
-}  // namespace agea
+}  // namespace kryga

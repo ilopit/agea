@@ -3,7 +3,7 @@
 
 #include "vulkan_render/utils/segments.h"
 
-using namespace agea::render;
+using namespace kryga::render;
 
 TEST(SimpleTest, happy)
 {

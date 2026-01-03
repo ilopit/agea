@@ -7,9 +7,9 @@
 #include "core/caches/hash_cache.h"
 
 #include <utils/singleton_instance.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -86,7 +86,7 @@ public:
     add_cache(architype_cache* c)
     {
         auto& v = m_mapping[c->get_id()];
-        AGEA_check(v == nullptr, "Should not re-assign!");
+        KRG_check(v == nullptr, "Should not re-assign!");
         v = c;
     }
 
@@ -130,4 +130,4 @@ private:
     std::unordered_map<architype, architype_cache*> m_mapping;
 };
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

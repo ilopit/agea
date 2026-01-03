@@ -11,7 +11,7 @@
 #include <array>
 #include <unordered_map>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -27,12 +27,12 @@ struct vulkan_descriptor_set_layout_data
 class shader_effect_data
 {
 public:
-    shader_effect_data(const ::agea::utils::id& id);
-    shader_effect_data(const ::agea::utils::id& id, const utils::dynobj_layout_sptr& v);
+    shader_effect_data(const ::kryga::utils::id& id);
+    shader_effect_data(const ::kryga::utils::id& id, const utils::dynobj_layout_sptr& v);
 
     ~shader_effect_data();
 
-    const ::agea::utils::id&
+    const ::kryga::utils::id&
     get_id() const
     {
         return m_id;
@@ -73,8 +73,8 @@ public:
     bool m_failed_load = false;
 
 private:
-    ::agea::utils::id m_id;
+    ::kryga::utils::id m_id;
 };
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

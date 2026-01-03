@@ -9,8 +9,8 @@ add_executable (utils_tests
  )
 
 target_link_libraries(utils_tests
-    agea::utils
+    kryga::utils
     gtest_main
 )
 
-agea_finalize_executable(utils_tests)
+kryga_finalize_executable(utils_tests)

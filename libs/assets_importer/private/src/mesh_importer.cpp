@@ -1,6 +1,6 @@
 #include "assets_importer/assets_importer.h"
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
 #include <vulkan_render/types/vulkan_gpu_types.h>
@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-namespace agea
+namespace kryga
 {
 namespace asset_importer
 {
@@ -116,4 +116,4 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
 
 }  // namespace mesh_importer
 }  // namespace asset_importer
-}  // namespace agea
+}  // namespace kryga

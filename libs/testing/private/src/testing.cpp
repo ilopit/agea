@@ -1,6 +1,6 @@
 #include "testing/testing.h"
 
-namespace agea
+namespace kryga
 {
 
 void
@@ -16,11 +16,11 @@ testing_base::Do_TearDown()
 {
 }
 
-agea::utils::path
+kryga::utils::path
 testing_base::get_current_workspace()
 {
     static auto path = std::filesystem::current_path() / "test_workspace";
 
-    return agea::utils::path(path);
+    return kryga::utils::path(path);
 }
-}  // namespace agea
+}  // namespace kryga

@@ -5,12 +5,12 @@
 
 #include <core/caches/cache_set.h>
 
-namespace agea
+namespace kryga
 {
 namespace test
 {
 
-AGEA_gen_class_cd_default(test_mesh_object);
+KRG_gen_class_cd_default(test_mesh_object);
 
 bool
 test_mesh_object::construct(construct_params& params)
@@ -26,4 +26,4 @@ test_mesh_object::construct(construct_params& params)
 }
 
 }  // namespace test
-}  // namespace agea
+}  // namespace kryga

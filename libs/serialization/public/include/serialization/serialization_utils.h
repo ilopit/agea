@@ -2,7 +2,7 @@
 
 #include "serialization/serialization.h"
 
-namespace agea
+namespace kryga
 {
 
 namespace serialization
@@ -71,4 +71,4 @@ struct utils
 };
 
 }  // namespace serialization
-}  // namespace agea
+}  // namespace kryga

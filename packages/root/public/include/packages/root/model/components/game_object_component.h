@@ -5,7 +5,7 @@
 #include "packages/root/model/components/component.h"
 #include "packages/root/model/core_types/vec3.h"
 
-namespace agea
+namespace kryga
 {
 
 namespace render
@@ -20,21 +20,21 @@ const extern vec3 DEF_FORWARD;
 const extern vec3 DEF_UP;
 const extern vec3 DEF_RIGHT;
 
-AGEA_ar_class(render_constructor = game_object_component__render_loader,
+KRG_ar_class(render_constructor = game_object_component__render_loader,
               render_destructor = game_object_component__render_destructor);
 class game_object_component : public component
 {
-    AGEA_gen_meta__game_object_component();
+    KRG_gen_meta__game_object_component();
 
 public:
-    AGEA_gen_class_meta(game_object_component, component);
-    AGEA_gen_construct_params
+    KRG_gen_class_meta(game_object_component, component);
+    KRG_gen_construct_params
     {
         std::optional<vec3> position = vec3(0.f, 0.f, 0.f);
         std::optional<vec3> scale = vec3(1.f, 1.f, 1.f);
         std::optional<vec3> rotation = vec3(0.f, 0.f, 0.f);
     };
-    AGEA_gen_meta_api;
+    KRG_gen_meta_api;
 
     bool
     construct(construct_params& c);
@@ -108,13 +108,13 @@ public:
     mark_transform_dirty();
 
 protected:
-    AGEA_ar_property("category=Action", "serializable=true", "default=true");
+    KRG_ar_property("category=Action", "serializable=true", "default=true");
     bool m_tickable = false;
 
-    AGEA_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
+    KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
     bool m_visible = false;
 
-    AGEA_ar_property("category=Transform",
+    KRG_ar_property("category=Transform",
                      "access=all",
                      "check=not_same",
                      "invalidates=transform",
@@ -122,7 +122,7 @@ protected:
                      "default=true");
     vec3 m_position = {0.f};
 
-    AGEA_ar_property("category=Transform",
+    KRG_ar_property("category=Transform",
                      "access=all",
                      "serializable=true",
                      "check=not_same",
@@ -130,7 +130,7 @@ protected:
                      "default=true");
     vec3 m_rotation = {0.f};
 
-    AGEA_ar_property("category=Transform",
+    KRG_ar_property("category=Transform",
                      "access=all",
                      "check=not_same",
                      "invalidates=transform",
@@ -150,4 +150,4 @@ protected:
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

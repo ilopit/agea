@@ -1,4 +1,4 @@
-"""Code generation module for AGEA reflection system.
+"""Code generation module for KRYGA reflection system.
 
 This module generates C++ header and source files for reflection metadata,
 including class includes, package includes, type resolvers, Lua bindings,
@@ -52,7 +52,7 @@ class InvalidTypeKindError(WriterError):
   pass
 
 
-def kind_to_string(kind: arapi.types.agea_type_kind) -> str:
+def kind_to_string(kind: arapi.types.kryga_type_kind) -> str:
   """Convert type kind enum to string representation.
     
     Args:
@@ -64,12 +64,12 @@ def kind_to_string(kind: arapi.types.agea_type_kind) -> str:
     Raises:
         SystemExit: If kind is not recognized (for backward compatibility)
     """
-  if kind == arapi.types.agea_type_kind.CLASS:
-    return "agea_class"
-  elif kind == arapi.types.agea_type_kind.STRUCT:
-    return "agea_struct"
-  elif kind == arapi.types.agea_type_kind.EXTERNAL:
-    return "agea_external"
+  if kind == arapi.types.kryga_type_kind.CLASS:
+    return "kryga_class"
+  elif kind == arapi.types.kryga_type_kind.STRUCT:
+    return "kryga_struct"
+  elif kind == arapi.types.kryga_type_kind.EXTERNAL:
+    return "kryga_external"
   else:
     exit(-1)
 
@@ -95,16 +95,16 @@ def generate_builder(should_generate: bool, name: str, extra_methods: str = "") 
     return """struct package_types_builder;                                              \\
 """
 
-  return f"""struct package_{name}_builder : public ::agea::core::package_{name}_builder\\
+  return f"""struct package_{name}_builder : public ::kryga::core::package_{name}_builder\\
 {{                                                                                      \\
     public:                                                                             \\
-        virtual bool build(::agea::core::package& sp) override;                  \\
-        virtual bool destroy(::agea::core::package& sp) override;                \\
+        virtual bool build(::kryga::core::package& sp) override;                  \\
+        virtual bool destroy(::kryga::core::package& sp) override;                \\
 {extra_methods}}};                                                                                     \\
 """
 
 
-def write_ar_class_include_file(ar_type: arapi.types.agea_type, context: arapi.types.file_context,
+def write_ar_class_include_file(ar_type: arapi.types.kryga_type, context: arapi.types.file_context,
                                 output_dir: str) -> None:
   """Write class include file with reflection macros.
     
@@ -116,7 +116,7 @@ def write_ar_class_include_file(ar_type: arapi.types.agea_type, context: arapi.t
     Raises:
         SystemExit: If ar_type is not a CLASS (for backward compatibility)
     """
-  if ar_type.kind != arapi.types.agea_type_kind.CLASS:
+  if ar_type.kind != arapi.types.kryga_type_kind.CLASS:
     exit(-1)
 
   include_path = os.path.join(
@@ -129,7 +129,7 @@ def write_ar_class_include_file(ar_type: arapi.types.agea_type, context: arapi.t
   ar_class_include = arapi.utils.FileBuffer(include_path)
   ar_class_include.append(f"""#pragma once
 
-#define AGEA_gen_meta__{ar_type.name}()   \\
+#define KRG_gen_meta__{ar_type.name}()   \\
     friend class package; \\
 """)
 
@@ -166,36 +166,36 @@ def write_ar_package_include_file(context: arapi.types.file_context, output_dir:
   type_methods = ""
   for type_obj in context.types:
     # Phase 1: register_type_*
-    type_methods += f"        void register_type_{type_obj.name}(::agea::core::package& sp);             \\\n"
+    type_methods += f"        void register_type_{type_obj.name}(::kryga::core::package& sp);             \\\n"
   for type_obj in context.types:
     # Phase 2: register_properties_* (only for types with properties)
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       type_methods += f"        void register_properties_{type_obj.name}();                               \\\n"
   for type_obj in context.types:
     # Phase 3: lua_bind_*
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       type_methods += f"        void lua_bind_{type_obj.name}();                                          \\\n"
 
   ar_class_include.append(f"""
-#define AGEA_gen_meta__{context.module_name}_package_model
-#define AGEA_gen_meta__{context.module_name}_package_render
-#define AGEA_gen_meta__{context.module_name}_package_builder
+#define KRG_gen_meta__{context.module_name}_package_model
+#define KRG_gen_meta__{context.module_name}_package_render
+#define KRG_gen_meta__{context.module_name}_package_builder
 
-#if defined(AGEA_build__model)
-#undef  AGEA_gen_meta__{context.module_name}_package_model
-#define AGEA_gen_meta__{context.module_name}_package_model \\
+#if defined(KRG_build__model)
+#undef  KRG_gen_meta__{context.module_name}_package_model
+#define KRG_gen_meta__{context.module_name}_package_model \\
 public: \\
 static bool package_model_enforcer(); \\
 static inline bool has_model_types = package_model_enforcer(); \\
-static ::agea::utils::id \\
+static ::kryga::utils::id \\
 package_id() \\
 {{ \\
     return AID("{context.module_name}"); \\
 }} \\
 static auto \\
-package_loader() -> std::unique_ptr<::agea::core::package>(*)() \\
+package_loader() -> std::unique_ptr<::kryga::core::package>(*)() \\
 {{ \\
-    return +[]() -> std::unique_ptr<::agea::core::package> {{ \\
+    return +[]() -> std::unique_ptr<::kryga::core::package> {{ \\
         auto pkg = std::make_unique<package>(); \\
         instance_impl() = pkg.get(); \\
         return pkg; \\
@@ -210,16 +210,16 @@ instance_impl() \\
 static package& \\
 instance() \\
 {{ \\
-    AGEA_check(instance_impl(), "empty instance"); \\
+    KRG_check(instance_impl(), "empty instance"); \\
     return *instance_impl(); \\
 }} \\
 {generate_builder(True, "types", type_methods)}{generate_builder(True, "types_default_objects")} \\
 private:
 #endif
 
-#if defined(AGEA_build__render)
-#undef  AGEA_gen_meta__{context.module_name}_package_render
-#define AGEA_gen_meta__{context.module_name}_package_render \\
+#if defined(KRG_build__render)
+#undef  KRG_gen_meta__{context.module_name}_package_render
+#define KRG_gen_meta__{context.module_name}_package_render \\
 private:\\
   static bool package_render_enforcer();\\
   static inline bool has_render_types = package_render_enforcer();\\
@@ -228,25 +228,25 @@ public:\\
 private: 
 #endif
 
-#if defined(AGEA_build__builder)
-#undef  AGEA_gen_meta__{context.module_name}_package_builder
-#define AGEA_gen_meta__{context.module_name}_package_builder \\
+#if defined(KRG_build__builder)
+#undef  KRG_gen_meta__{context.module_name}_package_builder
+#define KRG_gen_meta__{context.module_name}_package_builder \\
 
 #endif
 """)
 
   ar_class_include.append(f"""
-#define AGEA_gen_meta__{context.module_name}_package \\
-  AGEA_gen_meta__{context.module_name}_package_model \\
-  AGEA_gen_meta__{context.module_name}_package_render \\
-  AGEA_gen_meta__{context.module_name}_package_builder
+#define KRG_gen_meta__{context.module_name}_package \\
+  KRG_gen_meta__{context.module_name}_package_model \\
+  KRG_gen_meta__{context.module_name}_package_render \\
+  KRG_gen_meta__{context.module_name}_package_builder
 """)
 
   ar_class_include.write_if_changed()
 
 
 def write_property_access_methods(fc: arapi.types.file_context,
-                                  prop: arapi.types.agea_property) -> None:
+                                  prop: arapi.types.kryga_property) -> None:
   """Write property accessor methods (getters/setters) to context.
     
     Args:
@@ -282,7 +282,7 @@ def write_property_access_methods(fc: arapi.types.file_context,
 
 
 def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                               prop: arapi.types.agea_property, type_name: str) -> None:
+                               prop: arapi.types.kryga_property, type_name: str) -> None:
   """Write property reflection metadata.
     
     Args:
@@ -295,14 +295,14 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
     {{
         using type       = {prop.owner};
 
-        auto property_td = ::agea::reflection::agea_type_resolve<decltype(type::m_{prop.name_cut})>();
-        auto prop_rtype  = ::agea::glob::glob_state().get_rm()->get_type(property_td.type_id);
+        auto property_td = ::kryga::reflection::kryga_type_resolve<decltype(type::m_{prop.name_cut})>();
+        auto prop_rtype  = ::kryga::glob::glob_state().get_rm()->get_type(property_td.type_id);
         if(!prop_rtype)
         {{
             ALOG_WARN("Property doesn't have a type {prop.owner}:{prop.name_cut}");
         }}
 
-        auto prop        = std::make_shared<::agea::reflection::property>();
+        auto prop        = std::make_shared<::kryga::reflection::property>();
         auto p           = prop.get();
 
         {fc.module_name}_{type_name}_rt->m_properties.emplace_back(std::move(prop));
@@ -326,7 +326,7 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
     file_buffer.append("        p->serializable  = true;\n")
 
   if prop.invalidates_render:
-    file_buffer.append(f"        p->render_subobject  = std::is_base_of_v<::agea::root::smart_object, typename std::remove_pointer_t<{prop.type}>>;\n")
+    file_buffer.append(f"        p->render_subobject  = std::is_base_of_v<::kryga::root::smart_object, typename std::remove_pointer_t<{prop.type}>>;\n")
 
   if prop.property_ser_handler != EMPTY_STRING:
     file_buffer.append(f"        p->save_handler  = {prop.property_ser_handler};\n")
@@ -347,7 +347,7 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
 
 
 def write_properties(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                     type_obj: arapi.types.agea_type) -> None:
+                     type_obj: arapi.types.kryga_type) -> None:
   """Write properties reflection code for a type.
     
     Args:
@@ -392,7 +392,7 @@ def write_types_resolvers(fc: arapi.types.file_context) -> None:
     output.append("\n")
 
   output.append("""
-  namespace agea::reflection
+  namespace kryga::reflection
   {
   """)
 
@@ -403,7 +403,7 @@ def write_types_resolvers(fc: arapi.types.file_context) -> None:
   {{
       enum
       {{
-          value = ::agea::{type_obj.id}
+          value = ::kryga::{type_obj.id}
       }};
   }};
   """)
@@ -414,7 +414,7 @@ def write_types_resolvers(fc: arapi.types.file_context) -> None:
 
 
 def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                         type_obj: arapi.types.agea_type) -> None:
+                         type_obj: arapi.types.kryga_type) -> None:
   """Write Lua binding code for a class type.
     
     Args:
@@ -424,12 +424,12 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
     """
   file_buffer.append(f"""
     {{
-        *{type_obj.name}_lua_type = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
+        *{type_obj.name}_lua_type = ::kryga::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
         "{type_obj.name}", sol::no_constructor,
             "i",
             [](const char* id) -> {type_obj.get_full_type_name()}*
             {{
-                auto item = ::agea::glob::glob_state().get_instance_objects_cache()->get_item(AID(id));
+                auto item = ::kryga::glob::glob_state().get_instance_objects_cache()->get_item(AID(id));
 
                 if(!item)
                 {{
@@ -441,7 +441,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
             "c",
             [](const char* id) -> {type_obj.get_full_type_name()}*
             {{
-                auto item = ::agea::glob::glob_state().get_class_objects_cache()->get_item(AID(id));
+                auto item = ::kryga::glob::glob_state().get_class_objects_cache()->get_item(AID(id));
 
                 if(!item)
                 {{
@@ -466,7 +466,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
 
 
 def write_lua_struct_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                          type_obj: arapi.types.agea_type) -> None:
+                          type_obj: arapi.types.kryga_type) -> None:
   """Write Lua binding code for a struct type.
     
     Args:
@@ -477,7 +477,7 @@ def write_lua_struct_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.f
   ctor_line = ",".join(ctor.name for ctor in type_obj.ctros)
 
   file_buffer.append(f"""
-         *{type_obj.name}_lua_type = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
+         *{type_obj.name}_lua_type = ::kryga::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
         "{type_obj.get_full_type_name()}", sol::constructors<{ctor_line}>());
   """)
 
@@ -544,7 +544,7 @@ def model_generate_overrides_headers(fc: arapi.types.file_context) -> str:
   return overrides
 
 
-def _write_reflection_methods(fc: arapi.types.file_context, type_obj: arapi.types.agea_type) -> str:
+def _write_reflection_methods(fc: arapi.types.file_context, type_obj: arapi.types.kryga_type) -> str:
   """Generate reflection methods for a class type.
     
     Args:
@@ -555,20 +555,20 @@ def _write_reflection_methods(fc: arapi.types.file_context, type_obj: arapi.type
         String containing reflection method implementations
     """
   return f"""
-const ::agea::reflection::reflection_type& 
+const ::kryga::reflection::reflection_type& 
 {type_obj.name}::AR_TYPE_reflection()
 {{
     return *{fc.module_name}_{type_obj.name}_rt;
 }}                  
 
-std::shared_ptr<::agea::root::smart_object>
-{type_obj.name}::AR_TYPE_create_empty_gen_obj(::agea::reflection::type_context__alloc& ctx)
+std::shared_ptr<::kryga::root::smart_object>
+{type_obj.name}::AR_TYPE_create_empty_gen_obj(::kryga::reflection::type_context__alloc& ctx)
 {{
     return {type_obj.name}::AR_TYPE_create_empty_obj(*ctx.id);
 }}
 
 std::shared_ptr<{type_obj.name}>
-{type_obj.name}::AR_TYPE_create_empty_obj(const ::agea::utils::id& id)
+{type_obj.name}::AR_TYPE_create_empty_obj(const ::kryga::utils::id& id)
 {{
     auto s = std::make_shared<this_class>();
     s->META_set_reflection_type(&this_class::AR_TYPE_reflection());
@@ -576,7 +576,7 @@ std::shared_ptr<{type_obj.name}>
     return s;
 }}
 
-std::unique_ptr<::agea::root::base_construct_params>
+std::unique_ptr<::kryga::root::base_construct_params>
 {type_obj.name}::AR_TYPE_create_gen_default_cparams()
 {{
     auto ptr = std::make_unique<{type_obj.name}::construct_params>();          
@@ -584,14 +584,14 @@ std::unique_ptr<::agea::root::base_construct_params>
     return ptr;
 }}
 
-::agea::utils::id
+::kryga::utils::id
 {type_obj.name}::AR_TYPE_id()
 {{
     return AID("{type_obj.name}");
 }}
 
 bool
-{type_obj.name}::META_construct(const ::agea::root::base_construct_params& i)
+{type_obj.name}::META_construct(const ::kryga::root::base_construct_params& i)
 {{
     /* Replace to dynamic cast */
     auto p = (this_class::construct_params*)&i;
@@ -602,7 +602,7 @@ bool
 
 
 def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                                   type_obj: arapi.types.agea_type, indent: str = "    ") -> None:
+                                   type_obj: arapi.types.kryga_type, indent: str = "    ") -> None:
   """Write the body of type registration (shared between inline and function versions).
 
     Args:
@@ -612,13 +612,13 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
         indent: Indentation prefix
   """
   file_buffer.append(f"""
-{indent}const int type_id = ::agea::reflection::type_resolver<{type_obj.get_full_type_name()}>::value;
-{indent}AGEA_check(type_id != -1, "Type is not defined!");
-{indent}m_rt_{type_obj.name} = std::make_unique<::agea::reflection::reflection_type>(type_id, AID("{type_obj.name}"));
+{indent}const int type_id = ::kryga::reflection::type_resolver<{type_obj.get_full_type_name()}>::value;
+{indent}KRG_check(type_id != -1, "Type is not defined!");
+{indent}m_rt_{type_obj.name} = std::make_unique<::kryga::reflection::reflection_type>(type_id, AID("{type_obj.name}"));
 {indent}{fc.module_name}_{type_obj.name}_rt = m_rt_{type_obj.name}.get();
 {indent}auto& rt         = *add(*m_package, {fc.module_name}_{type_obj.name}_rt);
 {indent}rt.type_id       = type_id;
-{indent}rt.type_class    = ::agea::reflection::reflection_type::reflection_type_class::{kind_to_string(type_obj.kind)};
+{indent}rt.type_class    = ::kryga::reflection::reflection_type::reflection_type_class::{kind_to_string(type_obj.kind)};
 
 {indent}rt.module_id     = AID("{fc.module_name}");
 {indent}rt.size          = sizeof({type_obj.get_full_type_name()});
@@ -626,7 +626,7 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 
   # lua_storage already contains the sol::usertype fields, no need to allocate
 
-  if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+  if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
     file_buffer.append(f"""
 {indent}rt.alloc         = {type_obj.name}::AR_TYPE_create_empty_gen_obj;
 {indent}rt.cparams_alloc = {type_obj.name}::AR_TYPE_create_gen_default_cparams;
@@ -638,11 +638,11 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
   if type_obj.parent_type or len(type_obj.parent_name) > 0:
     parent_name = type_obj.parent_name if type_obj.parent_name else type_obj.parent_type.name
     file_buffer.append(f"""
-{indent}int parent_type_id = ::agea::reflection::type_resolver<{parent_name}>::value;
-{indent}AGEA_check(parent_type_id != -1, "Type is not defined!");
+{indent}int parent_type_id = ::kryga::reflection::type_resolver<{parent_name}>::value;
+{indent}KRG_check(parent_type_id != -1, "Type is not defined!");
 
-{indent}auto parent_rt =  ::agea::glob::glob_state().get_rm()->get_type(parent_type_id);
-{indent}AGEA_check(parent_rt, "Type is not defined!");
+{indent}auto parent_rt =  ::kryga::glob::glob_state().get_rm()->get_type(parent_type_id);
+{indent}KRG_check(parent_rt, "Type is not defined!");
 
 {indent}rt.parent = parent_rt;
 """)
@@ -667,7 +667,7 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 
 
 def _write_type_registration_function(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                                       type_obj: arapi.types.agea_type) -> None:
+                                       type_obj: arapi.types.kryga_type) -> None:
   """Write type registration as a member function of package_types_builder.
 
     Args:
@@ -684,7 +684,7 @@ package::package_types_builder::register_type_{type_obj.name}()
 
 
 def _write_properties_member_function(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                                       type_obj: arapi.types.agea_type) -> None:
+                                       type_obj: arapi.types.kryga_type) -> None:
   """Write properties registration as a member function of package_types_builder.
 
     Args:
@@ -707,7 +707,7 @@ package::package_types_builder::register_properties_{type_obj.name}()
 
 
 def _write_lua_binding_function(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
-                                 type_obj: arapi.types.agea_type) -> None:
+                                 type_obj: arapi.types.kryga_type) -> None:
   """Write Lua binding as a member function of package_types_builder.
 
     Args:
@@ -721,14 +721,14 @@ package::package_types_builder::lua_bind_{type_obj.name}()
 {{
 """)
 
-  if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+  if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
     # Write lua class type binding inline
-    file_buffer.append(f"""    m_lua_{type_obj.name} = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
+    file_buffer.append(f"""    m_lua_{type_obj.name} = ::kryga::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
     "{type_obj.name}", sol::no_constructor,
         "i",
         [](const char* id) -> {type_obj.get_full_type_name()}*
         {{
-            auto item = ::agea::glob::glob_state().get_instance_objects_cache()->get_item(AID(id));
+            auto item = ::kryga::glob::glob_state().get_instance_objects_cache()->get_item(AID(id));
 
             if(!item)
             {{
@@ -740,7 +740,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
         "c",
         [](const char* id) -> {type_obj.get_full_type_name()}*
         {{
-            auto item = ::agea::glob::glob_state().get_class_objects_cache()->get_item(AID(id));
+            auto item = ::kryga::glob::glob_state().get_class_objects_cache()->get_item(AID(id));
 
             if(!item)
             {{
@@ -762,9 +762,9 @@ package::package_types_builder::lua_bind_{type_obj.name}()
       file_buffer.append(""");
 """)
 
-  elif type_obj.kind == arapi.types.agea_type_kind.STRUCT:
+  elif type_obj.kind == arapi.types.kryga_type_kind.STRUCT:
     ctor_line = ",".join(ctor.name for ctor in type_obj.ctros)
-    file_buffer.append(f"""    m_lua_{type_obj.name} = ::agea::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
+    file_buffer.append(f"""    m_lua_{type_obj.name} = ::kryga::glob::glob_state().get_lua()->state().new_usertype<{type_obj.get_full_type_name()}>(
     "{type_obj.get_full_type_name()}", sol::constructors<{ctor_line}>());
 """)
 
@@ -786,11 +786,11 @@ def write_types_builder_header(header_file: str, fc: arapi.types.file_context) -
   # Generate member declarations
   rt_members = ""
   for type_obj in fc.types:
-    rt_members += f"    std::unique_ptr<::agea::reflection::reflection_type> m_rt_{type_obj.name};\n"
+    rt_members += f"    std::unique_ptr<::kryga::reflection::reflection_type> m_rt_{type_obj.name};\n"
 
   lua_members = ""
   for type_obj in fc.types:
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       lua_members += f"    sol::usertype<{type_obj.get_full_type_name()}> m_lua_{type_obj.name};\n"
 
   # Generate per-type method declarations
@@ -798,10 +798,10 @@ def write_types_builder_header(header_file: str, fc: arapi.types.file_context) -
   for type_obj in fc.types:
     type_method_decls += f"    void register_type_{type_obj.name}();\n"
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       type_method_decls += f"    void register_properties_{type_obj.name}();\n"
   for type_obj in fc.types:
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       type_method_decls += f"    void lua_bind_{type_obj.name}();\n"
 
   # Collect type includes (needed for sol::usertype<T> to have complete types)
@@ -832,25 +832,25 @@ def write_types_builder_header(header_file: str, fc: arapi.types.file_context) -
 
 #include <memory>
 
-namespace agea::{fc.module_name} {{
+namespace kryga::{fc.module_name} {{
 
-struct package::package_types_builder : public ::agea::core::package_types_builder
+struct package::package_types_builder : public ::kryga::core::package_types_builder
 {{
 public:
-    bool build(::agea::core::package& sp) override;
-    bool destroy(::agea::core::package& sp) override;
+    bool build(::kryga::core::package& sp) override;
+    bool destroy(::kryga::core::package& sp) override;
 
 private:
 {type_method_decls}
     // Package context (set in build())
-    ::agea::core::package* m_package = nullptr;
+    ::kryga::core::package* m_package = nullptr;
 
     // Reflection type storage
 {rt_members}
     // Lua usertype storage
 {lua_members}}};
 
-}} // namespace agea::{fc.module_name}
+}} // namespace kryga::{fc.module_name}
 """)
 
   file_buffer.write_if_changed()
@@ -895,25 +895,25 @@ def write_object_model_reflection(package_ar_file: str, fc: arapi.types.file_con
 
 #include <sol2_unofficial/sol.h>
 
-namespace agea::{fc.module_name} {{
+namespace kryga::{fc.module_name} {{
 
 """)
 
   # Write static raw pointer declarations for reflection types
   for type_obj in fc.types:
     file_buffer.append(f"""
-static ::agea::reflection::reflection_type* {fc.module_name}_{type_obj.name}_rt = nullptr;""")
+static ::kryga::reflection::reflection_type* {fc.module_name}_{type_obj.name}_rt = nullptr;""")
 
   # Generate member declarations for the class
   # Use m_rt_ prefix for reflection types to avoid C++ keyword conflicts (bool, float, etc.)
   rt_members = ""
   for type_obj in fc.types:
-    rt_members += f"    std::unique_ptr<::agea::reflection::reflection_type> m_rt_{type_obj.name};\n"
+    rt_members += f"    std::unique_ptr<::kryga::reflection::reflection_type> m_rt_{type_obj.name};\n"
 
   # Use m_lua_ prefix for lua types
   lua_members = ""
   for type_obj in fc.types:
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       lua_members += f"    sol::usertype<{type_obj.get_full_type_name()}> m_lua_{type_obj.name};\n"
 
   # Generate per-type method declarations (no package param - use m_package member)
@@ -921,25 +921,25 @@ static ::agea::reflection::reflection_type* {fc.module_name}_{type_obj.name}_rt 
   for type_obj in fc.types:
     type_method_decls += f"    void register_type_{type_obj.name}();\n"
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       type_method_decls += f"    void register_properties_{type_obj.name}();\n"
   for type_obj in fc.types:
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       type_method_decls += f"    void lua_bind_{type_obj.name}();\n"
 
   # Write the full class definition - the builder IS the pimpl
   file_buffer.append(f"""
 
-struct package::package_types_builder : public ::agea::core::package_types_builder
+struct package::package_types_builder : public ::kryga::core::package_types_builder
 {{
 public:
-    bool build(::agea::core::package& sp) override;
-    bool destroy(::agea::core::package& sp) override;
+    bool build(::kryga::core::package& sp) override;
+    bool destroy(::kryga::core::package& sp) override;
 
 private:
 {type_method_decls}
     // Package context (set in build())
-    ::agea::core::package* m_package = nullptr;
+    ::kryga::core::package* m_package = nullptr;
 
     // Reflection type storage
 {rt_members}
@@ -950,7 +950,7 @@ private:
   # Generate reflection methods for classes
   reflection_methods = ""
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       reflection_methods += _write_reflection_methods(fc, type_obj)
 
   file_buffer.append("\n\n")
@@ -964,26 +964,26 @@ private:
 
   # Phase 2: Write register_properties_* member functions
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       _write_properties_member_function(file_buffer, fc, type_obj)
 
   # Phase 3: Write lua_bind_* functions
   for type_obj in fc.types:
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       _write_lua_binding_function(file_buffer, fc, type_obj)
 
   # Write static schedule calls
   file_buffer.append(f"""
-AGEA_gen__static_schedule(::agea::gs::state::state_stage::create,
-    [](agea::gs::state& s)
+KRG_gen__static_schedule(::kryga::gs::state::state_stage::create,
+    [](kryga::gs::state& s)
     {{                     
         s.get_pm()->register_static_package_loader<package>();
         auto& pkg = s.get_pm()->load_static_package<package>();
 
     }});
 
-AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
-    [](agea::gs::state& s)
+KRG_gen__static_schedule(::kryga::gs::state::state_stage::connect,
+    [](kryga::gs::state& s)
     {{
        {fc.module_name}::package::instance().register_package_extension<package::package_types_builder>();
        {fc.module_name}::package::instance().register_package_extension<package::package_types_default_objects_builder>();
@@ -996,7 +996,7 @@ bool package::package_model_enforcer()
 }}
 
 bool
-package::package_types_builder::build(::agea::core::package& sp)
+package::package_types_builder::build(::kryga::core::package& sp)
 {{
     m_package = &sp;
 
@@ -1011,7 +1011,7 @@ package::package_types_builder::build(::agea::core::package& sp)
 """)
 
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       file_buffer.append(f"    register_properties_{type_obj.name}();\n")
 
   file_buffer.append("""
@@ -1019,7 +1019,7 @@ package::package_types_builder::build(::agea::core::package& sp)
 """)
 
   for type_obj in fc.types:
-    if type_obj.kind != arapi.types.agea_type_kind.EXTERNAL or type_obj.script_support:
+    if type_obj.kind != arapi.types.kryga_type_kind.EXTERNAL or type_obj.script_support:
       file_buffer.append(f"    lua_bind_{type_obj.name}();\n")
 
   file_buffer.append("""
@@ -1028,7 +1028,7 @@ package::package_types_builder::build(::agea::core::package& sp)
 """)
   file_buffer.append(f"""
 bool
-package::package_types_builder::destroy(::agea::core::package& sp)
+package::package_types_builder::destroy(::kryga::core::package& sp)
 {{
 """)
   # Clear raw pointers and reset members
@@ -1039,22 +1039,22 @@ package::package_types_builder::destroy(::agea::core::package& sp)
   file_buffer.append(f"""    return true;
 }}
 bool
-package::package_types_default_objects_builder::build(::agea::core::package& sp)
+package::package_types_default_objects_builder::build(::kryga::core::package& sp)
 {{
-    auto pkg = &::agea::{fc.module_name}::package::instance();
+    auto pkg = &::kryga::{fc.module_name}::package::instance();
 """)
 
   file_buffer.append("\n    return true;\n}\n\n")
 
   file_buffer.append(f"""
 bool
-package::package_types_default_objects_builder::destroy(::agea::core::package& sp)
+package::package_types_default_objects_builder::destroy(::kryga::core::package& sp)
 {{
-    auto pkg = &::agea::{fc.module_name}::package::instance();
+    auto pkg = &::kryga::{fc.module_name}::package::instance();
 """)
 
   for type_obj in fc.types:
-    if type_obj.kind == arapi.types.agea_type_kind.CLASS:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       file_buffer.append(f"    pkg->destroy_default_class_obj<{type_obj.get_full_type_name()}>();\n")
 
   file_buffer.append("\n    return true;\n}\n\n")
@@ -1102,7 +1102,7 @@ def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include <global_state/global_state.h>
 #include <glue/type_ids.ar.h>
 
-namespace agea::{fc.module_name} {{
+namespace kryga::{fc.module_name} {{
 
 bool package::package_render_enforcer()
 {{
@@ -1113,8 +1113,8 @@ bool package::package_render_enforcer()
 
   if fc.render_has_custom_resources:
     file_buffer.append("""
-AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
-    [](::agea::gs::state& s)
+KRG_gen__static_schedule(::kryga::gs::state::state_stage::connect,
+    [](::kryga::gs::state& s)
     {{
       package::instance().register_package_extension<package::package_render_custom_resource_builder>(); 
     }});
@@ -1122,8 +1122,8 @@ AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
 
   if fc.render_has_types_overrides:
     file_buffer.append("""
-AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
-    [](::agea::gs::state& s)
+KRG_gen__static_schedule(::kryga::gs::state::state_stage::connect,
+    [](::kryga::gs::state& s)
     {{
       package::instance().register_package_extension<package::package_render_types_builder>(); 
     }});
@@ -1132,19 +1132,19 @@ AGEA_gen__static_schedule(::agea::gs::state::state_stage::connect,
   if fc.render_has_types_overrides:
     file_buffer.append(f"""
 bool
-package::package_render_types_builder::build(::agea::core::package& sp)
+package::package_render_types_builder::build(::kryga::core::package& sp)
 {{
-  auto pkg = &::agea::{fc.module_name}::package::instance();
+  auto pkg = &::kryga::{fc.module_name}::package::instance();
 """)
 
     for type_obj in fc.types:
-      if (type_obj.kind == arapi.types.agea_type_kind.CLASS
+      if (type_obj.kind == arapi.types.kryga_type_kind.CLASS
           and (type_obj.render_constructor or type_obj.render_destructor)):
 
         file_buffer.append(f"""
 {{                  
-  auto type_rt =  ::agea::glob::glob_state().get_rm()->get_type(::agea::{type_obj.id});
-  AGEA_check(type_rt, "Type is not defined!");
+  auto type_rt =  ::kryga::glob::glob_state().get_rm()->get_type(::kryga::{type_obj.id});
+  KRG_check(type_rt, "Type is not defined!");
 """)
         if type_obj.render_constructor:
           file_buffer.append(f"  type_rt->render_constructor = {type_obj.render_constructor};\n")
@@ -1156,7 +1156,7 @@ package::package_render_types_builder::build(::agea::core::package& sp)
   return true;
 }}
 bool
-package::package_render_types_builder::destroy(::agea::core::package&)
+package::package_render_types_builder::destroy(::kryga::core::package&)
 {{
   return true;
 }}
@@ -1180,11 +1180,11 @@ def update_global_ids(fc: arapi.types.file_context) -> None:
       file_content = """#pragma once
 // clang-format off
 
-namespace agea {
+namespace kryga {
   enum {
 // block start zzero
-    agea__total_supported_types_number,
-    agea__invalid_type_id = agea__total_supported_types_number
+    kryga__total_supported_types_number,
+    kryga__invalid_type_id = kryga__total_supported_types_number
 // block end zzero
   };
 }
@@ -1261,7 +1261,7 @@ def update_dependancy_tree(fc: arapi.types.file_context) -> None:
 #include <vector>
 #include <utils/id.h>
 
-namespace agea
+namespace kryga
 {
 
 std::vector<utils::id>
@@ -1276,7 +1276,7 @@ get_dependency(const utils::id& package_id)
     return {};
 }
 
-}  // namespace agea
+}  // namespace kryga
 """
       gf.write(file_content)
 

@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <cstring>
 
-namespace agea::utils
+namespace kryga::utils
 {
 stack_allocator::stack_allocator(uint64_t size)
     : m_sysmem((uint8_t*)malloc(size))
@@ -34,7 +34,7 @@ stack_allocator::dealloc(void* void_ptr)
     }
 }
 
-agea::utils::stack_allocator::memdescr*
+kryga::utils::stack_allocator::memdescr*
 stack_allocator::next_desc(uint32_t size)
 {
     auto new_pos = m_last->size + (uint8_t*)m_last;
@@ -43,13 +43,13 @@ stack_allocator::next_desc(uint32_t size)
     return (left > size) ? (memdescr*)new_pos : nullptr;
 }
 
-agea::utils::stack_allocator::memdescr*
+kryga::utils::stack_allocator::memdescr*
 stack_allocator::desc(uint32_t offset) const
 {
     return (memdescr*)(m_sysmem + offset);
 }
 
-agea::utils::stack_allocator::memdescr*
+kryga::utils::stack_allocator::memdescr*
 stack_allocator::desc(uint8_t* ptr)
 {
     return (memdescr*)(ptr - sizeof(memdescr));
@@ -120,4 +120,4 @@ stack_allocator::owner(uint8_t* ptr) const
     return m_sysmem >= ptr && ptr < m_sysmem_end;
 }
 
-}  // namespace agea::utils
+}  // namespace kryga::utils

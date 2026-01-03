@@ -1,11 +1,11 @@
 ﻿#include "vulkan_render/types/vulkan_texture_data.h"
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
 
-texture_data::texture_data(const ::agea::utils::id& id)
+texture_data::texture_data(const ::kryga::utils::id& id)
     : m_id(id)
 {
 }
@@ -40,4 +40,4 @@ texture_data::~texture_data()
 {
 }
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

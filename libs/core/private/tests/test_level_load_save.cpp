@@ -14,16 +14,16 @@
 #include <model/level_constructor.h>
 #include <model/game_object.h>
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 #include <utils/file_utils.h>
 
 #include <gtest/gtest.h>
 
-#define ID(val) ::agea::utils::id::from(val)
+#define ID(val) ::kryga::utils::id::from(val)
 
 #include "base_test.h"
 
-using namespace agea;
+using namespace kryga;
 
 struct test_load_level : public base_test
 {
@@ -45,10 +45,10 @@ struct test_load_level : public base_test
         base_test::TearDown();
     }
 
-    agea::singletone_autodeleter m_package_manager;
-    agea::singletone_autodeleter m_resource_locator;
-    agea::singletone_autodeleter m_objects_cache_set;
-    agea::singletone_autodeleter m_class_objects_cache_set;
+    kryga::singletone_autodeleter m_package_manager;
+    kryga::singletone_autodeleter m_resource_locator;
+    kryga::singletone_autodeleter m_objects_cache_set;
+    kryga::singletone_autodeleter m_class_objects_cache_set;
 };
 
 TEST_F(test_load_level, load_level)

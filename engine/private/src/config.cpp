@@ -3,7 +3,7 @@
 #include <utils/defines_utils.h>
 #include <serialization/serialization.h>
 
-namespace agea
+namespace kryga
 {
 glob::config::type glob::config::type::s_instance;
 
@@ -14,7 +14,7 @@ namespace
 {
 template <typename T>
 void
-extract_field(agea::serialization::container& c, const std::string& key, T& field)
+extract_field(kryga::serialization::container& c, const std::string& key, T& field)
 {
     auto v = c[key];
 
@@ -23,7 +23,7 @@ extract_field(agea::serialization::container& c, const std::string& key, T& fiel
         return;
     }
 
-    if constexpr (std::is_same<T, ::agea::utils::id>::value)
+    if constexpr (std::is_same<T, ::kryga::utils::id>::value)
     {
         field = AID(v.as<std::string>());
     }
@@ -43,12 +43,12 @@ config::load(const utils::path& config_path)
         return;
     }
 
-    extract_field(container, AGEA_stringify(force_recompile_shaders), force_recompile_shaders);
-    extract_field(container, AGEA_stringify(fps_lock), fps_lock);
-    extract_field(container, AGEA_stringify(level), level);
-    extract_field(container, AGEA_stringify(window_h), window_h);
-    extract_field(container, AGEA_stringify(window_w), window_w);
+    extract_field(container, KRG_stringify(force_recompile_shaders), force_recompile_shaders);
+    extract_field(container, KRG_stringify(fps_lock), fps_lock);
+    extract_field(container, KRG_stringify(level), level);
+    extract_field(container, KRG_stringify(window_h), window_h);
+    extract_field(container, KRG_stringify(window_w), window_w);
 }
 
 }  // namespace editor
-}  // namespace agea
+}  // namespace kryga

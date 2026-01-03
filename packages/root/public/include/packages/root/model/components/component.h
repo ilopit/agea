@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace agea
+namespace kryga
 {
 namespace root
 {
@@ -87,15 +87,15 @@ class game_object;
 const inline uint32_t NO_parent = UINT32_MAX;
 const inline uint32_t NO_index = UINT32_MAX;
 
-AGEA_ar_class("architype=component");
+KRG_ar_class("architype=component");
 class component : public smart_object
 {
-    AGEA_gen_meta__component();
+    KRG_gen_meta__component();
 
 public:
-    AGEA_gen_class_meta(component, smart_object);
-    AGEA_gen_construct_params{};
-    AGEA_gen_meta_api;
+    KRG_gen_class_meta(component, smart_object);
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
 
     bool
     construct(construct_params& c)
@@ -123,7 +123,7 @@ public:
     virtual void
     set_parent(component* c)
     {
-        AGEA_check(!m_parent, "Re-assign parent!");
+        KRG_check(!m_parent, "Re-assign parent!");
         m_parent = c;
     }
 
@@ -197,4 +197,4 @@ public:
 };
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

@@ -1,4 +1,4 @@
-"""Utility functions for the AGEA reflection API parser.
+"""Utility functions for the KRYGA reflection API parser.
 
 This module provides common utility functions used across the parser,
 including error output and string manipulation utilities.

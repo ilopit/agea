@@ -9,7 +9,7 @@
 
 #include <stb_unofficial/stb.h>
 
-namespace agea
+namespace kryga
 {
 
 glob::native_window::type glob::native_window::type::s_instance;
@@ -23,7 +23,7 @@ native_window::construct(construct_params& c)
 
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
 
-    m_window = SDL_CreateWindow("AGEA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w,
+    m_window = SDL_CreateWindow("KRYGA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w,
                                 c.h, window_flags);
     auto icon_path =
         glob::glob_state().get_resource_locator()->resource(category::editor, "icon_256.png");
@@ -63,4 +63,4 @@ native_window::get_size()
     return s;
 }
 
-}  // namespace agea
+}  // namespace kryga

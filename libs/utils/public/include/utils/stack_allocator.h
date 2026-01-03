@@ -4,7 +4,7 @@
 
 #include <utils/math_utils.h>
 
-namespace agea::utils
+namespace kryga::utils
 {
 
 struct allocation_tracker
@@ -76,4 +76,4 @@ private:
     memdescr* m_last = nullptr;
 };
 
-}  // namespace agea::utils
+}  // namespace kryga::utils

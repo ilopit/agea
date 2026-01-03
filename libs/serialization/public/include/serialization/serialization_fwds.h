@@ -5,11 +5,11 @@ namespace YAML
 class Node;
 }
 
-namespace agea
+namespace kryga
 {
 namespace serialization
 {
 using container = YAML::Node;
 
 }  // namespace serialization
-}  // namespace agea
+}  // namespace kryga

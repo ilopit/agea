@@ -4,7 +4,7 @@
 
 #include <utils/singleton_instance.h>
 
-namespace agea
+namespace kryga
 {
 namespace engine
 {
@@ -69,9 +69,9 @@ private:
 }  // namespace engine
 namespace glob
 {
-struct game_editor : public singleton_instance<::agea::engine::game_editor, game_editor>
+struct game_editor : public singleton_instance<::kryga::engine::game_editor, game_editor>
 {
 };
 }  // namespace glob
 
-}  // namespace agea
+}  // namespace kryga

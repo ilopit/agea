@@ -9,7 +9,7 @@
 #include <string>
 #include <memory>
 
-namespace agea
+namespace kryga
 {
 namespace utils
 {
@@ -399,4 +399,4 @@ public:
 
 }  // namespace utils
 
-}  // namespace agea
+}  // namespace kryga

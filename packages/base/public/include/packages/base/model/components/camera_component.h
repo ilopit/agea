@@ -4,18 +4,18 @@
 
 #include "packages/root/model/components/game_object_component.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
-AGEA_ar_class();
-class camera_component : public ::agea::root::game_object_component
+KRG_ar_class();
+class camera_component : public ::kryga::root::game_object_component
 {
-    AGEA_gen_meta__camera_component();
+    KRG_gen_meta__camera_component();
 
 public:
-    AGEA_gen_class_meta(camera_component, game_object_component);
-    AGEA_gen_construct_params
+    KRG_gen_class_meta(camera_component, game_object_component);
+    KRG_gen_construct_params
     {
         float rotation_speed = 1.0f;
         float movement_speed = 0.01f;
@@ -27,7 +27,7 @@ public:
         float aspect_ratio = 16.0f / 9.0f;
         glm::mat4 scale = glm::mat4(1.f);
     };
-    AGEA_gen_meta_api;
+    KRG_gen_meta_api;
 
     bool
     construct(construct_params& c);
@@ -105,4 +105,4 @@ private:
     glm::mat4 m_model;
 };
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

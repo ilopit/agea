@@ -1,10 +1,10 @@
 #include "serialization/serialization.h"
 
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
 #include <fstream>
 
-namespace agea
+namespace kryga
 {
 namespace serialization
 {
@@ -47,4 +47,4 @@ write_container(const utils::path& path, const serialization::container& contain
 }
 
 }  // namespace serialization
-}  // namespace agea
+}  // namespace kryga

@@ -11,7 +11,7 @@
 #include <fstream>
 #include <filesystem>
 
-namespace agea
+namespace kryga
 {
 namespace ui
 {
@@ -44,7 +44,7 @@ editor_console::reset_log()
     m_history.clear();
     std::filesystem::remove(HISTORY_FILE);
 
-    add_log("Welcome AGEA 0.1 CLI!");
+    add_log("Welcome KRYGA 0.1 CLI!");
 }
 
 bool
@@ -563,7 +563,7 @@ editor_console::editor_console()
 
     if (!load_from_file())
     {
-        add_log("Welcome AGEA 0.1 CLI!");
+        add_log("Welcome KRYGA 0.1 CLI!");
     }
 }
 
@@ -601,7 +601,7 @@ commands_tree::add(const std::vector<std::string>& path, cmd_handler h)
     head->m_handler = std::move(h);
 }
 
-agea::ui::cmd_handler
+kryga::ui::cmd_handler
 commands_tree::get(const std::vector<std::string>& path, int& depth)
 {
     auto head = m_child["#root"].get();
@@ -678,4 +678,4 @@ commands_tree::hints(const std::vector<std::string>& path, std::vector<std::stri
 }
 
 }  // namespace ui
-}  // namespace agea
+}  // namespace kryga

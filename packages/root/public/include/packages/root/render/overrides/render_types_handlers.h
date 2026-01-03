@@ -5,11 +5,11 @@
 #include <error_handling/error_handling.h>
 #include <core/reflection/reflection_type.h>
 
-namespace agea
+namespace kryga
 {
 class render_bridge;
 
-AGEA_ar_render_overrides();
+KRG_ar_render_overrides();
 namespace root
 {
 class smart_object;
@@ -40,4 +40,4 @@ result_code
 shader_effect__render_destructor(reflection::type_context__render& ctx);
 
 }  // namespace root
-}  // namespace agea
+}  // namespace kryga

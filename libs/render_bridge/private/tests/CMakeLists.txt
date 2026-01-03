@@ -9,8 +9,8 @@ add_executable (render_bridge_tests
  )
 
 target_link_libraries(render_bridge_tests
-    agea::render_bridge
+    kryga::render_bridge
     gtest
 )
 
-agea_finalize_executable(render_bridge_tests)
+kryga_finalize_executable(render_bridge_tests)

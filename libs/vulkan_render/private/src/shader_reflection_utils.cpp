@@ -7,9 +7,9 @@
 #include <utils/dynamic_object.h>
 #include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
-#include <utils/agea_log.h>
+#include <utils/kryga_log.h>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -32,7 +32,7 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
                                                     SpvReflectTypeDescription& obj,
                                                     gpu_dynobj_builder& dl)
 {
-    auto type = agea::render::gpu_type::nan;
+    auto type = kryga::render::gpu_type::nan;
 
     utils::dynobj_field df;
     df.alligment = 1;
@@ -42,10 +42,10 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     {
     case SpvOpTypeMatrix:
     {
-        AGEA_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "Only floats");
-        AGEA_check(obj.traits.numeric.matrix.row_count == obj.traits.numeric.matrix.column_count,
+        KRG_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "Only floats");
+        KRG_check(obj.traits.numeric.matrix.row_count == obj.traits.numeric.matrix.column_count,
                    "h != w");
-        type = (agea::render::gpu_type::id)((uint32_t)::agea::render::gpu_type::g_mat2 +
+        type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_mat2 +
                                             obj.traits.numeric.matrix.column_count - 2);
 
         df.alligment = 16;
@@ -53,13 +53,13 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     }
     case SpvOpTypeFloat:
     {
-        type = agea::render::gpu_type::id::g_float;
+        type = kryga::render::gpu_type::id::g_float;
         df.alligment = sizeof(float);
         break;
     }
     case SpvOpTypeVector:
     {
-        type = (agea::render::gpu_type::id)((uint32_t)::agea::render::gpu_type::g_vec2 +
+        type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_vec2 +
                                             obj.traits.numeric.vector.component_count - 2);
         df.alligment = 16;
         break;
@@ -71,7 +71,7 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
 
         if (obj.member_count == 0)
         {
-            type = agea::render::gpu_type::id::g_float;
+            type = kryga::render::gpu_type::id::g_float;
         }
         else
         {
@@ -90,10 +90,10 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     }
     case SpvOpTypeInt:
     {
-        AGEA_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT, "Only ints");
+        KRG_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT, "Only ints");
 
-        type = obj.traits.numeric.scalar.signedness ? agea::render::gpu_type::id::g_int
-                                                    : agea::render::gpu_type::id::g_unsigned;
+        type = obj.traits.numeric.scalar.signedness ? kryga::render::gpu_type::id::g_int
+                                                    : kryga::render::gpu_type::id::g_unsigned;
 
         df.alligment = sizeof(uint32_t);
 
@@ -127,7 +127,7 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
         break;
     }
     default:
-        AGEA_never("Unsupported!");
+        KRG_never("Unsupported!");
         break;
     }
 
@@ -297,7 +297,7 @@ shader_reflection_utils::are_layouts_compatible(const utils::dynobj_layout_sptr&
         return true;
     }
 
-    AGEA_check(l && r, "Should exists!");
+    KRG_check(l && r, "Should exists!");
 
     auto size = l->get_fields().size();
 
@@ -321,21 +321,21 @@ shader_reflection_utils::are_layouts_compatible(const utils::dynobj_layout_sptr&
 bool
 shader_reflection_utils::are_types_compatible(uint32_t lraw, uint32_t rraw)
 {
-    auto l = (agea::render::gpu_type::id)lraw;
-    auto r = (agea::render::gpu_type::id)rraw;
+    auto l = (kryga::render::gpu_type::id)lraw;
+    auto r = (kryga::render::gpu_type::id)rraw;
 
     if (l == r)
     {
         return true;
     }
 
-    if (l == agea::render::gpu_type::g_color)
+    if (l == kryga::render::gpu_type::g_color)
     {
-        return r == agea::render::gpu_type::g_vec4;
+        return r == kryga::render::gpu_type::g_vec4;
     }
-    else if (r == agea::render::gpu_type::g_color)
+    else if (r == kryga::render::gpu_type::g_color)
     {
-        return l == agea::render::gpu_type::g_vec4;
+        return l == kryga::render::gpu_type::g_vec4;
     }
 
     return false;
@@ -474,7 +474,7 @@ shader_reflection_utils::convert_to_vk_binding(const reflection::binding& b,
 
     layout_binding.descriptorType = b.type;
 
-    if (agea::string_utils::starts_with(b.name.str(), "dyn_"))
+    if (kryga::string_utils::starts_with(b.name.str(), "dyn_"))
     {
         if (layout_binding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
         {
@@ -518,4 +518,4 @@ shader_reflection_utils::convert_to_vk_push_constants(const reflection::push_con
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga

@@ -32,7 +32,7 @@ struct is_unique_ptr<std::unique_ptr<T>> : std::true_type
     typedef T Type;
 };
 
-namespace agea
+namespace kryga
 {
 namespace core
 {
@@ -78,4 +78,4 @@ public:
     }
 };
 }  // namespace core
-}  // namespace agea
+}  // namespace kryga

@@ -3,12 +3,12 @@
 
 #include "packages/base/model/components/mesh_component.h"
 
-namespace agea
+namespace kryga
 {
 namespace base
 {
 
-AGEA_gen_class_cd_default(mesh_object);
+KRG_gen_class_cd_default(mesh_object);
 
 bool
 mesh_object::construct(this_class::construct_params& p)
@@ -22,4 +22,4 @@ mesh_object::construct(this_class::construct_params& p)
 }
 
 }  // namespace base
-}  // namespace agea
+}  // namespace kryga

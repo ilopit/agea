@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace agea
+namespace kryga
 {
 namespace render
 {
@@ -130,4 +130,4 @@ light_grid::query_lights(const glm::vec3& center,
 }
 
 }  // namespace render
-}  // namespace agea
+}  // namespace kryga
