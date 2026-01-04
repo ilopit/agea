@@ -9,14 +9,14 @@
             "type": "python",
             "request": "launch",
             //"program": "${file}",
-            "program": "F:\\dev\\agea_root\\agea\\tools\\argen.py",
+            "program": "F:\\dev\\kryga_root\\kryga\\tools\\argen.py",
             "args": [
                  "--type", "package",
-                 "--config", "F://dev//agea_root/agea//packages//root//public//ar//config", 
-                 "--source", "F://dev/agea_root//agea//packages//root//public",
-                 "--output", "F://dev//agea_root//agea//build//agea_generated", 
+                 "--config", "F://dev//kryga_root/kryga//packages//root//public//ar//config", 
+                 "--source", "F://dev/kryga_root//kryga//packages//root//public",
+                 "--output", "F://dev//kryga_root//kryga//build//kryga_generated", 
                  "--package_name", "root", 
-                 "--namespace", "agea"
+                 "--namespace", "kryga"
             ],
             "console": "integratedTerminal",
             "justMyCode": true
@@ -26,7 +26,7 @@
             "type": "python",
             "request": "launch",
             //"program": "${file}",
-            "program": "F:\\dev\\agea_root\\agea\\tools\\test_parser.py",
+            "program": "F:\\dev\\kryga_root\\kryga\\tools\\test_parser.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -35,7 +35,7 @@
             "type": "python",
             "request": "launch",
             //"program": "${file}",
-            "program": "F:\\dev\\agea_root\\agea\\tools\\test_writer.py",
+            "program": "F:\\dev\\kryga_root\\kryga\\tools\\test_writer.py",
             "console": "integratedTerminal",
             "justMyCode": true
         },
@@ -44,11 +44,11 @@
             "type": "python",
             "request": "launch",
             //"program": "${file}",
-            "program": "F:\\dev\\agea_root\\agea\\tools\\test_utils.py",
+            "program": "F:\\dev\\kryga_root\\kryga\\tools\\test_utils.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
     ]
 }
 
-//SOL config - D:/dev/agea/agea/static_packages/root/public/ar/config, root dir - D:/dev/agea/agea/static_packages/root/public/, output - D:/dev/agea/agea/build/agea_generated, package_name - root, module_namespace - a
+//SOL config - D:/dev/kryga/kryga/static_packages/root/public/ar/config, root dir - D:/dev/kryga/kryga/static_packages/root/public/, output - D:/dev/kryga/kryga/build/kryga_generated, package_name - root, module_namespace - a
