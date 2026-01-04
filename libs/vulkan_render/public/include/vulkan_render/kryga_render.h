@@ -7,8 +7,9 @@
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
-#include "render_utils/light_grid.h"
 #include "render_utils/frustum.h"
+#include "render_utils/cluster_grid.h"
+#include "gpu_types/gpu_cluster_types.h"
 
 #include <utils/singleton_instance.h>
 #include <utils/id.h>
@@ -116,6 +117,11 @@ struct frame_state
     vk_utils::vulkan_buffer m_directional_lights_buffer;
     vk_utils::vulkan_buffer m_materials_buffer;
 
+    // Cluster lighting SSBOs
+    vk_utils::vulkan_buffer m_cluster_light_counts_buffer;
+    vk_utils::vulkan_buffer m_cluster_light_indices_buffer;
+    vk_utils::vulkan_buffer m_cluster_config_buffer;
+
     vk_utils::vulkan_buffer m_ui_vertex_buffer;
     vk_utils::vulkan_buffer m_ui_index_buffer;
 
@@ -175,13 +181,6 @@ public:
     void
     clear_upload_queue();
 
-    void
-    collect_lights();
-
-    // Light grid configuration for spatial culling
-    void
-    set_light_grid_cell_size(float cell_size = 100.0f);
-
     vulkan_render_data*
     object_id_under_coordinate(uint32_t x, uint32_t y);
 
@@ -223,11 +222,12 @@ private:
     void upload_material_data(render::frame_state& frame);
     // clang-format on
 
+    // Clustered lighting methods
     void
-    rebuild_light_grid();
+    build_light_clusters();
 
     void
-    collect_lights_for_object(const render::vulkan_render_data* obj);
+    upload_cluster_data(render::frame_state& frame);
 
     void
     draw_multi_pipeline_objects_queue(render_line_container& r,
@@ -344,8 +344,10 @@ private:
 
     render_cache m_cache;
 
-    // Light grid for spatial culling
-    light_grid m_light_grid;
+    // Clustered lighting
+    cluster_grid m_cluster_grid;
+    gpu::cluster_grid_data m_cluster_config;
+    bool m_clusters_dirty = true;
 
     // Frustum for view culling
     frustum m_frustum;

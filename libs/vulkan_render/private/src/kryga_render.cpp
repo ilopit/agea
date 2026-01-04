@@ -412,7 +412,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     dyn.end();
 
     // Build and upload cluster data (only rebuild when lights changed)
-    if (m_clusters_dirty)
+    // if (m_clusters_dirty)
     {
         ZoneScopedN("Render::BuildClusters");
         build_light_clusters();

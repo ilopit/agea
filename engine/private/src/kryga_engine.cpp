@@ -5,6 +5,7 @@
 #include "engine/editor.h"
 #include "engine/config.h"
 #include "engine/engine_counters.h"
+#include "engine/profiler.h"
 
 #include "engine/private/sync_service.h"
 
@@ -203,11 +204,13 @@ vulkan_engine::run()
     for (;;)
     {
         KRG_make_scope(frame);
+        KRG_PROFILE_SCOPE("Frame");
 
         auto start_ts = utils::get_current_time_mks();
 
         {
             KRG_make_scope(input);
+            KRG_PROFILE_SCOPE("Input");
 
             if (!glob::input_manager::get()->input_tick(frame_time))
             {
@@ -218,18 +221,22 @@ vulkan_engine::run()
         }
         {
             KRG_make_scope(ui_tick);
+            KRG_PROFILE_SCOPE("UI");
             glob::ui::get()->new_frame(frame_time);
         }
         {
             KRG_make_scope(tick);
+            KRG_PROFILE_SCOPE("Tick");
             tick(frame_time);
         }
         {
             KRG_make_scope(sync);
+            KRG_PROFILE_SCOPE("Sync");
             execute_sync_requests();
         }
         {
             KRG_make_scope(consume_updates);
+            KRG_PROFILE_SCOPE("ConsumeUpdates");
 
             update_cameras();
             glob::vulkan_render::getr().set_camera(m_camera_data);
@@ -244,6 +251,7 @@ vulkan_engine::run()
         }
         {
             KRG_make_scope(draw);
+            KRG_PROFILE_SCOPE("Draw");
 
             glob::vulkan_render::getr().draw_main();
 
@@ -264,6 +272,8 @@ vulkan_engine::run()
 
         frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);
         frame_time = 0.00001f * frame_msk.count();
+
+        KRG_PROFILE_FRAME_MARK();
     }
 }
 void
@@ -479,7 +489,7 @@ vulkan_engine::init_scene()
     {
         load_level(level_id);
         //
-        glob::game_editor::getr().ev_spawn2();
+        glob::game_editor::getr().ev_spawn();
         glob::game_editor::getr().ev_lights();
     }
 }

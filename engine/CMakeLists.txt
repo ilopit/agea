@@ -24,6 +24,8 @@ target_link_libraries(engine PUBLIC
     Boost::url
 
     sdl2
+
+    TracyClient
 )
 
 target_include_directories(engine 

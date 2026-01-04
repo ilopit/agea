@@ -29,7 +29,7 @@ void
 game_editor::init()
 {
     m_camera_data = {};
-    m_position = {20.f, 6.f, 60.f};
+    m_position = {0.f, 0.f, 0.f};
 
     glob::input_manager::get()->register_scaled_action(AID("move_forward"), this,
                                                        &game_editor::ev_move_forward);
@@ -142,17 +142,17 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 4;
+    int obj_DIM = 40;
 
-    for (x = 0; x < obj_DIM; ++x)
+    for (x = -obj_DIM / 2; x < obj_DIM / 2; ++x)
     {
-        for (y = 0; y < obj_DIM; ++y)
+        for (y = -obj_DIM / 2; y < obj_DIM / 2; ++y)
         {
-            for (z = 0; z < obj_DIM; ++z)
+            for (z = -obj_DIM / 2; z < obj_DIM / 2; ++z)
             {
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
 
-                sp.position = root::vec3{x * 10.f, y * 10.f, z * 10.f};
+                sp.position = root::vec3{x * 15.f, y * 15.f, z * 15.f};
                 sp.scale = root::vec3{2};
                 auto pp =
                     glob::glob_state()
@@ -168,15 +168,15 @@ game_editor::ev_spawn()
 
     base::point_light::construct_params prms;
 
-    for (x = 0; x < light_DIM; ++x)
+    for (x = -light_DIM / 2; x < light_DIM / 2; ++x)
     {
-        for (y = 0; y < light_DIM; ++y)
+        for (y = -light_DIM / 2; y < light_DIM / 2; ++y)
         {
-            for (z = 0; z < light_DIM; ++z)
+            for (z = -light_DIM / 2; z < light_DIM / 2; ++z)
             {
                 auto id = std::format("pl_{}_{}_{}", x, y, z);
 
-                prms.pos = root::vec3{x * 20.f, y * 20.f, z * 20.f};
+                prms.pos = root::vec3{x * 45.f, y * 45.f, z * 45.f};
                 auto pp = glob::glob_state().getr_current_level().spawn_object<base::point_light>(
                     AID(id), prms);
             }
