@@ -248,12 +248,18 @@ public:
     void destroy_render_types();
 
     void finalize_reflection();
+    
     void create_default_types_objects();
     void destroy_default_types_objects();
+    
     void load_render_resources();
     void destroy_render_resources();
 
-    void build_objects();
+    void load_dynamic_part();
+    // clang-format on
+
+    void
+    build_objects();
 
     const std::unordered_map<utils::id, reflection::reflection_type*>&
     get_reflection_types() const
@@ -270,10 +276,10 @@ public:
         finalize_reflection();
         load_render_resources();
         create_default_types_objects();
-       m_state = package_state::loaded;
-    }
+        load_dynamic_part();
 
-    // clang-format on
+        m_state = package_state::loaded;
+    }
 
 private:
     package_state m_state = package_state::unloaded;

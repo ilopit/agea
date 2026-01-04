@@ -171,6 +171,23 @@ package::destroy_render_types()
 }
 
 void
+package::load_dynamic_part()
+{
+    for (auto& i : m_occ->get_objects_mapping().m_items)
+    {
+        if (i.second.is_class)
+        {
+            std::vector<root::smart_object*> objcs;
+            auto obj = object_constructor::object_load(i.first, object_load_type::class_obj, *m_occ,
+                                                       objcs);
+            objcs.clear();
+
+            object_constructor::object_instantiate(*obj.value(), i.first, *m_occ, objcs);
+        }
+    }
+}
+
+void
 package::finalize_reflection()
 {
     for (auto [id, rt] : m_rts)
