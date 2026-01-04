@@ -1,5 +1,5 @@
-# agea
-AGEA - Awesome Game Engine AGEA
+# kryga
+KRYGA
 
 ## Build
 
