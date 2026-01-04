@@ -35,6 +35,8 @@ target_link_libraries(vulkan_render PUBLIC
     spirv-reflect-static
     tinyobjloader
     sdl2
+
+    TracyClient
 )
 kryga_finalize_library(vulkan_render)
 

@@ -9,3 +9,16 @@ FetchContent_Declare(
 
 set(BOOST_INCLUDE_LIBRARIES beast url)
 FetchContent_MakeAvailable(Boost)
+
+# Tracy profiler
+option(TRACY_ENABLE "Enable Tracy profiler" ON)
+
+FetchContent_Declare(
+  tracy
+  GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+  GIT_TAG v0.11.1
+  GIT_SHALLOW TRUE
+)
+
+set(TRACY_ON_DEMAND ON CACHE BOOL "Enable on-demand profiling")
+FetchContent_MakeAvailable(tracy)

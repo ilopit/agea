@@ -24,6 +24,7 @@ externalize(boost_context "boost")
 externalize(boost_date_time "boost")
 externalize(boost_exception "boost")
 externalize(boost_url "boost")
+externalize(TracyClient "tracy")
 
 #imgui
 add_subdirectory(unofficial/imgui)

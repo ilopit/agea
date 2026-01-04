@@ -1,5 +1,9 @@
 #include "vulkan_render/kryga_render.h"
 
+#include <tracy/Tracy.hpp>
+
+#include <cmath>
+
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
@@ -129,15 +133,43 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
             device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        m_frames[i].m_dynamic_data_buffer = device.create_buffer(
-            DYNAMIC_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].m_dynamic_data_buffer =
+            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].m_cluster_light_counts_buffer =
+            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].m_cluster_light_indices_buffer =
+            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].m_cluster_config_buffer =
+            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();
     prepare_ui_resources();
     prepare_ui_pipeline();
 
-    set_light_grid_cell_size();
+    // Initialize clustered lighting
+    m_cluster_grid.init(m_width, m_height,
+                        0.1f,     // near plane
+                        1000.0f,  // far plane
+                        KGPU_cluster_tile_size, KGPU_cluster_depth_slices,
+                        KGPU_max_lights_per_cluster);
+
+    const auto& config = m_cluster_grid.get_config();
+    m_cluster_config.tiles_x = config.tiles_x;
+    m_cluster_config.tiles_y = config.tiles_y;
+    m_cluster_config.depth_slices = config.depth_slices;
+    m_cluster_config.tile_size = config.tile_size;
+    m_cluster_config.near_plane = config.near_plane;
+    m_cluster_config.far_plane = config.far_plane;
+    m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
+    m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
 }
 
 void
@@ -151,6 +183,11 @@ vulkan_render::deinit()
 void
 vulkan_render::set_camera(render::gpu_camera_data c)
 {
+    // Mark clusters dirty if view changed (light-cluster assignment is in view space)
+    if (m_camera_data.view != c.view)
+    {
+        m_clusters_dirty = true;
+    }
     m_camera_data = c;
     m_frustum.extract_planes(c.projection * c.view);
 }
@@ -158,6 +195,8 @@ vulkan_render::set_camera(render::gpu_camera_data c)
 void
 vulkan_render::draw_main()
 {
+    ZoneScopedN("Render::DrawMain");
+
     auto device = glob::render_device::get();
 
     auto r = SDL_GetWindowFlags(glob::native_window::getr().handle());
@@ -175,8 +214,11 @@ vulkan_render::draw_main()
     auto& current_frame = m_frames[device->get_current_frame_index()];
 
     // wait until the gpu has finished rendering the last frame. Timeout of 1 second
-    VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
-                             1000000000));
+    {
+        ZoneScopedN("Render::WaitForFence");
+        VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
+                                 1000000000));
+    }
     VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
 
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
@@ -281,6 +323,8 @@ vulkan_render::draw_main()
 void
 vulkan_render::draw_objects(render::frame_state& current_frame)
 {
+    ZoneScopedN("Render::DrawObjects");
+
     auto cmd = current_frame.frame->m_main_command_buffer;
 
     auto device = glob::render_device::get();
@@ -332,17 +376,20 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
 void
 vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 {
+    ZoneScopedN("Render::PrepareResources");
+
     if (current_frame.has_obj_data())
     {
+        ZoneScopedN("Render::UploadObjects");
         upload_obj_data(current_frame);
         current_frame.reset_obj_data();
     }
 
     if (current_frame.has_universal_light_data())
     {
+        ZoneScopedN("Render::UploadLights");
         upload_universal_light_data(current_frame);
         current_frame.reset_universal_light_data();
-        rebuild_light_grid();
     }
 
     if (current_frame.has_directional_light_data())
@@ -353,6 +400,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
     if (current_frame.has_mat_data())
     {
+        ZoneScopedN("Render::UploadMaterials");
         upload_material_data(current_frame);
         current_frame.reset_mat_data();
     }
@@ -362,6 +410,15 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     dyn.begin();
     dyn.upload_data(m_camera_data);
     dyn.end();
+
+    // Build and upload cluster data (only rebuild when lights changed)
+    if (m_clusters_dirty)
+    {
+        ZoneScopedN("Render::BuildClusters");
+        build_light_clusters();
+        m_clusters_dirty = false;
+    }
+    upload_cluster_data(current_frame);
 
     build_global_set(current_frame);
     build_ssbo_sets(current_frame);
@@ -398,14 +455,37 @@ vulkan_render::build_ssbo_sets(render::frame_state& current_frame)
         .buffer = current_frame.m_object_buffer.buffer(),
         .offset = 0,
         .range = current_frame.m_object_buffer.get_alloc_size()};
+    VkDescriptorBufferInfo cluster_counts_info{
+        .buffer = current_frame.m_cluster_light_counts_buffer.buffer(),
+        .offset = 0,
+        .range = current_frame.m_cluster_light_counts_buffer.get_alloc_size()};
 
-    vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
-                                        current_frame.frame->m_dynamic_descriptor_allocator.get())
+    VkDescriptorBufferInfo cluster_indices_info{
+        .buffer = current_frame.m_cluster_light_indices_buffer.buffer(),
+        .offset = 0,
+        .range = current_frame.m_cluster_light_indices_buffer.get_alloc_size()};
+
+    VkDescriptorBufferInfo cluster_config_info{
+        .buffer = current_frame.m_cluster_config_buffer.buffer(),
+        .offset = 0,
+        .range = current_frame.m_cluster_config_buffer.get_alloc_size()};
+
+    auto builder = vk_utils::descriptor_builder::begin(
+        glob::render_device::getr().descriptor_layout_cache(),
+        current_frame.frame->m_dynamic_descriptor_allocator.get());
+
+    builder
         .bind_buffer(KGPU_objects_objects_binding, &object_buffer_info,
                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
         .bind_buffer(KGPU_objects_directional_light_binding, &directional_light_info,
                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
         .bind_buffer(KGPU_objects_universal_light_binding, &universal_light_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(KGPU_objects_cluster_light_counts_binding, &cluster_counts_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(KGPU_objects_cluster_light_indices_binding, &cluster_indices_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+        .bind_buffer(KGPU_objects_cluster_config_binding, &cluster_config_info,
                      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
         .build(m_objects_set);
 
@@ -635,7 +715,12 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
                            const pipeline_ctx& pctx,
                            const render::vulkan_render_data* obj)
 {
-    collect_lights_for_object(obj);
+    // With clustered lighting, skip per-object light collection
+    // The shader will look up lights from the cluster grid based on fragment position
+
+    // Set directional light (global)
+    m_obj_config.directional_light_id =
+        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
 
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
@@ -685,7 +770,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    const uint32_t dummy_offset[] = {0, 0, 0, 0};
+    const uint32_t dummy_offset[] = {0, 0, 0, 0, 0, 0};
 
     if (object)
     {
@@ -730,7 +815,6 @@ void
 vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id)
 {
     m_obj_config.directional_light_id = 0U;
-    m_obj_config.local_lights_size = 0U;
 }
 
 void
@@ -882,6 +966,7 @@ vulkan_render::schedule_directional_light_data_gpu_upload(render::vulkan_directi
 void
 vulkan_render::schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
 {
+    m_clusters_dirty = true;
     for (auto& q : m_frames)
     {
         q.m_universal_light_queue.emplace_back(ld);
@@ -895,63 +980,6 @@ vulkan_render::clear_upload_queue()
     {
         q.clear_upload_queues();
     }
-}
-
-void
-vulkan_render::collect_lights()
-{
-    m_obj_config.local_lights_size = 0U;
-
-    m_obj_config.directional_light_id =
-        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
-
-    // Add all local lights (point and spot)
-    for (uint32_t i = 0;
-         i < m_cache.universal_lights.get_size() && m_obj_config.local_lights_size < 8; ++i)
-    {
-        auto* light = m_cache.universal_lights.at(i);
-        m_obj_config.local_light_ids[m_obj_config.local_lights_size] = light->slot();
-        ++m_obj_config.local_lights_size;
-    }
-}
-
-void
-vulkan_render::set_light_grid_cell_size(float cell_size)
-{
-    m_light_grid.init(cell_size);
-}
-
-void
-vulkan_render::rebuild_light_grid()
-{
-    KRG_check(m_light_grid.is_initialized(), "");
-
-    m_light_grid.clear();
-
-    // Insert all local lights
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
-    {
-        auto* light = m_cache.universal_lights.at(i);
-        float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
-                                         light->gpu_data.quadratic,
-                                         0.02f,  // 2% threshold
-                                         1.05f   // 5% margin
-        );
-        m_light_grid.insert_light(light->slot(), light->gpu_data.position, radius);
-    }
-}
-
-void
-vulkan_render::collect_lights_for_object(const render::vulkan_render_data* obj)
-{
-    // Set directional light (global, always affects all objects)
-    m_obj_config.directional_light_id =
-        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
-
-    // Query unified light grid for this object
-    m_obj_config.local_lights_size =
-        m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->bounding_radius,
-                                  m_obj_config.local_light_ids, KGPU_max_lights_per_object);
 }
 
 void
@@ -1539,6 +1567,106 @@ render_pass*
 vulkan_render::get_render_pass(const utils::id& id)
 {
     return m_render_passes.at(id).get();
+}
+
+void
+vulkan_render::build_light_clusters()
+{
+    KRG_check(m_cluster_grid.is_initialized(), "Should always be here");
+
+    // Early-out: no universal lights means no cluster work needed
+    if (m_cache.universal_lights.get_size() == 0)
+    {
+        m_cluster_grid.clear();
+        return;
+    }
+
+    // Build light info list from cache
+    std::vector<cluster_light_info> lights;
+    lights.reserve(m_cache.universal_lights.get_size());
+
+    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    {
+        auto* light = m_cache.universal_lights.at(i);
+        float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
+                                         light->gpu_data.quadratic, 0.02f, 1.05f);
+
+        lights.push_back({light->slot(), light->gpu_data.position, radius});
+    }
+
+    // Compute view and projection matrices for cluster building
+    glm::mat4 inv_projection = glm::inverse(m_camera_data.projection);
+
+    // Build clusters
+    m_cluster_grid.build_clusters(m_camera_data.view, m_camera_data.projection, inv_projection,
+                                  lights);
+}
+
+void
+vulkan_render::upload_cluster_data(render::frame_state& frame)
+{
+    ZoneScopedN("Render::UploadClusters");
+
+    if (!m_cluster_grid.is_initialized())
+        return;
+
+    const auto& config = m_cluster_grid.get_config();
+
+    // std140 padded struct for cluster data (16 bytes per element)
+    struct alignas(16) cluster_data_std140
+    {
+        uint32_t value;
+    };
+
+    // Upload cluster light counts (padded to std140)
+    {
+        const auto& counts = m_cluster_grid.get_cluster_light_counts();
+        const size_t size = counts.size() * sizeof(cluster_data_std140);
+
+        frame.m_cluster_light_counts_buffer.begin();
+        auto* data = reinterpret_cast<cluster_data_std140*>(
+            frame.m_cluster_light_counts_buffer.allocate_data((uint32_t)size));
+
+        for (size_t i = 0; i < counts.size(); ++i)
+        {
+            data[i].value = counts[i];
+        }
+        frame.m_cluster_light_counts_buffer.end();
+    }
+
+    // Upload cluster light indices (padded to std140)
+    {
+        const auto& indices = m_cluster_grid.get_cluster_light_indices();
+        const size_t size = indices.size() * sizeof(cluster_data_std140);
+
+        frame.m_cluster_light_indices_buffer.begin();
+        auto* data = reinterpret_cast<cluster_data_std140*>(
+            frame.m_cluster_light_indices_buffer.allocate_data((uint32_t)size));
+
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            data[i].value = indices[i];
+        }
+        frame.m_cluster_light_indices_buffer.end();
+    }
+
+    // Upload cluster config
+    {
+        // Update config from current camera/grid state
+        m_cluster_config.tiles_x = config.tiles_x;
+        m_cluster_config.tiles_y = config.tiles_y;
+        m_cluster_config.depth_slices = config.depth_slices;
+        m_cluster_config.tile_size = config.tile_size;
+        m_cluster_config.near_plane = config.near_plane;
+        m_cluster_config.far_plane = config.far_plane;
+        m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
+        m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+
+        frame.m_cluster_config_buffer.begin();
+        auto* data = frame.m_cluster_config_buffer.allocate_data(sizeof(gpu::cluster_grid_data));
+        memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
+        frame.m_cluster_config_buffer.end();
+    }
 }
 
 }  // namespace render
