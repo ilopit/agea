@@ -17,6 +17,7 @@
 #include <packages/base/model/lights/point_light.h>
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/spot_light.h>
+#include <packages/tbs/model/hex_grid.h>
 
 namespace kryga
 {
@@ -123,6 +124,13 @@ game_editor::ev_reload()
 }
 
 void
+game_editor::ev_spawn2()
+{
+    tbs::hex_grid::construct_params cprms;
+    auto pp = glob::glob_state().getr_current_level().spawn_object<tbs::hex_grid>(AID("gg"), cprms);
+}
+
+void
 game_editor::ev_spawn()
 {
     if (glob::glob_state().getr_current_level().find_game_object(AID("obj_0_0_0")))
@@ -186,17 +194,17 @@ game_editor::ev_lights()
         return;
     }
 
-    {
-        base::spot_light::construct_params plp;
-        plp.pos = {-20.f};
-        lvl.spawn_object<base::spot_light>(AID("PL1"), plp);
-    }
-
-    {
-        base::point_light::construct_params plp;
-        plp.pos = {15.f};
-        lvl.spawn_object<base::point_light>(AID("PL2"), plp);
-    }
+    //     {
+    //         base::spot_light::construct_params plp;
+    //         plp.pos = {-20.f};
+    //         lvl.spawn_object<base::spot_light>(AID("PL1"), plp);
+    //     }
+    //
+    //     {
+    //         base::point_light::construct_params plp;
+    //         plp.pos = {15.f};
+    //         lvl.spawn_object<base::point_light>(AID("PL2"), plp);
+    //     }
 
     {
         base::directional_light::construct_params dcp;

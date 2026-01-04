@@ -41,7 +41,7 @@ public:
 
 protected:
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
-    ::kryga::root::vec3 m_ambient = glm::vec3{0.1f};
+    ::kryga::root::vec3 m_ambient = glm::vec3{0.8f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
     ::kryga::root::vec3 m_diffuse = glm::vec3{0.1f};

@@ -479,7 +479,7 @@ vulkan_engine::init_scene()
     {
         load_level(level_id);
         //
-        glob::game_editor::getr().ev_spawn();
+        glob::game_editor::getr().ev_spawn2();
         glob::game_editor::getr().ev_lights();
     }
 }

@@ -45,6 +45,9 @@ public:
     ev_spawn();
 
     void
+    ev_spawn2();
+
+    void
     ev_lights();
 
 private:
