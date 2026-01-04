@@ -1,0 +1,95 @@
+# Pointy-top hexagonal prism (3D tile)
+# Size: 1.0 (center to vertex)
+# Thickness: 0.2165
+# CCW front-face winding (matching engine convention)
+#
+
+# === VERTICES ===
+
+# Top face center (v1)
+v 0.0 0.0 0.0
+
+# Top face outer - CCW from above: N, NW, SW, S, SE, NE (v2-v7)
+v  0.000000 0.0 -1.000000
+v  0.866025 0.0 -0.500000
+v  0.866025 0.0  0.500000
+v  0.000000 0.0  1.000000
+v -0.866025 0.0  0.500000
+v -0.866025 0.0 -0.500000
+
+# Bottom face center (v8)
+v 0.0 -0.2165 0.0
+
+# Bottom face outer (v9-v14)
+v  0.000000 -0.2165 -1.000000
+v  0.866025 -0.2165 -0.500000
+v  0.866025 -0.2165  0.500000
+v  0.000000 -0.2165  1.000000
+v -0.866025 -0.2165  0.500000
+v -0.866025 -0.2165 -0.500000
+
+# === NORMALS ===
+vn 0.0 1.0 0.0
+vn 0.0 -1.0 0.0
+vn  0.500000 0.0 -0.866025
+vn  1.000000 0.0  0.000000
+vn  0.500000 0.0  0.866025
+vn -0.500000 0.0  0.866025
+vn -1.000000 0.0  0.000000
+vn -0.500000 0.0 -0.866025
+
+# === TEXTURE COORDINATES ===
+vt 0.5 0.5
+vt 0.5 0.0
+vt 0.933 0.25
+vt 0.933 0.75
+vt 0.5 1.0
+vt 0.067 0.75
+vt 0.067 0.25
+vt 0.0 1.0
+vt 1.0 1.0
+vt 1.0 0.0
+vt 0.0 0.0
+
+# === FACES ===
+
+# Top face - CCW when viewed from +Y (above)
+f 1/1/1 3/3/1 2/2/1
+f 1/1/1 4/4/1 3/3/1
+f 1/1/1 5/5/1 4/4/1
+f 1/1/1 6/6/1 5/5/1
+f 1/1/1 7/7/1 6/6/1
+f 1/1/1 2/2/1 7/7/1
+
+# Bottom face - CCW when viewed from -Y (below)
+f 8/1/2 9/2/2 10/3/2
+f 8/1/2 10/3/2 11/4/2
+f 8/1/2 11/4/2 12/5/2
+f 8/1/2 12/5/2 13/6/2
+f 8/1/2 13/6/2 14/7/2
+f 8/1/2 14/7/2 9/2/2
+
+# Side faces - CCW when viewed from outside
+# Side N-NE (v2-v3 top, v9-v10 bottom)
+f 2/8/3 3/9/3 10/10/3
+f 2/8/3 10/10/3 9/11/3
+
+# Side NE-SE (v3-v4 top, v10-v11 bottom)
+f 3/8/4 4/9/4 11/10/4
+f 3/8/4 11/10/4 10/11/4
+
+# Side SE-S (v4-v5 top, v11-v12 bottom)
+f 4/8/5 5/9/5 12/10/5
+f 4/8/5 12/10/5 11/11/5
+
+# Side S-SW (v5-v6 top, v12-v13 bottom)
+f 5/8/6 6/9/6 13/10/6
+f 5/8/6 13/10/6 12/11/6
+
+# Side SW-NW (v6-v7 top, v13-v14 bottom)
+f 6/8/7 7/9/7 14/10/7
+f 6/8/7 14/10/7 13/11/7
+
+# Side NW-N (v7-v2 top, v14-v9 bottom)
+f 7/8/8 2/9/8 9/10/8
+f 7/8/8 9/10/8 14/11/8

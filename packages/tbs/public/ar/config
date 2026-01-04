@@ -1,0 +1,3 @@
+include/packages/tbs/package.tbs.h
+include/packages/tbs/model/hex_tile.h
+include/packages/tbs/model/hex_grid.h

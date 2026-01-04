@@ -332,7 +332,6 @@ object_constructor::object_clone_create_internal(root::smart_object& proto_obj,
                                                  const utils::id& new_object_id,
                                                  object_load_context& occ)
 {
-
     root::smart_object_flags flags{.derived_obj = true};
     if (occ.get_construction_type() == object_load_type::instance_obj)
         flags.instance_obj = true;
@@ -362,8 +361,12 @@ object_constructor::object_instantiate_internal(root::smart_object& proto_obj,
                                                 const utils::id& new_object_id,
                                                 object_load_context& occ)
 {
-
     KRG_check(object_load_type::class_obj != occ.get_construction_type(), "Should not happen");
+
+    if (auto obj = occ.find_obj(new_object_id))
+    {
+        return obj;
+    }
 
     auto alloc_result = alloc_empty_object(proto_obj.get_type_id(), new_object_id,
                                            ks_instance_derived, &proto_obj, occ);
@@ -607,6 +610,15 @@ object_constructor::object_load_internal(const utils::id& id, object_load_contex
             return object_instantiate_internal(*proto.value(), proto.value()->get_id(), occ);
         }
     }
+    else
+    {
+        if (auto rt = glob::glob_state().get_rm()->get_type(id))
+        {
+            ALOG_INFO("Creating default object {}", id.str());
+            reflection::type_context__alloc alloc_ctx{&id};
+            return object_constructor::create_default_class_obj_impl(rt->alloc(alloc_ctx), occ);
+        }
+    }
 
     utils::path full_path;
     if (!occ.make_full_path(id, full_path))
@@ -650,8 +662,7 @@ object_constructor::preload_proto(const utils::id& id, object_load_context& occ)
 }
 
 std::expected<root::smart_object*, result_code>
-object_constructor::create_default_class_proto(const utils::id& id,
-                                               object_load_context& olc)
+object_constructor::create_default_class_proto(const utils::id& id, object_load_context& olc)
 {
     olc.push_construction_type(object_load_type::class_obj);
     if (auto rt = glob::glob_state().get_rm()->get_type(id))

@@ -1,0 +1,2 @@
+class_obj_mapping:
+  - msh_hexagon3d: class/meshes/msh_hexagon3d.aobj
