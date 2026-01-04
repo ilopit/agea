@@ -74,7 +74,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
 
     if (!moc.get_material() || !moc.get_mesh())
     {
-        return result_code::ok;
+        return result_code::failed;
     }
 
     rc = ctx.rb->render_ctor(*moc.get_material(), ctx.flag);
@@ -88,7 +88,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
 
     if (!mat_data || !mesh_data)
     {
-        return result_code::ok;
+        return result_code::failed;
     }
 
     auto object_data = moc.get_render_object_data();
