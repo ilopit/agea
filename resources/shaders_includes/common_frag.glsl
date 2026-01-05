@@ -62,12 +62,15 @@ uint getDepthSlice(float viewDepth)
 {
     if (viewDepth <= dyn_cluster_config.config.near_plane)
         return 0u;
-    if (viewDepth >= dyn_cluster_config.config.far_plane)
-        return dyn_cluster_config.config.depth_slices - 1u;
 
     float logDepth = log(viewDepth / dyn_cluster_config.config.near_plane);
     float t = logDepth / dyn_cluster_config.config.log_depth_ratio;
-    return uint(t * float(dyn_cluster_config.config.depth_slices));
+
+    // CRITICAL: enforce half-open range
+    t = clamp(t, 0.0, 0.99999994);
+
+    uint slice = uint(t * float(dyn_cluster_config.config.depth_slices));
+    return min(slice, dyn_cluster_config.config.depth_slices - 1u);
 }
 
 uint getClusterIndex(vec2 screenPos, float viewDepth)

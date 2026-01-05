@@ -83,15 +83,14 @@ cluster_grid::depth_to_slice(float depth) const
 {
     if (depth <= m_config.near_plane)
         return 0;
-    if (depth >= m_config.far_plane)
-        return m_config.depth_slices - 1;
+    float log_ratio = std::log(m_config.far_plane / m_config.near_plane);
+    float log_depth = std::log(depth / m_config.near_plane);
+    float t = log_depth / log_ratio;
 
-    // Inverse of logarithmic distribution
-    // slice = num_slices * log(depth/near) / log(far/near)
-    const float log_ratio = std::log(m_config.far_plane / m_config.near_plane);
-    const float log_depth = std::log(depth / m_config.near_plane);
-    const float t = log_depth / log_ratio;
-    return static_cast<uint32_t>(t * static_cast<float>(m_config.depth_slices));
+    t = std::clamp(t, 0.0f, 0.99999994f);
+
+    uint32_t slice = uint32_t(t * m_config.depth_slices);
+    return std::min(slice, m_config.depth_slices - 1);
 }
 
 uint32_t
@@ -123,19 +122,18 @@ cluster_grid::screen_to_view(float screen_x,
                              const glm::mat4& inv_projection) const
 {
     // Convert screen coords to NDC [-1, 1]
-    const float ndc_x =
-        (2.0f * screen_x / static_cast<float>(m_config.tiles_x * m_config.tile_size)) - 1.0f;
-    const float ndc_y =
-        (2.0f * screen_y / static_cast<float>(m_config.tiles_y * m_config.tile_size)) - 1.0f;
+    // Use actual screen dimensions for correct mapping
+    const float ndc_x = (2.0f * screen_x / static_cast<float>(m_config.screen_width)) - 1.0f;
+    // Vulkan: NDC y=-1 at screen top (y=0), NDC y=+1 at screen bottom
+    const float ndc_y = (2.0f * screen_y / static_cast<float>(m_config.screen_height)) - 1.0f;
 
-    // For view-space depth, we work with negative Z (OpenGL convention)
     // Create a point on the near plane in clip space, then unproject
     glm::vec4 clip_point(ndc_x, ndc_y, 0.0f, 1.0f);
     glm::vec4 view_point = inv_projection * clip_point;
     view_point /= view_point.w;
 
-    // Scale to desired depth (view space Z is negative)
-    const float scale = -depth / view_point.z;
+    // Scale to desired depth (view space Z is positive forward)
+    const float scale = depth / view_point.z;
     return glm::vec3(view_point) * scale;
 }
 
@@ -230,7 +228,7 @@ cluster_grid::build_clusters(const glm::mat4& view,
         // Transform light position to view space
         const glm::vec4 view_pos = view * glm::vec4(light.position, 1.0f);
         const glm::vec3 light_view_pos = glm::vec3(view_pos);
-        const float light_depth = -light_view_pos.z;  // View space Z is negative
+        const float light_depth = light_view_pos.z;  // View space Z is positive (forward)
 
         // Skip lights behind camera or beyond far plane
         if (light_depth + light.radius < m_config.near_plane)

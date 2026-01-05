@@ -25,10 +25,14 @@ struct cluster_grid_config
     uint32_t tiles_x = 0;
     uint32_t tiles_y = 0;
     uint32_t total_clusters = 0;
+    uint32_t screen_width = 0;   // Actual framebuffer width
+    uint32_t screen_height = 0;  // Actual framebuffer height
 
     void
-    update_dimensions(uint32_t screen_width, uint32_t screen_height)
+    update_dimensions(uint32_t width, uint32_t height)
     {
+        screen_width = width;
+        screen_height = height;
         tiles_x = (screen_width + tile_size - 1) / tile_size;
         tiles_y = (screen_height + tile_size - 1) / tile_size;
         total_clusters = tiles_x * tiles_y * depth_slices;

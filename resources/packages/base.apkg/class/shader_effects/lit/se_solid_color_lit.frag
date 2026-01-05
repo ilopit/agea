@@ -31,33 +31,51 @@ void main()
 
     // phase 1: directional lighting
     vec3 result = vec3(0);
-    result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, material);
+    //result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, material);
 
-    // phase 2: clustered local lights (point and spot)
-    // Compute view-space depth for cluster lookup
-    vec4 viewPos = dyn_camera_data.obj.view * vec4(in_world_pos, 1.0);
-    float viewDepth = -viewPos.z;  // View space Z is negative
-
-    // Get cluster index from screen position and depth
-    uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
-
-    // Get light count and base index for this cluster
-    uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
-    uint baseIdx = clusterIdx * dyn_cluster_config.config.max_lights_per_cluster;
-
-    // Iterate over lights in this cluster
-    for (uint i = 0u; i < lightCount; i++)
+    // phase 2: local lights (point and spot)
+    if (constants.obj.use_clustered_lighting != 0u)
     {
-        uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
-        universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
+        // Clustered lighting path
+        // Compute view-space depth for cluster lookup
+        vec4 viewPos = dyn_camera_data.obj.view * vec4(in_world_pos, 1.0);
+        float viewDepth = viewPos.z;  // View space Z is positive (forward)
+        uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
 
-        if(light.type == KGPU_light_type_point)
+        uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
+        uint baseIdx = clusterIdx * dyn_cluster_config.config.max_lights_per_cluster;
+
+        // Iterate over lights in this cluster
+        for (uint i = 0u; i < lightCount; i++)
         {
-            result += CalcPointLight(light, norm, in_world_pos, viewDir, material);
+            uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
+            universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
+
+            if(light.type == KGPU_light_type_point)
+            {
+                result += CalcPointLight(light, norm, in_world_pos, viewDir, material);
+            }
+            else if(light.type == KGPU_light_type_spot)
+            {
+                result += CalcSpotLight(light, norm, in_world_pos, viewDir, material);
+            }
         }
-        else if(light.type == KGPU_light_type_spot)
+    }
+    else
+    {
+        // Per-object light grid path - use pre-computed light indices
+        for (uint i = 0u; i < constants.obj.local_lights_size; i++)
         {
-            result += CalcSpotLight(light, norm, in_world_pos, viewDir, material);
+            universal_light_data light = dyn_gpu_universal_light_data.objects[constants.obj.local_light_ids[i]];
+
+            if(light.type == KGPU_light_type_point)
+            {
+                result += CalcPointLight(light, norm, in_world_pos, viewDir, material);
+            }
+            else if(light.type == KGPU_light_type_spot)
+            {
+                result += CalcSpotLight(light, norm, in_world_pos, viewDir, material);
+            }
         }
     }
 
