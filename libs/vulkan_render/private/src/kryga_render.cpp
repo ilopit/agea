@@ -154,10 +154,10 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     prepare_ui_resources();
     prepare_ui_pipeline();
 
-    // Initialize clustered lighting
+    // Initialize clustered lighting (must match camera near/far planes)
     m_cluster_grid.init(m_width, m_height,
                         0.1f,     // near plane
-                        1000.0f,  // far plane
+                        2000.0f,  // far plane - must match camera!
                         KGPU_cluster_tile_size, KGPU_cluster_depth_slices,
                         KGPU_max_lights_per_cluster);
 
@@ -170,6 +170,9 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     m_cluster_config.far_plane = config.far_plane;
     m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
     m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+
+    // Initialize per-object light grid (for non-clustered path)
+    m_light_grid.init(50.0f);  // Cell size matching typical light radius
 }
 
 void
@@ -411,14 +414,26 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     dyn.upload_data(m_camera_data);
     dyn.end();
 
-    // Build and upload cluster data (only rebuild when lights changed)
-    // if (m_clusters_dirty)
+    if (m_use_clustered_lighting)
     {
-        ZoneScopedN("Render::BuildClusters");
-        build_light_clusters();
-        m_clusters_dirty = false;
+        // Build and upload cluster data
+        {
+            ZoneScopedN("Render::BuildClusters");
+            build_light_clusters();
+            m_clusters_dirty = false;
+        }
+        upload_cluster_data(current_frame);
     }
-    upload_cluster_data(current_frame);
+    else
+    {
+        // Rebuild per-object light grid when lights changed
+        if (m_light_grid_dirty)
+        {
+            ZoneScopedN("Render::RebuildLightGrid");
+            rebuild_light_grid();
+            m_light_grid_dirty = false;
+        }
+    }
 
     build_global_set(current_frame);
     build_ssbo_sets(current_frame);
@@ -715,12 +730,24 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
                            const pipeline_ctx& pctx,
                            const render::vulkan_render_data* obj)
 {
-    // With clustered lighting, skip per-object light collection
-    // The shader will look up lights from the cluster grid based on fragment position
-
     // Set directional light (global)
     m_obj_config.directional_light_id =
         m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
+
+    // Set lighting mode
+    m_obj_config.use_clustered_lighting = m_use_clustered_lighting ? 1 : 0;
+
+    if (!m_use_clustered_lighting)
+    {
+        // Per-object light grid path: query lights affecting this object
+        m_obj_config.local_lights_size =
+            m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->bounding_radius,
+                                      m_obj_config.local_light_ids, KGPU_max_lights_per_object);
+    }
+    else
+    {
+        m_obj_config.local_lights_size = 0;
+    }
 
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
@@ -967,6 +994,7 @@ void
 vulkan_render::schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
 {
     m_clusters_dirty = true;
+    m_light_grid_dirty = true;
     for (auto& q : m_frames)
     {
         q.m_universal_light_queue.emplace_back(ld);
@@ -1600,6 +1628,23 @@ vulkan_render::build_light_clusters()
     // Build clusters
     m_cluster_grid.build_clusters(m_camera_data.view, m_camera_data.projection, inv_projection,
                                   lights);
+}
+
+void
+vulkan_render::rebuild_light_grid()
+{
+    KRG_check(m_light_grid.is_initialized(), "Light grid should be initialized");
+
+    m_light_grid.clear();
+
+    // Insert all universal lights into the grid
+    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    {
+        auto* light = m_cache.universal_lights.at(i);
+        float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
+                                         light->gpu_data.quadratic, 0.02f, 1.05f);
+        m_light_grid.insert_light(light->slot(), light->gpu_data.position, radius);
+    }
 }
 
 void

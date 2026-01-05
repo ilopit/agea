@@ -4,6 +4,7 @@
 #define GPU_PUSH_CONSTANTS_H
 
 #include <gpu_types/gpu_port.h>
+#include <gpu_types/gpu_generic_constants.h>
 
 GPU_BEGIN_NAMESPACE
 
@@ -11,6 +12,9 @@ gpu_struct_pc push_constants
 {
     uint material_id;
     uint directional_light_id;
+    uint use_clustered_lighting;  // 0 = per-object light grid, 1 = clustered
+    uint local_lights_size;       // number of lights for per-object grid path
+    uint local_light_ids[KGPU_max_lights_per_object];  // light indices for per-object grid path
 };
 
 GPU_END_NAMESPACE

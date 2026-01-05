@@ -24,7 +24,7 @@ hex_grid::construct(construct_params& params)
             cp.hex_q = q;
             cp.hex_r = r;
 
-            auto dl = spawn_component<hex_tile>(m_root_component, AID("hex_tile"), cp);
+            // auto dl = spawn_component<hex_tile>(m_root_component, AID("hex_tile"), cp);
         }
 
     return true;

@@ -23,6 +23,7 @@
 
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/kryga_render.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -312,6 +313,14 @@ performance_counters_window::handle()
     ImGui::Text("Objects : %3.3lf", objects_avg);
     ImGui::Text("Draws   : %3.3lf", all_draws_avg);
     ImGui::Text("Cull %  : %3.3lf", culled_draws_avg / all_draws_avg * 100);
+    ImGui::Separator();
+
+    bool use_clustered = glob::vulkan_render::getr().get_use_clustered_lighting();
+    if (ImGui::Checkbox("Clustered Lighting", &use_clustered))
+    {
+        glob::vulkan_render::getr().set_use_clustered_lighting(use_clustered);
+    }
+    ImGui::Text("Mode: %s", use_clustered ? "Clustered" : "Brute Force");
 
     --lock;
 }

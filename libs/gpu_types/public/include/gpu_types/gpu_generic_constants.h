@@ -15,4 +15,6 @@
 #define KGPU_textures_descriptor_sets 2
 #define KGPU_materials_descriptor_sets 3
 
+#define KGPU_max_lights_per_object 32
+
 #endif

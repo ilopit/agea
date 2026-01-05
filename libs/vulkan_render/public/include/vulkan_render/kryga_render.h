@@ -9,6 +9,7 @@
 #include "vulkan_render/render_cache.h"
 #include "render_utils/frustum.h"
 #include "render_utils/cluster_grid.h"
+#include "render_utils/light_grid.h"
 #include "gpu_types/gpu_cluster_types.h"
 
 #include <utils/singleton_instance.h>
@@ -202,6 +203,18 @@ public:
         return m_culled_draws;
     }
 
+    void
+    set_use_clustered_lighting(bool use)
+    {
+        m_use_clustered_lighting = use;
+    }
+
+    bool
+    get_use_clustered_lighting() const
+    {
+        return m_use_clustered_lighting;
+    }
+
 private:
     void
     draw_objects(render::frame_state& frame);
@@ -228,6 +241,10 @@ private:
 
     void
     upload_cluster_data(render::frame_state& frame);
+
+    // Per-object light grid methods
+    void
+    rebuild_light_grid();
 
     void
     draw_multi_pipeline_objects_queue(render_line_container& r,
@@ -348,6 +365,11 @@ private:
     cluster_grid m_cluster_grid;
     gpu::cluster_grid_data m_cluster_config;
     bool m_clusters_dirty = true;
+    bool m_use_clustered_lighting = true;
+
+    // Per-object light grid (alternative to clustered)
+    light_grid m_light_grid;
+    bool m_light_grid_dirty = true;
 
     // Frustum for view culling
     frustum m_frustum;

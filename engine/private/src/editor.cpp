@@ -164,7 +164,7 @@ game_editor::ev_spawn()
         }
     }
 
-    int light_DIM = 2;
+    int light_DIM = 10;
 
     base::point_light::construct_params prms;
 
