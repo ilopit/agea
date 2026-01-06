@@ -87,7 +87,7 @@ private:
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on
 
-    render::gpu_camera_data m_camera_data;
+    gpu::camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 

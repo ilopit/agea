@@ -465,8 +465,8 @@ vulkan_engine::init_default_resources()
     v.at(4) = 3;
     v.at(5) = 1;
 
-    auto vertices = vert_buffer.make_view<render::gpu_vertex_data>();
-    auto indices = index_buffer.make_view<render::gpu_index_data>();
+    auto vertices = vert_buffer.make_view<gpu::vertex_data>();
+    auto indices = index_buffer.make_view<gpu::uint>();
 
     glob::vulkan_render_loader::getr().create_mesh(AID("plane_mesh"), vertices, indices);
 

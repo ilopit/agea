@@ -275,7 +275,7 @@ game_editor::update_camera()
     m_updated = false;
 }
 
-render::gpu_camera_data
+gpu::camera_data
 game_editor::get_camera_data()
 {
     return m_camera_data;

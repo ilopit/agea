@@ -17,8 +17,8 @@ namespace mesh_importer
 {
 bool
 extract_mesh_data_from_3do(const utils::path& obj_path,
-                           utils::buffer_view<render::gpu_vertex_data> vertices,
-                           utils::buffer_view<render::gpu_index_data> indices)
+                           utils::buffer_view<gpu::vertex_data> vertices,
+                           utils::buffer_view<gpu::uint> indices)
 {
     // attrib will contain the vertex arrays of the file
     tinyobj::attrib_t attrib;
@@ -83,7 +83,7 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
                 tinyobj::real_t b = attrib.colors[3 * idx.vertex_index + 2];
 
                 // copy it into our vertex
-                render::gpu_vertex_data new_vert;
+                gpu::vertex_data new_vert;
                 new_vert.position.x = vx;
                 new_vert.position.y = vy;
                 new_vert.position.z = vz;

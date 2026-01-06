@@ -39,12 +39,33 @@ void main()
         // Clustered lighting path
         // Compute view-space depth for cluster lookup
         vec4 viewPos = dyn_camera_data.obj.view * vec4(in_world_pos, 1.0);
-        float viewDepth = viewPos.z;  // View space Z is positive (forward)
+        float viewDepth = -viewPos.z;  // Negate: OpenGL view space Z is negative forward
         uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
 
         uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
         uint baseIdx = clusterIdx * dyn_cluster_config.config.max_lights_per_cluster;
-
+#if 0
+        // DEBUG: Check ALL lights in cluster, find closest
+        float minDRatio = 999.0;
+        float closestDist = 99999.0;
+        uint closestLightIdx = 0u;
+        for (uint i = 0u; i < lightCount; i++)
+        {
+            uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
+            universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
+            float dist = length(light.position - in_world_pos);
+            float dr = dist / light.radius;
+            if (dr < minDRatio)
+            {
+                minDRatio = dr;
+                closestDist = dist;
+                closestLightIdx = i;
+            }
+        }
+        // Red = min d_ratio (< 1 means should be lit), Green = lightCount/10, Blue = closestLightIdx/10
+        out_color = vec4(minDRatio, float(lightCount) / 10.0, float(closestLightIdx) / 10.0, 1.0);
+        return;
+#endif
         // Iterate over lights in this cluster
         for (uint i = 0u; i < lightCount; i++)
         {
@@ -114,12 +135,30 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
         return vec3(0);
     }
 
+    float distance = length(light.position - fragPos);
+    float d_ratio = distance / light.radius;
+
+    // Early out if beyond radius
+    if(d_ratio >= 1.0)
+    {
+        return vec3(0);
+    }
+
+    // Inverse-square falloff with steeper curve
+    float d_ratio2 = d_ratio * d_ratio;
+    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+
+    // UE4-style window function to smoothly fade to zero at radius
+    float d_ratio4 = d_ratio2 * d_ratio2;
+    float window = clamp(1.0 - d_ratio4, 0.0, 1.0);
+    window = window * window;
+
+    float attenuation = falloff * window;
+
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    // attenuation
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
     // combine results
     vec3 ambient = light.ambient * material.ambient;
     vec3 diffuse = light.diffuse * diff * material.diffuse;
@@ -143,16 +182,35 @@ vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
         return vec3(0);
     }
 
+    float distance = length(light.position - fragPos);
+    float d_ratio = distance / light.radius;
+
+    // Early out if beyond radius
+    if(d_ratio >= 1.0)
+    {
+        return vec3(0);
+    }
+
+    // Inverse-square falloff with steeper curve
+    float d_ratio2 = d_ratio * d_ratio;
+    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+
+    // UE4-style window function to smoothly fade to zero at radius
+    float d_ratio4 = d_ratio2 * d_ratio2;
+    float window = clamp(1.0 - d_ratio4, 0.0, 1.0);
+    window = window * window;
+
+    float attenuation = falloff * window;
+
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    // attenuation
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
     // spotlight intensity
     float theta = dot(lightDir, normalize(-light.direction));
     float epsilon = light.cut_off - light.outer_cut_off;
     float intensity = clamp((theta - light.outer_cut_off) / epsilon, 0.0, 1.0);
+
     // combine results
     vec3 ambient = light.ambient * material.ambient;
     vec3 diffuse = light.diffuse * diff * material.diffuse;

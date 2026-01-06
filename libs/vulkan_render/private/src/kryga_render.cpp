@@ -510,10 +510,10 @@ vulkan_render::build_ssbo_sets(render::frame_state& current_frame)
 void
 vulkan_render::upload_obj_data(render::frame_state& frame)
 {
-    const auto total_size = m_cache.objects.get_size() * sizeof(gpu_object_data);
+    const auto total_size = m_cache.objects.get_size() * sizeof(gpu::object_data);
 
-    auto* data = (gpu_object_data*)ensure_buffer_capacity_and_map(frame.m_object_buffer, total_size,
-                                                                  "objects");
+    auto* data = (gpu::object_data*)ensure_buffer_capacity_and_map(frame.m_object_buffer,
+                                                                   total_size, "objects");
     KRG_check(data, "Should never happen");
 
     upload_gpu_object_data(data);
@@ -1011,7 +1011,7 @@ vulkan_render::clear_upload_queue()
 }
 
 void
-vulkan_render::upload_gpu_object_data(render::gpu_object_data* object_SSBO)
+vulkan_render::upload_gpu_object_data(gpu::object_data* object_SSBO)
 {
     auto& to_update = get_current_frame_transfer_data().m_objects_queue;
 

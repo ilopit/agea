@@ -22,11 +22,6 @@ constexpr gpu_data_index_type INVALID_GPU_MATERIAL_DATA_INDEX = 1024;
 constexpr gpu_data_index_type INVALID_GPU_INDEX = uint32_t(-1);
 
 // Import GPU types from gpu_types library into render namespace
-using gpu_camera_data = gpu::camera_data;
-using gpu_directional_light_data = gpu::directional_light_data;
-using gpu_universal_light_data = gpu::universal_light_data;
-using gpu_object_data = gpu::object_data;
-using gpu_vertex_data = gpu::vertex_data;
 
 std::shared_ptr<utils::dynobj_layout>
 get_default_vertex_inout_layout();

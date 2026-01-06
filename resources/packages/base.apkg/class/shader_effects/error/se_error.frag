@@ -51,10 +51,6 @@ vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
     light.diffuse = vec3(1.0);
     light.specular = vec3(1.0);
 
-    light.constant = 2;
-    light.linear = 0.014;
-    light.quadratic = 0.0007;
-
     vec3 lightDir = normalize(dyn_camera_data.obj.position - fragPos);
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
@@ -64,12 +60,30 @@ vec3 CalcDummyPointLight(vec3 normal, vec3 fragPos, vec3 viewDir)
         return vec3(0);
     }
 
+    float distance = length(light.position - fragPos);
+    float d_ratio = distance / light.radius;
+
+    // Early out if beyond radius
+    if(d_ratio >= 1.0)
+    {
+        return vec3(0);
+    }
+
+    // Inverse-square falloff with steeper curve
+    float d_ratio2 = d_ratio * d_ratio;
+    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+
+    // UE4-style window function to smoothly fade to zero at radius
+    float d_ratio4 = d_ratio2 * d_ratio2;
+    float window = clamp(1.0 - d_ratio4, 0.0, 1.0);
+    window = window * window;
+
+    float attenuation = falloff * window;
+
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
-    // attenuation
-    float distance = length(light.position - fragPos);
-    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+
     // combine results
     vec3 ambient = light.ambient * getColor(in_tex_coord);
     vec3 diffuse = light.diffuse * diff * getColor(in_tex_coord);

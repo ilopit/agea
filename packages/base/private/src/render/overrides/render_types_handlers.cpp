@@ -24,6 +24,8 @@
 
 #include "packages/base/model/mesh_object.h"
 
+#include <render_utils/light_grid.h>
+
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
 #include <core/caches/cache_set.h>
@@ -236,9 +238,7 @@ spot_light_component__render_loader(reflection::type_context__render& ctx)
         rh->gpu_data.ambient = lc_model.get_ambient();
         rh->gpu_data.diffuse = lc_model.get_diffuse();
         rh->gpu_data.specular = lc_model.get_specular();
-        rh->gpu_data.constant = lc_model.get_constant();
-        rh->gpu_data.linear = lc_model.get_linear();
-        rh->gpu_data.quadratic = lc_model.get_quadratic();
+        rh->gpu_data.radius = lc_model.get_radius();
         rh->gpu_data.direction = lc_model.get_direction();
         rh->gpu_data.cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
         rh->gpu_data.outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
@@ -281,9 +281,7 @@ point_light_component__render_loader(reflection::type_context__render& ctx)
         rh->gpu_data.ambient = lc_model.get_ambient();
         rh->gpu_data.diffuse = lc_model.get_diffuse();
         rh->gpu_data.specular = lc_model.get_specular();
-        rh->gpu_data.constant = lc_model.get_constant();
-        rh->gpu_data.linear = lc_model.get_linear();
-        rh->gpu_data.quadratic = lc_model.get_quadratic();
+        rh->gpu_data.radius = lc_model.get_radius();
 
         lc_model.set_handler(rh);
     }

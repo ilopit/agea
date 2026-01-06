@@ -15,7 +15,7 @@ namespace base
 {
 
 KRG_ar_class(render_constructor = point_light_component__render_loader,
-              render_destructor = point_light_component__render_destructor);
+             render_destructor = point_light_component__render_destructor);
 class point_light_component : public ::kryga::root::game_object_component
 {
     KRG_gen_meta__point_light_component();
@@ -49,13 +49,7 @@ protected:
     ::kryga::root::vec3 m_specular = glm::vec3{1.0f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
-    float m_constant = 1.0f;
-
-    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
-    float m_linear = 0.014f;
-
-    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
-    float m_quadratic = 0.0007f;
+    float m_radius = 50.0f;
 
     render::vulkan_universal_light_data* m_handler = nullptr;
 };

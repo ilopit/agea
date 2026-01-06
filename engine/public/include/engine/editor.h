@@ -17,7 +17,7 @@ public:
     void
     on_tick(float dur_sec);
 
-    render::gpu_camera_data
+    gpu::camera_data
     get_camera_data();
 
     void
@@ -65,7 +65,7 @@ private:
     float m_look_up_delta = 0.f;
     float m_look_left_delta = 0.f;
 
-    render::gpu_camera_data m_camera_data;
+    gpu::camera_data m_camera_data;
 
     bool m_updated = true;
 };

@@ -19,7 +19,7 @@ struct cluster_grid_config
     uint32_t max_lights_per_cluster = 32;
 
     float near_plane = 0.1f;
-    float far_plane = 1000.0f;
+    float far_plane = 2000.0f;
 
     // Computed values (call update_dimensions after changing screen size)
     uint32_t tiles_x = 0;
@@ -59,7 +59,7 @@ class cluster_grid
 public:
     static constexpr uint32_t DEFAULT_TILE_SIZE = 64;
     static constexpr uint32_t DEFAULT_DEPTH_SLICES = 24;
-    static constexpr uint32_t DEFAULT_MAX_LIGHTS = 32;
+    static constexpr uint32_t DEFAULT_MAX_LIGHTS = 128;
 
     cluster_grid() = default;
 
@@ -142,6 +142,13 @@ public:
     get_total_light_assignments() const
     {
         return m_total_light_assignments;
+    }
+
+    // For debugging: get AABBs
+    const std::vector<cluster_aabb>&
+    get_cluster_aabbs() const
+    {
+        return m_cluster_aabbs;
     }
 
 private:

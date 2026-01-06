@@ -152,7 +152,7 @@ public:
     deinit();
 
     void
-    set_camera(render::gpu_camera_data d);
+    set_camera(gpu::camera_data d);
 
     void
     draw_main();
@@ -314,7 +314,7 @@ private:
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
-    render::gpu_camera_data m_camera_data;
+    gpu::camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 

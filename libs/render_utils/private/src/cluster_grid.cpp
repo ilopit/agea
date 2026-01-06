@@ -132,9 +132,11 @@ cluster_grid::screen_to_view(float screen_x,
     glm::vec4 view_point = inv_projection * clip_point;
     view_point /= view_point.w;
 
-    // Scale to desired depth (view space Z is positive forward)
-    const float scale = depth / view_point.z;
-    return glm::vec3(view_point) * scale;
+    // Scale to desired depth
+    // Note: view_point.z is negative (OpenGL convention), depth is positive
+    // We want AABBs in positive-Z-forward space, so use abs
+    const float scale = depth / std::abs(view_point.z);
+    return glm::vec3(view_point.x * scale, view_point.y * scale, depth);
 }
 
 cluster_aabb
@@ -228,7 +230,7 @@ cluster_grid::build_clusters(const glm::mat4& view,
         // Transform light position to view space
         const glm::vec4 view_pos = view * glm::vec4(light.position, 1.0f);
         const glm::vec3 light_view_pos = glm::vec3(view_pos);
-        const float light_depth = light_view_pos.z;  // View space Z is positive (forward)
+        const float light_depth = -light_view_pos.z;  // Negate: OpenGL view space Z is negative forward
 
         // Skip lights behind camera or beyond far plane
         if (light_depth + light.radius < m_config.near_plane)
@@ -247,6 +249,9 @@ cluster_grid::build_clusters(const glm::mat4& view,
         const uint32_t max_slice =
             std::min(depth_to_slice(light_depth + light.radius) + 1, m_config.depth_slices);
 
+        // Light position with corrected Z for AABB test (AABBs use positive Z forward)
+        const glm::vec3 light_view_pos_corrected(light_view_pos.x, light_view_pos.y, light_depth);
+
         // For each potentially affected cluster, do precise intersection test
         for (uint32_t slice = min_slice; slice < max_slice; ++slice)
         {
@@ -257,7 +262,7 @@ cluster_grid::build_clusters(const glm::mat4& view,
                     const uint32_t cluster_idx = get_cluster_index(tile_x, tile_y, slice);
                     const cluster_aabb& aabb = m_cluster_aabbs[cluster_idx];
 
-                    if (sphere_intersects_aabb(light_view_pos, light.radius, aabb))
+                    if (sphere_intersects_aabb(light_view_pos_corrected, light.radius, aabb))
                     {
                         uint32_t& count = m_cluster_light_counts[cluster_idx];
                         if (count < m_config.max_lights_per_cluster)

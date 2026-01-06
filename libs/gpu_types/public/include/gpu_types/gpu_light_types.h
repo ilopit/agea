@@ -34,9 +34,7 @@ gpu_struct_std140 universal_light_data
     uint type;            // 0 = point, 1 = spot
     float cut_off;        // unused for point lights (set to -1)
     float outer_cut_off;  // unused for point lights
-    float constant;
-    float linear;
-    float quadratic;
+    float radius;
 };
 
 GPU_END_NAMESPACE

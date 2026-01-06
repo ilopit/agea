@@ -27,8 +27,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
     utils::buffer indices;
 
     if (!asset_importer::mesh_importer::extract_mesh_data_from_3do(
-            obj_path, vertices.make_view<render::gpu_vertex_data>(),
-            indices.make_view<render::gpu_index_data>()))
+            obj_path, vertices.make_view<gpu::vertex_data>(), indices.make_view<gpu::uint>()))
     {
         ALOG_LAZY_ERROR;
         return false;

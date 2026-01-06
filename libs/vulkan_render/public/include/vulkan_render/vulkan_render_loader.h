@@ -43,8 +43,8 @@ public:
 
     mesh_data*
     create_mesh(const kryga::utils::id& mesh_id,
-                kryga::utils::buffer_view<render::gpu_vertex_data> vertices,
-                kryga::utils::buffer_view<render::gpu_index_data> indices);
+                kryga::utils::buffer_view<gpu::vertex_data> vertices,
+                kryga::utils::buffer_view<gpu::uint> indices);
 
     void
     destroy_mesh_data(const kryga::utils::id& id);
@@ -201,7 +201,8 @@ private:
 namespace glob
 {
 struct vulkan_render_loader
-    : public ::kryga::singleton_instance<::kryga::render::vulkan_render_loader, vulkan_render_loader>
+    : public ::kryga::singleton_instance<::kryga::render::vulkan_render_loader,
+                                         vulkan_render_loader>
 {
 };
 };  // namespace glob

@@ -124,8 +124,8 @@ upload_image(int texWidth,
 
 mesh_data*
 vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
-                                  kryga::utils::buffer_view<render::gpu_vertex_data> vbv,
-                                  kryga::utils::buffer_view<render::gpu_index_data> ibv)
+                                  kryga::utils::buffer_view<gpu::vertex_data> vbv,
+                                  kryga::utils::buffer_view<gpu::uint> ibv)
 {
     KRG_check(!get_mesh_data(mesh_id), "should never happens");
 
