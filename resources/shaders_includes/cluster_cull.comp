@@ -1,0 +1,180 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#include "gpu_types/gpu_light_types.h"
+#include "gpu_types/gpu_cluster_types.h"
+
+// Workgroup size: one thread per cluster
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// Cluster configuration
+layout(std140, set = 0, binding = 0) uniform ClusterConfig {
+    uint tiles_x;
+    uint tiles_y;
+    uint depth_slices;
+    uint tile_size;
+    float near_plane;
+    float far_plane;
+    float log_depth_ratio;
+    uint max_lights_per_cluster;
+} config;
+
+// Camera data (must match gpu::camera_data layout: projection, view, position)
+layout(std140, set = 0, binding = 1) uniform CameraData {
+    mat4 projection;
+    mat4 view;
+    vec3 position;
+} camera;
+
+// Light data input
+layout(std140, set = 0, binding = 2) readonly buffer LightBuffer {
+    universal_light_data lights[];
+};
+
+// Number of lights (passed via push constants)
+layout(push_constant) uniform PushConstants {
+    uint num_lights;
+} pc;
+
+// Output structures (must match fragment shader's std140 layout - 16 bytes per element)
+struct ClusterLightCountData {
+    uint count;
+    uint _pad0;
+    uint _pad1;
+    uint _pad2;
+};
+
+struct ClusterLightIndexData {
+    uint index;
+    uint _pad0;
+    uint _pad1;
+    uint _pad2;
+};
+
+// Output: cluster light counts
+layout(std430, set = 0, binding = 3) writeonly buffer ClusterLightCounts {
+    ClusterLightCountData counts[];
+};
+
+// Output: cluster light indices
+layout(std430, set = 0, binding = 4) writeonly buffer ClusterLightIndices {
+    ClusterLightIndexData indices[];
+};
+
+// Compute inverse projection (cached in shared memory for efficiency)
+shared mat4 inv_projection;
+
+// Convert screen-space point to view-space at given depth
+vec3 screenToView(vec2 screenPos, float depth)
+{
+    // NDC coordinates (Vulkan: Y flipped)
+    vec2 ndc = vec2(
+        (2.0 * screenPos.x / float(config.tiles_x * config.tile_size)) - 1.0,
+        (2.0 * screenPos.y / float(config.tiles_y * config.tile_size)) - 1.0
+    );
+
+    // Unproject to view space using cached inverse projection
+    vec4 clipPoint = vec4(ndc, 0.0, 1.0);
+    vec4 viewPoint = inv_projection * clipPoint;
+    viewPoint /= viewPoint.w;
+
+    // Scale to desired depth (view_point.z is negative, depth is positive)
+    float scale = depth / abs(viewPoint.z);
+    return vec3(viewPoint.x * scale, viewPoint.y * scale, depth);
+}
+
+// Get depth for a given slice
+float sliceToDepth(uint slice)
+{
+    float t = float(slice) / float(config.depth_slices);
+    return config.near_plane * pow(config.far_plane / config.near_plane, t);
+}
+
+// Sphere-AABB intersection test
+bool sphereIntersectsAABB(vec3 center, float radius, vec3 aabbMin, vec3 aabbMax)
+{
+    vec3 closest = clamp(center, aabbMin, aabbMax);
+    vec3 diff = center - closest;
+    float distSq = dot(diff, diff);
+    return distSq <= (radius * radius);
+}
+
+void main()
+{
+    // First thread in workgroup computes inverse projection once
+    if (gl_LocalInvocationID.x == 0)
+    {
+        inv_projection = inverse(camera.projection);
+    }
+    barrier();  // Wait for inverse computation
+
+    uint clusterIdx = gl_GlobalInvocationID.x;
+
+    uint totalClusters = config.tiles_x * config.tiles_y * config.depth_slices;
+    if (clusterIdx >= totalClusters)
+        return;
+
+    // Decode cluster index to tile_x, tile_y, slice
+    uint tilesPerSlice = config.tiles_x * config.tiles_y;
+    uint slice = clusterIdx / tilesPerSlice;
+    uint tileIdx = clusterIdx % tilesPerSlice;
+    uint tile_y = tileIdx / config.tiles_x;
+    uint tile_x = tileIdx % config.tiles_x;
+
+    // Compute cluster AABB in view space
+    float minX = float(tile_x * config.tile_size);
+    float maxX = float((tile_x + 1) * config.tile_size);
+    float minY = float(tile_y * config.tile_size);
+    float maxY = float((tile_y + 1) * config.tile_size);
+
+    float nearDepth = sliceToDepth(slice);
+    float farDepth = sliceToDepth(slice + 1);
+
+    // Compute 8 corners and find AABB
+    vec3 corners[8];
+    corners[0] = screenToView(vec2(minX, minY), nearDepth);
+    corners[1] = screenToView(vec2(maxX, minY), nearDepth);
+    corners[2] = screenToView(vec2(minX, maxY), nearDepth);
+    corners[3] = screenToView(vec2(maxX, maxY), nearDepth);
+    corners[4] = screenToView(vec2(minX, minY), farDepth);
+    corners[5] = screenToView(vec2(maxX, minY), farDepth);
+    corners[6] = screenToView(vec2(minX, maxY), farDepth);
+    corners[7] = screenToView(vec2(maxX, maxY), farDepth);
+
+    vec3 aabbMin = corners[0];
+    vec3 aabbMax = corners[0];
+    for (int i = 1; i < 8; i++)
+    {
+        aabbMin = min(aabbMin, corners[i]);
+        aabbMax = max(aabbMax, corners[i]);
+    }
+
+    // Cull lights against this cluster
+    uint lightCount = 0;
+    uint baseIdx = clusterIdx * config.max_lights_per_cluster;
+
+    for (uint i = 0; i < pc.num_lights && lightCount < config.max_lights_per_cluster; i++)
+    {
+        // Transform light to view space
+        vec4 lightViewPos = camera.view * vec4(lights[i].position, 1.0);
+        float lightDepth = -lightViewPos.z;  // Negate for positive-Z-forward
+
+        // Skip lights outside depth range (with radius margin)
+        if (lightDepth + lights[i].radius < config.near_plane)
+            continue;
+        if (lightDepth - lights[i].radius > config.far_plane)
+            continue;
+
+        // Light position in positive-Z-forward space
+        vec3 lightPosForTest = vec3(lightViewPos.x, lightViewPos.y, lightDepth);
+
+        // Sphere-AABB intersection test
+        if (sphereIntersectsAABB(lightPosForTest, lights[i].radius, aabbMin, aabbMax))
+        {
+            indices[baseIdx + lightCount].index = i;
+            lightCount++;
+        }
+    }
+
+    counts[clusterIdx].count = lightCount;
+}

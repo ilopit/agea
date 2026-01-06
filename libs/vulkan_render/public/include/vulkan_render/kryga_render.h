@@ -3,6 +3,7 @@
 #include "vulkan_render/types/vulkan_render_data.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_light_data.h"
+#include "vulkan_render/types/vulkan_compute_shader_data.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
@@ -242,6 +243,16 @@ private:
     void
     upload_cluster_data(render::frame_state& frame);
 
+    // GPU compute cluster culling
+    void
+    init_cluster_cull_compute();
+
+    void
+    dispatch_cluster_cull(render::frame_state& frame);
+
+    void
+    build_cluster_cull_descriptor_set(render::frame_state& frame);
+
     // Per-object light grid methods
     void
     rebuild_light_grid();
@@ -366,6 +377,11 @@ private:
     gpu::cluster_grid_data m_cluster_config;
     bool m_clusters_dirty = true;
     bool m_use_clustered_lighting = true;
+
+    // GPU compute cluster culling
+    std::unique_ptr<compute_shader_data> m_cluster_cull_shader;
+    VkDescriptorSet m_cluster_cull_descriptor_set = VK_NULL_HANDLE;
+    bool m_use_gpu_cluster_cull = true;
 
     // Per-object light grid (alternative to clustered)
     light_grid m_light_grid;

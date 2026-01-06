@@ -1,4 +1,5 @@
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -137,6 +138,8 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
                                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
+        // Cluster buffers - used by both CPU upload and GPU compute
+        // CPU_TO_GPU allows CPU writes for fallback, GPU can read/write via SSBO
         m_frames[i].m_cluster_light_counts_buffer =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
@@ -145,9 +148,10 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        m_frames[i].m_cluster_config_buffer =
-            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].m_cluster_config_buffer = device.create_buffer(
+            DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();
@@ -173,6 +177,9 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
+
+    // Initialize GPU cluster culling compute shader
+    init_cluster_cull_compute();
 }
 
 void
@@ -184,7 +191,7 @@ vulkan_render::deinit()
 }
 
 void
-vulkan_render::set_camera(render::gpu_camera_data c)
+vulkan_render::set_camera(gpu::camera_data c)
 {
     // Mark clusters dirty if view changed (light-cluster assignment is in view space)
     if (m_camera_data.view != c.view)
@@ -251,6 +258,12 @@ vulkan_render::draw_main()
 
     update_ui(current_frame);
     prepare_draw_resources(current_frame);
+
+    // Dispatch GPU cluster culling compute shader (if enabled)
+    if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader)
+    {
+        dispatch_cluster_cull(current_frame);
+    }
 
     auto rp = get_render_pass(AID("ui"));
     rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
@@ -416,13 +429,39 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
     if (m_use_clustered_lighting)
     {
-        // Build and upload cluster data
+        if (m_use_gpu_cluster_cull && m_cluster_cull_shader)
         {
-            ZoneScopedN("Render::BuildClusters");
-            build_light_clusters();
+            // GPU compute path: upload config and dispatch compute shader
+            ZoneScopedN("Render::GPUClusterCull");
+
+            // Upload cluster config (needed by compute shader)
+            const auto& config = m_cluster_grid.get_config();
+            m_cluster_config.tiles_x = config.tiles_x;
+            m_cluster_config.tiles_y = config.tiles_y;
+            m_cluster_config.depth_slices = config.depth_slices;
+            m_cluster_config.tile_size = config.tile_size;
+            m_cluster_config.near_plane = config.near_plane;
+            m_cluster_config.far_plane = config.far_plane;
+            m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
+            m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+
+            current_frame.m_cluster_config_buffer.begin();
+            auto* data =
+                current_frame.m_cluster_config_buffer.allocate_data(sizeof(gpu::cluster_grid_data));
+            memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
+            current_frame.m_cluster_config_buffer.end();
+
+            // Dispatch compute shader will be called after command buffer begins
             m_clusters_dirty = false;
         }
-        upload_cluster_data(current_frame);
+        else
+        {
+            // CPU fallback path
+            ZoneScopedN("Render::CPUBuildClusters");
+            build_light_clusters();
+            m_clusters_dirty = false;
+            upload_cluster_data(current_frame);
+        }
     }
     else
     {
@@ -1616,10 +1655,8 @@ vulkan_render::build_light_clusters()
     for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
         auto* light = m_cache.universal_lights.at(i);
-        float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
-                                         light->gpu_data.quadratic, 0.02f, 1.05f);
-
-        lights.push_back({light->slot(), light->gpu_data.position, radius});
+        // Add small margin for cluster assignment to avoid edge cases
+        lights.push_back({light->slot(), light->gpu_data.position, light->gpu_data.radius * 1.05f});
     }
 
     // Compute view and projection matrices for cluster building
@@ -1641,9 +1678,7 @@ vulkan_render::rebuild_light_grid()
     for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
         auto* light = m_cache.universal_lights.at(i);
-        float radius = calc_light_radius(light->gpu_data.constant, light->gpu_data.linear,
-                                         light->gpu_data.quadratic, 0.02f, 1.05f);
-        m_light_grid.insert_light(light->slot(), light->gpu_data.position, radius);
+        m_light_grid.insert_light(light->slot(), light->gpu_data.position, light->gpu_data.radius);
     }
 }
 
@@ -1712,6 +1747,137 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
         frame.m_cluster_config_buffer.end();
     }
+}
+
+void
+vulkan_render::init_cluster_cull_compute()
+{
+    ZoneScopedN("Render::InitClusterCullCompute");
+
+    auto path = glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
+    auto shader_path = path / "cluster_cull.comp";
+
+    kryga::utils::buffer shader_buffer;
+    if (!kryga::utils::buffer::load(shader_path, shader_buffer))
+    {
+        ALOG_WARN("Failed to load cluster_cull.comp - GPU cluster culling disabled");
+        m_use_gpu_cluster_cull = false;
+        return;
+    }
+
+    m_cluster_cull_shader = std::make_unique<compute_shader_data>(AID("cluster_cull"));
+
+    auto rc =
+        vulkan_compute_shader_loader::create_compute_shader(*m_cluster_cull_shader, shader_buffer);
+    if (rc != result_code::ok)
+    {
+        ALOG_WARN("Failed to create cluster cull compute shader - GPU cluster culling disabled");
+        m_cluster_cull_shader.reset();
+        m_use_gpu_cluster_cull = false;
+        return;
+    }
+
+    ALOG_INFO("GPU cluster culling compute shader initialized");
+}
+
+void
+vulkan_render::build_cluster_cull_descriptor_set(render::frame_state& frame)
+{
+    // Descriptor bindings match cluster_cull.comp:
+    // set=0, binding=0: ClusterConfig (uniform)
+    // set=0, binding=1: CameraData (uniform)
+    // set=0, binding=2: LightBuffer (storage, readonly)
+    // set=0, binding=3: LightCount (uniform)
+    // set=0, binding=4: ClusterLightCounts (storage, writeonly)
+    // set=0, binding=5: ClusterLightIndices (storage, writeonly)
+
+    VkDescriptorBufferInfo config_info{.buffer = frame.m_cluster_config_buffer.buffer(),
+                                       .offset = 0,
+                                       .range = sizeof(gpu::cluster_grid_data)};
+
+    VkDescriptorBufferInfo camera_info{.buffer = frame.m_dynamic_data_buffer.buffer(),
+                                       .offset = 0,
+                                       .range = sizeof(gpu::camera_data)};
+
+    VkDescriptorBufferInfo lights_info{.buffer = frame.m_universal_lights_buffer.buffer(),
+                                       .offset = 0,
+                                       .range = frame.m_universal_lights_buffer.get_alloc_size()};
+
+    // Light count is stored in a small uniform buffer
+    // For simplicity, we'll use the cluster config buffer offset
+    // Actually we need to pass light count separately - let's use push constants instead
+    // For now, use the lights buffer size to infer count
+
+    VkDescriptorBufferInfo counts_info{
+        .buffer = frame.m_cluster_light_counts_buffer.buffer(),
+        .offset = 0,
+        .range = frame.m_cluster_light_counts_buffer.get_alloc_size()};
+
+    VkDescriptorBufferInfo indices_info{
+        .buffer = frame.m_cluster_light_indices_buffer.buffer(),
+        .offset = 0,
+        .range = frame.m_cluster_light_indices_buffer.get_alloc_size()};
+
+    vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
+                                        frame.frame->m_dynamic_descriptor_allocator.get())
+        .bind_buffer(0, &config_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                     VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(1, &camera_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                     VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(2, &lights_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                     VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(3, &counts_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                     VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(4, &indices_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                     VK_SHADER_STAGE_COMPUTE_BIT)
+        .build(m_cluster_cull_descriptor_set);
+}
+
+void
+vulkan_render::dispatch_cluster_cull(render::frame_state& frame)
+{
+    ZoneScopedN("Render::DispatchClusterCull");
+
+    if (!m_cluster_cull_shader || !m_use_gpu_cluster_cull)
+        return;
+
+    auto device = glob::render_device::get();
+    auto cmd = frame.frame->m_main_command_buffer;
+
+    // Build descriptor set for this frame
+    build_cluster_cull_descriptor_set(frame);
+
+    // Bind compute pipeline
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_cluster_cull_shader->m_pipeline);
+
+    // Bind descriptor set
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            m_cluster_cull_shader->m_pipeline_layout, 0, 1,
+                            &m_cluster_cull_descriptor_set, 0, nullptr);
+
+    // Push light count
+    uint32_t num_lights = m_cache.universal_lights.get_size();
+    vkCmdPushConstants(cmd, m_cluster_cull_shader->m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(uint32_t), &num_lights);
+
+    // Calculate dispatch size
+    const auto& config = m_cluster_grid.get_config();
+    uint32_t total_clusters = config.tiles_x * config.tiles_y * config.depth_slices;
+    uint32_t workgroup_size = 64;  // Must match local_size_x in shader
+    uint32_t num_workgroups = (total_clusters + workgroup_size - 1) / workgroup_size;
+
+    // Dispatch compute shader
+    vkCmdDispatch(cmd, num_workgroups, 1, 1);
+
+    // Memory barrier to ensure compute writes are visible to fragment shaders
+    VkMemoryBarrier memory_barrier{};
+    memory_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    memory_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &memory_barrier, 0, nullptr,
+                         0, nullptr);
 }
 
 }  // namespace render
