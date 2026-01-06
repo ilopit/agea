@@ -11,6 +11,7 @@ GPU_BEGIN_NAMESPACE
 gpu_struct_std140 camera_data
 {
     align_std140 mat4 projection;
+    align_std140 mat4 inv_projection;
     align_std140 mat4 view;
     align_std140 vec3 position;
 };

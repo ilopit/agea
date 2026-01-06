@@ -6,12 +6,10 @@
 
 using namespace kryga::render;
 
-// Helper: Create Vulkan-style projection with Y flip
-glm::mat4 make_vulkan_projection(float fov_degrees, float aspect, float near, float far)
+// Helper: Create projection matrix (Y-flip handled at viewport level)
+glm::mat4 make_projection(float fov_degrees, float aspect, float near, float far)
 {
-    glm::mat4 proj = glm::perspective(glm::radians(fov_degrees), aspect, near, far);
-    proj[1][1] *= -1;  // Vulkan Y flip
-    return proj;
+    return glm::perspective(glm::radians(fov_degrees), aspect, near, far);
 }
 
 // ============================================================================
@@ -362,7 +360,7 @@ TEST(ClusterGrid, vulkan_projection_shader_lookup_consistency)
     // Camera setup with Vulkan projection
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at origin
@@ -424,7 +422,7 @@ TEST(ClusterGrid, vulkan_projection_off_center_light)
     // Camera at origin looking down -Z
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light above center, 50 units in front
@@ -495,7 +493,7 @@ TEST(ClusterGrid, far_depth_light_assignment)
     // Camera at origin looking down -Z
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at far distance (1500 units in front of camera)
@@ -559,7 +557,7 @@ TEST(ClusterGrid, very_far_depth_light_near_far_plane)
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at 1900 units (close to far plane of 2000)
@@ -621,7 +619,7 @@ TEST(ClusterGrid, camera_offset_far_light)
     glm::vec3 cam_pos(0.0f, 50.0f, 500.0f);
     glm::mat4 view = glm::lookAt(cam_pos, glm::vec3(0.0f, 0.0f, 0.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at world origin with radius 50
@@ -702,7 +700,7 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Multiple lights at different depths
@@ -772,7 +770,7 @@ TEST(ClusterGrid, near_light_not_in_far_cluster)
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Near light at depth 100 with radius 50
@@ -837,7 +835,7 @@ TEST(ClusterGrid, depth_800_boundary)
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at depth 800 with radius 50
@@ -913,7 +911,7 @@ TEST(ClusterGrid, very_far_object_and_light)
     glm::vec3 cam_pos(0.0f, 0.0f, 0.0f);
     glm::mat4 view = glm::lookAt(cam_pos, glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at Z=-1200 (1200 units in front of camera) with radius 50
@@ -990,7 +988,7 @@ TEST(ClusterGrid, far_aabb_extents)
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Just need to build clusters to populate AABBs

@@ -246,11 +246,9 @@ game_editor::update_camera()
 
     glm::mat4 cam_rot = get_rotation_matrix();
 
-    glm::vec3 forward{0, 0, -1};
-    glm::vec3 right{1, 0, 0};
-
-    forward = cam_rot * glm::vec4(forward, 0.f);
-    right = cam_rot * glm::vec4(right, 0.f);
+    // Extract direction vectors directly from rotation matrix columns
+    glm::vec3 forward = -glm::vec3(cam_rot[2]);
+    glm::vec3 right = glm::vec3(cam_rot[0]);
 
     m_velocity = m_forward_delta * forward + m_left_delta * right;
     m_position += m_velocity;
@@ -260,16 +258,17 @@ game_editor::update_camera()
     m_look_left_delta = 0.f;
     m_look_up_delta = 0.f;
 
-    glm::mat4 view = glm::translate(glm::mat4{1}, m_position) * cam_rot;
+    // Build view matrix directly: inverse(T * R) = R^T * T^-1
+    m_camera_data.view = glm::transpose(cam_rot) * glm::translate(glm::mat4{1.f}, -m_position);
 
-    view = glm::inverse(view);
-
-    glm::mat4 projection = glm::perspective(
-        glm::radians(60.f), glob::native_window::getr().aspect_ratio(), 0.1f, 2000.f);
-    projection[1][1] *= -1;
-
-    m_camera_data.projection = projection;
-    m_camera_data.view = view;
+    // Rebuild projection only when aspect ratio changes
+    float aspect = glob::native_window::getr().aspect_ratio();
+    if (aspect != m_cached_aspect_ratio)
+    {
+        m_cached_aspect_ratio = aspect;
+        m_camera_data.projection = glm::perspective(glm::radians(60.f), aspect, 0.1f, 2000.f);
+        m_camera_data.inv_projection = glm::inverse(m_camera_data.projection);
+    }
     m_camera_data.position = m_position;
 
     m_updated = false;

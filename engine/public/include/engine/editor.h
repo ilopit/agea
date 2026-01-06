@@ -66,6 +66,9 @@ private:
     float m_look_left_delta = 0.f;
 
     gpu::camera_data m_camera_data;
+    glm::mat4 m_cached_projection{1.f};
+    glm::mat4 m_inverted_cached_projection{1.f};
+    float m_cached_aspect_ratio = 0.f;
 
     bool m_updated = true;
 };

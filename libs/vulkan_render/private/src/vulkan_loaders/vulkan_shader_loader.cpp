@@ -259,9 +259,9 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     auto height = info.height ? info.height : (uint32_t)glob::native_window::get()->get_size().h;
 
     pb.m_viewport.x = 0.0f;
-    pb.m_viewport.y = 0.0f;
+    pb.m_viewport.y = (float)height;
     pb.m_viewport.width = (float)width;
-    pb.m_viewport.height = (float)height;
+    pb.m_viewport.height = -(float)height;
 
     pb.m_viewport.minDepth = 0.0f;
     pb.m_viewport.maxDepth = 1.0f;
