@@ -17,4 +17,7 @@
 
 #define KGPU_max_lights_per_object 32
 
+#define KGPU_znear 0.1
+#define KGPU_zfar 2000
+
 #endif

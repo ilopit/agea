@@ -6,6 +6,7 @@ add_library(render_utils STATIC
 
 target_link_libraries(render_utils PUBLIC
     kryga::glm_unofficial
+    kryga::gpu_types
 )
 
 kryga_finalize_library(render_utils)

@@ -3,11 +3,13 @@
 #include "render_utils/cluster_grid.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <gpu_types/gpu_generic_constants.h>
 
 using namespace kryga::render;
 
 // Helper: Create projection matrix (Y-flip handled at viewport level)
-glm::mat4 make_projection(float fov_degrees, float aspect, float near, float far)
+glm::mat4
+make_projection(float fov_degrees, float aspect, float near, float far)
 {
     return glm::perspective(glm::radians(fov_degrees), aspect, near, far);
 }
@@ -32,13 +34,13 @@ TEST(ClusterGrid, initialized_after_init)
 TEST(ClusterGrid, config_set_correctly)
 {
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 64, 24, 128);
+    grid.init(800, 600, 0.1f, KGPU_zfar, 64, 24, 128);
 
     const auto& config = grid.get_config();
     EXPECT_EQ(config.screen_width, 800u);
     EXPECT_EQ(config.screen_height, 600u);
-    EXPECT_FLOAT_EQ(config.near_plane, 0.1f);
-    EXPECT_FLOAT_EQ(config.far_plane, 2000.0f);
+    EXPECT_FLOAT_EQ(config.near_plane, KGPU_znear);
+    EXPECT_FLOAT_EQ(config.far_plane, KGPU_zfar);
     EXPECT_EQ(config.tile_size, 64u);
     EXPECT_EQ(config.depth_slices, 24u);
     EXPECT_EQ(config.max_lights_per_cluster, 128u);
@@ -470,13 +472,17 @@ TEST(ClusterGrid, vulkan_projection_off_center_light)
         }
     }
 
-    std::cout << "Off-center light - Light view pos: (" << light_view.x << ", " << light_view.y << ", " << light_view.z << ")" << std::endl;
+    std::cout << "Off-center light - Light view pos: (" << light_view.x << ", " << light_view.y
+              << ", " << light_view.z << ")" << std::endl;
     std::cout << "Off-center light - View depth: " << view_depth << std::endl;
-    std::cout << "Off-center light - Screen pos: (" << screen_x << ", " << screen_y << ")" << std::endl;
-    std::cout << "Off-center light - Tile: (" << tile_x << ", " << tile_y << "), Slice: " << slice << std::endl;
+    std::cout << "Off-center light - Screen pos: (" << screen_x << ", " << screen_y << ")"
+              << std::endl;
+    std::cout << "Off-center light - Tile: (" << tile_x << ", " << tile_y << "), Slice: " << slice
+              << std::endl;
     std::cout << "Off-center light - Cluster index: " << cluster_idx << std::endl;
     std::cout << "Off-center light - Lights in cluster: " << light_count << std::endl;
-    std::cout << "Off-center light - Found target light: " << (found_light ? "yes" : "no") << std::endl;
+    std::cout << "Off-center light - Found target light: " << (found_light ? "yes" : "no")
+              << std::endl;
 
     // The light should be found in its projected cluster
     EXPECT_TRUE(found_light);
@@ -486,14 +492,14 @@ TEST(ClusterGrid, far_depth_light_assignment)
 {
     // Test lights at far depth - matching actual renderer config
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);  // Match actual renderer
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);  // Match actual renderer
 
     const auto& config = grid.get_config();
 
     // Camera at origin looking down -Z
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at far distance (1500 units in front of camera)
@@ -510,11 +516,13 @@ TEST(ClusterGrid, far_depth_light_assignment)
     uint32_t slice = grid.get_depth_slice(view_depth);
 
     std::cout << "Far light - Light world pos: (0, 0, -1500)" << std::endl;
-    std::cout << "Far light - Light view pos: (" << light_view.x << ", " << light_view.y << ", " << light_view.z << ")" << std::endl;
+    std::cout << "Far light - Light view pos: (" << light_view.x << ", " << light_view.y << ", "
+              << light_view.z << ")" << std::endl;
     std::cout << "Far light - View depth: " << view_depth << std::endl;
     std::cout << "Far light - Depth slice: " << slice << " / " << config.depth_slices << std::endl;
     std::cout << "Far light - Active clusters: " << grid.get_active_clusters() << std::endl;
-    std::cout << "Far light - Total light assignments: " << grid.get_total_light_assignments() << std::endl;
+    std::cout << "Far light - Total light assignments: " << grid.get_total_light_assignments()
+              << std::endl;
 
     // Check center tile at this depth
     uint32_t tile_x = (400) / config.tile_size;  // Center X
@@ -551,16 +559,16 @@ TEST(ClusterGrid, very_far_depth_light_near_far_plane)
 {
     // Test light very close to far plane
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);
 
     const auto& config = grid.get_config();
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
-    // Light at 1900 units (close to far plane of 2000)
+    // Light at 1900 units (close to far plane of KGPU_zfar)
     glm::vec3 light_pos(0.0f, 0.0f, -1900.0f);
     std::vector<cluster_light_info> lights;
     lights.push_back({88, light_pos, 150.0f});
@@ -572,7 +580,8 @@ TEST(ClusterGrid, very_far_depth_light_near_far_plane)
     uint32_t slice = grid.get_depth_slice(view_depth);
 
     std::cout << "Very far light - View depth: " << view_depth << std::endl;
-    std::cout << "Very far light - Depth slice: " << slice << " / " << config.depth_slices << std::endl;
+    std::cout << "Very far light - Depth slice: " << slice << " / " << config.depth_slices
+              << std::endl;
     std::cout << "Very far light - Active clusters: " << grid.get_active_clusters() << std::endl;
 
     // Should definitely have some clusters with this light
@@ -584,12 +593,12 @@ TEST(ClusterGrid, depth_slice_distribution)
 {
     // Print depth slice boundaries for debugging
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);
 
     const auto& config = grid.get_config();
     float log_ratio = std::log(config.far_plane / config.near_plane);
 
-    std::cout << "Depth slice distribution (near=0.1, far=2000, slices=12):" << std::endl;
+    std::cout << "Depth slice distribution (near=0.1, far=KGPU_zfar, slices=12):" << std::endl;
     for (uint32_t i = 0; i <= config.depth_slices; ++i)
     {
         float t = static_cast<float>(i) / static_cast<float>(config.depth_slices);
@@ -598,7 +607,8 @@ TEST(ClusterGrid, depth_slice_distribution)
     }
 
     // Test some specific depths
-    std::vector<float> test_depths = {1.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 1500.0f, 1900.0f};
+    std::vector<float> test_depths = {1.0f,   10.0f,   50.0f,   100.0f,
+                                      500.0f, 1000.0f, 1500.0f, 1900.0f};
     std::cout << "Depth to slice mapping:" << std::endl;
     for (float d : test_depths)
     {
@@ -611,15 +621,14 @@ TEST(ClusterGrid, camera_offset_far_light)
 {
     // Test with camera NOT at origin - closer to real game scenario
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);
 
     const auto& config = grid.get_config();
 
     // Camera at (0, 50, 500) looking at (0, 0, 0)
     glm::vec3 cam_pos(0.0f, 50.0f, 500.0f);
-    glm::mat4 view = glm::lookAt(cam_pos, glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 view = glm::lookAt(cam_pos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at world origin with radius 50
@@ -636,7 +645,8 @@ TEST(ClusterGrid, camera_offset_far_light)
     std::cout << "Camera offset test:" << std::endl;
     std::cout << "  Camera pos: (0, 50, 500)" << std::endl;
     std::cout << "  Light world pos: (0, 0, 0)" << std::endl;
-    std::cout << "  Light view pos: (" << light_view.x << ", " << light_view.y << ", " << light_view.z << ")" << std::endl;
+    std::cout << "  Light view pos: (" << light_view.x << ", " << light_view.y << ", "
+              << light_view.z << ")" << std::endl;
     std::cout << "  Light view depth: " << light_view_depth << std::endl;
     std::cout << "  Light depth slice: " << grid.get_depth_slice(light_view_depth) << std::endl;
     std::cout << "  Active clusters: " << grid.get_active_clusters() << std::endl;
@@ -674,10 +684,12 @@ TEST(ClusterGrid, camera_offset_far_light)
     }
 
     std::cout << "  Object world pos: (10, 0, 10)" << std::endl;
-    std::cout << "  Object view pos: (" << object_view.x << ", " << object_view.y << ", " << object_view.z << ")" << std::endl;
+    std::cout << "  Object view pos: (" << object_view.x << ", " << object_view.y << ", "
+              << object_view.z << ")" << std::endl;
     std::cout << "  Object view depth: " << object_view_depth << std::endl;
     std::cout << "  Object screen pos: (" << screen_x << ", " << screen_y << ")" << std::endl;
-    std::cout << "  Object tile: (" << tile_x << ", " << tile_y << "), slice: " << slice << std::endl;
+    std::cout << "  Object tile: (" << tile_x << ", " << tile_y << "), slice: " << slice
+              << std::endl;
     std::cout << "  Cluster idx: " << cluster_idx << std::endl;
     std::cout << "  Lights in cluster: " << light_count << std::endl;
     std::cout << "  Found light: " << (found_light ? "yes" : "no") << std::endl;
@@ -694,13 +706,13 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
 {
     // Test with both near and far lights - far clusters should have far lights
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);
 
     const auto& config = grid.get_config();
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Multiple lights at different depths
@@ -717,7 +729,8 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
     {
         glm::vec4 lv = view * glm::vec4(lights[i].position, 1.0f);
         float depth = -lv.z;
-        std::cout << "  Light " << i << ": depth=" << depth << ", slice=" << grid.get_depth_slice(depth) << std::endl;
+        std::cout << "  Light " << i << ": depth=" << depth
+                  << ", slice=" << grid.get_depth_slice(depth) << std::endl;
     }
     std::cout << "  Active clusters: " << grid.get_active_clusters() << std::endl;
 
@@ -729,7 +742,8 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
     uint32_t center_tile_y = config.tiles_y / 2;
     uint32_t far_cluster_idx = grid.get_cluster_index(center_tile_x, center_tile_y, 10);
 
-    std::cout << "  Far cluster (slice 10) idx=" << far_cluster_idx << ", lights=" << counts[far_cluster_idx] << std::endl;
+    std::cout << "  Far cluster (slice 10) idx=" << far_cluster_idx
+              << ", lights=" << counts[far_cluster_idx] << std::endl;
 
     for (uint32_t i = 0; i < counts[far_cluster_idx]; ++i)
     {
@@ -743,7 +757,8 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
     for (uint32_t i = 0; i < counts[far_cluster_idx]; ++i)
     {
         uint32_t base_idx = far_cluster_idx * config.max_lights_per_cluster;
-        if (indices[base_idx + i] == 2) found_light2 = true;
+        if (indices[base_idx + i] == 2)
+            found_light2 = true;
     }
 
     EXPECT_TRUE(found_light2) << "Light 2 (depth 800) should be in slice 10 cluster";
@@ -753,8 +768,10 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
     for (uint32_t i = 0; i < counts[far_cluster_idx]; ++i)
     {
         uint32_t base_idx = far_cluster_idx * config.max_lights_per_cluster;
-        if (indices[base_idx + i] == 0) found_light0 = true;
-        if (indices[base_idx + i] == 1) found_light1 = true;
+        if (indices[base_idx + i] == 0)
+            found_light0 = true;
+        if (indices[base_idx + i] == 1)
+            found_light1 = true;
     }
     EXPECT_FALSE(found_light0) << "Light 0 (depth 50) should NOT be in slice 10";
     EXPECT_FALSE(found_light1) << "Light 1 (depth 200) should NOT be in slice 10";
@@ -764,13 +781,13 @@ TEST(ClusterGrid, near_light_not_in_far_cluster)
 {
     // Verify that a near light is NOT assigned to far clusters
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);  // Match actual renderer
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);  // Match actual renderer
 
     const auto& config = grid.get_config();
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Near light at depth 100 with radius 50
@@ -786,7 +803,8 @@ TEST(ClusterGrid, near_light_not_in_far_cluster)
     std::cout << "Near light test:" << std::endl;
     std::cout << "  Light depth: " << light_view_depth << std::endl;
     std::cout << "  Light slice: " << grid.get_depth_slice(light_view_depth) << std::endl;
-    std::cout << "  Light covers depth: " << (light_view_depth - 50) << " to " << (light_view_depth + 50) << std::endl;
+    std::cout << "  Light covers depth: " << (light_view_depth - 50) << " to "
+              << (light_view_depth + 50) << std::endl;
     std::cout << "  Active clusters: " << grid.get_active_clusters() << std::endl;
 
     // Check if this light appears in far clusters (slice 10, 11)
@@ -814,13 +832,15 @@ TEST(ClusterGrid, near_light_not_in_far_cluster)
         }
 
         float slice_near = grid.get_depth_slice(100) == slice ? 100 : 0;
-        std::cout << "  Slice " << slice << " (depth ~" << (slice == 9 ? 168 : (slice == 10 ? 384 : 876))
-                  << "): lights=" << light_count << ", has_near_light=" << (found_near_light ? "YES" : "no") << std::endl;
+        std::cout << "  Slice " << slice << " (depth ~"
+                  << (slice == 9 ? 168 : (slice == 10 ? 384 : 876)) << "): lights=" << light_count
+                  << ", has_near_light=" << (found_near_light ? "YES" : "no") << std::endl;
 
         // Near light (depth 100, radius 50) should NOT be in slices 9+ (depth 168+)
         if (slice >= 9)
         {
-            EXPECT_FALSE(found_near_light) << "Near light at depth 100 should NOT be in slice " << slice;
+            EXPECT_FALSE(found_near_light)
+                << "Near light at depth 100 should NOT be in slice " << slice;
         }
     }
 }
@@ -829,13 +849,13 @@ TEST(ClusterGrid, depth_800_boundary)
 {
     // Test at exact depth 800 - reported problematic distance
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);
 
     const auto& config = grid.get_config();
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at depth 800 with radius 50
@@ -851,7 +871,8 @@ TEST(ClusterGrid, depth_800_boundary)
     std::cout << "Depth 800 boundary test:" << std::endl;
     std::cout << "  Light view depth: " << light_view_depth << std::endl;
     std::cout << "  Light depth slice: " << grid.get_depth_slice(light_view_depth) << std::endl;
-    std::cout << "  Slice 10 range: " << grid.get_depth_slice(384.0f) << " to " << grid.get_depth_slice(876.0f) << std::endl;
+    std::cout << "  Slice 10 range: " << grid.get_depth_slice(384.0f) << " to "
+              << grid.get_depth_slice(876.0f) << std::endl;
     std::cout << "  Active clusters: " << grid.get_active_clusters() << std::endl;
     std::cout << "  Total assignments: " << grid.get_total_light_assignments() << std::endl;
 
@@ -903,15 +924,15 @@ TEST(ClusterGrid, very_far_object_and_light)
 {
     // Test with object and light very far from camera
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar, 128, 12, 32);
 
     const auto& config = grid.get_config();
 
     // Camera at origin looking down -Z
     glm::vec3 cam_pos(0.0f, 0.0f, 0.0f);
-    glm::mat4 view = glm::lookAt(cam_pos, glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 view =
+        glm::lookAt(cam_pos, glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Light at Z=-1200 (1200 units in front of camera) with radius 50
@@ -927,7 +948,8 @@ TEST(ClusterGrid, very_far_object_and_light)
 
     std::cout << "Very far object test:" << std::endl;
     std::cout << "  Light world pos: (0, 0, -1200)" << std::endl;
-    std::cout << "  Light view pos: (" << light_view.x << ", " << light_view.y << ", " << light_view.z << ")" << std::endl;
+    std::cout << "  Light view pos: (" << light_view.x << ", " << light_view.y << ", "
+              << light_view.z << ")" << std::endl;
     std::cout << "  Light view depth: " << light_view_depth << std::endl;
     std::cout << "  Light depth slice: " << grid.get_depth_slice(light_view_depth) << std::endl;
     std::cout << "  Active clusters: " << grid.get_active_clusters() << std::endl;
@@ -966,7 +988,8 @@ TEST(ClusterGrid, very_far_object_and_light)
     std::cout << "  Object world pos: (20, 0, -1180)" << std::endl;
     std::cout << "  Object view depth: " << object_view_depth << std::endl;
     std::cout << "  Object screen pos: (" << screen_x << ", " << screen_y << ")" << std::endl;
-    std::cout << "  Object tile: (" << tile_x << ", " << tile_y << "), slice: " << slice << std::endl;
+    std::cout << "  Object tile: (" << tile_x << ", " << tile_y << "), slice: " << slice
+              << std::endl;
     std::cout << "  Cluster idx: " << cluster_idx << std::endl;
     std::cout << "  Lights in cluster: " << light_count << std::endl;
     std::cout << "  Found light: " << (found_light ? "yes" : "no") << std::endl;
@@ -982,13 +1005,13 @@ TEST(ClusterGrid, far_aabb_extents)
 {
     // Debug test: print AABB extents for far clusters
     cluster_grid grid;
-    grid.init(800, 600, 0.1f, 2000.0f, 128, 12, 32);
+    grid.init(800, 600, 0.1f, KGPU_zfar.0f, 128, 12, 32);
 
     const auto& config = grid.get_config();
 
     glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
                                  glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, 2000.0f);
+    glm::mat4 proj = make_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
     // Just need to build clusters to populate AABBs
@@ -1002,12 +1025,15 @@ TEST(ClusterGrid, far_aabb_extents)
     uint32_t center_tile_x = config.tiles_x / 2;
     uint32_t center_tile_y = config.tiles_y / 2;
 
-    std::cout << "AABB extents for center tile (" << center_tile_x << ", " << center_tile_y << "):" << std::endl;
+    std::cout << "AABB extents for center tile (" << center_tile_x << ", " << center_tile_y
+              << "):" << std::endl;
     for (uint32_t slice = 0; slice < config.depth_slices; ++slice)
     {
         uint32_t idx = grid.get_cluster_index(center_tile_x, center_tile_y, slice);
         const auto& aabb = aabbs[idx];
-        std::cout << "  Slice " << slice << ": min(" << aabb.min_point.x << ", " << aabb.min_point.y << ", " << aabb.min_point.z << ")"
-                  << " max(" << aabb.max_point.x << ", " << aabb.max_point.y << ", " << aabb.max_point.z << ")" << std::endl;
+        std::cout << "  Slice " << slice << ": min(" << aabb.min_point.x << ", " << aabb.min_point.y
+                  << ", " << aabb.min_point.z << ")"
+                  << " max(" << aabb.max_point.x << ", " << aabb.max_point.y << ", "
+                  << aabb.max_point.z << ")" << std::endl;
     }
 }

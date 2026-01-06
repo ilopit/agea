@@ -161,7 +161,7 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     // Initialize clustered lighting (must match camera near/far planes)
     m_cluster_grid.init(m_width, m_height,
                         0.1f,     // near plane
-                        2000.0f,  // far plane - must match camera!
+                        KGPU_zfar,  // far plane - must match camera!
                         KGPU_cluster_tile_size, KGPU_cluster_depth_slices,
                         KGPU_max_lights_per_cluster);
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm_unofficial/glm.h>
+#include <gpu_types/gpu_generic_constants.h>
 
 #include <vector>
 #include <cstdint>
@@ -19,7 +20,7 @@ struct cluster_grid_config
     uint32_t max_lights_per_cluster = 32;
 
     float near_plane = 0.1f;
-    float far_plane = 2000.0f;
+    float far_plane = KGPU_zfar;
 
     // Computed values (call update_dimensions after changing screen size)
     uint32_t tiles_x = 0;

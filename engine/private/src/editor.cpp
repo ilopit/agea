@@ -18,6 +18,7 @@
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/spot_light.h>
 #include <packages/tbs/model/hex_grid.h>
+#include <gpu_types/gpu_generic_constants.h>
 
 namespace kryga
 {
@@ -266,7 +267,8 @@ game_editor::update_camera()
     if (aspect != m_cached_aspect_ratio)
     {
         m_cached_aspect_ratio = aspect;
-        m_camera_data.projection = glm::perspective(glm::radians(60.f), aspect, 0.1f, 2000.f);
+        m_camera_data.projection =
+            glm::perspective(glm::radians(60.f), aspect, (float)KGPU_znear, (float)KGPU_zfar);
         m_camera_data.inv_projection = glm::inverse(m_camera_data.projection);
     }
     m_camera_data.position = m_position;
