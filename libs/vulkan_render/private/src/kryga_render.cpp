@@ -1491,8 +1491,8 @@ vulkan_render::draw_ui(frame_state& fs)
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout, 0, 1,
                             &m_ui_mat->get_textures_ds(), 0, nullptr);
 
-    m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, -2.0f / io.DisplaySize.y);
-    m_ui_push_constants.translate = glm::vec2(-1.0f, 1.0f);
+    m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
+    m_ui_push_constants.translate = glm::vec2(-1.0f);
 
     vkCmdPushConstants(cmd, m_ui_se->m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(ui_push_constants), &m_ui_push_constants);
@@ -1511,7 +1511,7 @@ vulkan_render::draw_ui(frame_state& fs)
             const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[j];
             VkRect2D scissorRect;
             scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
-            scissorRect.offset.y = std::max((int32_t)(io.DisplaySize.y - pcmd->ClipRect.w), 0);
+            scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
             scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
             scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
             vkCmdSetScissor(fs.frame->m_main_command_buffer, 0, 1, &scissorRect);
