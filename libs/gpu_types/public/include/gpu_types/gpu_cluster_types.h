@@ -29,6 +29,9 @@ gpu_struct_std140 cluster_grid_data
     float far_plane;
     float log_depth_ratio;  // log(far/near) precomputed
     uint max_lights_per_cluster;
+
+    uint screen_width;   // Actual framebuffer width (for correct NDC calculation)
+    uint screen_height;  // Actual framebuffer height
 };
 
 GPU_END_NAMESPACE

@@ -35,6 +35,8 @@ gpu_struct_std140 universal_light_data
     float cut_off;        // unused for point lights (set to -1)
     float outer_cut_off;  // unused for point lights
     float radius;
+
+    uint slot;            // Index in the light buffer (for compute shader)
 };
 
 GPU_END_NAMESPACE

@@ -174,6 +174,8 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     m_cluster_config.far_plane = config.far_plane;
     m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
     m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+    m_cluster_config.screen_width = config.screen_width;
+    m_cluster_config.screen_height = config.screen_height;
 
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
@@ -444,6 +446,8 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
             m_cluster_config.far_plane = config.far_plane;
             m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
             m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+            m_cluster_config.screen_width = config.screen_width;
+            m_cluster_config.screen_height = config.screen_height;
 
             current_frame.m_cluster_config_buffer.begin();
             auto* data =
@@ -1077,6 +1081,7 @@ vulkan_render::upload_gpu_universal_light_data(gpu::universal_light_data* object
 
     for (auto obj : to_update)
     {
+        obj->gpu_data.slot = obj->slot();  // Ensure slot is synced for GPU access
         object_SSBO[obj->slot()] = obj->gpu_data;
     }
 }
@@ -1648,13 +1653,15 @@ vulkan_render::build_light_clusters()
         return;
     }
 
-    // Build light info list from cache
+    // Build light info list from cache (skip invalid/freed lights)
     std::vector<cluster_light_info> lights;
-    lights.reserve(m_cache.universal_lights.get_size());
+    lights.reserve(m_cache.universal_lights.get_actual_size());
 
     for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
         auto* light = m_cache.universal_lights.at(i);
+        if (!light->is_valid())
+            continue;
         // Add small margin for cluster assignment to avoid edge cases
         lights.push_back({light->slot(), light->gpu_data.position, light->gpu_data.radius * 1.05f});
     }
@@ -1674,10 +1681,12 @@ vulkan_render::rebuild_light_grid()
 
     m_light_grid.clear();
 
-    // Insert all universal lights into the grid
+    // Insert all universal lights into the grid (skip invalid/freed lights)
     for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
         auto* light = m_cache.universal_lights.at(i);
+        if (!light->is_valid())
+            continue;
         m_light_grid.insert_light(light->slot(), light->gpu_data.position, light->gpu_data.radius);
     }
 }
@@ -1741,6 +1750,8 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         m_cluster_config.far_plane = config.far_plane;
         m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
         m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+        m_cluster_config.screen_width = config.screen_width;
+        m_cluster_config.screen_height = config.screen_height;
 
         frame.m_cluster_config_buffer.begin();
         auto* data = frame.m_cluster_config_buffer.allocate_data(sizeof(gpu::cluster_grid_data));

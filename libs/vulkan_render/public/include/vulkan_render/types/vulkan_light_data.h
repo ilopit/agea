@@ -38,6 +38,19 @@ public:
         gpu_data.direction = glm::vec3(0.0f, -1.0f, 0.0f);
         gpu_data.cut_off = -1.0f;  // indicates point light in shader
         gpu_data.outer_cut_off = -1.0f;
+        gpu_data.slot = idx;
+    }
+
+    ~vulkan_universal_light_data()
+    {
+        // Mark as invalid for GPU-side detection
+        gpu_data.slot = INVALID_GPU_INDEX;
+    }
+
+    bool
+    is_valid() const
+    {
+        return slot() != INVALID_GPU_INDEX;
     }
 
     gpu::universal_light_data gpu_data;
