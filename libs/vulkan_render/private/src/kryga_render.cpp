@@ -182,6 +182,9 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 
     // Initialize GPU cluster culling compute shader
     init_cluster_cull_compute();
+
+    // Setup render graph
+    setup_render_graph();
 }
 
 void
@@ -261,50 +264,28 @@ vulkan_render::draw_main()
     update_ui(current_frame);
     prepare_draw_resources(current_frame);
 
-    // Dispatch GPU cluster culling compute shader (if enabled)
+    // Set up render context for callbacks
+    m_current_frame = &current_frame;
+    m_render_graph.set_frame_context(swapchain_image_index, width, height);
+
+    // Build descriptor set for cluster culling (needed before execute)
     if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader)
     {
-        dispatch_cluster_cull(current_frame);
+        build_cluster_cull_descriptor_set(current_frame);
     }
 
-    auto rp = get_render_pass(AID("ui"));
-    rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
-    draw_ui(current_frame);
-    rp->end(cmd);
+    // Bind per-frame buffer resources to the graph
+    m_render_graph.bind_buffer(AID("cluster_counts"),
+                               current_frame.m_cluster_light_counts_buffer.buffer(), 0,
+                               current_frame.m_cluster_light_counts_buffer.get_alloc_size());
+    m_render_graph.bind_buffer(AID("cluster_indices"),
+                               current_frame.m_cluster_light_indices_buffer.buffer(), 0,
+                               current_frame.m_cluster_light_indices_buffer.get_alloc_size());
+    m_render_graph.bind_buffer(AID("lights"), current_frame.m_universal_lights_buffer.buffer(), 0,
+                               current_frame.m_universal_lights_buffer.get_alloc_size());
 
-    rp = get_render_pass(AID("picking"));
-    rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 0});
-
-    for (auto& r : m_default_render_object_queue)
-    {
-        pipeline_ctx pctx{};
-
-        if (!r.second.empty())
-        {
-            bind_material(cmd, m_pick_mat, current_frame, pctx, false);
-        }
-
-        draw_same_pipeline_objects_queue(cmd, pctx, r.second);
-    }
-
-    for (auto& r : m_outline_render_object_queue)
-    {
-        pipeline_ctx pctx{};
-
-        if (!r.second.empty())
-        {
-            bind_material(cmd, m_pick_mat, current_frame, pctx, false);
-        }
-
-        draw_same_pipeline_objects_queue(cmd, pctx, r.second);
-    }
-
-    rp->end(cmd);
-
-    rp = get_render_pass(AID("main"));
-    rp->begin(cmd, swapchain_image_index, width, height, VkClearColorValue{0, 0, 0, 1.0});
-    draw_objects(current_frame);
-    rp->end(cmd);
+    // Execute render graph (handles passes in dependency order with auto barriers)
+    m_render_graph.execute(cmd);
 
     // finalize the command buffer (we can no longer add commands, but it can now be executed)
     VK_CHECK(vkEndCommandBuffer(cmd));
@@ -1845,18 +1826,92 @@ vulkan_render::build_cluster_cull_descriptor_set(render::frame_state& frame)
 }
 
 void
-vulkan_render::dispatch_cluster_cull(render::frame_state& frame)
+vulkan_render::setup_render_graph()
 {
-    ZoneScopedN("Render::DispatchClusterCull");
+    // Register resources used by render graph
+    // Cluster buffers - written by compute, read by fragment shaders
+    m_render_graph.register_buffer(AID("cluster_counts"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("cluster_indices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("lights"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-    if (!m_cluster_cull_shader || !m_use_gpu_cluster_cull)
-        return;
+    // Imported resources (externally managed)
+    m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
 
-    auto device = glob::render_device::get();
-    auto cmd = frame.frame->m_main_command_buffer;
+    // Register passes with dependencies
+    // Compute pass: cluster culling (writes cluster buffers, reads lights)
+    m_render_graph.add_compute_pass(
+        AID("cluster_cull"),
+        {render_graph::write(AID("cluster_counts")), render_graph::write(AID("cluster_indices")),
+         render_graph::read(AID("lights"))},
+        [this](VkCommandBuffer cmd)
+        {
+            if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader)
+            {
+                dispatch_cluster_cull_impl(cmd);
+            }
+        });
 
-    // Build descriptor set for this frame
-    build_cluster_cull_descriptor_set(frame);
+    // UI pass: writes to UI render target
+    // Graph handles render_pass->begin/end automatically
+    m_render_graph.add_graphics_pass(
+        AID("ui"),
+        {render_graph::write(AID("ui_target"))},
+        get_render_pass(AID("ui")),
+        VkClearColorValue{0, 0, 0, 0},
+        [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
+
+    // Picking pass: writes to picking target, reads cluster data
+    m_render_graph.add_graphics_pass(
+        AID("picking"),
+        {render_graph::write(AID("picking_target")), render_graph::read(AID("cluster_counts")),
+         render_graph::read(AID("cluster_indices"))},
+        get_render_pass(AID("picking")),
+        VkClearColorValue{0, 0, 0, 0},
+        [this](VkCommandBuffer cmd)
+        {
+            for (auto& r : m_default_render_object_queue)
+            {
+                pipeline_ctx pctx{};
+                if (!r.second.empty())
+                {
+                    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+                }
+                draw_same_pipeline_objects_queue(cmd, pctx, r.second);
+            }
+
+            for (auto& r : m_outline_render_object_queue)
+            {
+                pipeline_ctx pctx{};
+                if (!r.second.empty())
+                {
+                    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+                }
+                draw_same_pipeline_objects_queue(cmd, pctx, r.second);
+            }
+        });
+
+    // Main pass: writes to swapchain, reads UI target and cluster data
+    m_render_graph.add_graphics_pass(
+        AID("main"),
+        {render_graph::write(AID("swapchain")), render_graph::read(AID("ui_target")),
+         render_graph::read(AID("cluster_counts")), render_graph::read(AID("cluster_indices"))},
+        get_render_pass(AID("main")),
+        VkClearColorValue{0, 0, 0, 1.0},
+        [this](VkCommandBuffer) { draw_objects(*m_current_frame); });
+
+    // Compile the graph (calculates execution order)
+    if (!m_render_graph.compile())
+    {
+        ALOG_ERROR("Failed to compile render graph: {}", m_render_graph.get_error());
+    }
+}
+
+void
+vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
+{
+    ZoneScopedN("Render::DispatchClusterCullImpl");
 
     // Bind compute pipeline
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_cluster_cull_shader->m_pipeline);
@@ -1880,15 +1935,7 @@ vulkan_render::dispatch_cluster_cull(render::frame_state& frame)
     // Dispatch compute shader
     vkCmdDispatch(cmd, num_workgroups, 1, 1);
 
-    // Memory barrier to ensure compute writes are visible to fragment shaders
-    VkMemoryBarrier memory_barrier{};
-    memory_barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-    memory_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    memory_barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 1, &memory_barrier, 0, nullptr,
-                         0, nullptr);
+    // Note: Barrier is handled by render graph, not here
 }
 
 }  // namespace render

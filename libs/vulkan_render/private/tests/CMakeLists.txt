@@ -11,6 +11,7 @@ add_executable (vulkan_render_tests
 target_link_libraries(vulkan_render_tests
     kryga::vulkan_render
     gtest
+    gtest_main
 )
 
 kryga_finalize_executable(vulkan_render_tests)

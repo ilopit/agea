@@ -11,6 +11,7 @@ add_executable (render_utils_tests
 target_link_libraries(render_utils_tests
     kryga::render_utils
     gtest
+    gtest_main
 )
 
 kryga_finalize_executable(render_utils_tests)

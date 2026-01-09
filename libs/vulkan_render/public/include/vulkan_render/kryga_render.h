@@ -8,6 +8,7 @@
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
+#include "vulkan_render/vulkan_render_graph.h"
 #include "render_utils/frustum.h"
 #include "render_utils/cluster_grid.h"
 #include "render_utils/light_grid.h"
@@ -248,7 +249,7 @@ private:
     init_cluster_cull_compute();
 
     void
-    dispatch_cluster_cull(render::frame_state& frame);
+    dispatch_cluster_cull_impl(VkCommandBuffer cmd);
 
     void
     build_cluster_cull_descriptor_set(render::frame_state& frame);
@@ -322,6 +323,9 @@ private:
     void
     resize(uint32_t width, uint32_t height);
 
+    void
+    setup_render_graph();
+
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
@@ -389,6 +393,12 @@ private:
 
     // Frustum for view culling
     frustum m_frustum;
+
+    // Render graph
+    vulkan_render_graph m_render_graph;
+
+    // Current frame state pointer (used by render graph callbacks)
+    frame_state* m_current_frame = nullptr;
 
     uint32_t m_width = 0;
     uint32_t m_height = 0;
