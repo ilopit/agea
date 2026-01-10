@@ -160,7 +160,7 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 
     // Initialize clustered lighting (must match camera near/far planes)
     m_cluster_grid.init(m_width, m_height,
-                        0.1f,     // near plane
+                        0.1f,       // near plane
                         KGPU_zfar,  // far plane - must match camera!
                         KGPU_cluster_tile_size, KGPU_cluster_depth_slices,
                         KGPU_max_lights_per_cluster);
@@ -1855,20 +1855,16 @@ vulkan_render::setup_render_graph()
 
     // UI pass: writes to UI render target
     // Graph handles render_pass->begin/end automatically
-    m_render_graph.add_graphics_pass(
-        AID("ui"),
-        {render_graph::write(AID("ui_target"))},
-        get_render_pass(AID("ui")),
-        VkClearColorValue{0, 0, 0, 0},
-        [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
+    m_render_graph.add_graphics_pass(AID("ui"), {render_graph::write(AID("ui_target"))},
+                                     get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
 
     // Picking pass: writes to picking target, reads cluster data
     m_render_graph.add_graphics_pass(
         AID("picking"),
         {render_graph::write(AID("picking_target")), render_graph::read(AID("cluster_counts")),
          render_graph::read(AID("cluster_indices"))},
-        get_render_pass(AID("picking")),
-        VkClearColorValue{0, 0, 0, 0},
+        get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
         [this](VkCommandBuffer cmd)
         {
             for (auto& r : m_default_render_object_queue)
@@ -1897,8 +1893,7 @@ vulkan_render::setup_render_graph()
         AID("main"),
         {render_graph::write(AID("swapchain")), render_graph::read(AID("ui_target")),
          render_graph::read(AID("cluster_counts")), render_graph::read(AID("cluster_indices"))},
-        get_render_pass(AID("main")),
-        VkClearColorValue{0, 0, 0, 1.0},
+        get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
         [this](VkCommandBuffer) { draw_objects(*m_current_frame); });
 
     // Compile the graph (calculates execution order)

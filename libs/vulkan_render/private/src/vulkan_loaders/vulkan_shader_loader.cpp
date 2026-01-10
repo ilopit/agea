@@ -371,8 +371,6 @@ result_code
 vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
-    auto device = glob::render_device::get();
-
     std::shared_ptr<shader_module_data> vert_module;
     auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
                                vert_module);

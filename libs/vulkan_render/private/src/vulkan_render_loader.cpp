@@ -465,7 +465,6 @@ vulkan_render_loader::create_shader_effect(const kryga::utils::id& id,
 {
     KRG_check(!get_shader_effect_data(id), "should never happens");
 
-    auto device = glob::render_device::get();
     auto effect = std::make_shared<shader_effect_data>(id);
 
     auto rc = vulkan_shader_loader::create_shader_effect(*effect, info);
