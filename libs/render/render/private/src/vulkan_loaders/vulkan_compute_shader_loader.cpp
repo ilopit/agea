@@ -5,6 +5,8 @@
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 
+#include <shader_system/shader_compiler.h>
+
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
 #include <utils/buffer.h>
@@ -23,64 +25,22 @@ namespace
 {
 
 result_code
-compile_compute_shader(const kryga::utils::buffer& raw_buffer, kryga::utils::buffer& compiled_buffer)
-{
-    static int shader_id = 1000;  // Start at 1000 to avoid collision with graphics shaders
-
-    ipc::construct_params params;
-    params.path_to_binary =
-        (glob::glob_state().get_resource_locator()->resource_dir(category::tools) / "glslc.exe");
-
-    static auto td = glob::glob_state().get_resource_locator()->temp_dir();
-    params.working_dir = *td.folder;
-
-    auto shader_name = APATH(std::to_string(shader_id++));
-
-    kryga::utils::path compiled_path = *td.folder / shader_name.str();
-    compiled_path.add(".spv");
-
-    auto includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
-    auto gpu_includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_gpu_data);
-
-    params.arguments = std::format(
-        "-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3}",
-        raw_buffer.get_file().str(), compiled_path.str(), includes.str(), gpu_includes.str());
-
-    uint64_t rc = 0;
-    if (!ipc::run_binary(params, rc) || rc != 0)
-    {
-        return result_code::compilation_failed;
-    }
-
-    if (!kryga::utils::buffer::load(compiled_path, compiled_buffer))
-    {
-        ALOG_FATAL("Compute shader compilation failed");
-        return result_code::failed;
-    }
-
-    return result_code::ok;
-}
-
-result_code
 load_compute_shader_module(const kryga::utils::buffer& input,
                            std::shared_ptr<shader_module_data>& sd)
 {
     auto device = glob::render_device::get();
 
-    kryga::utils::buffer compiled_buffer;
-    auto rc = compile_compute_shader(input, compiled_buffer);
-    if (rc != result_code::ok)
+    auto result = shader_compiler::compile_shader(input);
+    if (!result)
     {
-        return rc;
+        return result.error();
     }
+    auto buffer = std::move(result.value().raw_data);
 
-    VkShaderModuleCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.pNext = VK_NULL_HANDLE;
-    createInfo.codeSize = compiled_buffer.size();
-    createInfo.pCode = (uint32_t*)compiled_buffer.data();
+    VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                           .pNext = VK_NULL_HANDLE,
+                                           .codeSize = buffer.size(),
+                                           .pCode = (uint32_t*)buffer.data()};
 
     VkShaderModule module;
     if (vkCreateShaderModule(device->vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
@@ -89,11 +49,11 @@ load_compute_shader_module(const kryga::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_module_data>(module, std::move(compiled_buffer),
+    sd = std::make_shared<shader_module_data>(module, std::move(buffer),
                                               VK_SHADER_STAGE_COMPUTE_BIT);
 
     return result_code::ok;
-}
+}  // namespace
 
 }  // namespace
 
@@ -115,8 +75,8 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
     }
 
     // Populate bindings from reflection
-    // Note: shader_reflection uses 'descriptors' and each descriptor_set has 'location' for set index
-    // and 'bindigns' (typo in original code) for bindings
+    // Note: shader_reflection uses 'descriptors' and each descriptor_set has 'location' for set
+    // index and 'bindigns' (typo in original code) for bindings
     for (const auto& ds : reflection.descriptors)
     {
         if (ds.location < DESCRIPTORS_SETS_COUNT)
@@ -163,7 +123,8 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
     pipeline_layout_ci.pushConstantRangeCount = (uint32_t)push_constant_ranges.size();
     pipeline_layout_ci.pPushConstantRanges = push_constant_ranges.data();
 
-    vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr, &cs.m_pipeline_layout);
+    vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr,
+                           &cs.m_pipeline_layout);
 
     return cs.m_pipeline_layout != VK_NULL_HANDLE;
 }
@@ -183,8 +144,8 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
     }
 
     // Build reflection data
-    if (!shader_reflection_utils::build_shader_reflection(device, cs_data.m_compute_stage_reflection,
-                                                          cs_data.m_compute_stage))
+    if (!shader_reflection_utils::build_shader_reflection(
+            device, cs_data.m_compute_stage_reflection, cs_data.m_compute_stage))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;

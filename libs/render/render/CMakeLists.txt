@@ -24,6 +24,7 @@ target_link_libraries(vulkan_render PUBLIC
     kryga::error_handling
     kryga::global_state
     kryga::render_utils
+    kryga::shader_system
 
     kryga::glm_unofficial
     kryga::imgui_unofficial

@@ -12,9 +12,9 @@ namespace kryga
 
 temp_dir_context::~temp_dir_context()
 {
-    if (folder)
+    if (!m_folder.empty())
     {
-        std::filesystem::remove_all(folder->fs());
+        std::filesystem::remove_all(m_folder.fs());
     }
 }
 

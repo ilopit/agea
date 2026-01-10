@@ -14,11 +14,7 @@
 
 #include <memory>
 
-namespace kryga
-{
-namespace render
-{
-namespace vulkan_shader_loader
+namespace kryga::render::vulkan_shader_loader
 {
 bool
 create_shader_effect_pipeline_layout(shader_effect_data& se);
@@ -37,6 +33,4 @@ create_shader_effect(shader_effect_data& se_data,
                      std::shared_ptr<shader_module_data>& frag_module,
                      const shader_effect_create_info& info);
 
-}  // namespace vulkan_shader_loader
-}  // namespace render
-}  // namespace kryga
+}  // namespace kryga::render::vulkan_shader_loader

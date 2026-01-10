@@ -34,19 +34,41 @@ enum class category : int
     last = tmp
 };
 
-using resource_path = std::optional<utils::path>;
-
-struct temp_dir_context
+class temp_dir_context
 {
+public:
     temp_dir_context() = default;
     ~temp_dir_context();
 
     temp_dir_context(utils::path s)
-        : folder(std::move(s))
+        : m_folder(std::move(s))
     {
     }
 
-    resource_path folder;
+    temp_dir_context(temp_dir_context&& other) noexcept
+        : m_folder(std::move(other.m_folder))
+    {
+    }
+
+    temp_dir_context&
+    operator=(temp_dir_context&& other) noexcept
+    {
+        if (this != &other)
+        {
+            m_folder = std::move(other.m_folder);
+        }
+
+        return *this;
+    }
+
+    const utils::path&
+    folder() const
+    {
+        return m_folder;
+    }
+
+private:
+    utils::path m_folder;
 };
 
 class resource_locator

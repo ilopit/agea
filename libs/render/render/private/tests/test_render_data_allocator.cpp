@@ -1,7 +1,7 @@
 
 #include <gtest/gtest.h>
 
-#include <utils/simple_allocator.h>
+#include <render/utils/simple_allocator.h>
 #include <vulkan_render/types/vulkan_render_data.h>
 
 using namespace kryga;

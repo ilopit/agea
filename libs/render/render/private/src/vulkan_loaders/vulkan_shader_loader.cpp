@@ -12,6 +12,7 @@
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
+#include "shader_system/shader_compiler.h"
 
 #include <utils/string_utility.h>
 #include <utils/file_utils.h>
@@ -35,50 +36,6 @@ namespace kryga
 namespace render
 {
 
-namespace
-{
-
-result_code
-compile_shader(const kryga::utils::buffer& raw_buffer, kryga::utils::buffer& compiled_buffer)
-{
-    static int shader_id = 0;
-
-    ipc::construct_params params;
-    params.path_to_binary =
-        (glob::glob_state().get_resource_locator()->resource_dir(category::tools) / "glslc.exe");
-
-    static auto td = glob::glob_state().get_resource_locator()->temp_dir();
-    params.working_dir = *td.folder;
-
-    auto shader_name = APATH(std::to_string(shader_id));
-
-    kryga::utils::path compiled_path = *td.folder / shader_name.str();
-    compiled_path.add(".spv");
-
-    auto includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
-    auto gpu_includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_gpu_data);
-
-    params.arguments = std::format(
-        "-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3}",
-        raw_buffer.get_file().str(), compiled_path.str(), includes.str(), gpu_includes.str());
-
-    uint64_t rc = 0;
-    if (!ipc::run_binary(params, rc) || rc != 0)
-    {
-        return result_code::compilation_failed;
-    }
-
-    if (!kryga::utils::buffer::load(compiled_path, compiled_buffer))
-    {
-        ALOG_FATAL("Shader compilation failed");
-        return result_code::failed;
-    }
-
-    return result_code::ok;
-}
-
 kryga::result_code
 load_data_shader(const kryga::utils::buffer& input,
                  bool is_binary,
@@ -91,25 +48,24 @@ load_data_shader(const kryga::utils::buffer& input,
 
     if (!is_binary)
     {
-        auto rc = compile_shader(input, compiled_buffer);
-        if (rc != result_code::ok)
+        auto rc = shader_compiler::compile_shader(input);
+        if (!rc)
         {
-            return rc;
+            return rc.error();
         }
+        compiled_buffer = std::move(rc.value().raw_data);
     }
     else
     {
         KRG_never("Not supported");
-        compiled_buffer = input;
     }
 
-    VkShaderModuleCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.pNext = VK_NULL_HANDLE;
-    createInfo.codeSize = compiled_buffer.size();
-    createInfo.pCode = (uint32_t*)compiled_buffer.data();
+    VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                           .pNext = VK_NULL_HANDLE,
+                                           .codeSize = compiled_buffer.size(),
+                                           .pCode = (uint32_t*)compiled_buffer.data()};
 
-    VkShaderModule module;
+    VkShaderModule module = VK_NULL_HANDLE;
 
     if (vkCreateShaderModule(device->vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
     {
@@ -121,8 +77,6 @@ load_data_shader(const kryga::utils::buffer& input,
 
     return result_code::ok;
 }
-
-}  // namespace
 
 bool
 vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& se)

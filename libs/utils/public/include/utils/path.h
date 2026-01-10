@@ -34,7 +34,7 @@ public:
 
     path(const path&) = default;
 
-    path(path&&) = default;
+    path(path&&) noexcept = default;
 
     path&
     operator=(const path&) = default;
