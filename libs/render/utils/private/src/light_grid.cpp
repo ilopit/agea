@@ -1,4 +1,4 @@
-#include "render_utils/light_grid.h"
+#include "render/utils/light_grid.h"
 
 #include <algorithm>
 

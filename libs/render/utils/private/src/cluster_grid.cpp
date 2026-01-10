@@ -1,4 +1,4 @@
-#include "render_utils/cluster_grid.h"
+#include "render/utils/cluster_grid.h"
 
 #include <algorithm>
 #include <limits>
@@ -230,7 +230,8 @@ cluster_grid::build_clusters(const glm::mat4& view,
         // Transform light position to view space
         const glm::vec4 view_pos = view * glm::vec4(light.position, 1.0f);
         const glm::vec3 light_view_pos = glm::vec3(view_pos);
-        const float light_depth = -light_view_pos.z;  // Negate: OpenGL view space Z is negative forward
+        const float light_depth =
+            -light_view_pos.z;  // Negate: OpenGL view space Z is negative forward
 
         // Skip lights behind camera or beyond far plane
         if (light_depth + light.radius < m_config.near_plane)

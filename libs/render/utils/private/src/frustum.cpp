@@ -1,4 +1,4 @@
-#include "render_utils/frustum.h"
+#include "render/utils/frustum.h"
 
 namespace kryga
 {

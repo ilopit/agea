@@ -24,7 +24,7 @@
 
 #include "packages/base/model/mesh_object.h"
 
-#include <render_utils/light_grid.h>
+#include <render/utils/light_grid.h>
 
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>

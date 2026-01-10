@@ -1,4 +1,4 @@
-file(GLOB LIB_SRC "public/include/render_utils/*.h" "private/src/*.cpp")
+file(GLOB LIB_SRC "public/include/render/utils/*.h" "private/src/*.cpp")
 
 add_library(render_utils STATIC
    ${LIB_SRC}

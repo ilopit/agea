@@ -3,7 +3,7 @@
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_render_resource.h"
-#include "render_utils/light_grid.h"
+#include "render/utils/light_grid.h"
 
 #include <utils/id.h>
 

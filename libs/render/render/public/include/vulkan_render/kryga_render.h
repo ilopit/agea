@@ -9,9 +9,9 @@
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
 #include "vulkan_render/vulkan_render_graph.h"
-#include "render_utils/frustum.h"
-#include "render_utils/cluster_grid.h"
-#include "render_utils/light_grid.h"
+#include "render/utils/frustum.h"
+#include "render/utils/cluster_grid.h"
+#include "render/utils/light_grid.h"
 #include "gpu_types/gpu_cluster_types.h"
 
 #include <utils/singleton_instance.h>
