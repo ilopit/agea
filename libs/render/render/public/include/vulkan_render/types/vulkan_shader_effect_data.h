@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include "vulkan_render/types/vulkan_generic.h"
-#include "vulkan_render/shader_reflection_utils.h"
+
+#include <shader_system/shader_reflection.h>
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>

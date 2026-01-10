@@ -1,4 +1,4 @@
-#include "vulkan_render/types/vulkan_gpu_types.h"
+#include "gpu_types/dynamic_layout/gpu_types.h"
 
 namespace kryga
 {

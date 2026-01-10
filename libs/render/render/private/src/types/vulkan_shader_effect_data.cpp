@@ -73,13 +73,13 @@ shader_effect_data::generate_set_layouts(
 
     for (auto& s : m_vertext_stage_reflection.descriptors)
     {
-        shader_reflection_utils::convert_to_ds_layout_data(
+        vulkan_shader_reflection_utils::convert_to_ds_layout_data(
             s, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, set_layouts.emplace_back());
     }
 
     for (auto& s : m_fragment_stage_reflection.descriptors)
     {
-        shader_reflection_utils::convert_to_ds_layout_data(
+        vulkan_shader_reflection_utils::convert_to_ds_layout_data(
             s, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, set_layouts.emplace_back());
     }
 }

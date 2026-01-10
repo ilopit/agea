@@ -19,7 +19,7 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
     auto tmp_dir = glob::glob_state().get_resource_locator()->temp_dir();
     params.working_dir = tmp_dir.folder();
 
-    auto tmp_shader_name = APATH(std::to_string(shader_id));
+    auto tmp_shader_name = APATH(std::to_string(shader_id++));
 
     kryga::utils::path compiled_path = tmp_dir.folder() / tmp_shader_name.str();
     compiled_path.add(".spv");
@@ -47,9 +47,17 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
     }
 
     compiled_shader cs;
-    if (!kryga::utils::buffer::load(compiled_path, cs.raw_data))
+    if (!kryga::utils::buffer::load(compiled_path, cs.spirv))
     {
-        ALOG_ERROR("Failed to load shader");
+        ALOG_ERROR("Failed to load compiled shader");
+        return std::unexpected(result_code::compilation_failed);
+    }
+
+    // Build reflection data from SPIR-V
+    if (!shader_reflection_utils::build_shader_reflection(cs.spirv.data(), cs.spirv.size(),
+                                                          cs.reflection))
+    {
+        ALOG_ERROR("Failed to build shader reflection");
         return std::unexpected(result_code::compilation_failed);
     }
 

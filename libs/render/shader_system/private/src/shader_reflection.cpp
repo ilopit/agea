@@ -1,13 +1,11 @@
-#include "vulkan_render/shader_reflection_utils.h"
-
-#include "vulkan_render/vulkan_render_device.h"
-#include "vulkan_render/types/vulkan_shader_data.h"
-#include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "shader_system/shader_reflection.h"
 
 #include <utils/dynamic_object.h>
 #include <utils/string_utility.h>
 #include <utils/dynamic_object_builder.h>
 #include <utils/kryga_log.h>
+
+#include <algorithm>
 
 namespace kryga
 {
@@ -44,9 +42,9 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     {
         KRG_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "Only floats");
         KRG_check(obj.traits.numeric.matrix.row_count == obj.traits.numeric.matrix.column_count,
-                   "h != w");
+                  "h != w");
         type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_mat2 +
-                                            obj.traits.numeric.matrix.column_count - 2);
+                                             obj.traits.numeric.matrix.column_count - 2);
 
         df.alligment = 16;
         break;
@@ -60,7 +58,7 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     case SpvOpTypeVector:
     {
         type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_vec2 +
-                                            obj.traits.numeric.vector.component_count - 2);
+                                             obj.traits.numeric.vector.component_count - 2);
         df.alligment = 16;
         break;
     }
@@ -76,11 +74,12 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
         else
         {
             gpu_dynobj_builder gdb;
-            gdb.set_id(AID(obj.type_name));
+            gdb.set_id(obj.type_name ? AID(obj.type_name) : AID("array"));
 
             for (auto from = obj.members; from < obj.members + obj.member_count; from++)
             {
-                convert_spvr_to_dyn_layout(AID(from->struct_member_name), *from, gdb);
+                auto member_name = from->struct_member_name ? AID(from->struct_member_name) : AID("element");
+                convert_spvr_to_dyn_layout(member_name, *from, gdb);
             }
 
             df.sub_field_layout = gdb.finalize();
@@ -102,11 +101,12 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     case SpvOpTypeStruct:
     {
         gpu_dynobj_builder gdb;
-        gdb.set_id(AID(obj.type_name));
+        gdb.set_id(obj.type_name ? AID(obj.type_name) : AID("struct"));
 
         for (auto from = obj.members; from < obj.members + obj.member_count; from++)
         {
-            convert_spvr_to_dyn_layout(AID(from->struct_member_name), *from, gdb);
+            auto member_name = from->struct_member_name ? AID(from->struct_member_name) : AID("member");
+            convert_spvr_to_dyn_layout(member_name, *from, gdb);
         }
 
         df.sub_field_layout = gdb.finalize();
@@ -116,16 +116,22 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     case SpvOpTypeRuntimeArray:
     {
         gpu_dynobj_builder gdb;
-        gdb.set_id(AID(obj.type_name));
+        gdb.set_id(obj.type_name ? AID(obj.type_name) : AID("runtime_array"));
 
         for (auto from = obj.members; from < obj.members + obj.member_count; from++)
         {
-            convert_spvr_to_dyn_layout(AID(from->struct_member_name), *from, gdb);
+            auto member_name = from->struct_member_name ? AID(from->struct_member_name) : AID("element");
+            convert_spvr_to_dyn_layout(member_name, *from, gdb);
         }
         df.items_count = uint64_t(-1);
         df.sub_field_layout = gdb.finalize();
         break;
     }
+    case SpvOpTypeSampledImage:
+    case SpvOpTypeImage:
+    case SpvOpTypeSampler:
+        // Opaque types - no layout needed
+        return true;
     default:
         KRG_never("Unsupported!");
         break;
@@ -259,14 +265,15 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
         {
             auto& refl_binding = refl_ds.bindigns.emplace_back();
             refl_binding.location = spv_binding->binding;
-            refl_binding.name = AID(spv_binding->name);
+            auto binding_name = spv_binding->name ? AID(spv_binding->name) : AID("binding");
+            refl_binding.name = binding_name;
             refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
 
             gpu_dynobj_builder binding_gdb;
 
             binding_gdb.set_id(AID("binding"));
 
-            if (!convert_spvr_to_dyn_layout(AID(spv_binding->name), *spv_binding->type_description,
+            if (!convert_spvr_to_dyn_layout(binding_name, *spv_binding->type_description,
                                             binding_gdb))
             {
                 return false;
@@ -392,13 +399,13 @@ shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
 }
 
 bool
-shader_reflection_utils::build_shader_reflection(render_device* device,
-                                                 reflection::shader_reflection& sr,
-                                                 std::shared_ptr<shader_module_data>& sd)
+shader_reflection_utils::build_shader_reflection(const uint8_t* spirv_code,
+                                                 size_t spirv_size,
+                                                 reflection::shader_reflection& sr)
 {
     SpvReflectShaderModuleHandle spvmodule;
 
-    auto result = spvReflectCreateShaderModule(sd->code().size(), sd->code().data(), &spvmodule.h);
+    auto result = spvReflectCreateShaderModule(spirv_size, spirv_code, &spvmodule.h);
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
@@ -492,19 +499,6 @@ shader_reflection_utils::convert_to_vk_binding(const reflection::binding& b,
     layout_binding.pImmutableSamplers = nullptr;
 
     return layout_binding;
-}
-
-void
-shader_reflection_utils::convert_to_ds_layout_data(const reflection::descriptor_set& ref_set,
-                                                   VkShaderStageFlags stage,
-                                                   vulkan_descriptor_set_layout_data& layout)
-{
-    layout.set_idx = ref_set.location;
-
-    for (auto& b : ref_set.bindigns)
-    {
-        layout.bindings.push_back(convert_to_vk_binding(b, stage));
-    }
 }
 
 void

@@ -44,7 +44,7 @@ load_data_shader(const kryga::utils::buffer& input,
 {
     auto device = glob::render_device::get();
 
-    kryga::utils::buffer compiled_buffer;
+    compiled_shader compiled;
 
     if (!is_binary)
     {
@@ -53,7 +53,7 @@ load_data_shader(const kryga::utils::buffer& input,
         {
             return rc.error();
         }
-        compiled_buffer = std::move(rc.value().raw_data);
+        compiled = std::move(rc.value());
     }
     else
     {
@@ -62,8 +62,8 @@ load_data_shader(const kryga::utils::buffer& input,
 
     VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                                            .pNext = VK_NULL_HANDLE,
-                                           .codeSize = compiled_buffer.size(),
-                                           .pCode = (uint32_t*)compiled_buffer.data()};
+                                           .codeSize = compiled.spirv.size(),
+                                           .pCode = (uint32_t*)compiled.spirv.data()};
 
     VkShaderModule module = VK_NULL_HANDLE;
 
@@ -73,7 +73,8 @@ load_data_shader(const kryga::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_module_data>(module, std::move(compiled_buffer), stage_bit);
+    sd = std::make_shared<shader_module_data>(
+        module, std::move(compiled.spirv), stage_bit, std::move(compiled.reflection));
 
     return result_code::ok;
 }
@@ -165,10 +166,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         se_data.m_expected_vertex_input = info.expected_input_vertex_layout;
     }
 
-    auto device = glob::render_device::get();
-
-    if (!shader_reflection_utils::build_shader_reflection(
-            device, se_data.m_vertext_stage_reflection, se_data.m_vertex_stage))
+    if (!vulkan_shader_reflection_utils::build_shader_reflection(
+            se_data.m_vertex_stage, se_data.m_vertext_stage_reflection))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -182,8 +181,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         return result_code::failed;
     }
 
-    if (!shader_reflection_utils::build_shader_reflection(
-            device, se_data.m_fragment_stage_reflection, se_data.m_frag_stage))
+    if (!vulkan_shader_reflection_utils::build_shader_reflection(
+            se_data.m_frag_stage, se_data.m_fragment_stage_reflection))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -202,6 +201,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
+
+    auto device = glob::render_device::get();
 
     vk_utils::pipeline_builder pb;
     pb.m_vertex_input_info_ci = vk_utils::make_vertex_input_state_create_info();

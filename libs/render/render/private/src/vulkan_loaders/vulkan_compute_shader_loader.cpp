@@ -35,12 +35,12 @@ load_compute_shader_module(const kryga::utils::buffer& input,
     {
         return result.error();
     }
-    auto buffer = std::move(result.value().raw_data);
+    auto compiled = std::move(result.value());
 
     VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                                            .pNext = VK_NULL_HANDLE,
-                                           .codeSize = buffer.size(),
-                                           .pCode = (uint32_t*)buffer.data()};
+                                           .codeSize = compiled.spirv.size(),
+                                           .pCode = (uint32_t*)compiled.spirv.data()};
 
     VkShaderModule module;
     if (vkCreateShaderModule(device->vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
@@ -49,8 +49,9 @@ load_compute_shader_module(const kryga::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_module_data>(module, std::move(buffer),
-                                              VK_SHADER_STAGE_COMPUTE_BIT);
+    sd = std::make_shared<shader_module_data>(module, std::move(compiled.spirv),
+                                              VK_SHADER_STAGE_COMPUTE_BIT,
+                                              std::move(compiled.reflection));
 
     return result_code::ok;
 }  // namespace
@@ -144,8 +145,8 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
     }
 
     // Build reflection data
-    if (!shader_reflection_utils::build_shader_reflection(
-            device, cs_data.m_compute_stage_reflection, cs_data.m_compute_stage))
+    if (!vulkan_shader_reflection_utils::build_shader_reflection(
+            cs_data.m_compute_stage, cs_data.m_compute_stage_reflection))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;

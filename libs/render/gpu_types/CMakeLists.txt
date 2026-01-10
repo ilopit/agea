@@ -1,12 +1,12 @@
-file(GLOB LIB_HEADERS "public/include/gpu_types/*.h")
+file(GLOB LIB_SRC "public/include/gpu_types/*.h" "private/src/*.cpp")
 
-add_library(gpu_types INTERFACE)
-
-target_include_directories(gpu_types INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/public/include>
-    $<INSTALL_INTERFACE:include>
+add_library(gpu_types STATIC
+   ${LIB_SRC}
 )
 
-target_link_libraries(gpu_types INTERFACE kryga::glm_unofficial)
+target_link_libraries(gpu_types PUBLIC
+    kryga::glm_unofficial
+    kryga::utils
+)
 
-add_library(kryga::gpu_types ALIAS gpu_types)
+kryga_finalize_library(gpu_types)

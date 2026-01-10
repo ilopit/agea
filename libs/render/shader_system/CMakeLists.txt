@@ -9,6 +9,11 @@ target_link_libraries(shader_system PUBLIC
     kryga::global_state
     kryga::resource_locator
     kryga::utils
+    kryga::gpu_types
+    kryga::glm_unofficial
+
+    Vulkan::Vulkan
+    spirv-reflect-static
 )
 
 kryga_finalize_library(shader_system)
