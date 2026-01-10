@@ -49,95 +49,87 @@ struct pipeline_ctx
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 };
 
-struct frame_state
+struct frame_buffers
 {
+    // Dynamic uniform buffer
+    vk_utils::vulkan_buffer dynamic_data;
+
+    // SSBOs
+    vk_utils::vulkan_buffer objects;
+    vk_utils::vulkan_buffer universal_lights;
+    vk_utils::vulkan_buffer directional_lights;
+    vk_utils::vulkan_buffer materials;
+
+    // Cluster lighting SSBOs
+    vk_utils::vulkan_buffer cluster_counts;
+    vk_utils::vulkan_buffer cluster_indices;
+    vk_utils::vulkan_buffer cluster_config;
+};
+
+struct frame_upload_state
+{
+    objects_update_queue objects_queue;
+    materials_update_queue_set materials_queue_set;
+    directional_light_update_queue directional_light_queue;
+    universal_light_update_queue universal_light_queue;
+
+    bool has_pending_materials = false;
+
     bool
-    has_obj_data() const
+    has_objects() const
     {
-        return !m_objects_queue.empty();
-    }
-
-    void
-    reset_obj_data()
-    {
-        m_objects_queue.clear();
-    }
-
-    bool
-    has_universal_light_data() const
-    {
-        return !m_universal_light_queue.empty();
-    }
-
-    bool
-    has_directional_light_data() const
-    {
-        return !m_directional_light_queue.empty();
-    }
-
-    void
-    reset_universal_light_data()
-    {
-        m_universal_light_queue.clear();
-    }
-
-    void
-    reset_directional_light_data()
-    {
-        m_directional_light_queue.clear();
+        return !objects_queue.empty();
     }
 
     bool
-    has_mat_data() const
+    has_universal_lights() const
     {
-        return has_materials;
+        return !universal_light_queue.empty();
+    }
+
+    bool
+    has_directional_lights() const
+    {
+        return !directional_light_queue.empty();
+    }
+
+    bool
+    has_materials() const
+    {
+        return has_pending_materials;
     }
 
     void
-    reset_mat_data()
+    clear_all()
     {
-        has_materials = false;
-    }
+        objects_queue.clear();
+        universal_light_queue.clear();
+        directional_light_queue.clear();
 
-    void
-    clear_upload_queues()
-    {
-        m_objects_queue.clear();
-        m_universal_light_queue.clear();
-        m_directional_light_queue.clear();
-
-        for (auto& m : m_materias_queue_set)
+        for (auto& m : materials_queue_set)
         {
             m.clear();
         }
+
+        has_pending_materials = false;
     }
+};
 
-    vk_utils::vulkan_buffer m_dynamic_data_buffer;
+struct ui_frame_state
+{
+    vk_utils::vulkan_buffer vertex_buffer;
+    vk_utils::vulkan_buffer index_buffer;
 
-    // SSBOs
-    vk_utils::vulkan_buffer m_object_buffer;
-    vk_utils::vulkan_buffer m_universal_lights_buffer;
-    vk_utils::vulkan_buffer m_directional_lights_buffer;
-    vk_utils::vulkan_buffer m_materials_buffer;
+    int32_t vertex_count = 0;
+    int32_t index_count = 0;
+};
 
-    // Cluster lighting SSBOs
-    vk_utils::vulkan_buffer m_cluster_light_counts_buffer;
-    vk_utils::vulkan_buffer m_cluster_light_indices_buffer;
-    vk_utils::vulkan_buffer m_cluster_config_buffer;
+struct frame_state
+{
+    frame_buffers buffers;
+    frame_upload_state uploads;
+    ui_frame_state ui;
 
-    vk_utils::vulkan_buffer m_ui_vertex_buffer;
-    vk_utils::vulkan_buffer m_ui_index_buffer;
-
-    int32_t m_ui_vertex_count = 0;
-    int32_t m_ui_index_count = 0;
-
-    objects_update_queue m_objects_queue;
-    materials_update_queue_set m_materias_queue_set;
-    directional_light_update_queue m_directional_light_queue;
-    universal_light_update_queue m_universal_light_queue;
-
-    bool has_materials = false;
-    bool has_lights = false;
     frame_data* frame = nullptr;
 };
 
