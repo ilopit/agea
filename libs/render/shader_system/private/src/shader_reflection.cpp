@@ -56,8 +56,8 @@ spv_type_to_gpu_type(SpvReflectTypeDescription& desc)
         return (gpu_type::id)((uint32_t)gpu_type::g_vec2 +
                               desc.traits.numeric.vector.component_count - 2);
     case SpvOpTypeMatrix:
-        return (gpu_type::id)((uint32_t)gpu_type::g_mat2 +
-                              desc.traits.numeric.matrix.column_count - 2);
+        return (gpu_type::id)((uint32_t)gpu_type::g_mat2 + desc.traits.numeric.matrix.column_count -
+                              2);
     default:
         return gpu_type::nan;
     }
@@ -316,9 +316,26 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
         {
             auto& refl_binding = refl_ds.bindings.emplace_back();
             refl_binding.binding_index = spv_binding->binding;
+            refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
+
+            // Check for unnamed instance on buffer blocks (UBO/SSBO)
+            bool is_buffer_block =
+                spv_binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+                spv_binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+            if (is_buffer_block && (!spv_binding->name || spv_binding->name[0] == '\0'))
+            {
+                ALOG_ERROR("Descriptor binding at set={}, binding={} (type '{}') has no instance "
+                           "name. Add instance name after closing brace, e.g., '}} bufferName;'",
+                           spv_set->set, spv_binding->binding,
+                           spv_binding->type_description->type_name
+                               ? spv_binding->type_description->type_name
+                               : "<anonymous>");
+                return false;
+            }
+
             auto binding_name = spv_binding->name ? AID(spv_binding->name) : AID("binding");
             refl_binding.name = binding_name;
-            refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
 
             gpu_dynobj_builder binding_gdb;
 
@@ -539,10 +556,23 @@ shader_reflection_utils::build_shader_push_constants(SpvReflectShaderModule& spv
         return false;
     }
 
-    gpu_dynobj_builder gdb;
-    gdb.set_id(AID("constants"));
+    // Require instance name for push constants (e.g., "pc" in "} pc;")
+    if (!pconstants->name || pconstants->name[0] == '\0')
+    {
+        ALOG_ERROR("Push constant block '{}' has no instance name. Add instance name after closing "
+                   "brace, e.g., '}} pc;'",
+                   pconstants->type_description->type_name
+                       ? pconstants->type_description->type_name
+                       : "<anonymous>");
+        return false;
+    }
 
-    if (!convert_spvr_to_dyn_layout(AID("constants"), *pconstants->type_description, gdb))
+    gpu_dynobj_builder gdb;
+    gdb.set_id(AID("push_constant"));
+
+    // Use instance name (e.g., "pc") as field name, type_description contains struct info
+    auto instance_name = AID(pconstants->name);
+    if (!convert_spvr_to_dyn_layout(instance_name, *pconstants->type_description, gdb))
     {
         return false;
     }
