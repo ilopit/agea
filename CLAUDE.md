@@ -37,7 +37,11 @@ Build specific target: `tools/build.sh <target_name>`
 - `vulkan_render_tests` - Vulkan render tests
 - `shader_system_tests` - Shader system tests
 
-Run a single test: `tools/build.sh utils_tests && ./build/project_Debug/bin/utils_tests`
+Run tests from `build/project_<BuildType>/bin` directory (required for resource resolution):
+```bash
+cd build/project_Debug/bin && ./utils_tests.exe
+cd build/project_Debug/bin && ./shader_system_tests.exe
+```
 
 ## Repository Structure
 - `engine/` - Main engine application
