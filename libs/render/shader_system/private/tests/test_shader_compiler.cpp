@@ -25,13 +25,13 @@ print_layout(const ::kryga::utils::dynobj_layout_sptr l)
 void
 print_reflection(const render::reflection::shader_reflection& rlf)
 {
-    for (auto& c : rlf.constants)
+    if (rlf.constants)
     {
-        print_layout(c.layout);
+        print_layout(rlf.constants->layout);
     }
     for (auto& dsc : rlf.descriptors)
     {
-        for (auto& bnd : dsc.bindigns)
+        for (auto& bnd : dsc.bindings)
         {
             print_layout(bnd.layout);
         }
@@ -50,6 +50,10 @@ protected:
     void
     SetUp() override
     {
+        auto rt = glob::glob_state().get_resource_locator()->resource_dir(category::tmp);
+
+        std::filesystem::remove_all(rt.fs());
+
         m_temp_dir = glob::glob_state().get_resource_locator()->temp_dir();
     }
 
@@ -294,10 +298,8 @@ void main() {
     const auto& refl = result->reflection;
     print_reflection(refl);
 
-    ASSERT_EQ(refl.constants.size(), 1u);
-
-    EXPECT_EQ(refl.constants[0].offset, 0u);
-    EXPECT_EQ(refl.constants[0].size, 64u);  // mat4 = 4x4x4 = 64 bytes
+    EXPECT_EQ(refl.constants->offset, 0u);
+    EXPECT_EQ(refl.constants->size, 64u);  // mat4 = 4x4x4 = 64 bytes
 }
 
 TEST_F(shader_compiler_test, reflection_push_constants_multiple_fields)
@@ -324,10 +326,9 @@ void main() {
     const auto& refl = result->reflection;
     print_reflection(refl);
 
-    ASSERT_EQ(refl.constants.size(), 1u);
-    EXPECT_EQ(refl.constants[0].offset, 0u);
+    EXPECT_EQ(refl.constants->offset, 0u);
     // mat4(64) + vec4(16) + float(4) + padding(12) = 96 bytes (or 84 without padding)
-    EXPECT_GE(refl.constants[0].size, 84u);
+    EXPECT_GE(refl.constants->size, 84u);
 }
 
 TEST_F(shader_compiler_test, reflection_push_constants_multiple_fields_in_struct)
@@ -360,10 +361,9 @@ void main() {
     const auto& refl = result->reflection;
     print_reflection(refl);
 
-    ASSERT_EQ(refl.constants.size(), 1u);
-    EXPECT_EQ(refl.constants[0].offset, 0u);
+    EXPECT_EQ(refl.constants->offset, 0u);
     // mat4(64) + vec4(16) + float(4) + padding(12) = 96 bytes (or 84 without padding)
-    EXPECT_GE(refl.constants[0].size, 84u);
+    EXPECT_GE(refl.constants->size, 84u);
 }
 
 TEST_F(shader_compiler_test, reflection_descriptor_set_ubo)
@@ -392,29 +392,13 @@ void main() {
     print_reflection(refl);
     ASSERT_GE(refl.descriptors.size(), 1u);
 
-    // Find set 0
-    const render::reflection::descriptor_set* set0 = nullptr;
-    for (const auto& ds : refl.descriptors)
-    {
-        if (ds.location == 0)
-        {
-            set0 = &ds;
-            break;
-        }
-    }
+    // Find set 0 using helper
+    auto* set0 = refl.find_set(0);
     ASSERT_NE(set0, nullptr) << "Descriptor set 0 not found";
-    ASSERT_GE(set0->bindigns.size(), 1u);
+    ASSERT_GE(set0->bindings.size(), 1u);
 
-    // Find binding 0
-    const render::reflection::binding* binding0 = nullptr;
-    for (const auto& b : set0->bindigns)
-    {
-        if (b.location == 0)
-        {
-            binding0 = &b;
-            break;
-        }
-    }
+    // Find binding 0 using helper
+    auto* binding0 = refl.find_binding(0, 0);
     ASSERT_NE(binding0, nullptr) << "Binding 0 not found in set 0";
     EXPECT_EQ(static_cast<int>(binding0->type),
               static_cast<int>(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER));
@@ -450,29 +434,12 @@ void main() {
     print_reflection(refl);
     ASSERT_GE(refl.descriptors.size(), 1u);
 
-    // Find set 1
-    const render::reflection::descriptor_set* set1 = nullptr;
-    for (const auto& ds : refl.descriptors)
-    {
-        if (ds.location == 1)
-        {
-            set1 = &ds;
-            break;
-        }
-    }
+    // Find set 1 and binding 2 using helpers
+    auto* set1 = refl.find_set(1);
     ASSERT_NE(set1, nullptr) << "Descriptor set 1 not found";
-    ASSERT_GE(set1->bindigns.size(), 1u);
+    ASSERT_GE(set1->bindings.size(), 1u);
 
-    // Find binding 2
-    const render::reflection::binding* binding2 = nullptr;
-    for (const auto& b : set1->bindigns)
-    {
-        if (b.location == 2)
-        {
-            binding2 = &b;
-            break;
-        }
-    }
+    auto* binding2 = refl.find_binding(1, 2);
     ASSERT_NE(binding2, nullptr) << "Binding 2 not found in set 1";
     EXPECT_EQ(static_cast<int>(binding2->type),
               static_cast<int>(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER));
@@ -503,20 +470,12 @@ void main() {
 
     const auto& refl = result->reflection;
     print_reflection(refl);
-    // Find set 2
-    const render::reflection::descriptor_set* set2 = nullptr;
-    for (const auto& ds : refl.descriptors)
-    {
-        if (ds.location == 2)
-        {
-            set2 = &ds;
-            break;
-        }
-    }
+    // Find set 2 using helper
+    auto* set2 = refl.find_set(2);
     ASSERT_NE(set2, nullptr) << "Descriptor set 2 not found";
-    EXPECT_EQ(set2->bindigns.size(), 2u);
+    EXPECT_EQ(set2->bindings.size(), 2u);
 
-    for (const auto& b : set2->bindigns)
+    for (const auto& b : set2->bindings)
     {
         EXPECT_EQ(static_cast<int>(b.type),
                   static_cast<int>(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER));
@@ -623,23 +582,12 @@ void main() {
     const auto& refl = result->reflection;
     print_reflection(refl);
 
-    // Should have 3 descriptor sets (0, 1, 2)
+    // Should have 3 descriptor sets (0, 1, 2) - use helpers
     EXPECT_GE(refl.descriptors.size(), 3u);
 
-    bool found_set0 = false, found_set1 = false, found_set2 = false;
-    for (const auto& ds : refl.descriptors)
-    {
-        if (ds.location == 0)
-            found_set0 = true;
-        if (ds.location == 1)
-            found_set1 = true;
-        if (ds.location == 2)
-            found_set2 = true;
-    }
-
-    EXPECT_TRUE(found_set0) << "Set 0 not found";
-    EXPECT_TRUE(found_set1) << "Set 1 not found";
-    EXPECT_TRUE(found_set2) << "Set 2 not found";
+    EXPECT_NE(refl.find_set(0), nullptr) << "Set 0 not found";
+    EXPECT_NE(refl.find_set(1), nullptr) << "Set 1 not found";
+    EXPECT_NE(refl.find_set(2), nullptr) << "Set 2 not found";
 }
 
 TEST_F(shader_compiler_test, reflection_compute_shader_bindings)
@@ -678,23 +626,14 @@ void main() {
     print_reflection(refl);
 
     // Check push constants
-    ASSERT_EQ(refl.constants.size(), 1u);
-    EXPECT_EQ(refl.constants[0].size, 4u);  // uint = 4 bytes
+    EXPECT_EQ(refl.constants->size, 4u);  // uint = 4 bytes
 
-    // Check descriptor set 0 with 2 bindings
-    const render::reflection::descriptor_set* set0 = nullptr;
-    for (const auto& ds : refl.descriptors)
-    {
-        if (ds.location == 0)
-        {
-            set0 = &ds;
-            break;
-        }
-    }
+    // Check descriptor set 0 with 2 bindings using helper
+    auto* set0 = refl.find_set(0);
     ASSERT_NE(set0, nullptr);
-    EXPECT_EQ(set0->bindigns.size(), 2u);
+    EXPECT_EQ(set0->bindings.size(), 2u);
 
-    for (const auto& b : set0->bindigns)
+    for (const auto& b : set0->bindings)
     {
         EXPECT_EQ(static_cast<int>(b.type), static_cast<int>(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER));
     }
@@ -721,12 +660,12 @@ void main() {
     print_reflection(refl);
 
     // No push constants
-    EXPECT_EQ(refl.constants.size(), 0u);
+    ASSERT_TRUE(!refl.constants);
 
     // No descriptor sets (or empty sets)
     for (const auto& ds : refl.descriptors)
     {
-        EXPECT_EQ(ds.bindigns.size(), 0u);
+        EXPECT_EQ(ds.bindings.size(), 0u);
     }
 
     // Should have 1 input (layout is wrapped, access inner layout)

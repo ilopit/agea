@@ -7,9 +7,7 @@
 
 #include <algorithm>
 
-namespace kryga
-{
-namespace render
+namespace kryga::render
 {
 namespace
 {
@@ -22,6 +20,48 @@ struct SpvReflectShaderModuleHandle
         spvReflectDestroyShaderModule(&h);
     }
 };
+
+VkShaderStageFlagBits
+convert_spv_stage(SpvExecutionModel model)
+{
+    switch (model)
+    {
+    case SpvExecutionModelVertex:
+        return VK_SHADER_STAGE_VERTEX_BIT;
+    case SpvExecutionModelFragment:
+        return VK_SHADER_STAGE_FRAGMENT_BIT;
+    case SpvExecutionModelGLCompute:
+        return VK_SHADER_STAGE_COMPUTE_BIT;
+    case SpvExecutionModelGeometry:
+        return VK_SHADER_STAGE_GEOMETRY_BIT;
+    case SpvExecutionModelTessellationControl:
+        return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    case SpvExecutionModelTessellationEvaluation:
+        return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    default:
+        return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    }
+}
+
+gpu_type::id
+spv_type_to_gpu_type(SpvReflectTypeDescription& desc)
+{
+    switch (desc.op)
+    {
+    case SpvOpTypeFloat:
+        return gpu_type::g_float;
+    case SpvOpTypeInt:
+        return desc.traits.numeric.scalar.signedness ? gpu_type::g_int : gpu_type::g_unsigned;
+    case SpvOpTypeVector:
+        return (gpu_type::id)((uint32_t)gpu_type::g_vec2 +
+                              desc.traits.numeric.vector.component_count - 2);
+    case SpvOpTypeMatrix:
+        return (gpu_type::id)((uint32_t)gpu_type::g_mat2 +
+                              desc.traits.numeric.matrix.column_count - 2);
+    default:
+        return gpu_type::nan;
+    }
+}
 
 }  // namespace
 
@@ -78,7 +118,8 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
 
             for (auto from = obj.members; from < obj.members + obj.member_count; from++)
             {
-                auto member_name = from->struct_member_name ? AID(from->struct_member_name) : AID("element");
+                auto member_name =
+                    from->struct_member_name ? AID(from->struct_member_name) : AID("element");
                 convert_spvr_to_dyn_layout(member_name, *from, gdb);
             }
 
@@ -105,7 +146,8 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
 
         for (auto from = obj.members; from < obj.members + obj.member_count; from++)
         {
-            auto member_name = from->struct_member_name ? AID(from->struct_member_name) : AID("member");
+            auto member_name =
+                from->struct_member_name ? AID(from->struct_member_name) : AID("member");
             convert_spvr_to_dyn_layout(member_name, *from, gdb);
         }
 
@@ -120,7 +162,8 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
 
         for (auto from = obj.members; from < obj.members + obj.member_count; from++)
         {
-            auto member_name = from->struct_member_name ? AID(from->struct_member_name) : AID("element");
+            auto member_name =
+                from->struct_member_name ? AID(from->struct_member_name) : AID("element");
             convert_spvr_to_dyn_layout(member_name, *from, gdb);
         }
         df.items_count = uint64_t(-1);
@@ -162,12 +205,12 @@ shader_reflection_utils::build_shader_input_reflection(SpvReflectShaderModule& s
         return false;
     }
 
-    return extract_interface_variable(inputs, sr.input_interface.layout);
+    return extract_interface_variables(inputs, sr.input_interface);
 }
 
 bool
-shader_reflection_utils::extract_interface_variable(
-    std::vector<SpvReflectInterfaceVariable*>& inputs, utils::dynobj_layout_sptr& r)
+shader_reflection_utils::extract_interface_variables(
+    std::vector<SpvReflectInterfaceVariable*>& inputs, reflection::interface_block& block)
 {
     std::sort(inputs.begin(), inputs.end(),
               [](SpvReflectInterfaceVariable* l, SpvReflectInterfaceVariable* r)
@@ -176,30 +219,38 @@ shader_reflection_utils::extract_interface_variable(
     gpu_dynobj_builder gdb;
     gdb.set_id(AID("interface"));
 
+    block.variables.clear();
+
     for (uint64_t i = 0; i < inputs.size(); ++i)
     {
         auto input = inputs[i];
 
-        if (i != input->location)
+        // Skip built-in variables (location == -1)
+        if (input->location == uint32_t(-1))
         {
-            if (input->location == uint32_t(-1))
-            {
-                break;
-            }
-
-            while (gdb.get_layout()->get_fields().size() < (input->location - 1))
-            {
-                gdb.add_empty();
-            }
+            continue;
         }
 
-        if (!convert_spvr_to_dyn_layout(AID(input->name), *input->type_description, gdb))
+        // Fill gaps with empty slots
+        while (gdb.get_layout()->get_fields().size() < input->location)
+        {
+            gdb.add_empty();
+        }
+
+        // Add interface variable metadata
+        reflection::interface_variable var;
+        var.name = input->name ? AID(input->name) : AID("var");
+        var.location = input->location;
+        var.type = spv_type_to_gpu_type(*input->type_description);
+        block.variables.push_back(var);
+
+        if (!convert_spvr_to_dyn_layout(var.name, *input->type_description, gdb))
         {
             return false;
         }
     }
 
-    r = gdb.finalize();
+    block.layout = gdb.finalize();
 
     return true;
 }
@@ -215,14 +266,14 @@ shader_reflection_utils::build_shader_output_reflection(SpvReflectShaderModule& 
         return false;
     }
 
-    std::vector<SpvReflectInterfaceVariable*> inputs(count);
-    result = spvReflectEnumerateOutputVariables(&spv_reflection, &count, inputs.data());
+    std::vector<SpvReflectInterfaceVariable*> outputs(count);
+    result = spvReflectEnumerateOutputVariables(&spv_reflection, &count, outputs.data());
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
     }
 
-    return extract_interface_variable(inputs, sr.output_interface.layout);
+    return extract_interface_variables(outputs, sr.output_interface);
 }
 
 bool
@@ -252,7 +303,7 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
         auto spv_set = spv_sets[i];
 
         auto& refl_ds = sr.descriptors.emplace_back();
-        refl_ds.location = spv_set->set;
+        refl_ds.set_index = spv_set->set;
 
         std::vector<SpvReflectDescriptorBinding*> spv_bindings(
             spv_set->bindings, spv_set->bindings + spv_set->binding_count);
@@ -263,8 +314,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
 
         for (auto spv_binding : spv_bindings)
         {
-            auto& refl_binding = refl_ds.bindigns.emplace_back();
-            refl_binding.location = spv_binding->binding;
+            auto& refl_binding = refl_ds.bindings.emplace_back();
+            refl_binding.binding_index = spv_binding->binding;
             auto binding_name = spv_binding->name ? AID(spv_binding->name) : AID("binding");
             refl_binding.name = binding_name;
             refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
@@ -399,6 +450,25 @@ shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
 }
 
 bool
+shader_reflection_utils::build_shader_compute_info(SpvReflectShaderModule& spv_reflection,
+                                                   reflection::shader_reflection& sr)
+{
+    if (sr.stage != VK_SHADER_STAGE_COMPUTE_BIT)
+    {
+        return true;
+    }
+
+    reflection::compute_info info;
+    info.local_size_x = spv_reflection.entry_points->local_size.x;
+    info.local_size_y = spv_reflection.entry_points->local_size.y;
+    info.local_size_z = spv_reflection.entry_points->local_size.z;
+
+    sr.compute = info;
+
+    return true;
+}
+
+bool
 shader_reflection_utils::build_shader_reflection(const uint8_t* spirv_code,
                                                  size_t spirv_size,
                                                  reflection::shader_reflection& sr)
@@ -409,6 +479,13 @@ shader_reflection_utils::build_shader_reflection(const uint8_t* spirv_code,
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
+    }
+
+    // Extract stage and entry point
+    sr.stage = convert_spv_stage(spvmodule.h.spirv_execution_model);
+    if (spvmodule.h.entry_point_name)
+    {
+        sr.entry_point = AID(spvmodule.h.entry_point_name);
     }
 
     if (!build_shader_input_reflection(spvmodule.h, sr))
@@ -426,7 +503,12 @@ shader_reflection_utils::build_shader_reflection(const uint8_t* spirv_code,
         return false;
     }
 
-    return build_shader_push_constants(spvmodule.h, sr);
+    if (!build_shader_push_constants(spvmodule.h, sr))
+    {
+        return false;
+    }
+
+    return build_shader_compute_info(spvmodule.h, sr);
 }
 
 bool
@@ -450,25 +532,23 @@ shader_reflection_utils::build_shader_push_constants(SpvReflectShaderModule& spv
         return false;
     }
 
-    std::vector<SpvReflectBlockVariable*> pconstants(count);
-    result = spvReflectEnumeratePushConstantBlocks(&spv_reflection, &count, pconstants.data());
+    SpvReflectBlockVariable* pconstants = nullptr;
+    result = spvReflectEnumeratePushConstantBlocks(&spv_reflection, &count, &pconstants);
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
     }
 
     gpu_dynobj_builder gdb;
+    gdb.set_id(AID("constants"));
 
-    if (!convert_spvr_to_dyn_layout(AID("constants"), *pconstants[0]->type_description, gdb))
+    if (!convert_spvr_to_dyn_layout(AID("constants"), *pconstants->type_description, gdb))
     {
         return false;
     }
 
-    auto& constants = sr.constants.emplace_back();
-
-    constants.offset = pconstants[0]->offset;
-    constants.size = pconstants[0]->size;
-    constants.layout = gdb.finalize();
+    sr.constants = reflection::push_constants{
+        .offset = pconstants->offset, .size = pconstants->size, .layout = gdb.finalize()};
 
     return true;
 }
@@ -493,7 +573,7 @@ shader_reflection_utils::convert_to_vk_binding(const reflection::binding& b,
         }
     }
 
-    layout_binding.binding = b.location;
+    layout_binding.binding = b.binding_index;
     layout_binding.stageFlags = stage;
     layout_binding.descriptorCount = b.descriptors_count;
     layout_binding.pImmutableSamplers = nullptr;
@@ -511,5 +591,4 @@ shader_reflection_utils::convert_to_vk_push_constants(const reflection::push_con
     range.stageFlags = stage;
 }
 
-}  // namespace render
-}  // namespace kryga
+}  // namespace kryga::render

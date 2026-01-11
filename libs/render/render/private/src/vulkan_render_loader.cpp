@@ -338,23 +338,23 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 
         for (auto& i : se_data.m_fragment_stage_reflection.descriptors)
         {
-            if (i.location == 3)
+            if (i.set_index == 3)
             {
                 ds = &i;
             }
         }
 
-        if (!ds || (ds->bindigns.size() != 1) ||
-            (ds->bindigns.front().name != AID("dyn_material_buffer")))
+        if (!ds || (ds->bindings.size() != 1) ||
+            (ds->bindings.front().name != AID("dyn_material_buffer")))
         {
             ALOG_LAZY_ERROR;
             return nullptr;
         }
 
-        auto& b = ds->bindigns.front();
+        auto& b = ds->bindings.front();
 
         auto expected_material_layout =
-            ds->bindigns[0].layout->make_view<gpu_type>().subobj(0).subobj(0);
+            ds->bindings[0].layout->make_view<gpu_type>().subobj(0).subobj(0);
         auto input_material_layout = gpu_params.root<gpu_type>();
 
         expected_material_layout.print_to_std();

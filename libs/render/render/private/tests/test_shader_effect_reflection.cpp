@@ -12,11 +12,11 @@ class shader_reflection_test : public ::testing::Test
 protected:
     // Helper to create a UBO binding
     reflection::binding
-    make_ubo_binding(const char* name, uint32_t location)
+    make_ubo_binding(const char* name, uint32_t bind_idx)
     {
         reflection::binding b;
         b.name = AID(name);
-        b.location = location;
+        b.binding_index = bind_idx;
         b.descriptors_count = 1;
         b.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         return b;
@@ -24,11 +24,11 @@ protected:
 
     // Helper to create an SSBO binding
     reflection::binding
-    make_ssbo_binding(const char* name, uint32_t location)
+    make_ssbo_binding(const char* name, uint32_t bind_idx)
     {
         reflection::binding b;
         b.name = AID(name);
-        b.location = location;
+        b.binding_index = bind_idx;
         b.descriptors_count = 1;
         b.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         return b;
@@ -36,11 +36,11 @@ protected:
 
     // Helper to create a descriptor set
     reflection::descriptor_set
-    make_descriptor_set(uint32_t set_location, std::vector<reflection::binding> bindings)
+    make_descriptor_set(uint32_t set_idx, std::vector<reflection::binding> binds)
     {
         reflection::descriptor_set ds;
-        ds.location = set_location;
-        ds.bindigns = std::move(bindings);
+        ds.set_index = set_idx;
+        ds.bindings = std::move(binds);
         return ds;
     }
 
@@ -49,7 +49,7 @@ protected:
     make_push_constants(const char* name, uint32_t offset, uint32_t size)
     {
         reflection::push_constants pc;
-        pc.name = name;
+        pc.name = AID(name);
         pc.offset = offset;
         pc.size = size;
         return pc;
@@ -187,10 +187,10 @@ TEST_F(shader_reflection_test, generate_constants_from_reflection)
     shader_effect_data sed(AID("test_effect"));
 
     // Vertex stage has push constants
-    sed.m_vertext_stage_reflection.constants.push_back(make_push_constants("VertPC", 0, 64));
+    sed.m_vertext_stage_reflection.constants = make_push_constants("VertPC", 0, 64);
 
     // Fragment stage has push constants
-    sed.m_fragment_stage_reflection.constants.push_back(make_push_constants("FragPC", 64, 16));
+    sed.m_fragment_stage_reflection.constants = make_push_constants("FragPC", 64, 16);
 
     std::vector<VkPushConstantRange> ranges;
     sed.generate_constants(ranges);
@@ -227,7 +227,7 @@ TEST_F(shader_reflection_test, dynamic_ubo_binding)
 {
     reflection::binding b;
     b.name = AID("dyn_camera_data");  // dyn_ prefix triggers dynamic buffer
-    b.location = 0;
+    b.binding_index = 0;
     b.descriptors_count = 1;
     b.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
@@ -246,7 +246,7 @@ TEST_F(shader_reflection_test, dynamic_ssbo_binding)
 {
     reflection::binding b;
     b.name = AID("dyn_object_buffer");
-    b.location = 0;
+    b.binding_index = 0;
     b.descriptors_count = 1;
     b.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 

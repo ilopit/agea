@@ -87,16 +87,20 @@ shader_effect_data::generate_set_layouts(
 void
 shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constants)
 {
-    for (auto& c : m_vertext_stage_reflection.constants)
+    if (m_vertext_stage_reflection.constants)
     {
         shader_reflection_utils::convert_to_vk_push_constants(
-            c, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, constants.emplace_back());
+            *m_vertext_stage_reflection.constants,
+            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT,
+            constants.emplace_back());
     }
 
-    for (auto& c : m_fragment_stage_reflection.constants)
+    if (m_fragment_stage_reflection.constants)
     {
         shader_reflection_utils::convert_to_vk_push_constants(
-            c, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, constants.emplace_back());
+            *m_fragment_stage_reflection.constants,
+            VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
+            constants.emplace_back());
     }
 }
 

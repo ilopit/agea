@@ -76,23 +76,21 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
     }
 
     // Populate bindings from reflection
-    // Note: shader_reflection uses 'descriptors' and each descriptor_set has 'location' for set
-    // index and 'bindigns' (typo in original code) for bindings
     for (const auto& ds : reflection.descriptors)
     {
-        if (ds.location < DESCRIPTORS_SETS_COUNT)
+        if (ds.set_index < DESCRIPTORS_SETS_COUNT)
         {
-            for (const auto& binding : ds.bindigns)  // Note: typo in original struct
+            for (const auto& binding : ds.bindings)
             {
                 VkDescriptorSetLayoutBinding vk_binding = {};
-                vk_binding.binding = binding.location;
+                vk_binding.binding = binding.binding_index;
                 vk_binding.descriptorType = binding.type;
                 vk_binding.descriptorCount =
                     binding.descriptors_count > 0 ? binding.descriptors_count : 1;
                 vk_binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
                 vk_binding.pImmutableSamplers = nullptr;
 
-                bindings_storage[ds.location].push_back(vk_binding);
+                bindings_storage[ds.set_index].push_back(vk_binding);
             }
         }
     }
@@ -109,12 +107,12 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
 
     // Create pipeline layout
     std::vector<VkPushConstantRange> push_constant_ranges;
-    for (const auto& pc : reflection.constants)
+    if (reflection.constants)
     {
         VkPushConstantRange range = {};
         range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-        range.offset = pc.offset;
-        range.size = pc.size;
+        range.offset = reflection.constants->offset;
+        range.size = reflection.constants->size;
         push_constant_ranges.push_back(range);
     }
 

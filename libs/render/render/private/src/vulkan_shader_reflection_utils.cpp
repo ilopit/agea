@@ -11,8 +11,8 @@ vulkan_shader_reflection_utils::convert_to_ds_layout_data(const reflection::desc
                                                           VkShaderStageFlags stage,
                                                           vulkan_descriptor_set_layout_data& layout)
 {
-    layout.set_idx = ref_set.location;
-    for (auto& b : ref_set.bindigns)
+    layout.set_idx = ref_set.set_index;
+    for (auto& b : ref_set.bindings)
     {
         layout.bindings.push_back(shader_reflection_utils::convert_to_vk_binding(b, stage));
     }

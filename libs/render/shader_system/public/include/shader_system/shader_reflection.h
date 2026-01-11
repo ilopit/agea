@@ -1,58 +1,116 @@
 #pragma once
 
-#include "gpu_types/dynamic_layout/gpu_types.h"
+#include <gpu_types/dynamic_layout/gpu_types.h>
 
-#include "vulkan/vulkan.h"
+#include <vulkan/vulkan.h>
 
 #include <utils/dynamic_object.h>
 #include <utils/dynamic_object_builder.h>
 
 #include <spirv_reflect.h>
+#include <optional>
 
-namespace kryga
+namespace kryga::render
 {
-namespace render
-{
-
 namespace reflection
 {
+
+struct interface_variable
+{
+    utils::id name;
+    uint32_t location = 0;
+    gpu_type::id type = gpu_type::nan;
+};
+
+struct interface_block
+{
+    std::vector<interface_variable> variables;
+    utils::dynobj_layout_sptr layout;
+};
+
 struct push_constants
 {
-    std::string name;
+    utils::id name;
 
     uint32_t offset = 0;
     uint32_t size = 0;
 
-    ::kryga::utils::dynobj_layout_sptr layout;
+    utils::dynobj_layout_sptr layout;
 };
 
 struct binding
 {
     utils::id name;
-    uint32_t location = 0U;
-    uint32_t descriptors_count = 0U;
-    VkDescriptorType type = VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    uint32_t binding_index = 0;
+    uint32_t descriptors_count = 1;
+    VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 
     utils::dynobj_layout_sptr layout;
 };
 
 struct descriptor_set
 {
-    uint32_t location = 0U;
-    std::vector<binding> bindigns;
+    uint32_t set_index = 0;
+    std::vector<binding> bindings;
 };
 
-struct interface_variables
+struct compute_info
 {
-    ::kryga::utils::dynobj_layout_sptr layout;
+    uint32_t local_size_x = 1;
+    uint32_t local_size_y = 1;
+    uint32_t local_size_z = 1;
 };
 
 struct shader_reflection
 {
-    std::vector<push_constants> constants;
+    VkShaderStageFlagBits stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    utils::id entry_point;
+
+    std::optional<push_constants> constants;
     std::vector<descriptor_set> descriptors;
-    interface_variables input_interface;
-    interface_variables output_interface;
+
+    interface_block input_interface;
+    interface_block output_interface;
+
+    std::optional<compute_info> compute;
+
+    // Helpers
+    bool
+    has_push_constants() const
+    {
+        return constants.has_value();
+    }
+
+    const descriptor_set*
+    find_set(uint32_t set_idx) const
+    {
+        for (const auto& ds : descriptors)
+        {
+            if (ds.set_index == set_idx)
+            {
+                return &ds;
+            }
+        }
+        return nullptr;
+    }
+
+    const binding*
+    find_binding(uint32_t set_idx, uint32_t bind_idx) const
+    {
+        const auto* ds = find_set(set_idx);
+        if (!ds)
+        {
+            return nullptr;
+        }
+        for (const auto& b : ds->bindings)
+        {
+            if (b.binding_index == bind_idx)
+            {
+                return &b;
+            }
+        }
+        return nullptr;
+    }
 };
 
 }  // namespace reflection
@@ -80,8 +138,8 @@ struct shader_reflection_utils
     are_types_compatible(uint32_t lraw, uint32_t rraw);
 
     static bool
-    extract_interface_variable(std::vector<SpvReflectInterfaceVariable*>& inputs,
-                               utils::dynobj_layout_sptr& r);
+    extract_interface_variables(std::vector<SpvReflectInterfaceVariable*>& inputs,
+                                reflection::interface_block& block);
 
     static bool
     build_shader_input_reflection(SpvReflectShaderModule& spv_reflection,
@@ -99,11 +157,15 @@ struct shader_reflection_utils
                                 reflection::shader_reflection& sr);
 
     static bool
+    build_shader_compute_info(SpvReflectShaderModule& spv_reflection,
+                              reflection::shader_reflection& sr);
+
+    static bool
     build_shader_reflection(const uint8_t* spirv_code,
                             size_t spirv_size,
                             reflection::shader_reflection& sr);
 
-    // Vulkan converters - use VkDescriptorSetLayoutBinding directly
+    // Vulkan converters
     static VkDescriptorSetLayoutBinding
     convert_to_vk_binding(const reflection::binding& b, VkShaderStageFlags stage);
 
@@ -112,5 +174,4 @@ struct shader_reflection_utils
                                  VkShaderStageFlags stage,
                                  VkPushConstantRange& range);
 };
-}  // namespace render
-}  // namespace kryga
+}  // namespace kryga::render
