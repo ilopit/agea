@@ -160,8 +160,8 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 
     // Initialize clustered lighting (must match camera near/far planes)
     m_cluster_grid.init(m_width, m_height,
-                        0.1f,       // near plane
-                        KGPU_zfar,  // far plane - must match camera!
+                        KGPU_znear,  // near plane
+                        KGPU_zfar,   // far plane - must match camera!
                         KGPU_cluster_tile_size, KGPU_cluster_depth_slices,
                         KGPU_max_lights_per_cluster);
 
@@ -275,9 +275,8 @@ vulkan_render::draw_main()
     }
 
     // Bind per-frame buffer resources to the graph
-    m_render_graph.bind_buffer(AID("cluster_counts"),
-                               current_frame.buffers.cluster_counts.buffer(), 0,
-                               current_frame.buffers.cluster_counts.get_alloc_size());
+    m_render_graph.bind_buffer(AID("cluster_counts"), current_frame.buffers.cluster_counts.buffer(),
+                               0, current_frame.buffers.cluster_counts.get_alloc_size());
     m_render_graph.bind_buffer(AID("cluster_indices"),
                                current_frame.buffers.cluster_indices.buffer(), 0,
                                current_frame.buffers.cluster_indices.get_alloc_size());
@@ -1801,15 +1800,13 @@ vulkan_render::build_cluster_cull_descriptor_set(render::frame_state& frame)
     // Actually we need to pass light count separately - let's use push constants instead
     // For now, use the lights buffer size to infer count
 
-    VkDescriptorBufferInfo counts_info{
-        .buffer = frame.buffers.cluster_counts.buffer(),
-        .offset = 0,
-        .range = frame.buffers.cluster_counts.get_alloc_size()};
+    VkDescriptorBufferInfo counts_info{.buffer = frame.buffers.cluster_counts.buffer(),
+                                       .offset = 0,
+                                       .range = frame.buffers.cluster_counts.get_alloc_size()};
 
-    VkDescriptorBufferInfo indices_info{
-        .buffer = frame.buffers.cluster_indices.buffer(),
-        .offset = 0,
-        .range = frame.buffers.cluster_indices.get_alloc_size()};
+    VkDescriptorBufferInfo indices_info{.buffer = frame.buffers.cluster_indices.buffer(),
+                                        .offset = 0,
+                                        .range = frame.buffers.cluster_indices.get_alloc_size()};
 
     vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
                                         frame.frame->m_dynamic_descriptor_allocator.get())

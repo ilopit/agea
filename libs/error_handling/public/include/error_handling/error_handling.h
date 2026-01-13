@@ -13,7 +13,8 @@ enum class result_code
     doesnt_exist,
     serialization_error,
     path_not_found,
-    id_not_found
+    id_not_found,
+    validation_error
 };
 
 const char*

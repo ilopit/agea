@@ -15,6 +15,7 @@ to_cstr(result_code rc)
     case result_code::serialization_error: return "serialization_error";
     case result_code::path_not_found: return "path_not_found";
     case result_code::id_not_found: return "id_not_found";
+    case result_code::validation_error: return "validation_error";
         // clang-format on
     default:
         break;
