@@ -4,10 +4,15 @@
 
 #include <vulkan_render/utils/vulkan_image.h>
 
+#include <error_handling/error_handling.h>
+
 namespace kryga
 {
 namespace render
 {
+
+struct shader_effect_create_info;
+class shader_effect_data;
 class render_pass
 {
 public:

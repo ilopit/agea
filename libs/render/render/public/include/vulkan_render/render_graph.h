@@ -14,6 +14,9 @@
 namespace kryga::render
 {
 
+// Forward declaration for backend data
+class shader_effect_data;
+
 // Resource usage flags
 enum class rg_resource_usage
 {
@@ -21,6 +24,16 @@ enum class rg_resource_usage
     write,
     read_write
 };
+
+// ============================================================================
+// Pipeline description (API-agnostic)
+// ============================================================================
+struct rg_pipeline
+{
+    shader_effect_data* data = nullptr;
+};
+
+using rg_pipeline_sptr = std::shared_ptr<rg_pipeline>;
 
 // Pass type - determines synchronization behavior
 enum class rg_pass_type
@@ -119,6 +132,10 @@ public:
         return res;
     }
 
+    // ========================================================================
+    // Pass management
+    // ========================================================================
+
     // Add a render pass
     void
     add_pass(const utils::id& name,
@@ -133,7 +150,7 @@ public:
         pass.resources = resources;
         pass.execute = std::move(execute);
         pass.type = type;
-        m_passes.push_back(std::move(pass));
+        m_passes[name] = std::move(pass);
     }
 
     // Helper to create resource refs
@@ -165,7 +182,7 @@ public:
         }
 
         // Validate all resource refs exist
-        for (const auto& pass : m_passes)
+        for (const auto& [pass_id, pass] : m_passes)
         {
             for (const auto& ref : pass.resources)
             {
@@ -181,42 +198,42 @@ public:
 
         // Build dependency graph
         // A pass depends on another if it reads a resource that the other writes
-        std::unordered_map<utils::id, std::vector<size_t>> writers;  // resource -> pass indices
-                                                                     // that write it
-        std::unordered_map<utils::id, std::vector<size_t>> readers;  // resource -> pass indices
-                                                                     // that read it
+        std::unordered_map<utils::id, std::vector<utils::id>> writers;  // resource -> pass ids that
+                                                                        // write it
+        std::unordered_map<utils::id, std::vector<utils::id>> readers;  // resource -> pass ids that
+                                                                        // read it
 
-        for (size_t i = 0; i < m_passes.size(); ++i)
+        for (const auto& [pass_id, pass] : m_passes)
         {
-            for (const auto& ref : m_passes[i].resources)
+            for (const auto& ref : pass.resources)
             {
                 if (ref.usage == rg_resource_usage::write ||
                     ref.usage == rg_resource_usage::read_write)
                 {
-                    writers[ref.resource].push_back(i);
+                    writers[ref.resource].push_back(pass_id);
                 }
                 if (ref.usage == rg_resource_usage::read ||
                     ref.usage == rg_resource_usage::read_write)
                 {
-                    readers[ref.resource].push_back(i);
+                    readers[ref.resource].push_back(pass_id);
                 }
             }
         }
 
-        // Build adjacency list (dependencies)
-        std::vector<std::vector<size_t>> deps(m_passes.size());
-        for (const auto& [resource, reader_indices] : readers)
+        // Build adjacency list (dependencies): pass_id -> list of pass_ids it depends on
+        std::unordered_map<utils::id, std::vector<utils::id>> deps;
+        for (const auto& [resource, reader_ids] : readers)
         {
             auto it = writers.find(resource);
             if (it != writers.end())
             {
-                for (size_t reader_idx : reader_indices)
+                for (const auto& reader_id : reader_ids)
                 {
-                    for (size_t writer_idx : it->second)
+                    for (const auto& writer_id : it->second)
                     {
-                        if (reader_idx != writer_idx)
+                        if (reader_id != writer_id)
                         {
-                            deps[reader_idx].push_back(writer_idx);
+                            deps[reader_id].push_back(writer_id);
                         }
                     }
                 }
@@ -224,49 +241,41 @@ public:
         }
 
         // Topological sort (Kahn's algorithm)
-        std::vector<size_t> in_degree(m_passes.size(), 0);
-        for (size_t i = 0; i < m_passes.size(); ++i)
+        std::unordered_map<utils::id, size_t> in_degree;
+        std::unordered_map<utils::id, std::vector<utils::id>> dependents;
+
+        // Initialize in_degree for all passes
+        for (const auto& [pass_id, pass] : m_passes)
         {
-            for (size_t dep : deps[i])
+            in_degree[pass_id] = deps[pass_id].size();
+            for (const auto& dep_id : deps[pass_id])
             {
-                (void)dep;
-                // Each dependency increases in-degree of dependent
+                dependents[dep_id].push_back(pass_id);
             }
         }
 
-        // Recalculate in_degree properly
-        std::vector<std::vector<size_t>> dependents(m_passes.size());
-        for (size_t i = 0; i < m_passes.size(); ++i)
+        std::vector<utils::id> queue;
+        for (const auto& [pass_id, degree] : in_degree)
         {
-            for (size_t dep : deps[i])
+            if (degree == 0)
             {
-                dependents[dep].push_back(i);
-            }
-            in_degree[i] = deps[i].size();
-        }
-
-        std::vector<size_t> queue;
-        for (size_t i = 0; i < m_passes.size(); ++i)
-        {
-            if (in_degree[i] == 0)
-            {
-                queue.push_back(i);
+                queue.push_back(pass_id);
             }
         }
 
         m_execution_order.clear();
         while (!queue.empty())
         {
-            size_t curr = queue.back();
+            utils::id curr = queue.back();
             queue.pop_back();
             m_execution_order.push_back(curr);
 
-            for (size_t dependent : dependents[curr])
+            for (const auto& dependent_id : dependents[curr])
             {
-                in_degree[dependent]--;
-                if (in_degree[dependent] == 0)
+                in_degree[dependent_id]--;
+                if (in_degree[dependent_id] == 0)
                 {
-                    queue.push_back(dependent);
+                    queue.push_back(dependent_id);
                 }
             }
         }
@@ -297,11 +306,12 @@ public:
                 throw std::runtime_error("Failed to compile render graph: " + m_error);
         }
 
-        for (size_t idx : m_execution_order)
+        for (const auto& pass_id : m_execution_order)
         {
-            if (m_passes[idx].execute)
+            auto it = m_passes.find(pass_id);
+            if (it != m_passes.end() && it->second.execute)
             {
-                m_passes[idx].execute();
+                it->second.execute();
             }
         }
     }
@@ -330,13 +340,13 @@ public:
         return m_error;
     }
 
-    const std::vector<size_t>&
+    const std::vector<utils::id>&
     get_execution_order() const
     {
         return m_execution_order;
     }
 
-    const std::vector<render_path>&
+    const std::unordered_map<utils::id, render_path>&
     get_passes() const
     {
         return m_passes;
@@ -345,11 +355,9 @@ public:
     const render_path*
     get_pass(const utils::id& name) const
     {
-        for (const auto& pass : m_passes)
-        {
-            if (pass.name == name)
-                return &pass;
-        }
+        auto it = m_passes.find(name);
+        if (it != m_passes.end())
+            return &it->second;
         return nullptr;
     }
 
@@ -367,8 +375,8 @@ public:
 
 private:
     std::unordered_map<utils::id, rg_resource> m_resources;
-    std::vector<render_path> m_passes;
-    std::vector<size_t> m_execution_order;
+    std::unordered_map<utils::id, render_path> m_passes;
+    std::vector<utils::id> m_execution_order;
     bool m_compiled = false;
     std::string m_error;
 };
