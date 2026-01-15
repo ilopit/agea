@@ -364,8 +364,6 @@ private:
 
     gpu::push_constants m_obj_config;
 
-    std::unordered_map<utils::id, render_pass_sptr> m_render_passes;
-
     render_cache m_cache;
 
     // Clustered lighting

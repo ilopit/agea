@@ -522,6 +522,16 @@ vulkan_render_loader::create_font(const kryga::utils::id& id, ImFont* font)
 }
 
 void
+vulkan_render_loader::destroy_render_pass(const kryga::utils::id& id)
+{
+    auto itr = m_render_passes.find(id);
+    if (itr != m_render_passes.end())
+    {
+        m_render_passes.erase(itr);
+    }
+}
+
+void
 vulkan_render_loader::clear_caches()
 {
     m_meshes_cache.clear();
@@ -530,6 +540,7 @@ vulkan_render_loader::clear_caches()
     m_shaders_cache.clear();
     m_shaders_effects_cache.clear();
     m_samplers_cache.clear();
+    m_render_passes.clear();
     m_materials_index.clear();
 
 }  // namespace render

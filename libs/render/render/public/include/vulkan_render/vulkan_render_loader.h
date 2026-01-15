@@ -4,6 +4,7 @@
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_light_data.h"
 #include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
@@ -155,6 +156,23 @@ public:
     destroy_sampler_data(const kryga::utils::id& id);
 
     /*************************/
+    render_pass*
+    get_render_pass(const kryga::utils::id& id)
+    {
+        auto itr = m_render_passes.find(id);
+        return itr != m_render_passes.end() ? itr->second.get() : nullptr;
+    }
+
+    void
+    add_render_pass(const kryga::utils::id& id, render_pass_sptr rp)
+    {
+        m_render_passes[id] = std::move(rp);
+    }
+
+    void
+    destroy_render_pass(const kryga::utils::id& id);
+
+    /*************************/
     void
     clear_caches();
 
@@ -190,6 +208,8 @@ private:
         m_shaders_effects_cache;
 
     std::unordered_map<kryga::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
+
+    std::unordered_map<kryga::utils::id, render_pass_sptr> m_render_passes;
 
     std::unordered_map<kryga::utils::id, gpu_data_index_type> m_materials_index;
 

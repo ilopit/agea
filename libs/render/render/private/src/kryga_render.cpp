@@ -190,8 +190,6 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 void
 vulkan_render::deinit()
 {
-    m_render_passes.clear();
-
     m_frames.clear();
 }
 
@@ -1121,7 +1119,7 @@ vulkan_render::prepare_render_passes()
                 .set_preset(render_pass_builder::presets::swapchain)
                 .build();
 
-        m_render_passes[AID("main")] = std::move(main_pass);
+        glob::vulkan_render_loader::getr().add_render_pass(AID("main"), std::move(main_pass));
     }
 
     VkExtent3D image_extent = {m_width, m_height, 1};
@@ -1153,7 +1151,7 @@ vulkan_render::prepare_render_passes()
                 .set_preset(render_pass_builder::presets::buffer)
                 .build();
 
-        m_render_passes[AID("ui")] = std::move(ui_pass);
+        glob::vulkan_render_loader::getr().add_render_pass(AID("ui"), std::move(ui_pass));
     }
 
     {
@@ -1183,7 +1181,7 @@ vulkan_render::prepare_render_passes()
                 .set_enable_stencil(false)
                 .build();
 
-        m_render_passes[AID("picking")] = std::move(picking_pass);
+        glob::vulkan_render_loader::getr().add_render_pass(AID("picking"), std::move(picking_pass));
     }
 }
 
@@ -1210,7 +1208,7 @@ vulkan_render::prepare_system_resources()
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
-    se_ci.rp = m_render_passes[AID("main")].get();
+    se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = false;
     se_ci.alpha = alpha_mode::none;
@@ -1245,7 +1243,7 @@ vulkan_render::prepare_system_resources()
     kryga::utils::buffer::load(frag_path, frag);
 
     se_ci.ds_mode = depth_stencil_mode::none;
-    se_ci.rp = m_render_passes[AID("picking")].get();
+    se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("picking"));
     sed = nullptr;
 
     rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_pick"), se_ci, sed);
@@ -1297,9 +1295,10 @@ vulkan_render::prepare_ui_resources()
     m_ui_txt = glob::vulkan_render_loader::getr().create_texture(AID("font"), image_raw_buffer,
                                                                  tex_width, tex_height);
 
+    auto ui_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
     m_ui_target_txt = glob::vulkan_render_loader::getr().create_texture(
-        AID("ui_copy_txt"), m_render_passes[AID("ui")]->get_color_images()[0],
-        m_render_passes[AID("ui")]->get_color_image_views()[0]);
+        AID("ui_copy_txt"), ui_pass->get_color_images()[0],
+        ui_pass->get_color_image_views()[0]);
 }
 
 void
@@ -1327,7 +1326,7 @@ vulkan_render::prepare_ui_pipeline()
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
         se_ci.frag_buffer = &frag;
-        se_ci.rp = m_render_passes[AID("ui")].get();
+        se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
         se_ci.is_wire = false;
         se_ci.enable_dynamic_state = true;
         se_ci.alpha = alpha_mode::ui;
@@ -1355,7 +1354,7 @@ vulkan_render::prepare_ui_pipeline()
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
         se_ci.frag_buffer = &frag;
-        se_ci.rp = m_render_passes[AID("main")].get();
+        se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
         se_ci.is_wire = false;
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::ui;
@@ -1520,7 +1519,8 @@ vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
     // Source for the copy is the last rendered swapchain image
-    auto src_image = m_render_passes[AID("picking")]->get_color_images()[0]->image();
+    auto picking_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("picking"));
+    auto src_image = picking_pass->get_color_images()[0]->image();
 
     // Create the linear tiled destination image to copy to and to read the memory from
 
@@ -1619,7 +1619,7 @@ vulkan_render::get_cache()
 render_pass*
 vulkan_render::get_render_pass(const utils::id& id)
 {
-    return m_render_passes.at(id).get();
+    return glob::vulkan_render_loader::getr().get_render_pass(id);
 }
 
 void
