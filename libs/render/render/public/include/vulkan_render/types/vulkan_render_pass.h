@@ -143,6 +143,13 @@ public:
     validate_fragment_outputs(const reflection::interface_block& frag_outputs,
                               std::string& out_error) const;
 
+    // Validate that shader bindings have corresponding resources declared in this render pass
+    // Returns true if all shader bindings are satisfied, false otherwise with error in out_error
+    bool
+    validate_shader_resources(const reflection::shader_reflection& vertex_reflection,
+                              const reflection::shader_reflection& frag_reflection,
+                              std::string& out_error) const;
+
 private:
     VkFormat m_color_format = VK_FORMAT_UNDEFINED;
     VkFormat m_depth_format = VK_FORMAT_UNDEFINED;

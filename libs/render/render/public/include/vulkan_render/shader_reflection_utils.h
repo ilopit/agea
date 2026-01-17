@@ -19,16 +19,6 @@ struct vulkan_shader_reflection_utils
     convert_to_ds_layout_data(const reflection::descriptor_set& ref_set,
                               VkShaderStageFlags stage,
                               vulkan_descriptor_set_layout_data& layout);
-
-    // Retrieves pre-built reflection from shader_module_data
-    // Reflection is now built during compilation in shader_compiler
-    static bool
-    build_shader_reflection(const std::shared_ptr<shader_module_data>& sd,
-                            reflection::shader_reflection& sr)
-    {
-        sr = sd->get_reflection();
-        return true;
-    }
 };
 
 }  // namespace render

@@ -71,13 +71,13 @@ shader_effect_data::generate_set_layouts(
 {
     set_layouts.clear();
 
-    for (auto& s : m_vertext_stage_reflection.descriptors)
+    for (auto& s : m_vertex_stage->get_reflection().descriptors)
     {
         vulkan_shader_reflection_utils::convert_to_ds_layout_data(
             s, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, set_layouts.emplace_back());
     }
 
-    for (auto& s : m_fragment_stage_reflection.descriptors)
+    for (auto& s : m_frag_stage->get_reflection().descriptors)
     {
         vulkan_shader_reflection_utils::convert_to_ds_layout_data(
             s, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, set_layouts.emplace_back());
@@ -87,20 +87,18 @@ shader_effect_data::generate_set_layouts(
 void
 shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constants)
 {
-    if (m_vertext_stage_reflection.constants)
+    if (m_vertex_stage->get_reflection().constants)
     {
         shader_reflection_utils::convert_to_vk_push_constants(
-            *m_vertext_stage_reflection.constants,
-            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT,
-            constants.emplace_back());
+            *m_vertex_stage->get_reflection().constants,
+            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, constants.emplace_back());
     }
 
-    if (m_fragment_stage_reflection.constants)
+    if (m_frag_stage->get_reflection().constants)
     {
         shader_reflection_utils::convert_to_vk_push_constants(
-            *m_fragment_stage_reflection.constants,
-            VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
-            constants.emplace_back());
+            *m_frag_stage->get_reflection().constants,
+            VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, constants.emplace_back());
     }
 }
 

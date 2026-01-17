@@ -142,14 +142,6 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
         return rc;
     }
 
-    // Build reflection data
-    if (!vulkan_shader_reflection_utils::build_shader_reflection(
-            cs_data.m_compute_stage, cs_data.m_compute_stage_reflection))
-    {
-        ALOG_LAZY_ERROR;
-        return result_code::failed;
-    }
-
     // Create pipeline layout
     if (!create_compute_pipeline_layout(cs_data))
     {

@@ -9,6 +9,7 @@
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
 
 #include <utils/kryga_log.h>
 
@@ -127,7 +128,33 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
 
     auto rc = vulkan_shader_loader::create_shader_effect(*effect, info_copy);
 
-    effect->m_failed_load = rc != result_code::ok;
+    if (rc != result_code::ok)
+    {
+        effect->m_failed_load = true;
+        effect->set_owner_render_pass(this);
+        m_shader_effects[id] = effect;
+        sed = effect.get();
+        return rc;
+    }
+
+    // Validate shader bindings against render pass resources (only if resources are declared)
+    if (!m_resources.empty() && effect->m_vertex_stage && effect->m_frag_stage)
+    {
+        std::string validation_error;
+        if (!validate_shader_resources(effect->m_vertex_stage->get_reflection(),
+                                       effect->m_frag_stage->get_reflection(), validation_error))
+        {
+            ALOG_ERROR("Shader effect '{}' resource validation failed: {}",
+                       std::string(id.cstr()), validation_error);
+            effect->m_failed_load = true;
+            effect->set_owner_render_pass(this);
+            m_shader_effects[id] = effect;
+            sed = effect.get();
+            return result_code::validation_error;
+        }
+    }
+
+    effect->m_failed_load = false;
     effect->set_owner_render_pass(this);
 
     m_shader_effects[id] = effect;
@@ -197,6 +224,176 @@ render_pass::validate_fragment_outputs(const reflection::interface_block& frag_o
                     " output(s), but render pass has " + std::to_string(m_color_attachment_count) +
                     " color attachment(s)";
         return false;
+    }
+
+    return true;
+}
+
+namespace
+{
+// Map VkDescriptorType to expected resource type
+rg_resource_type
+get_expected_resource_type(VkDescriptorType descriptor_type)
+{
+    switch (descriptor_type)
+    {
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+        return rg_resource_type::buffer;
+
+    case VK_DESCRIPTOR_TYPE_SAMPLER:
+    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+        return rg_resource_type::image;
+
+    default:
+        return rg_resource_type::buffer;
+    }
+}
+
+// Check if descriptor type requires write access
+// Note: Storage buffers can be readonly in GLSL, so we can't assume they need write.
+// Only storage images definitely need write access when used as output.
+bool
+descriptor_requires_write(VkDescriptorType descriptor_type)
+{
+    switch (descriptor_type)
+    {
+    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        return true;
+    default:
+        // Storage buffers may be readonly - can't determine from descriptor type alone
+        return false;
+    }
+}
+
+// Check if usage provides at least read access
+bool
+usage_allows_read(rg_resource_usage usage)
+{
+    return usage == rg_resource_usage::read || usage == rg_resource_usage::read_write;
+}
+
+// Check if usage provides write access
+bool
+usage_allows_write(rg_resource_usage usage)
+{
+    return usage == rg_resource_usage::write || usage == rg_resource_usage::read_write;
+}
+
+const char*
+descriptor_type_to_string(VkDescriptorType type)
+{
+    switch (type)
+    {
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+        return "uniform_buffer";
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+        return "storage_buffer";
+    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+        return "combined_image_sampler";
+    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+        return "sampled_image";
+    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        return "storage_image";
+    default:
+        return "unknown";
+    }
+}
+
+const char*
+resource_type_to_string(rg_resource_type type)
+{
+    return type == rg_resource_type::buffer ? "buffer" : "image";
+}
+}  // namespace
+
+bool
+render_pass::validate_shader_resources(const reflection::shader_reflection& vertex_reflection,
+                                       const reflection::shader_reflection& frag_reflection,
+                                       std::string& out_error) const
+{
+    // Helper to validate a single binding against available resources
+    auto validate_binding = [this, &out_error](const reflection::binding& b,
+                                               const char* stage_name) -> bool
+    {
+        // Find resource by name in m_resources
+        const rg_resource_ref* found_resource = nullptr;
+        for (const auto& res : m_resources)
+        {
+            if (res.resource == b.name)
+            {
+                found_resource = &res;
+                break;
+            }
+        }
+
+        if (!found_resource)
+        {
+            out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
+                        "' (type: " + descriptor_type_to_string(b.type) +
+                        ") not found in render pass resources";
+            return false;
+        }
+
+        // Validate type compatibility
+        rg_resource_type expected_type = get_expected_resource_type(b.type);
+        if (found_resource->type != expected_type)
+        {
+            out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
+                        "' expects " + resource_type_to_string(expected_type) +
+                        " but render pass resource is " +
+                        resource_type_to_string(found_resource->type);
+            return false;
+        }
+
+        // Validate usage compatibility
+        bool needs_write = descriptor_requires_write(b.type);
+        if (needs_write && !usage_allows_write(found_resource->usage))
+        {
+            out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
+                        "' (type: " + descriptor_type_to_string(b.type) +
+                        ") requires write access but resource only provides read";
+            return false;
+        }
+
+        if (!needs_write && !usage_allows_read(found_resource->usage))
+        {
+            out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
+                        "' (type: " + descriptor_type_to_string(b.type) +
+                        ") requires read access but resource only provides write";
+            return false;
+        }
+
+        return true;
+    };
+
+    // Validate all vertex shader bindings
+    for (const auto& ds : vertex_reflection.descriptors)
+    {
+        for (const auto& b : ds.bindings)
+        {
+            if (!validate_binding(b, "Vertex"))
+            {
+                return false;
+            }
+        }
+    }
+
+    // Validate all fragment shader bindings
+    for (const auto& ds : frag_reflection.descriptors)
+    {
+        for (const auto& b : ds.bindings)
+        {
+            if (!validate_binding(b, "Fragment"))
+            {
+                return false;
+            }
+        }
     }
 
     return true;

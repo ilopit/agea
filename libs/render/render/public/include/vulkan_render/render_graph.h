@@ -68,6 +68,7 @@ using resource_sptr = std::shared_ptr<rg_resource>;
 struct rg_resource_ref
 {
     utils::id resource;
+    rg_resource_type type = rg_resource_type::buffer;
     rg_resource_usage usage;
 };
 
@@ -155,21 +156,21 @@ public:
 
     // Helper to create resource refs
     static rg_resource_ref
-    read(const utils::id& name)
+    read(const utils::id& name, rg_resource_type type = rg_resource_type::buffer)
     {
-        return {name, rg_resource_usage::read};
+        return {name, type, rg_resource_usage::read};
     }
 
     static rg_resource_ref
-    write(const utils::id& name)
+    write(const utils::id& name, rg_resource_type type = rg_resource_type::buffer)
     {
-        return {name, rg_resource_usage::write};
+        return {name, type, rg_resource_usage::write};
     }
 
     static rg_resource_ref
-    read_write(const utils::id& name)
+    read_write(const utils::id& name, rg_resource_type type = rg_resource_type::buffer)
     {
-        return {name, rg_resource_usage::read_write};
+        return {name, type, rg_resource_usage::read_write};
     }
 
     // Compile: topological sort, validate dependencies

@@ -63,11 +63,8 @@ public:
 
     utils::dynobj_layout_sptr m_expected_vertex_input;
 
-    std::shared_ptr<shader_module_data> m_vertex_stage;
-    reflection::shader_reflection m_vertext_stage_reflection;
-
     std::shared_ptr<shader_module_data> m_frag_stage;
-    reflection::shader_reflection m_fragment_stage_reflection;
+    std::shared_ptr<shader_module_data> m_vertex_stage;
 
     bool m_is_wire = false;
     bool m_enable_alpha = false;

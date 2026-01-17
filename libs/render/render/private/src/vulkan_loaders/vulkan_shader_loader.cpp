@@ -166,31 +166,17 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         se_data.m_expected_vertex_input = info.expected_input_vertex_layout;
     }
 
-    if (!vulkan_shader_reflection_utils::build_shader_reflection(
-            se_data.m_vertex_stage, se_data.m_vertext_stage_reflection))
-    {
-        ALOG_LAZY_ERROR;
-        return result_code::failed;
-    }
-
     if (!shader_reflection_utils::are_layouts_compatible(
             se_data.m_expected_vertex_input,
-            se_data.m_vertext_stage_reflection.input_interface.layout, false, false))
-    {
-        ALOG_LAZY_ERROR;
-        return result_code::failed;
-    }
-
-    if (!vulkan_shader_reflection_utils::build_shader_reflection(
-            se_data.m_frag_stage, se_data.m_fragment_stage_reflection))
+            se_data.m_vertex_stage->get_reflection().input_interface.layout, false, false))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
     if (!shader_reflection_utils::are_layouts_compatible(
-            se_data.m_vertext_stage_reflection.output_interface.layout,
-            se_data.m_fragment_stage_reflection.input_interface.layout, true, false))
+            se_data.m_vertex_stage->get_reflection().output_interface.layout,
+            se_data.m_frag_stage->get_reflection().input_interface.layout, true, false))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -201,7 +187,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     {
         std::string validation_error;
         if (!info.rp->validate_fragment_outputs(
-                se_data.m_fragment_stage_reflection.output_interface, validation_error))
+                se_data.m_frag_stage->get_reflection().output_interface, validation_error))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -298,7 +284,6 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     if (se_data.m_vertex_stage)
     {
         old_se_data->m_vertex_stage = std::move(se_data.m_vertex_stage);
-        se_data.m_vertext_stage_reflection = {};
     }
 
     auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
@@ -311,7 +296,6 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
     if (se_data.m_frag_stage)
     {
         old_se_data->m_frag_stage = std::move(se_data.m_frag_stage);
-        se_data.m_fragment_stage_reflection = {};
     }
 
     rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT,

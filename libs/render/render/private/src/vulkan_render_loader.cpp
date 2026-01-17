@@ -334,9 +334,9 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 
     if (!gpu_params.empty())
     {
-        reflection::descriptor_set* ds = nullptr;
+        const reflection::descriptor_set* ds = nullptr;
 
-        for (auto& i : se_data.m_fragment_stage_reflection.descriptors)
+        for (auto& i : se_data.m_frag_stage->get_reflection().descriptors)
         {
             if (i.set_index == 3)
             {

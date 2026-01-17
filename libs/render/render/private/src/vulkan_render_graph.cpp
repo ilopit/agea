@@ -107,18 +107,23 @@ vulkan_render_graph::add_transfer_pass(const utils::id& name,
 }
 
 void
+vulkan_render_graph::begin_frame()
+{
+    m_bound_this_frame.clear();
+}
+
+void
 vulkan_render_graph::bind_buffer(const utils::id& name,
                                  VkBuffer buf,
                                  VkDeviceSize offset,
                                  VkDeviceSize range)
 {
     auto it = m_resources.find(name);
-    if (it == m_resources.end())
-    {
-        return;
-    }
+    KRG_check(it != m_resources.end(), "Resource not registered");
+    KRG_check(buf != VK_NULL_HANDLE, "Cannot bind null buffer");
 
     it->second.binding = rg_buffer_binding{buf, offset, range};
+    m_bound_this_frame.insert(name);
 }
 
 void
@@ -129,13 +134,12 @@ vulkan_render_graph::bind_image(const utils::id& name,
                                 VkImageLayout layout)
 {
     auto it = m_resources.find(name);
-    if (it == m_resources.end())
-    {
-        return;
-    }
+    KRG_check(it != m_resources.end(), "Resource not registered");
+    KRG_check(img != VK_NULL_HANDLE, "Cannot bind null image");
 
     it->second.binding = rg_image_binding{img, view, format, layout};
     it->second.last_access.layout = layout;
+    m_bound_this_frame.insert(name);
 }
 
 void
@@ -276,6 +280,13 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
         }
     }
 
+    // Validate all registered resources are bound this frame
+    for (const auto& [name, res] : m_resources)
+    {
+        KRG_check(m_bound_this_frame.find(name) != m_bound_this_frame.end(),
+                  "Resource not bound this frame");
+    }
+
     // Reset resource access state for this frame
     for (auto& [name, res] : m_resources)
     {
@@ -326,8 +337,11 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
                         barriers.buffer_barriers.push_back(barrier);
                     }
                 }
-                else
+                else if (pass->m_type != rg_pass_type::graphics)
                 {
+                    // Only insert image barriers for compute/transfer passes
+                    // Graphics passes use VkRenderPass which handles layout transitions
+                    // via initialLayout/finalLayout in attachment descriptions
                     if (auto* img = std::get_if<rg_image_binding>(&res.binding))
                     {
                         VkImageMemoryBarrier barrier = {};

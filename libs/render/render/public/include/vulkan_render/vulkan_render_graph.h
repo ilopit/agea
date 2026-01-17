@@ -10,6 +10,7 @@
 
 #include <functional>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -102,6 +103,10 @@ public:
                       std::function<void(VkCommandBuffer)> execute);
 
     // Per-frame resource binding
+    // Call begin_frame() before binding to track fresh bindings
+    void
+    begin_frame();
+
     void
     bind_buffer(const utils::id& name,
                 VkBuffer buf,
@@ -181,6 +186,9 @@ private:
 
     // Per-frame context
     rg_frame_context m_frame_ctx;
+
+    // Track which resources were bound this frame
+    std::unordered_set<utils::id> m_bound_this_frame;
 };
 
 }  // namespace kryga::render
