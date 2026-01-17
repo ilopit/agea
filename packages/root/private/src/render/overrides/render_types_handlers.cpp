@@ -109,7 +109,8 @@ material__render_loader(reflection::type_context__render& ctx)
     auto se_data = se_model->get_shader_effect_data();
     if (rc != result_code::ok || se_data->m_failed_load)
     {
-        se_data = glob::vulkan_render_loader::getr().get_shader_effect_data(AID("se_error"));
+        auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+        se_data = main_pass->get_shader_effect(AID("se_error"));
     }
 
     KRG_check(se_data, "Should exist");
@@ -235,14 +236,14 @@ shader_effect__render_loader(reflection::type_context__render& ctx)
 {
     auto& se_model = ctx.obj->asr<root::shader_effect>();
 
-    auto se_data = glob::vulkan_render_loader::get()->get_shader_effect_data(se_model.get_id());
-
     auto se_ci = ::kryga::render_bridge::make_se_ci(se_model);
+
+    auto rp = se_ci.rp;
+    auto se_data = rp->get_shader_effect(se_model.get_id());
 
     if (!se_data)
     {
-        auto rc = glob::vulkan_render_loader::get()->create_shader_effect(se_model.get_id(), se_ci,
-                                                                          se_data);
+        auto rc = rp->create_shader_effect(se_model.get_id(), se_ci, se_data);
 
         KRG_check(se_data, "Should never happen!");
 
@@ -252,7 +253,7 @@ shader_effect__render_loader(reflection::type_context__render& ctx)
     }
     else
     {
-        auto rc = glob::vulkan_render_loader::get()->update_shader_effect(*se_data, se_ci);
+        auto rc = rp->update_shader_effect(*se_data, se_ci);
         if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;
@@ -269,7 +270,10 @@ shader_effect__render_destructor(reflection::type_context__render& ctx)
 
     if (auto se_data = se_model.get_shader_effect_data())
     {
-        glob::vulkan_render_loader::getr().destroy_shader_effect_data(se_data->get_id());
+        if (auto owner_rp = se_data->get_owner_render_pass())
+        {
+            owner_rp->destroy_shader_effect(se_data->get_id());
+        }
     }
 
     return result_code::ok;

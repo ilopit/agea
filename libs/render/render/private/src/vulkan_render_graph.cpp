@@ -52,18 +52,24 @@ vulkan_render_graph::import_resource(const utils::id& name, rg_resource_type typ
 }
 
 void
+vulkan_render_graph::add_pass(render_pass_sptr pass)
+{
+    KRG_check(!m_compiled, "Cannot modify compiled graph");
+    m_passes.push_back(std::move(pass));
+}
+
+render_pass_sptr
 vulkan_render_graph::add_compute_pass(const utils::id& name,
                                       std::vector<rg_resource_ref> resources,
                                       std::function<void(VkCommandBuffer)> execute)
 {
     KRG_check(!m_compiled, "Cannot modify compiled graph");
 
-    rg_vk_pass pass;
-    pass.name = name;
-    pass.type = rg_pass_type::compute;
-    pass.resources = std::move(resources);
-    pass.execute = std::move(execute);
-    m_passes.push_back(std::move(pass));
+    auto pass = std::make_shared<render_pass>(name, rg_pass_type::compute);
+    pass->m_resources = std::move(resources);
+    pass->m_execute = std::move(execute);
+    m_passes.push_back(pass);
+    return pass;
 }
 
 void
@@ -74,30 +80,30 @@ vulkan_render_graph::add_graphics_pass(const utils::id& name,
                                        std::function<void(VkCommandBuffer)> execute)
 {
     KRG_check(!m_compiled, "Cannot modify compiled graph");
+    KRG_check(rp != nullptr, "Graphics pass requires a valid render_pass");
 
-    rg_vk_pass pass;
-    pass.name = name;
-    pass.type = rg_pass_type::graphics;
-    pass.resources = std::move(resources);
-    pass.rp = rp;
-    pass.clear_color = clear_color;
-    pass.execute = std::move(execute);
-    m_passes.push_back(std::move(pass));
+    // Configure the existing render_pass for graph usage
+    rp->m_name = name;
+    rp->m_resources = std::move(resources);
+    rp->m_clear_color = clear_color;
+    rp->m_execute = std::move(execute);
+
+    // Store as shared_ptr with no-op deleter since we don't own the render_pass
+    m_passes.push_back(render_pass_sptr(rp, [](render_pass*) {}));
 }
 
-void
+render_pass_sptr
 vulkan_render_graph::add_transfer_pass(const utils::id& name,
                                        std::vector<rg_resource_ref> resources,
                                        std::function<void(VkCommandBuffer)> execute)
 {
     KRG_check(!m_compiled, "Cannot modify compiled graph");
 
-    rg_vk_pass pass;
-    pass.name = name;
-    pass.type = rg_pass_type::transfer;
-    pass.resources = std::move(resources);
-    pass.execute = std::move(execute);
-    m_passes.push_back(std::move(pass));
+    auto pass = std::make_shared<render_pass>(name, rg_pass_type::transfer);
+    pass->m_resources = std::move(resources);
+    pass->m_execute = std::move(execute);
+    m_passes.push_back(pass);
+    return pass;
 }
 
 void
@@ -151,11 +157,11 @@ vulkan_render_graph::compile()
     // Validate all resource refs exist
     for (const auto& pass : m_passes)
     {
-        for (const auto& ref : pass.resources)
+        for (const auto& ref : pass->m_resources)
         {
             if (m_resources.find(ref.resource) == m_resources.end())
             {
-                m_error = "Pass '" + std::string(pass.name.cstr()) +
+                m_error = "Pass '" + std::string(pass->m_name.cstr()) +
                           "' references unknown resource '" + std::string(ref.resource.cstr()) + "'";
                 return false;
             }
@@ -168,7 +174,7 @@ vulkan_render_graph::compile()
 
     for (size_t i = 0; i < m_passes.size(); ++i)
     {
-        for (const auto& ref : m_passes[i].resources)
+        for (const auto& ref : m_passes[i]->m_resources)
         {
             if (ref.usage == rg_resource_usage::write || ref.usage == rg_resource_usage::read_write)
             {
@@ -249,7 +255,7 @@ vulkan_render_graph::compile()
     // Assign order
     for (size_t i = 0; i < m_execution_order.size(); ++i)
     {
-        m_passes[m_execution_order[i]].order = static_cast<uint32_t>(i);
+        m_passes[m_execution_order[i]]->m_order = static_cast<uint32_t>(i);
     }
 
     // Calculate barriers for each pass
@@ -290,14 +296,14 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
 
         // Calculate and insert barriers for this pass
         rg_pass_barriers barriers;
-        for (const auto& ref : pass.resources)
+        for (const auto& ref : pass->m_resources)
         {
             auto it = m_resources.find(ref.resource);
             if (it == m_resources.end())
                 continue;
 
             auto& res = it->second;
-            rg_access_info required = compute_access_for_usage(ref.usage, pass.type, res.base.type);
+            rg_access_info required = compute_access_for_usage(ref.usage, pass->m_type, res.base.type);
 
             if (needs_barrier(res.last_access, required))
             {
@@ -350,28 +356,9 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
         // Insert barriers if needed
         insert_barriers(cmd, barriers);
 
-        // Execute pass
-        if (pass.type == rg_pass_type::graphics && pass.rp != nullptr)
-        {
-            // Use render_pass begin/end
-            pass.rp->begin(cmd, m_frame_ctx.swapchain_image_index,
-                          m_frame_ctx.width, m_frame_ctx.height, pass.clear_color);
-
-            if (pass.execute)
-            {
-                pass.execute(cmd);
-            }
-
-            pass.rp->end(cmd);
-        }
-        else
-        {
-            // Compute or transfer pass (no render pass wrapper)
-            if (pass.execute)
-            {
-                pass.execute(cmd);
-            }
-        }
+        // Execute pass using the unified execute method
+        pass->execute(cmd, m_frame_ctx.swapchain_image_index,
+                      m_frame_ctx.width, m_frame_ctx.height);
     }
 }
 
@@ -385,14 +372,14 @@ vulkan_render_graph::reset()
     m_error.clear();
 }
 
-const rg_vk_pass*
+render_pass*
 vulkan_render_graph::get_pass(const utils::id& name) const
 {
     for (const auto& pass : m_passes)
     {
-        if (pass.name == name)
+        if (pass->m_name == name)
         {
-            return &pass;
+            return pass.get();
         }
     }
     return nullptr;

@@ -1205,10 +1205,11 @@ vulkan_render::prepare_system_resources()
     auto frag_path = path / "error/se_error.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
+    auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
     se_ci.frag_buffer = &frag;
-    se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
     se_ci.is_wire = false;
     se_ci.enable_dynamic_state = false;
     se_ci.alpha = alpha_mode::none;
@@ -1217,7 +1218,7 @@ vulkan_render::prepare_system_resources()
     se_ci.width = m_width;
 
     shader_effect_data* sed = nullptr;
-    auto rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_error"), se_ci, sed);
+    auto rc = main_pass->create_shader_effect(AID("se_error"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     vert_path = path / "system/se_outline.vert";
@@ -1229,7 +1230,7 @@ vulkan_render::prepare_system_resources()
     se_ci.ds_mode = depth_stencil_mode::outline;
 
     sed = nullptr;
-    rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_outline"), se_ci, sed);
+    rc = main_pass->create_shader_effect(AID("se_outline"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     std::vector<texture_sampler_data> sd;
@@ -1242,11 +1243,12 @@ vulkan_render::prepare_system_resources()
     frag_path = path / "system/se_pick.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
+    auto picking_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("picking"));
+
     se_ci.ds_mode = depth_stencil_mode::none;
-    se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("picking"));
     sed = nullptr;
 
-    rc = glob::vulkan_render_loader::getr().create_shader_effect(AID("se_pick"), se_ci, sed);
+    rc = picking_pass->create_shader_effect(AID("se_pick"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     m_pick_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_pick"), AID("pick"),
@@ -1323,17 +1325,18 @@ vulkan_render::prepare_ui_pipeline()
                           .add_field(AID("in_color"), kryga::render::gpu_type::g_color, 1)
                           .finalize();
 
+        auto ui_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
+
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
         se_ci.frag_buffer = &frag;
-        se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
         se_ci.is_wire = false;
         se_ci.enable_dynamic_state = true;
         se_ci.alpha = alpha_mode::ui;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
         se_ci.expected_input_vertex_layout = std::move(layout);
 
-        glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
+        ui_pass->create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
 
         std::vector<texture_sampler_data> samples(1);
         samples.front().texture = m_ui_txt;
@@ -1351,17 +1354,17 @@ vulkan_render::prepare_ui_pipeline()
         auto frag_path = path / "se_upload.frag";
         kryga::utils::buffer::load(frag_path, frag);
 
+        auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
         se_ci.frag_buffer = &frag;
-        se_ci.rp = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
         se_ci.is_wire = false;
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::ui;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
 
-        glob::vulkan_render_loader::getr().create_shader_effect(AID("se_ui_copy"), se_ci,
-                                                                m_ui_copy_se);
+        main_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
 
         std::vector<texture_sampler_data> samples(1);
         samples.front().texture = m_ui_target_txt;

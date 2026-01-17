@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vulkan_render/render_graph.h"
+#include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
 
 #include <utils/id.h>
@@ -14,9 +15,6 @@
 
 namespace kryga::render
 {
-
-// Forward declaration
-class render_pass;
 
 // Access info for barrier calculation
 struct rg_access_info
@@ -53,47 +51,12 @@ struct rg_vk_resource
     std::variant<rg_buffer_binding, rg_image_binding> binding;
 };
 
-// Pre-computed barriers for a pass
-struct rg_pass_barriers
-{
-    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    std::vector<VkMemoryBarrier> memory_barriers;
-    std::vector<VkBufferMemoryBarrier> buffer_barriers;
-    std::vector<VkImageMemoryBarrier> image_barriers;
-
-    bool
-    empty() const
-    {
-        return memory_barriers.empty() && buffer_barriers.empty() && image_barriers.empty();
-    }
-};
-
 // Per-frame render context
 struct rg_frame_context
 {
     uint32_t swapchain_image_index = 0;
     uint32_t width = 0;
     uint32_t height = 0;
-};
-
-// Vulkan-specific pass with command buffer callback
-struct rg_vk_pass
-{
-    utils::id name;
-    rg_pass_type type = rg_pass_type::graphics;
-    std::vector<rg_resource_ref> resources;
-
-    // For graphics passes - pointer to existing render_pass
-    render_pass* rp = nullptr;
-    VkClearColorValue clear_color = {0, 0, 0, 0};
-
-    // Execute callback with command buffer
-    std::function<void(VkCommandBuffer)> execute;
-
-    // Pre-computed barriers (populated during compile)
-    rg_pass_barriers barriers;
-    uint32_t order = 0;
 };
 
 class vulkan_render_graph
@@ -116,8 +79,12 @@ public:
     void
     import_resource(const utils::id& name, rg_resource_type type = rg_resource_type::image);
 
-    // Pass registration
+    // Pass registration - passes are now render_pass objects
     void
+    add_pass(render_pass_sptr pass);
+
+    // Convenience methods for creating and adding passes
+    render_pass_sptr
     add_compute_pass(const utils::id& name,
                      std::vector<rg_resource_ref> resources,
                      std::function<void(VkCommandBuffer)> execute);
@@ -129,7 +96,7 @@ public:
                       VkClearColorValue clear_color,
                       std::function<void(VkCommandBuffer)> execute);
 
-    void
+    render_pass_sptr
     add_transfer_pass(const utils::id& name,
                       std::vector<rg_resource_ref> resources,
                       std::function<void(VkCommandBuffer)> execute);
@@ -189,7 +156,7 @@ public:
         return m_passes.size();
     }
 
-    const rg_vk_pass*
+    render_pass*
     get_pass(const utils::id& name) const;
 
 private:
@@ -207,7 +174,7 @@ private:
     insert_barriers(VkCommandBuffer cmd, const rg_pass_barriers& barriers);
 
     std::unordered_map<utils::id, rg_vk_resource> m_resources;
-    std::vector<rg_vk_pass> m_passes;
+    std::vector<render_pass_sptr> m_passes;
     std::vector<size_t> m_execution_order;
     bool m_compiled = false;
     std::string m_error;

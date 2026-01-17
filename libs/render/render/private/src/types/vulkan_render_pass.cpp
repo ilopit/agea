@@ -6,6 +6,11 @@
 
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/vulkan_render_loader_create_infos.h"
+#include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
+
+#include <utils/kryga_log.h>
 
 namespace kryga::render
 {
@@ -20,18 +25,27 @@ render_pass_builder::set_color_images(const std::vector<vk_utils::vulkan_image_v
     return *this;
 }
 
+render_pass::render_pass(const utils::id& name, rg_pass_type type)
+    : m_name(name)
+    , m_type(type)
+{
+}
+
 render_pass::~render_pass()
 {
-    glob::render_device::getr().delete_immediately(
-        [=](VkDevice vkd, VmaAllocator)
-        {
-            vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr);
-
-            for (auto f : m_framebuffers)
+    if (m_vk_render_pass != VK_NULL_HANDLE)
+    {
+        glob::render_device::getr().delete_immediately(
+            [=](VkDevice vkd, VmaAllocator)
             {
-                vkDestroyFramebuffer(vkd, f, nullptr);
-            }
-        });
+                vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr);
+
+                for (auto f : m_framebuffers)
+                {
+                    vkDestroyFramebuffer(vkd, f, nullptr);
+                }
+            });
+    }
 
     m_color_image_views.clear();
     m_color_images.clear();
@@ -41,16 +55,20 @@ bool
 render_pass::begin(VkCommandBuffer cmd,
                    uint64_t swapchain_image_index,
                    uint32_t width,
-                   uint32_t height,
-                   VkClearColorValue color)
+                   uint32_t height)
 {
+    if (m_vk_render_pass == VK_NULL_HANDLE || m_framebuffers.empty())
+    {
+        return false;
+    }
+
     auto fb_idx = swapchain_image_index % m_framebuffers.size();
 
     auto rp_info = vk_utils::make_renderpass_begin_info(m_vk_render_pass, VkExtent2D{width, height},
                                                         m_framebuffers[fb_idx]);
 
     VkClearValue clear_values[2];
-    clear_values[0].color = color;
+    clear_values[0].color = m_clear_color;
     clear_values[1].depthStencil = {1.0f, 0};
 
     rp_info.clearValueCount = 2;
@@ -66,6 +84,120 @@ render_pass::end(VkCommandBuffer cmd)
 {
     // finalize the render pass
     vkCmdEndRenderPass(cmd);
+
+    return true;
+}
+
+void
+render_pass::execute(VkCommandBuffer cmd, uint64_t swapchain_image_index, uint32_t width, uint32_t height)
+{
+    if (is_graphics())
+    {
+        // Graphics pass: wrap with begin/end
+        begin(cmd, swapchain_image_index, width, height);
+
+        if (m_execute)
+        {
+            m_execute(cmd);
+        }
+
+        end(cmd);
+    }
+    else
+    {
+        // Compute or transfer pass: just execute callback
+        if (m_execute)
+        {
+            m_execute(cmd);
+        }
+    }
+}
+
+result_code
+render_pass::create_shader_effect(const kryga::utils::id& id,
+                                  const shader_effect_create_info& info,
+                                  shader_effect_data*& sed)
+{
+    KRG_check(!get_shader_effect(id), "should never happens");
+
+    auto effect = std::make_shared<shader_effect_data>(id);
+
+    auto info_copy = info;
+    info_copy.rp = this;
+
+    auto rc = vulkan_shader_loader::create_shader_effect(*effect, info_copy);
+
+    effect->m_failed_load = rc != result_code::ok;
+    effect->set_owner_render_pass(this);
+
+    m_shader_effects[id] = effect;
+
+    sed = effect.get();
+
+    return rc;
+}
+
+result_code
+render_pass::update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info)
+{
+    KRG_check(get_shader_effect(se_data.get_id()), "should never happens");
+
+    std::shared_ptr<render::shader_effect_data> old_se_data;
+
+    auto info_copy = info;
+    info_copy.rp = this;
+
+    auto rc = vulkan_shader_loader::update_shader_effect(se_data, info_copy, old_se_data);
+
+    se_data.m_failed_load = rc != result_code::ok;
+
+    if (rc != result_code::ok)
+    {
+        ALOG_LAZY_ERROR;
+        return rc;
+    }
+
+    return rc;
+}
+
+shader_effect_data*
+render_pass::get_shader_effect(const kryga::utils::id& id)
+{
+    auto itr = m_shader_effects.find(id);
+    return itr != m_shader_effects.end() ? itr->second.get() : nullptr;
+}
+
+void
+render_pass::destroy_shader_effect(const kryga::utils::id& id)
+{
+    auto itr = m_shader_effects.find(id);
+    if (itr != m_shader_effects.end())
+    {
+        m_shader_effects.erase(itr);
+    }
+}
+
+bool
+render_pass::validate_fragment_outputs(const reflection::interface_block& frag_outputs,
+                                       std::string& out_error) const
+{
+    // Count fragment shader outputs (only those with valid locations)
+    uint32_t output_count = 0;
+    for (const auto& var : frag_outputs.variables)
+    {
+        // Fragment outputs have locations starting from 0
+        // Built-ins like gl_FragDepth don't have valid locations in this interface
+        output_count++;
+    }
+
+    // Validate output count matches color attachment count
+    if (output_count != m_color_attachment_count)
+    {
+        out_error = "Fragment shader has " + std::to_string(output_count) +
+                    " output(s), but render pass has " + std::to_string(m_color_attachment_count) +
+                    " color attachment(s)";
+        return false;
+    }
 
     return true;
 }
@@ -168,6 +300,12 @@ render_pass_builder::build()
         fb_info.attachmentCount = 2;
         VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &rp->m_framebuffers[i]));
     }
+
+    // Store attachment format info for shader compatibility validation
+    rp->m_color_format = m_color_format;
+    rp->m_depth_format = m_depth_format;
+    rp->m_color_attachment_count = 1;  // Currently we always have 1 color attachment
+
     return rp;
 }
 

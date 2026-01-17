@@ -113,24 +113,6 @@ public:
     destroy_material_data(const kryga::utils::id& id);
 
     /*************************/
-    shader_effect_data*
-    get_shader_effect_data(const kryga::utils::id& id)
-    {
-        return get_data<shader_effect_data>(m_shaders_effects_cache, id);
-    }
-
-    ::kryga::result_code
-    create_shader_effect(const kryga::utils::id& id,
-                         const shader_effect_create_info& info,
-                         shader_effect_data*& sed);
-
-    ::kryga::result_code
-    update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info);
-
-    void
-    destroy_shader_effect_data(const kryga::utils::id& id);
-
-    /*************************/
     void
     create_font(const kryga::utils::id& id, ImFont* font);
 
@@ -203,9 +185,6 @@ private:
     std::unordered_map<kryga::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
     std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>> m_materials_cache;
     std::unordered_map<kryga::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
-
-    std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>>
-        m_shaders_effects_cache;
 
     std::unordered_map<kryga::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
 

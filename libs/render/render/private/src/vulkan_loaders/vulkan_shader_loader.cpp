@@ -73,8 +73,8 @@ load_data_shader(const kryga::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_module_data>(
-        module, std::move(compiled.spirv), stage_bit, std::move(compiled.reflection));
+    sd = std::make_shared<shader_module_data>(module, std::move(compiled.spirv), stage_bit,
+                                              std::move(compiled.reflection));
 
     return result_code::ok;
 }
@@ -194,6 +194,18 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
+    }
+
+    // Validate fragment shader outputs are compatible with render pass attachments
+    if (info.rp && info.rp->get_color_attachment_count() > 0)
+    {
+        std::string validation_error;
+        if (!info.rp->validate_fragment_outputs(
+                se_data.m_fragment_stage_reflection.output_interface, validation_error))
+        {
+            ALOG_LAZY_ERROR;
+            return result_code::failed;
+        }
     }
 
     if (!create_shader_effect_pipeline_layout(se_data))

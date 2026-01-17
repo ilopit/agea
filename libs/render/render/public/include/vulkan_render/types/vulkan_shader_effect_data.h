@@ -17,6 +17,7 @@ namespace kryga
 namespace render
 {
 class shader_module_data;
+class render_pass;
 
 struct vulkan_descriptor_set_layout_data
 {
@@ -73,8 +74,21 @@ public:
     bool m_system = false;
     bool m_failed_load = false;
 
+    render_pass*
+    get_owner_render_pass() const
+    {
+        return m_owner_render_pass;
+    }
+
+    void
+    set_owner_render_pass(render_pass* rp)
+    {
+        m_owner_render_pass = rp;
+    }
+
 private:
     ::kryga::utils::id m_id;
+    render_pass* m_owner_render_pass = nullptr;
 };
 
 }  // namespace render

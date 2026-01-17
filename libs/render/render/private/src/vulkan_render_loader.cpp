@@ -458,63 +458,6 @@ vulkan_render_loader::destroy_material_data(const kryga::utils::id& id)
     }
 }
 
-result_code
-vulkan_render_loader::create_shader_effect(const kryga::utils::id& id,
-                                           const shader_effect_create_info& info,
-                                           shader_effect_data*& sed)
-{
-    KRG_check(!get_shader_effect_data(id), "should never happens");
-
-    auto effect = std::make_shared<shader_effect_data>(id);
-
-    auto rc = vulkan_shader_loader::create_shader_effect(*effect, info);
-
-    effect->m_failed_load = rc != result_code::ok;
-
-    m_shaders_effects_cache[id] = effect;
-
-    sed = effect.get();
-
-    return rc;
-}
-
-result_code
-vulkan_render_loader::update_shader_effect(shader_effect_data& se_data,
-                                           const shader_effect_create_info& info)
-{
-    KRG_check(get_shader_effect_data(se_data.get_id()), "should never happens");
-
-    std::shared_ptr<render::shader_effect_data> old_se_data;
-
-    auto rc = vulkan_shader_loader::update_shader_effect(se_data, info, old_se_data);
-
-    se_data.m_failed_load = rc != result_code::ok;
-
-    if (rc != result_code::ok)
-    {
-        ALOG_LAZY_ERROR;
-        return rc;
-    }
-
-    //     auto rd =
-    //     s_deleter<std::shared_ptr<render::shader_effect_data>>::make(std::move(old_se_data));
-    //
-    //     shedule_to_deltete(std::move(rd));
-
-    return rc;
-}
-
-void
-vulkan_render_loader::destroy_shader_effect_data(const kryga::utils::id& id)
-{
-    auto itr = m_shaders_effects_cache.find(id);
-    if (itr != m_shaders_effects_cache.end())
-    {
-        //  shedule_to_deltete_t(std::move(itr->second));
-        m_shaders_effects_cache.erase(itr);
-    }
-}
-
 void
 vulkan_render_loader::create_font(const kryga::utils::id& id, ImFont* font)
 {
@@ -538,7 +481,6 @@ vulkan_render_loader::clear_caches()
     m_textures_cache.clear();
     m_materials_cache.clear();
     m_shaders_cache.clear();
-    m_shaders_effects_cache.clear();
     m_samplers_cache.clear();
     m_render_passes.clear();
     m_materials_index.clear();
