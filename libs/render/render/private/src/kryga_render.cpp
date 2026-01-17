@@ -313,15 +313,14 @@ vulkan_render::draw_main()
     // UI and picking passes have single render targets (not per-swapchain)
     auto ui_images = ui_pass->get_color_images();
     auto ui_views = ui_pass->get_color_image_views();
-    m_render_graph.bind_image(AID("ui_target"), ui_images[0]->image(),
-                              ui_views[0]->vk(), ui_pass->get_color_format(),
-                              VK_IMAGE_LAYOUT_UNDEFINED);
+    m_render_graph.bind_image(AID("ui_target"), ui_images[0]->image(), ui_views[0]->vk(),
+                              ui_pass->get_color_format(), VK_IMAGE_LAYOUT_UNDEFINED);
 
     auto picking_images = picking_pass->get_color_images();
     auto picking_views = picking_pass->get_color_image_views();
     m_render_graph.bind_image(AID("picking_target"), picking_images[0]->image(),
-                              picking_views[0]->vk(),
-                              picking_pass->get_color_format(), VK_IMAGE_LAYOUT_UNDEFINED);
+                              picking_views[0]->vk(), picking_pass->get_color_format(),
+                              VK_IMAGE_LAYOUT_UNDEFINED);
 
     // Execute render graph (handles passes in dependency order with auto barriers)
     m_render_graph.execute(cmd);
@@ -1892,10 +1891,6 @@ vulkan_render::setup_render_graph()
     // Materials SSBO - set 3
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-    // UI buffers
-    //   m_render_graph.register_buffer(AID("ui_vertices"), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    // m_render_graph.register_buffer(AID("ui_indices"), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-
     // Imported resources (externally managed)
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
@@ -1972,10 +1967,9 @@ vulkan_render::setup_render_graph()
         [this](VkCommandBuffer) { draw_objects(*m_current_frame); });
 
     // Compile the graph (calculates execution order)
-    if (!m_render_graph.compile())
-    {
-        ALOG_ERROR("Failed to compile render graph: {}", m_render_graph.get_error());
-    }
+    bool result = m_render_graph.compile();
+
+    KRG_check(result, "Pass should be always compiled");
 }
 
 void

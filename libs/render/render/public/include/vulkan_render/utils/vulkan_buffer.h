@@ -37,7 +37,7 @@ public:
     }
 
     VmaAllocation
-    allocation()
+    allocation() const
     {
         return m_allocation;
     }

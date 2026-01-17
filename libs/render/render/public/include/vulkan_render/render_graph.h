@@ -13,27 +13,12 @@
 
 namespace kryga::render
 {
-
-// Forward declaration for backend data
-class shader_effect_data;
-
-// Resource usage flags
 enum class rg_resource_usage
 {
     read = 0,
     write,
     read_write
 };
-
-// ============================================================================
-// Pipeline description (API-agnostic)
-// ============================================================================
-struct rg_pipeline
-{
-    shader_effect_data* data = nullptr;
-};
-
-using rg_pipeline_sptr = std::shared_ptr<rg_pipeline>;
 
 // Pass type - determines synchronization behavior
 enum class rg_pass_type
@@ -61,8 +46,6 @@ struct rg_resource
     uint32_t format = 0;  // VkFormat or similar
     bool is_imported = false;
 };
-
-using resource_sptr = std::shared_ptr<rg_resource>;
 
 // Pass resource reference
 struct rg_resource_ref
@@ -298,13 +281,15 @@ public:
     }
 
     // Execute all passes in order
-    void
+    bool
     execute()
     {
         if (!m_compiled)
         {
             if (!compile())
-                throw std::runtime_error("Failed to compile render graph: " + m_error);
+            {
+                return false;
+            }
         }
 
         for (const auto& pass_id : m_execution_order)

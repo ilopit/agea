@@ -129,7 +129,7 @@ public:
     compile();
 
     // Execute all passes in dependency order with automatic barriers
-    void
+    bool
     execute(VkCommandBuffer cmd);
 
     // Reset for reuse
@@ -141,12 +141,6 @@ public:
     is_compiled() const
     {
         return m_compiled;
-    }
-
-    const std::string&
-    get_error() const
-    {
-        return m_error;
     }
 
     const std::vector<size_t>&
@@ -167,7 +161,9 @@ public:
 private:
     // Barrier calculation helpers
     static rg_access_info
-    compute_access_for_usage(rg_resource_usage usage, rg_pass_type pass_type, rg_resource_type res_type);
+    compute_access_for_usage(rg_resource_usage usage,
+                             rg_pass_type pass_type,
+                             rg_resource_type res_type);
 
     static bool
     needs_barrier(const rg_access_info& prev, const rg_access_info& next);
@@ -182,7 +178,6 @@ private:
     std::vector<render_pass_sptr> m_passes;
     std::vector<size_t> m_execution_order;
     bool m_compiled = false;
-    std::string m_error;
 
     // Per-frame context
     rg_frame_context m_frame_ctx;
