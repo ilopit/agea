@@ -1,4 +1,4 @@
-#include "vulkan_render/vulkan_render_graph.h"
+#include "vulkan_render/render_graph.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 
 #include <utils/check.h>
@@ -114,29 +114,25 @@ vulkan_render_graph::begin_frame()
 }
 
 void
-vulkan_render_graph::bind_buffer(const utils::id& name,
-                                 VkBuffer buf,
-                                 VkDeviceSize offset,
-                                 VkDeviceSize range)
+vulkan_render_graph::bind_buffer(const utils::id& name, vk_utils::vulkan_buffer& buf)
 {
     auto it = m_resources.find(name);
     KRG_check(it != m_resources.end(), "Resource not registered");
-    KRG_check(buf != VK_NULL_HANDLE, "Cannot bind null buffer");
+    KRG_check(buf.buffer() != VK_NULL_HANDLE, "Cannot bind null buffer");
 
-    it->second.binding = rg_buffer_binding{buf, offset, range};
+    it->second.binding = &buf;
     m_bound_this_frame.insert(name);
 }
 
 void
-vulkan_render_graph::bind_image(
-    const utils::id& name, VkImage img, VkImageView view, VkFormat format, VkImageLayout layout)
+vulkan_render_graph::bind_image(const utils::id& name, vk_utils::vulkan_image& img)
 {
     auto it = m_resources.find(name);
     KRG_check(it != m_resources.end(), "Resource not registered");
-    KRG_check(img != VK_NULL_HANDLE, "Cannot bind null image");
+    KRG_check(img.image() != VK_NULL_HANDLE, "Cannot bind null image");
 
-    it->second.binding = rg_image_binding{img, view, format, layout};
-    it->second.last_access.layout = layout;
+    it->second.binding = &img;
+    it->second.last_access.layout = VK_IMAGE_LAYOUT_UNDEFINED;
     m_bound_this_frame.insert(name);
 }
 
@@ -163,9 +159,10 @@ vulkan_render_graph::compile()
     {
         for (const auto& ref : pass->m_resources)
         {
-            if (m_resources.find(ref.resource) == m_resources.end())
+            if (!ref.resource || m_resources.find(ref.resource->name) == m_resources.end())
             {
-                ALOG_ERROR("Pass {} doesn't have {}", pass->m_name.str(), ref.resource.str());
+                ALOG_ERROR("Pass {} doesn't have {}", pass->m_name.str(),
+                           ref.resource ? ref.resource->name.str() : "null");
 
                 return false;
             }
@@ -180,13 +177,16 @@ vulkan_render_graph::compile()
     {
         for (const auto& ref : m_passes[i]->m_resources)
         {
-            if (ref.usage == rg_resource_usage::write || ref.usage == rg_resource_usage::read_write)
+            if (!ref.resource)
+                continue;
+
+            if (ref.usage == rg_access_mode::write || ref.usage == rg_access_mode::read_write)
             {
-                writers[ref.resource].push_back(i);
+                writers[ref.resource->name].push_back(i);
             }
-            if (ref.usage == rg_resource_usage::read || ref.usage == rg_resource_usage::read_write)
+            if (ref.usage == rg_access_mode::read || ref.usage == rg_access_mode::read_write)
             {
-                readers[ref.resource].push_back(i);
+                readers[ref.resource->name].push_back(i);
             }
         }
     }
@@ -296,10 +296,8 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
         res.last_access = rg_access_info{};
         if (res.base.type == rg_resource_type::image)
         {
-            if (auto* img = std::get_if<rg_image_binding>(&res.binding))
-            {
-                res.last_access.layout = img->current_layout;
-            }
+            // Reset to undefined - render passes handle initial transitions
+            res.last_access.layout = VK_IMAGE_LAYOUT_UNDEFINED;
         }
     }
 
@@ -311,7 +309,10 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
         rg_pass_barriers barriers;
         for (const auto& ref : pass->m_resources)
         {
-            auto it = m_resources.find(ref.resource);
+            if (!ref.resource)
+                continue;
+
+            auto it = m_resources.find(ref.resource->name);
             if (it == m_resources.end())
             {
                 continue;
@@ -319,16 +320,16 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
 
             auto& res = it->second;
             rg_access_info required =
-                compute_access_for_usage(ref.usage, pass->m_type, res.base.type);
+                compute_access_for_usage(ref.usage, pass->m_type, ref.resource->type);
 
             if (needs_barrier(res.last_access, required))
             {
                 barriers.src_stage |= res.last_access.stage;
                 barriers.dst_stage |= required.stage;
 
-                if (res.base.type == rg_resource_type::buffer)
+                if (ref.resource->type == rg_resource_type::buffer)
                 {
-                    if (auto* buf = std::get_if<rg_buffer_binding>(&res.binding))
+                    if (auto** buf = std::get_if<vk_utils::vulkan_buffer*>(&res.binding))
                     {
                         VkBufferMemoryBarrier barrier = {};
                         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -336,9 +337,9 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
                         barrier.dstAccessMask = required.access;
                         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        barrier.buffer = buf->buffer;
-                        barrier.offset = buf->offset;
-                        barrier.size = buf->range;
+                        barrier.buffer = (*buf)->buffer();
+                        barrier.offset = 0;
+                        barrier.size = (*buf)->get_alloc_size();
                         barriers.buffer_barriers.push_back(barrier);
                     }
                 }
@@ -347,7 +348,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
                     // Only insert image barriers for compute/transfer passes
                     // Graphics passes use VkRenderPass which handles layout transitions
                     // via initialLayout/finalLayout in attachment descriptions
-                    if (auto* img = std::get_if<rg_image_binding>(&res.binding))
+                    if (auto** img = std::get_if<vk_utils::vulkan_image*>(&res.binding))
                     {
                         VkImageMemoryBarrier barrier = {};
                         barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -357,7 +358,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
                         barrier.newLayout = required.layout;
                         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        barrier.image = img->image;
+                        barrier.image = (*img)->image();
                         barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
                         barrier.subresourceRange.baseMipLevel = 0;
                         barrier.subresourceRange.levelCount = 1;
@@ -379,6 +380,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
         pass->execute(cmd, m_frame_ctx.swapchain_image_index, m_frame_ctx.width,
                       m_frame_ctx.height);
     }
+    return true;
 }
 
 void
@@ -404,7 +406,7 @@ vulkan_render_graph::get_pass(const utils::id& name) const
 }
 
 rg_access_info
-vulkan_render_graph::compute_access_for_usage(rg_resource_usage usage,
+vulkan_render_graph::compute_access_for_usage(rg_access_mode usage,
                                               rg_pass_type pass_type,
                                               rg_resource_type res_type)
 {
@@ -414,17 +416,22 @@ vulkan_render_graph::compute_access_for_usage(rg_resource_usage usage,
     switch (pass_type)
     {
     case rg_pass_type::compute:
+    {
         info.stage = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
         break;
+    }
     case rg_pass_type::transfer:
+    {
         info.stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         break;
+    }
     case rg_pass_type::graphics:
     default:
+    {
         // For graphics, assume fragment shader for reads, color attachment for writes
         if (res_type == rg_resource_type::image)
         {
-            info.stage = (usage == rg_resource_usage::read)
+            info.stage = (usage == rg_access_mode::read)
                              ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                              : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         }
@@ -435,11 +442,13 @@ vulkan_render_graph::compute_access_for_usage(rg_resource_usage usage,
         }
         break;
     }
+    }
 
     // Determine access flags based on usage and resource type
     switch (usage)
     {
-    case rg_resource_usage::read:
+    case rg_access_mode::read:
+    {
         if (pass_type == rg_pass_type::transfer)
         {
             info.access = VK_ACCESS_TRANSFER_READ_BIT;
@@ -451,8 +460,9 @@ vulkan_render_graph::compute_access_for_usage(rg_resource_usage usage,
             info.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
         break;
-
-    case rg_resource_usage::write:
+    }
+    case rg_access_mode::write:
+    {
         if (pass_type == rg_pass_type::transfer)
         {
             info.access = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -469,11 +479,14 @@ vulkan_render_graph::compute_access_for_usage(rg_resource_usage usage,
             info.layout = VK_IMAGE_LAYOUT_GENERAL;
         }
         break;
+    }
 
-    case rg_resource_usage::read_write:
+    case rg_access_mode::read_write:
+    {
         info.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         info.layout = VK_IMAGE_LAYOUT_GENERAL;
         break;
+    }
     }
 
     return info;

@@ -4,7 +4,7 @@
 
 #include <vulkan_render/utils/vulkan_image.h>
 
-#include <vulkan_render/render_graph.h>
+#include <vulkan_render/render_graph_types.h>
 
 #include <shader_system/shader_reflection.h>
 
@@ -25,21 +25,6 @@ namespace render
 struct shader_effect_create_info;
 class shader_effect_data;
 
-// Pre-computed barriers for a pass (Vulkan-specific)
-struct rg_pass_barriers
-{
-    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    std::vector<VkMemoryBarrier> memory_barriers;
-    std::vector<VkBufferMemoryBarrier> buffer_barriers;
-    std::vector<VkImageMemoryBarrier> image_barriers;
-
-    bool
-    empty() const
-    {
-        return memory_barriers.empty() && buffer_barriers.empty() && image_barriers.empty();
-    }
-};
 class render_pass
 {
 public:

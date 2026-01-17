@@ -276,27 +276,18 @@ vulkan_render::draw_main()
     m_render_graph.begin_frame();
 
     // Bind per-frame buffer resources to the graph (names must match shader bindings)
-    m_render_graph.bind_buffer(AID("dyn_camera_data"), current_frame.buffers.dynamic_data.buffer(),
-                               0, current_frame.buffers.dynamic_data.get_alloc_size());
-    m_render_graph.bind_buffer(AID("dyn_object_buffer"), current_frame.buffers.objects.buffer(), 0,
-                               current_frame.buffers.objects.get_alloc_size());
+    m_render_graph.bind_buffer(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+    m_render_graph.bind_buffer(AID("dyn_object_buffer"), current_frame.buffers.objects);
     m_render_graph.bind_buffer(AID("dyn_gpu_universal_light_data"),
-                               current_frame.buffers.universal_lights.buffer(), 0,
-                               current_frame.buffers.universal_lights.get_alloc_size());
+                               current_frame.buffers.universal_lights);
     m_render_graph.bind_buffer(AID("dyn_directional_lights_buffer"),
-                               current_frame.buffers.directional_lights.buffer(), 0,
-                               current_frame.buffers.directional_lights.get_alloc_size());
+                               current_frame.buffers.directional_lights);
     m_render_graph.bind_buffer(AID("dyn_cluster_light_counts"),
-                               current_frame.buffers.cluster_counts.buffer(), 0,
-                               current_frame.buffers.cluster_counts.get_alloc_size());
+                               current_frame.buffers.cluster_counts);
     m_render_graph.bind_buffer(AID("dyn_cluster_light_indices"),
-                               current_frame.buffers.cluster_indices.buffer(), 0,
-                               current_frame.buffers.cluster_indices.get_alloc_size());
-    m_render_graph.bind_buffer(AID("dyn_cluster_config"),
-                               current_frame.buffers.cluster_config.buffer(), 0,
-                               current_frame.buffers.cluster_config.get_alloc_size());
-    m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials.buffer(),
-                               0, current_frame.buffers.materials.get_alloc_size());
+                               current_frame.buffers.cluster_indices);
+    m_render_graph.bind_buffer(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+    m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
 
     // Bind per-frame image resources
     auto* main_pass = get_render_pass(AID("main"));
@@ -305,22 +296,14 @@ vulkan_render::draw_main()
 
     // Main pass uses swapchain images (multiple, indexed by swapchain_image_index)
     auto main_images = main_pass->get_color_images();
-    auto main_views = main_pass->get_color_image_views();
-    m_render_graph.bind_image(AID("swapchain"), main_images[swapchain_image_index]->image(),
-                              main_views[swapchain_image_index]->vk(),
-                              main_pass->get_color_format(), VK_IMAGE_LAYOUT_UNDEFINED);
+    m_render_graph.bind_image(AID("swapchain"), *main_images[swapchain_image_index]);
 
     // UI and picking passes have single render targets (not per-swapchain)
     auto ui_images = ui_pass->get_color_images();
-    auto ui_views = ui_pass->get_color_image_views();
-    m_render_graph.bind_image(AID("ui_target"), ui_images[0]->image(), ui_views[0]->vk(),
-                              ui_pass->get_color_format(), VK_IMAGE_LAYOUT_UNDEFINED);
+    m_render_graph.bind_image(AID("ui_target"), *ui_images[0]);
 
     auto picking_images = picking_pass->get_color_images();
-    auto picking_views = picking_pass->get_color_image_views();
-    m_render_graph.bind_image(AID("picking_target"), picking_images[0]->image(),
-                              picking_views[0]->vk(), picking_pass->get_color_format(),
-                              VK_IMAGE_LAYOUT_UNDEFINED);
+    m_render_graph.bind_image(AID("picking_target"), *picking_images[0]);
 
     // Execute render graph (handles passes in dependency order with auto barriers)
     m_render_graph.execute(cmd);
@@ -1900,9 +1883,9 @@ vulkan_render::setup_render_graph()
     // Compute pass: cluster culling (writes cluster buffers, reads lights)
     m_render_graph.add_compute_pass(
         AID("cluster_cull"),
-        {render_graph::write(AID("dyn_cluster_light_counts")),
-         render_graph::write(AID("dyn_cluster_light_indices")),
-         render_graph::read(AID("dyn_gpu_universal_light_data"))},
+        {m_render_graph.write(AID("dyn_cluster_light_counts")),
+         m_render_graph.write(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_gpu_universal_light_data"))},
         [this](VkCommandBuffer cmd)
         {
             if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader)
@@ -1913,19 +1896,18 @@ vulkan_render::setup_render_graph()
 
     // UI pass: writes to UI render target
     // Graph handles render_pass->begin/end automatically
-    m_render_graph.add_graphics_pass(
-        AID("ui"), {render_graph::write(AID("ui_target"), rg_resource_type::image)},
-        get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
-        [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
+    m_render_graph.add_graphics_pass(AID("ui"), {m_render_graph.write(AID("ui_target"))},
+                                     get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
 
     // Picking pass: writes to picking target, reads shader resources
     m_render_graph.add_graphics_pass(
         AID("picking"),
-        {render_graph::write(AID("picking_target"), rg_resource_type::image),
-         render_graph::read(AID("dyn_camera_data")), render_graph::read(AID("dyn_object_buffer")),
-         render_graph::read(AID("dyn_cluster_light_counts")),
-         render_graph::read(AID("dyn_cluster_light_indices")),
-         render_graph::read(AID("dyn_cluster_config"))},
+        {m_render_graph.write(AID("picking_target")), m_render_graph.read(AID("dyn_camera_data")),
+         m_render_graph.read(AID("dyn_object_buffer")),
+         m_render_graph.read(AID("dyn_cluster_light_counts")),
+         m_render_graph.read(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_cluster_config"))},
         get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
         [this](VkCommandBuffer cmd)
         {
@@ -1953,16 +1935,15 @@ vulkan_render::setup_render_graph()
     // Main pass: writes to swapchain, reads all shader resources
     m_render_graph.add_graphics_pass(
         AID("main"),
-        {render_graph::write(AID("swapchain"), rg_resource_type::image),
-         render_graph::read(AID("ui_target"), rg_resource_type::image),
+        {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
          // Shader resources
-         render_graph::read(AID("dyn_camera_data")), render_graph::read(AID("dyn_object_buffer")),
-         render_graph::read(AID("dyn_gpu_universal_light_data")),
-         render_graph::read(AID("dyn_directional_lights_buffer")),
-         render_graph::read(AID("dyn_cluster_light_counts")),
-         render_graph::read(AID("dyn_cluster_light_indices")),
-         render_graph::read(AID("dyn_cluster_config")),
-         render_graph::read(AID("dyn_material_buffer"))},
+         m_render_graph.read(AID("dyn_camera_data")), m_render_graph.read(AID("dyn_object_buffer")),
+         m_render_graph.read(AID("dyn_gpu_universal_light_data")),
+         m_render_graph.read(AID("dyn_directional_lights_buffer")),
+         m_render_graph.read(AID("dyn_cluster_light_counts")),
+         m_render_graph.read(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_cluster_config")),
+         m_render_graph.read(AID("dyn_material_buffer"))},
         get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
         [this](VkCommandBuffer) { draw_objects(*m_current_frame); });
 

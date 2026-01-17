@@ -90,7 +90,10 @@ render_pass::end(VkCommandBuffer cmd)
 }
 
 void
-render_pass::execute(VkCommandBuffer cmd, uint64_t swapchain_image_index, uint32_t width, uint32_t height)
+render_pass::execute(VkCommandBuffer cmd,
+                     uint64_t swapchain_image_index,
+                     uint32_t width,
+                     uint32_t height)
 {
     if (is_graphics())
     {
@@ -144,8 +147,8 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
         if (!validate_shader_resources(effect->m_vertex_stage->get_reflection(),
                                        effect->m_frag_stage->get_reflection(), validation_error))
         {
-            ALOG_ERROR("Shader effect '{}' resource validation failed: {}",
-                       std::string(id.cstr()), validation_error);
+            ALOG_ERROR("Shader effect '{}' resource validation failed: {}", id.str(),
+                       validation_error);
             effect->m_failed_load = true;
             effect->set_owner_render_pass(this);
             m_shader_effects[id] = effect;
@@ -165,7 +168,8 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
 }
 
 result_code
-render_pass::update_shader_effect(shader_effect_data& se_data, const shader_effect_create_info& info)
+render_pass::update_shader_effect(shader_effect_data& se_data,
+                                  const shader_effect_create_info& info)
 {
     KRG_check(get_shader_effect(se_data.get_id()), "should never happens");
 
@@ -273,16 +277,16 @@ descriptor_requires_write(VkDescriptorType descriptor_type)
 
 // Check if usage provides at least read access
 bool
-usage_allows_read(rg_resource_usage usage)
+usage_allows_read(rg_access_mode usage)
 {
-    return usage == rg_resource_usage::read || usage == rg_resource_usage::read_write;
+    return usage == rg_access_mode::read || usage == rg_access_mode::read_write;
 }
 
 // Check if usage provides write access
 bool
-usage_allows_write(rg_resource_usage usage)
+usage_allows_write(rg_access_mode usage)
 {
-    return usage == rg_resource_usage::write || usage == rg_resource_usage::read_write;
+    return usage == rg_access_mode::write || usage == rg_access_mode::read_write;
 }
 
 const char*
@@ -325,7 +329,7 @@ render_pass::validate_shader_resources(const reflection::shader_reflection& vert
         const rg_resource_ref* found_resource = nullptr;
         for (const auto& res : m_resources)
         {
-            if (res.resource == b.name)
+            if (res.resource && res.resource->name == b.name)
             {
                 found_resource = &res;
                 break;
@@ -342,12 +346,12 @@ render_pass::validate_shader_resources(const reflection::shader_reflection& vert
 
         // Validate type compatibility
         rg_resource_type expected_type = get_expected_resource_type(b.type);
-        if (found_resource->type != expected_type)
+        if (found_resource->resource->type != expected_type)
         {
             out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
                         "' expects " + resource_type_to_string(expected_type) +
                         " but render pass resource is " +
-                        resource_type_to_string(found_resource->type);
+                        resource_type_to_string(found_resource->resource->type);
             return false;
         }
 
