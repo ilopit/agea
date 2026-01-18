@@ -1,6 +1,7 @@
 #pragma once
 
 #include "vulkan_render/types/vulkan_generic.h"
+#include "vulkan_render/types/binding_table.h"
 #include "vulkan_render/shader_reflection_utils.h"
 
 #include <utils/id.h>
@@ -29,6 +30,57 @@ public:
     void
     reset();
 
+    // === Binding table API ===
+
+    binding_table&
+    bindings()
+    {
+        KRG_check(!m_binding_table.is_finalized(), "Cannot modify finalized bindings");
+        return m_binding_table;
+    }
+
+    const binding_table&
+    bindings() const
+    {
+        return m_binding_table;
+    }
+
+    bool
+    finalize_bindings(vk_utils::descriptor_layout_cache& layout_cache)
+    {
+        return m_binding_table.finalize(layout_cache);
+    }
+
+    bool
+    are_bindings_finalized() const
+    {
+        return m_binding_table.is_finalized();
+    }
+
+    void
+    bind(const utils::id& name, vk_utils::vulkan_buffer& buf)
+    {
+        m_binding_table.bind_buffer(name, buf);
+    }
+
+    VkDescriptorSet
+    get_descriptor_set(uint32_t set_index, vk_utils::descriptor_allocator& allocator)
+    {
+        return m_binding_table.build_set(set_index, allocator);
+    }
+
+    void
+    begin_frame()
+    {
+        m_binding_table.begin_frame();
+    }
+
+    VkDescriptorSetLayout
+    get_set_layout(uint32_t set_index) const
+    {
+        return m_binding_table.get_layout(set_index);
+    }
+
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 
@@ -39,6 +91,7 @@ public:
 
 private:
     ::kryga::utils::id m_id;
+    binding_table m_binding_table;
 };
 
 }  // namespace render

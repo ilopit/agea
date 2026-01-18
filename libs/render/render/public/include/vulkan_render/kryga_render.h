@@ -237,9 +237,6 @@ private:
     void
     dispatch_cluster_cull_impl(VkCommandBuffer cmd);
 
-    void
-    build_cluster_cull_descriptor_set(render::frame_state& frame);
-
     // Per-object light grid methods
     void
     rebuild_light_grid();

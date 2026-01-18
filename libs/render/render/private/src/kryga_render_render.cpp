@@ -1,0 +1,682 @@
+#include "vulkan_render/kryga_render.h"
+
+#include <tracy/Tracy.hpp>
+
+#include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/vulkan_render_loader.h"
+#include "vulkan_render/vk_descriptors.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
+#include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_mesh_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/vulkan_render_data.h"
+
+#include <gpu_types/gpu_generic_constants.h>
+
+#include <utils/kryga_log.h>
+#include <utils/buffer.h>
+
+#include <imgui.h>
+
+#include <resource_locator/resource_locator.h>
+#include <global_state/global_state.h>
+
+#include <algorithm>
+
+namespace kryga
+{
+namespace render
+{
+
+void
+vulkan_render::draw_objects(render::frame_state& current_frame)
+{
+    ZoneScopedN("Render::DrawObjects");
+
+    auto cmd = current_frame.frame->m_main_command_buffer;
+
+    auto device = glob::render_device::get();
+
+    // DEFAULT
+    for (auto& r : m_default_render_object_queue)
+    {
+        draw_objects_queue(r.second, cmd, current_frame, false);
+    }
+
+    // OUTLINE
+    for (auto& r : m_outline_render_object_queue)
+    {
+        draw_objects_queue(r.second, cmd, current_frame, true);
+    }
+
+    pipeline_ctx pctx{};
+    bind_material(cmd, m_outline_mat, current_frame, pctx, false);
+
+    for (auto& r : m_outline_render_object_queue)
+    {
+        draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
+    }
+
+    // TRANSPARENT
+    if (!m_transparent_render_object_queue.empty())
+    {
+        update_transparent_objects_queue();
+        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
+    }
+
+    // Draw UI
+    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
+
+    pctx = {};
+    bind_material(cmd, m_ui_target_mat, current_frame, pctx, false, false);
+    bind_mesh(cmd, m);
+
+    if (!m->has_indices())
+    {
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
+    else
+    {
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    }
+}
+
+void
+vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
+                                                 VkCommandBuffer cmd,
+                                                 render::frame_state& current_frame)
+{
+    mesh_data* cur_mesh = nullptr;
+
+    pipeline_ctx pctx{};
+
+    for (auto& obj : r)
+    {
+        ++m_all_draws;
+        // Frustum culling
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        {
+            ++m_culled_draws;
+            continue;
+        }
+
+        if (pctx.cur_material_type_idx != obj->material->gpu_type_idx())
+        {
+            bind_material(cmd, obj->material, current_frame, pctx);
+        }
+        else if (pctx.cur_material_idx != obj->material->gpu_idx())
+        {
+            pctx.cur_material_idx = obj->material->gpu_idx();
+
+            if (obj->material->has_textures())
+            {
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
+                                        KGPU_textures_descriptor_sets, 1,
+                                        &obj->material->get_textures_ds(), 0, nullptr);
+            }
+        }
+
+        if (cur_mesh != obj->mesh)
+        {
+            cur_mesh = obj->mesh;
+            bind_mesh(cmd, cur_mesh);
+        }
+
+        draw_object(cmd, pctx, obj);
+    }
+}
+
+void
+vulkan_render::draw_objects_queue(render_line_container& r,
+                                  VkCommandBuffer cmd,
+                                  render::frame_state& current_frame,
+                                  bool outlined)
+
+{
+    pipeline_ctx pctx{};
+
+    if (!r.empty())
+    {
+        bind_material(cmd, r.front()->material, current_frame, pctx, outlined);
+    }
+
+    draw_same_pipeline_objects_queue(cmd, pctx, r);
+}
+
+void
+vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
+                                                const pipeline_ctx& pctx,
+                                                const render_line_container& r,
+                                                bool rebind_images)
+{
+    mesh_data* cur_mesh = nullptr;
+    uint32_t cur_material_idx = pctx.cur_material_idx;
+
+    for (auto& obj : r)
+    {
+        ++m_all_draws;
+        // Frustum culling
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        {
+            ++m_culled_draws;
+            continue;
+        }
+
+        if (rebind_images && cur_material_idx != obj->material->gpu_idx())
+        {
+            cur_material_idx = obj->material->gpu_idx();
+
+            if (obj->material->has_textures())
+            {
+                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
+                                        KGPU_textures_descriptor_sets, 1,
+                                        &obj->material->get_textures_ds(), 0, nullptr);
+            }
+        }
+
+        if (cur_mesh != obj->mesh)
+        {
+            cur_mesh = obj->mesh;
+            bind_mesh(cmd, cur_mesh);
+        }
+
+        draw_object(cmd, pctx, obj);
+    }
+}
+
+void
+vulkan_render::draw_object(VkCommandBuffer cmd,
+                           const pipeline_ctx& pctx,
+                           const render::vulkan_render_data* obj)
+{
+    // Set directional light (global)
+    m_obj_config.directional_light_id =
+        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
+
+    // Set lighting mode
+    m_obj_config.use_clustered_lighting = m_use_clustered_lighting ? 1 : 0;
+
+    if (!m_use_clustered_lighting)
+    {
+        // Per-object light grid path: query lights affecting this object
+        m_obj_config.local_lights_size =
+            m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->bounding_radius,
+                                      m_obj_config.local_light_ids, KGPU_max_lights_per_object);
+    }
+    else
+    {
+        m_obj_config.local_lights_size = 0;
+    }
+
+    auto cur_mesh = obj->mesh;
+    m_obj_config.material_id = obj->material->gpu_idx();
+
+    constexpr auto range = sizeof(gpu::push_constants);
+    vkCmdPushConstants(cmd, pctx.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
+                       &m_obj_config);
+
+    // we can now draw
+    if (!obj->mesh->has_indices())
+    {
+        vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->slot());
+    }
+    else
+    {
+        vkCmdDrawIndexed(cmd, cur_mesh->indices_size(), 1, 0, 0, obj->slot());
+    }
+}
+
+void
+vulkan_render::bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh)
+{
+    KRG_check(cur_mesh, "Should not be null");
+
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
+
+    if (cur_mesh->has_indices())
+    {
+        vkCmdBindIndexBuffer(cmd, cur_mesh->m_index_buffer.buffer(), 0, VK_INDEX_TYPE_UINT32);
+    }
+}
+
+void
+vulkan_render::bind_material(VkCommandBuffer cmd,
+                             material_data* cur_material,
+                             render::frame_state& current_frame,
+                             pipeline_ctx& ctx,
+                             bool outline,
+                             bool object)
+{
+    auto pipeline = outline ? cur_material->get_shader_effect()->m_with_stencil_pipeline
+                            : cur_material->get_shader_effect()->m_pipeline;
+    ctx.pipeline_layout = cur_material->get_shader_effect()->m_pipeline_layout;
+    ctx.cur_material_idx = cur_material->gpu_idx();
+    ctx.cur_material_type_idx = cur_material->gpu_type_idx();
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    const uint32_t dummy_offset[] = {0, 0, 0, 0, 0, 0};
+
+    if (object)
+    {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                KGPU_objects_descriptor_sets, 1, &m_objects_set,
+                                KGPU_objects_max_binding + 1, dummy_offset);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                KGPU_global_descriptor_sets, 1, &m_global_set,
+                                current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
+                                current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
+    }
+
+    if (cur_material->has_gpu_data())
+    {
+        auto& sm = m_materials_layout.at(cur_material->gpu_idx());
+        VkDescriptorBufferInfo mat_buffer_info{.buffer = current_frame.buffers.materials.buffer(),
+                                               .offset = sm.offset,
+                                               .range = sm.get_allocated_size()};
+
+        VkDescriptorSet mat_data_set{};
+        vk_utils::descriptor_builder::begin(
+            glob::render_device::getr().descriptor_layout_cache(),
+            current_frame.frame->m_dynamic_descriptor_allocator.get())
+            .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                         VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build(mat_data_set);
+
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                KGPU_materials_descriptor_sets, 1, &mat_data_set, 1, dummy_offset);
+    }
+
+    if (cur_material->has_textures())
+    {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                KGPU_textures_descriptor_sets, 1, &cur_material->get_textures_ds(),
+                                0, nullptr);
+    }
+}
+
+void
+vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id)
+{
+    m_obj_config.directional_light_id = 0U;
+}
+
+void
+vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
+{
+    KRG_check(obj_data, "Should be always valid");
+
+    if (obj_data->outlined)
+    {
+        KRG_check(obj_data->queue_id != "transparent", "Not supported!");
+
+        m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+
+        return;
+    }
+
+    if (obj_data->queue_id == "transparent")
+    {
+        m_transparent_render_object_queue.emplace_back(obj_data);
+    }
+    else
+    {
+        m_default_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+    }
+}
+
+void
+vulkan_render::reschedule_to_drawing(render::vulkan_render_data* obj_data)
+{
+    remove_from_drawing(obj_data);
+    schedule_to_drawing(obj_data);
+}
+
+void
+vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
+{
+    KRG_check(obj_data, "Should be always valid");
+
+    {
+        KRG_check(obj_data->queue_id != "transparent", "Not supported!");
+
+        const std::string id = obj_data->queue_id;
+
+        auto& bucket = m_outline_render_object_queue[id];
+
+        auto itr = bucket.find(obj_data);
+        if (itr != bucket.end())
+        {
+            bucket.swap_and_remove(itr);
+
+            if (bucket.get_size() == 0)
+            {
+                ALOG_TRACE("Dropping old queue");
+                m_outline_render_object_queue.erase(id);
+            }
+        }
+    }
+
+    if (obj_data->queue_id == "transparent")
+    {
+        auto itr = m_transparent_render_object_queue.find(obj_data);
+
+        m_transparent_render_object_queue.swap_and_remove(itr);
+    }
+    else
+    {
+        const std::string id = obj_data->queue_id;
+
+        auto& bucket = m_default_render_object_queue[id];
+
+        auto itr = bucket.find(obj_data);
+        if (itr != bucket.end())
+        {
+            bucket.swap_and_remove(itr);
+
+            if (bucket.get_size() == 0)
+            {
+                ALOG_TRACE("Dropping old queue");
+                m_default_render_object_queue.erase(id);
+            }
+        }
+    }
+}
+
+void
+vulkan_render::add_material(render::material_data* mat_data)
+{
+    auto& mat_id = mat_data->get_type_id();
+
+    auto segment = m_materials_layout.find(mat_id);
+
+    const uint32_t INITIAL_MATERIAL_SEGMENT_RANGE_SIZE = 1024;
+
+    if (!segment)
+    {
+        segment = m_materials_layout.add(mat_id, mat_data->get_gpu_data().size(),
+                                         INITIAL_MATERIAL_SEGMENT_RANGE_SIZE);
+
+        for (auto& q : m_frames)
+        {
+            while (segment->index >= q.uploads.materials_queue_set.get_size())
+            {
+                q.uploads.materials_queue_set.emplace_back();
+            }
+        }
+    }
+    mat_data->set_indexes(segment->alloc_id(), segment->index);
+}
+
+void
+vulkan_render::drop_material(render::material_data* mat_data)
+{
+    auto& mat_id = mat_data->get_type_id();
+    auto segment = m_materials_layout.find(mat_id);
+
+    if (segment)
+    {
+        segment->release_id(mat_data->gpu_idx());
+        mat_data->invalidate_gpu_indexes();
+    }
+}
+
+void
+vulkan_render::update_transparent_objects_queue()
+{
+    for (auto& obj : m_transparent_render_object_queue)
+    {
+        obj->distance_to_camera = glm::length(obj->gpu_data.obj_pos - m_camera_data.position);
+    }
+
+    std::sort(m_transparent_render_object_queue.begin(), m_transparent_render_object_queue.end(),
+              [](render::vulkan_render_data* l, render::vulkan_render_data* r)
+              { return l->distance_to_camera > r->distance_to_camera; });
+}
+
+void
+vulkan_render::prepare_ui_resources()
+{
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Create font texture
+    auto path =
+        glob::glob_state().get_resource_locator()->resource(category::fonts, "Roboto-Medium.ttf");
+    auto f = path.str();
+
+    auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
+    auto f_big = io.Fonts->AddFontFromFileTTF(f.c_str(), 33.0f);
+
+    glob::vulkan_render_loader::getr().create_font(AID("normal"), f_normal);
+    glob::vulkan_render_loader::getr().create_font(AID("big"), f_big);
+
+    int tex_width = 0, tex_height = 0;
+    unsigned char* font_data = nullptr;
+    io.Fonts->GetTexDataAsRGBA32(&font_data, &tex_width, &tex_height);
+
+    auto size = tex_width * tex_height * 4 * sizeof(char);
+
+    kryga::utils::buffer image_raw_buffer;
+    image_raw_buffer.resize(size);
+    memcpy(image_raw_buffer.data(), font_data, size);
+
+    m_ui_txt = glob::vulkan_render_loader::getr().create_texture(AID("font"), image_raw_buffer,
+                                                                 tex_width, tex_height);
+
+    auto ui_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
+    m_ui_target_txt = glob::vulkan_render_loader::getr().create_texture(
+        AID("ui_copy_txt"), ui_pass->get_color_images()[0], ui_pass->get_color_image_views()[0]);
+}
+
+void
+vulkan_render::prepare_ui_pipeline()
+{
+    auto path = glob::glob_state().get_resource_locator()->resource(
+        category::packages, "base.apkg/class/shader_effects/ui");
+
+    {
+        kryga::utils::buffer vert, frag;
+
+        auto vert_path = path / "se_uioverlay.vert";
+        kryga::utils::buffer::load(vert_path, vert);
+
+        auto frag_path = path / "se_uioverlay.frag";
+        kryga::utils::buffer::load(frag_path, frag);
+
+        auto layout = render::gpu_dynobj_builder()
+                          .set_id(AID("interface"))
+                          .add_field(AID("in_pos"), kryga::render::gpu_type::g_vec2, 1)
+                          .add_field(AID("in_UV"), kryga::render::gpu_type::g_vec2, 1)
+                          .add_field(AID("in_color"), kryga::render::gpu_type::g_color, 1)
+                          .finalize();
+
+        auto ui_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
+
+        shader_effect_create_info se_ci;
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = true;
+        se_ci.alpha = alpha_mode::ui;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.expected_input_vertex_layout = std::move(layout);
+
+        ui_pass->create_shader_effect(AID("se_ui"), se_ci, m_ui_se);
+
+        std::vector<texture_sampler_data> samples(1);
+        samples.front().texture = m_ui_txt;
+        samples.front().slot = 0;
+
+        m_ui_mat = glob::vulkan_render_loader::getr().create_material(
+            AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
+    }
+    {
+        kryga::utils::buffer vert, frag;
+
+        auto vert_path = path / "se_upload.vert";
+        kryga::utils::buffer::load(vert_path, vert);
+
+        auto frag_path = path / "se_upload.frag";
+        kryga::utils::buffer::load(frag_path, frag);
+
+        auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+
+        shader_effect_create_info se_ci;
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::ui;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+
+        main_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
+
+        std::vector<texture_sampler_data> samples(1);
+        samples.front().texture = m_ui_target_txt;
+        samples.front().slot = 0;
+
+        m_ui_target_mat = glob::vulkan_render_loader::getr().create_material(
+            AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
+    }
+}
+
+void
+vulkan_render::update_ui(frame_state& fs)
+{
+    auto device = glob::render_device::get();
+    ImDrawData* im_draw_data = ImGui::GetDrawData();
+
+    if (!im_draw_data)
+    {
+        return;
+    };
+
+    // Note: Alignment is done inside buffer creation
+    VkDeviceSize vertex_buffer_size = im_draw_data->TotalVtxCount * sizeof(ImDrawVert);
+    VkDeviceSize index_buffer_size = im_draw_data->TotalIdxCount * sizeof(ImDrawIdx);
+
+    // Update buffers only if vertex or index count has been changed compared to current
+    // buffer size
+    if ((vertex_buffer_size == 0) || (index_buffer_size == 0))
+    {
+        return;
+    }
+
+    // Vertex buffer
+    if ((fs.ui.vertex_count != im_draw_data->TotalVtxCount) ||
+        (fs.ui.index_count != im_draw_data->TotalIdxCount))
+    {
+        fs.ui.vertex_count = im_draw_data->TotalVtxCount;
+        fs.ui.index_count = im_draw_data->TotalIdxCount;
+
+        VkBufferCreateInfo staging_buffer_ci = {};
+        staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        staging_buffer_ci.pNext = nullptr;
+        // this is the total size, in bytes, of the buffer we are allocating
+
+        staging_buffer_ci.size = vertex_buffer_size;
+        staging_buffer_ci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+        VmaAllocationCreateInfo vma_ci = {};
+        vma_ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+        fs.ui.vertex_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
+
+        staging_buffer_ci.size = index_buffer_size;
+        staging_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        fs.ui.index_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
+    }
+
+    // Upload data
+    fs.ui.vertex_buffer.begin();
+    fs.ui.index_buffer.begin();
+
+    auto vtx_dst = (ImDrawVert*)fs.ui.vertex_buffer.allocate_data((uint32_t)vertex_buffer_size);
+    auto idx_dst = (ImDrawIdx*)fs.ui.index_buffer.allocate_data((uint32_t)index_buffer_size);
+
+    for (int n = 0; n < im_draw_data->CmdListsCount; n++)
+    {
+        const ImDrawList* cmd_list = im_draw_data->CmdLists[n];
+        memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+        memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+        vtx_dst += cmd_list->VtxBuffer.Size;
+        idx_dst += cmd_list->IdxBuffer.Size;
+    }
+
+    fs.ui.vertex_buffer.end();
+    fs.ui.index_buffer.end();
+
+    fs.ui.vertex_buffer.flush();
+    fs.ui.index_buffer.flush();
+}
+
+void
+vulkan_render::draw_ui(frame_state& fs)
+{
+    auto im_draw_data = ImGui::GetDrawData();
+
+    if ((!im_draw_data) || (im_draw_data->CmdListsCount == 0))
+    {
+        return;
+    }
+    ImGuiIO& io = ImGui::GetIO();
+
+    VkViewport viewport{};
+    viewport.width = io.DisplaySize.x;
+    viewport.height = io.DisplaySize.y;
+    viewport.minDepth = 0.;
+    viewport.maxDepth = 1.f;
+
+    VkRect2D scissor{};
+    scissor.extent.width = (uint32_t)io.DisplaySize.x;
+    scissor.extent.height = (uint32_t)io.DisplaySize.y;
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+
+    auto cmd = fs.frame->m_main_command_buffer;
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline_layout, 0, 1,
+                            &m_ui_mat->get_textures_ds(), 0, nullptr);
+
+    m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
+    m_ui_push_constants.translate = glm::vec2(-1.0f);
+
+    vkCmdPushConstants(cmd, m_ui_se->m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                       sizeof(ui_push_constants), &m_ui_push_constants);
+
+    VkDeviceSize offsets[1] = {0};
+    vkCmdBindVertexBuffers(cmd, 0, 1, &fs.ui.vertex_buffer.buffer(), offsets);
+    vkCmdBindIndexBuffer(cmd, fs.ui.index_buffer.buffer(), 0, VK_INDEX_TYPE_UINT16);
+
+    int32_t vertex_offset = 0;
+    int32_t index_offset = 0;
+    for (int32_t i = 0; i < im_draw_data->CmdListsCount; i++)
+    {
+        const ImDrawList* cmd_list = im_draw_data->CmdLists[i];
+        for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++)
+        {
+            const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[j];
+            VkRect2D scissorRect;
+            scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
+            scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
+            scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
+            scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
+            vkCmdSetScissor(fs.frame->m_main_command_buffer, 0, 1, &scissorRect);
+            vkCmdDrawIndexed(fs.frame->m_main_command_buffer, pcmd->ElemCount, 1, index_offset,
+                             vertex_offset, 0);
+            index_offset += pcmd->ElemCount;
+        }
+        vertex_offset += cmd_list->VtxBuffer.Size;
+    }
+}
+
+}  // namespace render
+}  // namespace kryga

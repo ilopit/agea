@@ -1,0 +1,610 @@
+#include "vulkan_render/kryga_render.h"
+#include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
+
+#include <tracy/Tracy.hpp>
+
+#include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/vulkan_render_loader.h"
+#include "vulkan_render/vk_descriptors.h"
+#include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_compute_shader_data.h"
+
+#include <gpu_types/gpu_generic_constants.h>
+
+#include <utils/kryga_log.h>
+#include <utils/buffer.h>
+
+#include <resource_locator/resource_locator.h>
+#include <global_state/global_state.h>
+
+#include <cmath>
+
+namespace kryga
+{
+namespace render
+{
+namespace
+{
+
+void*
+ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
+                               size_t required_size,
+                               const char* name)
+{
+    KRG_check(required_size, "Should never happen");
+
+    if (required_size >= buffer.get_alloc_size())
+    {
+        auto old_buffer = std::move(buffer);
+
+        buffer = glob::render_device::getr().create_buffer(
+            required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        ALOG_INFO("Reallocating {0} buffer {1} => {2}", name, old_buffer.get_alloc_size(),
+                  buffer.get_alloc_size());
+
+        old_buffer.begin();
+        buffer.begin();
+
+        memcpy(buffer.get_data(), old_buffer.get_data(), old_buffer.get_alloc_size());
+
+        old_buffer.end();
+    }
+    else
+    {
+        buffer.begin();
+    }
+
+    return buffer.allocate_data((uint32_t)required_size);
+}
+
+}  // namespace
+
+// ============================================================================
+// Data Upload Functions
+// ============================================================================
+
+void
+vulkan_render::upload_obj_data(render::frame_state& frame)
+{
+    const auto total_size = m_cache.objects.get_size() * sizeof(gpu::object_data);
+
+    auto* data = (gpu::object_data*)ensure_buffer_capacity_and_map(frame.buffers.objects,
+                                                                   total_size, "objects");
+    KRG_check(data, "Should never happen");
+
+    upload_gpu_object_data(data);
+    frame.buffers.objects.end();
+}
+
+void
+vulkan_render::upload_universal_light_data(render::frame_state& frame)
+{
+    const auto total_size = m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
+
+    auto* data = (gpu::universal_light_data*)ensure_buffer_capacity_and_map(
+        frame.buffers.universal_lights, total_size, "universal lights");
+    KRG_check(data, "Should never happen");
+
+    upload_gpu_universal_light_data(data);
+    frame.buffers.universal_lights.end();
+}
+
+void
+vulkan_render::upload_directional_light_data(render::frame_state& frame)
+{
+    const auto total_size =
+        m_cache.directional_lights.get_size() * sizeof(gpu::directional_light_data);
+
+    auto* data = (gpu::directional_light_data*)ensure_buffer_capacity_and_map(
+        frame.buffers.directional_lights, total_size, "directional lights");
+
+    KRG_check(data, "Should never happen");
+
+    upload_gpu_directional_light_data(data);
+    frame.buffers.directional_lights.end();
+}
+
+void
+vulkan_render::upload_material_data(render::frame_state& frame)
+{
+    auto total_size = m_materials_layout.calc_new_size();
+
+    bool reallocated = false;
+
+    vk_utils::vulkan_buffer old_buffer_tb;
+
+    if (total_size >= frame.buffers.materials.get_alloc_size())
+    {
+        old_buffer_tb = std::move(frame.buffers.materials);
+
+        frame.buffers.materials = glob::render_device::getr().create_buffer(
+            total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        ALOG_INFO("Reallocating material buffer {0} => {1}", old_buffer_tb.get_alloc_size(),
+                  frame.buffers.materials.get_alloc_size());
+
+        reallocated = true;
+    }
+
+    if (reallocated)
+    {
+        old_buffer_tb.begin();
+    }
+
+    frame.buffers.materials.begin();
+
+    for (auto i = 0; i < m_materials_layout.get_segments_size(); ++i)
+    {
+        auto& s = m_materials_layout.at(i);
+
+        auto src_offset = s.offset;
+        auto size = s.get_allocated_size();
+
+        m_materials_layout.update_segment(i);
+
+        if (m_materials_layout.dirty_layout())
+        {
+            auto dst_offset = s.offset;
+
+            if (reallocated)
+            {
+                memcpy(frame.buffers.materials.get_data() + dst_offset,
+                       old_buffer_tb.get_data() + src_offset, size);
+            }
+            else
+            {
+                memmove(frame.buffers.materials.get_data() + dst_offset,
+                        old_buffer_tb.get_data() + src_offset, size);
+            }
+        }
+    }
+
+    if (reallocated)
+    {
+        old_buffer_tb.end();
+    }
+
+    auto mat_begin = frame.buffers.materials.get_data();
+
+    for (int i = 0; i < m_materials_layout.get_segments_size(); ++i)
+    {
+        auto& sm = m_materials_layout.at(i);
+        auto& mat_set_queue = frame.uploads.materials_queue_set[sm.index];
+
+        upload_gpu_materials_data(mat_begin + sm.offset, mat_set_queue);
+    }
+
+    frame.buffers.materials.end();
+    m_materials_layout.reset_dirty_layout();
+}
+
+void
+vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
+{
+    for (auto& q : m_frames)
+    {
+        q.uploads.materials_queue_set[md->gpu_type_idx()].emplace_back(md);
+        q.uploads.has_pending_materials = true;
+    }
+}
+
+void
+vulkan_render::schedule_game_data_gpu_upload(render::vulkan_render_data* obj_date)
+{
+    for (auto& q : m_frames)
+    {
+        q.uploads.objects_queue.emplace_back(obj_date);
+    }
+}
+
+void
+vulkan_render::schedule_directional_light_data_gpu_upload(render::vulkan_directional_light_data* ld)
+{
+    for (auto& q : m_frames)
+    {
+        q.uploads.directional_light_queue.emplace_back(ld);
+    }
+}
+
+void
+vulkan_render::schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
+{
+    m_clusters_dirty = true;
+    m_light_grid_dirty = true;
+    for (auto& q : m_frames)
+    {
+        q.uploads.universal_light_queue.emplace_back(ld);
+    }
+}
+
+void
+vulkan_render::clear_upload_queue()
+{
+    for (auto& q : m_frames)
+    {
+        q.uploads.clear_all();
+    }
+}
+
+void
+vulkan_render::upload_gpu_object_data(gpu::object_data* object_SSBO)
+{
+    auto& to_update = get_current_frame_transfer_data().uploads.objects_queue;
+
+    if (to_update.empty())
+    {
+        return;
+    }
+
+    for (auto obj : to_update)
+    {
+        object_SSBO[obj->slot()] = obj->gpu_data;
+    }
+}
+
+void
+vulkan_render::upload_gpu_universal_light_data(gpu::universal_light_data* object_SSBO)
+{
+    auto& to_update = get_current_frame_transfer_data().uploads.universal_light_queue;
+
+    if (to_update.empty())
+    {
+        return;
+    }
+
+    for (auto obj : to_update)
+    {
+        obj->gpu_data.slot = obj->slot();  // Ensure slot is synced for GPU access
+        object_SSBO[obj->slot()] = obj->gpu_data;
+    }
+}
+
+void
+vulkan_render::upload_gpu_directional_light_data(gpu::directional_light_data* object_SSBO)
+{
+    auto& to_update = get_current_frame_transfer_data().uploads.directional_light_queue;
+
+    if (to_update.empty())
+    {
+        return;
+    }
+
+    for (auto obj : to_update)
+    {
+        object_SSBO[obj->slot()] = obj->gpu_data;
+    }
+}
+
+void
+vulkan_render::upload_gpu_materials_data(uint8_t* ssbo_data, materials_update_queue& mats_to_update)
+{
+    if (mats_to_update.empty())
+    {
+        return;
+    }
+
+    for (auto& m : mats_to_update)
+    {
+        auto dst_ptr = ssbo_data + m->gpu_idx() * m->get_gpu_data().size();
+        memcpy(dst_ptr, m->get_gpu_data().data(), m->get_gpu_data().size());
+    }
+
+    mats_to_update.clear();
+}
+
+// ============================================================================
+// Clustered Lighting
+// ============================================================================
+
+void
+vulkan_render::build_light_clusters()
+{
+    KRG_check(m_cluster_grid.is_initialized(), "Should always be here");
+
+    // Early-out: no universal lights means no cluster work needed
+    if (m_cache.universal_lights.get_size() == 0)
+    {
+        m_cluster_grid.clear();
+        return;
+    }
+
+    // Build light info list from cache (skip invalid/freed lights)
+    std::vector<cluster_light_info> lights;
+    lights.reserve(m_cache.universal_lights.get_actual_size());
+
+    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    {
+        auto* light = m_cache.universal_lights.at(i);
+        if (!light->is_valid())
+            continue;
+        // Add small margin for cluster assignment to avoid edge cases
+        lights.push_back({light->slot(), light->gpu_data.position, light->gpu_data.radius * 1.05f});
+    }
+
+    // Compute view and projection matrices for cluster building
+    glm::mat4 inv_projection = glm::inverse(m_camera_data.projection);
+
+    // Build clusters
+    m_cluster_grid.build_clusters(m_camera_data.view, m_camera_data.projection, inv_projection,
+                                  lights);
+}
+
+void
+vulkan_render::rebuild_light_grid()
+{
+    KRG_check(m_light_grid.is_initialized(), "Light grid should be initialized");
+
+    m_light_grid.clear();
+
+    // Insert all universal lights into the grid (skip invalid/freed lights)
+    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    {
+        auto* light = m_cache.universal_lights.at(i);
+        if (!light->is_valid())
+            continue;
+        m_light_grid.insert_light(light->slot(), light->gpu_data.position, light->gpu_data.radius);
+    }
+}
+
+void
+vulkan_render::upload_cluster_data(render::frame_state& frame)
+{
+    ZoneScopedN("Render::UploadClusters");
+
+    if (!m_cluster_grid.is_initialized())
+        return;
+
+    const auto& config = m_cluster_grid.get_config();
+
+    // std140 padded struct for cluster data (16 bytes per element)
+    struct alignas(16) cluster_data_std140
+    {
+        uint32_t value;
+    };
+
+    // Upload cluster light counts (padded to std140)
+    {
+        const auto& counts = m_cluster_grid.get_cluster_light_counts();
+        const size_t size = counts.size() * sizeof(cluster_data_std140);
+
+        frame.buffers.cluster_counts.begin();
+        auto* data = reinterpret_cast<cluster_data_std140*>(
+            frame.buffers.cluster_counts.allocate_data((uint32_t)size));
+
+        for (size_t i = 0; i < counts.size(); ++i)
+        {
+            data[i].value = counts[i];
+        }
+        frame.buffers.cluster_counts.end();
+    }
+
+    // Upload cluster light indices (padded to std140)
+    {
+        const auto& indices = m_cluster_grid.get_cluster_light_indices();
+        const size_t size = indices.size() * sizeof(cluster_data_std140);
+
+        frame.buffers.cluster_indices.begin();
+        auto* data = reinterpret_cast<cluster_data_std140*>(
+            frame.buffers.cluster_indices.allocate_data((uint32_t)size));
+
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            data[i].value = indices[i];
+        }
+        frame.buffers.cluster_indices.end();
+    }
+
+    // Upload cluster config
+    {
+        // Update config from current camera/grid state
+        m_cluster_config.tiles_x = config.tiles_x;
+        m_cluster_config.tiles_y = config.tiles_y;
+        m_cluster_config.depth_slices = config.depth_slices;
+        m_cluster_config.tile_size = config.tile_size;
+        m_cluster_config.near_plane = config.near_plane;
+        m_cluster_config.far_plane = config.far_plane;
+        m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
+        m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+        m_cluster_config.screen_width = config.screen_width;
+        m_cluster_config.screen_height = config.screen_height;
+
+        frame.buffers.cluster_config.begin();
+        auto* data = frame.buffers.cluster_config.allocate_data(sizeof(gpu::cluster_grid_data));
+        memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
+        frame.buffers.cluster_config.end();
+    }
+}
+
+void
+vulkan_render::init_cluster_cull_compute()
+{
+    ZoneScopedN("Render::InitClusterCullCompute");
+
+    auto path = glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
+    auto shader_path = path / "cluster_cull.comp";
+
+    kryga::utils::buffer shader_buffer;
+    if (!kryga::utils::buffer::load(shader_path, shader_buffer))
+    {
+        ALOG_WARN("Failed to load cluster_cull.comp - GPU cluster culling disabled");
+        m_use_gpu_cluster_cull = false;
+        return;
+    }
+
+    m_cluster_cull_shader = std::make_unique<compute_shader_data>(AID("cluster_cull"));
+
+    auto rc =
+        vulkan_compute_shader_loader::create_compute_shader(*m_cluster_cull_shader, shader_buffer);
+    if (rc != result_code::ok)
+    {
+        ALOG_WARN("Failed to create cluster cull compute shader - GPU cluster culling disabled");
+        m_cluster_cull_shader.reset();
+        m_use_gpu_cluster_cull = false;
+        return;
+    }
+
+    // Declare bindings for cluster cull compute shader
+    // set=0, binding=0: ClusterConfig (uniform)
+    // set=0, binding=1: CameraData (uniform)
+    // set=0, binding=2: LightBuffer (storage, readonly)
+    // set=0, binding=3: ClusterLightCounts (storage, writeonly)
+    // set=0, binding=4: ClusterLightIndices (storage, writeonly)
+    m_cluster_cull_shader->bindings()
+        .add(AID("cluster_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("camera_data"), 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("light_buffer"), 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("cluster_light_counts"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT);
+
+    m_cluster_cull_shader->finalize_bindings(*glob::render_device::getr().descriptor_layout_cache());
+
+    ALOG_INFO("GPU cluster culling compute shader initialized");
+}
+
+void
+vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
+{
+    ZoneScopedN("Render::DispatchClusterCullImpl");
+
+    // Bind compute pipeline
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_cluster_cull_shader->m_pipeline);
+
+    // Bind descriptor set
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            m_cluster_cull_shader->m_pipeline_layout, 0, 1,
+                            &m_cluster_cull_descriptor_set, 0, nullptr);
+
+    // Push light count
+    uint32_t num_lights = m_cache.universal_lights.get_size();
+    vkCmdPushConstants(cmd, m_cluster_cull_shader->m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(uint32_t), &num_lights);
+
+    // Calculate dispatch size
+    const auto& config = m_cluster_grid.get_config();
+    uint32_t total_clusters = config.tiles_x * config.tiles_y * config.depth_slices;
+    uint32_t workgroup_size = 64;  // Must match local_size_x in shader
+    uint32_t num_workgroups = (total_clusters + workgroup_size - 1) / workgroup_size;
+
+    // Dispatch compute shader
+    vkCmdDispatch(cmd, num_workgroups, 1, 1);
+
+    // Note: Barrier is handled by render graph, not here
+}
+
+// ============================================================================
+// Render Graph Setup
+// ============================================================================
+
+void
+vulkan_render::setup_render_graph()
+{
+    // Register resources used by render graph
+    // Names must match shader binding names (dyn_ prefix used in reflection)
+
+    // Dynamic data buffer (UBO) - set 0
+    m_render_graph.register_buffer(AID("dyn_camera_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+    // SSBOs - set 1
+    m_render_graph.register_buffer(AID("dyn_object_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_gpu_universal_light_data"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_directional_lights_buffer"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    // Cluster lighting SSBOs - set 1
+    m_render_graph.register_buffer(AID("dyn_cluster_light_counts"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_cluster_light_indices"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    // Materials SSBO - set 3
+    m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    // Imported resources (externally managed)
+    m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
+
+    // Register passes with dependencies
+    // Compute pass: cluster culling (writes cluster buffers, reads lights)
+    m_render_graph.add_compute_pass(
+        AID("cluster_cull"),
+        {m_render_graph.write(AID("dyn_cluster_light_counts")),
+         m_render_graph.write(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_gpu_universal_light_data"))},
+        [this](VkCommandBuffer cmd)
+        {
+            if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader)
+            {
+                dispatch_cluster_cull_impl(cmd);
+            }
+        });
+
+    // UI pass: writes to UI render target
+    // Graph handles render_pass->begin/end automatically
+    m_render_graph.add_graphics_pass(AID("ui"), {m_render_graph.write(AID("ui_target"))},
+                                     get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
+
+    // Picking pass: writes to picking target, reads shader resources
+    m_render_graph.add_graphics_pass(
+        AID("picking"),
+        {m_render_graph.write(AID("picking_target")), m_render_graph.read(AID("dyn_camera_data")),
+         m_render_graph.read(AID("dyn_object_buffer")),
+         m_render_graph.read(AID("dyn_cluster_light_counts")),
+         m_render_graph.read(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_cluster_config"))},
+        get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
+        [this](VkCommandBuffer cmd)
+        {
+            for (auto& r : m_default_render_object_queue)
+            {
+                pipeline_ctx pctx{};
+                if (!r.second.empty())
+                {
+                    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+                }
+                draw_same_pipeline_objects_queue(cmd, pctx, r.second);
+            }
+
+            for (auto& r : m_outline_render_object_queue)
+            {
+                pipeline_ctx pctx{};
+                if (!r.second.empty())
+                {
+                    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+                }
+                draw_same_pipeline_objects_queue(cmd, pctx, r.second);
+            }
+        });
+
+    // Main pass: writes to swapchain, reads all shader resources
+    m_render_graph.add_graphics_pass(
+        AID("main"),
+        {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
+         // Shader resources
+         m_render_graph.read(AID("dyn_camera_data")), m_render_graph.read(AID("dyn_object_buffer")),
+         m_render_graph.read(AID("dyn_gpu_universal_light_data")),
+         m_render_graph.read(AID("dyn_directional_lights_buffer")),
+         m_render_graph.read(AID("dyn_cluster_light_counts")),
+         m_render_graph.read(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_cluster_config")),
+         m_render_graph.read(AID("dyn_material_buffer"))},
+        get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
+        [this](VkCommandBuffer) { draw_objects(*m_current_frame); });
+
+    // Compile the graph (calculates execution order)
+    bool result = m_render_graph.compile();
+
+    KRG_check(result, "Pass should be always compiled");
+}
+
+}  // namespace render
+}  // namespace kryga
