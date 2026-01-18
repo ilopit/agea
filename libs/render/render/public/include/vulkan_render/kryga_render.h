@@ -216,12 +216,6 @@ private:
     void
     prepare_draw_resources(render::frame_state& frame);
 
-    void
-    build_global_set(render::frame_state& current_frame);
-
-    void
-    build_ssbo_sets(render::frame_state& current_frame);
-
     // clang-format off
     void upload_obj_data(render::frame_state& frame);
     void upload_universal_light_data(render::frame_state& frame);
@@ -301,6 +295,8 @@ private:
 
     void
     prepare_render_passes();
+    void
+    prepare_pass_bindings();
     void
     prepare_system_resources();
     void

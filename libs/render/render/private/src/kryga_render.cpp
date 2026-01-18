@@ -105,6 +105,7 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     m_height = h;
 
     prepare_render_passes();
+    prepare_pass_bindings();
 
     if (only_rp)
     {
@@ -480,76 +481,39 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         }
     }
 
-    build_global_set(current_frame);
-    build_ssbo_sets(current_frame);
-}
+    // Bind resources to main pass
+    auto* main_pass = get_render_pass(AID("main"));
+    KRG_check(main_pass && main_pass->are_bindings_finalized(), "Main pass bindings must be finalized");
 
-void
-vulkan_render::build_global_set(render::frame_state& current_frame)
-{
-    VkDescriptorBufferInfo dynamic_info{.buffer = current_frame.buffers.dynamic_data.buffer(),
-                                        .offset = 0,
-                                        .range = current_frame.buffers.dynamic_data.get_offset()};
+    main_pass->begin_frame();
+    main_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+    main_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+    main_pass->bind(AID("dyn_directional_lights_buffer"), current_frame.buffers.directional_lights);
+    main_pass->bind(AID("dyn_gpu_universal_light_data"), current_frame.buffers.universal_lights);
+    main_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
+    main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
+    main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
 
-    vk_utils::descriptor_builder::begin(glob::render_device::getr().descriptor_layout_cache(),
-                                        current_frame.frame->m_dynamic_descriptor_allocator.get())
-        .bind_buffer(0, &dynamic_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-        .build(m_global_set);
-}
+    m_global_set =
+        main_pass->get_descriptor_set(KGPU_global_descriptor_sets,
+                                      *current_frame.frame->m_dynamic_descriptor_allocator);
+    m_objects_set =
+        main_pass->get_descriptor_set(KGPU_objects_descriptor_sets,
+                                      *current_frame.frame->m_dynamic_descriptor_allocator);
 
-void
-vulkan_render::build_ssbo_sets(render::frame_state& current_frame)
-{
-    VkDescriptorBufferInfo directional_light_info{
-        .buffer = current_frame.buffers.directional_lights.buffer(),
-        .offset = 0,
-        .range = current_frame.buffers.directional_lights.get_alloc_size()};
+    // Bind resources to picking pass
+    auto* picking_pass = get_render_pass(AID("picking"));
+    KRG_check(picking_pass && picking_pass->are_bindings_finalized(),
+              "Picking pass bindings must be finalized");
 
-    VkDescriptorBufferInfo universal_light_info{
-        .buffer = current_frame.buffers.universal_lights.buffer(),
-        .offset = 0,
-        .range = current_frame.buffers.universal_lights.get_alloc_size()};
-
-    VkDescriptorBufferInfo object_buffer_info{
-        .buffer = current_frame.buffers.objects.buffer(),
-        .offset = 0,
-        .range = current_frame.buffers.objects.get_alloc_size()};
-    VkDescriptorBufferInfo cluster_counts_info{
-        .buffer = current_frame.buffers.cluster_counts.buffer(),
-        .offset = 0,
-        .range = current_frame.buffers.cluster_counts.get_alloc_size()};
-
-    VkDescriptorBufferInfo cluster_indices_info{
-        .buffer = current_frame.buffers.cluster_indices.buffer(),
-        .offset = 0,
-        .range = current_frame.buffers.cluster_indices.get_alloc_size()};
-
-    VkDescriptorBufferInfo cluster_config_info{
-        .buffer = current_frame.buffers.cluster_config.buffer(),
-        .offset = 0,
-        .range = current_frame.buffers.cluster_config.get_alloc_size()};
-
-    auto builder = vk_utils::descriptor_builder::begin(
-        glob::render_device::getr().descriptor_layout_cache(),
-        current_frame.frame->m_dynamic_descriptor_allocator.get());
-
-    builder
-        .bind_buffer(KGPU_objects_objects_binding, &object_buffer_info,
-                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-        .bind_buffer(KGPU_objects_directional_light_binding, &directional_light_info,
-                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(KGPU_objects_universal_light_binding, &universal_light_info,
-                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(KGPU_objects_cluster_light_counts_binding, &cluster_counts_info,
-                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(KGPU_objects_cluster_light_indices_binding, &cluster_indices_info,
-                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .bind_buffer(KGPU_objects_cluster_config_binding, &cluster_config_info,
-                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-        .build(m_objects_set);
-
-    KRG_check(m_objects_set, "Should never happen");
+    picking_pass->begin_frame();
+    picking_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+    picking_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+    picking_pass->bind(AID("dyn_directional_lights_buffer"), current_frame.buffers.directional_lights);
+    picking_pass->bind(AID("dyn_gpu_universal_light_data"), current_frame.buffers.universal_lights);
+    picking_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
+    picking_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
+    picking_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
 }
 
 void
@@ -1206,6 +1170,93 @@ vulkan_render::prepare_render_passes()
 
         glob::vulkan_render_loader::getr().add_render_pass(AID("picking"), std::move(picking_pass));
     }
+}
+
+void
+vulkan_render::prepare_pass_bindings()
+{
+    auto* layout_cache_ptr = glob::render_device::getr().descriptor_layout_cache();
+    auto& layout_cache = *layout_cache_ptr;
+
+    // Main pass bindings - names must match shader reflection names (dyn_ prefix)
+    auto* main_pass = get_render_pass(AID("main"));
+    if (main_pass)
+    {
+        // Set 0: Global data (camera)
+        main_pass->bindings().add(
+            AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        // Set 1: Object data (objects, lights, clusters)
+        main_pass->bindings()
+            .add(AID("dyn_object_buffer"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_objects_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT)
+            .add(AID("dyn_directional_lights_buffer"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_directional_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_gpu_universal_light_data"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_universal_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_light_counts"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_light_counts_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_light_indices"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_light_indices_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_config"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_config_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        // Set 2: Textures (per-material, validated but bound per-draw)
+        main_pass->bindings().add(AID("textures"), KGPU_textures_descriptor_sets, 0,
+                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                  VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
+
+        // Set 3: Material data (per-material)
+        main_pass->bindings().add(AID("dyn_material_buffer"), KGPU_materials_descriptor_sets, 0,
+                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                                  VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
+
+        main_pass->finalize_bindings(layout_cache);
+    }
+
+    // Picking pass bindings - needs same bindings as main pass for shader compatibility
+    auto* picking_pass = get_render_pass(AID("picking"));
+    if (picking_pass)
+    {
+        // Set 0: Global data (camera)
+        picking_pass->bindings().add(
+            AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        // Set 1: Object data (same as main pass)
+        picking_pass->bindings()
+            .add(AID("dyn_object_buffer"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_objects_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT)
+            .add(AID("dyn_directional_lights_buffer"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_directional_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_gpu_universal_light_data"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_universal_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_light_counts"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_light_counts_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_light_indices"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_light_indices_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_config"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_config_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT);
+
+        picking_pass->finalize_bindings(layout_cache);
+    }
+
+    // UI pass doesn't use the standard binding table (has its own simple setup)
 }
 
 void

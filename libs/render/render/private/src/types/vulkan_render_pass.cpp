@@ -140,12 +140,29 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
         return rc;
     }
 
-    // Validate shader bindings against render pass resources (only if resources are declared)
-    if (!m_resources.empty() && effect->m_vertex_stage && effect->m_frag_stage)
+    // Validate shader bindings against binding table (preferred) or render pass resources
+    if (effect->m_vertex_stage && effect->m_frag_stage)
     {
         std::string validation_error;
-        if (!validate_shader_resources(effect->m_vertex_stage->get_reflection(),
-                                       effect->m_frag_stage->get_reflection(), validation_error))
+        bool validation_passed = true;
+
+        if (m_binding_table.is_finalized())
+        {
+            // Use binding table for validation
+            validation_passed =
+                m_binding_table.validate_shader(effect->m_vertex_stage->get_reflection(),
+                                                effect->m_frag_stage->get_reflection(),
+                                                validation_error);
+        }
+        else if (!m_resources.empty())
+        {
+            // Fall back to legacy resource validation
+            validation_passed =
+                validate_shader_resources(effect->m_vertex_stage->get_reflection(),
+                                          effect->m_frag_stage->get_reflection(), validation_error);
+        }
+
+        if (!validation_passed)
         {
             ALOG_ERROR("Shader effect '{}' resource validation failed: {}", id.str(),
                        validation_error);

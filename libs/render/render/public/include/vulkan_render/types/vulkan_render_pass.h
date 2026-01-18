@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan_render/types/vulkan_generic.h>
+#include <vulkan_render/types/binding_table.h>
 
 #include <vulkan_render/utils/vulkan_image.h>
 
@@ -132,6 +133,69 @@ public:
                               const reflection::shader_reflection& frag_reflection,
                               std::string& out_error) const;
 
+    // === Binding table API ===
+
+    // Access binding table for declaration (only before finalize)
+    binding_table&
+    bindings()
+    {
+        KRG_check(!m_binding_table.is_finalized(), "Cannot modify finalized bindings");
+        return m_binding_table;
+    }
+
+    const binding_table&
+    bindings() const
+    {
+        return m_binding_table;
+    }
+
+    // Finalize bindings - must be called before adding shader effects
+    bool
+    finalize_bindings(vk_utils::descriptor_layout_cache& layout_cache)
+    {
+        return m_binding_table.finalize(layout_cache);
+    }
+
+    bool
+    are_bindings_finalized() const
+    {
+        return m_binding_table.is_finalized();
+    }
+
+    // Per-frame binding shortcuts
+    void
+    bind(const utils::id& name, vk_utils::vulkan_buffer& buf)
+    {
+        m_binding_table.bind_buffer(name, buf);
+    }
+
+    void
+    bind(const utils::id& name, vk_utils::vulkan_image& img, VkImageView view, VkSampler sampler)
+    {
+        m_binding_table.bind_image(name, img, view, sampler);
+    }
+
+    // Build descriptor set from bound resources
+    VkDescriptorSet
+    get_descriptor_set(uint32_t set_index, vk_utils::descriptor_allocator& allocator)
+    {
+        return m_binding_table.build_set(set_index, allocator);
+    }
+
+    // Reset bindings for new frame
+    void
+    begin_frame()
+    {
+        m_binding_table.begin_frame();
+    }
+
+    // Get descriptor set layout for a set index
+    VkDescriptorSetLayout
+    get_set_layout(uint32_t set_index) const
+    {
+        return m_binding_table.get_layout(set_index);
+    }
+
 private:
     VkFormat m_color_format = VK_FORMAT_UNDEFINED;
     VkFormat m_depth_format = VK_FORMAT_UNDEFINED;
@@ -147,6 +211,8 @@ private:
     VkRenderPass m_vk_render_pass = VK_NULL_HANDLE;
 
     std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>> m_shader_effects;
+
+    binding_table m_binding_table;
 };
 
 using render_pass_sptr = std::shared_ptr<render_pass>;
