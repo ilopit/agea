@@ -33,7 +33,7 @@ enum class rg_resource_type
 };
 
 // Resource descriptor
-struct rg_resource
+struct resource_description
 {
     utils::id name;
     rg_resource_type type = rg_resource_type::image;
@@ -47,7 +47,7 @@ struct rg_resource
 // Pass resource reference
 struct rg_resource_ref
 {
-    rg_resource* resource = nullptr;
+    resource_description* resource = nullptr;
     rg_access_mode usage;
 };
 
@@ -62,17 +62,17 @@ struct rg_access_info
 // Pre-computed barriers for a pass
 struct rg_pass_barriers
 {
-    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    std::vector<VkMemoryBarrier> memory_barriers;
-    std::vector<VkBufferMemoryBarrier> buffer_barriers;
-    std::vector<VkImageMemoryBarrier> image_barriers;
-
     bool
     empty() const
     {
         return memory_barriers.empty() && buffer_barriers.empty() && image_barriers.empty();
     }
+
+    VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    std::vector<VkMemoryBarrier> memory_barriers;
+    std::vector<VkBufferMemoryBarrier> buffer_barriers;
+    std::vector<VkImageMemoryBarrier> image_barriers;
 };
 
 }  // namespace kryga::render

@@ -8,7 +8,7 @@
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
-#include "vulkan_render/render_graph.h"
+#include "vulkan_render/vulkan_render_graph.h"
 #include "render/utils/frustum.h"
 #include "render/utils/cluster_grid.h"
 #include "render/utils/light_grid.h"

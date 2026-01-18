@@ -38,10 +38,7 @@ public:
 
     // Begin/end render pass (for graphics passes only)
     bool
-    begin(VkCommandBuffer cmd,
-          uint64_t swapchain_image_index,
-          uint32_t width,
-          uint32_t height);
+    begin(VkCommandBuffer cmd, uint64_t swapchain_image_index, uint32_t width, uint32_t height);
 
     bool
     end(VkCommandBuffer cmd);

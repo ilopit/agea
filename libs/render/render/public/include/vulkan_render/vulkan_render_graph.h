@@ -28,9 +28,9 @@ using render_pass_sptr = std::shared_ptr<render_pass>;
 // ============================================================================
 
 // Resource with Vulkan state tracking
-struct rg_vk_resource
+struct vulkan_resource
 {
-    rg_resource base;
+    resource_description base;
     VkBufferUsageFlags buffer_usage = 0;
     VkImageUsageFlags image_usage = 0;
     rg_access_info last_access;
@@ -44,10 +44,6 @@ struct rg_frame_context
     uint32_t width = 0;
     uint32_t height = 0;
 };
-
-// ============================================================================
-// Render graph
-// ============================================================================
 
 class vulkan_render_graph
 {
@@ -172,7 +168,7 @@ private:
     void
     insert_barriers(VkCommandBuffer cmd, const rg_pass_barriers& barriers);
 
-    std::unordered_map<utils::id, rg_vk_resource> m_resources;
+    std::unordered_map<utils::id, vulkan_resource> m_resources;
     std::vector<render_pass_sptr> m_passes;
     std::vector<size_t> m_execution_order;
     bool m_compiled = false;
