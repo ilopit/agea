@@ -445,24 +445,26 @@ vulkan_render::init_cluster_cull_compute()
     }
 
     // Declare bindings for cluster cull compute shader
+    // Names must match render graph resource names (dyn_ prefix)
     // set=0, binding=0: ClusterConfig (uniform)
     // set=0, binding=1: CameraData (uniform)
     // set=0, binding=2: LightBuffer (storage, readonly)
     // set=0, binding=3: ClusterLightCounts (storage, writeonly)
     // set=0, binding=4: ClusterLightIndices (storage, writeonly)
     m_cluster_cull_shader->bindings()
-        .add(AID("cluster_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .add(AID("dyn_cluster_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("camera_data"), 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .add(AID("dyn_camera_data"), 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("light_buffer"), 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_gpu_universal_light_data"), 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("cluster_light_counts"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_cluster_light_counts"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_cluster_cull_shader->finalize_bindings(*glob::render_device::getr().descriptor_layout_cache());
+    m_cluster_cull_shader->finalize_bindings(
+        *glob::render_device::getr().descriptor_layout_cache());
 
     ALOG_INFO("GPU cluster culling compute shader initialized");
 }
@@ -522,7 +524,8 @@ vulkan_render::setup_render_graph()
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_cluster_light_indices"),
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    // cluster_config is used as UBO in compute shader
+    m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
 
     // Materials SSBO - set 3
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);

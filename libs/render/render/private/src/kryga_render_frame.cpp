@@ -99,15 +99,20 @@ vulkan_render::draw_main()
     m_render_graph.set_frame_context(swapchain_image_index, width, height);
 
     // Build descriptor set for cluster culling using binding table
+    // Binding names must match render graph resource names (dyn_ prefix)
     if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader &&
         m_cluster_cull_shader->are_bindings_finalized())
     {
         m_cluster_cull_shader->begin_frame();
-        m_cluster_cull_shader->bind(AID("cluster_config"), current_frame.buffers.cluster_config);
-        m_cluster_cull_shader->bind(AID("camera_data"), current_frame.buffers.dynamic_data);
-        m_cluster_cull_shader->bind(AID("light_buffer"), current_frame.buffers.universal_lights);
-        m_cluster_cull_shader->bind(AID("cluster_light_counts"), current_frame.buffers.cluster_counts);
-        m_cluster_cull_shader->bind(AID("cluster_light_indices"), current_frame.buffers.cluster_indices);
+        m_cluster_cull_shader->bind(AID("dyn_cluster_config"),
+                                    current_frame.buffers.cluster_config);
+        m_cluster_cull_shader->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+        m_cluster_cull_shader->bind(AID("dyn_gpu_universal_light_data"),
+                                    current_frame.buffers.universal_lights);
+        m_cluster_cull_shader->bind(AID("dyn_cluster_light_counts"),
+                                    current_frame.buffers.cluster_counts);
+        m_cluster_cull_shader->bind(AID("dyn_cluster_light_indices"),
+                                    current_frame.buffers.cluster_indices);
 
         m_cluster_cull_descriptor_set = m_cluster_cull_shader->get_descriptor_set(
             0, *current_frame.frame->m_dynamic_descriptor_allocator);
@@ -270,7 +275,8 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
     // Bind resources to main pass
     auto* main_pass = get_render_pass(AID("main"));
-    KRG_check(main_pass && main_pass->are_bindings_finalized(), "Main pass bindings must be finalized");
+    KRG_check(main_pass && main_pass->are_bindings_finalized(),
+              "Main pass bindings must be finalized");
 
     main_pass->begin_frame();
     main_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
@@ -281,12 +287,10 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
     main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
 
-    m_global_set =
-        main_pass->get_descriptor_set(KGPU_global_descriptor_sets,
-                                      *current_frame.frame->m_dynamic_descriptor_allocator);
-    m_objects_set =
-        main_pass->get_descriptor_set(KGPU_objects_descriptor_sets,
-                                      *current_frame.frame->m_dynamic_descriptor_allocator);
+    m_global_set = main_pass->get_descriptor_set(
+        KGPU_global_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
+    m_objects_set = main_pass->get_descriptor_set(
+        KGPU_objects_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
 
     // Bind resources to picking pass
     auto* picking_pass = get_render_pass(AID("picking"));
@@ -296,7 +300,8 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     picking_pass->begin_frame();
     picking_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
     picking_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-    picking_pass->bind(AID("dyn_directional_lights_buffer"), current_frame.buffers.directional_lights);
+    picking_pass->bind(AID("dyn_directional_lights_buffer"),
+                       current_frame.buffers.directional_lights);
     picking_pass->bind(AID("dyn_gpu_universal_light_data"), current_frame.buffers.universal_lights);
     picking_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
     picking_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);

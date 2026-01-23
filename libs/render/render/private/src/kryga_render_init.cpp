@@ -135,6 +135,27 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 
     // Setup render graph
     setup_render_graph();
+
+    // Validate all binding tables against render graph resources
+    auto* main_pass = get_render_pass(AID("main"));
+    if (main_pass && main_pass->are_bindings_finalized())
+    {
+        KRG_check(main_pass->validate_resources(m_render_graph),
+                  "Main pass binding validation failed");
+    }
+
+    auto* picking_pass = get_render_pass(AID("picking"));
+    if (picking_pass && picking_pass->are_bindings_finalized())
+    {
+        KRG_check(picking_pass->validate_resources(m_render_graph),
+                  "Picking pass binding validation failed");
+    }
+
+    if (m_cluster_cull_shader && m_cluster_cull_shader->are_bindings_finalized())
+    {
+        KRG_check(m_cluster_cull_shader->validate_resources(m_render_graph),
+                  "Cluster cull shader binding validation failed");
+    }
 }
 
 void
@@ -308,7 +329,17 @@ vulkan_render::prepare_pass_bindings()
         picking_pass->finalize_bindings(layout_cache);
     }
 
-    // UI pass doesn't use the standard binding table (has its own simple setup)
+    // UI pass - simple bindings for ImGui rendering
+    auto* ui_pass = get_render_pass(AID("ui"));
+    if (ui_pass)
+    {
+        // Set 0: Font texture sampler
+        ui_pass->bindings().add(AID("fontSampler"), 0, 0,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
+
+        ui_pass->finalize_bindings(layout_cache);
+    }
 }
 
 void

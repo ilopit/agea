@@ -19,6 +19,9 @@
 namespace kryga::render
 {
 
+// Forward declaration for resource validation
+class vulkan_render_graph;
+
 namespace vk_utils
 {
 class vulkan_buffer;
@@ -64,22 +67,25 @@ public:
     // === Validation ===
 
     // Validate shader bindings against this table
-    // Returns true if all shader bindings are satisfied
+    // Returns true if all shader bindings are satisfied, logs errors on failure
     bool
     validate_shader(const reflection::shader_reflection& vertex_refl,
-                    const reflection::shader_reflection& frag_refl,
-                    std::string& out_error) const;
+                    const reflection::shader_reflection& frag_refl) const;
 
     // Validate single shader stage (for compute shaders)
     bool
-    validate_shader(const reflection::shader_reflection& refl, std::string& out_error) const;
+    validate_shader(const reflection::shader_reflection& refl) const;
 
     // Validate material has required per_material bindings
     // material_bindings: map of binding name -> descriptor type
     bool
     validate_material_bindings(
-        const std::unordered_map<utils::id, VkDescriptorType>& material_bindings,
-        std::string& out_error) const;
+        const std::unordered_map<utils::id, VkDescriptorType>& material_bindings) const;
+
+    // Validate that all per_pass bindings exist in the render graph's resource registry
+    // Returns true if all bindings are found, logs errors on failure
+    bool
+    validate_resources(const vulkan_render_graph& graph) const;
 
     // === Binding phase (per-frame for per_pass scope) ===
 
@@ -136,8 +142,7 @@ private:
     bool
     validate_single_binding(const reflection::binding& b,
                             VkShaderStageFlags stage,
-                            const char* stage_name,
-                            std::string& out_error) const;
+                            const char* stage_name) const;
 
     struct bound_resource
     {

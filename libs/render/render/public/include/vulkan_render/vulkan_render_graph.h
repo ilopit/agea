@@ -153,6 +153,12 @@ public:
     render_pass*
     get_pass(const utils::id& name) const;
 
+    const std::unordered_map<utils::id, vulkan_resource>&
+    get_resources() const
+    {
+        return m_resources;
+    }
+
 private:
     static rg_access_info
     compute_access_for_usage(rg_access_mode usage,

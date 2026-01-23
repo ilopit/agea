@@ -318,23 +318,29 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
             refl_binding.binding_index = spv_binding->binding;
             refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
 
-            // Check for unnamed instance on buffer blocks (UBO/SSBO)
-            bool is_buffer_block =
-                spv_binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
-                spv_binding->descriptor_type == SPV_REFLECT_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-            if (is_buffer_block && (!spv_binding->name || spv_binding->name[0] == '\0'))
+            // Determine binding name: prefer instance name, fall back to type name
+            // (SPIRV without debug info may not preserve instance names for SSBOs with runtime arrays)
+            const char* name_str = nullptr;
+            if (spv_binding->name && spv_binding->name[0] != '\0')
             {
-                ALOG_ERROR("Descriptor binding at set={}, binding={} (type '{}') has no instance "
-                           "name. Add instance name after closing brace, e.g., '}} bufferName;'",
-                           spv_set->set, spv_binding->binding,
-                           spv_binding->type_description->type_name
-                               ? spv_binding->type_description->type_name
-                               : "<anonymous>");
+                name_str = spv_binding->name;
+            }
+            else if (spv_binding->type_description && spv_binding->type_description->type_name &&
+                     spv_binding->type_description->type_name[0] != '\0')
+            {
+                name_str = spv_binding->type_description->type_name;
+                ALOG_TRACE("Using type name '{}' as binding name for set={}, binding={}",
+                           name_str, spv_set->set, spv_binding->binding);
+            }
+
+            if (!name_str)
+            {
+                ALOG_ERROR("Descriptor binding at set={}, binding={} has no name",
+                           spv_set->set, spv_binding->binding);
                 return false;
             }
 
-            auto binding_name = spv_binding->name ? AID(spv_binding->name) : AID("binding");
+            auto binding_name = AID(name_str);
             refl_binding.name = binding_name;
 
             gpu_dynobj_builder binding_gdb;

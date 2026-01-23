@@ -1,5 +1,6 @@
 #include "vulkan_render/types/binding_table.h"
 
+#include "vulkan_render/vulkan_render_graph.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_device.h"
@@ -162,43 +163,39 @@ binding_table::finalize(vk_utils::descriptor_layout_cache& layout_cache)
 bool
 binding_table::validate_single_binding(const reflection::binding& b,
                                        VkShaderStageFlags stage,
-                                       const char* stage_name,
-                                       std::string& out_error) const
+                                       const char* stage_name) const
 {
     const binding_spec* spec = find_binding(b.name);
 
     if (!spec)
     {
-        out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
-                    "' (set=" + std::to_string(b.binding_index) +
-                    ", type=" + descriptor_type_to_string(b.type) +
-                    ") not found in binding table";
+        ALOG_ERROR("{} shader binding '{}' (set={}, type={}) not found in binding table",
+                   stage_name, b.name.cstr(), b.binding_index, descriptor_type_to_string(b.type));
         return false;
     }
 
     // Check type compatibility
     if (!are_types_compatible(spec->type, b.type))
     {
-        out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
-                    "' type mismatch: shader expects " + descriptor_type_to_string(b.type) +
-                    ", table has " + descriptor_type_to_string(spec->type);
+        ALOG_ERROR("{} shader binding '{}' type mismatch: shader expects {}, table has {}",
+                   stage_name, b.name.cstr(), descriptor_type_to_string(b.type),
+                   descriptor_type_to_string(spec->type));
         return false;
     }
 
     // Check binding index matches
     if (spec->binding_index != b.binding_index)
     {
-        out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
-                    "' index mismatch: shader expects binding=" + std::to_string(b.binding_index) +
-                    ", table has binding=" + std::to_string(spec->binding_index);
+        ALOG_ERROR("{} shader binding '{}' index mismatch: shader expects binding={}, table has binding={}",
+                   stage_name, b.name.cstr(), b.binding_index, spec->binding_index);
         return false;
     }
 
     // Check stage flags (shader stage must be subset of declared stages)
     if ((spec->stages & stage) != stage)
     {
-        out_error = std::string(stage_name) + " shader binding '" + std::string(b.name.cstr()) +
-                    "' stage not declared in binding table";
+        ALOG_ERROR("{} shader binding '{}' stage not declared in binding table",
+                   stage_name, b.name.cstr());
         return false;
     }
 
@@ -207,8 +204,7 @@ binding_table::validate_single_binding(const reflection::binding& b,
 
 bool
 binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
-                               const reflection::shader_reflection& frag_refl,
-                               std::string& out_error) const
+                               const reflection::shader_reflection& frag_refl) const
 {
     KRG_check(m_finalized, "Binding table must be finalized before validation");
 
@@ -217,7 +213,7 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
     {
         for (const auto& b : ds.bindings)
         {
-            if (!validate_single_binding(b, VK_SHADER_STAGE_VERTEX_BIT, "Vertex", out_error))
+            if (!validate_single_binding(b, VK_SHADER_STAGE_VERTEX_BIT, "Vertex"))
             {
                 return false;
             }
@@ -229,7 +225,7 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
     {
         for (const auto& b : ds.bindings)
         {
-            if (!validate_single_binding(b, VK_SHADER_STAGE_FRAGMENT_BIT, "Fragment", out_error))
+            if (!validate_single_binding(b, VK_SHADER_STAGE_FRAGMENT_BIT, "Fragment"))
             {
                 return false;
             }
@@ -240,8 +236,7 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
 }
 
 bool
-binding_table::validate_shader(const reflection::shader_reflection& refl,
-                               std::string& out_error) const
+binding_table::validate_shader(const reflection::shader_reflection& refl) const
 {
     KRG_check(m_finalized, "Binding table must be finalized before validation");
 
@@ -263,7 +258,7 @@ binding_table::validate_shader(const reflection::shader_reflection& refl,
     {
         for (const auto& b : ds.bindings)
         {
-            if (!validate_single_binding(b, stage, stage_name, out_error))
+            if (!validate_single_binding(b, stage, stage_name))
             {
                 return false;
             }
@@ -275,8 +270,7 @@ binding_table::validate_shader(const reflection::shader_reflection& refl,
 
 bool
 binding_table::validate_material_bindings(
-    const std::unordered_map<utils::id, VkDescriptorType>& material_bindings,
-    std::string& out_error) const
+    const std::unordered_map<utils::id, VkDescriptorType>& material_bindings) const
 {
     KRG_check(m_finalized, "Binding table must be finalized before validation");
 
@@ -286,23 +280,22 @@ binding_table::validate_material_bindings(
 
         if (!spec)
         {
-            out_error = "Material binding '" + std::string(name.cstr()) +
-                        "' not found in binding table";
+            ALOG_ERROR("Material binding '{}' not found in binding table", name.cstr());
             return false;
         }
 
         if (spec->scope != binding_scope::per_material)
         {
-            out_error = "Material binding '" + std::string(name.cstr()) +
-                        "' is declared as per_pass, expected per_material";
+            ALOG_ERROR("Material binding '{}' is declared as per_pass, expected per_material",
+                       name.cstr());
             return false;
         }
 
         if (!are_types_compatible(spec->type, type))
         {
-            out_error = "Material binding '" + std::string(name.cstr()) + "' type mismatch: " +
-                        "material has " + descriptor_type_to_string(type) + ", table expects " +
-                        descriptor_type_to_string(spec->type);
+            ALOG_ERROR("Material binding '{}' type mismatch: material has {}, table expects {}",
+                       name.cstr(), descriptor_type_to_string(type),
+                       descriptor_type_to_string(spec->type));
             return false;
         }
     }
@@ -476,6 +469,33 @@ binding_table::get_pass_bindings(uint32_t set_index) const
         }
     }
     return result;
+}
+
+bool
+binding_table::validate_resources(const vulkan_render_graph& graph) const
+{
+    KRG_check(m_finalized, "Binding table must be finalized before resource validation");
+
+    const auto& resources = graph.get_resources();
+    bool valid = true;
+
+    for (const auto& spec : m_bindings)
+    {
+        // Skip per_material bindings - bound per-draw, not from render graph
+        if (spec.scope == binding_scope::per_material)
+        {
+            continue;
+        }
+
+        if (resources.find(spec.name) == resources.end())
+        {
+            ALOG_ERROR("Binding '{}' (set={}, binding={}) not found in render graph resources",
+                       spec.name.cstr(), spec.set_index, spec.binding_index);
+            valid = false;
+        }
+    }
+
+    return valid;
 }
 
 }  // namespace kryga::render

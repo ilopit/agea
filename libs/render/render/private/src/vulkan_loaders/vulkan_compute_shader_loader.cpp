@@ -63,8 +63,8 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
 {
     auto device = glob::render_device::get();
 
-    // Get descriptor set layouts from reflection
-    const auto& reflection = cs.m_compute_stage_reflection;
+    // Get descriptor set layouts from reflection (stored in shader_module_data)
+    const auto& reflection = cs.m_compute_stage->get_reflection();
 
     std::array<VkDescriptorSetLayoutCreateInfo, DESCRIPTORS_SETS_COUNT> layout_cis;
     std::array<std::vector<VkDescriptorSetLayoutBinding>, DESCRIPTORS_SETS_COUNT> bindings_storage;

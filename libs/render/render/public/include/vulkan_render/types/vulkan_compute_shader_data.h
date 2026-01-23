@@ -14,6 +14,7 @@ namespace kryga
 namespace render
 {
 class shader_module_data;
+class vulkan_render_graph;
 
 class compute_shader_data
 {
@@ -49,6 +50,12 @@ public:
     finalize_bindings(vk_utils::descriptor_layout_cache& layout_cache)
     {
         return m_binding_table.finalize(layout_cache);
+    }
+
+    bool
+    validate_resources(const vulkan_render_graph& graph) const
+    {
+        return m_binding_table.validate_resources(graph);
     }
 
     bool

@@ -126,13 +126,6 @@ public:
     validate_fragment_outputs(const reflection::interface_block& frag_outputs,
                               std::string& out_error) const;
 
-    // Validate that shader bindings have corresponding resources declared in this render pass
-    // Returns true if all shader bindings are satisfied, false otherwise with error in out_error
-    bool
-    validate_shader_resources(const reflection::shader_reflection& vertex_reflection,
-                              const reflection::shader_reflection& frag_reflection,
-                              std::string& out_error) const;
-
     // === Binding table API ===
 
     // Access binding table for declaration (only before finalize)
@@ -160,6 +153,12 @@ public:
     are_bindings_finalized() const
     {
         return m_binding_table.is_finalized();
+    }
+
+    bool
+    validate_resources(const vulkan_render_graph& graph) const
+    {
+        return m_binding_table.validate_resources(graph);
     }
 
     // Per-frame binding shortcuts
