@@ -67,8 +67,8 @@ vulkan_render_graph::add_compute_pass(const utils::id& name,
     KRG_check(!m_compiled, "Cannot modify compiled graph");
 
     auto pass = std::make_shared<render_pass>(name, rg_pass_type::compute);
-    pass->m_resources = std::move(resources);
-    pass->m_execute = std::move(execute);
+    pass->resources() = std::move(resources);
+    pass->set_execute_callback(std::move(execute));
     m_passes.push_back(pass);
     return pass;
 }
@@ -84,10 +84,10 @@ vulkan_render_graph::add_graphics_pass(const utils::id& name,
     KRG_check(rp != nullptr, "Graphics pass requires a valid render_pass");
 
     // Configure the existing render_pass for graph usage
-    rp->m_name = name;
-    rp->m_resources = std::move(resources);
-    rp->m_clear_color = clear_color;
-    rp->m_execute = std::move(execute);
+    rp->set_name(name);
+    rp->resources() = std::move(resources);
+    rp->set_clear_color(clear_color);
+    rp->set_execute_callback(std::move(execute));
 
     // Store as shared_ptr with no-op deleter since we don't own the render_pass
     m_passes.push_back(render_pass_sptr(rp, [](render_pass*) {}));
@@ -101,8 +101,8 @@ vulkan_render_graph::add_transfer_pass(const utils::id& name,
     KRG_check(!m_compiled, "Cannot modify compiled graph");
 
     auto pass = std::make_shared<render_pass>(name, rg_pass_type::transfer);
-    pass->m_resources = std::move(resources);
-    pass->m_execute = std::move(execute);
+    pass->resources() = std::move(resources);
+    pass->set_execute_callback(std::move(execute));
     m_passes.push_back(pass);
     return pass;
 }
@@ -157,11 +157,11 @@ vulkan_render_graph::compile()
     // Validate all resource refs exist
     for (const auto& pass : m_passes)
     {
-        for (const auto& ref : pass->m_resources)
+        for (const auto& ref : pass->resources())
         {
             if (!ref.resource || m_resources.find(ref.resource->name) == m_resources.end())
             {
-                ALOG_ERROR("Pass {} doesn't have {}", pass->m_name.str(),
+                ALOG_ERROR("Pass {} doesn't have {}", pass->name().str(),
                            ref.resource ? ref.resource->name.str() : "null");
 
                 return false;
@@ -175,7 +175,7 @@ vulkan_render_graph::compile()
 
     for (size_t i = 0; i < m_passes.size(); ++i)
     {
-        for (const auto& ref : m_passes[i]->m_resources)
+        for (const auto& ref : m_passes[i]->resources())
         {
             if (!ref.resource)
                 continue;
@@ -259,7 +259,7 @@ vulkan_render_graph::compile()
     // Assign order
     for (size_t i = 0; i < m_execution_order.size(); ++i)
     {
-        m_passes[m_execution_order[i]]->m_order = static_cast<uint32_t>(i);
+        m_passes[m_execution_order[i]]->set_order(static_cast<uint32_t>(i));
     }
 
     // Calculate barriers for each pass
@@ -307,7 +307,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
 
         // Calculate and insert barriers for this pass
         rg_pass_barriers barriers;
-        for (const auto& ref : pass->m_resources)
+        for (const auto& ref : pass->resources())
         {
             if (!ref.resource)
                 continue;
@@ -320,7 +320,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
 
             auto& res = it->second;
             rg_access_info required =
-                compute_access_for_usage(ref.usage, pass->m_type, ref.resource->type);
+                compute_access_for_usage(ref.usage, pass->type(), ref.resource->type);
 
             if (needs_barrier(res.last_access, required))
             {
@@ -343,7 +343,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
                         barriers.buffer_barriers.push_back(barrier);
                     }
                 }
-                else if (pass->m_type != rg_pass_type::graphics)
+                else if (pass->type() != rg_pass_type::graphics)
                 {
                     // Only insert image barriers for compute/transfer passes
                     // Graphics passes use VkRenderPass which handles layout transitions
@@ -397,7 +397,7 @@ vulkan_render_graph::get_pass(const utils::id& name) const
 {
     for (const auto& pass : m_passes)
     {
-        if (pass->m_name == name)
+        if (pass->name() == name)
         {
             return pass.get();
         }

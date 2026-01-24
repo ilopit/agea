@@ -100,21 +100,20 @@ vulkan_render::draw_main()
 
     // Build descriptor set for cluster culling using binding table
     // Binding names must match render graph resource names (dyn_ prefix)
-    if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader &&
-        m_cluster_cull_shader->are_bindings_finalized())
+    if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_pass &&
+        m_cluster_cull_pass->are_bindings_finalized())
     {
-        m_cluster_cull_shader->begin_frame();
-        m_cluster_cull_shader->bind(AID("dyn_cluster_config"),
-                                    current_frame.buffers.cluster_config);
-        m_cluster_cull_shader->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-        m_cluster_cull_shader->bind(AID("dyn_gpu_universal_light_data"),
-                                    current_frame.buffers.universal_lights);
-        m_cluster_cull_shader->bind(AID("dyn_cluster_light_counts"),
-                                    current_frame.buffers.cluster_counts);
-        m_cluster_cull_shader->bind(AID("dyn_cluster_light_indices"),
-                                    current_frame.buffers.cluster_indices);
+        m_cluster_cull_pass->begin_frame();
+        m_cluster_cull_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+        m_cluster_cull_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+        m_cluster_cull_pass->bind(AID("dyn_gpu_universal_light_data"),
+                                  current_frame.buffers.universal_lights);
+        m_cluster_cull_pass->bind(AID("dyn_cluster_light_counts"),
+                                  current_frame.buffers.cluster_counts);
+        m_cluster_cull_pass->bind(AID("dyn_cluster_light_indices"),
+                                  current_frame.buffers.cluster_indices);
 
-        m_cluster_cull_descriptor_set = m_cluster_cull_shader->get_descriptor_set(
+        m_cluster_cull_descriptor_set = m_cluster_cull_pass->get_descriptor_set(
             0, *current_frame.frame->m_dynamic_descriptor_allocator);
     }
 
@@ -226,7 +225,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
     if (m_use_clustered_lighting)
     {
-        if (m_use_gpu_cluster_cull && m_cluster_cull_shader)
+        if (m_use_gpu_cluster_cull && m_cluster_cull_pass && m_cluster_cull_shader)
         {
             // GPU compute path: upload config and dispatch compute shader
             ZoneScopedN("Render::GPUClusterCull");

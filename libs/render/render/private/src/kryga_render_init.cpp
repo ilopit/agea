@@ -2,6 +2,7 @@
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/types/vulkan_render_pass_builder.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
@@ -151,10 +152,10 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
                   "Picking pass binding validation failed");
     }
 
-    if (m_cluster_cull_shader && m_cluster_cull_shader->are_bindings_finalized())
+    if (m_cluster_cull_pass && m_cluster_cull_pass->are_bindings_finalized())
     {
-        KRG_check(m_cluster_cull_shader->validate_resources(m_render_graph),
-                  "Cluster cull shader binding validation failed");
+        KRG_check(m_cluster_cull_pass->validate_resources(m_render_graph),
+                  "Cluster cull pass binding validation failed");
     }
 }
 

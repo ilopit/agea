@@ -1,8 +1,8 @@
 #pragma once
 
 #include "vulkan_render/types/vulkan_generic.h"
-#include "vulkan_render/types/binding_table.h"
-#include "vulkan_render/shader_reflection_utils.h"
+
+#include <shader_system/shader_reflection.h>
 
 #include <utils/id.h>
 
@@ -14,8 +14,10 @@ namespace kryga
 namespace render
 {
 class shader_module_data;
-class vulkan_render_graph;
+class render_pass;
 
+// Pure compute shader container - analogous to shader_effect_data for graphics.
+// Bindings are owned by the parent render_pass, not by this class.
 class compute_shader_data
 {
 public:
@@ -31,61 +33,16 @@ public:
     void
     reset();
 
-    // === Binding table API ===
-
-    binding_table&
-    bindings()
+    render_pass*
+    get_owner_pass() const
     {
-        KRG_check(!m_binding_table.is_finalized(), "Cannot modify finalized bindings");
-        return m_binding_table;
-    }
-
-    const binding_table&
-    bindings() const
-    {
-        return m_binding_table;
-    }
-
-    bool
-    finalize_bindings(vk_utils::descriptor_layout_cache& layout_cache)
-    {
-        return m_binding_table.finalize(layout_cache);
-    }
-
-    bool
-    validate_resources(const vulkan_render_graph& graph) const
-    {
-        return m_binding_table.validate_resources(graph);
-    }
-
-    bool
-    are_bindings_finalized() const
-    {
-        return m_binding_table.is_finalized();
+        return m_owner_pass;
     }
 
     void
-    bind(const utils::id& name, vk_utils::vulkan_buffer& buf)
+    set_owner_pass(render_pass* pass)
     {
-        m_binding_table.bind_buffer(name, buf);
-    }
-
-    VkDescriptorSet
-    get_descriptor_set(uint32_t set_index, vk_utils::descriptor_allocator& allocator)
-    {
-        return m_binding_table.build_set(set_index, allocator);
-    }
-
-    void
-    begin_frame()
-    {
-        m_binding_table.begin_frame();
-    }
-
-    VkDescriptorSetLayout
-    get_set_layout(uint32_t set_index) const
-    {
-        return m_binding_table.get_layout(set_index);
+        m_owner_pass = pass;
     }
 
     VkPipeline m_pipeline = VK_NULL_HANDLE;
@@ -94,11 +51,12 @@ public:
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout;
 
     std::shared_ptr<shader_module_data> m_compute_stage;
-    reflection::shader_reflection m_compute_stage_reflection;
+
+    bool m_failed_load = false;
 
 private:
     ::kryga::utils::id m_id;
-    binding_table m_binding_table;
+    render_pass* m_owner_pass = nullptr;
 };
 
 }  // namespace render

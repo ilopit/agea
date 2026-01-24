@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "vulkan_render/render_graph.h"
+#include "vulkan_render/vulkan_render_graph.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 
 using namespace kryga::render;
@@ -124,7 +124,7 @@ TEST(RenderGraph, get_pass_by_name)
 
     auto* found = graph.get_pass(AID("my_pass"));
     ASSERT_NE(found, nullptr);
-    ASSERT_EQ(found->m_name, AID("my_pass"));
+    ASSERT_EQ(found->name(), AID("my_pass"));
 
     auto* not_found = graph.get_pass(AID("other"));
     ASSERT_EQ(not_found, nullptr);
@@ -196,8 +196,8 @@ TEST(RenderGraph, linear_dependency_chain)
     ASSERT_NE(p2, nullptr);
     ASSERT_NE(p3, nullptr);
 
-    EXPECT_LT(p1->m_order, p2->m_order);
-    EXPECT_LT(p2->m_order, p3->m_order);
+    EXPECT_LT(p1->order(), p2->order());
+    EXPECT_LT(p2->order(), p3->order());
 }
 
 TEST(RenderGraph, independent_passes_both_compile)
@@ -247,12 +247,12 @@ TEST(RenderGraph, diamond_dependency)
     auto* p4 = graph.get_pass(AID("pass4"));
 
     // pass1 must be first
-    EXPECT_LT(p1->m_order, p2->m_order);
-    EXPECT_LT(p1->m_order, p3->m_order);
+    EXPECT_LT(p1->order(), p2->order());
+    EXPECT_LT(p1->order(), p3->order());
 
     // pass4 must be last
-    EXPECT_LT(p2->m_order, p4->m_order);
-    EXPECT_LT(p3->m_order, p4->m_order);
+    EXPECT_LT(p2->order(), p4->order());
+    EXPECT_LT(p3->order(), p4->order());
 }
 
 // ============================================================================
@@ -334,6 +334,6 @@ TEST(RenderGraph, deferred_rendering_pipeline_structure)
     auto* lighting = graph.get_pass(AID("lighting"));
     auto* tonemap = graph.get_pass(AID("tonemap"));
 
-    EXPECT_LT(gbuffer->m_order, lighting->m_order);
-    EXPECT_LT(lighting->m_order, tonemap->m_order);
+    EXPECT_LT(gbuffer->order(), lighting->order());
+    EXPECT_LT(lighting->order(), tonemap->order());
 }

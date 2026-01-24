@@ -1,5 +1,6 @@
 #include "vulkan_render/kryga_render.h"
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
+#include "vulkan_render/vulkan_render_loader_create_infos.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -432,26 +433,17 @@ vulkan_render::init_cluster_cull_compute()
         return;
     }
 
-    m_cluster_cull_shader = std::make_unique<compute_shader_data>(AID("cluster_cull"));
+    // Create compute pass - bindings are owned by the pass, shader is created through it
+    m_cluster_cull_pass = std::make_shared<render_pass>(AID("cluster_cull"), rg_pass_type::compute);
 
-    auto rc =
-        vulkan_compute_shader_loader::create_compute_shader(*m_cluster_cull_shader, shader_buffer);
-    if (rc != result_code::ok)
-    {
-        ALOG_WARN("Failed to create cluster cull compute shader - GPU cluster culling disabled");
-        m_cluster_cull_shader.reset();
-        m_use_gpu_cluster_cull = false;
-        return;
-    }
-
-    // Declare bindings for cluster cull compute shader
+    // Declare bindings for cluster cull compute shader on the pass
     // Names must match render graph resource names (dyn_ prefix)
     // set=0, binding=0: ClusterConfig (uniform)
     // set=0, binding=1: CameraData (uniform)
     // set=0, binding=2: LightBuffer (storage, readonly)
     // set=0, binding=3: ClusterLightCounts (storage, writeonly)
     // set=0, binding=4: ClusterLightIndices (storage, writeonly)
-    m_cluster_cull_shader->bindings()
+    m_cluster_cull_pass->bindings()
         .add(AID("dyn_cluster_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
         .add(AID("dyn_camera_data"), 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -463,8 +455,22 @@ vulkan_render::init_cluster_cull_compute()
         .add(AID("dyn_cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_cluster_cull_shader->finalize_bindings(
-        *glob::render_device::getr().descriptor_layout_cache());
+    m_cluster_cull_pass->finalize_bindings(*glob::render_device::getr().descriptor_layout_cache());
+
+    // Create compute shader through the pass
+    compute_shader_create_info info;
+    info.shader_buffer = &shader_buffer;
+
+    auto rc = m_cluster_cull_pass->create_compute_shader(AID("cluster_cull"), info,
+                                                         m_cluster_cull_shader);
+    if (rc != result_code::ok)
+    {
+        ALOG_WARN("Failed to create cluster cull compute shader - GPU cluster culling disabled");
+        m_cluster_cull_pass.reset();
+        m_cluster_cull_shader = nullptr;
+        m_use_gpu_cluster_cull = false;
+        return;
+    }
 
     ALOG_INFO("GPU cluster culling compute shader initialized");
 }

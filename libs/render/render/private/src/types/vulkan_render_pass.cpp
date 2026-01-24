@@ -1,30 +1,24 @@
 #include "vulkan_render/types/vulkan_render_pass.h"
 
-#include <vulkan/vulkan.h>
-
-#include <array>
-
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
+#include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/vulkan_compute_shader_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 
 #include <utils/kryga_log.h>
 
+#include <vulkan/vulkan.h>
+
 namespace kryga::render
 {
 
-render_pass_builder&
-render_pass_builder::set_color_images(const std::vector<vk_utils::vulkan_image_view_sptr>& ivs,
-                                      const std::vector<vk_utils::vulkan_image_sptr>& is)
-{
-    m_color_images = is;
-    m_color_image_views = ivs;
-
-    return *this;
-}
+// =============================================================================
+// Lifecycle
+// =============================================================================
 
 render_pass::render_pass(const utils::id& name, rg_pass_type type)
     : m_name(name)
@@ -51,6 +45,10 @@ render_pass::~render_pass()
     m_color_image_views.clear();
     m_color_images.clear();
 }
+
+// =============================================================================
+// Execution
+// =============================================================================
 
 bool
 render_pass::begin(VkCommandBuffer cmd,
@@ -83,9 +81,7 @@ render_pass::begin(VkCommandBuffer cmd,
 bool
 render_pass::end(VkCommandBuffer cmd)
 {
-    // finalize the render pass
     vkCmdEndRenderPass(cmd);
-
     return true;
 }
 
@@ -97,7 +93,6 @@ render_pass::execute(VkCommandBuffer cmd,
 {
     if (is_graphics())
     {
-        // Graphics pass: wrap with begin/end
         begin(cmd, swapchain_image_index, width, height);
 
         if (m_execute)
@@ -116,6 +111,10 @@ render_pass::execute(VkCommandBuffer cmd,
         }
     }
 }
+
+// =============================================================================
+// Shader effect management
+// =============================================================================
 
 result_code
 render_pass::create_shader_effect(const kryga::utils::id& id,
@@ -160,7 +159,6 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
     effect->set_owner_render_pass(this);
 
     m_shader_effects[id] = effect;
-
     sed = effect.get();
 
     return rc;
@@ -207,279 +205,269 @@ render_pass::destroy_shader_effect(const kryga::utils::id& id)
     }
 }
 
-bool
-render_pass::validate_fragment_outputs(const reflection::interface_block& frag_outputs,
-                                       std::string& out_error) const
+// =============================================================================
+// Compute shader management
+// =============================================================================
+
+result_code
+render_pass::create_compute_shader(const kryga::utils::id& id,
+                                   const compute_shader_create_info& info,
+                                   compute_shader_data*& csd)
 {
-    // Count fragment shader outputs (only those with valid locations)
+    KRG_check(!get_compute_shader(id), "Compute shader already exists");
+
+    auto shader = std::make_shared<compute_shader_data>(id);
+
+    auto info_copy = info;
+    info_copy.pass = this;
+
+    auto rc = vulkan_compute_shader_loader::create_compute_shader(*shader, info_copy);
+
+    if (rc != result_code::ok)
+    {
+        shader->m_failed_load = true;
+        shader->set_owner_pass(this);
+        m_compute_shaders[id] = shader;
+        csd = shader.get();
+        return rc;
+    }
+
+    // Validate shader bindings against binding table
+    if (shader->m_compute_stage && m_binding_table.is_finalized())
+    {
+        bool validation_passed =
+            m_binding_table.validate_shader(shader->m_compute_stage->get_reflection());
+
+        if (!validation_passed)
+        {
+            shader->m_failed_load = true;
+            shader->set_owner_pass(this);
+            m_compute_shaders[id] = shader;
+            csd = shader.get();
+            return result_code::validation_error;
+        }
+    }
+
+    shader->m_failed_load = false;
+    shader->set_owner_pass(this);
+
+    m_compute_shaders[id] = shader;
+    csd = shader.get();
+
+    return rc;
+}
+
+compute_shader_data*
+render_pass::get_compute_shader(const kryga::utils::id& id)
+{
+    auto itr = m_compute_shaders.find(id);
+    return itr != m_compute_shaders.end() ? itr->second.get() : nullptr;
+}
+
+void
+render_pass::destroy_compute_shader(const kryga::utils::id& id)
+{
+    auto itr = m_compute_shaders.find(id);
+    if (itr != m_compute_shaders.end())
+    {
+        m_compute_shaders.erase(itr);
+    }
+}
+
+// =============================================================================
+// Binding table API
+// =============================================================================
+
+binding_table&
+render_pass::bindings()
+{
+    KRG_check(!m_binding_table.is_finalized(), "Cannot modify finalized bindings");
+    return m_binding_table;
+}
+
+const binding_table&
+render_pass::bindings() const
+{
+    return m_binding_table;
+}
+
+bool
+render_pass::finalize_bindings(vk_utils::descriptor_layout_cache& layout_cache)
+{
+    return m_binding_table.finalize(layout_cache);
+}
+
+bool
+render_pass::are_bindings_finalized() const
+{
+    return m_binding_table.is_finalized();
+}
+
+bool
+render_pass::validate_resources(const vulkan_render_graph& graph) const
+{
+    return m_binding_table.validate_resources(graph);
+}
+
+void
+render_pass::bind(const utils::id& name, vk_utils::vulkan_buffer& buf)
+{
+    m_binding_table.bind_buffer(name, buf);
+}
+
+void
+render_pass::bind(const utils::id& name,
+                  vk_utils::vulkan_image& img,
+                  VkImageView view,
+                  VkSampler sampler)
+{
+    m_binding_table.bind_image(name, img, view, sampler);
+}
+
+VkDescriptorSet
+render_pass::get_descriptor_set(uint32_t set_index, vk_utils::descriptor_allocator& allocator)
+{
+    return m_binding_table.build_set(set_index, allocator);
+}
+
+VkDescriptorSetLayout
+render_pass::get_set_layout(uint32_t set_index) const
+{
+    return m_binding_table.get_layout(set_index);
+}
+
+void
+render_pass::begin_frame()
+{
+    m_binding_table.begin_frame();
+}
+
+// =============================================================================
+// Pass properties accessors
+// =============================================================================
+
+const utils::id&
+render_pass::name() const
+{
+    return m_name;
+}
+
+void
+render_pass::set_name(const utils::id& name)
+{
+    m_name = name;
+}
+
+rg_pass_type
+render_pass::type() const
+{
+    return m_type;
+}
+
+const std::vector<rg_resource_ref>&
+render_pass::resources() const
+{
+    return m_resources;
+}
+
+std::vector<rg_resource_ref>&
+render_pass::resources()
+{
+    return m_resources;
+}
+
+void
+render_pass::set_clear_color(VkClearColorValue color)
+{
+    m_clear_color = color;
+}
+
+void
+render_pass::set_execute_callback(std::function<void(VkCommandBuffer)> callback)
+{
+    m_execute = std::move(callback);
+}
+
+uint32_t
+render_pass::order() const
+{
+    return m_order;
+}
+
+void
+render_pass::set_order(uint32_t order)
+{
+    m_order = order;
+}
+
+// =============================================================================
+// Attachment info accessors
+// =============================================================================
+
+VkRenderPass
+render_pass::vk() const
+{
+    return m_vk_render_pass;
+}
+
+bool
+render_pass::is_graphics() const
+{
+    return m_type == rg_pass_type::graphics && m_vk_render_pass != VK_NULL_HANDLE;
+}
+
+VkFormat
+render_pass::get_color_format() const
+{
+    return m_color_format;
+}
+
+VkFormat
+render_pass::get_depth_format() const
+{
+    return m_depth_format;
+}
+
+uint32_t
+render_pass::get_color_attachment_count() const
+{
+    return m_color_attachment_count;
+}
+
+std::vector<vk_utils::vulkan_image_sptr>
+render_pass::get_color_images() const
+{
+    return m_color_images;
+}
+
+std::vector<vk_utils::vulkan_image_view_sptr>
+render_pass::get_color_image_views() const
+{
+    return m_color_image_views;
+}
+
+// =============================================================================
+// Validation
+// =============================================================================
+
+bool
+render_pass::validate_fragment_outputs(const reflection::interface_block& frag_outputs) const
+{
     uint32_t output_count = 0;
     for (const auto& var : frag_outputs.variables)
     {
-        // Fragment outputs have locations starting from 0
-        // Built-ins like gl_FragDepth don't have valid locations in this interface
+        (void)var;
         output_count++;
     }
 
-    // Validate output count matches color attachment count
     if (output_count != m_color_attachment_count)
     {
-        out_error = "Fragment shader has " + std::to_string(output_count) +
-                    " output(s), but render pass has " + std::to_string(m_color_attachment_count) +
-                    " color attachment(s)";
+        ALOG_ERROR("Fragment shader has {} output(s), but render pass has {} color attachment(s)",
+                   output_count, m_color_attachment_count);
         return false;
     }
 
     return true;
 }
 
-render_pass_sptr
-render_pass_builder::build()
-{
-    KRG_check(m_width, "Should not be 0!");
-    KRG_check(m_height, "Should not be 0!");
-
-    auto device = glob::render_device::getr().vk_device();
-
-    auto rp = std::make_shared<render_pass>();
-
-    {
-        auto attachments = get_attachments();
-
-        VkAttachmentReference colorReference = {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        VkAttachmentReference depthReference = {1,
-                                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-
-        VkSubpassDescription subpassDescription = {};
-        subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpassDescription.colorAttachmentCount = 1;
-        subpassDescription.pColorAttachments = &colorReference;
-        subpassDescription.pDepthStencilAttachment = &depthReference;
-        subpassDescription.inputAttachmentCount = 0;
-        subpassDescription.pInputAttachments = nullptr;
-        subpassDescription.preserveAttachmentCount = 0;
-        subpassDescription.pPreserveAttachments = nullptr;
-        subpassDescription.pResolveAttachments = nullptr;
-
-        // Subpass dependencies for layout transitions
-        auto dependencies = get_dependencies();
-
-        VkRenderPassCreateInfo renderPassInfo = {};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-        renderPassInfo.pAttachments = attachments.data();
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpassDescription;
-        renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
-        renderPassInfo.pDependencies = dependencies.data();
-
-        vkCreateRenderPass(device, &renderPassInfo, nullptr, &rp->m_vk_render_pass);
-    }
-
-    rp->m_depth_image_views.resize(m_color_image_views.size());
-    rp->m_depth_images.resize(m_color_image_views.size());
-    rp->m_color_images = std::move(m_color_images);
-    rp->m_color_image_views = std::move(m_color_image_views);
-
-    // depth image size will match the window
-    VkExtent3D depth_image_extent = {m_width, m_height, 1};
-
-    // the depth image will be a image with the format we selected and Depth Attachment usage
-    // flag
-
-    auto dimg_info = vk_utils::make_image_create_info(
-        m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image_extent);
-
-    // for the depth image, we want to allocate it from gpu local memory
-    VmaAllocationCreateInfo dimg_allocinfo = {};
-    dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    for (auto i = 0; i < rp->m_color_images.size(); ++i)
-    {
-        // allocate and create the image
-        rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-            glob::render_device::getr().get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
-
-        // build a image-view for the depth image to use for rendering
-
-        int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
-
-        if (m_enable_stencil)
-        {
-            depth_image_view_flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
-        }
-
-        auto depth_image_view_ci = vk_utils::make_imageview_create_info(
-            m_depth_format, rp->m_depth_images[i].image(), depth_image_view_flags);
-
-        rp->m_depth_image_views[i] = vk_utils::vulkan_image_view::create(depth_image_view_ci);
-    }
-
-    auto fb_info =
-        vk_utils::make_framebuffer_create_info(rp->m_vk_render_pass, VkExtent2D{m_width, m_height});
-
-    const uint32_t swapchain_imagecount = (uint32_t)rp->m_color_images.size();
-    rp->m_framebuffers = std::vector<VkFramebuffer>(swapchain_imagecount);
-
-    for (uint32_t i = 0; i < swapchain_imagecount; i++)
-    {
-        VkImageView attachments[2] = {rp->m_color_image_views[i]->vk(),
-                                      rp->m_depth_image_views[i].vk()};
-
-        fb_info.pAttachments = attachments;
-        fb_info.attachmentCount = 2;
-        VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &rp->m_framebuffers[i]));
-    }
-
-    // Store attachment format info for shader compatibility validation
-    rp->m_color_format = m_color_format;
-    rp->m_depth_format = m_depth_format;
-    rp->m_color_attachment_count = 1;  // Currently we always have 1 color attachment
-
-    return rp;
-}
-
-std::array<VkAttachmentDescription, 2>
-render_pass_builder::get_attachments()
-{
-    std::array<VkAttachmentDescription, 2> attachments = {};
-
-    switch (m_preset)
-    {
-    case presets::swapchain:
-
-        // Color attachment
-        attachments[0].format = m_color_format;
-        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-        // Depth attachment
-        attachments[1].format = m_depth_format;
-        attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        break;
-
-    case presets::buffer:
-
-        attachments[0].format = m_color_format;
-        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[0].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        // Depth attachment
-        attachments[1].format = m_depth_format;
-        attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        break;
-
-    case presets::picking:
-
-        attachments[0].format = m_color_format;
-        attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[0].finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        // Depth attachment
-        attachments[1].format = m_depth_format;
-        attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        break;
-    }
-
-    return attachments;
-}
-
-std::array<VkSubpassDependency, 2>
-render_pass_builder::get_dependencies()
-{
-    std::array<VkSubpassDependency, 2> dependencies;
-
-    switch (m_preset)
-    {
-    case presets::swapchain:
-
-        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        dependencies[0].dstAccessMask =
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-        dependencies[1].srcSubpass = 0;
-        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        dependencies[1].srcAccessMask =
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-        break;
-    case presets::buffer:
-
-        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-        dependencies[1].srcSubpass = 0;
-        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-        break;
-    case presets::picking:
-        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dependencies[0].dstAccessMask =
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-        dependencies[1].srcSubpass = 0;
-        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_ACCESS_MEMORY_READ_BIT;
-        dependencies[1].srcAccessMask =
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-        dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-        break;
-    }
-
-    return dependencies;
-}
 }  // namespace kryga::render

@@ -1,24 +1,23 @@
 #pragma once
 
-#include "vulkan_render/types/vulkan_compute_shader_data.h"
-
 #include <error_handling/error_handling.h>
 
-#include <utils/buffer.h>
 #include <utils/id.h>
-
-#include <memory>
 
 namespace kryga
 {
 namespace render
 {
+
+class compute_shader_data;
+struct compute_shader_create_info;
+
 namespace vulkan_compute_shader_loader
 {
 
 // Create a compute pipeline from shader source
 result_code
-create_compute_shader(compute_shader_data& cs_data, const kryga::utils::buffer& shader_buffer);
+create_compute_shader(compute_shader_data& cs_data, const compute_shader_create_info& info);
 
 // Create pipeline layout from reflection data
 bool

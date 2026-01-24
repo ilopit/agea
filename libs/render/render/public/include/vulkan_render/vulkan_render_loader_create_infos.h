@@ -30,5 +30,13 @@ struct shader_effect_create_info
     uint32_t width = 0;
     uint32_t height = 0;
 };
+
+struct compute_shader_create_info
+{
+    kryga::utils::buffer* shader_buffer = nullptr;
+    bool is_binary = false;
+    render_pass* pass = nullptr;
+};
+
 }  // namespace render
 }  // namespace kryga

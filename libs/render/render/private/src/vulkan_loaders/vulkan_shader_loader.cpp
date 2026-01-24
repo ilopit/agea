@@ -185,9 +185,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     // Validate fragment shader outputs are compatible with render pass attachments
     if (info.rp && info.rp->get_color_attachment_count() > 0)
     {
-        std::string validation_error;
         if (!info.rp->validate_fragment_outputs(
-                se_data.m_frag_stage->get_reflection().output_interface, validation_error))
+                se_data.m_frag_stage->get_reflection().output_interface))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -199,8 +198,6 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
-
-    auto device = glob::render_device::get();
 
     vk_utils::pipeline_builder pb;
     pb.m_vertex_input_info_ci = vk_utils::make_vertex_input_state_create_info();
@@ -261,13 +258,13 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader));
 
     pb.m_pipeline_layout = se_data.m_pipeline_layout;
-
-    se_data.m_pipeline = pb.build(device->vk_device(), info.rp->vk());
+    auto& device = glob::render_device::getr();
+    se_data.m_pipeline = pb.build(device.vk_device(), info.rp->vk());
 
     pb.m_depth_stencil_ci = vk_utils::make_depth_stencil_create_info(
         true, true, info.depth_compare_op, depth_stencil_mode::stencil);
 
-    se_data.m_with_stencil_pipeline = pb.build(device->vk_device(), info.rp->vk());
+    se_data.m_with_stencil_pipeline = pb.build(device.vk_device(), info.rp->vk());
 
     return se_data.m_pipeline != VK_NULL_HANDLE ? result_code::ok : result_code::failed;
 }

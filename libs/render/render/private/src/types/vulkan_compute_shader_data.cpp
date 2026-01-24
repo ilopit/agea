@@ -50,7 +50,6 @@ compute_shader_data::reset()
     }
 
     m_compute_stage.reset();
-    m_compute_stage_reflection = {};
 }
 
 }  // namespace render

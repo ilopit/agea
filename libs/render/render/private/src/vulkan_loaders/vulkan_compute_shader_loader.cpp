@@ -1,8 +1,10 @@
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/shader_reflection_utils.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_compute_shader_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 
 #include <shader_system/shader_compiler.h>
@@ -54,7 +56,7 @@ load_compute_shader_module(const kryga::utils::buffer& input,
                                               std::move(compiled.reflection));
 
     return result_code::ok;
-}  // namespace
+}
 
 }  // namespace
 
@@ -130,12 +132,18 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
 
 result_code
 vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data,
-                                                    const kryga::utils::buffer& shader_buffer)
+                                                    const compute_shader_create_info& info)
 {
     auto device = glob::render_device::get();
 
+    if (!info.shader_buffer)
+    {
+        ALOG_LAZY_ERROR;
+        return result_code::failed;
+    }
+
     // Load and compile compute shader
-    auto rc = load_compute_shader_module(shader_buffer, cs_data.m_compute_stage);
+    auto rc = load_compute_shader_module(*info.shader_buffer, cs_data.m_compute_stage);
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;

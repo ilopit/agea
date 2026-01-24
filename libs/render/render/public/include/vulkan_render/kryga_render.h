@@ -366,7 +366,8 @@ private:
     bool m_use_clustered_lighting = true;
 
     // GPU compute cluster culling
-    std::unique_ptr<compute_shader_data> m_cluster_cull_shader;
+    render_pass_sptr m_cluster_cull_pass;
+    compute_shader_data* m_cluster_cull_shader = nullptr;  // owned by m_cluster_cull_pass
     VkDescriptorSet m_cluster_cull_descriptor_set = VK_NULL_HANDLE;
     bool m_use_gpu_cluster_cull = true;
 
