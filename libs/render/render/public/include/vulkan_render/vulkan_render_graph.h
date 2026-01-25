@@ -126,7 +126,7 @@ public:
     compile();
 
     bool
-    execute(VkCommandBuffer cmd);
+    execute(VkCommandBuffer cmd, uint32_t swapchain_image_index, uint32_t width, uint32_t height);
 
     void
     reset();
@@ -179,7 +179,6 @@ private:
     std::vector<size_t> m_execution_order;
     bool m_compiled = false;
 
-    rg_frame_context m_frame_ctx;
     std::unordered_set<utils::id> m_bound_this_frame;
 };
 

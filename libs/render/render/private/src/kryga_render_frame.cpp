@@ -100,7 +100,7 @@ vulkan_render::draw_main()
 
     // Build descriptor set for cluster culling using binding table
     // Binding names must match render graph resource names (dyn_ prefix)
-    if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_pass &&
+    if (is_instanced_mode() && m_cluster_cull_pass &&
         m_cluster_cull_pass->are_bindings_finalized())
     {
         m_cluster_cull_pass->begin_frame();
@@ -132,6 +132,7 @@ vulkan_render::draw_main()
     m_render_graph.bind_buffer(AID("dyn_cluster_light_indices"),
                                current_frame.buffers.cluster_indices);
     m_render_graph.bind_buffer(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+    m_render_graph.bind_buffer(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
     m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
 
     // Bind per-frame image resources
@@ -151,7 +152,7 @@ vulkan_render::draw_main()
     m_render_graph.bind_image(AID("picking_target"), *picking_images[0]);
 
     // Execute render graph (handles passes in dependency order with auto barriers)
-    m_render_graph.execute(cmd);
+    m_render_graph.execute(cmd, device->get_current_frame_index(), width, height);
 
     // finalize the command buffer (we can no longer add commands, but it can now be executed)
     VK_CHECK(vkEndCommandBuffer(cmd));
@@ -190,6 +191,10 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 {
     ZoneScopedN("Render::PrepareResources");
 
+    // Build instance data (batches for instanced path, identity buffer for legacy path)
+    // Both paths need the instance_slots buffer populated for shaders to work
+    prepare_instance_data(current_frame);
+
     if (current_frame.uploads.has_objects())
     {
         ZoneScopedN("Render::UploadObjects");
@@ -223,9 +228,9 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     dyn.upload_data(m_camera_data);
     dyn.end();
 
-    if (m_use_clustered_lighting)
+    if (is_instanced_mode())
     {
-        if (m_use_gpu_cluster_cull && m_cluster_cull_pass && m_cluster_cull_shader)
+        if (m_cluster_cull_pass && m_cluster_cull_shader)
         {
             // GPU compute path: upload config and dispatch compute shader
             ZoneScopedN("Render::GPUClusterCull");
@@ -263,7 +268,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     }
     else
     {
-        // Rebuild per-object light grid when lights changed
+        // Per-object mode: rebuild light grid when lights changed
         if (m_light_grid_dirty)
         {
             ZoneScopedN("Render::RebuildLightGrid");
@@ -285,6 +290,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     main_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
     main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
     main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+    main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
 
     m_global_set = main_pass->get_descriptor_set(
         KGPU_global_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
@@ -305,6 +311,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     picking_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
     picking_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
     picking_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+    picking_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
 }
 
 frame_state&

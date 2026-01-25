@@ -315,12 +315,9 @@ performance_counters_window::handle()
     ImGui::Text("Cull %  : %3.3lf", culled_draws_avg / all_draws_avg * 100);
     ImGui::Separator();
 
-    bool use_clustered = glob::vulkan_render::getr().get_use_clustered_lighting();
-    if (ImGui::Checkbox("Clustered Lighting", &use_clustered))
-    {
-        glob::vulkan_render::getr().set_use_clustered_lighting(use_clustered);
-    }
-    ImGui::Text("Mode: %s", use_clustered ? "Clustered" : "Brute Force");
+    // Render mode is set at startup (no runtime switching)
+    bool is_instanced = glob::vulkan_render::getr().is_instanced_mode();
+    ImGui::Text("Mode: %s", is_instanced ? "INSTANCED" : "PER_OBJECT");
 
     --lock;
 }

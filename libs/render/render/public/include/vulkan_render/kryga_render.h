@@ -26,6 +26,13 @@ namespace kryga
 namespace render
 {
 
+// Render mode for A/B performance comparison
+enum class render_mode
+{
+    instanced,   // Batched instanced drawing with GPU cluster culling
+    per_object   // Legacy per-object drawing with CPU light grid
+};
+
 class vulkan_render_loader;
 class render_device;
 struct frame_data;
@@ -64,6 +71,9 @@ struct frame_buffers
     vk_utils::vulkan_buffer cluster_counts;
     vk_utils::vulkan_buffer cluster_indices;
     vk_utils::vulkan_buffer cluster_config;
+
+    // Instance slots buffer for instanced drawing
+    vk_utils::vulkan_buffer instance_slots;
 };
 
 struct frame_upload_state
@@ -133,6 +143,15 @@ struct frame_state
     frame_data* frame = nullptr;
 };
 
+struct draw_batch
+{
+    mesh_data* mesh;
+    material_data* material;
+    uint32_t instance_count;
+    uint32_t first_instance_offset;  // offset into instance_slots buffer
+    bool outlined;
+};
+
 class vulkan_render
 {
 public:
@@ -140,7 +159,7 @@ public:
     ~vulkan_render();
 
     void
-    init(uint32_t w, uint32_t h, bool only_rp = false);
+    init(uint32_t w, uint32_t h, render_mode mode = render_mode::instanced, bool only_rp = false);
 
     void
     deinit();
@@ -197,21 +216,34 @@ public:
         return m_culled_draws;
     }
 
-    void
-    set_use_clustered_lighting(bool use)
+    render_mode
+    get_render_mode() const
     {
-        m_use_clustered_lighting = use;
+        return m_render_mode;
     }
 
     bool
-    get_use_clustered_lighting() const
+    is_instanced_mode() const
     {
-        return m_use_clustered_lighting;
+        return m_render_mode == render_mode::instanced;
     }
 
 private:
+    // Mode-specific drawing functions
     void
-    draw_objects(render::frame_state& frame);
+    draw_objects_instanced(render::frame_state& frame);
+
+    void
+    draw_objects_per_object(render::frame_state& frame);
+
+    void
+    draw_picking_instanced(VkCommandBuffer cmd);
+
+    void
+    draw_picking_per_object(VkCommandBuffer cmd);
+
+    void
+    draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
     prepare_draw_resources(render::frame_state& frame);
@@ -229,6 +261,16 @@ private:
 
     void
     upload_cluster_data(render::frame_state& frame);
+
+    // Instance drawing methods
+    void
+    prepare_instance_data(render::frame_state& frame);
+
+    void
+    build_batches_for_queue(render_line_container& r, bool outlined);
+
+    void
+    upload_instance_slots(render::frame_state& frame);
 
     // GPU compute cluster culling
     void
@@ -311,6 +353,12 @@ private:
     void
     setup_render_graph();
 
+    void
+    setup_instanced_render_graph();
+
+    void
+    setup_per_object_render_graph();
+
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
@@ -363,13 +411,11 @@ private:
     cluster_grid m_cluster_grid;
     gpu::cluster_grid_data m_cluster_config;
     bool m_clusters_dirty = true;
-    bool m_use_clustered_lighting = true;
 
     // GPU compute cluster culling
     render_pass_sptr m_cluster_cull_pass;
     compute_shader_data* m_cluster_cull_shader = nullptr;  // owned by m_cluster_cull_pass
     VkDescriptorSet m_cluster_cull_descriptor_set = VK_NULL_HANDLE;
-    bool m_use_gpu_cluster_cull = true;
 
     // Per-object light grid (alternative to clustered)
     light_grid m_light_grid;
@@ -377,6 +423,13 @@ private:
 
     // Frustum for view culling
     frustum m_frustum;
+
+    // Render mode (set at init, determines graph configuration)
+    render_mode m_render_mode = render_mode::instanced;
+
+    // Instance drawing state
+    std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots
+    std::vector<draw_batch> m_draw_batches;          // Pre-computed batches for frame
 
     // Render graph
     vulkan_render_graph m_render_graph;

@@ -28,7 +28,7 @@ public:
         m_registry = std::make_unique<kryga::singleton_registry>();
         glob::vulkan_render_loader::create(*m_registry);
 
-        glob::vulkan_render::getr().init(500, 500, true);
+        glob::vulkan_render::getr().init(500, 500, render_mode::instanced, true);
     }
 
     void

@@ -20,7 +20,25 @@ layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo
 
 
 //all object matrices
-layout(std140, set = KGPU_objects_descriptor_sets, binding = 0) readonly buffer object_data_buffer{
+layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_objects_binding) readonly buffer object_data_buffer{
 
     object_data objects[];
 } dyn_object_buffer;
+
+// Instance slots buffer for instanced drawing
+layout(std430, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_instance_slots_binding)
+readonly buffer InstanceSlotsBuffer {
+    uint slots[];
+} dyn_instance_slots;
+
+#include "gpu_types/gpu_push_constants.h"
+
+// Push constants (available in vertex shader for instance_base)
+layout(push_constant) uniform Constants {
+    push_constants obj;
+} constants;
+
+// Helper function to get object index from instance slots buffer
+uint get_object_index() {
+    return dyn_instance_slots.slots[constants.obj.instance_base + gl_InstanceIndex];
+}

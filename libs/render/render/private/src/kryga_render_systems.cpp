@@ -8,6 +8,7 @@
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_mesh_data.h"
 #include "vulkan_render/types/vulkan_compute_shader_data.h"
 
 #include <gpu_types/gpu_generic_constants.h>
@@ -429,7 +430,6 @@ vulkan_render::init_cluster_cull_compute()
     if (!kryga::utils::buffer::load(shader_path, shader_buffer))
     {
         ALOG_WARN("Failed to load cluster_cull.comp - GPU cluster culling disabled");
-        m_use_gpu_cluster_cull = false;
         return;
     }
 
@@ -468,7 +468,6 @@ vulkan_render::init_cluster_cull_compute()
         ALOG_WARN("Failed to create cluster cull compute shader - GPU cluster culling disabled");
         m_cluster_cull_pass.reset();
         m_cluster_cull_shader = nullptr;
-        m_use_gpu_cluster_cull = false;
         return;
     }
 
@@ -512,107 +511,160 @@ vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
 void
 vulkan_render::setup_render_graph()
 {
-    // Register resources used by render graph
-    // Names must match shader binding names (dyn_ prefix used in reflection)
+    switch (m_render_mode)
+    {
+    case render_mode::instanced:
+        setup_instanced_render_graph();
+        break;
+    case render_mode::per_object:
+        setup_per_object_render_graph();
+        break;
+    }
+}
 
-    // Dynamic data buffer (UBO) - set 0
+void
+vulkan_render::setup_instanced_render_graph()
+{
+    // =========================================================================
+    // INSTANCED MODE GRAPH
+    // - GPU cluster culling compute pass
+    // - Batched instanced drawing
+    // - instance_slots buffer maps gl_InstanceIndex -> object slot
+    // =========================================================================
+
+    // Register resources
     m_render_graph.register_buffer(AID("dyn_camera_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-    // SSBOs - set 1
     m_render_graph.register_buffer(AID("dyn_object_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_gpu_universal_light_data"),
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_directional_lights_buffer"),
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-    // Cluster lighting SSBOs - set 1
     m_render_graph.register_buffer(AID("dyn_cluster_light_counts"),
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_cluster_light_indices"),
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    // cluster_config is used as UBO in compute shader
     m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-
-    // Materials SSBO - set 3
+    m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-    // Imported resources (externally managed)
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
     m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
 
-    // Register passes with dependencies
-    // Compute pass: cluster culling (writes cluster buffers, reads lights)
-    m_render_graph.add_compute_pass(
-        AID("cluster_cull"),
-        {m_render_graph.write(AID("dyn_cluster_light_counts")),
-         m_render_graph.write(AID("dyn_cluster_light_indices")),
-         m_render_graph.read(AID("dyn_gpu_universal_light_data"))},
-        [this](VkCommandBuffer cmd)
-        {
-            if (m_use_clustered_lighting && m_use_gpu_cluster_cull && m_cluster_cull_shader)
-            {
-                dispatch_cluster_cull_impl(cmd);
-            }
-        });
+    // Compute pass: GPU cluster culling
+    m_render_graph.add_compute_pass(AID("cluster_cull"),
+                                    {m_render_graph.write(AID("dyn_cluster_light_counts")),
+                                     m_render_graph.write(AID("dyn_cluster_light_indices")),
+                                     m_render_graph.read(AID("dyn_gpu_universal_light_data"))},
+                                    [this](VkCommandBuffer cmd)
+                                    {
+                                        if (m_cluster_cull_shader)
+                                        {
+                                            dispatch_cluster_cull_impl(cmd);
+                                        }
+                                    });
 
-    // UI pass: writes to UI render target
-    // Graph handles render_pass->begin/end automatically
+    // UI pass
     m_render_graph.add_graphics_pass(AID("ui"), {m_render_graph.write(AID("ui_target"))},
                                      get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
                                      [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
 
-    // Picking pass: writes to picking target, reads shader resources
+    // Picking pass - instanced batched drawing
     m_render_graph.add_graphics_pass(
         AID("picking"),
         {m_render_graph.write(AID("picking_target")), m_render_graph.read(AID("dyn_camera_data")),
          m_render_graph.read(AID("dyn_object_buffer")),
          m_render_graph.read(AID("dyn_cluster_light_counts")),
          m_render_graph.read(AID("dyn_cluster_light_indices")),
-         m_render_graph.read(AID("dyn_cluster_config"))},
+         m_render_graph.read(AID("dyn_cluster_config")),
+         m_render_graph.read(AID("dyn_instance_slots"))},
         get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
-        [this](VkCommandBuffer cmd)
-        {
-            for (auto& r : m_default_render_object_queue)
-            {
-                pipeline_ctx pctx{};
-                if (!r.second.empty())
-                {
-                    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
-                }
-                draw_same_pipeline_objects_queue(cmd, pctx, r.second);
-            }
+        [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
 
-            for (auto& r : m_outline_render_object_queue)
-            {
-                pipeline_ctx pctx{};
-                if (!r.second.empty())
-                {
-                    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
-                }
-                draw_same_pipeline_objects_queue(cmd, pctx, r.second);
-            }
-        });
-
-    // Main pass: writes to swapchain, reads all shader resources
+    // Main pass - instanced batched drawing
     m_render_graph.add_graphics_pass(
         AID("main"),
         {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
-         // Shader resources
          m_render_graph.read(AID("dyn_camera_data")), m_render_graph.read(AID("dyn_object_buffer")),
          m_render_graph.read(AID("dyn_gpu_universal_light_data")),
          m_render_graph.read(AID("dyn_directional_lights_buffer")),
          m_render_graph.read(AID("dyn_cluster_light_counts")),
          m_render_graph.read(AID("dyn_cluster_light_indices")),
          m_render_graph.read(AID("dyn_cluster_config")),
+         m_render_graph.read(AID("dyn_instance_slots")),
          m_render_graph.read(AID("dyn_material_buffer"))},
         get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
-        [this](VkCommandBuffer) { draw_objects(*m_current_frame); });
+        [this](VkCommandBuffer) { draw_objects_instanced(*m_current_frame); });
 
-    // Compile the graph (calculates execution order)
     bool result = m_render_graph.compile();
+    KRG_check(result, "Instanced render graph compilation failed");
+}
 
-    KRG_check(result, "Pass should be always compiled");
+void
+vulkan_render::setup_per_object_render_graph()
+{
+    // =========================================================================
+    // PER-OBJECT MODE GRAPH
+    // - No compute pass (CPU light grid used instead)
+    // - Per-object draw calls with firstInstance = slot
+    // - Identity buffer: slots[i] = i
+    // =========================================================================
+
+    // Register resources (same as instanced, but cluster buffers are CPU-filled)
+    m_render_graph.register_buffer(AID("dyn_camera_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_object_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_gpu_universal_light_data"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_directional_lights_buffer"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_cluster_light_counts"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_cluster_light_indices"),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
+
+    // NO compute pass - per-object mode uses CPU light grid
+
+    // UI pass
+    m_render_graph.add_graphics_pass(AID("ui"), {m_render_graph.write(AID("ui_target"))},
+                                     get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
+
+    // Picking pass - per-object drawing
+    m_render_graph.add_graphics_pass(
+        AID("picking"),
+        {m_render_graph.write(AID("picking_target")), m_render_graph.read(AID("dyn_camera_data")),
+         m_render_graph.read(AID("dyn_object_buffer")),
+         m_render_graph.read(AID("dyn_cluster_light_counts")),
+         m_render_graph.read(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_cluster_config")),
+         m_render_graph.read(AID("dyn_instance_slots"))},
+        get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
+        [this](VkCommandBuffer cmd) { draw_picking_per_object(cmd); });
+
+    // Main pass - per-object drawing
+    m_render_graph.add_graphics_pass(
+        AID("main"),
+        {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
+         m_render_graph.read(AID("dyn_camera_data")), m_render_graph.read(AID("dyn_object_buffer")),
+         m_render_graph.read(AID("dyn_gpu_universal_light_data")),
+         m_render_graph.read(AID("dyn_directional_lights_buffer")),
+         m_render_graph.read(AID("dyn_cluster_light_counts")),
+         m_render_graph.read(AID("dyn_cluster_light_indices")),
+         m_render_graph.read(AID("dyn_cluster_config")),
+         m_render_graph.read(AID("dyn_instance_slots")),
+         m_render_graph.read(AID("dyn_material_buffer"))},
+        get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
+        [this](VkCommandBuffer) { draw_objects_per_object(*m_current_frame); });
+
+    bool result = m_render_graph.compile();
+    KRG_check(result, "Per-object render graph compilation failed");
 }
 
 }  // namespace render

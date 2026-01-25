@@ -8,10 +8,11 @@ out gl_PerVertex
 	vec4 gl_Position;
 };
 
-void main() 
+void main()
 {
-    mat4 modelMatrix   = dyn_object_buffer.objects[gl_InstanceIndex].model;
-    mat4 normalMatrix  = dyn_object_buffer.objects[gl_InstanceIndex].normal;
+    uint obj_idx = get_object_index();
+    mat4 modelMatrix   = dyn_object_buffer.objects[obj_idx].model;
+    mat4 normalMatrix  = dyn_object_buffer.objects[obj_idx].normal;
 
     mat4 modelView = dyn_camera_data.obj.view * modelMatrix;
 

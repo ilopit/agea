@@ -141,9 +141,6 @@ vulkan_render_graph::set_frame_context(uint32_t swapchain_image_index,
                                        uint32_t width,
                                        uint32_t height)
 {
-    m_frame_ctx.swapchain_image_index = swapchain_image_index;
-    m_frame_ctx.width = width;
-    m_frame_ctx.height = height;
 }
 
 bool
@@ -270,7 +267,10 @@ vulkan_render_graph::compile()
 }
 
 bool
-vulkan_render_graph::execute(VkCommandBuffer cmd)
+vulkan_render_graph::execute(VkCommandBuffer cmd,
+                             uint32_t swapchain_image_index,
+                             uint32_t width,
+                             uint32_t height)
 {
     if (!m_compiled)
     {
@@ -377,8 +377,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd)
         insert_barriers(cmd, barriers);
 
         // Execute pass using the unified execute method
-        pass->execute(cmd, m_frame_ctx.swapchain_image_index, m_frame_ctx.width,
-                      m_frame_ctx.height);
+        pass->execute(cmd, swapchain_image_index, width, height);
     }
     return true;
 }

@@ -28,14 +28,286 @@ namespace kryga
 namespace render
 {
 
+// ============================================================================
+// Instance Drawing Functions
+// ============================================================================
+
 void
-vulkan_render::draw_objects(render::frame_state& current_frame)
+vulkan_render::upload_instance_slots(render::frame_state& frame)
 {
-    ZoneScopedN("Render::DrawObjects");
+    if (m_instance_slots_staging.empty())
+        return;
+
+    const size_t required_size = m_instance_slots_staging.size() * sizeof(uint32_t);
+
+    // Regrow if needed (same pattern as ensure_buffer_capacity_and_map)
+    if (required_size >= frame.buffers.instance_slots.get_alloc_size())
+    {
+        auto old_buffer = std::move(frame.buffers.instance_slots);
+        frame.buffers.instance_slots = glob::render_device::getr().create_buffer(
+            required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        ALOG_INFO("Reallocating instance_slots buffer {} => {}", old_buffer.get_alloc_size(),
+                  frame.buffers.instance_slots.get_alloc_size());
+    }
+
+    frame.buffers.instance_slots.begin();
+    auto* dst = (uint32_t*)frame.buffers.instance_slots.allocate_data((uint32_t)required_size);
+    memcpy(dst, m_instance_slots_staging.data(), required_size);
+    frame.buffers.instance_slots.end();
+}
+
+void
+vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
+{
+    if (r.empty())
+        return;
+
+    mesh_data* cur_mesh = nullptr;
+    uint32_t batch_start = (uint32_t)m_instance_slots_staging.size();
+
+    for (auto& obj : r)
+    {
+        ++m_all_draws;
+
+        // Frustum culling - happens here now, not in draw
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        {
+            ++m_culled_draws;
+            continue;
+        }
+
+        // Mesh change = finalize previous batch
+        if (cur_mesh && cur_mesh != obj->mesh)
+        {
+            uint32_t instance_count = (uint32_t)m_instance_slots_staging.size() - batch_start;
+            if (instance_count > 0)
+            {
+                m_draw_batches.push_back({.mesh = cur_mesh,
+                                          .material = r.front()->material,  // same material for
+                                                                            // whole queue
+                                          .instance_count = instance_count,
+                                          .first_instance_offset = batch_start,
+                                          .outlined = outlined});
+            }
+            batch_start = (uint32_t)m_instance_slots_staging.size();
+        }
+
+        cur_mesh = obj->mesh;
+        m_instance_slots_staging.push_back(obj->slot());
+    }
+
+    // Final batch
+    if (cur_mesh)
+    {
+        uint32_t instance_count = (uint32_t)m_instance_slots_staging.size() - batch_start;
+        if (instance_count > 0)
+        {
+            m_draw_batches.push_back({.mesh = cur_mesh,
+                                      .material = r.front()->material,
+                                      .instance_count = instance_count,
+                                      .first_instance_offset = batch_start,
+                                      .outlined = outlined});
+        }
+    }
+}
+
+void
+vulkan_render::prepare_instance_data(render::frame_state& frame)
+{
+    ZoneScopedN("Render::PrepareInstanceData");
+
+    m_instance_slots_staging.clear();
+    m_draw_batches.clear();
+
+    if (is_instanced_mode())
+    {
+        // Build batches for default queue
+        for (auto& [queue_id, container] : m_default_render_object_queue)
+        {
+            build_batches_for_queue(container, false);
+        }
+
+        // Build batches for outline queue
+        for (auto& [queue_id, container] : m_outline_render_object_queue)
+        {
+            build_batches_for_queue(container, true);
+        }
+    }
+    else
+    {
+        // Per-object mode: populate identity buffer (slots[i] = i) so shaders using
+        // get_object_index() with instance_base=0 and firstInstance=slot will work correctly.
+        // get_object_index() = slots[0 + gl_InstanceIndex] = slots[slot] = slot
+        uint32_t max_slot = m_cache.objects.get_size();
+        m_instance_slots_staging.resize(max_slot);
+        for (uint32_t i = 0; i < max_slot; ++i)
+        {
+            m_instance_slots_staging[i] = i;
+        }
+    }
+
+    // Upload all instance slots
+    upload_instance_slots(frame);
+}
+
+// ============================================================================
+// Draw Functions - Instanced Mode
+// ============================================================================
+
+void
+vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
+{
+    ZoneScopedN("Render::DrawObjectsInstanced");
 
     auto cmd = current_frame.frame->m_main_command_buffer;
 
-    auto device = glob::render_device::get();
+    pipeline_ctx pctx{};
+    material_data* cur_material = nullptr;
+    bool cur_outlined = false;
+
+    // Draw all batches (already frustum culled in prepare phase)
+    for (const auto& batch : m_draw_batches)
+    {
+        // Rebind material/pipeline if changed
+        if (cur_material != batch.material || cur_outlined != batch.outlined)
+        {
+            bind_material(cmd, batch.material, current_frame, pctx, batch.outlined);
+            cur_material = batch.material;
+            cur_outlined = batch.outlined;
+        }
+
+        bind_mesh(cmd, batch.mesh);
+
+        // Push constants with instance_base
+        m_obj_config.instance_base = batch.first_instance_offset;
+        m_obj_config.material_id = batch.material->gpu_idx();
+        m_obj_config.use_clustered_lighting = 1;
+        m_obj_config.local_lights_size = 0;
+        m_obj_config.directional_light_id = m_cache.directional_lights.get_size() > 0
+                                                ? m_cache.directional_lights.at(0)->slot()
+                                                : 0;
+
+        vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(gpu::push_constants), &m_obj_config);
+
+        // Instanced draw
+        if (batch.mesh->has_indices())
+            vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        else
+            vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+    }
+
+    // Outline second pass (same material for all)
+    pctx = {};
+    bool has_outlined = false;
+    for (const auto& batch : m_draw_batches)
+    {
+        if (!batch.outlined)
+            continue;
+
+        if (!has_outlined)
+        {
+            bind_material(cmd, m_outline_mat, current_frame, pctx, false);
+            has_outlined = true;
+        }
+
+        bind_mesh(cmd, batch.mesh);
+
+        m_obj_config.instance_base = batch.first_instance_offset;
+        m_obj_config.material_id = 0;
+        m_obj_config.use_clustered_lighting = 1;
+        m_obj_config.local_lights_size = 0;
+        m_obj_config.directional_light_id = 0;
+
+        vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(gpu::push_constants), &m_obj_config);
+
+        if (batch.mesh->has_indices())
+            vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        else
+            vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+    }
+
+    // TRANSPARENT - needs per-object sorting, add slots after opaque batches
+    if (!m_transparent_render_object_queue.empty())
+    {
+        update_transparent_objects_queue();
+
+        // Add transparent object slots to instance buffer (after opaque objects)
+        uint32_t transparent_base = (uint32_t)m_instance_slots_staging.size();
+        for (auto& obj : m_transparent_render_object_queue)
+        {
+            m_instance_slots_staging.push_back(obj->slot());
+        }
+        // Re-upload the instance slots buffer with transparent objects
+        upload_instance_slots(current_frame);
+
+        // Draw transparent objects with individual instance_base offsets
+        mesh_data* cur_mesh = nullptr;
+        pctx = {};
+        uint32_t transparent_idx = 0;
+
+        for (auto& obj : m_transparent_render_object_queue)
+        {
+            if (pctx.cur_material_type_idx != obj->material->gpu_type_idx())
+            {
+                bind_material(cmd, obj->material, current_frame, pctx);
+            }
+            else if (pctx.cur_material_idx != obj->material->gpu_idx())
+            {
+                pctx.cur_material_idx = obj->material->gpu_idx();
+                if (obj->material->has_textures())
+                {
+                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            pctx.pipeline_layout, KGPU_textures_descriptor_sets, 1,
+                                            &obj->material->get_textures_ds(), 0, nullptr);
+                }
+            }
+
+            if (cur_mesh != obj->mesh)
+            {
+                cur_mesh = obj->mesh;
+                bind_mesh(cmd, cur_mesh);
+            }
+
+            // Set push constants for this transparent object
+            m_obj_config.directional_light_id = m_cache.directional_lights.get_size() > 0
+                                                    ? m_cache.directional_lights.at(0)->slot()
+                                                    : 0;
+            m_obj_config.use_clustered_lighting = 1;
+            m_obj_config.local_lights_size = 0;
+            m_obj_config.material_id = obj->material->gpu_idx();
+            m_obj_config.instance_base = transparent_base + transparent_idx;
+
+            vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                               sizeof(gpu::push_constants), &m_obj_config);
+
+            if (obj->mesh->has_indices())
+                vkCmdDrawIndexed(cmd, obj->mesh->indices_size(), 1, 0, 0, 0);
+            else
+                vkCmdDraw(cmd, obj->mesh->vertices_size(), 1, 0, 0);
+
+            ++transparent_idx;
+        }
+    }
+
+    // Draw UI overlay
+    draw_ui_overlay(cmd, current_frame);
+}
+
+// ============================================================================
+// Draw Functions - Per-Object Mode
+// ============================================================================
+
+void
+vulkan_render::draw_objects_per_object(render::frame_state& current_frame)
+{
+    ZoneScopedN("Render::DrawObjectsPerObject");
+
+    auto cmd = current_frame.frame->m_main_command_buffer;
 
     // DEFAULT
     for (auto& r : m_default_render_object_queue)
@@ -64,10 +336,78 @@ vulkan_render::draw_objects(render::frame_state& current_frame)
         draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
     }
 
-    // Draw UI
+    // Draw UI overlay
+    draw_ui_overlay(cmd, current_frame);
+}
+
+// ============================================================================
+// Draw Functions - Picking
+// ============================================================================
+
+void
+vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
+{
+    ZoneScopedN("Render::DrawPickingInstanced");
+
+    pipeline_ctx pctx{};
+    bool bound = false;
+
+    for (const auto& batch : m_draw_batches)
+    {
+        if (!bound)
+        {
+            bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+            bound = true;
+        }
+
+        bind_mesh(cmd, batch.mesh);
+
+        m_obj_config.instance_base = batch.first_instance_offset;
+        m_obj_config.material_id = 0;
+        m_obj_config.use_clustered_lighting = 1;
+        m_obj_config.local_lights_size = 0;
+        m_obj_config.directional_light_id = 0;
+
+        vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                           sizeof(gpu::push_constants), &m_obj_config);
+
+        if (batch.mesh->has_indices())
+            vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        else
+            vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+    }
+}
+
+void
+vulkan_render::draw_picking_per_object(VkCommandBuffer cmd)
+{
+    ZoneScopedN("Render::DrawPickingPerObject");
+
+    pipeline_ctx pctx{};
+    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+
+    for (auto& [queue_id, container] : m_default_render_object_queue)
+    {
+        draw_same_pipeline_objects_queue(cmd, pctx, container, false);
+    }
+
+    for (auto& [queue_id, container] : m_outline_render_object_queue)
+    {
+        draw_same_pipeline_objects_queue(cmd, pctx, container, false);
+    }
+}
+
+// ============================================================================
+// Draw Functions - UI Overlay (shared)
+// ============================================================================
+
+void
+vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
     auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
 
-    pctx = {};
+    pipeline_ctx pctx{};
     bind_material(cmd, m_ui_target_mat, current_frame, pctx, false, false);
     bind_mesh(cmd, m);
 
@@ -189,16 +529,20 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
                            const pipeline_ctx& pctx,
                            const render::vulkan_render_data* obj)
 {
+    // Legacy per-object drawing function
+    // Uses identity buffer (slots[i] = i) with instance_base = 0 and firstInstance = slot
+    // So get_object_index() = slots[0 + slot] = slot
+
     // Set directional light (global)
     m_obj_config.directional_light_id =
         m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
 
     // Set lighting mode
-    m_obj_config.use_clustered_lighting = m_use_clustered_lighting ? 1 : 0;
+    m_obj_config.use_clustered_lighting = is_instanced_mode() ? 1 : 0;
 
-    if (!m_use_clustered_lighting)
+    // Per-object lighting: query light grid for lights affecting this object
+    if (!is_instanced_mode() && m_light_grid.is_initialized())
     {
-        // Per-object light grid path: query lights affecting this object
         m_obj_config.local_lights_size =
             m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->bounding_radius,
                                       m_obj_config.local_light_ids, KGPU_max_lights_per_object);
@@ -211,11 +555,17 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
 
+    // Legacy mode: instance_base = 0, firstInstance = slot
+    // Shader: get_object_index() = slots[instance_base + gl_InstanceIndex]
+    //       = slots[0 + slot] = slot (from identity buffer)
+    m_obj_config.instance_base = 0;
+
     constexpr auto range = sizeof(gpu::push_constants);
-    vkCmdPushConstants(cmd, pctx.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
+    vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, range,
                        &m_obj_config);
 
-    // we can now draw
+    // Draw using the object's slot via firstInstance
     if (!obj->mesh->has_indices())
     {
         vkCmdDraw(cmd, cur_mesh->vertices_size(), 1, 0, obj->slot());
@@ -256,7 +606,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    const uint32_t dummy_offset[] = {0, 0, 0, 0, 0, 0};
+    const uint32_t dummy_offset[] = {0, 0, 0, 0, 0, 0, 0};
 
     if (object)
     {

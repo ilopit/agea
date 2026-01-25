@@ -49,10 +49,14 @@ vulkan_render::~vulkan_render()
 }
 
 void
-vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
+vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
 {
     m_width = w;
     m_height = h;
+    m_render_mode = mode;
+
+    ALOG_INFO("Initializing renderer in {} mode",
+              mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
 
     prepare_render_passes();
     prepare_pass_bindings();
@@ -103,6 +107,11 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
             DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        // Instance slots buffer for instanced drawing
+        m_frames[i].buffers.instance_slots = device.create_buffer(
+            KGPU_initial_instance_slots_size * sizeof(uint32_t),
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();
@@ -131,10 +140,13 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
 
-    // Initialize GPU cluster culling compute shader
-    init_cluster_cull_compute();
+    // Initialize GPU cluster culling compute shader (only needed for instanced mode)
+    if (m_render_mode == render_mode::instanced)
+    {
+        init_cluster_cull_compute();
+    }
 
-    // Setup render graph
+    // Setup render graph based on mode
     setup_render_graph();
 
     // Validate all binding tables against render graph resources
@@ -152,7 +164,8 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
                   "Picking pass binding validation failed");
     }
 
-    if (m_cluster_cull_pass && m_cluster_cull_pass->are_bindings_finalized())
+    if (m_render_mode == render_mode::instanced && m_cluster_cull_pass &&
+        m_cluster_cull_pass->are_bindings_finalized())
     {
         KRG_check(m_cluster_cull_pass->validate_resources(m_render_graph),
                   "Cluster cull pass binding validation failed");
@@ -162,6 +175,11 @@ vulkan_render::init(uint32_t w, uint32_t h, bool only_rp)
 void
 vulkan_render::deinit()
 {
+    // Clear cluster cull pass before device is destroyed
+    // (it holds compute shader with VkShaderModule)
+    m_cluster_cull_shader = nullptr;
+    m_cluster_cull_pass.reset();
+
     m_frames.clear();
 }
 
@@ -281,7 +299,10 @@ vulkan_render::prepare_pass_bindings()
                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
             .add(AID("dyn_cluster_config"), KGPU_objects_descriptor_sets,
                  KGPU_objects_cluster_config_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT);
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_instance_slots"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT);
 
         // Set 2: Textures (per-material, validated but bound per-draw)
         main_pass->bindings().add(AID("textures"), KGPU_textures_descriptor_sets, 0,
@@ -325,7 +346,10 @@ vulkan_render::prepare_pass_bindings()
                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
             .add(AID("dyn_cluster_config"), KGPU_objects_descriptor_sets,
                  KGPU_objects_cluster_config_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT);
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_instance_slots"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT);
 
         picking_pass->finalize_bindings(layout_cache);
     }
