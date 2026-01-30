@@ -55,7 +55,8 @@ public:
     texture_data*
     get_texture_data(const kryga::utils::id& id)
     {
-        return get_data<texture_data>(m_textures_cache, id);
+        auto itr = m_textures_cache.find(id);
+        return itr != m_textures_cache.end() ? itr->second : nullptr;
     }
 
     texture_data*
@@ -182,7 +183,9 @@ private:
     }
 
     std::unordered_map<kryga::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
-    std::unordered_map<kryga::utils::id, std::shared_ptr<texture_data>> m_textures_cache;
+    // Note: textures are now stored in render_cache.textures (combined_pool)
+    // This map just provides ID-based lookup
+    std::unordered_map<kryga::utils::id, texture_data*> m_textures_cache;
     std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>> m_materials_cache;
     std::unordered_map<kryga::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
 

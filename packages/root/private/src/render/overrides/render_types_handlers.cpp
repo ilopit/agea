@@ -192,7 +192,7 @@ texture__render_destructor(reflection::type_context__render& ctx)
 
     if (auto txt_data = txt_model.get_texture_data())
     {
-        glob::vulkan_render_loader::getr().destroy_texture_data(txt_data->get_id());
+        glob::vulkan_render_loader::getr().destroy_texture_data(txt_data->id());
     }
 
     return result_code::ok;

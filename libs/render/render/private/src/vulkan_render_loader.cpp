@@ -4,7 +4,7 @@
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
-#include "vulkan_render/texture_registry.h"
+#include "vulkan_render/kryga_render.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 
 #include "vulkan_render/types/vulkan_mesh_data.h"
@@ -237,8 +237,15 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     KRG_check(!get_texture_data(texture_id), "should never happens");
 
     auto device = glob::render_device::get();
+    auto& cache = glob::vulkan_render::getr().get_cache();
 
-    auto td = std::make_shared<texture_data>(texture_id);
+    // Allocate texture in render cache - slot becomes bindless index
+    auto* td = cache.textures.alloc(texture_id);
+    if (!td)
+    {
+        ALOG_ERROR("Failed to allocate texture in cache");
+        return nullptr;
+    }
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
@@ -258,9 +265,12 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
 
+    // Mark texture dirty for bindless descriptor update
+    glob::vulkan_render::getr().mark_texture_dirty(td);
+
     m_textures_cache[texture_id] = td;
 
-    return td.get();
+    return td;
 }
 
 texture_data*
@@ -270,14 +280,25 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 {
     KRG_check(!get_texture_data(texture_id), "should never happens");
 
-    auto td = std::make_shared<texture_data>(texture_id);
+    auto& cache = glob::vulkan_render::getr().get_cache();
+
+    // Allocate texture in render cache - slot becomes bindless index
+    auto* td = cache.textures.alloc(texture_id);
+    if (!td)
+    {
+        ALOG_ERROR("Failed to allocate texture in cache");
+        return nullptr;
+    }
 
     td->image = image;
     td->image_view = view;
 
+    // Mark texture dirty for bindless descriptor update
+    glob::vulkan_render::getr().mark_texture_dirty(td);
+
     m_textures_cache[texture_id] = td;
 
-    return td.get();
+    return td;
 }
 
 void
@@ -286,7 +307,9 @@ vulkan_render_loader::destroy_texture_data(const kryga::utils::id& id)
     auto itr = m_textures_cache.find(id);
     if (itr != m_textures_cache.end())
     {
-        // shedule_to_deltete_t(std::move(itr->second));
+        // Release from cache
+        auto& cache = glob::vulkan_render::getr().get_cache();
+        cache.textures.release(itr->second);
         m_textures_cache.erase(itr);
     }
 }
@@ -371,21 +394,14 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
     mat_data->set_shader_effect(&se_data);
     mat_data->set_texture_samples(samples);
 
-    // Register textures in bindless registry and store indices
-    auto& registry = glob::texture_registry::getr();
+    // Set bindless texture indices from texture slots
     ALOG_INFO("create_material: {} has {} texture samples", mat_data->get_id().cstr(), samples.size());
     for (const auto& sample : samples)
     {
         if (sample.texture)
         {
+            // Texture already has bindless index from its slot in render_cache
             uint32_t bindless_idx = sample.texture->get_bindless_index();
-            if (bindless_idx == texture_data::INVALID_BINDLESS_INDEX)
-            {
-                // Register this texture for the first time
-                bindless_idx = registry.register_texture(sample.texture);
-                sample.texture->set_bindless_index(bindless_idx);
-                ALOG_INFO("  Registered texture at bindless index {}", bindless_idx);
-            }
             mat_data->set_bindless_texture_index(sample.slot, bindless_idx);
             ALOG_INFO("  Set slot {} to bindless index {}", sample.slot, bindless_idx);
         }

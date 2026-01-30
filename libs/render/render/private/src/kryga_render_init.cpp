@@ -2,7 +2,6 @@
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include "vulkan_render/vulkan_render_device.h"
-#include "vulkan_render/texture_registry.h"
 #include "vulkan_render/types/vulkan_render_pass_builder.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
@@ -182,6 +181,9 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
 void
 vulkan_render::deinit()
 {
+    // Wait for all GPU operations to complete before destroying resources
+    vkDeviceWaitIdle(glob::render_device::get()->vk_device());
+
     // Clear cluster cull pass before device is destroyed
     // (it holds compute shader with VkShaderModule)
     m_cluster_cull_shader = nullptr;
@@ -192,6 +194,10 @@ vulkan_render::deinit()
 
     // Cleanup static samplers
     deinit_static_samplers();
+
+    // Clear texture cache before VMA is destroyed
+    // (textures hold vulkan_image which use VMA allocations)
+    m_cache.textures.clear();
 
     m_frames.clear();
 }

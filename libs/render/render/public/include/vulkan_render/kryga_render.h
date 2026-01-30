@@ -43,6 +43,7 @@ using render_line_container = ::kryga::utils::line_container<render::vulkan_rend
 using materials_update_queue = ::kryga::utils::line_container<render::material_data*>;
 using materials_update_queue_set = ::kryga::utils::line_container<materials_update_queue>;
 using objects_update_queue = ::kryga::utils::line_container<render::vulkan_render_data*>;
+using textures_update_queue = ::kryga::utils::line_container<render::texture_data*>;
 
 using directional_light_update_queue =
     ::kryga::utils::line_container<render::vulkan_directional_light_data*>;
@@ -82,6 +83,7 @@ struct frame_upload_state
     materials_update_queue_set materials_queue_set;
     directional_light_update_queue directional_light_queue;
     universal_light_update_queue universal_light_queue;
+    textures_update_queue textures_queue;
 
     bool has_pending_materials = false;
 
@@ -109,12 +111,19 @@ struct frame_upload_state
         return has_pending_materials;
     }
 
+    bool
+    has_textures() const
+    {
+        return !textures_queue.empty();
+    }
+
     void
     clear_all()
     {
         objects_queue.clear();
         universal_light_queue.clear();
         directional_light_queue.clear();
+        textures_queue.clear();
 
         for (auto& m : materials_queue_set)
         {
@@ -203,6 +212,10 @@ public:
 
     render_pass*
     get_render_pass(const utils::id& id);
+
+    // Mark a texture as needing descriptor update
+    void
+    mark_texture_dirty(texture_data* tex);
 
     uint32_t
     get_all_draws() const

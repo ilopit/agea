@@ -4,7 +4,6 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
-#include "vulkan_render/texture_registry.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
@@ -429,15 +428,22 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 }
 
 void
+vulkan_render::mark_texture_dirty(texture_data* tex)
+{
+    auto& q = get_current_frame_transfer_data();
+    q.uploads.textures_queue.emplace_back(tex);
+}
+
+void
 vulkan_render::update_bindless_descriptors()
 {
-    auto& registry = glob::texture_registry::getr();
-    const auto& dirty = registry.get_dirty();
+    auto& current_frame = get_current_frame_transfer_data();
+    auto& textures_queue = current_frame.uploads.textures_queue;
 
     ALOG_INFO("update_bindless_descriptors: {} dirty textures, bindless_set={}",
-              dirty.size(), (void*)m_bindless_set);
+              textures_queue.get_size(), (void*)m_bindless_set);
 
-    if (dirty.empty())
+    if (textures_queue.empty())
     {
         return;
     }
@@ -446,12 +452,11 @@ vulkan_render::update_bindless_descriptors()
 
     std::vector<VkDescriptorImageInfo> image_infos;
     std::vector<VkWriteDescriptorSet> writes;
-    image_infos.reserve(dirty.size());
-    writes.reserve(dirty.size());
+    image_infos.reserve(textures_queue.get_size());
+    writes.reserve(textures_queue.get_size());
 
-    for (uint32_t idx : dirty)
+    for (auto* tex : textures_queue)
     {
-        auto* tex = registry.get(idx);
         if (!tex || !tex->image_view)
         {
             continue;
@@ -467,7 +472,7 @@ vulkan_render::update_bindless_descriptors()
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet = m_bindless_set;
         write.dstBinding = 1;  // Textures at binding 1 (samplers at binding 0)
-        write.dstArrayElement = idx;
+        write.dstArrayElement = tex->get_bindless_index();
         write.descriptorCount = 1;
         write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         write.pImageInfo = &image_infos.back();
@@ -480,7 +485,7 @@ vulkan_render::update_bindless_descriptors()
                                writes.data(), 0, nullptr);
     }
 
-    registry.clear_dirty();
+    textures_queue.clear();
 }
 
 }  // namespace render

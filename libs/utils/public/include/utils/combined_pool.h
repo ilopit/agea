@@ -94,6 +94,15 @@ public:
         m_free_slots.push_back(slot_id);
     }
 
+    void
+    clear()
+    {
+        m_items.clear();
+        m_free_slots.clear();
+        m_mapping.clear();
+        m_active_size = 0;
+    }
+
 private:
     std::deque<T> m_items;
 

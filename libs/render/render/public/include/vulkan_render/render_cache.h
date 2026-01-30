@@ -4,6 +4,7 @@
 
 #include <vulkan_render/types/vulkan_render_data.h>
 #include <vulkan_render/types/vulkan_light_data.h>
+#include <vulkan_render/types/vulkan_texture_data.h>
 
 namespace kryga
 {
@@ -21,6 +22,7 @@ public:
     utils::combined_pool<vulkan_render_data> objects;
     utils::combined_pool<vulkan_directional_light_data> directional_lights;
     utils::combined_pool<vulkan_universal_light_data> universal_lights;
+    utils::combined_pool<texture_data> textures;
 };
 
 }  // namespace render

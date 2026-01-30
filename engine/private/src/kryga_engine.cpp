@@ -46,7 +46,6 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
-#include <vulkan_render/texture_registry.h>
 
 #include <utils/kryga_log.h>
 #include <utils/process.h>
@@ -221,7 +220,6 @@ vulkan_engine::init(const startup_options& options)
     glob::vulkan_render_loader::create(*m_registry);
     glob::ui::create(*m_registry);
     glob::native_window::create(*m_registry);
-    glob::texture_registry::create(*m_registry);
     glob::vulkan_render::create(*m_registry);
     glob::engine_counters::create(*m_registry);
     glob::render_bridge::create(*m_registry);
