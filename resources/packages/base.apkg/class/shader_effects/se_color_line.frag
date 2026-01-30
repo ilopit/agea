@@ -1,6 +1,6 @@
 #version 450
 
-#include "common_frag.glsl" 
+#include "common_frag.glsl"
 
 // materials
 struct MaterialData
@@ -9,17 +9,14 @@ struct MaterialData
 };
 
 //all object matrices
-layout(std140, set = 3, binding = 0) readonly buffer MaterialBuffer{   
+layout(std140, set = 3, binding = 0) readonly buffer MaterialBuffer{
 
     MaterialData objects[];
 } dyn_material_buffer;
 
-
-layout(set = 2, binding = 0) uniform sampler2D tex1[2];
-
 void main()
 {
-    MaterialData material = dyn_material_buffer.objects[constants.material_id];
+    MaterialData material = dyn_material_buffer.objects[constants.obj.material_id];
 
-    outColor = vec4(1.0, 1.0, 1.0, 1.0);
+    out_color = vec4(1.0, 1.0, 1.0, 1.0);
 }

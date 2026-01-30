@@ -1,4 +1,5 @@
 #extension GL_GOOGLE_include_directive: enable
+#extension GL_EXT_nonuniform_qualifier : require
 #include "gpu_types/gpu_light_types.h"
 #include "gpu_types/gpu_camera_types.h"
 #include "gpu_types/gpu_generic_constants.h"
@@ -56,6 +57,24 @@ layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_cluste
 layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_cluster_config_binding) readonly buffer ClusterConfigBuffer{
     cluster_grid_data config;
 } dyn_cluster_config;
+
+// Static sampler array (set 2, binding 0) - immutable samplers for runtime selection
+layout(set = KGPU_textures_descriptor_sets, binding = 0) uniform sampler static_samplers[KGPU_SAMPLER_COUNT];
+
+// Bindless texture array (set 2, binding 1) - separate from samplers
+// Note: Textures at binding 1 because variable descriptor count must be highest binding
+layout(set = KGPU_textures_descriptor_sets, binding = 1) uniform texture2D bindless_textures[];
+
+// Bindless texture sampling helper with runtime sampler selection
+vec4 sample_bindless_texture(uint texture_idx, uint sampler_idx, vec2 uv)
+{
+    if (texture_idx == 0xFFFFFFFFu) // INVALID_BINDLESS_INDEX
+        return vec4(1.0, 0.0, 1.0, 1.0); // Magenta for missing texture
+    return texture(
+        sampler2D(bindless_textures[nonuniformEXT(texture_idx)],
+                  static_samplers[sampler_idx]),
+        uv);
+}
 
 // Cluster lighting helper functions
 uint getDepthSlice(float viewDepth)

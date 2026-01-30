@@ -126,6 +126,17 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 
     vkb::DeviceBuilder deviceBuilder{physicalDevice};
 
+    // Enable descriptor indexing features for bindless textures
+    VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{};
+    indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+    indexing_features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+    indexing_features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+    indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
+    indexing_features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+    indexing_features.runtimeDescriptorArray = VK_TRUE;
+
+    deviceBuilder.add_pNext(&indexing_features);
+
     vkb::Device vkbDevice = deviceBuilder.build().value();
 
     // Get the VkDevice handle used in the rest of a vulkan application

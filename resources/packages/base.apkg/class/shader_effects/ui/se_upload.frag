@@ -1,13 +1,30 @@
 #version 450
+#extension GL_EXT_nonuniform_qualifier : require
 
-layout(set = 2, binding = 0) uniform sampler2D textures[1];
+#include "gpu_types/gpu_generic_constants.h"
+#include "gpu_types/gpu_push_constants.h"
 
-// Input
+layout(set = KGPU_textures_descriptor_sets, binding = 0) uniform sampler static_samplers[KGPU_SAMPLER_COUNT];
+layout(set = KGPU_textures_descriptor_sets, binding = 1) uniform texture2D bindless_textures[];
+
 layout (location = 0) in vec2 in_tex_coord;
 
 layout (location = 0) out vec4 out_color;
 
-void main() 
+layout(push_constant) uniform Constants
 {
-    out_color = texture(textures[0], in_tex_coord);
+    push_constants obj;
+} constants;
+
+void main()
+{
+    uint tex_idx = constants.obj.texture_indices[KGPU_TEXTURE_SLOT_ALBEDO];
+    uint sampler_idx = constants.obj.sampler_indices[KGPU_TEXTURE_SLOT_ALBEDO];
+    if (tex_idx == 0xFFFFFFFFu)
+        out_color = vec4(1.0, 0.0, 1.0, 1.0);
+    else
+        out_color = texture(
+            sampler2D(bindless_textures[nonuniformEXT(tex_idx)],
+                      static_samplers[sampler_idx]),
+            in_tex_coord);
 }

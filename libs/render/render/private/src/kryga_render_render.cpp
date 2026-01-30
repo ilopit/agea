@@ -28,6 +28,49 @@ namespace kryga
 namespace render
 {
 
+namespace
+{
+
+// Helper to copy material's bindless texture and sampler indices to push constants
+void
+copy_texture_indices(gpu::push_constants& config, const material_data* mat)
+{
+    // Initialize all slots to invalid/default
+    for (uint32_t i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
+    {
+        config.texture_indices[i] = UINT32_MAX;
+        config.sampler_indices[i] = KGPU_SAMPLER_LINEAR_REPEAT;  // Default sampler
+    }
+
+    if (!mat)
+    {
+        return;
+    }
+
+    // Copy bindless texture indices from material
+    const auto& tex_indices = mat->get_bindless_texture_indices();
+    static bool logged = false;
+    if (!logged && !tex_indices.empty())
+    {
+        ALOG_INFO("copy_texture_indices: mat {} has {} indices, first={}",
+                  mat->get_id().cstr(), tex_indices.size(), tex_indices[0]);
+        logged = true;
+    }
+    for (uint32_t i = 0; i < tex_indices.size() && i < KGPU_MAX_TEXTURE_SLOTS; ++i)
+    {
+        config.texture_indices[i] = tex_indices[i];
+    }
+
+    // Copy bindless sampler indices from material
+    const auto& sampler_indices = mat->get_bindless_sampler_indices();
+    for (uint32_t i = 0; i < sampler_indices.size() && i < KGPU_MAX_TEXTURE_SLOTS; ++i)
+    {
+        config.sampler_indices[i] = sampler_indices[i];
+    }
+}
+
+}  // namespace
+
 // ============================================================================
 // Instance Drawing Functions
 // ============================================================================
@@ -178,7 +221,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
 
         bind_mesh(cmd, batch.mesh);
 
-        // Push constants with instance_base
+        // Push constants with instance_base and texture indices
         m_obj_config.instance_base = batch.first_instance_offset;
         m_obj_config.material_id = batch.material->gpu_idx();
         m_obj_config.use_clustered_lighting = 1;
@@ -186,6 +229,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.directional_light_id = m_cache.directional_lights.get_size() > 0
                                                 ? m_cache.directional_lights.at(0)->slot()
                                                 : 0;
+        copy_texture_indices(m_obj_config, batch.material);
 
         vkCmdPushConstants(cmd, pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
@@ -219,6 +263,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.use_clustered_lighting = 1;
         m_obj_config.local_lights_size = 0;
         m_obj_config.directional_light_id = 0;
+        copy_texture_indices(m_obj_config, m_outline_mat);
 
         vkCmdPushConstants(cmd, pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
@@ -258,12 +303,8 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
             else if (pctx.cur_material_idx != obj->material->gpu_idx())
             {
                 pctx.cur_material_idx = obj->material->gpu_idx();
-                if (obj->material->has_textures())
-                {
-                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                            pctx.pipeline_layout, KGPU_textures_descriptor_sets, 1,
-                                            &obj->material->get_textures_ds(), 0, nullptr);
-                }
+                // Note: With bindless textures, we don't need to rebind texture descriptor set
+                // The global bindless set is already bound, texture indices come via push constants
             }
 
             if (cur_mesh != obj->mesh)
@@ -280,6 +321,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
             m_obj_config.local_lights_size = 0;
             m_obj_config.material_id = obj->material->gpu_idx();
             m_obj_config.instance_base = transparent_base + transparent_idx;
+            copy_texture_indices(m_obj_config, obj->material);
 
             vkCmdPushConstants(cmd, pctx.pipeline_layout,
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
@@ -367,6 +409,7 @@ vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
         m_obj_config.use_clustered_lighting = 1;
         m_obj_config.local_lights_size = 0;
         m_obj_config.directional_light_id = 0;
+        copy_texture_indices(m_obj_config, m_pick_mat);
 
         vkCmdPushConstants(cmd, pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
@@ -411,6 +454,12 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
     bind_material(cmd, m_ui_target_mat, current_frame, pctx, false, false);
     bind_mesh(cmd, m);
 
+    // Push constants with texture indices for UI material
+    copy_texture_indices(m_obj_config, m_ui_target_mat);
+    vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(gpu::push_constants), &m_obj_config);
+
     if (!m->has_indices())
     {
         vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
@@ -447,13 +496,8 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
         else if (pctx.cur_material_idx != obj->material->gpu_idx())
         {
             pctx.cur_material_idx = obj->material->gpu_idx();
-
-            if (obj->material->has_textures())
-            {
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
-                                        KGPU_textures_descriptor_sets, 1,
-                                        &obj->material->get_textures_ds(), 0, nullptr);
-            }
+            // Note: With bindless textures, texture indices come via push constants
+            // No need to rebind descriptor set for different materials
         }
 
         if (cur_mesh != obj->mesh)
@@ -490,7 +534,9 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
                                                 bool rebind_images)
 {
     mesh_data* cur_mesh = nullptr;
-    uint32_t cur_material_idx = pctx.cur_material_idx;
+    // Note: rebind_images parameter is now obsolete with bindless textures
+    // Texture indices are passed via push constants, not descriptor sets
+    (void)rebind_images;
 
     for (auto& obj : r)
     {
@@ -500,18 +546,6 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
         {
             ++m_culled_draws;
             continue;
-        }
-
-        if (rebind_images && cur_material_idx != obj->material->gpu_idx())
-        {
-            cur_material_idx = obj->material->gpu_idx();
-
-            if (obj->material->has_textures())
-            {
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pctx.pipeline_layout,
-                                        KGPU_textures_descriptor_sets, 1,
-                                        &obj->material->get_textures_ds(), 0, nullptr);
-            }
         }
 
         if (cur_mesh != obj->mesh)
@@ -559,6 +593,9 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     // Shader: get_object_index() = slots[instance_base + gl_InstanceIndex]
     //       = slots[0 + slot] = slot (from identity buffer)
     m_obj_config.instance_base = 0;
+
+    // Copy bindless texture indices from material
+    copy_texture_indices(m_obj_config, obj->material);
 
     constexpr auto range = sizeof(gpu::push_constants);
     vkCmdPushConstants(cmd, pctx.pipeline_layout,
@@ -639,8 +676,16 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
                                 KGPU_materials_descriptor_sets, 1, &mat_data_set, 1, dummy_offset);
     }
 
-    if (cur_material->has_textures())
+    // Bind global bindless texture set if available, otherwise fall back to per-material set
+    if (m_bindless_set != VK_NULL_HANDLE)
     {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
+                                KGPU_textures_descriptor_sets, 1, &m_bindless_set,
+                                0, nullptr);
+    }
+    else if (cur_material->has_textures())
+    {
+        // Legacy per-material texture binding
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, ctx.pipeline_layout,
                                 KGPU_textures_descriptor_sets, 1, &cur_material->get_textures_ds(),
                                 0, nullptr);

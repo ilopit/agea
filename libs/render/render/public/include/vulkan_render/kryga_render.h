@@ -210,6 +210,12 @@ public:
         return m_all_draws;
     }
 
+    VkDescriptorSetLayout
+    get_bindless_layout() const
+    {
+        return m_bindless_layout;
+    }
+
     uint32_t
     get_culled_draws() const
     {
@@ -343,6 +349,20 @@ private:
     void
     prepare_ui_resources();
 
+    // Static samplers
+    void
+    init_static_samplers();
+    void
+    deinit_static_samplers();
+
+    // Bindless textures
+    void
+    init_bindless_textures();
+    void
+    deinit_bindless_textures();
+    void
+    update_bindless_descriptors();
+
     void
     update_ui(frame_state& cmd);
     void
@@ -402,6 +422,14 @@ private:
 
     VkDescriptorSet m_objects_set = VK_NULL_HANDLE;
     VkDescriptorSet m_global_set = VK_NULL_HANDLE;
+
+    // Static samplers (7 sampler variants for runtime selection)
+    VkSampler m_static_samplers[7] = {};  // KGPU_SAMPLER_COUNT
+
+    // Bindless textures
+    VkDescriptorPool m_bindless_pool = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_bindless_layout = VK_NULL_HANDLE;
+    VkDescriptorSet m_bindless_set = VK_NULL_HANDLE;
 
     gpu::push_constants m_obj_config;
 

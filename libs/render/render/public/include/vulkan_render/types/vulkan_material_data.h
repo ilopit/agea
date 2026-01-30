@@ -119,6 +119,60 @@ public:
         return !m_gpu_data.empty();
     }
 
+    // Bindless texture indices (indexed by slot)
+    void
+    set_bindless_texture_index(uint32_t slot, uint32_t bindless_index)
+    {
+        if (slot >= m_bindless_texture_indices.size())
+        {
+            m_bindless_texture_indices.resize(slot + 1, UINT32_MAX);
+        }
+        m_bindless_texture_indices[slot] = bindless_index;
+    }
+
+    uint32_t
+    get_bindless_texture_index(uint32_t slot) const
+    {
+        if (slot >= m_bindless_texture_indices.size())
+        {
+            return UINT32_MAX;
+        }
+        return m_bindless_texture_indices[slot];
+    }
+
+    const std::vector<uint32_t>&
+    get_bindless_texture_indices() const
+    {
+        return m_bindless_texture_indices;
+    }
+
+    // Bindless sampler indices (indexed by slot, parallel to texture indices)
+    void
+    set_bindless_sampler_index(uint32_t slot, uint8_t sampler_index)
+    {
+        if (slot >= m_bindless_sampler_indices.size())
+        {
+            m_bindless_sampler_indices.resize(slot + 1, 0);  // Default to LINEAR_REPEAT
+        }
+        m_bindless_sampler_indices[slot] = sampler_index;
+    }
+
+    uint8_t
+    get_bindless_sampler_index(uint32_t slot) const
+    {
+        if (slot >= m_bindless_sampler_indices.size())
+        {
+            return 0;  // Default to LINEAR_REPEAT
+        }
+        return m_bindless_sampler_indices[slot];
+    }
+
+    const std::vector<uint8_t>&
+    get_bindless_sampler_indices() const
+    {
+        return m_bindless_sampler_indices;
+    }
+
 private:
     ::kryga::utils::id m_id;
     ::kryga::utils::id m_type_id;
@@ -130,6 +184,8 @@ private:
     VkDescriptorSet m_samplers_set = VK_NULL_HANDLE;
     shader_effect_data* m_effect = nullptr;
     std::vector<texture_sampler_data> m_texture_samples;
+    std::vector<uint32_t> m_bindless_texture_indices;
+    std::vector<uint8_t> m_bindless_sampler_indices;  // Parallel to texture indices
 };
 }  // namespace render
 }  // namespace kryga

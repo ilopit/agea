@@ -18,6 +18,18 @@ main(int argc, char** argv)
 {
     kryga::utils::setup_logger(spdlog::level::level_enum::trace);
 
+    // Parse command-line arguments
+    kryga::startup_options options;
+    if (!kryga::startup_options::parse(argc, argv, options))
+    {
+        if (options.show_help)
+        {
+            kryga::startup_options::print_help(argv[0]);
+            return 0;
+        }
+        return 1;
+    }
+
     auto registry = std::make_unique<kryga::singleton_registry>();
 
 #if WIN32
@@ -27,7 +39,7 @@ main(int argc, char** argv)
         auto& r = *registry;
         kryga::glob::engine::create(r, std::move(registry));
 
-        kryga::glob::engine::getr().init();
+        kryga::glob::engine::getr().init(options);
         kryga::glob::engine::getr().run();
         kryga::glob::engine::getr().cleanup();
     }

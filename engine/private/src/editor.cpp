@@ -143,7 +143,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 40;
+    int obj_DIM = 30;
 
     for (x = -obj_DIM / 2; x < obj_DIM / 2; ++x)
     {
@@ -261,7 +261,8 @@ game_editor::update_camera()
     m_look_left_delta = 0.f;
     m_look_up_delta = 0.f;
 
-     m_camera_data.view = glm::transpose(cam_rot) * glm::translate(glm::mat4{1.f}, -m_camera_data.position);
+    m_camera_data.view =
+        glm::transpose(cam_rot) * glm::translate(glm::mat4{1.f}, -m_camera_data.position);
 
     float aspect = glob::native_window::getr().aspect_ratio();
     if (aspect != m_cached_aspect_ratio)

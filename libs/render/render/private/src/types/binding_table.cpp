@@ -169,7 +169,7 @@ binding_table::validate_single_binding(const reflection::binding& b,
 
     if (!spec)
     {
-        ALOG_ERROR("{} shader binding '{}' (set={}, type={}) not found in binding table",
+        ALOG_ERROR("{} shader binding '{}' (binding={}, type={}) not found in binding table",
                    stage_name, b.name.cstr(), b.binding_index, descriptor_type_to_string(b.type));
         return false;
     }

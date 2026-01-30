@@ -2,6 +2,7 @@
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/texture_registry.h"
 #include "vulkan_render/types/vulkan_render_pass_builder.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
@@ -58,6 +59,12 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
     ALOG_INFO("Initializing renderer in {} mode",
               mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
 
+    // Initialize static samplers first - needed for bindless texture layout
+    init_static_samplers();
+
+    // Initialize bindless textures early - needed for shader pipeline layouts
+    init_bindless_textures();
+
     prepare_render_passes();
     prepare_pass_bindings();
 
@@ -109,9 +116,9 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
             VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // Instance slots buffer for instanced drawing
-        m_frames[i].buffers.instance_slots = device.create_buffer(
-            KGPU_initial_instance_slots_size * sizeof(uint32_t),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.instance_slots =
+            device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();
@@ -179,6 +186,12 @@ vulkan_render::deinit()
     // (it holds compute shader with VkShaderModule)
     m_cluster_cull_shader = nullptr;
     m_cluster_cull_pass.reset();
+
+    // Cleanup bindless textures
+    deinit_bindless_textures();
+
+    // Cleanup static samplers
+    deinit_static_samplers();
 
     m_frames.clear();
 }
@@ -275,10 +288,9 @@ vulkan_render::prepare_pass_bindings()
     if (main_pass)
     {
         // Set 0: Global data (camera)
-        main_pass->bindings().add(
-            AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        main_pass->bindings().add(AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
+                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 1: Object data (objects, lights, clusters)
         main_pass->bindings()
@@ -304,15 +316,22 @@ vulkan_render::prepare_pass_bindings()
                  KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT);
 
-        // Set 2: Textures (per-material, validated but bound per-draw)
-        main_pass->bindings().add(AID("textures"), KGPU_textures_descriptor_sets, 0,
-                                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                  VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
+        // Set 2: Bindless textures and static samplers (managed separately from render graph)
+        main_pass->bindings()
+            .add(AID("static_samplers"), KGPU_textures_descriptor_sets, 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material)
+            .add(AID("bindless_textures"), KGPU_textures_descriptor_sets, 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material);
 
         // Set 3: Material data (per-material)
         main_pass->bindings().add(AID("dyn_material_buffer"), KGPU_materials_descriptor_sets, 0,
                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                                  VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
+                                  VK_SHADER_STAGE_FRAGMENT_BIT,
+                                  render::binding_scope::per_material);
 
         main_pass->finalize_bindings(layout_cache);
     }
@@ -322,10 +341,9 @@ vulkan_render::prepare_pass_bindings()
     if (picking_pass)
     {
         // Set 0: Global data (camera)
-        picking_pass->bindings().add(
-            AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+        picking_pass->bindings().add(AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
+                                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 1: Object data (same as main pass)
         picking_pass->bindings()
@@ -351,6 +369,17 @@ vulkan_render::prepare_pass_bindings()
                  KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT);
 
+        // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)
+        picking_pass->bindings()
+            .add(AID("static_samplers"), KGPU_textures_descriptor_sets, 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material)
+            .add(AID("bindless_textures"), KGPU_textures_descriptor_sets, 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material);
+
         picking_pass->finalize_bindings(layout_cache);
     }
 
@@ -359,8 +388,7 @@ vulkan_render::prepare_pass_bindings()
     if (ui_pass)
     {
         // Set 0: Font texture sampler
-        ui_pass->bindings().add(AID("fontSampler"), 0, 0,
-                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+        ui_pass->bindings().add(AID("fontSampler"), 0, 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                 VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
 
         ui_pass->finalize_bindings(layout_cache);
@@ -447,6 +475,198 @@ render_pass*
 vulkan_render::get_render_pass(const utils::id& id)
 {
     return glob::vulkan_render_loader::getr().get_render_pass(id);
+}
+
+void
+vulkan_render::init_static_samplers()
+{
+    auto vk_device = glob::render_device::get()->vk_device();
+
+    // Helper to create a sampler with given parameters
+    auto create_sampler = [vk_device](VkFilter filter, VkSamplerAddressMode addressMode,
+                                       VkBorderColor borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                                       bool anisotropy = false) -> VkSampler
+    {
+        VkSamplerCreateInfo ci{};
+        ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        ci.magFilter = filter;
+        ci.minFilter = filter;
+        ci.mipmapMode = (filter == VK_FILTER_LINEAR) ? VK_SAMPLER_MIPMAP_MODE_LINEAR
+                                                     : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        ci.addressModeU = addressMode;
+        ci.addressModeV = addressMode;
+        ci.addressModeW = addressMode;
+        ci.mipLodBias = 0.0f;
+        ci.anisotropyEnable = anisotropy ? VK_TRUE : VK_FALSE;
+        ci.maxAnisotropy = anisotropy ? 16.0f : 1.0f;
+        ci.compareEnable = VK_FALSE;
+        ci.compareOp = VK_COMPARE_OP_ALWAYS;
+        ci.minLod = 0.0f;
+        ci.maxLod = VK_LOD_CLAMP_NONE;
+        ci.borderColor = borderColor;
+        ci.unnormalizedCoordinates = VK_FALSE;
+
+        VkSampler sampler;
+        VK_CHECK(vkCreateSampler(vk_device, &ci, nullptr, &sampler));
+        return sampler;
+    };
+
+    // KGPU_SAMPLER_LINEAR_REPEAT (0) - Default for most textures
+    m_static_samplers[KGPU_SAMPLER_LINEAR_REPEAT] =
+        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+    // KGPU_SAMPLER_LINEAR_CLAMP (1) - Skyboxes, LUTs
+    m_static_samplers[KGPU_SAMPLER_LINEAR_CLAMP] =
+        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+    // KGPU_SAMPLER_LINEAR_MIRROR (2) - Seamless tiling
+    m_static_samplers[KGPU_SAMPLER_LINEAR_MIRROR] =
+        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT);
+
+    // KGPU_SAMPLER_NEAREST_REPEAT (3) - Pixel art, data textures
+    m_static_samplers[KGPU_SAMPLER_NEAREST_REPEAT] =
+        create_sampler(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+    // KGPU_SAMPLER_NEAREST_CLAMP (4) - UI, fonts
+    m_static_samplers[KGPU_SAMPLER_NEAREST_CLAMP] =
+        create_sampler(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+    // KGPU_SAMPLER_LINEAR_CLAMP_BORDER (5) - Shadow maps
+    m_static_samplers[KGPU_SAMPLER_LINEAR_CLAMP_BORDER] =
+        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+                       VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+
+    // KGPU_SAMPLER_ANISO_REPEAT (6) - High-quality surfaces
+    // Note: Anisotropy requires the feature to be enabled at device creation.
+    // For now, fall back to linear filtering. To enable anisotropy, add
+    // samplerAnisotropy to device features in vulkan_render_device.cpp
+    m_static_samplers[KGPU_SAMPLER_ANISO_REPEAT] =
+        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                       VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK, false);
+
+    ALOG_INFO("Static samplers initialized ({} variants)", KGPU_SAMPLER_COUNT);
+}
+
+void
+vulkan_render::deinit_static_samplers()
+{
+    auto vk_device = glob::render_device::get()->vk_device();
+
+    for (int i = 0; i < KGPU_SAMPLER_COUNT; ++i)
+    {
+        if (m_static_samplers[i] != VK_NULL_HANDLE)
+        {
+            vkDestroySampler(vk_device, m_static_samplers[i], nullptr);
+            m_static_samplers[i] = VK_NULL_HANDLE;
+        }
+    }
+}
+
+void
+vulkan_render::init_bindless_textures()
+{
+    auto device = glob::render_device::get();
+    auto vk_device = device->vk_device();
+
+    // Create descriptor pool with UPDATE_AFTER_BIND flag
+    // Pool needs space for SAMPLED_IMAGE (textures) and SAMPLER (static samplers)
+    VkDescriptorPoolSize pool_sizes[2]{};
+    pool_sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    pool_sizes[0].descriptorCount = KGPU_max_bindless_textures;
+    pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    pool_sizes[1].descriptorCount = KGPU_SAMPLER_COUNT;
+
+    VkDescriptorPoolCreateInfo pool_ci{};
+    pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_ci.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    pool_ci.maxSets = 1;
+    pool_ci.poolSizeCount = 2;
+    pool_ci.pPoolSizes = pool_sizes;
+
+    VK_CHECK(vkCreateDescriptorPool(vk_device, &pool_ci, nullptr, &m_bindless_pool));
+
+    // Create descriptor set layout with two bindings:
+    // Binding 0: sampler static_samplers[KGPU_SAMPLER_COUNT] (SAMPLER, immutable)
+    // Binding 1: texture2D bindless_textures[] (SAMPLED_IMAGE, variable count)
+    // Note: Variable count flag must be on highest binding number
+    VkDescriptorSetLayoutBinding bindings[2]{};
+
+    // Binding 0: Static samplers (immutable)
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    bindings[0].descriptorCount = KGPU_SAMPLER_COUNT;
+    bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[0].pImmutableSamplers = m_static_samplers;  // Immutable samplers
+
+    // Binding 1: Bindless textures (SAMPLED_IMAGE, variable count)
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    bindings[1].descriptorCount = KGPU_max_bindless_textures;
+    bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].pImmutableSamplers = nullptr;
+
+    // Binding flags: sampler has none, texture binding has variable count (must be last)
+    VkDescriptorBindingFlags binding_flags[2]{};
+    binding_flags[0] = 0;  // No special flags for immutable samplers
+    binding_flags[1] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                       VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+                       VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_ci{};
+    binding_flags_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    binding_flags_ci.bindingCount = 2;
+    binding_flags_ci.pBindingFlags = binding_flags;
+
+    VkDescriptorSetLayoutCreateInfo layout_ci{};
+    layout_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layout_ci.pNext = &binding_flags_ci;
+    layout_ci.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    layout_ci.bindingCount = 2;
+    layout_ci.pBindings = bindings;
+
+    VK_CHECK(vkCreateDescriptorSetLayout(vk_device, &layout_ci, nullptr, &m_bindless_layout));
+
+    // Allocate the single bindless descriptor set
+    // Variable count only applies to binding 0 (the last binding with variable count flag)
+    uint32_t variable_count = KGPU_max_bindless_textures;
+
+    VkDescriptorSetVariableDescriptorCountAllocateInfo variable_count_ai{};
+    variable_count_ai.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+    variable_count_ai.descriptorSetCount = 1;
+    variable_count_ai.pDescriptorCounts = &variable_count;
+
+    VkDescriptorSetAllocateInfo set_ai{};
+    set_ai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    set_ai.pNext = &variable_count_ai;
+    set_ai.descriptorPool = m_bindless_pool;
+    set_ai.descriptorSetCount = 1;
+    set_ai.pSetLayouts = &m_bindless_layout;
+
+    VK_CHECK(vkAllocateDescriptorSets(vk_device, &set_ai, &m_bindless_set));
+
+    ALOG_INFO("Bindless textures initialized with {} max textures and {} static samplers",
+              KGPU_max_bindless_textures, KGPU_SAMPLER_COUNT);
+}
+
+void
+vulkan_render::deinit_bindless_textures()
+{
+    auto vk_device = glob::render_device::get()->vk_device();
+
+    if (m_bindless_layout != VK_NULL_HANDLE)
+    {
+        vkDestroyDescriptorSetLayout(vk_device, m_bindless_layout, nullptr);
+        m_bindless_layout = VK_NULL_HANDLE;
+    }
+
+    if (m_bindless_pool != VK_NULL_HANDLE)
+    {
+        vkDestroyDescriptorPool(vk_device, m_bindless_pool, nullptr);
+        m_bindless_pool = VK_NULL_HANDLE;
+    }
+
+    m_bindless_set = VK_NULL_HANDLE;
 }
 
 }  // namespace render

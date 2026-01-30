@@ -23,4 +23,17 @@
 #define KGPU_znear 0.1
 #define KGPU_zfar 2000
 
+// Bindless textures
+#define KGPU_max_bindless_textures 4096
+
+// Static sampler types for runtime sampler selection
+#define KGPU_SAMPLER_LINEAR_REPEAT       0  // Default for most textures
+#define KGPU_SAMPLER_LINEAR_CLAMP        1  // Skyboxes, LUTs
+#define KGPU_SAMPLER_LINEAR_MIRROR       2  // Seamless tiling
+#define KGPU_SAMPLER_NEAREST_REPEAT      3  // Pixel art, data textures
+#define KGPU_SAMPLER_NEAREST_CLAMP       4  // UI, fonts
+#define KGPU_SAMPLER_LINEAR_CLAMP_BORDER 5  // Shadow maps
+#define KGPU_SAMPLER_ANISO_REPEAT        6  // High-quality surfaces
+#define KGPU_SAMPLER_COUNT               7
+
 #endif

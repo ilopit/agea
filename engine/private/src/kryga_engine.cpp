@@ -46,6 +46,7 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
+#include <vulkan_render/texture_registry.h>
 
 #include <utils/kryga_log.h>
 #include <utils/process.h>
@@ -53,15 +54,104 @@
 
 #include <sol2_unofficial/sol.h>
 
-#include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <cstring>
 
 namespace kryga
 {
 glob::engine::type glob::engine::type::s_instance;
+
+// ============================================================================
+// Startup Options
+// ============================================================================
+
+bool
+startup_options::parse(int argc, char** argv, startup_options& out)
+{
+    out = {};  // Reset to defaults
+
+    for (int i = 1; i < argc; ++i)
+    {
+        const char* arg = argv[i];
+
+        if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
+        {
+            out.show_help = true;
+            return false;
+        }
+        else if (strcmp(arg, "--render-mode") == 0 || strcmp(arg, "-r") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                ALOG_ERROR("{} requires a value (instanced|per_object)", arg);
+                return false;
+            }
+            ++i;
+            const char* value = argv[i];
+
+            if (strcmp(value, "instanced") == 0)
+            {
+                out.render_mode = render::render_mode::instanced;
+            }
+            else if (strcmp(value, "per_object") == 0)
+            {
+                out.render_mode = render::render_mode::per_object;
+            }
+            else
+            {
+                ALOG_ERROR("Unknown render mode '{}'. Valid values: instanced, per_object", value);
+                return false;
+            }
+        }
+        else if (strcmp(arg, "--run-for") == 0 || strcmp(arg, "-t") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                ALOG_ERROR("{} requires a value (seconds)", arg);
+                return false;
+            }
+            ++i;
+            const char* value = argv[i];
+
+            char* end = nullptr;
+            float seconds = std::strtof(value, &end);
+            if (end == value || seconds < 0.f)
+            {
+                ALOG_ERROR("Invalid run duration '{}'. Must be a non-negative number.", value);
+                return false;
+            }
+            out.run_for_seconds = seconds;
+        }
+        else
+        {
+            ALOG_ERROR("Unknown argument '{}'", arg);
+            out.show_help = true;
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void
+startup_options::print_help(const char* program_name)
+{
+    ALOG_INFO(
+        "Usage: {} [OPTIONS]\n\n"
+        "Options:\n"
+        "  -h, --help              Show this help message\n"
+        "  -r, --render-mode MODE  Set render mode (default: instanced)\n"
+        "                          Values: instanced, per_object\n"
+        "  -t, --run-for SECONDS   Run for specified duration then exit\n"
+        "                          (0 or omit for unlimited)\n\n"
+        "Render Modes:\n"
+        "  instanced   - Batched instanced drawing with GPU cluster culling\n"
+        "  per_object  - Per-object drawing with CPU light grid",
+        program_name);
+}
 
 vulkan_engine::vulkan_engine(std::unique_ptr<singleton_registry> r)
     : m_registry(std::move(r))
@@ -96,9 +186,17 @@ vulkan_engine::~vulkan_engine()
 }
 
 bool
-vulkan_engine::init()
+vulkan_engine::init(const startup_options& options)
 {
     ALOG_INFO("Initialization started ...");
+    ALOG_INFO("Render mode: {}",
+              options.render_mode == render::render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
+
+    m_run_for_seconds = options.run_for_seconds;
+    if (m_run_for_seconds > 0.f)
+    {
+        ALOG_INFO("Run duration limit: {} seconds", m_run_for_seconds);
+    }
 
     auto& gs = glob::glob_state();
     core::state_mutator__lua_api::set(gs);
@@ -123,6 +221,7 @@ vulkan_engine::init()
     glob::vulkan_render_loader::create(*m_registry);
     glob::ui::create(*m_registry);
     glob::native_window::create(*m_registry);
+    glob::texture_registry::create(*m_registry);
     glob::vulkan_render::create(*m_registry);
     glob::engine_counters::create(*m_registry);
     glob::render_bridge::create(*m_registry);
@@ -168,7 +267,7 @@ vulkan_engine::init()
 
     glob::ui::getr().init();
 
-    glob::vulkan_render::getr().init(rwc.w, rwc.h);
+    glob::vulkan_render::getr().init(rwc.w, rwc.h, options.render_mode);
 
     init_default_resources();
 
@@ -200,9 +299,18 @@ vulkan_engine::run()
     float frame_time = 1.f / glob::config::get()->fps_lock;
     const std::chrono::microseconds frame_time_int(1000000 / glob::config::get()->fps_lock);
 
+    float total_elapsed = 0.f;
+
     // main loop
     for (;;)
     {
+        // Check run duration limit
+        if (m_run_for_seconds > 0.f && total_elapsed >= m_run_for_seconds)
+        {
+            ALOG_INFO("Run duration limit reached ({} seconds), exiting.", m_run_for_seconds);
+            break;
+        }
+
         KRG_make_scope(frame);
         KRG_PROFILE_SCOPE("Frame");
 
@@ -272,6 +380,7 @@ vulkan_engine::run()
 
         frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);
         frame_time = 0.00001f * frame_msk.count();
+        total_elapsed += frame_time;
 
         KRG_PROFILE_FRAME_MARK();
     }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan_render/types/vulkan_gpu_types.h>
+#include <vulkan_render/kryga_render.h>
 
 #include <resource_locator/resource_locator.h>
 
@@ -25,6 +26,22 @@ namespace kryga
 class native_window;
 class sync_service;
 
+// Command-line startup options
+struct startup_options
+{
+    render::render_mode render_mode = render::render_mode::instanced;
+    float run_for_seconds = 0.f;  // 0 = unlimited
+    bool show_help = false;
+
+    // Parse command line arguments
+    // Returns false if parsing failed or help was requested
+    static bool
+    parse(int argc, char** argv, startup_options& out);
+
+    static void
+    print_help(const char* program_name);
+};
+
 namespace ui
 {
 class ui;
@@ -44,7 +61,7 @@ public:
 
     // initializes everything in the engine
     bool
-    init();
+    init(const startup_options& options = {});
     void
     cleanup();
 
@@ -86,6 +103,8 @@ private:
 
     std::unique_ptr<singleton_registry> m_registry;
     // clang-format on
+
+    float m_run_for_seconds = 0.f;  // 0 = unlimited
 
     gpu::camera_data m_camera_data;
 

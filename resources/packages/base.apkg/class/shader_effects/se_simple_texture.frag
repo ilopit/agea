@@ -1,10 +1,10 @@
 #version 450
 #include "common_frag.glsl"
 
-layout(set = 2, binding = 0) uniform sampler2D tex1[1];
-
 void main()
 {
-    vec3 object_color = texture(tex1[0], in_tex_coord).xyz;
+    uint albedo_idx = constants.obj.texture_indices[KGPU_TEXTURE_SLOT_ALBEDO];
+    uint sampler_idx = constants.obj.sampler_indices[KGPU_TEXTURE_SLOT_ALBEDO];
+    vec3 object_color = sample_bindless_texture(albedo_idx, sampler_idx, in_tex_coord).xyz;
     out_color = vec4(object_color, 1.0);
 }

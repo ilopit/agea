@@ -15,8 +15,10 @@ texture_data::texture_data(texture_data&& other) noexcept
     , image(std::move(other.image))
     , format(other.format)
     , m_id(std::move(other.m_id))
+    , m_bindless_index(other.m_bindless_index)
 {
     other.format = texture_format::unknown;
+    other.m_bindless_index = INVALID_BINDLESS_INDEX;
 }
 
 texture_data&
@@ -31,6 +33,9 @@ texture_data::operator=(texture_data&& other) noexcept
         other.format = texture_format::unknown;
 
         m_id = std::move(other.m_id);
+
+        m_bindless_index = other.m_bindless_index;
+        other.m_bindless_index = INVALID_BINDLESS_INDEX;
     }
 
     return *this;

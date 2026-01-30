@@ -2,6 +2,8 @@
 
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/kryga_render.h"
+#include "gpu_types/gpu_generic_constants.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/shader_reflection_utils.h"
 #include "vulkan_render/types/vulkan_mesh_data.h"
@@ -131,8 +133,24 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
         ly.create_info.flags = 0;
         ly.create_info.pNext = 0;
 
+        // For set 2 (textures), skip creating layout - we'll use the global bindless layout
+        // Don't store it in se.m_set_layout since it's shared and shouldn't be destroyed
+        if (i == KGPU_textures_descriptor_sets)
+        {
+            se.m_set_layout[i] = VK_NULL_HANDLE;  // Mark as not owned
+            continue;
+        }
+
         vkCreateDescriptorSetLayout(device->vk_device(), &ly.create_info, nullptr,
                                     &se.m_set_layout[i]);
+    }
+
+    // Build pipeline layout using the global bindless layout for set 2
+    std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> pipeline_layouts = se.m_set_layout;
+    auto bindless_layout = glob::vulkan_render::get()->get_bindless_layout();
+    if (bindless_layout != VK_NULL_HANDLE)
+    {
+        pipeline_layouts[KGPU_textures_descriptor_sets] = bindless_layout;
     }
 
     VkPipelineLayoutCreateInfo pipeline_layout_ci = vk_utils::make_pipeline_layout_create_info();
@@ -141,7 +159,7 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     pipeline_layout_ci.pushConstantRangeCount = (uint32_t)constants.size();
 
     pipeline_layout_ci.setLayoutCount = DESCRIPTORS_SETS_COUNT;
-    pipeline_layout_ci.pSetLayouts = se.m_set_layout.data();
+    pipeline_layout_ci.pSetLayouts = pipeline_layouts.data();
 
     vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr,
                            &se.m_pipeline_layout);

@@ -4,8 +4,11 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
+#include "vulkan_render/texture_registry.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
+#include "vulkan_render/types/vulkan_sampler_data.h"
 
 #include <gpu_types/gpu_generic_constants.h>
 
@@ -190,6 +193,9 @@ void
 vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 {
     ZoneScopedN("Render::PrepareResources");
+
+    // Update bindless texture descriptors for any newly registered textures
+    update_bindless_descriptors();
 
     // Build instance data (batches for instanced path, identity buffer for legacy path)
     // Both paths need the instance_slots buffer populated for shaders to work
@@ -420,6 +426,61 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
     }
 
     return m_cache.objects.at(obj_slot);
+}
+
+void
+vulkan_render::update_bindless_descriptors()
+{
+    auto& registry = glob::texture_registry::getr();
+    const auto& dirty = registry.get_dirty();
+
+    ALOG_INFO("update_bindless_descriptors: {} dirty textures, bindless_set={}",
+              dirty.size(), (void*)m_bindless_set);
+
+    if (dirty.empty())
+    {
+        return;
+    }
+
+    auto device = glob::render_device::get();
+
+    std::vector<VkDescriptorImageInfo> image_infos;
+    std::vector<VkWriteDescriptorSet> writes;
+    image_infos.reserve(dirty.size());
+    writes.reserve(dirty.size());
+
+    for (uint32_t idx : dirty)
+    {
+        auto* tex = registry.get(idx);
+        if (!tex || !tex->image_view)
+        {
+            continue;
+        }
+
+        VkDescriptorImageInfo image_info{};
+        image_info.sampler = VK_NULL_HANDLE;  // Sampler comes from static_samplers binding
+        image_info.imageView = tex->image_view->vk();
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        image_infos.push_back(image_info);
+
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = m_bindless_set;
+        write.dstBinding = 1;  // Textures at binding 1 (samplers at binding 0)
+        write.dstArrayElement = idx;
+        write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        write.pImageInfo = &image_infos.back();
+        writes.push_back(write);
+    }
+
+    if (!writes.empty())
+    {
+        vkUpdateDescriptorSets(device->vk_device(), static_cast<uint32_t>(writes.size()),
+                               writes.data(), 0, nullptr);
+    }
+
+    registry.clear_dirty();
 }
 
 }  // namespace render

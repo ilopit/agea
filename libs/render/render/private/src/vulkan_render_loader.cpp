@@ -4,6 +4,7 @@
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
+#include "vulkan_render/texture_registry.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 
 #include "vulkan_render/types/vulkan_mesh_data.h"
@@ -370,6 +371,27 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
     mat_data->set_shader_effect(&se_data);
     mat_data->set_texture_samples(samples);
 
+    // Register textures in bindless registry and store indices
+    auto& registry = glob::texture_registry::getr();
+    ALOG_INFO("create_material: {} has {} texture samples", mat_data->get_id().cstr(), samples.size());
+    for (const auto& sample : samples)
+    {
+        if (sample.texture)
+        {
+            uint32_t bindless_idx = sample.texture->get_bindless_index();
+            if (bindless_idx == texture_data::INVALID_BINDLESS_INDEX)
+            {
+                // Register this texture for the first time
+                bindless_idx = registry.register_texture(sample.texture);
+                sample.texture->set_bindless_index(bindless_idx);
+                ALOG_INFO("  Registered texture at bindless index {}", bindless_idx);
+            }
+            mat_data->set_bindless_texture_index(sample.slot, bindless_idx);
+            ALOG_INFO("  Set slot {} to bindless index {}", sample.slot, bindless_idx);
+        }
+    }
+
+    // Legacy per-material descriptor set (kept for backwards compatibility)
     auto sampler = get_sampler_data(AID("default"));
     if (!samples.empty())
     {
@@ -382,7 +404,7 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
             image_buffer_info[i].imageView = samples[i].texture->image_view->vk();
         }
 
-        // TODO: Optimize
+        // TODO: Optimize - this can be removed once all shaders use bindless
         VkDescriptorSet txt_ds = VK_NULL_HANDLE;
         vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                             device->descriptor_allocator())
