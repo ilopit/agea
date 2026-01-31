@@ -328,7 +328,7 @@ vulkan_render::prepare_pass_bindings()
         main_pass->bindings()
             .add(AID("dyn_object_buffer"), KGPU_objects_descriptor_sets,
                  KGPU_objects_objects_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
+                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
             .add(AID("dyn_directional_lights_buffer"), KGPU_objects_descriptor_sets,
                  KGPU_objects_directional_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -381,7 +381,7 @@ vulkan_render::prepare_pass_bindings()
         picking_pass->bindings()
             .add(AID("dyn_object_buffer"), KGPU_objects_descriptor_sets,
                  KGPU_objects_objects_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
+                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
             .add(AID("dyn_directional_lights_buffer"), KGPU_objects_descriptor_sets,
                  KGPU_objects_directional_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)

@@ -9,6 +9,7 @@ void main()
 
     mat4 modelView = dyn_camera_data.obj.view * modelMatrix;
 
+    out_object_idx = obj_idx;
     out_color      = in_color;
     out_tex_coord  = in_tex_coord;
     out_normal     = mat3(normalMatrix) * in_normal;

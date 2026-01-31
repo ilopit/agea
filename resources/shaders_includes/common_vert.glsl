@@ -12,6 +12,7 @@ layout (location = 0) out vec3 out_world_pos;
 layout (location = 1) out vec3 out_normal;
 layout (location = 2) out vec3 out_color;
 layout (location = 3) out vec2 out_tex_coord;
+layout (location = 4) out flat uint out_object_idx;
 
 layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo 
 {

@@ -100,11 +100,13 @@ vulkan_render::draw_main()
     m_current_frame = &current_frame;
     m_render_graph.set_frame_context(swapchain_image_index, width, height);
 
-    // Build descriptor set for cluster culling using binding table
+    // Build descriptor set for cluster culling (required for instanced mode)
     // Binding names must match render graph resource names (dyn_ prefix)
-    if (is_instanced_mode() && m_cluster_cull_pass &&
-        m_cluster_cull_pass->are_bindings_finalized())
+    if (is_instanced_mode())
     {
+        KRG_check(m_cluster_cull_pass, "Cluster cull pass required for instanced mode");
+        KRG_check(m_cluster_cull_pass->are_bindings_finalized(), "Cluster cull bindings not finalized");
+
         m_cluster_cull_pass->begin_frame();
         m_cluster_cull_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
         m_cluster_cull_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
@@ -119,10 +121,13 @@ vulkan_render::draw_main()
             0, *current_frame.frame->m_dynamic_descriptor_allocator);
     }
 
-    // Build descriptor set for frustum culling
-    if (is_instanced_mode() && m_frustum_cull_pass && m_gpu_frustum_culling_enabled &&
-        m_frustum_cull_pass->are_bindings_finalized())
+    // Build descriptor set for frustum culling (required for instanced mode)
+    if (is_instanced_mode())
     {
+        KRG_check(m_frustum_cull_pass, "Frustum cull pass required for instanced mode");
+        KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required for instanced mode");
+        KRG_check(m_frustum_cull_pass->are_bindings_finalized(), "Frustum cull bindings not finalized");
+
         m_frustum_cull_pass->begin_frame();
         m_frustum_cull_pass->bind(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
         m_frustum_cull_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
@@ -258,47 +263,39 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
     if (is_instanced_mode())
     {
-        // Upload frustum data for GPU frustum culling
-        if (m_frustum_cull_pass && m_gpu_frustum_culling_enabled)
-        {
-            upload_frustum_data(current_frame);
-        }
+        // Upload frustum data for GPU frustum culling (required for instanced mode)
+        KRG_check(m_frustum_cull_pass, "Frustum cull pass required for instanced mode");
+        KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required for instanced mode");
+        upload_frustum_data(current_frame);
 
-        if (m_cluster_cull_pass && m_cluster_cull_shader)
-        {
-            // GPU compute path: upload config and dispatch compute shader
-            ZoneScopedN("Render::GPUClusterCull");
+        // GPU cluster culling required for instanced mode
+        KRG_check(m_cluster_cull_pass, "Cluster cull pass required for instanced mode");
+        KRG_check(m_cluster_cull_shader, "Cluster cull shader required for instanced mode");
 
-            // Upload cluster config (needed by compute shader)
-            const auto& config = m_cluster_grid.get_config();
-            m_cluster_config.tiles_x = config.tiles_x;
-            m_cluster_config.tiles_y = config.tiles_y;
-            m_cluster_config.depth_slices = config.depth_slices;
-            m_cluster_config.tile_size = config.tile_size;
-            m_cluster_config.near_plane = config.near_plane;
-            m_cluster_config.far_plane = config.far_plane;
-            m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
-            m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
-            m_cluster_config.screen_width = config.screen_width;
-            m_cluster_config.screen_height = config.screen_height;
+        // GPU compute path: upload config and dispatch compute shader
+        ZoneScopedN("Render::GPUClusterCull");
 
-            current_frame.buffers.cluster_config.begin();
-            auto* data =
-                current_frame.buffers.cluster_config.allocate_data(sizeof(gpu::cluster_grid_data));
-            memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
-            current_frame.buffers.cluster_config.end();
+        // Upload cluster config (needed by compute shader)
+        const auto& config = m_cluster_grid.get_config();
+        m_cluster_config.tiles_x = config.tiles_x;
+        m_cluster_config.tiles_y = config.tiles_y;
+        m_cluster_config.depth_slices = config.depth_slices;
+        m_cluster_config.tile_size = config.tile_size;
+        m_cluster_config.near_plane = config.near_plane;
+        m_cluster_config.far_plane = config.far_plane;
+        m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
+        m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
+        m_cluster_config.screen_width = config.screen_width;
+        m_cluster_config.screen_height = config.screen_height;
 
-            // Dispatch compute shader will be called after command buffer begins
-            m_clusters_dirty = false;
-        }
-        else
-        {
-            // CPU fallback path
-            ZoneScopedN("Render::CPUBuildClusters");
-            build_light_clusters();
-            m_clusters_dirty = false;
-            upload_cluster_data(current_frame);
-        }
+        current_frame.buffers.cluster_config.begin();
+        auto* data =
+            current_frame.buffers.cluster_config.allocate_data(sizeof(gpu::cluster_grid_data));
+        memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
+        current_frame.buffers.cluster_config.end();
+
+        // Dispatch compute shader will be called after command buffer begins
+        m_clusters_dirty = false;
     }
     else
     {

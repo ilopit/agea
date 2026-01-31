@@ -589,10 +589,9 @@ vulkan_render::dispatch_frustum_cull_impl(VkCommandBuffer cmd)
 {
     ZoneScopedN("Render::DispatchFrustumCullImpl");
 
-    if (!m_frustum_cull_shader || !m_gpu_frustum_culling_enabled)
-    {
-        return;
-    }
+    // Frustum culling is required for instanced mode - assert instead of early return
+    KRG_check(m_frustum_cull_shader, "Frustum cull shader required for instanced mode");
+    KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required for instanced mode");
 
     auto& current_frame = *m_current_frame;
 
@@ -693,18 +692,14 @@ vulkan_render::setup_instanced_render_graph()
     m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
 
     // Compute pass: GPU frustum culling (runs before cluster culling)
+    // Frustum culling is required for instanced mode - dispatch_frustum_cull_impl asserts if not ready
     m_render_graph.add_compute_pass(AID("frustum_cull"),
                                     {m_render_graph.read(AID("dyn_frustum_data")),
                                      m_render_graph.read(AID("dyn_object_buffer")),
                                      m_render_graph.write(AID("dyn_visible_indices")),
                                      m_render_graph.write(AID("dyn_cull_output"))},
                                     [this](VkCommandBuffer cmd)
-                                    {
-                                        if (m_frustum_cull_shader && m_gpu_frustum_culling_enabled)
-                                        {
-                                            dispatch_frustum_cull_impl(cmd);
-                                        }
-                                    });
+                                    { dispatch_frustum_cull_impl(cmd); });
 
     // Compute pass: GPU cluster culling
     m_render_graph.add_compute_pass(AID("cluster_cull"),

@@ -14,6 +14,8 @@ void main()
     mat4 modelMatrix   = dyn_object_buffer.objects[obj_idx].model;
     mat4 modelView = dyn_camera_data.obj.view * modelMatrix;
 
+    out_object_idx = obj_idx;
+
     // Encode actual object slot (not gl_InstanceIndex) for picking
     out_color.b  = float( (obj_idx >> 16) & 0xFFu) / 255.0;
     out_color.g  = float( (obj_idx >> 8) & 0xFFu) / 255.0;

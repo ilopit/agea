@@ -2,6 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 #include "gpu_types/gpu_light_types.h"
 #include "gpu_types/gpu_camera_types.h"
+#include "gpu_types/gpu_object_types.h"
 #include "gpu_types/gpu_generic_constants.h"
 #include "gpu_types/gpu_push_constants.h"
 #include "gpu_types/gpu_cluster_types.h"
@@ -11,6 +12,7 @@ layout (location = 0) in vec3 in_world_pos;
 layout (location = 1) in vec3 in_normal;
 layout (location = 2) in vec3 in_color;
 layout (location = 3) in vec2 in_tex_coord;
+layout (location = 4) in flat uint in_object_idx;
 
 // Output
 layout (location = 0) out vec4 out_color;
@@ -26,6 +28,11 @@ layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo
 {
    camera_data obj;
 } dyn_camera_data;
+
+// Object buffer - provides per-object data including material_id
+layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_objects_binding) readonly buffer ObjectDataBuffer{
+    object_data objects[];
+} dyn_object_buffer;
 
 layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_directional_light_binding) readonly buffer DirLightBuffer{
 
@@ -106,4 +113,10 @@ uint getClusterIndex(vec2 screenPos, float viewDepth)
     return slice * (dyn_cluster_config.config.tiles_x * dyn_cluster_config.config.tiles_y)
          + tileY * dyn_cluster_config.config.tiles_x
          + tileX;
+}
+
+// Helper to get material_id from current object (uses in_object_idx from vertex shader)
+uint get_material_id()
+{
+    return dyn_object_buffer.objects[in_object_idx].material_id;
 }

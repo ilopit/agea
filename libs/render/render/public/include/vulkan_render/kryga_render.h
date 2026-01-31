@@ -343,12 +343,14 @@ private:
     bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh);
 
     void
+    bind_global_descriptors(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    void
     bind_material(VkCommandBuffer cmd,
                   material_data* cur_material,
                   render::frame_state& current_frame,
                   pipeline_ctx& ctx,
-                  bool outline = false,
-                  bool object = true);
+                  bool outline = false);
 
     void
     push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout, uint32_t mat_id);

@@ -13,7 +13,8 @@ gpu_struct_std140 object_data
     std140_mat4  model;
     std140_mat4  normal;
     std140_vec3  obj_pos;
-    std140_float bounding_radius;  // Type-safe: std140_float applies correct 4-byte alignment
+    std140_float bounding_radius;
+    std140_uint  material_id;       // Index into material SSBO - enables per-object materials
 };
 
 GPU_END_NAMESPACE

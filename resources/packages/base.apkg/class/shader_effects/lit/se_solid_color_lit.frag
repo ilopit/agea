@@ -27,7 +27,8 @@ void main()
     // properties
     vec3 norm = normalize(in_normal);
     vec3 viewDir = normalize(dyn_camera_data.obj.position - in_world_pos);
-    MaterialData material = dyn_material_buffer.objects[constants.obj.material_id];
+    // Use per-object material_id from object buffer (enables multi-material instancing)
+    MaterialData material = dyn_material_buffer.objects[get_material_id()];
 
     // phase 1: directional lighting
     vec3 result = vec3(0);

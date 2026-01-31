@@ -16,7 +16,8 @@ layout(std140, set = 3, binding = 0) readonly buffer MaterialBuffer{
 
 void main()
 {
-    MaterialData material = dyn_material_buffer.objects[constants.obj.material_id];
+    // Use per-object material_id from object buffer
+    MaterialData material = dyn_material_buffer.objects[get_material_id()];
 
     out_color = vec4(1.0, 1.0, 1.0, 1.0);
 }

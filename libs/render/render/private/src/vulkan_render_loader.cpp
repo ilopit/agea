@@ -332,6 +332,9 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
     // Set bounding radius from mesh (approximation - could scale by model matrix)
     obj_data.gpu_data.bounding_radius = mesh_data.m_bounding_radius;
 
+    // Set material_id for per-object material lookup in shaders
+    obj_data.gpu_data.material_id = mat_data.gpu_idx();
+
     return true;
 }
 

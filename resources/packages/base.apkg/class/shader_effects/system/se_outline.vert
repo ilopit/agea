@@ -16,13 +16,13 @@ void main()
 
     mat4 modelView = dyn_camera_data.obj.view * modelMatrix;
 
+    out_object_idx = obj_idx;
     out_color      = in_color;
     out_tex_coord  = in_tex_coord;
     out_normal     = mat3(normalMatrix) * in_normal;
     out_world_pos  = vec3(modelMatrix * vec4(in_position, 1));
 
-
-	vec4 pos = vec4(in_position.xyz * 1.025, 1);
+    vec4 pos = vec4(in_position.xyz * 1.025, 1);
 
     gl_Position =  dyn_camera_data.obj.projection * modelView * pos;
 }
