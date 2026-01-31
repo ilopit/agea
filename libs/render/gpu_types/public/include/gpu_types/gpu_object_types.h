@@ -7,11 +7,13 @@
 
 GPU_BEGIN_NAMESPACE
 
+// Object data for rendering - uses type-aware alignment macros
 gpu_struct_std140 object_data
 {
-    align_std140 mat4 model;
-    align_std140 mat4 normal;
-    align_std140 vec3 obj_pos;
+    std140_mat4  model;
+    std140_mat4  normal;
+    std140_vec3  obj_pos;
+    std140_float bounding_radius;  // Type-safe: std140_float applies correct 4-byte alignment
 };
 
 GPU_END_NAMESPACE

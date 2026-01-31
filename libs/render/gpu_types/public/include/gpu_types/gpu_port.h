@@ -16,13 +16,13 @@ using mat4 = ::glm::mat4;
 using uint = ::std::uint32_t;
 }  // namespace kryga::gpu
 
-// std140 layout requires vec3 to be aligned to 16 bytes
+// ============================================================================
+// Legacy macros (deprecated - prefer std140_* type macros)
+// ============================================================================
 #define align_std140 alignas(16)
 #define align_pc alignas(4)
-
-// Struct with 16-byte alignment (for std140 array stride)
-#define gpu_struct_std140 struct align_std140
-#define gpu_struct_pc struct align_pc
+#define gpu_struct_std140 struct alignas(16)
+#define gpu_struct_pc struct alignas(4)
 
 #define GPU_BEGIN_NAMESPACE \
     namespace kryga::gpu     \
@@ -30,12 +30,11 @@ using uint = ::std::uint32_t;
 
 #define GPU_END_NAMESPACE }
 
-#else
+#else  // GLSL
 
 // GLSL handles alignment via layout qualifiers, not per-field
 #define align_std140
 #define align_pc
-// std140 handles struct alignment automatically
 #define gpu_struct_std140 struct
 #define gpu_struct_pc struct
 
@@ -43,4 +42,72 @@ using uint = ::std::uint32_t;
 #define GPU_END_NAMESPACE
 
 #endif
+
+// ============================================================================
+// Type-aware alignment macros for std140 layout
+// These apply correct alignment per type, preventing misuse
+// ============================================================================
+#ifdef __cplusplus
+    // std140 layout rules:
+    // - float/int/uint: 4-byte alignment
+    // - vec2: 8-byte alignment
+    // - vec3/vec4/mat3/mat4: 16-byte alignment
+    #define std140_float alignas(4)  float
+    #define std140_int   alignas(4)  int32_t
+    #define std140_uint  alignas(4)  uint32_t
+    #define std140_vec2  alignas(8)  vec2
+    #define std140_vec3  alignas(16) vec3
+    #define std140_vec4  alignas(16) vec4
+    #define std140_mat3  alignas(16) mat3
+    #define std140_mat4  alignas(16) mat4
+
+    // std430 layout rules (same as std140 for these types)
+    #define std430_float alignas(4)  float
+    #define std430_int   alignas(4)  int32_t
+    #define std430_uint  alignas(4)  uint32_t
+    #define std430_vec2  alignas(8)  vec2
+    #define std430_vec3  alignas(16) vec3
+    #define std430_vec4  alignas(16) vec4
+    #define std430_mat3  alignas(16) mat3
+    #define std430_mat4  alignas(16) mat4
+
+    // Push constant layout (scalar alignment)
+    #define pc_float alignas(4) float
+    #define pc_int   alignas(4) int32_t
+    #define pc_uint  alignas(4) uint32_t
+    #define pc_vec2  alignas(4) vec2
+    #define pc_vec3  alignas(4) vec3
+    #define pc_vec4  alignas(4) vec4
+    #define pc_mat3  alignas(4) mat3
+    #define pc_mat4  alignas(4) mat4
+#else
+    // GLSL: Plain types (alignment handled by layout qualifier)
+    #define std140_float float
+    #define std140_int   int
+    #define std140_uint  uint
+    #define std140_vec2  vec2
+    #define std140_vec3  vec3
+    #define std140_vec4  vec4
+    #define std140_mat3  mat3
+    #define std140_mat4  mat4
+
+    #define std430_float float
+    #define std430_int   int
+    #define std430_uint  uint
+    #define std430_vec2  vec2
+    #define std430_vec3  vec3
+    #define std430_vec4  vec4
+    #define std430_mat3  mat3
+    #define std430_mat4  mat4
+
+    #define pc_float float
+    #define pc_int   int
+    #define pc_uint  uint
+    #define pc_vec2  vec2
+    #define pc_vec3  vec3
+    #define pc_vec4  vec4
+    #define pc_mat3  mat3
+    #define pc_mat4  mat4
 #endif
+
+#endif  // GPU_PORT_H

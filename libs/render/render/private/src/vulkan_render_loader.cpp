@@ -329,6 +329,9 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
     obj_data.gpu_data.normal = normal_matrix;
     obj_data.gpu_data.obj_pos = obj_pos;
 
+    // Set bounding radius from mesh (approximation - could scale by model matrix)
+    obj_data.gpu_data.bounding_radius = mesh_data.m_bounding_radius;
+
     return true;
 }
 

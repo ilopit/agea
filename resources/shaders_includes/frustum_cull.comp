@@ -1,0 +1,88 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+
+#include "gpu_types/gpu_object_types.h"
+#include "gpu_types/gpu_frustum_types.h"
+
+// Workgroup size: one thread per object
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// Frustum planes
+layout(std140, set = 0, binding = 0) uniform FrustumBuffer {
+    frustum_data frustum;
+} dyn_frustum_data;
+
+// Object data input
+layout(std140, set = 0, binding = 1) readonly buffer ObjectBuffer {
+    object_data objects[];
+} dyn_object_buffer;
+
+// Visible indices output (atomic append)
+layout(std430, set = 0, binding = 2) buffer VisibleIndices {
+    uint indices[];
+} dyn_visible_indices;
+
+// Cull output (visible count + indirect draw commands)
+layout(std430, set = 0, binding = 3) buffer CullOutput {
+    uint visible_count;
+    uint _pad0;
+    uint _pad1;
+    uint _pad2;
+    // Indirect draw commands follow (one per batch - filled by CPU or second pass)
+} dyn_cull_output;
+
+// Push constants
+layout(push_constant) uniform PushConstants {
+    uint object_count;
+    uint max_visible;  // Buffer capacity
+} pc;
+
+// Test sphere against frustum plane
+// Returns true if sphere is on positive side (visible) or intersecting
+bool sphereOnPositiveSide(vec4 plane, vec3 center, float radius)
+{
+    float dist = dot(plane.xyz, center) + plane.w;
+    return dist >= -radius;
+}
+
+// Test sphere against all 6 frustum planes
+bool sphereInFrustum(vec3 center, float radius)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        if (!sphereOnPositiveSide(dyn_frustum_data.frustum.planes[i], center, radius))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void main()
+{
+    uint objectIdx = gl_GlobalInvocationID.x;
+
+    if (objectIdx >= pc.object_count)
+        return;
+
+    // Get object bounding sphere
+    vec3 center = dyn_object_buffer.objects[objectIdx].obj_pos;
+    float radius = dyn_object_buffer.objects[objectIdx].bounding_radius;
+
+    // Skip invalid objects (radius <= 0 means not renderable)
+    if (radius <= 0.0)
+        return;
+
+    // Test against frustum
+    if (sphereInFrustum(center, radius))
+    {
+        // Atomically append to visible list
+        uint slot = atomicAdd(dyn_cull_output.visible_count, 1);
+
+        // Bounds check
+        if (slot < pc.max_visible)
+        {
+            dyn_visible_indices.indices[slot] = objectIdx;
+        }
+    }
+}

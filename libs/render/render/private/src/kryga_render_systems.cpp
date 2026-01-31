@@ -12,6 +12,7 @@
 #include "vulkan_render/types/vulkan_compute_shader_data.h"
 
 #include <gpu_types/gpu_generic_constants.h>
+#include <gpu_types/gpu_frustum_types.h>
 
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
@@ -505,6 +506,141 @@ vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
 }
 
 // ============================================================================
+// GPU Frustum Culling
+// ============================================================================
+
+void
+vulkan_render::init_frustum_cull_compute()
+{
+    ZoneScopedN("Render::InitFrustumCullCompute");
+
+    auto path = glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
+    auto shader_path = path / "frustum_cull.comp";
+
+    kryga::utils::buffer shader_buffer;
+    if (!kryga::utils::buffer::load(shader_path, shader_buffer))
+    {
+        ALOG_WARN("Failed to load frustum_cull.comp - GPU frustum culling disabled");
+        m_gpu_frustum_culling_enabled = false;
+        return;
+    }
+
+    // Create compute pass - bindings are owned by the pass
+    m_frustum_cull_pass = std::make_shared<render_pass>(AID("frustum_cull"), rg_pass_type::compute);
+
+    // Declare bindings for frustum cull compute shader
+    // set=0, binding=0: FrustumBuffer (uniform)
+    // set=0, binding=1: ObjectBuffer (storage, readonly)
+    // set=0, binding=2: VisibleIndices (storage, writeonly)
+    // set=0, binding=3: CullOutput (storage)
+    m_frustum_cull_pass->bindings()
+        .add(AID("dyn_frustum_data"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("dyn_object_buffer"), 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("dyn_visible_indices"), 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT)
+        .add(AID("dyn_cull_output"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_COMPUTE_BIT);
+
+    m_frustum_cull_pass->finalize_bindings(*glob::render_device::getr().descriptor_layout_cache());
+
+    // Create compute shader through the pass
+    compute_shader_create_info info;
+    info.shader_buffer = &shader_buffer;
+
+    auto rc = m_frustum_cull_pass->create_compute_shader(AID("frustum_cull"), info,
+                                                          m_frustum_cull_shader);
+    if (rc != result_code::ok)
+    {
+        ALOG_WARN("Failed to create frustum cull compute shader - GPU frustum culling disabled");
+        m_frustum_cull_pass.reset();
+        m_frustum_cull_shader = nullptr;
+        m_gpu_frustum_culling_enabled = false;
+        return;
+    }
+
+    m_gpu_frustum_culling_enabled = true;
+    ALOG_INFO("GPU frustum culling compute shader initialized");
+}
+
+void
+vulkan_render::upload_frustum_data(render::frame_state& frame)
+{
+    ZoneScopedN("Render::UploadFrustumData");
+
+    // Convert frustum planes to GPU format (vec4: normal.xyz, distance)
+    gpu::frustum_data frustum_gpu;
+    for (int i = 0; i < 6; ++i)
+    {
+        const auto& plane = m_frustum.get_plane(static_cast<frustum::plane_id>(i));
+        frustum_gpu.planes[i] = glm::vec4(plane.normal, plane.distance);
+    }
+
+    // Upload to buffer
+    frame.buffers.frustum_data.begin();
+    auto* data = frame.buffers.frustum_data.allocate_data(sizeof(gpu::frustum_data));
+    memcpy(data, &frustum_gpu, sizeof(gpu::frustum_data));
+    frame.buffers.frustum_data.end();
+}
+
+void
+vulkan_render::dispatch_frustum_cull_impl(VkCommandBuffer cmd)
+{
+    ZoneScopedN("Render::DispatchFrustumCullImpl");
+
+    if (!m_frustum_cull_shader || !m_gpu_frustum_culling_enabled)
+    {
+        return;
+    }
+
+    auto& current_frame = *m_current_frame;
+
+    // Clear the visible count to 0 before culling
+    vkCmdFillBuffer(cmd, current_frame.buffers.cull_output.buffer(), 0, sizeof(uint32_t), 0);
+
+    // Memory barrier to ensure fill is complete before compute
+    VkMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0, 1, &barrier, 0, nullptr, 0, nullptr);
+
+    // Bind compute pipeline
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_frustum_cull_shader->m_pipeline);
+
+    // Bind descriptor set
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            m_frustum_cull_shader->m_pipeline_layout, 0, 1,
+                            &m_frustum_cull_descriptor_set, 0, nullptr);
+
+    // Push constants: object count and max visible
+    struct FrustumCullPushConstants
+    {
+        uint32_t object_count;
+        uint32_t max_visible;
+    } pc;
+
+    pc.object_count = static_cast<uint32_t>(m_cache.objects.get_size());
+    pc.max_visible = static_cast<uint32_t>(m_cache.objects.get_size());  // Same capacity
+
+    vkCmdPushConstants(cmd, m_frustum_cull_shader->m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(pc), &pc);
+
+    // Calculate dispatch size
+    uint32_t workgroup_size = 64;  // Must match local_size_x in shader
+    uint32_t num_workgroups = (pc.object_count + workgroup_size - 1) / workgroup_size;
+
+    if (num_workgroups > 0)
+    {
+        vkCmdDispatch(cmd, num_workgroups, 1, 1);
+    }
+
+    // Note: Barrier to graphics is handled by render graph
+}
+
+// ============================================================================
 // Render Graph Setup
 // ============================================================================
 
@@ -547,9 +683,28 @@ vulkan_render::setup_instanced_render_graph()
     m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
+    // GPU frustum culling buffers
+    m_render_graph.register_buffer(AID("dyn_frustum_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_visible_indices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_cull_output"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
     m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
+
+    // Compute pass: GPU frustum culling (runs before cluster culling)
+    m_render_graph.add_compute_pass(AID("frustum_cull"),
+                                    {m_render_graph.read(AID("dyn_frustum_data")),
+                                     m_render_graph.read(AID("dyn_object_buffer")),
+                                     m_render_graph.write(AID("dyn_visible_indices")),
+                                     m_render_graph.write(AID("dyn_cull_output"))},
+                                    [this](VkCommandBuffer cmd)
+                                    {
+                                        if (m_frustum_cull_shader && m_gpu_frustum_culling_enabled)
+                                        {
+                                            dispatch_frustum_cull_impl(cmd);
+                                        }
+                                    });
 
     // Compute pass: GPU cluster culling
     m_render_graph.add_compute_pass(AID("cluster_cull"),

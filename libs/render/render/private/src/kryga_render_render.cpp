@@ -113,7 +113,7 @@ vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
         ++m_all_draws;
 
         // Frustum culling - happens here now, not in draw
-        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -483,7 +483,7 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
     {
         ++m_all_draws;
         // Frustum culling
-        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -542,7 +542,7 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
     {
         ++m_all_draws;
         // Frustum culling
-        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->bounding_radius))
+        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -578,7 +578,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     if (!is_instanced_mode() && m_light_grid.is_initialized())
     {
         m_obj_config.local_lights_size =
-            m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->bounding_radius,
+            m_light_grid.query_lights(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius,
                                       m_obj_config.local_light_ids, KGPU_max_lights_per_object);
     }
     else

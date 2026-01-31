@@ -119,6 +119,20 @@ vulkan_render::draw_main()
             0, *current_frame.frame->m_dynamic_descriptor_allocator);
     }
 
+    // Build descriptor set for frustum culling
+    if (is_instanced_mode() && m_frustum_cull_pass && m_gpu_frustum_culling_enabled &&
+        m_frustum_cull_pass->are_bindings_finalized())
+    {
+        m_frustum_cull_pass->begin_frame();
+        m_frustum_cull_pass->bind(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
+        m_frustum_cull_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+        m_frustum_cull_pass->bind(AID("dyn_visible_indices"), current_frame.buffers.visible_indices);
+        m_frustum_cull_pass->bind(AID("dyn_cull_output"), current_frame.buffers.cull_output);
+
+        m_frustum_cull_descriptor_set = m_frustum_cull_pass->get_descriptor_set(
+            0, *current_frame.frame->m_dynamic_descriptor_allocator);
+    }
+
     // Begin frame - clears binding tracking for validation
     m_render_graph.begin_frame();
 
@@ -136,6 +150,15 @@ vulkan_render::draw_main()
     m_render_graph.bind_buffer(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
     m_render_graph.bind_buffer(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
     m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
+
+    // Frustum cull buffers (instanced mode only)
+    if (is_instanced_mode())
+    {
+        m_render_graph.bind_buffer(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
+        m_render_graph.bind_buffer(AID("dyn_visible_indices"),
+                                   current_frame.buffers.visible_indices);
+        m_render_graph.bind_buffer(AID("dyn_cull_output"), current_frame.buffers.cull_output);
+    }
 
     // Bind per-frame image resources
     auto* main_pass = get_render_pass(AID("main"));
@@ -235,6 +258,12 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
     if (is_instanced_mode())
     {
+        // Upload frustum data for GPU frustum culling
+        if (m_frustum_cull_pass && m_gpu_frustum_culling_enabled)
+        {
+            upload_frustum_data(current_frame);
+        }
+
         if (m_cluster_cull_pass && m_cluster_cull_shader)
         {
             // GPU compute path: upload config and dispatch compute shader

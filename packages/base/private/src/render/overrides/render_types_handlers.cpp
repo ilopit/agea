@@ -114,7 +114,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
             return result_code::failed;
         }
 
-        object_data->bounding_radius = scaled_radius;
+        object_data->gpu_data.bounding_radius = scaled_radius;
         moc.set_render_object_data(object_data);
 
         auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
@@ -131,7 +131,7 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
             return result_code::failed;
         }
 
-        object_data->bounding_radius = scaled_radius;
+        object_data->gpu_data.bounding_radius = scaled_radius;
 
         auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
         auto& rqid = object_data->queue_id;

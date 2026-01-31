@@ -11,6 +11,7 @@
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 
 #include <gpu_types/gpu_generic_constants.h>
+#include <gpu_types/gpu_frustum_types.h>
 
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
@@ -118,6 +119,21 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         m_frames[i].buffers.instance_slots =
             device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        // GPU frustum culling buffers
+        m_frames[i].buffers.frustum_data =
+            device.create_buffer(sizeof(gpu::frustum_data), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].buffers.visible_indices =
+            device.create_buffer(OBJECTS_BUFFER_SIZE * sizeof(uint32_t),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+
+        m_frames[i].buffers.cull_output =
+            device.create_buffer(sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
+                                 VMA_MEMORY_USAGE_GPU_ONLY);
     }
 
     prepare_system_resources();
@@ -146,10 +162,11 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
 
-    // Initialize GPU cluster culling compute shader (only needed for instanced mode)
+    // Initialize GPU compute shaders (only needed for instanced mode)
     if (m_render_mode == render_mode::instanced)
     {
         init_cluster_cull_compute();
+        init_frustum_cull_compute();
     }
 
     // Setup render graph based on mode
@@ -176,6 +193,13 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         KRG_check(m_cluster_cull_pass->validate_resources(m_render_graph),
                   "Cluster cull pass binding validation failed");
     }
+
+    if (m_render_mode == render_mode::instanced && m_frustum_cull_pass &&
+        m_frustum_cull_pass->are_bindings_finalized())
+    {
+        KRG_check(m_frustum_cull_pass->validate_resources(m_render_graph),
+                  "Frustum cull pass binding validation failed");
+    }
 }
 
 void
@@ -184,10 +208,12 @@ vulkan_render::deinit()
     // Wait for all GPU operations to complete before destroying resources
     vkDeviceWaitIdle(glob::render_device::get()->vk_device());
 
-    // Clear cluster cull pass before device is destroyed
-    // (it holds compute shader with VkShaderModule)
+    // Clear compute passes before device is destroyed
+    // (they hold compute shaders with VkShaderModule)
     m_cluster_cull_shader = nullptr;
     m_cluster_cull_pass.reset();
+    m_frustum_cull_shader = nullptr;
+    m_frustum_cull_pass.reset();
 
     // Cleanup bindless textures
     deinit_bindless_textures();

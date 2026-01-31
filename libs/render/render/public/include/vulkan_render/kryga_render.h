@@ -75,6 +75,11 @@ struct frame_buffers
 
     // Instance slots buffer for instanced drawing
     vk_utils::vulkan_buffer instance_slots;
+
+    // GPU frustum culling buffers
+    vk_utils::vulkan_buffer frustum_data;      // Frustum planes (uniform)
+    vk_utils::vulkan_buffer visible_indices;   // Output visible object indices
+    vk_utils::vulkan_buffer cull_output;       // Visible count + indirect commands
 };
 
 struct frame_upload_state
@@ -298,6 +303,16 @@ private:
     void
     dispatch_cluster_cull_impl(VkCommandBuffer cmd);
 
+    // GPU compute frustum culling
+    void
+    init_frustum_cull_compute();
+
+    void
+    dispatch_frustum_cull_impl(VkCommandBuffer cmd);
+
+    void
+    upload_frustum_data(render::frame_state& frame);
+
     // Per-object light grid methods
     void
     rebuild_light_grid();
@@ -457,6 +472,12 @@ private:
     render_pass_sptr m_cluster_cull_pass;
     compute_shader_data* m_cluster_cull_shader = nullptr;  // owned by m_cluster_cull_pass
     VkDescriptorSet m_cluster_cull_descriptor_set = VK_NULL_HANDLE;
+
+    // GPU compute frustum culling
+    render_pass_sptr m_frustum_cull_pass;
+    compute_shader_data* m_frustum_cull_shader = nullptr;  // owned by m_frustum_cull_pass
+    VkDescriptorSet m_frustum_cull_descriptor_set = VK_NULL_HANDLE;
+    bool m_gpu_frustum_culling_enabled = true;
 
     // Per-object light grid (alternative to clustered)
     light_grid m_light_grid;
