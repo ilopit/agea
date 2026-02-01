@@ -143,7 +143,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 30;
+    int obj_DIM = 2;
 
     for (x = -obj_DIM / 2; x < obj_DIM / 2; ++x)
     {

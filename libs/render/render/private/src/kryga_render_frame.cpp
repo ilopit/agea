@@ -105,7 +105,8 @@ vulkan_render::draw_main()
     if (is_instanced_mode())
     {
         KRG_check(m_cluster_cull_pass, "Cluster cull pass required for instanced mode");
-        KRG_check(m_cluster_cull_pass->are_bindings_finalized(), "Cluster cull bindings not finalized");
+        KRG_check(m_cluster_cull_pass->are_bindings_finalized(),
+                  "Cluster cull bindings not finalized");
 
         m_cluster_cull_pass->begin_frame();
         m_cluster_cull_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
@@ -126,12 +127,14 @@ vulkan_render::draw_main()
     {
         KRG_check(m_frustum_cull_pass, "Frustum cull pass required for instanced mode");
         KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required for instanced mode");
-        KRG_check(m_frustum_cull_pass->are_bindings_finalized(), "Frustum cull bindings not finalized");
+        KRG_check(m_frustum_cull_pass->are_bindings_finalized(),
+                  "Frustum cull bindings not finalized");
 
         m_frustum_cull_pass->begin_frame();
         m_frustum_cull_pass->bind(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
         m_frustum_cull_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-        m_frustum_cull_pass->bind(AID("dyn_visible_indices"), current_frame.buffers.visible_indices);
+        m_frustum_cull_pass->bind(AID("dyn_visible_indices"),
+                                  current_frame.buffers.visible_indices);
         m_frustum_cull_pass->bind(AID("dyn_cull_output"), current_frame.buffers.cull_output);
 
         m_frustum_cull_descriptor_set = m_frustum_cull_pass->get_descriptor_set(
@@ -465,9 +468,6 @@ vulkan_render::update_bindless_descriptors()
 {
     auto& current_frame = get_current_frame_transfer_data();
     auto& textures_queue = current_frame.uploads.textures_queue;
-
-    ALOG_INFO("update_bindless_descriptors: {} dirty textures, bindless_set={}",
-              textures_queue.get_size(), (void*)m_bindless_set);
 
     if (textures_queue.empty())
     {

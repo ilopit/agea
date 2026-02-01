@@ -1,10 +1,20 @@
 #version 450
 #include "common_frag.glsl"
 
+struct MaterialData
+{
+    uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
+};
+
+layout(std430, set = KGPU_materials_descriptor_sets, binding = 0) readonly buffer MaterialBuffer{
+    MaterialData objects[];
+} dyn_material_buffer;
+
 void main()
 {
-    uint albedo_idx = constants.obj.texture_indices[KGPU_TEXTURE_SLOT_ALBEDO];
-    uint sampler_idx = constants.obj.sampler_indices[KGPU_TEXTURE_SLOT_ALBEDO];
-    vec3 object_color = sample_bindless_texture(albedo_idx, sampler_idx, in_tex_coord).xyz;
+    uint mat_id = get_material_id();
+    MaterialData material = dyn_material_buffer.objects[mat_id];
+    vec3 object_color = sample_bindless_texture(material.texture_indices[0], material.sampler_indices[0], in_tex_coord).xyz;
     out_color = vec4(object_color, 1.0);
 }

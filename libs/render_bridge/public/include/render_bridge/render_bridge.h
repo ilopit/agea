@@ -63,6 +63,13 @@ public:
     utils::dynobj
     extract_gpu_data(root::smart_object& so, const access_template& t);
 
+    // Set texture/sampler bindings in material GPU data (at fixed offsets at start of buffer)
+    static void
+    set_material_texture_bindings(utils::dynobj& gpu_data,
+                                  const uint32_t* texture_indices,
+                                  const uint32_t* sampler_indices,
+                                  uint32_t slot_count);
+
     bool
     create_collection_template(root::smart_object& so, access_template& t);
 

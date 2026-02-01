@@ -11,7 +11,8 @@ GPU_BEGIN_NAMESPACE
 // Standard texture slots for bindless indexing
 // Note: Keep slot count low to fit within push constant limits (128-256 bytes)
 #define KGPU_TEXTURE_SLOT_ALBEDO    0
-#define KGPU_MAX_TEXTURE_SLOTS      1
+#define KGPU_TEXTURE_SLOT_SPECULAR  1
+#define KGPU_MAX_TEXTURE_SLOTS      2
 
 gpu_struct_pc push_constants
 {

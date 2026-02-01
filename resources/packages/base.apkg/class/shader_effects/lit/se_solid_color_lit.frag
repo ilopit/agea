@@ -2,18 +2,17 @@
 #extension GL_GOOGLE_include_directive : require
 #include "common_frag.glsl"
 
-// materials
 struct MaterialData
 {
+    uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
     float shininess;
 };
 
-//all object matrices
-layout(std140, set = KGPU_materials_descriptor_sets, binding = 0) readonly buffer MaterialBuffer{
-
+layout(std430, set = KGPU_materials_descriptor_sets, binding = 0) readonly buffer MaterialBuffer{
     MaterialData objects[];
 } dyn_material_buffer;
 

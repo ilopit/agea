@@ -104,12 +104,29 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     }
     case SpvOpTypeArray:
     {
-        // TODO, FIX
+        df.is_array = true;
         df.items_count = obj.traits.array.dims[0];
+        df.items_alighment = 4;  // std430 alignment for scalars
 
         if (obj.member_count == 0)
         {
-            type = kryga::render::gpu_type::id::g_float;
+            // Primitive type array - determine element type from type_flags
+            if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT)
+            {
+                type = obj.traits.numeric.scalar.signedness
+                           ? kryga::render::gpu_type::id::g_int
+                           : kryga::render::gpu_type::id::g_unsigned;
+                df.alligment = sizeof(uint32_t);
+            }
+            else if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT)
+            {
+                type = kryga::render::gpu_type::id::g_float;
+                df.alligment = sizeof(float);
+            }
+            else
+            {
+                type = kryga::render::gpu_type::id::g_float;
+            }
         }
         else
         {

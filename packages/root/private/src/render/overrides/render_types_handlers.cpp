@@ -99,7 +99,15 @@ material__render_loader(reflection::type_context__render& ctx)
 
     // Collect texture samples and sampler indices
     std::vector<render::texture_sampler_data> samples_data;
-    std::vector<std::pair<uint32_t, uint8_t>> sampler_indices;  // slot -> sampler index
+
+    // Arrays for GPU material buffer (indexed by slot)
+    uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint32_t gpu_sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
+    for (int i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
+    {
+        gpu_texture_indices[i] = UINT32_MAX;  // Invalid index
+        gpu_sampler_indices[i] = 0;           // Default to LINEAR_REPEAT
+    }
 
     for (auto& ts : txt_models)
     {
@@ -113,6 +121,13 @@ material__render_loader(reflection::type_context__render& ctx)
             samples_data.emplace_back();
             samples_data.back().texture = ts.second.txt->get_texture_data();
             samples_data.back().slot = ts.second.slot;
+
+            // Store bindless index for GPU material buffer
+            if (ts.second.slot < KGPU_MAX_TEXTURE_SLOTS)
+            {
+                gpu_texture_indices[ts.second.slot] =
+                    ts.second.txt->get_texture_data()->get_bindless_index();
+            }
         }
 
         // Load sampler and map to static index
@@ -120,7 +135,12 @@ material__render_loader(reflection::type_context__render& ctx)
         {
             ctx.rb->render_ctor(*ts.second.smp, ctx.flag);
             uint8_t smp_idx = map_sampler_to_static_index(*ts.second.smp);
-            sampler_indices.emplace_back(ts.second.slot, smp_idx);
+
+            // Store sampler index for GPU material buffer
+            if (ts.second.slot < KGPU_MAX_TEXTURE_SLOTS)
+            {
+                gpu_sampler_indices[ts.second.slot] = smp_idx;
+            }
         }
     }
 
@@ -141,6 +161,10 @@ material__render_loader(reflection::type_context__render& ctx)
 
     auto dyn_gpu_data = ctx.rb->collect_gpu_data(mat_model);
 
+    // Set texture bindings in GPU data before creating/updating material
+    render_bridge::set_material_texture_bindings(dyn_gpu_data, gpu_texture_indices,
+                                                  gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
+
     if (!mat_data)
     {
         mat_data = glob::vulkan_render_loader::get()->create_material(
@@ -154,10 +178,14 @@ material__render_loader(reflection::type_context__render& ctx)
                                                            dyn_gpu_data);
     }
 
-    // Set bindless sampler indices from model samplers
-    for (auto& [slot, smp_idx] : sampler_indices)
+    // Set bindless sampler indices in material_data (for legacy code paths)
+    for (auto& ts : txt_models)
     {
-        mat_data->set_bindless_sampler_index(slot, smp_idx);
+        if (ts.second.smp && ts.second.slot < KGPU_MAX_TEXTURE_SLOTS)
+        {
+            mat_data->set_bindless_sampler_index(ts.second.slot,
+                                                  gpu_sampler_indices[ts.second.slot]);
+        }
     }
 
     if (!dyn_gpu_data.empty())
