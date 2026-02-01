@@ -44,6 +44,7 @@ struct game_objects_cache;
 struct textures_cache;
 struct meshes_cache;
 struct materials_cache;
+struct samplers_cache;
 struct shader_effects_cache;
 
 struct state_mutator__caches;
@@ -157,6 +158,7 @@ public:
     KRG_gen_getter(class_components_cache, core::components_cache);
     KRG_gen_getter(class_game_objects_cache, core::game_objects_cache);
     KRG_gen_getter(class_materials_cache, core::materials_cache);
+    KRG_gen_getter(class_samplers_cache, core::samplers_cache);
     KRG_gen_getter(class_meshes_cache, core::meshes_cache);
     KRG_gen_getter(class_textures_cache, core::textures_cache);
     KRG_gen_getter(class_shader_effects_cache, core::shader_effects_cache);
@@ -167,6 +169,7 @@ public:
     KRG_gen_getter(instance_components_cache, core::components_cache);
     KRG_gen_getter(instance_game_objects_cache, core::game_objects_cache);
     KRG_gen_getter(instance_materials_cache, core::materials_cache);
+    KRG_gen_getter(instance_samplers_cache, core::samplers_cache);
     KRG_gen_getter(instance_meshes_cache, core::meshes_cache);
     KRG_gen_getter(instance_textures_cache, core::textures_cache);
     KRG_gen_getter(instance_shader_effects_cache, core::shader_effects_cache);
@@ -223,6 +226,7 @@ private:
     core::components_cache*     m_class_components_cache = nullptr;
     core::game_objects_cache*   m_class_game_objects_cache = nullptr;
     core::materials_cache*      m_class_materials_cache = nullptr;
+    core::samplers_cache*       m_class_samplers_cache = nullptr;
     core::meshes_cache*         m_class_meshes_cache = nullptr;
     core::textures_cache*       m_class_textures_cache = nullptr;
     core::shader_effects_cache* m_class_shader_effects_cache = nullptr;
@@ -233,6 +237,7 @@ private:
     core::components_cache*     m_instance_components_cache = nullptr;
     core::game_objects_cache*   m_instance_game_objects_cache = nullptr;
     core::materials_cache*      m_instance_materials_cache = nullptr;
+    core::samplers_cache*       m_instance_samplers_cache = nullptr;
     core::meshes_cache*         m_instance_meshes_cache = nullptr;
     core::textures_cache*       m_instance_textures_cache = nullptr;
     core::shader_effects_cache* m_instance_shader_effects_cache = nullptr;

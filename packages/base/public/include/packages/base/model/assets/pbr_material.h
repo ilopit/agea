@@ -28,22 +28,22 @@ public:
     KRG_ar_property(
         "category=Properties",
         "serializable=true",
-        "property_ser_handler=::kryga::root::property_texture_sample__save",
-        "property_compare_handler=::kryga::root::property_texture_sample__compare",
-        "property_instantiate_handler=::kryga::root::property_texture_sample__instantiate",
-        "property_load_derive_handler=::kryga::root::property_texture_sample__load",
-        "property_copy_handler=::kryga::root::property_texture_sample__copy");
-    ::kryga::root::texture_sample m_diffuse_txt;
+        "property_ser_handler=::kryga::root::property_texture_slot__save",
+        "property_compare_handler=::kryga::root::property_texture_slot__compare",
+        "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
+        "property_load_derive_handler=::kryga::root::property_texture_slot__load",
+        "property_copy_handler=::kryga::root::property_texture_slot__copy");
+    ::kryga::root::texture_slot m_diffuse_txt;
 
     KRG_ar_property(
         "category=Properties",
         "serializable=true",
-        "property_ser_handler=::kryga::root::property_texture_sample__save",
-        "property_compare_handler=::kryga::root::property_texture_sample__compare",
-        "property_instantiate_handler=::kryga::root::property_texture_sample__instantiate",
-        "property_load_derive_handler=::kryga::root::property_texture_sample__load",
-        "property_copy_handler=::kryga::root::property_texture_sample__copy");
-    ::kryga::root::texture_sample m_specular_txt;
+        "property_ser_handler=::kryga::root::property_texture_slot__save",
+        "property_compare_handler=::kryga::root::property_texture_slot__compare",
+        "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
+        "property_load_derive_handler=::kryga::root::property_texture_slot__load",
+        "property_copy_handler=::kryga::root::property_texture_slot__copy");
+    ::kryga::root::texture_slot m_specular_txt;
 
     KRG_ar_property("category=Properties",
                      "serializable=true",

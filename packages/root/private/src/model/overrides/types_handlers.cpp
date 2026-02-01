@@ -5,6 +5,7 @@
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/texture.h"
+#include "packages/root/model/assets/sampler.h"
 #include "packages/root/model/assets/shader_effect.h"
 
 #include <core/reflection/property_utils.h>
@@ -145,86 +146,120 @@ smart_obj__compare(reflection::type_context__compare& ctx)
 }
 
 result_code
-texture_sample__save(reflection::type_context__save& ctx)
+texture_slot__save(reflection::type_context__save& ctx)
 {
     KRG_unused(ctx);
     return result_code::ok;
 }
 
 result_code
-texture_sample__compare(reflection::type_context__compare& ctx)
+texture_slot__compare(reflection::type_context__compare& ctx)
 {
     KRG_unused(ctx);
     return result_code::ok;
 }
 
 result_code
-texture_sample__copy(reflection::type_context__copy& ctx)
+texture_slot__copy(reflection::type_context__copy& ctx)
 {
     auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.src_obj);
     auto& dst = reflection::utils::as_type<::kryga::root::material*>(ctx.dst_obj);
 
-    dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
+    auto& src_slot = src->get_slot(src->get_id());
+    dst->set_slot(src->get_id(), src_slot);
 
-    auto clone_result = core::object_constructor::object_clone_create_internal(
-        src->get_sample(src->get_id()).txt->get_id(), src->get_sample(src->get_id()).txt->get_id(),
-        *ctx.occ);
-
-    if (!clone_result)
+    // Clone texture
+    if (src_slot.txt)
     {
-        return clone_result.error();
+        auto clone_result = core::object_constructor::object_clone_create_internal(
+            src_slot.txt->get_id(), src_slot.txt->get_id(), *ctx.occ);
+
+        if (!clone_result)
+        {
+            return clone_result.error();
+        }
+
+        dst->get_slot(src->get_id()).txt = clone_result.value()->as<root::texture>();
     }
 
-    dst->get_sample(src->get_id()).txt = clone_result.value()->as<root::texture>();
+    // Samplers are shared assets - just copy pointer
+    dst->get_slot(src->get_id()).smp = src_slot.smp;
 
     return result_code::ok;
 }
 
 result_code
-texture_sample__instantiate(reflection::type_context__copy& ctx)
+texture_slot__instantiate(reflection::type_context__copy& ctx)
 {
     auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.src_obj);
     auto& dst = reflection::utils::as_type<::kryga::root::material*>(ctx.dst_obj);
 
-    dst->set_sample(src->get_id(), src->get_sample(src->get_id()));
+    auto& src_slot = src->get_slot(src->get_id());
+    dst->set_slot(src->get_id(), src_slot);
 
-    auto clone_result = core::object_constructor::object_clone_create_internal(
-        src->get_sample(src->get_id()).txt->get_id(), src->get_sample(src->get_id()).txt->get_id(),
-        *ctx.occ);
-
-    if (!clone_result)
+    // Clone texture
+    if (src_slot.txt)
     {
-        return clone_result.error();
+        auto clone_result = core::object_constructor::object_clone_create_internal(
+            src_slot.txt->get_id(), src_slot.txt->get_id(), *ctx.occ);
+
+        if (!clone_result)
+        {
+            return clone_result.error();
+        }
+
+        dst->get_slot(src->get_id()).txt = clone_result.value()->as<root::texture>();
     }
 
-    dst->get_sample(src->get_id()).txt = clone_result.value()->as<root::texture>();
+    // Samplers are shared assets - just copy pointer
+    dst->get_slot(src->get_id()).smp = src_slot.smp;
 
     return result_code::ok;
 }
 
 result_code
-texture_sample__load(reflection::type_context__load& ctx)
+texture_slot__load(reflection::type_context__load& ctx)
 {
     auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.obj);
 
     const auto texture_id = AID((*ctx.jc)["texture"].as<std::string>());
 
-    auto result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
-
-    if (!result)
+    // Load texture
+    auto tex_result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
+    if (!tex_result)
     {
-        ALOG_ERROR("Texture doesn't exist");
-        return result.error();
+        ALOG_ERROR("Texture doesn't exist: {}", texture_id.str());
+        return tex_result.error();
     }
 
-    auto loaded_obj = result.value();
+    auto loaded_obj = tex_result.value();
 
     const auto slot = (*ctx.jc)["slot"].as<uint32_t>();
 
-    auto& sample = src->get_sample(src->get_id());
-    sample.txt = loaded_obj->as<root::texture>();
-    sample.sampler_id = AID((*ctx.jc)["sampler"].as<std::string>());
-    sample.slot = slot;
+    auto& tex_slot = src->get_slot(src->get_id());
+    tex_slot.txt = loaded_obj->as<root::texture>();
+    tex_slot.slot = slot;
+
+    // Load sampler (optional)
+    auto& jc = *ctx.jc;
+    if (jc["sampler"] && jc["sampler"].IsScalar())
+    {
+        const auto sampler_id = AID(jc["sampler"].as<std::string>());
+        auto smp_result = core::object_constructor::object_load_internal(sampler_id, *ctx.occ);
+        if (smp_result)
+        {
+            tex_slot.smp = smp_result.value()->as<root::sampler>();
+        }
+        else
+        {
+            ALOG_WARN("Sampler not found: {}, using default", sampler_id.str());
+            tex_slot.smp = nullptr;
+        }
+    }
+    else
+    {
+        tex_slot.smp = nullptr;
+    }
 
     return result_code::ok;
 }

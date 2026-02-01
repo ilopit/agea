@@ -13,6 +13,7 @@
 #include "packages/root/model/smart_object.h"
 #include "packages/root/model/components/component.h"
 #include "packages/root/model/assets/material.h"
+#include "packages/root/model/assets/sampler.h"
 
 #include <serialization/serialization.h>
 
@@ -277,79 +278,94 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
 }
 
 result_code
-texture_sample_prototype(::kryga::reflection::property_context__prototype& dc)
+texture_slot_prototype(::kryga::reflection::property_context__prototype& dc)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__save(::kryga::reflection::property_context__save& dc)
+property_texture_slot__save(::kryga::reflection::property_context__save& dc)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__compare(::kryga::reflection::property_context__compare& ctx)
+property_texture_slot__compare(::kryga::reflection::property_context__compare& ctx)
 {
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__copy(::kryga::reflection::property_context__copy& ctx)
+property_texture_slot__copy(::kryga::reflection::property_context__copy& ctx)
 {
     auto src = ctx.src_obj->as<root::material>();
     auto dst = ctx.dst_obj->as<root::material>();
 
     auto id = AID(ctx.src_property->name);
+    auto& src_slot = src->get_slot(id);
 
-    dst->set_sample(id, src->get_sample(id));
+    dst->set_slot(id, src_slot);
 
-    auto result = core::object_constructor::object_clone_create_internal(
-        src->get_sample(id).txt->get_id(), src->get_sample(id).txt->get_id(), *ctx.occ);
-
-    if (!result)
+    // Clone texture
+    if (src_slot.txt)
     {
-        return result.error();
-    }
+        auto result = core::object_constructor::object_clone_create_internal(
+            src_slot.txt->get_id(), src_slot.txt->get_id(), *ctx.occ);
 
-    dst->get_sample(id).txt = result.value()->as<root::texture>();
-
-    return result_code::ok;
-}
-
-result_code
-property_texture_sample__instantiate(::kryga::reflection::property_context__instantiate& ctx)
-{
-    auto src = ctx.src_obj->as<root::material>();
-    auto dst = ctx.dst_obj->as<root::material>();
-
-    auto id = AID(ctx.src_property->name);
-
-    auto& src_sample = src->get_sample(id);
-
-    dst->set_sample(id, src_sample);
-
-    root::smart_object* obj = ctx.occ->find_obj(src_sample.txt->get_id());
-
-    if (!obj)
-    {
-        std::vector<smart_object*> objs;
-        auto result = core::object_constructor::object_instantiate(
-            *src_sample.txt, src_sample.txt->get_id(), *ctx.occ, objs);
         if (!result)
         {
             return result.error();
         }
-        obj = result.value();
+
+        dst->get_slot(id).txt = result.value()->as<root::texture>();
     }
 
-    dst->get_sample(id).txt = obj->as<root::texture>();
+    // Samplers are shared assets, no need to clone - just copy the pointer
+    dst->get_slot(id).smp = src_slot.smp;
 
     return result_code::ok;
 }
 
 result_code
-property_texture_sample__load(reflection::property_context__load& ctx)
+property_texture_slot__instantiate(::kryga::reflection::property_context__instantiate& ctx)
+{
+    auto src = ctx.src_obj->as<root::material>();
+    auto dst = ctx.dst_obj->as<root::material>();
+
+    auto id = AID(ctx.src_property->name);
+
+    auto& src_slot = src->get_slot(id);
+
+    dst->set_slot(id, src_slot);
+
+    // Instantiate texture
+    if (src_slot.txt)
+    {
+        root::smart_object* obj = ctx.occ->find_obj(src_slot.txt->get_id());
+
+        if (!obj)
+        {
+            std::vector<smart_object*> objs;
+            auto result = core::object_constructor::object_instantiate(
+                *src_slot.txt, src_slot.txt->get_id(), *ctx.occ, objs);
+            if (!result)
+            {
+                return result.error();
+            }
+            obj = result.value();
+        }
+
+        dst->get_slot(id).txt = obj->as<root::texture>();
+    }
+
+    // Samplers are shared assets - just copy the pointer
+    dst->get_slot(id).smp = src_slot.smp;
+
+    return result_code::ok;
+}
+
+result_code
+property_texture_slot__load(reflection::property_context__load& ctx)
 {
     auto src = ctx.dst_obj->as<root::material>();
 
@@ -360,24 +376,41 @@ property_texture_sample__load(reflection::property_context__load& ctx)
     const auto id = AID(ctx.src_property->name);
     const auto texture_id = AID(item["texture"].as<std::string>());
 
-    auto result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
-
-    if (!result)
+    // Load texture
+    auto tex_result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
+    if (!tex_result)
     {
-        ALOG_ERROR("Texture doesn't exist");
-        return result.error();
+        ALOG_ERROR("Texture doesn't exist: {}", texture_id.str());
+        return tex_result.error();
     }
 
-    auto obj = result.value();
-
-    auto& s = obj->get_flags();
+    auto tex_obj = tex_result.value();
 
     const auto slot = item["slot"].as<uint32_t>();
 
-    auto& sample = src->get_sample(id);
-    sample.txt = obj->as<root::texture>();
-    sample.sampler_id = AID(item["sampler"].as<std::string>());
-    sample.slot = slot;
+    auto& tex_slot = src->get_slot(id);
+    tex_slot.txt = tex_obj->as<root::texture>();
+    tex_slot.slot = slot;
+
+    // Load sampler (optional - may not exist in older files)
+    if (item["sampler"] && item["sampler"].IsScalar())
+    {
+        const auto sampler_id = AID(item["sampler"].as<std::string>());
+        auto smp_result = core::object_constructor::object_load_internal(sampler_id, *ctx.occ);
+        if (smp_result)
+        {
+            tex_slot.smp = smp_result.value()->as<root::sampler>();
+        }
+        else
+        {
+            ALOG_WARN("Sampler not found: {}, using default", sampler_id.str());
+            tex_slot.smp = nullptr;
+        }
+    }
+    else
+    {
+        tex_slot.smp = nullptr;
+    }
 
     return result_code::ok;
 }

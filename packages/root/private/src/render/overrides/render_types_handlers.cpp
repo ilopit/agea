@@ -5,7 +5,10 @@
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/texture.h"
+#include "packages/root/model/assets/sampler.h"
 #include "packages/root/model/assets/shader_effect.h"
+
+#include <gpu_types/gpu_generic_constants.h>
 #include <glue/type_ids.ar.h>
 
 #include "packages/root/model/game_object.h"
@@ -44,6 +47,9 @@ namespace kryga
 
 namespace root
 {
+
+// Forward declaration
+static uint8_t map_sampler_to_static_index(const sampler& smp);
 
 result_code
 mesh__render_loader(reflection::type_context__render& ctx)
@@ -89,17 +95,33 @@ material__render_loader(reflection::type_context__render& ctx)
 {
     auto& mat_model = ctx.obj->asr<root::material>();
 
-    auto& txt_models = mat_model.get_texture_samples();
+    auto& txt_models = mat_model.get_texture_slots();
 
+    // Collect texture samples and sampler indices
     std::vector<render::texture_sampler_data> samples_data;
+    std::vector<std::pair<uint32_t, uint8_t>> sampler_indices;  // slot -> sampler index
+
     for (auto& ts : txt_models)
     {
-        if (ctx.rb->render_ctor(*ts.second.txt, ctx.flag) != result_code::ok)
+        // Load texture
+        if (ts.second.txt)
         {
-            return result_code::failed;
+            if (ctx.rb->render_ctor(*ts.second.txt, ctx.flag) != result_code::ok)
+            {
+                return result_code::failed;
+            }
+            samples_data.emplace_back();
+            samples_data.back().texture = ts.second.txt->get_texture_data();
+            samples_data.back().slot = ts.second.slot;
         }
-        samples_data.emplace_back();
-        samples_data.back().texture = ts.second.txt->get_texture_data();
+
+        // Load sampler and map to static index
+        if (ts.second.smp)
+        {
+            ctx.rb->render_ctor(*ts.second.smp, ctx.flag);
+            uint8_t smp_idx = map_sampler_to_static_index(*ts.second.smp);
+            sampler_indices.emplace_back(ts.second.slot, smp_idx);
+        }
     }
 
     auto se_model = mat_model.get_shader_effect();
@@ -130,6 +152,12 @@ material__render_loader(reflection::type_context__render& ctx)
     {
         glob::vulkan_render_loader::get()->update_material(*mat_data, samples_data, *se_data,
                                                            dyn_gpu_data);
+    }
+
+    // Set bindless sampler indices from model samplers
+    for (auto& [slot, smp_idx] : sampler_indices)
+    {
+        mat_data->set_bindless_sampler_index(slot, smp_idx);
     }
 
     if (!dyn_gpu_data.empty())
@@ -230,6 +258,71 @@ game_object_component__render_destructor(reflection::type_context__render& ctx)
 
     return result_code::ok;
 }
+
+/*===============================*/
+
+// Maps sampler model properties to static sampler index
+static uint8_t
+map_sampler_to_static_index(const sampler& smp)
+{
+    bool is_linear = (smp.get_min_filter() == sampler_filter::linear);
+    auto addr = smp.get_address_u();  // Assume U and V are same for static samplers
+
+    if (smp.get_anisotropy() && is_linear && addr == sampler_address::repeat)
+    {
+        return KGPU_SAMPLER_ANISO_REPEAT;
+    }
+
+    if (is_linear)
+    {
+        switch (addr)
+        {
+        case sampler_address::repeat:
+            return KGPU_SAMPLER_LINEAR_REPEAT;
+        case sampler_address::mirrored_repeat:
+            return KGPU_SAMPLER_LINEAR_MIRROR;
+        case sampler_address::clamp_to_edge:
+            return KGPU_SAMPLER_LINEAR_CLAMP;
+        case sampler_address::clamp_to_border:
+            return KGPU_SAMPLER_LINEAR_CLAMP_BORDER;
+        }
+    }
+    else  // nearest
+    {
+        switch (addr)
+        {
+        case sampler_address::repeat:
+        case sampler_address::mirrored_repeat:
+            return KGPU_SAMPLER_NEAREST_REPEAT;
+        case sampler_address::clamp_to_edge:
+        case sampler_address::clamp_to_border:
+            return KGPU_SAMPLER_NEAREST_CLAMP;
+        }
+    }
+
+    return KGPU_SAMPLER_LINEAR_REPEAT;  // Default fallback
+}
+
+result_code
+sampler__render_loader(reflection::type_context__render& ctx)
+{
+    auto& smp_model = ctx.obj->asr<root::sampler>();
+
+    // For now, samplers use static samplers - no render data needed
+    // The mapping happens in material__render_loader when setting bindless indices
+    // Could be extended later to create custom VkSamplers if needed
+
+    return result_code::ok;
+}
+
+result_code
+sampler__render_destructor(reflection::type_context__render& ctx)
+{
+    // Nothing to destroy - using static samplers
+    return result_code::ok;
+}
+
+/*===============================*/
 
 result_code
 shader_effect__render_loader(reflection::type_context__render& ctx)

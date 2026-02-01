@@ -3,7 +3,7 @@
 #include "packages/root/model/material.ar.h"
 
 #include "packages/root/model/assets/asset.h"
-#include "packages/root/model/assets/texture_sample.h"
+#include "packages/root/model/assets/texture_slot.h"
 
 #include <unordered_map>
 
@@ -53,17 +53,17 @@ public:
         m_material_data = v;
     }
 
-    std::unordered_map<utils::id, texture_sample>&
-    get_texture_samples()
+    std::unordered_map<utils::id, texture_slot>&
+    get_texture_slots()
     {
-        return m_texture_samples;
+        return m_texture_slots;
     }
 
-    texture_sample&
-    get_sample(const utils::id& slot);
+    texture_slot&
+    get_slot(const utils::id& slot);
 
     void
-    set_sample(const utils::id& slot, const texture_sample&);
+    set_slot(const utils::id& slot, const texture_slot&);
 
 protected:
     KRG_ar_property("category=Properties",
@@ -72,7 +72,7 @@ protected:
                      "serializable=true");
     shader_effect* m_shader_effect = nullptr;
 
-    std::unordered_map<utils::id, texture_sample> m_texture_samples;
+    std::unordered_map<utils::id, texture_slot> m_texture_slots;
 
     ::kryga::render::material_data* m_material_data = nullptr;
 };

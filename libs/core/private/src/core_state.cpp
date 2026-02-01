@@ -26,6 +26,7 @@ state_mutator__caches::set(gs::state& es)
     es.m_class_components_cache = &class_cache->components;
     es.m_class_game_objects_cache = &class_cache->game_objects;
     es.m_class_materials_cache = &class_cache->materials;
+    es.m_class_samplers_cache = &class_cache->samplers;
     es.m_class_meshes_cache = &class_cache->meshes;
     es.m_class_textures_cache = &class_cache->textures;
     es.m_class_shader_effects_cache = &class_cache->shader_effects;
@@ -37,6 +38,7 @@ state_mutator__caches::set(gs::state& es)
     es.m_instance_components_cache = &instance_cache->components;
     es.m_instance_game_objects_cache = &instance_cache->game_objects;
     es.m_instance_materials_cache = &instance_cache->materials;
+    es.m_instance_samplers_cache = &instance_cache->samplers;
     es.m_instance_meshes_cache = &instance_cache->meshes;
     es.m_instance_textures_cache = &instance_cache->textures;
     es.m_instance_shader_effects_cache = &instance_cache->shader_effects;

@@ -19,6 +19,7 @@ class mesh_component;
 class texture;
 class mesh;
 class material;
+class sampler;
 class smart_object;
 class shader_effect;
 class light_component;
@@ -47,6 +48,7 @@ struct game_objects_cache;
 struct textures_cache;
 struct meshes_cache;
 struct materials_cache;
+struct samplers_cache;
 struct shader_effects_cache;
 
 }  // namespace core

@@ -3,7 +3,7 @@
 #include "packages/base/model/simple_texture_material.ar.h"
 
 #include "packages/root/model/assets/material.h"
-#include "packages/root/model/assets/texture_sample.h"
+#include "packages/root/model/assets/texture_slot.h"
 
 namespace kryga
 {
@@ -23,7 +23,7 @@ public:
     bool
     construct(this_class::construct_params& p);
 
-    const ::kryga::root::texture_sample&
+    const ::kryga::root::texture_slot&
     simple_texture() const
     {
         return m_simple_texture;
@@ -33,12 +33,12 @@ protected:
     // clang-format off
     KRG_ar_property("category=Properties",
                      "serializable=true",
-                     "property_ser_handler=::kryga::root::property_texture_sample__save",
-                     "property_compare_handler=::kryga::root::property_texture_sample__compare",
-                     "property_copy_handler=::kryga::root::property_texture_sample__copy",
-                     "property_instantiate_handler=::kryga::root::property_texture_sample__instantiate",
-                     "property_load_derive_handler=::kryga::root::property_texture_sample__load");
-    ::kryga::root::texture_sample m_simple_texture;
+                     "property_ser_handler=::kryga::root::property_texture_slot__save",
+                     "property_compare_handler=::kryga::root::property_texture_slot__compare",
+                     "property_copy_handler=::kryga::root::property_texture_slot__copy",
+                     "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
+                     "property_load_derive_handler=::kryga::root::property_texture_slot__load");
+    ::kryga::root::texture_slot m_simple_texture;
     //clang-format off
 };
 

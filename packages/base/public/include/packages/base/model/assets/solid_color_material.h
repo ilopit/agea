@@ -3,7 +3,7 @@
 #include "packages/base/model/solid_color_material.ar.h"
 
 #include "packages/root/model/assets/material.h"
-#include "packages/root/model/assets/texture_sample.h"
+#include "packages/root/model/assets/texture_slot.h"
 #include "packages/root/model/core_types/vec3.h"
 
 namespace kryga

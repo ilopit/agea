@@ -30,6 +30,11 @@ result_code
 texture__render_destructor(reflection::type_context__render& ctx);
 
 result_code
+sampler__render_loader(reflection::type_context__render& ctx);
+result_code
+sampler__render_destructor(reflection::type_context__render& ctx);
+
+result_code
 game_object_component__render_loader(reflection::type_context__render& ctx);
 result_code
 game_object_component__render_destructor(reflection::type_context__render& ctx);

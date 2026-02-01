@@ -69,6 +69,9 @@ struct meshes_cache : public cache<root::mesh, architype::mesh>
 struct materials_cache : public cache<root::material, architype::material>
 {
 };
+struct samplers_cache : public cache<root::sampler, architype::sampler>
+{
+};
 struct shader_effects_cache : public cache<root::shader_effect, architype::shader_effect>
 {
 };

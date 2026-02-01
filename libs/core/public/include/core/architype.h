@@ -19,7 +19,8 @@ enum class architype : uint8_t
     texture = 4,
     shader_effect = 5,
     material = 6,
-    last = material
+    sampler = 7,
+    last = sampler
 };
 
 constexpr std::string_view
@@ -41,6 +42,8 @@ to_string(architype a)
         return std::string_view("shader_effect");
     case kryga::core::architype::material:
         return std::string_view("material");
+    case kryga::core::architype::sampler:
+        return std::string_view("sampler");
     default:
         return std::string_view("unknown");
     }

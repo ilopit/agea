@@ -34,11 +34,11 @@ result_code smart_obj__load(reflection::type_context__load& ctx);
 result_code smart_obj__save(reflection::type_context__save& ctx);
 result_code smart_obj__to_string(reflection::type_context__to_string& ctx);
 
-result_code texture_sample__save(reflection::type_context__save& ctx);
-result_code texture_sample__compare(reflection::type_context__compare& ctx);
-result_code texture_sample__copy(reflection::type_context__copy& ctx);
-result_code texture_sample__instantiate(reflection::type_context__copy& ctx);
-result_code texture_sample__load(reflection::type_context__load& ctx);
+result_code texture_slot__save(reflection::type_context__save& ctx);
+result_code texture_slot__compare(reflection::type_context__compare& ctx);
+result_code texture_slot__copy(reflection::type_context__copy& ctx);
+result_code texture_slot__instantiate(reflection::type_context__copy& ctx);
+result_code texture_slot__load(reflection::type_context__load& ctx);
 
 result_code vec2__to_string(reflection::type_context__to_string& ctx);
 

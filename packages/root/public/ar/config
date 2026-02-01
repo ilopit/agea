@@ -14,4 +14,5 @@ include/packages/root/model/assets/asset.h
 include/packages/root/model/assets/material.h
 include/packages/root/model/assets/mesh.h
 include/packages/root/model/assets/texture.h
+include/packages/root/model/assets/sampler.h
 include/packages/root/model/assets/shader_effect.h
