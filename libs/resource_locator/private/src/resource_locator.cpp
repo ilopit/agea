@@ -50,6 +50,8 @@ resource_locator::resource_dir(category c)
     case category::shaders_compiled: {path /= "cache/shaders";      break;}
     case category::shaders_includes: {path /= "shaders_includes";   break;}
     case category::shaders_gpu_data: {path /= "gpu_types";          break;}
+    // TODO, use only available files
+    case category::generated_gpu_data: {path = m_root.parent_path() / "kryga_generated"; break;}
     case category::tmp:              {path /= "tmp";                break;}
     case category::tools:            {path /= "tools";              break;}
     case category::levels:           {path /= "levels";             break;}

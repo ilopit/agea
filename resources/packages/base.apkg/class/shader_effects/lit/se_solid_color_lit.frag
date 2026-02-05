@@ -1,25 +1,16 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "common_frag.glsl"
-
-struct MaterialData
-{
-    uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
-    uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    float shininess;
-};
+#include "gpu_types/solid_color_material__gpu.h"
 
 layout(std430, set = KGPU_materials_descriptor_sets, binding = 0) readonly buffer MaterialBuffer{
-    MaterialData objects[];
+    solid_color_material__gpu objects[];
 } dyn_material_buffer;
 
 // Forward declarations
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, MaterialData material);
-vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material);
-vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material);
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid_color_material__gpu material);
+vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, solid_color_material__gpu material);
+vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, solid_color_material__gpu material);
 
 void main()
 {
@@ -27,7 +18,7 @@ void main()
     vec3 norm = normalize(in_normal);
     vec3 viewDir = normalize(dyn_camera_data.obj.position - in_world_pos);
     // Use per-object material_id from object buffer (enables multi-material instancing)
-    MaterialData material = dyn_material_buffer.objects[get_material_id()];
+    solid_color_material__gpu material = dyn_material_buffer.objects[get_material_id()];
 
     // phase 1: directional lighting
     vec3 result = vec3(0);
@@ -104,7 +95,7 @@ void main()
 }
 
 // calculates the color when using a directional light.
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, MaterialData material)
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid_color_material__gpu material)
 {
     vec3 lightDir = normalize(-light.direction);
 
@@ -124,7 +115,7 @@ vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, Mater
 
 
 // calculates the color when using a point light.
-vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material)
+vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, solid_color_material__gpu material)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -171,7 +162,7 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
 }
 
 // calculates the color when using a spot light.
-vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material)
+vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, solid_color_material__gpu material)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading

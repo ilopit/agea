@@ -34,10 +34,13 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
         glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
     auto gpu_includes =
         glob::glob_state().get_resource_locator()->resource_dir(category::shaders_gpu_data);
+    auto generated_gpu_includes =
+        glob::glob_state().get_resource_locator()->resource_dir(category::generated_gpu_data);
 
     params.arguments = std::format(
-        "-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3}",
-        raw_buffer.get_file().str(), compiled_path.str(), includes.str(), gpu_includes.str());
+        "-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3} -I {4}",
+        raw_buffer.get_file().str(), compiled_path.str(), includes.str(), gpu_includes.str(),
+        generated_gpu_includes.str());
 
     uint64_t rc = 0;
     if (!ipc::run_binary(params, rc) || rc != 0)

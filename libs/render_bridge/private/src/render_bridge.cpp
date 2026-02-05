@@ -81,23 +81,15 @@ render_bridge::set_material_texture_bindings(utils::dynobj& gpu_data,
         return;
     }
 
-    auto v = gpu_data.root<render::gpu_type>();
-
-    // Field 0 is texture_indices array, field 1 is sampler_indices array
-    auto tex_field = v.field_by_idx(0);
-    auto smp_field = v.field_by_idx(1);
+    // GPU struct layout: texture_indices[KGPU_MAX_TEXTURE_SLOTS] at offset 0,
+    // sampler_indices[KGPU_MAX_TEXTURE_SLOTS] immediately after
+    constexpr size_t tex_offset = 0;
+    constexpr size_t smp_offset = KGPU_MAX_TEXTURE_SLOTS * sizeof(uint32_t);
 
     uint32_t count = std::min(slot_count, (uint32_t)KGPU_MAX_TEXTURE_SLOTS);
 
-    if (tex_field)
-    {
-        memcpy(gpu_data.data() + tex_field->offset, texture_indices, count * sizeof(uint32_t));
-    }
-
-    if (smp_field)
-    {
-        memcpy(gpu_data.data() + smp_field->offset, sampler_indices, count * sizeof(uint32_t));
-    }
+    memcpy(gpu_data.data() + tex_offset, texture_indices, count * sizeof(uint32_t));
+    memcpy(gpu_data.data() + smp_offset, sampler_indices, count * sizeof(uint32_t));
 }
 
 bool
@@ -151,21 +143,21 @@ render_bridge::create_collection_template(root::smart_object& so, access_templat
 utils::dynobj
 render_bridge::collect_gpu_data(root::smart_object& so)
 {
-    auto itr = m_gpu_data_collection_templates.find(so.get_type_id());
-    if (itr == m_gpu_data_collection_templates.end())
-    {
-        access_template ct;
-        create_collection_template(so, ct);
+    auto* rt = so.get_reflection();
 
-        itr = m_gpu_data_collection_templates.insert({so.get_type_id(), std::move(ct)}).first;
+    if (!rt || !rt->gpu_pack || rt->gpu_data_size == 0)
+    {
+        return {};  // No GPU data for this type
     }
 
-    if (!itr->second.layout)
-    {
-        return {};
-    }
+    // Create dynobj with raw buffer (no layout needed for compile-time structs)
+    utils::dynobj result;
+    result.resize(rt->gpu_data_size);
 
-    return extract_gpu_data(so, itr->second);
+    // Pack model data into GPU struct
+    rt->gpu_pack(&so, result.data());
+
+    return result;
 }
 
 render::shader_effect_create_info

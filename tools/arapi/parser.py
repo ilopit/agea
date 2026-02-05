@@ -43,6 +43,7 @@ PROP_KEY_SERIALIZABLE = "serializable"
 PROP_KEY_ACCESS = "access"
 PROP_KEY_DEFAULT = "default"
 PROP_KEY_GPU_DATA = "gpu_data"
+PROP_KEY_GPU_TEXTURE_SLOT = "gpu_texture_slot"
 PROP_KEY_COPYABLE = "copyable"
 PROP_KEY_UPDATABLE = "updatable"
 PROP_KEY_REF = "ref"
@@ -436,6 +437,11 @@ def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: 
       prop.has_default = value
     elif key == PROP_KEY_GPU_DATA:
       prop.gpu_data = value
+    elif key == PROP_KEY_GPU_TEXTURE_SLOT:
+      try:
+        prop.gpu_texture_slot = int(value)
+      except ValueError:
+        raise InvalidPropertyError(f"gpu_texture_slot must be an integer, got '{value}'")
     elif key == PROP_KEY_COPYABLE:
       if value not in VALID_YES_NO_VALUES:
         raise InvalidPropertyError(f"copyable must be 'yes' or 'no', got '{value}'")

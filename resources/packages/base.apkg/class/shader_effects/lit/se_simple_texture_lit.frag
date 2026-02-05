@@ -1,32 +1,22 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "common_frag.glsl"
+#include "gpu_types/pbr_material__gpu.h"
 
-struct MaterialData
-{
-    uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
-    uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-    float shininess;
-};
-
-//all object matrices
 layout(std430, set = KGPU_materials_descriptor_sets, binding = 0) readonly buffer MaterialBuffer{
-    MaterialData objects[];
+    pbr_material__gpu objects[];
 } dyn_material_buffer;
 
 // Forward declarations
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, MaterialData material, vec3 albedo, vec3 specular_tex);
-vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material, vec3 albedo, vec3 specular_tex);
-vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material, vec3 albedo, vec3 specular_tex);
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, pbr_material__gpu material, vec3 albedo, vec3 specular_tex);
+vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, pbr_material__gpu material, vec3 albedo, vec3 specular_tex);
+vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, pbr_material__gpu material, vec3 albedo, vec3 specular_tex);
 
 void main()
 {
     // Get material ID and load material data
     uint mat_id = get_material_id();
-    MaterialData material = dyn_material_buffer.objects[mat_id];
+    pbr_material__gpu material = dyn_material_buffer.objects[mat_id];
 
     // Sample textures from material's texture bindings
     vec3 albedo = sample_bindless_texture(material.texture_indices[0], material.sampler_indices[0], in_tex_coord).rgb;
@@ -90,7 +80,7 @@ void main()
 }
 
 // calculates the color when using a directional light.
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, MaterialData material, vec3 albedo, vec3 specular_tex)
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, pbr_material__gpu material, vec3 albedo, vec3 specular_tex)
 {
     vec3 lightDir = normalize(-light.direction);
 
@@ -110,7 +100,7 @@ vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, Mater
 
 
 // calculates the color when using a point light.
-vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material, vec3 albedo, vec3 specular_tex)
+vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, pbr_material__gpu material, vec3 albedo, vec3 specular_tex)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -157,7 +147,7 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
 }
 
 // calculates the color when using a spot light.
-vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, MaterialData material, vec3 albedo, vec3 specular_tex)
+vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, pbr_material__gpu material, vec3 albedo, vec3 specular_tex)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading

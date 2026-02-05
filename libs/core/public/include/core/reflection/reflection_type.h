@@ -83,6 +83,7 @@ using type_handler__compare = result_code (*)(type_context__compare&);
 using type_handler__to_string = result_code (*)(type_context__to_string&);
 using type_handler__render_ctor = result_code (*)(type_context__render&);
 using type_handler__render_dtor = result_code (*)(type_context__render&);
+using type_handler__gpu_pack = void (*)(const void* src, void* dst);
 using type_handler__alloc = std::shared_ptr<root::smart_object> (*)(type_context__alloc&);
 using type_handler__cparams_alloc = std::unique_ptr<::kryga::root::base_construct_params> (*)();
 
@@ -136,6 +137,9 @@ struct reflection_type
 
     type_handler__render_ctor                   render_constructor = nullptr;
     type_handler__render_dtor                   render_destructor = nullptr;
+
+    type_handler__gpu_pack                      gpu_pack = nullptr;
+    size_t                                      gpu_data_size = 0;
 
     // clang-format on
 

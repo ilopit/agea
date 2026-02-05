@@ -362,40 +362,9 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 
     auto mat_data = std::make_shared<material_data>(id, type_id);
 
-    if (!gpu_params.empty())
-    {
-        const reflection::descriptor_set* ds = nullptr;
-
-        for (auto& i : se_data.m_frag_stage->get_reflection().descriptors)
-        {
-            if (i.set_index == 3)
-            {
-                ds = &i;
-            }
-        }
-
-        if (!ds || (ds->bindings.size() != 1) ||
-            (ds->bindings.front().name != AID("dyn_material_buffer")))
-        {
-            ALOG_LAZY_ERROR;
-            return nullptr;
-        }
-
-        auto& b = ds->bindings.front();
-
-        auto expected_material_layout =
-            ds->bindings[0].layout->make_view<gpu_type>().subobj(0).subobj(0);
-        auto input_material_layout = gpu_params.root<gpu_type>();
-
-        expected_material_layout.print_to_std();
-        input_material_layout.print_to_std();
-        if (!shader_reflection_utils::are_layouts_compatible(
-                expected_material_layout.layout(), input_material_layout.layout(), true, true))
-        {
-            ALOG_LAZY_ERROR;
-            return nullptr;
-        }
-    }
+    // Note: Layout validation removed - compile-time generated GPU structs
+    // are guaranteed to match shader MaterialData layout by construction.
+    // The gpu_params is now a raw buffer without dynobj layout metadata.
 
     mat_data->set_shader_effect(&se_data);
     mat_data->set_texture_samples(samples);

@@ -444,13 +444,20 @@ public:
     bool
     empty() const
     {
-        return !(bool)m_layout;
+        return m_obj_data.empty();
     }
 
     std::shared_ptr<dynobj_layout>
     get_layout() const
     {
         return m_layout;
+    }
+
+    // Resize raw data buffer (for use with compile-time generated GPU structs)
+    void
+    resize(size_t new_size)
+    {
+        m_obj_data.resize(new_size);
     }
 
 private:

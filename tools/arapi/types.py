@@ -28,6 +28,7 @@ class kryga_property:
     self.property_copy_handler = ""
     self.property_instantiate_handler = ""
     self.gpu_data = ""
+    self.gpu_texture_slot = -1  # -1 means not a texture slot, >= 0 is slot index
     self.copyable = "yes"
     self.updatable = "yes"
     self.ref = "false"
@@ -114,6 +115,7 @@ class file_context:
     self.render_header_dir = None
     self.render_sources_dir = None
     self.global_dir = None
+    self.gpu_types_dir = None
 
   def topo_sort(self, t: kryga_type, ordered_types):
 

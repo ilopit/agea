@@ -7,8 +7,261 @@ and reflection implementations.
 import os
 from typing import TextIO, Set, List, Optional, Tuple, Dict
 from collections import OrderedDict, deque
+from dataclasses import dataclass
 import arapi.types
 import arapi.utils
+
+
+# GPU type mapping: model_type -> (gpu_type_macro, glsl_type, alignment, size)
+GPU_TYPE_MAP: Dict[str, Tuple[str, str, int, int]] = {
+    "float": ("std140_float", "float", 4, 4),
+    "double": ("std140_float", "float", 4, 4),  # downcast to float for GPU
+    "int": ("std140_int", "int", 4, 4),
+    "int32_t": ("std140_int", "int", 4, 4),
+    "uint32_t": ("std140_uint", "uint", 4, 4),
+    "bool": ("std140_uint", "uint", 4, 4),  # bool as uint on GPU
+    "::kryga::root::vec2": ("std140_vec2", "vec2", 8, 8),
+    "::kryga::root::vec3": ("std140_vec3", "vec3", 16, 12),
+    "::kryga::root::vec4": ("std140_vec4", "vec4", 16, 16),
+    "::kryga::root::mat3": ("std140_mat3", "mat3", 16, 48),
+    "::kryga::root::mat4": ("std140_mat4", "mat4", 16, 64),
+    "::kryga::root::texture_slot": ("std140_uint", "uint", 4, 4),  # texture slot -> bindless index
+}
+
+
+@dataclass
+class GpuField:
+  """Represents a field in a GPU struct."""
+  name: str
+  model_type: str
+  gpu_type: str
+  glsl_type: str
+  alignment: int
+  size: int
+  is_texture_slot: bool
+  texture_slot_index: int
+  owner_class: str  # original class that defined this property
+
+
+def _get_gpu_type_info(model_type: str) -> Optional[Tuple[str, str, int, int]]:
+  """Get GPU type info for a model type.
+
+  Args:
+      model_type: The C++ model type string
+
+  Returns:
+      Tuple of (gpu_type_macro, glsl_type, alignment, size) or None if not mappable
+  """
+  # Direct lookup
+  if model_type in GPU_TYPE_MAP:
+    return GPU_TYPE_MAP[model_type]
+
+  # Try without leading ::
+  clean_type = model_type.lstrip(':')
+  for key, value in GPU_TYPE_MAP.items():
+    if key.lstrip(':') == clean_type:
+      return value
+
+  return None
+
+
+def _collect_gpu_fields_from_type(type_obj: arapi.types.kryga_type,
+                                   context: arapi.types.file_context) -> List[GpuField]:
+  """Collect GPU fields from a type and all its parents (flattened).
+
+  Args:
+      type_obj: The type to collect fields from
+      context: File context with all types
+
+  Returns:
+      List of GpuField objects, sorted by alignment (largest first)
+  """
+  fields: List[GpuField] = []
+  seen_names: Set[str] = set()
+
+  # Walk the inheritance chain
+  current = type_obj
+  while current is not None:
+    for prop in current.properties:
+      # Skip if already seen (child overrides parent)
+      if prop.name in seen_names:
+        continue
+
+      # Check if this is a GPU field
+      is_gpu_data = prop.gpu_data != ""
+      is_texture_slot = prop.gpu_texture_slot >= 0
+
+      if not is_gpu_data and not is_texture_slot:
+        continue
+
+      # Get GPU type info
+      if is_texture_slot:
+        gpu_type = "std140_uint"
+        glsl_type = "uint"
+        alignment = 4
+        size = 4
+      else:
+        type_info = _get_gpu_type_info(prop.type)
+        if type_info is None:
+          arapi.utils.eprint(f"Warning: Unknown GPU type mapping for '{prop.type}' in {prop.owner}::{prop.name}")
+          continue
+        gpu_type, glsl_type, alignment, size = type_info
+
+      fields.append(GpuField(
+          name=prop.name,
+          model_type=prop.type,
+          gpu_type=gpu_type,
+          glsl_type=glsl_type,
+          alignment=alignment,
+          size=size,
+          is_texture_slot=is_texture_slot,
+          texture_slot_index=prop.gpu_texture_slot,
+          owner_class=current.name,
+      ))
+      seen_names.add(prop.name)
+
+    # Move to parent
+    current = current.parent_type
+
+  # Sort by alignment descending (largest first for optimal packing)
+  fields.sort(key=lambda f: (-f.alignment, f.name))
+
+  return fields
+
+
+def _generate_pack_statement(field: GpuField, src_var: str, dst_var: str, owner_full_type: str) -> str:
+  """Generate the pack statement for a field using offset-based access.
+
+  Args:
+      field: The GPU field
+      src_var: Source variable name (e.g., "src")
+      dst_var: Destination variable name (e.g., "dst")
+      owner_full_type: Full type name of the owning class
+
+  Returns:
+      C++ statement(s) to pack the value
+  """
+  # Strip m_ prefix for GPU struct field names (matches GLSL convention)
+  gpu_field_name = field.name[2:] if field.name.startswith("m_") else field.name
+
+  if field.is_texture_slot:
+    # Texture slot: get the slot via offset, then access txt pointer
+    return f"""    {{
+        const auto& slot = *reinterpret_cast<const ::kryga::root::texture_slot*>(blob + offsetof({owner_full_type}, {field.name}));
+        if (slot.txt && slot.txt->get_texture_data())
+            {dst_var}.{gpu_field_name} = slot.txt->get_texture_data()->get_bindless_index();
+        else
+            {dst_var}.{gpu_field_name} = UINT32_MAX;
+    }}"""
+  else:
+    # Regular field: use memcpy with offset (source uses original name with m_, dest uses stripped name)
+    return f"    std::memcpy(&{dst_var}.{gpu_field_name}, blob + offsetof({owner_full_type}, {field.name}), sizeof({dst_var}.{gpu_field_name}));"
+
+
+def write_gpu_struct(type_obj: arapi.types.kryga_type,
+                     context: arapi.types.file_context) -> bool:
+  """Write GPU struct and pack function for a type.
+
+  Args:
+      type_obj: The type to generate GPU struct for
+      context: File context
+
+  Returns:
+      True if GPU struct was generated, False if type has no GPU fields
+  """
+  if type_obj.kind != arapi.types.kryga_type_kind.CLASS:
+    return False
+
+  fields = _collect_gpu_fields_from_type(type_obj, context)
+
+  if not fields:
+    return False
+
+  if not os.path.exists(context.gpu_types_dir):
+    os.makedirs(context.gpu_types_dir)
+
+  output_path = os.path.join(context.gpu_types_dir, f"{type_obj.name}__gpu.h")
+  file_buffer = arapi.utils.FileBuffer(output_path)
+
+  struct_name = f"{type_obj.name}__gpu"
+  full_model_type = type_obj.get_full_type_name()
+
+  file_buffer.append(f"""// Auto-generated GPU struct for {type_obj.name}
+// DO NOT EDIT - Generated by argen.py
+
+#pragma once
+
+#include <gpu_types/gpu_port.h>
+#include <gpu_types/gpu_push_constants.h>
+
+#ifdef __cplusplus
+#include <cstring>
+#include <cstddef>
+#include <cstdint>
+#endif
+
+GPU_BEGIN_NAMESPACE
+
+gpu_struct_std140 {struct_name}
+{{
+    std140_uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    std140_uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
+""")
+
+  for field in fields:
+    gpu_field_name = field.name[2:] if field.name.startswith("m_") else field.name
+    file_buffer.append(f"    {field.gpu_type} {gpu_field_name};\n")
+
+  file_buffer.append(f"""}};
+
+GPU_END_NAMESPACE
+
+#ifdef __cplusplus
+inline void pack__{struct_name}(
+    const {full_model_type}& src,
+    ::kryga::gpu::{struct_name}& dst)
+{{
+    const uint8_t* blob = reinterpret_cast<const uint8_t*>(&src);
+    for (int i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i) {{
+        dst.texture_indices[i] = UINT32_MAX;
+        dst.sampler_indices[i] = UINT32_MAX;
+    }}
+""")
+
+  for field in fields:
+    pack_stmt = _generate_pack_statement(field, "src", "dst", full_model_type)
+    file_buffer.append(f"{pack_stmt}\n")
+
+  file_buffer.append("""}\n#endif
+""")
+
+  file_buffer.write_if_changed()
+  return True
+
+
+def write_all_gpu_structs(context: arapi.types.file_context) -> None:
+  """Write GPU structs for all types that have GPU fields.
+
+  Args:
+      context: File context with all types
+  """
+  for type_obj in context.types:
+    write_gpu_struct(type_obj, context)
+
+
+def type_has_gpu_data(type_obj: arapi.types.kryga_type,
+                      context: arapi.types.file_context) -> bool:
+  """Check if a type has GPU data fields (including inherited).
+
+  Args:
+      type_obj: The type to check
+      context: File context
+
+  Returns:
+      True if the type has any GPU data fields
+  """
+  fields = _collect_gpu_fields_from_type(type_obj, context)
+  return len(fields) > 0
 
 # Constants for property access modes
 SHOULD_HAVE_GETTER: Set[str] = {"cpp_readonly", "cpp_only", "script_readonly", "read_only", "all"}
@@ -127,11 +380,29 @@ def write_ar_class_include_file(ar_type: arapi.types.kryga_type, context: arapi.
   #print(f"generating : {include_path}")
 
   ar_class_include = arapi.utils.FileBuffer(include_path)
+
+  # Check if this class has GPU data - if so, add forward declarations and friend
+  gpu_fwd_decl = ""
+  gpu_friend = ""
+  if type_has_gpu_data(ar_type, context):
+    struct_name = f"{ar_type.name}__gpu"
+    full_type = ar_type.get_full_type_name()
+    # Extract namespace for class forward declaration
+    class_ns = context.full_module_name
+    class_name = ar_type.name
+    # Forward declarations before the macro
+    gpu_fwd_decl = f"""namespace kryga::gpu {{ struct {struct_name}; }}
+namespace {class_ns} {{ class {class_name}; }}
+void pack__{struct_name}(const {full_type}&, ::kryga::gpu::{struct_name}&);
+
+"""
+    gpu_friend = f"    friend void ::pack__{struct_name}(const {full_type}&, ::kryga::gpu::{struct_name}&); \\\n"
+
   ar_class_include.append(f"""#pragma once
 
-#define KRG_gen_meta__{ar_type.name}()   \\
+{gpu_fwd_decl}#define KRG_gen_meta__{ar_type.name}()   \\
     friend class package; \\
-""")
+{gpu_friend}""")
 
   for prop in ar_type.properties:
     if prop.access in SHOULD_HAVE_GETTER:
@@ -1082,6 +1353,12 @@ def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_con
   for include in fc.render_overrides:
     render_overrides += f"#include <{include}>\n"
 
+  # Generate GPU type includes
+  gpu_includes = ""
+  for type_obj in fc.types:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS and type_has_gpu_data(type_obj, fc):
+      gpu_includes += f'#include <gpu_types/{type_obj.name}__gpu.h>\n'
+
   file_buffer.append(f"""// Smart Object Autogenerated Reflection Layout
 
 // clang-format off
@@ -1102,8 +1379,26 @@ def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include <global_state/global_state.h>
 #include <glue/type_ids.ar.h>
 
+{gpu_includes}
 namespace kryga::{fc.module_name} {{
 
+""")
+
+  # Generate static GPU pack wrapper functions
+  for type_obj in fc.types:
+    if type_obj.kind == arapi.types.kryga_type_kind.CLASS and type_has_gpu_data(type_obj, fc):
+      struct_name = f"{type_obj.name}__gpu"
+      full_type = type_obj.get_full_type_name()
+      file_buffer.append(f"""
+static void gpu_pack__{type_obj.name}(const void* src, void* dst)
+{{
+    pack__{struct_name}(
+        *static_cast<const {full_type}*>(src),
+        *static_cast<::kryga::gpu::{struct_name}*>(dst));
+}}
+""")
+
+  file_buffer.append(f"""
 bool package::package_render_enforcer()
 {{
   volatile bool has_render_types = false;
@@ -1138,11 +1433,14 @@ package::package_render_types_builder::build(::kryga::core::package& sp)
 """)
 
     for type_obj in fc.types:
+      has_render_handlers = type_obj.render_constructor or type_obj.render_destructor
+      has_gpu_data = type_has_gpu_data(type_obj, fc)
+
       if (type_obj.kind == arapi.types.kryga_type_kind.CLASS
-          and (type_obj.render_constructor or type_obj.render_destructor)):
+          and (has_render_handlers or has_gpu_data)):
 
         file_buffer.append(f"""
-{{                  
+{{
   auto type_rt =  ::kryga::glob::glob_state().get_rm()->get_type(::kryga::{type_obj.id});
   KRG_check(type_rt, "Type is not defined!");
 """)
@@ -1150,6 +1448,10 @@ package::package_render_types_builder::build(::kryga::core::package& sp)
           file_buffer.append(f"  type_rt->render_constructor = {type_obj.render_constructor};\n")
         if type_obj.render_destructor:
           file_buffer.append(f"  type_rt->render_destructor  = {type_obj.render_destructor};\n")
+        if has_gpu_data:
+          struct_name = f"{type_obj.name}__gpu"
+          file_buffer.append(f"  type_rt->gpu_pack           = gpu_pack__{type_obj.name};\n")
+          file_buffer.append(f"  type_rt->gpu_data_size      = sizeof(::kryga::gpu::{struct_name});\n")
         file_buffer.append("}")
 
     file_buffer.append(f"""

@@ -55,11 +55,14 @@ add_library(packages.base.render STATIC
 )
 
 target_compile_options(packages.base.render PRIVATE /bigobj)
+target_include_directories(packages.base.render PRIVATE
+   ${CMAKE_BINARY_DIR}/kryga_generated)
 target_link_libraries(packages.base.render
 
    kryga::packages.base.model
    kryga::asset_importer
    kryga::render_bridge
+   kryga::gpu_types
 )
 target_compile_definitions(packages.base.render PUBLIC KRG_build__render)
 kryga_finalize_library(packages.base.render)

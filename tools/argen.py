@@ -77,6 +77,7 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
                                             "render")
   context.render_header_dir = os.path.join(output_dir, "packages", module_name, "render", "public")
   context.global_dir = os.path.join(output_dir, "packages/glue/public/include/glue")
+  context.gpu_types_dir = os.path.join(output_dir, "gpu_types")
 
   # Initialize folder structure
   directories = [
@@ -128,6 +129,9 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
   if context.render_has_types_overrides or context.render_has_custom_resources:
     output_file = os.path.join(context.render_sources_dir, f"package.{module_name}.render.ar.cpp")
     arapi.writer.write_render_types_reflection(output_file, context)
+
+  # Write GPU structs for types with gpu_data properties
+  arapi.writer.write_all_gpu_structs(context)
 
 
 def main() -> None:

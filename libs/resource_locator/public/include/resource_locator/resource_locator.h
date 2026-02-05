@@ -28,6 +28,7 @@ enum class category : int
     shaders_compiled,
     shaders_includes,
     shaders_gpu_data,
+    generated_gpu_data,
     shaders_raw,
     tools,
     tmp,
