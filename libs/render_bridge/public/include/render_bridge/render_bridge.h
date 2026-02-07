@@ -70,9 +70,6 @@ public:
                                   const uint32_t* sampler_indices,
                                   uint32_t slot_count);
 
-    bool
-    create_collection_template(root::smart_object& so, access_template& t);
-
     render_object_dependency_graph&
     get_dependency()
     {

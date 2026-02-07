@@ -17,6 +17,7 @@ target_link_libraries(engine PUBLIC
     kryga::native
 
     kryga::textedit_unofficial
+    kryga::imguizmo_unofficial
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 

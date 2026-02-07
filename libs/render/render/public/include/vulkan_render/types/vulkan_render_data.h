@@ -24,8 +24,7 @@ public:
     {
     }
 
-    gpu::object_data gpu_data;
-
+        gpu::object_data gpu_data;
     render::mesh_data* mesh = nullptr;
     render::material_data* material = nullptr;
 

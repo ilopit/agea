@@ -1,6 +1,7 @@
 #include "engine/private/ui/object_editor.h"
 
 #include <packages/root/model/game_object.h>
+#include <packages/root/model/components/game_object_component.h>
 #include <packages/root/model/assets/material.h>
 #include <engine/property_drawers.h>
 #include <glue/type_ids.ar.h>
@@ -64,60 +65,54 @@ draw_v3(int& i, root::vec3& v3)
 }
 
 void
-draw_transformation(const std::unordered_map<std::string, reflection::property_list>& editor,
-                    int& uid,
-                    root::game_object_component& obj)
+draw_transformation(int& uid, root::game_object_component& obj)
 {
-    auto find = [](const std::string& n, const reflection::property_list& pl)
-    {
-        for (auto& p : pl)
-        {
-            if (p->name == n)
-            {
-                return p;
-            }
-        }
-        return std::shared_ptr<reflection::property>();
-    };
-
-    if (!ImGui::CollapsingHeader("Transform"))
+    if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
         return;
 
-    ImGui::Columns(4);
-
-    auto& pl = editor.at("Transform");
-    ImGui::BeginDisabled();
-
+    auto apply = [&obj]()
     {
-        ImGui::Text("position");
-        ImGui::NextColumn();
+        obj.update_matrix();
+        obj.update_children_matrixes();
+        obj.mark_transform_dirty();
+    };
 
-        auto p = find("position", pl);
-        root::vec3 v3;
-        read_value<root::vec3>(*p, obj, v3);
-        draw_v3(uid, v3);
-    }
+    root::vec3 pos = obj.get_position();
+    root::vec3 rot = obj.get_rotation();
+    root::vec3 scl = obj.get_scale();
+
+    ImGui::PushID(uid++);
+    ImGui::Text("Position");
+    ImGui::SameLine(100);
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::DragFloat3("##pos", &pos.x, 0.1f))
     {
-        ImGui::Text("scale");
-        ImGui::NextColumn();
-
-        auto p = find("scale", pl);
-        root::vec3 v3;
-        read_value<root::vec3>(*p, obj, v3);
-        draw_v3(uid, v3);
+        obj.set_position(pos);
+        apply();
     }
+    ImGui::PopID();
 
+    ImGui::PushID(uid++);
+    ImGui::Text("Rotation");
+    ImGui::SameLine(100);
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::DragFloat3("##rot", &rot.x, 0.5f))
     {
-        ImGui::Text("rotation");
-        ImGui::NextColumn();
-
-        auto p = find("rotation", pl);
-        root::vec3 v3;
-        read_value<root::vec3>(*p, obj, v3);
-        draw_v3(uid, v3);
+        obj.set_rotation(rot);
+        apply();
     }
-    ImGui::EndDisabled();
-    ImGui::Columns(1);
+    ImGui::PopID();
+
+    ImGui::PushID(uid++);
+    ImGui::Text("Scale");
+    ImGui::SameLine(100);
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::DragFloat3("##scl", &scl.x, 0.01f))
+    {
+        obj.set_scale(scl);
+        apply();
+    }
+    ImGui::PopID();
 }
 
 void
@@ -157,9 +152,18 @@ object_editor::handle()
 
     auto& categories = current_object->get_reflection()->m_editor_properties;
     int uid = 0;
-    if (auto obj = current_object->as<root::game_object_component>())
+
+    // Draw transform for game_object (via root component) or for direct component selection
+    if (auto go = current_object->as<root::game_object>())
     {
-        draw_transformation(categories, uid, *obj);
+        if (go->get_root_component())
+        {
+            draw_transformation(uid, *go->get_root_component());
+        }
+    }
+    else if (auto comp = current_object->as<root::game_object_component>())
+    {
+        draw_transformation(uid, *comp);
     }
 
     for (auto& c : categories)

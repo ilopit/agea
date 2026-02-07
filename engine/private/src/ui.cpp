@@ -6,6 +6,7 @@
 
 #include "engine/private/ui/package_editor.h"
 #include "engine/private/ui/object_editor.h"
+#include "engine/private/ui/gizmo_editor.h"
 
 #include <core/level.h>
 #include <core/caches/caches_map.h>
@@ -31,6 +32,8 @@
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
 
+#include <ImGuizmo.h>
+
 #include <array>
 
 namespace kryga
@@ -40,6 +43,8 @@ glob::ui::type glob::ui::type::s_instance;
 
 namespace ui
 {
+
+static gizmo_editor s_gizmo_editor;
 
 ui::ui()
 {
@@ -76,10 +81,15 @@ ui::init()
 {
     // Init ImGui
     ImGui::CreateContext();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
     ImGui_ImplSDL2_InitForVulkan(glob::native_window::getr().handle());
 
     // Color scheme
     ImGuiStyle& style = ImGui::GetStyle();
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.06f, 0.06f, 0.5f);
     style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
     style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.0f, 0.0f, 0.0f, 0.1f);
@@ -109,12 +119,18 @@ ui::new_frame(float dt)
 
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-    ImGui::ShowDemoWindow();
+
+    // Fullscreen dockspace — all windows can dock into this, central node is transparent for 3D viewport
+    ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
     for (auto& w : m_windows)
     {
         w.second->handle();
     }
+
+    ImGuizmo::BeginFrame();
+
+    s_gizmo_editor.draw();
 
     ImGui::Render();
 }

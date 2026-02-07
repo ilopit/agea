@@ -18,7 +18,6 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
 
-
 #include <utils/kryga_log.h>
 #include <utils/dynamic_object_builder.h>
 
@@ -39,7 +38,8 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
     auto fn = v.field_count();
 
     // First 2 fields are texture_indices and sampler_indices arrays
-    // Initialize them to invalid (UINT32_MAX) - they'll be set later via set_material_texture_bindings
+    // Initialize them to invalid (UINT32_MAX) - they'll be set later via
+    // set_material_texture_bindings
     constexpr uint32_t INVALID_INDEX = UINT32_MAX;
     constexpr int num_binding_fields = 2;  // texture_indices array, sampler_indices array
 
@@ -51,13 +51,15 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
             // Fill entire array with invalid indices
             for (uint32_t j = 0; j < KGPU_MAX_TEXTURE_SLOTS; ++j)
             {
-                memcpy(dyn_obj.data() + field->offset + j * sizeof(uint32_t), &INVALID_INDEX, sizeof(uint32_t));
+                memcpy(dyn_obj.data() + field->offset + j * sizeof(uint32_t), &INVALID_INDEX,
+                       sizeof(uint32_t));
             }
         }
     }
 
     // Skip binding fields, copy remaining material properties
-    KRG_check(ct.offset_in_object.size() == fn - num_binding_fields, "Should match property count!");
+    KRG_check(ct.offset_in_object.size() == fn - num_binding_fields,
+              "Should match property count!");
 
     auto oitr = ct.offset_in_object.begin();
     uint64_t idx = num_binding_fields;  // Start after texture bindings
@@ -72,9 +74,9 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
 
 void
 render_bridge::set_material_texture_bindings(utils::dynobj& gpu_data,
-                                              const uint32_t* texture_indices,
-                                              const uint32_t* sampler_indices,
-                                              uint32_t slot_count)
+                                             const uint32_t* texture_indices,
+                                             const uint32_t* sampler_indices,
+                                             uint32_t slot_count)
 {
     if (gpu_data.empty())
     {
@@ -90,54 +92,6 @@ render_bridge::set_material_texture_bindings(utils::dynobj& gpu_data,
 
     memcpy(gpu_data.data() + tex_offset, texture_indices, count * sizeof(uint32_t));
     memcpy(gpu_data.data() + smp_offset, sampler_indices, count * sizeof(uint32_t));
-}
-
-bool
-render_bridge::create_collection_template(root::smart_object& so, access_template& t)
-{
-    auto& properties = so.get_reflection()->m_properties;
-
-    t.offset_in_object.clear();
-
-    render::gpu_dynobj_builder sb;
-
-    sb.set_id(AID("MaterialData"));
-
-    // Texture bindings at the start of material GPU data (std430 layout)
-    // std430: uint arrays have 4-byte stride (tightly packed)
-    sb.add_array(AID("texture_indices"), render::gpu_type::g_unsigned, 4, KGPU_MAX_TEXTURE_SLOTS, 4);
-    sb.add_array(AID("sampler_indices"), render::gpu_type::g_unsigned, 4, KGPU_MAX_TEXTURE_SLOTS, 4);
-
-    for (auto& p : properties)
-    {
-        if (!p->gpu_data.empty())
-        {
-            switch (p->rtype->type_id)
-            {
-            case kryga::root__float:
-                sb.add_field(AID(p->name), render::gpu_type::g_float, 1);
-                break;
-            case kryga::root__vec3:
-                sb.add_field(AID(p->name), render::gpu_type::g_vec3, 16);
-                break;
-            case kryga::root__vec4:
-                sb.add_field(AID(p->name), render::gpu_type::g_vec4, 16);
-                break;
-            default:
-                KRG_never("Should never happen");
-                break;
-            }
-
-            t.offset_in_object.push_back((uint32_t)p->offset);
-        }
-    }
-
-    if (!sb.empty())
-    {
-        t.layout = sb.finalize();
-    }
-
-    return true;
 }
 
 utils::dynobj

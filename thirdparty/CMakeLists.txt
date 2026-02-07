@@ -30,6 +30,10 @@ externalize(TracyClient "tracy")
 add_subdirectory(unofficial/imgui)
 externalize(imgui_unofficial "imgui")
 
+#imguizmo
+add_subdirectory(unofficial/imguizmo)
+externalize(imguizmo_unofficial "imguizmo")
+
 #vma
 add_subdirectory(unofficial/vma)
 externalize(vma_unofficial "vma")

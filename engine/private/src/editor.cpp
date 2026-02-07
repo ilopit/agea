@@ -6,6 +6,9 @@
 #include <native/native_window.h>
 #include <vulkan_render/kryga_render.h>
 
+#include <imgui.h>
+#include <ImGuizmo.h>
+
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package_manager.h>
@@ -85,6 +88,11 @@ game_editor::ev_look_left(float f)
 void
 game_editor::ev_mouse_press()
 {
+    if (ImGuizmo::IsOver() || ImGuizmo::IsUsing())
+    {
+        return;
+    }
+
     uint32_t w = glob::input_manager::getr().get_mouse_state().x;
     uint32_t h = glob::input_manager::getr().get_mouse_state().y;
 
