@@ -45,6 +45,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/vk_descriptors.h>
 
 #include <utils/kryga_log.h>
@@ -518,6 +519,15 @@ vulkan_engine::consume_updated_transforms()
                 if (obj_data)
                 {
                     obj_data->gpu_data.model = m->get_transform_matrix();
+                    obj_data->gpu_data.normal = m->get_normal_matrix();
+                    obj_data->gpu_data.obj_pos = glm::vec3(m->get_world_position());
+
+                    auto scale = m->get_scale();
+                    float max_s = glm::max(glm::max(glm::abs(scale.x),
+                                                    glm::abs(scale.y)),
+                                           glm::abs(scale.z));
+                    obj_data->gpu_data.bounding_radius =
+                        obj_data->mesh->m_bounding_radius * max_s;
 
                     glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
                 }
