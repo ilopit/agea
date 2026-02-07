@@ -495,6 +495,32 @@ vulkan_render::prepare_system_resources()
 
     m_pick_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_pick"), AID("pick"),
                                                                     sd, *sed, utils::dynobj{});
+
+    // Grid shader effect and material
+    vert_path = path / "system/se_grid.vert";
+    kryga::utils::buffer::load(vert_path, vert);
+
+    frag_path = path / "system/se_grid.frag";
+    kryga::utils::buffer::load(frag_path, frag);
+
+    se_ci = {};
+    se_ci.vert_buffer = &vert;
+    se_ci.frag_buffer = &frag;
+    se_ci.is_wire = false;
+    se_ci.enable_dynamic_state = false;
+    se_ci.alpha = alpha_mode::world;
+    se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
+    se_ci.cull_mode = VK_CULL_MODE_NONE;
+    se_ci.ds_mode = depth_stencil_mode::none;
+    se_ci.height = m_height;
+    se_ci.width = m_width;
+
+    m_grid_se = nullptr;
+    rc = main_pass->create_shader_effect(AID("se_grid"), se_ci, m_grid_se);
+    KRG_check(rc == result_code::ok && m_grid_se, "Grid shader effect creation failed!");
+
+    m_grid_mat = glob::vulkan_render_loader::getr().create_material(
+        AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
 }
 
 render_cache&

@@ -64,7 +64,12 @@
       "Bash(tools/configure.bat)",
       "Bash(tools/configure.bat -c)",
       "Bash(timeout 10:*)",
-      "Bash(timeout 15 ./engine_app.exe:*)"
+      "Bash(timeout 15 ./engine_app.exe:*)",
+      "Bash(grep:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git clone:*)",
+      "Bash(taskkill:*)",
+      "Bash(tools\\\\build.bat:*)"
     ]
   }
 }

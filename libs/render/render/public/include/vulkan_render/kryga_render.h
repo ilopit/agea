@@ -222,6 +222,18 @@ public:
     void
     mark_texture_dirty(texture_data* tex);
 
+    void
+    set_grid_visible(bool v)
+    {
+        m_show_grid = v;
+    }
+
+    bool
+    is_grid_visible() const
+    {
+        return m_show_grid;
+    }
+
     uint32_t
     get_all_draws() const
     {
@@ -265,6 +277,9 @@ private:
 
     void
     draw_picking_per_object(VkCommandBuffer cmd);
+
+    void
+    draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
     draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame);
@@ -443,6 +458,11 @@ private:
         glm::vec2 translate;
     };
     ui_push_constants m_ui_push_constants;
+
+    // Grid
+    shader_effect_data* m_grid_se = nullptr;
+    material_data* m_grid_mat = nullptr;
+    bool m_show_grid = true;
 
     // Generic
     material_data* m_outline_mat = nullptr;

@@ -339,6 +339,9 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         }
     }
 
+    // Draw grid overlay
+    draw_grid(cmd, current_frame);
+
     // Draw UI overlay
     draw_ui_overlay(cmd, current_frame);
 }
@@ -383,6 +386,9 @@ vulkan_render::draw_objects_per_object(render::frame_state& current_frame)
         update_transparent_objects_queue();
         draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
     }
+
+    // Draw grid overlay
+    draw_grid(cmd, current_frame);
 
     // Draw UI overlay
     draw_ui_overlay(cmd, current_frame);
@@ -451,6 +457,48 @@ vulkan_render::draw_picking_per_object(VkCommandBuffer cmd)
     {
         draw_same_pipeline_objects_queue(cmd, pctx, container, false);
     }
+}
+
+// ============================================================================
+// Draw Functions - Grid (shared)
+// ============================================================================
+
+void
+vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+    if (!m_show_grid || !m_grid_mat || !m_grid_se)
+        return;
+
+    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
+
+    auto pipeline_layout = m_grid_se->m_pipeline_layout;
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_grid_se->m_pipeline);
+
+    // Rebind set 0 (camera) with grid's pipeline layout
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
+                            KGPU_global_descriptor_sets, 1, &m_global_set,
+                            current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
+                            current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
+
+    bind_mesh(cmd, m);
+
+    // Push constants (grid doesn't use texture indices but layout requires them)
+    memset(&m_obj_config, 0, sizeof(m_obj_config));
+    for (uint32_t i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
+    {
+        m_obj_config.texture_indices[i] = UINT32_MAX;
+        m_obj_config.sampler_indices[i] = KGPU_SAMPLER_LINEAR_REPEAT;
+    }
+
+    vkCmdPushConstants(cmd, pipeline_layout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                       sizeof(gpu::push_constants), &m_obj_config);
+
+    if (m->has_indices())
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    else
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
 }
 
 // ============================================================================

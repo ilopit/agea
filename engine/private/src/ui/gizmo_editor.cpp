@@ -7,6 +7,7 @@
 #include <packages/root/model/components/game_object_component.h>
 
 #include <native/native_window.h>
+#include <vulkan_render/kryga_render.h>
 
 
 namespace kryga::ui
@@ -15,36 +16,20 @@ namespace kryga::ui
 void
 gizmo_editor::draw()
 {
-    auto* obj_editor = get_window<object_editor>();
-    if (!obj_editor || !obj_editor->current_object)
-    {
-        return;
-    }
+    // Get camera data and set up ImGuizmo viewport (always, before anything else)
+    auto cam = glob::game_editor::getr().get_camera_data();
 
-    auto* game_obj = obj_editor->current_object->as<root::game_object>();
-    if (!game_obj)
-    {
-        return;
-    }
+    // Un-flip Vulkan Y for ImGuizmo (expects OpenGL convention)
+    glm::mat4 proj = cam.projection;
+    proj[1][1] *= -1;
 
-    auto* root_comp = game_obj->get_root_component();
-    if (!root_comp)
-    {
-        return;
-    }
+    const float* view_ptr = &cam.view[0][0];
+    const float* proj_ptr = &proj[0][0];
 
-    // Keyboard mode switching (only when not using gizmo and not typing in ImGui)
-    if (!ImGuizmo::IsUsing() && !ImGui::GetIO().WantTextInput)
-    {
-        if (ImGui::IsKeyPressed(ImGuiKey_1))
-            m_mode = gizmo_mode::translate;
-        if (ImGui::IsKeyPressed(ImGuiKey_2))
-            m_mode = gizmo_mode::rotate;
-        if (ImGui::IsKeyPressed(ImGuiKey_3))
-            m_mode = gizmo_mode::scale;
-    }
+    auto window_size = glob::native_window::getr().get_size();
+    ImGuizmo::SetRect(0, 0, (float)window_size.w, (float)window_size.h);
 
-    // Toolbar
+    // Toolbar (always visible)
     {
         ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(0, 0));
@@ -100,25 +85,50 @@ gizmo_editor::draw()
             }
         }
 
+        ImGui::SameLine();
+        ImGui::Text("|");
+        ImGui::SameLine();
+        bool grid_visible = glob::vulkan_render::getr().is_grid_visible();
+        if (ImGui::Checkbox("Grid", &grid_visible))
+        {
+            glob::vulkan_render::getr().set_grid_visible(grid_visible);
+        }
+
         ImGui::End();
     }
 
-    // Get camera data
-    auto cam = glob::game_editor::getr().get_camera_data();
+    // Object selection checks — everything below needs a selected object
+    auto* obj_editor = get_window<object_editor>();
+    if (!obj_editor || !obj_editor->current_object)
+    {
+        return;
+    }
 
-    // Un-flip Vulkan Y for ImGuizmo (expects OpenGL convention)
-    glm::mat4 proj = cam.projection;
-    proj[1][1] *= -1;
+    auto* game_obj = obj_editor->current_object->as<root::game_object>();
+    if (!game_obj)
+    {
+        return;
+    }
 
-    const float* view_ptr = &cam.view[0][0];
-    const float* proj_ptr = &proj[0][0];
+    auto* root_comp = game_obj->get_root_component();
+    if (!root_comp)
+    {
+        return;
+    }
+
+    // Keyboard mode switching (only when not using gizmo and not typing in ImGui)
+    if (!ImGuizmo::IsUsing() && !ImGui::GetIO().WantTextInput)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_1))
+            m_mode = gizmo_mode::translate;
+        if (ImGui::IsKeyPressed(ImGuiKey_2))
+            m_mode = gizmo_mode::rotate;
+        if (ImGui::IsKeyPressed(ImGuiKey_3))
+            m_mode = gizmo_mode::scale;
+    }
 
     // Use the actual transform matrix the renderer uses — guarantees gizmo matches visual position
     glm::mat4 model = root_comp->get_transform_matrix();
-
-    // Set ImGuizmo to draw over the full viewport
-    auto window_size = glob::native_window::getr().get_size();
-    ImGuizmo::SetRect(0, 0, (float)window_size.w, (float)window_size.h);
 
     // Map gizmo_mode to ImGuizmo operation
     ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
