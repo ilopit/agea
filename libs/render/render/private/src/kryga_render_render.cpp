@@ -87,7 +87,7 @@ vulkan_render::upload_instance_slots(render::frame_state& frame)
     if (required_size >= frame.buffers.instance_slots.get_alloc_size())
     {
         auto old_buffer = std::move(frame.buffers.instance_slots);
-        frame.buffers.instance_slots = glob::render_device::getr().create_buffer(
+        frame.buffers.instance_slots = glob::glob_state().getr_render_device().create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
         ALOG_INFO("Reallocating instance_slots buffer {} => {}", old_buffer.get_alloc_size(),
                   frame.buffers.instance_slots.get_alloc_size());
@@ -469,7 +469,7 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
     if (!m_show_grid || !m_grid_mat || !m_grid_se)
         return;
 
-    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
+    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
 
     auto pipeline_layout = m_grid_se->m_pipeline_layout;
 
@@ -508,7 +508,7 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
 void
 vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
-    auto m = glob::vulkan_render_loader::getr().get_mesh_data(AID("plane_mesh"));
+    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
 
     // UI overlay shader has a different (incompatible) pipeline layout for sets 0-1
     // It only uses set 2 (textures) and push constants, so we bind those directly
@@ -754,7 +754,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
         VkDescriptorSet mat_data_set{};
         vk_utils::descriptor_builder::begin(
-            glob::render_device::getr().descriptor_layout_cache(),
+            glob::glob_state().getr_render_device().descriptor_layout_cache(),
             current_frame.frame->m_dynamic_descriptor_allocator.get())
             .bind_buffer(0, &mat_buffer_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                          VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -930,8 +930,8 @@ vulkan_render::prepare_ui_resources()
     auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
     auto f_big = io.Fonts->AddFontFromFileTTF(f.c_str(), 33.0f);
 
-    glob::vulkan_render_loader::getr().create_font(AID("normal"), f_normal);
-    glob::vulkan_render_loader::getr().create_font(AID("big"), f_big);
+    glob::glob_state().getr_vulkan_render_loader().create_font(AID("normal"), f_normal);
+    glob::glob_state().getr_vulkan_render_loader().create_font(AID("big"), f_big);
 
     int tex_width = 0, tex_height = 0;
     unsigned char* font_data = nullptr;
@@ -943,11 +943,11 @@ vulkan_render::prepare_ui_resources()
     image_raw_buffer.resize(size);
     memcpy(image_raw_buffer.data(), font_data, size);
 
-    m_ui_txt = glob::vulkan_render_loader::getr().create_texture(AID("font"), image_raw_buffer,
+    m_ui_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(AID("font"), image_raw_buffer,
                                                                  tex_width, tex_height);
 
-    auto ui_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
-    m_ui_target_txt = glob::vulkan_render_loader::getr().create_texture(
+    auto ui_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("ui"));
+    m_ui_target_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
         AID("ui_copy_txt"), ui_pass->get_color_images()[0], ui_pass->get_color_image_views()[0]);
 }
 
@@ -973,7 +973,7 @@ vulkan_render::prepare_ui_pipeline()
                           .add_field(AID("in_color"), kryga::render::gpu_type::g_color, 1)
                           .finalize();
 
-        auto ui_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("ui"));
+        auto ui_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("ui"));
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
@@ -990,7 +990,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_txt;
         samples.front().slot = 0;
 
-        m_ui_mat = glob::vulkan_render_loader::getr().create_material(
+        m_ui_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
             AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
     }
     {
@@ -1002,7 +1002,7 @@ vulkan_render::prepare_ui_pipeline()
         auto frag_path = path / "se_upload.frag";
         kryga::utils::buffer::load(frag_path, frag);
 
-        auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+        auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
@@ -1018,7 +1018,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_target_txt;
         samples.front().slot = 0;
 
-        m_ui_target_mat = glob::vulkan_render_loader::getr().create_material(
+        m_ui_target_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 }
@@ -1026,7 +1026,7 @@ vulkan_render::prepare_ui_pipeline()
 void
 vulkan_render::update_ui(frame_state& fs)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
     ImDrawData* im_draw_data = ImGui::GetDrawData();
 
     if (!im_draw_data)

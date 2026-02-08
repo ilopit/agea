@@ -5,6 +5,8 @@
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
+
 #include <utils/kryga_log.h>
 
 #include <algorithm>
@@ -419,7 +421,7 @@ binding_table::build_set(uint32_t set_index, vk_utils::descriptor_allocator& all
     }
 
     // Update descriptor set
-    auto device = glob::render_device::getr().vk_device();
+    auto device = glob::glob_state().getr_render_device().vk_device();
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
     return set;

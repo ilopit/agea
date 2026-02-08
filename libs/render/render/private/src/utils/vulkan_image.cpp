@@ -3,6 +3,8 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
+
 namespace kryga::render::vk_utils
 {
 
@@ -93,13 +95,13 @@ vulkan_image::clear()
 
     if (m_allocator)
     {
-        glob::render_device::getr().delete_immediately(
+        glob::glob_state().getr_render_device().delete_immediately(
             [=](VkDevice vk, VmaAllocator va) { vmaDestroyImage(va, m_image, m_allocation); });
     }
     else
     {
-        glob::render_device::getr().delete_immediately([=](VkDevice vk, VmaAllocator va)
-                                                       { vkDestroyImage(vk, m_image, nullptr); });
+        glob::glob_state().getr_render_device().delete_immediately(
+            [=](VkDevice vk, VmaAllocator va) { vkDestroyImage(vk, m_image, nullptr); });
     }
 
     m_image = VK_NULL_HANDLE;
@@ -110,7 +112,8 @@ vulkan_image::clear()
 std::uint8_t*
 vulkan_image::map()
 {
-    vmaMapMemory(glob::render_device::getr().allocator(), m_allocation, (void**)&m_data_begin);
+    vmaMapMemory(glob::glob_state().getr_render_device().allocator(), m_allocation,
+                 (void**)&m_data_begin);
 
     return m_data_begin;
 }
@@ -118,7 +121,7 @@ vulkan_image::map()
 void
 vulkan_image::unmap()
 {
-    vmaUnmapMemory(glob::render_device::getr().allocator(), m_allocation);
+    vmaUnmapMemory(glob::glob_state().getr_render_device().allocator(), m_allocation);
 }
 
 vulkan_image_view::~vulkan_image_view()
@@ -156,7 +159,7 @@ vulkan_image_view::create(const VkImageViewCreateInfo& iv_ci)
 {
     VkImageView iv = VK_NULL_HANDLE;
 
-    vkCreateImageView(glob::render_device::getr().vk_device(), &iv_ci, nullptr, &iv);
+    vkCreateImageView(glob::glob_state().getr_render_device().vk_device(), &iv_ci, nullptr, &iv);
 
     return vulkan_image_view(iv);
 }
@@ -175,7 +178,7 @@ vulkan_image_view::clear()
 {
     if (m_vk_handle)
     {
-        glob::render_device::getr().delete_immediately(
+        glob::glob_state().getr_render_device().delete_immediately(
             [=](VkDevice vd, VmaAllocator) { vkDestroyImageView(vd, m_vk_handle, nullptr); });
     }
 }

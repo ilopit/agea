@@ -1,5 +1,6 @@
 #include "engine/input_manager.h"
 
+#include <global_state/global_state.h>
 #include <serialization/serialization.h>
 #include <native/native_window.h>
 #include <utils/kryga_log.h>
@@ -14,7 +15,12 @@
 
 namespace kryga
 {
-glob::input_manager::type glob::input_manager::type::s_instance;
+void
+state_mutator__input_manager::set(gs::state& s)
+{
+    auto p = s.create_box<engine::input_manager>("input_manager");
+    s.m_input_manager = p;
+}
 
 namespace engine
 {
@@ -435,8 +441,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            auto rel = (k_mouse_sensitivity * sdle.motion.xrel) / (float)glob::native_window::get()->get_size().w;
-            es->extra_ampl = rel * glob::native_window::get()->aspect_ratio();
+            auto rel = (k_mouse_sensitivity * sdle.motion.xrel) / (float)glob::glob_state().get_native_window()->get_size().w;
+            es->extra_ampl = rel * glob::glob_state().get_native_window()->aspect_ratio();
 
             es->is_active = true;
             es->to_drop = false;
@@ -450,7 +456,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            auto rel = (k_mouse_sensitivity * sdle.motion.yrel) / (float)glob::native_window::get()->get_size().h;
+            auto rel = (k_mouse_sensitivity * sdle.motion.yrel) / (float)glob::glob_state().get_native_window()->get_size().h;
             es->extra_ampl = rel;
 
             es->is_active = true;

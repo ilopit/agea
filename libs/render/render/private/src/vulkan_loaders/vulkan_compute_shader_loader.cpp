@@ -30,7 +30,7 @@ result_code
 load_compute_shader_module(const kryga::utils::buffer& input,
                            std::shared_ptr<shader_module_data>& sd)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     auto result = shader_compiler::compile_shader(input);
     if (!result)
@@ -63,7 +63,7 @@ load_compute_shader_module(const kryga::utils::buffer& input,
 bool
 vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data& cs)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     // Get descriptor set layouts from reflection (stored in shader_module_data)
     const auto& reflection = cs.m_compute_stage->get_reflection();
@@ -134,7 +134,7 @@ result_code
 vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data,
                                                     const compute_shader_create_info& info)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     if (!info.shader_buffer)
     {

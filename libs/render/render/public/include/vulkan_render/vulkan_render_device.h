@@ -5,7 +5,7 @@
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/vulkan_image.h"
 
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 #include <utils/id.h>
 
 #include <functional>
@@ -301,12 +301,4 @@ public:
 };
 
 }  // namespace render
-namespace glob
-{
-struct render_device
-    : public ::kryga::singleton_instance<::kryga::render::render_device, render_device>
-{
-};
-}  // namespace glob
-
 }  // namespace kryga

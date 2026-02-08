@@ -6,7 +6,7 @@
 
 #include <utils/id.h>
 #include <utils/path.h>
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 #include <utils/generic_event_handler.h>
 
 #include <SDL_events.h>
@@ -205,11 +205,4 @@ protected:
 };
 
 }  // namespace engine
-
-namespace glob
-{
-struct input_manager : public singleton_instance<::kryga::engine::input_manager, input_manager>
-{
-};
-}  // namespace glob
 }  // namespace kryga

@@ -12,7 +12,12 @@
 namespace kryga
 {
 
-glob::native_window::type glob::native_window::type::s_instance;
+void
+state_mutator__native_window::set(gs::state& s)
+{
+    auto p = s.create_box<native_window>("native_window");
+    s.m_native_window = p;
+}
 
 bool
 native_window::construct(construct_params& c)

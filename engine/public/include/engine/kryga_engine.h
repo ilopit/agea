@@ -7,7 +7,6 @@
 
 #include <utils/id.h>
 #include <utils/line_container.h>
-#include <utils/singleton_instance.h>
 
 #include <core/model_fwds.h>
 
@@ -56,7 +55,6 @@ class vulkan_engine
 {
 public:
     vulkan_engine();
-    vulkan_engine(std::unique_ptr<singleton_registry> r);
     ~vulkan_engine();
 
     // initializes everything in the engine
@@ -101,7 +99,6 @@ private:
     void consume_updated_render_assets();
     void consume_updated_shader_effects();
 
-    std::unique_ptr<singleton_registry> m_registry;
     // clang-format on
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited
@@ -112,12 +109,5 @@ private:
 
     std::unique_ptr<sync_service> m_sync_service;
 };
-
-namespace glob
-{
-struct engine : public singleton_instance<::kryga::vulkan_engine, engine>
-{
-};
-}  // namespace glob
 
 }  // namespace kryga

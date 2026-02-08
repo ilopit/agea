@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 
 struct SDL_Window;
 
@@ -42,12 +42,5 @@ public:
 private:
     struct SDL_Window* m_window = nullptr;
 };
-
-namespace glob
-{
-struct native_window : public ::kryga::singleton_instance<::kryga::native_window, native_window>
-{
-};
-}  // namespace glob
 
 }  // namespace kryga

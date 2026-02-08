@@ -6,6 +6,7 @@
 #include <engine/property_drawers.h>
 #include <glue/type_ids.ar.h>
 
+#include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/types.h>
@@ -125,7 +126,7 @@ object_editor::handle()
 
     ImGui::Dummy(ImVec2(0.0f, 2.0f));
 
-    auto f = glob::vulkan_render_loader::getr().get_font(AID("big"));
+    auto f = glob::glob_state().getr_vulkan_render_loader().get_font(AID("big"));
 
     ImGui::PushFont(f);
     ImGui::Text("%s", current_object->get_id().cstr());

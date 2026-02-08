@@ -14,7 +14,7 @@
 #include "render/utils/light_grid.h"
 #include "gpu_types/gpu_cluster_types.h"
 
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 #include <utils/id.h>
 #include <utils/line_container.h>
 #include <utils/id_allocator.h>
@@ -525,12 +525,4 @@ private:
     uint32_t m_height = 0;
 };
 }  // namespace render
-
-namespace glob
-{
-struct vulkan_render : public singleton_instance<::kryga::render::vulkan_render, vulkan_render>
-{
-};
-}  // namespace glob
-
 }  // namespace kryga

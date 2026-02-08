@@ -1,5 +1,6 @@
 #include "render_bridge/render_bridge.h"
 
+#include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
 
 #include <packages/root/model/smart_object.h>
@@ -24,7 +25,12 @@
 namespace kryga
 {
 
-glob::render_bridge::type glob::render_bridge::s_instance;
+void
+state_mutator__render_bridge::set(gs::state& s)
+{
+    auto p = s.create_box<render_bridge>("render_bridge");
+    s.m_render_bridge = p;
+}
 
 utils::dynobj
 render_bridge::extract_gpu_data(root::smart_object& so, const access_template& ct)
@@ -125,7 +131,7 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
     se_ci.is_wire = se_model.m_wire_topology;
     se_ci.alpha =
         se_model.m_enable_alpha_support ? render::alpha_mode::world : render::alpha_mode::none;
-    se_ci.rp = glob::vulkan_render::getr().get_render_pass(AID("main"));
+    se_ci.rp = glob::glob_state().getr_vulkan_render().get_render_pass(AID("main"));
     se_ci.enable_dynamic_state = false;
     se_ci.ds_mode = render::depth_stencil_mode::none;
 

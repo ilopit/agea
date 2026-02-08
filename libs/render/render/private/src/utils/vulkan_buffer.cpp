@@ -3,6 +3,8 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
+
 namespace kryga::render::vk_utils
 {
 
@@ -66,7 +68,7 @@ vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
 void
 vulkan_buffer::clear()
 {
-    glob::render_device::getr().delete_immediately(
+    glob::glob_state().getr_render_device().delete_immediately(
         [=](VkDevice vkd, VmaAllocator va) { vmaDestroyBuffer(va, m_buffer, m_allocation); });
 
     m_buffer = VK_NULL_HANDLE;
@@ -80,7 +82,7 @@ vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    VK_CHECK(vmaCreateBuffer(glob::render_device::getr().allocator(), &bci, &vaci, &buffer,
+    VK_CHECK(vmaCreateBuffer(glob::glob_state().getr_render_device().allocator(), &bci, &vaci, &buffer,
                              &allocation, nullptr));
 
     return vulkan_buffer{buffer, allocation, bci.size};
@@ -96,26 +98,26 @@ vulkan_buffer::begin()
 {
     m_offset = 0;
     m_offsets.clear();
-    vmaMapMemory(glob::render_device::getr().allocator(), allocation(), (void**)&m_data_begin);
+    vmaMapMemory(glob::glob_state().getr_render_device().allocator(), allocation(), (void**)&m_data_begin);
 }
 
 void
 vulkan_buffer::end()
 {
-    vmaUnmapMemory(glob::render_device::getr().allocator(), allocation());
+    vmaUnmapMemory(glob::glob_state().getr_render_device().allocator(), allocation());
     m_data_begin = nullptr;
 }
 
 void
 vulkan_buffer::flush()
 {
-    vmaFlushAllocation(glob::render_device::getr().allocator(), allocation(), 0, m_offset);
+    vmaFlushAllocation(glob::glob_state().getr_render_device().allocator(), allocation(), 0, m_offset);
 }
 
 void
 vulkan_buffer::upload_data(uint8_t* src, uint32_t size, bool use_alignment)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     m_offsets.push_back(m_offset);
 

@@ -1,5 +1,6 @@
 #include "packages/root/package.root.h"
 
+#include <global_state/global_state.h>
 #include <render_bridge/render_bridge.h>
 
 #include "packages/root/model/assets/mesh.h"
@@ -69,7 +70,7 @@ mesh__render_loader(reflection::type_context__render& ctx)
         }
     }
 
-    auto md = glob::vulkan_render_loader::get()->create_mesh(msh_model.get_id(), vertices, indices);
+    auto md = glob::glob_state().get_vulkan_render_loader()->create_mesh(msh_model.get_id(), vertices, indices);
 
     msh_model.set_mesh_data(md);
 
@@ -82,7 +83,7 @@ mesh__render_destructor(reflection::type_context__render& ctx)
 
     if (auto msh_data = msh_model.get_mesh_data())
     {
-        glob::vulkan_render_loader::getr().destroy_mesh_data(msh_data->get_id());
+        glob::glob_state().getr_vulkan_render_loader().destroy_mesh_data(msh_data->get_id());
     }
 
     return result_code::ok;
@@ -151,13 +152,13 @@ material__render_loader(reflection::type_context__render& ctx)
     auto se_data = se_model->get_shader_effect_data();
     if (rc != result_code::ok || se_data->m_failed_load)
     {
-        auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+        auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
         se_data = main_pass->get_shader_effect(AID("se_error"));
     }
 
     KRG_check(se_data, "Should exist");
 
-    auto mat_data = glob::vulkan_render_loader::get()->get_material_data(mat_model.get_id());
+    auto mat_data = glob::glob_state().get_vulkan_render_loader()->get_material_data(mat_model.get_id());
 
     auto dyn_gpu_data = ctx.rb->collect_gpu_data(mat_model);
 
@@ -167,14 +168,14 @@ material__render_loader(reflection::type_context__render& ctx)
 
     if (!mat_data)
     {
-        mat_data = glob::vulkan_render_loader::get()->create_material(
+        mat_data = glob::glob_state().get_vulkan_render_loader()->create_material(
             mat_model.get_id(), mat_model.get_type_id(), samples_data, *se_data, dyn_gpu_data);
 
         mat_model.set_material_data(mat_data);
     }
     else
     {
-        glob::vulkan_render_loader::get()->update_material(*mat_data, samples_data, *se_data,
+        glob::glob_state().get_vulkan_render_loader()->update_material(*mat_data, samples_data, *se_data,
                                                            dyn_gpu_data);
     }
 
@@ -190,8 +191,8 @@ material__render_loader(reflection::type_context__render& ctx)
 
     if (!dyn_gpu_data.empty())
     {
-        glob::vulkan_render::getr().add_material(mat_data);
-        glob::vulkan_render::getr().schedule_material_data_gpu_upload(mat_data);
+        glob::glob_state().getr_vulkan_render().add_material(mat_data);
+        glob::glob_state().getr_vulkan_render().schedule_material_data_gpu_upload(mat_data);
     }
 
     return result_code::ok;
@@ -203,8 +204,8 @@ material__render_destructor(reflection::type_context__render& ctx)
 
     if (auto mat_data = mat_model.get_material_data())
     {
-        glob::vulkan_render::getr().drop_material(mat_data);
-        glob::vulkan_render_loader::getr().destroy_material_data(mat_data->get_id());
+        glob::glob_state().getr_vulkan_render().drop_material(mat_data);
+        glob::glob_state().getr_vulkan_render_loader().destroy_material_data(mat_data->get_id());
     }
 
     return result_code::ok;
@@ -225,7 +226,7 @@ texture__render_loader(reflection::type_context__render& ctx)
 
     if (::kryga::render_bridge::is_kryga_texture(bc.get_file()))
     {
-        txt_data = glob::vulkan_render_loader::get()->create_texture(t.get_id(), bc, w, h);
+        txt_data = glob::glob_state().get_vulkan_render_loader()->create_texture(t.get_id(), bc, w, h);
     }
     else
     {
@@ -235,7 +236,7 @@ texture__render_loader(reflection::type_context__render& ctx)
             ALOG_LAZY_ERROR;
             return result_code::failed;
         }
-        txt_data = glob::vulkan_render_loader::get()->create_texture(t.get_id(), b, w, h);
+        txt_data = glob::glob_state().get_vulkan_render_loader()->create_texture(t.get_id(), b, w, h);
     }
     t.set_texture_data(txt_data);
 
@@ -248,7 +249,7 @@ texture__render_destructor(reflection::type_context__render& ctx)
 
     if (auto txt_data = txt_model.get_texture_data())
     {
-        glob::vulkan_render_loader::getr().destroy_texture_data(txt_data->id());
+        glob::glob_state().getr_vulkan_render_loader().destroy_texture_data(txt_data->id());
     }
 
     return result_code::ok;

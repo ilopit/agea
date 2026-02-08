@@ -18,6 +18,7 @@
 #include <utils/file_utils.h>
 
 #include <resource_locator/resource_locator.h>
+#include <global_state/global_state.h>
 
 #include <VkBootstrap.h>
 #include <SDL.h>
@@ -29,7 +30,12 @@
 namespace kryga
 {
 
-glob::render_device::type glob::render_device::type::s_instance;
+void
+state_mutator__render_device::set(gs::state& s)
+{
+    auto p = s.create_box<render::render_device>("render_device");
+    s.m_render_device = p;
+}
 
 namespace render
 {
@@ -41,8 +47,8 @@ render_device::~render_device() = default;
 bool
 render_device::construct(construct_params& params)
 {
-    auto width = params.headless ? 1024U : (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = params.headless ? 1024U : (uint32_t)glob::native_window::get()->get_size().h;
+    auto width = params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
+    auto height = params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     init_vulkan(params.window, params.headless);
 
@@ -410,13 +416,13 @@ render_device::flush_command_buffer(VkCommandBuffer command_buffer,
 vk_device_provider
 render_device::get_vk_device_provider()
 {
-    return []() { return glob::render_device::get()->vk_device(); };
+    return []() { return glob::glob_state().get_render_device()->vk_device(); };
 }
 
 vma_allocator_provider
 render_device::get_vma_allocator_provider()
 {
-    return []() { return glob::render_device::get()->allocator(); };
+    return []() { return glob::glob_state().get_render_device()->allocator(); };
 }
 
 void
@@ -448,7 +454,7 @@ render_device::delete_scheduled_actions()
         return;
     }
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
     auto current_frame = device->get_current_frame_number();
     while (!m_delayed_delete_queue.empty() &&
            m_delayed_delete_queue.top().frame_idx <= current_frame)

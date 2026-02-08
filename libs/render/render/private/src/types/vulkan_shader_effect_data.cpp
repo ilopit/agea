@@ -2,6 +2,8 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
+
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/shader_reflection_utils.h"
@@ -41,7 +43,7 @@ shader_effect_data::reset()
 
     if (m_pipeline)
     {
-        glob::render_device::getr().delete_immediately(
+        glob::glob_state().getr_render_device().delete_immediately(
             [=](VkDevice vd, VmaAllocator)
             {
                 for (auto l : m_set_layout)

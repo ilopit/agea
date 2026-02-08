@@ -3,7 +3,7 @@
 #include <utils/path.h>
 #include <utils/id.h>
 
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 
 namespace kryga
 {
@@ -22,11 +22,4 @@ public:
     uint32_t window_h = 900;
 };
 }  // namespace editor
-
-namespace glob
-{
-struct config : public singleton_instance<::kryga::editor::config, config>
-{
-};
-}  // namespace glob
 }  // namespace kryga

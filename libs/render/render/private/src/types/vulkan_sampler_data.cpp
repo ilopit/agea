@@ -2,6 +2,8 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
+
 namespace kryga
 {
 namespace render
@@ -15,7 +17,7 @@ sampler_data::~sampler_data()
 {
     if (m_sampler)
     {
-        glob::render_device::getr().delete_immediately(
+        glob::glob_state().getr_render_device().delete_immediately(
             [=](VkDevice vkd, VmaAllocator va) { vkDestroySampler(vkd, m_sampler, nullptr); });
     }
 }

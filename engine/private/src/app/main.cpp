@@ -1,9 +1,7 @@
 #include <engine/kryga_engine.h>
 
+#include <global_state/global_state.h>
 #include <utils/kryga_log.h>
-#include <utils/singleton_registry.h>
-
-#include <memory>
 
 #if WIN32
 
@@ -29,18 +27,16 @@ main(int argc, char** argv)
         return 1;
     }
 
-    auto registry = std::make_unique<kryga::singleton_registry>();
-
 #if WIN32
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
     {
-        auto& r = *registry;
-        kryga::glob::engine::create(r, std::move(registry));
+        kryga::vulkan_engine engine;
+        kryga::state_mutator__engine::set(&engine, kryga::glob::glob_state());
 
-        kryga::glob::engine::getr().init(options);
-        kryga::glob::engine::getr().run();
-        kryga::glob::engine::getr().cleanup();
+        engine.init(options);
+        engine.run();
+        engine.cleanup();
     }
 
     return 0;

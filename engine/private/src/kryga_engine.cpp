@@ -64,7 +64,6 @@
 
 namespace kryga
 {
-glob::engine::type glob::engine::type::s_instance;
 
 // ============================================================================
 // Startup Options
@@ -155,14 +154,8 @@ startup_options::print_help(const char* program_name)
         program_name);
 }
 
-vulkan_engine::vulkan_engine(std::unique_ptr<singleton_registry> r)
-    : m_registry(std::move(r))
-    , m_sync_service(std::make_unique<sync_service>())
-{
-}
-
 vulkan_engine::vulkan_engine()
-    : m_sync_service()
+    : m_sync_service(std::make_unique<sync_service>())
 {
 }
 
@@ -216,17 +209,17 @@ vulkan_engine::init(const startup_options& options)
 
     gs.run_create();
 
-    glob::game_editor::create(*m_registry);
-    glob::input_manager::create(*m_registry);
-    glob::set_input_provider(glob::input_manager::get());
-    glob::config::create(*m_registry);
-    glob::render_device::create(*m_registry);
-    glob::vulkan_render_loader::create(*m_registry);
-    glob::ui::create(*m_registry);
-    glob::native_window::create(*m_registry);
-    glob::vulkan_render::create(*m_registry);
-    glob::engine_counters::create(*m_registry);
-    glob::render_bridge::create(*m_registry);
+    state_mutator__config::set(gs);
+    state_mutator__game_editor::set(gs);
+    state_mutator__input_manager::set(gs);
+    glob::set_input_provider(glob::glob_state().get_input_manager());
+    state_mutator__render_device::set(gs);
+    state_mutator__vulkan_render_loader::set(gs);
+    state_mutator__ui::set(gs);
+    state_mutator__native_window::set(gs);
+    state_mutator__vulkan_render::set(gs);
+    state_mutator__engine_counters::set(gs);
+    state_mutator__render_bridge::set(gs);
 
     gs.run_connect();
     init_default_scripting();
@@ -235,12 +228,12 @@ vulkan_engine::init(const startup_options& options)
     auto cfgs_folder = glob::glob_state().get_resource_locator()->resource_dir(category::configs);
 
     utils::path main_config = cfgs_folder / "kryga.acfg";
-    glob::config::get()->load(main_config);
+    glob::glob_state().get_config()->load(main_config);
 
     utils::path input_config = cfgs_folder / "inputs.acfg";
-    glob::input_manager::get()->load_actions(input_config);
+    glob::glob_state().get_input_manager()->load_actions(input_config);
 
-    glob::game_editor::get()->init();
+    glob::glob_state().get_game_editor()->init();
 
     gs.schedule_action(gs::state::state_stage::init,
                        [](kryga::gs::state& s) { s.get_pm()->init(); });
@@ -249,7 +242,7 @@ vulkan_engine::init(const startup_options& options)
     native_window::construct_params rwc;
     rwc.w = 1600 * 2;
     rwc.h = 900 * 2;
-    auto window = glob::native_window::get();
+    auto window = glob::glob_state().get_native_window();
 
     if (!window->construct(rwc))
     {
@@ -260,16 +253,16 @@ vulkan_engine::init(const startup_options& options)
     render::render_device::construct_params rdc;
     rdc.window = window->handle();
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
     if (!device->construct(rdc))
     {
         ALOG_LAZY_ERROR;
         return false;
     }
 
-    glob::ui::getr().init();
+    glob::glob_state().getr_ui().init();
 
-    glob::vulkan_render::getr().init(rwc.w, rwc.h, options.render_mode);
+    glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, options.render_mode);
 
     init_default_resources();
 
@@ -286,13 +279,13 @@ vulkan_engine::cleanup()
 {
     glob::set_input_provider(nullptr);
 
-    glob::render_device::get()->wait_for_fences();
+    glob::glob_state().get_render_device()->wait_for_fences();
 
-    glob::vulkan_render::getr().deinit();
+    glob::glob_state().getr_vulkan_render().deinit();
 
-    glob::vulkan_render_loader::get()->clear_caches();
+    glob::glob_state().get_vulkan_render_loader()->clear_caches();
 
-    glob::render_device::get()->destruct();
+    glob::glob_state().get_render_device()->destruct();
 
     glob::glob_state_reset();
 }
@@ -300,8 +293,9 @@ vulkan_engine::cleanup()
 void
 vulkan_engine::run()
 {
-    float frame_time = 1.f / glob::config::get()->fps_lock;
-    const std::chrono::microseconds frame_time_int(1000000 / glob::config::get()->fps_lock);
+    float frame_time = 1.f / glob::glob_state().get_config()->fps_lock;
+    const std::chrono::microseconds frame_time_int(1000000 /
+                                                   glob::glob_state().get_config()->fps_lock);
 
     float total_elapsed = 0.f;
 
@@ -324,17 +318,17 @@ vulkan_engine::run()
             KRG_make_scope(input);
             KRG_PROFILE_SCOPE("Input");
 
-            if (!glob::input_manager::get()->input_tick(frame_time))
+            if (!glob::glob_state().get_input_manager()->input_tick(frame_time))
             {
                 break;
             }
 
-            glob::input_manager::get()->fire_input_event();
+            glob::glob_state().get_input_manager()->fire_input_event();
         }
         {
             KRG_make_scope(ui_tick);
             KRG_PROFILE_SCOPE("UI");
-            glob::ui::get()->new_frame(frame_time);
+            glob::glob_state().get_ui()->new_frame(frame_time);
         }
         {
             KRG_make_scope(tick);
@@ -351,7 +345,7 @@ vulkan_engine::run()
             KRG_PROFILE_SCOPE("ConsumeUpdates");
 
             update_cameras();
-            glob::vulkan_render::getr().set_camera(m_camera_data);
+            glob::glob_state().getr_vulkan_render().set_camera(m_camera_data);
 
             if (glob::glob_state().get_current_level())
             {
@@ -365,10 +359,10 @@ vulkan_engine::run()
             KRG_make_scope(draw);
             KRG_PROFILE_SCOPE("Draw");
 
-            glob::vulkan_render::getr().draw_main();
+            glob::glob_state().getr_vulkan_render().draw_main();
 
-            auto& ctrs = ::kryga::glob::engine_counters::getr();
-            auto& vr = glob::vulkan_render::getr();
+            auto& ctrs = ::kryga::glob::glob_state().getr_engine_counters();
+            auto& vr = glob::glob_state().getr_vulkan_render();
 
             ctrs.all_draws.update(vr.get_all_draws());
             ctrs.culled_draws.update(vr.get_culled_draws());
@@ -392,8 +386,8 @@ vulkan_engine::run()
 void
 vulkan_engine::tick(float dt)
 {
-    glob::game_editor::get()->on_tick(dt);
-    if (glob::game_editor::get()->get_mode() == engine::editor_mode::playing)
+    glob::glob_state().get_game_editor()->on_tick(dt);
+    if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
     {
         if (auto lvl = glob::glob_state().get_current_level())
         {
@@ -441,9 +435,9 @@ vulkan_engine::execute_sync_requests()
             auto ptr = sec->get_item(AID(name));
             ptr->mark_render_dirty();
 
-            auto dep = glob::render_bridge::getr().get_dependency().get_node(ptr);
+            auto dep = glob::glob_state().getr_render_bridge().get_dependency().get_node(ptr);
 
-            glob::render_bridge::getr().get_dependency().print(false);
+            glob::glob_state().getr_render_bridge().get_dependency().print(false);
 
             for (auto o : dep.m_children)
             {
@@ -486,7 +480,7 @@ vulkan_engine::unload_render_resources(core::level& l)
 
     for (auto& t : cs.objects.get_items())
     {
-        glob::render_bridge::getr().render_dtor(*t.second, true);
+        glob::glob_state().getr_render_bridge().render_dtor(*t.second, true);
     }
 
     return true;
@@ -499,7 +493,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 
     for (auto& t : cs.objects.get_items())
     {
-        glob::render_bridge::getr().render_dtor(*t.second, true);
+        glob::glob_state().getr_render_bridge().render_dtor(*t.second, true);
     }
 
     return true;
@@ -535,7 +529,7 @@ vulkan_engine::consume_updated_transforms()
                         glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
                     obj_data->gpu_data.bounding_radius = obj_data->mesh->m_bounding_radius * max_s;
 
-                    glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
+                    glob::glob_state().getr_vulkan_render().schedule_game_data_gpu_upload(obj_data);
                 }
                 m->set_dirty_transform(false);
             }
@@ -550,11 +544,11 @@ vulkan_engine::consume_updated_transforms()
 void
 vulkan_engine::update_cameras()
 {
-    auto editor = glob::game_editor::get();
+    auto editor = glob::glob_state().get_game_editor();
     auto* cam = editor->get_active_camera();
     if (editor->get_mode() == engine::editor_mode::playing && cam)
     {
-        float aspect = glob::native_window::getr().aspect_ratio();
+        float aspect = glob::glob_state().getr_native_window().aspect_ratio();
         cam->set_aspect_ratio(aspect);
 
         m_camera_data.projection = cam->get_perspective();
@@ -606,7 +600,8 @@ vulkan_engine::init_default_resources()
     auto vertices = vert_buffer.make_view<gpu::vertex_data>();
     auto indices = index_buffer.make_view<gpu::uint>();
 
-    glob::vulkan_render_loader::getr().create_mesh(AID("plane_mesh"), vertices, indices);
+    glob::glob_state().getr_vulkan_render_loader().create_mesh(AID("plane_mesh"), vertices,
+                                                               indices);
 
     // auto pkg = glob::package_manager::getr().get_package(AID("root"));
     //
@@ -616,7 +611,7 @@ vulkan_engine::init_default_resources()
     //
     //     auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
     //
-    //     glob::render_bridge::getr().render_ctor(*obj, true);
+    //     glob::glob_state().getr_render_bridge().render_ctor(*obj, true);
 }
 
 void
@@ -627,8 +622,8 @@ vulkan_engine::init_scene()
     {
         load_level(level_id);
         //
-        glob::game_editor::getr().ev_spawn();
-        glob::game_editor::getr().ev_lights();
+        glob::glob_state().getr_game_editor().ev_spawn();
+        glob::glob_state().getr_game_editor().ev_lights();
     }
 
     if (auto lvl = glob::glob_state().get_current_level())
@@ -639,7 +634,7 @@ vulkan_engine::init_scene()
         {
             cam_obj->get_camera_component()->set_active_camera(true);
             cam_obj->get_camera_component()->set_perspective(
-                60.f, glob::native_window::getr().aspect_ratio(), (float)KGPU_znear,
+                60.f, glob::glob_state().getr_native_window().aspect_ratio(), (float)KGPU_znear,
                 (float)KGPU_zfar);
         }
     }
@@ -678,7 +673,7 @@ vulkan_engine::consume_updated_render_components()
 
     for (auto& i : items)
     {
-        glob::render_bridge::getr().render_ctor(*i, true);
+        glob::glob_state().getr_render_bridge().render_ctor(*i, true);
     }
 
     items.clear();
@@ -691,7 +686,7 @@ vulkan_engine::consume_updated_render_assets()
 
     for (auto& i : items)
     {
-        glob::render_bridge::getr().render_ctor(*i, true);
+        glob::glob_state().getr_render_bridge().render_ctor(*i, true);
     }
 
     items.clear();
@@ -704,7 +699,7 @@ vulkan_engine::consume_updated_shader_effects()
 
     for (auto& i : items)
     {
-        glob::render_bridge::getr().render_ctor(*i, true);
+        glob::glob_state().getr_render_bridge().render_ctor(*i, true);
     }
 
     items.clear();

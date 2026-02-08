@@ -4,6 +4,8 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
+
 namespace kryga::render
 {
 
@@ -58,7 +60,7 @@ render_pass_builder::build()
     KRG_check(m_width, "Should not be 0!");
     KRG_check(m_height, "Should not be 0!");
 
-    auto device = glob::render_device::getr().vk_device();
+    auto device = glob::glob_state().getr_render_device().vk_device();
 
     auto rp = std::make_shared<render_pass>();
 
@@ -113,7 +115,7 @@ render_pass_builder::build()
     for (size_t i = 0; i < rp->m_color_images.size(); ++i)
     {
         rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-            glob::render_device::getr().get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
 
         int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
         if (m_enable_stencil)

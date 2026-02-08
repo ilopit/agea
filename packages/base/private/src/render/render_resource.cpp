@@ -1,5 +1,6 @@
 #include "packages/base/render/render_resource.h"
 
+#include <global_state/global_state.h>
 #include <packages/base/package.base.h>
 
 #include <vulkan_render/kryga_render.h>
@@ -48,7 +49,7 @@ root_package_render_resources_loader::load(core::static_package& s)
     auto vertices = vert_buffer.make_view<gpu::vertex_data>();
     auto indices = index_buffer.make_view<gpu::uint>();
 
-    glob::vulkan_render_loader::getr().create_mesh(AID("plane_mesh"), vertices, indices);
+    glob::glob_state().getr_vulkan_render_loader().create_mesh(AID("plane_mesh"), vertices, indices);
 
     return true;
 }

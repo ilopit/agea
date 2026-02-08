@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-#include <utils/singleton_instance.h>
+#include <global_state/global_state.h>
+#include <utils/check.h>
 #include <utils/kryga_log.h>
 #include <utils/clock.h>
 
@@ -40,15 +41,8 @@ struct scope
     T* m_to_update = nullptr;
 };
 
-namespace glob
-{
-struct engine_counters : public singleton_instance<::kryga::engine_counters, engine_counters>
-{
-};
-}  // namespace glob
-
 }  // namespace kryga
 
-#define KRG_make_scope(VAR)                                        \
+#define KRG_make_scope(VAR)                                          \
     volatile scope<decltype(::kryga::engine_counters::VAR)> scope_s( \
-        ::kryga::glob::engine_counters::getr().VAR)
+        ::kryga::glob::glob_state().getr_engine_counters().VAR)

@@ -13,7 +13,7 @@
 #include <utils/buffer.h>
 #include <utils/id.h>
 #include <utils/path.h>
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 #include <utils/dynamic_object.h>
 #include <utils/line_container.h>
 #include <utils/path.h>
@@ -199,13 +199,4 @@ private:
 };
 
 }  // namespace render
-
-namespace glob
-{
-struct vulkan_render_loader
-    : public ::kryga::singleton_instance<::kryga::render::vulkan_render_loader,
-                                         vulkan_render_loader>
-{
-};
-};  // namespace glob
 }  // namespace kryga

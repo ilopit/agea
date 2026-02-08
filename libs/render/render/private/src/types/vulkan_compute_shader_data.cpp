@@ -24,7 +24,7 @@ compute_shader_data::~compute_shader_data()
 void
 compute_shader_data::reset()
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
     if (!device)
         return;
 

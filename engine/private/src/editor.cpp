@@ -3,6 +3,8 @@
 #include "engine/input_manager.h"
 #include "engine/kryga_engine.h"
 
+#include <global_state/global_state.h>
+
 #include <native/native_window.h>
 #include <vulkan_render/kryga_render.h>
 
@@ -26,7 +28,12 @@
 
 namespace kryga
 {
-glob::game_editor::type glob::game_editor::type::s_instance;
+void
+state_mutator__game_editor::set(gs::state& s)
+{
+    auto p = s.create_box<engine::game_editor>("game_editor");
+    s.m_game_editor = p;
+}
 namespace engine
 {
 
@@ -36,31 +43,31 @@ game_editor::init()
     m_camera_data = {};
     m_position = {0.f, 0.f, 0.f};
 
-    glob::input_manager::get()->register_scaled_action(AID("move_forward"), this,
+    glob::glob_state().get_input_manager()->register_scaled_action(AID("move_forward"), this,
                                                        &game_editor::ev_move_forward);
-    glob::input_manager::get()->register_scaled_action(AID("move_left"), this,
+    glob::glob_state().get_input_manager()->register_scaled_action(AID("move_left"), this,
                                                        &game_editor::ev_move_left);
-    glob::input_manager::get()->register_scaled_action(AID("look_up"), this,
+    glob::glob_state().get_input_manager()->register_scaled_action(AID("look_up"), this,
                                                        &game_editor::ev_look_up);
-    glob::input_manager::get()->register_scaled_action(AID("look_left"), this,
+    glob::glob_state().get_input_manager()->register_scaled_action(AID("look_left"), this,
                                                        &game_editor::ev_look_left);
 
-    glob::input_manager::get()->register_fixed_action(AID("level_reload"), true, this,
+    glob::glob_state().get_input_manager()->register_fixed_action(AID("level_reload"), true, this,
                                                       &game_editor::ev_reload);
 
-    glob::input_manager::get()->register_fixed_action(AID("spawn"), true, this,
+    glob::glob_state().get_input_manager()->register_fixed_action(AID("spawn"), true, this,
                                                       &game_editor::ev_spawn);
 
-    glob::input_manager::get()->register_fixed_action(AID("lights"), true, this,
+    glob::glob_state().get_input_manager()->register_fixed_action(AID("lights"), true, this,
                                                       &game_editor::ev_lights);
 
-    glob::input_manager::get()->register_fixed_action(AID("mouse_pressed"), true, this,
+    glob::glob_state().get_input_manager()->register_fixed_action(AID("mouse_pressed"), true, this,
                                                       &game_editor::ev_mouse_press);
 
-    glob::input_manager::get()->register_fixed_action(AID("toggle_play"), true, this,
+    glob::glob_state().get_input_manager()->register_fixed_action(AID("toggle_play"), true, this,
                                                       &game_editor::ev_toggle_play);
 
-    glob::input_manager::get()->register_fixed_action(AID("escape"), true, this,
+    glob::glob_state().get_input_manager()->register_fixed_action(AID("escape"), true, this,
                                                       &game_editor::ev_escape);
 }
 
@@ -105,14 +112,14 @@ game_editor::ev_mouse_press()
         return;
     }
 
-    uint32_t w = glob::input_manager::getr().get_mouse_state().x;
-    uint32_t h = glob::input_manager::getr().get_mouse_state().y;
+    uint32_t w = glob::glob_state().getr_input_manager().get_mouse_state().x;
+    uint32_t h = glob::glob_state().getr_input_manager().get_mouse_state().y;
 
-    auto obj = glob::vulkan_render::getr().object_id_under_coordinate(w, h);
+    auto obj = glob::glob_state().getr_vulkan_render().object_id_under_coordinate(w, h);
     if (obj)
     {
         obj->outlined = !obj->outlined;
-        glob::vulkan_render::getr().reschedule_to_drawing(obj);
+        glob::glob_state().getr_vulkan_render().reschedule_to_drawing(obj);
     }
 }
 
@@ -128,11 +135,11 @@ game_editor::ev_reload()
 
     level.drop_pending_updates();
 
-    glob::vulkan_render::getr().clear_upload_queue();
+    glob::glob_state().getr_vulkan_render().clear_upload_queue();
 
     auto pids = level.get_package_ids();
 
-    glob::engine::getr().unload_render_resources(level);
+    glob::glob_state().getr_engine().unload_render_resources(level);
 
     auto lm = glob::glob_state().get_lm();
     auto pm = glob::glob_state().get_pm();
@@ -142,11 +149,11 @@ game_editor::ev_reload()
     for (auto& id : pids)
     {
         auto p = pm->get_package(id);
-        glob::engine::getr().unload_render_resources(*p);
+        glob::glob_state().getr_engine().unload_render_resources(*p);
         pm->unload_package(*p);
     }
 
-    glob::engine::getr().init_scene();
+    glob::glob_state().getr_engine().init_scene();
 }
 
 void
@@ -269,7 +276,7 @@ game_editor::on_tick(float dt)
         //         input.look_pitch = m_look_up_delta;
         //         input.look_yaw = m_look_left_delta;
         //         input.mouse_right_held =
-        //             glob::input_manager::get()->get_input_state(kryga::core::mouse_right);
+        //             glob::glob_state().get_input_manager()->get_input_state(kryga::core::mouse_right);
         //         m_input->apply_input(input);
         //
         //         m_forward_delta = 0.f;
@@ -280,7 +287,7 @@ game_editor::on_tick(float dt)
         //
         //         if (m_active_camera)
         //         {
-        //             float aspect = glob::native_window::getr().aspect_ratio();
+        //             float aspect = glob::glob_state().getr_native_window().aspect_ratio();
         //             m_active_camera->set_aspect_ratio(aspect);
         //         }
     }
@@ -298,7 +305,7 @@ game_editor::update_camera()
         return;
     }
 
-    if (glob::input_manager::get()->get_input_state(kryga::core::mouse_right))
+    if (glob::glob_state().get_input_manager()->get_input_state(kryga::core::mouse_right))
     {
         m_yaw += m_look_left_delta;
         m_pitch += m_look_up_delta;
@@ -325,7 +332,7 @@ game_editor::update_camera()
     m_camera_data.view =
         glm::transpose(cam_rot) * glm::translate(glm::mat4{1.f}, -m_camera_data.position);
 
-    float aspect = glob::native_window::getr().aspect_ratio();
+    float aspect = glob::glob_state().getr_native_window().aspect_ratio();
     if (aspect != m_cached_aspect_ratio)
     {
         m_cached_aspect_ratio = aspect;
@@ -361,8 +368,8 @@ game_editor::enter_play_mode()
     m_saved_position = m_camera_data.position;
     m_saved_pitch = m_pitch;
     m_saved_yaw = m_yaw;
-    m_saved_grid_visible = glob::vulkan_render::getr().is_grid_visible();
-    glob::vulkan_render::getr().set_grid_visible(false);
+    m_saved_grid_visible = glob::glob_state().getr_vulkan_render().is_grid_visible();
+    glob::glob_state().getr_vulkan_render().set_grid_visible(false);
 
     m_active_camera = nullptr;
     m_input = nullptr;
@@ -444,7 +451,7 @@ game_editor::exit_play_mode()
     m_pitch = m_saved_pitch;
     m_yaw = m_saved_yaw;
     m_updated = true;
-    glob::vulkan_render::getr().set_grid_visible(m_saved_grid_visible);
+    glob::glob_state().getr_vulkan_render().set_grid_visible(m_saved_grid_visible);
 
     m_mode = editor_mode::editor;
 }

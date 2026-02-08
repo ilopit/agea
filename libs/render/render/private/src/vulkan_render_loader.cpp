@@ -26,6 +26,7 @@
 #include <native/native_window.h>
 
 #include <resource_locator/resource_locator.h>
+#include <global_state/global_state.h>
 
 #include <vk_mem_alloc.h>
 #include <stb_unofficial/stb.h>
@@ -33,7 +34,12 @@
 namespace kryga
 {
 
-glob::vulkan_render_loader::type glob::vulkan_render_loader::type::s_instance;
+void
+state_mutator__vulkan_render_loader::set(gs::state& s)
+{
+    auto p = s.create_box<render::vulkan_render_loader>("vulkan_render_loader");
+    s.m_vulkan_render_loader = p;
+}
 
 namespace render
 {
@@ -46,7 +52,7 @@ upload_image(int texWidth,
              VkFormat image_format,
              vk_utils::vulkan_buffer& stagingBuffer)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     VkExtent3D imageExtent{};
     imageExtent.width = static_cast<uint32_t>(texWidth);
@@ -130,7 +136,7 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
 {
     KRG_check(!get_mesh_data(mesh_id), "should never happens");
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     auto md = std::make_shared<mesh_data>(mesh_id);
     md->m_indices_size = (uint32_t)ibv.size();
@@ -236,8 +242,8 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 {
     KRG_check(!get_texture_data(texture_id), "should never happens");
 
-    auto device = glob::render_device::get();
-    auto& cache = glob::vulkan_render::getr().get_cache();
+    auto device = glob::glob_state().get_render_device();
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
 
     // Allocate texture in render cache - slot becomes bindless index
     auto* td = cache.textures.alloc(texture_id);
@@ -266,7 +272,7 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
 
     // Mark texture dirty for bindless descriptor update
-    glob::vulkan_render::getr().mark_texture_dirty(td);
+    glob::glob_state().getr_vulkan_render().mark_texture_dirty(td);
 
     m_textures_cache[texture_id] = td;
 
@@ -280,7 +286,7 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 {
     KRG_check(!get_texture_data(texture_id), "should never happens");
 
-    auto& cache = glob::vulkan_render::getr().get_cache();
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
 
     // Allocate texture in render cache - slot becomes bindless index
     auto* td = cache.textures.alloc(texture_id);
@@ -294,7 +300,7 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     td->image_view = view;
 
     // Mark texture dirty for bindless descriptor update
-    glob::vulkan_render::getr().mark_texture_dirty(td);
+    glob::glob_state().getr_vulkan_render().mark_texture_dirty(td);
 
     m_textures_cache[texture_id] = td;
 
@@ -308,7 +314,7 @@ vulkan_render_loader::destroy_texture_data(const kryga::utils::id& id)
     if (itr != m_textures_cache.end())
     {
         // Release from cache
-        auto& cache = glob::vulkan_render::getr().get_cache();
+        auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
         cache.textures.release(itr->second);
         m_textures_cache.erase(itr);
     }
@@ -358,7 +364,7 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 {
     KRG_check(!get_material_data(id), "Shouldn't exist");
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     auto mat_data = std::make_shared<material_data>(id, type_id);
 
@@ -418,7 +424,7 @@ vulkan_render_loader::create_sampler(const kryga::utils::id& id, VkBorderColor c
 {
     KRG_check(!get_sampler_data(id), "Shouldn't exist");
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     VkSamplerCreateInfo sampler_ci = vk_utils::make_sampler_create_info(VK_FILTER_LINEAR);
 
@@ -428,7 +434,7 @@ vulkan_render_loader::create_sampler(const kryga::utils::id& id, VkBorderColor c
 
     auto data = std::make_shared<sampler_data>(id);
 
-    vkCreateSampler(glob::render_device::get()->vk_device(), &sampler_ci, nullptr,
+    vkCreateSampler(glob::glob_state().get_render_device()->vk_device(), &sampler_ci, nullptr,
                     &data->m_sampler);
 
     m_samplers_cache[id] = data;

@@ -44,7 +44,7 @@ load_data_shader(const kryga::utils::buffer& input,
                  VkShaderStageFlagBits stage_bit,
                  std::shared_ptr<shader_module_data>& sd)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     compiled_shader compiled;
 
@@ -84,7 +84,7 @@ load_data_shader(const kryga::utils::buffer& input,
 bool
 vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& se)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
     std::vector<vulkan_descriptor_set_layout_data> set_layouts;
     se.generate_set_layouts(set_layouts);
 
@@ -147,7 +147,7 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
 
     // Build pipeline layout using the global bindless layout for set 2
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> pipeline_layouts = se.m_set_layout;
-    auto bindless_layout = glob::vulkan_render::get()->get_bindless_layout();
+    auto bindless_layout = glob::glob_state().get_vulkan_render()->get_bindless_layout();
     if (bindless_layout != VK_NULL_HANDLE)
     {
         pipeline_layouts[KGPU_textures_descriptor_sets] = bindless_layout;
@@ -223,8 +223,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_input_assembly_ci =
         vk_utils::make_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    auto width = info.width ? info.width : (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = info.height ? info.height : (uint32_t)glob::native_window::get()->get_size().h;
+    auto width = info.width ? info.width : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
+    auto height = info.height ? info.height : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     pb.m_viewport.x = 0.0f;
     pb.m_viewport.y = 0.0f;
@@ -276,7 +276,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader));
 
     pb.m_pipeline_layout = se_data.m_pipeline_layout;
-    auto& device = glob::render_device::getr();
+    auto& device = glob::glob_state().getr_render_device();
     se_data.m_pipeline = pb.build(device.vk_device(), info.rp->vk());
 
     pb.m_depth_stencil_ci = vk_utils::make_depth_stencil_create_info(
@@ -292,7 +292,7 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info,
                                            std::shared_ptr<render::shader_effect_data>& old_se_data)
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     old_se_data = std::make_shared<render::shader_effect_data>(se_data.get_id());
 

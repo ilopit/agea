@@ -65,6 +65,45 @@ class lua_api;
 }  // namespace reflection
 
 class resource_locator;
+class vulkan_engine;
+class render_bridge;
+class native_window;
+struct engine_counters;
+
+namespace render
+{
+class vulkan_render;
+class vulkan_render_loader;
+class render_device;
+}  // namespace render
+
+namespace engine
+{
+class game_editor;
+class input_manager;
+}  // namespace engine
+
+namespace ui
+{
+class ui;
+}
+
+namespace editor
+{
+class config;
+}
+
+struct state_mutator__engine;
+struct state_mutator__game_editor;
+struct state_mutator__input_manager;
+struct state_mutator__config;
+struct state_mutator__render_device;
+struct state_mutator__vulkan_render_loader;
+struct state_mutator__ui;
+struct state_mutator__native_window;
+struct state_mutator__vulkan_render;
+struct state_mutator__engine_counters;
+struct state_mutator__render_bridge;
 
 namespace gs
 {
@@ -119,6 +158,18 @@ class state
     friend class core::state_mutator__package_manager;
     friend class core::state_mutator__reflection_manager;
     friend class state_mutator__resource_locator;
+
+    friend class ::kryga::state_mutator__engine;
+    friend class ::kryga::state_mutator__game_editor;
+    friend class ::kryga::state_mutator__input_manager;
+    friend class ::kryga::state_mutator__config;
+    friend class ::kryga::state_mutator__render_device;
+    friend class ::kryga::state_mutator__vulkan_render_loader;
+    friend class ::kryga::state_mutator__ui;
+    friend class ::kryga::state_mutator__native_window;
+    friend class ::kryga::state_mutator__vulkan_render;
+    friend class ::kryga::state_mutator__engine_counters;
+    friend class ::kryga::state_mutator__render_bridge;
 
 public:
     enum class state_stage
@@ -182,6 +233,18 @@ public:
     KRG_gen_getter(rm, reflection::reflection_type_registry);
     KRG_gen_getter(id_generator, core::id_generator);
     KRG_gen_getter(resource_locator, resource_locator);
+
+    KRG_gen_getter(engine, vulkan_engine);
+    KRG_gen_getter(game_editor, engine::game_editor);
+    KRG_gen_getter(input_manager, engine::input_manager);
+    KRG_gen_getter(config, editor::config);
+    KRG_gen_getter(render_device, render::render_device);
+    KRG_gen_getter(vulkan_render_loader, render::vulkan_render_loader);
+    KRG_gen_getter(ui, ui::ui);
+    KRG_gen_getter(native_window, native_window);
+    KRG_gen_getter(vulkan_render, render::vulkan_render);
+    KRG_gen_getter(engine_counters, engine_counters);
+    KRG_gen_getter(render_bridge, render_bridge);
 
     template <typename T>
     T*
@@ -252,6 +315,19 @@ private:
     core::id_generator*             m_id_generator = nullptr;
     resource_locator*               m_resource_locator = nullptr;
 
+    // Engine singletons
+    vulkan_engine*                  m_engine = nullptr;
+    engine::game_editor*            m_game_editor = nullptr;
+    engine::input_manager*          m_input_manager = nullptr;
+    editor::config*                 m_config = nullptr;
+    render::render_device*          m_render_device = nullptr;
+    render::vulkan_render_loader*   m_vulkan_render_loader = nullptr;
+    ui::ui*                         m_ui = nullptr;
+    native_window*                  m_native_window = nullptr;
+    render::vulkan_render*          m_vulkan_render = nullptr;
+    engine_counters*                m_engine_counters = nullptr;
+    render_bridge*                  m_render_bridge = nullptr;
+
     // clang-format on
 
     std::vector<std::unique_ptr<state_base_box>> m_boxes;
@@ -263,6 +339,78 @@ private:
 };
 
 }  // namespace gs
+
+// Full definitions for engine/render/native/bridge mutators
+// (forward-declared above for friend access)
+
+struct state_mutator__engine
+{
+    static void
+    set(vulkan_engine* e, gs::state& s)
+    {
+        s.m_engine = e;
+    }
+};
+
+struct state_mutator__game_editor
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__input_manager
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__config
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__render_device
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__vulkan_render_loader
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__ui
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__native_window
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__vulkan_render
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__engine_counters
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__render_bridge
+{
+    static void
+    set(gs::state& s);
+};
 
 namespace glob
 {

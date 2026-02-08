@@ -23,7 +23,12 @@
 
 namespace kryga
 {
-glob::vulkan_render::type glob::vulkan_render::type::s_instance;
+void
+state_mutator__vulkan_render::set(gs::state& s)
+{
+    auto p = s.create_box<render::vulkan_render>("vulkan_render");
+    s.m_vulkan_render = p;
+}
 
 namespace render
 {
@@ -73,7 +78,7 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         return;
     }
 
-    auto& device = glob::render_device::getr();
+    auto& device = glob::glob_state().getr_render_device();
 
     m_frames.resize(device.frame_size());
 
@@ -206,7 +211,7 @@ void
 vulkan_render::deinit()
 {
     // Wait for all GPU operations to complete before destroying resources
-    vkDeviceWaitIdle(glob::render_device::get()->vk_device());
+    vkDeviceWaitIdle(glob::glob_state().get_render_device()->vk_device());
 
     // Clear compute passes before device is destroyed
     // (they hold compute shaders with VkShaderModule)
@@ -231,7 +236,7 @@ vulkan_render::deinit()
 void
 vulkan_render::prepare_render_passes()
 {
-    auto& device = glob::render_device::getr();
+    auto& device = glob::glob_state().getr_render_device();
 
     {
         auto main_pass =
@@ -243,7 +248,7 @@ vulkan_render::prepare_render_passes()
                 .set_preset(render_pass_builder::presets::swapchain)
                 .build();
 
-        glob::vulkan_render_loader::getr().add_render_pass(AID("main"), std::move(main_pass));
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"), std::move(main_pass));
     }
 
     VkExtent3D image_extent = {m_width, m_height, 1};
@@ -257,7 +262,7 @@ vulkan_render::prepare_render_passes()
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::render_device::getr().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info, simg_allocinfo));
 
         auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
             VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
@@ -275,7 +280,7 @@ vulkan_render::prepare_render_passes()
                 .set_preset(render_pass_builder::presets::buffer)
                 .build();
 
-        glob::vulkan_render_loader::getr().add_render_pass(AID("ui"), std::move(ui_pass));
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"), std::move(ui_pass));
     }
 
     {
@@ -287,7 +292,7 @@ vulkan_render::prepare_render_passes()
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::render_device::getr().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info, simg_allocinfo));
 
         auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
             VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
@@ -305,14 +310,14 @@ vulkan_render::prepare_render_passes()
                 .set_enable_stencil(false)
                 .build();
 
-        glob::vulkan_render_loader::getr().add_render_pass(AID("picking"), std::move(picking_pass));
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("picking"), std::move(picking_pass));
     }
 }
 
 void
 vulkan_render::prepare_pass_bindings()
 {
-    auto* layout_cache_ptr = glob::render_device::getr().descriptor_layout_cache();
+    auto* layout_cache_ptr = glob::glob_state().getr_render_device().descriptor_layout_cache();
     auto& layout_cache = *layout_cache_ptr;
 
     // Main pass bindings - names must match shader reflection names (dyn_ prefix)
@@ -430,10 +435,10 @@ vulkan_render::prepare_pass_bindings()
 void
 vulkan_render::prepare_system_resources()
 {
-    glob::vulkan_render_loader::getr().create_sampler(AID("default"),
+    glob::glob_state().getr_vulkan_render_loader().create_sampler(AID("default"),
                                                       VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
 
-    glob::vulkan_render_loader::getr().create_sampler(AID("font"),
+    glob::glob_state().getr_vulkan_render_loader().create_sampler(AID("font"),
                                                       VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
     kryga::utils::buffer vert, frag;
@@ -447,7 +452,7 @@ vulkan_render::prepare_system_resources()
     auto frag_path = path / "error/se_error.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
-    auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+    auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
@@ -476,7 +481,7 @@ vulkan_render::prepare_system_resources()
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
     std::vector<texture_sampler_data> sd;
-    m_outline_mat = glob::vulkan_render_loader::getr().create_material(
+    m_outline_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
 
     vert_path = path / "system/se_pick.vert";
@@ -485,7 +490,7 @@ vulkan_render::prepare_system_resources()
     frag_path = path / "system/se_pick.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
-    auto picking_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("picking"));
+    auto picking_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
 
     se_ci.ds_mode = depth_stencil_mode::none;
     sed = nullptr;
@@ -493,7 +498,7 @@ vulkan_render::prepare_system_resources()
     rc = picking_pass->create_shader_effect(AID("se_pick"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
-    m_pick_mat = glob::vulkan_render_loader::getr().create_material(AID("mat_pick"), AID("pick"),
+    m_pick_mat = glob::glob_state().getr_vulkan_render_loader().create_material(AID("mat_pick"), AID("pick"),
                                                                     sd, *sed, utils::dynobj{});
 
     // Grid shader effect and material
@@ -519,7 +524,7 @@ vulkan_render::prepare_system_resources()
     rc = main_pass->create_shader_effect(AID("se_grid"), se_ci, m_grid_se);
     KRG_check(rc == result_code::ok && m_grid_se, "Grid shader effect creation failed!");
 
-    m_grid_mat = glob::vulkan_render_loader::getr().create_material(
+    m_grid_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
 }
 
@@ -532,13 +537,13 @@ vulkan_render::get_cache()
 render_pass*
 vulkan_render::get_render_pass(const utils::id& id)
 {
-    return glob::vulkan_render_loader::getr().get_render_pass(id);
+    return glob::glob_state().getr_vulkan_render_loader().get_render_pass(id);
 }
 
 void
 vulkan_render::init_static_samplers()
 {
-    auto vk_device = glob::render_device::get()->vk_device();
+    auto vk_device = glob::glob_state().get_render_device()->vk_device();
 
     // Helper to create a sampler with given parameters
     auto create_sampler = [vk_device](VkFilter filter, VkSamplerAddressMode addressMode,
@@ -608,7 +613,7 @@ vulkan_render::init_static_samplers()
 void
 vulkan_render::deinit_static_samplers()
 {
-    auto vk_device = glob::render_device::get()->vk_device();
+    auto vk_device = glob::glob_state().get_render_device()->vk_device();
 
     for (int i = 0; i < KGPU_SAMPLER_COUNT; ++i)
     {
@@ -623,7 +628,7 @@ vulkan_render::deinit_static_samplers()
 void
 vulkan_render::init_bindless_textures()
 {
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
     auto vk_device = device->vk_device();
 
     // Create descriptor pool with UPDATE_AFTER_BIND flag
@@ -710,7 +715,7 @@ vulkan_render::init_bindless_textures()
 void
 vulkan_render::deinit_bindless_textures()
 {
-    auto vk_device = glob::render_device::get()->vk_device();
+    auto vk_device = glob::glob_state().get_render_device()->vk_device();
 
     if (m_bindless_layout != VK_NULL_HANDLE)
     {

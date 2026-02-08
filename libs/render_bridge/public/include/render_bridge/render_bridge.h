@@ -7,7 +7,7 @@
 #include <utils/path.h>
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 
 #include <vulkan_render/vulkan_render_loader_create_infos.h>
 
@@ -81,12 +81,5 @@ private:
 
     render_object_dependency_graph m_dependency_graph;
 };
-
-namespace glob
-{
-class render_bridge : public singleton_instance<::kryga::render_bridge, render_bridge>
-{
-};
-}  // namespace glob
 
 }  // namespace kryga

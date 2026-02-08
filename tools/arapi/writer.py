@@ -1162,7 +1162,6 @@ def write_object_model_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include <core/object_constructor.h>
 #include <core/package_manager.h>
 #include <core/package.h>
-#include <core/global_state.h>
 
 #include <sol2_unofficial/sol.h>
 
@@ -1376,7 +1375,6 @@ def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include <core/object_constructor.h>
 #include <core/package_manager.h>
 #include <core/package.h>
-#include <global_state/global_state.h>
 #include <glue/type_ids.ar.h>
 
 {gpu_includes}

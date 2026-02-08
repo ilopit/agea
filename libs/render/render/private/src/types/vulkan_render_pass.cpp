@@ -3,6 +3,8 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
+
+#include <global_state/global_state.h>
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
@@ -30,7 +32,7 @@ render_pass::~render_pass()
 {
     if (m_vk_render_pass != VK_NULL_HANDLE)
     {
-        glob::render_device::getr().delete_immediately(
+        glob::glob_state().getr_render_device().delete_immediately(
             [=](VkDevice vkd, VmaAllocator)
             {
                 vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr);

@@ -22,24 +22,21 @@ public:
         render::render_device::construct_params rdc;
         rdc.headless = true;
 
-        auto device = glob::render_device::get();
+        auto device = glob::glob_state().get_render_device();
         ASSERT_TRUE(device->construct(rdc));
 
-        m_registry = std::make_unique<kryga::singleton_registry>();
-        glob::vulkan_render_loader::create(*m_registry);
+        state_mutator__vulkan_render_loader::set(glob::glob_state());
 
-        glob::vulkan_render::getr().init(500, 500, render_mode::instanced, true);
+        glob::glob_state().getr_vulkan_render().init(500, 500, render_mode::instanced, true);
     }
 
     void
     TearDown()
     {
-        glob::vulkan_render::get()->deinit();
-        glob::vulkan_render_loader::getr().clear_caches();
-        glob::render_device::get()->destruct();
+        glob::glob_state().get_vulkan_render()->deinit();
+        glob::glob_state().getr_vulkan_render_loader().clear_caches();
+        glob::glob_state().get_render_device()->destruct();
     }
-
-    std::unique_ptr<kryga::singleton_registry> m_registry;
 };
 
 TEST_F(render_device_test, load_se)
@@ -55,7 +52,7 @@ TEST_F(render_device_test, load_se)
     auto frag_path = path / "se_error.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
-    auto main_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("main"));
+    auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;

@@ -2,7 +2,7 @@
 
 #include <vulkan_render/types/vulkan_gpu_types.h>
 
-#include <utils/singleton_instance.h>
+#include <utils/check.h>
 
 namespace kryga
 {
@@ -110,11 +110,4 @@ private:
     base::input_component* m_input = nullptr;
 };
 }  // namespace engine
-namespace glob
-{
-struct game_editor : public singleton_instance<::kryga::engine::game_editor, game_editor>
-{
-};
-}  // namespace glob
-
 }  // namespace kryga

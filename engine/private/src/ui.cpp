@@ -1,4 +1,7 @@
 #include "engine/ui.h"
+
+#include <global_state/global_state.h>
+
 #include "engine/script_editor.h"
 #include "engine/console.h"
 #include "engine/property_drawers.h"
@@ -39,7 +42,12 @@
 namespace kryga
 {
 
-glob::ui::type glob::ui::type::s_instance;
+void
+state_mutator__ui::set(gs::state& s)
+{
+    auto p = s.create_box<ui::ui>("ui");
+    s.m_ui = p;
+}
 
 namespace ui
 {
@@ -72,6 +80,7 @@ ui::~ui()
 {
     if (ImGui::GetCurrentContext())
     {
+        ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
 }
@@ -85,7 +94,7 @@ ui::init()
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    ImGui_ImplSDL2_InitForVulkan(glob::native_window::getr().handle());
+    ImGui_ImplSDL2_InitForVulkan(glob::glob_state().getr_native_window().handle());
 
     // Color scheme
     ImGuiStyle& style = ImGui::GetStyle();
@@ -112,7 +121,7 @@ void
 ui::new_frame(float dt)
 {
     ImGuiIO& io = ImGui::GetIO();
-    auto s = glob::native_window::getr().get_size();
+    auto s = glob::glob_state().getr_native_window().get_size();
 
     io.DisplaySize = ImVec2((float)s.w, (float)s.h);
     io.DeltaTime = dt;
@@ -124,7 +133,7 @@ ui::new_frame(float dt)
     // viewport
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
-    bool playing = glob::game_editor::getr().get_mode() == engine::editor_mode::playing;
+    bool playing = glob::glob_state().getr_game_editor().get_mode() == engine::editor_mode::playing;
 
     if (playing)
     {
@@ -329,16 +338,16 @@ performance_counters_window::handle()
 {
     if (!lock)
     {
-        frame_avg = glob::engine_counters::getr().frame.avg / 1000;
-        fps = 1000000.0 / glob::engine_counters::getr().frame.avg;
-        input_avg = glob::engine_counters::getr().input.avg / 1000;
-        tick_avg = glob::engine_counters::getr().tick.avg / 1000;
-        ui_tick_avg = glob::engine_counters::getr().ui_tick.avg / 1000;
-        consume_updates_avg = glob::engine_counters::getr().consume_updates.avg / 1000;
-        draw_avg = glob::engine_counters::getr().draw.avg / 1000;
-        culled_draws_avg = glob::engine_counters::getr().culled_draws.avg;
-        all_draws_avg = glob::engine_counters::getr().all_draws.avg;
-        objects_avg = glob::engine_counters::getr().objects.avg;
+        frame_avg = glob::glob_state().getr_engine_counters().frame.avg / 1000;
+        fps = 1000000.0 / glob::glob_state().getr_engine_counters().frame.avg;
+        input_avg = glob::glob_state().getr_engine_counters().input.avg / 1000;
+        tick_avg = glob::glob_state().getr_engine_counters().tick.avg / 1000;
+        ui_tick_avg = glob::glob_state().getr_engine_counters().ui_tick.avg / 1000;
+        consume_updates_avg = glob::glob_state().getr_engine_counters().consume_updates.avg / 1000;
+        draw_avg = glob::glob_state().getr_engine_counters().draw.avg / 1000;
+        culled_draws_avg = glob::glob_state().getr_engine_counters().culled_draws.avg;
+        all_draws_avg = glob::glob_state().getr_engine_counters().all_draws.avg;
+        objects_avg = glob::glob_state().getr_engine_counters().objects.avg;
         lock = 24;
     }
 
@@ -359,7 +368,7 @@ performance_counters_window::handle()
     ImGui::Separator();
 
     // Render mode is set at startup (no runtime switching)
-    bool is_instanced = glob::vulkan_render::getr().is_instanced_mode();
+    bool is_instanced = glob::glob_state().getr_vulkan_render().is_instanced_mode();
     ImGui::Text("Mode: %s", is_instanced ? "INSTANCED" : "PER_OBJECT");
 
     --lock;

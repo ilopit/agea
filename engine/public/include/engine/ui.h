@@ -2,8 +2,11 @@
 
 #include <core/model_fwds.h>
 
-#include <utils/singleton_instance.h>
+#include <global_state/global_state.h>
+#include <utils/check.h>
 
+#include <memory>
+#include <unordered_map>
 #include <vector>
 #include <functional>
 #include <string>
@@ -175,20 +178,13 @@ public:
 
 }  // namespace ui
 
-namespace glob
-{
-struct ui : public ::kryga::singleton_instance<::kryga::ui::ui, ui>
-{
-};
-}  // namespace glob
-
 namespace ui
 {
 template <typename T>
 static T*
 get_window()
 {
-    return (T*)glob::ui::get()->m_windows[T::window_title()].get();
+    return (T*)glob::glob_state().get_ui()->m_windows[T::window_title()].get();
 }
 }  // namespace ui
 }  // namespace kryga

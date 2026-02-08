@@ -40,7 +40,7 @@ ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
     {
         auto old_buffer = std::move(buffer);
 
-        buffer = glob::render_device::getr().create_buffer(
+        buffer = glob::glob_state().getr_render_device().create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         ALOG_INFO("Reallocating {0} buffer {1} => {2}", name, old_buffer.get_alloc_size(),
@@ -121,7 +121,7 @@ vulkan_render::upload_material_data(render::frame_state& frame)
     {
         old_buffer_tb = std::move(frame.buffers.materials);
 
-        frame.buffers.materials = glob::render_device::getr().create_buffer(
+        frame.buffers.materials = glob::glob_state().getr_render_device().create_buffer(
             total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         ALOG_INFO("Reallocating material buffer {0} => {1}", old_buffer_tb.get_alloc_size(),
@@ -456,7 +456,7 @@ vulkan_render::init_cluster_cull_compute()
         .add(AID("dyn_cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_cluster_cull_pass->finalize_bindings(*glob::render_device::getr().descriptor_layout_cache());
+    m_cluster_cull_pass->finalize_bindings(*glob::glob_state().getr_render_device().descriptor_layout_cache());
 
     // Create compute shader through the pass
     compute_shader_create_info info;
@@ -543,7 +543,7 @@ vulkan_render::init_frustum_cull_compute()
         .add(AID("dyn_cull_output"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_frustum_cull_pass->finalize_bindings(*glob::render_device::getr().descriptor_layout_cache());
+    m_frustum_cull_pass->finalize_bindings(*glob::glob_state().getr_render_device().descriptor_layout_cache());
 
     // Create compute shader through the pass
     compute_shader_create_info info;

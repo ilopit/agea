@@ -16,6 +16,8 @@
 
 #include <native/native_window.h>
 
+#include <global_state/global_state.h>
+
 #include <utils/kryga_log.h>
 
 #include <imgui.h>
@@ -44,9 +46,9 @@ vulkan_render::draw_main()
 {
     ZoneScopedN("Render::DrawMain");
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
-    auto r = SDL_GetWindowFlags(glob::native_window::getr().handle());
+    auto r = SDL_GetWindowFlags(glob::glob_state().getr_native_window().handle());
 
     // TODO, rework
     if ((SDL_WINDOW_MINIMIZED & r) == SDL_WINDOW_MINIMIZED)
@@ -90,8 +92,8 @@ vulkan_render::draw_main()
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
-    auto width = (uint32_t)glob::native_window::get()->get_size().w;
-    auto height = (uint32_t)glob::native_window::get()->get_size().h;
+    auto width = (uint32_t)glob::glob_state().get_native_window()->get_size().w;
+    auto height = (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     update_ui(current_frame);
     prepare_draw_resources(current_frame);
@@ -351,7 +353,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 frame_state&
 vulkan_render::get_current_frame_transfer_data()
 {
-    return m_frames[glob::render_device::getr().get_current_frame_index()];
+    return m_frames[glob::glob_state().getr_render_device().get_current_frame_index()];
 }
 
 void
@@ -365,7 +367,7 @@ vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
     // Source for the copy is the last rendered swapchain image
-    auto picking_pass = glob::vulkan_render_loader::getr().get_render_pass(AID("picking"));
+    auto picking_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
     auto src_image = picking_pass->get_color_images()[0]->image();
 
     // Create the linear tiled destination image to copy to and to read the memory from
@@ -388,13 +390,13 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     auto dst_image = vk_utils::vulkan_image::create(
-        glob::render_device::getr().get_vma_allocator_provider(), image_ci, vma_allocinfo);
+        glob::glob_state().getr_render_device().get_vma_allocator_provider(), image_ci, vma_allocinfo);
 
     auto cmd_buf_ai = vk_utils::make_command_buffer_allocate_info(
-        glob::render_device::getr().m_upload_context.m_command_pool, 1);
+        glob::glob_state().getr_render_device().m_upload_context.m_command_pool, 1);
 
     VkCommandBuffer cmd_buffer;
-    vkAllocateCommandBuffers(glob::render_device::getr().vk_device(), &cmd_buf_ai, &cmd_buffer);
+    vkAllocateCommandBuffers(glob::glob_state().getr_render_device().vk_device(), &cmd_buf_ai, &cmd_buffer);
 
     auto command_buffer_bi = vk_utils::make_command_buffer_begin_info();
     vkBeginCommandBuffer(cmd_buffer, &command_buffer_bi);
@@ -429,8 +431,8 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
-    glob::render_device::getr().flush_command_buffer(
-        cmd_buffer, glob::render_device::getr().vk_graphics_queue());
+    glob::glob_state().getr_render_device().flush_command_buffer(
+        cmd_buffer, glob::glob_state().getr_render_device().vk_graphics_queue());
 
     // Map image memory so we can start copying from it
 
@@ -474,7 +476,7 @@ vulkan_render::update_bindless_descriptors()
         return;
     }
 
-    auto device = glob::render_device::get();
+    auto device = glob::glob_state().get_render_device();
 
     std::vector<VkDescriptorImageInfo> image_infos;
     std::vector<VkWriteDescriptorSet> writes;

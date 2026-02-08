@@ -1,11 +1,17 @@
 #include "engine/config.h"
 
+#include <global_state/global_state.h>
 #include <utils/defines_utils.h>
 #include <serialization/serialization.h>
 
 namespace kryga
 {
-glob::config::type glob::config::type::s_instance;
+void
+state_mutator__config::set(gs::state& s)
+{
+    auto p = s.create_box<editor::config>("config");
+    s.m_config = p;
+}
 
 namespace editor
 {
