@@ -17,6 +17,8 @@
 #include <packages/root/model/game_object.h>
 #include <packages/base/model/mesh_object.h>
 #include <packages/base/model/components/mesh_component.h>
+#include <packages/base/model/components/camera_component.h>
+#include <packages/base/model/components/input_component.h>
 #include <packages/base/model/lights/point_light.h>
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/spot_light.h>
@@ -55,6 +57,12 @@ game_editor::init()
 
     glob::input_manager::get()->register_fixed_action(AID("mouse_pressed"), true, this,
                                                       &game_editor::ev_mouse_press);
+
+    glob::input_manager::get()->register_fixed_action(AID("toggle_play"), true, this,
+                                                      &game_editor::ev_toggle_play);
+
+    glob::input_manager::get()->register_fixed_action(AID("escape"), true, this,
+                                                      &game_editor::ev_escape);
 }
 
 void
@@ -88,6 +96,11 @@ game_editor::ev_look_left(float f)
 void
 game_editor::ev_mouse_press()
 {
+    if (m_mode == editor_mode::playing)
+    {
+        return;
+    }
+
     if (ImGuizmo::IsOver() || ImGuizmo::IsUsing())
     {
         return;
@@ -107,6 +120,11 @@ game_editor::ev_mouse_press()
 void
 game_editor::ev_reload()
 {
+    if (m_mode == editor_mode::playing)
+    {
+        return;
+    }
+
     auto& level = glob::glob_state().getr_current_level();
 
     level.drop_pending_updates();
@@ -142,6 +160,11 @@ game_editor::ev_spawn2()
 void
 game_editor::ev_spawn()
 {
+    if (m_mode == editor_mode::playing)
+    {
+        return;
+    }
+
     if (glob::glob_state().getr_current_level().find_game_object(AID("obj_0_0_0")))
     {
         return;
@@ -151,7 +174,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 2;
+    int obj_DIM = 50;
 
     for (x = -obj_DIM / 2; x < obj_DIM / 2; ++x)
     {
@@ -196,6 +219,11 @@ game_editor::ev_spawn()
 void
 game_editor::ev_lights()
 {
+    if (m_mode == editor_mode::playing)
+    {
+        return;
+    }
+
     auto& lvl = glob::glob_state().getr_current_level();
 
     if (lvl.find_game_object(AID("PL1")))
@@ -234,7 +262,33 @@ game_editor::get_rotation_matrix()
 void
 game_editor::on_tick(float dt)
 {
-    update_camera();
+    if (m_mode == editor_mode::playing && m_input)
+    {
+        //         base::pawn_movement_input input;
+        //         input.forward = m_forward_delta;
+        //         input.strafe = m_left_delta;
+        //         input.look_pitch = m_look_up_delta;
+        //         input.look_yaw = m_look_left_delta;
+        //         input.mouse_right_held =
+        //             glob::input_manager::get()->get_input_state(kryga::core::mouse_right);
+        //         m_input->apply_input(input);
+        //
+        //         m_forward_delta = 0.f;
+        //         m_left_delta = 0.f;
+        //         m_look_up_delta = 0.f;
+        //         m_look_left_delta = 0.f;
+        //         m_updated = false;
+        //
+        //         if (m_active_camera)
+        //         {
+        //             float aspect = glob::native_window::getr().aspect_ratio();
+        //             m_active_camera->set_aspect_ratio(aspect);
+        //         }
+    }
+    else
+    {
+        update_camera();
+    }
 }
 
 void
@@ -245,7 +299,7 @@ game_editor::update_camera()
         return;
     }
 
-    if (glob::input_manager::get()->get_input_state(kryga::engine::mouse_right))
+    if (glob::input_manager::get()->get_input_state(kryga::core::mouse_right))
     {
         m_yaw += m_look_left_delta;
         m_pitch += m_look_up_delta;
@@ -289,6 +343,140 @@ gpu::camera_data
 game_editor::get_camera_data()
 {
     return m_camera_data;
+}
+
+editor_mode
+game_editor::get_mode() const
+{
+    return m_mode;
+}
+
+void
+game_editor::enter_play_mode()
+{
+    if (m_mode == editor_mode::playing)
+    {
+        return;
+    }
+
+    m_saved_position = m_camera_data.position;
+    m_saved_pitch = m_pitch;
+    m_saved_yaw = m_yaw;
+    m_saved_grid_visible = glob::vulkan_render::getr().is_grid_visible();
+    glob::vulkan_render::getr().set_grid_visible(false);
+
+    m_active_camera = nullptr;
+    m_input = nullptr;
+
+    if (auto lvl = glob::glob_state().get_current_level())
+    {
+        auto& gos = lvl->get_game_objects();
+        for (auto& [id, obj] : gos.get_items())
+        {
+            auto go = obj->as<root::game_object>();
+            if (!go)
+            {
+                continue;
+            }
+
+            for (auto c : go->get_renderable_components())
+            {
+                if (auto cam = c->as<base::camera_component>())
+                {
+                    if (cam->is_active_camera())
+                    {
+                        m_active_camera = cam;
+                        break;
+                    }
+                }
+            }
+            if (m_active_camera)
+            {
+                for (auto c : go->get_renderable_components())
+                {
+                    if (auto ic = c->as<base::input_component>())
+                    {
+                        m_input = ic;
+                        // m_input->set_pitch_yaw(m_pitch, m_yaw);
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    m_mode = editor_mode::playing;
+
+    if (auto lvl2 = glob::glob_state().get_current_level())
+    {
+        for (auto& [id, obj] : lvl2->get_game_objects().get_items())
+        {
+            if (auto go = obj->as<root::game_object>())
+            {
+                go->begin_play();
+            }
+        }
+    }
+}
+
+void
+game_editor::exit_play_mode()
+{
+    if (m_mode == editor_mode::editor)
+    {
+        return;
+    }
+
+    if (auto lvl = glob::glob_state().get_current_level())
+    {
+        for (auto& [id, obj] : lvl->get_game_objects().get_items())
+        {
+            if (auto go = obj->as<root::game_object>())
+            {
+                go->end_play();
+            }
+        }
+    }
+
+    m_active_camera = nullptr;
+    m_input = nullptr;
+
+    m_camera_data.position = m_saved_position;
+    m_pitch = m_saved_pitch;
+    m_yaw = m_saved_yaw;
+    m_updated = true;
+    glob::vulkan_render::getr().set_grid_visible(m_saved_grid_visible);
+
+    m_mode = editor_mode::editor;
+}
+
+void
+game_editor::ev_toggle_play()
+{
+    if (m_mode == editor_mode::editor)
+    {
+        enter_play_mode();
+    }
+    else
+    {
+        exit_play_mode();
+    }
+}
+
+void
+game_editor::ev_escape()
+{
+    if (m_mode == editor_mode::playing)
+    {
+        exit_play_mode();
+    }
+}
+
+base::camera_component*
+game_editor::get_active_camera() const
+{
+    return m_active_camera;
 }
 
 }  // namespace engine

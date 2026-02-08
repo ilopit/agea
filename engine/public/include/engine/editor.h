@@ -6,8 +6,21 @@
 
 namespace kryga
 {
+namespace base
+{
+class camera_component;
+class input_component;
+}  // namespace base
+
 namespace engine
 {
+
+enum class editor_mode
+{
+    editor,
+    playing
+};
+
 class game_editor
 {
 public:
@@ -50,6 +63,24 @@ public:
     void
     ev_lights();
 
+    editor_mode
+    get_mode() const;
+
+    void
+    enter_play_mode();
+
+    void
+    exit_play_mode();
+
+    void
+    ev_toggle_play();
+
+    void
+    ev_escape();
+
+    base::camera_component*
+    get_active_camera() const;
+
 private:
     glm::mat4
     get_rotation_matrix();
@@ -68,6 +99,15 @@ private:
     gpu::camera_data m_camera_data;
 
     bool m_updated = true;
+
+    editor_mode m_mode = editor_mode::editor;
+    glm::vec3 m_saved_position;
+    float m_saved_pitch = 0.f;
+    float m_saved_yaw = 0.f;
+    bool m_saved_grid_visible = true;
+
+    base::camera_component* m_active_camera = nullptr;
+    base::input_component* m_input = nullptr;
 };
 }  // namespace engine
 namespace glob

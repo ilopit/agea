@@ -16,6 +16,11 @@ namespace kryga::ui
 void
 gizmo_editor::draw()
 {
+    if (glob::game_editor::getr().get_mode() == engine::editor_mode::playing)
+    {
+        return;
+    }
+
     // Get camera data and set up ImGuizmo viewport (always, before anything else)
     auto cam = glob::game_editor::getr().get_camera_data();
 

@@ -7,6 +7,7 @@
 #include "engine/private/ui/package_editor.h"
 #include "engine/private/ui/object_editor.h"
 #include "engine/private/ui/gizmo_editor.h"
+#include "engine/editor.h"
 
 #include <core/level.h>
 #include <core/caches/caches_map.h>
@@ -123,9 +124,35 @@ ui::new_frame(float dt)
     // Fullscreen dockspace — all windows can dock into this, central node is transparent for 3D viewport
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
-    for (auto& w : m_windows)
+    bool playing = glob::game_editor::getr().get_mode() == engine::editor_mode::playing;
+
+    if (playing)
     {
-        w.second->handle();
+        // Only show performance counters during play mode
+        auto it = m_windows.find(performance_counters_window::window_title());
+        if (it != m_windows.end())
+        {
+            it->second->handle();
+        }
+
+        // PLAYING indicator overlay
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, 8.f), ImGuiCond_Always,
+                                ImVec2(0.5f, 0.f));
+        ImGui::SetNextWindowSize(ImVec2(0, 0));
+        ImGui::Begin("##play_indicator", nullptr,
+                     ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoFocusOnAppearing);
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "PLAYING (F5/Esc to stop)");
+        ImGui::End();
+    }
+    else
+    {
+        for (auto& w : m_windows)
+        {
+            w.second->handle();
+        }
     }
 
     ImGuizmo::BeginFrame();

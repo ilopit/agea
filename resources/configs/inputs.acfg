@@ -32,3 +32,9 @@ actions:
   - id: mouse_pressed
     events:
       - trigger: mouse_button_left
+  - id: toggle_play
+    events:
+      - trigger: f5
+  - id: escape
+    events:
+      - trigger: escape

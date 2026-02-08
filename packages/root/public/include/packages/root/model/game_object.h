@@ -68,6 +68,16 @@ public:
     spawn_component_with_proto(component* parent, const utils::id& proto_id);
 
     virtual void
+    begin_play()
+    {
+    }
+
+    virtual void
+    end_play()
+    {
+    }
+
+    virtual void
     on_tick(float)
     {
     }

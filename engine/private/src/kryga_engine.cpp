@@ -29,10 +29,13 @@
 #include <packages/base/model/components/mesh_component.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/shader_effect.h>
+#include <packages/base/model/camera_object.h>
 
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/point_light.h>
 #include <packages/base/model/lights/spot_light.h>
+#include <packages/base/model/components/camera_component.h>
+#include <packages/base/model/components/input_component.h>
 #include <packages/root/model/assets/material.h>
 
 #include <packages/root/package.root.h>
@@ -216,6 +219,7 @@ vulkan_engine::init(const startup_options& options)
 
     glob::game_editor::create(*m_registry);
     glob::input_manager::create(*m_registry);
+    glob::set_input_provider(glob::input_manager::get());
     glob::config::create(*m_registry);
     glob::render_device::create(*m_registry);
     glob::vulkan_render_loader::create(*m_registry);
@@ -281,6 +285,8 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
+    glob::set_input_provider(nullptr);
+
     glob::render_device::get()->wait_for_fences();
 
     glob::vulkan_render::getr().deinit();
@@ -388,9 +394,12 @@ void
 vulkan_engine::tick(float dt)
 {
     glob::game_editor::get()->on_tick(dt);
-    if (auto lvl = glob::glob_state().get_current_level())
+    if (glob::game_editor::get()->get_mode() == engine::editor_mode::playing)
     {
-        lvl->tick(dt);
+        if (auto lvl = glob::glob_state().get_current_level())
+        {
+            lvl->tick(dt);
+        }
     }
 }
 
@@ -523,11 +532,9 @@ vulkan_engine::consume_updated_transforms()
                     obj_data->gpu_data.obj_pos = glm::vec3(m->get_world_position());
 
                     auto scale = m->get_scale();
-                    float max_s = glm::max(glm::max(glm::abs(scale.x),
-                                                    glm::abs(scale.y)),
-                                           glm::abs(scale.z));
-                    obj_data->gpu_data.bounding_radius =
-                        obj_data->mesh->m_bounding_radius * max_s;
+                    float max_s =
+                        glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+                    obj_data->gpu_data.bounding_radius = obj_data->mesh->m_bounding_radius * max_s;
 
                     glob::vulkan_render::getr().schedule_game_data_gpu_upload(obj_data);
                 }
@@ -544,7 +551,22 @@ vulkan_engine::consume_updated_transforms()
 void
 vulkan_engine::update_cameras()
 {
-    m_camera_data = glob::game_editor::get()->get_camera_data();
+    auto editor = glob::game_editor::get();
+    auto* cam = editor->get_active_camera();
+    if (editor->get_mode() == engine::editor_mode::playing && cam)
+    {
+        float aspect = glob::native_window::getr().aspect_ratio();
+        cam->set_aspect_ratio(aspect);
+
+        m_camera_data.projection = cam->get_perspective();
+        m_camera_data.inv_projection = cam->get_inv_projection();
+        m_camera_data.view = cam->get_view();
+        m_camera_data.position = cam->get_owner()->get_position();
+    }
+    else
+    {
+        m_camera_data = editor->get_camera_data();
+    }
 }
 
 void
@@ -608,6 +630,18 @@ vulkan_engine::init_scene()
         //
         glob::game_editor::getr().ev_spawn();
         glob::game_editor::getr().ev_lights();
+    }
+
+    if (auto lvl = glob::glob_state().get_current_level())
+    {
+        base::camera_object::construct_params co_prms;
+        auto cam_obj = lvl->spawn_object<base::camera_object>(AID("play_camera"), co_prms);
+        if (cam_obj)
+        {
+            cam_obj->get_camera_component()->set_active_camera(true);
+            cam_obj->get_camera_component()->set_perspective(
+                60.f, glob::native_window::getr().aspect_ratio(), (float)KGPU_znear, (float)KGPU_zfar);
+        }
     }
 }
 

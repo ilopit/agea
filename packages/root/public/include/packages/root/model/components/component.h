@@ -132,7 +132,7 @@ public:
     {
     }
 
-    component&
+    virtual component&
     add_child(component* c)
     {
         m_children.push_back(c);

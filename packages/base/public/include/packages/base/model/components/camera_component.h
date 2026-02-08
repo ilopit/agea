@@ -26,11 +26,16 @@ public:
 
         float aspect_ratio = 16.0f / 9.0f;
         glm::mat4 scale = glm::mat4(1.f);
+
+        bool is_active_camera = false;
     };
     KRG_gen_meta_api;
 
     bool
     construct(construct_params& c);
+
+    void
+    on_tick(float dt) override;
 
     float
     near_clip() const;
@@ -77,6 +82,24 @@ public:
         return m_aspect_ratio;
     }
 
+    bool
+    is_active_camera() const
+    {
+        return m_is_active_camera;
+    }
+
+    void
+    set_active_camera(bool v)
+    {
+        m_is_active_camera = v;
+    }
+
+    const glm::mat4&
+    get_inv_projection()
+    {
+        return m_inv_projection;
+    }
+
     void
     update_model();
 
@@ -98,9 +121,13 @@ private:
     float m_aspect_ratio = 16.0f / 9.0f;
     glm::mat4 m_scale;
 
+    KRG_ar_property("category=Camera", "serializable=true", "default=true");
+    bool m_is_active_camera = false;
+
     // Internal state
 private:
     glm::mat4 m_perspective;
+    glm::mat4 m_inv_projection;
     glm::mat4 m_view;
     glm::mat4 m_model;
 };

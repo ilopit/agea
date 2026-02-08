@@ -24,9 +24,20 @@ camera_component::set_movement_speed(float ms)
 void
 camera_component::update_view()
 {
-    //     auto owner_obj = (game_object*)get_owner();
-    //     m_view = glm::lookAt(owner_obj->get_position(),
-    //                          owner_obj->get_position() + get_forward_vector(), get_up_vector());
+    auto owner_obj = get_owner();
+    if (!owner_obj)
+    {
+        return;
+    }
+
+    glm::vec3 pos = owner_obj->get_position();
+    glm::vec3 rot = owner_obj->get_rotation();
+
+    // Build rotation matrix from pitch (x) and yaw (y) stored in degrees
+    glm::mat4 yaw_rot = glm::rotate(glm::mat4{1}, glm::radians(rot.y), {0, 1, 0});
+    glm::mat4 cam_rot = glm::rotate(yaw_rot, glm::radians(rot.x), {1, 0, 0});
+
+    m_view = glm::transpose(cam_rot) * glm::translate(glm::mat4{1.f}, -pos);
 }
 
 void
@@ -41,6 +52,15 @@ void
 camera_component::update_perspective()
 {
     m_perspective = glm::perspective(glm::radians(m_fov), m_aspect_ratio, m_znear, m_zfar);
+    m_perspective[1][1] *= -1;
+    m_inv_projection = glm::inverse(m_perspective);
+}
+
+void
+camera_component::on_tick(float dt)
+{
+    update_view();
+    update_perspective();
 }
 
 bool
@@ -55,6 +75,7 @@ camera_component::construct(construct_params& c)
     m_zfar = c.zfar;
     m_aspect_ratio = c.aspect_ratio;
     m_scale = c.scale;
+    m_is_active_camera = c.is_active_camera;
 
     update_perspective();
 

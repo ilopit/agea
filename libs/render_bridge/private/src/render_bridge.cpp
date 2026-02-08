@@ -169,12 +169,19 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 
     // KRG_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
 
+    auto render_fn = obj.get_reflection()->render_constructor;
+    if (!render_fn)
+    {
+        obj.set_state(root::smart_object_state::render_ready);
+        return result_code::ok;
+    }
+
     obj.set_state(root::smart_object_state::render_preparing);
 
     get_dependency().build_node(&obj);
 
     reflection::type_context__render render_ctx{this, &obj, sub_objects};
-    result_code rc = obj.get_reflection()->render_constructor(render_ctx);
+    result_code rc = render_fn(render_ctx);
 
     obj.set_state(root::smart_object_state::render_ready);
 
@@ -193,10 +200,17 @@ render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
 
     KRG_check(obj.get_state() == root::smart_object_state::render_ready, "Should not happen");
 
+    auto render_fn = obj.get_reflection()->render_destructor;
+    if (!render_fn)
+    {
+        obj.set_state(root::smart_object_state::constructed);
+        return result_code::ok;
+    }
+
     obj.set_state(root::smart_object_state::render_preparing);
 
     reflection::type_context__render render_ctx{this, &obj, sub_objects};
-    result_code rc = obj.get_reflection()->render_destructor(render_ctx);
+    result_code rc = render_fn(render_ctx);
 
     obj.set_state(root::smart_object_state::constructed);
 

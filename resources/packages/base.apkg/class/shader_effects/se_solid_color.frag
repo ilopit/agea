@@ -1,4 +1,5 @@
 #version 450
+#extension GL_GOOGLE_include_directive: enable
 #include "common_frag.glsl"
 #include "gpu_types/solid_color_material__gpu.h"
 

@@ -115,6 +115,28 @@ from_sdl_kb_sym_code(SDL_Keycode key_code, input_event_id& eie)
 {
     switch (key_code)
     {
+    case SDLK_RETURN:
+        eie = input_event_id::keyboard_return;
+        return true;
+    case SDLK_ESCAPE:
+        eie = input_event_id::keyboard_escape;
+        return true;
+    case SDLK_BACKSPACE:
+        eie = input_event_id::keyboard_backspace;
+        return true;
+    case SDLK_TAB:
+        eie = input_event_id::keyboard_tab;
+        return true;
+    case SDLK_SPACE:
+        eie = input_event_id::keyboard_space;
+        return true;
+    case SDLK_CAPSLOCK:
+        eie = input_event_id::keyboard_capslock;
+        return true;
+    case SDLK_DELETE:
+        eie = input_event_id::keyboard_delete;
+        return true;
+
     case SDLK_0:
     case SDLK_1:
     case SDLK_2:
@@ -469,6 +491,77 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
 
     default:
         return;
+    }
+}
+
+bool
+input_manager::do_register_scaled(const utils::id& id, core::input_scaled_handler_data handler)
+{
+    auto itr = m_input_actions.find(id);
+    if (itr == m_input_actions.end())
+    {
+        return false;
+    }
+
+    for (auto& t : itr->second.m_triggers)
+    {
+        input_scaled_action_handler ev;
+        ev.obj = handler.obj;
+        ev.method = handler.method;
+        ev.basic_amp = t.second.amp;
+        m_events_state[t.second.id].m_registered_scaled_handlers.push_back(ev);
+    }
+    return true;
+}
+
+bool
+input_manager::do_register_fixed(const utils::id& id, bool pressed, core::input_fixed_handler_data handler)
+{
+    auto itr = m_input_actions.find(id);
+    if (itr == m_input_actions.end())
+    {
+        return false;
+    }
+
+    if (pressed)
+    {
+        for (auto& t : itr->second.m_triggers)
+        {
+            input_fixed_action_handler ev;
+            ev.obj = handler.obj;
+            ev.method = handler.method;
+            m_events_state[t.second.id].m_registered_pres_fixed_handlers.push_back(ev);
+        }
+    }
+    else
+    {
+        for (auto& t : itr->second.m_triggers)
+        {
+            input_fixed_action_handler ev;
+            ev.obj = handler.obj;
+            ev.method = handler.method;
+            m_events_state[t.second.id].m_registered_release_fixed_handlers.push_back(ev);
+        }
+    }
+
+    return true;
+}
+
+void
+input_manager::unregister_owner(void* owner)
+{
+    for (auto& [eid, es] : m_events_state)
+    {
+        auto erase_matching = [owner](auto& vec)
+        {
+            std::erase_if(vec,
+                          [owner](auto& h)
+                          { return reinterpret_cast<void*>(h.obj) == owner; });
+        };
+
+        erase_matching(es.m_registered_scaled_handlers);
+        erase_matching(es.m_registered_pres_fixed_handlers);
+        erase_matching(es.m_registered_release_fixed_handlers);
     }
 }
 

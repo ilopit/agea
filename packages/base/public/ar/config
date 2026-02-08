@@ -1,6 +1,8 @@
 include/packages/base/package.base.h
 include/packages/base/render/overrides/render_types_handlers.h
 include/packages/base/model/components/camera_component.h
+include/packages/base/model/components/input_component.h
+include/packages/base/model/camera_object.h
 include/packages/base/model/components/mesh_component.h
 include/packages/base/model/lights/components/directional_light_component.h
 include/packages/base/model/lights/components/point_light_component.h

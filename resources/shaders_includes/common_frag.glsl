@@ -120,4 +120,3 @@ uint get_material_id()
 {
     return dyn_object_buffer.objects[in_object_idx].material_id;
 }
-

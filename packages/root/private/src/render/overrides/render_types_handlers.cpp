@@ -261,11 +261,11 @@ game_object_component__render_loader(reflection::type_context__render& ctx)
 {
     auto& t = ctx.obj->asr<root::game_object_component>();
 
-    auto& c = t.get_children();
+    auto& c = t.get_render_children();
 
-    for (auto& t : c)
+    for (auto child : c)
     {
-        auto rc = ctx.rb->render_ctor(*t, false);
+        auto rc = ctx.rb->render_ctor(*child, false);
         KRG_return_nok(rc);
     }
 
@@ -276,11 +276,11 @@ game_object_component__render_destructor(reflection::type_context__render& ctx)
 {
     auto& t = ctx.obj->asr<root::game_object_component>();
 
-    auto& c = t.get_children();
+    auto& c = t.get_render_children();
 
-    for (auto& t : c)
+    for (auto child : c)
     {
-        auto rc = ctx.rb->render_dtor(*t, false);
+        auto rc = ctx.rb->render_dtor(*child, false);
         KRG_return_nok(rc);
     }
 

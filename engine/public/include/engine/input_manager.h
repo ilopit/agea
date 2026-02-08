@@ -2,6 +2,7 @@
 
 #include <core/model_fwds.h>
 #include <core/caches/line_cache.h>
+#include <core/input_provider.h>
 
 #include <utils/id.h>
 #include <utils/path.h>
@@ -20,6 +21,8 @@ namespace kryga
 namespace engine
 {
 
+using core::input_event_id;
+
 struct event_state;
 
 enum class input_event_type
@@ -30,93 +33,6 @@ enum class input_event_type
     release,
     scale,
     count
-};
-
-enum input_event_id
-{
-    nan = 0,
-
-    mouse_left,
-    mouse_wheel,
-    mouse_right,
-
-    mouse_move_wheel,
-    mouse_move_x,
-    mouse_move_y,
-
-    keyboard_return,
-    keyboard_escape,
-    keyboard_backspace,
-    keyboard_tab,
-    keyboard_space,
-    keyboard_capslock,
-
-    keyboard_0,
-    keyboard_1,
-    keyboard_2,
-    keyboard_3,
-    keyboard_4,
-    keyboard_5,
-    keyboard_6,
-    keyboard_7,
-    keyboard_8,
-    keyboard_9,
-
-    keyboard_a,
-    keyboard_b,
-    keyboard_c,
-    keyboard_d,
-    keyboard_e,
-    keyboard_f,
-    keyboard_g,
-    keyboard_h,
-    keyboard_i,
-    keyboard_j,
-    keyboard_k,
-    keyboard_l,
-    keyboard_m,
-    keyboard_n,
-    keyboard_o,
-    keyboard_p,
-    keyboard_q,
-    keyboard_r,
-    keyboard_s,
-    keyboard_t,
-    keyboard_u,
-    keyboard_v,
-    keyboard_w,
-    keyboard_x,
-    keyboard_y,
-    keyboard_z,
-
-    keyboard_f1,
-    keyboard_f2,
-    keyboard_f3,
-    keyboard_f4,
-    keyboard_f5,
-    keyboard_f6,
-    keyboard_f7,
-    keyboard_f8,
-    keyboard_f9,
-    keyboard_f10,
-    keyboard_f11,
-    keyboard_f12,
-
-    keyboard_printscreen,
-    keyboard_scrolllock,
-    keyboard_pause,
-    keyboard_insert,
-    keyboard_home,
-    keyboard_pageup,
-
-    keyboard_end,
-    keyboard_pagedown,
-    keyboard_right,
-    keyboard_left,
-    keyboard_down,
-    keyboard_up,
-
-    keyboard_delete
 };
 
 struct input_action_descriptor;
@@ -157,7 +73,7 @@ struct mouse_wheel_state
     int32_t y = 0;
 };
 
-class input_manager
+class input_manager : public core::input_provider
 {
 public:
     input_manager();
@@ -224,10 +140,13 @@ public:
     fire_input_event();
 
     bool
-    get_input_state(input_event_id id)
+    get_input_state(input_event_id id) override
     {
         return m_events_state[id].is_active;
     }
+
+    void
+    unregister_owner(void* owner) override;
 
     const mouse_state&
     get_mouse_state()
@@ -236,6 +155,12 @@ public:
     }
 
 protected:
+    bool
+    do_register_scaled(const utils::id& id, core::input_scaled_handler_data handler) override;
+
+    bool
+    do_register_fixed(const utils::id& id, bool pressed, core::input_fixed_handler_data handler) override;
+
     void
     drop_fired_event();
 

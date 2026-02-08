@@ -84,10 +84,21 @@ public:
         }
     }
 
-    std::vector<component*>&
-    get_render_components()
+    const std::vector<game_object_component*>&
+    get_render_children() const
     {
-        return m_components;
+        return m_render_children;
+    }
+
+    component&
+    add_child(component* c) override
+    {
+        base_class::add_child(c);
+        if (auto goc = c->as<game_object_component>())
+        {
+            m_render_children.push_back(goc);
+        }
+        return *this;
     }
 
     bool
@@ -142,7 +153,7 @@ protected:
     glm::mat4 m_normal_matrix;
     glm::vec4 m_world_position;
 
-    std::vector<component*> m_components;
+    std::vector<game_object_component*> m_render_children;
 
     bool m_has_dirty_transform = false;
 
