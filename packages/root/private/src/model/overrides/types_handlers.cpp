@@ -14,14 +14,12 @@
 #include <core/object_constructor.h>
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
-#include <core/global_state.h>
 
 #include <utils/kryga_log.h>
 #include <utils/string_utility.h>
 
 #include <serialization/serialization.h>
 #include <utils/dynamic_object_builder.h>
-#include <utils/static_initializer.h>
 
 namespace kryga::root
 {

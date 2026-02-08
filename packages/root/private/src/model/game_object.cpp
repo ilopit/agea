@@ -7,7 +7,6 @@
 #include <core/package.h>
 #include <core/level.h>
 #include <core/object_load_context.h>
-#include <core/global_state.h>
 
 namespace kryga
 {
@@ -123,7 +122,8 @@ game_object::spawn_component_with_proto(component* parent,
     else if (type == core::object_load_type::instance_obj)
     {
         std::vector<root::smart_object*> objects;
-        auto inst_result = core::object_constructor::object_instantiate(*proto_obj, id, occ, objects);
+        auto inst_result =
+            core::object_constructor::object_instantiate(*proto_obj, id, occ, objects);
         if (!inst_result)
         {
             return nullptr;

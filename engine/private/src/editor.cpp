@@ -12,7 +12,6 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package_manager.h>
-#include <core/global_state.h>
 
 #include <packages/root/model/game_object.h>
 #include <packages/base/model/mesh_object.h>
@@ -174,7 +173,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 50;
+    int obj_DIM = 10;
 
     for (x = -obj_DIM / 2; x < obj_DIM / 2; ++x)
     {
@@ -196,7 +195,7 @@ game_editor::ev_spawn()
         }
     }
 
-    int light_DIM = 10;
+    int light_DIM = 2;
 
     base::point_light::construct_params prms;
 
@@ -397,7 +396,6 @@ game_editor::enter_play_mode()
                     if (auto ic = c->as<base::input_component>())
                     {
                         m_input = ic;
-                        // m_input->set_pitch_yaw(m_pitch, m_yaw);
                         break;
                     }
                 }

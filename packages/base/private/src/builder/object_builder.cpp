@@ -1,9 +1,5 @@
 #include "packages/base/package.base.h"
 
-#include <core/global_state.h>
-
-#include <utils/static_initializer.h>
-
 namespace kryga::base
 {
 

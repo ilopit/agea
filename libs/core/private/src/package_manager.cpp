@@ -5,7 +5,6 @@
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/package.h"
-#include "core/global_state.h"
 #include "glue/dependency_tree.ar.h"
 
 #include "packages/root/model/assets/texture.h"

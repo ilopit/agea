@@ -32,7 +32,6 @@
 #include <core/object_load_context.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
-#include <core/global_state.h>
 #include <core/reflection/reflection_type_utils.h>
 
 #include <serialization/serialization.h>

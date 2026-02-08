@@ -18,7 +18,6 @@
 #include <core/package_manager.h>
 #include <core/reflection/lua_api.h>
 #include <core/reflection/reflection_type.h>
-#include <core/global_state.h>
 #include <core/core_state.h>
 
 #include <global_state/global_state.h>
@@ -640,7 +639,8 @@ vulkan_engine::init_scene()
         {
             cam_obj->get_camera_component()->set_active_camera(true);
             cam_obj->get_camera_component()->set_perspective(
-                60.f, glob::native_window::getr().aspect_ratio(), (float)KGPU_znear, (float)KGPU_zfar);
+                60.f, glob::native_window::getr().aspect_ratio(), (float)KGPU_znear,
+                (float)KGPU_zfar);
         }
     }
 }

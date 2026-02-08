@@ -8,7 +8,6 @@
 #include "core/caches/cache_set.h"
 #include "core/object_constructor.h"
 #include "core/id_generator.h"
-#include "core/global_state.h"
 
 #include "packages/root/model/smart_object.h"
 #include "packages/root/model/components/component.h"

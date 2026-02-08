@@ -2,7 +2,6 @@
 
 #include <utils/kryga_log.h>
 #include <utils/singleton_registry.h>
-#include <utils/static_initializer.h>
 
 #include <memory>
 

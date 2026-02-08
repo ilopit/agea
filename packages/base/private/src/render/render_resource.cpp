@@ -7,8 +7,6 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/vk_descriptors.h>
 
-#include <core/global_state.h>
-
 namespace kryga::base
 {
 

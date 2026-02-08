@@ -13,7 +13,6 @@
 #include <core/caches/caches_map.h>
 #include <core/reflection/property.h>
 #include <core/reflection/lua_api.h>
-#include <core/global_state.h>
 
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/material.h>
@@ -121,7 +120,8 @@ ui::new_frame(float dt)
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
-    // Fullscreen dockspace — all windows can dock into this, central node is transparent for 3D viewport
+    // Fullscreen dockspace — all windows can dock into this, central node is transparent for 3D
+    // viewport
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
     bool playing = glob::game_editor::getr().get_mode() == engine::editor_mode::playing;

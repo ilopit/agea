@@ -7,7 +7,6 @@
 #include "core/caches/cache_set.h"
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
-#include "core/global_state.h"
 
 #include <packages/root/model/components/game_object_component.h>
 #include <packages/root/model/game_object.h>

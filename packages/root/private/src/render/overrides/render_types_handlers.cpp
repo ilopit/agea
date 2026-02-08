@@ -19,7 +19,6 @@
 #include <core/object_load_context.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
-#include <core/global_state.h>
 #include <core/reflection/reflection_type_utils.h>
 
 #include <serialization/serialization.h>
@@ -49,7 +48,8 @@ namespace root
 {
 
 // Forward declaration
-static uint8_t map_sampler_to_static_index(const sampler& smp);
+static uint8_t
+map_sampler_to_static_index(const sampler& smp);
 
 result_code
 mesh__render_loader(reflection::type_context__render& ctx)
@@ -163,7 +163,7 @@ material__render_loader(reflection::type_context__render& ctx)
 
     // Set texture bindings in GPU data before creating/updating material
     render_bridge::set_material_texture_bindings(dyn_gpu_data, gpu_texture_indices,
-                                                  gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
+                                                 gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
     if (!mat_data)
     {
@@ -184,7 +184,7 @@ material__render_loader(reflection::type_context__render& ctx)
         if (ts.second.smp && ts.second.slot < KGPU_MAX_TEXTURE_SLOTS)
         {
             mat_data->set_bindless_sampler_index(ts.second.slot,
-                                                  gpu_sampler_indices[ts.second.slot]);
+                                                 gpu_sampler_indices[ts.second.slot]);
         }
     }
 
