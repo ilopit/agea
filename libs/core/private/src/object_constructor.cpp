@@ -406,7 +406,7 @@ object_constructor::load_derive_object_properties(root::smart_object& from,
         auto result = p->load_handler(ctx);
         if (result != result_code::ok)
         {
-            ALOG_LAZY_ERROR;
+            ALOG_ERROR("Failed to load property [{}] on object [{}]", p->name, to.get_id().cstr());
             return result;
         }
     }
@@ -623,7 +623,7 @@ object_constructor::object_load_internal(const utils::id& id, object_load_contex
     utils::path full_path;
     if (!occ.make_full_path(id, full_path))
     {
-        ALOG_ERROR("Failed to find in mapping");
+        ALOG_ERROR("Failed to find [{}] in mapping", id.cstr());
         return std::unexpected(result_code::path_not_found);
     }
 
@@ -700,14 +700,14 @@ object_constructor::object_load_internal(serialization::container& container,
     auto result = object_load_derive(*src_result.value(), container, occ);
     if (!result)
     {
-        ALOG_LAZY_ERROR;
+        ALOG_ERROR("Failed to load object [{}] with proto [{}]", id.cstr(), proto_id.cstr());
         return result;
     }
     obj = result.value();
 
     if (obj && (obj->get_id() != id))
     {
-        ALOG_LAZY_ERROR;
+        ALOG_ERROR("Object id mismatch: expected [{}], got [{}]", id.cstr(), obj->get_id().cstr());
     }
 
     return obj;

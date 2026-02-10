@@ -14,6 +14,8 @@ using vec4 = ::glm::vec4;
 using mat3 = ::glm::mat3;
 using mat4 = ::glm::mat4;
 using uint = ::std::uint32_t;
+using uvec4 = ::glm::uvec4;
+using ivec4 = ::glm::ivec4;
 }  // namespace kryga::gpu
 
 // ============================================================================

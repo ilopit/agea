@@ -53,6 +53,11 @@ spv_type_to_gpu_type(SpvReflectTypeDescription& desc)
     case SpvOpTypeInt:
         return desc.traits.numeric.scalar.signedness ? gpu_type::g_int : gpu_type::g_unsigned;
     case SpvOpTypeVector:
+        if (desc.type_flags & SPV_REFLECT_TYPE_FLAG_INT)
+        {
+            return (gpu_type::id)((uint32_t)gpu_type::g_uvec2 +
+                                  desc.traits.numeric.vector.component_count - 2);
+        }
         return (gpu_type::id)((uint32_t)gpu_type::g_vec2 +
                               desc.traits.numeric.vector.component_count - 2);
     case SpvOpTypeMatrix:
@@ -97,8 +102,16 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     }
     case SpvOpTypeVector:
     {
-        type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_vec2 +
-                                             obj.traits.numeric.vector.component_count - 2);
+        if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT)
+        {
+            type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_uvec2 +
+                                                  obj.traits.numeric.vector.component_count - 2);
+        }
+        else
+        {
+            type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_vec2 +
+                                                  obj.traits.numeric.vector.component_count - 2);
+        }
         df.alligment = 16;
         break;
     }
@@ -261,10 +274,8 @@ shader_reflection_utils::extract_interface_variables(
         var.type = spv_type_to_gpu_type(*input->type_description);
         block.variables.push_back(var);
 
-        if (!convert_spvr_to_dyn_layout(var.name, *input->type_description, gdb))
-        {
-            return false;
-        }
+        // Vertex I/O uses C-struct packing (scalar alignment), not std140
+        gdb.add_field(var.name, var.type, 1);
     }
 
     block.layout = gdb.finalize();

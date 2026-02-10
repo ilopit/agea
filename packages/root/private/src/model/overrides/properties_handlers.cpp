@@ -247,7 +247,11 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
             if (!result || !result.value() ||
                 result.value()->get_architype_id() != core::architype::component)
             {
-                ALOG_LAZY_ERROR;
+                auto comp_id = item["id"].IsDefined() ? item["id"].as<std::string>() : "unknown";
+                auto comp_class = item["class_id"].IsDefined() ? item["class_id"].as<std::string>()
+                                                               : "unknown";
+                ALOG_ERROR("Failed to load component [{}] (class [{}]) at index [{}] for object [{}]",
+                           comp_id, comp_class, i, ctx.dst_obj->get_id().cstr());
                 return result_code::failed;
             }
 

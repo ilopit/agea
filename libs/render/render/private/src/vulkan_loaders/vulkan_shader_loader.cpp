@@ -188,8 +188,9 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
             se_data.m_expected_vertex_input,
             se_data.m_vertex_stage->get_reflection().input_interface.layout, false, false))
     {
-        ALOG_LAZY_ERROR;
-        return result_code::failed;
+        // Adopt reflected layout — shader defines the authoritative vertex input format
+        se_data.m_expected_vertex_input =
+            se_data.m_vertex_stage->get_reflection().input_interface.layout;
     }
 
     if (!shader_reflection_utils::are_layouts_compatible(

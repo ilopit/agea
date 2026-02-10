@@ -37,7 +37,11 @@ struct gpu_type
 
         g_color,
 
-        g_last = g_color + 1
+        g_uvec2,
+        g_uvec3,
+        g_uvec4,
+
+        g_last = g_uvec4 + 1
     };
 
     static uint32_t

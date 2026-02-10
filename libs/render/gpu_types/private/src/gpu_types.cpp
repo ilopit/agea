@@ -21,8 +21,13 @@ gpu_type::size(gpu_type::id t)
     case gpu_type::g_vec3:
         return 12;
     case gpu_type::g_vec4:
+    case gpu_type::g_uvec4:
     case gpu_type::g_mat2:
         return 16;
+    case gpu_type::g_uvec2:
+        return 8;
+    case gpu_type::g_uvec3:
+        return 12;
     case gpu_type::g_mat3:
         return 9 * 4;
     case gpu_type::g_mat4:
@@ -63,6 +68,12 @@ gpu_type::name(gpu_type::id t)
         return "gpu_mat3";
     case gpu_type::g_mat4:
         return "gpu_mat4";
+    case gpu_type::g_uvec2:
+        return "gpu_uvec2";
+    case gpu_type::g_uvec3:
+        return "gpu_uvec3";
+    case gpu_type::g_uvec4:
+        return "gpu_uvec4";
     default:
         break;
     }
