@@ -5,6 +5,7 @@ class_obj_mapping:
   - se_color_line: class/shader_effects/se_color_line.aobj
   - se_simple_texture_lit : class/shader_effects/lit/se_simple_texture_lit.aobj
   - se_solid_color_lit: class/shader_effects/lit/se_solid_color_lit.aobj
+  - se_simple_texture_lit_skinned: class/shader_effects/lit/se_simple_texture_lit_skinned.aobj
 
   - txt_directional_light: class/textures/txt_directional_light.aobj
   - txt_container: class/textures/txt_container.aobj
@@ -22,6 +23,7 @@ class_obj_mapping:
   - mt_billboard_directional_light: class/materials/mt_billboard_directional_light.aobj
   - mt_container: class/materials/mt_container.aobj
   - mt_wire: class/materials/mt_wire.aobj
+  - mt_skinned_lit: class/materials/mt_skinned_lit.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
   - plane_mesh: class/meshes/plane_mesh.aobj

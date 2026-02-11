@@ -46,6 +46,10 @@ externalize(textedit_unofficial "textedit")
 add_subdirectory(unofficial/stb)
 externalize(stb_unofficial "stb")
 
+#cgltf
+add_subdirectory(unofficial/cgltf)
+externalize(cgltf_unofficial "cgltf")
+
 #sdl2
 add_subdirectory(unofficial/sdl2)
 externalize(sdl2 "sdl2")
@@ -116,3 +120,8 @@ set(YAML_CPP_BUILD_TOOLS OFF)
 set(YAML_CPP_INSTALL OFF)
 add_subdirectory(upstream/yaml-cpp)
 externalize(yaml-cpp "yaml-cpp")
+
+#ozz-animation (fetched via FetchContent in fetch/)
+externalize(ozz_base "ozz-animation")
+externalize(ozz_animation "ozz-animation")
+externalize(ozz_animation_offline "ozz-animation")

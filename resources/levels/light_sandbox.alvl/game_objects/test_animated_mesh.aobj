@@ -1,0 +1,22 @@
+class_id: animated_mesh_object
+id: test_animated_mesh
+layout: [-1, 0]
+components:
+  - id: test_animated_mesh_root
+    class_id: game_object_component
+  - id: test_animated_mesh_comp
+    class_id: animated_mesh_component
+    gltf: meshes/Fox.glb
+    material: mt_skinned_lit
+    clip_name: Survey
+    playback_speed: 1.0
+    looping: true
+    playing: true
+    position:
+      x: 0
+      y: 5
+      z: 0
+    scale:
+      x: 0.05
+      y: 0.05
+      z: 0.05

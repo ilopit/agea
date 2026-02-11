@@ -76,6 +76,9 @@ struct frame_buffers
     // Instance slots buffer for instanced drawing
     vk_utils::vulkan_buffer instance_slots;
 
+    // Bone matrices SSBO for skeletal animation
+    vk_utils::vulkan_buffer bone_matrices;
+
     // GPU frustum culling buffers
     vk_utils::vulkan_buffer frustum_data;      // Frustum planes (uniform)
     vk_utils::vulkan_buffer visible_indices;   // Output visible object indices
@@ -206,6 +209,12 @@ public:
     void schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld);
     // clang-format on
 
+    std::vector<glm::mat4>&
+    get_bone_matrices_staging()
+    {
+        return m_bone_matrices_staging;
+    }
+
     void
     clear_upload_queue();
 
@@ -292,6 +301,7 @@ private:
     void upload_universal_light_data(render::frame_state& frame);
     void upload_directional_light_data(render::frame_state& frame);
     void upload_material_data(render::frame_state& frame);
+    void upload_bone_matrices(render::frame_state& frame);
     // clang-format on
 
     // Clustered lighting methods
@@ -514,6 +524,9 @@ private:
     // Instance drawing state
     std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots
     std::vector<draw_batch> m_draw_batches;          // Pre-computed batches for frame
+
+    // Bone matrix staging for skeletal animation
+    std::vector<glm::mat4> m_bone_matrices_staging;
 
     // Render graph
     vulkan_render_graph m_render_graph;

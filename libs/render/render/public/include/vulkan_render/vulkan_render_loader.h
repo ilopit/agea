@@ -47,6 +47,11 @@ public:
                 kryga::utils::buffer_view<gpu::vertex_data> vertices,
                 kryga::utils::buffer_view<gpu::uint> indices);
 
+    mesh_data*
+    create_skinned_mesh(const kryga::utils::id& mesh_id,
+                        kryga::utils::buffer_view<gpu::skinned_vertex_data> vertices,
+                        kryga::utils::buffer_view<gpu::uint> indices);
+
     void
     destroy_mesh_data(const kryga::utils::id& id);
 

@@ -63,6 +63,7 @@ target_link_libraries(packages.base.render
    kryga::asset_importer
    kryga::render_bridge
    kryga::gpu_types
+   kryga::animation
 )
 target_compile_definitions(packages.base.render PUBLIC KRG_build__render)
 kryga_finalize_library(packages.base.render)

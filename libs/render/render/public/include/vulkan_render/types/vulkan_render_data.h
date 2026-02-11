@@ -24,7 +24,7 @@ public:
     {
     }
 
-        gpu::object_data gpu_data;
+    gpu::object_data gpu_data;
     render::mesh_data* mesh = nullptr;
     render::material_data* material = nullptr;
 
@@ -33,6 +33,10 @@ public:
     float distance_to_camera = 0.f;
     float bounding_radius = 1.0f;  // For light grid culling
     bool outlined = false;
+
+    // Skeletal animation state
+    uint32_t bone_offset = 0;  // offset into global bone matrices SSBO
+    uint32_t bone_count = 0;   // number of bones (0 = not animated)
 
     std::string queue_id;
 };

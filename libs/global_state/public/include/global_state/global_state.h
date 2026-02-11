@@ -77,6 +77,11 @@ class vulkan_render_loader;
 class render_device;
 }  // namespace render
 
+namespace animation
+{
+class animation_system;
+}  // namespace animation
+
 namespace engine
 {
 class game_editor;
@@ -104,6 +109,7 @@ struct state_mutator__native_window;
 struct state_mutator__vulkan_render;
 struct state_mutator__engine_counters;
 struct state_mutator__render_bridge;
+struct state_mutator__animation_system;
 
 namespace gs
 {
@@ -170,6 +176,7 @@ class state
     friend class ::kryga::state_mutator__vulkan_render;
     friend class ::kryga::state_mutator__engine_counters;
     friend class ::kryga::state_mutator__render_bridge;
+    friend class ::kryga::state_mutator__animation_system;
 
 public:
     enum class state_stage
@@ -245,6 +252,7 @@ public:
     KRG_gen_getter(vulkan_render, render::vulkan_render);
     KRG_gen_getter(engine_counters, engine_counters);
     KRG_gen_getter(render_bridge, render_bridge);
+    KRG_gen_getter(animation_system, animation::animation_system);
 
     template <typename T>
     T*
@@ -327,6 +335,7 @@ private:
     render::vulkan_render*          m_vulkan_render = nullptr;
     engine_counters*                m_engine_counters = nullptr;
     render_bridge*                  m_render_bridge = nullptr;
+    animation::animation_system*    m_animation_system = nullptr;
 
     // clang-format on
 
@@ -407,6 +416,12 @@ struct state_mutator__engine_counters
 };
 
 struct state_mutator__render_bridge
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__animation_system
 {
     static void
     set(gs::state& s);

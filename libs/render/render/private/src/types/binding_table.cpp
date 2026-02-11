@@ -210,7 +210,7 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
 {
     KRG_check(m_finalized, "Binding table must be finalized before validation");
 
-    // Validate vertex shader bindings
+    // Forward check: every shader binding must exist in the table
     for (const auto& ds : vertex_refl.descriptors)
     {
         for (const auto& b : ds.bindings)
@@ -222,7 +222,6 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
         }
     }
 
-    // Validate fragment shader bindings
     for (const auto& ds : frag_refl.descriptors)
     {
         for (const auto& b : ds.bindings)
@@ -234,7 +233,53 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
         }
     }
 
-    return true;
+    // Reverse check: for each descriptor set that the shader partially uses,
+    // every per_pass table binding in that set must be declared in at least one stage.
+    // Pipeline layouts are built from shader reflection, while descriptor sets are
+    // allocated from the table's layout. Vulkan requires these layouts to match exactly.
+    // If a shader doesn't reference a set at all, it won't bind that set's descriptor,
+    // so no layout conflict exists and we skip that set.
+
+    // Collect sets that the shader actually uses
+    std::array<bool, DESCRIPTORS_SETS_COUNT> shader_uses_set{};
+    for (const auto& ds : vertex_refl.descriptors)
+    {
+        if (ds.set_index < DESCRIPTORS_SETS_COUNT)
+            shader_uses_set[ds.set_index] = true;
+    }
+    for (const auto& ds : frag_refl.descriptors)
+    {
+        if (ds.set_index < DESCRIPTORS_SETS_COUNT)
+            shader_uses_set[ds.set_index] = true;
+    }
+
+    bool valid = true;
+    for (const auto& spec : m_bindings)
+    {
+        if (spec.scope != binding_scope::per_pass)
+        {
+            continue;
+        }
+
+        if (!shader_uses_set[spec.set_index])
+        {
+            continue;
+        }
+
+        bool found = vertex_refl.find_binding(spec.set_index, spec.binding_index) != nullptr ||
+                     frag_refl.find_binding(spec.set_index, spec.binding_index) != nullptr;
+
+        if (!found)
+        {
+            ALOG_ERROR("Binding table entry '{}' (set={}, binding={}) is per_pass but not declared "
+                       "in any shader stage — pipeline layout will have fewer descriptors than the "
+                       "allocated descriptor set",
+                       spec.name.cstr(), spec.set_index, spec.binding_index);
+            valid = false;
+        }
+    }
+
+    return valid;
 }
 
 bool
@@ -267,7 +312,38 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
         }
     }
 
-    return true;
+    // Reverse check: for sets the shader actually uses, every per_pass table
+    // binding must be declared. See two-stage overload for rationale.
+    std::array<bool, DESCRIPTORS_SETS_COUNT> shader_uses_set{};
+    for (const auto& ds : refl.descriptors)
+    {
+        if (ds.set_index < DESCRIPTORS_SETS_COUNT)
+            shader_uses_set[ds.set_index] = true;
+    }
+
+    bool valid = true;
+    for (const auto& spec : m_bindings)
+    {
+        if (spec.scope != binding_scope::per_pass)
+        {
+            continue;
+        }
+
+        if (!shader_uses_set[spec.set_index])
+        {
+            continue;
+        }
+
+        if (refl.find_binding(spec.set_index, spec.binding_index) == nullptr)
+        {
+            ALOG_ERROR("{} shader missing table binding '{}' (set={}, binding={}) — "
+                       "pipeline layout will not match allocated descriptor set",
+                       stage_name, spec.name.cstr(), spec.set_index, spec.binding_index);
+            valid = false;
+        }
+    }
+
+    return valid;
 }
 
 bool

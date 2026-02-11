@@ -101,7 +101,8 @@ KRG_ar_external_type(to_string_handler   = buffer__to_string,
 KRG_ar_external_define(::kryga::utils::buffer);
 
 
-KRG_ar_external_type(to_string_handler   = id__to_string,
+KRG_ar_external_type(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::kryga::utils::id>,
+                      to_string_handler   = id__to_string,
                       load_derive_handler = id__load,
                       serialize_handler   = id__save);
 KRG_ar_external_define(::kryga::utils::id);

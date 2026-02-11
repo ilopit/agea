@@ -125,6 +125,11 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
             device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
+        // Bone matrices SSBO for skeletal animation (initial 64KB)
+        m_frames[i].buffers.bone_matrices =
+            device.create_buffer(64 * 1024,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
         // GPU frustum culling buffers
         m_frames[i].buffers.frustum_data =
             device.create_buffer(sizeof(gpu::frustum_data), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -351,6 +356,9 @@ vulkan_render::prepare_pass_bindings()
                  VK_SHADER_STAGE_FRAGMENT_BIT)
             .add(AID("dyn_instance_slots"), KGPU_objects_descriptor_sets,
                  KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT)
+            .add(AID("dyn_bone_matrices"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_bone_matrices_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT);
 
         // Set 2: Bindless textures and static samplers (managed separately from render graph)
@@ -404,6 +412,9 @@ vulkan_render::prepare_pass_bindings()
                  VK_SHADER_STAGE_FRAGMENT_BIT)
             .add(AID("dyn_instance_slots"), KGPU_objects_descriptor_sets,
                  KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT)
+            .add(AID("dyn_bone_matrices"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_bone_matrices_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT);
 
         // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)

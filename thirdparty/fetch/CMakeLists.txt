@@ -22,3 +22,19 @@ FetchContent_Declare(
 
 set(TRACY_ON_DEMAND ON CACHE BOOL "Enable on-demand profiling")
 FetchContent_MakeAvailable(tracy)
+
+# ozz-animation
+set(ozz_build_tools ON CACHE BOOL "")
+set(ozz_build_samples OFF CACHE BOOL "")
+set(ozz_build_tests OFF CACHE BOOL "")
+set(ozz_build_howtos OFF CACHE BOOL "")
+set(ozz_build_fbx OFF CACHE BOOL "")
+set(ozz_build_msvc_rt_dll ON CACHE BOOL "")
+
+FetchContent_Declare(
+  ozz-animation
+  GIT_REPOSITORY https://github.com/guillaumeblanc/ozz-animation.git
+  GIT_TAG 0.16.0
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(ozz-animation)

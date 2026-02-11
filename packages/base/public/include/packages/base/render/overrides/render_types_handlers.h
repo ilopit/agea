@@ -38,4 +38,10 @@ point_light_component__render_loader(reflection::type_context__render& ctx);
 result_code
 point_light_component__render_destructor(reflection::type_context__render& ctx);
 
+result_code
+animated_mesh_component__render_loader(reflection::type_context__render& ctx);
+
+result_code
+animated_mesh_component__render_destructor(reflection::type_context__render& ctx);
+
 }  // namespace kryga

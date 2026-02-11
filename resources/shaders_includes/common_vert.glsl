@@ -32,6 +32,13 @@ readonly buffer InstanceSlotsBuffer {
     uint slots[];
 } dyn_instance_slots;
 
+// Bone matrices SSBO — declared here so all shaders share the same set 1 layout.
+// Skinned shaders access this via common_vert_skinned.glsl helpers.
+layout(std430, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_bone_matrices_binding)
+readonly buffer BoneMatricesBuffer {
+    mat4 matrices[];
+} dyn_bone_matrices;
+
 #include "gpu_types/gpu_push_constants.h"
 
 // Push constants (available in vertex shader for instance_base)

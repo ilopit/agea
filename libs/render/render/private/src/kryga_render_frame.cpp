@@ -159,6 +159,7 @@ vulkan_render::draw_main()
                                current_frame.buffers.cluster_indices);
     m_render_graph.bind_buffer(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
     m_render_graph.bind_buffer(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+    m_render_graph.bind_buffer(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
     m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
 
     // Frustum cull buffers (instanced mode only)
@@ -232,6 +233,9 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Build instance data (batches for instanced path, identity buffer for legacy path)
     // Both paths need the instance_slots buffer populated for shaders to work
     prepare_instance_data(current_frame);
+
+    // Upload bone matrices for skeletal animation
+    upload_bone_matrices(current_frame);
 
     if (current_frame.uploads.has_objects())
     {
@@ -327,6 +331,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
     main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
     main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+    main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
 
     m_global_set = main_pass->get_descriptor_set(
         KGPU_global_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
@@ -348,6 +353,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     picking_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
     picking_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
     picking_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+    picking_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
 }
 
 frame_state&

@@ -713,7 +713,7 @@ vulkan_render::bind_global_descriptors(VkCommandBuffer cmd, render::frame_state&
     // Use pick material's layout as a representative (always available after init)
     auto pipeline_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
 
-    const uint32_t dummy_offset[] = {0, 0, 0, 0, 0, 0, 0};
+    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
 
     // Bind set 0 (global/camera data)
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
@@ -743,7 +743,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    const uint32_t dummy_offset[] = {0, 0, 0, 0, 0, 0, 0};
+    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
 
     if (cur_material->has_gpu_data())
     {

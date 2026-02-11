@@ -183,6 +183,33 @@ vulkan_render::upload_material_data(render::frame_state& frame)
 }
 
 void
+vulkan_render::upload_bone_matrices(render::frame_state& frame)
+{
+    // Always upload at least one identity matrix so the SSBO is valid
+    if (m_bone_matrices_staging.empty())
+    {
+        m_bone_matrices_staging.push_back(glm::mat4(1.0f));
+    }
+
+    const size_t required_size = m_bone_matrices_staging.size() * sizeof(glm::mat4);
+
+    // Regrow if needed
+    if (required_size >= frame.buffers.bone_matrices.get_alloc_size())
+    {
+        auto old_buffer = std::move(frame.buffers.bone_matrices);
+        frame.buffers.bone_matrices = glob::glob_state().getr_render_device().create_buffer(
+            required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        ALOG_INFO("Reallocating bone_matrices buffer {} => {}", old_buffer.get_alloc_size(),
+                  frame.buffers.bone_matrices.get_alloc_size());
+    }
+
+    frame.buffers.bone_matrices.begin();
+    auto* dst = (glm::mat4*)frame.buffers.bone_matrices.allocate_data((uint32_t)required_size);
+    memcpy(dst, m_bone_matrices_staging.data(), required_size);
+    frame.buffers.bone_matrices.end();
+}
+
+void
 vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
 {
     for (auto& q : m_frames)
@@ -680,6 +707,7 @@ vulkan_render::setup_instanced_render_graph()
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     // GPU frustum culling buffers
@@ -727,7 +755,8 @@ vulkan_render::setup_instanced_render_graph()
          m_render_graph.read(AID("dyn_cluster_light_counts")),
          m_render_graph.read(AID("dyn_cluster_light_indices")),
          m_render_graph.read(AID("dyn_cluster_config")),
-         m_render_graph.read(AID("dyn_instance_slots"))},
+         m_render_graph.read(AID("dyn_instance_slots")),
+         m_render_graph.read(AID("dyn_bone_matrices"))},
         get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
         [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
 
@@ -742,6 +771,7 @@ vulkan_render::setup_instanced_render_graph()
          m_render_graph.read(AID("dyn_cluster_light_indices")),
          m_render_graph.read(AID("dyn_cluster_config")),
          m_render_graph.read(AID("dyn_instance_slots")),
+         m_render_graph.read(AID("dyn_bone_matrices")),
          m_render_graph.read(AID("dyn_material_buffer"))},
         get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
         [this](VkCommandBuffer) { draw_objects_instanced(*m_current_frame); });
@@ -773,6 +803,7 @@ vulkan_render::setup_per_object_render_graph()
                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
@@ -794,7 +825,8 @@ vulkan_render::setup_per_object_render_graph()
          m_render_graph.read(AID("dyn_cluster_light_counts")),
          m_render_graph.read(AID("dyn_cluster_light_indices")),
          m_render_graph.read(AID("dyn_cluster_config")),
-         m_render_graph.read(AID("dyn_instance_slots"))},
+         m_render_graph.read(AID("dyn_instance_slots")),
+         m_render_graph.read(AID("dyn_bone_matrices"))},
         get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
         [this](VkCommandBuffer cmd) { draw_picking_per_object(cmd); });
 
@@ -809,6 +841,7 @@ vulkan_render::setup_per_object_render_graph()
          m_render_graph.read(AID("dyn_cluster_light_indices")),
          m_render_graph.read(AID("dyn_cluster_config")),
          m_render_graph.read(AID("dyn_instance_slots")),
+         m_render_graph.read(AID("dyn_bone_matrices")),
          m_render_graph.read(AID("dyn_material_buffer"))},
         get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
         [this](VkCommandBuffer) { draw_objects_per_object(*m_current_frame); });

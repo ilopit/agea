@@ -15,6 +15,16 @@ struct vertex_data
     vec2 uv;
 };
 
+struct skinned_vertex_data
+{
+    vec3 position;
+    vec3 normal;
+    vec3 color;
+    vec2 uv;
+    uvec4 bone_indices;
+    vec4 bone_weights;
+};
+
 GPU_END_NAMESPACE
 
 #endif  // GPU_VERTEX_TYPES_H

@@ -50,6 +50,8 @@
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/vk_descriptors.h>
 
+#include <animation/animation_system.h>
+
 #include <utils/kryga_log.h>
 #include <utils/process.h>
 #include <utils/clock.h>
@@ -220,6 +222,7 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__vulkan_render::set(gs);
     state_mutator__engine_counters::set(gs);
     state_mutator__render_bridge::set(gs);
+    state_mutator__animation_system::set(gs);
 
     gs.run_connect();
     init_default_scripting();
@@ -393,6 +396,11 @@ vulkan_engine::tick(float dt)
         {
             lvl->tick(dt);
         }
+    }
+
+    if (auto* anim = glob::glob_state().get_animation_system())
+    {
+        anim->tick(dt);
     }
 }
 

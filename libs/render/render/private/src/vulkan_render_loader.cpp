@@ -234,6 +234,96 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
     return md.get();
 }
 
+mesh_data*
+vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
+                                          kryga::utils::buffer_view<gpu::skinned_vertex_data> vbv,
+                                          kryga::utils::buffer_view<gpu::uint> ibv)
+{
+    KRG_check(!get_mesh_data(mesh_id), "should never happens");
+
+    auto device = glob::glob_state().get_render_device();
+
+    auto md = std::make_shared<mesh_data>(mesh_id);
+    md->m_indices_size = (uint32_t)ibv.size();
+    md->m_vertices_size = (uint32_t)vbv.size();
+    md->m_is_skinned = true;
+
+    // Calculate bounding radius from vertices
+    float max_dist_sq = 0.0f;
+    for (uint32_t i = 0; i < vbv.size(); ++i)
+    {
+        const auto& pos = vbv.at(i).position;
+        float dist_sq = glm::dot(pos, pos);
+        max_dist_sq = std::max(max_dist_sq, dist_sq);
+    }
+    md->m_bounding_radius = std::sqrt(max_dist_sq);
+
+    const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
+    const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
+    const uint32_t buffer_size = vertex_buffer_size + index_buffer_size;
+
+    // Staging buffer
+    VkBufferCreateInfo staging_buffer_ci = {};
+    staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    staging_buffer_ci.pNext = nullptr;
+    staging_buffer_ci.size = buffer_size;
+    staging_buffer_ci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    VmaAllocationCreateInfo vma_alloc_ci = {};
+    vma_alloc_ci.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+    auto staging_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_alloc_ci);
+
+    staging_buffer.begin();
+    staging_buffer.upload_data(vbv.data(), vertex_buffer_size, false);
+    staging_buffer.upload_data(ibv.data(), index_buffer_size, false);
+    staging_buffer.end();
+
+    // Vertex buffer
+    VkBufferCreateInfo vertex_buffer_ci = {};
+    vertex_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vertex_buffer_ci.pNext = nullptr;
+    vertex_buffer_ci.size = vertex_buffer_size;
+    vertex_buffer_ci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    vma_alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    md->m_vertex_buffer = vk_utils::vulkan_buffer::create(vertex_buffer_ci, vma_alloc_ci);
+
+    // Index buffer
+    if (index_buffer_size > 0)
+    {
+        VkBufferCreateInfo index_buffer_ci = {};
+        index_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        index_buffer_ci.pNext = nullptr;
+        index_buffer_ci.size = index_buffer_size;
+        index_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+        md->m_index_buffer = vk_utils::vulkan_buffer::create(index_buffer_ci, vma_alloc_ci);
+    }
+
+    device->immediate_submit(
+        [&](VkCommandBuffer cmd)
+        {
+            VkBufferCopy copy;
+            copy.dstOffset = 0;
+            copy.srcOffset = 0;
+            copy.size = vertex_buffer_size;
+            vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_vertex_buffer.buffer(), 1, &copy);
+
+            if (index_buffer_size > 0)
+            {
+                copy.dstOffset = 0;
+                copy.srcOffset = vertex_buffer_size;
+                copy.size = index_buffer_size;
+                vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1,
+                                &copy);
+            }
+        });
+
+    m_meshes_cache[mesh_id] = md;
+    return md.get();
+}
+
 texture_data*
 vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
                                      const kryga::utils::buffer& base_color,
@@ -376,7 +466,8 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
     mat_data->set_texture_samples(samples);
 
     // Set bindless texture indices from texture slots
-    ALOG_INFO("create_material: {} has {} texture samples", mat_data->get_id().cstr(), samples.size());
+    ALOG_INFO("create_material: {} has {} texture samples", mat_data->get_id().cstr(),
+              samples.size());
     for (const auto& sample : samples)
     {
         if (sample.texture)

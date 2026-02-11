@@ -12,6 +12,7 @@ target_link_libraries(engine PUBLIC
     kryga::utils
     kryga::core
     kryga::vulkan_render
+    kryga::animation
     kryga::asset_importer
     kryga::render_bridge
     kryga::native

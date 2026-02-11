@@ -15,6 +15,8 @@ gpu_struct_std140 object_data
     std140_vec3  obj_pos;
     std140_float bounding_radius;
     std140_uint  material_id;       // Index into material SSBO - enables per-object materials
+    std140_uint  bone_offset;       // Offset into bone_matrices SSBO (0 = not skinned)
+    std140_uint  bone_count;        // Number of bones (0 = not skinned)
 };
 
 GPU_END_NAMESPACE
