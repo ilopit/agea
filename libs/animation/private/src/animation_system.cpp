@@ -64,9 +64,9 @@ animation_system::~animation_system()
 
 void
 animation_system::register_skeleton(const utils::id& id,
-                                     ozz::animation::Skeleton&& skel,
-                                     std::vector<glm::mat4> inverse_bind_matrices,
-                                     std::vector<int32_t> joint_remaps)
+                                    ozz::animation::Skeleton&& skel,
+                                    std::vector<glm::mat4> inverse_bind_matrices,
+                                    std::vector<int32_t> joint_remaps)
 {
     registered_skeleton reg;
     reg.skeleton = std::move(skel);
@@ -81,8 +81,8 @@ animation_system::register_skeleton(const utils::id& id,
 
 void
 animation_system::register_animation(const utils::id& skel_id,
-                                      const utils::id& anim_id,
-                                      ozz::animation::Animation&& anim)
+                                     const utils::id& anim_id,
+                                     ozz::animation::Animation&& anim)
 {
     m_animations[skel_id][anim_id] = std::move(anim);
     ALOG_INFO("Registered animation '{}' for skeleton '{}' (duration: {:.2f}s)", anim_id.cstr(),
@@ -91,9 +91,9 @@ animation_system::register_animation(const utils::id& skel_id,
 
 utils::id
 animation_system::create_instance(const utils::id& instance_id,
-                                   const utils::id& skeleton_id,
-                                   const utils::id& clip_id,
-                                   render::vulkan_render_data* render_data)
+                                  const utils::id& skeleton_id,
+                                  const utils::id& clip_id,
+                                  render::vulkan_render_data* render_data)
 {
     auto skel_it = m_skeletons.find(skeleton_id);
     if (skel_it == m_skeletons.end())
@@ -120,8 +120,8 @@ animation_system::create_instance(const utils::id& instance_id,
             layer.clip_id = clip_id;
             layer.weight = 1.0f;
             layer.playback_time = 0.0f;
-            layer.context =
-                std::make_unique<ozz::animation::SamplingJob::Context>(clip_it->second.num_tracks());
+            layer.context = std::make_unique<ozz::animation::SamplingJob::Context>(
+                clip_it->second.num_tracks());
             layer.locals.resize(reg.skeleton.num_soa_joints());
             inst.layers.push_back(std::move(layer));
         }
@@ -152,7 +152,7 @@ animation_system::destroy_instance(const utils::id& instance_id)
 
 void
 animation_system::set_blend_layers(const utils::id& instance_id,
-                                    const std::vector<blend_layer>& layers)
+                                   const std::vector<blend_layer>& layers)
 {
     auto inst_it = m_instances.find(instance_id);
     if (inst_it == m_instances.end())
@@ -196,8 +196,7 @@ animation_system::set_blend_layers(const utils::id& instance_id,
 }
 
 void
-animation_system::set_ik_two_bone(const utils::id& instance_id,
-                                   const ik_two_bone_params& params)
+animation_system::set_ik_two_bone(const utils::id& instance_id, const ik_two_bone_params& params)
 {
     auto it = m_instances.find(instance_id);
     if (it != m_instances.end())
@@ -208,8 +207,7 @@ animation_system::set_ik_two_bone(const utils::id& instance_id,
 }
 
 void
-animation_system::set_ik_aim(const utils::id& instance_id,
-                              const ik_aim_params& params)
+animation_system::set_ik_aim(const utils::id& instance_id, const ik_aim_params& params)
 {
     auto it = m_instances.find(instance_id);
     if (it != m_instances.end())
