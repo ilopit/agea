@@ -14,8 +14,7 @@ namespace core
 {
 
 object_load_context::object_load_context()
-    : m_path_prefix()
-    , m_proto_local_set()
+    : m_proto_local_set()
     , m_instance_local_set()
     , m_ownable_cache_ptr(nullptr)
 {
@@ -30,32 +29,13 @@ object_load_context::~object_load_context()
 bool
 object_load_context::make_full_path(const utils::path& relative_path, utils::path& p) const
 {
-    if (m_path_prefix.empty())
-    {
-        return false;
-    }
-
-    p = m_path_prefix;
-    p.append(relative_path);
-
-    return true;
+    return m_path_resolver.make_full_path(relative_path, p);
 }
 
 bool
 object_load_context::make_full_path(const utils::id& id, utils::path& p) const
 {
-    if (!m_object_mapping)
-    {
-        return false;
-    }
-
-    auto itr = m_object_mapping->m_items.find(id);
-    if (itr == m_object_mapping->m_items.end())
-    {
-        return false;
-    }
-
-    return make_full_path(itr->second.p, p);
+    return m_path_resolver.make_full_path(id, p);
 }
 
 bool
@@ -68,25 +48,15 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 
     m_ownable_cache_ptr->emplace_back(std::move(obj));
 
-    switch (get_construction_type())
-    {
-    case object_load_type::class_obj:
-    {
-        m_proto_local_set->map.add_item(obj_ref);
-
-        glob::glob_state().get_class_cache_map()->add_item(obj_ref);
-
-        break;
-    }
-    case object_load_type::instance_obj:
+    if (obj_ref.get_flags().instance_obj)
     {
         m_instance_local_set->map.add_item(obj_ref);
         glob::glob_state().get_instance_cache_map()->add_item(obj_ref);
-        break;
     }
-    default:
-        KRG_never("Unsupported type");
-        break;
+    else
+    {
+        m_proto_local_set->map.add_item(obj_ref);
+        glob::glob_state().get_class_cache_map()->add_item(obj_ref);
     }
 
     return true;

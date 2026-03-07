@@ -71,7 +71,7 @@ property::default_copy(property_context__copy& cxt)
     auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
-    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.occ};
+    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
     return cxt.dst_property->rtype->copy(type_ctx);
 }
 
@@ -92,7 +92,7 @@ property::default_instantiate(property_context__instantiate& cxt)
     auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                              cxt.dst_property->type.is_ptr);
 
-    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.occ};
+    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
 
     if (cxt.dst_property->rtype->instantiate)
     {
@@ -122,7 +122,7 @@ property::default_load(property_context__load& ctx)
         auto& container = *ctx.sc;
         if (container[ctx.dst_property->name].IsDefined())
         {
-            return load_item(*ctx.src_property, *ctx.dst_obj, *ctx.sc, *ctx.occ);
+            return load_item(*ctx.src_property, *ctx.dst_obj, *ctx.sc, ctx.ctor);
         }
         else
         {
@@ -132,7 +132,7 @@ property::default_load(property_context__load& ctx)
                                                      ctx.dst_property->type.is_ptr);
 
             KRG_check(ctx.dst_property->rtype->copy, "Should never happen!");
-            type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.occ};
+            type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.ctor};
             if (auto rc = ctx.dst_property->rtype->copy(type_ctx); rc != result_code::ok)
             {
                 return rc;
@@ -161,7 +161,7 @@ result_code
 property::deserialize_collection(reflection::property& p,
                                  root::smart_object& obj,
                                  const serialization::container& jc,
-                                 core::object_load_context& occ)
+                                 core::object_constructor* ctor)
 {
     auto ptr = (blob_ptr)&obj;
     auto items = jc[p.name];
@@ -181,7 +181,7 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* field_ptr = &r[idx];
-        type_context__load type_ctx{nullptr, (blob_ptr)field_ptr, &item, &occ};
+        type_context__load type_ctx{nullptr, (blob_ptr)field_ptr, &item, ctor};
         if (auto rc = p.rtype->load(type_ctx); rc != result_code::ok)
         {
             return rc;
@@ -203,7 +203,7 @@ result_code
 property::load_item(reflection::property& p,
                     root::smart_object& obj,
                     const serialization::container& jc,
-                    core::object_load_context& occ)
+                    core::object_constructor* ctor)
 {
     if (!jc[p.name])
     {
@@ -219,7 +219,7 @@ property::load_item(reflection::property& p,
     KRG_check(p.rtype->load, "Should never happen!");
 
     auto sub_jc = jc[p.name];
-    type_context__load type_ctx{nullptr, ptr, &sub_jc, &occ};
+    type_context__load type_ctx{nullptr, ptr, &sub_jc, ctor};
     return p.rtype->load(type_ctx);
 }
 

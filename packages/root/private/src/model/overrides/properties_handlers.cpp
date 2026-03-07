@@ -59,7 +59,7 @@ game_object_components_prototype(::kryga::reflection::property_context__prototyp
     {
         auto item = items[i];
 
-        auto result = core::object_constructor::object_load_internal(item, *ctx.occ);
+        auto result = ctx.ctor->load_obj(item);
 
         if (!result || !result.value() ||
             result.value()->get_architype_id() != core::architype::component)
@@ -155,8 +155,7 @@ game_object_components_copy(::kryga::reflection::property_context__copy& ctx)
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto result = core::object_constructor::object_clone_create_internal(
-            *src_col[i], gen->generate(src_col[i]->get_id()), *ctx.occ);
+        auto result = ctx.ctor->clone_obj(*src_col[i], gen->generate(src_col[i]->get_id()));
 
         if (!result)
         {
@@ -184,8 +183,7 @@ game_object_components_instantiate(reflection::property_context__instantiate& ct
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto result = core::object_constructor::object_instantiate_internal(
-            *src_col[i], src_col[i]->get_id(), *ctx.occ);
+        auto result = ctx.ctor->instantiate_obj(*src_col[i], src_col[i]->get_id());
 
         if (!result)
         {
@@ -242,16 +240,17 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
         {
             auto item = components[i];
 
-            auto result = core::object_constructor::object_load_internal(item, *ctx.occ);
+            auto result = ctx.ctor->load_obj(item);
 
             if (!result || !result.value() ||
                 result.value()->get_architype_id() != core::architype::component)
             {
                 auto comp_id = item["id"].IsDefined() ? item["id"].as<std::string>() : "unknown";
-                auto comp_class = item["class_id"].IsDefined() ? item["class_id"].as<std::string>()
-                                                               : "unknown";
-                ALOG_ERROR("Failed to load component [{}] (class [{}]) at index [{}] for object [{}]",
-                           comp_id, comp_class, i, ctx.dst_obj->get_id().cstr());
+                auto comp_class =
+                    item["class_id"].IsDefined() ? item["class_id"].as<std::string>() : "unknown";
+                ALOG_ERROR(
+                    "Failed to load component [{}] (class [{}]) at index [{}] for object [{}]",
+                    comp_id, comp_class, i, ctx.dst_obj->get_id().cstr());
                 return result_code::failed;
             }
 
@@ -267,7 +266,7 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
 
             auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
 
-            auto result = core::object_constructor::object_clone_create_internal(*c, gid, *ctx.occ);
+            auto result = ctx.ctor->clone_obj(*c, gid);
             if (!result)
             {
                 return result_code::fallback;
@@ -312,8 +311,7 @@ property_texture_slot__copy(::kryga::reflection::property_context__copy& ctx)
     // Clone texture
     if (src_slot.txt)
     {
-        auto result = core::object_constructor::object_clone_create_internal(
-            src_slot.txt->get_id(), src_slot.txt->get_id(), *ctx.occ);
+        auto result = ctx.ctor->clone_obj(*src_slot.txt, src_slot.txt->get_id());
 
         if (!result)
         {
@@ -344,13 +342,11 @@ property_texture_slot__instantiate(::kryga::reflection::property_context__instan
     // Instantiate texture
     if (src_slot.txt)
     {
-        root::smart_object* obj = ctx.occ->find_obj(src_slot.txt->get_id());
+        root::smart_object* obj = ctx.ctor->get_olc()->find_obj(src_slot.txt->get_id());
 
         if (!obj)
         {
-            std::vector<smart_object*> objs;
-            auto result = core::object_constructor::object_instantiate(
-                *src_slot.txt, src_slot.txt->get_id(), *ctx.occ, objs);
+            auto result = ctx.ctor->instantiate_obj(*src_slot.txt, src_slot.txt->get_id());
             if (!result)
             {
                 return result.error();
@@ -380,7 +376,7 @@ property_texture_slot__load(reflection::property_context__load& ctx)
     const auto texture_id = AID(item["texture"].as<std::string>());
 
     // Load texture
-    auto tex_result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
+    auto tex_result = ctx.ctor->load_obj(texture_id);
     if (!tex_result)
     {
         ALOG_ERROR("Texture doesn't exist: {}", texture_id.str());
@@ -399,7 +395,7 @@ property_texture_slot__load(reflection::property_context__load& ctx)
     if (item["sampler"] && item["sampler"].IsScalar())
     {
         const auto sampler_id = AID(item["sampler"].as<std::string>());
-        auto smp_result = core::object_constructor::object_load_internal(sampler_id, *ctx.occ);
+        auto smp_result = ctx.ctor->load_obj(sampler_id);
         if (smp_result)
         {
             tex_slot.smp = smp_result.value()->as<root::sampler>();

@@ -100,21 +100,24 @@ level_manager::load_level_path(level& l, const utils::path& path)
         }
     }
 
-    std::vector<root::smart_object*> loaded_obj;
-
-    for (auto& i : l.m_mapping->m_items)
     {
-        auto result = object_constructor::object_load(i.first, object_load_type::instance_obj,
-                                                      *l.m_occ, loaded_obj);
-
-        if (!result)
+        object_constructor ctor(l.m_occ.get(), object_load_type::instance_obj);
+        for (auto& i : l.m_mapping->m_items)
         {
-            return nullptr;
+            auto result = ctor.load_level_obj(i.first);
+
+            if (!result)
+            {
+                return nullptr;
+            }
         }
-
-        if (auto go = result.value()->as<root::game_object>())
+        auto loaded = l.m_occ->reset_loaded_objects();
+        for (auto& i : loaded)
         {
-            l.add_to_dirty_render_queue(go->get_root_component());
+            if (auto go = i->as<root::game_object>())
+            {
+                l.add_to_dirty_render_queue(go->get_root_component());
+            }
         }
     }
     l.m_state = level_state::loaded;

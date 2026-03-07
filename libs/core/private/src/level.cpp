@@ -5,7 +5,7 @@
 #include <packages/root/model/assets/shader_effect.h>
 
 #include <core/caches/caches_map.h>
-#include <core/object_load_context.h>
+#include <core/object_load_context_builder.h>
 #include <core/object_constructor.h>
 
 #include <global_state/global_state.h>
@@ -19,11 +19,12 @@ namespace core
 level::level(const utils::id& id)
     : container(id)
 {
-    m_occ = std::make_unique<object_load_context>();
-    m_occ->set_instance_local_set(&m_instance_local_cs)
-        .set_ownable_cache(&m_objects)
-        .set_objects_mapping(m_mapping)
-        .set_level(this);
+    m_occ = object_load_context_builder()
+               .set_instance_local_set(&m_instance_local_cs)
+               .set_ownable_cache(&m_objects)
+               .set_objects_mapping(m_mapping)
+               .set_level(this)
+               .build();
 }
 
 level::~level()
@@ -54,21 +55,15 @@ level::spawn_object_impl(const utils::id& proto_id,
         return nullptr;
     }
 
-    std::vector<root::smart_object*> loaded_obj;
-
-    m_occ->push_construction_type(object_load_type::instance_obj);
-
-    auto clone_result =
-        object_constructor::object_instantiate_internal(*proto_obj, object_id, *m_occ);
-    if (!clone_result)
+    object_constructor ctor(m_occ.get(), object_load_type::instance_obj);
+    auto inst_result = ctor.instantiate_obj(*proto_obj, object_id);
+    if (!inst_result)
     {
-        m_occ->pop_construction_type();
         return nullptr;
     }
-    auto result = clone_result.value();
+    auto result = inst_result.value();
 
-    m_occ->pop_construction_type();
-    m_occ->reset_loaded_objects(loaded_obj);
+    m_occ->reset_loaded_objects();
 
     auto obj = result->as<root::game_object>();
 
@@ -86,8 +81,6 @@ level::spawn_object_impl(const utils::id& proto_id,
     {
         obj->set_scale(prms.scale.value());
     }
-
-    result->post_load();
 
     add_to_dirty_render_queue(obj->get_root_component());
 
@@ -110,20 +103,15 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
 
     KRG_check(obj_to_clone->get_flags().instance_obj, "Should be always instance");
 
-    std::vector<root::smart_object*> loaded_obj;
-
-    m_occ->push_construction_type(object_load_type::instance_obj);
-
-    auto clone_result = object_constructor::object_clone_create_internal(*obj_to_clone, id, *m_occ);
+    object_constructor ctor(m_occ.get(), object_load_type::instance_obj);
+    auto clone_result = ctor.clone_obj(*obj_to_clone, id);
     if (!clone_result)
     {
-        m_occ->pop_construction_type();
         return nullptr;
     }
     auto result = clone_result.value();
 
-    m_occ->pop_construction_type();
-    m_occ->reset_loaded_objects(loaded_obj);
+    m_occ->reset_loaded_objects();
 
     auto obj = result->as<root::game_object>();
 
@@ -142,8 +130,6 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    result->post_load();
-
     add_to_dirty_render_queue(obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
@@ -156,7 +142,8 @@ level::spawn_object_impl(const utils::id& proto_id,
                          const utils::id& object_id,
                          const root::smart_object::construct_params& p)
 {
-    auto result = object_constructor::object_construct(proto_id, object_id, p, *m_occ);
+    object_constructor ctor(m_occ.get(), object_load_type::instance_obj);
+    auto result = ctor.construct_obj(proto_id, object_id, p);
     if (!result)
     {
         return nullptr;

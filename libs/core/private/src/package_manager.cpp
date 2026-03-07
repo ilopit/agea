@@ -177,18 +177,20 @@ package_manager::load_package(const utils::id& id)
 
     new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
 
-    std::vector<root::smart_object*> loaded_obj;
-    for (auto& i : mapping->m_items)
     {
-        KRG_check(i.second.is_class, "Load only package!");
-
-        auto result = object_constructor::object_load(i.first, object_load_type::class_obj,
-                                                      new_package->get_load_context(), loaded_obj);
-        if (!result)
+        object_constructor ctor(&new_package->get_load_context());
+        for (auto& i : mapping->m_items)
         {
-            ALOG_LAZY_ERROR;
-            return false;
+            KRG_check(i.second.is_class, "Load only package!");
+
+            auto result = ctor.load_package_obj(i.first);
+            if (!result)
+            {
+                ALOG_LAZY_ERROR;
+                return false;
+            }
         }
+        new_package->get_load_context().reset_loaded_objects();
     }
 
     new_package->set_state(package_state::loaded);

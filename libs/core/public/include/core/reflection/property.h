@@ -56,13 +56,13 @@ private:
     deserialize_collection(reflection::property& p,
                            root::smart_object& obj,
                            const serialization::container& sc,
-                           core::object_load_context& occ);
+                           core::object_constructor* ctor);
 
     static result_code
     load_item(reflection::property& p,
               root::smart_object& obj,
               const serialization::container& sc,
-              core::object_load_context& occ);
+              core::object_constructor* ctor);
 
     static result_code
     serialize_collection(const reflection::property& p,

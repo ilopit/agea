@@ -5,12 +5,9 @@
 #include "core/model_fwds.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/line_cache.h"
-#include "core/object_load_type.h"
-#include "core/objects_mapping.h"
+#include "core/path_resolver.h"
 
 #include <utils/path.h>
-
-#include <stack>
 
 namespace kryga
 {
@@ -18,6 +15,8 @@ namespace core
 {
 class object_load_context
 {
+    friend class object_load_context_builder;
+
 public:
     object_load_context();
     ~object_load_context();
@@ -47,19 +46,16 @@ public:
     find_obj(const utils::id& id, architype a_type);
 
     // clang-format off
-    object_load_context& set_proto_local_set     (cache_set* v)                             { m_proto_local_set = v; return *this; }
-    object_load_context& set_instance_local_set  (cache_set* v)                             { m_instance_local_set = v; return *this; }
-    object_load_context& set_level               (level* l)                                 { m_level = l; return *this; }
-    object_load_context& set_objects_mapping     (const std::shared_ptr<object_mapping>& v) { m_object_mapping = v; return *this; }
-    object_load_context& set_ownable_cache       (line_cache<root::smart_object_ptr>* v)    { m_ownable_cache_ptr = v; return *this; }
-    object_load_context& set_package             (package* p)                               { m_package = p; return *this; }
-    object_load_context& set_prefix_path         (const utils::path& v)                     { m_path_prefix = v; return *this; }
+    object_load_context& set_prefix_path         (const utils::path& v)                     { m_path_resolver.set_prefix_path(v); return *this; }
+    object_load_context& set_objects_mapping      (const std::shared_ptr<object_mapping>& v) { m_path_resolver.set_objects_mapping(v); return *this; }
 
     cache_set*          get_instance_local_set() const  { return m_instance_local_set; }
     package*            get_package() const             { return m_package; }
-    const utils::path&  get_prefix_path() const         { return m_path_prefix; }
+    const utils::path&  get_prefix_path() const         { return m_path_resolver.get_prefix_path(); }
     level*              get_level() const               { return m_level; }
-    object_mapping&     get_objects_mapping() const     { return *m_object_mapping; }
+    object_mapping&     get_objects_mapping() const     { return m_path_resolver.get_objects_mapping(); }
+
+    const path_resolver& get_path_resolver() const      { return m_path_resolver; }
 
     // clang-format on
     void
@@ -88,30 +84,8 @@ public:
         m_loaded_objects.push_back(o);
     }
 
-    void
-    push_construction_type(object_load_type v)
-    {
-        m_types.push(v);
-    }
-
-    object_load_type
-    get_construction_type()
-    {
-        KRG_check(!m_types.empty(), "Shouldn't be empty");
-        return m_types.top();
-    }
-
-    void
-    pop_construction_type()
-    {
-        if (!m_types.empty())
-        {
-            m_types.pop();
-        }
-    }
-
 private:
-    utils::path m_path_prefix;
+    path_resolver m_path_resolver;
 
     cache_set* m_proto_local_set = nullptr;
     cache_set* m_instance_local_set = nullptr;
@@ -120,10 +94,8 @@ private:
     level* m_level = nullptr;
 
     std::vector<root::smart_object*> m_loaded_objects;
-    std::shared_ptr<object_mapping> m_object_mapping;
 
     line_cache<root::smart_object_ptr>* m_ownable_cache_ptr;
-    std::stack<object_load_type> m_types;
 };
 }  // namespace core
 }  // namespace kryga

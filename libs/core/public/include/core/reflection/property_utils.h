@@ -38,7 +38,7 @@ struct property_context__copy
     property* dst_property = nullptr;
     root::smart_object* src_obj = nullptr;
     root::smart_object* dst_obj = nullptr;
-    core::object_load_context* occ = nullptr;
+    core::object_constructor* ctor = nullptr;
 };
 
 struct property_context__instantiate
@@ -47,7 +47,7 @@ struct property_context__instantiate
     property* dst_property = nullptr;
     root::smart_object* src_obj = nullptr;
     root::smart_object* dst_obj = nullptr;
-    core::object_load_context* occ = nullptr;
+    core::object_constructor* ctor = nullptr;
 };
 
 struct property_context__prototype
@@ -56,7 +56,7 @@ struct property_context__prototype
     property* dst_property = nullptr;
     root::smart_object* src_obj = nullptr;
     root::smart_object* dst_obj = nullptr;
-    core::object_load_context* occ = nullptr;
+    core::object_constructor* ctor = nullptr;
     const serialization::container* sc = nullptr;
 };
 
@@ -66,7 +66,7 @@ struct property_context__load
     property* dst_property = nullptr;
     root::smart_object* src_obj = nullptr;
     root::smart_object* dst_obj = nullptr;
-    core::object_load_context* occ = nullptr;
+    core::object_constructor* ctor = nullptr;
     const serialization::container* sc = nullptr;
 };
 

@@ -27,14 +27,14 @@ namespace kryga::root
 result_code
 load_smart_object(blob_ptr ptr,
                   const serialization::container& jc,
-                  core::object_load_context& occ,
+                  core::object_constructor& ctor,
                   core::architype a_type)
 {
     auto& field = reflection::utils::as_type<::kryga::root::smart_object*>(ptr);
 
     const auto id = AID(jc.as<std::string>());
 
-    auto result = core::object_constructor::object_load_internal(id, occ);
+    auto result = ctor.load_obj(id);
     if (!result)
     {
         return result.error();
@@ -98,10 +98,7 @@ smart_obj__instantiate(reflection::type_context__copy& ctx)
 
     KRG_check(!dst_subobj, "dst_subobj");
 
-    std::vector<root::smart_object*> objs;
-
-    auto result = core::object_constructor::object_instantiate(*src_subobj, src_subobj->get_id(),
-                                                               *ctx.occ, objs);
+    auto result = ctx.ctor->instantiate_obj(*src_subobj, src_subobj->get_id());
     if (!result)
     {
         return result.error();
@@ -123,7 +120,7 @@ smart_obj__save(reflection::type_context__save& ctx)
 kryga::result_code
 smart_obj__load(reflection::type_context__load& ctx)
 {
-    return load_smart_object(ctx.obj, *ctx.jc, *ctx.occ, core::architype::smart_object);
+    return load_smart_object(ctx.obj, *ctx.jc, *ctx.ctor, core::architype::smart_object);
 }
 
 kryga::result_code
@@ -169,8 +166,7 @@ texture_slot__copy(reflection::type_context__copy& ctx)
     // Clone texture
     if (src_slot.txt)
     {
-        auto clone_result = core::object_constructor::object_clone_create_internal(
-            src_slot.txt->get_id(), src_slot.txt->get_id(), *ctx.occ);
+        auto clone_result = ctx.ctor->clone_obj(*src_slot.txt, src_slot.txt->get_id());
 
         if (!clone_result)
         {
@@ -198,8 +194,7 @@ texture_slot__instantiate(reflection::type_context__copy& ctx)
     // Clone texture
     if (src_slot.txt)
     {
-        auto clone_result = core::object_constructor::object_clone_create_internal(
-            src_slot.txt->get_id(), src_slot.txt->get_id(), *ctx.occ);
+        auto clone_result = ctx.ctor->clone_obj(*src_slot.txt, src_slot.txt->get_id());
 
         if (!clone_result)
         {
@@ -223,7 +218,7 @@ texture_slot__load(reflection::type_context__load& ctx)
     const auto texture_id = AID((*ctx.jc)["texture"].as<std::string>());
 
     // Load texture
-    auto tex_result = core::object_constructor::object_load_internal(texture_id, *ctx.occ);
+    auto tex_result = ctx.ctor->load_obj(texture_id);
     if (!tex_result)
     {
         ALOG_ERROR("Texture doesn't exist: {}", texture_id.str());
@@ -243,7 +238,7 @@ texture_slot__load(reflection::type_context__load& ctx)
     if (jc["sampler"] && jc["sampler"].IsScalar())
     {
         const auto sampler_id = AID(jc["sampler"].as<std::string>());
-        auto smp_result = core::object_constructor::object_load_internal(sampler_id, *ctx.occ);
+        auto smp_result = ctx.ctor->load_obj(sampler_id);
         if (smp_result)
         {
             tex_slot.smp = smp_result.value()->as<root::sampler>();
@@ -287,7 +282,7 @@ buffer__load(reflection::type_context__load& ctx)
 
     utils::path package_path;
 
-    if (!ctx.occ->make_full_path(rel_path, package_path))
+    if (!ctx.ctor->get_olc()->make_full_path(rel_path, package_path))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;

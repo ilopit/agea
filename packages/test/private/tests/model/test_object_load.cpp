@@ -38,6 +38,47 @@ using namespace kryga;
 namespace
 {
 
+// Convenience wrappers around v2 API for test code
+std::expected<root::smart_object*, result_code>
+test_object_load(const utils::id& id,
+                 core::object_load_type type,
+                 core::object_load_context& occ,
+                 std::vector<root::smart_object*>& loaded_obj)
+{
+    auto old_objects = occ.reset_loaded_objects();
+    core::object_constructor ctor(&occ, type);
+    auto result = ctor.load_obj(id);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+    return result;
+}
+
+std::expected<root::smart_object*, result_code>
+test_object_clone(root::smart_object& src,
+                  core::object_load_type type,
+                  const utils::id& new_id,
+                  core::object_load_context& occ,
+                  std::vector<root::smart_object*>& loaded_obj)
+{
+    auto old_objects = occ.reset_loaded_objects();
+    core::object_constructor ctor(&occ, type);
+    auto result = ctor.clone_obj(src, new_id);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+    return result;
+}
+
+std::expected<root::smart_object*, result_code>
+test_object_instantiate(root::smart_object& src,
+                        const utils::id& new_id,
+                        core::object_load_context& occ,
+                        std::vector<root::smart_object*>& loaded_obj)
+{
+    auto old_objects = occ.reset_loaded_objects();
+    core::object_constructor ctor(&occ, core::object_load_type::instance_obj);
+    auto result = ctor.instantiate_obj(src, new_id);
+    occ.reset_loaded_objects(old_objects, loaded_obj);
+    return result;
+}
+
 void
 validate_empty_cache(gs::state& gs)
 {
@@ -121,8 +162,8 @@ round_trip_save_load(root::smart_object& obj,
     reload_lc.get_objects_mapping().add(reload_id, false, APATH(save_path.file_name()));
 
     std::vector<root::smart_object*> reloaded;
-    auto result = core::object_constructor::object_load(
-        reload_id, core::object_load_type::instance_obj, reload_lc, reloaded);
+    auto result =
+        test_object_load(reload_id, core::object_load_type::instance_obj, reload_lc, reloaded);
 
     if (!result.has_value())
         return nullptr;
@@ -265,8 +306,8 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
              APATH("game_objects/test_complex_mesh_object.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto result = core::object_constructor::object_load(
-        AID("test_complex_mesh_object"), core::object_load_type::class_obj, lc, loaded);
+    auto result = test_object_load(AID("test_complex_mesh_object"),
+                                   core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -322,8 +363,7 @@ TEST_F(test_preloaded_test_package, load_class_object_by_id)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto result = test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -344,8 +384,8 @@ TEST_F(test_preloaded_test_package, load_instance_object_by_id)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::instance_obj, lc, loaded);
+    auto result =
+        test_object_load(AID("test_obj"), core::object_load_type::instance_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -365,16 +405,16 @@ TEST_F(test_preloaded_test_package, object_clone_class_object)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto src = load_result.value();
     ASSERT_TRUE(verify_flags(*src, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*src));
 
     std::vector<root::smart_object*> cloned_objs;
-    auto clone_result = core::object_constructor::object_clone(
-        *src, core::object_load_type::class_obj, AID("test_obj_clone"), lc, cloned_objs);
+    auto clone_result = test_object_clone(*src, core::object_load_type::class_obj,
+                                          AID("test_obj_clone"), lc, cloned_objs);
 
     ASSERT_TRUE(clone_result.has_value());
     auto cloned = clone_result.value();
@@ -394,17 +434,16 @@ TEST_F(test_preloaded_test_package, object_clone_as_instance)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto src = load_result.value();
     ASSERT_TRUE(verify_flags(*src, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*src));
 
     std::vector<root::smart_object*> cloned_objs;
-    auto clone_result =
-        core::object_constructor::object_clone(*src, core::object_load_type::instance_obj,
-                                               AID("test_obj_instance_clone"), lc, cloned_objs);
+    auto clone_result = test_object_clone(*src, core::object_load_type::instance_obj,
+                                          AID("test_obj_instance_clone"), lc, cloned_objs);
 
     ASSERT_TRUE(clone_result.has_value());
     auto cloned = clone_result.value();
@@ -423,16 +462,16 @@ TEST_F(test_preloaded_test_package, object_instantiate_from_proto)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
 
     auto proto = load_result.value();
     ASSERT_TRUE(validate_class_obj(*proto));
 
     std::vector<root::smart_object*> instantiated_objs;
-    auto inst_result = core::object_constructor::object_instantiate(
-        *proto, AID("test_obj_instance"), lc, instantiated_objs);
+    auto inst_result =
+        test_object_instantiate(*proto, AID("test_obj_instance"), lc, instantiated_objs);
 
     ASSERT_TRUE(inst_result.has_value());
     auto instance = inst_result.value();
@@ -452,8 +491,8 @@ TEST_F(test_preloaded_test_package, diff_object_properties_same_objects)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded1;
-    auto result1 = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
+    auto result1 =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
     ASSERT_TRUE(result1.has_value());
     ASSERT_TRUE(verify_flags(*result1.value(), {.instance_obj = false, .derived_obj = true}));
     ASSERT_TRUE(validate_class_obj(*result1.value()));
@@ -477,10 +516,10 @@ TEST_F(test_preloaded_test_package, diff_object_properties_different_types_fails
         .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"));
 
     std::vector<root::smart_object*> loaded1, loaded2;
-    auto result1 = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
-    auto result2 = core::object_constructor::object_load(
-        AID("test_mesh"), core::object_load_type::class_obj, lc, loaded2);
+    auto result1 =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
+    auto result2 =
+        test_object_load(AID("test_mesh"), core::object_load_type::class_obj, lc, loaded2);
 
     ASSERT_TRUE(result1.has_value());
     ASSERT_TRUE(result2.has_value());
@@ -502,8 +541,8 @@ TEST_F(test_preloaded_test_package, load_nonexistent_object_fails)
     lc.set_prefix_path(obj_path);
 
     std::vector<root::smart_object*> loaded;
-    auto result = core::object_constructor::object_load(
-        AID("nonexistent_object"), core::object_load_type::class_obj, lc, loaded);
+    auto result =
+        test_object_load(AID("nonexistent_object"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_FALSE(result.has_value());
     ASSERT_EQ(result.error(), result_code::path_not_found);
@@ -519,8 +558,8 @@ TEST_F(test_preloaded_test_package, load_invalid_path_fails)
                                  APATH("game_objects/does_not_exist.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto result = core::object_constructor::object_load(
-        AID("does_not_exist"), core::object_load_type::class_obj, lc, loaded);
+    auto result =
+        test_object_load(AID("does_not_exist"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_FALSE(result.has_value());
 }
@@ -534,10 +573,10 @@ TEST_F(test_preloaded_test_package, cached_object_returns_same_pointer)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded1, loaded2;
-    auto result1 = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
-    auto result2 = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded2);
+    auto result1 =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded1);
+    auto result2 =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded2);
 
     ASSERT_TRUE(result1.has_value());
     ASSERT_TRUE(result2.has_value());
@@ -559,8 +598,8 @@ TEST_F(test_preloaded_test_package, object_instantiate_complex_object_with_compo
              APATH("game_objects/test_complex_mesh_object.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_complex_mesh_object"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result = test_object_load(AID("test_complex_mesh_object"),
+                                        core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
 
     auto proto = load_result.value()->as<root::game_object>();
@@ -568,8 +607,8 @@ TEST_F(test_preloaded_test_package, object_instantiate_complex_object_with_compo
     ASSERT_TRUE(validate_class_obj(*proto));
 
     std::vector<root::smart_object*> instantiated_objs;
-    auto inst_result = core::object_constructor::object_instantiate(*proto, AID("complex_instance"),
-                                                                    lc, instantiated_objs);
+    auto inst_result =
+        test_object_instantiate(*proto, AID("complex_instance"), lc, instantiated_objs);
 
     ASSERT_TRUE(inst_result.has_value());
     auto instance = inst_result.value()->as<root::game_object>();
@@ -603,8 +642,8 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
         .add(AID("test_complex_mesh_object"), false,
              APATH("game_objects/test_complex_mesh_object.aobj"));
 
-    auto result = core::object_constructor::object_load(
-        AID("test_complex_mesh_object"), core::object_load_type::instance_obj, lc, loaded);
+    auto result = test_object_load(AID("test_complex_mesh_object"),
+                                   core::object_load_type::instance_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -655,8 +694,8 @@ TEST_F(test_preloaded_test_package, object_construct_in_package_context)
     root::game_object::construct_params params;
     params.pos = {1.0f, 2.0f, 3.0f};
 
-    auto result = core::object_constructor::object_construct(
-        AID("game_object"), AID("constructed_game_object"), params, lc);
+    auto result = core::object_constructor(&lc).construct_obj(
+        AID("game_object"), AID("constructed_game_object"), params);
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
@@ -680,8 +719,8 @@ TEST_F(test_preloaded_test_package, object_construct_invalid_type_fails)
 
     root::smart_object::construct_params params;
 
-    auto result = core::object_constructor::object_construct(AID("nonexistent_type_xyz"),
-                                                             AID("should_fail"), params, lc);
+    auto result = core::object_constructor(&lc).construct_obj(AID("nonexistent_type_xyz"),
+                                                              AID("should_fail"), params);
 
     ASSERT_FALSE(result.has_value());
     ASSERT_EQ(result.error(), result_code::id_not_found);
@@ -697,8 +736,8 @@ TEST_F(test_preloaded_test_package, object_construct_in_level_context)
     root::game_object::construct_params params;
     params.pos = {5.0f, 6.0f, 7.0f};
 
-    auto result = core::object_constructor::object_construct(
-        AID("game_object"), AID("level_constructed_object"), params, lc);
+    auto result = core::object_constructor(&lc).construct_obj(
+        AID("game_object"), AID("level_constructed_object"), params);
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
@@ -728,8 +767,8 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
                                  APATH("game_objects/test_obj_custom_layout.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value()->as<root::game_object>();
@@ -762,8 +801,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_simple)
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value()->as<root::game_object>();
     ASSERT_TRUE(obj);
@@ -808,8 +847,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
              APATH("game_objects/test_complex_mesh_object.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_complex_mesh_object"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result = test_object_load(AID("test_complex_mesh_object"),
+                                        core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value()->as<root::game_object>();
     ASSERT_TRUE(obj);
@@ -845,8 +884,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_material)
                                  APATH("game_objects/test_material.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_material"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_material"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto material = load_result.value()->as<base::simple_texture_material>();
     ASSERT_TRUE(material);
@@ -878,8 +917,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_idempotent)
                                  APATH("game_objects/test_obj_custom_layout.aobj"));
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = core::object_constructor::object_load(
-        AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result =
+        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value();
 
@@ -908,8 +947,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
 
     // Construct a game_object via object_construct
     root::game_object::construct_params params;
-    auto construct_result = core::object_constructor::object_construct(
-        AID("game_object"), AID("rt_constructed_proto"), params, lc);
+    auto construct_result = core::object_constructor(&lc).construct_obj(
+        AID("game_object"), AID("rt_constructed_proto"), params);
     ASSERT_TRUE(construct_result.has_value());
     auto proto = construct_result.value();
     ASSERT_TRUE(proto);
@@ -919,8 +958,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
 
     // Clone as class_obj to get a derived object that has class_obj set (required for save)
     std::vector<root::smart_object*> cloned_objs;
-    auto clone_result = core::object_constructor::object_clone(
-        *proto, core::object_load_type::class_obj, AID("rt_constructed_derived"), lc, cloned_objs);
+    auto clone_result = test_object_clone(*proto, core::object_load_type::class_obj,
+                                          AID("rt_constructed_derived"), lc, cloned_objs);
     ASSERT_TRUE(clone_result.has_value());
     auto derived = clone_result.value();
     ASSERT_TRUE(derived);

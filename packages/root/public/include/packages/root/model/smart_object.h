@@ -16,14 +16,14 @@
 #include <bitset>
 
 #define KRG_gen_class_meta_super(t) \
-    using this_class = t;            \
-    using base_class = t;            \
-    t();                             \
-    virtual ~t();                    \
-    t(t&) = delete;                  \
+    using this_class = t;           \
+    using base_class = t;           \
+    t();                            \
+    virtual ~t();                   \
+    t(t&) = delete;                 \
     t& operator=(t&) = delete;
 
-#define KRG_gen_class_meta(t, b)     \
+#define KRG_gen_class_meta(t, b)      \
     using this_class = t;             \
     using base_class = b::this_class; \
     t();                              \
@@ -33,19 +33,19 @@
 
 #define KRG_gen_construct_params struct construct_params : base_class::construct_params
 
-#define KRG_gen_meta_api                                                                     \
-                                                                                              \
+#define KRG_gen_meta_api                                                                       \
+                                                                                               \
     static ::kryga::utils::id AR_TYPE_id();                                                    \
-                                                                                              \
+                                                                                               \
     static const ::kryga::reflection::reflection_type& AR_TYPE_reflection();                   \
-                                                                                              \
+                                                                                               \
     virtual bool META_construct(const ::kryga::root::base_construct_params& i);                \
-                                                                                              \
+                                                                                               \
     static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::kryga::utils::id& id); \
-                                                                                              \
+                                                                                               \
     static std::shared_ptr<::kryga::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
-        ::kryga::reflection::type_context__alloc& ctx);                                         \
-                                                                                              \
+        ::kryga::reflection::type_context__alloc& ctx);                                        \
+                                                                                               \
     static std::unique_ptr<::kryga::root::base_construct_params>                               \
     AR_TYPE_create_gen_default_cparams();
 

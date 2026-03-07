@@ -58,9 +58,10 @@ game_object::spawn_component(component* parent,
 {
     KRG_check(((bool)m_package != (bool)m_level), "Only one should be set!");
 
-    auto result = core::object_constructor::object_construct(
-        type_id, id, params,
-        m_package ? m_package->get_load_context() : m_level->get_load_context());
+    auto& occ = m_package ? m_package->get_load_context() : m_level->get_load_context();
+    auto mode = m_level ? core::object_load_type::instance_obj : core::object_load_type::class_obj;
+    core::object_constructor ctor(&occ, mode);
+    auto result = ctor.construct_obj(type_id, id, params);
 
     if (!result)
     {
@@ -83,17 +84,16 @@ game_object::spawn_component_with_proto(component* parent,
                                         const utils::id& id)
 {
     auto& occ = m_package ? m_package->get_load_context() : m_level->get_load_context();
+    auto mode = m_level ? core::object_load_type::instance_obj : core::object_load_type::class_obj;
+    core::object_constructor ctor(&occ, mode);
 
     auto proto_obj = occ.find_proto_obj(proto_id);
 
-    std::vector<root::smart_object*> loaded_obj;
     if (!proto_obj)
     {
         ALOG_TRACE("Proto [{}] doesn't exist", proto_id.cstr());
 
-        auto load_result = core::object_constructor::object_load(
-            proto_id, core::object_load_type::class_obj, occ, loaded_obj);
-
+        auto load_result = ctor.load_obj(proto_id);
         if (!load_result)
         {
             return nullptr;
@@ -101,36 +101,24 @@ game_object::spawn_component_with_proto(component* parent,
         proto_obj = load_result.value();
     }
 
-    loaded_obj.clear();
-
-    auto type = occ.get_construction_type();
-
     root::smart_object* result = nullptr;
-    if (type == core::object_load_type::class_obj)
+    if (mode == core::object_load_type::class_obj)
     {
-        std::vector<root::smart_object*> objects;
-        auto clone_result = core::object_constructor::object_clone(
-            *proto_obj, core::object_load_type::class_obj, id, occ, objects);
+        auto clone_result = ctor.clone_obj(*proto_obj, id);
         if (!clone_result)
         {
             return nullptr;
         }
         result = clone_result.value();
-
-        occ.reset_loaded_objects();
     }
-    else if (type == core::object_load_type::instance_obj)
+    else if (mode == core::object_load_type::instance_obj)
     {
-        std::vector<root::smart_object*> objects;
-        auto inst_result =
-            core::object_constructor::object_instantiate(*proto_obj, id, occ, objects);
+        auto inst_result = ctor.instantiate_obj(*proto_obj, id);
         if (!inst_result)
         {
             return nullptr;
         }
         result = inst_result.value();
-
-        occ.reset_loaded_objects();
     }
 
     auto com = result->as<component>();

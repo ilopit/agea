@@ -36,7 +36,7 @@ struct type_context__load
     root::smart_object* owner_obj = nullptr;
     blob_ptr obj = nullptr;
     const serialization::container* jc = nullptr;
-    core::object_load_context* occ = nullptr;
+    core::object_constructor* ctor = nullptr;
 };
 
 struct type_context__copy
@@ -47,7 +47,7 @@ struct type_context__copy
     root::smart_object* src_owner_obj = nullptr;
     blob_ptr dst_obj = nullptr;
 
-    core::object_load_context* occ = nullptr;
+    core::object_constructor* ctor = nullptr;
 };
 
 struct type_context__compare

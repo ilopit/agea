@@ -34,6 +34,7 @@ class cache_set;
 class cache_set_ref;
 class class_objects_cache;
 class object_load_context;
+class object_constructor;
 class level;
 class package;
 class static_package;

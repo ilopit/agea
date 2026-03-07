@@ -2,7 +2,7 @@
 
 #include "core/caches/caches_map.h"
 
-#include "core/object_load_context.h"
+#include "core/object_load_context_builder.h"
 #include "core/object_constructor.h"
 
 #include <utils/kryga_log.h>
@@ -66,13 +66,12 @@ package::unload()
 bool
 package::init()
 {
-    m_occ = std::make_unique<object_load_context>();
-    m_occ->set_package(this)
-        .set_proto_local_set(&m_proto_local_cs)
-        .set_ownable_cache(&m_objects)
-        .set_instance_local_set(&m_instance_local_cs);
-
-    m_occ->push_construction_type(object_load_type::class_obj);
+    m_occ = object_load_context_builder()
+               .set_package(this)
+               .set_proto_local_set(&m_proto_local_cs)
+               .set_ownable_cache(&m_objects)
+               .set_instance_local_set(&m_instance_local_cs)
+               .build();
 
     auto path = glob::glob_state().get_resource_locator()->resource(category::packages,
                                                                     m_id.str() + ".apkg");
@@ -173,18 +172,19 @@ package::destroy_render_types()
 void
 package::load_dynamic_part()
 {
+    object_constructor ctor(m_occ.get());
     for (auto& i : m_occ->get_objects_mapping().m_items)
     {
         if (i.second.is_class)
         {
-            std::vector<root::smart_object*> objcs;
-            auto obj = object_constructor::object_load(i.first, object_load_type::class_obj, *m_occ,
-                                                       objcs);
-            objcs.clear();
-
-            object_constructor::object_instantiate(*obj.value(), i.first, *m_occ, objcs);
+            auto obj = ctor.load_package_obj(i.first);
+            if (obj)
+            {
+                ctor.instantiate_obj(*obj.value(), i.first);
+            }
         }
     }
+    m_occ->reset_loaded_objects();
 }
 
 void
@@ -237,12 +237,13 @@ package::finalize_reflection()
 void
 package::create_default_types_objects()
 {
+    object_constructor ctor(m_occ.get());
     for (auto& [id, rt] : m_rts)
     {
         if (rt->type_class == reflection::reflection_type::reflection_type_class::kryga_class &&
             !m_occ->find_proto_obj(id))
         {
-            auto result = object_constructor::create_default_class_proto(id, *m_occ);
+            auto result = ctor.load_package_obj(id);
             if (!result)
             {
                 ALOG_ERROR("Failed to create default type object for {}", id.str());

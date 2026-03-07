@@ -71,74 +71,51 @@ class object_constructor
 public:
     // Public API
 
-    static std::expected<root::smart_object*, result_code>
-    object_load(const utils::id& id,
-                object_load_type type,
-                object_load_context& occ,
-                std::vector<root::smart_object*>& loaded_obj);
-
-    static std::expected<root::smart_object*, result_code>
-    object_construct(const utils::id& type_id,
-                     const utils::id& id,
-                     const root::smart_object::construct_params& p,
-                     object_load_context& olc);
-
-    static std::expected<root::smart_object*, result_code>
-    object_clone(root::smart_object& src,
-                 object_load_type type,
-                 const utils::id& new_object_id,
-                 object_load_context& occ,
-                 std::vector<root::smart_object*>& loaded_obj);
-
-    static std::expected<root::smart_object*, result_code>
-    object_instantiate(root::smart_object& proto_obj,
-                       const utils::id& new_object_id,
-                       object_load_context& occ,
-                       std::vector<root::smart_object*>& loaded_obj);
-
-    template <typename T>
-    static result_code
-    destroy_default_class_obj_impl(object_load_context& occ)
+    object_constructor(object_load_context* olc,
+                       object_load_type mode = object_load_type::class_obj)
+        : m_olc(olc)
+        , m_mode(mode)
     {
-        destroy_default_class_obj_impl(T::AR_TYPE_reflection().type_name, occ);
-
-        return result_code::ok;
     }
 
-    // Utils
-    static result_code
-    object_save(const root::smart_object& obj, const utils::path& object_path);
+    object_load_context*
+    get_olc() const
+    {
+        return m_olc;
+    }
 
-    static std::expected<root::smart_object*, result_code>
-    object_clone_create_internal(const utils::id& src_object_id,
-                                 const utils::id& new_object_id,
-                                 object_load_context& occ);
+    object_load_type
+    get_mode() const
+    {
+        return m_mode;
+    }
 
-    static std::expected<root::smart_object*, result_code>
-    object_clone_create_internal(root::smart_object& src,
-                                 const utils::id& new_object_id,
-                                 object_load_context& occ);
+    std::expected<root::smart_object*, result_code>
+    load_package_obj(const utils::id& id);
 
-    static std::expected<root::smart_object*, result_code>
-    object_instantiate_internal(root::smart_object& src,
-                                const utils::id& new_object_id,
-                                object_load_context& occ);
+    std::expected<root::smart_object*, result_code>
+    load_level_obj(const utils::id& id);
 
-    static result_code
-    load_derive_object_properties(root::smart_object& from,
-                                  root::smart_object& to,
-                                  const serialization::container& c,
-                                  object_load_context& occ);
+    // Context-aware load — dispatches based on construction type stack
+    std::expected<root::smart_object*, result_code>
+    load_obj(const utils::id& id);
 
-    static result_code
-    clone_object_properties(root::smart_object& from,
-                            root::smart_object& to,
-                            object_load_context& occ);
+    std::expected<root::smart_object*, result_code>
+    load_obj(serialization::container& c);
 
-    static result_code
-    instantiate_object_properties(root::smart_object& from,
-                                  root::smart_object& to,
-                                  object_load_context& occ);
+    std::expected<root::smart_object*, result_code>
+    instantiate_obj(root::smart_object& proto, const utils::id& new_id);
+
+    // Uses construction type from stack to determine flags
+    std::expected<root::smart_object*, result_code>
+    clone_obj(root::smart_object& src, const utils::id& new_id);
+
+    std::expected<root::smart_object*, result_code>
+    construct_obj(const utils::id& type_id,
+                  const utils::id& id,
+                  const root::smart_object::construct_params& params);
+
+    // Static utilities (no OLC context needed)
 
     static result_code
     diff_object_properties(const root::smart_object& left,
@@ -146,40 +123,55 @@ public:
                            std::vector<reflection::property*>& diff);
 
     static result_code
+    object_save(const root::smart_object& obj, const utils::path& object_path);
+
+    static result_code
     object_properties_save(const root::smart_object& obj, serialization::container& jc);
-
-    static std::expected<root::smart_object*, result_code>
-    alloc_empty_object(const utils::id& type_id,
-                       const utils::id& id,
-                       root::smart_object_flags flags,
-                       root::smart_object* parent_object,
-                       object_load_context& olc);
-
-    static std::expected<root::smart_object*, result_code>
-    object_load_internal(const utils::id& id, object_load_context& occ);
-
-    static std::expected<root::smart_object*, result_code>
-    object_load_internal(serialization::container& c, object_load_context& occ);
-
-    static std::expected<root::smart_object*, result_code>
-    preload_proto(const utils::id& id, object_load_context& occ);
-
-    static std::expected<root::smart_object*, result_code>
-    create_default_class_proto(const utils::id& id, object_load_context& olc);
 
     template <typename T>
     static std::shared_ptr<T>
     alloc_empty_object(const utils::id& id = T::AR_TYPE_id())
     {
-        auto empty = T::AR_TYPE_create_empty_obj(id);
+        return T::AR_TYPE_create_empty_obj(id);
+    }
 
-        return empty;
+    template <typename T>
+    static result_code
+    destroy_default_class_obj_impl(object_load_context& occ)
+    {
+        destroy_default_class_obj_impl(T::AR_TYPE_reflection().type_name, occ);
+        return result_code::ok;
     }
 
 private:
-    static std::expected<root::smart_object*, result_code>
-    create_default_class_obj_impl(std::shared_ptr<root::smart_object> empty,
-                                  object_load_context& olc);
+    std::expected<root::smart_object*, result_code>
+    create_default_class_obj_impl(reflection::reflection_type* rt);
+
+    std::expected<root::smart_object*, result_code>
+    object_load_internal(serialization::container& c);
+
+    result_code
+    load_derive_object_properties(root::smart_object& from,
+                                  root::smart_object& to,
+                                  const serialization::container& c);
+
+    std::expected<root::smart_object*, result_code>
+    preload_proto(const utils::id& id);
+
+    std::expected<root::smart_object*, result_code>
+    object_load_derive(root::smart_object& prototype_obj, serialization::container& sc);
+
+    std::expected<root::smart_object*, result_code>
+    alloc_empty_object(const utils::id& type_id,
+                       const utils::id& id,
+                       root::smart_object_flags flags,
+                       root::smart_object* parent_object);
+
+    result_code
+    clone_object_properties(root::smart_object& from, root::smart_object& to);
+
+    result_code
+    instantiate_object_properties(root::smart_object& from, root::smart_object& to);
 
     static result_code
     destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
@@ -187,13 +179,11 @@ private:
     static result_code
     object_save_full(serialization::container& sc, const root::smart_object& obj);
 
-    static std::expected<root::smart_object*, result_code>
-    object_load_derive(root::smart_object& prototype_obj,
-                       serialization::container& sc,
-                       object_load_context& occ);
-
     static result_code
     object_save_internal(serialization::container& sc, const root::smart_object& obj);
+
+    object_load_context* m_olc = nullptr;
+    object_load_type m_mode = object_load_type::class_obj;
 };
 
 }  // namespace core
