@@ -47,8 +47,10 @@ render_device::~render_device() = default;
 bool
 render_device::construct(construct_params& params)
 {
-    auto width = params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
-    auto height = params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
+    auto width =
+        params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
+    auto height =
+        params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     init_vulkan(params.window, params.headless);
 

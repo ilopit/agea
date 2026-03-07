@@ -93,15 +93,12 @@ vulkan_image::clear()
         return;
     }
 
+    auto& rd = glob::glob_state().getr_render_device();
+
     if (m_allocator)
     {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vk, VmaAllocator va) { vmaDestroyImage(va, m_image, m_allocation); });
-    }
-    else
-    {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vk, VmaAllocator va) { vkDestroyImage(vk, m_image, nullptr); });
+        rd.delete_immediately([=](VkDevice vk, VmaAllocator va)
+                              { vmaDestroyImage(va, m_image, m_allocation); });
     }
 
     m_image = VK_NULL_HANDLE;

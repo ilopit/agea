@@ -216,10 +216,10 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__input_manager::set(gs);
     glob::set_input_provider(glob::glob_state().get_input_manager());
     state_mutator__render_device::set(gs);
+    state_mutator__vulkan_render::set(gs);
     state_mutator__vulkan_render_loader::set(gs);
     state_mutator__ui::set(gs);
     state_mutator__native_window::set(gs);
-    state_mutator__vulkan_render::set(gs);
     state_mutator__engine_counters::set(gs);
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
@@ -281,6 +281,8 @@ void
 vulkan_engine::cleanup()
 {
     glob::set_input_provider(nullptr);
+
+    m_sync_service->stop();
 
     glob::glob_state().get_render_device()->wait_for_fences();
 

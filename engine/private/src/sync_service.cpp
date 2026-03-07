@@ -197,6 +197,7 @@ sync_service::start()
     if (result)
     {
         m_main_thread = std::thread(sync_service::server_main, this);
+        m_main_thread.detach();
     }
     else
     {
@@ -207,16 +208,7 @@ sync_service::start()
 void
 sync_service::stop()
 {
-    bool e = true;
-    auto result = m_is_running.compare_exchange_strong(e, false);
-    if (result)
-    {
-        m_main_thread.join();
-    }
-    else
-    {
-        ALOG_ERROR("Server already stopped!");
-    }
+    auto result = m_is_running = false;
 }
 
 void
