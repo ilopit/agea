@@ -14,16 +14,11 @@ namespace root
 class material;
 }  // namespace root
 
-namespace render
-{
-class vulkan_render_data;
-}  // namespace render
-
 namespace base
 {
 // clang-format off
-KRG_ar_class(render_constructor = animated_mesh_component__render_loader,
-              render_destructor  = animated_mesh_component__render_destructor);
+KRG_ar_class(render_cmd_builder   = animated_mesh_component__cmd_builder,
+              render_cmd_destroyer = animated_mesh_component__cmd_destroyer);
 class animated_mesh_component : public ::kryga::root::game_object_component
 // clang-format on
 {
@@ -42,16 +37,17 @@ public:
     bool
     construct(construct_params& c);
 
-    render::vulkan_render_data*
-    get_render_object_data() const
+    float
+    get_base_bounding_radius() const
     {
-        return m_render_handle;
+        return m_base_bounding_radius;
     }
     void
-    set_render_object_data(render::vulkan_render_data* v)
+    set_base_bounding_radius(float r)
     {
-        m_render_handle = v;
+        m_base_bounding_radius = r;
     }
+
     const utils::id&
     get_animation_instance_id() const
     {
@@ -106,7 +102,7 @@ protected:
     bool m_playing = true;
 
     // Runtime state (not serialized)
-    render::vulkan_render_data* m_render_handle = nullptr;
+    float m_base_bounding_radius = 0.0f;
     utils::id m_anim_instance_id;
     utils::id m_skeleton_id;
 };

@@ -11,10 +11,12 @@
 #include <core/model_fwds.h>
 
 #include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <future>
 #include <memory>
 #include <mutex>
+#include <thread>
 #include <vector>
 #include <unordered_map>
 
@@ -101,6 +103,9 @@ private:
 
     // clang-format on
 
+    void
+    render_thread_func();
+
     float m_run_for_seconds = 0.f;  // 0 = unlimited
 
     gpu::camera_data m_camera_data;
@@ -108,6 +113,15 @@ private:
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
     std::unique_ptr<sync_service> m_sync_service;
+
+    // Render thread synchronization (lock-step)
+    std::thread m_render_thread;
+    std::mutex m_render_mutex;
+    std::condition_variable m_render_cv;
+    std::condition_variable m_main_cv;
+    bool m_render_work_ready = false;
+    bool m_render_done = true;
+    bool m_render_shutdown = false;
 };
 
 }  // namespace kryga

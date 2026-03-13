@@ -1,4 +1,6 @@
 #include "render_bridge/render_bridge.h"
+#include "render_bridge/render_command_processor.h"
+#include "render_bridge/render_commands_common.h"
 
 #include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
@@ -9,6 +11,7 @@
 #include <glue/type_ids.ar.h>
 
 #include <vulkan_render/utils/vulkan_initializers.h>
+#include <vulkan_render/types/vulkan_render_data.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/types/vulkan_material_data.h>
@@ -151,6 +154,20 @@ render_bridge::make_qid(render::material_data& mt_data, render::mesh_data& m_dat
     return mt_data.get_id().str() + "::" + m_data.get_id().str();
 }
 
+std::string
+render_bridge::make_qid_from_model(root::smart_object& mat_obj, root::smart_object& mesh_obj)
+{
+    auto& mat_model = mat_obj.asr<root::material>();
+    auto* se = mat_model.get_shader_effect();
+
+    if (se && se->m_enable_alpha_support)
+    {
+        return "transparent";
+    }
+
+    return mat_model.get_id().str() + "::" + mesh_obj.get_id().str();
+}
+
 bool
 render_bridge::is_kryga_texture(const utils::path& p)
 {
@@ -163,8 +180,36 @@ render_bridge::is_kryga_mesh(const utils::path& p)
     return p.has_extension(".avrt") || p.has_extension(".aind");
 }
 
+void
+render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
+{
+    m_command_queue.push(std::move(cmd));
+}
+
+void
+render_bridge::drain_queue()
+{
+    auto& vr = glob::glob_state().getr_vulkan_render();
+    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+
+    render_cmd::render_exec_context exec_ctx{m_processor, vr, loader};
+
+    m_command_queue.drain(
+        [&exec_ctx](render_cmd::render_command_base*&& cmd)
+        {
+            cmd->execute(exec_ctx);
+            cmd->~render_command_base();
+        });
+}
+
+void
+render_bridge::reset_arena()
+{
+    m_arena.reset();
+}
+
 kryga::result_code
-render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
+render_bridge::render_cmd_build(root::smart_object& obj, bool sub_objects)
 {
     KRG_check(obj.get_flags().instance_obj, "");
 
@@ -173,10 +218,8 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
         return result_code::ok;
     }
 
-    // KRG_check(obj.get_state() == root::smart_object_state::constructed, "Should not happen");
-
-    auto render_fn = obj.get_reflection()->render_constructor;
-    if (!render_fn)
+    auto build_fn = obj.get_reflection()->render_cmd_builder;
+    if (!build_fn)
     {
         obj.set_state(root::smart_object_state::render_ready);
         return result_code::ok;
@@ -186,8 +229,8 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 
     get_dependency().build_node(&obj);
 
-    reflection::type_context__render render_ctx{this, &obj, sub_objects};
-    result_code rc = render_fn(render_ctx);
+    reflection::type_context__render_cmd_build ctx{this, &obj, sub_objects};
+    result_code rc = build_fn(ctx);
 
     obj.set_state(root::smart_object_state::render_ready);
 
@@ -195,7 +238,7 @@ render_bridge::render_ctor(root::smart_object& obj, bool sub_objects)
 }
 
 kryga::result_code
-render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
+render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 {
     KRG_check(obj.get_flags().instance_obj, "");
 
@@ -206,8 +249,8 @@ render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
 
     KRG_check(obj.get_state() == root::smart_object_state::render_ready, "Should not happen");
 
-    auto render_fn = obj.get_reflection()->render_destructor;
-    if (!render_fn)
+    auto destroy_fn = obj.get_reflection()->render_cmd_destroyer;
+    if (!destroy_fn)
     {
         obj.set_state(root::smart_object_state::constructed);
         return result_code::ok;
@@ -215,12 +258,35 @@ render_bridge::render_dtor(root::smart_object& obj, bool sub_objects)
 
     obj.set_state(root::smart_object_state::render_preparing);
 
-    reflection::type_context__render render_ctx{this, &obj, sub_objects};
-    result_code rc = render_fn(render_ctx);
+    reflection::type_context__render_cmd_build ctx{this, &obj, sub_objects};
+    result_code rc = destroy_fn(ctx);
 
     obj.set_state(root::smart_object_state::constructed);
 
     return rc;
+}
+
+// ============================================================================
+// Common commands
+// ============================================================================
+
+void
+update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
+{
+    auto h = ctx.processor.get_handle(id);
+    if (h == render_cmd::k_invalid_handle)
+        return;
+
+    auto* object_data = ctx.processor.resolve_object(h);
+    if (!object_data)
+        return;
+
+    object_data->gpu_data.model = transform;
+    object_data->gpu_data.normal = normal_matrix;
+    object_data->gpu_data.obj_pos = position;
+    object_data->gpu_data.bounding_radius = bounding_radius;
+
+    ctx.vr.schedule_game_data_gpu_upload(object_data);
 }
 
 }  // namespace kryga

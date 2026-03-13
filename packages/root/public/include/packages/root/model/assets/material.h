@@ -14,19 +14,14 @@ namespace root
 class shader_effect;
 }
 
-namespace render
-{
-class material_data;
-}  // namespace render
-
 namespace root
 {
 class texture;
 
 // clang-format off
 KRG_ar_class("architype=material",
-              render_constructor = material__render_loader,
-              render_destructor  = material__render_destructor);
+              render_cmd_builder   = material__cmd_builder,
+              render_cmd_destroyer = material__cmd_destroyer);
 class material : public asset
 // clang-format on
 {
@@ -40,18 +35,6 @@ public:
 
     bool
     construct(this_class::construct_params& p);
-
-    ::kryga::render::material_data*
-    get_material_data() const
-    {
-        return m_material_data;
-    }
-
-    void
-    set_material_data(::kryga::render::material_data* v)
-    {
-        m_material_data = v;
-    }
 
     std::unordered_map<utils::id, texture_slot>&
     get_texture_slots()
@@ -73,8 +56,6 @@ protected:
     shader_effect* m_shader_effect = nullptr;
 
     std::unordered_map<utils::id, texture_slot> m_texture_slots;
-
-    ::kryga::render::material_data* m_material_data = nullptr;
 };
 
 }  // namespace root

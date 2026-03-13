@@ -41,6 +41,7 @@
 #include <packages/base/package.base.h>
 
 #include <render_bridge/render_bridge.h>
+#include <render_bridge/render_commands_common.h>
 
 #include <resource_locator/resource_locator_state.h>
 
@@ -224,6 +225,11 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
 
+    glob::glob_state().getr_animation_system().set_render_data_resolver(
+        [](const utils::id& id) -> render::vulkan_render_data* {
+            return glob::glob_state().getr_render_bridge().get_processor().get_object(id);
+        });
+
     gs.run_connect();
     init_default_scripting();
 
@@ -296,6 +302,32 @@ vulkan_engine::cleanup()
 }
 
 void
+vulkan_engine::render_thread_func()
+{
+    while (true)
+    {
+        {
+            std::unique_lock lock(m_render_mutex);
+            m_render_cv.wait(lock, [this] { return m_render_work_ready || m_render_shutdown; });
+            if (m_render_shutdown)
+            {
+                break;
+            }
+            m_render_work_ready = false;
+        }
+
+        glob::glob_state().getr_render_bridge().drain_queue();
+        glob::glob_state().getr_vulkan_render().draw_main();
+
+        {
+            std::lock_guard lock(m_render_mutex);
+            m_render_done = true;
+        }
+        m_main_cv.notify_one();
+    }
+}
+
+void
 vulkan_engine::run()
 {
     float frame_time = 1.f / glob::glob_state().get_config()->fps_lock;
@@ -303,6 +335,8 @@ vulkan_engine::run()
                                                    glob::glob_state().get_config()->fps_lock);
 
     float total_elapsed = 0.f;
+
+    m_render_thread = std::thread(&vulkan_engine::render_thread_func, this);
 
     // main loop
     for (;;)
@@ -340,6 +374,26 @@ vulkan_engine::run()
             KRG_PROFILE_SCOPE("Tick");
             tick(frame_time);
         }
+        // Wait for previous frame's render to finish before touching render state.
+        // First iteration is a no-op (m_render_done starts true).
+        {
+            std::unique_lock lock(m_render_mutex);
+            m_main_cv.wait(lock, [this] { return m_render_done; });
+        }
+
+        // Render thread is done — all commands executed and destructed.
+        // Safe to reclaim arena memory for next frame.
+        glob::glob_state().getr_render_bridge().reset_arena();
+
+        {
+            auto& ctrs = ::kryga::glob::glob_state().getr_engine_counters();
+            auto& vr = glob::glob_state().getr_vulkan_render();
+
+            ctrs.all_draws.update(vr.get_all_draws());
+            ctrs.culled_draws.update(vr.get_culled_draws());
+            ctrs.objects.update(vr.get_cache().objects.get_actual_size());
+        }
+
         {
             KRG_make_scope(sync);
             KRG_PROFILE_SCOPE("Sync");
@@ -360,19 +414,14 @@ vulkan_engine::run()
                 consume_updated_transforms();
             }
         }
+
+        // Signal render thread to draw this frame
         {
-            KRG_make_scope(draw);
-            KRG_PROFILE_SCOPE("Draw");
-
-            glob::glob_state().getr_vulkan_render().draw_main();
-
-            auto& ctrs = ::kryga::glob::glob_state().getr_engine_counters();
-            auto& vr = glob::glob_state().getr_vulkan_render();
-
-            ctrs.all_draws.update(vr.get_all_draws());
-            ctrs.culled_draws.update(vr.get_culled_draws());
-            ctrs.objects.update(vr.get_cache().objects.get_actual_size());
+            std::lock_guard lock(m_render_mutex);
+            m_render_work_ready = true;
+            m_render_done = false;
         }
+        m_render_cv.notify_one();
 
         auto frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);
 
@@ -387,6 +436,15 @@ vulkan_engine::run()
 
         KRG_PROFILE_FRAME_MARK();
     }
+
+    // Wait for any in-flight render to finish, then shutdown render thread
+    {
+        std::unique_lock lock(m_render_mutex);
+        m_main_cv.wait(lock, [this] { return m_render_done; });
+        m_render_shutdown = true;
+    }
+    m_render_cv.notify_one();
+    m_render_thread.join();
 }
 void
 vulkan_engine::tick(float dt)
@@ -490,7 +548,7 @@ vulkan_engine::unload_render_resources(core::level& l)
 
     for (auto& t : cs.objects.get_items())
     {
-        glob::glob_state().getr_render_bridge().render_dtor(*t.second, true);
+        glob::glob_state().getr_render_bridge().render_cmd_destroy(*t.second, true);
     }
 
     return true;
@@ -503,7 +561,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 
     for (auto& t : cs.objects.get_items())
     {
-        glob::glob_state().getr_render_bridge().render_dtor(*t.second, true);
+        glob::glob_state().getr_render_bridge().render_cmd_destroy(*t.second, true);
     }
 
     return true;
@@ -519,6 +577,8 @@ vulkan_engine::consume_updated_transforms()
         return;
     }
 
+    auto& rb = glob::glob_state().getr_render_bridge();
+
     for (auto& i : items)
     {
         auto r = i->get_owner()->get_components(i->get_order_idx());
@@ -527,19 +587,20 @@ vulkan_engine::consume_updated_transforms()
         {
             if (auto m = obj.as<base::mesh_component>())
             {
-                auto obj_data = m->get_render_object_data();
-                if (obj_data)
+                if (rb.get_processor().get_handle(m->get_id()) != render_cmd::k_invalid_handle)
                 {
-                    obj_data->gpu_data.model = m->get_transform_matrix();
-                    obj_data->gpu_data.normal = m->get_normal_matrix();
-                    obj_data->gpu_data.obj_pos = glm::vec3(m->get_world_position());
+                    auto* cmd = rb.alloc_cmd<update_transform_cmd>();
+                    cmd->id = m->get_id();
+                    cmd->transform = m->get_transform_matrix();
+                    cmd->normal_matrix = m->get_normal_matrix();
+                    cmd->position = glm::vec3(m->get_world_position());
 
                     auto scale = m->get_scale();
                     float max_s =
                         glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-                    obj_data->gpu_data.bounding_radius = obj_data->mesh->m_bounding_radius * max_s;
+                    cmd->bounding_radius = m->get_base_bounding_radius() * max_s;
 
-                    glob::glob_state().getr_vulkan_render().schedule_game_data_gpu_upload(obj_data);
+                    rb.enqueue_cmd(cmd);
                 }
                 m->set_dirty_transform(false);
             }
@@ -621,7 +682,7 @@ vulkan_engine::init_default_resources()
     //
     //     auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
     //
-    //     glob::glob_state().getr_render_bridge().render_ctor(*obj, true);
+    //     glob::glob_state().getr_render_bridge().render_cmd_build(*obj, true);
 }
 
 void
@@ -683,7 +744,7 @@ vulkan_engine::consume_updated_render_components()
 
     for (auto& i : items)
     {
-        glob::glob_state().getr_render_bridge().render_ctor(*i, true);
+        glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);
     }
 
     items.clear();
@@ -696,7 +757,7 @@ vulkan_engine::consume_updated_render_assets()
 
     for (auto& i : items)
     {
-        glob::glob_state().getr_render_bridge().render_ctor(*i, true);
+        glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);
     }
 
     items.clear();
@@ -709,7 +770,7 @@ vulkan_engine::consume_updated_shader_effects()
 
     for (auto& i : items)
     {
-        glob::glob_state().getr_render_bridge().render_ctor(*i, true);
+        glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);
     }
 
     items.clear();

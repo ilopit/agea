@@ -15,34 +15,34 @@ namespace root
 class smart_object;
 
 result_code
-mesh__render_loader(reflection::type_context__render& ctx);
+mesh__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
-mesh__render_destructor(reflection::type_context__render& ctx);
+mesh__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
 result_code
-material__render_loader(reflection::type_context__render& ctx);
+texture__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
-material__render_destructor(reflection::type_context__render& ctx);
+texture__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
 result_code
-texture__render_loader(reflection::type_context__render& ctx);
+sampler__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
-texture__render_destructor(reflection::type_context__render& ctx);
+sampler__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
 result_code
-sampler__render_loader(reflection::type_context__render& ctx);
+shader_effect__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
-sampler__render_destructor(reflection::type_context__render& ctx);
+shader_effect__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
 result_code
-game_object_component__render_loader(reflection::type_context__render& ctx);
+material__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
-game_object_component__render_destructor(reflection::type_context__render& ctx);
+material__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
 result_code
-shader_effect__render_loader(reflection::type_context__render& ctx);
+game_object_component__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
-shader_effect__render_destructor(reflection::type_context__render& ctx);
+game_object_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
 }  // namespace root
 }  // namespace kryga

@@ -439,7 +439,12 @@ animation_system::tick(float dt)
 
         staging.insert(staging.end(), inst.bone_matrices.begin(), inst.bone_matrices.end());
 
-        // 7. Update render data
+        // 7. Update render data (lazy-resolve pointer if needed)
+        if (!inst.render_data && m_resolver)
+        {
+            inst.render_data = m_resolver(id);
+        }
+
         if (inst.render_data)
         {
             inst.render_data->bone_offset = inst.bone_offset;

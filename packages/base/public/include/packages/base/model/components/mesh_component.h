@@ -16,8 +16,8 @@ class material;
 namespace base
 {
 // clang-format off
-KRG_ar_class(render_constructor = mesh_component__render_loader,
-              render_destructor  = mesh_component__render_destructor);
+KRG_ar_class(render_cmd_builder   = mesh_component__cmd_builder,
+              render_cmd_destroyer = mesh_component__cmd_destroyer);
 class mesh_component : public ::kryga::root::game_object_component
 // clang-format on
 {
@@ -36,15 +36,15 @@ public:
     bool
     construct(construct_params& c);
 
-    render::vulkan_render_data*
-    get_render_object_data() const
+    float
+    get_base_bounding_radius() const
     {
-        return m_render_handle;
+        return m_base_bounding_radius;
     }
     void
-    set_render_object_data(render::vulkan_render_data* v)
+    set_base_bounding_radius(float r)
     {
-        m_render_handle = v;
+        m_base_bounding_radius = r;
     }
 
 protected:
@@ -64,7 +64,7 @@ protected:
                      "default=true");
     ::kryga::root::mesh* m_mesh = nullptr;
 
-    render::vulkan_render_data* m_render_handle = nullptr;
+    float m_base_bounding_radius = 0.0f;
 };
 
 }  // namespace base

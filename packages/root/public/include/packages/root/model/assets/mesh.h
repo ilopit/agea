@@ -11,17 +11,12 @@
 
 namespace kryga
 {
-namespace render
-{
-class mesh_data;
-}
-
 namespace root
 {
 // clang-format off
 KRG_ar_class("architype=mesh",
-              render_constructor = mesh__render_loader,
-              render_destructor  = mesh__render_destructor);
+              render_cmd_builder   = mesh__cmd_builder,
+              render_cmd_destroyer = mesh__cmd_destroyer);
 class mesh : public asset
 // clang-format on
 {
@@ -36,18 +31,6 @@ public:
         utils::buffer external;
     };
     KRG_gen_meta_api;
-
-    render::mesh_data*
-    get_mesh_data()
-    {
-        return m_mesh_data;
-    }
-
-    void
-    set_mesh_data(render::mesh_data* v)
-    {
-        m_mesh_data = v;
-    }
 
     utils::buffer&
     get_vertices_buffer()
@@ -88,6 +71,17 @@ public:
     bool
     construct(this_class::construct_params& params);
 
+    float
+    get_bounding_radius() const
+    {
+        return m_bounding_radius;
+    }
+    void
+    set_bounding_radius(float r)
+    {
+        m_bounding_radius = r;
+    }
+
 protected:
     KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_vertices = {};
@@ -98,7 +92,7 @@ protected:
     KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_external = {};
 
-    render::mesh_data* m_mesh_data = nullptr;
+    float m_bounding_radius = 0.0f;
 };
 
 }  // namespace root

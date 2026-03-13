@@ -11,6 +11,7 @@
 
 #include <utils/id.h>
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -30,8 +31,16 @@ namespace animation
 class animation_system
 {
 public:
+    using render_data_resolver = std::function<render::vulkan_render_data*(const utils::id&)>;
+
     animation_system();
     ~animation_system();
+
+    void
+    set_render_data_resolver(render_data_resolver fn)
+    {
+        m_resolver = std::move(fn);
+    }
 
     void
     register_skeleton(const utils::id& id,
@@ -118,6 +127,7 @@ private:
     std::unordered_map<utils::id, std::unordered_map<utils::id, ozz::animation::Animation>>
         m_animations;
     std::unordered_map<utils::id, instance_data> m_instances;
+    render_data_resolver m_resolver;
 };
 
 }  // namespace animation

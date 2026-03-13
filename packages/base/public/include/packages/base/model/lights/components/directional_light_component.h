@@ -6,16 +6,11 @@
 
 namespace kryga
 {
-namespace render
-{
-class vulkan_directional_light_data;
-}
-
 namespace base
 {
 // clang-format off
-KRG_ar_class(render_constructor = directional_light_component__render_loader,
-              render_destructor  = directional_light_component__render_destructor);
+KRG_ar_class(render_cmd_builder   = directional_light_component__cmd_builder,
+              render_cmd_destroyer = directional_light_component__cmd_destroyer);
 class directional_light_component : public ::kryga::root::game_object_component
 {
     // clang-format on
@@ -26,18 +21,6 @@ public:
 
     KRG_gen_construct_params{};
     KRG_gen_meta_api;
-
-    void
-    set_handler(render::vulkan_directional_light_data* h)
-    {
-        m_handler = h;
-    }
-
-    render::vulkan_directional_light_data*
-    get_handler()
-    {
-        return m_handler;
-    }
 
 protected:
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
@@ -51,8 +34,6 @@ protected:
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
     ::kryga::root::vec3 m_direction = glm::vec3{1.0f};
-
-    render::vulkan_directional_light_data* m_handler = nullptr;
 };
 
 }  // namespace base

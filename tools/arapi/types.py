@@ -62,8 +62,8 @@ class kryga_type:
     self.serialize_handler = ""
     self.to_string_handler = ""
     self.instantiate_handler = ""
-    self.render_constructor = ""
-    self.render_destructor = ""
+    self.render_cmd_builder = ""
+    self.render_cmd_destroyer = ""
 
     self.ordered = False
 

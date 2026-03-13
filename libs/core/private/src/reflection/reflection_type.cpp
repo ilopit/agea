@@ -104,8 +104,8 @@ reflection_type::override()
         KRG_override_if_null(instantiate);
         KRG_override_if_null(compare);
         KRG_override_if_null(to_string);
-        KRG_override_if_null(render_constructor);
-        KRG_override_if_null(render_destructor);
+        KRG_override_if_null(render_cmd_builder);
+        KRG_override_if_null(render_cmd_destroyer);
     }
 }
 

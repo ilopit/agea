@@ -6,16 +6,11 @@
 
 namespace kryga
 {
-namespace render
-{
-class vulkan_universal_light_data;
-}  // namespace render
-
 namespace base
 {
 
-KRG_ar_class(render_constructor = point_light_component__render_loader,
-             render_destructor = point_light_component__render_destructor);
+KRG_ar_class(render_cmd_builder   = point_light_component__cmd_builder,
+             render_cmd_destroyer = point_light_component__cmd_destroyer);
 class point_light_component : public ::kryga::root::game_object_component
 {
     KRG_gen_meta__point_light_component();
@@ -25,18 +20,6 @@ public:
 
     KRG_gen_construct_params{};
     KRG_gen_meta_api;
-
-    void
-    set_handler(render::vulkan_universal_light_data* h)
-    {
-        m_handler = h;
-    }
-
-    render::vulkan_universal_light_data*
-    get_handler()
-    {
-        return m_handler;
-    }
 
 protected:
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
@@ -50,8 +33,6 @@ protected:
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
     float m_radius = 50.0f;
-
-    render::vulkan_universal_light_data* m_handler = nullptr;
 };
 
 }  // namespace base

@@ -63,7 +63,7 @@ struct type_context__to_string
     std::string* result = nullptr;
 };
 
-struct type_context__render
+struct type_context__render_cmd_build
 {
     render_bridge* rb = nullptr;
     root::smart_object* obj = nullptr;
@@ -81,8 +81,8 @@ using type_handler__copy = result_code (*)(type_context__copy&);
 using type_handler__instantiate = result_code (*)(type_context__copy&);
 using type_handler__compare = result_code (*)(type_context__compare&);
 using type_handler__to_string = result_code (*)(type_context__to_string&);
-using type_handler__render_ctor = result_code (*)(type_context__render&);
-using type_handler__render_dtor = result_code (*)(type_context__render&);
+using type_handler__render_cmd_builder = result_code (*)(type_context__render_cmd_build&);
+using type_handler__render_cmd_destroyer = result_code (*)(type_context__render_cmd_build&);
 using type_handler__gpu_pack = void (*)(const void* src, void* dst);
 using type_handler__alloc = std::shared_ptr<root::smart_object> (*)(type_context__alloc&);
 using type_handler__cparams_alloc = std::unique_ptr<::kryga::root::base_construct_params> (*)();
@@ -135,8 +135,8 @@ struct reflection_type
     type_handler__compare                       compare = nullptr;
     type_handler__to_string                     to_string = nullptr;
 
-    type_handler__render_ctor                   render_constructor = nullptr;
-    type_handler__render_dtor                   render_destructor = nullptr;
+    type_handler__render_cmd_builder            render_cmd_builder = nullptr;
+    type_handler__render_cmd_destroyer          render_cmd_destroyer = nullptr;
 
     type_handler__gpu_pack                      gpu_pack = nullptr;
     size_t                                      gpu_data_size = 0;

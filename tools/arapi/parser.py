@@ -66,8 +66,8 @@ TYPE_KEY_LOAD_DERIVE_HANDLER = "load_derive_handler"
 TYPE_KEY_TO_STRING_HANDLER = "to_string_handler"
 TYPE_KEY_ARCHITYPE = "architype"
 TYPE_KEY_BUILT_IN = "built_in"
-TYPE_KEY_RENDER_CONSTRUCTOR = "render_constructor"
-TYPE_KEY_RENDER_DESTRUCTOR = "render_destructor"
+TYPE_KEY_RENDER_CMD_BUILDER = "render_cmd_builder"
+TYPE_KEY_RENDER_CMD_DESTROYER = "render_cmd_destroyer"
 
 # Package config keys
 PKG_KEY_MODEL_TYPES_OVERRIDES = "model.has_types_overrides"
@@ -182,8 +182,8 @@ _MODEL_TYPE_ATTR_MAP = {
 
 # Mapping from type config keys to attribute names for render overrides
 _RENDER_TYPE_ATTR_MAP = {
-    TYPE_KEY_RENDER_CONSTRUCTOR: 'render_constructor',
-    TYPE_KEY_RENDER_DESTRUCTOR: 'render_destructor',
+    TYPE_KEY_RENDER_CMD_BUILDER: 'render_cmd_builder',
+    TYPE_KEY_RENDER_CMD_DESTROYER: 'render_cmd_destroyer',
 }
 
 

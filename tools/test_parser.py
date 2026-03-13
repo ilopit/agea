@@ -80,11 +80,11 @@ class TestExtractTypeConfig(unittest.TestCase):
         self.assertEqual(type_obj.serialize_handler, 'my_serialize')
         self.assertEqual(type_obj.compare_handler, 'my_compare')
 
-    def test_render_constructor(self):
+    def test_render_cmd_builder(self):
         type_obj = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
-        tokens = ['render_constructor=my_render_ctor']
+        tokens = ['render_cmd_builder=my_cmd_builder']
         arapi.parser.extract_type_config(type_obj, tokens, self.context)
-        self.assertEqual(type_obj.render_constructor, 'my_render_ctor')
+        self.assertEqual(type_obj.render_cmd_builder, 'my_cmd_builder')
 
     def test_built_in_external(self):
         type_obj = arapi.types.kryga_type(arapi.types.kryga_type_kind.EXTERNAL)

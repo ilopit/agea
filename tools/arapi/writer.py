@@ -145,14 +145,9 @@ def _generate_pack_statement(field: GpuField, src_var: str, dst_var: str, owner_
   gpu_field_name = field.name[2:] if field.name.startswith("m_") else field.name
 
   if field.is_texture_slot:
-    # Texture slot: get the slot via offset, then access txt pointer
-    return f"""    {{
-        const auto& slot = *reinterpret_cast<const ::kryga::root::texture_slot*>(blob + offsetof({owner_full_type}, {field.name}));
-        if (slot.txt && slot.txt->get_texture_data())
-            {dst_var}.{gpu_field_name} = slot.txt->get_texture_data()->get_bindless_index();
-        else
-            {dst_var}.{gpu_field_name} = UINT32_MAX;
-    }}"""
+    # Texture slot: bindless indices are resolved on the render thread
+    # from texture handles, so just write UINT32_MAX here
+    return f"    {dst_var}.{gpu_field_name} = UINT32_MAX;"
   else:
     # Regular field: use memcpy with offset (source uses original name with m_, dest uses stripped name)
     return f"    std::memcpy(&{dst_var}.{gpu_field_name}, blob + offsetof({owner_full_type}, {field.name}), sizeof({dst_var}.{gpu_field_name}));"
@@ -1431,21 +1426,21 @@ package::package_render_types_builder::build(::kryga::core::package& sp)
 """)
 
     for type_obj in fc.types:
-      has_render_handlers = type_obj.render_constructor or type_obj.render_destructor
+      has_cmd_handlers = type_obj.render_cmd_builder or type_obj.render_cmd_destroyer
       has_gpu_data = type_has_gpu_data(type_obj, fc)
 
       if (type_obj.kind == arapi.types.kryga_type_kind.CLASS
-          and (has_render_handlers or has_gpu_data)):
+          and (has_cmd_handlers or has_gpu_data)):
 
         file_buffer.append(f"""
 {{
   auto type_rt =  ::kryga::glob::glob_state().get_rm()->get_type(::kryga::{type_obj.id});
   KRG_check(type_rt, "Type is not defined!");
 """)
-        if type_obj.render_constructor:
-          file_buffer.append(f"  type_rt->render_constructor = {type_obj.render_constructor};\n")
-        if type_obj.render_destructor:
-          file_buffer.append(f"  type_rt->render_destructor  = {type_obj.render_destructor};\n")
+        if type_obj.render_cmd_builder:
+          file_buffer.append(f"  type_rt->render_cmd_builder   = {type_obj.render_cmd_builder};\n")
+        if type_obj.render_cmd_destroyer:
+          file_buffer.append(f"  type_rt->render_cmd_destroyer = {type_obj.render_cmd_destroyer};\n")
         if has_gpu_data:
           struct_name = f"{type_obj.name}__gpu"
           file_buffer.append(f"  type_rt->gpu_pack           = gpu_pack__{type_obj.name};\n")

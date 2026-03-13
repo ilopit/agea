@@ -20,8 +20,8 @@ const extern vec3 DEF_FORWARD;
 const extern vec3 DEF_UP;
 const extern vec3 DEF_RIGHT;
 
-KRG_ar_class(render_constructor = game_object_component__render_loader,
-              render_destructor = game_object_component__render_destructor);
+KRG_ar_class(render_cmd_builder   = game_object_component__cmd_builder,
+              render_cmd_destroyer = game_object_component__cmd_destroyer);
 class game_object_component : public component
 {
     KRG_gen_meta__game_object_component();

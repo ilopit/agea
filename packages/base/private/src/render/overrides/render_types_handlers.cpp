@@ -2,6 +2,9 @@
 
 #include <global_state/global_state.h>
 #include <render_bridge/render_bridge.h>
+#include <render_bridge/render_command.h>
+#include <render_bridge/render_command_processor.h>
+#include <render_bridge/render_commands_common.h>
 
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
@@ -78,12 +81,274 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
     return obj.get_package() == sub_obj.get_package() || obj.get_level() == sub_obj.get_level();
 }
 
-/*===============================*/
+// ============================================================================
+// Render commands — objects
+// ============================================================================
+
+struct create_object_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    render_cmd::render_handle mesh_handle = render_cmd::k_invalid_handle;
+    render_cmd::render_handle material_handle = render_cmd::k_invalid_handle;
+    glm::mat4 transform{1.0f};
+    glm::mat4 normal_matrix{1.0f};
+    glm::vec3 position{0.0f};
+    float bounding_radius = 0.0f;
+    uint32_t bone_count = 0;
+    std::string queue_id;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto* mesh_data = ctx.processor.resolve_mesh(mesh_handle);
+        auto* mat_data = ctx.processor.resolve_material(material_handle);
+
+        if (!mesh_data || !mat_data)
+        {
+            ALOG_ERROR("create_object: missing mesh or material for {}", id.str());
+            return;
+        }
+
+        auto* object_data = ctx.vr.get_cache().objects.alloc(id);
+
+        if (!ctx.loader.update_object(*object_data, *mat_data, *mesh_data, transform,
+                                      normal_matrix, position))
+        {
+            ALOG_LAZY_ERROR;
+            return;
+        }
+
+        object_data->gpu_data.bounding_radius = bounding_radius;
+        object_data->bone_count = bone_count;
+        object_data->queue_id = std::move(queue_id);
+
+        ctx.vr.schedule_to_drawing(object_data);
+        ctx.vr.schedule_game_data_gpu_upload(object_data);
+
+        auto h = ctx.processor.ensure_handle(id);
+        ctx.processor.store_object(h, object_data);
+    }
+};
+
+struct update_object_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    render_cmd::render_handle mesh_handle = render_cmd::k_invalid_handle;
+    render_cmd::render_handle material_handle = render_cmd::k_invalid_handle;
+    glm::mat4 transform{1.0f};
+    glm::mat4 normal_matrix{1.0f};
+    glm::vec3 position{0.0f};
+    float bounding_radius = 0.0f;
+    std::string queue_id;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto h = ctx.processor.get_handle(id);
+        if (h == render_cmd::k_invalid_handle)
+            return;
+
+        auto* object_data = ctx.processor.resolve_object(h);
+        if (!object_data)
+            return;
+
+        auto* mesh_data = ctx.processor.resolve_mesh(mesh_handle);
+        auto* mat_data = ctx.processor.resolve_material(material_handle);
+
+        if (!mesh_data || !mat_data)
+            return;
+
+        ctx.loader.update_object(*object_data, *mat_data, *mesh_data, transform, normal_matrix,
+                                 position);
+
+        object_data->gpu_data.bounding_radius = bounding_radius;
+
+        auto new_rqid = std::move(queue_id);
+        if (new_rqid != object_data->queue_id)
+        {
+            ctx.vr.remove_from_drawing(object_data);
+            object_data->queue_id = std::move(new_rqid);
+            ctx.vr.schedule_to_drawing(object_data);
+        }
+
+        ctx.vr.schedule_game_data_gpu_upload(object_data);
+    }
+};
+
+struct destroy_object_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto h = ctx.processor.get_handle(id);
+        if (h == render_cmd::k_invalid_handle)
+            return;
+
+        auto* object_data = ctx.processor.resolve_object(h);
+        if (object_data)
+        {
+            ctx.vr.remove_from_drawing(object_data);
+            ctx.vr.get_cache().objects.release(object_data);
+        }
+        ctx.processor.erase_object(h);
+        ctx.processor.erase_handle(id);
+    }
+};
+
+// ============================================================================
+// Render commands — lights
+// ============================================================================
+
+enum class light_kind : uint8_t
+{
+    directional,
+    point,
+    spot
+};
+
+struct create_light_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    light_kind kind = light_kind::point;
+    glm::vec3 position{0.0f};
+    glm::vec3 ambient{0.0f};
+    glm::vec3 diffuse{0.0f};
+    glm::vec3 specular{0.0f};
+    glm::vec3 direction{0.0f, -1.0f, 0.0f};
+    float radius = 0.0f;
+    float cut_off = 0.0f;
+    float outer_cut_off = 0.0f;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto h = ctx.processor.ensure_handle(id);
+
+        if (kind == light_kind::directional)
+        {
+            auto* rh = ctx.vr.get_cache().directional_lights.alloc(id);
+            rh->gpu_data.ambient = ambient;
+            rh->gpu_data.diffuse = diffuse;
+            rh->gpu_data.specular = specular;
+            rh->gpu_data.direction = direction;
+            ctx.processor.store_dir_light(h, rh);
+            ctx.vr.schedule_directional_light_data_gpu_upload(rh);
+        }
+        else
+        {
+            auto lt = (kind == light_kind::spot) ? render::light_type::spot
+                                                 : render::light_type::point;
+            auto* rh = ctx.vr.get_cache().universal_lights.alloc(id, lt);
+            rh->gpu_data.position = position;
+            rh->gpu_data.ambient = ambient;
+            rh->gpu_data.diffuse = diffuse;
+            rh->gpu_data.specular = specular;
+            rh->gpu_data.radius = radius;
+            rh->gpu_data.direction = direction;
+            rh->gpu_data.cut_off = cut_off;
+            rh->gpu_data.outer_cut_off = outer_cut_off;
+            ctx.processor.store_univ_light(h, rh);
+            ctx.vr.schedule_universal_light_data_gpu_upload(rh);
+        }
+    }
+};
+
+struct update_light_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    light_kind kind = light_kind::point;
+    glm::vec3 position{0.0f};
+    glm::vec3 ambient{0.0f};
+    glm::vec3 diffuse{0.0f};
+    glm::vec3 specular{0.0f};
+    glm::vec3 direction{0.0f, -1.0f, 0.0f};
+    float radius = 0.0f;
+    float cut_off = 0.0f;
+    float outer_cut_off = 0.0f;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto h = ctx.processor.get_handle(id);
+        if (h == render_cmd::k_invalid_handle)
+            return;
+
+        if (kind == light_kind::directional)
+        {
+            auto* rh = ctx.processor.resolve_dir_light(h);
+            if (!rh)
+                return;
+
+            rh->gpu_data.ambient = ambient;
+            rh->gpu_data.diffuse = diffuse;
+            rh->gpu_data.specular = specular;
+            rh->gpu_data.direction = direction;
+            ctx.vr.schedule_directional_light_data_gpu_upload(rh);
+        }
+        else
+        {
+            auto* rh = ctx.processor.resolve_univ_light(h);
+            if (!rh)
+                return;
+
+            rh->gpu_data.position = position;
+            rh->gpu_data.ambient = ambient;
+            rh->gpu_data.diffuse = diffuse;
+            rh->gpu_data.specular = specular;
+            rh->gpu_data.radius = radius;
+            rh->gpu_data.direction = direction;
+            rh->gpu_data.cut_off = cut_off;
+            rh->gpu_data.outer_cut_off = outer_cut_off;
+            ctx.vr.schedule_universal_light_data_gpu_upload(rh);
+        }
+    }
+};
+
+struct destroy_light_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    light_kind kind = light_kind::point;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto h = ctx.processor.get_handle(id);
+        if (h == render_cmd::k_invalid_handle)
+            return;
+
+        if (kind == light_kind::directional)
+        {
+            auto* rh = ctx.processor.resolve_dir_light(h);
+            if (rh)
+            {
+                ctx.vr.get_cache().directional_lights.release(rh);
+            }
+            ctx.processor.erase_dir_light(h);
+        }
+        else
+        {
+            auto* rh = ctx.processor.resolve_univ_light(h);
+            if (rh)
+            {
+                ctx.vr.get_cache().universal_lights.release(rh);
+            }
+            ctx.processor.erase_univ_light(h);
+        }
+
+        ctx.processor.erase_handle(id);
+    }
+};
+
+// ============================================================================
+// Command builders — mesh_component
+// ============================================================================
 
 result_code
-mesh_component__render_loader(reflection::type_context__render& ctx)
+mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
-    auto rc = root::game_object_component__render_loader(ctx);
+    auto rc = root::game_object_component__cmd_builder(ctx);
     KRG_return_nok(rc);
 
     auto& moc = ctx.obj->asr<base::mesh_component>();
@@ -93,78 +358,64 @@ mesh_component__render_loader(reflection::type_context__render& ctx)
         return result_code::failed;
     }
 
-    rc = ctx.rb->render_ctor(*moc.get_material(), ctx.flag);
+    rc = ctx.rb->render_cmd_build(*moc.get_material(), ctx.flag);
     KRG_return_nok(rc);
 
-    rc = ctx.rb->render_ctor(*moc.get_mesh(), ctx.flag);
+    rc = ctx.rb->render_cmd_build(*moc.get_mesh(), ctx.flag);
     KRG_return_nok(rc);
-
-    auto mat_data = moc.get_material()->get_material_data();
-    auto mesh_data = moc.get_mesh()->get_mesh_data();
-
-    if (!mat_data || !mesh_data)
-    {
-        return result_code::failed;
-    }
-
-    auto object_data = moc.get_render_object_data();
 
     moc.update_matrix();
 
-    // Calculate scaled bounding radius
+    // Use model-side bounding radius (computed during mesh build)
+    float base_radius = moc.get_mesh()->get_bounding_radius();
+    moc.set_base_bounding_radius(base_radius);
+
     auto scale = moc.get_scale();
     float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-    float scaled_radius = mesh_data->m_bounding_radius * max_scale;
+    float scaled_radius = base_radius * max_scale;
 
-    if (!object_data)
+    auto existing_handle = ctx.rb->get_processor().get_handle(moc.get_id());
+    auto mesh_handle = ctx.rb->get_processor().ensure_handle(moc.get_mesh()->get_id());
+    auto mat_handle = ctx.rb->get_processor().ensure_handle(moc.get_material()->get_id());
+    auto new_rqid = render_bridge::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
+
+    if (existing_handle == render_cmd::k_invalid_handle)
     {
-        object_data =
-            glob::glob_state().getr_vulkan_render().get_cache().objects.alloc(moc.get_id());
+        ctx.rb->get_processor().ensure_handle(moc.get_id());
 
-        if (!glob::glob_state().getr_vulkan_render_loader().update_object(
-                *object_data, *mat_data, *mesh_data, moc.get_transform_matrix(),
-                moc.get_normal_matrix(), glm::vec3(moc.get_world_position())))
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
+        auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+        cmd->id = moc.get_id();
+        cmd->mesh_handle = mesh_handle;
+        cmd->material_handle = mat_handle;
+        cmd->transform = moc.get_transform_matrix();
+        cmd->normal_matrix = moc.get_normal_matrix();
+        cmd->position = glm::vec3(moc.get_world_position());
+        cmd->bounding_radius = scaled_radius;
+        cmd->bone_count = 0;
+        cmd->queue_id = new_rqid;
 
-        object_data->gpu_data.bounding_radius = scaled_radius;
-        moc.set_render_object_data(object_data);
-
-        auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
-        object_data->queue_id = new_rqid;
-        glob::glob_state().getr_vulkan_render().schedule_to_drawing(object_data);
+        ctx.rb->enqueue_cmd(cmd);
     }
     else
     {
-        if (!glob::glob_state().getr_vulkan_render_loader().update_object(
-                *object_data, *mat_data, *mesh_data, moc.get_transform_matrix(),
-                moc.get_normal_matrix(), glm::vec3(moc.get_world_position())))
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
+        auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
+        cmd->id = moc.get_id();
+        cmd->mesh_handle = mesh_handle;
+        cmd->material_handle = mat_handle;
+        cmd->transform = moc.get_transform_matrix();
+        cmd->normal_matrix = moc.get_normal_matrix();
+        cmd->position = glm::vec3(moc.get_world_position());
+        cmd->bounding_radius = scaled_radius;
+        cmd->queue_id = new_rqid;
 
-        object_data->gpu_data.bounding_radius = scaled_radius;
-
-        auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
-        auto& rqid = object_data->queue_id;
-        if (new_rqid != rqid)
-        {
-            glob::glob_state().getr_vulkan_render().remove_from_drawing(object_data);
-            object_data->queue_id = new_rqid;
-            glob::glob_state().getr_vulkan_render().schedule_to_drawing(object_data);
-        }
+        ctx.rb->enqueue_cmd(cmd);
     }
-
-    glob::glob_state().getr_vulkan_render().schedule_game_data_gpu_upload(object_data);
 
     return result_code::ok;
 }
 
 result_code
-mesh_component__render_destructor(reflection::type_context__render& ctx)
+mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& moc = ctx.obj->asr<base::mesh_component>();
 
@@ -173,7 +424,7 @@ mesh_component__render_destructor(reflection::type_context__render& ctx)
     result_code rc = result_code::nav;
     if (mat_model && is_same_source(*ctx.obj, *mat_model))
     {
-        rc = ctx.rb->render_dtor(*moc.get_material(), ctx.flag);
+        rc = ctx.rb->render_cmd_destroy(*moc.get_material(), ctx.flag);
         KRG_return_nok(rc);
     }
 
@@ -181,18 +432,18 @@ mesh_component__render_destructor(reflection::type_context__render& ctx)
 
     if (mesh_model && is_same_source(*ctx.obj, *mesh_model))
     {
-        rc = ctx.rb->render_dtor(*moc.get_mesh(), ctx.flag);
+        rc = ctx.rb->render_cmd_destroy(*moc.get_mesh(), ctx.flag);
         KRG_return_nok(rc);
     }
-    auto object_data = moc.get_render_object_data();
 
-    if (object_data)
+    if (ctx.rb->get_processor().get_handle(moc.get_id()) != render_cmd::k_invalid_handle)
     {
-        glob::glob_state().getr_vulkan_render().remove_from_drawing(object_data);
-        glob::glob_state().getr_vulkan_render().get_cache().objects.release(object_data);
+        auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+        cmd->id = moc.get_id();
+        ctx.rb->enqueue_cmd(cmd);
     }
 
-    rc = root::game_object_component__render_destructor(ctx);
+    rc = root::game_object_component__cmd_destroyer(ctx);
     KRG_return_nok(rc);
 
     return result_code::ok;
@@ -200,38 +451,53 @@ mesh_component__render_destructor(reflection::type_context__render& ctx)
 
 /*===============================*/
 
-/*===============================*/
-
 result_code
-directional_light_component__render_loader(reflection::type_context__render& ctx)
+directional_light_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
     auto& lc_model = ctx.obj->asr<base::directional_light_component>();
 
-    auto rh = lc_model.get_handler();
-    if (!rh)
+    auto existing_handle = ctx.rb->get_processor().get_handle(lc_model.get_id());
+
+    if (existing_handle == render_cmd::k_invalid_handle)
     {
-        rh = glob::glob_state().getr_vulkan_render().get_cache().directional_lights.alloc(
-            lc_model.get_id());
+        ctx.rb->get_processor().ensure_handle(lc_model.get_id());
 
-        rh->gpu_data.ambient = lc_model.get_ambient();
-        rh->gpu_data.diffuse = lc_model.get_diffuse();
-        rh->gpu_data.specular = lc_model.get_specular();
-        rh->gpu_data.direction = lc_model.get_direction();
+        auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
+        cmd->id = lc_model.get_id();
+        cmd->kind = light_kind::directional;
+        cmd->ambient = lc_model.get_ambient();
+        cmd->diffuse = lc_model.get_diffuse();
+        cmd->specular = lc_model.get_specular();
+        cmd->direction = lc_model.get_direction();
 
-        lc_model.set_handler(rh);
+        ctx.rb->enqueue_cmd(cmd);
     }
+    else
+    {
+        auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
+        cmd->id = lc_model.get_id();
+        cmd->kind = light_kind::directional;
+        cmd->ambient = lc_model.get_ambient();
+        cmd->diffuse = lc_model.get_diffuse();
+        cmd->specular = lc_model.get_specular();
+        cmd->direction = lc_model.get_direction();
 
-    glob::glob_state().getr_vulkan_render().schedule_directional_light_data_gpu_upload(rh);
+        ctx.rb->enqueue_cmd(cmd);
+    }
 
     return result_code::ok;
 }
+
 result_code
-directional_light_component__render_destructor(reflection::type_context__render& ctx)
+directional_light_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& plc_model = ctx.obj->asr<base::directional_light_component>();
-    if (auto h = plc_model.get_handler())
+    if (ctx.rb->get_processor().get_handle(plc_model.get_id()) != render_cmd::k_invalid_handle)
     {
-        glob::glob_state().getr_vulkan_render().get_cache().directional_lights.release(h);
+        auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
+        cmd->id = plc_model.get_id();
+        cmd->kind = light_kind::directional;
+        ctx.rb->enqueue_cmd(cmd);
     }
 
     return result_code::ok;
@@ -240,41 +506,61 @@ directional_light_component__render_destructor(reflection::type_context__render&
 /*===============================*/
 
 result_code
-spot_light_component__render_loader(reflection::type_context__render& ctx)
+spot_light_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
     auto& lc_model = ctx.obj->asr<base::spot_light_component>();
 
-    auto rh = lc_model.get_handler();
-    if (!rh)
+    auto existing_handle = ctx.rb->get_processor().get_handle(lc_model.get_id());
+
+    if (existing_handle == render_cmd::k_invalid_handle)
     {
-        rh = glob::glob_state().getr_vulkan_render().get_cache().universal_lights.alloc(
-            lc_model.get_id(), render::light_type::spot);
+        ctx.rb->get_processor().ensure_handle(lc_model.get_id());
 
-        rh->gpu_data.position = lc_model.get_world_position();
-        rh->gpu_data.ambient = lc_model.get_ambient();
-        rh->gpu_data.diffuse = lc_model.get_diffuse();
-        rh->gpu_data.specular = lc_model.get_specular();
-        rh->gpu_data.radius = lc_model.get_radius();
-        rh->gpu_data.direction = lc_model.get_direction();
-        rh->gpu_data.cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
-        rh->gpu_data.outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
+        auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
+        cmd->id = lc_model.get_id();
+        cmd->kind = light_kind::spot;
+        cmd->position = lc_model.get_world_position();
+        cmd->ambient = lc_model.get_ambient();
+        cmd->diffuse = lc_model.get_diffuse();
+        cmd->specular = lc_model.get_specular();
+        cmd->radius = lc_model.get_radius();
+        cmd->direction = lc_model.get_direction();
+        cmd->cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
+        cmd->outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
 
-        lc_model.set_handler(rh);
+        ctx.rb->enqueue_cmd(cmd);
     }
+    else
+    {
+        auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
+        cmd->id = lc_model.get_id();
+        cmd->kind = light_kind::spot;
+        cmd->position = lc_model.get_world_position();
+        cmd->ambient = lc_model.get_ambient();
+        cmd->diffuse = lc_model.get_diffuse();
+        cmd->specular = lc_model.get_specular();
+        cmd->radius = lc_model.get_radius();
+        cmd->direction = lc_model.get_direction();
+        cmd->cut_off = glm::cos(glm::radians(lc_model.get_cut_off()));
+        cmd->outer_cut_off = glm::cos(glm::radians(lc_model.get_outer_cut_off()));
 
-    glob::glob_state().getr_vulkan_render().schedule_universal_light_data_gpu_upload(rh);
+        ctx.rb->enqueue_cmd(cmd);
+    }
 
     return result_code::ok;
 }
 
 result_code
-spot_light_component__render_destructor(reflection::type_context__render& ctx)
+spot_light_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& slc_model = ctx.obj->asr<base::spot_light_component>();
 
-    if (auto h = slc_model.get_handler())
+    if (ctx.rb->get_processor().get_handle(slc_model.get_id()) != render_cmd::k_invalid_handle)
     {
-        glob::glob_state().getr_vulkan_render().get_cache().universal_lights.release(h);
+        auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
+        cmd->id = slc_model.get_id();
+        cmd->kind = light_kind::spot;
+        ctx.rb->enqueue_cmd(cmd);
     }
 
     return result_code::ok;
@@ -283,37 +569,54 @@ spot_light_component__render_destructor(reflection::type_context__render& ctx)
 /*===============================*/
 
 result_code
-point_light_component__render_loader(reflection::type_context__render& ctx)
+point_light_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
     auto& lc_model = ctx.obj->asr<base::point_light_component>();
 
-    auto rh = lc_model.get_handler();
-    if (!rh)
+    auto existing_handle = ctx.rb->get_processor().get_handle(lc_model.get_id());
+
+    if (existing_handle == render_cmd::k_invalid_handle)
     {
-        rh = glob::glob_state().getr_vulkan_render().get_cache().universal_lights.alloc(
-            lc_model.get_id(), render::light_type::point);
+        ctx.rb->get_processor().ensure_handle(lc_model.get_id());
 
-        rh->gpu_data.position = lc_model.get_world_position();
-        rh->gpu_data.ambient = lc_model.get_ambient();
-        rh->gpu_data.diffuse = lc_model.get_diffuse();
-        rh->gpu_data.specular = lc_model.get_specular();
-        rh->gpu_data.radius = lc_model.get_radius();
+        auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
+        cmd->id = lc_model.get_id();
+        cmd->kind = light_kind::point;
+        cmd->position = lc_model.get_world_position();
+        cmd->ambient = lc_model.get_ambient();
+        cmd->diffuse = lc_model.get_diffuse();
+        cmd->specular = lc_model.get_specular();
+        cmd->radius = lc_model.get_radius();
 
-        lc_model.set_handler(rh);
+        ctx.rb->enqueue_cmd(cmd);
     }
+    else
+    {
+        auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
+        cmd->id = lc_model.get_id();
+        cmd->kind = light_kind::point;
+        cmd->position = lc_model.get_world_position();
+        cmd->ambient = lc_model.get_ambient();
+        cmd->diffuse = lc_model.get_diffuse();
+        cmd->specular = lc_model.get_specular();
+        cmd->radius = lc_model.get_radius();
 
-    glob::glob_state().getr_vulkan_render().schedule_universal_light_data_gpu_upload(rh);
+        ctx.rb->enqueue_cmd(cmd);
+    }
 
     return result_code::ok;
 }
 
 result_code
-point_light_component__render_destructor(reflection::type_context__render& ctx)
+point_light_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& plc_model = ctx.obj->asr<base::point_light_component>();
-    if (auto h = plc_model.get_handler())
+    if (ctx.rb->get_processor().get_handle(plc_model.get_id()) != render_cmd::k_invalid_handle)
     {
-        glob::glob_state().getr_vulkan_render().get_cache().universal_lights.release(h);
+        auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
+        cmd->id = plc_model.get_id();
+        cmd->kind = light_kind::point;
+        ctx.rb->enqueue_cmd(cmd);
     }
 
     return result_code::ok;
@@ -322,9 +625,9 @@ point_light_component__render_destructor(reflection::type_context__render& ctx)
 /*===============================*/
 
 result_code
-animated_mesh_component__render_loader(reflection::type_context__render& ctx)
+animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
-    auto rc = root::game_object_component__render_loader(ctx);
+    auto rc = root::game_object_component__cmd_builder(ctx);
     KRG_return_nok(rc);
 
     auto& amc = ctx.obj->asr<base::animated_mesh_component>();
@@ -334,7 +637,6 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
         return result_code::failed;
     }
 
-    // Derive stem and directory from the gltf path
     auto gltf_path = amc.get_gltf().get_file();
     auto path_str = gltf_path.str();
 
@@ -348,17 +650,13 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
     auto mesh_id = AID(stem + "_skinned_mesh");
 
     auto& anim_sys = glob::glob_state().getr_animation_system();
-    auto& render_loader = glob::glob_state().getr_vulkan_render_loader();
 
-    // Load if skeleton not yet registered
     if (!anim_sys.get_skeleton(skeleton_id))
     {
-        // Find .ozz files directory: check next to glb first, then scan packages
         auto ozz_dir = dir_path;
         auto skel_test = (dir_path / (stem + "_skeleton.ozz"));
         if (!skel_test.exists())
         {
-            // Search packages directory for {stem}_skeleton.ozz
             auto& rl = glob::glob_state().getr_resource_locator();
             auto pkg_root = rl.resource_dir(category::packages);
             bool found = false;
@@ -382,7 +680,6 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
             }
         }
 
-        // 1. Load ozz skeleton
         auto skel_path = (ozz_dir / (stem + "_skeleton.ozz")).str();
         ozz::animation::Skeleton ozz_skeleton;
         if (!animation::ozz_loader::load_skeleton(skel_path, ozz_skeleton))
@@ -391,7 +688,6 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
             return result_code::failed;
         }
 
-        // 2. Load ozz animations — scan for {stem}_*.ozz files (excluding skeleton)
         auto dir_str = ozz_dir.str();
         std::string skel_suffix = "_skeleton.ozz";
 
@@ -408,7 +704,6 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
                 continue;
             }
 
-            // Must start with "{stem}_" and end with ".ozz"
             if (fname.substr(0, stem.size() + 1) != stem + "_")
             {
                 continue;
@@ -419,14 +714,12 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
                 continue;
             }
 
-            // Skip the skeleton file
             if (fname.size() >= skel_suffix.size() &&
                 fname.substr(fname.size() - skel_suffix.size()) == skel_suffix)
             {
                 continue;
             }
 
-            // Extract clip name: {stem}_{clip_name}.ozz
             auto clip_name = fname.substr(stem.size() + 1, fname.size() - stem.size() - 1 - 4);
 
             auto anim_path = (ozz_dir / fname).str();
@@ -437,7 +730,6 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
             }
         }
 
-        // 3. Load glTF for mesh vertices + inverse bind matrices + joint names
         animation::gltf_load_result gltf_result;
         if (!animation::gltf_animation_loader::load(amc.get_gltf(), gltf_result))
         {
@@ -445,7 +737,6 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
             return result_code::failed;
         }
 
-        // 4. Build joint remap table: mesh_bone_index -> ozz_skeleton_joint_index
         std::vector<int32_t> joint_remaps(gltf_result.joint_names.size(), -1);
         auto ozz_names = ozz_skeleton.joint_names();
         for (size_t mesh_bone = 0; mesh_bone < gltf_result.joint_names.size(); ++mesh_bone)
@@ -466,154 +757,189 @@ animated_mesh_component__render_loader(reflection::type_context__render& ctx)
             }
         }
 
-        // 5. Register skeleton with inverse bind matrices and joint remaps
         anim_sys.register_skeleton(skeleton_id, std::move(ozz_skeleton),
                                    std::move(gltf_result.inverse_bind_matrices),
                                    std::move(joint_remaps));
 
-        // 6. Create skinned mesh from the first mesh in the glTF
-        if (!gltf_result.meshes.empty() && !render_loader.get_mesh_data(mesh_id))
+        if (!gltf_result.meshes.empty() &&
+            ctx.rb->get_processor().get_handle(mesh_id) == render_cmd::k_invalid_handle)
         {
             auto& gltf_mesh = gltf_result.meshes[0];
 
-            utils::buffer vert_buf(gltf_mesh.vertices.size() * sizeof(gpu::skinned_vertex_data));
-            memcpy(vert_buf.data(), gltf_mesh.vertices.data(),
+            // Compute bounding radius from skinned vertex data
+            float max_dist_sq = 0.0f;
+            for (const auto& v : gltf_mesh.vertices)
+            {
+                float dist_sq = glm::dot(v.position, v.position);
+                max_dist_sq = std::max(max_dist_sq, dist_sq);
+            }
+            amc.set_base_bounding_radius(std::sqrt(max_dist_sq));
+
+            auto vert_buf = std::make_shared<utils::buffer>(gltf_mesh.vertices.size() *
+                                                            sizeof(gpu::skinned_vertex_data));
+            memcpy(vert_buf->data(), gltf_mesh.vertices.data(),
                    gltf_mesh.vertices.size() * sizeof(gpu::skinned_vertex_data));
 
-            utils::buffer idx_buf(gltf_mesh.indices.size() * sizeof(gpu::uint));
-            memcpy(idx_buf.data(), gltf_mesh.indices.data(),
+            auto idx_buf =
+                std::make_shared<utils::buffer>(gltf_mesh.indices.size() * sizeof(gpu::uint));
+            memcpy(idx_buf->data(), gltf_mesh.indices.data(),
                    gltf_mesh.indices.size() * sizeof(gpu::uint));
 
-            auto vbv = vert_buf.make_view<gpu::skinned_vertex_data>();
-            auto ibv = idx_buf.make_view<gpu::uint>();
+            // Reuse root::create_mesh_cmd — but it's file-local there.
+            // Instead, use the same pattern inline.
+            ctx.rb->get_processor().ensure_handle(mesh_id);
 
-            render_loader.create_skinned_mesh(mesh_id, vbv, ibv);
+            // We need to create a create_mesh_cmd but it's defined in root's .cpp.
+            // For now, define a local skinned mesh command.
+            struct create_skinned_mesh_cmd : render_cmd::render_command_base
+            {
+                utils::id id;
+                std::shared_ptr<utils::buffer> vertices;
+                std::shared_ptr<utils::buffer> indices;
+
+                void
+                execute(render_cmd::render_exec_context& ctx) override
+                {
+                    auto vbv = vertices->make_view<gpu::skinned_vertex_data>();
+                    auto ibv = indices->make_view<gpu::uint>();
+                    auto* md = ctx.loader.create_skinned_mesh(id, vbv, ibv);
+
+                    if (md)
+                    {
+                        auto h = ctx.processor.ensure_handle(id);
+                        ctx.processor.store_mesh(h, md);
+                    }
+                }
+            };
+
+            auto* cmd = ctx.rb->alloc_cmd<create_skinned_mesh_cmd>();
+            cmd->id = mesh_id;
+            cmd->vertices = std::move(vert_buf);
+            cmd->indices = std::move(idx_buf);
+
+            ctx.rb->enqueue_cmd(cmd);
         }
     }
 
-    auto* mesh_data = render_loader.get_mesh_data(mesh_id);
-    if (!mesh_data)
+    auto mesh_handle = ctx.rb->get_processor().get_handle(mesh_id);
+    if (mesh_handle == render_cmd::k_invalid_handle)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    // Handle material
     auto* mat_model = amc.get_material();
-    render::material_data* mat_data = nullptr;
-
-    if (mat_model)
-    {
-        rc = ctx.rb->render_ctor(*mat_model, ctx.flag);
-        KRG_return_nok(rc);
-        mat_data = mat_model->get_material_data();
-    }
-
-    if (!mat_data)
+    if (!mat_model)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    auto* object_data = amc.get_render_object_data();
+    rc = ctx.rb->render_cmd_build(*mat_model, ctx.flag);
+    KRG_return_nok(rc);
+
+    auto mat_handle = ctx.rb->get_processor().get_handle(mat_model->get_id());
+    if (mat_handle == render_cmd::k_invalid_handle)
+    {
+        ALOG_LAZY_ERROR;
+        return result_code::failed;
+    }
 
     amc.update_matrix();
 
     auto scale = amc.get_scale();
     float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-    float scaled_radius = mesh_data->m_bounding_radius * max_scale;
+    float scaled_radius = amc.get_base_bounding_radius() * max_scale;
 
     auto* skel = anim_sys.get_skeleton(skeleton_id);
     uint32_t bone_count = skel ? static_cast<uint32_t>(skel->num_joints()) : 0;
 
-    if (!object_data)
+    // Compute queue ID from model data (no render-side pointers)
+    auto* se = mat_model->get_shader_effect();
+    std::string new_rqid;
+    if (se && se->m_enable_alpha_support)
     {
-        object_data =
-            glob::glob_state().getr_vulkan_render().get_cache().objects.alloc(amc.get_id());
-
-        if (!render_loader.update_object(*object_data, *mat_data, *mesh_data,
-                                         amc.get_transform_matrix(), amc.get_normal_matrix(),
-                                         glm::vec3(amc.get_world_position())))
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
-
-        object_data->gpu_data.bounding_radius = scaled_radius;
-        object_data->bone_count = bone_count;
-        amc.set_render_object_data(object_data);
-
-        auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
-        object_data->queue_id = new_rqid;
-        glob::glob_state().getr_vulkan_render().schedule_to_drawing(object_data);
+        new_rqid = "transparent";
     }
     else
     {
-        if (!render_loader.update_object(*object_data, *mat_data, *mesh_data,
-                                         amc.get_transform_matrix(), amc.get_normal_matrix(),
-                                         glm::vec3(amc.get_world_position())))
-        {
-            ALOG_LAZY_ERROR;
-            return result_code::failed;
-        }
-
-        object_data->gpu_data.bounding_radius = scaled_radius;
-        object_data->bone_count = bone_count;
-
-        auto new_rqid = ::kryga::render_bridge::make_qid(*mat_data, *mesh_data);
-        auto& rqid = object_data->queue_id;
-        if (new_rqid != rqid)
-        {
-            glob::glob_state().getr_vulkan_render().remove_from_drawing(object_data);
-            object_data->queue_id = new_rqid;
-            glob::glob_state().getr_vulkan_render().schedule_to_drawing(object_data);
-        }
+        new_rqid = mat_model->get_id().str() + "::" + mesh_id.str();
     }
 
-    // Create animation instance
+    auto existing_handle = ctx.rb->get_processor().get_handle(amc.get_id());
+
+    if (existing_handle == render_cmd::k_invalid_handle)
+    {
+        ctx.rb->get_processor().ensure_handle(amc.get_id());
+
+        auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+        cmd->id = amc.get_id();
+        cmd->mesh_handle = mesh_handle;
+        cmd->material_handle = mat_handle;
+        cmd->transform = amc.get_transform_matrix();
+        cmd->normal_matrix = amc.get_normal_matrix();
+        cmd->position = glm::vec3(amc.get_world_position());
+        cmd->bounding_radius = scaled_radius;
+        cmd->bone_count = bone_count;
+        cmd->queue_id = new_rqid;
+
+        ctx.rb->enqueue_cmd(cmd);
+    }
+    else
+    {
+        auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
+        cmd->id = amc.get_id();
+        cmd->mesh_handle = mesh_handle;
+        cmd->material_handle = mat_handle;
+        cmd->transform = amc.get_transform_matrix();
+        cmd->normal_matrix = amc.get_normal_matrix();
+        cmd->position = glm::vec3(amc.get_world_position());
+        cmd->bounding_radius = scaled_radius;
+        cmd->queue_id = new_rqid;
+
+        ctx.rb->enqueue_cmd(cmd);
+    }
+
+    // Animation instance creation — render_data is resolved lazily during tick()
+    // via the resolver callback (one frame delay before bone GPU uploads start)
     auto clip_name = amc.get_clip_name();
     if (clip_name.valid() && anim_sys.has_animation(skeleton_id, clip_name))
     {
-        auto inst_id = anim_sys.create_instance(amc.get_id(), skeleton_id, clip_name, object_data);
+        auto inst_id = anim_sys.create_instance(amc.get_id(), skeleton_id, clip_name, nullptr);
         amc.set_skeleton_id(skeleton_id);
         amc.set_anim_instance_id(inst_id);
     }
-
-    glob::glob_state().getr_vulkan_render().schedule_game_data_gpu_upload(object_data);
 
     return result_code::ok;
 }
 
 result_code
-animated_mesh_component__render_destructor(reflection::type_context__render& ctx)
+animated_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& amc = ctx.obj->asr<base::animated_mesh_component>();
 
-    // Destroy animation instance
     auto& inst_id = amc.get_animation_instance_id();
     if (inst_id.valid())
     {
         glob::glob_state().getr_animation_system().destroy_instance(inst_id);
     }
 
-    // Release material
     auto mat_model = amc.get_material();
     result_code rc = result_code::nav;
     if (mat_model && is_same_source(*ctx.obj, *mat_model))
     {
-        rc = ctx.rb->render_dtor(*mat_model, ctx.flag);
+        rc = ctx.rb->render_cmd_destroy(*mat_model, ctx.flag);
         KRG_return_nok(rc);
     }
 
-    // Release render object
-    auto object_data = amc.get_render_object_data();
-    if (object_data)
+    if (ctx.rb->get_processor().get_handle(amc.get_id()) != render_cmd::k_invalid_handle)
     {
-        glob::glob_state().getr_vulkan_render().remove_from_drawing(object_data);
-        glob::glob_state().getr_vulkan_render().get_cache().objects.release(object_data);
+        auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+        cmd->id = amc.get_id();
+        ctx.rb->enqueue_cmd(cmd);
     }
 
-    rc = root::game_object_component__render_destructor(ctx);
+    rc = root::game_object_component__cmd_destroyer(ctx);
     KRG_return_nok(rc);
 
     return result_code::ok;

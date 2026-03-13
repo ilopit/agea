@@ -34,8 +34,8 @@ enum class sampler_address : uint8_t
 
 // clang-format off
 KRG_ar_class("architype=sampler",
-              render_constructor = sampler__render_loader,
-              render_destructor  = sampler__render_destructor);
+              render_cmd_builder   = sampler__cmd_builder,
+              render_cmd_destroyer = sampler__cmd_destroyer);
 class sampler : public asset
 // clang-format on
 {

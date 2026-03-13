@@ -11,8 +11,8 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(render_constructor = point_light_component__render_loader,
-              render_destructor = point_light_component__render_destructor);
+KRG_ar_class(render_cmd_builder   = point_light_component__cmd_builder,
+              render_cmd_destroyer = point_light_component__cmd_destroyer);
 class point_light : public ::kryga::root::game_object
 {
     KRG_gen_meta__point_light();
