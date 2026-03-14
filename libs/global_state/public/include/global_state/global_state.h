@@ -37,6 +37,7 @@ class package_manager;
 class level_manager;
 class object_mapping;
 class id_generator;
+class queues;
 
 struct objects_cache;
 struct components_cache;
@@ -108,6 +109,7 @@ struct state_mutator__ui;
 struct state_mutator__native_window;
 struct state_mutator__vulkan_render;
 struct state_mutator__engine_counters;
+struct state_mutator__queues;
 struct state_mutator__render_bridge;
 struct state_mutator__animation_system;
 
@@ -175,6 +177,7 @@ class state
     friend class ::kryga::state_mutator__native_window;
     friend class ::kryga::state_mutator__vulkan_render;
     friend class ::kryga::state_mutator__engine_counters;
+    friend class ::kryga::state_mutator__queues;
     friend class ::kryga::state_mutator__render_bridge;
     friend class ::kryga::state_mutator__animation_system;
 
@@ -251,6 +254,7 @@ public:
     KRG_gen_getter(native_window, native_window);
     KRG_gen_getter(vulkan_render, render::vulkan_render);
     KRG_gen_getter(engine_counters, engine_counters);
+    KRG_gen_getter(queues, core::queues);
     KRG_gen_getter(render_bridge, render_bridge);
     KRG_gen_getter(animation_system, animation::animation_system);
 
@@ -334,6 +338,7 @@ private:
     native_window*                  m_native_window = nullptr;
     render::vulkan_render*          m_vulkan_render = nullptr;
     engine_counters*                m_engine_counters = nullptr;
+    core::queues*                   m_queues = nullptr;
     render_bridge*                  m_render_bridge = nullptr;
     animation::animation_system*    m_animation_system = nullptr;
 
@@ -410,6 +415,12 @@ struct state_mutator__vulkan_render
 };
 
 struct state_mutator__engine_counters
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__queues
 {
     static void
     set(gs::state& s);

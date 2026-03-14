@@ -4,6 +4,7 @@
 #include "core/object_load_context.h"
 #include "core/object_constructor.h"
 #include "core/package_manager.h"
+#include "core/queues.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
@@ -116,7 +117,7 @@ level_manager::load_level_path(level& l, const utils::path& path)
         {
             if (auto go = i->as<root::game_object>())
             {
-                l.add_to_dirty_render_queue(go->get_root_component());
+                glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(go->get_root_component());
             }
         }
     }
@@ -128,7 +129,7 @@ level_manager::load_level_path(level& l, const utils::path& path)
 void
 level_manager::unload_level(level& l)
 {
-    l.drop_pending_updates();
+    glob::glob_state().getr_queues().get_model().drop_pending();
     l.unregister_objects();
     l.unload();
 }

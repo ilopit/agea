@@ -182,7 +182,7 @@ render_bridge::is_kryga_mesh(const utils::path& p)
 void
 render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
 {
-    m_command_queue.push(std::move(cmd));
+    glob::glob_state().getr_queues().get_render().enqueue(cmd);
 }
 
 void
@@ -193,7 +193,7 @@ render_bridge::drain_queue()
 
     render_cmd::render_exec_context exec_ctx{vr, loader};
 
-    m_command_queue.drain(
+    glob::glob_state().getr_queues().get_render().command_queue.drain(
         [&exec_ctx](render_cmd::render_command_base*&& cmd)
         {
             cmd->execute(exec_ctx);
@@ -204,7 +204,7 @@ render_bridge::drain_queue()
 void
 render_bridge::reset_arena()
 {
-    m_arena.reset();
+    glob::glob_state().getr_queues().get_render().reset_arena();
 }
 
 kryga::result_code

@@ -3,6 +3,8 @@
 #include "packages/root/model/game_object.h"
 
 #include <core/level.h>
+#include <core/queues.h>
+#include <global_state/global_state.h>
 
 namespace kryga
 {
@@ -97,7 +99,7 @@ game_object_component::mark_transform_dirty()
 {
     if (!has_dirty_transform())
     {
-        m_level->add_to_dirty_transform_queue(this);
+        glob::glob_state().getr_queues().get_model().dirty_transforms.emplace_back(this);
         set_dirty_transform(true);
     }
 }
@@ -105,9 +107,9 @@ game_object_component::mark_transform_dirty()
 void
 game_object_component::mark_render_dirty()
 {
-    if (m_level && get_state() != smart_object_state::constructed)
+    if (get_state() != smart_object_state::constructed)
     {
-        m_level->add_to_dirty_render_queue(this);
+        glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(this);
         set_state(smart_object_state::constructed);
     }
 }

@@ -40,6 +40,7 @@
 #include <packages/root/package.root.h>
 #include <packages/base/package.base.h>
 
+#include <core/queues.h>
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_commands_common.h>
 
@@ -222,6 +223,7 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__ui::set(gs);
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
+    state_mutator__queues::set(gs);
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
 
@@ -419,13 +421,10 @@ vulkan_engine::run()
             update_cameras();
             glob::glob_state().getr_vulkan_render().set_camera(m_camera_data);
 
-            if (glob::glob_state().get_current_level())
-            {
-                consume_updated_shader_effects();
-                consume_updated_render_assets();
-                consume_updated_render_components();
-                consume_updated_transforms();
-            }
+            consume_updated_shader_effects();
+            consume_updated_render_assets();
+            consume_updated_render_components();
+            consume_updated_transforms();
         }
 
         // Signal render thread to draw this frame
@@ -583,7 +582,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 void
 vulkan_engine::consume_updated_transforms()
 {
-    auto& items = glob::glob_state().get_current_level()->get_dirty_transforms_components_queue();
+    auto& items = glob::glob_state().getr_queues().get_model().dirty_transforms;
 
     if (items.empty())
     {
@@ -753,7 +752,7 @@ vulkan_engine::init_default_scripting()
 void
 vulkan_engine::consume_updated_render_components()
 {
-    auto& items = glob::glob_state().get_current_level()->get_dirty_render_queue();
+    auto& items = glob::glob_state().getr_queues().get_model().dirty_render_components;
 
     for (auto& i : items)
     {
@@ -766,7 +765,7 @@ vulkan_engine::consume_updated_render_components()
 void
 vulkan_engine::consume_updated_render_assets()
 {
-    auto& items = glob::glob_state().get_current_level()->get_dirty_render_assets_queue();
+    auto& items = glob::glob_state().getr_queues().get_model().dirty_render_assets;
 
     for (auto& i : items)
     {
@@ -779,7 +778,7 @@ vulkan_engine::consume_updated_render_assets()
 void
 vulkan_engine::consume_updated_shader_effects()
 {
-    auto& items = glob::glob_state().get_current_level()->get_dirty_shader_effect_queue();
+    auto& items = glob::glob_state().getr_queues().get_model().dirty_shader_effects;
 
     for (auto& i : items)
     {

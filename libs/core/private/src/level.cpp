@@ -7,6 +7,8 @@
 #include <core/caches/caches_map.h>
 #include <core/object_load_context_builder.h>
 #include <core/object_constructor.h>
+#include <core/queues.h>
+#include <global_state/global_state.h>
 
 #include <global_state/global_state.h>
 
@@ -82,7 +84,7 @@ level::spawn_object_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    add_to_dirty_render_queue(obj->get_root_component());
+    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
 
@@ -130,7 +132,7 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    add_to_dirty_render_queue(obj->get_root_component());
+    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
 
@@ -152,7 +154,7 @@ level::spawn_object_impl(const utils::id& proto_id,
     auto obj = result.value()->as<root::game_object>();
     if (obj)
     {
-        add_to_dirty_render_queue(obj->get_root_component());
+        glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(obj->get_root_component());
 
         m_tickable_objects.emplace_back(obj);
     }
@@ -171,15 +173,6 @@ level::tick(float dt)
             c->on_tick(dt);
         }
     }
-}
-
-void
-level::drop_pending_updates()
-{
-    m_dirty_transform_components.clear();
-    m_dirty_render_components.clear();
-    m_dirty_render_assets.clear();
-    m_dirty_shader_effects.clear();
 }
 
 void

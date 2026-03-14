@@ -82,58 +82,6 @@ public:
         return m_instance_local_cs.game_objects;
     }
 
-    void
-    add_to_dirty_transform_queue(root::game_object_component* g)
-    {
-        KRG_check(g, "Should not be NULL");
-        m_dirty_transform_components.emplace_back(g);
-    }
-
-    line_cache<root::game_object_component*>&
-    get_dirty_transforms_components_queue()
-    {
-        return m_dirty_transform_components;
-    }
-
-    void
-    add_to_dirty_render_queue(root::game_object_component* g)
-    {
-        KRG_check(g, "Should not be NULL");
-        m_dirty_render_components.emplace_back(g);
-    }
-
-    line_cache<root::game_object_component*>&
-    get_dirty_render_queue()
-    {
-        return m_dirty_render_components;
-    }
-
-    void
-    add_to_dirty_render_assets_queue(root::asset* a)
-    {
-        KRG_check(a, "Should not be NULL");
-        m_dirty_render_assets.emplace_back(a);
-    }
-
-    line_cache<root::asset*>&
-    get_dirty_render_assets_queue()
-    {
-        return m_dirty_render_assets;
-    }
-
-    void
-    add_to_dirty_shader_effect_queue(root::shader_effect* se)
-    {
-        KRG_check(se, "Should not be NULL");
-        m_dirty_shader_effects.emplace_back(se);
-    }
-
-    line_cache<root::shader_effect*>&
-    get_dirty_shader_effect_queue()
-    {
-        return m_dirty_shader_effects;
-    }
-
     const std::vector<utils::id>&
     get_package_ids() const
     {
@@ -145,9 +93,6 @@ public:
     {
         return *m_occ;
     }
-
-    void
-    drop_pending_updates();
 
     void
     unregister_objects();
@@ -178,11 +123,6 @@ private:
     level_state m_state = level_state::unloaded;
 
     line_cache<root::game_object*> m_tickable_objects;
-
-    line_cache<root::game_object_component*> m_dirty_transform_components;
-    line_cache<root::game_object_component*> m_dirty_render_components;
-    line_cache<root::asset*> m_dirty_render_assets;
-    line_cache<root::shader_effect*> m_dirty_shader_effects;
 
     std::vector<utils::id> m_package_ids;
 };

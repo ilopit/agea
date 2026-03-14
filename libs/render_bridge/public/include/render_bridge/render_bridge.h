@@ -8,12 +8,13 @@
 #include <utils/path.h>
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
-#include <utils/spsc_queue.h>
 #include <utils/check.h>
 
 #include <vulkan_render/vulkan_render_loader_create_infos.h>
 
 #include <core/model_minimal.h>
+#include <core/queues.h>
+#include <global_state/global_state.h>
 
 #include <unordered_map>
 #include <unordered_set>
@@ -47,7 +48,6 @@ public:
     static std::string
     make_qid(render::material_data& mt_data, render::mesh_data& m_data);
 
-    // Model-side queue ID computation (no render-side pointers needed)
     static std::string
     make_qid_from_model(root::smart_object& mat_model, root::smart_object& mesh_model);
 
@@ -69,7 +69,6 @@ public:
     utils::dynobj
     extract_gpu_data(root::smart_object& so, const access_template& t);
 
-    // Set texture/sampler bindings in material GPU data (at fixed offsets at start of buffer)
     static void
     set_material_texture_bindings(utils::dynobj& gpu_data,
                                   const uint32_t* texture_indices,
@@ -82,23 +81,20 @@ public:
         return m_dependency_graph;
     }
 
-    // Allocate a command from the per-frame arena (main thread)
+    // Convenience: allocate a command from the per-frame arena
     template <typename T, typename... Args>
     T*
-    alloc_cmd(Args&&... args)
-    {
-        return m_arena.alloc<T>(std::forward<Args>(args)...);
-    }
+    alloc_cmd(Args&&... args);
 
-    // Enqueue a command for deferred processing by the render thread
+    // Convenience: enqueue a command for render thread
     void
     enqueue_cmd(render_cmd::render_command_base* cmd);
 
-    // Drain the command queue: execute + dtor each command (called from render thread)
+    // Drain the command queue (called from render thread)
     void
     drain_queue();
 
-    // Reset the arena after render thread is done (called from main thread)
+    // Reset the arena (called from main thread after render done)
     void
     reset_arena();
 
@@ -106,8 +102,14 @@ private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
 
     render_object_dependency_graph m_dependency_graph;
-    render_cmd::cmd_arena m_arena;
-    utils::spsc_queue<render_cmd::render_command_base*> m_command_queue{16384};
 };
+
+template <typename T, typename... Args>
+T*
+render_bridge::alloc_cmd(Args&&... args)
+{
+    return glob::glob_state().getr_queues().get_render().alloc_cmd<T>(
+        std::forward<Args>(args)...);
+}
 
 }  // namespace kryga
