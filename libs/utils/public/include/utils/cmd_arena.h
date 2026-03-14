@@ -23,19 +23,23 @@ public:
     {
     }
 
+    void*
+    alloc_raw(size_t size, size_t align)
+    {
+        size_t aligned = (m_offset + align - 1) & ~(align - 1);
+        assert(aligned + size <= m_buf.size());
+
+        void* ptr = m_buf.data() + aligned;
+        m_offset = aligned + size;
+        return ptr;
+    }
+
     template <typename T, typename... Args>
     T*
     alloc(Args&&... args)
     {
-        static constexpr size_t align = alignof(T);
-        static constexpr size_t size = sizeof(T);
-
-        size_t aligned = (m_offset + align - 1) & ~(align - 1);
-        assert(aligned + size <= m_buf.size());
-
-        auto* ptr = new (m_buf.data() + aligned) T(std::forward<Args>(args)...);
-        m_offset = aligned + size;
-        return ptr;
+        void* ptr = alloc_raw(sizeof(T), alignof(T));
+        return new (ptr) T(std::forward<Args>(args)...);
     }
 
     void

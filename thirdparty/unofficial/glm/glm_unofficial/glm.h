@@ -1,8 +1,7 @@
 #pragma once
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_ENABLE_EXPERIMENTAL
+// GLM_FORCE_RADIANS, GLM_FORCE_DEPTH_ZERO_TO_ONE, GLM_ENABLE_EXPERIMENTAL
+// are set via target_compile_definitions on gpu_types (propagated PUBLIC).
 
 #pragma warning(push)
 #pragma warning(disable : 4201)

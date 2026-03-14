@@ -37,6 +37,10 @@ target_include_directories(engine
         "${CMAKE_CURRENT_SOURCE_DIR}/private/include" 
 )
 
+target_precompile_headers(engine PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:<imgui.h$<ANGLE-R>>"
+)
+
 kryga_finalize_library(engine)
 
 add_executable(engine_app "private/src/app/main.cpp")

@@ -13,9 +13,8 @@
 #include <vulkan_render/vulkan_render_loader_create_infos.h>
 
 #include <core/model_minimal.h>
-#include <core/queues.h>
-#include <global_state/global_state.h>
 
+#include <new>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -81,6 +80,10 @@ public:
         return m_dependency_graph;
     }
 
+    // Raw allocation from the per-frame arena (implemented in .cpp)
+    static void*
+    alloc_cmd_raw(size_t size, size_t align);
+
     // Convenience: allocate a command from the per-frame arena
     template <typename T, typename... Args>
     T*
@@ -108,7 +111,8 @@ template <typename T, typename... Args>
 T*
 render_bridge::alloc_cmd(Args&&... args)
 {
-    return glob::glob_state().getr_queues().get_render().alloc_cmd<T>(std::forward<Args>(args)...);
+    void* mem = alloc_cmd_raw(sizeof(T), alignof(T));
+    return new (mem) T(std::forward<Args>(args)...);
 }
 
 }  // namespace kryga

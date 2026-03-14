@@ -1,5 +1,7 @@
 #include "global_state/global_state.h"
 
+#include <utils/kryga_log.h>
+
 #include <iostream>
 
 namespace kryga::glob
@@ -20,6 +22,17 @@ glob_state_reset()
 
 namespace kryga::gs
 {
+
+state_base_box::state_base_box(std::string name)
+    : box_name(std::move(name))
+{
+    ALOG_TRACE("Box [{}] created ", box_name);
+}
+
+state_base_box::~state_base_box()
+{
+    ALOG_TRACE("Box [{}] destroyed ", box_name);
+}
 
 state::state()
 {

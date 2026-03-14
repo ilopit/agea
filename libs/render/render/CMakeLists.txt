@@ -39,6 +39,11 @@ target_link_libraries(vulkan_render PUBLIC
 
     TracyClient
 )
+target_precompile_headers(vulkan_render PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:<vulkan/vulkan.h$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<imgui.h$<ANGLE-R>>"
+)
+
 kryga_finalize_library(vulkan_render)
 
 add_subdirectory(private/tests)

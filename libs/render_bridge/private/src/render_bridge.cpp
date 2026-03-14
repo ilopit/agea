@@ -2,6 +2,7 @@
 #include "render_bridge/render_commands_common.h"
 
 #include <global_state/global_state.h>
+#include <core/queues.h>
 #include <core/reflection/reflection_type.h>
 
 #include <packages/root/model/smart_object.h>
@@ -177,6 +178,12 @@ bool
 render_bridge::is_kryga_mesh(const utils::path& p)
 {
     return p.has_extension(".avrt") || p.has_extension(".aind");
+}
+
+void*
+render_bridge::alloc_cmd_raw(size_t size, size_t align)
+{
+    return glob::glob_state().getr_queues().get_render().arena.alloc_raw(size, align);
 }
 
 void

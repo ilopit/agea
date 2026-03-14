@@ -2,7 +2,7 @@
 
 #include <utils/singleton_instance.h>
 #include <utils/defines_utils.h>
-#include <utils/kryga_log.h>
+#include <utils/check.h>
 
 #include <memory>
 #include <functional>
@@ -118,16 +118,8 @@ namespace gs
 
 struct state_base_box
 {
-    state_base_box(std::string name)
-        : box_name(std::move(name))
-    {
-        ALOG_TRACE("Box [{}] created ", box_name);
-    }
-
-    virtual ~state_base_box()
-    {
-        ALOG_TRACE("Box [{}] destroyed ", box_name);
-    }
+    state_base_box(std::string name);
+    virtual ~state_base_box();
 
     std::string box_name;
 };
