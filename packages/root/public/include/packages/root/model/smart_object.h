@@ -272,6 +272,23 @@ protected:
 
     smart_object_state m_obj_state = smart_object_state::empty;
     smart_object_flags m_flags;
+
+    // True after render commands have been built for this object.
+    // Used by builders to decide create vs update. Not serialized.
+    bool m_render_built = false;
+
+public:
+    bool
+    get_render_built() const
+    {
+        return m_render_built;
+    }
+
+    void
+    set_render_built(bool v)
+    {
+        m_render_built = v;
+    }
 };
 
 template <typename To, typename From>

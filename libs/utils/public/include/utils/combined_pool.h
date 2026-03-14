@@ -74,6 +74,13 @@ public:
         return &m_items.at((size_t)slot);
     }
 
+    T*
+    find_by_id(const utils::id& id)
+    {
+        auto itr = m_mapping.find(id);
+        return itr != m_mapping.end() ? itr->second : nullptr;
+    }
+
     void
     release(T* obj)
     {

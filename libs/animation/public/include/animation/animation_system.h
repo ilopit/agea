@@ -86,12 +86,19 @@ public:
     bool
     has_animation(const utils::id& skel_id, const utils::id& anim_id) const;
 
+    bool
+    has_skinned_mesh(const utils::id& skel_id) const;
+
+    void
+    set_skinned_mesh_created(const utils::id& skel_id);
+
 private:
     struct registered_skeleton
     {
         ozz::animation::Skeleton skeleton;
         std::vector<glm::mat4> inverse_bind_matrices;
         std::vector<int32_t> joint_remaps;
+        bool skinned_mesh_created = false;
     };
 
     struct layer_state

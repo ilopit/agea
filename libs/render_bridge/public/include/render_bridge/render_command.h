@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utils/id.h>
-
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -17,19 +15,11 @@ class vulkan_render;
 class vulkan_render_loader;
 }  // namespace render
 
-class render_command_processor;
-
 namespace render_cmd
 {
 
-// Opaque handle to render-thread-owned resources.
-// Main thread stores these; render thread resolves them to pointers.
-using render_handle = uint32_t;
-inline constexpr render_handle k_invalid_handle = UINT32_MAX;
-
 struct render_exec_context
 {
-    render_command_processor& processor;
     render::vulkan_render& vr;
     render::vulkan_render_loader& loader;
 };

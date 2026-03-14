@@ -1,5 +1,4 @@
 #include "render_bridge/render_bridge.h"
-#include "render_bridge/render_command_processor.h"
 #include "render_bridge/render_commands_common.h"
 
 #include <global_state/global_state.h>
@@ -192,7 +191,7 @@ render_bridge::drain_queue()
     auto& vr = glob::glob_state().getr_vulkan_render();
     auto& loader = glob::glob_state().getr_vulkan_render_loader();
 
-    render_cmd::render_exec_context exec_ctx{m_processor, vr, loader};
+    render_cmd::render_exec_context exec_ctx{vr, loader};
 
     m_command_queue.drain(
         [&exec_ctx](render_cmd::render_command_base*&& cmd)
@@ -273,11 +272,7 @@ render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 void
 update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
 {
-    auto h = ctx.processor.get_handle(id);
-    if (h == render_cmd::k_invalid_handle)
-        return;
-
-    auto* object_data = ctx.processor.resolve_object(h);
+    auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
     if (!object_data)
         return;
 

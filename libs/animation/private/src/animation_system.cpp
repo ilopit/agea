@@ -482,5 +482,22 @@ animation_system::has_animation(const utils::id& skel_id, const utils::id& anim_
     return skel_it->second.find(anim_id) != skel_it->second.end();
 }
 
+bool
+animation_system::has_skinned_mesh(const utils::id& skel_id) const
+{
+    auto it = m_skeletons.find(skel_id);
+    return it != m_skeletons.end() && it->second.skinned_mesh_created;
+}
+
+void
+animation_system::set_skinned_mesh_created(const utils::id& skel_id)
+{
+    auto it = m_skeletons.find(skel_id);
+    if (it != m_skeletons.end())
+    {
+        it->second.skinned_mesh_created = true;
+    }
+}
+
 }  // namespace animation
 }  // namespace kryga

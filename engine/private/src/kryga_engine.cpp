@@ -227,7 +227,8 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_animation_system().set_render_data_resolver(
         [](const utils::id& id) -> render::vulkan_render_data* {
-            return glob::glob_state().getr_render_bridge().get_processor().get_object(id);
+            return glob::glob_state().getr_vulkan_render()
+                .get_cache().objects.find_by_id(id);
         });
 
     gs.run_connect();
@@ -587,7 +588,7 @@ vulkan_engine::consume_updated_transforms()
         {
             if (auto m = obj.as<base::mesh_component>())
             {
-                if (rb.get_processor().get_handle(m->get_id()) != render_cmd::k_invalid_handle)
+                if (m->get_render_built())
                 {
                     auto* cmd = rb.alloc_cmd<update_transform_cmd>();
                     cmd->id = m->get_id();

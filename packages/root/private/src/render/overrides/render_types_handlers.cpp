@@ -3,7 +3,6 @@
 #include <global_state/global_state.h>
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_command.h>
-#include <render_bridge/render_command_processor.h>
 
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
@@ -61,7 +60,7 @@ static uint8_t
 map_sampler_to_static_index(const sampler& smp)
 {
     bool is_linear = (smp.get_min_filter() == sampler_filter::linear);
-    auto addr = smp.get_address_u();  // Assume U and V are same for static samplers
+    auto addr = smp.get_address_u();
 
     if (smp.get_anisotropy() && is_linear && addr == sampler_address::repeat)
     {
@@ -82,7 +81,7 @@ map_sampler_to_static_index(const sampler& smp)
             return KGPU_SAMPLER_LINEAR_CLAMP_BORDER;
         }
     }
-    else  // nearest
+    else
     {
         switch (addr)
         {
@@ -95,7 +94,7 @@ map_sampler_to_static_index(const sampler& smp)
         }
     }
 
-    return KGPU_SAMPLER_LINEAR_REPEAT;  // Default fallback
+    return KGPU_SAMPLER_LINEAR_REPEAT;
 }
 
 // ============================================================================
@@ -112,24 +111,17 @@ struct create_mesh_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        render::mesh_data* md = nullptr;
         if (skinned)
         {
             auto vbv = vertices->make_view<gpu::skinned_vertex_data>();
             auto ibv = indices->make_view<gpu::uint>();
-            md = ctx.loader.create_skinned_mesh(id, vbv, ibv);
+            ctx.loader.create_skinned_mesh(id, vbv, ibv);
         }
         else
         {
             auto vbv = vertices->make_view<gpu::vertex_data>();
             auto ibv = indices->make_view<gpu::uint>();
-            md = ctx.loader.create_mesh(id, vbv, ibv);
-        }
-
-        if (md)
-        {
-            auto h = ctx.processor.ensure_handle(id);
-            ctx.processor.store_mesh(h, md);
+            ctx.loader.create_mesh(id, vbv, ibv);
         }
     }
 };
@@ -141,12 +133,7 @@ struct destroy_mesh_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto h = ctx.processor.get_handle(id);
-        if (h == render_cmd::k_invalid_handle)
-            return;
         ctx.loader.destroy_mesh_data(id);
-        ctx.processor.erase_mesh(h);
-        ctx.processor.erase_handle(id);
     }
 };
 
@@ -161,13 +148,7 @@ struct create_texture_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* td = ctx.loader.create_texture(id, *pixels, width, height);
-
-        if (td)
-        {
-            auto h = ctx.processor.ensure_handle(id);
-            ctx.processor.store_texture(h, td);
-        }
+        ctx.loader.create_texture(id, *pixels, width, height);
     }
 };
 
@@ -178,12 +159,7 @@ struct destroy_texture_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto h = ctx.processor.get_handle(id);
-        if (h == render_cmd::k_invalid_handle)
-            return;
         ctx.loader.destroy_texture_data(id);
-        ctx.processor.erase_texture(h);
-        ctx.processor.erase_handle(id);
     }
 };
 
@@ -219,12 +195,6 @@ struct create_shader_effect_cmd : render_cmd::render_command_base
 
             rp->create_shader_effect(id, se_ci, se_data);
         }
-
-        if (se_data)
-        {
-            auto h = ctx.processor.ensure_handle(id);
-            ctx.processor.store_shader_effect(h, se_data);
-        }
     }
 };
 
@@ -235,27 +205,22 @@ struct destroy_shader_effect_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto h = ctx.processor.get_handle(id);
-        if (h == render_cmd::k_invalid_handle)
-            return;
-
-        auto* se_data = ctx.processor.resolve_shader_effect(h);
+        auto* rp = ctx.vr.get_render_pass(AID("main"));
+        auto* se_data = rp->get_shader_effect(id);
         if (se_data)
         {
-            if (auto* rp = se_data->get_owner_render_pass())
+            if (auto* owner_rp = se_data->get_owner_render_pass())
             {
-                rp->destroy_shader_effect(id);
+                owner_rp->destroy_shader_effect(id);
             }
         }
-        ctx.processor.erase_shader_effect(h);
-        ctx.processor.erase_handle(id);
     }
 };
 
 struct texture_slot_info
 {
     uint32_t slot = 0;
-    render_cmd::render_handle texture_handle = render_cmd::k_invalid_handle;
+    utils::id texture_id;
     uint8_t static_sampler_index = 0;
 };
 
@@ -263,31 +228,27 @@ struct create_material_cmd : render_cmd::render_command_base
 {
     utils::id id;
     utils::id type_id;
-    render_cmd::render_handle shader_effect_handle = render_cmd::k_invalid_handle;
+    utils::id shader_effect_id;
     std::vector<texture_slot_info> texture_slots;
     utils::dynobj gpu_data;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        render::shader_effect_data* se_data = nullptr;
-        if (shader_effect_handle != render_cmd::k_invalid_handle)
-        {
-            se_data = ctx.processor.resolve_shader_effect(shader_effect_handle);
-        }
+        auto* rp = ctx.vr.get_render_pass(AID("main"));
+        auto* se_data = rp->get_shader_effect(shader_effect_id);
 
         if (!se_data || se_data->m_failed_load)
         {
-            auto* rp = ctx.vr.get_render_pass(AID("main"));
             se_data = rp->get_shader_effect(AID("se_error"));
         }
 
         std::vector<render::texture_sampler_data> samples;
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_handle != render_cmd::k_invalid_handle)
+            if (slot.texture_id.valid())
             {
-                auto* td = ctx.processor.resolve_texture(slot.texture_handle);
+                auto* td = ctx.loader.get_texture_data(slot.texture_id);
                 if (td)
                 {
                     render::texture_sampler_data tsd;
@@ -298,7 +259,6 @@ struct create_material_cmd : render_cmd::render_command_base
             }
         }
 
-        // Resolve bindless texture indices
         uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
         uint32_t gpu_sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
         for (int i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
@@ -309,10 +269,9 @@ struct create_material_cmd : render_cmd::render_command_base
 
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_handle != render_cmd::k_invalid_handle &&
-                slot.slot < KGPU_MAX_TEXTURE_SLOTS)
+            if (slot.texture_id.valid() && slot.slot < KGPU_MAX_TEXTURE_SLOTS)
             {
-                auto* td = ctx.processor.resolve_texture(slot.texture_handle);
+                auto* td = ctx.loader.get_texture_data(slot.texture_id);
                 if (td)
                 {
                     gpu_texture_indices[slot.slot] = td->get_bindless_index();
@@ -340,9 +299,6 @@ struct create_material_cmd : render_cmd::render_command_base
                 }
             }
 
-            auto h = ctx.processor.ensure_handle(id);
-            ctx.processor.store_material(h, mat_data);
-
             if (!gpu_data.empty())
             {
                 ctx.vr.add_material(mat_data);
@@ -355,39 +311,31 @@ struct create_material_cmd : render_cmd::render_command_base
 struct update_material_cmd : render_cmd::render_command_base
 {
     utils::id id;
-    render_cmd::render_handle shader_effect_handle = render_cmd::k_invalid_handle;
+    utils::id shader_effect_id;
     std::vector<texture_slot_info> texture_slots;
     utils::dynobj gpu_data;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto h = ctx.processor.get_handle(id);
-        if (h == render_cmd::k_invalid_handle)
-            return;
-
-        auto* mat_data = ctx.processor.resolve_material(h);
+        auto* mat_data = ctx.loader.get_material_data(id);
         if (!mat_data)
             return;
 
-        render::shader_effect_data* se_data = nullptr;
-        if (shader_effect_handle != render_cmd::k_invalid_handle)
-        {
-            se_data = ctx.processor.resolve_shader_effect(shader_effect_handle);
-        }
+        auto* rp = ctx.vr.get_render_pass(AID("main"));
+        auto* se_data = rp->get_shader_effect(shader_effect_id);
 
         if (!se_data || se_data->m_failed_load)
         {
-            auto* rp = ctx.vr.get_render_pass(AID("main"));
             se_data = rp->get_shader_effect(AID("se_error"));
         }
 
         std::vector<render::texture_sampler_data> samples;
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_handle != render_cmd::k_invalid_handle)
+            if (slot.texture_id.valid())
             {
-                auto* td = ctx.processor.resolve_texture(slot.texture_handle);
+                auto* td = ctx.loader.get_texture_data(slot.texture_id);
                 if (td)
                 {
                     render::texture_sampler_data tsd;
@@ -398,7 +346,6 @@ struct update_material_cmd : render_cmd::render_command_base
             }
         }
 
-        // Resolve bindless texture indices
         uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
         uint32_t gpu_sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
         for (int i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
@@ -409,10 +356,9 @@ struct update_material_cmd : render_cmd::render_command_base
 
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_handle != render_cmd::k_invalid_handle &&
-                slot.slot < KGPU_MAX_TEXTURE_SLOTS)
+            if (slot.texture_id.valid() && slot.slot < KGPU_MAX_TEXTURE_SLOTS)
             {
-                auto* td = ctx.processor.resolve_texture(slot.texture_handle);
+                auto* td = ctx.loader.get_texture_data(slot.texture_id);
                 if (td)
                 {
                     gpu_texture_indices[slot.slot] = td->get_bindless_index();
@@ -451,18 +397,12 @@ struct destroy_material_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto h = ctx.processor.get_handle(id);
-        if (h == render_cmd::k_invalid_handle)
-            return;
-
-        auto* mat_data = ctx.processor.resolve_material(h);
+        auto* mat_data = ctx.loader.get_material_data(id);
         if (mat_data)
         {
             ctx.vr.drop_material(mat_data);
             ctx.loader.destroy_material_data(id);
         }
-        ctx.processor.erase_material(h);
-        ctx.processor.erase_handle(id);
     }
 };
 
@@ -488,7 +428,6 @@ mesh__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         }
     }
 
-    // Pre-compute bounding radius from vertex data (main thread)
     auto vbv = msh_model.get_vertices_buffer().make_view<gpu::vertex_data>();
     float max_dist_sq = 0.0f;
     for (size_t i = 0; i < vbv.size(); ++i)
@@ -499,14 +438,13 @@ mesh__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     }
     msh_model.set_bounding_radius(std::sqrt(max_dist_sq));
 
-    ctx.rb->get_processor().ensure_handle(msh_model.get_id());
-
     auto* cmd = ctx.rb->alloc_cmd<create_mesh_cmd>();
     cmd->id = msh_model.get_id();
     cmd->vertices = std::make_shared<utils::buffer>(msh_model.get_vertices_buffer());
     cmd->indices = std::make_shared<utils::buffer>(msh_model.get_indices_buffer());
     cmd->skinned = false;
 
+    msh_model.set_render_built(true);
     ctx.rb->enqueue_cmd(cmd);
 
     return result_code::ok;
@@ -517,10 +455,11 @@ mesh__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& msh_model = ctx.obj->asr<root::mesh>();
 
-    if (ctx.rb->get_processor().get_handle(msh_model.get_id()) != render_cmd::k_invalid_handle)
+    if (msh_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
         cmd->id = msh_model.get_id();
+        msh_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -562,7 +501,7 @@ texture__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->is_kryga_format = false;
     }
 
-    ctx.rb->get_processor().ensure_handle(t.get_id());
+    t.set_render_built(true);
     ctx.rb->enqueue_cmd(cmd);
 
     return result_code::ok;
@@ -573,10 +512,11 @@ texture__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& txt_model = ctx.obj->asr<root::texture>();
 
-    if (ctx.rb->get_processor().get_handle(txt_model.get_id()) != render_cmd::k_invalid_handle)
+    if (txt_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_texture_cmd>();
         cmd->id = txt_model.get_id();
+        txt_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -613,7 +553,7 @@ shader_effect__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     cmd->wire_topology = se_model.m_wire_topology;
     cmd->enable_alpha = se_model.m_enable_alpha_support;
 
-    ctx.rb->get_processor().ensure_handle(se_model.get_id());
+    se_model.set_render_built(true);
     ctx.rb->enqueue_cmd(cmd);
 
     return result_code::ok;
@@ -624,10 +564,11 @@ shader_effect__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& se_model = ctx.obj->asr<root::shader_effect>();
 
-    if (ctx.rb->get_processor().get_handle(se_model.get_id()) != render_cmd::k_invalid_handle)
+    if (se_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_shader_effect_cmd>();
         cmd->id = se_model.get_id();
+        se_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -656,9 +597,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
             {
                 return result_code::failed;
             }
-
-            slot_info.texture_handle =
-                ctx.rb->get_processor().ensure_handle(ts.second.txt->get_id());
+            slot_info.texture_id = ts.second.txt->get_id();
         }
 
         if (ts.second.smp)
@@ -673,30 +612,25 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     auto se_model = mat_model.get_shader_effect();
     ctx.rb->render_cmd_build(*se_model, ctx.flag);
 
-    auto se_handle = ctx.rb->get_processor().ensure_handle(se_model->get_id());
-
     auto dyn_gpu_data = ctx.rb->collect_gpu_data(mat_model);
 
-    auto existing_handle = ctx.rb->get_processor().get_handle(mat_model.get_id());
-
-    if (existing_handle == render_cmd::k_invalid_handle)
+    if (!mat_model.get_render_built())
     {
-        ctx.rb->get_processor().ensure_handle(mat_model.get_id());
-
         auto* cmd = ctx.rb->alloc_cmd<create_material_cmd>();
         cmd->id = mat_model.get_id();
         cmd->type_id = mat_model.get_type_id();
-        cmd->shader_effect_handle = se_handle;
+        cmd->shader_effect_id = se_model->get_id();
         cmd->texture_slots = std::move(slots);
         cmd->gpu_data = std::move(dyn_gpu_data);
 
+        mat_model.set_render_built(true);
         ctx.rb->enqueue_cmd(cmd);
     }
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_material_cmd>();
         cmd->id = mat_model.get_id();
-        cmd->shader_effect_handle = se_handle;
+        cmd->shader_effect_id = se_model->get_id();
         cmd->texture_slots = std::move(slots);
         cmd->gpu_data = std::move(dyn_gpu_data);
 
@@ -711,10 +645,11 @@ material__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
 {
     auto& mat_model = ctx.obj->asr<root::material>();
 
-    if (ctx.rb->get_processor().get_handle(mat_model.get_id()) != render_cmd::k_invalid_handle)
+    if (mat_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_material_cmd>();
         cmd->id = mat_model.get_id();
+        mat_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
 

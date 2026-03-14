@@ -2,7 +2,6 @@
 
 #include "render_bridge/render_dependency.h"
 #include "render_bridge/render_command.h"
-#include "render_bridge/render_command_processor.h"
 
 #include <packages/root/model/assets/shader_effect.h>
 
@@ -103,17 +102,10 @@ public:
     void
     reset_arena();
 
-    render_command_processor&
-    get_processor()
-    {
-        return m_processor;
-    }
-
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
 
     render_object_dependency_graph m_dependency_graph;
-    render_command_processor m_processor;
     render_cmd::cmd_arena m_arena;
     utils::spsc_queue<render_cmd::render_command_base*> m_command_queue{16384};
 };
