@@ -35,7 +35,7 @@ object_constructor::create_default_class_obj_impl(reflection::reflection_type* r
     m_olc->add_obj(empty);
 
     auto p = rt->cparams_alloc();
-    if (!empty->META_construct(*p))
+    if (!empty->META_default_construct(*p))
     {
         return std::unexpected(result_code::failed);
     }

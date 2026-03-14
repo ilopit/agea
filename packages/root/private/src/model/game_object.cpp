@@ -37,6 +37,17 @@ game_object::construct(construct_params& params)
     return true;
 }
 
+bool
+game_object::construct_default(construct_params& params)
+{
+    game_object_component::construct_params gcp;
+    gcp.position = params.pos;
+
+    m_root_component = spawn_component<game_object_component>(nullptr, AID("root_component"), gcp);
+
+    return true;
+}
+
 void
 game_object::attach(component* c)
 {

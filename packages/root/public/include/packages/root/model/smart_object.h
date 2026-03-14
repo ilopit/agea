@@ -41,6 +41,8 @@
                                                                                                \
     virtual bool META_construct(const ::kryga::root::base_construct_params& i);                \
                                                                                                \
+    virtual bool META_default_construct(const ::kryga::root::base_construct_params& i);        \
+                                                                                               \
     static std::shared_ptr<this_class> AR_TYPE_create_empty_obj(const ::kryga::utils::id& id); \
                                                                                                \
     static std::shared_ptr<::kryga::root::smart_object> AR_TYPE_create_empty_gen_obj(          \
@@ -170,6 +172,14 @@ public:
     construct(const this_class::construct_params&)
     {
         return true;
+    }
+
+    // CDO construction — override in derived types for custom CDO setup.
+    // Default delegates to construct().
+    bool
+    construct_default(const this_class::construct_params& p)
+    {
+        return construct(p);
     }
 
     virtual bool

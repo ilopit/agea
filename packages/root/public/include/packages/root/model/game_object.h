@@ -33,6 +33,9 @@ public:
     bool
     construct(construct_params& params);
 
+    bool
+    construct_default(construct_params& params);
+
     virtual bool
     post_construct() override;
 

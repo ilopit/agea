@@ -859,10 +859,17 @@ std::unique_ptr<::kryga::root::base_construct_params>
 bool
 {type_obj.name}::META_construct(const ::kryga::root::base_construct_params& i)
 {{
-    /* Replace to dynamic cast */
     auto p = (this_class::construct_params*)&i;
 
     return construct(*p);
+}}
+
+bool
+{type_obj.name}::META_default_construct(const ::kryga::root::base_construct_params& i)
+{{
+    auto p = (this_class::construct_params*)&i;
+
+    return construct_default(*p);
 }}
 """
 
