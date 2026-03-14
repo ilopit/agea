@@ -229,9 +229,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.material_id = batch.material->gpu_idx();
         m_obj_config.use_clustered_lighting = 1;
         m_obj_config.local_lights_size = 0;
-        m_obj_config.directional_light_id = m_cache.directional_lights.get_size() > 0
-                                                ? m_cache.directional_lights.at(0)->slot()
-                                                : 0;
+        m_obj_config.directional_light_id = get_selected_directional_light_slot();
         copy_texture_indices(m_obj_config, batch.material);
 
         vkCmdPushConstants(cmd, pctx.pipeline_layout,
@@ -648,7 +646,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
 
     // Set directional light (global)
     m_obj_config.directional_light_id =
-        m_cache.directional_lights.get_size() > 0 ? m_cache.directional_lights.at(0)->slot() : 0;
+        get_selected_directional_light_slot();
 
     // Set lighting mode
     m_obj_config.use_clustered_lighting = is_instanced_mode() ? 1 : 0;

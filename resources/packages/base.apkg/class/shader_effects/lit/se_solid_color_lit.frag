@@ -22,7 +22,7 @@ void main()
 
     // phase 1: directional lighting
     vec3 result = vec3(0);
-    //result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, material);
+    result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, material);
 
     // phase 2: local lights (point and spot)
     if (constants.obj.use_clustered_lighting != 0u)

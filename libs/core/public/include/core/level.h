@@ -125,6 +125,21 @@ private:
     line_cache<root::game_object*> m_tickable_objects;
 
     std::vector<utils::id> m_package_ids;
+
+    utils::id m_selected_directional_light_id;
+
+public:
+    void
+    set_selected_directional_light(const utils::id& id)
+    {
+        m_selected_directional_light_id = id;
+    }
+
+    const utils::id&
+    get_selected_directional_light_id() const
+    {
+        return m_selected_directional_light_id;
+    }
 };
 
 }  // namespace core

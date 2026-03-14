@@ -6,7 +6,7 @@
 #include <packages/root/model/assets/asset.h>
 #include <packages/root/model/assets/shader_effect.h>
 
-#include <utils/cmd_arena.h>
+#include <utils/memory_arena.h>
 #include <utils/spsc_queue.h>
 
 namespace kryga
@@ -46,7 +46,7 @@ public:
     // Render command queue (main thread pushes, render thread drains)
     struct alignas(k_cache_line) render
     {
-        utils::cmd_arena arena;
+        utils::memory_arena arena;
         utils::spsc_queue<render_cmd::render_command_base*> command_queue{16384};
 
         template <typename T, typename... Args>

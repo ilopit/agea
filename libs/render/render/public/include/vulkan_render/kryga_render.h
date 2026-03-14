@@ -209,6 +209,12 @@ public:
     void schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld);
     // clang-format on
 
+    void
+    set_selected_directional_light(const utils::id& id);
+
+    uint32_t
+    get_selected_directional_light_slot();
+
     std::vector<glm::mat4>&
     get_bone_matrices_staging()
     {
@@ -517,6 +523,9 @@ private:
 
     // Frustum for view culling
     frustum m_frustum;
+
+    // Selected directional light
+    utils::id m_selected_directional_light_id;
 
     // Render mode (set at init, determines graph configuration)
     render_mode m_render_mode = render_mode::instanced;

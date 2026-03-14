@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/cmd_arena.h>
+#include <utils/memory_arena.h>
 
 namespace kryga
 {
@@ -14,9 +14,6 @@ class vulkan_render_loader;
 namespace render_cmd
 {
 
-// Re-export arena from utils for backward compatibility.
-using cmd_arena = utils::cmd_arena;
-
 struct render_exec_context
 {
     render::vulkan_render& vr;
@@ -26,7 +23,8 @@ struct render_exec_context
 struct render_command_base
 {
     virtual ~render_command_base() = default;
-    virtual void execute(render_exec_context& ctx) = 0;
+    virtual void
+    execute(render_exec_context& ctx) = 0;
 };
 
 }  // namespace render_cmd

@@ -1,0 +1,25 @@
+class_id: directional_light
+id: sun_morning
+layout: [-1, 0]
+components:
+  - id: sun_morning_root
+    class_id: game_object_component
+  - id: sun_morning_lc
+    class_id: directional_light_component
+    ambient:
+      x: 0.15
+      y: 0.12
+      z: 0.1
+    diffuse:
+      x: 0.9
+      y: 0.6
+      z: 0.35
+    specular:
+      x: 0.5
+      y: 0.35
+      z: 0.2
+    direction:
+      x: -0.8
+      y: -0.3
+      z: -0.2
+    selected: false

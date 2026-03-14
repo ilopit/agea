@@ -1,0 +1,19 @@
+type_id: directional_light_component
+id: directional_light_component
+ambient:
+  x: 0.8
+  y: 0.8
+  z: 0.8
+diffuse:
+  x: 0.1
+  y: 0.1
+  z: 0.1
+specular:
+  x: 0.1
+  y: 0.1
+  z: 0.1
+direction:
+  x: 1
+  y: 1
+  z: 1
+selected: false

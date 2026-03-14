@@ -37,6 +37,7 @@
 #include <core/object_constructor.h>
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
+#include <core/level.h>
 
 #include <serialization/serialization.h>
 
@@ -284,6 +285,17 @@ struct update_light_cmd : render_cmd::render_command_base
     }
 };
 
+struct select_directional_light_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        ctx.vr.set_selected_directional_light(id);
+    }
+};
+
 struct destroy_light_cmd : render_cmd::render_command_base
 {
     utils::id id;
@@ -418,6 +430,27 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
 {
     auto& lc_model = ctx.obj->asr<base::directional_light_component>();
 
+    // Handle model-side deselection when this light becomes selected
+    if (lc_model.get_selected())
+    {
+        auto* level = glob::glob_state().get_current_level();
+        if (level)
+        {
+            const auto& prev_id = level->get_selected_directional_light_id();
+            if (prev_id != lc_model.get_id() && prev_id.valid())
+            {
+                auto* prev = level->find_component(prev_id);
+                if (prev && prev->castable_to<base::directional_light_component>())
+                {
+                    auto& prev_dl = prev->asr<base::directional_light_component>();
+                    prev_dl.set_selected(false);
+                    prev_dl.mark_render_dirty();
+                }
+            }
+            level->set_selected_directional_light(lc_model.get_id());
+        }
+    }
+
     if (!lc_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
@@ -441,6 +474,13 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
         cmd->specular = lc_model.get_specular();
         cmd->direction = lc_model.get_direction();
 
+        ctx.rb->enqueue_cmd(cmd);
+    }
+
+    if (lc_model.get_selected())
+    {
+        auto* cmd = ctx.rb->alloc_cmd<select_directional_light_cmd>();
+        cmd->id = lc_model.get_id();
         ctx.rb->enqueue_cmd(cmd);
     }
 

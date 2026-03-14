@@ -249,6 +249,31 @@ vulkan_render::schedule_universal_light_data_gpu_upload(render::vulkan_universal
 }
 
 void
+vulkan_render::set_selected_directional_light(const utils::id& id)
+{
+    m_selected_directional_light_id = id;
+}
+
+uint32_t
+vulkan_render::get_selected_directional_light_slot()
+{
+    if (m_selected_directional_light_id.valid())
+    {
+        auto* rh = m_cache.directional_lights.find_by_id(m_selected_directional_light_id);
+        if (rh)
+        {
+            return rh->slot();
+        }
+    }
+    // Fallback: use first light if available
+    if (m_cache.directional_lights.get_actual_size() > 0)
+    {
+        return m_cache.directional_lights.at(0)->slot();
+    }
+    return 0;
+}
+
+void
 vulkan_render::clear_upload_queue()
 {
     for (auto& q : m_frames)

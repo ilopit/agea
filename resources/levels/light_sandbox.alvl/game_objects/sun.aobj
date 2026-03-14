@@ -1,0 +1,25 @@
+class_id: directional_light
+id: sun
+layout: [-1, 0]
+components:
+  - id: sun_root
+    class_id: game_object_component
+  - id: sun_lc
+    class_id: directional_light_component
+    ambient:
+      x: 0.15
+      y: 0.15
+      z: 0.15
+    diffuse:
+      x: 0.9
+      y: 0.9
+      z: 0.85
+    specular:
+      x: 0.6
+      y: 0.6
+      z: 0.6
+    direction:
+      x: -0.1
+      y: -1.0
+      z: -0.2
+    selected: true

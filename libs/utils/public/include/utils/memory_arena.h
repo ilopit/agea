@@ -13,12 +13,12 @@ namespace utils
 
 // Linear arena for per-frame command allocation.
 // Allocate via alloc<T>(), bulk reclaim via reset().
-class cmd_arena
+class memory_arena
 {
     static constexpr size_t k_default_capacity = 4 * 1024 * 1024;  // 4 MB
 
 public:
-    explicit cmd_arena(size_t capacity = k_default_capacity)
+    explicit memory_arena(size_t capacity = k_default_capacity)
         : m_buf(capacity)
     {
     }

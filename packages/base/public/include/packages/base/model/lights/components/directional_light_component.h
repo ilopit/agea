@@ -34,6 +34,9 @@ protected:
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
     ::kryga::root::vec3 m_direction = glm::vec3{1.0f};
+
+    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
+    bool m_selected = false;
 };
 
 }  // namespace base
