@@ -108,8 +108,7 @@ template <typename T, typename... Args>
 T*
 render_bridge::alloc_cmd(Args&&... args)
 {
-    return glob::glob_state().getr_queues().get_render().alloc_cmd<T>(
-        std::forward<Args>(args)...);
+    return glob::glob_state().getr_queues().get_render().alloc_cmd<T>(std::forward<Args>(args)...);
 }
 
 }  // namespace kryga
