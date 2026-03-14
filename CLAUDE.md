@@ -13,8 +13,8 @@ When responding to ideas or proposals:
 - Use templates like "Approach X has following benefits, but consider Y"
 - Template: "Approach X benefits: ..., but consider Y"
 
-### Feedback (after every response)
-- **Score:** 1-10 | **Good:** one positive | **Bad:** one improvement
+### Feedback (after every response, about the user's request)
+- **Score:** 1-10 (how clear/well-scoped the request was) | **Good:** one positive | **Bad:** one suggestion to improve the request
 
 ## Build (Windows: `cmd //c tools\build.bat`, MSYS: `tools/build.sh`)
 Options: `-v` verbose, `-c` clean, `-r` release, `-j N` jobs, `-a` all targets
