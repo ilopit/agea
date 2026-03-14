@@ -302,6 +302,18 @@ vulkan_engine::cleanup()
     glob::glob_state_reset();
 }
 
+// TODO: Streaming command execution optimization.
+// Currently this is a batch model: render thread sleeps until main enqueues ALL
+// commands, then drains everything at once. The SPSC queue and arena support
+// concurrent push/pop, so render could drain incrementally while main is still
+// enqueueing. To implement:
+//   1. Render thread spins on try_pop() instead of CV wait (with yield backoff).
+//   2. Main enqueues a draw_fence_cmd as the last command per frame.
+//   3. draw_fence_cmd::execute() calls draw_main() + signals m_main_cv.
+//   4. Remove m_render_work_ready — render is always running.
+//   5. Arena is safe: it only grows forward during a frame, render reads earlier offsets.
+// Trade-off: burns CPU when idle (spinning) vs current zero-cost CV sleep.
+// Consider hybrid: spin N iterations, then fall back to CV wait.
 void
 vulkan_engine::render_thread_func()
 {
