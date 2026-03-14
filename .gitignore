@@ -1,3 +1,4 @@
 build
 thirdparty/upstream
 *.pyc
+.claude/settings.local.json
