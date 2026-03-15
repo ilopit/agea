@@ -8,7 +8,7 @@ layout(std430, set = KGPU_materials_descriptor_sets, binding = 0) readonly buffe
 } dyn_material_buffer;
 
 // Forward declarations
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid_color_material__gpu material);
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid_color_material__gpu material, float shadow);
 vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, solid_color_material__gpu material);
 vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, solid_color_material__gpu material);
 
@@ -20,17 +20,21 @@ void main()
     // Use per-object material_id from object buffer (enables multi-material instancing)
     solid_color_material__gpu material = dyn_material_buffer.objects[get_material_id()];
 
+    // Compute view-space depth for shadow cascade selection
+    vec4 viewPos = dyn_camera_data.obj.view * vec4(in_world_pos, 1.0);
+    float viewDepth = -viewPos.z;
+
+    // Compute directional shadow factor
+    float dirShadow = calcDirectionalShadow(in_world_pos, norm, viewDepth);
+
     // phase 1: directional lighting
     vec3 result = vec3(0);
-    result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, material);
+    result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, material, dirShadow);
 
     // phase 2: local lights (point and spot)
     if (constants.obj.use_clustered_lighting != 0u)
     {
-        // Clustered lighting path
-        // Compute view-space depth for cluster lookup
-        vec4 viewPos = dyn_camera_data.obj.view * vec4(in_world_pos, 1.0);
-        float viewDepth = -viewPos.z;  // Negate: OpenGL view space Z is negative forward
+        // Clustered lighting path (viewDepth already computed above)
         uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
 
         uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
@@ -62,14 +66,15 @@ void main()
         {
             uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
             universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
+            float localShadow = getLocalLightShadow(light, in_world_pos);
 
             if(light.type == KGPU_light_type_point)
             {
-                result += CalcPointLight(light, norm, in_world_pos, viewDir, material);
+                result += CalcPointLight(light, norm, in_world_pos, viewDir, material) * localShadow;
             }
             else if(light.type == KGPU_light_type_spot)
             {
-                result += CalcSpotLight(light, norm, in_world_pos, viewDir, material);
+                result += CalcSpotLight(light, norm, in_world_pos, viewDir, material) * localShadow;
             }
         }
     }
@@ -79,14 +84,15 @@ void main()
         for (uint i = 0u; i < constants.obj.local_lights_size; i++)
         {
             universal_light_data light = dyn_gpu_universal_light_data.objects[constants.obj.local_light_ids[i]];
+            float localShadow = getLocalLightShadow(light, in_world_pos);
 
             if(light.type == KGPU_light_type_point)
             {
-                result += CalcPointLight(light, norm, in_world_pos, viewDir, material);
+                result += CalcPointLight(light, norm, in_world_pos, viewDir, material) * localShadow;
             }
             else if(light.type == KGPU_light_type_spot)
             {
-                result += CalcSpotLight(light, norm, in_world_pos, viewDir, material);
+                result += CalcSpotLight(light, norm, in_world_pos, viewDir, material) * localShadow;
             }
         }
     }
@@ -95,7 +101,7 @@ void main()
 }
 
 // calculates the color when using a directional light.
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid_color_material__gpu material)
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid_color_material__gpu material, float shadow)
 {
     vec3 lightDir = normalize(-light.direction);
 
@@ -110,7 +116,7 @@ vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, solid
     vec3 diffuse = light.diffuse * diff * material.diffuse;
     vec3 specular = light.specular * spec * material.specular;
 
-    return (ambient + diffuse + specular);
+    return ambient + (diffuse + specular) * shadow;
 }
 
 

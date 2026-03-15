@@ -13,7 +13,8 @@
 #define KGPU_objects_cluster_config_binding 5
 #define KGPU_objects_instance_slots_binding 6
 #define KGPU_objects_bone_matrices_binding 7
-#define KGPU_objects_max_binding KGPU_objects_bone_matrices_binding
+#define KGPU_objects_shadow_data_binding 8
+#define KGPU_objects_max_binding KGPU_objects_shadow_data_binding
 #define KGPU_textures_descriptor_sets 2
 #define KGPU_materials_descriptor_sets 3
 

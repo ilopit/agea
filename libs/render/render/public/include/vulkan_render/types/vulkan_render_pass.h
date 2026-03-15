@@ -166,6 +166,14 @@ public:
     std::vector<vk_utils::vulkan_image_view_sptr>
     get_color_image_views() const;
 
+    VkImageView
+    get_depth_image_view(size_t idx) const;
+
+    std::vector<vk_utils::vulkan_image>&
+    get_depth_images();
+    const std::vector<vk_utils::vulkan_image_view>&
+    get_depth_image_views() const;
+
     // =========================================================================
     // Validation
     // =========================================================================
@@ -189,6 +197,10 @@ private:
     VkFormat m_color_format = VK_FORMAT_UNDEFINED;
     VkFormat m_depth_format = VK_FORMAT_UNDEFINED;
     uint32_t m_color_attachment_count = 0;
+
+    // Fixed dimensions (0 = use passed width/height from execute)
+    uint32_t m_fixed_width = 0;
+    uint32_t m_fixed_height = 0;
 
     // Vulkan resources
     VkRenderPass m_vk_render_pass = VK_NULL_HANDLE;

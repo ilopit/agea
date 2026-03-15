@@ -2,6 +2,7 @@
 #include "gpu_types/gpu_generic_constants.h"
 #include "gpu_types/gpu_object_types.h"
 #include "gpu_types/gpu_camera_types.h"
+#include "gpu_types/gpu_shadow_types.h"
 
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
@@ -38,6 +39,13 @@ layout(std430, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_bone_m
 readonly buffer BoneMatricesBuffer {
     mat4 matrices[];
 } dyn_bone_matrices;
+
+// Shadow data SSBO — declared here so all vertex shaders include binding 8 in reflection,
+// ensuring the descriptor set layout matches between vertex and fragment stages.
+layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_shadow_data_binding)
+readonly buffer ShadowDataBuffer {
+    shadow_config_data shadow;
+} dyn_shadow_data;
 
 #include "gpu_types/gpu_push_constants.h"
 

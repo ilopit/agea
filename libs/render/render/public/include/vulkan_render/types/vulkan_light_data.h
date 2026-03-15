@@ -39,6 +39,7 @@ public:
         gpu_data.cut_off = -1.0f;  // indicates point light in shader
         gpu_data.outer_cut_off = -1.0f;
         gpu_data.slot = idx;
+        gpu_data.shadow_index = 0xFFFFFFFFu;  // KGPU_SHADOW_INDEX_NONE
     }
 
     ~vulkan_universal_light_data()

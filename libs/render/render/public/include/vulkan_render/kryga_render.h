@@ -13,6 +13,7 @@
 #include "render/utils/cluster_grid.h"
 #include "render/utils/light_grid.h"
 #include "gpu_types/gpu_cluster_types.h"
+#include "gpu_types/gpu_shadow_types.h"
 
 #include <utils/check.h>
 #include <utils/id.h>
@@ -83,6 +84,9 @@ struct frame_buffers
     vk_utils::vulkan_buffer frustum_data;      // Frustum planes (uniform)
     vk_utils::vulkan_buffer visible_indices;   // Output visible object indices
     vk_utils::vulkan_buffer cull_output;       // Visible count + indirect commands
+
+    // Shadow data SSBO
+    vk_utils::vulkan_buffer shadow_data;
 };
 
 struct frame_upload_state
@@ -247,6 +251,18 @@ public:
     is_grid_visible() const
     {
         return m_show_grid;
+    }
+
+    gpu::shadow_config_data&
+    get_shadow_config()
+    {
+        return m_shadow_config;
+    }
+
+    float&
+    get_shadow_distance()
+    {
+        return m_shadow_distance;
     }
 
     uint32_t
@@ -440,6 +456,22 @@ private:
     void
     setup_per_object_render_graph();
 
+    // Shadow mapping
+    void
+    init_shadow_passes();
+    void
+    upload_shadow_data(render::frame_state& frame);
+    void
+    compute_cascade_splits(float near, float far, float lambda);
+    void
+    compute_shadow_matrices();
+    void
+    draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx);
+    void
+    draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, bool back_face);
+    void
+    select_shadowed_lights();
+
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
@@ -523,6 +555,16 @@ private:
 
     // Frustum for view culling
     frustum m_frustum;
+
+    // Shadow mapping
+    gpu::shadow_config_data m_shadow_config = {};
+    float m_shadow_distance = 200.0f;
+    render_pass_sptr m_shadow_passes[KGPU_CSM_CASCADE_COUNT];
+    render_pass_sptr m_shadow_local_passes[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];  // *2 for DPSM
+    uint32_t m_shadow_map_bindless_indices[KGPU_CSM_CASCADE_COUNT] = {};
+    uint32_t m_shadow_local_bindless_indices[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2] = {};
+    shader_effect_data* m_shadow_se = nullptr;
+    shader_effect_data* m_shadow_dpsm_se = nullptr;
 
     // Selected directional light
     utils::id m_selected_directional_light_id;

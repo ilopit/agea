@@ -37,6 +37,7 @@ gpu_struct_std140 universal_light_data
     float radius;
 
     uint slot;            // Index in the light buffer (for compute shader)
+    uint shadow_index;    // Index into local_shadows[] or KGPU_SHADOW_INDEX_NONE
 };
 
 GPU_END_NAMESPACE

@@ -29,6 +29,10 @@ struct shader_effect_create_info
 
     uint32_t width = 0;
     uint32_t height = 0;
+
+    // If set, reuse this pipeline layout instead of building from reflection.
+    // The shader effect will NOT own/destroy the layout.
+    VkPipelineLayout shared_pipeline_layout = VK_NULL_HANDLE;
 };
 
 struct compute_shader_create_info

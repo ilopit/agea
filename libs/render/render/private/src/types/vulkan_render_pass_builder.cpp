@@ -54,6 +54,20 @@ render_pass_builder::set_enable_stencil(bool stencil)
     return *this;
 }
 
+render_pass_builder&
+render_pass_builder::set_depth_only(bool depth_only)
+{
+    m_depth_only = depth_only;
+    return *this;
+}
+
+render_pass_builder&
+render_pass_builder::set_image_count(uint32_t count)
+{
+    m_image_count = count;
+    return *this;
+}
+
 render_pass_sptr
 render_pass_builder::build()
 {
@@ -68,20 +82,30 @@ render_pass_builder::build()
     {
         auto attachments = get_attachments();
 
-        VkAttachmentReference colorReference = {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        VkAttachmentReference depthReference = {1,
-                                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-
         VkSubpassDescription subpassDescription = {};
         subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpassDescription.colorAttachmentCount = 1;
-        subpassDescription.pColorAttachments = &colorReference;
-        subpassDescription.pDepthStencilAttachment = &depthReference;
         subpassDescription.inputAttachmentCount = 0;
         subpassDescription.pInputAttachments = nullptr;
         subpassDescription.preserveAttachmentCount = 0;
         subpassDescription.pPreserveAttachments = nullptr;
         subpassDescription.pResolveAttachments = nullptr;
+
+        VkAttachmentReference colorReference = {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        VkAttachmentReference depthReference = {};
+
+        if (m_depth_only)
+        {
+            depthReference = {0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+            subpassDescription.colorAttachmentCount = 0;
+            subpassDescription.pColorAttachments = nullptr;
+        }
+        else
+        {
+            depthReference = {1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+            subpassDescription.colorAttachmentCount = 1;
+            subpassDescription.pColorAttachments = &colorReference;
+        }
+        subpassDescription.pDepthStencilAttachment = &depthReference;
 
         auto dependencies = get_dependencies();
 
@@ -97,67 +121,131 @@ render_pass_builder::build()
         vkCreateRenderPass(device, &renderPassInfo, nullptr, &rp->m_vk_render_pass);
     }
 
-    // Setup depth images
-    rp->m_depth_image_views.resize(m_color_image_views.size());
-    rp->m_depth_images.resize(m_color_image_views.size());
-    rp->m_color_images = std::move(m_color_images);
-    rp->m_color_image_views = std::move(m_color_image_views);
+    // Determine image count: from color images (normal passes) or explicit count (depth-only)
+    uint32_t image_count = m_depth_only ? m_image_count
+                                        : static_cast<uint32_t>(m_color_image_views.size());
+    KRG_check(image_count > 0, "Image count must be > 0");
 
     VkExtent3D depth_image_extent = {m_width, m_height, 1};
 
-    auto dimg_info = vk_utils::make_image_create_info(
-        m_depth_format, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depth_image_extent);
+    VkImageUsageFlags depth_usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    if (m_depth_only)
+    {
+        depth_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+
+    auto dimg_info = vk_utils::make_image_create_info(m_depth_format, depth_usage, depth_image_extent);
 
     VmaAllocationCreateInfo dimg_allocinfo = {};
     dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     dimg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    for (size_t i = 0; i < rp->m_color_images.size(); ++i)
+    if (m_depth_only)
     {
-        rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(), dimg_info, dimg_allocinfo);
+        // Depth-only: create depth images without any color images
+        rp->m_depth_images.resize(image_count);
+        rp->m_depth_image_views.resize(image_count);
 
-        int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (m_enable_stencil)
+        for (uint32_t i = 0; i < image_count; ++i)
         {
-            depth_image_view_flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            rp->m_depth_images[i] = vk_utils::vulkan_image::create(
+                glob::glob_state().getr_render_device().get_vma_allocator_provider(), dimg_info,
+                dimg_allocinfo);
+
+            auto depth_image_view_ci = vk_utils::make_imageview_create_info(
+                m_depth_format, rp->m_depth_images[i].image(), VK_IMAGE_ASPECT_DEPTH_BIT);
+
+            rp->m_depth_image_views[i] = vk_utils::vulkan_image_view::create(depth_image_view_ci);
         }
 
-        auto depth_image_view_ci = vk_utils::make_imageview_create_info(
-            m_depth_format, rp->m_depth_images[i].image(), depth_image_view_flags);
+        // Create framebuffers with depth attachment only
+        auto fb_info = vk_utils::make_framebuffer_create_info(rp->m_vk_render_pass,
+                                                               VkExtent2D{m_width, m_height});
+        rp->m_framebuffers.resize(image_count);
 
-        rp->m_depth_image_views[i] = vk_utils::vulkan_image_view::create(depth_image_view_ci);
+        for (uint32_t i = 0; i < image_count; i++)
+        {
+            VkImageView fb_attachments[1] = {rp->m_depth_image_views[i].vk()};
+            fb_info.pAttachments = fb_attachments;
+            fb_info.attachmentCount = 1;
+            VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &rp->m_framebuffers[i]));
+        }
+
+        rp->m_color_format = VK_FORMAT_UNDEFINED;
+        rp->m_depth_format = m_depth_format;
+        rp->m_color_attachment_count = 0;
+        rp->m_fixed_width = m_width;
+        rp->m_fixed_height = m_height;
     }
-
-    // Create framebuffers
-    auto fb_info =
-        vk_utils::make_framebuffer_create_info(rp->m_vk_render_pass, VkExtent2D{m_width, m_height});
-
-    const uint32_t swapchain_imagecount = static_cast<uint32_t>(rp->m_color_images.size());
-    rp->m_framebuffers = std::vector<VkFramebuffer>(swapchain_imagecount);
-
-    for (uint32_t i = 0; i < swapchain_imagecount; i++)
+    else
     {
-        VkImageView attachments[2] = {rp->m_color_image_views[i]->vk(),
-                                      rp->m_depth_image_views[i].vk()};
+        // Normal path: color + depth
+        rp->m_depth_image_views.resize(image_count);
+        rp->m_depth_images.resize(image_count);
+        rp->m_color_images = std::move(m_color_images);
+        rp->m_color_image_views = std::move(m_color_image_views);
 
-        fb_info.pAttachments = attachments;
-        fb_info.attachmentCount = 2;
-        VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &rp->m_framebuffers[i]));
+        for (uint32_t i = 0; i < image_count; ++i)
+        {
+            rp->m_depth_images[i] = vk_utils::vulkan_image::create(
+                glob::glob_state().getr_render_device().get_vma_allocator_provider(), dimg_info,
+                dimg_allocinfo);
+
+            int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (m_enable_stencil)
+            {
+                depth_image_view_flags |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+
+            auto depth_image_view_ci = vk_utils::make_imageview_create_info(
+                m_depth_format, rp->m_depth_images[i].image(), depth_image_view_flags);
+
+            rp->m_depth_image_views[i] = vk_utils::vulkan_image_view::create(depth_image_view_ci);
+        }
+
+        // Create framebuffers
+        auto fb_info = vk_utils::make_framebuffer_create_info(rp->m_vk_render_pass,
+                                                               VkExtent2D{m_width, m_height});
+        rp->m_framebuffers.resize(image_count);
+
+        for (uint32_t i = 0; i < image_count; i++)
+        {
+            VkImageView fb_attachments[2] = {rp->m_color_image_views[i]->vk(),
+                                             rp->m_depth_image_views[i].vk()};
+
+            fb_info.pAttachments = fb_attachments;
+            fb_info.attachmentCount = 2;
+            VK_CHECK(vkCreateFramebuffer(device, &fb_info, nullptr, &rp->m_framebuffers[i]));
+        }
+
+        rp->m_color_format = m_color_format;
+        rp->m_depth_format = m_depth_format;
+        rp->m_color_attachment_count = 1;
     }
-
-    // Store format info for shader compatibility validation
-    rp->m_color_format = m_color_format;
-    rp->m_depth_format = m_depth_format;
-    rp->m_color_attachment_count = 1;
 
     return rp;
 }
 
-std::array<VkAttachmentDescription, 2>
+std::vector<VkAttachmentDescription>
 render_pass_builder::get_attachments()
 {
-    std::array<VkAttachmentDescription, 2> attachments = {};
+    if (m_depth_only)
+    {
+        // Single depth attachment for shadow maps
+        VkAttachmentDescription depth_attachment = {};
+        depth_attachment.format = m_depth_format;
+        depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depth_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        return {depth_attachment};
+    }
+
+    std::vector<VkAttachmentDescription> attachments(2);
 
     // Color attachment - common settings
     attachments[0].format = m_color_format;
@@ -190,6 +278,8 @@ render_pass_builder::get_attachments()
     case presets::picking:
         attachments[0].finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         break;
+    case presets::depth_only:
+        break;  // handled above
     }
 
     return attachments;
@@ -208,6 +298,21 @@ render_pass_builder::get_dependencies()
     dependencies[1].srcSubpass = 0;
     dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    if (m_depth_only)
+    {
+        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        return dependencies;
+    }
 
     switch (m_preset)
     {
@@ -250,6 +355,9 @@ render_pass_builder::get_dependencies()
             VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
         break;
+
+    case presets::depth_only:
+        break;  // handled above
     }
 
     return dependencies;

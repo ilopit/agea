@@ -25,5 +25,6 @@ public:
     std::vector<VkDynamicState> m_dynamic_state_enables{};
 
     VkPipelineLayout m_pipeline_layout{};
+    uint32_t m_color_attachment_count = 1;
 };
 }  // namespace kryga::render::vk_utils

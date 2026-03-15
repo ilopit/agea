@@ -10,6 +10,7 @@
 #include "vulkan_render/types/vulkan_sampler_data.h"
 
 #include <gpu_types/gpu_generic_constants.h>
+#include <gpu_types/gpu_shadow_types.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -161,6 +162,7 @@ vulkan_render::draw_main()
     m_render_graph.bind_buffer(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
     m_render_graph.bind_buffer(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
     m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
+    m_render_graph.bind_buffer(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
 
     // Frustum cull buffers (instanced mode only)
     if (is_instanced_mode())
@@ -186,6 +188,21 @@ vulkan_render::draw_main()
 
     auto picking_images = picking_pass->get_color_images();
     m_render_graph.bind_image(AID("picking_target"), *picking_images[0]);
+
+    // Bind shadow cascade depth images
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        if (m_shadow_passes[c])
+        {
+            auto& depth_images = m_shadow_passes[c]->get_depth_images();
+            if (!depth_images.empty())
+            {
+                m_render_graph.bind_image(
+                    AID("shadow_csm_" + std::to_string(c)),
+                    depth_images[0]);
+            }
+        }
+    }
 
     // Execute render graph (handles passes in dependency order with auto barriers)
     m_render_graph.execute(cmd, device->get_current_frame_index(), width, height);
@@ -332,6 +349,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
     main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
     main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
+    main_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
 
     m_global_set = main_pass->get_descriptor_set(
         KGPU_global_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
@@ -354,6 +372,10 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     picking_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
     picking_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
     picking_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
+    picking_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+
+    // Upload shadow data
+    upload_shadow_data(current_frame);
 }
 
 frame_state&

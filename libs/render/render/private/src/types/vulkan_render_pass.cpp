@@ -69,10 +69,19 @@ render_pass::begin(VkCommandBuffer cmd,
                                                         m_framebuffers[fb_idx]);
 
     VkClearValue clear_values[2];
-    clear_values[0].color = m_clear_color;
-    clear_values[1].depthStencil = {1.0f, 0};
 
-    rp_info.clearValueCount = 2;
+    if (m_color_attachment_count == 0)
+    {
+        // Depth-only pass: single clear value for depth
+        clear_values[0].depthStencil = {1.0f, 0};
+        rp_info.clearValueCount = 1;
+    }
+    else
+    {
+        clear_values[0].color = m_clear_color;
+        clear_values[1].depthStencil = {1.0f, 0};
+        rp_info.clearValueCount = 2;
+    }
     rp_info.pClearValues = clear_values;
 
     vkCmdBeginRenderPass(cmd, &rp_info, VK_SUBPASS_CONTENTS_INLINE);
@@ -95,7 +104,9 @@ render_pass::execute(VkCommandBuffer cmd,
 {
     if (is_graphics())
     {
-        begin(cmd, swapchain_image_index, width, height);
+        uint32_t pass_width = m_fixed_width > 0 ? m_fixed_width : width;
+        uint32_t pass_height = m_fixed_height > 0 ? m_fixed_height : height;
+        begin(cmd, swapchain_image_index, pass_width, pass_height);
 
         if (m_execute)
         {
@@ -142,10 +153,20 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
     }
 
     // Validate shader bindings against binding table
-    if (effect->m_vertex_stage && effect->m_frag_stage && m_binding_table.is_finalized())
+    if (effect->m_vertex_stage && m_binding_table.is_finalized())
     {
-        bool validation_passed = m_binding_table.validate_shader(
-            effect->m_vertex_stage->get_reflection(), effect->m_frag_stage->get_reflection());
+        bool validation_passed = false;
+        if (effect->m_frag_stage)
+        {
+            validation_passed = m_binding_table.validate_shader(
+                effect->m_vertex_stage->get_reflection(), effect->m_frag_stage->get_reflection());
+        }
+        else
+        {
+            // Depth-only shader: validate vertex stage only
+            validation_passed =
+                m_binding_table.validate_shader(effect->m_vertex_stage->get_reflection());
+        }
 
         if (!validation_passed)
         {
@@ -446,6 +467,25 @@ std::vector<vk_utils::vulkan_image_view_sptr>
 render_pass::get_color_image_views() const
 {
     return m_color_image_views;
+}
+
+VkImageView
+render_pass::get_depth_image_view(size_t idx) const
+{
+    KRG_check(idx < m_depth_image_views.size(), "Depth image view index out of range");
+    return m_depth_image_views[idx].vk();
+}
+
+std::vector<vk_utils::vulkan_image>&
+render_pass::get_depth_images()
+{
+    return m_depth_images;
+}
+
+const std::vector<vk_utils::vulkan_image_view>&
+render_pass::get_depth_image_views() const
+{
+    return m_depth_image_views;
 }
 
 // =============================================================================

@@ -160,6 +160,24 @@ public:
     selection_callback m_selection_cb;
 };
 
+class render_config_window : public window
+{
+public:
+    static const char*
+    window_title()
+    {
+        return "Render Config";
+    }
+
+    render_config_window()
+        : window(window_title())
+    {
+    }
+
+    void
+    handle() override;
+};
+
 class ui
 {
 public:

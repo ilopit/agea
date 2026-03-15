@@ -19,8 +19,8 @@ pipeline_builder::build(VkDevice device, VkRenderPass pass)
     color_blend_state_ci.pNext = nullptr;
     color_blend_state_ci.logicOpEnable = VK_FALSE;
     color_blend_state_ci.logicOp = VK_LOGIC_OP_COPY;
-    color_blend_state_ci.attachmentCount = 1;
-    color_blend_state_ci.pAttachments = &m_color_blend_attachment;
+    color_blend_state_ci.attachmentCount = m_color_attachment_count;
+    color_blend_state_ci.pAttachments = m_color_attachment_count > 0 ? &m_color_blend_attachment : nullptr;
 
     VkGraphicsPipelineCreateInfo pipeline_ci = {};
     pipeline_ci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

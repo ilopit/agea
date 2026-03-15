@@ -193,26 +193,37 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
             se_data.m_vertex_stage->get_reflection().input_interface.layout;
     }
 
-    if (!shader_reflection_utils::are_layouts_compatible(
-            se_data.m_vertex_stage->get_reflection().output_interface.layout,
-            se_data.m_frag_stage->get_reflection().input_interface.layout, true, false))
+    if (se_data.m_frag_stage)
     {
-        ALOG_LAZY_ERROR;
-        return result_code::failed;
-    }
-
-    // Validate fragment shader outputs are compatible with render pass attachments
-    if (info.rp && info.rp->get_color_attachment_count() > 0)
-    {
-        if (!info.rp->validate_fragment_outputs(
-                se_data.m_frag_stage->get_reflection().output_interface))
+        if (!shader_reflection_utils::are_layouts_compatible(
+                se_data.m_vertex_stage->get_reflection().output_interface.layout,
+                se_data.m_frag_stage->get_reflection().input_interface.layout, true, false))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
         }
+
+        // Validate fragment shader outputs are compatible with render pass attachments
+        if (info.rp && info.rp->get_color_attachment_count() > 0)
+        {
+            if (!info.rp->validate_fragment_outputs(
+                    se_data.m_frag_stage->get_reflection().output_interface))
+            {
+                ALOG_LAZY_ERROR;
+                return result_code::failed;
+            }
+        }
     }
 
-    if (!create_shader_effect_pipeline_layout(se_data))
+    if (info.shared_pipeline_layout != VK_NULL_HANDLE)
+    {
+        // Use the provided pipeline layout instead of building from reflection
+        se_data.m_pipeline_layout = info.shared_pipeline_layout;
+        se_data.m_owns_pipeline_layout = false;
+        for (auto& l : se_data.m_set_layout)
+            l = VK_NULL_HANDLE;
+    }
+    else if (!create_shader_effect_pipeline_layout(se_data))
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
@@ -272,11 +283,21 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_shader_stages_ci.push_back(
         vk_utils::make_pipeline_shader_stage_create_info(VK_SHADER_STAGE_VERTEX_BIT, vert_shader));
 
-    auto frag_shader = frag_module->vk_module();
-    pb.m_shader_stages_ci.push_back(vk_utils::make_pipeline_shader_stage_create_info(
-        VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader));
+    if (frag_module)
+    {
+        auto frag_shader = frag_module->vk_module();
+        pb.m_shader_stages_ci.push_back(vk_utils::make_pipeline_shader_stage_create_info(
+            VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader));
+    }
 
     pb.m_pipeline_layout = se_data.m_pipeline_layout;
+
+    // Set color attachment count from render pass (0 for depth-only passes)
+    if (info.rp)
+    {
+        pb.m_color_attachment_count = info.rp->get_color_attachment_count();
+    }
+
     auto& device = glob::glob_state().getr_render_device();
     se_data.m_pipeline = pb.build(device.vk_device(), info.rp->vk());
 
@@ -348,12 +369,15 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     }
 
     std::shared_ptr<shader_module_data> frag_module;
-    rc = load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
-                          frag_module);
-    if (rc != result_code::ok)
+    if (info.frag_buffer)
     {
-        ALOG_LAZY_ERROR;
-        return rc;
+        rc = load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
+                              frag_module);
+        if (rc != result_code::ok)
+        {
+            ALOG_LAZY_ERROR;
+            return rc;
+        }
     }
 
     return create_shader_effect(se_data, vert_module, frag_module, info);

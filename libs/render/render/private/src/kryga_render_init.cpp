@@ -12,6 +12,7 @@
 
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_frustum_types.h>
+#include <gpu_types/gpu_shadow_types.h>
 
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
@@ -144,6 +145,11 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
                                  VMA_MEMORY_USAGE_GPU_ONLY);
+
+        // Shadow data SSBO
+        m_frames[i].buffers.shadow_data =
+            device.create_buffer(sizeof(gpu::shadow_config_data),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();
@@ -171,6 +177,9 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
 
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
+
+    // Initialize shadow passes
+    init_shadow_passes();
 
     // Initialize GPU compute shaders (only needed for instanced mode)
     if (m_render_mode == render_mode::instanced)
@@ -217,6 +226,14 @@ vulkan_render::deinit()
 {
     // Wait for all GPU operations to complete before destroying resources
     vkDeviceWaitIdle(glob::glob_state().get_render_device()->vk_device());
+
+    // Clear shadow passes
+    m_shadow_se = nullptr;
+    m_shadow_dpsm_se = nullptr;
+    for (auto& sp : m_shadow_passes)
+        sp.reset();
+    for (auto& sp : m_shadow_local_passes)
+        sp.reset();
 
     // Clear compute passes before device is destroyed
     // (they hold compute shaders with VkShaderModule)
@@ -359,7 +376,10 @@ vulkan_render::prepare_pass_bindings()
                  VK_SHADER_STAGE_VERTEX_BIT)
             .add(AID("dyn_bone_matrices"), KGPU_objects_descriptor_sets,
                  KGPU_objects_bone_matrices_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT);
+                 VK_SHADER_STAGE_VERTEX_BIT)
+            .add(AID("dyn_shadow_data"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_shadow_data_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 2: Bindless textures and static samplers (managed separately from render graph)
         main_pass->bindings()
@@ -415,7 +435,10 @@ vulkan_render::prepare_pass_bindings()
                  VK_SHADER_STAGE_VERTEX_BIT)
             .add(AID("dyn_bone_matrices"), KGPU_objects_descriptor_sets,
                  KGPU_objects_bone_matrices_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT);
+                 VK_SHADER_STAGE_VERTEX_BIT)
+            .add(AID("dyn_shadow_data"), KGPU_objects_descriptor_sets,
+                 KGPU_objects_shadow_data_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)
         picking_pass->bindings()

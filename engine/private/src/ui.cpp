@@ -28,6 +28,7 @@
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
+#include <gpu_types/gpu_shadow_types.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -37,6 +38,7 @@
 
 #include <ImGuizmo.h>
 
+#include <algorithm>
 #include <array>
 
 namespace kryga
@@ -74,6 +76,10 @@ ui::ui()
     m_windows[performance_counters_window::window_title()] =
         std::make_unique<performance_counters_window>();
     m_windows[performance_counters_window::window_title()]->m_show = true;
+
+    m_windows[render_config_window::window_title()] =
+        std::make_unique<render_config_window>();
+    m_windows[render_config_window::window_title()]->m_show = true;
 }
 
 ui::~ui()
@@ -372,6 +378,139 @@ performance_counters_window::handle()
     ImGui::Text("Mode: %s", is_instanced ? "INSTANCED" : "PER_OBJECT");
 
     --lock;
+}
+
+void
+render_config_window::handle()
+{
+    if (!handle_begin())
+        return;
+
+    auto& vr = glob::glob_state().getr_vulkan_render();
+    auto& shadow = vr.get_shadow_config();
+
+    // =========================================================================
+    // Shadows
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        // Defaults
+        constexpr uint32_t DEF_PCF_MODE = KGPU_PCF_POISSON16;
+        constexpr float DEF_SHADOW_BIAS = 0.005f;
+        constexpr float DEF_NORMAL_BIAS = 0.03f;
+        constexpr int DEF_CASCADE_COUNT = KGPU_CSM_CASCADE_COUNT;
+        constexpr float DEF_SHADOW_DISTANCE = 200.0f;
+
+        // Helper: small reset button on the same line, right-aligned
+        auto reset_button = [](const char* id, const char* tip) -> bool
+        {
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 18);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            bool clicked = ImGui::SmallButton(id);
+            ImGui::PopStyleColor();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", tip);
+            return clicked;
+        };
+
+        // PCF Mode
+        const char* pcf_names[] = {"3x3 (9 taps)", "5x5 (25 taps)", "7x7 (49 taps)",
+                                   "Poisson 16", "Poisson 32"};
+        int pcf_mode = static_cast<int>(shadow.directional.pcf_mode);
+        if (ImGui::Combo("PCF Mode", &pcf_mode, pcf_names, IM_ARRAYSIZE(pcf_names)))
+            shadow.directional.pcf_mode = static_cast<uint32_t>(pcf_mode);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(
+                "Shadow edge softening filter.\n\n"
+                "Grid NxN: regular sample pattern, higher = softer but more costly.\n"
+                "Poisson: irregular disk pattern, less banding than grid at similar cost.");
+        if (reset_button("D##pcf", "Reset to default: Poisson 16"))
+            shadow.directional.pcf_mode = DEF_PCF_MODE;
+
+        // Bias
+        float bias = shadow.directional.shadow_bias;
+        if (ImGui::DragFloat("Shadow Bias", &bias, 0.0001f, 0.0f, 0.1f, "%.4f"))
+            shadow.directional.shadow_bias = bias;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(
+                "Constant depth offset to prevent shadow acne.\n\n"
+                "Too low: moire/stripe patterns on lit surfaces.\n"
+                "Too high: shadows detach from caster base (peter-panning).\n"
+                "Ctrl+click to type exact value.");
+        if (reset_button("D##bias", "Reset to default: 0.0050"))
+            shadow.directional.shadow_bias = DEF_SHADOW_BIAS;
+
+        // Normal Bias
+        float normal_bias = shadow.directional.normal_bias;
+        if (ImGui::DragFloat("Normal Bias", &normal_bias, 0.001f, 0.0f, 0.5f, "%.3f"))
+            shadow.directional.normal_bias = normal_bias;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(
+                "Offsets shadow lookup along the surface normal.\n\n"
+                "Helps eliminate acne on surfaces at grazing angles to the light.\n"
+                "Too high: thin shadow gaps appear at object edges.\n"
+                "Ctrl+click to type exact value.");
+        if (reset_button("D##nbias", "Reset to default: 0.030"))
+            shadow.directional.normal_bias = DEF_NORMAL_BIAS;
+
+        ImGui::Spacing();
+
+        // Cascade count
+        int cascade_count = static_cast<int>(shadow.directional.cascade_count);
+        if (ImGui::SliderInt("Cascades", &cascade_count, 1, KGPU_CSM_CASCADE_COUNT))
+            shadow.directional.cascade_count = static_cast<uint32_t>(cascade_count);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(
+                "Number of Cascaded Shadow Map (CSM) splits.\n\n"
+                "1 cascade: uniform resolution, crisp everywhere but limited range.\n"
+                "4 cascades: high-res near, lower-res far (expected CSM trade-off).\n"
+                "More cascades = more shadow passes = higher GPU cost.");
+        if (reset_button("D##cascades", "Reset to default: 4"))
+            shadow.directional.cascade_count = DEF_CASCADE_COUNT;
+
+        // Shadow distance
+        float& shadow_dist = vr.get_shadow_distance();
+        if (ImGui::DragFloat("Distance", &shadow_dist, 1.0f, 10.0f, 2000.0f, "%.0f m"))
+            shadow_dist = std::max(shadow_dist, 10.0f);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip(
+                "Maximum distance from camera where shadows are rendered.\n\n"
+                "Lower: sharper shadows (cascades cover less area).\n"
+                "Higher: shadows visible farther but each cascade is lower resolution.\n"
+                "Ctrl+click to type exact value.");
+        if (reset_button("D##dist", "Reset to default: 100 m"))
+            shadow_dist = DEF_SHADOW_DISTANCE;
+
+        // Cascade split info
+        if (ImGui::TreeNode("Cascade Splits"))
+        {
+            for (uint32_t i = 0; i < shadow.directional.cascade_count; ++i)
+            {
+                ImGui::BulletText("Cascade %u: %.1f m", i,
+                                  shadow.directional.cascades[i].split_depth);
+            }
+            ImGui::TreePop();
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        if (ImGui::Button("Reset All"))
+        {
+            shadow.directional.pcf_mode = DEF_PCF_MODE;
+            shadow.directional.shadow_bias = DEF_SHADOW_BIAS;
+            shadow.directional.normal_bias = DEF_NORMAL_BIAS;
+            shadow.directional.cascade_count = DEF_CASCADE_COUNT;
+            vr.get_shadow_distance() = DEF_SHADOW_DISTANCE;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Reset all shadow settings to defaults");
+
+        ImGui::SameLine();
+        ImGui::TextDisabled("| %dx%d shadow maps", KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE);
+    }
+
+    handle_end();
 }
 
 }  // namespace ui

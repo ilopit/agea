@@ -70,6 +70,7 @@ public:
     bool m_enable_alpha = false;
     bool m_system = false;
     bool m_failed_load = false;
+    bool m_owns_pipeline_layout = true;  // false when using shared_pipeline_layout
 
     render_pass*
     get_owner_render_pass() const

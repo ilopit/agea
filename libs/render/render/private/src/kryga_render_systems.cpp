@@ -13,6 +13,7 @@
 
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_frustum_types.h>
+#include <gpu_types/gpu_shadow_types.h>
 
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
@@ -734,6 +735,7 @@ vulkan_render::setup_instanced_render_graph()
     m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_shadow_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     // GPU frustum culling buffers
     m_render_graph.register_buffer(AID("dyn_frustum_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
@@ -743,6 +745,20 @@ vulkan_render::setup_instanced_render_graph()
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
     m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
+
+    // Shadow passes (CSM cascades)
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        auto pass_name = AID("shadow_csm_" + std::to_string(c));
+        m_render_graph.import_resource(pass_name, rg_resource_type::image);
+        m_render_graph.add_graphics_pass(
+            pass_name,
+            {m_render_graph.write(pass_name),
+             m_render_graph.read(AID("dyn_object_buffer")),
+             m_render_graph.read(AID("dyn_instance_slots"))},
+            m_shadow_passes[c].get(), VkClearColorValue{},
+            [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
+    }
 
     // Compute pass: GPU frustum culling (runs before cluster culling)
     // Frustum culling is required for instanced mode - dispatch_frustum_cull_impl asserts if not ready
@@ -797,7 +813,8 @@ vulkan_render::setup_instanced_render_graph()
          m_render_graph.read(AID("dyn_cluster_config")),
          m_render_graph.read(AID("dyn_instance_slots")),
          m_render_graph.read(AID("dyn_bone_matrices")),
-         m_render_graph.read(AID("dyn_material_buffer"))},
+         m_render_graph.read(AID("dyn_material_buffer")),
+         m_render_graph.read(AID("dyn_shadow_data"))},
         get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
         [this](VkCommandBuffer) { draw_objects_instanced(*m_current_frame); });
 
@@ -830,10 +847,25 @@ vulkan_render::setup_per_object_render_graph()
     m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_shadow_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
     m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
+
+    // Shadow passes (CSM cascades)
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        auto pass_name = AID("shadow_csm_" + std::to_string(c));
+        m_render_graph.import_resource(pass_name, rg_resource_type::image);
+        m_render_graph.add_graphics_pass(
+            pass_name,
+            {m_render_graph.write(pass_name),
+             m_render_graph.read(AID("dyn_object_buffer")),
+             m_render_graph.read(AID("dyn_instance_slots"))},
+            m_shadow_passes[c].get(), VkClearColorValue{},
+            [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
+    }
 
     // NO compute pass - per-object mode uses CPU light grid
 
@@ -867,7 +899,8 @@ vulkan_render::setup_per_object_render_graph()
          m_render_graph.read(AID("dyn_cluster_config")),
          m_render_graph.read(AID("dyn_instance_slots")),
          m_render_graph.read(AID("dyn_bone_matrices")),
-         m_render_graph.read(AID("dyn_material_buffer"))},
+         m_render_graph.read(AID("dyn_material_buffer")),
+         m_render_graph.read(AID("dyn_shadow_data"))},
         get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
         [this](VkCommandBuffer) { draw_objects_per_object(*m_current_frame); });
 

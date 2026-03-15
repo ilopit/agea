@@ -46,14 +46,17 @@ shader_effect_data::reset()
         glob::glob_state().getr_render_device().delete_immediately(
             [=](VkDevice vd, VmaAllocator)
             {
-                for (auto l : m_set_layout)
+                if (m_owns_pipeline_layout)
                 {
-                    vkDestroyDescriptorSetLayout(vd, l, nullptr);
+                    for (auto l : m_set_layout)
+                    {
+                        vkDestroyDescriptorSetLayout(vd, l, nullptr);
+                    }
+                    vkDestroyPipelineLayout(vd, m_pipeline_layout, nullptr);
                 }
 
                 vkDestroyPipeline(vd, m_pipeline, nullptr);
                 vkDestroyPipeline(vd, m_with_stencil_pipeline, nullptr);
-                vkDestroyPipelineLayout(vd, m_pipeline_layout, nullptr);
             });
 
         for (size_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
@@ -79,10 +82,13 @@ shader_effect_data::generate_set_layouts(
             s, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, set_layouts.emplace_back());
     }
 
-    for (auto& s : m_frag_stage->get_reflection().descriptors)
+    if (m_frag_stage)
     {
-        vulkan_shader_reflection_utils::convert_to_ds_layout_data(
-            s, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, set_layouts.emplace_back());
+        for (auto& s : m_frag_stage->get_reflection().descriptors)
+        {
+            vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+                s, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, set_layouts.emplace_back());
+        }
     }
 }
 
@@ -96,7 +102,7 @@ shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constan
             VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, constants.emplace_back());
     }
 
-    if (m_frag_stage->get_reflection().constants)
+    if (m_frag_stage && m_frag_stage->get_reflection().constants)
     {
         shader_reflection_utils::convert_to_vk_push_constants(
             *m_frag_stage->get_reflection().constants,
