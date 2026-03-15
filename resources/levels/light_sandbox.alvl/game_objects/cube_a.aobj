@@ -1,0 +1,18 @@
+class_id: mesh_object
+id: cube_a
+layout: [-1, 0]
+components:
+  - id: cube_a_root_component
+    class_id: game_object_component
+  - id: cube_a_mesh
+    class_id: mesh_component
+    material: mt_container
+    mesh: cube_mesh
+    position:
+      x: 3
+      y: 1
+      z: 0
+    scale:
+      x: 1
+      y: 2
+      z: 1
