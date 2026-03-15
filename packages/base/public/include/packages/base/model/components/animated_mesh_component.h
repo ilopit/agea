@@ -65,40 +65,23 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=Assets",
-                     "serializable=true",
-                     "invalidates=render",
-                     "access=all");
+    KRG_ar_property("category=Assets", "serializable=true", "invalidates=render", "access=all");
     utils::buffer m_gltf;
 
-    KRG_ar_property("category=Assets",
-                     "serializable=true",
-                     "invalidates=render",
-                     "access=all",
-                     "default=true");
+    KRG_ar_property(
+        "category=Assets", "serializable=true", "invalidates=render", "access=all", "default=true");
     ::kryga::root::material* m_material = nullptr;
 
-    KRG_ar_property("category=Animation",
-                     "serializable=true",
-                     "access=all");
+    KRG_ar_property("category=Animation", "serializable=true", "access=all");
     utils::id m_clip_name;
 
-    KRG_ar_property("category=Animation",
-                     "serializable=true",
-                     "access=all",
-                     "default=true");
+    KRG_ar_property("category=Animation", "serializable=true", "access=all", "default=true");
     float m_playback_speed = 1.0f;
 
-    KRG_ar_property("category=Animation",
-                     "serializable=true",
-                     "access=all",
-                     "default=true");
+    KRG_ar_property("category=Animation", "serializable=true", "access=all", "default=true");
     bool m_looping = true;
 
-    KRG_ar_property("category=Animation",
-                     "serializable=true",
-                     "access=all",
-                     "default=true");
+    KRG_ar_property("category=Animation", "serializable=true", "access=all", "default=true");
     bool m_playing = true;
 
     // Runtime state (not serialized)

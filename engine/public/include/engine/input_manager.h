@@ -159,7 +159,9 @@ protected:
     do_register_scaled(const utils::id& id, core::input_scaled_handler_data handler) override;
 
     bool
-    do_register_fixed(const utils::id& id, bool pressed, core::input_fixed_handler_data handler) override;
+    do_register_fixed(const utils::id& id,
+                      bool pressed,
+                      core::input_fixed_handler_data handler) override;
 
     void
     drop_fired_event();

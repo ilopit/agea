@@ -50,9 +50,9 @@ public:
 
 protected:
     KRG_ar_property("category=Properties",
-                     "access=cpp_only",
-                     "invalidates=render",
-                     "serializable=true");
+                    "access=cpp_only",
+                    "invalidates=render",
+                    "serializable=true");
     shader_effect* m_shader_effect = nullptr;
 
     std::unordered_map<utils::id, texture_slot> m_texture_slots;

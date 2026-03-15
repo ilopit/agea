@@ -105,12 +105,12 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
         if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT)
         {
             type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_uvec2 +
-                                                  obj.traits.numeric.vector.component_count - 2);
+                                                 obj.traits.numeric.vector.component_count - 2);
         }
         else
         {
             type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_vec2 +
-                                                  obj.traits.numeric.vector.component_count - 2);
+                                                 obj.traits.numeric.vector.component_count - 2);
         }
         df.alligment = 16;
         break;
@@ -347,7 +347,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
             refl_binding.type = (VkDescriptorType)spv_binding->descriptor_type;
 
             // Determine binding name: prefer instance name, fall back to type name
-            // (SPIRV without debug info may not preserve instance names for SSBOs with runtime arrays)
+            // (SPIRV without debug info may not preserve instance names for SSBOs with runtime
+            // arrays)
             const char* name_str = nullptr;
             if (spv_binding->name && spv_binding->name[0] != '\0')
             {
@@ -357,14 +358,14 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
                      spv_binding->type_description->type_name[0] != '\0')
             {
                 name_str = spv_binding->type_description->type_name;
-                ALOG_TRACE("Using type name '{}' as binding name for set={}, binding={}",
-                           name_str, spv_set->set, spv_binding->binding);
+                ALOG_TRACE("Using type name '{}' as binding name for set={}, binding={}", name_str,
+                           spv_set->set, spv_binding->binding);
             }
 
             if (!name_str)
             {
-                ALOG_ERROR("Descriptor binding at set={}, binding={} has no name",
-                           spv_set->set, spv_binding->binding);
+                ALOG_ERROR("Descriptor binding at set={}, binding={} has no name", spv_set->set,
+                           spv_binding->binding);
                 return false;
             }
 
@@ -593,11 +594,11 @@ shader_reflection_utils::build_shader_push_constants(SpvReflectShaderModule& spv
     // Require instance name for push constants (e.g., "pc" in "} pc;")
     if (!pconstants->name || pconstants->name[0] == '\0')
     {
-        ALOG_ERROR("Push constant block '{}' has no instance name. Add instance name after closing "
-                   "brace, e.g., '}} pc;'",
-                   pconstants->type_description->type_name
-                       ? pconstants->type_description->type_name
-                       : "<anonymous>");
+        ALOG_ERROR(
+            "Push constant block '{}' has no instance name. Add instance name after closing "
+            "brace, e.g., '}} pc;'",
+            pconstants->type_description->type_name ? pconstants->type_description->type_name
+                                                    : "<anonymous>");
         return false;
     }
 

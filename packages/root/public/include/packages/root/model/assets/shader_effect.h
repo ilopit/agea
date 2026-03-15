@@ -13,8 +13,8 @@ namespace root
 class texture;
 
 KRG_ar_class("architype=shader_effect",
-              render_cmd_builder   = shader_effect__cmd_builder,
-              render_cmd_destroyer = shader_effect__cmd_destroyer);
+             render_cmd_builder = shader_effect__cmd_builder,
+             render_cmd_destroyer = shader_effect__cmd_destroyer);
 class shader_effect : public asset
 {
     KRG_gen_meta__shader_effect();

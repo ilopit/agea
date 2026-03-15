@@ -67,9 +67,9 @@ property::default_copy(property_context__copy& cxt)
     KRG_check(!cxt.src_property->type.is_collection, "Not supported!");
 
     auto from = ::kryga::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
-                                               cxt.src_property->type.is_ptr);
+                                                cxt.src_property->type.is_ptr);
     auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
-                                             cxt.dst_property->type.is_ptr);
+                                              cxt.dst_property->type.is_ptr);
 
     type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
     return cxt.dst_property->rtype->copy(type_ctx);
@@ -83,14 +83,14 @@ property::default_instantiate(property_context__instantiate& cxt)
     KRG_check(!cxt.src_property->type.is_collection, "Not supported!");
 
     KRG_check(cxt.src_property->rtype->instantiate || cxt.src_property->rtype->copy,
-               "Should be valid!");
+              "Should be valid!");
     KRG_check(cxt.dst_property->rtype->instantiate || cxt.dst_property->rtype->copy,
-               "Should never happen!");
+              "Should never happen!");
 
     auto from = ::kryga::reflection::reduce_ptr(cxt.src_property->get_blob(*cxt.src_obj),
-                                               cxt.src_property->type.is_ptr);
+                                                cxt.src_property->type.is_ptr);
     auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
-                                             cxt.dst_property->type.is_ptr);
+                                              cxt.dst_property->type.is_ptr);
 
     type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
 
@@ -127,9 +127,9 @@ property::default_load(property_context__load& ctx)
         else
         {
             auto from = ::kryga::reflection::reduce_ptr(ctx.src_property->get_blob(*ctx.src_obj),
-                                                       ctx.src_property->type.is_ptr);
+                                                        ctx.src_property->type.is_ptr);
             auto to = ::kryga::reflection::reduce_ptr(ctx.dst_property->get_blob(*ctx.dst_obj),
-                                                     ctx.dst_property->type.is_ptr);
+                                                      ctx.dst_property->type.is_ptr);
 
             KRG_check(ctx.dst_property->rtype->copy, "Should never happen!");
             type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.ctor};
@@ -145,7 +145,8 @@ property::default_load(property_context__load& ctx)
 kryga::result_code
 property::default_to_string(property_context__to_string& ctx)
 {
-    auto from = ::kryga::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
+    auto from =
+        ::kryga::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
 
     type_context__to_string type_ctx{nullptr, from, &ctx.result};
     return ctx.prop->rtype->to_string(type_ctx);
@@ -258,9 +259,9 @@ result_code
 property::compare_item(property_context__compare& context)
 {
     auto src_ptr = ::kryga::reflection::reduce_ptr(context.src_obj->as_blob() + context.p->offset,
-                                                  context.p->type.is_ptr);
+                                                   context.p->type.is_ptr);
     auto dst_ptr = ::kryga::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
-                                                  context.p->type.is_ptr);
+                                                   context.p->type.is_ptr);
 
     type_context__compare type_ctx{src_ptr, dst_ptr};
     return context.p->rtype->compare(type_ctx);

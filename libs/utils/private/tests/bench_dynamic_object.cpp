@@ -24,7 +24,8 @@ public:
     explicit scoped_timer(const char* name)
         : m_name(name)
         , m_start(std::chrono::high_resolution_clock::now())
-    {}
+    {
+    }
 
     ~scoped_timer()
     {
@@ -44,11 +45,11 @@ private:
 TEST(dynamic_object_v2, layout_builder)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("test_struct"))
-        .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("count"), TYPE_INT32, sizeof(int32_t), 4)
-        .build_and_register();
+                          .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("count"), TYPE_INT32, sizeof(int32_t), 4)
+                          .build_and_register();
 
     ASSERT_NE(layout_idx, 0);
 
@@ -61,10 +62,10 @@ TEST(dynamic_object_v2, layout_builder)
 TEST(dynamic_object_v2, basic_read_write)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("vec3"))
-        .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
-        .build_and_register();
+                          .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
+                          .build_and_register();
 
     dynobj_v2 obj(layout_idx);
     ASSERT_FALSE(obj.empty());
@@ -85,8 +86,8 @@ TEST(dynamic_object_v2, basic_read_write)
 TEST(dynamic_object_v2, checked_access)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("test"))
-        .add_field(AID("value"), TYPE_FLOAT, sizeof(float), 4)
-        .build_and_register();
+                          .add_field(AID("value"), TYPE_FLOAT, sizeof(float), 4)
+                          .build_and_register();
 
     dynobj_v2 obj(layout_idx);
     auto view = obj.view();
@@ -108,9 +109,10 @@ TEST(dynamic_object_v2, checked_access)
 
 TEST(dynamic_object_v2, array_access)
 {
-    auto layout_idx = dynobj_layout_builder_v2(AID("array_test"))
-        .add_field(AID("values"), TYPE_FLOAT, sizeof(float), 4, 4) // array of 4 floats
-        .build_and_register();
+    auto layout_idx =
+        dynobj_layout_builder_v2(AID("array_test"))
+            .add_field(AID("values"), TYPE_FLOAT, sizeof(float), 4, 4)  // array of 4 floats
+            .build_and_register();
 
     dynobj_v2 obj(layout_idx);
     auto view = obj.view();
@@ -131,9 +133,9 @@ TEST(dynamic_object_v2, array_access)
 TEST(dynamic_object_v2, inline_storage)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("small"))
-        .add_field(AID("a"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("b"), TYPE_FLOAT, sizeof(float), 4)
-        .build_and_register();
+                          .add_field(AID("a"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("b"), TYPE_FLOAT, sizeof(float), 4)
+                          .build_and_register();
 
     dynobj_v2 obj(layout_idx);
     EXPECT_TRUE(obj.is_inline());
@@ -158,8 +160,8 @@ TEST(dynamic_object_v2, heap_storage)
 TEST(dynamic_object_v2, copy_semantics)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("copy_test"))
-        .add_field(AID("value"), TYPE_INT32, sizeof(int32_t), 4)
-        .build_and_register();
+                          .add_field(AID("value"), TYPE_INT32, sizeof(int32_t), 4)
+                          .build_and_register();
 
     dynobj_v2 obj1(layout_idx);
     obj1.view().get<int32_t>(0) = 12345;
@@ -176,8 +178,8 @@ TEST(dynamic_object_v2, copy_semantics)
 TEST(dynamic_object_v2, move_semantics)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("move_test"))
-        .add_field(AID("value"), TYPE_INT32, sizeof(int32_t), 4)
-        .build_and_register();
+                          .add_field(AID("value"), TYPE_INT32, sizeof(int32_t), 4)
+                          .build_and_register();
 
     dynobj_v2 obj1(layout_idx);
     obj1.view().get<int32_t>(0) = 12345;
@@ -194,10 +196,10 @@ TEST(dynamic_object_v2, move_semantics)
 TEST(dynamic_object_benchmark, DISABLED_v2_write_performance)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("bench"))
-        .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
-        .build_and_register();
+                          .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
+                          .build_and_register();
 
     dynobj_v2 obj(layout_idx);
     auto view = obj.view();
@@ -228,10 +230,10 @@ TEST(dynamic_object_benchmark, DISABLED_v2_write_performance)
 TEST(dynamic_object_benchmark, DISABLED_v2_read_performance)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("bench"))
-        .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
-        .build_and_register();
+                          .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
+                          .build_and_register();
 
     dynobj_v2 obj(layout_idx);
     auto view = obj.view();
@@ -274,10 +276,10 @@ TEST(dynamic_object_benchmark, DISABLED_v2_read_performance)
 TEST(dynamic_object_benchmark, DISABLED_object_creation)
 {
     auto layout_idx = dynobj_layout_builder_v2(AID("bench"))
-        .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
-        .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
-        .build_and_register();
+                          .add_field(AID("x"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("y"), TYPE_FLOAT, sizeof(float), 4)
+                          .add_field(AID("z"), TYPE_FLOAT, sizeof(float), 4)
+                          .build_and_register();
 
     constexpr int ITERATIONS = 100000;
 
@@ -291,4 +293,4 @@ TEST(dynamic_object_benchmark, DISABLED_object_creation)
     }
 }
 
-} // namespace kryga::utils
+}  // namespace kryga::utils

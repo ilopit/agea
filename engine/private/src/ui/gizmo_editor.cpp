@@ -10,7 +10,6 @@
 #include <native/native_window.h>
 #include <vulkan_render/kryga_render.h>
 
-
 namespace kryga::ui
 {
 
@@ -39,8 +38,7 @@ gizmo_editor::draw()
     {
         ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(0, 0));
-        ImGui::Begin("##gizmo_toolbar",
-                     nullptr,
+        ImGui::Begin("##gizmo_toolbar", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking);
@@ -79,15 +77,15 @@ gizmo_editor::draw()
             ImGui::SetNextItemWidth(60);
             switch (m_mode)
             {
-                case gizmo_mode::translate:
-                    ImGui::DragFloat("##snap_val", &m_snap_translate, 0.1f, 0.1f, 100.0f, "%.1f");
-                    break;
-                case gizmo_mode::rotate:
-                    ImGui::DragFloat("##snap_val", &m_snap_rotate, 1.0f, 1.0f, 180.0f, "%.0f");
-                    break;
-                case gizmo_mode::scale:
-                    ImGui::DragFloat("##snap_val", &m_snap_scale, 0.01f, 0.01f, 10.0f, "%.2f");
-                    break;
+            case gizmo_mode::translate:
+                ImGui::DragFloat("##snap_val", &m_snap_translate, 0.1f, 0.1f, 100.0f, "%.1f");
+                break;
+            case gizmo_mode::rotate:
+                ImGui::DragFloat("##snap_val", &m_snap_rotate, 1.0f, 1.0f, 180.0f, "%.0f");
+                break;
+            case gizmo_mode::scale:
+                ImGui::DragFloat("##snap_val", &m_snap_scale, 0.01f, 0.01f, 10.0f, "%.2f");
+                break;
             }
         }
 
@@ -140,15 +138,15 @@ gizmo_editor::draw()
     ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
     switch (m_mode)
     {
-        case gizmo_mode::translate:
-            op = ImGuizmo::TRANSLATE;
-            break;
-        case gizmo_mode::rotate:
-            op = ImGuizmo::ROTATE;
-            break;
-        case gizmo_mode::scale:
-            op = ImGuizmo::SCALE;
-            break;
+    case gizmo_mode::translate:
+        op = ImGuizmo::TRANSLATE;
+        break;
+    case gizmo_mode::rotate:
+        op = ImGuizmo::ROTATE;
+        break;
+    case gizmo_mode::scale:
+        op = ImGuizmo::SCALE;
+        break;
     }
 
     float model_arr[16];
@@ -161,15 +159,15 @@ gizmo_editor::draw()
     {
         switch (m_mode)
         {
-            case gizmo_mode::translate:
-                snap_values[0] = snap_values[1] = snap_values[2] = m_snap_translate;
-                break;
-            case gizmo_mode::rotate:
-                snap_values[0] = snap_values[1] = snap_values[2] = m_snap_rotate;
-                break;
-            case gizmo_mode::scale:
-                snap_values[0] = snap_values[1] = snap_values[2] = m_snap_scale;
-                break;
+        case gizmo_mode::translate:
+            snap_values[0] = snap_values[1] = snap_values[2] = m_snap_translate;
+            break;
+        case gizmo_mode::rotate:
+            snap_values[0] = snap_values[1] = snap_values[2] = m_snap_rotate;
+            break;
+        case gizmo_mode::scale:
+            snap_values[0] = snap_values[1] = snap_values[2] = m_snap_scale;
+            break;
         }
         snap_ptr = snap_values;
     }

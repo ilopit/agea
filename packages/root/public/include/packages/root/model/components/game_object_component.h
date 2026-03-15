@@ -20,8 +20,8 @@ const extern vec3 DEF_FORWARD;
 const extern vec3 DEF_UP;
 const extern vec3 DEF_RIGHT;
 
-KRG_ar_class(render_cmd_builder   = game_object_component__cmd_builder,
-              render_cmd_destroyer = game_object_component__cmd_destroyer);
+KRG_ar_class(render_cmd_builder = game_object_component__cmd_builder,
+             render_cmd_destroyer = game_object_component__cmd_destroyer);
 class game_object_component : public component
 {
     KRG_gen_meta__game_object_component();
@@ -126,27 +126,27 @@ protected:
     bool m_visible = false;
 
     KRG_ar_property("category=Transform",
-                     "access=all",
-                     "check=not_same",
-                     "invalidates=transform",
-                     "serializable=true",
-                     "default=true");
+                    "access=all",
+                    "check=not_same",
+                    "invalidates=transform",
+                    "serializable=true",
+                    "default=true");
     vec3 m_position = {0.f};
 
     KRG_ar_property("category=Transform",
-                     "access=all",
-                     "serializable=true",
-                     "check=not_same",
-                     "invalidates=transform",
-                     "default=true");
+                    "access=all",
+                    "serializable=true",
+                    "check=not_same",
+                    "invalidates=transform",
+                    "default=true");
     vec3 m_rotation = {0.f};
 
     KRG_ar_property("category=Transform",
-                     "access=all",
-                     "check=not_same",
-                     "invalidates=transform",
-                     "serializable=true",
-                     "default=true");
+                    "access=all",
+                    "check=not_same",
+                    "invalidates=transform",
+                    "serializable=true",
+                    "default=true");
     vec3 m_scale = {1.f};
 
     glm::mat4 m_transform_matrix;

@@ -509,7 +509,8 @@ vulkan_render::init_cluster_cull_compute()
         .add(AID("dyn_cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_cluster_cull_pass->finalize_bindings(*glob::glob_state().getr_render_device().descriptor_layout_cache());
+    m_cluster_cull_pass->finalize_bindings(
+        *glob::glob_state().getr_render_device().descriptor_layout_cache());
 
     // Create compute shader through the pass
     compute_shader_create_info info;
@@ -596,14 +597,15 @@ vulkan_render::init_frustum_cull_compute()
         .add(AID("dyn_cull_output"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_frustum_cull_pass->finalize_bindings(*glob::glob_state().getr_render_device().descriptor_layout_cache());
+    m_frustum_cull_pass->finalize_bindings(
+        *glob::glob_state().getr_render_device().descriptor_layout_cache());
 
     // Create compute shader through the pass
     compute_shader_create_info info;
     info.shader_buffer = &shader_buffer;
 
     auto rc = m_frustum_cull_pass->create_compute_shader(AID("frustum_cull"), info,
-                                                          m_frustum_cull_shader);
+                                                         m_frustum_cull_shader);
     if (rc != result_code::ok)
     {
         ALOG_WARN("Failed to create frustum cull compute shader - GPU frustum culling disabled");
@@ -753,15 +755,15 @@ vulkan_render::setup_instanced_render_graph()
         m_render_graph.import_resource(pass_name, rg_resource_type::image);
         m_render_graph.add_graphics_pass(
             pass_name,
-            {m_render_graph.write(pass_name),
-             m_render_graph.read(AID("dyn_object_buffer")),
+            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
              m_render_graph.read(AID("dyn_instance_slots"))},
             m_shadow_passes[c].get(), VkClearColorValue{},
             [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
     }
 
     // Compute pass: GPU frustum culling (runs before cluster culling)
-    // Frustum culling is required for instanced mode - dispatch_frustum_cull_impl asserts if not ready
+    // Frustum culling is required for instanced mode - dispatch_frustum_cull_impl asserts if not
+    // ready
     m_render_graph.add_compute_pass(AID("frustum_cull"),
                                     {m_render_graph.read(AID("dyn_frustum_data")),
                                      m_render_graph.read(AID("dyn_object_buffer")),
@@ -860,8 +862,7 @@ vulkan_render::setup_per_object_render_graph()
         m_render_graph.import_resource(pass_name, rg_resource_type::image);
         m_render_graph.add_graphics_pass(
             pass_name,
-            {m_render_graph.write(pass_name),
-             m_render_graph.read(AID("dyn_object_buffer")),
+            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
              m_render_graph.read(AID("dyn_instance_slots"))},
             m_shadow_passes[c].get(), VkClearColorValue{},
             [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });

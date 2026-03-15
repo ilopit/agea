@@ -67,11 +67,11 @@ bool
 package::init()
 {
     m_occ = object_load_context_builder()
-               .set_package(this)
-               .set_proto_local_set(&m_proto_local_cs)
-               .set_ownable_cache(&m_objects)
-               .set_instance_local_set(&m_instance_local_cs)
-               .build();
+                .set_package(this)
+                .set_proto_local_set(&m_proto_local_cs)
+                .set_ownable_cache(&m_objects)
+                .set_instance_local_set(&m_instance_local_cs)
+                .build();
 
     auto path = glob::glob_state().get_resource_locator()->resource(category::packages,
                                                                     m_id.str() + ".apkg");

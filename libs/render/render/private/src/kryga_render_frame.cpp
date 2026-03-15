@@ -197,9 +197,7 @@ vulkan_render::draw_main()
             auto& depth_images = m_shadow_passes[c]->get_depth_images();
             if (!depth_images.empty())
             {
-                m_render_graph.bind_image(
-                    AID("shadow_csm_" + std::to_string(c)),
-                    depth_images[0]);
+                m_render_graph.bind_image(AID("shadow_csm_" + std::to_string(c)), depth_images[0]);
             }
         }
     }
@@ -395,7 +393,8 @@ vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
     // Source for the copy is the last rendered swapchain image
-    auto picking_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
+    auto picking_pass =
+        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
     auto src_image = picking_pass->get_color_images()[0]->image();
 
     // Create the linear tiled destination image to copy to and to read the memory from
@@ -418,13 +417,15 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     auto dst_image = vk_utils::vulkan_image::create(
-        glob::glob_state().getr_render_device().get_vma_allocator_provider(), image_ci, vma_allocinfo);
+        glob::glob_state().getr_render_device().get_vma_allocator_provider(), image_ci,
+        vma_allocinfo);
 
     auto cmd_buf_ai = vk_utils::make_command_buffer_allocate_info(
         glob::glob_state().getr_render_device().m_upload_context.m_command_pool, 1);
 
     VkCommandBuffer cmd_buffer;
-    vkAllocateCommandBuffers(glob::glob_state().getr_render_device().vk_device(), &cmd_buf_ai, &cmd_buffer);
+    vkAllocateCommandBuffers(glob::glob_state().getr_render_device().vk_device(), &cmd_buf_ai,
+                             &cmd_buffer);
 
     auto command_buffer_bi = vk_utils::make_command_buffer_begin_info();
     vkBeginCommandBuffer(cmd_buffer, &command_buffer_bi);

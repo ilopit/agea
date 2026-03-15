@@ -6,6 +6,6 @@ class basic_package_render_bridge
 {
 public:
     virtual void
-    init(){};
+    init() {};
 };
 }  // namespace kryga

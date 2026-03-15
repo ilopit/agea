@@ -25,21 +25,32 @@ public:
         depth_only
     };
 
-    render_pass_builder& set_color_format(VkFormat f);
-    render_pass_builder& set_depth_format(VkFormat f);
-    render_pass_builder& set_preset(presets p);
-    render_pass_builder& set_color_images(const std::vector<vk_utils::vulkan_image_view_sptr>& ivs,
-                                          const std::vector<vk_utils::vulkan_image_sptr>& is);
-    render_pass_builder& set_width_depth(uint32_t w, uint32_t h);
-    render_pass_builder& set_enable_stencil(bool stencil);
-    render_pass_builder& set_depth_only(bool depth_only);
-    render_pass_builder& set_image_count(uint32_t count);
+    render_pass_builder&
+    set_color_format(VkFormat f);
+    render_pass_builder&
+    set_depth_format(VkFormat f);
+    render_pass_builder&
+    set_preset(presets p);
+    render_pass_builder&
+    set_color_images(const std::vector<vk_utils::vulkan_image_view_sptr>& ivs,
+                     const std::vector<vk_utils::vulkan_image_sptr>& is);
+    render_pass_builder&
+    set_width_depth(uint32_t w, uint32_t h);
+    render_pass_builder&
+    set_enable_stencil(bool stencil);
+    render_pass_builder&
+    set_depth_only(bool depth_only);
+    render_pass_builder&
+    set_image_count(uint32_t count);
 
-    render_pass_sptr build();
+    render_pass_sptr
+    build();
 
 private:
-    std::array<VkSubpassDependency, 2> get_dependencies();
-    std::vector<VkAttachmentDescription> get_attachments();
+    std::array<VkSubpassDependency, 2>
+    get_dependencies();
+    std::vector<VkAttachmentDescription>
+    get_attachments();
 
     VkFormat m_color_format = VK_FORMAT_UNDEFINED;
     VkFormat m_depth_format = VK_FORMAT_UNDEFINED;

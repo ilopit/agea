@@ -10,14 +10,14 @@
 #include <string>
 
 #define KRG_gen_getter(n, t)                           \
-    t* get_##n() const                                  \
-    {                                                   \
-        return m_##n;                                   \
-    }                                                   \
-    t& getr_##n() const                                 \
-    {                                                   \
+    t* get_##n() const                                 \
+    {                                                  \
+        return m_##n;                                  \
+    }                                                  \
+    t& getr_##n() const                                \
+    {                                                  \
         KRG_check(m_##n, "Instance should be alive!"); \
-        return *m_##n;                                  \
+        return *m_##n;                                 \
     }
 
 namespace kryga

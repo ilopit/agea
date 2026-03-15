@@ -519,14 +519,13 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
     if (m_bindless_set != VK_NULL_HANDLE)
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                KGPU_textures_descriptor_sets, 1, &m_bindless_set,
-                                0, nullptr);
+                                KGPU_textures_descriptor_sets, 1, &m_bindless_set, 0, nullptr);
     }
     else if (m_ui_target_mat->has_textures())
     {
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
-                                KGPU_textures_descriptor_sets, 1, &m_ui_target_mat->get_textures_ds(),
-                                0, nullptr);
+                                KGPU_textures_descriptor_sets, 1,
+                                &m_ui_target_mat->get_textures_ds(), 0, nullptr);
     }
 
     bind_mesh(cmd, m);
@@ -645,8 +644,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     // So get_object_index() = slots[0 + slot] = slot
 
     // Set directional light (global)
-    m_obj_config.directional_light_id =
-        get_selected_directional_light_slot();
+    m_obj_config.directional_light_id = get_selected_directional_light_slot();
 
     // Set lighting mode
     m_obj_config.use_clustered_lighting = is_instanced_mode() ? 1 : 0;
@@ -723,7 +721,6 @@ vulkan_render::bind_global_descriptors(VkCommandBuffer cmd, render::frame_state&
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout,
                             KGPU_objects_descriptor_sets, 1, &m_objects_set,
                             KGPU_objects_max_binding + 1, dummy_offset);
-
 }
 
 void
@@ -941,8 +938,8 @@ vulkan_render::prepare_ui_resources()
     image_raw_buffer.resize(size);
     memcpy(image_raw_buffer.data(), font_data, size);
 
-    m_ui_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(AID("font"), image_raw_buffer,
-                                                                 tex_width, tex_height);
+    m_ui_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
+        AID("font"), image_raw_buffer, tex_width, tex_height);
 
     auto ui_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("ui"));
     m_ui_target_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
@@ -1000,7 +997,8 @@ vulkan_render::prepare_ui_pipeline()
         auto frag_path = path / "se_upload.frag";
         kryga::utils::buffer::load(frag_path, frag);
 
-        auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+        auto main_pass =
+            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;

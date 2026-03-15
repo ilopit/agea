@@ -6,7 +6,8 @@
 namespace kryga::tbs
 {
 
-std::array<hex_coord, 6> hex_coord::neighbors() const
+std::array<hex_coord, 6>
+hex_coord::neighbors() const
 {
     const auto& dirs = directions();
     return {{
@@ -19,7 +20,8 @@ std::array<hex_coord, 6> hex_coord::neighbors() const
     }};
 }
 
-int hex_coord::distance_to(const hex_coord& other) const
+int
+hex_coord::distance_to(const hex_coord& other) const
 {
     // In cube coordinates, distance = (|dx| + |dy| + |dz|) / 2
     // Since s = -q - r, we have:
@@ -33,7 +35,8 @@ int hex_coord::distance_to(const hex_coord& other) const
     return (std::abs(dq) + std::abs(dr) + std::abs(ds)) / 2;
 }
 
-glm::vec3 hex_coord::to_world(float hex_size) const
+glm::vec3
+hex_coord::to_world(float hex_size) const
 {
     // Pointy-top hex layout
     // x = size * sqrt(3) * (q + r/2)
@@ -46,7 +49,8 @@ glm::vec3 hex_coord::to_world(float hex_size) const
     return glm::vec3(x, 0.0f, z);
 }
 
-hex_coord hex_coord::from_world(const glm::vec3& world_pos, float hex_size)
+hex_coord
+hex_coord::from_world(const glm::vec3& world_pos, float hex_size)
 {
     // Inverse of to_world, then round to nearest hex
     const float sqrt3 = 1.7320508075688772f;
@@ -87,7 +91,8 @@ hex_coord hex_coord::from_world(const glm::vec3& world_pos, float hex_size)
     return hex_coord(rx, rz);
 }
 
-std::vector<hex_coord> hex_coord::hexes_in_range(const hex_coord& center, int radius)
+std::vector<hex_coord>
+hex_coord::hexes_in_range(const hex_coord& center, int radius)
 {
     std::vector<hex_coord> results;
     results.reserve(static_cast<size_t>(3 * radius * (radius + 1) + 1));  // Hex count formula
@@ -105,7 +110,8 @@ std::vector<hex_coord> hex_coord::hexes_in_range(const hex_coord& center, int ra
     return results;
 }
 
-std::vector<hex_coord> hex_coord::hex_ring(const hex_coord& center, int radius)
+std::vector<hex_coord>
+hex_coord::hex_ring(const hex_coord& center, int radius)
 {
     if (radius == 0)
     {
@@ -131,7 +137,8 @@ std::vector<hex_coord> hex_coord::hex_ring(const hex_coord& center, int radius)
     return results;
 }
 
-std::vector<hex_coord> hex_coord::hex_line(const hex_coord& start, const hex_coord& end)
+std::vector<hex_coord>
+hex_coord::hex_line(const hex_coord& start, const hex_coord& end)
 {
     const int n = start.distance_to(end);
     if (n == 0)

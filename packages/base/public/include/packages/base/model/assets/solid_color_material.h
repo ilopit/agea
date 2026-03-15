@@ -23,33 +23,33 @@ public:
 
 protected:
     KRG_ar_property("category=Properties",
-                     "serializable=true",
-                     "invalidates=render",
-                     "check=not_same",
-                     "access=all",
-                     "gpu_data=MaterialData",
-                     "default=true");
+                    "serializable=true",
+                    "invalidates=render",
+                    "check=not_same",
+                    "access=all",
+                    "gpu_data=MaterialData",
+                    "default=true");
     ::kryga::root::vec3 m_ambient = {.2f, .2f, .2f};
 
     KRG_ar_property("category=Properties",
-                     "serializable=true",
-                     "access=all",
-                     "gpu_data=MaterialData",
-                     "default=true");
+                    "serializable=true",
+                    "access=all",
+                    "gpu_data=MaterialData",
+                    "default=true");
     ::kryga::root::vec3 m_diffuse = {.2f, .2f, .2f};
 
     KRG_ar_property("category=Properties",
-                     "serializable=true",
-                     "access=all",
-                     "gpu_data=MaterialData",
-                     "default=true");
+                    "serializable=true",
+                    "access=all",
+                    "gpu_data=MaterialData",
+                    "default=true");
     ::kryga::root::vec3 m_specular = 0.5f;
 
     KRG_ar_property("category=Properties",
-                     "serializable=true",
-                     "access=all",
-                     "gpu_data=MaterialData",
-                     "default=true");
+                    "serializable=true",
+                    "access=all",
+                    "gpu_data=MaterialData",
+                    "default=true");
     float m_shininess = 32.0f;
 };
 

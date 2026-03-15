@@ -127,9 +127,8 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // Bone matrices SSBO for skeletal animation (initial 64KB)
-        m_frames[i].buffers.bone_matrices =
-            device.create_buffer(64 * 1024,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.bone_matrices = device.create_buffer(
+            64 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // GPU frustum culling buffers
         m_frames[i].buffers.frustum_data =
@@ -140,11 +139,11 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
             device.create_buffer(OBJECTS_BUFFER_SIZE * sizeof(uint32_t),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 
-        m_frames[i].buffers.cull_output =
-            device.create_buffer(sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
-                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
-                                 VMA_MEMORY_USAGE_GPU_ONLY);
+        m_frames[i].buffers.cull_output = device.create_buffer(
+            sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
+            VMA_MEMORY_USAGE_GPU_ONLY);
 
         // Shadow data SSBO
         m_frames[i].buffers.shadow_data =
@@ -230,10 +229,8 @@ vulkan_render::deinit()
     // Clear shadow passes
     m_shadow_se = nullptr;
     m_shadow_dpsm_se = nullptr;
-    for (auto& sp : m_shadow_passes)
-        sp.reset();
-    for (auto& sp : m_shadow_local_passes)
-        sp.reset();
+    for (auto& sp : m_shadow_passes) sp.reset();
+    for (auto& sp : m_shadow_local_passes) sp.reset();
 
     // Clear compute passes before device is destroyed
     // (they hold compute shaders with VkShaderModule)
@@ -270,7 +267,8 @@ vulkan_render::prepare_render_passes()
                 .set_preset(render_pass_builder::presets::swapchain)
                 .build();
 
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"), std::move(main_pass));
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),
+                                                                       std::move(main_pass));
     }
 
     VkExtent3D image_extent = {m_width, m_height, 1};
@@ -284,7 +282,8 @@ vulkan_render::prepare_render_passes()
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info,
+            simg_allocinfo));
 
         auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
             VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
@@ -302,7 +301,8 @@ vulkan_render::prepare_render_passes()
                 .set_preset(render_pass_builder::presets::buffer)
                 .build();
 
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"), std::move(ui_pass));
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"),
+                                                                       std::move(ui_pass));
     }
 
     {
@@ -314,7 +314,8 @@ vulkan_render::prepare_render_passes()
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info, simg_allocinfo));
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info,
+            simg_allocinfo));
 
         auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
             VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
@@ -332,7 +333,8 @@ vulkan_render::prepare_render_passes()
                 .set_enable_stencil(false)
                 .build();
 
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("picking"), std::move(picking_pass));
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("picking"),
+                                                                       std::move(picking_pass));
     }
 }
 
@@ -384,12 +386,10 @@ vulkan_render::prepare_pass_bindings()
         // Set 2: Bindless textures and static samplers (managed separately from render graph)
         main_pass->bindings()
             .add(AID("static_samplers"), KGPU_textures_descriptor_sets, 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material)
             .add(AID("bindless_textures"), KGPU_textures_descriptor_sets, 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material);
 
         // Set 3: Material data (per-material)
@@ -443,12 +443,10 @@ vulkan_render::prepare_pass_bindings()
         // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)
         picking_pass->bindings()
             .add(AID("static_samplers"), KGPU_textures_descriptor_sets, 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material)
             .add(AID("bindless_textures"), KGPU_textures_descriptor_sets, 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material);
 
         picking_pass->finalize_bindings(layout_cache);
@@ -469,11 +467,11 @@ vulkan_render::prepare_pass_bindings()
 void
 vulkan_render::prepare_system_resources()
 {
-    glob::glob_state().getr_vulkan_render_loader().create_sampler(AID("default"),
-                                                      VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
+    glob::glob_state().getr_vulkan_render_loader().create_sampler(
+        AID("default"), VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
 
-    glob::glob_state().getr_vulkan_render_loader().create_sampler(AID("font"),
-                                                      VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+    glob::glob_state().getr_vulkan_render_loader().create_sampler(
+        AID("font"), VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
     kryga::utils::buffer vert, frag;
 
@@ -524,7 +522,8 @@ vulkan_render::prepare_system_resources()
     frag_path = path / "system/se_pick.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
-    auto picking_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
+    auto picking_pass =
+        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
 
     se_ci.ds_mode = depth_stencil_mode::none;
     sed = nullptr;
@@ -532,8 +531,8 @@ vulkan_render::prepare_system_resources()
     rc = picking_pass->create_shader_effect(AID("se_pick"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
-    m_pick_mat = glob::glob_state().getr_vulkan_render_loader().create_material(AID("mat_pick"), AID("pick"),
-                                                                    sd, *sed, utils::dynobj{});
+    m_pick_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+        AID("mat_pick"), AID("pick"), sd, *sed, utils::dynobj{});
 
     // Grid shader effect and material
     vert_path = path / "system/se_grid.vert";
@@ -580,9 +579,10 @@ vulkan_render::init_static_samplers()
     auto vk_device = glob::glob_state().get_render_device()->vk_device();
 
     // Helper to create a sampler with given parameters
-    auto create_sampler = [vk_device](VkFilter filter, VkSamplerAddressMode addressMode,
-                                       VkBorderColor borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
-                                       bool anisotropy = false) -> VkSampler
+    auto create_sampler = [vk_device](
+                              VkFilter filter, VkSamplerAddressMode addressMode,
+                              VkBorderColor borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                              bool anisotropy = false) -> VkSampler
     {
         VkSamplerCreateInfo ci{};
         ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

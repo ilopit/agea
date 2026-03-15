@@ -228,10 +228,8 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__animation_system::set(gs);
 
     glob::glob_state().getr_animation_system().set_render_data_resolver(
-        [](const utils::id& id) -> render::vulkan_render_data* {
-            return glob::glob_state().getr_vulkan_render()
-                .get_cache().objects.find_by_id(id);
-        });
+        [](const utils::id& id) -> render::vulkan_render_data*
+        { return glob::glob_state().getr_vulkan_render().get_cache().objects.find_by_id(id); });
 
     gs.run_connect();
     init_default_scripting();

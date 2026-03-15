@@ -441,7 +441,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            auto rel = (k_mouse_sensitivity * sdle.motion.xrel) / (float)glob::glob_state().get_native_window()->get_size().w;
+            auto rel = (k_mouse_sensitivity * sdle.motion.xrel) /
+                       (float)glob::glob_state().get_native_window()->get_size().w;
             es->extra_ampl = rel * glob::glob_state().get_native_window()->aspect_ratio();
 
             es->is_active = true;
@@ -456,7 +457,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             auto* es = &m_events_state[id];
 
-            auto rel = (k_mouse_sensitivity * sdle.motion.yrel) / (float)glob::glob_state().get_native_window()->get_size().h;
+            auto rel = (k_mouse_sensitivity * sdle.motion.yrel) /
+                       (float)glob::glob_state().get_native_window()->get_size().h;
             es->extra_ampl = rel;
 
             es->is_active = true;
@@ -521,7 +523,9 @@ input_manager::do_register_scaled(const utils::id& id, core::input_scaled_handle
 }
 
 bool
-input_manager::do_register_fixed(const utils::id& id, bool pressed, core::input_fixed_handler_data handler)
+input_manager::do_register_fixed(const utils::id& id,
+                                 bool pressed,
+                                 core::input_fixed_handler_data handler)
 {
     auto itr = m_input_actions.find(id);
     if (itr == m_input_actions.end())
@@ -561,8 +565,7 @@ input_manager::unregister_owner(void* owner)
         auto erase_matching = [owner](auto& vec)
         {
             std::erase_if(vec,
-                          [owner](auto& h)
-                          { return reinterpret_cast<void*>(h.obj) == owner; });
+                          [owner](auto& h) { return reinterpret_cast<void*>(h.obj) == owner; });
         };
 
         erase_matching(es.m_registered_scaled_handlers);

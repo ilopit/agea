@@ -9,7 +9,7 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(render_cmd_builder   = spot_light_component__cmd_builder,
+KRG_ar_class(render_cmd_builder = spot_light_component__cmd_builder,
              render_cmd_destroyer = spot_light_component__cmd_destroyer);
 class spot_light_component : public ::kryga::root::game_object_component
 {

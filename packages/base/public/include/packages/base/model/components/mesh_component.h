@@ -49,19 +49,19 @@ public:
 
 protected:
     KRG_ar_property("category=Assets",
-                     "serializable=true",
-                     "check=not_same",
-                     "invalidates=render",
-                     "access=all",
-                     "default=true");
+                    "serializable=true",
+                    "check=not_same",
+                    "invalidates=render",
+                    "access=all",
+                    "default=true");
     ::kryga::root::material* m_material = nullptr;
 
     KRG_ar_property("category=Assets",
-                     "serializable=true",
-                     "check=not_same",
-                     "invalidates=render",
-                     "access=all",
-                     "default=true");
+                    "serializable=true",
+                    "check=not_same",
+                    "invalidates=render",
+                    "access=all",
+                    "default=true");
     ::kryga::root::mesh* m_mesh = nullptr;
 
     float m_base_bounding_radius = 0.0f;

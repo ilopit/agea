@@ -117,7 +117,8 @@ level_manager::load_level_path(level& l, const utils::path& path)
         {
             if (auto go = i->as<root::game_object>())
             {
-                glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(go->get_root_component());
+                glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+                    go->get_root_component());
             }
         }
     }

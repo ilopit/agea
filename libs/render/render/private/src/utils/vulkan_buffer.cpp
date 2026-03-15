@@ -82,8 +82,8 @@ vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    VK_CHECK(vmaCreateBuffer(glob::glob_state().getr_render_device().allocator(), &bci, &vaci, &buffer,
-                             &allocation, nullptr));
+    VK_CHECK(vmaCreateBuffer(glob::glob_state().getr_render_device().allocator(), &bci, &vaci,
+                             &buffer, &allocation, nullptr));
 
     return vulkan_buffer{buffer, allocation, bci.size};
 }
@@ -98,7 +98,8 @@ vulkan_buffer::begin()
 {
     m_offset = 0;
     m_offsets.clear();
-    vmaMapMemory(glob::glob_state().getr_render_device().allocator(), allocation(), (void**)&m_data_begin);
+    vmaMapMemory(glob::glob_state().getr_render_device().allocator(), allocation(),
+                 (void**)&m_data_begin);
 }
 
 void
@@ -111,7 +112,8 @@ vulkan_buffer::end()
 void
 vulkan_buffer::flush()
 {
-    vmaFlushAllocation(glob::glob_state().getr_render_device().allocator(), allocation(), 0, m_offset);
+    vmaFlushAllocation(glob::glob_state().getr_render_device().allocator(), allocation(), 0,
+                       m_offset);
 }
 
 void

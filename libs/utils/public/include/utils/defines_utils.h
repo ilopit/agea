@@ -1,12 +1,12 @@
 #pragma once
 
 #define KRG_return_false(cond) \
-    if (!(cond))                \
-    {                           \
-        return false;           \
+    if (!(cond))               \
+    {                          \
+        return false;          \
     }
 
-#define KRG_return_nok(rc)    \
+#define KRG_return_nok(rc)     \
     if (rc != result_code::ok) \
     {                          \
         return rc;             \
@@ -22,15 +22,15 @@
 #define KRG_concat3(x, y, z) KRG_concat_impl3(x, y, z)
 
 #define KRG_gen_class_cd_default(c) \
-    c## ::##c() = default;           \
+    c## ::##c() = default;          \
     c## ::##~c() = default;
 
 #define KRG_gen_class_non_copyable(c) \
-    c(const c&) = delete;              \
+    c(const c&) = delete;             \
     c& operator=(const c&) = delete
 
 #define KRG_gen_class_non_moveable(c) \
-    c(c&&) = delete;                   \
+    c(c&&) = delete;                  \
     c& operator=(c&&) = delete
 
 #define KRG_gen_class_non_copyble_non_moveable(c) \

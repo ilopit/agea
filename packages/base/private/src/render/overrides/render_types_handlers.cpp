@@ -111,8 +111,8 @@ struct create_object_cmd : render_cmd::render_command_base
 
         auto* object_data = ctx.vr.get_cache().objects.alloc(id);
 
-        if (!ctx.loader.update_object(*object_data, *mat_data, *mesh_data, transform,
-                                      normal_matrix, position))
+        if (!ctx.loader.update_object(*object_data, *mat_data, *mesh_data, transform, normal_matrix,
+                                      position))
         {
             ALOG_LAZY_ERROR;
             return;
@@ -222,8 +222,8 @@ struct create_light_cmd : render_cmd::render_command_base
         }
         else
         {
-            auto lt = (kind == light_kind::spot) ? render::light_type::spot
-                                                 : render::light_type::point;
+            auto lt =
+                (kind == light_kind::spot) ? render::light_type::spot : render::light_type::point;
             auto* rh = ctx.vr.get_cache().universal_lights.alloc(id, lt);
             rh->gpu_data.position = position;
             rh->gpu_data.ambient = ambient;

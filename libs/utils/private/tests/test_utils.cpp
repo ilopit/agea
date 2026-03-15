@@ -15,7 +15,7 @@ auto r = []()
     kryga::utils::setup_logger();
     return true;
 }();
-}
+}  // namespace
 
 struct test_type
 {

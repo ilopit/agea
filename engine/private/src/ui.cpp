@@ -77,8 +77,7 @@ ui::ui()
         std::make_unique<performance_counters_window>();
     m_windows[performance_counters_window::window_title()]->m_show = true;
 
-    m_windows[render_config_window::window_title()] =
-        std::make_unique<render_config_window>();
+    m_windows[render_config_window::window_title()] = std::make_unique<render_config_window>();
     m_windows[render_config_window::window_title()]->m_show = true;
 }
 
@@ -414,8 +413,8 @@ render_config_window::handle()
         };
 
         // PCF Mode
-        const char* pcf_names[] = {"3x3 (9 taps)", "5x5 (25 taps)", "7x7 (49 taps)",
-                                   "Poisson 16", "Poisson 32"};
+        const char* pcf_names[] = {"3x3 (9 taps)", "5x5 (25 taps)", "7x7 (49 taps)", "Poisson 16",
+                                   "Poisson 32"};
         int pcf_mode = static_cast<int>(shadow.directional.pcf_mode);
         if (ImGui::Combo("PCF Mode", &pcf_mode, pcf_names, IM_ARRAYSIZE(pcf_names)))
             shadow.directional.pcf_mode = static_cast<uint32_t>(pcf_mode);

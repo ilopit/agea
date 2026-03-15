@@ -22,11 +22,11 @@ level::level(const utils::id& id)
     : container(id)
 {
     m_occ = object_load_context_builder()
-               .set_instance_local_set(&m_instance_local_cs)
-               .set_ownable_cache(&m_objects)
-               .set_objects_mapping(m_mapping)
-               .set_level(this)
-               .build();
+                .set_instance_local_set(&m_instance_local_cs)
+                .set_ownable_cache(&m_objects)
+                .set_objects_mapping(m_mapping)
+                .set_level(this)
+                .build();
 }
 
 level::~level()
@@ -84,7 +84,8 @@ level::spawn_object_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(obj->get_root_component());
+    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+        obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
 
@@ -132,7 +133,8 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(obj->get_root_component());
+    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+        obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
 
@@ -154,7 +156,8 @@ level::spawn_object_impl(const utils::id& proto_id,
     auto obj = result.value()->as<root::game_object>();
     if (obj)
     {
-        glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(obj->get_root_component());
+        glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+            obj->get_root_component());
 
         m_tickable_objects.emplace_back(obj);
     }

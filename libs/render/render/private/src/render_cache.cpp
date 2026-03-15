@@ -3,8 +3,7 @@
 using namespace kryga::render;
 
 render_cache::render_cache()
-    :objects(false)
+    : objects(false)
 {
-
 }
 render_cache::~render_cache() = default;

@@ -59,8 +59,8 @@ reflection::reflection_type_registry::unload_type(const int type_id, const kryga
         {
             auto& rt = itr->second;
             KRG_check(rt->type_class != reflection_type::reflection_type_class::kryga_class ||
-                           AID("smart_object") == id || get_type(rt->parent->type_id),
-                       "Parent for classes should always exist");
+                          AID("smart_object") == id || get_type(rt->parent->type_id),
+                      "Parent for classes should always exist");
             m_types.erase(itr);
         }
     }
@@ -71,8 +71,8 @@ reflection::reflection_type_registry::unload_type(const int type_id, const kryga
             auto& rt = itr->second;
 
             KRG_check(rt->type_class != reflection_type::reflection_type_class::kryga_class ||
-                           AID("smart_object") == id || get_type(rt->parent->type_id),
-                       "Parent for classes should always exist");
+                          AID("smart_object") == id || get_type(rt->parent->type_id),
+                      "Parent for classes should always exist");
             m_types_by_name.erase(itr);
         }
     }

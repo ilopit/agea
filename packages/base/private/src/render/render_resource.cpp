@@ -49,7 +49,8 @@ root_package_render_resources_loader::load(core::static_package& s)
     auto vertices = vert_buffer.make_view<gpu::vertex_data>();
     auto indices = index_buffer.make_view<gpu::uint>();
 
-    glob::glob_state().getr_vulkan_render_loader().create_mesh(AID("plane_mesh"), vertices, indices);
+    glob::glob_state().getr_vulkan_render_loader().create_mesh(AID("plane_mesh"), vertices,
+                                                               indices);
 
     return true;
 }

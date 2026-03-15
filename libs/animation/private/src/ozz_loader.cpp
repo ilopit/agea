@@ -29,8 +29,7 @@ ozz_loader::load_skeleton(const std::string& path, ozz::animation::Skeleton& out
 
     archive >> out_skeleton;
 
-    ALOG_INFO("ozz_loader: Loaded skeleton from '{}' ({} joints)", path,
-              out_skeleton.num_joints());
+    ALOG_INFO("ozz_loader: Loaded skeleton from '{}' ({} joints)", path, out_skeleton.num_joints());
     return true;
 }
 

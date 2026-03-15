@@ -30,8 +30,8 @@ namespace render
 // Render mode for A/B performance comparison
 enum class render_mode
 {
-    instanced,   // Batched instanced drawing with GPU cluster culling
-    per_object   // Legacy per-object drawing with CPU light grid
+    instanced,  // Batched instanced drawing with GPU cluster culling
+    per_object  // Legacy per-object drawing with CPU light grid
 };
 
 class vulkan_render_loader;
@@ -81,9 +81,9 @@ struct frame_buffers
     vk_utils::vulkan_buffer bone_matrices;
 
     // GPU frustum culling buffers
-    vk_utils::vulkan_buffer frustum_data;      // Frustum planes (uniform)
-    vk_utils::vulkan_buffer visible_indices;   // Output visible object indices
-    vk_utils::vulkan_buffer cull_output;       // Visible count + indirect commands
+    vk_utils::vulkan_buffer frustum_data;     // Frustum planes (uniform)
+    vk_utils::vulkan_buffer visible_indices;  // Output visible object indices
+    vk_utils::vulkan_buffer cull_output;      // Visible count + indirect commands
 
     // Shadow data SSBO
     vk_utils::vulkan_buffer shadow_data;

@@ -80,7 +80,7 @@ public:
     add_item(const root::smart_object& obj)
     {
         KRG_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
-                   "Should have same architype!");
+                  "Should have same architype!");
 
         hash_cache::add_item(obj);
     }
@@ -89,7 +89,7 @@ public:
     remove_item(const root::smart_object& obj)
     {
         KRG_check(obj.get_architype_id() == get_id() || get_id() == architype::smart_object,
-                   "Should have same architype!");
+                  "Should have same architype!");
 
         hash_cache::remove_item(obj);
     }

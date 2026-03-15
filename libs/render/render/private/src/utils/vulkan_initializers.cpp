@@ -395,7 +395,8 @@ make_write_descriptor_image(VkDescriptorType type,
 
 VkSamplerCreateInfo
 make_sampler_create_info(
-    VkFilter filters, VkSamplerAddressMode sampler_address_mode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/)
+    VkFilter filters,
+    VkSamplerAddressMode sampler_address_mode /*= VK_SAMPLER_ADDRESS_MODE_REPEAT*/)
 {
     VkSamplerCreateInfo ci = {};
     ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

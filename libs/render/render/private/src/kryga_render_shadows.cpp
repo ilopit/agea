@@ -40,14 +40,13 @@ vulkan_render::init_shadow_passes()
     // Create 4 depth-only render passes for CSM cascades
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
-        m_shadow_passes[c] =
-            render_pass_builder()
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_depth_only(true)
-                .set_image_count(1)
-                .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
-                .set_enable_stencil(false)
-                .build();
+        m_shadow_passes[c] = render_pass_builder()
+                                 .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                                 .set_depth_only(true)
+                                 .set_image_count(1)
+                                 .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
+                                 .set_enable_stencil(false)
+                                 .build();
 
         m_shadow_passes[c]->set_name(AID("shadow_csm_" + std::to_string(c)));
 
@@ -121,21 +120,19 @@ vulkan_render::init_shadow_passes()
     // Each local light needs up to 2 passes (point lights need front+back)
     for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
     {
-        m_shadow_local_passes[i] =
-            render_pass_builder()
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_depth_only(true)
-                .set_image_count(1)
-                .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
-                .set_enable_stencil(false)
-                .build();
+        m_shadow_local_passes[i] = render_pass_builder()
+                                       .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                                       .set_depth_only(true)
+                                       .set_image_count(1)
+                                       .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
+                                       .set_enable_stencil(false)
+                                       .build();
 
         m_shadow_local_passes[i]->set_name(AID("shadow_local_" + std::to_string(i)));
 
         // Register in bindless array
         auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(0);
-        uint32_t local_bindless_idx =
-            KGPU_max_bindless_textures - 1 - KGPU_CSM_CASCADE_COUNT - i;
+        uint32_t local_bindless_idx = KGPU_max_bindless_textures - 1 - KGPU_CSM_CASCADE_COUNT - i;
 
         VkDescriptorImageInfo local_image_info = {};
         local_image_info.imageView = local_depth_view;
@@ -174,8 +171,8 @@ vulkan_render::init_shadow_passes()
         se_ci.shared_pipeline_layout = shared_layout;
 
         m_shadow_dpsm_se = nullptr;
-        auto rc =
-            m_shadow_passes[0]->create_shader_effect(AID("se_shadow_dpsm"), se_ci, m_shadow_dpsm_se);
+        auto rc = m_shadow_passes[0]->create_shader_effect(AID("se_shadow_dpsm"), se_ci,
+                                                           m_shadow_dpsm_se);
         if (rc != result_code::ok)
         {
             ALOG_WARN("Failed to create DPSM shadow shader effect");
@@ -236,8 +233,8 @@ vulkan_render::compute_shadow_matrices()
         auto* dl = m_cache.directional_lights.at(slot);
         if (dl)
         {
-            light_dir = glm::normalize(glm::vec3(
-                dl->gpu_data.direction.x, dl->gpu_data.direction.y, dl->gpu_data.direction.z));
+            light_dir = glm::normalize(glm::vec3(dl->gpu_data.direction.x, dl->gpu_data.direction.y,
+                                                 dl->gpu_data.direction.z));
         }
     }
 
@@ -279,7 +276,8 @@ vulkan_render::compute_shadow_matrices()
         float depth_half = (split_far - split_near) * 0.5f;
         float radius = std::sqrt(hw * hw + hh * hh + depth_half * depth_half);
         radius = std::ceil(radius);
-        if (radius < 1.0f) radius = 1.0f;
+        if (radius < 1.0f)
+            radius = 1.0f;
 
         // Tight Z range: eye is 500 units behind shadow_center along light direction.
         // Scene objects are within ~radius units of shadow_center.
@@ -288,7 +286,8 @@ vulkan_render::compute_shadow_matrices()
         float z_eye_dist = 500.0f;
         float ortho_near = z_eye_dist - radius - 50.0f;
         float ortho_far = z_eye_dist + radius + 50.0f;
-        if (ortho_near < 0.1f) ortho_near = 0.1f;
+        if (ortho_near < 0.1f)
+            ortho_near = 0.1f;
 
         glm::mat4 light_proj = glm::ortho(-radius, radius, -radius, radius, ortho_near, ortho_far);
 
@@ -325,7 +324,6 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
     auto* se = m_shadow_se;
     if (se->m_failed_load)
         return;
-
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
@@ -395,7 +393,8 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
 
     auto& current_frame = *m_current_frame;
 
-    bool is_point = m_shadow_config.local_shadows[shadow_idx].shadow_info.z == KGPU_light_type_point;
+    bool is_point =
+        m_shadow_config.local_shadows[shadow_idx].shadow_info.z == KGPU_light_type_point;
     auto* se = is_point ? m_shadow_dpsm_se : m_shadow_se;
 
     if (!se || se->m_failed_load)
@@ -415,7 +414,7 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
                             KGPU_objects_max_binding + 1, dummy_offset);
 
     gpu::push_constants pc = {};
-    pc.directional_light_id = shadow_idx;  // Encode shadow index
+    pc.directional_light_id = shadow_idx;             // Encode shadow index
     pc.use_clustered_lighting = back_face ? 1u : 0u;  // Encode hemisphere
 
     for (const auto& batch : m_draw_batches)
@@ -472,7 +471,8 @@ vulkan_render::select_shadowed_lights()
               [](const auto& a, const auto& b) { return a.contribution > b.contribution; });
 
     // Take top N lights
-    uint32_t count = std::min((uint32_t)candidates.size(), (uint32_t)KGPU_MAX_SHADOWED_LOCAL_LIGHTS);
+    uint32_t count =
+        std::min((uint32_t)candidates.size(), (uint32_t)KGPU_MAX_SHADOWED_LOCAL_LIGHTS);
     m_shadow_config.shadowed_local_count = count;
 
     for (uint32_t i = 0; i < count; ++i)
@@ -483,12 +483,12 @@ vulkan_render::select_shadowed_lights()
         shadow.shadow_info.z = light->gpu_data.type;  // light_type
         float s_near = 0.1f;
         float s_far = light->gpu_data.radius;
-        shadow.shadow_params = glm::vec4(
-            0.005f,                                          // bias
-            0.02f,                                           // normal_bias
-            1.0f / static_cast<float>(KGPU_SHADOW_MAP_SIZE), // texel_size
-            s_near                                           // near_plane
-        );
+        shadow.shadow_params =
+            glm::vec4(0.005f,                                           // bias
+                      0.02f,                                            // normal_bias
+                      1.0f / static_cast<float>(KGPU_SHADOW_MAP_SIZE),  // texel_size
+                      s_near                                            // near_plane
+            );
         shadow.far_plane = s_far;
 
         if (light->gpu_data.type == KGPU_light_type_spot)
@@ -496,13 +496,13 @@ vulkan_render::select_shadowed_lights()
             // Spot light: perspective projection
             float fov = 2.0f * std::acos(light->gpu_data.outer_cut_off);
             glm::mat4 proj = glm::perspective(fov, 1.0f, s_near, s_far);
-            glm::mat4 view = glm::lookAt(
-                light->gpu_data.position,
-                light->gpu_data.position + glm::normalize(light->gpu_data.direction),
-                glm::vec3(0, 1, 0));
+            glm::mat4 view =
+                glm::lookAt(light->gpu_data.position,
+                            light->gpu_data.position + glm::normalize(light->gpu_data.direction),
+                            glm::vec3(0, 1, 0));
 
-            if (std::abs(glm::dot(glm::normalize(light->gpu_data.direction),
-                                  glm::vec3(0, 1, 0))) > 0.99f)
+            if (std::abs(glm::dot(glm::normalize(light->gpu_data.direction), glm::vec3(0, 1, 0))) >
+                0.99f)
             {
                 view = glm::lookAt(
                     light->gpu_data.position,
@@ -520,8 +520,7 @@ vulkan_render::select_shadowed_lights()
             // Point light: dual-paraboloid
             glm::vec3 front_dir(0.0f, 0.0f, 1.0f);
             glm::mat4 view = glm::lookAt(light->gpu_data.position,
-                                          light->gpu_data.position + front_dir,
-                                          glm::vec3(0, 1, 0));
+                                         light->gpu_data.position + front_dir, glm::vec3(0, 1, 0));
             shadow.view_proj = view;
             shadow.view_proj_back = view;
             shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2];

@@ -286,8 +286,7 @@ struct create_material_cmd : render_cmd::render_command_base
         render_bridge::set_material_texture_bindings(gpu_data, gpu_texture_indices,
                                                      gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
-        auto* mat_data =
-            ctx.loader.create_material(id, type_id, samples, *se_data, gpu_data);
+        auto* mat_data = ctx.loader.create_material(id, type_id, samples, *se_data, gpu_data);
 
         if (mat_data)
         {
@@ -490,7 +489,8 @@ texture__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     else
     {
         auto pixels = std::make_shared<utils::buffer>();
-        if (!kryga::asset_importer::texture_importer::extract_texture_from_buffer(bc, *pixels, w, h))
+        if (!kryga::asset_importer::texture_importer::extract_texture_from_buffer(bc, *pixels, w,
+                                                                                  h))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;

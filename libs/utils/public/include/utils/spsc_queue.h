@@ -28,7 +28,8 @@ public:
     }
 
     spsc_queue(const spsc_queue&) = delete;
-    spsc_queue& operator=(const spsc_queue&) = delete;
+    spsc_queue&
+    operator=(const spsc_queue&) = delete;
 
     // Producer: push an item. Returns false if full.
     bool

@@ -52,8 +52,7 @@ descriptor_type_to_string(VkDescriptorType type)
 bool
 is_buffer_descriptor(VkDescriptorType type)
 {
-    return type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
-           type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+    return type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER || type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
            type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
            type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
            type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
@@ -188,16 +187,18 @@ binding_table::validate_single_binding(const reflection::binding& b,
     // Check binding index matches
     if (spec->binding_index != b.binding_index)
     {
-        ALOG_ERROR("{} shader binding '{}' index mismatch: shader expects binding={}, table has binding={}",
-                   stage_name, b.name.cstr(), b.binding_index, spec->binding_index);
+        ALOG_ERROR(
+            "{} shader binding '{}' index mismatch: shader expects binding={}, table has "
+            "binding={}",
+            stage_name, b.name.cstr(), b.binding_index, spec->binding_index);
         return false;
     }
 
     // Check stage flags (shader stage must be subset of declared stages)
     if ((spec->stages & stage) != stage)
     {
-        ALOG_ERROR("{} shader binding '{}' stage not declared in binding table",
-                   stage_name, b.name.cstr());
+        ALOG_ERROR("{} shader binding '{}' stage not declared in binding table", stage_name,
+                   b.name.cstr());
         return false;
     }
 
@@ -271,10 +272,11 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
 
         if (!found)
         {
-            ALOG_ERROR("Binding table entry '{}' (set={}, binding={}) is per_pass but not declared "
-                       "in any shader stage — pipeline layout will have fewer descriptors than the "
-                       "allocated descriptor set",
-                       spec.name.cstr(), spec.set_index, spec.binding_index);
+            ALOG_ERROR(
+                "Binding table entry '{}' (set={}, binding={}) is per_pass but not declared "
+                "in any shader stage — pipeline layout will have fewer descriptors than the "
+                "allocated descriptor set",
+                spec.name.cstr(), spec.set_index, spec.binding_index);
             valid = false;
         }
     }
@@ -336,9 +338,10 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
 
         if (refl.find_binding(spec.set_index, spec.binding_index) == nullptr)
         {
-            ALOG_ERROR("{} shader missing table binding '{}' (set={}, binding={}) — "
-                       "pipeline layout will not match allocated descriptor set",
-                       stage_name, spec.name.cstr(), spec.set_index, spec.binding_index);
+            ALOG_ERROR(
+                "{} shader missing table binding '{}' (set={}, binding={}) — "
+                "pipeline layout will not match allocated descriptor set",
+                stage_name, spec.name.cstr(), spec.set_index, spec.binding_index);
             valid = false;
         }
     }

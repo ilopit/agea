@@ -199,8 +199,8 @@ TEST_F(HexCoordTest, origin_to_world)
 TEST_F(HexCoordTest, to_world_and_back)
 {
     // Test round-trip conversion
-    std::vector<hex_coord> test_coords = {
-        {0, 0}, {1, 0}, {0, 1}, {-1, 1}, {2, -1}, {-3, 5}, {10, -7}};
+    std::vector<hex_coord> test_coords = {{0, 0},  {1, 0},  {0, 1},  {-1, 1},
+                                          {2, -1}, {-3, 5}, {10, -7}};
 
     for (const auto& original : test_coords)
     {

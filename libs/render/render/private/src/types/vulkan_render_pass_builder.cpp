@@ -122,8 +122,8 @@ render_pass_builder::build()
     }
 
     // Determine image count: from color images (normal passes) or explicit count (depth-only)
-    uint32_t image_count = m_depth_only ? m_image_count
-                                        : static_cast<uint32_t>(m_color_image_views.size());
+    uint32_t image_count =
+        m_depth_only ? m_image_count : static_cast<uint32_t>(m_color_image_views.size());
     KRG_check(image_count > 0, "Image count must be > 0");
 
     VkExtent3D depth_image_extent = {m_width, m_height, 1};
@@ -134,7 +134,8 @@ render_pass_builder::build()
         depth_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
     }
 
-    auto dimg_info = vk_utils::make_image_create_info(m_depth_format, depth_usage, depth_image_extent);
+    auto dimg_info =
+        vk_utils::make_image_create_info(m_depth_format, depth_usage, depth_image_extent);
 
     VmaAllocationCreateInfo dimg_allocinfo = {};
     dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -160,7 +161,7 @@ render_pass_builder::build()
 
         // Create framebuffers with depth attachment only
         auto fb_info = vk_utils::make_framebuffer_create_info(rp->m_vk_render_pass,
-                                                               VkExtent2D{m_width, m_height});
+                                                              VkExtent2D{m_width, m_height});
         rp->m_framebuffers.resize(image_count);
 
         for (uint32_t i = 0; i < image_count; i++)
@@ -205,7 +206,7 @@ render_pass_builder::build()
 
         // Create framebuffers
         auto fb_info = vk_utils::make_framebuffer_create_info(rp->m_vk_render_pass,
-                                                               VkExtent2D{m_width, m_height});
+                                                              VkExtent2D{m_width, m_height});
         rp->m_framebuffers.resize(image_count);
 
         for (uint32_t i = 0; i < image_count; i++)

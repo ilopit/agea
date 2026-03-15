@@ -12,8 +12,8 @@ namespace root
 {
 
 KRG_ar_class("architype=texture",
-              render_cmd_builder   = texture__cmd_builder,
-              render_cmd_destroyer = texture__cmd_destroyer);
+             render_cmd_builder = texture__cmd_builder,
+             render_cmd_destroyer = texture__cmd_destroyer);
 class texture : public asset
 {
     KRG_gen_meta__texture();

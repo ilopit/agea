@@ -228,8 +228,8 @@ gltf_animation_loader::load(const utils::buffer& buf, gltf_load_result& out)
         }
     }
 
-    ALOG_INFO("cgltf: Loaded '{}' - {} joints, {} meshes", path_str,
-              out.joint_names.size(), out.meshes.size());
+    ALOG_INFO("cgltf: Loaded '{}' - {} joints, {} meshes", path_str, out.joint_names.size(),
+              out.meshes.size());
 
     cgltf_free(data);
     return true;

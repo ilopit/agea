@@ -172,7 +172,7 @@ game_editor::ev_spawn()
         return;
     }
 
-    #if 0
+#if 0
 
     if (glob::glob_state().getr_current_level().find_game_object(AID("obj_0_0_0")))
     {
@@ -223,7 +223,7 @@ game_editor::ev_spawn()
             }
         }
     }
-    #endif
+#endif
 }
 
 void

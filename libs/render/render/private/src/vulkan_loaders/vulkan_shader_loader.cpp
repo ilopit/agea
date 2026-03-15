@@ -220,8 +220,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         // Use the provided pipeline layout instead of building from reflection
         se_data.m_pipeline_layout = info.shared_pipeline_layout;
         se_data.m_owns_pipeline_layout = false;
-        for (auto& l : se_data.m_set_layout)
-            l = VK_NULL_HANDLE;
+        for (auto& l : se_data.m_set_layout) l = VK_NULL_HANDLE;
     }
     else if (!create_shader_effect_pipeline_layout(se_data))
     {
@@ -235,8 +234,10 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_input_assembly_ci =
         vk_utils::make_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    auto width = info.width ? info.width : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
-    auto height = info.height ? info.height : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
+    auto width =
+        info.width ? info.width : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
+    auto height =
+        info.height ? info.height : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     pb.m_viewport.x = 0.0f;
     pb.m_viewport.y = 0.0f;
