@@ -509,6 +509,24 @@ render_config_window::handle()
         ImGui::TextDisabled("| %dx%d shadow maps", KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE);
     }
 
+    // =========================================================================
+    // Debug Lights
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Debug Lights"))
+    {
+        auto& cfg = vr.get_debug_light_config();
+
+        ImGui::Checkbox("Wireframe", &cfg.show_wireframe);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Show wireframe shapes at light positions (radius, cone).");
+
+        ImGui::SameLine();
+
+        ImGui::Checkbox("Icons", &cfg.show_icons);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Show billboard icons at light positions.");
+    }
+
     handle_end();
 }
 

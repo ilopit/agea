@@ -23,7 +23,7 @@ directional_light::construct(construct_params& params)
         return false;
     }
 
-    // spawn_component_with_proto(m_root_component, AID("directional_light_debug_component"));
+    // Billboard debug component spawned from level AOBJ, not here
 
     auto dl = spawn_component_with_proto(m_root_component, AID("directional_light_component"));
 

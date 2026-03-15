@@ -559,6 +559,33 @@ vulkan_render::prepare_system_resources()
 
     m_grid_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
+
+    // Debug wireframe shader for light visualization
+    vert_path = path / "system/se_debug_wire.vert";
+    kryga::utils::buffer::load(vert_path, vert);
+
+    frag_path = path / "system/se_debug_wire.frag";
+    kryga::utils::buffer::load(frag_path, frag);
+
+    se_ci = {};
+    se_ci.vert_buffer = &vert;
+    se_ci.frag_buffer = &frag;
+    se_ci.is_wire = true;
+    se_ci.enable_dynamic_state = false;
+    se_ci.alpha = alpha_mode::none;
+    se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
+    se_ci.cull_mode = VK_CULL_MODE_NONE;
+    se_ci.ds_mode = depth_stencil_mode::none;
+    se_ci.height = m_height;
+    se_ci.width = m_width;
+
+    m_debug_wire_se = nullptr;
+    rc = main_pass->create_shader_effect(AID("se_debug_wire"), se_ci, m_debug_wire_se);
+    if (rc == result_code::ok && m_debug_wire_se)
+    {
+        m_debug_wire_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+            AID("mat_debug_wire"), AID("debug_wire"), sd, *m_debug_wire_se, utils::dynobj{});
+    }
 }
 
 render_cache&

@@ -18,7 +18,8 @@ point_light::construct(construct_params& params)
         return false;
     }
 
-    // spawn_component_with_proto(m_root_component, AID("bulb_component"));
+    // Billboard debug component spawned from level AOBJ, not here
+    // (spawning here causes duplicate mesh registration)
 
     spawn_component<point_light_component>(m_root_component, AID("lc"), {});
 

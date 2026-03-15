@@ -761,6 +761,32 @@ vulkan_render::setup_instanced_render_graph()
             [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
     }
 
+    // Local light shadow passes: front hemisphere (spot + point front)
+    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
+    {
+        auto pass_name = AID("shadow_local_" + std::to_string(i));
+        m_render_graph.import_resource(pass_name, rg_resource_type::image);
+        m_render_graph.add_graphics_pass(
+            pass_name,
+            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
+             m_render_graph.read(AID("dyn_instance_slots"))},
+            m_shadow_local_passes[i * 2].get(), VkClearColorValue{},
+            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, false); });
+    }
+
+    // Local light shadow passes: back hemisphere (point lights DPSM only)
+    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
+    {
+        auto pass_name = AID("shadow_local_back_" + std::to_string(i));
+        m_render_graph.import_resource(pass_name, rg_resource_type::image);
+        m_render_graph.add_graphics_pass(
+            pass_name,
+            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
+             m_render_graph.read(AID("dyn_instance_slots"))},
+            m_shadow_local_passes[i * 2 + 1].get(), VkClearColorValue{},
+            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, true); });
+    }
+
     // Compute pass: GPU frustum culling (runs before cluster culling)
     // Frustum culling is required for instanced mode - dispatch_frustum_cull_impl asserts if not
     // ready
@@ -866,6 +892,28 @@ vulkan_render::setup_per_object_render_graph()
              m_render_graph.read(AID("dyn_instance_slots"))},
             m_shadow_passes[c].get(), VkClearColorValue{},
             [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
+    }
+
+    // Local light shadow passes: front + back hemispheres
+    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
+    {
+        auto front_name = AID("shadow_local_" + std::to_string(i));
+        m_render_graph.import_resource(front_name, rg_resource_type::image);
+        m_render_graph.add_graphics_pass(
+            front_name,
+            {m_render_graph.write(front_name), m_render_graph.read(AID("dyn_object_buffer")),
+             m_render_graph.read(AID("dyn_instance_slots"))},
+            m_shadow_local_passes[i * 2].get(), VkClearColorValue{},
+            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, false); });
+
+        auto back_name = AID("shadow_local_back_" + std::to_string(i));
+        m_render_graph.import_resource(back_name, rg_resource_type::image);
+        m_render_graph.add_graphics_pass(
+            back_name,
+            {m_render_graph.write(back_name), m_render_graph.read(AID("dyn_object_buffer")),
+             m_render_graph.read(AID("dyn_instance_slots"))},
+            m_shadow_local_passes[i * 2 + 1].get(), VkClearColorValue{},
+            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, true); });
     }
 
     // NO compute pass - per-object mode uses CPU light grid

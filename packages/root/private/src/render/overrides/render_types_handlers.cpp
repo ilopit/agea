@@ -111,6 +111,11 @@ struct create_mesh_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
+        // Skip if mesh already exists (e.g. plane_mesh created by system init
+        // and also referenced by billboard debug components)
+        if (ctx.loader.get_mesh_data(id))
+            return;
+
         if (skinned)
         {
             auto vbv = vertices->make_view<gpu::skinned_vertex_data>();

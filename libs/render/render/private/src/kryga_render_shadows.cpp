@@ -388,13 +388,24 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
 {
     ZoneScopedN("Render::DrawShadowLocalPass");
 
+    // Skip if this shadow slot is unused this frame
+    if (shadow_idx >= m_shadow_config.shadowed_local_count)
+        return;
+
+    // Spot lights only need front face — skip back hemisphere
+    bool is_point =
+        m_shadow_config.local_shadows[shadow_idx].shadow_info.z == KGPU_light_type_point;
+    if (back_face && !is_point)
+        return;
+
     if (m_draw_batches.empty())
+        return;
+
+    if (m_global_set == VK_NULL_HANDLE || m_objects_set == VK_NULL_HANDLE)
         return;
 
     auto& current_frame = *m_current_frame;
 
-    bool is_point =
-        m_shadow_config.local_shadows[shadow_idx].shadow_info.z == KGPU_light_type_point;
     auto* se = is_point ? m_shadow_dpsm_se : m_shadow_se;
 
     if (!se || se->m_failed_load)
@@ -414,19 +425,41 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
                             KGPU_objects_max_binding + 1, dummy_offset);
 
     gpu::push_constants pc = {};
-    pc.directional_light_id = shadow_idx;             // Encode shadow index
-    pc.use_clustered_lighting = back_face ? 1u : 0u;  // Encode hemisphere
+    pc.directional_light_id = shadow_idx;
+    // For spot lights (se_shadow.vert): use_clustered_lighting=1 means "local light mode"
+    // For point lights (se_shadow_dpsm.vert): use_clustered_lighting encodes hemisphere (0=front, 1=back)
+    if (is_point)
+        pc.use_clustered_lighting = back_face ? 1u : 0u;
+    else
+        pc.use_clustered_lighting = 1u;
 
     for (const auto& batch : m_draw_batches)
     {
-        bind_mesh(cmd, batch.mesh);
+        if (!batch.mesh)
+            continue;
+
+        VkBuffer vb = batch.mesh->m_vertex_buffer.buffer();
+        if (!vb)
+            continue;
+
+        VkDeviceSize vb_offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &vb, &vb_offset);
+
+        bool indexed = batch.mesh->has_indices();
+        if (indexed)
+        {
+            VkBuffer ib = batch.mesh->m_index_buffer.buffer();
+            if (!ib)
+                continue;
+            vkCmdBindIndexBuffer(cmd, ib, 0, VK_INDEX_TYPE_UINT32);
+        }
 
         pc.instance_base = batch.first_instance_offset;
         vkCmdPushConstants(cmd, se->m_pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
                            sizeof(gpu::push_constants), &pc);
 
-        if (batch.mesh->has_indices())
+        if (indexed)
             vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
         else
             vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
@@ -566,10 +599,28 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
     // Compute shadow matrices for this frame
     compute_shadow_matrices();
 
-    // Select which local lights get shadows
+    // Select which local lights get shadows (modifies gpu_data.shadow_index on lights)
     select_shadowed_lights();
 
-    // Upload to GPU
+    // Re-upload universal light data so shadow_index is in the SSBO
+    if (m_cache.universal_lights.get_size() > 0)
+    {
+        const auto total_size = m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
+        if (total_size <= frame.buffers.universal_lights.get_alloc_size())
+        {
+            frame.buffers.universal_lights.begin();
+            auto* dst = reinterpret_cast<gpu::universal_light_data*>(
+                frame.buffers.universal_lights.allocate_data(static_cast<uint32_t>(total_size)));
+            for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+            {
+                auto* light = m_cache.universal_lights.at(i);
+                dst[i] = light->gpu_data;
+            }
+            frame.buffers.universal_lights.end();
+        }
+    }
+
+    // Upload shadow config to GPU
     frame.buffers.shadow_data.begin();
     auto* data = frame.buffers.shadow_data.allocate_data(sizeof(gpu::shadow_config_data));
     memcpy(data, &m_shadow_config, sizeof(gpu::shadow_config_data));

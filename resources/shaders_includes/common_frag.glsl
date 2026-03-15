@@ -394,7 +394,8 @@ float getLocalLightShadow(universal_light_data light, vec3 worldPos)
     if (shadowIdx >= dyn_shadow_data.shadow.shadowed_local_count)
         return 1.0;
 
-    if (light.type == KGPU_light_type_spot)
+    uint lightType = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_info.z;
+    if (lightType == KGPU_light_type_spot)
         return calcSpotShadow(shadowIdx, worldPos);
     else
         return calcPointShadow(shadowIdx, worldPos, light.position);

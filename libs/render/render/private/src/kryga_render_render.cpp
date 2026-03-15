@@ -337,6 +337,9 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         }
     }
 
+    // Draw debug light visualization
+    draw_debug_lights(cmd, current_frame);
+
     // Draw grid overlay
     draw_grid(cmd, current_frame);
 
@@ -384,6 +387,9 @@ vulkan_render::draw_objects_per_object(render::frame_state& current_frame)
         update_transparent_objects_queue();
         draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
     }
+
+    // Draw debug light visualization
+    draw_debug_lights(cmd, current_frame);
 
     // Draw grid overlay
     draw_grid(cmd, current_frame);

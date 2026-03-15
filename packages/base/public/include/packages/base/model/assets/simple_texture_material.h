@@ -4,6 +4,7 @@
 
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/texture_slot.h"
+#include "packages/root/model/core_types/vec3.h"
 
 namespace kryga
 {
@@ -39,7 +40,33 @@ protected:
                      "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
                      "property_load_derive_handler=::kryga::root::property_texture_slot__load");
     ::kryga::root::texture_slot m_simple_texture;
-    //clang-format off
+    // clang-format on
+
+    // GPU data properties — needed for argen to generate simple_texture_material__gpu
+    // with texture_indices/sampler_indices arrays. Values are unused for texture-only materials.
+    KRG_ar_property("category=Properties",
+                    "serializable=false",
+                    "gpu_data=MaterialData",
+                    "default=true");
+    ::kryga::root::vec3 m_ambient = {0.2f, 0.2f, 0.2f};
+
+    KRG_ar_property("category=Properties",
+                    "serializable=false",
+                    "gpu_data=MaterialData",
+                    "default=true");
+    ::kryga::root::vec3 m_diffuse = {1.0f, 1.0f, 1.0f};
+
+    KRG_ar_property("category=Properties",
+                    "serializable=false",
+                    "gpu_data=MaterialData",
+                    "default=true");
+    ::kryga::root::vec3 m_specular = {0.0f, 0.0f, 0.0f};
+
+    KRG_ar_property("category=Properties",
+                    "serializable=false",
+                    "gpu_data=MaterialData",
+                    "default=true");
+    float m_shininess = 1.0f;
 };
 
 }  // namespace base

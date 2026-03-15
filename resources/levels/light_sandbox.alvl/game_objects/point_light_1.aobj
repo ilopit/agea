@@ -1,0 +1,29 @@
+class_id: point_light
+id: point_light_1
+layout: [-1, 0, 0]
+components:
+  - id: point_light_1_root
+    class_id: game_object_component
+  - id: point_light_1_bulb
+    class_id: mesh_component
+    material: mt_billboard_bulb
+    mesh: plane_mesh
+    position:
+      x: 5
+      y: 3
+      z: 2
+  - id: point_light_1_lc
+    class_id: point_light_component
+    ambient:
+      x: 0.05
+      y: 0.05
+      z: 0.05
+    diffuse:
+      x: 1.0
+      y: 0.4
+      z: 0.1
+    position:
+      x: 5
+      y: 3
+      z: 2
+    radius: 15

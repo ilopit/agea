@@ -53,9 +53,15 @@ void main()
     uint obj_idx = get_object_index();
     mat4 model = dyn_object_buffer.objects[obj_idx].model;
 
-    // Use directional_light_id field as cascade index
-    uint cascade_idx = constants.obj.directional_light_id;
-    mat4 light_vp = dyn_shadow_data.shadow.directional.cascades[cascade_idx].view_proj;
+    // directional_light_id encodes the shadow index (cascade or local light)
+    // use_clustered_lighting encodes the mode: 0 = CSM cascade, 1 = local light
+    uint shadow_idx = constants.obj.directional_light_id;
+    mat4 light_vp;
+
+    if (constants.obj.use_clustered_lighting == 0u)
+        light_vp = dyn_shadow_data.shadow.directional.cascades[shadow_idx].view_proj;
+    else
+        light_vp = dyn_shadow_data.shadow.local_shadows[shadow_idx].view_proj;
 
     gl_Position = light_vp * model * vec4(in_position, 1.0);
 }

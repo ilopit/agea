@@ -6,7 +6,7 @@ components:
     class_id: game_object_component
   - id: test_cube_mesh
     class_id: mesh_component
-    material: mt_container
+    material: mt_solid_color_lit
     mesh: cube_mesh
     position:
       x: 0

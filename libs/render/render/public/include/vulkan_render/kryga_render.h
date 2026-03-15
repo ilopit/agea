@@ -176,6 +176,11 @@ struct draw_batch
 class vulkan_render
 {
 public:
+    struct debug_light_config
+    {
+        bool show_wireframe = true;
+        bool show_icons = false;
+    };
     vulkan_render();
     ~vulkan_render();
 
@@ -265,6 +270,12 @@ public:
         return m_shadow_distance;
     }
 
+    debug_light_config&
+    get_debug_light_config()
+    {
+        return m_debug_light_config;
+    }
+
     uint32_t
     get_all_draws() const
     {
@@ -311,6 +322,9 @@ private:
 
     void
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    void
+    draw_debug_lights(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
     draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame);
@@ -559,6 +573,11 @@ private:
     // Shadow mapping
     gpu::shadow_config_data m_shadow_config = {};
     float m_shadow_distance = 200.0f;
+
+    // Debug light visualization
+    debug_light_config m_debug_light_config;
+    shader_effect_data* m_debug_wire_se = nullptr;
+    material_data* m_debug_wire_mat = nullptr;
     render_pass_sptr m_shadow_passes[KGPU_CSM_CASCADE_COUNT];
     render_pass_sptr m_shadow_local_passes[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];  // *2 for DPSM
     uint32_t m_shadow_map_bindless_indices[KGPU_CSM_CASCADE_COUNT] = {};

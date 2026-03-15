@@ -202,6 +202,23 @@ vulkan_render::draw_main()
         }
     }
 
+    // Bind local light shadow depth images (front + back hemispheres)
+    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
+    {
+        if (m_shadow_local_passes[i * 2])
+        {
+            auto& front = m_shadow_local_passes[i * 2]->get_depth_images();
+            if (!front.empty())
+                m_render_graph.bind_image(AID("shadow_local_" + std::to_string(i)), front[0]);
+        }
+        if (m_shadow_local_passes[i * 2 + 1])
+        {
+            auto& back = m_shadow_local_passes[i * 2 + 1]->get_depth_images();
+            if (!back.empty())
+                m_render_graph.bind_image(AID("shadow_local_back_" + std::to_string(i)), back[0]);
+        }
+    }
+
     // Execute render graph (handles passes in dependency order with auto barriers)
     m_render_graph.execute(cmd, device->get_current_frame_index(), width, height);
 
