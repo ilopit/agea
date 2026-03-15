@@ -45,31 +45,31 @@ game_editor::init()
     m_position = {0.f, 0.f, 0.f};
 
     glob::glob_state().get_input_manager()->register_scaled_action(AID("move_forward"), this,
-                                                       &game_editor::ev_move_forward);
+                                                                   &game_editor::ev_move_forward);
     glob::glob_state().get_input_manager()->register_scaled_action(AID("move_left"), this,
-                                                       &game_editor::ev_move_left);
+                                                                   &game_editor::ev_move_left);
     glob::glob_state().get_input_manager()->register_scaled_action(AID("look_up"), this,
-                                                       &game_editor::ev_look_up);
+                                                                   &game_editor::ev_look_up);
     glob::glob_state().get_input_manager()->register_scaled_action(AID("look_left"), this,
-                                                       &game_editor::ev_look_left);
+                                                                   &game_editor::ev_look_left);
 
     glob::glob_state().get_input_manager()->register_fixed_action(AID("level_reload"), true, this,
-                                                      &game_editor::ev_reload);
+                                                                  &game_editor::ev_reload);
 
     glob::glob_state().get_input_manager()->register_fixed_action(AID("spawn"), true, this,
-                                                      &game_editor::ev_spawn);
+                                                                  &game_editor::ev_spawn);
 
     glob::glob_state().get_input_manager()->register_fixed_action(AID("lights"), true, this,
-                                                      &game_editor::ev_lights);
+                                                                  &game_editor::ev_lights);
 
     glob::glob_state().get_input_manager()->register_fixed_action(AID("mouse_pressed"), true, this,
-                                                      &game_editor::ev_mouse_press);
+                                                                  &game_editor::ev_mouse_press);
 
     glob::glob_state().get_input_manager()->register_fixed_action(AID("toggle_play"), true, this,
-                                                      &game_editor::ev_toggle_play);
+                                                                  &game_editor::ev_toggle_play);
 
     glob::glob_state().get_input_manager()->register_fixed_action(AID("escape"), true, this,
-                                                      &game_editor::ev_escape);
+                                                                  &game_editor::ev_escape);
 }
 
 void
@@ -172,6 +172,8 @@ game_editor::ev_spawn()
         return;
     }
 
+    #if 0
+
     if (glob::glob_state().getr_current_level().find_game_object(AID("obj_0_0_0")))
     {
         return;
@@ -181,7 +183,7 @@ game_editor::ev_spawn()
 
     int x = 0, y = 0, z = 0;
 
-    int obj_DIM = 10;
+    int obj_DIM = 1;
 
     for (x = -obj_DIM / 2; x < obj_DIM / 2; ++x)
     {
@@ -192,7 +194,7 @@ game_editor::ev_spawn()
                 auto id = std::format("obj_{}_{}_{}", x, y, z);
 
                 sp.position = root::vec3{x * 15.f, y * 15.f, z * 15.f};
-                sp.scale = root::vec3{2};
+                sp.scale = root::vec3{20, 2, 20};
                 auto pp =
                     glob::glob_state()
                         .getr_current_level()
@@ -203,7 +205,7 @@ game_editor::ev_spawn()
         }
     }
 
-    int light_DIM = 2;
+    int light_DIM = 0;
 
     base::point_light::construct_params prms;
 
@@ -221,6 +223,7 @@ game_editor::ev_spawn()
             }
         }
     }
+    #endif
 }
 
 void
