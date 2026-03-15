@@ -324,6 +324,8 @@ private:
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
+    prepare_debug_light_data(render::frame_state& current_frame);
+    void
     draw_debug_lights(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
@@ -578,6 +580,8 @@ private:
     debug_light_config m_debug_light_config;
     shader_effect_data* m_debug_wire_se = nullptr;
     material_data* m_debug_wire_mat = nullptr;
+    uint32_t m_debug_light_draw_count = 0;
+    uint32_t m_debug_light_instance_base = 0;
     render_pass_sptr m_shadow_passes[KGPU_CSM_CASCADE_COUNT];
     render_pass_sptr m_shadow_local_passes[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];  // *2 for DPSM
     uint32_t m_shadow_map_bindless_indices[KGPU_CSM_CASCADE_COUNT] = {};

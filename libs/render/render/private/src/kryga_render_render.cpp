@@ -748,7 +748,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     if (cur_material->has_gpu_data())
     {
-        auto& sm = m_materials_layout.at(cur_material->gpu_idx());
+        auto& sm = m_materials_layout.at(cur_material->gpu_type_idx());
         VkDescriptorBufferInfo mat_buffer_info{.buffer = current_frame.buffers.materials.buffer(),
                                                .offset = sm.offset,
                                                .range = sm.get_allocated_size()};

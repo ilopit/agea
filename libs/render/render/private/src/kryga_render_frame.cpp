@@ -389,6 +389,9 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     picking_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
     picking_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
 
+    // Prepare debug light visualization data (must happen before rendering)
+    prepare_debug_light_data(current_frame);
+
     // Upload shadow data
     upload_shadow_data(current_frame);
 }
