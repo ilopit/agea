@@ -13,9 +13,9 @@ Run both commands from the project root to cover tracked changes and new files:
 ```
 CLANG_FORMAT="/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe"
 
-git diff --name-only HEAD -- '*.h' '*.cpp' | grep -v '^thirdparty/upstream/' | grep -v '^build/' | xargs -r "$CLANG_FORMAT" -i
+git diff --name-only HEAD -- '*.h' '*.cpp' | grep -v '^build/' | xargs -r "$CLANG_FORMAT" -i
 
-git ls-files --others --exclude-standard -- '*.h' '*.cpp' | grep -v '^thirdparty/upstream/' | grep -v '^build/' | xargs -r "$CLANG_FORMAT" -i
+git ls-files --others --exclude-standard -- '*.h' '*.cpp' | grep -v '^build/' | xargs -r "$CLANG_FORMAT" -i
 ```
 
 ## Instructions

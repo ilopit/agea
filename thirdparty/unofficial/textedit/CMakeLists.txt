@@ -1,15 +1,15 @@
+FetchContent_GetProperties(textedit)
+
 add_library(textedit_unofficial STATIC)
 
-set(textedit_prefix ${PROJECT_SOURCE_DIR}/thirdparty/upstream)
+target_include_directories(textedit_unofficial PUBLIC "${textedit_SOURCE_DIR}")
 
-target_include_directories(textedit_unofficial PUBLIC "${textedit_prefix}/textedit")
-
-target_sources(textedit_unofficial PRIVATE 
-    "${textedit_prefix}/textedit/TextEditor.h"
-    "${textedit_prefix}/textedit/TextEditor.cpp"
-    "${textedit_prefix}/textedit/UnitTests.cpp"
-    "${textedit_prefix}/textedit/ImGuiDebugPanel.cpp"
-    "${textedit_prefix}/textedit/LanguageDefinitions.cpp"
+target_sources(textedit_unofficial PRIVATE
+    "${textedit_SOURCE_DIR}/TextEditor.h"
+    "${textedit_SOURCE_DIR}/TextEditor.cpp"
+    "${textedit_SOURCE_DIR}/UnitTests.cpp"
+    "${textedit_SOURCE_DIR}/ImGuiDebugPanel.cpp"
+    "${textedit_SOURCE_DIR}/LanguageDefinitions.cpp"
 )
 target_link_libraries(textedit_unofficial kryga::imgui_unofficial)
 add_library(kryga::textedit_unofficial ALIAS textedit_unofficial)

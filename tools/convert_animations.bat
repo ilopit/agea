@@ -5,7 +5,7 @@ REM   If no argument given, converts all .glb files under resources/
 
 setlocal enabledelayedexpansion
 
-set "GLTF2OZZ=%~dp0..\build\thirdparty\upstream\ozz-animation\src\animation\offline\gltf\gltf2ozz.exe"
+set "GLTF2OZZ=%~dp0..\build\_deps\ozz-animation-build\src\animation\offline\gltf\gltf2ozz.exe"
 
 if not exist "%GLTF2OZZ%" (
     echo ERROR: gltf2ozz not found at %GLTF2OZZ%
