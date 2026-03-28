@@ -47,6 +47,8 @@ render_device::~render_device() = default;
 bool
 render_device::construct(construct_params& params)
 {
+    m_headless = params.headless;
+
     auto width =
         params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
     auto height =
@@ -227,7 +229,9 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         VkExtent3D swapchain_image_extent = {width, height, 1};
 
         auto simg_info = vk_utils::make_image_create_info(
-            m_swapchain_image_format, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, swapchain_image_extent);
+            m_swapchain_image_format,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            swapchain_image_extent);
 
         // for the depth image, we want to allocate it from gpu local memory
         VmaAllocationCreateInfo simg_allocinfo = {};

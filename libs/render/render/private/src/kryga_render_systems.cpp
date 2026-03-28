@@ -830,6 +830,12 @@ vulkan_render::setup_instanced_render_graph()
         [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
 
     // Main pass - instanced batched drawing
+    // NOTE: Shadow maps are sampled via bindless textures but not declared as
+    // render graph reads. The render graph lacks depth-aware image barrier support,
+    // so shadow map layout transitions are handled by the shadow render passes
+    // themselves (initialLayout=UNDEFINED → finalLayout=DEPTH_STENCIL_ATTACHMENT).
+    // This produces a validation warning (VUID-vkCmdDraw-None-09600) on the first
+    // frame but is functionally correct.
     m_render_graph.add_graphics_pass(
         AID("main"),
         {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
@@ -936,7 +942,7 @@ vulkan_render::setup_per_object_render_graph()
         get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
         [this](VkCommandBuffer cmd) { draw_picking_per_object(cmd); });
 
-    // Main pass - per-object drawing
+    // Main pass - per-object drawing (see instanced graph for shadow map note)
     m_render_graph.add_graphics_pass(
         AID("main"),
         {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),

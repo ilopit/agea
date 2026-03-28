@@ -152,8 +152,13 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
     }
 
     prepare_system_resources();
-    prepare_ui_resources();
-    prepare_ui_pipeline();
+
+    // Skip UI setup in headless mode (no ImGui context)
+    if (!device.is_headless())
+    {
+        prepare_ui_resources();
+        prepare_ui_pipeline();
+    }
 
     // Initialize clustered lighting (must match camera near/far planes)
     m_cluster_grid.init(m_width, m_height,
@@ -239,6 +244,9 @@ vulkan_render::deinit()
     m_frustum_cull_shader = nullptr;
     m_frustum_cull_pass.reset();
 
+    // Reset render graph so it can be recompiled on next init
+    m_render_graph.reset();
+
     // Cleanup bindless textures
     deinit_bindless_textures();
 
@@ -258,13 +266,17 @@ vulkan_render::prepare_render_passes()
     auto& device = glob::glob_state().getr_render_device();
 
     {
+        // Use picking preset in headless mode (TRANSFER_SRC layout, no swapchain extension needed)
+        auto preset = device.is_headless() ? render_pass_builder::presets::picking
+                                           : render_pass_builder::presets::swapchain;
+
         auto main_pass =
             render_pass_builder()
                 .set_color_format(device.get_swapchain_format())
                 .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
                 .set_width_depth(m_width, m_height)
                 .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
-                .set_preset(render_pass_builder::presets::swapchain)
+                .set_preset(preset)
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),

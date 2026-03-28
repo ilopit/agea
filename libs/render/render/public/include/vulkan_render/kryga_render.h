@@ -197,6 +197,9 @@ public:
     draw_main();
 
     void
+    draw_headless();
+
+    void
     schedule_to_drawing(render::vulkan_render_data* obj_data);
 
     void
@@ -307,6 +310,13 @@ public:
     }
 
 private:
+    void
+    render_frame(VkCommandBuffer cmd,
+                 frame_state& current_frame,
+                 uint32_t swapchain_image_index,
+                 uint32_t width,
+                 uint32_t height);
+
     // Mode-specific drawing functions
     void
     draw_objects_instanced(render::frame_state& frame);

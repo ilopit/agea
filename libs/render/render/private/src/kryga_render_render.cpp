@@ -470,10 +470,11 @@ vulkan_render::draw_picking_per_object(VkCommandBuffer cmd)
 void
 vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
-    if (!m_show_grid || !m_grid_mat || !m_grid_se)
-        return;
-
     auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    if (!m_show_grid || !m_grid_mat || !m_grid_se || !m)
+    {
+        return;
+    }
 
     auto pipeline_layout = m_grid_se->m_pipeline_layout;
 
@@ -512,7 +513,16 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
 void
 vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
+    if (!m_ui_target_mat)
+    {
+        return;
+    }
+
     auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    if (!m)
+    {
+        return;
+    }
 
     // UI overlay shader has a different (incompatible) pipeline layout for sets 0-1
     // It only uses set 2 (textures) and push constants, so we bind those directly
@@ -1028,6 +1038,11 @@ vulkan_render::prepare_ui_pipeline()
 void
 vulkan_render::update_ui(frame_state& fs)
 {
+    if (!ImGui::GetCurrentContext())
+    {
+        return;
+    }
+
     auto device = glob::glob_state().get_render_device();
     ImDrawData* im_draw_data = ImGui::GetDrawData();
 
@@ -1099,6 +1114,11 @@ vulkan_render::update_ui(frame_state& fs)
 void
 vulkan_render::draw_ui(frame_state& fs)
 {
+    if (!ImGui::GetCurrentContext())
+    {
+        return;
+    }
+
     auto im_draw_data = ImGui::GetDrawData();
 
     if ((!im_draw_data) || (im_draw_data->CmdListsCount == 0))

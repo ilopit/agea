@@ -15,3 +15,5 @@ target_link_libraries(vulkan_render_tests
 )
 
 kryga_finalize_executable(vulkan_render_tests)
+
+add_subdirectory(visual)

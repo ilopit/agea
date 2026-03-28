@@ -48,10 +48,10 @@ vulkan_render::draw_main()
     ZoneScopedN("Render::DrawMain");
 
     auto device = glob::glob_state().get_render_device();
+    KRG_check(!device->is_headless(), "draw_main requires a windowed device, use draw_headless()");
 
     auto r = SDL_GetWindowFlags(glob::glob_state().getr_native_window().handle());
 
-    // TODO, rework
     if ((SDL_WINDOW_MINIMIZED & r) == SDL_WINDOW_MINIMIZED)
     {
         return;
@@ -63,7 +63,6 @@ vulkan_render::draw_main()
 
     auto& current_frame = m_frames[device->get_current_frame_index()];
 
-    // wait until the gpu has finished rendering the last frame. Timeout of 1 second
     {
         ZoneScopedN("Render::WaitForFence");
         VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
@@ -72,39 +71,102 @@ vulkan_render::draw_main()
     VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
 
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
-
-    // now that we are sure that the commands finished executing, we can safely reset the command
-    // buffer to begin recording again.
     VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));
 
-    // request image from the swapchain
+    // Acquire swapchain image
     uint32_t swapchain_image_index = 0U;
     VK_CHECK(vkAcquireNextImageKHR(device->vk_device(), device->swapchain(), 1000000000,
                                    current_frame.frame->m_present_semaphore, nullptr,
                                    &swapchain_image_index));
 
-    // naming it cmd for shorter writing
     auto cmd = current_frame.frame->m_main_command_buffer;
-
-    // begin the command buffer recording. We will use this command buffer exactly once, so we want
-    // to let vulkan know that
     auto cmd_begin_info =
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
     auto width = (uint32_t)glob::glob_state().get_native_window()->get_size().w;
     auto height = (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     update_ui(current_frame);
+
+    render_frame(cmd, current_frame, swapchain_image_index, width, height);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    // Submit with present semaphores
+    auto submit = render::vk_utils::make_submit_info(&cmd);
+    VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    submit.pWaitDstStageMask = &wait_stage;
+    submit.waitSemaphoreCount = 1;
+    submit.pWaitSemaphores = &current_frame.frame->m_present_semaphore;
+    submit.signalSemaphoreCount = 1;
+    submit.pSignalSemaphores = &current_frame.frame->m_render_semaphore;
+
+    VK_CHECK(vkQueueSubmit(device->vk_graphics_queue(), 1, &submit,
+                           current_frame.frame->m_render_fence));
+
+    // Present
+    auto present_info = render::vk_utils::make_present_info();
+    present_info.pSwapchains = &device->swapchain();
+    present_info.swapchainCount = 1;
+    present_info.pWaitSemaphores = &current_frame.frame->m_render_semaphore;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pImageIndices = &swapchain_image_index;
+
+    VK_CHECK(vkQueuePresentKHR(device->vk_graphics_queue(), &present_info));
+}
+
+void
+vulkan_render::draw_headless()
+{
+    auto device = glob::glob_state().get_render_device();
+    KRG_check(device->is_headless(), "draw_headless requires a headless device, use draw_main()");
+
+    device->switch_frame_indeces();
+    m_culled_draws = 0;
+    m_all_draws = 0;
+
+    auto& current_frame = m_frames[device->get_current_frame_index()];
+
+    VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
+                             1000000000));
+    VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
+
+    current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
+    VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));
+
+    auto cmd = current_frame.frame->m_main_command_buffer;
+    auto cmd_begin_info =
+        vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
+
+    render_frame(cmd, current_frame, 0, m_width, m_height);
+
+    VK_CHECK(vkEndCommandBuffer(cmd));
+
+    // Submit without present semaphores and wait synchronously
+    auto submit = render::vk_utils::make_submit_info(&cmd);
+    VK_CHECK(vkQueueSubmit(device->vk_graphics_queue(), 1, &submit,
+                           current_frame.frame->m_render_fence));
+
+    VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
+                             1000000000));
+}
+
+void
+vulkan_render::render_frame(VkCommandBuffer cmd,
+                            frame_state& current_frame,
+                            uint32_t swapchain_image_index,
+                            uint32_t width,
+                            uint32_t height)
+{
     prepare_draw_resources(current_frame);
 
-    // Set up render context for callbacks
     m_current_frame = &current_frame;
     m_render_graph.set_frame_context(swapchain_image_index, width, height);
 
     // Build descriptor set for cluster culling (required for instanced mode)
-    // Binding names must match render graph resource names (dyn_ prefix)
     if (is_instanced_mode())
     {
         KRG_check(m_cluster_cull_pass, "Cluster cull pass required for instanced mode");
@@ -144,10 +206,9 @@ vulkan_render::draw_main()
             0, *current_frame.frame->m_dynamic_descriptor_allocator);
     }
 
-    // Begin frame - clears binding tracking for validation
     m_render_graph.begin_frame();
 
-    // Bind per-frame buffer resources to the graph (names must match shader bindings)
+    // Bind per-frame buffer resources
     m_render_graph.bind_buffer(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
     m_render_graph.bind_buffer(AID("dyn_object_buffer"), current_frame.buffers.objects);
     m_render_graph.bind_buffer(AID("dyn_gpu_universal_light_data"),
@@ -164,7 +225,6 @@ vulkan_render::draw_main()
     m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
     m_render_graph.bind_buffer(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
 
-    // Frustum cull buffers (instanced mode only)
     if (is_instanced_mode())
     {
         m_render_graph.bind_buffer(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
@@ -178,18 +238,15 @@ vulkan_render::draw_main()
     auto* ui_pass = get_render_pass(AID("ui"));
     auto* picking_pass = get_render_pass(AID("picking"));
 
-    // Main pass uses swapchain images (multiple, indexed by swapchain_image_index)
     auto main_images = main_pass->get_color_images();
     m_render_graph.bind_image(AID("swapchain"), *main_images[swapchain_image_index]);
 
-    // UI and picking passes have single render targets (not per-swapchain)
     auto ui_images = ui_pass->get_color_images();
     m_render_graph.bind_image(AID("ui_target"), *ui_images[0]);
 
     auto picking_images = picking_pass->get_color_images();
     m_render_graph.bind_image(AID("picking_target"), *picking_images[0]);
 
-    // Bind shadow cascade depth images
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
         if (m_shadow_passes[c])
@@ -202,7 +259,6 @@ vulkan_render::draw_main()
         }
     }
 
-    // Bind local light shadow depth images (front + back hemispheres)
     for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
     {
         if (m_shadow_local_passes[i * 2])
@@ -219,39 +275,8 @@ vulkan_render::draw_main()
         }
     }
 
-    // Execute render graph (handles passes in dependency order with auto barriers)
-    m_render_graph.execute(cmd, device->get_current_frame_index(), width, height);
-
-    // finalize the command buffer (we can no longer add commands, but it can now be executed)
-    VK_CHECK(vkEndCommandBuffer(cmd));
-
-    auto submit = render::vk_utils::make_submit_info(&cmd);
-    VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-    submit.pWaitDstStageMask = &wait_stage;
-
-    submit.waitSemaphoreCount = 1;
-    submit.pWaitSemaphores = &current_frame.frame->m_present_semaphore;
-
-    submit.signalSemaphoreCount = 1;
-    submit.pSignalSemaphores = &current_frame.frame->m_render_semaphore;
-
-    // submit command buffer to the queue and execute it.
-    //  _renderFence will now block until the graphic commands finish execution
-    VK_CHECK(vkQueueSubmit(device->vk_graphics_queue(), 1, &submit,
-                           current_frame.frame->m_render_fence));
-
-    auto present_info = render::vk_utils::make_present_info();
-
-    present_info.pSwapchains = &device->swapchain();
-    present_info.swapchainCount = 1;
-
-    present_info.pWaitSemaphores = &current_frame.frame->m_render_semaphore;
-    present_info.waitSemaphoreCount = 1;
-
-    present_info.pImageIndices = &swapchain_image_index;
-
-    VK_CHECK(vkQueuePresentKHR(device->vk_graphics_queue(), &present_info));
+    m_render_graph.execute(cmd, glob::glob_state().getr_render_device().get_current_frame_index(),
+                           width, height);
 }
 
 void

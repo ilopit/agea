@@ -60,6 +60,12 @@ public:
     bool
     construct(construct_params& params);
 
+    bool
+    is_headless() const
+    {
+        return m_headless;
+    }
+
     VkInstance
     vk_instance() const
     {
@@ -275,6 +281,8 @@ public:
 
     // the format for the depth image
     VkFormat m_depth_format;
+
+    bool m_headless = false;
 
     uint64_t m_current_frame_number = UINT64_MAX;
     uint64_t m_current_frame_index = 0ULL;

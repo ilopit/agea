@@ -8,6 +8,7 @@ target_link_libraries(render_utils PUBLIC
     kryga::glm_unofficial
     kryga::gpu_types
     kryga::utils
+    kryga::stb_unofficial
 )
 
 kryga_finalize_library(render_utils)
