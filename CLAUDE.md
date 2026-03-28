@@ -16,10 +16,10 @@ When responding to ideas or proposals:
 ### Feedback (after every response, about the user's request)
 - **Score:** 1-10 (how clear/well-scoped the request was) | **Good:** one positive | **Bad:** one suggestion to improve the request
 
-## Build (Windows: `cmd //c tools\build.bat`, MSYS: `tools/build.sh`)
-Options: `-v` verbose, `-c` clean, `-r` release, `-j N` jobs, `-a` all targets
-Target: `tools/build.bat <name>` (e.g. `engine`, `utils_tests`, `shader_system_tests`)
-Tests run from: `build/project_Debug/bin/`
+## Build & Run — use `/build` and `/run` skills
+- Build: `tools/build.sh [options] [target]` — `-v` verbose, `-r` release, `-j N` jobs, `-a` all targets. Default: `engine_app` Debug.
+- Run: `tools/run.sh [-r] <exe> [args]` — runs from `build/project_<Config>/bin/`. Never `cd` to bin manually.
+- Visual regression: `tools/run.sh visual_regression_tests.exe`, update refs with `UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe`
 
 ## Structure
 ```
