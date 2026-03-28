@@ -708,12 +708,14 @@ void
 vulkan_render::bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh)
 {
     KRG_check(cur_mesh, "Should not be null");
+    KRG_check(cur_mesh->m_vertex_buffer.buffer(), "Vertex buffer is VK_NULL_HANDLE");
 
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &cur_mesh->m_vertex_buffer.buffer(), &offset);
 
     if (cur_mesh->has_indices())
     {
+        KRG_check(cur_mesh->m_index_buffer.buffer(), "Index buffer is VK_NULL_HANDLE");
         vkCmdBindIndexBuffer(cmd, cur_mesh->m_index_buffer.buffer(), 0, VK_INDEX_TYPE_UINT32);
     }
 }
