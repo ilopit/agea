@@ -139,7 +139,6 @@ FetchContent_Declare(
   textedit
   GIT_REPOSITORY https://github.com/santaclose/ImGuiColorTextEdit.git
   GIT_TAG        23fdb8f6f990711f4643511cb9855482cc7d7ce7
-  PATCH_COMMAND  git apply --quiet "${CMAKE_CURRENT_SOURCE_DIR}/../patches/textedit-keyboard.patch"
 )
 
 FetchContent_Declare(
@@ -164,7 +163,6 @@ FetchContent_Declare(
   imguizmo
   GIT_REPOSITORY https://github.com/CedricGuillemet/ImGuizmo.git
   GIT_TAG        a15acd87a3f3241a29ea1363ceafc680dca3a96b
-  PATCH_COMMAND  git apply --quiet "${CMAKE_CURRENT_SOURCE_DIR}/../patches/imguizmo-nodocking.patch"
 )
 
 # ==============================================================================
