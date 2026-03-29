@@ -8,7 +8,7 @@
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 #include <global_state/global_state.h>
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
 
 using namespace kryga;
 using namespace kryga::render;
@@ -43,8 +43,8 @@ TEST_F(render_device_test, load_se)
 {
     kryga::utils::buffer vert, frag;
 
-    auto path = glob::glob_state().get_resource_locator()->resource(
-        category::packages, "base.apkg/class/shader_effects/error");
+    auto path_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://packages/base.apkg/class/shader_effects/error"));
+    auto path = APATH(path_rp.value());
 
     auto vert_path = path / "se_error.vert";
     kryga::utils::buffer::load(vert_path, vert);

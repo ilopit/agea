@@ -7,8 +7,6 @@
 
 #include <error_handling/error_handling.h>
 
-#include <resource_locator/resource_locator.h>
-
 #include <utils/check.h>
 #include <utils/defines_utils.h>
 #include <utils/path.h>

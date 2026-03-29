@@ -65,8 +65,12 @@ class lua_api;
 
 }  // namespace reflection
 
-class resource_locator;
 class vulkan_engine;
+
+namespace vfs
+{
+class virtual_file_system;
+}  // namespace vfs
 class render_bridge;
 class native_window;
 struct engine_counters;
@@ -99,6 +103,7 @@ namespace editor
 class config;
 }
 
+struct state_mutator__vfs;
 struct state_mutator__engine;
 struct state_mutator__game_editor;
 struct state_mutator__input_manager;
@@ -157,7 +162,7 @@ class state
     friend class core::state_mutator__lua_api;
     friend class core::state_mutator__package_manager;
     friend class core::state_mutator__reflection_manager;
-    friend class state_mutator__resource_locator;
+    friend class ::kryga::state_mutator__vfs;
 
     friend class ::kryga::state_mutator__engine;
     friend class ::kryga::state_mutator__game_editor;
@@ -234,7 +239,7 @@ public:
     KRG_gen_getter(lua, reflection::lua_api);
     KRG_gen_getter(rm, reflection::reflection_type_registry);
     KRG_gen_getter(id_generator, core::id_generator);
-    KRG_gen_getter(resource_locator, resource_locator);
+    KRG_gen_getter(vfs, vfs::virtual_file_system);
 
     KRG_gen_getter(engine, vulkan_engine);
     KRG_gen_getter(game_editor, engine::game_editor);
@@ -317,7 +322,7 @@ private:
     reflection::lua_api*            m_lua = nullptr;
     reflection::reflection_type_registry* m_rm = nullptr;
     core::id_generator*             m_id_generator = nullptr;
-    resource_locator*               m_resource_locator = nullptr;
+    vfs::virtual_file_system*       m_vfs = nullptr;
 
     // Engine singletons
     vulkan_engine*                  m_engine = nullptr;

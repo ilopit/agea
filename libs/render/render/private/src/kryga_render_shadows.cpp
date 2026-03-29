@@ -15,7 +15,8 @@
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
+#include <vfs/io.h>
 #include <global_state/global_state.h>
 
 #include <tracy/Tracy.hpp>
@@ -84,12 +85,10 @@ vulkan_render::init_shadow_passes()
         shared_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
     }
 
-    auto path = glob::glob_state().get_resource_locator()->resource(
-        category::packages, "base.apkg/class/shader_effects");
+    vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
     kryga::utils::buffer vert;
-    auto vert_path = path / "shadow/se_shadow.vert";
-    if (kryga::utils::buffer::load(vert_path, vert))
+    if (vfs::load_buffer(se_base / "shadow/se_shadow.vert", vert))
     {
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &vert;
@@ -154,9 +153,8 @@ vulkan_render::init_shadow_passes()
     }
 
     // Create DPSM vertex shader for point lights
-    auto dpsm_vert_path = path / "shadow/se_shadow_dpsm.vert";
     kryga::utils::buffer dpsm_vert;
-    if (kryga::utils::buffer::load(dpsm_vert_path, dpsm_vert))
+    if (vfs::load_buffer(se_base / "shadow/se_shadow_dpsm.vert", dpsm_vert))
     {
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &dpsm_vert;

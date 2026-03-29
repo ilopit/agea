@@ -18,7 +18,7 @@
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/io.h>
 #include <global_state/global_state.h>
 
 #include <cmath>
@@ -477,11 +477,8 @@ vulkan_render::init_cluster_cull_compute()
 {
     ZoneScopedN("Render::InitClusterCullCompute");
 
-    auto path = glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
-    auto shader_path = path / "cluster_cull.comp";
-
     kryga::utils::buffer shader_buffer;
-    if (!kryga::utils::buffer::load(shader_path, shader_buffer))
+    if (!vfs::load_buffer(vfs::rid("data://shaders_includes/cluster_cull.comp"), shader_buffer))
     {
         ALOG_WARN("Failed to load cluster_cull.comp - GPU cluster culling disabled");
         return;
@@ -568,11 +565,8 @@ vulkan_render::init_frustum_cull_compute()
 {
     ZoneScopedN("Render::InitFrustumCullCompute");
 
-    auto path = glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
-    auto shader_path = path / "frustum_cull.comp";
-
     kryga::utils::buffer shader_buffer;
-    if (!kryga::utils::buffer::load(shader_path, shader_buffer))
+    if (!vfs::load_buffer(vfs::rid("data://shaders_includes/frustum_cull.comp"), shader_buffer))
     {
         ALOG_WARN("Failed to load frustum_cull.comp - GPU frustum culling disabled");
         m_gpu_frustum_culling_enabled = false;

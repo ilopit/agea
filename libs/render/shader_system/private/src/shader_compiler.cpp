@@ -3,7 +3,7 @@
 #include <utils/process.h>
 #include <utils/kryga_log.h>
 #include <global_state/global_state.h>
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
 
 namespace kryga::render
 {
@@ -13,11 +13,13 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
 {
     static int shader_id = 0;
 
-    ipc::construct_params params;
-    params.path_to_binary =
-        (glob::glob_state().get_resource_locator()->resource_dir(category::tools) / "glslc.exe");
+    auto& vfs = glob::glob_state().getr_vfs();
 
-    auto tmp_dir = glob::glob_state().get_resource_locator()->temp_dir();
+    ipc::construct_params params;
+    auto tools_path = vfs.real_path(vfs::rid("data://tools"));
+    params.path_to_binary = APATH(tools_path.value() / "glslc.exe");
+
+    auto tmp_dir = vfs.create_temp_dir();
     params.working_dir = tmp_dir.folder();
 
     auto tmp_shader_name = APATH(std::to_string(shader_id++));
@@ -31,17 +33,16 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
         return std::unexpected(result_code::failed);
     }
 
-    auto includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_includes);
-    auto gpu_includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::shaders_gpu_data);
-    auto generated_gpu_includes =
-        glob::glob_state().get_resource_locator()->resource_dir(category::generated_gpu_data);
+    auto includes = vfs.real_path(vfs::rid("data://shaders_includes"));
+    auto gpu_includes = vfs.real_path(vfs::rid("data://gpu_types"));
+    auto generated_gpu_includes = vfs.real_path(vfs::rid("generated"));
 
     params.arguments =
         std::format("-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3} -I {4}",
-                    raw_buffer.get_file().str(), compiled_path.str(), includes.str(),
-                    gpu_includes.str(), generated_gpu_includes.str());
+                    raw_buffer.get_file().str(), compiled_path.str(),
+                    APATH(includes.value()).str(),
+                    APATH(gpu_includes.value()).str(),
+                    APATH(generated_gpu_includes.value()).str());
 
     uint64_t rc = 0;
     if (!ipc::run_binary(params, rc) || rc != 0)

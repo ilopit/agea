@@ -20,7 +20,7 @@
 #include <gpu_types/gpu_push_constants.h>
 
 #include <global_state/global_state.h>
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
 
 #include <utils/buffer.h>
 #include <utils/dynamic_object.h>
@@ -43,20 +43,15 @@ constexpr uint32_t TEST_HEIGHT = 512;
 std::string
 get_reference_dir()
 {
-    return glob::glob_state()
-        .get_resource_locator()
-        ->resource_dir(category::all)
-        .append("test_references")
-        .str();
+    auto rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://test_references"));
+    return APATH(rp.value()).str();
 }
 
 std::string
 get_output_dir()
 {
-    auto dir = glob::glob_state()
-                   .get_resource_locator()
-                   ->resource_dir(category::tmp)
-                   .append("test_output");
+    auto rp = glob::glob_state().getr_vfs().real_path(vfs::rid("tmp://test_output"));
+    auto dir = APATH(rp.value());
     std::filesystem::create_directories(dir.fs());
     return dir.str();
 }
@@ -314,8 +309,8 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
 
-        auto path = glob::glob_state().get_resource_locator()->resource(
-            category::packages, "base.apkg/class/shader_effects/lit");
+        auto path_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+        auto path = APATH(path_rp.value());
 
         kryga::utils::buffer::load(path / "se_solid_color_lit.vert", vert_buf);
         kryga::utils::buffer::load(path / "se_solid_color_lit.frag", frag_buf);

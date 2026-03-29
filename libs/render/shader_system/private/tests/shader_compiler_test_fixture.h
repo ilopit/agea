@@ -5,7 +5,7 @@
 #include <shader_system/shader_compiler.h>
 #include <shader_system/shader_reflection.h>
 #include <global_state/global_state.h>
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
 #include <utils/file_utils.h>
 
 namespace kryga::render::test
@@ -47,11 +47,12 @@ protected:
     void
     SetUp() override
     {
-        auto rt = glob::glob_state().get_resource_locator()->resource_dir(category::tmp);
+        auto rt_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("tmp"));
+        auto rt = APATH(rt_rp.value());
 
         std::filesystem::remove_all(rt.fs());
 
-        m_temp_dir = glob::glob_state().get_resource_locator()->temp_dir();
+        m_temp_dir = glob::glob_state().getr_vfs().create_temp_dir();
     }
 
     void

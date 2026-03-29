@@ -5,7 +5,8 @@
 
 #include <global_state/global_state.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
+#include <utils/path.h>
 
 #include <stb_unofficial/stb.h>
 
@@ -30,12 +31,12 @@ native_window::construct(construct_params& c)
 
     m_window = SDL_CreateWindow("KRYGA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w,
                                 c.h, window_flags);
-    auto icon_path =
-        glob::glob_state().get_resource_locator()->resource(category::editor, "icon_256.png");
+    auto icon_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://editor/icon_256.png"));
 
     int tex_width = 0, tex_height = 0, tex_channels = 0;
-    void* pixels =
-        stbi_load(icon_path.str().c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+    void* pixels = icon_rp.has_value()
+        ? stbi_load(APATH(icon_rp.value()).str().c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha)
+        : nullptr;
 
     Uint32 rmask, gmask, bmask, amask;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN

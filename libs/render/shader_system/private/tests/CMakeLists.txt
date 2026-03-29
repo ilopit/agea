@@ -12,7 +12,7 @@ target_link_libraries(shader_system_tests
     gtest
     kryga::shader_system
     kryga::global_state
-    kryga::resource_locator
+    kryga::vfs
 )
 
 kryga_finalize_executable(shader_system_tests)

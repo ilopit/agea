@@ -48,6 +48,12 @@ if [[ $CLEAN -eq 1 ]]; then
 fi
 
 mkdir -p "$BUILD_DIR"
+
+# Create CMake file API query so CMake Tools / VS Code can read project metadata
+API_QUERY_DIR="$BUILD_DIR/.cmake/api/v1/query/client-vscode"
+mkdir -p "$API_QUERY_DIR"
+echo '{"requests":[{"kind":"codemodel","version":2},{"kind":"cache","version":2},{"kind":"cmakeFiles","version":1}]}' > "$API_QUERY_DIR/query.json"
+
 cd "$BUILD_DIR"
 
 if [[ $VERBOSE -eq 1 ]]; then

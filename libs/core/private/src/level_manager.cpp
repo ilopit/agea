@@ -14,7 +14,7 @@
 
 #include <utils/kryga_log.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
 
 #include <serialization/serialization.h>
 
@@ -47,7 +47,14 @@ level_manager::load_level(const utils::id& id)
 
     auto level_id = id.str() + ".alvl";
 
-    auto path = glob::glob_state().get_resource_locator()->resource(category::levels, level_id);
+    auto path_vp = vfs::rid("data", "levels/" + level_id);
+    auto path_rp = glob::glob_state().getr_vfs().real_path(path_vp);
+    if (!path_rp.has_value())
+    {
+        ALOG_ERROR("Level not found: {}", path_vp.str());
+        return nullptr;
+    }
+    auto path = APATH(path_rp.value());
 
     return load_level_path(*l, path);
 }

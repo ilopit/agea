@@ -12,6 +12,8 @@
 #include "packages/root/model/assets/mesh.h"
 #include "core/reflection/reflection_type.h"
 #include <global_state/global_state.h>
+#include <vfs/vfs.h>
+#include <vfs/rid.h>
 
 #include <serialization/serialization.h>
 
@@ -150,7 +152,14 @@ package_manager::load_package(const utils::id& id)
         return true;
     }
 
-    auto path = glob::glob_state().get_resource_locator()->resource(category::packages, id.str());
+    auto path_vp = vfs::rid("data", "packages/" + id.str());
+    auto path_rp = glob::glob_state().getr_vfs().real_path(path_vp);
+    if (!path_rp.has_value())
+    {
+        ALOG_ERROR("Package not found: {}", path_vp.str());
+        return false;
+    }
+    auto path = APATH(path_rp.value());
 
     ALOG_INFO("Loading package [{0}] at path [{1}]", id.cstr(), path.str());
 

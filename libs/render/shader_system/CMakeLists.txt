@@ -7,7 +7,8 @@ add_library(shader_system STATIC
 target_link_libraries(shader_system PUBLIC
     kryga::error_handling
     kryga::global_state
-    kryga::resource_locator
+
+    kryga::vfs
     kryga::utils
     kryga::gpu_types
     kryga::glm_unofficial

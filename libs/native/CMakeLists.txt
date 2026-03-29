@@ -8,7 +8,8 @@ target_link_libraries(native
     kryga::utils
     sdl2
     kryga::stb_unofficial
-    kryga::resource_locator
+
+    kryga::vfs
 )
 
 kryga_finalize_library(native)

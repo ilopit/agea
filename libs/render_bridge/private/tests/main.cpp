@@ -6,7 +6,7 @@
 #include <core/reflection/lua_api.h>
 #include <core/package_manager.h>
 #include <root/root_module.h>
-#include <resource_locator/resource_locator.h>
+
 
 using namespace kryga;
 int

@@ -25,7 +25,6 @@
 
 #include <native/native_window.h>
 
-#include <resource_locator/resource_locator.h>
 #include <global_state/global_state.h>
 
 #include <vk_mem_alloc.h>

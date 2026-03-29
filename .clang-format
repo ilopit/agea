@@ -20,7 +20,9 @@ PenaltyBreakComment: 60
 DerivePointerAlignment: false
 PointerAlignment: Left
 SpaceInEmptyParentheses: false
-Standard: Cpp11
+InsertBraces: true
+SpaceBeforeParens: Never
+Standard: Latest
 SortIncludes: false
 SpacesInAngles:  false
 SpacesInParentheses: false

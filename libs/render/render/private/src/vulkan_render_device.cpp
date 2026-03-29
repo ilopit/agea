@@ -17,7 +17,6 @@
 #include <utils/process.h>
 #include <utils/file_utils.h>
 
-#include <resource_locator/resource_locator.h>
 #include <global_state/global_state.h>
 
 #include <VkBootstrap.h>

@@ -7,7 +7,7 @@ namespace gs
 class state;
 }
 
-struct state_mutator__resource_locator
+struct state_mutator__vfs
 {
     static void
     set(gs::state& es);

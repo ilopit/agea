@@ -19,7 +19,8 @@ target_link_libraries(vulkan_render PUBLIC
     kryga::utils
     kryga::gpu_types
     kryga::native
-    kryga::resource_locator
+
+    kryga::vfs
     kryga::serialization
     kryga::error_handling
     kryga::global_state

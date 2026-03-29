@@ -3,8 +3,6 @@
 #include <vulkan_render/types/vulkan_gpu_types.h>
 #include <vulkan_render/kryga_render.h>
 
-#include <resource_locator/resource_locator.h>
-
 #include <utils/id.h>
 #include <utils/line_container.h>
 

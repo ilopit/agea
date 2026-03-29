@@ -24,7 +24,8 @@ target_link_libraries(packages.test.model PUBLIC
    kryga::core
    kryga::glm_unofficial
    kryga::serialization
-   kryga::resource_locator
+
+   kryga::vfs
    kryga::utils
 
    kryga::packages.base.model

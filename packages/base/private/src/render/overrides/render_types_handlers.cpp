@@ -62,7 +62,7 @@
 #include <ozz/animation/runtime/skeleton.h>
 #include <ozz/animation/runtime/animation.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
 
 #include <utils/buffer.h>
 #include <utils/path.h>
@@ -655,10 +655,10 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         auto skel_test = (dir_path / (stem + "_skeleton.ozz"));
         if (!skel_test.exists())
         {
-            auto& rl = glob::glob_state().getr_resource_locator();
-            auto pkg_root = rl.resource_dir(category::packages);
+            auto& vfs = glob::glob_state().getr_vfs();
+            auto pkg_root_rp = vfs.real_path(vfs::rid("data://packages"));
             bool found = false;
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(pkg_root.fs()))
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(pkg_root_rp.value()))
             {
                 if (!entry.is_regular_file())
                 {

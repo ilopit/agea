@@ -18,7 +18,8 @@
 
 #include <imgui.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
+#include <vfs/io.h>
 #include <global_state/global_state.h>
 
 #include <algorithm>
@@ -936,9 +937,8 @@ vulkan_render::prepare_ui_resources()
     ImGuiIO& io = ImGui::GetIO();
 
     // Create font texture
-    auto path =
-        glob::glob_state().get_resource_locator()->resource(category::fonts, "Roboto-Medium.ttf");
-    auto f = path.str();
+    auto font_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://fonts/Roboto-Medium.ttf"));
+    auto f = APATH(font_rp.value()).str();
 
     auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
     auto f_big = io.Fonts->AddFontFromFileTTF(f.c_str(), 33.0f);
@@ -967,17 +967,13 @@ vulkan_render::prepare_ui_resources()
 void
 vulkan_render::prepare_ui_pipeline()
 {
-    auto path = glob::glob_state().get_resource_locator()->resource(
-        category::packages, "base.apkg/class/shader_effects/ui");
+    vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
 
     {
         kryga::utils::buffer vert, frag;
 
-        auto vert_path = path / "se_uioverlay.vert";
-        kryga::utils::buffer::load(vert_path, vert);
-
-        auto frag_path = path / "se_uioverlay.frag";
-        kryga::utils::buffer::load(frag_path, frag);
+        vfs::load_buffer(se_ui_base / "se_uioverlay.vert", vert);
+        vfs::load_buffer(se_ui_base / "se_uioverlay.frag", frag);
 
         auto layout = render::gpu_dynobj_builder()
                           .set_id(AID("interface"))
@@ -1009,11 +1005,8 @@ vulkan_render::prepare_ui_pipeline()
     {
         kryga::utils::buffer vert, frag;
 
-        auto vert_path = path / "se_upload.vert";
-        kryga::utils::buffer::load(vert_path, vert);
-
-        auto frag_path = path / "se_upload.frag";
-        kryga::utils::buffer::load(frag_path, frag);
+        vfs::load_buffer(se_ui_base / "se_upload.vert", vert);
+        vfs::load_buffer(se_ui_base / "se_upload.frag", frag);
 
         auto main_pass =
             glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));

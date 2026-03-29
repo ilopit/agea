@@ -3,5 +3,27 @@
         "bitset": "cpp",
         "memory": "cpp",
         "xstring": "cpp"
+    },
+
+    // CMake Tools
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureOnOpen": false,
+
+    // Use CMake Tools as the IntelliSense provider
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+
+    // Exclude heavy dirs from file watcher / search
+    "files.watcherExclude": {
+        "**/build/**": true,
+        "**/build_deps/**": true,
+        "**/thirdparty/**": true
+    },
+    "search.exclude": {
+        "**/build/**": true,
+        "**/build_deps/**": true,
+        "**/thirdparty/**": true
+    },
+    "files.exclude": {
+        "**/build_deps": true
     }
 }

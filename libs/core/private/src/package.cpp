@@ -9,6 +9,7 @@
 
 #include <serialization/serialization.h>
 #include <global_state/global_state.h>
+#include <vfs/vfs.h>
 #include <core/reflection/reflection_type.h>
 #include <map>
 #include <stack>
@@ -73,8 +74,14 @@ package::init()
                 .set_instance_local_set(&m_instance_local_cs)
                 .build();
 
-    auto path = glob::glob_state().get_resource_locator()->resource(category::packages,
-                                                                    m_id.str() + ".apkg");
+    auto path_vp = vfs::rid("data", "packages/" + m_id.str() + ".apkg");
+    auto path_rp = glob::glob_state().getr_vfs().real_path(path_vp);
+    if (!path_rp.has_value())
+    {
+        ALOG_ERROR("Package not found: {}", path_vp.str());
+        return false;
+    }
+    auto path = APATH(path_rp.value());
 
     ALOG_INFO("Loading package [{0}] at path [{1}]", m_id.cstr(), path.str());
 

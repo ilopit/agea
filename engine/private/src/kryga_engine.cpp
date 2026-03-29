@@ -44,7 +44,8 @@
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_commands_common.h>
 
-#include <resource_locator/resource_locator_state.h>
+
+#include <vfs/vfs.h>
 
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
@@ -206,7 +207,6 @@ vulkan_engine::init(const startup_options& options)
     gs.schedule_action(gs::state::state_stage::create,
                        [](gs::state& s)
                        {
-                           state_mutator__resource_locator::set(s);
                            core::state_mutator__level_manager::set(s);
                            core::state_mutator__id_generator::set(s);
                        });
@@ -234,14 +234,11 @@ vulkan_engine::init(const startup_options& options)
     gs.run_connect();
     init_default_scripting();
 
-    glob::glob_state().get_resource_locator()->init_local_dirs();
-    auto cfgs_folder = glob::glob_state().get_resource_locator()->resource_dir(category::configs);
+    auto rp_main = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/kryga.acfg"));
+    glob::glob_state().get_config()->load(APATH(rp_main.value()));
 
-    utils::path main_config = cfgs_folder / "kryga.acfg";
-    glob::glob_state().get_config()->load(main_config);
-
-    utils::path input_config = cfgs_folder / "inputs.acfg";
-    glob::glob_state().get_input_manager()->load_actions(input_config);
+    auto rp_input = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/inputs.acfg"));
+    glob::glob_state().get_input_manager()->load_actions(APATH(rp_input.value()));
 
     glob::glob_state().get_game_editor()->init();
 

@@ -26,7 +26,6 @@
 
 #include <native/native_window.h>
 
-#include <resource_locator/resource_locator.h>
 #include <serialization/serialization.h>
 
 #include <vk_mem_alloc.h>

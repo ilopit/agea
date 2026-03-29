@@ -10,7 +10,9 @@
 #include <core/object_load_context.h>
 #include <testing/testing.h>
 #include <core/core_state.h>
-#include <resource_locator/resource_locator_state.h>
+#include <vfs/vfs_state.h>
+#include <vfs/vfs.h>
+#include <vfs/physical_backend.h>
 
 #include "packages/root/package.root.h"
 #include "packages/root/package.root.types_builder.ar.h"
@@ -39,7 +41,15 @@ struct test_object_constructor : base_test
 
         auto& gs = glob::glob_state();
         core::state_mutator__id_generator::set(gs);
-        state_mutator__resource_locator::set(gs);
+        state_mutator__vfs::set(gs);
+        {
+            auto root = std::filesystem::current_path().parent_path();
+            auto& vfs = gs.getr_vfs();
+            vfs.mount("data", std::make_unique<vfs::physical_backend>(root), 0);
+            vfs.mount("cache", std::make_unique<vfs::physical_backend>(root / "cache"), 0);
+            vfs.mount("tmp", std::make_unique<vfs::physical_backend>(root / "tmp"), 0);
+            vfs.mount("generated", std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
+        }
         core::state_mutator__caches::set(gs);
         core::state_mutator__reflection_manager::set(gs);
         core::state_mutator__lua_api::set(gs);
@@ -87,7 +97,8 @@ struct test_object_constructor : base_test
     setup_test_level_path(core::object_load_context& lc)
     {
         auto& gs = glob::glob_state();
-        auto obj_path = gs.get_resource_locator()->resource_dir(category::levels) / "test.alvl";
+        auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
+        auto obj_path = APATH(obj_path_rp.value());
         lc.set_prefix_path(obj_path);
     }
 };

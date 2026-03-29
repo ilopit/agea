@@ -17,7 +17,8 @@
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
-#include <resource_locator/resource_locator.h>
+#include <vfs/vfs.h>
+#include <vfs/io.h>
 #include <global_state/global_state.h>
 
 #include <cmath>
@@ -487,14 +488,10 @@ vulkan_render::prepare_system_resources()
 
     kryga::utils::buffer vert, frag;
 
-    auto path = glob::glob_state().get_resource_locator()->resource(
-        category::packages, "base.apkg/class/shader_effects");
+    vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
-    auto vert_path = path / "error/se_error.vert";
-    kryga::utils::buffer::load(vert_path, vert);
-
-    auto frag_path = path / "error/se_error.frag";
-    kryga::utils::buffer::load(frag_path, frag);
+    vfs::load_buffer(se_base / "error/se_error.vert", vert);
+    vfs::load_buffer(se_base / "error/se_error.frag", frag);
 
     auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
@@ -512,11 +509,8 @@ vulkan_render::prepare_system_resources()
     auto rc = main_pass->create_shader_effect(AID("se_error"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
-    vert_path = path / "system/se_outline.vert";
-    kryga::utils::buffer::load(vert_path, vert);
-
-    frag_path = path / "system/se_outline.frag";
-    kryga::utils::buffer::load(frag_path, frag);
+    vfs::load_buffer(se_base / "system/se_outline.vert", vert);
+    vfs::load_buffer(se_base / "system/se_outline.frag", frag);
 
     se_ci.ds_mode = depth_stencil_mode::outline;
 
@@ -528,11 +522,8 @@ vulkan_render::prepare_system_resources()
     m_outline_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
 
-    vert_path = path / "system/se_pick.vert";
-    kryga::utils::buffer::load(vert_path, vert);
-
-    frag_path = path / "system/se_pick.frag";
-    kryga::utils::buffer::load(frag_path, frag);
+    vfs::load_buffer(se_base / "system/se_pick.vert", vert);
+    vfs::load_buffer(se_base / "system/se_pick.frag", frag);
 
     auto picking_pass =
         glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
@@ -547,11 +538,8 @@ vulkan_render::prepare_system_resources()
         AID("mat_pick"), AID("pick"), sd, *sed, utils::dynobj{});
 
     // Grid shader effect and material
-    vert_path = path / "system/se_grid.vert";
-    kryga::utils::buffer::load(vert_path, vert);
-
-    frag_path = path / "system/se_grid.frag";
-    kryga::utils::buffer::load(frag_path, frag);
+    vfs::load_buffer(se_base / "system/se_grid.vert", vert);
+    vfs::load_buffer(se_base / "system/se_grid.frag", frag);
 
     se_ci = {};
     se_ci.vert_buffer = &vert;
@@ -573,11 +561,8 @@ vulkan_render::prepare_system_resources()
         AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
 
     // Debug wireframe shader for light visualization
-    vert_path = path / "system/se_debug_wire.vert";
-    kryga::utils::buffer::load(vert_path, vert);
-
-    frag_path = path / "system/se_debug_wire.frag";
-    kryga::utils::buffer::load(frag_path, frag);
+    vfs::load_buffer(se_base / "system/se_debug_wire.vert", vert);
+    vfs::load_buffer(se_base / "system/se_debug_wire.frag", frag);
 
     se_ci = {};
     se_ci.vert_buffer = &vert;

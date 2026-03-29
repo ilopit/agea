@@ -1,14 +1,23 @@
 #include <gtest/gtest.h>
 
 #include <global_state/global_state.h>
-#include <resource_locator/resource_locator_state.h>
+#include <vfs/vfs.h>
+#include <vfs/vfs_state.h>
+#include <vfs/physical_backend.h>
 #include <utils/kryga_log.h>
 
 int
 main(int argc, char** argv)
 {
     kryga::utils::setup_logger();
-    kryga::state_mutator__resource_locator::set(kryga::glob::glob_state());
+    auto& gs = kryga::glob::glob_state();
+    kryga::state_mutator__vfs::set(gs);
+    auto root = std::filesystem::current_path().parent_path();
+    auto& vfs = gs.getr_vfs();
+    vfs.mount("data", std::make_unique<kryga::vfs::physical_backend>(root), 0);
+    vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(root / "cache"), 0);
+    vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(root / "tmp"), 0);
+    vfs.mount("generated", std::make_unique<kryga::vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

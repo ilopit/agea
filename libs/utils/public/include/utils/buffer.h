@@ -86,6 +86,7 @@ struct buffer
 
     buffer(buffer&& other) noexcept
         : m_file(std::move(other.m_file))
+        , m_vpath(std::move(other.m_vpath))
         , m_data(std::move(other.m_data))
         , m_last_write_time(other.m_last_write_time)
     {
@@ -98,6 +99,7 @@ struct buffer
         if (this != &other)
         {
             m_file = std::move(other.m_file);
+            m_vpath = std::move(other.m_vpath);
             m_data = std::move(other.m_data);
             m_last_write_time = other.m_last_write_time;
 
@@ -123,6 +125,18 @@ struct buffer
     get_file() const
     {
         return m_file;
+    }
+
+    void
+    set_vpath(std::string vpath)
+    {
+        m_vpath = std::move(vpath);
+    }
+
+    const std::string&
+    get_vpath() const
+    {
+        return m_vpath;
     }
 
     uint8_t*
@@ -172,6 +186,7 @@ struct buffer
 
 private:
     utils::path m_file;
+    std::string m_vpath;
     std::vector<uint8_t> m_data;
     std::filesystem::file_time_type m_last_write_time;
 };

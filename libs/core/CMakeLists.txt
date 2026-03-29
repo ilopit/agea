@@ -34,7 +34,8 @@ target_link_libraries(core PUBLIC
    kryga::global_state
    kryga::glm_unofficial
    kryga::error_handling
-   kryga::resource_locator
+
+   kryga::vfs
    kryga::serialization
    kryga::utils
 

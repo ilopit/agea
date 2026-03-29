@@ -16,7 +16,6 @@
 #include <utils/kryga_log.h>
 
 #include <global_state/global_state.h>
-#include <resource_locator/resource_locator.h>
 
 namespace kryga
 {
