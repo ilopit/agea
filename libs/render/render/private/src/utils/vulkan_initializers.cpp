@@ -224,8 +224,8 @@ make_color_blend_attachment_state(alpha_mode enable_alpha)
         state.alphaBlendOp = VK_BLEND_OP_ADD;
         state.colorBlendOp = VK_BLEND_OP_ADD;
 
-        state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-        state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        state.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         break;
     }
     case alpha_mode::ui:

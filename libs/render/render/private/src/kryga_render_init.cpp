@@ -254,8 +254,18 @@ vulkan_render::deinit()
     // Cleanup static samplers
     deinit_static_samplers();
 
-    // Clear texture cache before VMA is destroyed
-    // (textures hold vulkan_image which use VMA allocations)
+    // Clear render queues (they hold raw pointers into pools)
+    m_default_render_object_queue.clear();
+    m_outline_render_object_queue.clear();
+    m_transparent_render_object_queue.clear();
+    m_draw_batches.clear();
+    m_instance_slots_staging.clear();
+    m_materials_layout = {};
+
+    // Clear all caches before VMA is destroyed
+    m_cache.objects.clear();
+    m_cache.directional_lights.clear();
+    m_cache.universal_lights.clear();
     m_cache.textures.clear();
 
     m_frames.clear();

@@ -15,4 +15,5 @@ include/packages/base/model/mesh_object.h
 include/packages/base/model/components/animated_mesh_component.h
 include/packages/base/model/animated_mesh_object.h
 include/packages/base/model/assets/solid_color_material.h
+include/packages/base/model/assets/solid_color_alpha_material.h
 include/packages/base/model/assets/simple_texture_material.h
