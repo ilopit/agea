@@ -152,43 +152,17 @@ package_manager::load_package(const utils::id& id)
         return true;
     }
 
-    auto path_vp = vfs::rid("data", "packages/" + id.str());
-    auto path_rp = glob::glob_state().getr_vfs().real_path(path_vp);
-    if (!path_rp.has_value())
+    auto new_package = std::make_unique<package>(AID(id.str()));
+    if (!new_package->init())
     {
-        ALOG_ERROR("Package not found: {}", path_vp.str());
-        return false;
-    }
-    auto path = APATH(path_rp.value());
-
-    ALOG_INFO("Loading package [{0}] at path [{1}]", id.cstr(), path.str());
-
-    std::string name, extension;
-    path.parse_file_name_and_ext(name, extension);
-
-    if (name.empty() || extension.empty() || extension != "apkg")
-    {
-        ALOG_ERROR("Loading package failed, {0} {1}", name, extension);
+        ALOG_ERROR("Failed to init package {}", id.cstr());
         return false;
     }
 
-    auto mapping = std::make_shared<object_mapping>();
-    if (!mapping->build_object_mapping(path / "package.acfg"))
     {
-        ALOG_LAZY_ERROR;
-        return false;
-    }
-
-    auto new_package = std::make_unique<package>(AID(name));
-    new_package->m_load_path = path;
-    new_package->m_save_root_path = path.parent();
-    new_package->init();
-
-    new_package->get_load_context().set_prefix_path(path).set_objects_mapping(mapping);
-
-    {
+        auto& mapping = new_package->get_load_context().get_objects_mapping();
         object_constructor ctor(&new_package->get_load_context());
-        for (auto& i : mapping->m_items)
+        for (auto& i : mapping.m_items)
         {
             KRG_check(i.second.is_class, "Load only package!");
 

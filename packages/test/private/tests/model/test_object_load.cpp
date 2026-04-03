@@ -146,6 +146,16 @@ compare_files_line_by_line(const utils::path& expected_path, const utils::path& 
     return testing::AssertionSuccess();
 }
 
+static int s_test_mount_counter = 0;
+
+vfs::rid
+mount_for_test(const std::filesystem::path& path)
+{
+    auto name = "test_mount_" + std::to_string(s_test_mount_counter++);
+    glob::glob_state().getr_vfs().mount(name, std::make_unique<vfs::physical_backend>(path), 0);
+    return vfs::rid(name, "");
+}
+
 // Saves an object to save_path, then reloads it as an instance via the given level's load context.
 // The reload_level must outlive the returned pointer. Returns nullptr on failure.
 root::smart_object*
@@ -155,10 +165,13 @@ round_trip_save_load(root::smart_object& obj,
 {
     auto rc = core::object_constructor::object_save(obj, save_path);
     if (rc != result_code::ok)
+    {
         return nullptr;
+    }
 
     auto& reload_lc = reload_level.get_load_context();
-    reload_lc.set_prefix_path(save_path.parent());
+    auto mount = mount_for_test(save_path.parent().fs());
+    reload_lc.set_vfs_mount(mount);
 
     auto reload_id = AID(std::string("rt_") + obj.get_id().str());
     reload_lc.get_objects_mapping().add(reload_id, false, APATH(save_path.file_name()));
@@ -168,7 +181,9 @@ round_trip_save_load(root::smart_object& obj,
         test_object_load(reload_id, core::object_load_type::instance_obj, reload_lc, reloaded);
 
     if (!result.has_value())
+    {
         return nullptr;
+    }
 
     return result.value();
 }
@@ -191,7 +206,9 @@ struct test_preloaded_test_package : base_test
             vfs.mount("data", std::make_unique<vfs::physical_backend>(root), 0);
             vfs.mount("cache", std::make_unique<vfs::physical_backend>(root / "cache"), 0);
             vfs.mount("tmp", std::make_unique<vfs::physical_backend>(root / "tmp"), 0);
-            vfs.mount("generated", std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
+            vfs.mount(
+                "generated",
+                std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
         }
         core::state_mutator__caches::set(gs);
         core::state_mutator__reflection_manager::set(gs);
@@ -307,9 +324,7 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping()
         .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
@@ -369,9 +384,7 @@ TEST_F(test_preloaded_test_package, load_class_object_by_id)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
@@ -391,9 +404,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_by_id)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
@@ -413,9 +424,7 @@ TEST_F(test_preloaded_test_package, object_clone_class_object)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
@@ -443,9 +452,7 @@ TEST_F(test_preloaded_test_package, object_clone_as_instance)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
@@ -472,9 +479,7 @@ TEST_F(test_preloaded_test_package, object_instantiate_from_proto)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
@@ -502,9 +507,7 @@ TEST_F(test_preloaded_test_package, diff_object_properties_same_objects)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded1;
@@ -526,9 +529,7 @@ TEST_F(test_preloaded_test_package, diff_object_properties_different_types_fails
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping()
         .add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"))
         .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"));
@@ -555,9 +556,7 @@ TEST_F(test_preloaded_test_package, load_nonexistent_object_fails)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
 
     std::vector<root::smart_object*> loaded;
     auto result =
@@ -571,9 +570,7 @@ TEST_F(test_preloaded_test_package, load_invalid_path_fails)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("does_not_exist"), false,
                                  APATH("game_objects/does_not_exist.aobj"));
 
@@ -588,9 +585,7 @@ TEST_F(test_preloaded_test_package, cached_object_returns_same_pointer)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded1, loaded2;
@@ -610,9 +605,7 @@ TEST_F(test_preloaded_test_package, object_instantiate_complex_object_with_compo
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping()
         .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
@@ -655,9 +648,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     std::vector<root::smart_object*> loaded;
     lc.get_objects_mapping()
         .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
@@ -784,9 +775,7 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
     auto& gs = glob::glob_state();
 
     // 1. Load object from existing test file
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false,
                                  APATH("game_objects/test_obj_custom_layout.aobj"));
 
@@ -809,7 +798,10 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
     ASSERT_TRUE(save_path.exists());
 
     // 3. Compare saved file with original line by line
-    auto expected_path = obj_path / "game_objects/test_obj_custom_layout.aobj";
+    auto expected_rp = gs.getr_vfs().real_path(
+        vfs::rid("data", "levels/test.alvl/game_objects/test_obj_custom_layout.aobj"));
+    ASSERT_TRUE(expected_rp.has_value());
+    auto expected_path = APATH(expected_rp.value());
     ASSERT_TRUE(compare_files_line_by_line(expected_path, save_path));
 
     // Cleanup
@@ -820,9 +812,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_simple)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
 
     std::vector<root::smart_object*> loaded;
@@ -839,7 +829,10 @@ TEST_F(test_preloaded_test_package, object_save_reload_simple)
     auto* reloaded = round_trip_save_load(*obj, save_path, reload_level);
     ASSERT_TRUE(reloaded);
 
-    auto expected_path = obj_path / "game_objects/test_obj.aobj";
+    auto expected_rp =
+        gs.getr_vfs().real_path(vfs::rid("data", "levels/test.alvl/game_objects/test_obj.aobj"));
+    ASSERT_TRUE(expected_rp.has_value());
+    auto expected_path = APATH(expected_rp.value());
     ASSERT_TRUE(compare_files_line_by_line(expected_path, save_path));
 
     auto reloaded_go = reloaded->as<root::game_object>();
@@ -863,9 +856,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping()
         .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
         .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
@@ -904,9 +895,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_material)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_material"), false,
                                  APATH("game_objects/test_material.aobj"));
 
@@ -938,9 +927,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_idempotent)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-    auto obj_path = APATH(obj_path_rp.value());
-    lc.set_prefix_path(obj_path);
+    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     lc.get_objects_mapping().add(AID("test_obj"), false,
                                  APATH("game_objects/test_obj_custom_layout.aobj"));
 

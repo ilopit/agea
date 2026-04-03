@@ -21,7 +21,7 @@ DerivePointerAlignment: false
 PointerAlignment: Left
 SpaceInEmptyParentheses: false
 InsertBraces: true
-SpaceBeforeParens: Never
+SpaceBeforeParens: ControlStatements
 Standard: Latest
 SortIncludes: false
 SpacesInAngles:  false

@@ -80,7 +80,9 @@ void
 vulkan_render::upload_instance_slots(render::frame_state& frame)
 {
     if (m_instance_slots_staging.empty())
+    {
         return;
+    }
 
     const size_t required_size = m_instance_slots_staging.size() * sizeof(uint32_t);
 
@@ -104,7 +106,9 @@ void
 vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
 {
     if (r.empty())
+    {
         return;
+    }
 
     mesh_data* cur_mesh = nullptr;
     uint32_t batch_start = (uint32_t)m_instance_slots_staging.size();
@@ -239,9 +243,13 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
 
         // Instanced draw
         if (batch.mesh->has_indices())
+        {
             vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        }
         else
+        {
             vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+        }
     }
 
     // Outline second pass (same material for all)
@@ -250,7 +258,9 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
     for (const auto& batch : m_draw_batches)
     {
         if (!batch.outlined)
+        {
             continue;
+        }
 
         if (!has_outlined)
         {
@@ -272,9 +282,13 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                            sizeof(gpu::push_constants), &m_obj_config);
 
         if (batch.mesh->has_indices())
+        {
             vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        }
         else
+        {
             vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+        }
     }
 
     // TRANSPARENT - needs per-object sorting, add slots after opaque batches
@@ -330,9 +344,13 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                                sizeof(gpu::push_constants), &m_obj_config);
 
             if (obj->mesh->has_indices())
+            {
                 vkCmdDrawIndexed(cmd, obj->mesh->indices_size(), 1, 0, 0, 0);
+            }
             else
+            {
                 vkCmdDraw(cmd, obj->mesh->vertices_size(), 1, 0, 0);
+            }
 
             ++transparent_idx;
         }
@@ -436,9 +454,13 @@ vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
                            sizeof(gpu::push_constants), &m_obj_config);
 
         if (batch.mesh->has_indices())
+        {
             vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        }
         else
+        {
             vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+        }
     }
 }
 
@@ -502,9 +524,13 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
                        sizeof(gpu::push_constants), &m_obj_config);
 
     if (m->has_indices())
+    {
         vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    }
     else
+    {
         vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
 }
 
 // ============================================================================
@@ -937,7 +963,8 @@ vulkan_render::prepare_ui_resources()
     ImGuiIO& io = ImGui::GetIO();
 
     // Create font texture
-    auto font_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://fonts/Roboto-Medium.ttf"));
+    auto font_rp =
+        glob::glob_state().getr_vfs().real_path(vfs::rid("data://fonts/Roboto-Medium.ttf"));
     auto f = APATH(font_rp.value()).str();
 
     auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
@@ -1149,6 +1176,9 @@ vulkan_render::draw_ui(frame_state& fs)
 
     vkCmdPushConstants(cmd, m_ui_se->m_pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                        sizeof(ui_push_constants), &m_ui_push_constants);
+
+    KRG_check(fs.ui.vertex_buffer.buffer(), "UI vertex buffer must be valid");
+    KRG_check(fs.ui.index_buffer.buffer(), "UI index buffer must be valid");
 
     VkDeviceSize offsets[1] = {0};
     vkCmdBindVertexBuffers(cmd, 0, 1, &fs.ui.vertex_buffer.buffer(), offsets);

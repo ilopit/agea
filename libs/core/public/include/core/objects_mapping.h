@@ -4,6 +4,7 @@
 
 #include <utils/id.h>
 #include <utils/path.h>
+#include <vfs/rid.h>
 
 #include <unordered_map>
 
@@ -21,10 +22,13 @@ class object_mapping
 
 public:
     bool
-    build_object_mapping(const utils::path& p);
+    build_object_mapping(const vfs::rid& id);
 
     bool
     build_object_mapping(serialization::container& c, bool is_class);
+
+    bool
+    build_from_vfs(const vfs::rid& root, bool is_class);
 
     void
     clear();

@@ -25,12 +25,12 @@ container::~container()
 }
 
 void
-container::set_load_path(const utils::path& p)
+container::set_vfs_root(const vfs::rid& r)
 {
-    m_load_path = p;
+    m_vfs_root = r;
     if (m_occ)
     {
-        m_occ->set_prefix_path(p);
+        m_occ->set_vfs_mount(r);
     }
 }
 

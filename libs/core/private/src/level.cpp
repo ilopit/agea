@@ -10,8 +10,6 @@
 #include <core/queues.h>
 #include <global_state/global_state.h>
 
-#include <global_state/global_state.h>
-
 namespace kryga
 {
 

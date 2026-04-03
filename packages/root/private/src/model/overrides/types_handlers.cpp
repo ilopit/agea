@@ -15,6 +15,10 @@
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
 
+#include <global_state/global_state.h>
+#include <vfs/vfs.h>
+#include <vfs/rid.h>
+
 #include <utils/kryga_log.h>
 #include <utils/string_utility.h>
 
@@ -280,14 +284,22 @@ buffer__load(reflection::type_context__load& ctx)
 {
     auto rel_path = APATH(ctx.jc->as<std::string>());
 
-    utils::path package_path;
-
-    if (!ctx.ctor->get_olc()->make_full_path(rel_path, package_path))
+    vfs::rid rid;
+    if (!ctx.ctor->get_olc()->resolve(rel_path, rid))
     {
-        ALOG_LAZY_ERROR;
+        ALOG_ERROR("buffer__load: resolve failed for '{}'", rel_path.str());
         return result_code::failed;
     }
 
+    auto real = glob::glob_state().getr_vfs().real_path(rid);
+    if (!real.has_value())
+    {
+        ALOG_ERROR("buffer__load: real_path failed for '{}'", rid.str());
+        return result_code::failed;
+    }
+    ALOG_TRACE("buffer__load: '{}' -> '{}'", rel_path.str(), real.value().generic_string());
+
+    auto package_path = APATH(real.value());
     auto& f = reflection::utils::as_type<::kryga::utils::buffer>(ctx.obj);
     f.set_file(package_path);
 

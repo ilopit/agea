@@ -18,7 +18,7 @@ public:
     object_load_context_builder& set_objects_mapping    (const std::shared_ptr<object_mapping>& v)  { m_objects_mapping = v; return *this; }
     object_load_context_builder& set_ownable_cache      (line_cache<root::smart_object_ptr>* v)     { m_ownable_cache = v; return *this; }
     object_load_context_builder& set_package            (package* v)                                { m_package = v; return *this; }
-    object_load_context_builder& set_prefix_path        (const utils::path& v)                      { m_prefix_path = v; return *this; }
+    object_load_context_builder& set_vfs_mount          (const vfs::rid& v)                         { m_vfs_root = v; return *this; }
     // clang-format on
 
     std::unique_ptr<object_load_context>
@@ -34,11 +34,11 @@ public:
 
         if (m_objects_mapping)
         {
-            ctx->m_path_resolver.set_objects_mapping(m_objects_mapping);
+            ctx->m_object_mapping = m_objects_mapping;
         }
-        if (!m_prefix_path.empty())
+        if (!m_vfs_root.empty())
         {
-            ctx->m_path_resolver.set_prefix_path(m_prefix_path);
+            ctx->m_vfs_root = m_vfs_root;
         }
         return ctx;
     }
@@ -50,7 +50,7 @@ private:
     std::shared_ptr<object_mapping> m_objects_mapping;
     line_cache<root::smart_object_ptr>* m_ownable_cache = nullptr;
     package* m_package = nullptr;
-    utils::path m_prefix_path;
+    vfs::rid m_vfs_root;
 };
 }  // namespace core
 }  // namespace kryga

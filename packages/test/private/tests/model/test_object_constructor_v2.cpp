@@ -48,7 +48,9 @@ struct test_object_constructor : base_test
             vfs.mount("data", std::make_unique<vfs::physical_backend>(root), 0);
             vfs.mount("cache", std::make_unique<vfs::physical_backend>(root / "cache"), 0);
             vfs.mount("tmp", std::make_unique<vfs::physical_backend>(root / "tmp"), 0);
-            vfs.mount("generated", std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
+            vfs.mount(
+                "generated",
+                std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
         }
         core::state_mutator__caches::set(gs);
         core::state_mutator__reflection_manager::set(gs);
@@ -96,10 +98,7 @@ struct test_object_constructor : base_test
     void
     setup_test_level_path(core::object_load_context& lc)
     {
-        auto& gs = glob::glob_state();
-        auto obj_path_rp = gs.getr_vfs().real_path(vfs::rid("data://levels/test.alvl"));
-        auto obj_path = APATH(obj_path_rp.value());
-        lc.set_prefix_path(obj_path);
+        lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
     }
 };
 

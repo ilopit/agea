@@ -13,7 +13,6 @@
 #include <core/reflection/reflection_type.h>
 #include <map>
 #include <stack>
-#include <filesystem>
 
 namespace kryga::core
 {
@@ -74,33 +73,25 @@ package::init()
                 .set_instance_local_set(&m_instance_local_cs)
                 .build();
 
-    auto path_vp = vfs::rid("data", "packages/" + m_id.str() + ".apkg");
-    auto path_rp = glob::glob_state().getr_vfs().real_path(path_vp);
-    if (!path_rp.has_value())
+    auto vfs_root = vfs_paths::package_root(m_id);
+    KRG_check(vfs_paths::is_valid_package_root(vfs_root), "Package must be under data://packages/");
+    if (!glob::glob_state().getr_vfs().exists(vfs_root))
     {
-        ALOG_ERROR("Package not found: {}", path_vp.str());
+        ALOG_ERROR("Package not found: {}", vfs_root.str());
         return false;
     }
-    auto path = APATH(path_rp.value());
+    m_vfs_root = vfs_root;
 
-    ALOG_INFO("Loading package [{0}] at path [{1}]", m_id.cstr(), path.str());
+    ALOG_INFO("Loading package [{0}] at [{1}]", m_id.cstr(), vfs_root.str());
 
-    std::string name, extension;
-    path.parse_file_name_and_ext(name, extension);
-
-    if (name.empty() || extension.empty() || extension != "apkg")
-    {
-        ALOG_ERROR("Loading package failed, {0} {1}", name, extension);
-        return false;
-    }
-
+    // Load mapping from package manifest
     auto mapping = std::make_shared<object_mapping>();
-    if (!mapping->build_object_mapping(path / "package.acfg"))
+    if (!mapping->build_object_mapping(vfs_root / "package.acfg"))
     {
         ALOG_LAZY_ERROR;
         return false;
     }
-    m_occ->set_prefix_path(path).set_objects_mapping(mapping);
+    m_occ->set_vfs_mount(vfs_root).set_objects_mapping(mapping);
 
     return true;
 }

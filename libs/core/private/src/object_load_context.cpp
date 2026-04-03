@@ -27,15 +27,33 @@ object_load_context::~object_load_context()
 }
 
 bool
-object_load_context::make_full_path(const utils::path& relative_path, utils::path& p) const
+object_load_context::resolve(const utils::id& id, vfs::rid& out) const
 {
-    return m_path_resolver.make_full_path(relative_path, p);
+    if (m_vfs_root.empty())
+    {
+        return false;
+    }
+
+    auto itr = m_object_mapping->m_items.find(id);
+    if (itr == m_object_mapping->m_items.end())
+    {
+        return false;
+    }
+
+    out = m_vfs_root / itr->second.p.str();
+    return true;
 }
 
 bool
-object_load_context::make_full_path(const utils::id& id, utils::path& p) const
+object_load_context::resolve(const utils::path& relative, vfs::rid& out) const
 {
-    return m_path_resolver.make_full_path(id, p);
+    if (m_vfs_root.empty())
+    {
+        return false;
+    }
+
+    out = m_vfs_root / relative.str();
+    return true;
 }
 
 bool

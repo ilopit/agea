@@ -11,6 +11,7 @@
 #include <packages/root/model/game_object.h>
 
 #include <serialization/serialization.h>
+#include <vfs/rid.h>
 
 #include <utils/kryga_log.h>
 
@@ -205,15 +206,15 @@ object_constructor::load_package_obj(const utils::id& id)
         return object_constructor::create_default_class_obj_impl(rt);
     }
 
-    utils::path full_path;
-    if (!m_olc->make_full_path(id, full_path))
+    vfs::rid rid;
+    if (!m_olc->resolve(id, rid))
     {
         ALOG_ERROR("Failed to find [{}] in mapping", id.cstr());
         return std::unexpected(result_code::path_not_found);
     }
 
     serialization::container c;
-    if (!serialization::read_container(full_path, c))
+    if (!serialization::read_container(rid, c))
     {
         ALOG_LAZY_ERROR;
         return std::unexpected(result_code::serialization_error);
@@ -241,15 +242,15 @@ object_constructor::load_level_obj(const utils::id& id)
     }
 
     // Load from file
-    utils::path full_path;
-    if (!m_olc->make_full_path(id, full_path))
+    vfs::rid rid;
+    if (!m_olc->resolve(id, rid))
     {
         ALOG_ERROR("Failed to find [{}] in mapping", id.cstr());
         return std::unexpected(result_code::path_not_found);
     }
 
     serialization::container c;
-    if (!serialization::read_container(full_path, c))
+    if (!serialization::read_container(rid, c))
     {
         ALOG_LAZY_ERROR;
         return std::unexpected(result_code::serialization_error);
@@ -369,15 +370,15 @@ object_constructor::load_obj(const utils::id& id)
         // If preload failed (e.g. no package), fall through to file loading
     }
 
-    utils::path full_path;
-    if (!m_olc->make_full_path(id, full_path))
+    vfs::rid rid;
+    if (!m_olc->resolve(id, rid))
     {
         ALOG_ERROR("Failed to find [{}] in mapping", id.cstr());
         return std::unexpected(result_code::path_not_found);
     }
 
     serialization::container c;
-    if (!serialization::read_container(full_path, c))
+    if (!serialization::read_container(rid, c))
     {
         ALOG_LAZY_ERROR;
         return std::unexpected(result_code::serialization_error);

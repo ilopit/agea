@@ -5,6 +5,8 @@
 #include "core/model_minimal.h"
 #include "core/caches/cache_set.h"
 
+#include <vfs/rid.h>
+
 namespace kryga::core
 {
 class level_manager
@@ -21,7 +23,7 @@ public:
 
 private:
     level*
-    load_level_path(level& l, const utils::path& path);
+    load_level_path(level& l, const vfs::rid& vfs_root);
 
     std::unordered_map<utils::id, std::unique_ptr<level>> m_levels;
 };

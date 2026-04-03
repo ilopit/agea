@@ -10,6 +10,8 @@
 #include "core/objects_mapping.h"
 
 #include <utils/id.h>
+#include <utils/path.h>
+#include <vfs/rid.h>
 
 namespace kryga
 {
@@ -17,6 +19,42 @@ namespace core
 {
 
 class object_load_context;
+
+// Canonical VFS path builders — enforce that packages/levels live under data://
+namespace vfs_paths
+{
+
+inline constexpr std::string_view k_mount = "data";
+inline constexpr std::string_view k_packages_prefix = "packages/";
+inline constexpr std::string_view k_levels_prefix = "levels/";
+
+inline vfs::rid
+package_root(const utils::id& id)
+{
+    return vfs::rid(k_mount, std::string(k_packages_prefix) + id.str() + ".apkg");
+}
+
+inline vfs::rid
+level_root(const utils::id& id)
+{
+    return vfs::rid(k_mount, std::string(k_levels_prefix) + id.str() + ".alvl");
+}
+
+inline bool
+is_valid_package_root(const vfs::rid& r)
+{
+    return r.mount_point() == k_mount &&
+           r.relative().substr(0, k_packages_prefix.size()) == k_packages_prefix;
+}
+
+inline bool
+is_valid_level_root(const vfs::rid& r)
+{
+    return r.mount_point() == k_mount &&
+           r.relative().substr(0, k_levels_prefix.size()) == k_levels_prefix;
+}
+
+}  // namespace vfs_paths
 
 class container
 {
@@ -36,14 +74,14 @@ public:
         return m_id;
     }
 
-    const utils::path&
-    get_load_path() const
+    const vfs::rid&
+    get_vfs_root() const
     {
-        return m_load_path;
+        return m_vfs_root;
     }
 
     void
-    set_load_path(const utils::path& p);
+    set_vfs_root(const vfs::rid& r);
 
     const utils::path&
     get_save_path() const
@@ -92,7 +130,7 @@ public:
 
 protected:
     utils::id m_id;
-    utils::path m_load_path;
+    vfs::rid m_vfs_root;
     utils::path m_save_root_path;
 
     cache_set m_instance_local_cs;

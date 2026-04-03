@@ -21,6 +21,7 @@
 
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>
+#include <vfs/rid.h>
 
 #include <utils/buffer.h>
 #include <utils/dynamic_object.h>
@@ -104,7 +105,9 @@ protected:
         {
             save_png(actual_path, pixels.data(), width, height);
             if (!result.diff_image.empty())
+            {
                 save_png(diff_path, result.diff_image.data(), width, height);
+            }
         }
 
         EXPECT_TRUE(result.pixel_passed)
@@ -309,7 +312,8 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
 
-        auto path_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+        auto path_rp = glob::glob_state().getr_vfs().real_path(
+            vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(path_rp.value());
 
         kryga::utils::buffer::load(path / "se_solid_color_lit.vert", vert_buf);
@@ -428,8 +432,11 @@ protected:
 
     // Create a sphere mesh (UV sphere) for testing rounded geometry
     mesh_data*
-    create_sphere_mesh(const utils::id& id, const glm::vec3& color, uint32_t stacks = 16,
-                       uint32_t slices = 16, float radius = 0.5f)
+    create_sphere_mesh(const utils::id& id,
+                       const glm::vec3& color,
+                       uint32_t stacks = 16,
+                       uint32_t slices = 16,
+                       float radius = 0.5f)
     {
         std::vector<gpu::vertex_data> verts;
         std::vector<gpu::uint> indices;
@@ -478,8 +485,11 @@ protected:
     };
 
     scene_base
-    setup_scene(const std::string& prefix, const glm::vec3& eye, const glm::vec3& center,
-                shader_effect_data* se, bool enable_shadows = false)
+    setup_scene(const std::string& prefix,
+                const glm::vec3& eye,
+                const glm::vec3& center,
+                shader_effect_data* se,
+                bool enable_shadows = false)
     {
         auto& renderer = glob::glob_state().getr_vulkan_render();
         auto& loader = glob::glob_state().getr_vulkan_render_loader();
@@ -517,8 +527,8 @@ protected:
         auto floor_gpu = make_solid_color_gpu_data({0.3f, 0.3f, 0.3f}, {0.6f, 0.6f, 0.6f},
                                                    {0.2f, 0.2f, 0.2f}, 8.0f);
         std::vector<texture_sampler_data> no_tex;
-        auto* floor_mat = loader.create_material(floor_mat_id, AID("solid_color_material"),
-                                                 no_tex, *se, floor_gpu);
+        auto* floor_mat = loader.create_material(floor_mat_id, AID("solid_color_material"), no_tex,
+                                                 *se, floor_gpu);
         renderer.add_material(floor_mat);
 
         auto model = glm::translate(glm::mat4(1.0f), glm::vec3(0, -1, 0));
@@ -538,8 +548,9 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
 
-        auto path = glob::glob_state().get_resource_locator()->resource(
-            category::packages, "base.apkg/class/shader_effects");
+        auto& vfs = glob::glob_state().getr_vfs();
+        auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects"));
+        auto path = APATH(se_path.value());
 
         kryga::utils::buffer::load(path / "se_solid_color.vert", vert_buf);
         kryga::utils::buffer::load(path / "se_solid_color.frag", frag_buf);
@@ -562,8 +573,9 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
 
-        auto path = glob::glob_state().get_resource_locator()->resource(
-            category::packages, "base.apkg/class/shader_effects");
+        auto& vfs = glob::glob_state().getr_vfs();
+        auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects"));
+        auto path = APATH(se_path.value());
 
         kryga::utils::buffer::load(path / "se_solid_color.vert", vert_buf);
         kryga::utils::buffer::load(path / "se_solid_color_alpha.frag", frag_buf);
@@ -685,7 +697,10 @@ TEST_F(visual_pipeline_test, lit_cubes)
     renderer.set_camera(cam);
 
     // Render multiple frames so shadow maps and frame state stabilize
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
 
     compare("lit_cubes", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
@@ -707,22 +722,24 @@ TEST_F(visual_pipeline_test, directional_light)
 
     // White cube in the center
     auto* mesh = create_cube_mesh(AID("cube_dir"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.2f, 0.2f, 0.2f}, {0.9f, 0.9f, 0.9f},
-                                         {1.0f, 1.0f, 1.0f}, 64.0f);
+    auto gpu = make_solid_color_gpu_data({0.2f, 0.2f, 0.2f}, {0.9f, 0.9f, 0.9f}, {1.0f, 1.0f, 1.0f},
+                                         64.0f);
     std::vector<texture_sampler_data> no_tex;
-    auto* mat = loader.create_material(AID("mat_white"), AID("solid_color_material"),
-                                       no_tex, *se, gpu);
+    auto* mat =
+        loader.create_material(AID("mat_white"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
 
     auto model = glm::mat4(1.0f);
     auto* obj = renderer.get_cache().objects.alloc(AID("cube_dir"));
-    loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)),
-                         {0, 0, 0});
+    loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), {0, 0, 0});
     renderer.schedule_to_drawing(obj);
     renderer.schedule_game_data_gpu_upload(obj);
     renderer.schedule_material_data_gpu_upload(mat);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("directional_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -784,7 +801,10 @@ TEST_F(visual_pipeline_test, point_light)
     blue_pl->gpu_data.outer_cut_off = -1.0f;
     renderer.schedule_universal_light_data_gpu_upload(blue_pl);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("point_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -835,7 +855,10 @@ TEST_F(visual_pipeline_test, spot_light)
     spot->gpu_data.outer_cut_off = std::cos(glm::radians(25.0f));
     renderer.schedule_universal_light_data_gpu_upload(spot);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("spot_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -859,10 +882,10 @@ TEST_F(visual_pipeline_test, directional_shadows)
 
     // Two cubes casting shadows on the floor
     auto* mesh = create_cube_mesh(AID("cube_shadow"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.6f, 0.1f, 0.1f}, {0.8f, 0.2f, 0.2f},
-                                         {1.0f, 1.0f, 1.0f}, 32.0f);
-    auto* mat = loader.create_material(AID("mat_shadow_red"), AID("solid_color_material"),
-                                       no_tex, *se, gpu);
+    auto gpu = make_solid_color_gpu_data({0.6f, 0.1f, 0.1f}, {0.8f, 0.2f, 0.2f}, {1.0f, 1.0f, 1.0f},
+                                         32.0f);
+    auto* mat = loader.create_material(AID("mat_shadow_red"), AID("solid_color_material"), no_tex,
+                                       *se, gpu);
     renderer.add_material(mat);
 
     // Cube 1 — elevated left
@@ -874,8 +897,8 @@ TEST_F(visual_pipeline_test, directional_shadows)
     renderer.schedule_game_data_gpu_upload(obj1);
 
     // Cube 2 — elevated right, taller
-    auto model2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 1.0f, 0.0f))
-                  * glm::scale(glm::mat4(1.0f), glm::vec3(0.7f, 2.0f, 0.7f));
+    auto model2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 1.0f, 0.0f)) *
+                  glm::scale(glm::mat4(1.0f), glm::vec3(0.7f, 2.0f, 0.7f));
     auto* obj2 = cache.objects.alloc(AID("shadow_cube2"));
     loader.update_object(*obj2, *mat, *mesh, model2, glm::transpose(glm::inverse(model2)),
                          {1.5f, 1.0f, 0});
@@ -884,7 +907,10 @@ TEST_F(visual_pipeline_test, directional_shadows)
 
     renderer.schedule_material_data_gpu_upload(mat);
 
-    for (int i = 0; i < 5; ++i) renderer.draw_headless();
+    for (int i = 0; i < 5; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("directional_shadows", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -909,8 +935,8 @@ TEST_F(visual_pipeline_test, material_properties)
     // Matte red (high ambient, low specular, low shininess)
     auto matte_gpu = make_solid_color_gpu_data({0.5f, 0.1f, 0.1f}, {0.7f, 0.15f, 0.15f},
                                                {0.1f, 0.1f, 0.1f}, 4.0f);
-    auto* matte_mat = loader.create_material(AID("mat_matte"), AID("solid_color_material"),
-                                             no_tex, *se, matte_gpu);
+    auto* matte_mat = loader.create_material(AID("mat_matte"), AID("solid_color_material"), no_tex,
+                                             *se, matte_gpu);
     // Glossy green (low ambient, high specular, high shininess)
     auto glossy_gpu = make_solid_color_gpu_data({0.05f, 0.2f, 0.05f}, {0.1f, 0.6f, 0.1f},
                                                 {1.0f, 1.0f, 1.0f}, 128.0f);
@@ -919,8 +945,8 @@ TEST_F(visual_pipeline_test, material_properties)
     // Metallic blue (medium ambient, high specular matching diffuse)
     auto metal_gpu = make_solid_color_gpu_data({0.05f, 0.05f, 0.15f}, {0.1f, 0.1f, 0.5f},
                                                {0.6f, 0.6f, 1.0f}, 256.0f);
-    auto* metal_mat = loader.create_material(AID("mat_metal"), AID("solid_color_material"),
-                                             no_tex, *se, metal_gpu);
+    auto* metal_mat = loader.create_material(AID("mat_metal"), AID("solid_color_material"), no_tex,
+                                             *se, metal_gpu);
 
     renderer.add_material(matte_mat);
     renderer.add_material(glossy_mat);
@@ -928,25 +954,33 @@ TEST_F(visual_pipeline_test, material_properties)
 
     auto* sphere_mesh = create_sphere_mesh(AID("sphere_mat"), {1, 1, 1});
 
-    struct mat_entry { const char* name; float x; material_data* mat; };
+    struct mat_entry
+    {
+        const char* name;
+        float x;
+        material_data* mat;
+    };
     mat_entry entries[] = {
-        {"sph_matte",  -2.5f, matte_mat},
-        {"sph_glossy",  0.0f, glossy_mat},
-        {"sph_metal",   2.5f, metal_mat},
+        {"sph_matte", -2.5f, matte_mat},
+        {"sph_glossy", 0.0f, glossy_mat},
+        {"sph_metal", 2.5f, metal_mat},
     };
 
     for (auto& e : entries)
     {
         auto model = glm::translate(glm::mat4(1.0f), glm::vec3(e.x, 0, 0));
         auto* obj = cache.objects.alloc(AID(e.name));
-        loader.update_object(*obj, *e.mat, *sphere_mesh, model,
-                             glm::transpose(glm::inverse(model)), {e.x, 0, 0});
+        loader.update_object(*obj, *e.mat, *sphere_mesh, model, glm::transpose(glm::inverse(model)),
+                             {e.x, 0, 0});
         renderer.schedule_to_drawing(obj);
         renderer.schedule_game_data_gpu_upload(obj);
         renderer.schedule_material_data_gpu_upload(e.mat);
     }
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("material_properties", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -970,10 +1004,10 @@ TEST_F(visual_pipeline_test, combined_lights)
 
     // Three spheres in a row
     auto* mesh = create_sphere_mesh(AID("sphere_comb"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.1f, 0.1f, 0.1f}, {0.7f, 0.7f, 0.7f},
-                                         {1.0f, 1.0f, 1.0f}, 64.0f);
-    auto* mat = loader.create_material(AID("mat_comb"), AID("solid_color_material"),
-                                       no_tex, *se, gpu);
+    auto gpu = make_solid_color_gpu_data({0.1f, 0.1f, 0.1f}, {0.7f, 0.7f, 0.7f}, {1.0f, 1.0f, 1.0f},
+                                         64.0f);
+    auto* mat =
+        loader.create_material(AID("mat_comb"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
 
     float positions[] = {-3.0f, 0.0f, 3.0f};
@@ -1014,7 +1048,10 @@ TEST_F(visual_pipeline_test, combined_lights)
     sp->gpu_data.outer_cut_off = std::cos(glm::radians(30.0f));
     renderer.schedule_universal_light_data_gpu_upload(sp);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("combined_lights", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1039,25 +1076,25 @@ TEST_F(visual_pipeline_test, object_transforms)
     auto* mesh = create_cube_mesh(AID("cube_xform"), {1, 1, 1});
     auto gpu = make_solid_color_gpu_data({0.15f, 0.15f, 0.3f}, {0.3f, 0.3f, 0.8f},
                                          {1.0f, 1.0f, 1.0f}, 32.0f);
-    auto* mat = loader.create_material(AID("mat_xform"), AID("solid_color_material"),
-                                       no_tex, *se, gpu);
+    auto* mat =
+        loader.create_material(AID("mat_xform"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
 
     // Uniform scale
-    auto m1 = glm::translate(glm::mat4(1.0f), glm::vec3(-3, 0, 0))
-              * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f));
+    auto m1 = glm::translate(glm::mat4(1.0f), glm::vec3(-3, 0, 0)) *
+              glm::scale(glm::mat4(1.0f), glm::vec3(1.5f));
     auto* o1 = cache.objects.alloc(AID("xform_scale"));
     loader.update_object(*o1, *mat, *mesh, m1, glm::transpose(glm::inverse(m1)), {-3, 0, 0});
 
     // Rotation 45 degrees around Y
-    auto m2 = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0))
-              * glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0, 1, 0));
+    auto m2 = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0)) *
+              glm::rotate(glm::mat4(1.0f), glm::radians(45.0f), glm::vec3(0, 1, 0));
     auto* o2 = cache.objects.alloc(AID("xform_rot"));
     loader.update_object(*o2, *mat, *mesh, m2, glm::transpose(glm::inverse(m2)), {0, 0, 0});
 
     // Non-uniform scale (stretched tall)
-    auto m3 = glm::translate(glm::mat4(1.0f), glm::vec3(3, 0.5f, 0))
-              * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 3.0f, 0.5f));
+    auto m3 = glm::translate(glm::mat4(1.0f), glm::vec3(3, 0.5f, 0)) *
+              glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 3.0f, 0.5f));
     auto* o3 = cache.objects.alloc(AID("xform_stretch"));
     loader.update_object(*o3, *mat, *mesh, m3, glm::transpose(glm::inverse(m3)), {3, 0.5f, 0});
 
@@ -1068,7 +1105,10 @@ TEST_F(visual_pipeline_test, object_transforms)
     }
     renderer.schedule_material_data_gpu_upload(mat);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("object_transforms", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1101,8 +1141,8 @@ TEST_F(visual_pipeline_test, alpha_blending)
     auto* blue_cube = create_cube_mesh(AID("alpha_blue_cube"), {0, 0, 1});
 
     // Opaque white cube behind (z = -1), unlit
-    auto white_gpu = make_solid_color_gpu_data({1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f},
-                                               {0.0f, 0.0f, 0.0f}, 1.0f);
+    auto white_gpu =
+        make_solid_color_gpu_data({1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, 1.0f);
     auto* white_mat = loader.create_material(AID("alpha_mat_white"), AID("solid_color_material"),
                                              no_tex, *se_unlit, white_gpu);
     renderer.add_material(white_mat);
@@ -1118,8 +1158,8 @@ TEST_F(visual_pipeline_test, alpha_blending)
     // Transparent blue cube in front (z = 1), alpha = 0.3
     auto blue_gpu = make_solid_color_alpha_gpu_data({0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f},
                                                     {0.0f, 0.0f, 0.0f}, 1.0f, 0.3f);
-    auto* blue_mat = loader.create_material(AID("alpha_mat_blue"), AID("solid_color_alpha_material"),
-                                            no_tex, *se_trans, blue_gpu);
+    auto* blue_mat = loader.create_material(
+        AID("alpha_mat_blue"), AID("solid_color_alpha_material"), no_tex, *se_trans, blue_gpu);
     renderer.add_material(blue_mat);
 
     auto model_front = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 1));
@@ -1131,7 +1171,10 @@ TEST_F(visual_pipeline_test, alpha_blending)
     renderer.schedule_game_data_gpu_upload(obj_front);
     renderer.schedule_material_data_gpu_upload(blue_mat);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("alpha_blending", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1162,8 +1205,8 @@ TEST_F(visual_pipeline_test, outline_rendering)
 
     auto m_left = glm::translate(glm::mat4(1.0f), glm::vec3(-2, 0, 0));
     auto* obj_left = cache.objects.alloc(AID("outline_left"));
-    loader.update_object(*obj_left, *green_mat, *mesh, m_left,
-                         glm::transpose(glm::inverse(m_left)), {-2, 0, 0});
+    loader.update_object(*obj_left, *green_mat, *mesh, m_left, glm::transpose(glm::inverse(m_left)),
+                         {-2, 0, 0});
     renderer.schedule_to_drawing(obj_left);
     renderer.schedule_game_data_gpu_upload(obj_left);
 
@@ -1178,7 +1221,10 @@ TEST_F(visual_pipeline_test, outline_rendering)
 
     renderer.schedule_material_data_gpu_upload(green_mat);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("outline_rendering", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1198,8 +1244,8 @@ TEST_F(visual_pipeline_test, unlit_shader)
 
     // Camera but no setup_scene — we want to control the light precisely
     gpu::camera_data cam;
-    cam.projection = glm::perspective(glm::radians(60.0f),
-                                      float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
+    cam.projection =
+        glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
     cam.view = glm::lookAt(glm::vec3(0, 2, 5), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     cam.inv_projection = glm::inverse(cam.projection);
@@ -1252,7 +1298,10 @@ TEST_F(visual_pipeline_test, unlit_shader)
     renderer.schedule_material_data_gpu_upload(lit_mat);
     renderer.schedule_material_data_gpu_upload(unlit_mat);
 
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("unlit_shader", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1270,8 +1319,8 @@ TEST_F(visual_pipeline_test, directional_light_switching)
 
     // Camera
     gpu::camera_data cam;
-    cam.projection = glm::perspective(glm::radians(60.0f),
-                                      float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
+    cam.projection =
+        glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
     cam.view = glm::lookAt(glm::vec3(0, 2, 5), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     cam.inv_projection = glm::inverse(cam.projection);
@@ -1297,27 +1346,32 @@ TEST_F(visual_pipeline_test, directional_light_switching)
     std::vector<texture_sampler_data> no_tex;
 
     auto* mesh = create_sphere_mesh(AID("dls_sphere"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.2f, 0.2f, 0.2f}, {0.8f, 0.8f, 0.8f},
-                                         {1.0f, 1.0f, 1.0f}, 64.0f);
-    auto* mat = loader.create_material(AID("dls_mat"), AID("solid_color_material"),
-                                       no_tex, *se, gpu);
+    auto gpu = make_solid_color_gpu_data({0.2f, 0.2f, 0.2f}, {0.8f, 0.8f, 0.8f}, {1.0f, 1.0f, 1.0f},
+                                         64.0f);
+    auto* mat =
+        loader.create_material(AID("dls_mat"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
 
     auto model = glm::mat4(1.0f);
     auto* obj = cache.objects.alloc(AID("dls_obj"));
-    loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)),
-                         {0, 0, 0});
+    loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), {0, 0, 0});
     renderer.schedule_to_drawing(obj);
     renderer.schedule_game_data_gpu_upload(obj);
     renderer.schedule_material_data_gpu_upload(mat);
 
     // Render with warm light first, then switch to cool for final frame
     renderer.set_selected_directional_light(AID("dls_cool"));
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("directional_light_cool", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 
     renderer.set_selected_directional_light(AID("dls_warm"));
-    for (int i = 0; i < 3; ++i) renderer.draw_headless();
+    for (int i = 0; i < 3; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("directional_light_warm", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1339,8 +1393,8 @@ TEST_F(visual_pipeline_test, complex_scene)
 
     // Camera — elevated view of a populated scene
     gpu::camera_data cam;
-    cam.projection = glm::perspective(glm::radians(60.0f),
-                                      float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
+    cam.projection =
+        glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
     cam.view = glm::lookAt(glm::vec3(5, 6, 10), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     cam.inv_projection = glm::inverse(cam.projection);
@@ -1379,15 +1433,15 @@ TEST_F(visual_pipeline_test, complex_scene)
     auto* cube_mesh = create_cube_mesh(AID("cs_cube_mesh"), {1, 1, 1});
     auto red_gpu = make_solid_color_gpu_data({0.3f, 0.05f, 0.05f}, {0.7f, 0.1f, 0.1f},
                                              {1.0f, 0.4f, 0.4f}, 128.0f);
-    auto* red_mat = loader.create_material(AID("cs_mat_red"), AID("solid_color_material"),
-                                           no_tex, *se_lit, red_gpu);
+    auto* red_mat = loader.create_material(AID("cs_mat_red"), AID("solid_color_material"), no_tex,
+                                           *se_lit, red_gpu);
     renderer.add_material(red_mat);
 
-    auto red_m = glm::translate(glm::mat4(1.0f), glm::vec3(-3, 0, 0))
-                 * glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0, 1, 0));
+    auto red_m = glm::translate(glm::mat4(1.0f), glm::vec3(-3, 0, 0)) *
+                 glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0, 1, 0));
     auto* red_obj = cache.objects.alloc(AID("cs_red_cube"));
-    loader.update_object(*red_obj, *red_mat, *cube_mesh, red_m,
-                         glm::transpose(glm::inverse(red_m)), {-3, 0, 0});
+    loader.update_object(*red_obj, *red_mat, *cube_mesh, red_m, glm::transpose(glm::inverse(red_m)),
+                         {-3, 0, 0});
     renderer.schedule_to_drawing(red_obj);
     renderer.schedule_game_data_gpu_upload(red_obj);
     renderer.schedule_material_data_gpu_upload(red_mat);
@@ -1416,8 +1470,8 @@ TEST_F(visual_pipeline_test, complex_scene)
                                              no_tex, *se_trans, trans_gpu);
     renderer.add_material(trans_mat);
 
-    auto trans_m = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0, 1.5f))
-                   * glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
+    auto trans_m = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0, 1.5f)) *
+                   glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
     auto* trans_obj = cache.objects.alloc(AID("cs_trans_cube"));
     trans_obj->queue_id = "transparent";
     loader.update_object(*trans_obj, *trans_mat, *cube_mesh, trans_m,
@@ -1427,14 +1481,14 @@ TEST_F(visual_pipeline_test, complex_scene)
     renderer.schedule_material_data_gpu_upload(trans_mat);
 
     // --- Unlit marker cube (small, bright yellow, no lighting) ---
-    auto unlit_gpu = make_solid_color_gpu_data({1.0f, 0.9f, 0.0f}, {1.0f, 0.9f, 0.0f},
-                                               {0, 0, 0}, 1.0f);
+    auto unlit_gpu =
+        make_solid_color_gpu_data({1.0f, 0.9f, 0.0f}, {1.0f, 0.9f, 0.0f}, {0, 0, 0}, 1.0f);
     auto* unlit_mat = loader.create_material(AID("cs_mat_unlit"), AID("solid_color_material"),
                                              no_tex, *se_unlit, unlit_gpu);
     renderer.add_material(unlit_mat);
 
-    auto unlit_m = glm::translate(glm::mat4(1.0f), glm::vec3(3, 1.5f, -2))
-                   * glm::scale(glm::mat4(1.0f), glm::vec3(0.3f));
+    auto unlit_m = glm::translate(glm::mat4(1.0f), glm::vec3(3, 1.5f, -2)) *
+                   glm::scale(glm::mat4(1.0f), glm::vec3(0.3f));
     auto* unlit_obj = cache.objects.alloc(AID("cs_unlit_marker"));
     loader.update_object(*unlit_obj, *unlit_mat, *cube_mesh, unlit_m,
                          glm::transpose(glm::inverse(unlit_m)), {3, 1.5f, -2});
@@ -1449,8 +1503,8 @@ TEST_F(visual_pipeline_test, complex_scene)
                                               no_tex, *se_lit, pillar_gpu);
     renderer.add_material(pillar_mat);
 
-    auto pillar_m = glm::translate(glm::mat4(1.0f), glm::vec3(3, 0.5f, 0))
-                    * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 4.0f, 0.5f));
+    auto pillar_m = glm::translate(glm::mat4(1.0f), glm::vec3(3, 0.5f, 0)) *
+                    glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 4.0f, 0.5f));
     auto* pillar_obj = cache.objects.alloc(AID("cs_pillar"));
     loader.update_object(*pillar_obj, *pillar_mat, *cube_mesh, pillar_m,
                          glm::transpose(glm::inverse(pillar_m)), {3, 0.5f, 0});
@@ -1484,6 +1538,9 @@ TEST_F(visual_pipeline_test, complex_scene)
     renderer.schedule_universal_light_data_gpu_upload(sp);
 
     // More frames for shadow stabilization
-    for (int i = 0; i < 5; ++i) renderer.draw_headless();
+    for (int i = 0; i < 5; ++i)
+    {
+        renderer.draw_headless();
+    }
     compare("complex_scene", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }

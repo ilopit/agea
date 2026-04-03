@@ -18,8 +18,6 @@
 
 #include <serialization/serialization.h>
 
-#include <fstream>
-
 namespace kryga
 {
 namespace core
@@ -45,60 +43,53 @@ level_manager::load_level(const utils::id& id)
         l = std::make_unique<level>(id);
     }
 
-    auto level_id = id.str() + ".alvl";
-
-    auto path_vp = vfs::rid("data", "levels/" + level_id);
-    auto path_rp = glob::glob_state().getr_vfs().real_path(path_vp);
-    if (!path_rp.has_value())
+    auto vfs_root = vfs_paths::level_root(id);
+    KRG_check(vfs_paths::is_valid_level_root(vfs_root), "Level must be under data://levels/");
+    if (!glob::glob_state().getr_vfs().exists(vfs_root))
     {
-        ALOG_ERROR("Level not found: {}", path_vp.str());
+        ALOG_ERROR("Level not found: {}", vfs_root.str());
         return nullptr;
     }
-    auto path = APATH(path_rp.value());
+    l->set_vfs_root(vfs_root);
 
-    return load_level_path(*l, path);
+    return load_level_path(*l, vfs_root);
 }
 
 level*
-level_manager::load_level_path(level& l, const utils::path& path)
+level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
 {
-    ALOG_INFO("Begin level loading with path {0}", path.str());
+    ALOG_INFO("Begin level loading at {0}", vfs_root.str());
 
-    l.set_load_path(path);
-    l.set_save_root_path(path.parent());
-
-    std::string name, extension;
-    path.parse_file_name_and_ext(name, extension);
-
-    if (name.empty() || extension.empty() || extension != "alvl")
-    {
-        ALOG_ERROR("Loading level failed, {0} {1}", name, extension);
-        return nullptr;
-    }
-
-    KRG_check(l.m_id == AID(name), "Should be same");
-
-    auto root_path = path / "root.cfg";
+    auto root_rid = vfs_root / "root.cfg";
 
     serialization::container container;
-    if (!serialization::read_container(root_path, container))
+    if (!serialization::read_container(root_rid, container))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
     }
 
-    if (!l.m_mapping->build_object_mapping(root_path))
+    // Build mapping by scanning VFS for .aobj files
+    if (!l.m_mapping->build_from_vfs(vfs_root, false))
     {
         ALOG_LAZY_ERROR;
         return nullptr;
     }
+
+    l.m_occ->set_vfs_mount(vfs_root).set_objects_mapping(l.m_mapping);
 
     {
         auto packages = container["packages"];
         auto packages_count = packages.size();
         for (size_t idx = 0; idx < packages_count; ++idx)
         {
-            auto id = AID(packages[idx].as<std::string>());
+            auto pkg_str = packages[idx].as<std::string>();
+            // Strip .apkg extension if present — id is the bare name
+            if (pkg_str.size() > 5 && pkg_str.substr(pkg_str.size() - 5) == ".apkg")
+            {
+                pkg_str.resize(pkg_str.size() - 5);
+            }
+            auto id = AID(pkg_str);
             if (!glob::glob_state().get_pm()->load_package(id))
             {
                 ALOG_LAZY_ERROR;
@@ -145,7 +136,7 @@ level_manager::unload_level(level& l)
 bool
 level_manager::save_level(level& l, const utils::path& path)
 {
-    l.set_save_root_path(path);
+    l.set_vfs_root(vfs::rid("data", "levels/" + l.get_id().str() + ".alvl"));
     std::string name = l.get_id().str() + ".alvl";
     auto full_path = path / name;
 
