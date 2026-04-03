@@ -5,7 +5,6 @@
 #include "core/model_fwds.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/line_cache.h"
-#include "core/objects_mapping.h"
 
 #include <vfs/rid.h>
 
@@ -46,14 +45,12 @@ public:
     find_obj(const utils::id& id, architype a_type);
 
     // clang-format off
-    object_load_context& set_vfs_mount      (const vfs::rid& v)                            { m_vfs_root = v; return *this; }
-    object_load_context& set_objects_mapping (const std::shared_ptr<object_mapping>& v)     { m_object_mapping = v; return *this; }
+    object_load_context& set_vfs_mount (const vfs::rid& v)       { m_vfs_root = v; return *this; }
 
     cache_set*              get_instance_local_set() const  { return m_instance_local_set; }
     package*                get_package() const             { return m_package; }
     const vfs::rid&         get_vfs_root() const            { return m_vfs_root; }
     level*                  get_level() const               { return m_level; }
-    object_mapping&         get_objects_mapping() const     { return *m_object_mapping; }
 
     // clang-format on
     void
@@ -84,7 +81,6 @@ public:
 
 private:
     vfs::rid m_vfs_root;
-    std::shared_ptr<object_mapping> m_object_mapping = std::make_shared<object_mapping>();
 
     cache_set* m_proto_local_set = nullptr;
     cache_set* m_instance_local_set = nullptr;

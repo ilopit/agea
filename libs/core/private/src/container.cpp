@@ -1,7 +1,5 @@
 #include "core/container.h"
 
-#include "core/objects_mapping.h"
-
 #include "core/object_load_context.h"
 
 namespace kryga
@@ -15,8 +13,7 @@ container&
 container::operator=(container&&) noexcept = default;
 
 container::container(const utils::id& id)
-    : m_mapping(std::make_shared<core::object_mapping>())
-    , m_id(id)
+    : m_id(id)
 {
 }
 
@@ -61,7 +58,6 @@ container::unload()
 {
     m_instance_local_cs.clear();
     m_objects.clear();
-    m_mapping->clear();
 }
 
 void

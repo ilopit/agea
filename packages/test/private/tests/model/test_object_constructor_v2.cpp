@@ -95,18 +95,33 @@ struct test_object_constructor : base_test
         base_test::TearDown();
     }
 
+    vfs::backend* m_test_backend = nullptr;
+
+    void
+    setup_test_backend(core::object_load_context& lc)
+    {
+        if (m_test_backend)
+        {
+            return;
+        }
+        auto& vfs = glob::glob_state().getr_vfs();
+        auto real = vfs.real_path(vfs::rid("data", "levels/test.alvl"));
+        m_test_backend = vfs.mount(
+            vfs::rid("data", "levels/test.alvl"), real.value(), {.index_filter = ".aobj"});
+        lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
+    }
+
     void
     setup_test_level_path(core::object_load_context& lc)
     {
-        lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
+        setup_test_backend(lc);
     }
 };
 
 TEST_F(test_object_constructor, load_simple_class_object)
 {
     auto& lc = test::package::instance().get_load_context();
-    setup_test_level_path(lc);
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
     auto result = ctor.load_package_obj(AID("test_obj"));
@@ -121,8 +136,7 @@ TEST_F(test_object_constructor, load_simple_class_object)
 TEST_F(test_object_constructor, load_returns_cached_on_second_call)
 {
     auto& lc = test::package::instance().get_load_context();
-    setup_test_level_path(lc);
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
     auto result1 = ctor.load_package_obj(AID("test_obj"));
@@ -148,9 +162,7 @@ TEST_F(test_object_constructor, load_nonexistent_object_fails)
 TEST_F(test_object_constructor, load_invalid_path_fails)
 {
     auto& lc = test::package::instance().get_load_context();
-    setup_test_level_path(lc);
-    lc.get_objects_mapping().add(AID("does_not_exist"), false,
-                                 APATH("game_objects/does_not_exist.aobj"));
+    setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
     auto result = ctor.load_package_obj(AID("does_not_exist"));
@@ -187,12 +199,7 @@ TEST_F(test_object_constructor, load_default_class_returns_cached)
 TEST_F(test_object_constructor, load_complex_object_with_dependencies)
 {
     auto& lc = test::package::instance().get_load_context();
-    setup_test_level_path(lc);
-    lc.get_objects_mapping()
-        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
-        .add(AID("test_complex_mesh_object"), false,
-             APATH("game_objects/test_complex_mesh_object.aobj"));
+    setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
     auto result = ctor.load_package_obj(AID("test_complex_mesh_object"));
@@ -221,8 +228,7 @@ TEST_F(test_object_constructor, load_complex_object_with_dependencies)
 TEST_F(test_object_constructor, load_produces_class_flags)
 {
     auto& lc = test::package::instance().get_load_context();
-    setup_test_level_path(lc);
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
     auto result = ctor.load_package_obj(AID("test_obj"));
@@ -238,8 +244,7 @@ TEST_F(test_object_constructor, load_produces_class_flags)
 TEST_F(test_object_constructor, load_sets_package)
 {
     auto& lc = test::package::instance().get_load_context();
-    setup_test_level_path(lc);
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
     auto result = ctor.load_package_obj(AID("test_obj"));

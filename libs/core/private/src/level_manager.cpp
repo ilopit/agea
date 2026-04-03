@@ -69,14 +69,22 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
         return nullptr;
     }
 
-    // Build mapping by scanning VFS for .aobj files
-    if (!l.m_mapping->build_from_vfs(vfs_root, false))
+    auto& vfs = glob::glob_state().getr_vfs();
+    auto real = vfs.real_path(vfs_root);
+    if (!real.has_value())
+    {
+        ALOG_ERROR("Level real path not found: {}", vfs_root.str());
+        return nullptr;
+    }
+
+    l.m_backend = vfs.mount(vfs_root, real.value(), {.index_filter = ".aobj"});
+    if (!l.m_backend)
     {
         ALOG_LAZY_ERROR;
         return nullptr;
     }
 
-    l.m_occ->set_vfs_mount(vfs_root).set_objects_mapping(l.m_mapping);
+    l.m_occ->set_vfs_mount(vfs_root);
 
     {
         auto packages = container["packages"];
@@ -100,16 +108,27 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
     }
 
     {
+        bool load_ok = true;
         object_constructor ctor(l.m_occ.get(), object_load_type::instance_obj);
-        for (auto& i : l.m_mapping->m_items)
-        {
-            auto result = ctor.load_level_obj(i.first);
-
-            if (!result)
+        vfs.enumerate_objects(
+            vfs_root,
+            [&](std::string_view name, const vfs::rid&) -> bool
             {
-                return nullptr;
-            }
+                auto result = ctor.load_level_obj(AID(std::string(name)));
+                if (!result)
+                {
+                    load_ok = false;
+                    return false;
+                }
+                return true;
+            },
+            l.m_backend);
+
+        if (!load_ok)
+        {
+            return nullptr;
         }
+
         auto loaded = l.m_occ->reset_loaded_objects();
         for (auto& i : loaded)
         {

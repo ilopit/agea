@@ -22,7 +22,6 @@ level::level(const utils::id& id)
     m_occ = object_load_context_builder()
                 .set_instance_local_set(&m_instance_local_cs)
                 .set_ownable_cache(&m_objects)
-                .set_objects_mapping(m_mapping)
                 .set_level(this)
                 .build();
 }

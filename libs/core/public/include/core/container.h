@@ -7,7 +7,6 @@
 #include "core/caches/line_cache.h"
 
 #include "core/object_constructor.h"
-#include "core/objects_mapping.h"
 
 #include <utils/id.h>
 #include <utils/path.h>
@@ -136,7 +135,6 @@ protected:
     cache_set m_instance_local_cs;
 
     line_cache<std::shared_ptr<root::smart_object>> m_objects;
-    std::shared_ptr<object_mapping> m_mapping;
     std::unique_ptr<object_load_context> m_occ;
 };
 

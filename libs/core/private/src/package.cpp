@@ -57,7 +57,6 @@ package::unload()
 
     container::unload();
 
-    m_mapping->clear();
     m_proto_local_cs.clear();
 
     m_state = package_state::unloaded;
@@ -75,23 +74,31 @@ package::init()
 
     auto vfs_root = vfs_paths::package_root(m_id);
     KRG_check(vfs_paths::is_valid_package_root(vfs_root), "Package must be under data://packages/");
-    if (!glob::glob_state().getr_vfs().exists(vfs_root))
+
+    auto& vfs = glob::glob_state().getr_vfs();
+    auto real = vfs.real_path(vfs_root);
+    if (!real.has_value())
     {
         ALOG_ERROR("Package not found: {}", vfs_root.str());
         return false;
     }
     m_vfs_root = vfs_root;
 
-    ALOG_INFO("Loading package [{0}] at [{1}]", m_id.cstr(), vfs_root.str());
-
-    // Load mapping from package manifest
-    auto mapping = std::make_shared<object_mapping>();
-    if (!mapping->build_object_mapping(vfs_root / "package.acfg"))
+    m_backend = vfs.mount(
+        vfs_root,
+        real.value(),
+        {.index_filter = ".aobj",
+         .load_order = {"class/textures", "class/shader_effects", "class/materials",
+                        "class/meshes", "class/components"}});
+    if (!m_backend)
     {
         ALOG_LAZY_ERROR;
         return false;
     }
-    m_occ->set_vfs_mount(vfs_root).set_objects_mapping(mapping);
+
+    ALOG_INFO("Loading package [{0}] at [{1}]", m_id.cstr(), vfs_root.str());
+
+    m_occ->set_vfs_mount(vfs_root);
 
     return true;
 }
@@ -170,18 +177,23 @@ package::destroy_render_types()
 void
 package::load_dynamic_part()
 {
+    auto& vfs = glob::glob_state().getr_vfs();
     object_constructor ctor(m_occ.get());
-    for (auto& i : m_occ->get_objects_mapping().m_items)
-    {
-        if (i.second.is_class)
+
+    vfs.enumerate_objects(
+        m_vfs_root,
+        [&](std::string_view name, const vfs::rid&) -> bool
         {
-            auto obj = ctor.load_package_obj(i.first);
+            auto id = AID(std::string(name));
+            auto obj = ctor.load_package_obj(id);
             if (obj)
             {
-                ctor.instantiate_obj(*obj.value(), i.first);
+                ctor.instantiate_obj(*obj.value(), id);
             }
-        }
-    }
+            return true;
+        },
+        m_backend);
+
     m_occ->reset_loaded_objects();
 }
 

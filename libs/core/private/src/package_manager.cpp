@@ -160,18 +160,26 @@ package_manager::load_package(const utils::id& id)
     }
 
     {
-        auto& mapping = new_package->get_load_context().get_objects_mapping();
+        auto& vfs = glob::glob_state().getr_vfs();
+        bool load_ok = true;
         object_constructor ctor(&new_package->get_load_context());
-        for (auto& i : mapping.m_items)
-        {
-            KRG_check(i.second.is_class, "Load only package!");
-
-            auto result = ctor.load_package_obj(i.first);
-            if (!result)
+        vfs.enumerate_objects(
+            new_package->get_vfs_root(),
+            [&](std::string_view name, const vfs::rid&) -> bool
             {
-                ALOG_LAZY_ERROR;
-                return false;
-            }
+                auto result = ctor.load_package_obj(AID(std::string(name)));
+                if (!result)
+                {
+                    load_ok = false;
+                    return false;
+                }
+                return true;
+            },
+            new_package->m_backend);
+
+        if (!load_ok)
+        {
+            return false;
         }
         new_package->get_load_context().reset_loaded_objects();
     }
@@ -230,19 +238,19 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
 
     std::map<std::string, std::string> class_paths;
 
+    auto& vfs = glob::glob_state().getr_vfs();
     for (auto& i : p.m_objects)
     {
-        auto id = i->get_id();
-        auto itr = p.m_mapping->m_items.find(id);
-
-        if (itr == p.m_mapping->m_items.end())
+        auto obj_id = i->get_id();
+        auto found = vfs.find_object(p.get_vfs_root(), obj_id.str());
+        if (!found)
         {
             ALOG_LAZY_ERROR;
             return false;
         }
+        auto relative = std::string(found->relative());
 
-        auto& mapping = itr->second;
-        auto full_obj_path = full_path / mapping.p;
+        auto full_obj_path = full_path / relative;
 
         auto parent = full_obj_path.parent();
         if (!parent.empty())
@@ -251,10 +259,7 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
         }
 
         auto result = object_constructor::object_save(*i, full_obj_path);
-        if (mapping.is_class)
-        {
-            class_paths[i->get_id().str()] = mapping.p.str();
-        }
+        class_paths[obj_id.str()] = relative;
 
         if (result != result_code::ok)
         {

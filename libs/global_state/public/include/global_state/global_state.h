@@ -35,7 +35,6 @@ class package;
 class static_package;
 class package_manager;
 class level_manager;
-class object_mapping;
 class id_generator;
 class queues;
 

@@ -170,11 +170,19 @@ round_trip_save_load(root::smart_object& obj,
     }
 
     auto& reload_lc = reload_level.get_load_context();
-    auto mount = mount_for_test(save_path.parent().fs());
-    reload_lc.set_vfs_mount(mount);
 
-    auto reload_id = AID(std::string("rt_") + obj.get_id().str());
-    reload_lc.get_objects_mapping().add(reload_id, false, APATH(save_path.file_name()));
+    // The file index uses filename stem as key — derive reload ID from it
+    std::string stem;
+    {
+        auto fname = save_path.file_name();
+        auto dot = fname.rfind('.');
+        stem = (dot != std::string::npos) ? fname.substr(0, dot) : fname;
+    }
+    auto reload_id = AID(stem);
+
+    auto& vfs = glob::glob_state().getr_vfs();
+    vfs.mount(vfs::rid("data", "test_reload"), save_path.parent().fs(), {.index_filter = ".aobj"});
+    reload_lc.set_vfs_mount(vfs::rid("data", "test_reload"));
 
     std::vector<root::smart_object*> reloaded;
     auto result =
@@ -251,6 +259,23 @@ struct test_preloaded_test_package : base_test
         }
     }
 
+    vfs::backend* m_test_backend = nullptr;
+
+    // Mount test.alvl as a backend with index
+    void
+    setup_test_backend(core::object_load_context& lc)
+    {
+        if (m_test_backend)
+        {
+            return;  // already mounted
+        }
+        auto& vfs = glob::glob_state().getr_vfs();
+        auto real = vfs.real_path(vfs::rid("data", "levels/test.alvl"));
+        m_test_backend = vfs.mount(
+            vfs::rid("data", "levels/test.alvl"), real.value(), {.index_filter = ".aobj"});
+        lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
+    }
+
     void
     TearDown()
     {
@@ -324,12 +349,7 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping()
-        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
-        .add(AID("test_complex_mesh_object"), false,
-             APATH("game_objects/test_complex_mesh_object.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto result = test_object_load(AID("test_complex_mesh_object"),
@@ -384,8 +404,7 @@ TEST_F(test_preloaded_test_package, load_class_object_by_id)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto result = test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
@@ -404,8 +423,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_by_id)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto result =
@@ -424,8 +442,7 @@ TEST_F(test_preloaded_test_package, object_clone_class_object)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result =
@@ -452,8 +469,7 @@ TEST_F(test_preloaded_test_package, object_clone_as_instance)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result =
@@ -479,8 +495,7 @@ TEST_F(test_preloaded_test_package, object_instantiate_from_proto)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result =
@@ -507,8 +522,7 @@ TEST_F(test_preloaded_test_package, diff_object_properties_same_objects)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded1;
     auto result1 =
@@ -529,10 +543,7 @@ TEST_F(test_preloaded_test_package, diff_object_properties_different_types_fails
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping()
-        .add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"))
-        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded1, loaded2;
     auto result1 =
@@ -570,9 +581,7 @@ TEST_F(test_preloaded_test_package, load_invalid_path_fails)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("does_not_exist"), false,
-                                 APATH("game_objects/does_not_exist.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto result =
@@ -585,8 +594,7 @@ TEST_F(test_preloaded_test_package, cached_object_returns_same_pointer)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded1, loaded2;
     auto result1 =
@@ -605,12 +613,7 @@ TEST_F(test_preloaded_test_package, object_instantiate_complex_object_with_compo
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping()
-        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
-        .add(AID("test_complex_mesh_object"), false,
-             APATH("game_objects/test_complex_mesh_object.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result = test_object_load(AID("test_complex_mesh_object"),
@@ -648,13 +651,8 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
+    setup_test_backend(lc);
     std::vector<root::smart_object*> loaded;
-    lc.get_objects_mapping()
-        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
-        .add(AID("test_complex_mesh_object"), false,
-             APATH("game_objects/test_complex_mesh_object.aobj"));
 
     auto result = test_object_load(AID("test_complex_mesh_object"),
                                    core::object_load_type::instance_obj, lc, loaded);
@@ -774,14 +772,12 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
 
-    // 1. Load object from existing test file
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false,
-                                 APATH("game_objects/test_obj_custom_layout.aobj"));
+    // 1. Load object from existing test file (use stem as ID)
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
-    auto load_result =
-        test_object_load(AID("test_obj"), core::object_load_type::class_obj, lc, loaded);
+    auto load_result = test_object_load(AID("test_obj_custom_layout"),
+                                        core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value()->as<root::game_object>();
@@ -812,8 +808,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_simple)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false, APATH("game_objects/test_obj.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result =
@@ -856,12 +851,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping()
-        .add(AID("test_mesh"), false, APATH("game_objects/test_mesh.aobj"))
-        .add(AID("test_material"), false, APATH("game_objects/test_material.aobj"))
-        .add(AID("test_complex_mesh_object"), false,
-             APATH("game_objects/test_complex_mesh_object.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result = test_object_load(AID("test_complex_mesh_object"),
@@ -895,9 +885,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_material)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_material"), false,
-                                 APATH("game_objects/test_material.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result =
@@ -927,9 +915,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_idempotent)
 {
     auto& lc = test::package::instance().get_load_context();
     auto& gs = glob::glob_state();
-    lc.set_vfs_mount(vfs::rid("data", "levels/test.alvl"));
-    lc.get_objects_mapping().add(AID("test_obj"), false,
-                                 APATH("game_objects/test_obj_custom_layout.aobj"));
+    setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
     auto load_result =

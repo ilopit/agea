@@ -3,9 +3,10 @@
 #include "core/model_fwds.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/line_cache.h"
-#include "core/objects_mapping.h"
 #include "core/model_minimal.h"
 #include "core/container.h"
+
+namespace kryga::vfs { class backend; }
 
 #include <packages/root/model/core_types/vec3.h>
 
@@ -121,6 +122,7 @@ private:
                       const root::smart_object::construct_params& p);
 
     level_state m_state = level_state::unloaded;
+    vfs::backend* m_backend = nullptr;
 
     line_cache<root::game_object*> m_tickable_objects;
 

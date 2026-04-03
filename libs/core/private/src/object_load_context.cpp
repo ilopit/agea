@@ -5,6 +5,8 @@
 #include "core/package.h"
 #include "global_state/global_state.h"
 
+#include <vfs/vfs.h>
+
 #include "utils/kryga_log.h"
 #include "utils/check.h"
 
@@ -34,13 +36,14 @@ object_load_context::resolve(const utils::id& id, vfs::rid& out) const
         return false;
     }
 
-    auto itr = m_object_mapping->m_items.find(id);
-    if (itr == m_object_mapping->m_items.end())
+    auto& vfs = glob::glob_state().getr_vfs();
+    auto result = vfs.find_object(m_vfs_root, id.str());
+    if (!result)
     {
         return false;
     }
 
-    out = m_vfs_root / itr->second.p.str();
+    out = *result;
     return true;
 }
 

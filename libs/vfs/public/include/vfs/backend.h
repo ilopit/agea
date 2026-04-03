@@ -1,5 +1,7 @@
 #pragma once
 
+#include "vfs/file_index.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -25,6 +27,8 @@ struct file_info
 
 class backend
 {
+    friend class virtual_file_system;
+
 public:
     explicit backend(bool read_only = false)
         : m_read_only(read_only)
@@ -42,10 +46,10 @@ public:
         return m_read_only;
     }
 
-private:
-    bool m_read_only = false;
+    // Build index of files matching ext_filter. Uses enumerate() internally.
+    bool
+    build_index(std::string_view ext_filter = {});
 
-public:
     virtual file_info
     stat(std::string_view relative_path) const = 0;
 
@@ -71,6 +75,10 @@ public:
 
     virtual std::optional<std::filesystem::path>
     real_path(std::string_view relative_path) const = 0;
+
+private:
+    bool m_read_only = false;
+    file_index m_index;
 };
 
 }  // namespace vfs

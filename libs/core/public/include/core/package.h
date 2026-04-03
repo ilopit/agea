@@ -4,9 +4,10 @@
 #include "core/caches/line_cache.h"
 
 #include "core/object_constructor.h"
-#include "core/objects_mapping.h"
 
 #include "core/container.h"
+
+namespace kryga::vfs { class backend; }
 
 namespace kryga
 {
@@ -284,6 +285,7 @@ public:
 private:
     package_state m_state = package_state::unloaded;
     package_type m_type = package_type::pt_nan;
+    vfs::backend* m_backend = nullptr;
 
     cache_set m_proto_local_cs;
 
