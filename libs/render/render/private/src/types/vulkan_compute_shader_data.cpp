@@ -26,7 +26,9 @@ compute_shader_data::reset()
 {
     auto device = glob::glob_state().get_render_device();
     if (!device)
+    {
         return;
+    }
 
     if (m_pipeline != VK_NULL_HANDLE)
     {

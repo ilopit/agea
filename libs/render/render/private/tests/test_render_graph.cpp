@@ -36,8 +36,8 @@ TEST(RenderGraph, register_buffer)
 TEST(RenderGraph, register_image)
 {
     vulkan_render_graph graph;
-    graph.register_image(AID("albedo"), 1920, 1080, VK_FORMAT_R8G8B8A8_UNORM,
-                         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    graph.register_image(
+        AID("albedo"), 1920, 1080, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
     auto ref = graph.write(AID("albedo"));
     ASSERT_NE(ref.resource, nullptr);
@@ -95,8 +95,8 @@ TEST(RenderGraph, add_compute_pass)
     vulkan_render_graph graph;
     graph.register_buffer(AID("data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-    auto pass = graph.add_compute_pass(AID("compute"), {graph.read_write(AID("data"))},
-                                       [](VkCommandBuffer) {});
+    auto pass = graph.add_compute_pass(
+        AID("compute"), {graph.read_write(AID("data"))}, [](VkCommandBuffer) {});
 
     ASSERT_NE(pass, nullptr);
     ASSERT_EQ(graph.get_pass_count(), 1u);
@@ -159,8 +159,8 @@ TEST(RenderGraph, compile_multiple_passes)
     graph.register_buffer(AID("b"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     graph.add_compute_pass(AID("pass1"), {graph.write(AID("a"))}, [](VkCommandBuffer) {});
-    graph.add_compute_pass(AID("pass2"), {graph.read(AID("a")), graph.write(AID("b"))},
-                           [](VkCommandBuffer) {});
+    graph.add_compute_pass(
+        AID("pass2"), {graph.read(AID("a")), graph.write(AID("b"))}, [](VkCommandBuffer) {});
 
     EXPECT_TRUE(graph.compile());
     ASSERT_EQ(graph.get_execution_order().size(), 2u);
@@ -181,10 +181,10 @@ TEST(RenderGraph, linear_dependency_chain)
     // Pass order in code: 1, 2, 3
     // Dependency chain: pass1 writes A -> pass2 reads A, writes B -> pass3 reads B
     graph.add_compute_pass(AID("pass1"), {graph.write(AID("A"))}, [](VkCommandBuffer) {});
-    graph.add_compute_pass(AID("pass2"), {graph.read(AID("A")), graph.write(AID("B"))},
-                           [](VkCommandBuffer) {});
-    graph.add_compute_pass(AID("pass3"), {graph.read(AID("B")), graph.write(AID("C"))},
-                           [](VkCommandBuffer) {});
+    graph.add_compute_pass(
+        AID("pass2"), {graph.read(AID("A")), graph.write(AID("B"))}, [](VkCommandBuffer) {});
+    graph.add_compute_pass(
+        AID("pass3"), {graph.read(AID("B")), graph.write(AID("C"))}, [](VkCommandBuffer) {});
 
     EXPECT_TRUE(graph.compile());
 
@@ -231,10 +231,10 @@ TEST(RenderGraph, diamond_dependency)
     graph.register_buffer(AID("D"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     graph.add_compute_pass(AID("pass1"), {graph.write(AID("A"))}, [](VkCommandBuffer) {});
-    graph.add_compute_pass(AID("pass2"), {graph.read(AID("A")), graph.write(AID("B"))},
-                           [](VkCommandBuffer) {});
-    graph.add_compute_pass(AID("pass3"), {graph.read(AID("A")), graph.write(AID("C"))},
-                           [](VkCommandBuffer) {});
+    graph.add_compute_pass(
+        AID("pass2"), {graph.read(AID("A")), graph.write(AID("B"))}, [](VkCommandBuffer) {});
+    graph.add_compute_pass(
+        AID("pass3"), {graph.read(AID("A")), graph.write(AID("C"))}, [](VkCommandBuffer) {});
     graph.add_compute_pass(AID("pass4"),
                            {graph.read(AID("B")), graph.read(AID("C")), graph.write(AID("D"))},
                            [](VkCommandBuffer) {});
@@ -299,26 +299,41 @@ TEST(RenderGraph, deferred_rendering_pipeline_structure)
     vulkan_render_graph graph;
 
     // Resources
-    graph.register_image(AID("gbuffer_albedo"), 1920, 1080, VK_FORMAT_R8G8B8A8_UNORM,
+    graph.register_image(AID("gbuffer_albedo"),
+                         1920,
+                         1080,
+                         VK_FORMAT_R8G8B8A8_UNORM,
                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    graph.register_image(AID("gbuffer_normal"), 1920, 1080, VK_FORMAT_R16G16B16A16_SFLOAT,
+    graph.register_image(AID("gbuffer_normal"),
+                         1920,
+                         1080,
+                         VK_FORMAT_R16G16B16A16_SFLOAT,
                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    graph.register_image(AID("gbuffer_depth"), 1920, 1080, VK_FORMAT_D32_SFLOAT,
+    graph.register_image(AID("gbuffer_depth"),
+                         1920,
+                         1080,
+                         VK_FORMAT_D32_SFLOAT,
                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-    graph.register_image(AID("hdr_buffer"), 1920, 1080, VK_FORMAT_R16G16B16A16_SFLOAT,
+    graph.register_image(AID("hdr_buffer"),
+                         1920,
+                         1080,
+                         VK_FORMAT_R16G16B16A16_SFLOAT,
                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
     graph.import_resource(AID("backbuffer"), rg_resource_type::image);
 
     // GBuffer pass (compute for testing purposes - real would be graphics)
     graph.add_compute_pass(AID("gbuffer"),
-                           {graph.write(AID("gbuffer_albedo")), graph.write(AID("gbuffer_normal")),
+                           {graph.write(AID("gbuffer_albedo")),
+                            graph.write(AID("gbuffer_normal")),
                             graph.write(AID("gbuffer_depth"))},
                            [](VkCommandBuffer) {});
 
     // Lighting pass
     graph.add_compute_pass(AID("lighting"),
-                           {graph.read(AID("gbuffer_albedo")), graph.read(AID("gbuffer_normal")),
-                            graph.read(AID("gbuffer_depth")), graph.write(AID("hdr_buffer"))},
+                           {graph.read(AID("gbuffer_albedo")),
+                            graph.read(AID("gbuffer_normal")),
+                            graph.read(AID("gbuffer_depth")),
+                            graph.write(AID("hdr_buffer"))},
                            [](VkCommandBuffer) {});
 
     // Tonemap pass

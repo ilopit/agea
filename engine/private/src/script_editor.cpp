@@ -64,8 +64,8 @@ script_text_editor::handle()
 
     auto lua_api = glob::glob_state().get_lua();
 
-    ImGui::Begin("Script Editor", &m_show,
-                 ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+    ImGui::Begin(
+        "Script Editor", &m_show, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 
     if (ImGui::BeginMenuBar())
@@ -76,38 +76,56 @@ script_text_editor::handle()
             {
             }
             if (ImGui::MenuItem("Quit", "Alt-F4"))
+            {
                 return;
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit"))
         {
             bool ro = editor.IsReadOnly();
             if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+            {
                 editor.SetReadOnly(ro);
+            }
             ImGui::Separator();
 
             if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && editor.CanUndo()))
+            {
                 editor.Undo();
+            }
             if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
+            {
                 editor.Redo();
+            }
 
             ImGui::Separator();
 
             if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
+            {
                 editor.Copy();
+            }
             if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
+            {
                 editor.Cut();
+            }
             if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
+            {
                 editor.Delete();
-            if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr,
-                                !ro && ImGui::GetClipboardText() != nullptr))
+            }
+            if (ImGui::MenuItem(
+                    "Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+            {
                 editor.Paste();
+            }
 
             ImGui::Separator();
 
             if (ImGui::MenuItem("Select all", nullptr, nullptr))
+            {
                 editor.SetSelection(TextEditor::Coordinates(),
                                     TextEditor::Coordinates(editor.GetTotalLines(), 0));
+            }
 
             ImGui::EndMenu();
         }

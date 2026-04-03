@@ -50,7 +50,8 @@ load_compute_shader_module(const kryga::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_module_data>(module, std::move(compiled.spirv),
+    sd = std::make_shared<shader_module_data>(module,
+                                              std::move(compiled.spirv),
                                               VK_SHADER_STAGE_COMPUTE_BIT,
                                               std::move(compiled.reflection));
 
@@ -102,8 +103,8 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
         layout_cis[i].bindingCount = (uint32_t)bindings_storage[i].size();
         layout_cis[i].pBindings = bindings_storage[i].data();
 
-        vkCreateDescriptorSetLayout(device->vk_device(), &layout_cis[i], nullptr,
-                                    &cs.m_set_layout[i]);
+        vkCreateDescriptorSetLayout(
+            device->vk_device(), &layout_cis[i], nullptr, &cs.m_set_layout[i]);
     }
 
     // Create pipeline layout
@@ -123,8 +124,8 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
     pipeline_layout_ci.pushConstantRangeCount = (uint32_t)push_constant_ranges.size();
     pipeline_layout_ci.pPushConstantRanges = push_constant_ranges.data();
 
-    vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr,
-                           &cs.m_pipeline_layout);
+    vkCreatePipelineLayout(
+        device->vk_device(), &pipeline_layout_ci, nullptr, &cs.m_pipeline_layout);
 
     return cs.m_pipeline_layout != VK_NULL_HANDLE;
 }
@@ -168,8 +169,9 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
     pipeline_ci.stage = shader_stage_ci;
     pipeline_ci.layout = cs_data.m_pipeline_layout;
 
-    if (vkCreateComputePipelines(device->vk_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr,
-                                 &cs_data.m_pipeline) != VK_SUCCESS)
+    if (vkCreateComputePipelines(
+            device->vk_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &cs_data.m_pipeline) !=
+        VK_SUCCESS)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;

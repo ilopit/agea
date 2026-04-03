@@ -73,8 +73,10 @@ animation_system::register_skeleton(const utils::id& id,
     reg.inverse_bind_matrices = std::move(inverse_bind_matrices);
     reg.joint_remaps = std::move(joint_remaps);
 
-    ALOG_INFO("Registered skeleton '{}' with {} joints, {} mesh bones", id.cstr(),
-              reg.skeleton.num_joints(), reg.inverse_bind_matrices.size());
+    ALOG_INFO("Registered skeleton '{}' with {} joints, {} mesh bones",
+              id.cstr(),
+              reg.skeleton.num_joints(),
+              reg.inverse_bind_matrices.size());
 
     m_skeletons[id] = std::move(reg);
 }
@@ -85,8 +87,10 @@ animation_system::register_animation(const utils::id& skel_id,
                                      ozz::animation::Animation&& anim)
 {
     m_animations[skel_id][anim_id] = std::move(anim);
-    ALOG_INFO("Registered animation '{}' for skeleton '{}' (duration: {:.2f}s)", anim_id.cstr(),
-              skel_id.cstr(), m_animations[skel_id][anim_id].duration());
+    ALOG_INFO("Registered animation '{}' for skeleton '{}' (duration: {:.2f}s)",
+              anim_id.cstr(),
+              skel_id.cstr(),
+              m_animations[skel_id][anim_id].duration());
 }
 
 utils::id

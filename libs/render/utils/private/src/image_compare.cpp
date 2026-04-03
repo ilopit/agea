@@ -30,7 +30,9 @@ float
 compute_ssim(const uint8_t* img_a, const uint8_t* img_b, uint32_t width, uint32_t height)
 {
     if (width < SSIM_WINDOW || height < SSIM_WINDOW)
+    {
         return 1.0f;
+    }
 
     uint32_t windows_x = width / SSIM_WINDOW;
     uint32_t windows_y = height / SSIM_WINDOW;
@@ -97,7 +99,9 @@ compare_images(const uint8_t* actual, const uint8_t* expected, const image_compa
     result.total_pixels = params.width * params.height;
 
     if (params.generate_diff_image)
+    {
         result.diff_image.resize(result.total_pixels * 4);
+    }
 
     for (uint32_t i = 0; i < result.total_pixels; ++i)
     {
@@ -111,7 +115,9 @@ compare_images(const uint8_t* actual, const uint8_t* expected, const image_compa
                      db <= params.pixel_tolerance && da <= params.pixel_tolerance;
 
         if (!match)
+        {
             ++result.diff_pixel_count;
+        }
 
         if (params.generate_diff_image)
         {
@@ -152,7 +158,9 @@ load_png(const std::string& path, uint32_t& width, uint32_t& height)
     int w = 0, h = 0, channels = 0;
     uint8_t* data = stbi_load(path.c_str(), &w, &h, &channels, 4);
     if (!data)
+    {
         return {};
+    }
 
     width = static_cast<uint32_t>(w);
     height = static_cast<uint32_t>(h);

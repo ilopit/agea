@@ -25,8 +25,16 @@ run_binary(construct_params p, std::uint64_t& result_code)
     LPSTR wd_ptr = p.working_dir.empty() ? NULL : wd.data();
 
     auto path_to_binary = p.path_to_binary.str();
-    BOOL result = ::CreateProcessA(path_to_binary.c_str(), &p.arguments[0], NULL, NULL, FALSE, 0,
-                                   NULL, wd_ptr, &startup_info, &process_info);
+    BOOL result = ::CreateProcessA(path_to_binary.c_str(),
+                                   &p.arguments[0],
+                                   NULL,
+                                   NULL,
+                                   FALSE,
+                                   0,
+                                   NULL,
+                                   wd_ptr,
+                                   &startup_info,
+                                   &process_info);
 
     if (result)
     {

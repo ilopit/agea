@@ -28,7 +28,9 @@ memory_backend::stat(std::string_view relative_path) const
 
     auto it = m_files.find(key);
     if (it == m_files.end())
+    {
         return {};
+    }
 
     file_info info;
     info.exists = true;
@@ -43,7 +45,9 @@ memory_backend::read_all(std::string_view relative_path, std::vector<uint8_t>& o
 {
     auto it = m_files.find(std::string(relative_path));
     if (it == m_files.end())
+    {
         return false;
+    }
 
     out = it->second.data;
     return true;
@@ -98,12 +102,16 @@ memory_backend::enumerate(std::string_view relative_path,
 {
     std::string prefix(relative_path);
     if (!prefix.empty() && prefix.back() != '/')
+    {
         prefix += '/';
+    }
 
     for (auto& [path, entry] : m_files)
     {
         if (!path.starts_with(prefix) && !relative_path.empty())
+        {
             continue;
+        }
 
         if (relative_path.empty() || path.starts_with(prefix))
         {
@@ -111,22 +119,30 @@ memory_backend::enumerate(std::string_view relative_path,
             {
                 auto rest = std::string_view(path).substr(prefix.size());
                 if (rest.find('/') != std::string_view::npos)
+                {
                     continue;
+                }
             }
 
             if (!ext_filter.empty())
             {
                 auto dot = path.rfind('.');
                 if (dot == std::string::npos)
+                {
                     continue;
+                }
 
                 auto ext = std::string_view(path).substr(dot);
                 if (ext != ext_filter)
+                {
                     continue;
+                }
             }
 
             if (!visitor(path, false))
+            {
                 return false;
+            }
         }
     }
 

@@ -137,14 +137,15 @@ public:
 
         state_mutator__vulkan_render_loader::set(glob::glob_state());
 
-        glob::glob_state().getr_vulkan_render().init(TEST_WIDTH, TEST_HEIGHT,
-                                                     render_mode::instanced, true);
+        glob::glob_state().getr_vulkan_render().init(
+            TEST_WIDTH, TEST_HEIGHT, render_mode::instanced, true);
 
         auto extent = VkExtent3D{TEST_WIDTH, TEST_HEIGHT, 1};
 
         auto img_ci = vk_utils::make_image_create_info(
             VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, extent);
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            extent);
 
         VmaAllocationCreateInfo alloc_ci = {};
         alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -302,8 +303,8 @@ protected:
         kryga::utils::buffer idx_buf(indices.size() * sizeof(gpu::uint));
         std::memcpy(idx_buf.data(), indices.data(), idx_buf.size());
 
-        return loader.create_mesh(id, vert_buf.make_view<gpu::vertex_data>(),
-                                  idx_buf.make_view<gpu::uint>());
+        return loader.create_mesh(
+            id, vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
     }
 
     // Create a shader effect from the lit shader source files
@@ -426,8 +427,8 @@ protected:
         kryga::utils::buffer idx_buf(indices.size() * sizeof(gpu::uint));
         std::memcpy(idx_buf.data(), indices.data(), idx_buf.size());
 
-        return loader.create_mesh(id, vert_buf.make_view<gpu::vertex_data>(),
-                                  idx_buf.make_view<gpu::uint>());
+        return loader.create_mesh(
+            id, vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
     }
 
     // Create a sphere mesh (UV sphere) for testing rounded geometry
@@ -447,7 +448,8 @@ protected:
             for (uint32_t j = 0; j <= slices; ++j)
             {
                 float theta = 2.0f * glm::pi<float>() * float(j) / float(slices);
-                glm::vec3 n = {std::sin(phi) * std::cos(theta), std::cos(phi),
+                glm::vec3 n = {std::sin(phi) * std::cos(theta),
+                               std::cos(phi),
                                std::sin(phi) * std::sin(theta)};
                 glm::vec3 p = n * radius;
                 glm::vec2 uv = {float(j) / float(slices), float(i) / float(stacks)};
@@ -473,8 +475,8 @@ protected:
         kryga::utils::buffer idx_buf(indices.size() * sizeof(gpu::uint));
         std::memcpy(idx_buf.data(), indices.data(), idx_buf.size());
 
-        return loader.create_mesh(id, vert_buf.make_view<gpu::vertex_data>(),
-                                  idx_buf.make_view<gpu::uint>());
+        return loader.create_mesh(
+            id, vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
     }
 
     // Common scene setup: camera + directional light + floor
@@ -497,8 +499,8 @@ protected:
 
         // Camera
         gpu::camera_data cam;
-        cam.projection = glm::perspective(glm::radians(60.0f),
-                                          float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
+        cam.projection = glm::perspective(
+            glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
         cam.projection[1][1] *= -1.0f;
         cam.view = glm::lookAt(eye, center, glm::vec3(0, 1, 0));
         cam.inv_projection = glm::inverse(cam.projection);
@@ -524,17 +526,21 @@ protected:
         auto floor_obj_id = AID((prefix + "_floor").c_str());
 
         auto* floor_mesh = create_plane_mesh(floor_mesh_id, {0.6f, 0.6f, 0.6f}, 10.0f);
-        auto floor_gpu = make_solid_color_gpu_data({0.3f, 0.3f, 0.3f}, {0.6f, 0.6f, 0.6f},
-                                                   {0.2f, 0.2f, 0.2f}, 8.0f);
+        auto floor_gpu = make_solid_color_gpu_data(
+            {0.3f, 0.3f, 0.3f}, {0.6f, 0.6f, 0.6f}, {0.2f, 0.2f, 0.2f}, 8.0f);
         std::vector<texture_sampler_data> no_tex;
-        auto* floor_mat = loader.create_material(floor_mat_id, AID("solid_color_material"), no_tex,
-                                                 *se, floor_gpu);
+        auto* floor_mat = loader.create_material(
+            floor_mat_id, AID("solid_color_material"), no_tex, *se, floor_gpu);
         renderer.add_material(floor_mat);
 
         auto model = glm::translate(glm::mat4(1.0f), glm::vec3(0, -1, 0));
         scene.floor_obj = cache.objects.alloc(floor_obj_id);
-        loader.update_object(*scene.floor_obj, *floor_mat, *floor_mesh, model,
-                             glm::transpose(glm::inverse(model)), {0, -1, 0});
+        loader.update_object(*scene.floor_obj,
+                             *floor_mat,
+                             *floor_mesh,
+                             model,
+                             glm::transpose(glm::inverse(model)),
+                             {0, -1, 0});
         renderer.schedule_to_drawing(scene.floor_obj);
         renderer.schedule_game_data_gpu_upload(scene.floor_obj);
         renderer.schedule_material_data_gpu_upload(floor_mat);
@@ -623,16 +629,16 @@ TEST_F(visual_pipeline_test, lit_cubes)
 
     // Create two materials with different colors
     // High ambient so cubes are clearly visible even without working shadow maps
-    auto red_gpu = make_solid_color_gpu_data({0.8f, 0.1f, 0.1f}, {0.8f, 0.1f, 0.1f},
-                                             {1.0f, 1.0f, 1.0f}, 32.0f);
-    auto blue_gpu = make_solid_color_gpu_data({0.1f, 0.1f, 0.8f}, {0.1f, 0.1f, 0.8f},
-                                              {1.0f, 1.0f, 1.0f}, 32.0f);
+    auto red_gpu = make_solid_color_gpu_data(
+        {0.8f, 0.1f, 0.1f}, {0.8f, 0.1f, 0.1f}, {1.0f, 1.0f, 1.0f}, 32.0f);
+    auto blue_gpu = make_solid_color_gpu_data(
+        {0.1f, 0.1f, 0.8f}, {0.1f, 0.1f, 0.8f}, {1.0f, 1.0f, 1.0f}, 32.0f);
 
     std::vector<texture_sampler_data> no_textures;
-    auto* red_mat = loader.create_material(AID("mat_red"), AID("solid_color_material"), no_textures,
-                                           *se, red_gpu);
-    auto* blue_mat = loader.create_material(AID("mat_blue"), AID("solid_color_material"),
-                                            no_textures, *se, blue_gpu);
+    auto* red_mat = loader.create_material(
+        AID("mat_red"), AID("solid_color_material"), no_textures, *se, red_gpu);
+    auto* blue_mat = loader.create_material(
+        AID("mat_blue"), AID("solid_color_material"), no_textures, *se, blue_gpu);
     ASSERT_TRUE(red_mat);
     ASSERT_TRUE(blue_mat);
 
@@ -656,10 +662,18 @@ TEST_F(visual_pipeline_test, lit_cubes)
     auto model1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
     auto model2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-    loader.update_object(*obj1, *red_mat, *cube1_mesh, model1, glm::transpose(glm::inverse(model1)),
+    loader.update_object(*obj1,
+                         *red_mat,
+                         *cube1_mesh,
+                         model1,
+                         glm::transpose(glm::inverse(model1)),
                          {-1.0f, 0.0f, 0.0f});
-    loader.update_object(*obj2, *blue_mat, *cube2_mesh, model2,
-                         glm::transpose(glm::inverse(model2)), {1.0f, 0.0f, 0.0f});
+    loader.update_object(*obj2,
+                         *blue_mat,
+                         *cube2_mesh,
+                         model2,
+                         glm::transpose(glm::inverse(model2)),
+                         {1.0f, 0.0f, 0.0f});
 
     renderer.schedule_to_drawing(obj1);
     renderer.schedule_to_drawing(obj2);
@@ -722,8 +736,8 @@ TEST_F(visual_pipeline_test, directional_light)
 
     // White cube in the center
     auto* mesh = create_cube_mesh(AID("cube_dir"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.2f, 0.2f, 0.2f}, {0.9f, 0.9f, 0.9f}, {1.0f, 1.0f, 1.0f},
-                                         64.0f);
+    auto gpu = make_solid_color_gpu_data(
+        {0.2f, 0.2f, 0.2f}, {0.9f, 0.9f, 0.9f}, {1.0f, 1.0f, 1.0f}, 64.0f);
     std::vector<texture_sampler_data> no_tex;
     auto* mat =
         loader.create_material(AID("mat_white"), AID("solid_color_material"), no_tex, *se, gpu);
@@ -763,16 +777,20 @@ TEST_F(visual_pipeline_test, point_light)
 
     // White sphere
     auto* sphere_mesh = create_sphere_mesh(AID("sphere_pt"), {1, 1, 1});
-    auto sphere_gpu = make_solid_color_gpu_data({0.1f, 0.1f, 0.1f}, {0.8f, 0.8f, 0.8f},
-                                                {1.0f, 1.0f, 1.0f}, 64.0f);
-    auto* sphere_mat = loader.create_material(AID("mat_sphere_pt"), AID("solid_color_material"),
-                                              no_tex, *se, sphere_gpu);
+    auto sphere_gpu = make_solid_color_gpu_data(
+        {0.1f, 0.1f, 0.1f}, {0.8f, 0.8f, 0.8f}, {1.0f, 1.0f, 1.0f}, 64.0f);
+    auto* sphere_mat = loader.create_material(
+        AID("mat_sphere_pt"), AID("solid_color_material"), no_tex, *se, sphere_gpu);
     renderer.add_material(sphere_mat);
 
     auto model = glm::mat4(1.0f);
     auto* sphere_obj = cache.objects.alloc(AID("sphere_pt"));
-    loader.update_object(*sphere_obj, *sphere_mat, *sphere_mesh, model,
-                         glm::transpose(glm::inverse(model)), {0, 0, 0});
+    loader.update_object(*sphere_obj,
+                         *sphere_mat,
+                         *sphere_mesh,
+                         model,
+                         glm::transpose(glm::inverse(model)),
+                         {0, 0, 0});
     renderer.schedule_to_drawing(sphere_obj);
     renderer.schedule_game_data_gpu_upload(sphere_obj);
     renderer.schedule_material_data_gpu_upload(sphere_mat);
@@ -828,16 +846,20 @@ TEST_F(visual_pipeline_test, spot_light)
 
     // Small cube on the floor as target
     auto* cube_mesh = create_cube_mesh(AID("cube_spot"), {1, 1, 1});
-    auto cube_gpu = make_solid_color_gpu_data({0.15f, 0.15f, 0.15f}, {0.7f, 0.7f, 0.7f},
-                                              {0.5f, 0.5f, 0.5f}, 32.0f);
-    auto* cube_mat = loader.create_material(AID("mat_spot_cube"), AID("solid_color_material"),
-                                            no_tex, *se, cube_gpu);
+    auto cube_gpu = make_solid_color_gpu_data(
+        {0.15f, 0.15f, 0.15f}, {0.7f, 0.7f, 0.7f}, {0.5f, 0.5f, 0.5f}, 32.0f);
+    auto* cube_mat = loader.create_material(
+        AID("mat_spot_cube"), AID("solid_color_material"), no_tex, *se, cube_gpu);
     renderer.add_material(cube_mat);
 
     auto model = glm::translate(glm::mat4(1.0f), glm::vec3(0, -0.5f, 0));
     auto* cube_obj = cache.objects.alloc(AID("cube_spot"));
-    loader.update_object(*cube_obj, *cube_mat, *cube_mesh, model,
-                         glm::transpose(glm::inverse(model)), {0, -0.5f, 0});
+    loader.update_object(*cube_obj,
+                         *cube_mat,
+                         *cube_mesh,
+                         model,
+                         glm::transpose(glm::inverse(model)),
+                         {0, -0.5f, 0});
     renderer.schedule_to_drawing(cube_obj);
     renderer.schedule_game_data_gpu_upload(cube_obj);
     renderer.schedule_material_data_gpu_upload(cube_mat);
@@ -882,17 +904,17 @@ TEST_F(visual_pipeline_test, directional_shadows)
 
     // Two cubes casting shadows on the floor
     auto* mesh = create_cube_mesh(AID("cube_shadow"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.6f, 0.1f, 0.1f}, {0.8f, 0.2f, 0.2f}, {1.0f, 1.0f, 1.0f},
-                                         32.0f);
-    auto* mat = loader.create_material(AID("mat_shadow_red"), AID("solid_color_material"), no_tex,
-                                       *se, gpu);
+    auto gpu = make_solid_color_gpu_data(
+        {0.6f, 0.1f, 0.1f}, {0.8f, 0.2f, 0.2f}, {1.0f, 1.0f, 1.0f}, 32.0f);
+    auto* mat = loader.create_material(
+        AID("mat_shadow_red"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
 
     // Cube 1 — elevated left
     auto model1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.5f, 0.0f));
     auto* obj1 = cache.objects.alloc(AID("shadow_cube1"));
-    loader.update_object(*obj1, *mat, *mesh, model1, glm::transpose(glm::inverse(model1)),
-                         {-1.5f, 0.5f, 0});
+    loader.update_object(
+        *obj1, *mat, *mesh, model1, glm::transpose(glm::inverse(model1)), {-1.5f, 0.5f, 0});
     renderer.schedule_to_drawing(obj1);
     renderer.schedule_game_data_gpu_upload(obj1);
 
@@ -900,8 +922,8 @@ TEST_F(visual_pipeline_test, directional_shadows)
     auto model2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 1.0f, 0.0f)) *
                   glm::scale(glm::mat4(1.0f), glm::vec3(0.7f, 2.0f, 0.7f));
     auto* obj2 = cache.objects.alloc(AID("shadow_cube2"));
-    loader.update_object(*obj2, *mat, *mesh, model2, glm::transpose(glm::inverse(model2)),
-                         {1.5f, 1.0f, 0});
+    loader.update_object(
+        *obj2, *mat, *mesh, model2, glm::transpose(glm::inverse(model2)), {1.5f, 1.0f, 0});
     renderer.schedule_to_drawing(obj2);
     renderer.schedule_game_data_gpu_upload(obj2);
 
@@ -933,20 +955,20 @@ TEST_F(visual_pipeline_test, material_properties)
     std::vector<texture_sampler_data> no_tex;
 
     // Matte red (high ambient, low specular, low shininess)
-    auto matte_gpu = make_solid_color_gpu_data({0.5f, 0.1f, 0.1f}, {0.7f, 0.15f, 0.15f},
-                                               {0.1f, 0.1f, 0.1f}, 4.0f);
-    auto* matte_mat = loader.create_material(AID("mat_matte"), AID("solid_color_material"), no_tex,
-                                             *se, matte_gpu);
+    auto matte_gpu = make_solid_color_gpu_data(
+        {0.5f, 0.1f, 0.1f}, {0.7f, 0.15f, 0.15f}, {0.1f, 0.1f, 0.1f}, 4.0f);
+    auto* matte_mat = loader.create_material(
+        AID("mat_matte"), AID("solid_color_material"), no_tex, *se, matte_gpu);
     // Glossy green (low ambient, high specular, high shininess)
-    auto glossy_gpu = make_solid_color_gpu_data({0.05f, 0.2f, 0.05f}, {0.1f, 0.6f, 0.1f},
-                                                {1.0f, 1.0f, 1.0f}, 128.0f);
-    auto* glossy_mat = loader.create_material(AID("mat_glossy"), AID("solid_color_material"),
-                                              no_tex, *se, glossy_gpu);
+    auto glossy_gpu = make_solid_color_gpu_data(
+        {0.05f, 0.2f, 0.05f}, {0.1f, 0.6f, 0.1f}, {1.0f, 1.0f, 1.0f}, 128.0f);
+    auto* glossy_mat = loader.create_material(
+        AID("mat_glossy"), AID("solid_color_material"), no_tex, *se, glossy_gpu);
     // Metallic blue (medium ambient, high specular matching diffuse)
-    auto metal_gpu = make_solid_color_gpu_data({0.05f, 0.05f, 0.15f}, {0.1f, 0.1f, 0.5f},
-                                               {0.6f, 0.6f, 1.0f}, 256.0f);
-    auto* metal_mat = loader.create_material(AID("mat_metal"), AID("solid_color_material"), no_tex,
-                                             *se, metal_gpu);
+    auto metal_gpu = make_solid_color_gpu_data(
+        {0.05f, 0.05f, 0.15f}, {0.1f, 0.1f, 0.5f}, {0.6f, 0.6f, 1.0f}, 256.0f);
+    auto* metal_mat = loader.create_material(
+        AID("mat_metal"), AID("solid_color_material"), no_tex, *se, metal_gpu);
 
     renderer.add_material(matte_mat);
     renderer.add_material(glossy_mat);
@@ -970,8 +992,8 @@ TEST_F(visual_pipeline_test, material_properties)
     {
         auto model = glm::translate(glm::mat4(1.0f), glm::vec3(e.x, 0, 0));
         auto* obj = cache.objects.alloc(AID(e.name));
-        loader.update_object(*obj, *e.mat, *sphere_mesh, model, glm::transpose(glm::inverse(model)),
-                             {e.x, 0, 0});
+        loader.update_object(
+            *obj, *e.mat, *sphere_mesh, model, glm::transpose(glm::inverse(model)), {e.x, 0, 0});
         renderer.schedule_to_drawing(obj);
         renderer.schedule_game_data_gpu_upload(obj);
         renderer.schedule_material_data_gpu_upload(e.mat);
@@ -1004,8 +1026,8 @@ TEST_F(visual_pipeline_test, combined_lights)
 
     // Three spheres in a row
     auto* mesh = create_sphere_mesh(AID("sphere_comb"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.1f, 0.1f, 0.1f}, {0.7f, 0.7f, 0.7f}, {1.0f, 1.0f, 1.0f},
-                                         64.0f);
+    auto gpu = make_solid_color_gpu_data(
+        {0.1f, 0.1f, 0.1f}, {0.7f, 0.7f, 0.7f}, {1.0f, 1.0f, 1.0f}, 64.0f);
     auto* mat =
         loader.create_material(AID("mat_comb"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
@@ -1016,8 +1038,8 @@ TEST_F(visual_pipeline_test, combined_lights)
     {
         auto model = glm::translate(glm::mat4(1.0f), glm::vec3(positions[i], 0, 0));
         auto* obj = cache.objects.alloc(AID(names[i]));
-        loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)),
-                             {positions[i], 0, 0});
+        loader.update_object(
+            *obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), {positions[i], 0, 0});
         renderer.schedule_to_drawing(obj);
         renderer.schedule_game_data_gpu_upload(obj);
     }
@@ -1074,8 +1096,8 @@ TEST_F(visual_pipeline_test, object_transforms)
     std::vector<texture_sampler_data> no_tex;
 
     auto* mesh = create_cube_mesh(AID("cube_xform"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.15f, 0.15f, 0.3f}, {0.3f, 0.3f, 0.8f},
-                                         {1.0f, 1.0f, 1.0f}, 32.0f);
+    auto gpu = make_solid_color_gpu_data(
+        {0.15f, 0.15f, 0.3f}, {0.3f, 0.3f, 0.8f}, {1.0f, 1.0f, 1.0f}, 32.0f);
     auto* mat =
         loader.create_material(AID("mat_xform"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
@@ -1143,21 +1165,25 @@ TEST_F(visual_pipeline_test, alpha_blending)
     // Opaque white cube behind (z = -1), unlit
     auto white_gpu =
         make_solid_color_gpu_data({1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, 1.0f);
-    auto* white_mat = loader.create_material(AID("alpha_mat_white"), AID("solid_color_material"),
-                                             no_tex, *se_unlit, white_gpu);
+    auto* white_mat = loader.create_material(
+        AID("alpha_mat_white"), AID("solid_color_material"), no_tex, *se_unlit, white_gpu);
     renderer.add_material(white_mat);
 
     auto model_back = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -1));
     auto* obj_back = cache.objects.alloc(AID("alpha_white"));
-    loader.update_object(*obj_back, *white_mat, *white_cube, model_back,
-                         glm::transpose(glm::inverse(model_back)), {0, 0, -1});
+    loader.update_object(*obj_back,
+                         *white_mat,
+                         *white_cube,
+                         model_back,
+                         glm::transpose(glm::inverse(model_back)),
+                         {0, 0, -1});
     renderer.schedule_to_drawing(obj_back);
     renderer.schedule_game_data_gpu_upload(obj_back);
     renderer.schedule_material_data_gpu_upload(white_mat);
 
     // Transparent blue cube in front (z = 1), alpha = 0.3
-    auto blue_gpu = make_solid_color_alpha_gpu_data({0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f},
-                                                    {0.0f, 0.0f, 0.0f}, 1.0f, 0.3f);
+    auto blue_gpu = make_solid_color_alpha_gpu_data(
+        {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}, 1.0f, 0.3f);
     auto* blue_mat = loader.create_material(
         AID("alpha_mat_blue"), AID("solid_color_alpha_material"), no_tex, *se_trans, blue_gpu);
     renderer.add_material(blue_mat);
@@ -1165,8 +1191,12 @@ TEST_F(visual_pipeline_test, alpha_blending)
     auto model_front = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 1));
     auto* obj_front = cache.objects.alloc(AID("alpha_blue"));
     obj_front->queue_id = "transparent";
-    loader.update_object(*obj_front, *blue_mat, *blue_cube, model_front,
-                         glm::transpose(glm::inverse(model_front)), {0, 0, 1});
+    loader.update_object(*obj_front,
+                         *blue_mat,
+                         *blue_cube,
+                         model_front,
+                         glm::transpose(glm::inverse(model_front)),
+                         {0, 0, 1});
     renderer.schedule_to_drawing(obj_front);
     renderer.schedule_game_data_gpu_upload(obj_front);
     renderer.schedule_material_data_gpu_upload(blue_mat);
@@ -1197,16 +1227,16 @@ TEST_F(visual_pipeline_test, outline_rendering)
     auto* mesh = create_cube_mesh(AID("outline_cube"), {1, 1, 1});
 
     // Left cube — no outline (reference)
-    auto green_gpu = make_solid_color_gpu_data({0.1f, 0.4f, 0.1f}, {0.2f, 0.7f, 0.2f},
-                                               {0.5f, 1.0f, 0.5f}, 32.0f);
-    auto* green_mat = loader.create_material(AID("outline_mat_green"), AID("solid_color_material"),
-                                             no_tex, *se, green_gpu);
+    auto green_gpu = make_solid_color_gpu_data(
+        {0.1f, 0.4f, 0.1f}, {0.2f, 0.7f, 0.2f}, {0.5f, 1.0f, 0.5f}, 32.0f);
+    auto* green_mat = loader.create_material(
+        AID("outline_mat_green"), AID("solid_color_material"), no_tex, *se, green_gpu);
     renderer.add_material(green_mat);
 
     auto m_left = glm::translate(glm::mat4(1.0f), glm::vec3(-2, 0, 0));
     auto* obj_left = cache.objects.alloc(AID("outline_left"));
-    loader.update_object(*obj_left, *green_mat, *mesh, m_left, glm::transpose(glm::inverse(m_left)),
-                         {-2, 0, 0});
+    loader.update_object(
+        *obj_left, *green_mat, *mesh, m_left, glm::transpose(glm::inverse(m_left)), {-2, 0, 0});
     renderer.schedule_to_drawing(obj_left);
     renderer.schedule_game_data_gpu_upload(obj_left);
 
@@ -1214,8 +1244,8 @@ TEST_F(visual_pipeline_test, outline_rendering)
     auto* obj_right = cache.objects.alloc(AID("outline_right"));
     obj_right->outlined = true;
     auto m_right = glm::translate(glm::mat4(1.0f), glm::vec3(2, 0, 0));
-    loader.update_object(*obj_right, *green_mat, *mesh, m_right,
-                         glm::transpose(glm::inverse(m_right)), {2, 0, 0});
+    loader.update_object(
+        *obj_right, *green_mat, *mesh, m_right, glm::transpose(glm::inverse(m_right)), {2, 0, 0});
     renderer.schedule_to_drawing(obj_right);
     renderer.schedule_game_data_gpu_upload(obj_right);
 
@@ -1267,28 +1297,28 @@ TEST_F(visual_pipeline_test, unlit_shader)
     auto* mesh = create_sphere_mesh(AID("unlit_sphere"), {1, 1, 1});
 
     // Left — lit sphere (should show shading)
-    auto lit_gpu = make_solid_color_gpu_data({0.2f, 0.5f, 0.2f}, {0.3f, 0.8f, 0.3f},
-                                             {1.0f, 1.0f, 1.0f}, 64.0f);
-    auto* lit_mat = loader.create_material(AID("unlit_mat_lit"), AID("solid_color_material"),
-                                           no_tex, *se_lit, lit_gpu);
+    auto lit_gpu = make_solid_color_gpu_data(
+        {0.2f, 0.5f, 0.2f}, {0.3f, 0.8f, 0.3f}, {1.0f, 1.0f, 1.0f}, 64.0f);
+    auto* lit_mat = loader.create_material(
+        AID("unlit_mat_lit"), AID("solid_color_material"), no_tex, *se_lit, lit_gpu);
     renderer.add_material(lit_mat);
 
     auto m1 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0, 0));
     auto* obj_lit = cache.objects.alloc(AID("unlit_obj_lit"));
-    loader.update_object(*obj_lit, *lit_mat, *mesh, m1, glm::transpose(glm::inverse(m1)),
-                         {-1.5f, 0, 0});
+    loader.update_object(
+        *obj_lit, *lit_mat, *mesh, m1, glm::transpose(glm::inverse(m1)), {-1.5f, 0, 0});
 
     // Right — unlit sphere (flat color, no shading)
-    auto unlit_gpu = make_solid_color_gpu_data({0.2f, 0.5f, 0.2f}, {0.3f, 0.8f, 0.3f},
-                                               {1.0f, 1.0f, 1.0f}, 64.0f);
-    auto* unlit_mat = loader.create_material(AID("unlit_mat_flat"), AID("solid_color_material"),
-                                             no_tex, *se_unlit, unlit_gpu);
+    auto unlit_gpu = make_solid_color_gpu_data(
+        {0.2f, 0.5f, 0.2f}, {0.3f, 0.8f, 0.3f}, {1.0f, 1.0f, 1.0f}, 64.0f);
+    auto* unlit_mat = loader.create_material(
+        AID("unlit_mat_flat"), AID("solid_color_material"), no_tex, *se_unlit, unlit_gpu);
     renderer.add_material(unlit_mat);
 
     auto m2 = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0, 0));
     auto* obj_unlit = cache.objects.alloc(AID("unlit_obj_flat"));
-    loader.update_object(*obj_unlit, *unlit_mat, *mesh, m2, glm::transpose(glm::inverse(m2)),
-                         {1.5f, 0, 0});
+    loader.update_object(
+        *obj_unlit, *unlit_mat, *mesh, m2, glm::transpose(glm::inverse(m2)), {1.5f, 0, 0});
 
     for (auto* o : {obj_lit, obj_unlit})
     {
@@ -1346,8 +1376,8 @@ TEST_F(visual_pipeline_test, directional_light_switching)
     std::vector<texture_sampler_data> no_tex;
 
     auto* mesh = create_sphere_mesh(AID("dls_sphere"), {1, 1, 1});
-    auto gpu = make_solid_color_gpu_data({0.2f, 0.2f, 0.2f}, {0.8f, 0.8f, 0.8f}, {1.0f, 1.0f, 1.0f},
-                                         64.0f);
+    auto gpu = make_solid_color_gpu_data(
+        {0.2f, 0.2f, 0.2f}, {0.8f, 0.8f, 0.8f}, {1.0f, 1.0f, 1.0f}, 64.0f);
     auto* mat =
         loader.create_material(AID("dls_mat"), AID("solid_color_material"), no_tex, *se, gpu);
     renderer.add_material(mat);
@@ -1415,67 +1445,79 @@ TEST_F(visual_pipeline_test, complex_scene)
 
     // --- Floor (large matte plane) ---
     auto* floor_mesh = create_plane_mesh(AID("cs_floor_mesh"), {0.5f, 0.5f, 0.5f}, 20.0f);
-    auto floor_gpu = make_solid_color_gpu_data({0.25f, 0.25f, 0.25f}, {0.5f, 0.5f, 0.5f},
-                                               {0.1f, 0.1f, 0.1f}, 4.0f);
-    auto* floor_mat = loader.create_material(AID("cs_mat_floor"), AID("solid_color_material"),
-                                             no_tex, *se_lit, floor_gpu);
+    auto floor_gpu = make_solid_color_gpu_data(
+        {0.25f, 0.25f, 0.25f}, {0.5f, 0.5f, 0.5f}, {0.1f, 0.1f, 0.1f}, 4.0f);
+    auto* floor_mat = loader.create_material(
+        AID("cs_mat_floor"), AID("solid_color_material"), no_tex, *se_lit, floor_gpu);
     renderer.add_material(floor_mat);
 
     auto floor_m = glm::translate(glm::mat4(1.0f), glm::vec3(0, -1.5f, 0));
     auto* floor_obj = cache.objects.alloc(AID("cs_floor"));
-    loader.update_object(*floor_obj, *floor_mat, *floor_mesh, floor_m,
-                         glm::transpose(glm::inverse(floor_m)), {0, -1.5f, 0});
+    loader.update_object(*floor_obj,
+                         *floor_mat,
+                         *floor_mesh,
+                         floor_m,
+                         glm::transpose(glm::inverse(floor_m)),
+                         {0, -1.5f, 0});
     renderer.schedule_to_drawing(floor_obj);
     renderer.schedule_game_data_gpu_upload(floor_obj);
     renderer.schedule_material_data_gpu_upload(floor_mat);
 
     // --- Metallic red cube (opaque, casting shadow) ---
     auto* cube_mesh = create_cube_mesh(AID("cs_cube_mesh"), {1, 1, 1});
-    auto red_gpu = make_solid_color_gpu_data({0.3f, 0.05f, 0.05f}, {0.7f, 0.1f, 0.1f},
-                                             {1.0f, 0.4f, 0.4f}, 128.0f);
-    auto* red_mat = loader.create_material(AID("cs_mat_red"), AID("solid_color_material"), no_tex,
-                                           *se_lit, red_gpu);
+    auto red_gpu = make_solid_color_gpu_data(
+        {0.3f, 0.05f, 0.05f}, {0.7f, 0.1f, 0.1f}, {1.0f, 0.4f, 0.4f}, 128.0f);
+    auto* red_mat = loader.create_material(
+        AID("cs_mat_red"), AID("solid_color_material"), no_tex, *se_lit, red_gpu);
     renderer.add_material(red_mat);
 
     auto red_m = glm::translate(glm::mat4(1.0f), glm::vec3(-3, 0, 0)) *
                  glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0, 1, 0));
     auto* red_obj = cache.objects.alloc(AID("cs_red_cube"));
-    loader.update_object(*red_obj, *red_mat, *cube_mesh, red_m, glm::transpose(glm::inverse(red_m)),
-                         {-3, 0, 0});
+    loader.update_object(
+        *red_obj, *red_mat, *cube_mesh, red_m, glm::transpose(glm::inverse(red_m)), {-3, 0, 0});
     renderer.schedule_to_drawing(red_obj);
     renderer.schedule_game_data_gpu_upload(red_obj);
     renderer.schedule_material_data_gpu_upload(red_mat);
 
     // --- Glossy green sphere (opaque, outlined) ---
     auto* sphere_mesh = create_sphere_mesh(AID("cs_sphere_mesh"), {1, 1, 1});
-    auto green_gpu = make_solid_color_gpu_data({0.05f, 0.2f, 0.05f}, {0.1f, 0.7f, 0.1f},
-                                               {0.8f, 1.0f, 0.8f}, 256.0f);
-    auto* green_mat = loader.create_material(AID("cs_mat_green"), AID("solid_color_material"),
-                                             no_tex, *se_lit, green_gpu);
+    auto green_gpu = make_solid_color_gpu_data(
+        {0.05f, 0.2f, 0.05f}, {0.1f, 0.7f, 0.1f}, {0.8f, 1.0f, 0.8f}, 256.0f);
+    auto* green_mat = loader.create_material(
+        AID("cs_mat_green"), AID("solid_color_material"), no_tex, *se_lit, green_gpu);
     renderer.add_material(green_mat);
 
     auto green_m = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, 0));
     auto* green_obj = cache.objects.alloc(AID("cs_green_sphere"));
     green_obj->outlined = true;
-    loader.update_object(*green_obj, *green_mat, *sphere_mesh, green_m,
-                         glm::transpose(glm::inverse(green_m)), {0, 0, 0});
+    loader.update_object(*green_obj,
+                         *green_mat,
+                         *sphere_mesh,
+                         green_m,
+                         glm::transpose(glm::inverse(green_m)),
+                         {0, 0, 0});
     renderer.schedule_to_drawing(green_obj);
     renderer.schedule_game_data_gpu_upload(green_obj);
     renderer.schedule_material_data_gpu_upload(green_mat);
 
     // --- Transparent blue cube (overlapping green sphere) ---
-    auto trans_gpu = make_solid_color_alpha_gpu_data({0.05f, 0.05f, 0.3f}, {0.1f, 0.1f, 0.5f},
-                                                     {0.5f, 0.5f, 1.0f}, 32.0f, 0.4f);
-    auto* trans_mat = loader.create_material(AID("cs_mat_trans"), AID("solid_color_alpha_material"),
-                                             no_tex, *se_trans, trans_gpu);
+    auto trans_gpu = make_solid_color_alpha_gpu_data(
+        {0.05f, 0.05f, 0.3f}, {0.1f, 0.1f, 0.5f}, {0.5f, 0.5f, 1.0f}, 32.0f, 0.4f);
+    auto* trans_mat = loader.create_material(
+        AID("cs_mat_trans"), AID("solid_color_alpha_material"), no_tex, *se_trans, trans_gpu);
     renderer.add_material(trans_mat);
 
     auto trans_m = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0, 1.5f)) *
                    glm::scale(glm::mat4(1.0f), glm::vec3(1.5f, 1.5f, 1.5f));
     auto* trans_obj = cache.objects.alloc(AID("cs_trans_cube"));
     trans_obj->queue_id = "transparent";
-    loader.update_object(*trans_obj, *trans_mat, *cube_mesh, trans_m,
-                         glm::transpose(glm::inverse(trans_m)), {1.0f, 0, 1.5f});
+    loader.update_object(*trans_obj,
+                         *trans_mat,
+                         *cube_mesh,
+                         trans_m,
+                         glm::transpose(glm::inverse(trans_m)),
+                         {1.0f, 0, 1.5f});
     renderer.schedule_to_drawing(trans_obj);
     renderer.schedule_game_data_gpu_upload(trans_obj);
     renderer.schedule_material_data_gpu_upload(trans_mat);
@@ -1483,31 +1525,39 @@ TEST_F(visual_pipeline_test, complex_scene)
     // --- Unlit marker cube (small, bright yellow, no lighting) ---
     auto unlit_gpu =
         make_solid_color_gpu_data({1.0f, 0.9f, 0.0f}, {1.0f, 0.9f, 0.0f}, {0, 0, 0}, 1.0f);
-    auto* unlit_mat = loader.create_material(AID("cs_mat_unlit"), AID("solid_color_material"),
-                                             no_tex, *se_unlit, unlit_gpu);
+    auto* unlit_mat = loader.create_material(
+        AID("cs_mat_unlit"), AID("solid_color_material"), no_tex, *se_unlit, unlit_gpu);
     renderer.add_material(unlit_mat);
 
     auto unlit_m = glm::translate(glm::mat4(1.0f), glm::vec3(3, 1.5f, -2)) *
                    glm::scale(glm::mat4(1.0f), glm::vec3(0.3f));
     auto* unlit_obj = cache.objects.alloc(AID("cs_unlit_marker"));
-    loader.update_object(*unlit_obj, *unlit_mat, *cube_mesh, unlit_m,
-                         glm::transpose(glm::inverse(unlit_m)), {3, 1.5f, -2});
+    loader.update_object(*unlit_obj,
+                         *unlit_mat,
+                         *cube_mesh,
+                         unlit_m,
+                         glm::transpose(glm::inverse(unlit_m)),
+                         {3, 1.5f, -2});
     renderer.schedule_to_drawing(unlit_obj);
     renderer.schedule_game_data_gpu_upload(unlit_obj);
     renderer.schedule_material_data_gpu_upload(unlit_mat);
 
     // --- Tall scaled pillar (non-uniform transform, casting shadow) ---
-    auto pillar_gpu = make_solid_color_gpu_data({0.15f, 0.1f, 0.05f}, {0.4f, 0.3f, 0.15f},
-                                                {0.3f, 0.2f, 0.1f}, 16.0f);
-    auto* pillar_mat = loader.create_material(AID("cs_mat_pillar"), AID("solid_color_material"),
-                                              no_tex, *se_lit, pillar_gpu);
+    auto pillar_gpu = make_solid_color_gpu_data(
+        {0.15f, 0.1f, 0.05f}, {0.4f, 0.3f, 0.15f}, {0.3f, 0.2f, 0.1f}, 16.0f);
+    auto* pillar_mat = loader.create_material(
+        AID("cs_mat_pillar"), AID("solid_color_material"), no_tex, *se_lit, pillar_gpu);
     renderer.add_material(pillar_mat);
 
     auto pillar_m = glm::translate(glm::mat4(1.0f), glm::vec3(3, 0.5f, 0)) *
                     glm::scale(glm::mat4(1.0f), glm::vec3(0.5f, 4.0f, 0.5f));
     auto* pillar_obj = cache.objects.alloc(AID("cs_pillar"));
-    loader.update_object(*pillar_obj, *pillar_mat, *cube_mesh, pillar_m,
-                         glm::transpose(glm::inverse(pillar_m)), {3, 0.5f, 0});
+    loader.update_object(*pillar_obj,
+                         *pillar_mat,
+                         *cube_mesh,
+                         pillar_m,
+                         glm::transpose(glm::inverse(pillar_m)),
+                         {3, 0.5f, 0});
     renderer.schedule_to_drawing(pillar_obj);
     renderer.schedule_game_data_gpu_upload(pillar_obj);
     renderer.schedule_material_data_gpu_upload(pillar_mat);

@@ -122,7 +122,8 @@ reflection_type::as_string() const
     for (auto p : m_properties)
     {
         result += std::format("  {0}:{1}:{2}\n",
-                              p->rtype ? p->rtype->type_name.str() : std::string("custom"), p->name,
+                              p->rtype ? p->rtype->type_name.str() : std::string("custom"),
+                              p->name,
                               p->rtype ? p->rtype->type_id : -1);
     }
     result += "functions:\n";

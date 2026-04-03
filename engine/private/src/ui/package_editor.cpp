@@ -35,7 +35,8 @@ package_editor::handle()
                 int i = 0;
                 for (auto& obj : p.second->get_objects())
                 {
-                    if (ImGui::TreeNodeEx((void*)(std::intptr_t)(i), ImGuiTreeNodeFlags_Bullet,
+                    if (ImGui::TreeNodeEx((void*)(std::intptr_t)(i),
+                                          ImGuiTreeNodeFlags_Bullet,
                                           obj->get_id().cstr()))
                     {
                         if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())

@@ -6,6 +6,7 @@ AllowShortLoopsOnASingleLine: true
 AlwaysBreakAfterDefinitionReturnType: true
 AlwaysBreakAfterReturnType: All
 BasedOnStyle: Google
+BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBinaryOperators: false
 BreakBeforeBraces: Allman

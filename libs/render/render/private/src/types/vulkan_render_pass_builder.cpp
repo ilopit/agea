@@ -150,7 +150,8 @@ render_pass_builder::build()
         for (uint32_t i = 0; i < image_count; ++i)
         {
             rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-                glob::glob_state().getr_render_device().get_vma_allocator_provider(), dimg_info,
+                glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+                dimg_info,
                 dimg_allocinfo);
 
             auto depth_image_view_ci = vk_utils::make_imageview_create_info(
@@ -189,7 +190,8 @@ render_pass_builder::build()
         for (uint32_t i = 0; i < image_count; ++i)
         {
             rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-                glob::glob_state().getr_render_device().get_vma_allocator_provider(), dimg_info,
+                glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+                dimg_info,
                 dimg_allocinfo);
 
             int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;

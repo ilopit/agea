@@ -62,8 +62,8 @@ TEST_F(shader_reflection_test, convert_single_ubo_to_layout)
     auto ds = make_descriptor_set(0, {make_ubo_binding("material", 0)});
 
     vulkan_descriptor_set_layout_data layout;
-    vulkan_shader_reflection_utils::convert_to_ds_layout_data(ds, VK_SHADER_STAGE_FRAGMENT_BIT,
-                                                              layout);
+    vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+        ds, VK_SHADER_STAGE_FRAGMENT_BIT, layout);
 
     EXPECT_EQ(layout.set_idx, 0u);
     ASSERT_EQ(layout.bindings.size(), 1u);
@@ -79,8 +79,8 @@ TEST_F(shader_reflection_test, convert_single_ssbo_to_layout)
     auto ds = make_descriptor_set(0, {make_ssbo_binding("objects", 0)});
 
     vulkan_descriptor_set_layout_data layout;
-    vulkan_shader_reflection_utils::convert_to_ds_layout_data(ds, VK_SHADER_STAGE_VERTEX_BIT,
-                                                              layout);
+    vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+        ds, VK_SHADER_STAGE_VERTEX_BIT, layout);
 
     EXPECT_EQ(layout.set_idx, 0u);
     ASSERT_EQ(layout.bindings.size(), 1u);
@@ -95,8 +95,8 @@ TEST_F(shader_reflection_test, convert_multiple_bindings_to_layout)
         make_descriptor_set(0, {make_ubo_binding("camera", 0), make_ssbo_binding("instances", 1)});
 
     vulkan_descriptor_set_layout_data layout;
-    vulkan_shader_reflection_utils::convert_to_ds_layout_data(ds, VK_SHADER_STAGE_VERTEX_BIT,
-                                                              layout);
+    vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+        ds, VK_SHADER_STAGE_VERTEX_BIT, layout);
 
     EXPECT_EQ(layout.set_idx, 0u);
     ASSERT_EQ(layout.bindings.size(), 2u);
@@ -116,8 +116,8 @@ TEST_F(shader_reflection_test, convert_preserves_set_index)
     auto ds = make_descriptor_set(2, {make_ubo_binding("data", 0)});
 
     vulkan_descriptor_set_layout_data layout;
-    vulkan_shader_reflection_utils::convert_to_ds_layout_data(ds, VK_SHADER_STAGE_FRAGMENT_BIT,
-                                                              layout);
+    vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+        ds, VK_SHADER_STAGE_FRAGMENT_BIT, layout);
 
     EXPECT_EQ(layout.set_idx, 2u);
 }
@@ -164,8 +164,8 @@ TEST_F(shader_reflection_test, dynamic_ubo_binding)
     auto ds = make_descriptor_set(0, {b});
 
     vulkan_descriptor_set_layout_data layout;
-    vulkan_shader_reflection_utils::convert_to_ds_layout_data(ds, VK_SHADER_STAGE_VERTEX_BIT,
-                                                              layout);
+    vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+        ds, VK_SHADER_STAGE_VERTEX_BIT, layout);
 
     ASSERT_EQ(layout.bindings.size(), 1u);
     // Should be converted to dynamic uniform buffer
@@ -184,8 +184,8 @@ TEST_F(shader_reflection_test, dynamic_ssbo_binding)
     auto ds = make_descriptor_set(0, {b});
 
     vulkan_descriptor_set_layout_data layout;
-    vulkan_shader_reflection_utils::convert_to_ds_layout_data(ds, VK_SHADER_STAGE_VERTEX_BIT,
-                                                              layout);
+    vulkan_shader_reflection_utils::convert_to_ds_layout_data(
+        ds, VK_SHADER_STAGE_VERTEX_BIT, layout);
 
     ASSERT_EQ(layout.bindings.size(), 1u);
     // Should be converted to dynamic storage buffer

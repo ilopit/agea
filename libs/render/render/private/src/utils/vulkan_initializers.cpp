@@ -442,7 +442,15 @@ make_insert_image_memory_barrier(VkCommandBuffer cmdbuffer,
     imageMemoryBarrier.image = image;
     imageMemoryBarrier.subresourceRange = subresource_range;
 
-    vkCmdPipelineBarrier(cmdbuffer, src_stage_mask, dst_stage_mask, 0, 0, nullptr, 0, nullptr, 1,
+    vkCmdPipelineBarrier(cmdbuffer,
+                         src_stage_mask,
+                         dst_stage_mask,
+                         0,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr,
+                         1,
                          &imageMemoryBarrier);
 }
 

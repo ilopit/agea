@@ -216,7 +216,8 @@ struct test_preloaded_test_package : base_test
             vfs.mount("tmp", std::make_unique<vfs::physical_backend>(root / "tmp"), 0);
             vfs.mount(
                 "generated",
-                std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
+                std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"),
+                0);
         }
         core::state_mutator__caches::set(gs);
         core::state_mutator__reflection_manager::set(gs);
@@ -352,8 +353,8 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
     setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
-    auto result = test_object_load(AID("test_complex_mesh_object"),
-                                   core::object_load_type::class_obj, lc, loaded);
+    auto result = test_object_load(
+        AID("test_complex_mesh_object"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -453,8 +454,8 @@ TEST_F(test_preloaded_test_package, object_clone_class_object)
     ASSERT_TRUE(validate_class_obj(*src));
 
     std::vector<root::smart_object*> cloned_objs;
-    auto clone_result = test_object_clone(*src, core::object_load_type::class_obj,
-                                          AID("test_obj_clone"), lc, cloned_objs);
+    auto clone_result = test_object_clone(
+        *src, core::object_load_type::class_obj, AID("test_obj_clone"), lc, cloned_objs);
 
     ASSERT_TRUE(clone_result.has_value());
     auto cloned = clone_result.value();
@@ -480,8 +481,11 @@ TEST_F(test_preloaded_test_package, object_clone_as_instance)
     ASSERT_TRUE(validate_class_obj(*src));
 
     std::vector<root::smart_object*> cloned_objs;
-    auto clone_result = test_object_clone(*src, core::object_load_type::instance_obj,
-                                          AID("test_obj_instance_clone"), lc, cloned_objs);
+    auto clone_result = test_object_clone(*src,
+                                          core::object_load_type::instance_obj,
+                                          AID("test_obj_instance_clone"),
+                                          lc,
+                                          cloned_objs);
 
     ASSERT_TRUE(clone_result.has_value());
     auto cloned = clone_result.value();
@@ -616,8 +620,8 @@ TEST_F(test_preloaded_test_package, object_instantiate_complex_object_with_compo
     setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = test_object_load(AID("test_complex_mesh_object"),
-                                        core::object_load_type::class_obj, lc, loaded);
+    auto load_result = test_object_load(
+        AID("test_complex_mesh_object"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
 
     auto proto = load_result.value()->as<root::game_object>();
@@ -654,8 +658,8 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
     setup_test_backend(lc);
     std::vector<root::smart_object*> loaded;
 
-    auto result = test_object_load(AID("test_complex_mesh_object"),
-                                   core::object_load_type::instance_obj, lc, loaded);
+    auto result = test_object_load(
+        AID("test_complex_mesh_object"), core::object_load_type::instance_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -731,8 +735,8 @@ TEST_F(test_preloaded_test_package, object_construct_invalid_type_fails)
 
     root::smart_object::construct_params params;
 
-    auto result = core::object_constructor(&lc).construct_obj(AID("nonexistent_type_xyz"),
-                                                              AID("should_fail"), params);
+    auto result = core::object_constructor(&lc).construct_obj(
+        AID("nonexistent_type_xyz"), AID("should_fail"), params);
 
     ASSERT_FALSE(result.has_value());
     ASSERT_EQ(result.error(), result_code::id_not_found);
@@ -776,8 +780,8 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
     setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = test_object_load(AID("test_obj_custom_layout"),
-                                        core::object_load_type::class_obj, lc, loaded);
+    auto load_result = test_object_load(
+        AID("test_obj_custom_layout"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value()->as<root::game_object>();
@@ -854,8 +858,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
     setup_test_backend(lc);
 
     std::vector<root::smart_object*> loaded;
-    auto load_result = test_object_load(AID("test_complex_mesh_object"),
-                                        core::object_load_type::class_obj, lc, loaded);
+    auto load_result = test_object_load(
+        AID("test_complex_mesh_object"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
     auto obj = load_result.value()->as<root::game_object>();
     ASSERT_TRUE(obj);
@@ -959,8 +963,8 @@ TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
 
     // Clone as class_obj to get a derived object that has class_obj set (required for save)
     std::vector<root::smart_object*> cloned_objs;
-    auto clone_result = test_object_clone(*proto, core::object_load_type::class_obj,
-                                          AID("rt_constructed_derived"), lc, cloned_objs);
+    auto clone_result = test_object_clone(
+        *proto, core::object_load_type::class_obj, AID("rt_constructed_derived"), lc, cloned_objs);
     ASSERT_TRUE(clone_result.has_value());
     auto derived = clone_result.value();
     ASSERT_TRUE(derived);

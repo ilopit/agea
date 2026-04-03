@@ -111,8 +111,8 @@ struct create_object_cmd : render_cmd::render_command_base
 
         auto* object_data = ctx.vr.get_cache().objects.alloc(id);
 
-        if (!ctx.loader.update_object(*object_data, *mat_data, *mesh_data, transform, normal_matrix,
-                                      position))
+        if (!ctx.loader.update_object(
+                *object_data, *mat_data, *mesh_data, transform, normal_matrix, position))
         {
             ALOG_LAZY_ERROR;
             return;
@@ -143,16 +143,20 @@ struct update_object_cmd : render_cmd::render_command_base
     {
         auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
         if (!object_data)
+        {
             return;
+        }
 
         auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
         auto* mat_data = ctx.loader.get_material_data(material_id);
 
         if (!mesh_data || !mat_data)
+        {
             return;
+        }
 
-        ctx.loader.update_object(*object_data, *mat_data, *mesh_data, transform, normal_matrix,
-                                 position);
+        ctx.loader.update_object(
+            *object_data, *mat_data, *mesh_data, transform, normal_matrix, position);
 
         object_data->gpu_data.bounding_radius = bounding_radius;
 
@@ -258,7 +262,9 @@ struct update_light_cmd : render_cmd::render_command_base
         {
             auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
             if (!rh)
+            {
                 return;
+            }
 
             rh->gpu_data.ambient = ambient;
             rh->gpu_data.diffuse = diffuse;
@@ -270,7 +276,9 @@ struct update_light_cmd : render_cmd::render_command_base
         {
             auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
             if (!rh)
+            {
                 return;
+            }
 
             rh->gpu_data.position = position;
             rh->gpu_data.ambient = ambient;
@@ -308,13 +316,17 @@ struct destroy_light_cmd : render_cmd::render_command_base
         {
             auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
             if (rh)
+            {
                 ctx.vr.get_cache().directional_lights.release(rh);
+            }
         }
         else
         {
             auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
             if (rh)
+            {
                 ctx.vr.get_cache().universal_lights.release(rh);
+            }
         }
     }
 };
@@ -658,7 +670,8 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
             auto& vfs = glob::glob_state().getr_vfs();
             auto pkg_root_rp = vfs.real_path(vfs::rid("data://packages"));
             bool found = false;
-            for (const auto& entry : std::filesystem::recursive_directory_iterator(pkg_root_rp.value()))
+            for (const auto& entry :
+                 std::filesystem::recursive_directory_iterator(pkg_root_rp.value()))
             {
                 if (!entry.is_regular_file())
                 {
@@ -755,7 +768,8 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
             }
         }
 
-        anim_sys.register_skeleton(skeleton_id, std::move(ozz_skeleton),
+        anim_sys.register_skeleton(skeleton_id,
+                                   std::move(ozz_skeleton),
                                    std::move(gltf_result.inverse_bind_matrices),
                                    std::move(joint_remaps));
 
@@ -773,12 +787,14 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
 
             auto vert_buf = std::make_shared<utils::buffer>(gltf_mesh.vertices.size() *
                                                             sizeof(gpu::skinned_vertex_data));
-            memcpy(vert_buf->data(), gltf_mesh.vertices.data(),
+            memcpy(vert_buf->data(),
+                   gltf_mesh.vertices.data(),
                    gltf_mesh.vertices.size() * sizeof(gpu::skinned_vertex_data));
 
             auto idx_buf =
                 std::make_shared<utils::buffer>(gltf_mesh.indices.size() * sizeof(gpu::uint));
-            memcpy(idx_buf->data(), gltf_mesh.indices.data(),
+            memcpy(idx_buf->data(),
+                   gltf_mesh.indices.data(),
                    gltf_mesh.indices.size() * sizeof(gpu::uint));
 
             anim_sys.set_skinned_mesh_created(skeleton_id);

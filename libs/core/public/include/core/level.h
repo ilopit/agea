@@ -6,7 +6,10 @@
 #include "core/model_minimal.h"
 #include "core/container.h"
 
-namespace kryga::vfs { class backend; }
+namespace kryga::vfs
+{
+class backend;
+}
 
 #include <packages/root/model/core_types/vec3.h>
 

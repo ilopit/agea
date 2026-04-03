@@ -54,8 +54,12 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
 {
     int tex_width = 0, tex_height = 0, tex_channels = 0;
 
-    void* pixels = stbi_load_from_memory((stbi_uc*)image_buffer.data(), (int)image_buffer.size(),
-                                         &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+    void* pixels = stbi_load_from_memory((stbi_uc*)image_buffer.data(),
+                                         (int)image_buffer.size(),
+                                         &tex_width,
+                                         &tex_height,
+                                         &tex_channels,
+                                         STBI_rgb_alpha);
     if (!pixels)
     {
         ALOG_LAZY_ERROR;

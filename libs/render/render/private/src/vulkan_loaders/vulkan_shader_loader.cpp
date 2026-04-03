@@ -74,8 +74,8 @@ load_data_shader(const kryga::utils::buffer& input,
         return result_code::failed;
     }
 
-    sd = std::make_shared<shader_module_data>(module, std::move(compiled.spirv), stage_bit,
-                                              std::move(compiled.reflection));
+    sd = std::make_shared<shader_module_data>(
+        module, std::move(compiled.spirv), stage_bit, std::move(compiled.reflection));
 
     return result_code::ok;
 }
@@ -123,7 +123,8 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
             ly.bindings.push_back(v);
         }
 
-        std::sort(ly.bindings.begin(), ly.bindings.end(),
+        std::sort(ly.bindings.begin(),
+                  ly.bindings.end(),
                   [](VkDescriptorSetLayoutBinding a, VkDescriptorSetLayoutBinding b)
                   { return a.binding < b.binding; });
 
@@ -140,8 +141,8 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
             continue;
         }
 
-        vkCreateDescriptorSetLayout(device->vk_device(), &ly.create_info, nullptr,
-                                    &se.m_set_layout[i]);
+        vkCreateDescriptorSetLayout(
+            device->vk_device(), &ly.create_info, nullptr, &se.m_set_layout[i]);
     }
 
     // Build pipeline layout using the global bindless layout for set 2
@@ -160,8 +161,8 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     pipeline_layout_ci.setLayoutCount = DESCRIPTORS_SETS_COUNT;
     pipeline_layout_ci.pSetLayouts = pipeline_layouts.data();
 
-    vkCreatePipelineLayout(device->vk_device(), &pipeline_layout_ci, nullptr,
-                           &se.m_pipeline_layout);
+    vkCreatePipelineLayout(
+        device->vk_device(), &pipeline_layout_ci, nullptr, &se.m_pipeline_layout);
 
     return se.m_pipeline_layout != VK_NULL_HANDLE;
 }
@@ -185,7 +186,9 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     if (!shader_reflection_utils::are_layouts_compatible(
             se_data.m_expected_vertex_input,
-            se_data.m_vertex_stage->get_reflection().input_interface.layout, false, false))
+            se_data.m_vertex_stage->get_reflection().input_interface.layout,
+            false,
+            false))
     {
         // Adopt reflected layout — shader defines the authoritative vertex input format
         se_data.m_expected_vertex_input =
@@ -196,7 +199,9 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     {
         if (!shader_reflection_utils::are_layouts_compatible(
                 se_data.m_vertex_stage->get_reflection().output_interface.layout,
-                se_data.m_frag_stage->get_reflection().input_interface.layout, true, false))
+                se_data.m_frag_stage->get_reflection().input_interface.layout,
+                true,
+                false))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;
@@ -219,7 +224,10 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         // Use the provided pipeline layout instead of building from reflection
         se_data.m_pipeline_layout = info.shared_pipeline_layout;
         se_data.m_owns_pipeline_layout = false;
-        for (auto& l : se_data.m_set_layout) l = VK_NULL_HANDLE;
+        for (auto& l : se_data.m_set_layout)
+        {
+            l = VK_NULL_HANDLE;
+        }
     }
     else if (!create_shader_effect_pipeline_layout(se_data))
     {
@@ -323,8 +331,8 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
         old_se_data->m_vertex_stage = std::move(se_data.m_vertex_stage);
     }
 
-    auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
-                               se_data.m_vertex_stage);
+    auto rc = load_data_shader(
+        *info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, se_data.m_vertex_stage);
     if (rc != result_code::ok)
     {
         return rc;
@@ -335,8 +343,8 @@ vulkan_shader_loader::update_shader_effect(shader_effect_data& se_data,
         old_se_data->m_frag_stage = std::move(se_data.m_frag_stage);
     }
 
-    rc = load_data_shader(*info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
-                          se_data.m_frag_stage);
+    rc = load_data_shader(
+        *info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT, se_data.m_frag_stage);
     if (rc != result_code::ok)
     {
         return rc;
@@ -360,8 +368,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
     std::shared_ptr<shader_module_data> vert_module;
-    auto rc = load_data_shader(*info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT,
-                               vert_module);
+    auto rc = load_data_shader(
+        *info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vert_module);
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
@@ -371,8 +379,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     std::shared_ptr<shader_module_data> frag_module;
     if (info.frag_buffer)
     {
-        rc = load_data_shader(*info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT,
-                              frag_module);
+        rc = load_data_shader(
+            *info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT, frag_module);
         if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;

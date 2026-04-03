@@ -29,14 +29,17 @@ native_window::construct(construct_params& c)
 
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
 
-    m_window = SDL_CreateWindow("KRYGA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w,
-                                c.h, window_flags);
+    m_window = SDL_CreateWindow(
+        "KRYGA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w, c.h, window_flags);
     auto icon_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://editor/icon_256.png"));
 
     int tex_width = 0, tex_height = 0, tex_channels = 0;
-    void* pixels = icon_rp.has_value()
-        ? stbi_load(APATH(icon_rp.value()).str().c_str(), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha)
-        : nullptr;
+    void* pixels = icon_rp.has_value() ? stbi_load(APATH(icon_rp.value()).str().c_str(),
+                                                   &tex_width,
+                                                   &tex_height,
+                                                   &tex_channels,
+                                                   STBI_rgb_alpha)
+                                       : nullptr;
 
     Uint32 rmask, gmask, bmask, amask;
 #if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -52,8 +55,8 @@ native_window::construct(construct_params& c)
     amask = (tex_channels == 3) ? 0 : 0xff000000;
 #endif
 
-    SDL_Surface* icon = SDL_CreateRGBSurfaceFrom((void*)pixels, tex_width, tex_height, 4 * 8,
-                                                 4 * tex_width, rmask, gmask, bmask, amask);
+    SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(
+        (void*)pixels, tex_width, tex_height, 4 * 8, 4 * tex_width, rmask, gmask, bmask, amask);
 
     SDL_SetWindowIcon(m_window, icon);
 

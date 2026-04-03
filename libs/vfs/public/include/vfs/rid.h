@@ -19,7 +19,7 @@ public:
     constexpr explicit rid(std::string_view vpath)
     {
         auto sep = vpath.find("://");
-        if(sep != std::string_view::npos)
+        if (sep != std::string_view::npos)
         {
             m_mount_point = vpath.substr(0, sep);
             m_relative = vpath.substr(sep + 3);
@@ -78,7 +78,7 @@ public:
     constexpr rid&
     operator/=(std::string_view segment)
     {
-        if(!m_relative.empty() && m_relative.back() != '/')
+        if (!m_relative.empty() && m_relative.back() != '/')
         {
             m_relative += '/';
         }

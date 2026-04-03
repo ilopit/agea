@@ -265,7 +265,9 @@ gen_allocator::print_free()
     do
     {
         std::cout << std::format("id: {}  size: {} free: {} id: {}",
-                                 (uint64_t)head - (uint64_t)m_data, head->size, head->free,
+                                 (uint64_t)head - (uint64_t)m_data,
+                                 head->size,
+                                 head->free,
                                  head->block_id)
                   << std::endl;
 
@@ -291,7 +293,9 @@ gen_allocator::print_all()
     do
     {
         std::cout << std::format("id: {}  size: {} free: {} id: {}",
-                                 (uint64_t)head - (uint64_t)m_data, head->size, head->free,
+                                 (uint64_t)head - (uint64_t)m_data,
+                                 head->size,
+                                 head->free,
                                  head->block_id)
                   << std::endl;
 

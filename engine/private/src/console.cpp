@@ -26,7 +26,10 @@ static void
 strtrim(char* s)
 {
     char* str_end = s + strlen(s);
-    while (str_end > s && str_end[-1] == ' ') str_end--;
+    while (str_end > s && str_end[-1] == ' ')
+    {
+        str_end--;
+    }
     *str_end = 0;
 }
 
@@ -173,7 +176,9 @@ editor_console::handle()
     const float footer_height_to_reserve =
         ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 
-    ImGui::BeginChild("ScrollingRegion", ImVec2(0, -footer_height_to_reserve), false,
+    ImGui::BeginChild("ScrollingRegion",
+                      ImVec2(0, -footer_height_to_reserve),
+                      false,
                       ImGuiWindowFlags_HorizontalScrollbar);
     if (ImGui::BeginPopupContextWindow())
     {
@@ -262,8 +267,12 @@ editor_console::handle()
                                            ImGuiInputTextFlags_CallbackCompletion |
                                            ImGuiInputTextFlags_CallbackHistory;
 
-    if (ImGui::InputText("Input", m_buf.data(), m_buf.size(), input_text_flags,
-                         &text_edit_callback_stub, (void*)this))
+    if (ImGui::InputText("Input",
+                         m_buf.data(),
+                         m_buf.size(),
+                         input_text_flags,
+                         &text_edit_callback_stub,
+                         (void*)this))
     {
         char* s = m_buf.data();
         strtrim(s);
@@ -429,8 +438,8 @@ editor_console::text_edit_callback(ImGuiInputTextCallbackData* data)
             if (match_len > 0)
             {
                 data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
-                data->InsertChars(data->CursorPos, candidates[0].c_str(),
-                                  candidates[0].c_str() + match_len);
+                data->InsertChars(
+                    data->CursorPos, candidates[0].c_str(), candidates[0].c_str() + match_len);
             }
 
             // List matches

@@ -65,8 +65,8 @@ vulkan_render::draw_main()
 
     {
         ZoneScopedN("Render::WaitForFence");
-        VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
-                                 1000000000));
+        VK_CHECK(vkWaitForFences(
+            device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
     }
     VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
 
@@ -75,8 +75,11 @@ vulkan_render::draw_main()
 
     // Acquire swapchain image
     uint32_t swapchain_image_index = 0U;
-    VK_CHECK(vkAcquireNextImageKHR(device->vk_device(), device->swapchain(), 1000000000,
-                                   current_frame.frame->m_present_semaphore, nullptr,
+    VK_CHECK(vkAcquireNextImageKHR(device->vk_device(),
+                                   device->swapchain(),
+                                   1000000000,
+                                   current_frame.frame->m_present_semaphore,
+                                   nullptr,
                                    &swapchain_image_index));
 
     auto cmd = current_frame.frame->m_main_command_buffer;
@@ -103,8 +106,8 @@ vulkan_render::draw_main()
     submit.signalSemaphoreCount = 1;
     submit.pSignalSemaphores = &current_frame.frame->m_render_semaphore;
 
-    VK_CHECK(vkQueueSubmit(device->vk_graphics_queue(), 1, &submit,
-                           current_frame.frame->m_render_fence));
+    VK_CHECK(vkQueueSubmit(
+        device->vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
 
     // Present
     auto present_info = render::vk_utils::make_present_info();
@@ -129,8 +132,8 @@ vulkan_render::draw_headless()
 
     auto& current_frame = m_frames[device->get_current_frame_index()];
 
-    VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
-                             1000000000));
+    VK_CHECK(vkWaitForFences(
+        device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
     VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
 
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
@@ -147,11 +150,11 @@ vulkan_render::draw_headless()
 
     // Submit without present semaphores and wait synchronously
     auto submit = render::vk_utils::make_submit_info(&cmd);
-    VK_CHECK(vkQueueSubmit(device->vk_graphics_queue(), 1, &submit,
-                           current_frame.frame->m_render_fence));
+    VK_CHECK(vkQueueSubmit(
+        device->vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
 
-    VK_CHECK(vkWaitForFences(device->vk_device(), 1, &current_frame.frame->m_render_fence, true,
-                             1000000000));
+    VK_CHECK(vkWaitForFences(
+        device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
 }
 
 void
@@ -265,18 +268,22 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
         {
             auto& front = m_shadow_local_passes[i * 2]->get_depth_images();
             if (!front.empty())
+            {
                 m_render_graph.bind_image(AID("shadow_local_" + std::to_string(i)), front[0]);
+            }
         }
         if (m_shadow_local_passes[i * 2 + 1])
         {
             auto& back = m_shadow_local_passes[i * 2 + 1]->get_depth_images();
             if (!back.empty())
+            {
                 m_render_graph.bind_image(AID("shadow_local_back_" + std::to_string(i)), back[0]);
+            }
         }
     }
 
-    m_render_graph.execute(cmd, glob::glob_state().getr_render_device().get_current_frame_index(),
-                           width, height);
+    m_render_graph.execute(
+        cmd, glob::glob_state().getr_render_device().get_current_frame_index(), width, height);
 }
 
 void
@@ -462,23 +469,29 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     auto dst_image = vk_utils::vulkan_image::create(
-        glob::glob_state().getr_render_device().get_vma_allocator_provider(), image_ci,
+        glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+        image_ci,
         vma_allocinfo);
 
     auto cmd_buf_ai = vk_utils::make_command_buffer_allocate_info(
         glob::glob_state().getr_render_device().m_upload_context.m_command_pool, 1);
 
     VkCommandBuffer cmd_buffer;
-    vkAllocateCommandBuffers(glob::glob_state().getr_render_device().vk_device(), &cmd_buf_ai,
-                             &cmd_buffer);
+    vkAllocateCommandBuffers(
+        glob::glob_state().getr_render_device().vk_device(), &cmd_buf_ai, &cmd_buffer);
 
     auto command_buffer_bi = vk_utils::make_command_buffer_begin_info();
     vkBeginCommandBuffer(cmd_buffer, &command_buffer_bi);
 
     // Transition destination image to transfer destination layout
     vk_utils::make_insert_image_memory_barrier(
-        cmd_buffer, dst_image.image(), 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        cmd_buffer,
+        dst_image.image(),
+        0,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
@@ -492,17 +505,26 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
         image_copy_region.extent = extent;
 
         // Issue the copy command
-        vkCmdCopyImage(cmd_buffer, src_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                       dst_image.image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+        vkCmdCopyImage(cmd_buffer,
+                       src_image,
+                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       dst_image.image(),
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       1,
                        &image_copy_region);
     }
 
     // Transition destination image to general layout, which is the required layout for mapping the
     // image memory later on
     vk_utils::make_insert_image_memory_barrier(
-        cmd_buffer, dst_image.image(), VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        cmd_buffer,
+        dst_image.image(),
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_MEMORY_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
     glob::glob_state().getr_render_device().flush_command_buffer(
@@ -583,8 +605,8 @@ vulkan_render::update_bindless_descriptors()
 
     if (!writes.empty())
     {
-        vkUpdateDescriptorSets(device->vk_device(), static_cast<uint32_t>(writes.size()),
-                               writes.data(), 0, nullptr);
+        vkUpdateDescriptorSets(
+            device->vk_device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
     textures_queue.clear();

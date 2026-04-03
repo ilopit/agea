@@ -109,8 +109,8 @@ vulkan_image::clear()
 std::uint8_t*
 vulkan_image::map()
 {
-    vmaMapMemory(glob::glob_state().getr_render_device().allocator(), m_allocation,
-                 (void**)&m_data_begin);
+    vmaMapMemory(
+        glob::glob_state().getr_render_device().allocator(), m_allocation, (void**)&m_data_begin);
 
     return m_data_begin;
 }

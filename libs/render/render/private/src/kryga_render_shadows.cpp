@@ -169,8 +169,8 @@ vulkan_render::init_shadow_passes()
         se_ci.shared_pipeline_layout = shared_layout;
 
         m_shadow_dpsm_se = nullptr;
-        auto rc = m_shadow_passes[0]->create_shader_effect(AID("se_shadow_dpsm"), se_ci,
-                                                           m_shadow_dpsm_se);
+        auto rc = m_shadow_passes[0]->create_shader_effect(
+            AID("se_shadow_dpsm"), se_ci, m_shadow_dpsm_se);
         if (rc != result_code::ok)
         {
             ALOG_WARN("Failed to create DPSM shadow shader effect");
@@ -187,7 +187,9 @@ vulkan_render::init_shadow_passes()
     m_shadow_config.shadowed_local_count = 0;
 
     ALOG_INFO("Shadow passes initialized: {} CSM cascades, {}x{} resolution",
-              KGPU_CSM_CASCADE_COUNT, KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE);
+              KGPU_CSM_CASCADE_COUNT,
+              KGPU_SHADOW_MAP_SIZE,
+              KGPU_SHADOW_MAP_SIZE);
 }
 
 // ============================================================================
@@ -231,8 +233,8 @@ vulkan_render::compute_shadow_matrices()
         auto* dl = m_cache.directional_lights.at(slot);
         if (dl)
         {
-            light_dir = glm::normalize(glm::vec3(dl->gpu_data.direction.x, dl->gpu_data.direction.y,
-                                                 dl->gpu_data.direction.z));
+            light_dir = glm::normalize(glm::vec3(
+                dl->gpu_data.direction.x, dl->gpu_data.direction.y, dl->gpu_data.direction.z));
         }
     }
 
@@ -246,7 +248,9 @@ vulkan_render::compute_shadow_matrices()
     // Center on camera position projected onto the ground (Y=0) so shadows follow the player.
     glm::vec3 up(0.0f, 1.0f, 0.0f);
     if (std::abs(glm::dot(light_dir, up)) > 0.99f)
+    {
         up = glm::vec3(0.0f, 0.0f, 1.0f);
+    }
 
     // Fixed shadow center at origin. The largest cascade covers ~242 units from center
     // (484m total), which is more than enough for typical scenes.
@@ -275,7 +279,9 @@ vulkan_render::compute_shadow_matrices()
         float radius = std::sqrt(hw * hw + hh * hh + depth_half * depth_half);
         radius = std::ceil(radius);
         if (radius < 1.0f)
+        {
             radius = 1.0f;
+        }
 
         // Tight Z range: eye is 500 units behind shadow_center along light direction.
         // Scene objects are within ~radius units of shadow_center.
@@ -285,7 +291,9 @@ vulkan_render::compute_shadow_matrices()
         float ortho_near = z_eye_dist - radius - 50.0f;
         float ortho_far = z_eye_dist + radius + 50.0f;
         if (ortho_near < 0.1f)
+        {
             ortho_near = 0.1f;
+        }
 
         glm::mat4 light_proj = glm::ortho(-radius, radius, -radius, radius, ortho_near, ortho_far);
 
@@ -312,30 +320,45 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
     ZoneScopedN("Render::DrawShadowPass");
 
     if (!m_shadow_se || m_draw_batches.empty())
+    {
         return;
+    }
 
     if (m_global_set == VK_NULL_HANDLE || m_objects_set == VK_NULL_HANDLE)
+    {
         return;
+    }
 
     auto& current_frame = *m_current_frame;
 
     auto* se = m_shadow_se;
     if (se->m_failed_load)
+    {
         return;
+    }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
     // Bind descriptor sets using dummy offsets (SSBOs don't need real offsets)
     const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline_layout,
-                            KGPU_global_descriptor_sets, 1, &m_global_set,
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            se->m_pipeline_layout,
+                            KGPU_global_descriptor_sets,
+                            1,
+                            &m_global_set,
                             current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
                             current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline_layout,
-                            KGPU_objects_descriptor_sets, 1, &m_objects_set,
-                            KGPU_objects_max_binding + 1, dummy_offset);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            se->m_pipeline_layout,
+                            KGPU_objects_descriptor_sets,
+                            1,
+                            &m_objects_set,
+                            KGPU_objects_max_binding + 1,
+                            dummy_offset);
 
     // Push constants with cascade index for VP matrix selection
     gpu::push_constants pc = {};
@@ -346,12 +369,16 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
     for (const auto& batch : m_draw_batches)
     {
         if (!batch.mesh)
+        {
             continue;
+        }
 
         // Safe mesh binding — copy handle to local to avoid null-handle Vulkan errors
         VkBuffer vb = batch.mesh->m_vertex_buffer.buffer();
         if (!vb)
+        {
             continue;
+        }
 
         VkDeviceSize vb_offset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &vb, &vb_offset);
@@ -361,19 +388,28 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
         {
             VkBuffer ib = batch.mesh->m_index_buffer.buffer();
             if (!ib)
+            {
                 continue;
+            }
             vkCmdBindIndexBuffer(cmd, ib, 0, VK_INDEX_TYPE_UINT32);
         }
 
         pc.instance_base = batch.first_instance_offset;
-        vkCmdPushConstants(cmd, se->m_pipeline_layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(gpu::push_constants), &pc);
+        vkCmdPushConstants(cmd,
+                           se->m_pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(gpu::push_constants),
+                           &pc);
 
         if (indexed)
+        {
             vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        }
         else
+        {
             vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+        }
     }
 }
 
@@ -388,57 +424,85 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
 
     // Skip if this shadow slot is unused this frame
     if (shadow_idx >= m_shadow_config.shadowed_local_count)
+    {
         return;
+    }
 
     // Spot lights only need front face — skip back hemisphere
     bool is_point =
         m_shadow_config.local_shadows[shadow_idx].shadow_info.z == KGPU_light_type_point;
     if (back_face && !is_point)
+    {
         return;
+    }
 
     if (m_draw_batches.empty())
+    {
         return;
+    }
 
     if (m_global_set == VK_NULL_HANDLE || m_objects_set == VK_NULL_HANDLE)
+    {
         return;
+    }
 
     auto& current_frame = *m_current_frame;
 
     auto* se = is_point ? m_shadow_dpsm_se : m_shadow_se;
 
     if (!se || se->m_failed_load)
+    {
         return;
+    }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
     const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline_layout,
-                            KGPU_global_descriptor_sets, 1, &m_global_set,
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            se->m_pipeline_layout,
+                            KGPU_global_descriptor_sets,
+                            1,
+                            &m_global_set,
                             current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
                             current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline_layout,
-                            KGPU_objects_descriptor_sets, 1, &m_objects_set,
-                            KGPU_objects_max_binding + 1, dummy_offset);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            se->m_pipeline_layout,
+                            KGPU_objects_descriptor_sets,
+                            1,
+                            &m_objects_set,
+                            KGPU_objects_max_binding + 1,
+                            dummy_offset);
 
     gpu::push_constants pc = {};
     pc.directional_light_id = shadow_idx;
     // For spot lights (se_shadow.vert): use_clustered_lighting=1 means "local light mode"
-    // For point lights (se_shadow_dpsm.vert): use_clustered_lighting encodes hemisphere (0=front, 1=back)
+    // For point lights (se_shadow_dpsm.vert): use_clustered_lighting encodes hemisphere (0=front,
+    // 1=back)
     if (is_point)
+    {
         pc.use_clustered_lighting = back_face ? 1u : 0u;
+    }
     else
+    {
         pc.use_clustered_lighting = 1u;
+    }
 
     for (const auto& batch : m_draw_batches)
     {
         if (!batch.mesh)
+        {
             continue;
+        }
 
         VkBuffer vb = batch.mesh->m_vertex_buffer.buffer();
         if (!vb)
+        {
             continue;
+        }
 
         VkDeviceSize vb_offset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &vb, &vb_offset);
@@ -448,19 +512,28 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
         {
             VkBuffer ib = batch.mesh->m_index_buffer.buffer();
             if (!ib)
+            {
                 continue;
+            }
             vkCmdBindIndexBuffer(cmd, ib, 0, VK_INDEX_TYPE_UINT32);
         }
 
         pc.instance_base = batch.first_instance_offset;
-        vkCmdPushConstants(cmd, se->m_pipeline_layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                           sizeof(gpu::push_constants), &pc);
+        vkCmdPushConstants(cmd,
+                           se->m_pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(gpu::push_constants),
+                           &pc);
 
         if (indexed)
+        {
             vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        }
         else
+        {
             vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+        }
     }
 }
 
@@ -487,18 +560,23 @@ vulkan_render::select_shadowed_lights()
     {
         auto* light = m_cache.universal_lights.at(i);
         if (!light->is_valid())
+        {
             continue;
+        }
 
         float dist = glm::length(light->gpu_data.position - m_camera_data.position);
         if (dist > light->gpu_data.radius * 3.0f)
+        {
             continue;  // Too far to matter
+        }
 
         float contribution = light->gpu_data.radius / std::max(dist, 0.1f);
         candidates.push_back({light->slot(), contribution});
     }
 
     // Sort by contribution (highest first)
-    std::sort(candidates.begin(), candidates.end(),
+    std::sort(candidates.begin(),
+              candidates.end(),
               [](const auto& a, const auto& b) { return a.contribution > b.contribution; });
 
     // Take top N lights
@@ -550,8 +628,8 @@ vulkan_render::select_shadowed_lights()
         {
             // Point light: dual-paraboloid
             glm::vec3 front_dir(0.0f, 0.0f, 1.0f);
-            glm::mat4 view = glm::lookAt(light->gpu_data.position,
-                                         light->gpu_data.position + front_dir, glm::vec3(0, 1, 0));
+            glm::mat4 view = glm::lookAt(
+                light->gpu_data.position, light->gpu_data.position + front_dir, glm::vec3(0, 1, 0));
             shadow.view_proj = view;
             shadow.view_proj_back = view;
             shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2];
@@ -567,7 +645,9 @@ vulkan_render::select_shadowed_lights()
     {
         auto* light = m_cache.universal_lights.at(i);
         if (!light->is_valid())
+        {
             continue;
+        }
 
         bool found = false;
         for (uint32_t j = 0; j < count; ++j)
@@ -603,7 +683,8 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
     // Re-upload universal light data so shadow_index is in the SSBO
     if (m_cache.universal_lights.get_size() > 0)
     {
-        const auto total_size = m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
+        const auto total_size =
+            m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
         if (total_size <= frame.buffers.universal_lights.get_alloc_size())
         {
             frame.buffers.universal_lights.begin();

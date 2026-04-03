@@ -7,7 +7,6 @@
 #include <core/package_manager.h>
 #include <root/root_module.h>
 
-
 using namespace kryga;
 int
 main(int argc, char** argv)

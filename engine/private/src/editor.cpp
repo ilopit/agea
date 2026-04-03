@@ -44,32 +44,32 @@ game_editor::init()
     m_camera_data = {};
     m_position = {0.f, 0.f, 0.f};
 
-    glob::glob_state().get_input_manager()->register_scaled_action(AID("move_forward"), this,
-                                                                   &game_editor::ev_move_forward);
-    glob::glob_state().get_input_manager()->register_scaled_action(AID("move_left"), this,
-                                                                   &game_editor::ev_move_left);
-    glob::glob_state().get_input_manager()->register_scaled_action(AID("look_up"), this,
-                                                                   &game_editor::ev_look_up);
-    glob::glob_state().get_input_manager()->register_scaled_action(AID("look_left"), this,
-                                                                   &game_editor::ev_look_left);
+    glob::glob_state().get_input_manager()->register_scaled_action(
+        AID("move_forward"), this, &game_editor::ev_move_forward);
+    glob::glob_state().get_input_manager()->register_scaled_action(
+        AID("move_left"), this, &game_editor::ev_move_left);
+    glob::glob_state().get_input_manager()->register_scaled_action(
+        AID("look_up"), this, &game_editor::ev_look_up);
+    glob::glob_state().get_input_manager()->register_scaled_action(
+        AID("look_left"), this, &game_editor::ev_look_left);
 
-    glob::glob_state().get_input_manager()->register_fixed_action(AID("level_reload"), true, this,
-                                                                  &game_editor::ev_reload);
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("level_reload"), true, this, &game_editor::ev_reload);
 
-    glob::glob_state().get_input_manager()->register_fixed_action(AID("spawn"), true, this,
-                                                                  &game_editor::ev_spawn);
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("spawn"), true, this, &game_editor::ev_spawn);
 
-    glob::glob_state().get_input_manager()->register_fixed_action(AID("lights"), true, this,
-                                                                  &game_editor::ev_lights);
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("lights"), true, this, &game_editor::ev_lights);
 
-    glob::glob_state().get_input_manager()->register_fixed_action(AID("mouse_pressed"), true, this,
-                                                                  &game_editor::ev_mouse_press);
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("mouse_pressed"), true, this, &game_editor::ev_mouse_press);
 
-    glob::glob_state().get_input_manager()->register_fixed_action(AID("toggle_play"), true, this,
-                                                                  &game_editor::ev_toggle_play);
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("toggle_play"), true, this, &game_editor::ev_toggle_play);
 
-    glob::glob_state().get_input_manager()->register_fixed_action(AID("escape"), true, this,
-                                                                  &game_editor::ev_escape);
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("escape"), true, this, &game_editor::ev_escape);
 }
 
 void

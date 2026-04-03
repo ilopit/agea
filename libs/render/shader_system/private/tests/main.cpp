@@ -17,7 +17,10 @@ main(int argc, char** argv)
     vfs.mount("data", std::make_unique<kryga::vfs::physical_backend>(root), 0);
     vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(root / "cache"), 0);
     vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(root / "tmp"), 0);
-    vfs.mount("generated", std::make_unique<kryga::vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
+    vfs.mount(
+        "generated",
+        std::make_unique<kryga::vfs::physical_backend>(root.parent_path() / "kryga_generated"),
+        0);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

@@ -40,16 +40,21 @@ readback_framebuffer(render_pass& pass, uint32_t width, uint32_t height)
     vma_allocinfo.requiredFlags =
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    auto dst_image = vk_utils::vulkan_image::create(device.get_vma_allocator_provider(), image_ci,
-                                                    vma_allocinfo);
+    auto dst_image = vk_utils::vulkan_image::create(
+        device.get_vma_allocator_provider(), image_ci, vma_allocinfo);
 
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
             // Transition destination to TRANSFER_DST
             vk_utils::make_insert_image_memory_barrier(
-                cmd, dst_image.image(), 0, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                cmd,
+                dst_image.image(),
+                0,
+                VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
@@ -60,14 +65,24 @@ readback_framebuffer(render_pass& pass, uint32_t width, uint32_t height)
             region.dstSubresource.layerCount = 1;
             region.extent = extent;
 
-            vkCmdCopyImage(cmd, src_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst_image.image(),
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+            vkCmdCopyImage(cmd,
+                           src_image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           dst_image.image(),
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           1,
+                           &region);
 
             // Transition destination to GENERAL for mapping
             vk_utils::make_insert_image_memory_barrier(
-                cmd, dst_image.image(), VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                cmd,
+                dst_image.image(),
+                VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_ACCESS_MEMORY_READ_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_GENERAL,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
                 VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
         });
 
@@ -80,7 +95,9 @@ readback_framebuffer(render_pass& pass, uint32_t width, uint32_t height)
         pass.get_color_format() == VK_FORMAT_B8G8R8A8_SRGB)
     {
         for (uint32_t i = 0; i < width * height; ++i)
+        {
             std::swap(pixels[i * 4 + 0], pixels[i * 4 + 2]);
+        }
     }
     dst_image.unmap();
 

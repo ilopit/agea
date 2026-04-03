@@ -102,8 +102,8 @@ game_object_components_save(::kryga::reflection::property_context__save& dc)
         auto pid = obj_component->get_class_obj()->get_id().str();
         component_container["class_id"] = pid;
 
-        reflection::property_context__save internal_sc{nullptr, obj_component,
-                                                       &component_container};
+        reflection::property_context__save internal_sc{
+            nullptr, obj_component, &component_container};
         std::vector<reflection::property*> diff;
 
         if (auto rc = core::object_constructor::diff_object_properties(
@@ -250,7 +250,10 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
                     item["class_id"].IsDefined() ? item["class_id"].as<std::string>() : "unknown";
                 ALOG_ERROR(
                     "Failed to load component [{}] (class [{}]) at index [{}] for object [{}]",
-                    comp_id, comp_class, i, ctx.dst_obj->get_id().cstr());
+                    comp_id,
+                    comp_class,
+                    i,
+                    ctx.dst_obj->get_id().cstr());
                 return result_code::failed;
             }
 

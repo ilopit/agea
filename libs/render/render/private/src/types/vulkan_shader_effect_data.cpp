@@ -99,14 +99,16 @@ shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constan
     {
         shader_reflection_utils::convert_to_vk_push_constants(
             *m_vertex_stage->get_reflection().constants,
-            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, constants.emplace_back());
+            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT,
+            constants.emplace_back());
     }
 
     if (m_frag_stage && m_frag_stage->get_reflection().constants)
     {
         shader_reflection_utils::convert_to_vk_push_constants(
             *m_frag_stage->get_reflection().constants,
-            VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, constants.emplace_back());
+            VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
+            constants.emplace_back());
     }
 }
 

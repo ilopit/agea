@@ -91,31 +91,36 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         m_frames[i].buffers.objects = device.create_buffer(
             OBJECTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        m_frames[i].buffers.materials =
-            device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.materials = device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE,
+                                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                             VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.universal_lights =
-            device.create_buffer(UNIVERSAL_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            device.create_buffer(UNIVERSAL_LIGHTS_BUFFER_SIZE,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.directional_lights =
-            device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.dynamic_data =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
-                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // Cluster buffers - used by both CPU upload and GPU compute
         // CPU_TO_GPU allows CPU writes for fallback, GPU can read/write via SSBO
         m_frames[i].buffers.cluster_counts =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.cluster_indices =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.cluster_config = device.create_buffer(
             DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
@@ -125,20 +130,22 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         // Instance slots buffer for instanced drawing
         m_frames[i].buffers.instance_slots =
             device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // Bone matrices SSBO for skeletal animation (initial 64KB)
         m_frames[i].buffers.bone_matrices = device.create_buffer(
             64 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // GPU frustum culling buffers
-        m_frames[i].buffers.frustum_data =
-            device.create_buffer(sizeof(gpu::frustum_data), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.frustum_data = device.create_buffer(sizeof(gpu::frustum_data),
+                                                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                                                VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.visible_indices =
             device.create_buffer(OBJECTS_BUFFER_SIZE * sizeof(uint32_t),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_GPU_ONLY);
 
         m_frames[i].buffers.cull_output = device.create_buffer(
             sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
@@ -147,9 +154,9 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
             VMA_MEMORY_USAGE_GPU_ONLY);
 
         // Shadow data SSBO
-        m_frames[i].buffers.shadow_data =
-            device.create_buffer(sizeof(gpu::shadow_config_data),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.shadow_data = device.create_buffer(sizeof(gpu::shadow_config_data),
+                                                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                               VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();
@@ -162,10 +169,12 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
     }
 
     // Initialize clustered lighting (must match camera near/far planes)
-    m_cluster_grid.init(m_width, m_height,
+    m_cluster_grid.init(m_width,
+                        m_height,
                         KGPU_znear,  // near plane
                         KGPU_zfar,   // far plane - must match camera!
-                        KGPU_cluster_tile_size, KGPU_cluster_depth_slices,
+                        KGPU_cluster_tile_size,
+                        KGPU_cluster_depth_slices,
                         KGPU_max_lights_per_cluster);
 
     const auto& config = m_cluster_grid.get_config();
@@ -235,8 +244,14 @@ vulkan_render::deinit()
     // Clear shadow passes
     m_shadow_se = nullptr;
     m_shadow_dpsm_se = nullptr;
-    for (auto& sp : m_shadow_passes) sp.reset();
-    for (auto& sp : m_shadow_local_passes) sp.reset();
+    for (auto& sp : m_shadow_passes)
+    {
+        sp.reset();
+    }
+    for (auto& sp : m_shadow_local_passes)
+    {
+        sp.reset();
+    }
 
     // Clear compute passes before device is destroyed
     // (they hold compute shaders with VkShaderModule)
@@ -299,13 +314,15 @@ vulkan_render::prepare_render_passes()
     {
         auto simg_info = vk_utils::make_image_create_info(
             VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, image_extent);
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            image_extent);
 
         VmaAllocationCreateInfo simg_allocinfo = {};
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info,
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+            simg_info,
             simg_allocinfo));
 
         auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
@@ -331,13 +348,15 @@ vulkan_render::prepare_render_passes()
     {
         auto simg_info = vk_utils::make_image_create_info(
             VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, image_extent);
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+            image_extent);
 
         VmaAllocationCreateInfo simg_allocinfo = {};
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(), simg_info,
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+            simg_info,
             simg_allocinfo));
 
         auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
@@ -372,51 +391,79 @@ vulkan_render::prepare_pass_bindings()
     if (main_pass)
     {
         // Set 0: Global data (camera)
-        main_pass->bindings().add(AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
+        main_pass->bindings().add(AID("dyn_camera_data"),
+                                  KGPU_global_descriptor_sets,
+                                  0,
                                   VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
                                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 1: Object data (objects, lights, clusters)
         main_pass->bindings()
-            .add(AID("dyn_object_buffer"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_objects_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_object_buffer"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_objects_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_directional_lights_buffer"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_directional_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_directional_lights_buffer"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_directional_light_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_gpu_universal_light_data"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_universal_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_gpu_universal_light_data"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_universal_light_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_counts"), KGPU_objects_descriptor_sets,
+            .add(AID("dyn_cluster_light_counts"),
+                 KGPU_objects_descriptor_sets,
                  KGPU_objects_cluster_light_counts_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_indices"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_indices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_config"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_config_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_instance_slots"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_cluster_light_indices"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_light_indices_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_config"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_config_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_instance_slots"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_instance_slots_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_bone_matrices"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_bone_matrices_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_bone_matrices"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_bone_matrices_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_shadow_data"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_shadow_data_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_shadow_data"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_shadow_data_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 2: Bindless textures and static samplers (managed separately from render graph)
         main_pass->bindings()
-            .add(AID("static_samplers"), KGPU_textures_descriptor_sets, 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+            .add(AID("static_samplers"),
+                 KGPU_textures_descriptor_sets,
+                 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material)
-            .add(AID("bindless_textures"), KGPU_textures_descriptor_sets, 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT,
+            .add(AID("bindless_textures"),
+                 KGPU_textures_descriptor_sets,
+                 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material);
 
         // Set 3: Material data (per-material)
-        main_pass->bindings().add(AID("dyn_material_buffer"), KGPU_materials_descriptor_sets, 0,
+        main_pass->bindings().add(AID("dyn_material_buffer"),
+                                  KGPU_materials_descriptor_sets,
+                                  0,
                                   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                                   VK_SHADER_STAGE_FRAGMENT_BIT,
                                   render::binding_scope::per_material);
@@ -429,47 +476,73 @@ vulkan_render::prepare_pass_bindings()
     if (picking_pass)
     {
         // Set 0: Global data (camera)
-        picking_pass->bindings().add(AID("dyn_camera_data"), KGPU_global_descriptor_sets, 0,
+        picking_pass->bindings().add(AID("dyn_camera_data"),
+                                     KGPU_global_descriptor_sets,
+                                     0,
                                      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
                                      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 1: Object data (same as main pass)
         picking_pass->bindings()
-            .add(AID("dyn_object_buffer"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_objects_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_object_buffer"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_objects_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_directional_lights_buffer"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_directional_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_directional_lights_buffer"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_directional_light_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_gpu_universal_light_data"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_universal_light_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_gpu_universal_light_data"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_universal_light_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_counts"), KGPU_objects_descriptor_sets,
+            .add(AID("dyn_cluster_light_counts"),
+                 KGPU_objects_descriptor_sets,
                  KGPU_objects_cluster_light_counts_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_indices"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_indices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_config"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_config_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_instance_slots"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_instance_slots_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_cluster_light_indices"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_light_indices_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_cluster_config"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_cluster_config_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+                 VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add(AID("dyn_instance_slots"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_instance_slots_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_bone_matrices"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_bone_matrices_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_bone_matrices"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_bone_matrices_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_shadow_data"), KGPU_objects_descriptor_sets,
-                 KGPU_objects_shadow_data_binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+            .add(AID("dyn_shadow_data"),
+                 KGPU_objects_descriptor_sets,
+                 KGPU_objects_shadow_data_binding,
+                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 
         // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)
         picking_pass->bindings()
-            .add(AID("static_samplers"), KGPU_textures_descriptor_sets, 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+            .add(AID("static_samplers"),
+                 KGPU_textures_descriptor_sets,
+                 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material)
-            .add(AID("bindless_textures"), KGPU_textures_descriptor_sets, 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_SHADER_STAGE_FRAGMENT_BIT,
+            .add(AID("bindless_textures"),
+                 KGPU_textures_descriptor_sets,
+                 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material);
 
         picking_pass->finalize_bindings(layout_cache);
@@ -480,8 +553,12 @@ vulkan_render::prepare_pass_bindings()
     if (ui_pass)
     {
         // Set 0: Font texture sampler
-        ui_pass->bindings().add(AID("fontSampler"), 0, 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                VK_SHADER_STAGE_FRAGMENT_BIT, render::binding_scope::per_material);
+        ui_pass->bindings().add(AID("fontSampler"),
+                                0,
+                                0,
+                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                VK_SHADER_STAGE_FRAGMENT_BIT,
+                                render::binding_scope::per_material);
 
         ui_pass->finalize_bindings(layout_cache);
     }
@@ -614,7 +691,8 @@ vulkan_render::init_static_samplers()
 
     // Helper to create a sampler with given parameters
     auto create_sampler = [vk_device](
-                              VkFilter filter, VkSamplerAddressMode addressMode,
+                              VkFilter filter,
+                              VkSamplerAddressMode addressMode,
                               VkBorderColor borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                               bool anisotropy = false) -> VkSampler
     {
@@ -664,7 +742,8 @@ vulkan_render::init_static_samplers()
 
     // KGPU_SAMPLER_LINEAR_CLAMP_BORDER (5) - Shadow maps
     m_static_samplers[KGPU_SAMPLER_LINEAR_CLAMP_BORDER] =
-        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+        create_sampler(VK_FILTER_LINEAR,
+                       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
                        VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
     // KGPU_SAMPLER_ANISO_REPEAT (6) - High-quality surfaces
@@ -672,8 +751,10 @@ vulkan_render::init_static_samplers()
     // For now, fall back to linear filtering. To enable anisotropy, add
     // samplerAnisotropy to device features in vulkan_render_device.cpp
     m_static_samplers[KGPU_SAMPLER_ANISO_REPEAT] =
-        create_sampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                       VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK, false);
+        create_sampler(VK_FILTER_LINEAR,
+                       VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                       VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+                       false);
 
     ALOG_INFO("Static samplers initialized ({} variants)", KGPU_SAMPLER_COUNT);
 }
@@ -777,7 +858,8 @@ vulkan_render::init_bindless_textures()
     VK_CHECK(vkAllocateDescriptorSets(vk_device, &set_ai, &m_bindless_set));
 
     ALOG_INFO("Bindless textures initialized with {} max textures and {} static samplers",
-              KGPU_max_bindless_textures, KGPU_SAMPLER_COUNT);
+              KGPU_max_bindless_textures,
+              KGPU_SAMPLER_COUNT);
 }
 
 void

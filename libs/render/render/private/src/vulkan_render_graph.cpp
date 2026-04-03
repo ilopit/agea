@@ -158,7 +158,8 @@ vulkan_render_graph::compile()
         {
             if (!ref.resource || m_resources.find(ref.resource->name) == m_resources.end())
             {
-                ALOG_ERROR("Pass {} doesn't have {}", pass->name().str(),
+                ALOG_ERROR("Pass {} doesn't have {}",
+                           pass->name().str(),
                            ref.resource ? ref.resource->name.str() : "null");
 
                 return false;
@@ -175,7 +176,9 @@ vulkan_render_graph::compile()
         for (const auto& ref : m_passes[i]->resources())
         {
             if (!ref.resource)
+            {
                 continue;
+            }
 
             if (ref.usage == rg_access_mode::write || ref.usage == rg_access_mode::read_write)
             {
@@ -310,7 +313,9 @@ vulkan_render_graph::execute(VkCommandBuffer cmd,
         for (const auto& ref : pass->resources())
         {
             if (!ref.resource)
+            {
                 continue;
+            }
 
             auto it = m_resources.find(ref.resource->name);
             if (it == m_resources.end())
@@ -550,11 +555,16 @@ vulkan_render_graph::insert_barriers(VkCommandBuffer cmd, const rg_pass_barriers
         dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     }
 
-    vkCmdPipelineBarrier(
-        cmd, src_stage, dst_stage, 0, static_cast<uint32_t>(barriers.memory_barriers.size()),
-        barriers.memory_barriers.data(), static_cast<uint32_t>(barriers.buffer_barriers.size()),
-        barriers.buffer_barriers.data(), static_cast<uint32_t>(barriers.image_barriers.size()),
-        barriers.image_barriers.data());
+    vkCmdPipelineBarrier(cmd,
+                         src_stage,
+                         dst_stage,
+                         0,
+                         static_cast<uint32_t>(barriers.memory_barriers.size()),
+                         barriers.memory_barriers.data(),
+                         static_cast<uint32_t>(barriers.buffer_barriers.size()),
+                         barriers.buffer_barriers.data(),
+                         static_cast<uint32_t>(barriers.image_barriers.size()),
+                         barriers.image_barriers.data());
 }
 
 }  // namespace kryga::render

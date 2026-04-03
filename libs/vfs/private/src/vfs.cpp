@@ -12,11 +12,10 @@ namespace vfs
 {
 
 backend*
-virtual_file_system::mount(const rid& target,
-                           std::filesystem::path root,
-                           const mount_config& cfg)
+virtual_file_system::mount(const rid& target, std::filesystem::path root, const mount_config& cfg)
 {
-    KRG_check(!target.relative().empty(), "Scoped mount requires a subpath (e.g. data://packages/base.apkg)");
+    KRG_check(!target.relative().empty(),
+              "Scoped mount requires a subpath (e.g. data://packages/base.apkg)");
 
     auto be = std::make_unique<physical_backend>(std::move(root));
 
@@ -36,10 +35,15 @@ virtual_file_system::mount(const rid& target,
 
     auto* ptr = be.get();
 
-    ALOG_INFO("VFS: mounting '{}' backend '{}' at priority {}", target.str(), be->name(), cfg.priority);
-    m_mounts.push_back({std::string(target.mount_point()), std::string(target.relative()), std::move(be), cfg.priority});
+    ALOG_INFO(
+        "VFS: mounting '{}' backend '{}' at priority {}", target.str(), be->name(), cfg.priority);
+    m_mounts.push_back({std::string(target.mount_point()),
+                        std::string(target.relative()),
+                        std::move(be),
+                        cfg.priority});
 
-    std::stable_sort(m_mounts.begin(), m_mounts.end(),
+    std::stable_sort(m_mounts.begin(),
+                     m_mounts.end(),
                      [](const mount_entry& a, const mount_entry& b)
                      {
                          if (a.mount_point != b.mount_point)
@@ -58,10 +62,11 @@ virtual_file_system::mount(std::string mount_point, std::unique_ptr<backend> b, 
     ALOG_INFO("VFS: mounting '{}' backend '{}' at priority {}", mount_point, b->name(), priority);
     m_mounts.push_back({std::move(mount_point), {}, std::move(b), priority});
 
-    std::stable_sort(m_mounts.begin(), m_mounts.end(),
+    std::stable_sort(m_mounts.begin(),
+                     m_mounts.end(),
                      [](const mount_entry& a, const mount_entry& b)
                      {
-                         if(a.mount_point != b.mount_point)
+                         if (a.mount_point != b.mount_point)
                          {
                              return a.mount_point < b.mount_point;
                          }
@@ -72,13 +77,15 @@ virtual_file_system::mount(std::string mount_point, std::unique_ptr<backend> b, 
 void
 virtual_file_system::unmount(std::string_view mount_point, backend* b)
 {
-    auto it = std::remove_if(m_mounts.begin(), m_mounts.end(), [&](const mount_entry& e)
+    auto it = std::remove_if(m_mounts.begin(),
+                             m_mounts.end(),
+                             [&](const mount_entry& e)
                              { return e.mount_point == mount_point && e.be.get() == b; });
 
     m_mounts.erase(it, m_mounts.end());
 
     auto wt = m_write_targets.find(std::string(mount_point));
-    if(wt != m_write_targets.end() && wt->second == b)
+    if (wt != m_write_targets.end() && wt->second == b)
     {
         m_write_targets.erase(wt);
     }
@@ -130,19 +137,19 @@ backend*
 virtual_file_system::find_write_backend(std::string_view mount_point) const
 {
     auto wt = m_write_targets.find(std::string(mount_point));
-    if(wt != m_write_targets.end())
+    if (wt != m_write_targets.end())
     {
         return wt->second;
     }
 
-    for(auto& e : m_mounts)
+    for (auto& e : m_mounts)
     {
-        if(e.mount_point != mount_point)
+        if (e.mount_point != mount_point)
         {
             continue;
         }
 
-        if(!e.be->is_read_only())
+        if (!e.be->is_read_only())
         {
             return e.be.get();
         }
@@ -154,7 +161,7 @@ virtual_file_system::find_write_backend(std::string_view mount_point) const
 bool
 virtual_file_system::read_bytes(const rid& id, std::vector<uint8_t>& out) const
 {
-    if(id.empty())
+    if (id.empty())
     {
         return false;
     }
@@ -173,7 +180,7 @@ bool
 virtual_file_system::read_string(const rid& id, std::string& out) const
 {
     std::vector<uint8_t> bytes;
-    if(!read_bytes(id, bytes))
+    if (!read_bytes(id, bytes))
     {
         return false;
     }
@@ -185,16 +192,16 @@ virtual_file_system::read_string(const rid& id, std::string& out) const
 bool
 virtual_file_system::write_bytes(const rid& id, std::span<const uint8_t> data)
 {
-    if(id.empty())
+    if (id.empty())
     {
         return false;
     }
 
     auto* be = find_write_backend(id.mount_point());
-    if(!be)
+    if (!be)
     {
-        ALOG_ERROR("VFS: no writable backend for mount '{}' (path: {})", id.mount_point(),
-                   id.str());
+        ALOG_ERROR(
+            "VFS: no writable backend for mount '{}' (path: {})", id.mount_point(), id.str());
         return false;
     }
 
@@ -212,7 +219,7 @@ virtual_file_system::write_string(const rid& id, std::string_view data)
 file_info
 virtual_file_system::stat(const rid& id) const
 {
-    if(id.empty())
+    if (id.empty())
     {
         return {};
     }
@@ -257,13 +264,13 @@ virtual_file_system::exists(const rid& id) const
 bool
 virtual_file_system::create_directories(const rid& id)
 {
-    if(id.empty())
+    if (id.empty())
     {
         return false;
     }
 
     auto* be = find_write_backend(id.mount_point());
-    if(!be)
+    if (!be)
     {
         return false;
     }
@@ -274,13 +281,13 @@ virtual_file_system::create_directories(const rid& id)
 bool
 virtual_file_system::remove(const rid& id)
 {
-    if(id.empty())
+    if (id.empty())
     {
         return false;
     }
 
     auto* be = find_write_backend(id.mount_point());
-    if(!be)
+    if (!be)
     {
         return false;
     }
@@ -294,7 +301,7 @@ virtual_file_system::enumerate(const rid& id,
                                bool recursive,
                                std::string_view ext_filter) const
 {
-    if(id.empty())
+    if (id.empty())
     {
         return false;
     }
@@ -360,9 +367,7 @@ virtual_file_system::enumerate_objects(const rid& scope,
                                        backend* filter_be) const
 {
     auto make_rid = [&](const mount_entry& e, const std::string& path) -> rid
-    {
-        return rid(scope.mount_point(), e.scope.empty() ? path : e.scope + "/" + path);
-    };
+    { return rid(scope.mount_point(), e.scope.empty() ? path : e.scope + "/" + path); };
 
     if (filter_be)
     {
@@ -418,7 +423,7 @@ virtual_file_system::enumerate_objects(const rid& scope,
 std::optional<std::filesystem::path>
 virtual_file_system::real_path(const rid& id) const
 {
-    if(id.empty())
+    if (id.empty())
     {
         return std::nullopt;
     }
@@ -461,7 +466,7 @@ virtual_file_system::create_temp_dir()
     {
         std::string result;
         constexpr char data[] = "0123456789ABCDEF";
-        for(size_t i = 0; i < length; ++i)
+        for (size_t i = 0; i < length; ++i)
         {
             result += data[rand() % 16];
         }
@@ -473,7 +478,7 @@ virtual_file_system::create_temp_dir()
     create_directories(tmp_id);
 
     auto rp = real_path(tmp_id);
-    if(rp.has_value())
+    if (rp.has_value())
     {
         return temp_dir_context(APATH(rp.value()));
     }

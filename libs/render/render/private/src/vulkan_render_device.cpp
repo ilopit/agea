@@ -247,9 +247,10 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
                     get_vma_allocator_provider(), simg_info, simg_allocinfo));
 
             // build a image-view for the depth image to use for rendering
-            auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-                m_swapchain_image_format, m_swapchain_images[i]->image(),
-                VK_IMAGE_ASPECT_COLOR_BIT);
+            auto swapchain_image_view_ci =
+                vk_utils::make_imageview_create_info(m_swapchain_image_format,
+                                                     m_swapchain_images[i]->image(),
+                                                     VK_IMAGE_ASPECT_COLOR_BIT);
 
             m_swapchain_image_views[i] =
                 vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
@@ -300,14 +301,14 @@ render_device::init_commands()
         auto command_buffer_ai =
             vk_utils::make_command_buffer_allocate_info(frame.m_command_pool, 1);
 
-        VK_CHECK(vkAllocateCommandBuffers(m_vk_device, &command_buffer_ai,
-                                          &frame.m_main_command_buffer));
+        VK_CHECK(vkAllocateCommandBuffers(
+            m_vk_device, &command_buffer_ai, &frame.m_main_command_buffer));
     }
 
     auto upload_command_pool_ci = vk_utils::make_command_pool_create_info(m_graphics_queue_family);
     // create pool for upload context
-    VK_CHECK(vkCreateCommandPool(m_vk_device, &upload_command_pool_ci, nullptr,
-                                 &m_upload_context.m_command_pool));
+    VK_CHECK(vkCreateCommandPool(
+        m_vk_device, &upload_command_pool_ci, nullptr, &m_upload_context.m_command_pool));
 
     return true;
 }
@@ -340,16 +341,16 @@ render_device::init_sync_structures()
     {
         VK_CHECK(vkCreateFence(m_vk_device, &fenceCreateInfo, nullptr, &frame.m_render_fence));
 
-        VK_CHECK(vkCreateSemaphore(m_vk_device, &semaphoreCreateInfo, nullptr,
-                                   &frame.m_present_semaphore));
-        VK_CHECK(vkCreateSemaphore(m_vk_device, &semaphoreCreateInfo, nullptr,
-                                   &frame.m_render_semaphore));
+        VK_CHECK(vkCreateSemaphore(
+            m_vk_device, &semaphoreCreateInfo, nullptr, &frame.m_present_semaphore));
+        VK_CHECK(vkCreateSemaphore(
+            m_vk_device, &semaphoreCreateInfo, nullptr, &frame.m_render_semaphore));
     }
 
     VkFenceCreateInfo uploadFenceCreateInfo = vk_utils::make_fence_create_info();
 
-    VK_CHECK(vkCreateFence(m_vk_device, &uploadFenceCreateInfo, nullptr,
-                           &m_upload_context.m_upload_fence));
+    VK_CHECK(vkCreateFence(
+        m_vk_device, &uploadFenceCreateInfo, nullptr, &m_upload_context.m_upload_fence));
     return true;
 }
 

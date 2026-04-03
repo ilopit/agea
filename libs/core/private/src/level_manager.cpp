@@ -77,7 +77,14 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
         return nullptr;
     }
 
-    l.m_backend = vfs.mount(vfs_root, real.value(), {.index_filter = ".aobj"});
+    l.m_backend = vfs.mount(vfs_root,
+                            real.value(),
+                            {.index_filter = ".aobj",
+                             .load_order = {"class/textures",
+                                            "class/shader_effects",
+                                            "class/materials",
+                                            "class/meshes",
+                                            "class/components"}});
     if (!l.m_backend)
     {
         ALOG_LAZY_ERROR;

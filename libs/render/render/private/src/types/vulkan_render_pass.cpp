@@ -65,8 +65,8 @@ render_pass::begin(VkCommandBuffer cmd,
 
     auto fb_idx = swapchain_image_index % m_framebuffers.size();
 
-    auto rp_info = vk_utils::make_renderpass_begin_info(m_vk_render_pass, VkExtent2D{width, height},
-                                                        m_framebuffers[fb_idx]);
+    auto rp_info = vk_utils::make_renderpass_begin_info(
+        m_vk_render_pass, VkExtent2D{width, height}, m_framebuffers[fb_idx]);
 
     VkClearValue clear_values[2];
 
@@ -505,7 +505,8 @@ render_pass::validate_fragment_outputs(const reflection::interface_block& frag_o
     if (output_count != m_color_attachment_count)
     {
         ALOG_ERROR("Fragment shader has {} output(s), but render pass has {} color attachment(s)",
-                   output_count, m_color_attachment_count);
+                   output_count,
+                   m_color_attachment_count);
         return false;
     }
 

@@ -39,7 +39,8 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
 
     params.arguments =
         std::format("-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3} -I {4}",
-                    raw_buffer.get_file().str(), compiled_path.str(),
+                    raw_buffer.get_file().str(),
+                    compiled_path.str(),
                     APATH(includes.value()).str(),
                     APATH(gpu_includes.value()).str(),
                     APATH(generated_gpu_includes.value()).str());
@@ -59,8 +60,8 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
     }
 
     // Build reflection data from SPIR-V
-    if (!shader_reflection_utils::build_shader_reflection(cs.spirv.data(), cs.spirv.size(),
-                                                          cs.reflection))
+    if (!shader_reflection_utils::build_shader_reflection(
+            cs.spirv.data(), cs.spirv.size(), cs.reflection))
     {
         ALOG_ERROR("Failed to build shader reflection");
         return std::unexpected(result_code::compilation_failed);

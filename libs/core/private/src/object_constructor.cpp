@@ -264,15 +264,15 @@ object_constructor::load_level_obj(const utils::id& id)
     auto proto = m_olc->find_proto_obj(proto_id);
     if (!proto)
     {
-        ALOG_ERROR("Proto object [{}] doesn't exist for level obj [{}]", proto_id.cstr(),
-                   id.cstr());
+        ALOG_ERROR(
+            "Proto object [{}] doesn't exist for level obj [{}]", proto_id.cstr(), id.cstr());
         return std::unexpected(result_code::id_not_found);
     }
 
     object_constructor inst_ctor(m_olc, object_load_type::instance_obj);
 
-    auto alloc_result = inst_ctor.alloc_empty_object(proto->get_type_id(), container_id,
-                                                     ks_instance_derived, proto);
+    auto alloc_result = inst_ctor.alloc_empty_object(
+        proto->get_type_id(), container_id, ks_instance_derived, proto);
     if (!alloc_result)
     {
         return alloc_result;

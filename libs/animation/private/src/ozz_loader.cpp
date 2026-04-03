@@ -52,8 +52,10 @@ ozz_loader::load_animation(const std::string& path, ozz::animation::Animation& o
 
     archive >> out_animation;
 
-    ALOG_INFO("ozz_loader: Loaded animation from '{}' (duration: {:.2f}s, {} tracks)", path,
-              out_animation.duration(), out_animation.num_tracks());
+    ALOG_INFO("ozz_loader: Loaded animation from '{}' (duration: {:.2f}s, {} tracks)",
+              path,
+              out_animation.duration(),
+              out_animation.num_tracks());
     return true;
 }
 

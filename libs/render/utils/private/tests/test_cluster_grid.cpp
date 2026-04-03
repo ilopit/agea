@@ -141,8 +141,8 @@ TEST(ClusterGrid, light_at_origin_assigned_to_clusters)
     grid.init(800, 600, 0.1f, 1000.0f, 64, 24, 128);
 
     // Camera at (0,0,10) looking at origin
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -162,8 +162,8 @@ TEST(ClusterGrid, light_behind_camera_not_assigned)
     grid.init(800, 600, 0.1f, 1000.0f, 64, 24, 128);
 
     // Camera at origin looking down -Z
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -182,8 +182,8 @@ TEST(ClusterGrid, light_beyond_far_plane_not_assigned)
     cluster_grid grid;
     grid.init(800, 600, 0.1f, 100.0f, 64, 24, 128);
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -201,8 +201,8 @@ TEST(ClusterGrid, large_radius_light_assigned_to_many_clusters)
     cluster_grid grid;
     grid.init(800, 600, 0.1f, 1000.0f, 64, 24, 128);
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -221,8 +221,8 @@ TEST(ClusterGrid, clear_removes_assignments)
     cluster_grid grid;
     grid.init(800, 600, 0.1f, 1000.0f, 64, 24, 128);
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -250,8 +250,8 @@ TEST(ClusterGrid, view_space_z_positive_forward)
     grid.init(800, 600, 0.1f, 1000.0f, 64, 24, 128);
 
     // Camera at (0,0,100) looking at origin
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 100.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 100.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     // Transform origin to view space
     glm::vec4 origin_view = view * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -274,8 +274,8 @@ TEST(ClusterGrid, multiple_lights_at_different_depths)
     grid.init(800, 600, 0.1f, 1000.0f, 64, 24, 128);
 
     // Camera at origin looking down -Z
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -300,8 +300,8 @@ TEST(ClusterGrid, shader_lookup_consistency)
     const auto& config = grid.get_config();
 
     // Camera setup
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -362,8 +362,8 @@ TEST(ClusterGrid, vulkan_projection_shader_lookup_consistency)
     const auto& config = grid.get_config();
 
     // Camera setup with Vulkan projection
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 50.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -424,8 +424,8 @@ TEST(ClusterGrid, vulkan_projection_off_center_light)
     const auto& config = grid.get_config();
 
     // Camera at origin looking down -Z
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, 1000.0f);
     glm::mat4 inv_proj = glm::inverse(proj);
 
@@ -499,8 +499,8 @@ TEST(ClusterGrid, far_depth_light_assignment)
     const auto& config = grid.get_config();
 
     // Camera at origin looking down -Z
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, 0.1f, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
@@ -566,8 +566,8 @@ TEST(ClusterGrid, very_far_depth_light_near_far_plane)
 
     const auto& config = grid.get_config();
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, KGPU_znear, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
@@ -611,8 +611,8 @@ TEST(ClusterGrid, depth_slice_distribution)
     }
 
     // Test some specific depths
-    std::vector<float> test_depths = {1.0f,   10.0f,   50.0f,   100.0f,
-                                      500.0f, 1000.0f, 1500.0f, 1900.0f};
+    std::vector<float> test_depths = {
+        1.0f, 10.0f, 50.0f, 100.0f, 500.0f, 1000.0f, 1500.0f, 1900.0f};
     std::cout << "Depth to slice mapping:" << std::endl;
     for (float d : test_depths)
     {
@@ -714,8 +714,8 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
 
     const auto& config = grid.get_config();
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, KGPU_znear, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
@@ -763,7 +763,9 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
     {
         uint32_t base_idx = far_cluster_idx * config.max_lights_per_cluster;
         if (indices[base_idx + i] == 2)
+        {
             found_light2 = true;
+        }
     }
 
     EXPECT_TRUE(found_light2) << "Light 2 (depth 800) should be in slice 10 cluster";
@@ -774,9 +776,13 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
     {
         uint32_t base_idx = far_cluster_idx * config.max_lights_per_cluster;
         if (indices[base_idx + i] == 0)
+        {
             found_light0 = true;
+        }
         if (indices[base_idx + i] == 1)
+        {
             found_light1 = true;
+        }
     }
     EXPECT_FALSE(found_light0) << "Light 0 (depth 50) should NOT be in slice 10";
     EXPECT_FALSE(found_light1) << "Light 1 (depth 200) should NOT be in slice 10";
@@ -790,8 +796,8 @@ TEST(ClusterGrid, near_light_not_in_far_cluster)
 
     const auto& config = grid.get_config();
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, KGPU_znear, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
@@ -859,8 +865,8 @@ TEST(ClusterGrid, depth_800_boundary)
 
     const auto& config = grid.get_config();
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, KGPU_znear, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
@@ -1016,8 +1022,8 @@ TEST(ClusterGrid, far_aabb_extents)
 
     const auto& config = grid.get_config();
 
-    glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f),
-                                 glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 view = glm::lookAt(
+        glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     glm::mat4 proj = make_vulkan_projection(60.0f, 800.0f / 600.0f, KGPU_znear, KGPU_zfar);
     glm::mat4 inv_proj = glm::inverse(proj);
 

@@ -437,8 +437,8 @@ public:
     dynobj_view<TYPE_DESCRIPTOR>
     root() const
     {
-        return dynobj_view<TYPE_DESCRIPTOR>(0U, (uint8_t*)data(),
-                                            base_view::field_by_idx(m_layout, 0), m_layout);
+        return dynobj_view<TYPE_DESCRIPTOR>(
+            0U, (uint8_t*)data(), base_view::field_by_idx(m_layout, 0), m_layout);
     }
 
     bool

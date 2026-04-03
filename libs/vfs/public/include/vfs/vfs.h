@@ -17,19 +17,19 @@ namespace vfs
 class virtual_file_system
 {
 public:
+    struct mount_config
+    {
+        int priority = 0;
+        std::string_view index_filter;        // if non-empty, build_index after mount
+        std::vector<std::string> load_order;  // path prefixes for ordered iteration
+    };
+
     virtual_file_system() = default;
     ~virtual_file_system() = default;
 
     virtual_file_system(const virtual_file_system&) = delete;
     virtual_file_system&
     operator=(const virtual_file_system&) = delete;
-
-    struct mount_config
-    {
-        int priority = 0;
-        std::string_view index_filter;               // if non-empty, build_index after mount
-        std::vector<std::string> load_order;          // path prefixes for ordered iteration
-    };
 
     // Mount a physical directory at a scoped path (e.g. rid("data", "packages/base.apkg")).
     // The relative part must be non-empty. Returns backend pointer (owned by VFS).
@@ -88,9 +88,7 @@ public:
     // Iterate indexed objects for a specific backend, or merge all at scope.
     using object_visitor = std::function<bool(std::string_view name, const rid& path)>;
     void
-    enumerate_objects(const rid& scope,
-                      const object_visitor& visitor,
-                      backend* be = nullptr) const;
+    enumerate_objects(const rid& scope, const object_visitor& visitor, backend* be = nullptr) const;
 
     // Escape hatch for external tools
     std::optional<std::filesystem::path>

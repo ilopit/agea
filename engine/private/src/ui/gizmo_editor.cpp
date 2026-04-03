@@ -38,7 +38,8 @@ gizmo_editor::draw()
     {
         ImGui::SetNextWindowPos(ImVec2(10, 40), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(0, 0));
-        ImGui::Begin("##gizmo_toolbar", nullptr,
+        ImGui::Begin("##gizmo_toolbar",
+                     nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
                          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking);
@@ -49,13 +50,19 @@ gizmo_editor::draw()
         bool s = (m_mode == gizmo_mode::scale);
 
         if (ImGui::RadioButton("T (1)", t))
+        {
             m_mode = gizmo_mode::translate;
+        }
         ImGui::SameLine();
         if (ImGui::RadioButton("R (2)", r))
+        {
             m_mode = gizmo_mode::rotate;
+        }
         ImGui::SameLine();
         if (ImGui::RadioButton("S (3)", s))
+        {
             m_mode = gizmo_mode::scale;
+        }
 
         ImGui::SameLine();
         ImGui::Text("|");
@@ -64,10 +71,14 @@ gizmo_editor::draw()
         // Local / World
         bool is_local = (m_space == ImGuizmo::LOCAL);
         if (ImGui::RadioButton("Local", is_local))
+        {
             m_space = ImGuizmo::LOCAL;
+        }
         ImGui::SameLine();
         if (ImGui::RadioButton("World", !is_local))
+        {
             m_space = ImGuizmo::WORLD;
+        }
 
         // Snap
         ImGui::Checkbox("Snap", &m_snap_enabled);
@@ -124,11 +135,17 @@ gizmo_editor::draw()
     if (!ImGuizmo::IsUsing() && !ImGui::GetIO().WantTextInput)
     {
         if (ImGui::IsKeyPressed(ImGuiKey_1))
+        {
             m_mode = gizmo_mode::translate;
+        }
         if (ImGui::IsKeyPressed(ImGuiKey_2))
+        {
             m_mode = gizmo_mode::rotate;
+        }
         if (ImGui::IsKeyPressed(ImGuiKey_3))
+        {
             m_mode = gizmo_mode::scale;
+        }
     }
 
     // Use the actual transform matrix the renderer uses — guarantees gizmo matches visual position

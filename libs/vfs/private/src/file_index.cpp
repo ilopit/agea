@@ -54,7 +54,8 @@ file_index::build(const std::filesystem::path& root, std::string_view ext_filter
         auto [_, inserted] = m_entries.try_emplace(stem, rel);
         if (!inserted)
         {
-            ALOG_ERROR("file_index: duplicate stem '{}' — '{}' vs '{}'", stem, m_entries[stem], rel);
+            ALOG_ERROR(
+                "file_index: duplicate stem '{}' — '{}' vs '{}'", stem, m_entries[stem], rel);
             return false;
         }
     }
@@ -170,23 +171,23 @@ file_index::rebuild_ordered()
         return;
     }
 
-    std::stable_sort(
-        m_ordered.begin(), m_ordered.end(),
-        [&](const auto& a, const auto& b)
-        {
-            auto rank = [&](const std::string& path) -> int
-            {
-                for (int i = 0; i < static_cast<int>(m_load_order.size()); ++i)
-                {
-                    if (path.starts_with(m_load_order[i]))
-                    {
-                        return i;
-                    }
-                }
-                return static_cast<int>(m_load_order.size());
-            };
-            return rank(a.second) < rank(b.second);
-        });
+    std::stable_sort(m_ordered.begin(),
+                     m_ordered.end(),
+                     [&](const auto& a, const auto& b)
+                     {
+                         auto rank = [&](const std::string& path) -> int
+                         {
+                             for (int i = 0; i < static_cast<int>(m_load_order.size()); ++i)
+                             {
+                                 if (path.starts_with(m_load_order[i]))
+                                 {
+                                     return i;
+                                 }
+                             }
+                             return static_cast<int>(m_load_order.size());
+                         };
+                         return rank(a.second) < rank(b.second);
+                     });
 }
 
 }  // namespace vfs

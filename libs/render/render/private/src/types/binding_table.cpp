@@ -144,7 +144,8 @@ binding_table::finalize(vk_utils::descriptor_layout_cache& layout_cache)
     for (uint32_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
     {
         // Sort bindings by index for consistent layout
-        std::sort(set_bindings[i].begin(), set_bindings[i].end(),
+        std::sort(set_bindings[i].begin(),
+                  set_bindings[i].end(),
                   [](const VkDescriptorSetLayoutBinding& a, const VkDescriptorSetLayoutBinding& b)
                   { return a.binding < b.binding; });
 
@@ -171,7 +172,10 @@ binding_table::validate_single_binding(const reflection::binding& b,
     if (!spec)
     {
         ALOG_ERROR("{} shader binding '{}' (binding={}, type={}) not found in binding table",
-                   stage_name, b.name.cstr(), b.binding_index, descriptor_type_to_string(b.type));
+                   stage_name,
+                   b.name.cstr(),
+                   b.binding_index,
+                   descriptor_type_to_string(b.type));
         return false;
     }
 
@@ -179,7 +183,9 @@ binding_table::validate_single_binding(const reflection::binding& b,
     if (!are_types_compatible(spec->type, b.type))
     {
         ALOG_ERROR("{} shader binding '{}' type mismatch: shader expects {}, table has {}",
-                   stage_name, b.name.cstr(), descriptor_type_to_string(b.type),
+                   stage_name,
+                   b.name.cstr(),
+                   descriptor_type_to_string(b.type),
                    descriptor_type_to_string(spec->type));
         return false;
     }
@@ -190,14 +196,18 @@ binding_table::validate_single_binding(const reflection::binding& b,
         ALOG_ERROR(
             "{} shader binding '{}' index mismatch: shader expects binding={}, table has "
             "binding={}",
-            stage_name, b.name.cstr(), b.binding_index, spec->binding_index);
+            stage_name,
+            b.name.cstr(),
+            b.binding_index,
+            spec->binding_index);
         return false;
     }
 
     // Check stage flags (shader stage must be subset of declared stages)
     if ((spec->stages & stage) != stage)
     {
-        ALOG_ERROR("{} shader binding '{}' stage not declared in binding table", stage_name,
+        ALOG_ERROR("{} shader binding '{}' stage not declared in binding table",
+                   stage_name,
                    b.name.cstr());
         return false;
     }
@@ -246,12 +256,16 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
     for (const auto& ds : vertex_refl.descriptors)
     {
         if (ds.set_index < DESCRIPTORS_SETS_COUNT)
+        {
             shader_uses_set[ds.set_index] = true;
+        }
     }
     for (const auto& ds : frag_refl.descriptors)
     {
         if (ds.set_index < DESCRIPTORS_SETS_COUNT)
+        {
             shader_uses_set[ds.set_index] = true;
+        }
     }
 
     bool valid = true;
@@ -276,7 +290,9 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
                 "Binding table entry '{}' (set={}, binding={}) is per_pass but not declared "
                 "in any shader stage — pipeline layout will have fewer descriptors than the "
                 "allocated descriptor set",
-                spec.name.cstr(), spec.set_index, spec.binding_index);
+                spec.name.cstr(),
+                spec.set_index,
+                spec.binding_index);
             valid = false;
         }
     }
@@ -320,7 +336,9 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
     for (const auto& ds : refl.descriptors)
     {
         if (ds.set_index < DESCRIPTORS_SETS_COUNT)
+        {
             shader_uses_set[ds.set_index] = true;
+        }
     }
 
     bool valid = true;
@@ -341,7 +359,10 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
             ALOG_ERROR(
                 "{} shader missing table binding '{}' (set={}, binding={}) — "
                 "pipeline layout will not match allocated descriptor set",
-                stage_name, spec.name.cstr(), spec.set_index, spec.binding_index);
+                stage_name,
+                spec.name.cstr(),
+                spec.set_index,
+                spec.binding_index);
             valid = false;
         }
     }
@@ -375,7 +396,8 @@ binding_table::validate_material_bindings(
         if (!are_types_compatible(spec->type, type))
         {
             ALOG_ERROR("Material binding '{}' type mismatch: material has {}, table expects {}",
-                       name.cstr(), descriptor_type_to_string(type),
+                       name.cstr(),
+                       descriptor_type_to_string(type),
                        descriptor_type_to_string(spec->type));
             return false;
         }
@@ -571,7 +593,9 @@ binding_table::validate_resources(const vulkan_render_graph& graph) const
         if (resources.find(spec.name) == resources.end())
         {
             ALOG_ERROR("Binding '{}' (set={}, binding={}) not found in render graph resources",
-                       spec.name.cstr(), spec.set_index, spec.binding_index);
+                       spec.name.cstr(),
+                       spec.set_index,
+                       spec.binding_index);
             valid = false;
         }
     }

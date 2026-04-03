@@ -208,8 +208,10 @@ property::load_item(reflection::property& p,
 {
     if (!jc[p.name])
     {
-        ALOG_WARN("Unable to deserialize property [{0}][{1}:{2}] ", obj.get_id().cstr(),
-                  obj.get_type_id().str(), p.name);
+        ALOG_WARN("Unable to deserialize property [{0}][{1}:{2}] ",
+                  obj.get_id().cstr(),
+                  obj.get_type_id().str(),
+                  p.name);
         return result_code::doesnt_exist;
     }
 

@@ -64,8 +64,8 @@ upload_image(int texWidth,
     VmaAllocationCreateInfo dimg_allocinfo = {};
     dimg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    auto new_image = vk_utils::vulkan_image::create(device->get_vma_allocator_provider(), dimg_info,
-                                                    dimg_allocinfo, 1);
+    auto new_image = vk_utils::vulkan_image::create(
+        device->get_vma_allocator_provider(), dimg_info, dimg_allocinfo, 1);
 
     // transition image to transfer-receiver
     device->immediate_submit(
@@ -90,8 +90,15 @@ upload_image(int texWidth,
             imageBarrier_toTransfer.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
             // barrier the image into the transfer-receive layout
-            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                 VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+            vkCmdPipelineBarrier(cmd,
+                                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0,
+                                 0,
+                                 nullptr,
+                                 0,
+                                 nullptr,
+                                 1,
                                  &imageBarrier_toTransfer);
 
             VkBufferImageCopy copyRegion = {};
@@ -106,8 +113,12 @@ upload_image(int texWidth,
             copyRegion.imageExtent = imageExtent;
 
             // copy the buffer into the image
-            vkCmdCopyBufferToImage(cmd, stagingBuffer.buffer(), new_image.image(),
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+            vkCmdCopyBufferToImage(cmd,
+                                   stagingBuffer.buffer(),
+                                   new_image.image(),
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                   1,
+                                   &copyRegion);
 
             VkImageMemoryBarrier imageBarrier_toReadable = imageBarrier_toTransfer;
 
@@ -118,9 +129,16 @@ upload_image(int texWidth,
             imageBarrier_toReadable.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
             // barrier the image into the shader readable layout
-            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr,
-                                 1, &imageBarrier_toReadable);
+            vkCmdPipelineBarrier(cmd,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                 0,
+                                 0,
+                                 nullptr,
+                                 0,
+                                 nullptr,
+                                 1,
+                                 &imageBarrier_toReadable);
         });
 
     return std::make_shared<vk_utils::vulkan_image>(std::move(new_image));
@@ -223,8 +241,8 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
                 copy.dstOffset = 0;
                 copy.srcOffset = vertex_buffer_size;
                 copy.size = index_buffer_size;
-                vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1,
-                                &copy);
+                vkCmdCopyBuffer(
+                    cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1, &copy);
             }
         });
 
@@ -314,8 +332,8 @@ vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
                 copy.dstOffset = 0;
                 copy.srcOffset = vertex_buffer_size;
                 copy.size = index_buffer_size;
-                vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1,
-                                &copy);
+                vkCmdCopyBuffer(
+                    cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1, &copy);
             }
         });
 
@@ -344,8 +362,8 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 
     VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    auto staging_buffer = device->create_buffer(base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                                VMA_MEMORY_USAGE_CPU_ONLY);
+    auto staging_buffer = device->create_buffer(
+        base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* data = nullptr;
     vmaMapMemory(device->allocator(), staging_buffer.allocation(), &data);
@@ -465,8 +483,8 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
     mat_data->set_texture_samples(samples);
 
     // Set bindless texture indices from texture slots
-    ALOG_INFO("create_material: {} has {} texture samples", mat_data->get_id().cstr(),
-              samples.size());
+    ALOG_INFO(
+        "create_material: {} has {} texture samples", mat_data->get_id().cstr(), samples.size());
     for (const auto& sample : samples)
     {
         if (sample.texture)
@@ -495,8 +513,11 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
         VkDescriptorSet txt_ds = VK_NULL_HANDLE;
         vk_utils::descriptor_builder::begin(device->descriptor_layout_cache(),
                                             device->descriptor_allocator())
-            .bind_image(0, (uint32_t)image_buffer_info.size(), image_buffer_info.data(),
-                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .bind_image(0,
+                        (uint32_t)image_buffer_info.size(),
+                        image_buffer_info.data(),
+                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                        VK_SHADER_STAGE_FRAGMENT_BIT)
             .build(txt_ds);
 
         mat_data->set_textures_ds(txt_ds);
@@ -524,7 +545,9 @@ vulkan_render_loader::create_sampler(const kryga::utils::id& id, VkBorderColor c
 
     auto data = std::make_shared<sampler_data>(id);
 
-    vkCreateSampler(glob::glob_state().get_render_device()->vk_device(), &sampler_ci, nullptr,
+    vkCreateSampler(glob::glob_state().get_render_device()->vk_device(),
+                    &sampler_ci,
+                    nullptr,
                     &data->m_sampler);
 
     m_samplers_cache[id] = data;

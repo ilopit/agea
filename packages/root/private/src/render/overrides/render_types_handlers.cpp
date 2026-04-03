@@ -114,7 +114,9 @@ struct create_mesh_cmd : render_cmd::render_command_base
         // Skip if mesh already exists (e.g. plane_mesh created by system init
         // and also referenced by billboard debug components)
         if (ctx.loader.get_mesh_data(id))
+        {
             return;
+        }
 
         if (skinned)
         {
@@ -288,8 +290,8 @@ struct create_material_cmd : render_cmd::render_command_base
             }
         }
 
-        render_bridge::set_material_texture_bindings(gpu_data, gpu_texture_indices,
-                                                     gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
+        render_bridge::set_material_texture_bindings(
+            gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
         auto* mat_data = ctx.loader.create_material(id, type_id, samples, *se_data, gpu_data);
 
@@ -324,7 +326,9 @@ struct update_material_cmd : render_cmd::render_command_base
     {
         auto* mat_data = ctx.loader.get_material_data(id);
         if (!mat_data)
+        {
             return;
+        }
 
         auto* rp = ctx.vr.get_render_pass(AID("main"));
         auto* se_data = rp->get_shader_effect(shader_effect_id);
@@ -374,8 +378,8 @@ struct update_material_cmd : render_cmd::render_command_base
             }
         }
 
-        render_bridge::set_material_texture_bindings(gpu_data, gpu_texture_indices,
-                                                     gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
+        render_bridge::set_material_texture_bindings(
+            gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
         ctx.loader.update_material(*mat_data, samples, *se_data, gpu_data);
 
@@ -494,8 +498,8 @@ texture__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     else
     {
         auto pixels = std::make_shared<utils::buffer>();
-        if (!kryga::asset_importer::texture_importer::extract_texture_from_buffer(bc, *pixels, w,
-                                                                                  h))
+        if (!kryga::asset_importer::texture_importer::extract_texture_from_buffer(
+                bc, *pixels, w, h))
         {
             ALOG_LAZY_ERROR;
             return result_code::failed;

@@ -178,8 +178,8 @@ level::tick(float dt)
 void
 level::unregister_objects()
 {
-    container::unregister_in_global_cache(m_instance_local_cs, *glob::glob_state().get_class_set(),
-                                          m_id, "instance");
+    container::unregister_in_global_cache(
+        m_instance_local_cs, *glob::glob_state().get_class_set(), m_id, "instance");
 }
 
 void

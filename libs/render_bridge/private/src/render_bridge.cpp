@@ -60,7 +60,8 @@ render_bridge::extract_gpu_data(root::smart_object& so, const access_template& c
             // Fill entire array with invalid indices
             for (uint32_t j = 0; j < KGPU_MAX_TEXTURE_SLOTS; ++j)
             {
-                memcpy(dyn_obj.data() + field->offset + j * sizeof(uint32_t), &INVALID_INDEX,
+                memcpy(dyn_obj.data() + field->offset + j * sizeof(uint32_t),
+                       &INVALID_INDEX,
                        sizeof(uint32_t));
             }
         }
@@ -281,7 +282,9 @@ update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
 {
     auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
     if (!object_data)
+    {
         return;
+    }
 
     object_data->gpu_data.model = transform;
     object_data->gpu_data.normal = normal_matrix;

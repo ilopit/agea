@@ -44,7 +44,9 @@ ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
         buffer = glob::glob_state().getr_render_device().create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        ALOG_INFO("Reallocating {0} buffer {1} => {2}", name, old_buffer.get_alloc_size(),
+        ALOG_INFO("Reallocating {0} buffer {1} => {2}",
+                  name,
+                  old_buffer.get_alloc_size(),
                   buffer.get_alloc_size());
 
         old_buffer.begin();
@@ -73,8 +75,8 @@ vulkan_render::upload_obj_data(render::frame_state& frame)
 {
     const auto total_size = m_cache.objects.get_size() * sizeof(gpu::object_data);
 
-    auto* data = (gpu::object_data*)ensure_buffer_capacity_and_map(frame.buffers.objects,
-                                                                   total_size, "objects");
+    auto* data = (gpu::object_data*)ensure_buffer_capacity_and_map(
+        frame.buffers.objects, total_size, "objects");
     KRG_check(data, "Should never happen");
 
     upload_gpu_object_data(data);
@@ -125,7 +127,8 @@ vulkan_render::upload_material_data(render::frame_state& frame)
         frame.buffers.materials = glob::glob_state().getr_render_device().create_buffer(
             total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        ALOG_INFO("Reallocating material buffer {0} => {1}", old_buffer_tb.get_alloc_size(),
+        ALOG_INFO("Reallocating material buffer {0} => {1}",
+                  old_buffer_tb.get_alloc_size(),
                   frame.buffers.materials.get_alloc_size());
 
         reallocated = true;
@@ -154,12 +157,14 @@ vulkan_render::upload_material_data(render::frame_state& frame)
             if (reallocated)
             {
                 memcpy(frame.buffers.materials.get_data() + dst_offset,
-                       old_buffer_tb.get_data() + src_offset, size);
+                       old_buffer_tb.get_data() + src_offset,
+                       size);
             }
             else
             {
                 memmove(frame.buffers.materials.get_data() + dst_offset,
-                        old_buffer_tb.get_data() + src_offset, size);
+                        old_buffer_tb.get_data() + src_offset,
+                        size);
             }
         }
     }
@@ -200,7 +205,8 @@ vulkan_render::upload_bone_matrices(render::frame_state& frame)
         auto old_buffer = std::move(frame.buffers.bone_matrices);
         frame.buffers.bone_matrices = glob::glob_state().getr_render_device().create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        ALOG_INFO("Reallocating bone_matrices buffer {} => {}", old_buffer.get_alloc_size(),
+        ALOG_INFO("Reallocating bone_matrices buffer {} => {}",
+                  old_buffer.get_alloc_size(),
                   frame.buffers.bone_matrices.get_alloc_size());
     }
 
@@ -373,7 +379,9 @@ vulkan_render::build_light_clusters()
     {
         auto* light = m_cache.universal_lights.at(i);
         if (!light->is_valid())
+        {
             continue;
+        }
         // Add small margin for cluster assignment to avoid edge cases
         lights.push_back({light->slot(), light->gpu_data.position, light->gpu_data.radius * 1.05f});
     }
@@ -382,8 +390,8 @@ vulkan_render::build_light_clusters()
     glm::mat4 inv_projection = glm::inverse(m_camera_data.projection);
 
     // Build clusters
-    m_cluster_grid.build_clusters(m_camera_data.view, m_camera_data.projection, inv_projection,
-                                  lights);
+    m_cluster_grid.build_clusters(
+        m_camera_data.view, m_camera_data.projection, inv_projection, lights);
 }
 
 void
@@ -398,7 +406,9 @@ vulkan_render::rebuild_light_grid()
     {
         auto* light = m_cache.universal_lights.at(i);
         if (!light->is_valid())
+        {
             continue;
+        }
         m_light_grid.insert_light(light->slot(), light->gpu_data.position, light->gpu_data.radius);
     }
 }
@@ -409,7 +419,9 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
     ZoneScopedN("Render::UploadClusters");
 
     if (!m_cluster_grid.is_initialized())
+    {
         return;
+    }
 
     const auto& config = m_cluster_grid.get_config();
 
@@ -495,15 +507,30 @@ vulkan_render::init_cluster_cull_compute()
     // set=0, binding=3: ClusterLightCounts (storage, writeonly)
     // set=0, binding=4: ClusterLightIndices (storage, writeonly)
     m_cluster_cull_pass->bindings()
-        .add(AID("dyn_cluster_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .add(AID("dyn_cluster_config"),
+             0,
+             0,
+             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_camera_data"), 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .add(AID("dyn_camera_data"),
+             0,
+             1,
+             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_gpu_universal_light_data"), 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_gpu_universal_light_data"),
+             0,
+             2,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_cluster_light_counts"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_cluster_light_counts"),
+             0,
+             3,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_cluster_light_indices"), 0, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_cluster_light_indices"),
+             0,
+             4,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
     m_cluster_cull_pass->finalize_bindings(
@@ -513,8 +540,8 @@ vulkan_render::init_cluster_cull_compute()
     compute_shader_create_info info;
     info.shader_buffer = &shader_buffer;
 
-    auto rc = m_cluster_cull_pass->create_compute_shader(AID("cluster_cull"), info,
-                                                         m_cluster_cull_shader);
+    auto rc = m_cluster_cull_pass->create_compute_shader(
+        AID("cluster_cull"), info, m_cluster_cull_shader);
     if (rc != result_code::ok)
     {
         ALOG_WARN("Failed to create cluster cull compute shader - GPU cluster culling disabled");
@@ -535,14 +562,23 @@ vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_cluster_cull_shader->m_pipeline);
 
     // Bind descriptor set
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                            m_cluster_cull_shader->m_pipeline_layout, 0, 1,
-                            &m_cluster_cull_descriptor_set, 0, nullptr);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_COMPUTE,
+                            m_cluster_cull_shader->m_pipeline_layout,
+                            0,
+                            1,
+                            &m_cluster_cull_descriptor_set,
+                            0,
+                            nullptr);
 
     // Push light count
     uint32_t num_lights = m_cache.universal_lights.get_size();
-    vkCmdPushConstants(cmd, m_cluster_cull_shader->m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
-                       0, sizeof(uint32_t), &num_lights);
+    vkCmdPushConstants(cmd,
+                       m_cluster_cull_shader->m_pipeline_layout,
+                       VK_SHADER_STAGE_COMPUTE_BIT,
+                       0,
+                       sizeof(uint32_t),
+                       &num_lights);
 
     // Calculate dispatch size
     const auto& config = m_cluster_grid.get_config();
@@ -582,13 +618,25 @@ vulkan_render::init_frustum_cull_compute()
     // set=0, binding=2: VisibleIndices (storage, writeonly)
     // set=0, binding=3: CullOutput (storage)
     m_frustum_cull_pass->bindings()
-        .add(AID("dyn_frustum_data"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .add(AID("dyn_frustum_data"),
+             0,
+             0,
+             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_object_buffer"), 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_object_buffer"),
+             0,
+             1,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_visible_indices"), 0, 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_visible_indices"),
+             0,
+             2,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT)
-        .add(AID("dyn_cull_output"), 0, 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        .add(AID("dyn_cull_output"),
+             0,
+             3,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
              VK_SHADER_STAGE_COMPUTE_BIT);
 
     m_frustum_cull_pass->finalize_bindings(
@@ -598,8 +646,8 @@ vulkan_render::init_frustum_cull_compute()
     compute_shader_create_info info;
     info.shader_buffer = &shader_buffer;
 
-    auto rc = m_frustum_cull_pass->create_compute_shader(AID("frustum_cull"), info,
-                                                         m_frustum_cull_shader);
+    auto rc = m_frustum_cull_pass->create_compute_shader(
+        AID("frustum_cull"), info, m_frustum_cull_shader);
     if (rc != result_code::ok)
     {
         ALOG_WARN("Failed to create frustum cull compute shader - GPU frustum culling disabled");
@@ -652,16 +700,29 @@ vulkan_render::dispatch_frustum_cull_impl(VkCommandBuffer cmd)
     barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                         0, 1, &barrier, 0, nullptr, 0, nullptr);
+    vkCmdPipelineBarrier(cmd,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0,
+                         1,
+                         &barrier,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr);
 
     // Bind compute pipeline
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_frustum_cull_shader->m_pipeline);
 
     // Bind descriptor set
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                            m_frustum_cull_shader->m_pipeline_layout, 0, 1,
-                            &m_frustum_cull_descriptor_set, 0, nullptr);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_COMPUTE,
+                            m_frustum_cull_shader->m_pipeline_layout,
+                            0,
+                            1,
+                            &m_frustum_cull_descriptor_set,
+                            0,
+                            nullptr);
 
     // Push constants: object count and max visible
     struct FrustumCullPushConstants
@@ -673,8 +734,12 @@ vulkan_render::dispatch_frustum_cull_impl(VkCommandBuffer cmd)
     pc.object_count = static_cast<uint32_t>(m_cache.objects.get_size());
     pc.max_visible = static_cast<uint32_t>(m_cache.objects.get_size());  // Same capacity
 
-    vkCmdPushConstants(cmd, m_frustum_cull_shader->m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
-                       0, sizeof(pc), &pc);
+    vkCmdPushConstants(cmd,
+                       m_frustum_cull_shader->m_pipeline_layout,
+                       VK_SHADER_STAGE_COMPUTE_BIT,
+                       0,
+                       sizeof(pc),
+                       &pc);
 
     // Calculate dispatch size
     uint32_t workgroup_size = 64;  // Must match local_size_x in shader
@@ -747,12 +812,14 @@ vulkan_render::setup_instanced_render_graph()
     {
         auto pass_name = AID("shadow_csm_" + std::to_string(c));
         m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(
-            pass_name,
-            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
-             m_render_graph.read(AID("dyn_instance_slots"))},
-            m_shadow_passes[c].get(), VkClearColorValue{},
-            [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
+        m_render_graph.add_graphics_pass(pass_name,
+                                         {m_render_graph.write(pass_name),
+                                          m_render_graph.read(AID("dyn_object_buffer")),
+                                          m_render_graph.read(AID("dyn_instance_slots"))},
+                                         m_shadow_passes[c].get(),
+                                         VkClearColorValue{},
+                                         [this, c](VkCommandBuffer cmd)
+                                         { draw_shadow_pass(cmd, c); });
     }
 
     // Local light shadow passes: front hemisphere (spot + point front)
@@ -760,12 +827,14 @@ vulkan_render::setup_instanced_render_graph()
     {
         auto pass_name = AID("shadow_local_" + std::to_string(i));
         m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(
-            pass_name,
-            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
-             m_render_graph.read(AID("dyn_instance_slots"))},
-            m_shadow_local_passes[i * 2].get(), VkClearColorValue{},
-            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, false); });
+        m_render_graph.add_graphics_pass(pass_name,
+                                         {m_render_graph.write(pass_name),
+                                          m_render_graph.read(AID("dyn_object_buffer")),
+                                          m_render_graph.read(AID("dyn_instance_slots"))},
+                                         m_shadow_local_passes[i * 2].get(),
+                                         VkClearColorValue{},
+                                         [this, i](VkCommandBuffer cmd)
+                                         { draw_shadow_local_pass(cmd, i, false); });
     }
 
     // Local light shadow passes: back hemisphere (point lights DPSM only)
@@ -773,12 +842,14 @@ vulkan_render::setup_instanced_render_graph()
     {
         auto pass_name = AID("shadow_local_back_" + std::to_string(i));
         m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(
-            pass_name,
-            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
-             m_render_graph.read(AID("dyn_instance_slots"))},
-            m_shadow_local_passes[i * 2 + 1].get(), VkClearColorValue{},
-            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, true); });
+        m_render_graph.add_graphics_pass(pass_name,
+                                         {m_render_graph.write(pass_name),
+                                          m_render_graph.read(AID("dyn_object_buffer")),
+                                          m_render_graph.read(AID("dyn_instance_slots"))},
+                                         m_shadow_local_passes[i * 2 + 1].get(),
+                                         VkClearColorValue{},
+                                         [this, i](VkCommandBuffer cmd)
+                                         { draw_shadow_local_pass(cmd, i, true); });
     }
 
     // Compute pass: GPU frustum culling (runs before cluster culling)
@@ -806,22 +877,25 @@ vulkan_render::setup_instanced_render_graph()
                                     });
 
     // UI pass
-    m_render_graph.add_graphics_pass(AID("ui"), {m_render_graph.write(AID("ui_target"))},
-                                     get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
+    m_render_graph.add_graphics_pass(AID("ui"),
+                                     {m_render_graph.write(AID("ui_target"))},
+                                     get_render_pass(AID("ui")),
+                                     VkClearColorValue{0, 0, 0, 0},
                                      [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
 
     // Picking pass - instanced batched drawing
-    m_render_graph.add_graphics_pass(
-        AID("picking"),
-        {m_render_graph.write(AID("picking_target")), m_render_graph.read(AID("dyn_camera_data")),
-         m_render_graph.read(AID("dyn_object_buffer")),
-         m_render_graph.read(AID("dyn_cluster_light_counts")),
-         m_render_graph.read(AID("dyn_cluster_light_indices")),
-         m_render_graph.read(AID("dyn_cluster_config")),
-         m_render_graph.read(AID("dyn_instance_slots")),
-         m_render_graph.read(AID("dyn_bone_matrices"))},
-        get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
-        [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
+    m_render_graph.add_graphics_pass(AID("picking"),
+                                     {m_render_graph.write(AID("picking_target")),
+                                      m_render_graph.read(AID("dyn_camera_data")),
+                                      m_render_graph.read(AID("dyn_object_buffer")),
+                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
+                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
+                                      m_render_graph.read(AID("dyn_cluster_config")),
+                                      m_render_graph.read(AID("dyn_instance_slots")),
+                                      m_render_graph.read(AID("dyn_bone_matrices"))},
+                                     get_render_pass(AID("picking")),
+                                     VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
 
     // Main pass - instanced batched drawing
     // NOTE: Shadow maps are sampled via bindless textures but not declared as
@@ -830,21 +904,24 @@ vulkan_render::setup_instanced_render_graph()
     // themselves (initialLayout=UNDEFINED → finalLayout=DEPTH_STENCIL_ATTACHMENT).
     // This produces a validation warning (VUID-vkCmdDraw-None-09600) on the first
     // frame but is functionally correct.
-    m_render_graph.add_graphics_pass(
-        AID("main"),
-        {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
-         m_render_graph.read(AID("dyn_camera_data")), m_render_graph.read(AID("dyn_object_buffer")),
-         m_render_graph.read(AID("dyn_gpu_universal_light_data")),
-         m_render_graph.read(AID("dyn_directional_lights_buffer")),
-         m_render_graph.read(AID("dyn_cluster_light_counts")),
-         m_render_graph.read(AID("dyn_cluster_light_indices")),
-         m_render_graph.read(AID("dyn_cluster_config")),
-         m_render_graph.read(AID("dyn_instance_slots")),
-         m_render_graph.read(AID("dyn_bone_matrices")),
-         m_render_graph.read(AID("dyn_material_buffer")),
-         m_render_graph.read(AID("dyn_shadow_data"))},
-        get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
-        [this](VkCommandBuffer) { draw_objects_instanced(*m_current_frame); });
+    m_render_graph.add_graphics_pass(AID("main"),
+                                     {m_render_graph.write(AID("swapchain")),
+                                      m_render_graph.read(AID("ui_target")),
+                                      m_render_graph.read(AID("dyn_camera_data")),
+                                      m_render_graph.read(AID("dyn_object_buffer")),
+                                      m_render_graph.read(AID("dyn_gpu_universal_light_data")),
+                                      m_render_graph.read(AID("dyn_directional_lights_buffer")),
+                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
+                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
+                                      m_render_graph.read(AID("dyn_cluster_config")),
+                                      m_render_graph.read(AID("dyn_instance_slots")),
+                                      m_render_graph.read(AID("dyn_bone_matrices")),
+                                      m_render_graph.read(AID("dyn_material_buffer")),
+                                      m_render_graph.read(AID("dyn_shadow_data"))},
+                                     get_render_pass(AID("main")),
+                                     VkClearColorValue{0, 0, 0, 1.0},
+                                     [this](VkCommandBuffer)
+                                     { draw_objects_instanced(*m_current_frame); });
 
     bool result = m_render_graph.compile();
     KRG_check(result, "Instanced render graph compilation failed");
@@ -886,12 +963,14 @@ vulkan_render::setup_per_object_render_graph()
     {
         auto pass_name = AID("shadow_csm_" + std::to_string(c));
         m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(
-            pass_name,
-            {m_render_graph.write(pass_name), m_render_graph.read(AID("dyn_object_buffer")),
-             m_render_graph.read(AID("dyn_instance_slots"))},
-            m_shadow_passes[c].get(), VkClearColorValue{},
-            [this, c](VkCommandBuffer cmd) { draw_shadow_pass(cmd, c); });
+        m_render_graph.add_graphics_pass(pass_name,
+                                         {m_render_graph.write(pass_name),
+                                          m_render_graph.read(AID("dyn_object_buffer")),
+                                          m_render_graph.read(AID("dyn_instance_slots"))},
+                                         m_shadow_passes[c].get(),
+                                         VkClearColorValue{},
+                                         [this, c](VkCommandBuffer cmd)
+                                         { draw_shadow_pass(cmd, c); });
     }
 
     // Local light shadow passes: front + back hemispheres
@@ -899,59 +978,69 @@ vulkan_render::setup_per_object_render_graph()
     {
         auto front_name = AID("shadow_local_" + std::to_string(i));
         m_render_graph.import_resource(front_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(
-            front_name,
-            {m_render_graph.write(front_name), m_render_graph.read(AID("dyn_object_buffer")),
-             m_render_graph.read(AID("dyn_instance_slots"))},
-            m_shadow_local_passes[i * 2].get(), VkClearColorValue{},
-            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, false); });
+        m_render_graph.add_graphics_pass(front_name,
+                                         {m_render_graph.write(front_name),
+                                          m_render_graph.read(AID("dyn_object_buffer")),
+                                          m_render_graph.read(AID("dyn_instance_slots"))},
+                                         m_shadow_local_passes[i * 2].get(),
+                                         VkClearColorValue{},
+                                         [this, i](VkCommandBuffer cmd)
+                                         { draw_shadow_local_pass(cmd, i, false); });
 
         auto back_name = AID("shadow_local_back_" + std::to_string(i));
         m_render_graph.import_resource(back_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(
-            back_name,
-            {m_render_graph.write(back_name), m_render_graph.read(AID("dyn_object_buffer")),
-             m_render_graph.read(AID("dyn_instance_slots"))},
-            m_shadow_local_passes[i * 2 + 1].get(), VkClearColorValue{},
-            [this, i](VkCommandBuffer cmd) { draw_shadow_local_pass(cmd, i, true); });
+        m_render_graph.add_graphics_pass(back_name,
+                                         {m_render_graph.write(back_name),
+                                          m_render_graph.read(AID("dyn_object_buffer")),
+                                          m_render_graph.read(AID("dyn_instance_slots"))},
+                                         m_shadow_local_passes[i * 2 + 1].get(),
+                                         VkClearColorValue{},
+                                         [this, i](VkCommandBuffer cmd)
+                                         { draw_shadow_local_pass(cmd, i, true); });
     }
 
     // NO compute pass - per-object mode uses CPU light grid
 
     // UI pass
-    m_render_graph.add_graphics_pass(AID("ui"), {m_render_graph.write(AID("ui_target"))},
-                                     get_render_pass(AID("ui")), VkClearColorValue{0, 0, 0, 0},
+    m_render_graph.add_graphics_pass(AID("ui"),
+                                     {m_render_graph.write(AID("ui_target"))},
+                                     get_render_pass(AID("ui")),
+                                     VkClearColorValue{0, 0, 0, 0},
                                      [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
 
     // Picking pass - per-object drawing
-    m_render_graph.add_graphics_pass(
-        AID("picking"),
-        {m_render_graph.write(AID("picking_target")), m_render_graph.read(AID("dyn_camera_data")),
-         m_render_graph.read(AID("dyn_object_buffer")),
-         m_render_graph.read(AID("dyn_cluster_light_counts")),
-         m_render_graph.read(AID("dyn_cluster_light_indices")),
-         m_render_graph.read(AID("dyn_cluster_config")),
-         m_render_graph.read(AID("dyn_instance_slots")),
-         m_render_graph.read(AID("dyn_bone_matrices"))},
-        get_render_pass(AID("picking")), VkClearColorValue{0, 0, 0, 0},
-        [this](VkCommandBuffer cmd) { draw_picking_per_object(cmd); });
+    m_render_graph.add_graphics_pass(AID("picking"),
+                                     {m_render_graph.write(AID("picking_target")),
+                                      m_render_graph.read(AID("dyn_camera_data")),
+                                      m_render_graph.read(AID("dyn_object_buffer")),
+                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
+                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
+                                      m_render_graph.read(AID("dyn_cluster_config")),
+                                      m_render_graph.read(AID("dyn_instance_slots")),
+                                      m_render_graph.read(AID("dyn_bone_matrices"))},
+                                     get_render_pass(AID("picking")),
+                                     VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer cmd) { draw_picking_per_object(cmd); });
 
     // Main pass - per-object drawing (see instanced graph for shadow map note)
-    m_render_graph.add_graphics_pass(
-        AID("main"),
-        {m_render_graph.write(AID("swapchain")), m_render_graph.read(AID("ui_target")),
-         m_render_graph.read(AID("dyn_camera_data")), m_render_graph.read(AID("dyn_object_buffer")),
-         m_render_graph.read(AID("dyn_gpu_universal_light_data")),
-         m_render_graph.read(AID("dyn_directional_lights_buffer")),
-         m_render_graph.read(AID("dyn_cluster_light_counts")),
-         m_render_graph.read(AID("dyn_cluster_light_indices")),
-         m_render_graph.read(AID("dyn_cluster_config")),
-         m_render_graph.read(AID("dyn_instance_slots")),
-         m_render_graph.read(AID("dyn_bone_matrices")),
-         m_render_graph.read(AID("dyn_material_buffer")),
-         m_render_graph.read(AID("dyn_shadow_data"))},
-        get_render_pass(AID("main")), VkClearColorValue{0, 0, 0, 1.0},
-        [this](VkCommandBuffer) { draw_objects_per_object(*m_current_frame); });
+    m_render_graph.add_graphics_pass(AID("main"),
+                                     {m_render_graph.write(AID("swapchain")),
+                                      m_render_graph.read(AID("ui_target")),
+                                      m_render_graph.read(AID("dyn_camera_data")),
+                                      m_render_graph.read(AID("dyn_object_buffer")),
+                                      m_render_graph.read(AID("dyn_gpu_universal_light_data")),
+                                      m_render_graph.read(AID("dyn_directional_lights_buffer")),
+                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
+                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
+                                      m_render_graph.read(AID("dyn_cluster_config")),
+                                      m_render_graph.read(AID("dyn_instance_slots")),
+                                      m_render_graph.read(AID("dyn_bone_matrices")),
+                                      m_render_graph.read(AID("dyn_material_buffer")),
+                                      m_render_graph.read(AID("dyn_shadow_data"))},
+                                     get_render_pass(AID("main")),
+                                     VkClearColorValue{0, 0, 0, 1.0},
+                                     [this](VkCommandBuffer)
+                                     { draw_objects_per_object(*m_current_frame); });
 
     bool result = m_render_graph.compile();
     KRG_check(result, "Per-object render graph compilation failed");

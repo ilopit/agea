@@ -242,7 +242,8 @@ bool
 shader_reflection_utils::extract_interface_variables(
     std::vector<SpvReflectInterfaceVariable*>& inputs, reflection::interface_block& block)
 {
-    std::sort(inputs.begin(), inputs.end(),
+    std::sort(inputs.begin(),
+              inputs.end(),
               [](SpvReflectInterfaceVariable* l, SpvReflectInterfaceVariable* r)
               { return l->location < r->location; });
 
@@ -322,7 +323,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
         return false;
     }
 
-    std::sort(spv_sets.begin(), spv_sets.end(),
+    std::sort(spv_sets.begin(),
+              spv_sets.end(),
               [](SpvReflectDescriptorSet* l, SpvReflectDescriptorSet* r)
               { return l->set < r->set; });
 
@@ -336,7 +338,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
         std::vector<SpvReflectDescriptorBinding*> spv_bindings(
             spv_set->bindings, spv_set->bindings + spv_set->binding_count);
 
-        std::sort(spv_bindings.begin(), spv_bindings.end(),
+        std::sort(spv_bindings.begin(),
+                  spv_bindings.end(),
                   [](SpvReflectDescriptorBinding* l, SpvReflectDescriptorBinding* r)
                   { return l->binding < r->binding; });
 
@@ -358,13 +361,16 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
                      spv_binding->type_description->type_name[0] != '\0')
             {
                 name_str = spv_binding->type_description->type_name;
-                ALOG_TRACE("Using type name '{}' as binding name for set={}, binding={}", name_str,
-                           spv_set->set, spv_binding->binding);
+                ALOG_TRACE("Using type name '{}' as binding name for set={}, binding={}",
+                           name_str,
+                           spv_set->set,
+                           spv_binding->binding);
             }
 
             if (!name_str)
             {
-                ALOG_ERROR("Descriptor binding at set={}, binding={} has no name", spv_set->set,
+                ALOG_ERROR("Descriptor binding at set={}, binding={} has no name",
+                           spv_set->set,
                            spv_binding->binding);
                 return false;
             }
@@ -376,8 +382,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
 
             binding_gdb.set_id(AID("binding"));
 
-            if (!convert_spvr_to_dyn_layout(binding_name, *spv_binding->type_description,
-                                            binding_gdb))
+            if (!convert_spvr_to_dyn_layout(
+                    binding_name, *spv_binding->type_description, binding_gdb))
             {
                 return false;
             }
@@ -418,7 +424,9 @@ shader_reflection_utils::are_layouts_compatible(const utils::dynobj_layout_sptr&
 
     for (auto i = 0; i < size; ++i)
     {
-        if (!compare_dynfield(l->get_fields()[i], r->get_fields()[i], non_strict_name_check,
+        if (!compare_dynfield(l->get_fields()[i],
+                              r->get_fields()[i],
+                              non_strict_name_check,
                               ignore_highlevel_naming))
         {
             return false;
@@ -497,8 +505,8 @@ shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
         return false;
     }
 
-    return are_layouts_compatible(l.sub_field_layout, r.sub_field_layout, non_strict_name_check,
-                                  ignore_highlevel_naming);
+    return are_layouts_compatible(
+        l.sub_field_layout, r.sub_field_layout, non_strict_name_check, ignore_highlevel_naming);
 }
 
 bool

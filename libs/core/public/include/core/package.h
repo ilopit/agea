@@ -7,7 +7,10 @@
 
 #include "core/container.h"
 
-namespace kryga::vfs { class backend; }
+namespace kryga::vfs
+{
+class backend;
+}
 
 namespace kryga
 {

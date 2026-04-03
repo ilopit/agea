@@ -44,7 +44,9 @@ void
 light_grid::insert_light(uint32_t slot, const glm::vec3& pos, float radius)
 {
     if (!m_initialized)
+    {
         return;
+    }
 
     light_grid_entry entry{slot, radius, pos};
 
@@ -75,7 +77,9 @@ light_grid::query_lights(const glm::vec3& center,
                          uint32_t max_count) const
 {
     if (!m_initialized || max_count == 0)
+    {
         return 0;
+    }
 
     // Calculate cells overlapped by query sphere
     glm::vec3 query_min = center - glm::vec3(radius);
@@ -94,7 +98,9 @@ light_grid::query_lights(const glm::vec3& center,
             {
                 auto it = m_cells.find(make_cell_key(x, y, z));
                 if (it == m_cells.end())
+                {
                     continue;
+                }
 
                 for (const auto& entry : it->second)
                 {
@@ -118,7 +124,9 @@ light_grid::query_lights(const glm::vec3& center,
                             out_slots[count] = entry.slot;
                             ++count;
                             if (count >= max_count)
+                            {
                                 return count;
+                            }
                         }
                     }
                 }

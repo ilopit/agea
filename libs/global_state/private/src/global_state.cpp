@@ -76,8 +76,10 @@ state::schedule_action(state_stage stage, scheduled_action action)
     auto& node = m_scheduled_actions[(size_t)stage];
 
     node.push_back(action);
-    std::cerr << std::format("Scheduling action state {:x}  at {}, total {} \n", (size_t)this,
-                             (size_t)stage, node.size());
+    std::cerr << std::format("Scheduling action state {:x}  at {}, total {} \n",
+                             (size_t)this,
+                             (size_t)stage,
+                             node.size());
     return (int)node.size();
 }
 

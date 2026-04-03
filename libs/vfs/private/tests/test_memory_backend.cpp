@@ -121,13 +121,14 @@ TEST_F(MemoryBackendTest, enumerate_recursive)
     be.add_file_string("a/b/three.dat", "3");
 
     std::vector<std::string> found;
-    be.enumerate("a",
-                 [&](std::string_view path, bool)
-                 {
-                     found.emplace_back(path);
-                     return true;
-                 },
-                 true);
+    be.enumerate(
+        "a",
+        [&](std::string_view path, bool)
+        {
+            found.emplace_back(path);
+            return true;
+        },
+        true);
 
     EXPECT_EQ(found.size(), 3);
 }
@@ -138,13 +139,14 @@ TEST_F(MemoryBackendTest, enumerate_non_recursive)
     be.add_file_string("top/deep/nested.txt", "n");
 
     std::vector<std::string> found;
-    be.enumerate("top",
-                 [&](std::string_view path, bool)
-                 {
-                     found.emplace_back(path);
-                     return true;
-                 },
-                 false);
+    be.enumerate(
+        "top",
+        [&](std::string_view path, bool)
+        {
+            found.emplace_back(path);
+            return true;
+        },
+        false);
 
     EXPECT_EQ(found.size(), 1);
 }
@@ -156,14 +158,15 @@ TEST_F(MemoryBackendTest, enumerate_ext_filter)
     be.add_file_string("dir/c.txt", "c");
 
     std::vector<std::string> found;
-    be.enumerate("dir",
-                 [&](std::string_view path, bool)
-                 {
-                     found.emplace_back(path);
-                     return true;
-                 },
-                 true,
-                 ".txt");
+    be.enumerate(
+        "dir",
+        [&](std::string_view path, bool)
+        {
+            found.emplace_back(path);
+            return true;
+        },
+        true,
+        ".txt");
 
     EXPECT_EQ(found.size(), 2);
 }
@@ -175,13 +178,14 @@ TEST_F(MemoryBackendTest, enumerate_early_exit)
     be.add_file_string("x/3.txt", "3");
 
     int count = 0;
-    be.enumerate("x",
-                 [&](std::string_view, bool)
-                 {
-                     ++count;
-                     return false;
-                 },
-                 true);
+    be.enumerate(
+        "x",
+        [&](std::string_view, bool)
+        {
+            ++count;
+            return false;
+        },
+        true);
 
     EXPECT_EQ(count, 1);
 }

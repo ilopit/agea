@@ -43,7 +43,8 @@ TEST_F(render_device_test, load_se)
 {
     kryga::utils::buffer vert, frag;
 
-    auto path_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://packages/base.apkg/class/shader_effects/error"));
+    auto path_rp = glob::glob_state().getr_vfs().real_path(
+        vfs::rid("data://packages/base.apkg/class/shader_effects/error"));
     auto path = APATH(path_rp.value());
 
     auto vert_path = path / "se_error.vert";

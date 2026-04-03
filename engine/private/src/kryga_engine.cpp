@@ -44,7 +44,6 @@
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_commands_common.h>
 
-
 #include <vfs/vfs.h>
 
 #include <vulkan_render/kryga_render.h>
@@ -678,8 +677,8 @@ vulkan_engine::init_default_resources()
     auto vertices = vert_buffer.make_view<gpu::vertex_data>();
     auto indices = index_buffer.make_view<gpu::uint>();
 
-    glob::glob_state().getr_vulkan_render_loader().create_mesh(AID("plane_mesh"), vertices,
-                                                               indices);
+    glob::glob_state().getr_vulkan_render_loader().create_mesh(
+        AID("plane_mesh"), vertices, indices);
 
     // auto pkg = glob::package_manager::getr().get_package(AID("root"));
     //
@@ -712,7 +711,9 @@ vulkan_engine::init_scene()
         {
             cam_obj->get_camera_component()->set_active_camera(true);
             cam_obj->get_camera_component()->set_perspective(
-                60.f, glob::glob_state().getr_native_window().aspect_ratio(), (float)KGPU_znear,
+                60.f,
+                glob::glob_state().getr_native_window().aspect_ratio(),
+                (float)KGPU_znear,
                 (float)KGPU_zfar);
         }
     }
@@ -737,8 +738,11 @@ vulkan_engine::init_default_scripting()
 
     auto pm = glob::glob_state().get_pm();
     auto lua_pm = lua->state().new_usertype<core::package_manager>(
-        "pm", sol::no_constructor, "get_package",
-        [pm](const char* id) -> core::package* { return pm->get_package(AID(id)); }, "load",
+        "pm",
+        sol::no_constructor,
+        "get_package",
+        [pm](const char* id) -> core::package* { return pm->get_package(AID(id)); },
+        "load",
         [pm](const char* id) -> bool { return pm->load_package(AID(id)); });
 
     gs.create_box_with_obj("lua_pm", std::move(lua_pm));

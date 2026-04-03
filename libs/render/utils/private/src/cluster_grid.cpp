@@ -38,7 +38,9 @@ void
 cluster_grid::resize(uint32_t screen_width, uint32_t screen_height)
 {
     if (!m_initialized)
+    {
         return;
+    }
 
     m_config.update_dimensions(screen_width, screen_height);
 
@@ -82,7 +84,9 @@ uint32_t
 cluster_grid::depth_to_slice(float depth) const
 {
     if (depth <= m_config.near_plane)
+    {
         return 0;
+    }
     float log_ratio = std::log(m_config.far_plane / m_config.near_plane);
     float log_depth = std::log(depth / m_config.near_plane);
     float t = log_depth / log_ratio;
@@ -275,7 +279,9 @@ cluster_grid::build_clusters(const glm::mat4& view,
                             ++m_total_light_assignments;
 
                             if (count == 1)
+                            {
                                 ++m_active_clusters;
+                            }
                         }
                     }
                 }

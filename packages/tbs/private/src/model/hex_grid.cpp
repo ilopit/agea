@@ -19,6 +19,7 @@ hex_grid::construct(construct_params& params)
     hex_tile::construct_params cp;
 
     for (int r = 0; r < 100; ++r)
+    {
         for (int q = -100; q < 100; ++q)
         {
             cp.hex_q = q;
@@ -26,6 +27,7 @@ hex_grid::construct(construct_params& params)
 
             // auto dl = spawn_component<hex_tile>(m_root_component, AID("hex_tile"), cp);
         }
+    }
 
     return true;
 }

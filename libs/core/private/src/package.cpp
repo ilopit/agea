@@ -35,10 +35,10 @@ package::~package()
 void
 package::unregister_in_global_cache()
 {
-    container::unregister_in_global_cache(m_instance_local_cs,
-                                          *glob::glob_state().get_instance_set(), m_id, "instance");
-    container::unregister_in_global_cache(m_proto_local_cs, *glob::glob_state().get_class_set(),
-                                          m_id, "proto");
+    container::unregister_in_global_cache(
+        m_instance_local_cs, *glob::glob_state().get_instance_set(), m_id, "instance");
+    container::unregister_in_global_cache(
+        m_proto_local_cs, *glob::glob_state().get_class_set(), m_id, "proto");
 }
 
 void
@@ -84,12 +84,14 @@ package::init()
     }
     m_vfs_root = vfs_root;
 
-    m_backend = vfs.mount(
-        vfs_root,
-        real.value(),
-        {.index_filter = ".aobj",
-         .load_order = {"class/textures", "class/shader_effects", "class/materials",
-                        "class/meshes", "class/components"}});
+    m_backend = vfs.mount(vfs_root,
+                          real.value(),
+                          {.index_filter = ".aobj",
+                           .load_order = {"class/textures",
+                                          "class/shader_effects",
+                                          "class/materials",
+                                          "class/meshes",
+                                          "class/components"}});
     if (!m_backend)
     {
         ALOG_LAZY_ERROR;

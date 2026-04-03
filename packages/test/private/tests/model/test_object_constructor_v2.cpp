@@ -50,7 +50,8 @@ struct test_object_constructor : base_test
             vfs.mount("tmp", std::make_unique<vfs::physical_backend>(root / "tmp"), 0);
             vfs.mount(
                 "generated",
-                std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"), 0);
+                std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"),
+                0);
         }
         core::state_mutator__caches::set(gs);
         core::state_mutator__reflection_manager::set(gs);

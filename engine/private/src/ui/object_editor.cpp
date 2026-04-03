@@ -69,7 +69,9 @@ void
 draw_transformation(int& uid, root::game_object_component& obj)
 {
     if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+    {
         return;
+    }
 
     auto apply = [&obj]()
     {

@@ -147,15 +147,21 @@ gltf_animation_loader::load(const utils::buffer& buf, gltf_load_result& out)
                     break;
                 case cgltf_attribute_type_texcoord:
                     if (attr.index == 0)
+                    {
                         uv_acc = attr.data;
+                    }
                     break;
                 case cgltf_attribute_type_joints:
                     if (attr.index == 0)
+                    {
                         joints_acc = attr.data;
+                    }
                     break;
                 case cgltf_attribute_type_weights:
                     if (attr.index == 0)
+                    {
                         weights_acc = attr.data;
+                    }
                     break;
                 default:
                     break;
@@ -228,7 +234,9 @@ gltf_animation_loader::load(const utils::buffer& buf, gltf_load_result& out)
         }
     }
 
-    ALOG_INFO("cgltf: Loaded '{}' - {} joints, {} meshes", path_str, out.joint_names.size(),
+    ALOG_INFO("cgltf: Loaded '{}' - {} joints, {} meshes",
+              path_str,
+              out.joint_names.size(),
               out.meshes.size());
 
     cgltf_free(data);

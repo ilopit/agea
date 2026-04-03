@@ -150,13 +150,14 @@ TEST_F(PhysicalBackendTest, enumerate_recursive)
     write_file("e/sub/two.txt", "2");
 
     std::vector<std::string> found;
-    be->enumerate("e",
-                  [&](std::string_view path, bool)
-                  {
-                      found.emplace_back(path);
-                      return true;
-                  },
-                  true);
+    be->enumerate(
+        "e",
+        [&](std::string_view path, bool)
+        {
+            found.emplace_back(path);
+            return true;
+        },
+        true);
 
     EXPECT_EQ(found.size(), 2);
 }
@@ -167,13 +168,14 @@ TEST_F(PhysicalBackendTest, enumerate_non_recursive)
     write_file("flat/deep/b.txt", "b");
 
     std::vector<std::string> found;
-    be->enumerate("flat",
-                  [&](std::string_view path, bool)
-                  {
-                      found.emplace_back(path);
-                      return true;
-                  },
-                  false);
+    be->enumerate(
+        "flat",
+        [&](std::string_view path, bool)
+        {
+            found.emplace_back(path);
+            return true;
+        },
+        false);
 
     EXPECT_EQ(found.size(), 1);
 }
@@ -184,14 +186,15 @@ TEST_F(PhysicalBackendTest, enumerate_ext_filter)
     write_file("filt/b.dat", "b");
 
     std::vector<std::string> found;
-    be->enumerate("filt",
-                  [&](std::string_view path, bool)
-                  {
-                      found.emplace_back(path);
-                      return true;
-                  },
-                  true,
-                  ".txt");
+    be->enumerate(
+        "filt",
+        [&](std::string_view path, bool)
+        {
+            found.emplace_back(path);
+            return true;
+        },
+        true,
+        ".txt");
 
     EXPECT_EQ(found.size(), 1);
 }
