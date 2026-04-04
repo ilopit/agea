@@ -210,6 +210,7 @@ public:
     void schd_update_material(render::material_data* mat_data);
     void schd_update_light(render::vulkan_directional_light_data* ld);
     void schd_update_light(render::vulkan_universal_light_data* ld);
+    void schd_update_texture(render::texture_data* tex);
 
     void schd_remove_object(render::vulkan_render_data* obj_data);
     void schd_remove_material(render::material_data* mat_data);
@@ -238,10 +239,6 @@ public:
 
     render_pass*
     get_render_pass(const utils::id& id);
-
-    // Mark a texture as needing descriptor update
-    void
-    schd_update_texture(texture_data* tex);
 
     void
     set_grid_visible(bool v)
