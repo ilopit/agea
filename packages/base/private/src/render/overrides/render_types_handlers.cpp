@@ -122,8 +122,7 @@ struct create_object_cmd : render_cmd::render_command_base
         object_data->bone_count = bone_count;
         object_data->queue_id = std::move(queue_id);
 
-        ctx.vr.schedule_to_drawing(object_data);
-        ctx.vr.schedule_game_data_gpu_upload(object_data);
+        ctx.vr.schd_add_object(object_data);
     }
 };
 
@@ -163,12 +162,14 @@ struct update_object_cmd : render_cmd::render_command_base
         auto new_rqid = std::move(queue_id);
         if (new_rqid != object_data->queue_id)
         {
-            ctx.vr.remove_from_drawing(object_data);
+            ctx.vr.schd_remove_object(object_data);
             object_data->queue_id = std::move(new_rqid);
-            ctx.vr.schedule_to_drawing(object_data);
+            ctx.vr.schd_add_object(object_data);
         }
-
-        ctx.vr.schedule_game_data_gpu_upload(object_data);
+        else
+        {
+            ctx.vr.schd_update_object(object_data);
+        }
     }
 };
 
@@ -182,7 +183,7 @@ struct destroy_object_cmd : render_cmd::render_command_base
         auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
         if (object_data)
         {
-            ctx.vr.remove_from_drawing(object_data);
+            ctx.vr.schd_remove_object(object_data);
             ctx.vr.get_cache().objects.release(object_data);
         }
     }
@@ -222,7 +223,7 @@ struct create_light_cmd : render_cmd::render_command_base
             rh->gpu_data.diffuse = diffuse;
             rh->gpu_data.specular = specular;
             rh->gpu_data.direction = direction;
-            ctx.vr.schedule_directional_light_data_gpu_upload(rh);
+            ctx.vr.schd_add_light(rh);
         }
         else
         {
@@ -237,7 +238,7 @@ struct create_light_cmd : render_cmd::render_command_base
             rh->gpu_data.direction = direction;
             rh->gpu_data.cut_off = cut_off;
             rh->gpu_data.outer_cut_off = outer_cut_off;
-            ctx.vr.schedule_universal_light_data_gpu_upload(rh);
+            ctx.vr.schd_add_light(rh);
         }
     }
 };
@@ -270,7 +271,7 @@ struct update_light_cmd : render_cmd::render_command_base
             rh->gpu_data.diffuse = diffuse;
             rh->gpu_data.specular = specular;
             rh->gpu_data.direction = direction;
-            ctx.vr.schedule_directional_light_data_gpu_upload(rh);
+            ctx.vr.schd_update_light(rh);
         }
         else
         {
@@ -288,7 +289,7 @@ struct update_light_cmd : render_cmd::render_command_base
             rh->gpu_data.direction = direction;
             rh->gpu_data.cut_off = cut_off;
             rh->gpu_data.outer_cut_off = outer_cut_off;
-            ctx.vr.schedule_universal_light_data_gpu_upload(rh);
+            ctx.vr.schd_update_light(rh);
         }
     }
 };

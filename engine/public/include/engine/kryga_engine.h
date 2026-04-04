@@ -93,13 +93,8 @@ private:
     bool
     load_level(const utils::id& level_id);
 
-    // clang-format off
+    void consume_updated_render();
     void consume_updated_transforms();
-    void consume_updated_render_components();
-    void consume_updated_render_assets();
-    void consume_updated_shader_effects();
-
-    // clang-format on
 
     void
     render_thread_func();

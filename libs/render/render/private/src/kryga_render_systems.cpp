@@ -217,7 +217,7 @@ vulkan_render::upload_bone_matrices(render::frame_state& frame)
 }
 
 void
-vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
+vulkan_render::schd_update_material(render::material_data* md)
 {
     for (auto& q : m_frames)
     {
@@ -227,16 +227,7 @@ vulkan_render::schedule_material_data_gpu_upload(render::material_data* md)
 }
 
 void
-vulkan_render::schedule_game_data_gpu_upload(render::vulkan_render_data* obj_date)
-{
-    for (auto& q : m_frames)
-    {
-        q.uploads.objects_queue.emplace_back(obj_date);
-    }
-}
-
-void
-vulkan_render::schedule_directional_light_data_gpu_upload(render::vulkan_directional_light_data* ld)
+vulkan_render::schd_add_light(render::vulkan_directional_light_data* ld)
 {
     for (auto& q : m_frames)
     {
@@ -245,7 +236,27 @@ vulkan_render::schedule_directional_light_data_gpu_upload(render::vulkan_directi
 }
 
 void
-vulkan_render::schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld)
+vulkan_render::schd_add_light(render::vulkan_universal_light_data* ld)
+{
+    m_clusters_dirty = true;
+    m_light_grid_dirty = true;
+    for (auto& q : m_frames)
+    {
+        q.uploads.universal_light_queue.emplace_back(ld);
+    }
+}
+
+void
+vulkan_render::schd_update_light(render::vulkan_directional_light_data* ld)
+{
+    for (auto& q : m_frames)
+    {
+        q.uploads.directional_light_queue.emplace_back(ld);
+    }
+}
+
+void
+vulkan_render::schd_update_light(render::vulkan_universal_light_data* ld)
 {
     m_clusters_dirty = true;
     m_light_grid_dirty = true;

@@ -120,7 +120,7 @@ game_editor::ev_mouse_press()
     if (obj)
     {
         obj->outlined = !obj->outlined;
-        glob::glob_state().getr_vulkan_render().reschedule_to_drawing(obj);
+        glob::glob_state().getr_vulkan_render().schd_update_object_queue(obj);
     }
 }
 

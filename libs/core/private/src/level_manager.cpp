@@ -141,7 +141,7 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
         {
             if (auto go = i->as<root::game_object>())
             {
-                glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+                glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(
                     go->get_root_component());
             }
         }

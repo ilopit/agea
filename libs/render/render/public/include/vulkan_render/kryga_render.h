@@ -199,26 +199,20 @@ public:
     void
     draw_headless();
 
-    void
-    schedule_to_drawing(render::vulkan_render_data* obj_data);
-
-    void
-    reschedule_to_drawing(render::vulkan_render_data* obj_data);
-
-    void
-    remove_from_drawing(render::vulkan_render_data* obj_data);
-
-    void
-    add_material(render::material_data* obj_data);
-
-    void
-    drop_material(render::material_data* obj_data);
-
     // clang-format off
-    void schedule_material_data_gpu_upload(render::material_data* md);
-    void schedule_game_data_gpu_upload(render::vulkan_render_data* od);
-    void schedule_directional_light_data_gpu_upload(render::vulkan_directional_light_data* ld);
-    void schedule_universal_light_data_gpu_upload(render::vulkan_universal_light_data* ld);
+    void schd_add_object(render::vulkan_render_data* obj_data);
+    void schd_add_material(render::material_data* mat_data);
+    void schd_add_light(render::vulkan_directional_light_data* ld);
+    void schd_add_light(render::vulkan_universal_light_data* ld);
+
+    void schd_update_object(render::vulkan_render_data* obj_data);
+    void schd_update_object_queue(render::vulkan_render_data* obj_data);
+    void schd_update_material(render::material_data* mat_data);
+    void schd_update_light(render::vulkan_directional_light_data* ld);
+    void schd_update_light(render::vulkan_universal_light_data* ld);
+
+    void schd_remove_object(render::vulkan_render_data* obj_data);
+    void schd_remove_material(render::material_data* mat_data);
     // clang-format on
 
     void
@@ -247,7 +241,7 @@ public:
 
     // Mark a texture as needing descriptor update
     void
-    mark_texture_dirty(texture_data* tex);
+    schd_update_texture(texture_data* tex);
 
     void
     set_grid_visible(bool v)

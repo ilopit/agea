@@ -893,7 +893,7 @@ vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout
 }
 
 void
-vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
+vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
 {
     KRG_check(obj_data, "Should be always valid");
 
@@ -902,11 +902,8 @@ vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
         KRG_check(obj_data->queue_id != "transparent", "Not supported!");
 
         m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
-
-        return;
     }
-
-    if (obj_data->queue_id == "transparent")
+    else if (obj_data->queue_id == "transparent")
     {
         m_transparent_render_object_queue.emplace_back(obj_data);
     }
@@ -914,17 +911,33 @@ vulkan_render::schedule_to_drawing(render::vulkan_render_data* obj_data)
     {
         m_default_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
     }
+
+    for (auto& q : m_frames)
+    {
+        q.uploads.objects_queue.emplace_back(obj_data);
+    }
 }
 
 void
-vulkan_render::reschedule_to_drawing(render::vulkan_render_data* obj_data)
+vulkan_render::schd_update_object(render::vulkan_render_data* obj_data)
 {
-    remove_from_drawing(obj_data);
-    schedule_to_drawing(obj_data);
+    KRG_check(obj_data, "Should be always valid");
+
+    for (auto& q : m_frames)
+    {
+        q.uploads.objects_queue.emplace_back(obj_data);
+    }
 }
 
 void
-vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
+vulkan_render::schd_update_object_queue(render::vulkan_render_data* obj_data)
+{
+    schd_remove_object(obj_data);
+    schd_add_object(obj_data);
+}
+
+void
+vulkan_render::schd_remove_object(render::vulkan_render_data* obj_data)
 {
     KRG_check(obj_data, "Should be always valid");
 
@@ -975,7 +988,7 @@ vulkan_render::remove_from_drawing(render::vulkan_render_data* obj_data)
 }
 
 void
-vulkan_render::add_material(render::material_data* mat_data)
+vulkan_render::schd_add_material(render::material_data* mat_data)
 {
     auto& mat_id = mat_data->get_type_id();
 
@@ -997,10 +1010,16 @@ vulkan_render::add_material(render::material_data* mat_data)
         }
     }
     mat_data->set_indexes(segment->alloc_id(), segment->index);
+
+    for (auto& q : m_frames)
+    {
+        q.uploads.materials_queue_set[mat_data->gpu_type_idx()].emplace_back(mat_data);
+        q.uploads.has_pending_materials = true;
+    }
 }
 
 void
-vulkan_render::drop_material(render::material_data* mat_data)
+vulkan_render::schd_remove_material(render::material_data* mat_data)
 {
     auto& mat_id = mat_data->get_type_id();
     auto segment = m_materials_layout.find(mat_id);

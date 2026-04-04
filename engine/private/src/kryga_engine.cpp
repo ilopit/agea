@@ -415,9 +415,7 @@ vulkan_engine::run()
             update_cameras();
             glob::glob_state().getr_vulkan_render().set_camera(m_camera_data);
 
-            consume_updated_shader_effects();
-            consume_updated_render_assets();
-            consume_updated_render_components();
+            consume_updated_render();
             consume_updated_transforms();
         }
 
@@ -749,36 +747,14 @@ vulkan_engine::init_default_scripting()
 }
 
 void
-vulkan_engine::consume_updated_render_components()
+vulkan_engine::consume_updated_render()
 {
-    auto& items = glob::glob_state().getr_queues().get_model().dirty_render_components;
+    auto& items = glob::glob_state().getr_queues().get_model().dirty_render;
 
-    for (auto& i : items)
-    {
-        glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);
-    }
-
-    items.clear();
-}
-
-void
-vulkan_engine::consume_updated_render_assets()
-{
-    auto& items = glob::glob_state().getr_queues().get_model().dirty_render_assets;
-
-    for (auto& i : items)
-    {
-        glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);
-    }
-
-    items.clear();
-}
-
-void
-vulkan_engine::consume_updated_shader_effects()
-{
-    auto& items = glob::glob_state().getr_queues().get_model().dirty_shader_effects;
-
+    // TODO: when both a dependency (e.g. shader_effect) and its dependent (e.g. material) are dirty
+    // in the same frame, render_cmd_build on the dependent will rebuild the dependency via traversal,
+    // then the dependency's own queue entry triggers a redundant rebuild. Consider a per-frame
+    // "already processed" flag to skip entries that were already rebuilt during dependency traversal.
     for (auto& i : items)
     {
         glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);

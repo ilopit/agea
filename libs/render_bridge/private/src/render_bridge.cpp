@@ -291,7 +291,7 @@ update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
     object_data->gpu_data.obj_pos = position;
     object_data->gpu_data.bounding_radius = bounding_radius;
 
-    ctx.vr.schedule_game_data_gpu_upload(object_data);
+    ctx.vr.schd_update_object(object_data);
 }
 
 }  // namespace kryga

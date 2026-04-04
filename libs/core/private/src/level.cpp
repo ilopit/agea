@@ -1,8 +1,6 @@
 #include "core/level.h"
 
 #include <packages/root/model/game_object.h>
-#include <packages/root/model/assets/asset.h>
-#include <packages/root/model/assets/shader_effect.h>
 
 #include <core/caches/caches_map.h>
 #include <core/object_load_context_builder.h>
@@ -81,7 +79,7 @@ level::spawn_object_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+    glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(
         obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
@@ -130,7 +128,7 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+    glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(
         obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
@@ -153,7 +151,7 @@ level::spawn_object_impl(const utils::id& proto_id,
     auto obj = result.value()->as<root::game_object>();
     if (obj)
     {
-        glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(
+        glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(
             obj->get_root_component());
 
         m_tickable_objects.emplace_back(obj);

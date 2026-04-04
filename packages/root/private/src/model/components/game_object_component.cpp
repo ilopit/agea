@@ -109,7 +109,7 @@ game_object_component::mark_render_dirty()
 {
     if (get_state() != smart_object_state::constructed)
     {
-        glob::glob_state().getr_queues().get_model().dirty_render_components.emplace_back(this);
+        glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(this);
         set_state(smart_object_state::constructed);
     }
 }

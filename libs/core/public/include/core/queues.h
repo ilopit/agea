@@ -3,8 +3,6 @@
 #include <core/caches/line_cache.h>
 
 #include <packages/root/model/components/game_object_component.h>
-#include <packages/root/model/assets/asset.h>
-#include <packages/root/model/assets/shader_effect.h>
 
 #include <utils/memory_arena.h>
 #include <utils/spsc_queue.h>
@@ -29,17 +27,13 @@ public:
     struct alignas(k_cache_line) model
     {
         line_cache<root::game_object_component*> dirty_transforms;
-        line_cache<root::game_object_component*> dirty_render_components;
-        line_cache<root::asset*> dirty_render_assets;
-        line_cache<root::shader_effect*> dirty_shader_effects;
+        line_cache<root::smart_object*> dirty_render;
 
         void
         drop_pending()
         {
             dirty_transforms.clear();
-            dirty_render_components.clear();
-            dirty_render_assets.clear();
-            dirty_shader_effects.clear();
+            dirty_render.clear();
         }
     };
 

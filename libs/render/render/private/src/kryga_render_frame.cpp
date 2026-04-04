@@ -555,7 +555,7 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 }
 
 void
-vulkan_render::mark_texture_dirty(texture_data* tex)
+vulkan_render::schd_update_texture(texture_data* tex)
 {
     auto& q = get_current_frame_transfer_data();
     q.uploads.textures_queue.emplace_back(tex);

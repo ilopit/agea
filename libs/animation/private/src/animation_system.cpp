@@ -456,7 +456,7 @@ animation_system::tick(float dt)
             inst.render_data->gpu_data.bone_offset = inst.bone_offset;
             inst.render_data->gpu_data.bone_count = (uint32_t)mesh_bone_count;
 
-            glob::glob_state().getr_vulkan_render().schedule_game_data_gpu_upload(inst.render_data);
+            glob::glob_state().getr_vulkan_render().schd_update_object(inst.render_data);
         }
     }
 }
