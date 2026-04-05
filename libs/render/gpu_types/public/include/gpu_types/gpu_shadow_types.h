@@ -13,9 +13,9 @@
 
 GPU_BEGIN_NAMESPACE
 
-gpu_struct_std140 shadow_cascade_data
+std140_struct shadow_cascade_data
 {
-    align_std140 mat4 view_proj;
+    std140_mat4 view_proj;
     std140_float split_depth;
 };
 
@@ -25,32 +25,32 @@ gpu_struct_std140 shadow_cascade_data
 #define KGPU_PCF_POISSON16 3
 #define KGPU_PCF_POISSON32 4
 
-gpu_struct_std140 directional_shadow_data
+std140_struct directional_shadow_data
 {
     shadow_cascade_data cascades[KGPU_CSM_CASCADE_COUNT];
-    align_std140 uvec4 shadow_map_indices;  // packed 4 cascade indices into uvec4
-    uint cascade_count;
+    std140_uvec4 shadow_map_indices;  // packed 4 cascade indices into uvec4
+    std140_uint cascade_count;
     std140_float shadow_bias;
     std140_float normal_bias;
     std140_float texel_size;
-    uint pcf_mode;
+    std140_uint pcf_mode;
 };
 
-gpu_struct_std140 local_light_shadow_data
+std140_struct local_light_shadow_data
 {
-    align_std140 mat4 view_proj;
-    align_std140 mat4 view_proj_back;
-    align_std140 uvec4 shadow_info;   // x=shadow_map_index, y=shadow_map_index_back, z=light_type,
-                                      // w=unused
-    align_std140 vec4 shadow_params;  // x=bias, y=normal_bias, z=texel_size, w=near_plane
+    std140_mat4 view_proj;
+    std140_mat4 view_proj_back;
+    std140_uvec4 shadow_info;   // x=shadow_map_index, y=shadow_map_index_back, z=light_type,
+                                // w=unused
+    std140_vec4 shadow_params;  // x=bias, y=normal_bias, z=texel_size, w=near_plane
     std140_float far_plane;
 };
 
-gpu_struct_std140 shadow_config_data
+std140_struct shadow_config_data
 {
     directional_shadow_data directional;
     local_light_shadow_data local_shadows[KGPU_MAX_SHADOWED_LOCAL_LIGHTS];
-    uint shadowed_local_count;
+    std140_uint shadowed_local_count;
 };
 
 GPU_END_NAMESPACE

@@ -12,32 +12,32 @@
 GPU_BEGIN_NAMESPACE
 
 // Directional light data (sun, moon, etc.)
-gpu_struct_std140 directional_light_data
+std140_struct directional_light_data
 {
-    align_std140 vec3 direction;
-    align_std140 vec3 ambient;
-    align_std140 vec3 diffuse;
-    align_std140 vec3 specular;
+    std140_vec3 direction;
+    std140_vec3 ambient;
+    std140_vec3 diffuse;
+    std140_vec3 specular;
 };
 
 // Unified local light data (point + spot combined)
 // type: 0 = point, 1 = spot
 
-gpu_struct_std140 universal_light_data
+std140_struct universal_light_data
 {
-    align_std140 vec3 position;
-    align_std140 vec3 direction;  // unused for point lights
-    align_std140 vec3 ambient;
-    align_std140 vec3 diffuse;
-    align_std140 vec3 specular;
+    std140_vec3 position;
+    std140_vec3 direction;  // unused for point lights
+    std140_vec3 ambient;
+    std140_vec3 diffuse;
+    std140_vec3 specular;
 
-    uint type;            // 0 = point, 1 = spot
-    float cut_off;        // unused for point lights (set to -1)
-    float outer_cut_off;  // unused for point lights
-    float radius;
+    std140_uint type;            // 0 = point, 1 = spot
+    std140_float cut_off;        // unused for point lights (set to -1)
+    std140_float outer_cut_off;  // unused for point lights
+    std140_float radius;
 
-    uint slot;          // Index in the light buffer (for compute shader)
-    uint shadow_index;  // Index into local_shadows[] or KGPU_SHADOW_INDEX_NONE
+    std140_uint slot;          // Index in the light buffer (for compute shader)
+    std140_uint shadow_index;  // Index into local_shadows[] or KGPU_SHADOW_INDEX_NONE
 };
 
 GPU_END_NAMESPACE

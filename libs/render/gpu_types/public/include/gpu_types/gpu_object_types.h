@@ -8,7 +8,7 @@
 GPU_BEGIN_NAMESPACE
 
 // Object data for rendering - uses type-aware alignment macros
-gpu_struct_std140 object_data
+std140_struct object_data
 {
     std140_mat4 model;
     std140_mat4 normal;

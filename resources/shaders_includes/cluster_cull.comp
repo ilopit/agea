@@ -10,16 +10,7 @@ layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 // Cluster configuration
 layout(std140, set = 0, binding = 0) uniform ClusterConfig {
-    uint tiles_x;
-    uint tiles_y;
-    uint depth_slices;
-    uint tile_size;
-    float near_plane;
-    float far_plane;
-    float log_depth_ratio;
-    uint max_lights_per_cluster;
-    uint screen_width;
-    uint screen_height;
+    cluster_grid_data data;
 } dyn_cluster_config;
 
 // Camera data - uses shared gpu_camera_types.h structure
@@ -34,7 +25,7 @@ layout(std140, set = 0, binding = 2) readonly buffer LightBuffer {
 
 // Number of dyn_gpu_universal_light_data.lights (passed via push constants)
 layout(push_constant) uniform PushConstants {
-    uint num_lights;
+    push_uint num_lights;
 } pc;
 
 // Output structures (must match fragment shader's std140 layout - 16 bytes per element)
@@ -67,8 +58,8 @@ vec3 screenToView(vec2 screenPos, float depth)
 {
     // NDC coordinates - use actual screen dimensions for correct mapping
     vec2 ndc = vec2(
-        (2.0 * screenPos.x / float(dyn_cluster_config.screen_width)) - 1.0,
-        (2.0 * screenPos.y / float(dyn_cluster_config.screen_height)) - 1.0
+        (2.0 * screenPos.x / float(dyn_cluster_config.data.screen_width)) - 1.0,
+        (2.0 * screenPos.y / float(dyn_cluster_config.data.screen_height)) - 1.0
     );
 
     // Unproject to view space using pre-computed inverse projection
@@ -84,8 +75,8 @@ vec3 screenToView(vec2 screenPos, float depth)
 // Get depth for a given slice
 float sliceToDepth(uint slice)
 {
-    float t = float(slice) / float(dyn_cluster_config.depth_slices);
-    return dyn_cluster_config.near_plane * pow(dyn_cluster_config.far_plane / dyn_cluster_config.near_plane, t);
+    float t = float(slice) / float(dyn_cluster_config.data.depth_slices);
+    return dyn_cluster_config.data.near_plane * pow(dyn_cluster_config.data.far_plane / dyn_cluster_config.data.near_plane, t);
 }
 
 // Sphere-AABB intersection test
@@ -101,22 +92,22 @@ void main()
 {
     uint clusterIdx = gl_GlobalInvocationID.x;
 
-    uint totalClusters = dyn_cluster_config.tiles_x * dyn_cluster_config.tiles_y * dyn_cluster_config.depth_slices;
+    uint totalClusters = dyn_cluster_config.data.tiles_x * dyn_cluster_config.data.tiles_y * dyn_cluster_config.data.depth_slices;
     if (clusterIdx >= totalClusters)
         return;
 
     // Decode cluster index to tile_x, tile_y, slice
-    uint tilesPerSlice = dyn_cluster_config.tiles_x * dyn_cluster_config.tiles_y;
+    uint tilesPerSlice = dyn_cluster_config.data.tiles_x * dyn_cluster_config.data.tiles_y;
     uint slice = clusterIdx / tilesPerSlice;
     uint tileIdx = clusterIdx % tilesPerSlice;
-    uint tile_y = tileIdx / dyn_cluster_config.tiles_x;
-    uint tile_x = tileIdx % dyn_cluster_config.tiles_x;
+    uint tile_y = tileIdx / dyn_cluster_config.data.tiles_x;
+    uint tile_x = tileIdx % dyn_cluster_config.data.tiles_x;
 
     // Compute cluster AABB in view space
-    float minX = float(tile_x * dyn_cluster_config.tile_size);
-    float maxX = float((tile_x + 1) * dyn_cluster_config.tile_size);
-    float minY = float(tile_y * dyn_cluster_config.tile_size);
-    float maxY = float((tile_y + 1) * dyn_cluster_config.tile_size);
+    float minX = float(tile_x * dyn_cluster_config.data.tile_size);
+    float maxX = float((tile_x + 1) * dyn_cluster_config.data.tile_size);
+    float minY = float(tile_y * dyn_cluster_config.data.tile_size);
+    float maxY = float((tile_y + 1) * dyn_cluster_config.data.tile_size);
 
     float nearDepth = sliceToDepth(slice);
     float farDepth = sliceToDepth(slice + 1);
@@ -142,9 +133,9 @@ void main()
 
     // Cull dyn_gpu_universal_light_data.lights against this cluster
     uint lightCount = 0;
-    uint baseIdx = clusterIdx * dyn_cluster_config.max_lights_per_cluster;
+    uint baseIdx = clusterIdx * dyn_cluster_config.data.max_lights_per_cluster;
 
-    for (uint i = 0; i < pc.num_lights && lightCount < dyn_cluster_config.max_lights_per_cluster; i++)
+    for (uint i = 0; i < pc.num_lights && lightCount < dyn_cluster_config.data.max_lights_per_cluster; i++)
     {
         // Skip invalid/freed dyn_gpu_universal_light_data.lights (slot must match buffer position for valid dyn_gpu_universal_light_data.lights)
         if (dyn_gpu_universal_light_data.lights[i].slot != i)
@@ -155,9 +146,9 @@ void main()
         float lightDepth = -lightViewPos.z;  // Negate for positive-Z-forward
 
         // Skip dyn_gpu_universal_light_data.lights outside depth range (with radius margin)
-        if (lightDepth + dyn_gpu_universal_light_data.lights[i].radius < dyn_cluster_config.near_plane)
+        if (lightDepth + dyn_gpu_universal_light_data.lights[i].radius < dyn_cluster_config.data.near_plane)
             continue;
-        if (lightDepth - dyn_gpu_universal_light_data.lights[i].radius > dyn_cluster_config.far_plane)
+        if (lightDepth - dyn_gpu_universal_light_data.lights[i].radius > dyn_cluster_config.data.far_plane)
             continue;
 
         // Light position in positive-Z-forward space

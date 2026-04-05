@@ -12,14 +12,14 @@
 
 GPU_BEGIN_NAMESPACE
 
-gpu_struct_pc push_constants_shadow
+push_struct push_constants_shadow
 {
-    uint instance_base;
-    uint directional_light_id;
-    uint use_clustered_lighting;
-    pc_uint64 bdag_objects;
-    pc_uint64 bdag_instance_slots;
-    pc_uint64 bdag_shadow_data;
+    push_uint instance_base;
+    push_uint directional_light_id;
+    push_uint use_clustered_lighting;
+    push_uint64 bdag_objects;
+    push_uint64 bdag_instance_slots;
+    push_uint64 bdag_shadow_data;
 };
 
 GPU_END_NAMESPACE

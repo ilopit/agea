@@ -197,7 +197,7 @@ def write_gpu_struct(type_obj: arapi.types.kryga_type,
 
 GPU_BEGIN_NAMESPACE
 
-gpu_struct_std140 {struct_name}
+std140_struct {struct_name}
 {{
     std140_uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
     std140_uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];

@@ -9,25 +9,25 @@ GPU_BEGIN_NAMESPACE
 
 // Frustum represented as 6 planes (left, right, bottom, top, near, far)
 // Each plane: vec4(normal.xyz, distance)
-gpu_struct_std140 frustum_data
+std140_struct frustum_data
 {
-    align_std140 vec4 planes[6];
+    std140_vec4 planes[6];
 };
 
 // Indirect draw command (matches VkDrawIndexedIndirectCommand)
-gpu_struct_std140 draw_indexed_indirect_cmd
+std140_struct draw_indexed_indirect_cmd
 {
-    uint indexCount;
-    uint instanceCount;
-    uint firstIndex;
-    int vertexOffset;
-    uint firstInstance;
+    std140_uint indexCount;
+    std140_uint instanceCount;
+    std140_uint firstIndex;
+    std140_int vertexOffset;
+    std140_uint firstInstance;
 };
 
 // Frustum cull output data
-gpu_struct_std140 cull_output_data
+std140_struct cull_output_data
 {
-    uint visible_count;
+    std140_uint visible_count;
 };
 
 GPU_END_NAMESPACE

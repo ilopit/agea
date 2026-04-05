@@ -12,13 +12,13 @@
 
 GPU_BEGIN_NAMESPACE
 
-gpu_struct_pc push_constants_pick
+push_struct push_constants_pick
 {
-    uint instance_base;
-    pc_uint64 bdag_camera;
-    pc_uint64 bdag_objects;
-    pc_uint64 bdag_instance_slots;
-    pc_uint64 bdag_bone_matrices;
+    push_uint instance_base;
+    push_uint64 bdag_camera;
+    push_uint64 bdag_objects;
+    push_uint64 bdag_instance_slots;
+    push_uint64 bdag_bone_matrices;
 };
 
 GPU_END_NAMESPACE

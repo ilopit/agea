@@ -12,9 +12,9 @@
 
 GPU_BEGIN_NAMESPACE
 
-gpu_struct_pc push_constants_grid
+push_struct push_constants_grid
 {
-    pc_uint64 bdag_camera;
+    push_uint64 bdag_camera;
 };
 
 GPU_END_NAMESPACE
