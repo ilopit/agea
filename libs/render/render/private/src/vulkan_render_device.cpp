@@ -69,6 +69,19 @@ render_device::construct(construct_params& params)
 void
 render_device::destruct()
 {
+    if (m_vk_device != VK_NULL_HANDLE)
+    {
+        vkDeviceWaitIdle(m_vk_device);
+    }
+
+    // Flush all pending delayed deletions before tearing down
+    while (!m_delayed_delete_queue.empty())
+    {
+        auto action = std::move(m_delayed_delete_queue.top());
+        m_delayed_delete_queue.pop();
+        action.del(m_vk_device, m_allocator);
+    }
+
     for (auto& frame : m_frames)
     {
         frame.m_dynamic_descriptor_allocator->cleanup();

@@ -909,30 +909,46 @@ vulkan_render::setup_instanced_render_graph()
                                      [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
 
     // Main pass - instanced batched drawing
-    // NOTE: Shadow maps are sampled via bindless textures but not declared as
-    // render graph reads. The render graph lacks depth-aware image barrier support,
-    // so shadow map layout transitions are handled by the shadow render passes
-    // themselves (initialLayout=UNDEFINED → finalLayout=DEPTH_STENCIL_ATTACHMENT).
-    // This produces a validation warning (VUID-vkCmdDraw-None-09600) on the first
-    // frame but is functionally correct.
-    m_render_graph.add_graphics_pass(AID("main"),
-                                     {m_render_graph.write(AID("swapchain")),
-                                      m_render_graph.read(AID("ui_target")),
-                                      m_render_graph.read(AID("dyn_camera_data")),
-                                      m_render_graph.read(AID("dyn_object_buffer")),
-                                      m_render_graph.read(AID("dyn_gpu_universal_light_data")),
-                                      m_render_graph.read(AID("dyn_directional_lights_buffer")),
-                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
-                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
-                                      m_render_graph.read(AID("dyn_cluster_config")),
-                                      m_render_graph.read(AID("dyn_instance_slots")),
-                                      m_render_graph.read(AID("dyn_bone_matrices")),
-                                      m_render_graph.read(AID("dyn_material_buffer")),
-                                      m_render_graph.read(AID("dyn_shadow_data"))},
-                                     get_render_pass(AID("main")),
-                                     VkClearColorValue{0, 0, 0, 1.0},
-                                     [this](VkCommandBuffer)
-                                     { draw_objects_instanced(*m_current_frame); });
+    // Shadow maps are sampled via bindless textures. Declaring them as reads
+    // ensures the render graph orders shadow passes before the main pass.
+    {
+        std::vector<rg_resource_ref> main_resources = {
+            m_render_graph.write(AID("swapchain")),
+            m_render_graph.read(AID("ui_target")),
+            m_render_graph.read(AID("dyn_camera_data")),
+            m_render_graph.read(AID("dyn_object_buffer")),
+            m_render_graph.read(AID("dyn_gpu_universal_light_data")),
+            m_render_graph.read(AID("dyn_directional_lights_buffer")),
+            m_render_graph.read(AID("dyn_cluster_light_counts")),
+            m_render_graph.read(AID("dyn_cluster_light_indices")),
+            m_render_graph.read(AID("dyn_cluster_config")),
+            m_render_graph.read(AID("dyn_instance_slots")),
+            m_render_graph.read(AID("dyn_bone_matrices")),
+            m_render_graph.read(AID("dyn_material_buffer")),
+            m_render_graph.read(AID("dyn_shadow_data")),
+        };
+
+        // Shadow map dependencies (ordering only — actual sampling is via bindless)
+        for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+        {
+            main_resources.push_back(
+                m_render_graph.read(AID("shadow_csm_" + std::to_string(c))));
+        }
+        for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
+        {
+            main_resources.push_back(
+                m_render_graph.read(AID("shadow_local_" + std::to_string(i))));
+            main_resources.push_back(
+                m_render_graph.read(AID("shadow_local_back_" + std::to_string(i))));
+        }
+
+        m_render_graph.add_graphics_pass(AID("main"),
+                                         std::move(main_resources),
+                                         get_render_pass(AID("main")),
+                                         VkClearColorValue{0, 0, 0, 1.0},
+                                         [this](VkCommandBuffer)
+                                         { draw_objects_instanced(*m_current_frame); });
+    }
 
     bool result = m_render_graph.compile();
     KRG_check(result, "Instanced render graph compilation failed");

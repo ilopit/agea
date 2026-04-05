@@ -252,8 +252,8 @@ public:
     KRG_gen_getter(engine_counters, engine_counters);
     KRG_gen_getter(queues, core::queues);
     KRG_gen_getter(render_bridge, render_bridge);
+    
     KRG_gen_getter(animation_system, animation::animation_system);
-
     template <typename T>
     T*
     create_box(std::string name)

@@ -20,8 +20,11 @@ namespace kryga::render::test
 inline std::vector<uint8_t>
 readback_framebuffer(render_pass& pass, uint32_t width, uint32_t height)
 {
-    auto src_image = pass.get_color_images()[0]->image();
     auto& device = glob::glob_state().getr_render_device();
+    auto frame_idx = device.get_current_frame_index();
+    auto color_images = pass.get_color_images();
+    auto img_idx = frame_idx % color_images.size();
+    auto src_image = color_images[img_idx]->image();
 
     auto extent = VkExtent3D{width, height, 1};
 

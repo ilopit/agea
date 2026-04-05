@@ -38,43 +38,47 @@ vulkan_render::init_shadow_passes()
 {
     ZoneScopedN("Render::InitShadowPasses");
 
-    // Create 4 depth-only render passes for CSM cascades
+    // Create 4 depth-only render passes for CSM cascades (triple-buffered)
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
         m_shadow_passes[c] = render_pass_builder()
                                  .set_depth_format(VK_FORMAT_D32_SFLOAT)
                                  .set_depth_only(true)
-                                 .set_image_count(1)
+                                 .set_image_count(FRAMES_IN_FLIGHT)
                                  .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
                                  .set_enable_stencil(false)
                                  .build();
 
         m_shadow_passes[c]->set_name(AID("shadow_csm_" + std::to_string(c)));
 
-        // Register depth image view in bindless texture array
-        auto depth_view = m_shadow_passes[c]->get_depth_image_view(0);
-
-        // Use reserved high indices for shadow maps to avoid conflicts with texture slots
+        // Register all per-frame depth image views in bindless texture array
         auto& device = glob::glob_state().getr_render_device();
-        uint32_t bindless_idx = KGPU_max_bindless_textures - 1 - c;
+        for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
+        {
+            auto depth_view = m_shadow_passes[c]->get_depth_image_view(f);
 
-        VkDescriptorImageInfo image_info = {};
-        image_info.imageView = depth_view;
-        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            uint32_t bindless_idx =
+                KGPU_max_bindless_textures - 1 - (c * FRAMES_IN_FLIGHT + f);
 
-        VkWriteDescriptorSet write = {};
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.dstSet = m_bindless_set;
-        write.dstBinding = 1;  // bindless_textures binding
-        write.dstArrayElement = bindless_idx;
-        write.descriptorCount = 1;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        write.pImageInfo = &image_info;
+            VkDescriptorImageInfo image_info = {};
+            image_info.imageView = depth_view;
+            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        vkUpdateDescriptorSets(device.vk_device(), 1, &write, 0, nullptr);
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = m_bindless_set;
+            write.dstBinding = 1;  // bindless_textures binding
+            write.dstArrayElement = bindless_idx;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            write.pImageInfo = &image_info;
 
-        m_shadow_map_bindless_indices[c] = bindless_idx;
-        m_shadow_config.directional.shadow_map_indices[c] = bindless_idx;  // uvec4 component
+            vkUpdateDescriptorSets(device.vk_device(), 1, &write, 0, nullptr);
+
+            m_shadow_map_bindless_indices[c][f] = bindless_idx;
+        }
+        m_shadow_config.directional.shadow_map_indices[c] =
+            m_shadow_map_bindless_indices[c][0];
     }
 
     // Create shadow vertex shader effect on the first shadow pass.
@@ -115,41 +119,47 @@ vulkan_render::init_shadow_passes()
         ALOG_WARN("Failed to load se_shadow.vert - shadows disabled");
     }
 
-    // Create local light shadow passes (spot + point DPSM)
+    // Create local light shadow passes (spot + point DPSM), triple-buffered
     // Each local light needs up to 2 passes (point lights need front+back)
+    constexpr uint32_t csm_bindless_count = KGPU_CSM_CASCADE_COUNT * FRAMES_IN_FLIGHT;
     for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
     {
         m_shadow_local_passes[i] = render_pass_builder()
                                        .set_depth_format(VK_FORMAT_D32_SFLOAT)
                                        .set_depth_only(true)
-                                       .set_image_count(1)
+                                       .set_image_count(FRAMES_IN_FLIGHT)
                                        .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
                                        .set_enable_stencil(false)
                                        .build();
 
         m_shadow_local_passes[i]->set_name(AID("shadow_local_" + std::to_string(i)));
 
-        // Register in bindless array
-        auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(0);
-        uint32_t local_bindless_idx = KGPU_max_bindless_textures - 1 - KGPU_CSM_CASCADE_COUNT - i;
-
-        VkDescriptorImageInfo local_image_info = {};
-        local_image_info.imageView = local_depth_view;
-        local_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-        VkWriteDescriptorSet local_write = {};
-        local_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        local_write.dstSet = m_bindless_set;
-        local_write.dstBinding = 1;
-        local_write.dstArrayElement = local_bindless_idx;
-        local_write.descriptorCount = 1;
-        local_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        local_write.pImageInfo = &local_image_info;
-
+        // Register all per-frame depth views in bindless array
         auto vk_dev = glob::glob_state().getr_render_device().vk_device();
-        vkUpdateDescriptorSets(vk_dev, 1, &local_write, 0, nullptr);
+        for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
+        {
+            auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(f);
+            uint32_t local_bindless_idx =
+                KGPU_max_bindless_textures - 1 - csm_bindless_count
+                - (i * FRAMES_IN_FLIGHT + f);
 
-        m_shadow_local_bindless_indices[i] = local_bindless_idx;
+            VkDescriptorImageInfo local_image_info = {};
+            local_image_info.imageView = local_depth_view;
+            local_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkWriteDescriptorSet local_write = {};
+            local_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            local_write.dstSet = m_bindless_set;
+            local_write.dstBinding = 1;
+            local_write.dstArrayElement = local_bindless_idx;
+            local_write.descriptorCount = 1;
+            local_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            local_write.pImageInfo = &local_image_info;
+
+            vkUpdateDescriptorSets(vk_dev, 1, &local_write, 0, nullptr);
+
+            m_shadow_local_bindless_indices[i][f] = local_bindless_idx;
+        }
     }
 
     // Create DPSM vertex shader for point lights
@@ -186,10 +196,73 @@ vulkan_render::init_shadow_passes()
     m_shadow_config.directional.pcf_mode = KGPU_PCF_POISSON16;
     m_shadow_config.shadowed_local_count = 0;
 
-    ALOG_INFO("Shadow passes initialized: {} CSM cascades, {}x{} resolution",
+    // Transition all shadow depth images from UNDEFINED to SHADER_READ_ONLY_OPTIMAL.
+    // Without this, the first frame's main pass samples bindless shadow textures that
+    // are still in UNDEFINED layout, producing black output and validation errors.
+    auto& device = glob::glob_state().getr_render_device();
+    device.immediate_submit(
+        [&](VkCommandBuffer cmd)
+        {
+            VkImageMemoryBarrier barrier = {};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+
+            // CSM cascades
+            for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+            {
+                auto& depth_images = m_shadow_passes[c]->get_depth_images();
+                for (auto& img : depth_images)
+                {
+                    barrier.image = img.image();
+                    vkCmdPipelineBarrier(cmd,
+                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                         0,
+                                         0,
+                                         nullptr,
+                                         0,
+                                         nullptr,
+                                         1,
+                                         &barrier);
+                }
+            }
+
+            // Local light shadow passes
+            for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
+            {
+                auto& depth_images = m_shadow_local_passes[i]->get_depth_images();
+                for (auto& img : depth_images)
+                {
+                    barrier.image = img.image();
+                    vkCmdPipelineBarrier(cmd,
+                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                         0,
+                                         0,
+                                         nullptr,
+                                         0,
+                                         nullptr,
+                                         1,
+                                         &barrier);
+                }
+            }
+        });
+
+    ALOG_INFO("Shadow passes initialized: {} CSM cascades, {}x{} resolution, {} frames buffered",
               KGPU_CSM_CASCADE_COUNT,
               KGPU_SHADOW_MAP_SIZE,
-              KGPU_SHADOW_MAP_SIZE);
+              KGPU_SHADOW_MAP_SIZE,
+              FRAMES_IN_FLIGHT);
 }
 
 // ============================================================================
@@ -584,6 +657,8 @@ vulkan_render::select_shadowed_lights()
         std::min((uint32_t)candidates.size(), (uint32_t)KGPU_MAX_SHADOWED_LOCAL_LIGHTS);
     m_shadow_config.shadowed_local_count = count;
 
+    auto frame_idx = glob::glob_state().getr_render_device().get_current_frame_index();
+
     for (uint32_t i = 0; i < count; ++i)
     {
         auto* light = m_cache.universal_lights.at(candidates[i].light_slot);
@@ -621,7 +696,7 @@ vulkan_render::select_shadowed_lights()
 
             shadow.view_proj = proj * view;
             shadow.view_proj_back = glm::mat4(0.0f);
-            shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2];
+            shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2][frame_idx];
             shadow.shadow_info.y = 0xFFFFFFFFu;
         }
         else
@@ -632,8 +707,8 @@ vulkan_render::select_shadowed_lights()
                 light->gpu_data.position, light->gpu_data.position + front_dir, glm::vec3(0, 1, 0));
             shadow.view_proj = view;
             shadow.view_proj_back = view;
-            shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2];
-            shadow.shadow_info.y = m_shadow_local_bindless_indices[i * 2 + 1];
+            shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2][frame_idx];
+            shadow.shadow_info.y = m_shadow_local_bindless_indices[i * 2 + 1][frame_idx];
         }
 
         // Set shadow_index on the light
@@ -673,6 +748,14 @@ void
 vulkan_render::upload_shadow_data(render::frame_state& frame)
 {
     ZoneScopedN("Render::UploadShadowData");
+
+    // Update CSM bindless indices for the current frame-in-flight
+    auto frame_idx = glob::glob_state().getr_render_device().get_current_frame_index();
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        m_shadow_config.directional.shadow_map_indices[c] =
+            m_shadow_map_bindless_indices[c][frame_idx];
+    }
 
     // Compute shadow matrices for this frame
     compute_shadow_matrices();

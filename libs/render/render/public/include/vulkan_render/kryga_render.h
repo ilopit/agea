@@ -9,6 +9,7 @@
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/render_cache.h"
 #include "vulkan_render/vulkan_render_graph.h"
+#include "vulkan_render/vulkan_render_device.h"
 #include "render/utils/frustum.h"
 #include "render/utils/cluster_grid.h"
 #include "render/utils/light_grid.h"
@@ -585,8 +586,9 @@ private:
     uint32_t m_debug_light_instance_base = 0;
     render_pass_sptr m_shadow_passes[KGPU_CSM_CASCADE_COUNT];
     render_pass_sptr m_shadow_local_passes[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];  // *2 for DPSM
-    uint32_t m_shadow_map_bindless_indices[KGPU_CSM_CASCADE_COUNT] = {};
-    uint32_t m_shadow_local_bindless_indices[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2] = {};
+    uint32_t m_shadow_map_bindless_indices[KGPU_CSM_CASCADE_COUNT][FRAMES_IN_FLIGHT] = {};
+    uint32_t m_shadow_local_bindless_indices[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2][FRAMES_IN_FLIGHT] =
+        {};
     shader_effect_data* m_shadow_se = nullptr;
     shader_effect_data* m_shadow_dpsm_se = nullptr;
 

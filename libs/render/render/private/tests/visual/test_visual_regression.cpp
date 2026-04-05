@@ -126,8 +126,8 @@ protected:
 class visual_regression_test : public visual_test_base
 {
 public:
-    void
-    SetUp() override
+    static void
+    SetUpTestSuite()
     {
         render::render_device::construct_params rdc;
         rdc.headless = true;
@@ -136,6 +136,18 @@ public:
         ASSERT_TRUE(device->construct(rdc));
 
         state_mutator__vulkan_render_loader::set(glob::glob_state());
+    }
+
+    static void
+    TearDownTestSuite()
+    {
+        glob::glob_state().get_render_device()->destruct();
+    }
+
+    void
+    SetUp() override
+    {
+        auto device = glob::glob_state().get_render_device();
 
         glob::glob_state().getr_vulkan_render().init(
             TEST_WIDTH, TEST_HEIGHT, render_mode::instanced, true);
@@ -177,7 +189,6 @@ public:
 
         glob::glob_state().get_vulkan_render()->deinit();
         glob::glob_state().getr_vulkan_render_loader().clear_caches();
-        glob::glob_state().get_render_device()->destruct();
     }
 
     render_pass_sptr m_test_pass;
@@ -221,8 +232,8 @@ TEST_F(visual_regression_test, clear_color_blue)
 class visual_pipeline_test : public visual_test_base
 {
 public:
-    void
-    SetUp() override
+    static void
+    SetUpTestSuite()
     {
         render::render_device::construct_params rdc;
         rdc.headless = true;
@@ -231,7 +242,17 @@ public:
         ASSERT_TRUE(device->construct(rdc));
 
         state_mutator__vulkan_render_loader::set(glob::glob_state());
+    }
 
+    static void
+    TearDownTestSuite()
+    {
+        glob::glob_state().get_render_device()->destruct();
+    }
+
+    void
+    SetUp() override
+    {
         // Full init (not only_rp) — sets up SSBOs, render graph, compute passes
         auto& renderer = glob::glob_state().getr_vulkan_render();
         renderer.init(TEST_WIDTH, TEST_HEIGHT, render_mode::instanced, false);
@@ -244,7 +265,6 @@ public:
     {
         glob::glob_state().get_vulkan_render()->deinit();
         glob::glob_state().getr_vulkan_render_loader().clear_caches();
-        glob::glob_state().get_render_device()->destruct();
     }
 
 protected:
@@ -463,7 +483,7 @@ protected:
             {
                 uint32_t a = i * (slices + 1) + j;
                 uint32_t b = a + slices + 1;
-                indices.insert(indices.end(), {a, b, a + 1, a + 1, b, b + 1});
+                indices.insert(indices.end(), {a, a + 1, b, a + 1, b + 1, b});
             }
         }
 
@@ -704,12 +724,7 @@ TEST_F(visual_pipeline_test, lit_cubes)
 
     renderer.set_camera(cam);
 
-    // Render multiple frames so shadow maps and frame state stabilize
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
-
+    renderer.draw_headless();
     compare("lit_cubes", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -742,10 +757,7 @@ TEST_F(visual_pipeline_test, directional_light)
     loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), {0, 0, 0});
     renderer.schd_add_object(obj);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("directional_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -809,10 +821,7 @@ TEST_F(visual_pipeline_test, point_light)
     blue_pl->gpu_data.outer_cut_off = -1.0f;
     renderer.schd_add_light(blue_pl);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("point_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -865,10 +874,7 @@ TEST_F(visual_pipeline_test, spot_light)
     spot->gpu_data.outer_cut_off = std::cos(glm::radians(25.0f));
     renderer.schd_add_light(spot);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("spot_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -913,10 +919,7 @@ TEST_F(visual_pipeline_test, directional_shadows)
         *obj2, *mat, *mesh, model2, glm::transpose(glm::inverse(model2)), {1.5f, 1.0f, 0});
     renderer.schd_add_object(obj2);
 
-    for (int i = 0; i < 5; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("directional_shadows", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -981,10 +984,7 @@ TEST_F(visual_pipeline_test, material_properties)
         renderer.schd_add_object(obj);
     }
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("material_properties", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1050,10 +1050,7 @@ TEST_F(visual_pipeline_test, combined_lights)
     sp->gpu_data.outer_cut_off = std::cos(glm::radians(30.0f));
     renderer.schd_add_light(sp);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("combined_lights", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1105,10 +1102,7 @@ TEST_F(visual_pipeline_test, object_transforms)
         renderer.schd_add_object(o);
     }
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("object_transforms", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1175,10 +1169,7 @@ TEST_F(visual_pipeline_test, alpha_blending)
                          {0, 0, 1});
     renderer.schd_add_object(obj_front);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("alpha_blending", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1221,10 +1212,7 @@ TEST_F(visual_pipeline_test, outline_rendering)
         *obj_right, *green_mat, *mesh, m_right, glm::transpose(glm::inverse(m_right)), {2, 0, 0});
     renderer.schd_add_object(obj_right);
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("outline_rendering", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1295,10 +1283,7 @@ TEST_F(visual_pipeline_test, unlit_shader)
         renderer.schd_add_object(o);
     }
 
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("unlit_shader", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1356,17 +1341,11 @@ TEST_F(visual_pipeline_test, directional_light_switching)
 
     // Render with warm light first, then switch to cool for final frame
     renderer.set_selected_directional_light(AID("dls_cool"));
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("directional_light_cool", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 
     renderer.set_selected_directional_light(AID("dls_warm"));
-    for (int i = 0; i < 3; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("directional_light_warm", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
@@ -1540,10 +1519,6 @@ TEST_F(visual_pipeline_test, complex_scene)
     sp->gpu_data.outer_cut_off = std::cos(glm::radians(28.0f));
     renderer.schd_add_light(sp);
 
-    // More frames for shadow stabilization
-    for (int i = 0; i < 5; ++i)
-    {
-        renderer.draw_headless();
-    }
+    renderer.draw_headless();
     compare("complex_scene", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
