@@ -5,6 +5,7 @@
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
 
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_frustum_types.h>
@@ -201,37 +202,9 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         init_frustum_cull_compute();
     }
 
-    // Setup render graph based on mode
+    // Setup and compile render graph — compile() validates all passes:
+    // binding table resources + BDA push constant fields (bda_X → dyn_X).
     setup_render_graph();
-
-    // Validate all binding tables against render graph resources
-    auto* main_pass = get_render_pass(AID("main"));
-    if (main_pass && main_pass->are_bindings_finalized())
-    {
-        KRG_check(main_pass->validate_resources(m_render_graph),
-                  "Main pass binding validation failed");
-    }
-
-    auto* picking_pass = get_render_pass(AID("picking"));
-    if (picking_pass && picking_pass->are_bindings_finalized())
-    {
-        KRG_check(picking_pass->validate_resources(m_render_graph),
-                  "Picking pass binding validation failed");
-    }
-
-    if (m_render_mode == render_mode::instanced && m_cluster_cull_pass &&
-        m_cluster_cull_pass->are_bindings_finalized())
-    {
-        KRG_check(m_cluster_cull_pass->validate_resources(m_render_graph),
-                  "Cluster cull pass binding validation failed");
-    }
-
-    if (m_render_mode == render_mode::instanced && m_frustum_cull_pass &&
-        m_frustum_cull_pass->are_bindings_finalized())
-    {
-        KRG_check(m_frustum_cull_pass->validate_resources(m_render_graph),
-                  "Frustum cull pass binding validation failed");
-    }
 }
 
 void
@@ -406,8 +379,7 @@ vulkan_render::init_shadow_resources()
         {
             auto depth_view = m_shadow_passes[c]->get_depth_image_view(f);
 
-            uint32_t bindless_idx =
-                KGPU_max_bindless_textures - 1 - (c * FRAMES_IN_FLIGHT + f);
+            uint32_t bindless_idx = KGPU_max_bindless_textures - 1 - (c * FRAMES_IN_FLIGHT + f);
 
             VkDescriptorImageInfo image_info = {};
             image_info.imageView = depth_view;
@@ -426,8 +398,7 @@ vulkan_render::init_shadow_resources()
 
             m_shadow_map_bindless_indices[c][f] = bindless_idx;
         }
-        m_shadow_config.directional.shadow_map_indices[c] =
-            m_shadow_map_bindless_indices[c][0];
+        m_shadow_config.directional.shadow_map_indices[c] = m_shadow_map_bindless_indices[c][0];
     }
 
     // Register local light depth views in bindless array
@@ -439,8 +410,7 @@ vulkan_render::init_shadow_resources()
         {
             auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(f);
             uint32_t local_bindless_idx =
-                KGPU_max_bindless_textures - 1 - csm_bindless_count
-                - (i * FRAMES_IN_FLIGHT + f);
+                KGPU_max_bindless_textures - 1 - csm_bindless_count - (i * FRAMES_IN_FLIGHT + f);
 
             VkDescriptorImageInfo local_image_info = {};
             local_image_info.imageView = local_depth_view;
@@ -462,13 +432,7 @@ vulkan_render::init_shadow_resources()
     }
 
     // Create shadow vertex shader effect on the first shadow pass.
-    // Use the pick shader's pipeline layout so descriptor sets are compatible.
-    VkPipelineLayout shared_layout = VK_NULL_HANDLE;
-    if (m_pick_mat && m_pick_mat->get_shader_effect())
-    {
-        shared_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
-    }
-
+    // With BDA, no shared pipeline layout needed — shadow shaders build their own.
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
     kryga::utils::buffer vert;
@@ -484,7 +448,6 @@ vulkan_render::init_shadow_resources()
         se_ci.height = KGPU_SHADOW_MAP_SIZE;
         se_ci.width = KGPU_SHADOW_MAP_SIZE;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
-        se_ci.shared_pipeline_layout = shared_layout;
 
         m_shadow_se = nullptr;
         auto rc = m_shadow_passes[0]->create_shader_effect(AID("se_shadow"), se_ci, m_shadow_se);
@@ -513,7 +476,6 @@ vulkan_render::init_shadow_resources()
         se_ci.height = KGPU_SHADOW_MAP_SIZE;
         se_ci.width = KGPU_SHADOW_MAP_SIZE;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
-        se_ci.shared_pipeline_layout = shared_layout;
 
         m_shadow_dpsm_se = nullptr;
         auto rc = m_shadow_passes[0]->create_shader_effect(

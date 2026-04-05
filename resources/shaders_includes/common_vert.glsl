@@ -1,8 +1,8 @@
-#extension GL_GOOGLE_include_directive: enable
+// Common vertex shader — I/O layouts + helpers
+// Push constants and BDA macros must be declared by including shader BEFORE this file.
+// Required macros: dyn_instance_slots, dyn_object_buffer
+
 #include "gpu_types/gpu_generic_constants.h"
-#include "gpu_types/gpu_object_types.h"
-#include "gpu_types/gpu_camera_types.h"
-#include "gpu_types/gpu_shadow_types.h"
 
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
@@ -15,46 +15,6 @@ layout (location = 2) out vec3 out_color;
 layout (location = 3) out vec2 out_tex_coord;
 layout (location = 4) out flat uint out_object_idx;
 
-layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo 
-{
-   camera_data obj;
-} dyn_camera_data;
-
-
-//all object matrices
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_objects_binding) readonly buffer object_data_buffer{
-
-    object_data objects[];
-} dyn_object_buffer;
-
-// Instance slots buffer for instanced drawing
-layout(std430, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_instance_slots_binding)
-readonly buffer InstanceSlotsBuffer {
-    uint slots[];
-} dyn_instance_slots;
-
-// Bone matrices SSBO — declared here so all shaders share the same set 1 layout.
-// Skinned shaders access this via common_vert_skinned.glsl helpers.
-layout(std430, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_bone_matrices_binding)
-readonly buffer BoneMatricesBuffer {
-    mat4 matrices[];
-} dyn_bone_matrices;
-
-// Shadow data SSBO — declared here so all vertex shaders include binding 8 in reflection,
-// ensuring the descriptor set layout matches between vertex and fragment stages.
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_shadow_data_binding)
-readonly buffer ShadowDataBuffer {
-    shadow_config_data shadow;
-} dyn_shadow_data;
-
-#include "gpu_types/gpu_push_constants.h"
-
-// Push constants (available in vertex shader for instance_base)
-layout(push_constant) uniform Constants {
-    push_constants obj;
-} constants;
-
-// Helper function to get object index from instance slots buffer
-uint get_object_index() {
-    return dyn_instance_slots.slots[constants.obj.instance_base + gl_InstanceIndex];
+uint get_object_index(uint instance_base) {
+    return dyn_instance_slots.slots[instance_base + gl_InstanceIndex];
 }

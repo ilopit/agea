@@ -1,9 +1,14 @@
 #version 450
 #extension GL_GOOGLE_include_directive: enable
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+#include "gpu_types/gpu_push_constants_grid.h"
+layout(push_constant) uniform Constants { push_constants_grid obj; } constants;
+#include "bda_macros_grid.glsl"
 
 #include "gpu_types/gpu_generic_constants.h"
-#include "gpu_types/gpu_camera_types.h"
-#include "gpu_types/gpu_push_constants.h"
 
 layout (location = 0) in vec3 in_position;
 layout (location = 1) in vec3 in_normal;
@@ -12,16 +17,6 @@ layout (location = 3) in vec2 in_tex_coord;
 
 layout (location = 0) out vec3 out_near_point;
 layout (location = 1) out vec3 out_far_point;
-
-layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo
-{
-    camera_data obj;
-} dyn_camera_data;
-
-layout(push_constant) uniform Constants
-{
-    push_constants obj;
-} constants;
 
 out gl_PerVertex
 {

@@ -82,6 +82,12 @@ public:
         return m_fields;
     }
 
+    std::vector<dynobj_field>&
+    get_fields_mut()
+    {
+        return m_fields;
+    }
+
     void
     set_id(const utils::id& id)
     {

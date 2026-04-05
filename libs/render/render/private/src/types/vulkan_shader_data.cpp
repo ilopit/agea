@@ -21,8 +21,11 @@ shader_module_data::shader_module_data(VkShaderModule vk_module,
 
 shader_module_data::~shader_module_data()
 {
-    glob::glob_state().getr_render_device().delete_immediately(
-        [=](VkDevice vkd, VmaAllocator) { vkDestroyShaderModule(vkd, m_vk_module, nullptr); });
+    if (m_vk_module != VK_NULL_HANDLE)
+    {
+        glob::glob_state().getr_render_device().delete_immediately(
+            [=](VkDevice vkd, VmaAllocator) { vkDestroyShaderModule(vkd, m_vk_module, nullptr); });
+    }
 }
 }  // namespace render
 }  // namespace kryga

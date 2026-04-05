@@ -17,7 +17,7 @@
 #include <gpu_types/gpu_vertex_types.h>
 #include <gpu_types/gpu_camera_types.h>
 #include <gpu_types/gpu_light_types.h>
-#include <gpu_types/gpu_push_constants.h>
+#include <gpu_types/gpu_push_constants_main.h>
 
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>

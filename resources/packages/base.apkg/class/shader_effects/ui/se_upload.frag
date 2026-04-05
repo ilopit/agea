@@ -2,7 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : require
 
 #include "gpu_types/gpu_generic_constants.h"
-#include "gpu_types/gpu_push_constants.h"
+#include "gpu_types/gpu_push_constants_main.h"
 
 layout(set = KGPU_textures_descriptor_sets, binding = 0) uniform sampler static_samplers[KGPU_SAMPLER_COUNT];
 layout(set = KGPU_textures_descriptor_sets, binding = 1) uniform texture2D bindless_textures[];
@@ -13,7 +13,7 @@ layout (location = 0) out vec4 out_color;
 
 layout(push_constant) uniform Constants
 {
-    push_constants obj;
+    push_constants_main obj;
 } constants;
 
 void main()

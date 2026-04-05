@@ -34,7 +34,7 @@ namespace
 
 // Helper to copy material's bindless texture and sampler indices to push constants
 void
-copy_texture_indices(gpu::push_constants& config, const material_data* mat)
+copy_texture_indices(gpu::push_constants_main& config, const material_data* mat)
 {
     // Initialize all slots to invalid/default
     for (uint32_t i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
@@ -244,7 +244,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                            pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0,
-                           sizeof(gpu::push_constants),
+                           sizeof(gpu::push_constants_main),
                            &m_obj_config);
 
         // Instanced draw
@@ -287,7 +287,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                            pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0,
-                           sizeof(gpu::push_constants),
+                           sizeof(gpu::push_constants_main),
                            &m_obj_config);
 
         if (batch.mesh->has_indices())
@@ -352,7 +352,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                                pctx.pipeline_layout,
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                                0,
-                               sizeof(gpu::push_constants),
+                               sizeof(gpu::push_constants_main),
                                &m_obj_config);
 
             if (obj->mesh->has_indices())
@@ -448,25 +448,35 @@ vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
     {
         if (!bound)
         {
-            bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
+            // Pick shader uses its own pipeline — bind pipeline but skip material descriptors
+            auto pipeline = m_pick_mat->get_shader_effect()->m_pipeline;
+            pctx.pipeline_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+            if (m_bindless_set != VK_NULL_HANDLE)
+            {
+                vkCmdBindDescriptorSets(cmd,
+                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                        pctx.pipeline_layout,
+                                        KGPU_textures_descriptor_sets,
+                                        1,
+                                        &m_bindless_set,
+                                        0,
+                                        nullptr);
+            }
             bound = true;
         }
 
         bind_mesh(cmd, batch.mesh);
 
-        m_obj_config.instance_base = batch.first_instance_offset;
-        m_obj_config.material_id = 0;
-        m_obj_config.use_clustered_lighting = 1;
-        m_obj_config.local_lights_size = 0;
-        m_obj_config.directional_light_id = 0;
-        copy_texture_indices(m_obj_config, m_pick_mat);
+        m_pick_pc.instance_base = batch.first_instance_offset;
 
         vkCmdPushConstants(cmd,
                            pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0,
-                           sizeof(gpu::push_constants),
-                           &m_obj_config);
+                           sizeof(gpu::push_constants_pick),
+                           &m_pick_pc);
 
         if (batch.mesh->has_indices())
         {
@@ -518,32 +528,17 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_grid_se->m_pipeline);
 
-    // Rebind set 0 (camera) with grid's pipeline layout
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline_layout,
-                            KGPU_global_descriptor_sets,
-                            1,
-                            &m_global_set,
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
+    // Set 0 removed — camera accessed via BDA pointer table in push constants
 
     bind_mesh(cmd, m);
 
-    // Push constants (grid doesn't use texture indices but layout requires them)
-    memset(&m_obj_config, 0, sizeof(m_obj_config));
-    for (uint32_t i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
-    {
-        m_obj_config.texture_indices[i] = UINT32_MAX;
-        m_obj_config.sampler_indices[i] = KGPU_SAMPLER_LINEAR_REPEAT;
-    }
-
+    // Grid push constants — only camera BDA
     vkCmdPushConstants(cmd,
                        pipeline_layout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                        0,
-                       sizeof(gpu::push_constants),
-                       &m_obj_config);
+                       sizeof(gpu::push_constants_grid),
+                       &m_grid_pc);
 
     if (m->has_indices())
     {
@@ -612,7 +607,7 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
                        pipeline_layout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                        0,
-                       sizeof(gpu::push_constants),
+                       sizeof(gpu::push_constants_main),
                        &m_obj_config);
 
     if (!m->has_indices())
@@ -752,7 +747,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     // Copy bindless texture indices from material
     copy_texture_indices(m_obj_config, obj->material);
 
-    constexpr auto range = sizeof(gpu::push_constants);
+    constexpr auto range = sizeof(gpu::push_constants_main);
     vkCmdPushConstants(cmd,
                        pctx.pipeline_layout,
                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -790,31 +785,11 @@ vulkan_render::bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh)
 void
 vulkan_render::bind_global_descriptors(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
-    // All graphics shaders share compatible descriptor set layouts for sets 0, 1, 2
-    // Use pick material's layout as a representative (always available after init)
-    auto pipeline_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
-
-    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
-
-    // Bind set 0 (global/camera data)
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline_layout,
-                            KGPU_global_descriptor_sets,
-                            1,
-                            &m_global_set,
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
-
-    // Bind set 1 (objects/lights/clusters)
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline_layout,
-                            KGPU_objects_descriptor_sets,
-                            1,
-                            &m_objects_set,
-                            KGPU_objects_max_binding + 1,
-                            dummy_offset);
+    // Sets 0/1 removed — buffers are now accessed via BDA pointer table in push constants.
+    // This function is kept as a no-op to avoid touching all call sites.
+    // TODO: remove call sites in Phase 5 cleanup.
+    (void)cmd;
+    (void)current_frame;
 }
 
 void
@@ -832,33 +807,12 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
-
+    // Material data — compute BDA address for this material type's segment
     if (cur_material->has_gpu_data())
     {
         auto& sm = m_materials_layout.at(cur_material->gpu_type_idx());
-        VkDescriptorBufferInfo mat_buffer_info{.buffer = current_frame.buffers.materials.buffer(),
-                                               .offset = sm.offset,
-                                               .range = sm.get_allocated_size()};
-
-        VkDescriptorSet mat_data_set{};
-        vk_utils::descriptor_builder::begin(
-            glob::glob_state().getr_render_device().descriptor_layout_cache(),
-            current_frame.frame->m_dynamic_descriptor_allocator.get())
-            .bind_buffer(0,
-                         &mat_buffer_info,
-                         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                         VK_SHADER_STAGE_FRAGMENT_BIT)
-            .build(mat_data_set);
-
-        vkCmdBindDescriptorSets(cmd,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                ctx.pipeline_layout,
-                                KGPU_materials_descriptor_sets,
-                                1,
-                                &mat_data_set,
-                                1,
-                                dummy_offset);
+        m_obj_config.bdaf_material = current_frame.buffers.materials.device_address() + sm.offset;
+        m_bda_material_bound = true;
     }
 
     // Bind texture set - either bindless global set or per-material set

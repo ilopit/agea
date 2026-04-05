@@ -28,6 +28,11 @@
 // Bindless textures
 #define KGPU_max_bindless_textures 4096
 
+// Standard texture slots for bindless indexing
+#define KGPU_TEXTURE_SLOT_ALBEDO 0
+#define KGPU_TEXTURE_SLOT_SPECULAR 1
+#define KGPU_MAX_TEXTURE_SLOTS 2
+
 // Static sampler types for runtime sampler selection
 #define KGPU_SAMPLER_LINEAR_REPEAT 0        // Default for most textures
 #define KGPU_SAMPLER_LINEAR_CLAMP 1         // Skyboxes, LUTs

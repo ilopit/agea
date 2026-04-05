@@ -19,8 +19,9 @@
 namespace kryga::render
 {
 
-// Forward declaration for resource validation
+// Forward declarations
 class vulkan_render_graph;
+class shader_effect_data;
 
 namespace vk_utils
 {
@@ -30,8 +31,9 @@ class vulkan_image;
 
 enum class binding_scope
 {
-    per_pass,     // bound once per pass (camera, objects, lights, etc.)
-    per_material  // bound per draw call (textures) - validated but not managed
+    per_pass,      // bound once per pass via descriptors
+    per_material,  // bound per draw call (textures) - validated but not managed
+    bda            // accessed via BDA pointer table — no descriptor, just ownership tracking
 };
 
 struct binding_spec
@@ -60,6 +62,12 @@ public:
         VkShaderStageFlags stages,
         binding_scope scope = binding_scope::per_pass);
 
+    // Declare a BDA resource this pass accesses via pointer table.
+    // No descriptor set/binding — just ownership tracking.
+    // Must be bound per-frame via bind() before rendering.
+    binding_table&
+    add_bda(const utils::id& name);
+
     // Finalize - builds layouts, no more modifications allowed
     bool
     finalize(vk_utils::descriptor_layout_cache& layout_cache);
@@ -82,10 +90,14 @@ public:
     validate_material_bindings(
         const std::unordered_map<utils::id, VkDescriptorType>& material_bindings) const;
 
-    // Validate that all per_pass bindings exist in the render graph's resource registry
-    // Returns true if all bindings are found, logs errors on failure
+    // Validate all resources against the render graph:
+    // 1. Binding table entries (if finalized) must exist in graph
+    // 2. bdag_ push constant fields from shader effects must have matching dyn_ graph resources
     bool
-    validate_resources(const vulkan_render_graph& graph) const;
+    validate_resources(
+        const vulkan_render_graph& graph,
+        const std::unordered_map<utils::id, std::shared_ptr<shader_effect_data>>& shader_effects,
+        const char* pass_name = nullptr) const;
 
     // === Binding phase (per-frame for per_pass scope) ===
 
@@ -106,6 +118,11 @@ public:
     // Reset bound resources for new frame
     void
     begin_frame();
+
+    // Validate all BDA-scoped entries were bound this frame.
+    // Call after begin_frame() + bind() calls, before rendering.
+    bool
+    validate_bda_bound() const;
 
     // === Accessors ===
 

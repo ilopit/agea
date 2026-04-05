@@ -133,66 +133,25 @@ vulkan_render::prepare_pass_bindings()
     auto* layout_cache_ptr = glob::glob_state().getr_render_device().descriptor_layout_cache();
     auto& layout_cache = *layout_cache_ptr;
 
-    // Main pass bindings - names must match shader reflection names (dyn_ prefix)
+    // Main pass bindings
     auto* main_pass = get_render_pass(AID("main"));
     if (main_pass)
     {
-        // Set 0: Global data (camera)
-        main_pass->bindings().add(AID("dyn_camera_data"),
-                                  KGPU_global_descriptor_sets,
-                                  0,
-                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        // Set 1: Object data (objects, lights, clusters)
+        // BDA resources — accessed via pointer table, tracked for per-frame validation
         main_pass->bindings()
-            .add(AID("dyn_object_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_objects_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_directional_lights_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_directional_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_gpu_universal_light_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_universal_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_counts"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_counts_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_indices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_indices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_config"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_config_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_instance_slots"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_instance_slots_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_bone_matrices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_bone_matrices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_shadow_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_shadow_data_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+            .add_bda(AID("dyn_camera_data"))
+            .add_bda(AID("dyn_object_buffer"))
+            .add_bda(AID("dyn_directional_lights_buffer"))
+            .add_bda(AID("dyn_gpu_universal_light_data"))
+            .add_bda(AID("dyn_cluster_light_counts"))
+            .add_bda(AID("dyn_cluster_light_indices"))
+            .add_bda(AID("dyn_cluster_config"))
+            .add_bda(AID("dyn_instance_slots"))
+            .add_bda(AID("dyn_bone_matrices"))
+            .add_bda(AID("dyn_shadow_data"))
+            .add_bda(AID("dyn_material_buffer"));
 
-        // Set 2: Bindless textures and static samplers (managed separately from render graph)
+        // Set 2: Bindless textures and static samplers (only remaining descriptor set)
         main_pass->bindings()
             .add(AID("static_samplers"),
                  KGPU_textures_descriptor_sets,
@@ -207,77 +166,23 @@ vulkan_render::prepare_pass_bindings()
                  VK_SHADER_STAGE_FRAGMENT_BIT,
                  render::binding_scope::per_material);
 
-        // Set 3: Material data (per-material)
-        main_pass->bindings().add(AID("dyn_material_buffer"),
-                                  KGPU_materials_descriptor_sets,
-                                  0,
-                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                                  VK_SHADER_STAGE_FRAGMENT_BIT,
-                                  render::binding_scope::per_material);
+        // Set 3: Material data — now accessed via BDA pointer table
 
         main_pass->finalize_bindings(layout_cache);
     }
 
-    // Picking pass bindings - needs same bindings as main pass for shader compatibility
+    // Picking pass bindings
     auto* picking_pass = get_render_pass(AID("picking"));
     if (picking_pass)
     {
-        // Set 0: Global data (camera)
-        picking_pass->bindings().add(AID("dyn_camera_data"),
-                                     KGPU_global_descriptor_sets,
-                                     0,
-                                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        // Set 1: Object data (same as main pass)
+        // BDA resources used by picking
         picking_pass->bindings()
-            .add(AID("dyn_object_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_objects_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_directional_lights_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_directional_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_gpu_universal_light_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_universal_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_counts"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_counts_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_indices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_indices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_config"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_config_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_instance_slots"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_instance_slots_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_bone_matrices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_bone_matrices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_shadow_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_shadow_data_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+            .add_bda(AID("dyn_camera_data"))
+            .add_bda(AID("dyn_object_buffer"))
+            .add_bda(AID("dyn_instance_slots"))
+            .add_bda(AID("dyn_bone_matrices"));
 
-        // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)
+        // Set 2: Bindless textures and static samplers
         picking_pass->bindings()
             .add(AID("static_samplers"),
                  KGPU_textures_descriptor_sets,
@@ -653,13 +558,11 @@ vulkan_render::setup_instanced_render_graph()
         // Shadow map dependencies (ordering only — actual sampling is via bindless)
         for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
         {
-            main_resources.push_back(
-                m_render_graph.read(AID("shadow_csm_" + std::to_string(c))));
+            main_resources.push_back(m_render_graph.read(AID("shadow_csm_" + std::to_string(c))));
         }
         for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
         {
-            main_resources.push_back(
-                m_render_graph.read(AID("shadow_local_" + std::to_string(i))));
+            main_resources.push_back(m_render_graph.read(AID("shadow_local_" + std::to_string(i))));
             main_resources.push_back(
                 m_render_graph.read(AID("shadow_local_back_" + std::to_string(i))));
         }

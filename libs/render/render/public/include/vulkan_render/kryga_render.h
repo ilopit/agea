@@ -532,6 +532,9 @@ private:
     material_data* m_grid_mat = nullptr;
     bool m_show_grid = true;
 
+    // BDA per-frame tracking — ensures per-draw BDA addresses are set before use
+    bool m_bda_material_bound = false;
+
     // Generic
     material_data* m_outline_mat = nullptr;
     material_data* m_pick_mat = nullptr;
@@ -549,7 +552,10 @@ private:
     VkDescriptorSetLayout m_bindless_layout = VK_NULL_HANDLE;
     VkDescriptorSet m_bindless_set = VK_NULL_HANDLE;
 
-    gpu::push_constants m_obj_config;
+    gpu::push_constants_main m_obj_config = {};
+    gpu::push_constants_shadow m_shadow_pc = {};
+    gpu::push_constants_pick m_pick_pc = {};
+    gpu::push_constants_grid m_grid_pc = {};
 
     render_cache m_cache;
 

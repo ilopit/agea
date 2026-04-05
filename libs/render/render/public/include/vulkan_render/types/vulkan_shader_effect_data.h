@@ -66,6 +66,21 @@ public:
     std::shared_ptr<shader_module_data> m_frag_stage;
     std::shared_ptr<shader_module_data> m_vertex_stage;
 
+    // Iterate all active shader stages
+    template <typename Fn>
+    void
+    for_each_stage(Fn&& fn) const
+    {
+        if (m_vertex_stage)
+        {
+            fn(*m_vertex_stage);
+        }
+        if (m_frag_stage)
+        {
+            fn(*m_frag_stage);
+        }
+    }
+
     bool m_is_wire = false;
     bool m_enable_alpha = false;
     bool m_system = false;

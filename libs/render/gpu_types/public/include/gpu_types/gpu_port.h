@@ -14,6 +14,8 @@ using vec4 = ::glm::vec4;
 using mat3 = ::glm::mat3;
 using mat4 = ::glm::mat4;
 using uint = ::std::uint32_t;
+using uint64 = ::std::uint64_t;
+using uvec2 = ::glm::uvec2;
 using uvec4 = ::glm::uvec4;
 using ivec4 = ::glm::ivec4;
 }  // namespace kryga::gpu
@@ -77,6 +79,8 @@ using ivec4 = ::glm::ivec4;
 #define pc_float alignas(4) float
 #define pc_int alignas(4) int32_t
 #define pc_uint alignas(4) uint32_t
+#define pc_uint64 alignas(8) uint64_t
+#define pc_uvec2 alignas(4) uvec2
 #define pc_vec2 alignas(4) vec2
 #define pc_vec3 alignas(4) vec3
 #define pc_vec4 alignas(4) vec4
@@ -105,6 +109,8 @@ using ivec4 = ::glm::ivec4;
 #define pc_float float
 #define pc_int int
 #define pc_uint uint
+#define pc_uint64 uint64_t
+#define pc_uvec2 uvec2
 #define pc_vec2 vec2
 #define pc_vec3 vec3
 #define pc_vec4 vec4

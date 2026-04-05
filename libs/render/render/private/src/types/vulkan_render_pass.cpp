@@ -329,7 +329,7 @@ render_pass::are_bindings_finalized() const
 bool
 render_pass::validate_resources(const vulkan_render_graph& graph) const
 {
-    return m_binding_table.validate_resources(graph);
+    return m_binding_table.validate_resources(graph, m_shader_effects, m_name.cstr());
 }
 
 void
@@ -486,6 +486,12 @@ const std::vector<vk_utils::vulkan_image_view>&
 render_pass::get_depth_image_views() const
 {
     return m_depth_image_views;
+}
+
+const std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>>&
+render_pass::get_shader_effects() const
+{
+    return m_shader_effects;
 }
 
 // =============================================================================

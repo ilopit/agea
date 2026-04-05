@@ -7,4 +7,7 @@
 #include <gpu_types/gpu_camera_types.h>
 #include <gpu_types/gpu_object_types.h>
 #include <gpu_types/gpu_vertex_types.h>
-#include <gpu_types/gpu_push_constants.h>
+#include <gpu_types/gpu_push_constants_main.h>
+#include <gpu_types/gpu_push_constants_shadow.h>
+#include <gpu_types/gpu_push_constants_pick.h>
+#include <gpu_types/gpu_push_constants_grid.h>

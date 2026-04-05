@@ -187,7 +187,7 @@ def write_gpu_struct(type_obj: arapi.types.kryga_type,
 #pragma once
 
 #include <gpu_types/gpu_port.h>
-#include <gpu_types/gpu_push_constants.h>
+#include <gpu_types/gpu_generic_constants.h>
 
 #ifdef __cplusplus
 #include <cstring>

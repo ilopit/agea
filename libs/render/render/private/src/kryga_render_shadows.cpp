@@ -153,13 +153,6 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
         return;
     }
 
-    if (m_global_set == VK_NULL_HANDLE || m_objects_set == VK_NULL_HANDLE)
-    {
-        return;
-    }
-
-    auto& current_frame = *m_current_frame;
-
     auto* se = m_shadow_se;
     if (se->m_failed_load)
     {
@@ -168,31 +161,11 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
-    // Bind descriptor sets using dummy offsets (SSBOs don't need real offsets)
-    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            se->m_pipeline_layout,
-                            KGPU_global_descriptor_sets,
-                            1,
-                            &m_global_set,
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            se->m_pipeline_layout,
-                            KGPU_objects_descriptor_sets,
-                            1,
-                            &m_objects_set,
-                            KGPU_objects_max_binding + 1,
-                            dummy_offset);
-
-    // Push constants with cascade index for VP matrix selection
-    gpu::push_constants pc = {};
+    // Shadow push constants with cascade index
+    gpu::push_constants_shadow pc = m_shadow_pc;
     pc.instance_base = 0;
     pc.directional_light_id = cascade_idx;
+    pc.use_clustered_lighting = 0;  // 0 = CSM cascade mode
 
     // Draw all opaque batches into shadow map
     for (const auto& batch : m_draw_batches)
@@ -226,9 +199,9 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
         pc.instance_base = batch.first_instance_offset;
         vkCmdPushConstants(cmd,
                            se->m_pipeline_layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           VK_SHADER_STAGE_VERTEX_BIT,
                            0,
-                           sizeof(gpu::push_constants),
+                           sizeof(gpu::push_constants_shadow),
                            &pc);
 
         if (indexed)
@@ -270,13 +243,6 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
         return;
     }
 
-    if (m_global_set == VK_NULL_HANDLE || m_objects_set == VK_NULL_HANDLE)
-    {
-        return;
-    }
-
-    auto& current_frame = *m_current_frame;
-
     auto* se = is_point ? m_shadow_dpsm_se : m_shadow_se;
 
     if (!se || se->m_failed_load)
@@ -286,27 +252,8 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
-    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            se->m_pipeline_layout,
-                            KGPU_global_descriptor_sets,
-                            1,
-                            &m_global_set,
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            se->m_pipeline_layout,
-                            KGPU_objects_descriptor_sets,
-                            1,
-                            &m_objects_set,
-                            KGPU_objects_max_binding + 1,
-                            dummy_offset);
-
-    gpu::push_constants pc = {};
+    // Shadow push constants
+    gpu::push_constants_shadow pc = m_shadow_pc;
     pc.directional_light_id = shadow_idx;
     // For spot lights (se_shadow.vert): use_clustered_lighting=1 means "local light mode"
     // For point lights (se_shadow_dpsm.vert): use_clustered_lighting encodes hemisphere (0=front,
@@ -350,9 +297,9 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
         pc.instance_base = batch.first_instance_offset;
         vkCmdPushConstants(cmd,
                            se->m_pipeline_layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           VK_SHADER_STAGE_VERTEX_BIT,
                            0,
-                           sizeof(gpu::push_constants),
+                           sizeof(gpu::push_constants_shadow),
                            &pc);
 
         if (indexed)

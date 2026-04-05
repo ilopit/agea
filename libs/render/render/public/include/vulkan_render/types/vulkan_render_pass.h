@@ -175,6 +175,19 @@ public:
     get_depth_image_views() const;
 
     // =========================================================================
+    // Shader effect access
+    // =========================================================================
+
+    const std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>>&
+    get_shader_effects() const;
+
+    std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>>&
+    get_shader_effects_mut()
+    {
+        return m_shader_effects;
+    }
+
+    // =========================================================================
     // Validation
     // =========================================================================
 

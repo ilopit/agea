@@ -167,6 +167,7 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     prepare_draw_resources(current_frame);
 
     m_current_frame = &current_frame;
+    m_bda_material_bound = false;
     m_render_graph.set_frame_context(swapchain_image_index, width, height);
 
     // Build descriptor set for cluster culling (required for instanced mode)
@@ -284,6 +285,14 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
 
     m_render_graph.execute(
         cmd, glob::glob_state().getr_render_device().get_current_frame_index(), width, height);
+
+    // Verify per-draw BDA addresses were set this frame (if any objects were drawn)
+    if (m_all_draws > 0)
+    {
+        KRG_check(m_bda_material_bound,
+                  "BDA material address was never set this frame — "
+                  "bind_material() must be called before drawing objects");
+    }
 }
 
 void
@@ -381,51 +390,79 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         }
     }
 
-    // Bind resources to main pass
+    // Bind BDA resources — validates each buffer is available this frame
     auto* main_pass = get_render_pass(AID("main"));
-    KRG_check(main_pass && main_pass->are_bindings_finalized(),
-              "Main pass bindings must be finalized");
+    if (main_pass && main_pass->are_bindings_finalized())
+    {
+        main_pass->begin_frame();
+        main_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+        main_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+        main_pass->bind(AID("dyn_directional_lights_buffer"),
+                        current_frame.buffers.directional_lights);
+        main_pass->bind(AID("dyn_gpu_universal_light_data"),
+                        current_frame.buffers.universal_lights);
+        main_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
+        main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
+        main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+        main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+        main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
+        main_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+        main_pass->bind(AID("dyn_material_buffer"), current_frame.buffers.materials);
 
-    main_pass->begin_frame();
-    main_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-    main_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-    main_pass->bind(AID("dyn_directional_lights_buffer"), current_frame.buffers.directional_lights);
-    main_pass->bind(AID("dyn_gpu_universal_light_data"), current_frame.buffers.universal_lights);
-    main_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
-    main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
-    main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
-    main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
-    main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
-    main_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+        KRG_check(static_cast<const render_pass*>(main_pass)->bindings().validate_bda_bound(),
+                  "Main pass: not all BDA resources bound this frame");
+    }
 
-    m_global_set = main_pass->get_descriptor_set(
-        KGPU_global_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
-    m_objects_set = main_pass->get_descriptor_set(
-        KGPU_objects_descriptor_sets, *current_frame.frame->m_dynamic_descriptor_allocator);
-
-    // Bind resources to picking pass
     auto* picking_pass = get_render_pass(AID("picking"));
-    KRG_check(picking_pass && picking_pass->are_bindings_finalized(),
-              "Picking pass bindings must be finalized");
+    if (picking_pass && picking_pass->are_bindings_finalized())
+    {
+        picking_pass->begin_frame();
+        picking_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+        picking_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+        picking_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+        picking_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
 
-    picking_pass->begin_frame();
-    picking_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-    picking_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-    picking_pass->bind(AID("dyn_directional_lights_buffer"),
-                       current_frame.buffers.directional_lights);
-    picking_pass->bind(AID("dyn_gpu_universal_light_data"), current_frame.buffers.universal_lights);
-    picking_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
-    picking_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
-    picking_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
-    picking_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
-    picking_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
-    picking_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+        KRG_check(static_cast<const render_pass*>(picking_pass)->bindings().validate_bda_bound(),
+                  "Picking pass: not all BDA resources bound this frame");
+    }
 
     // Prepare debug light visualization data (must happen before rendering)
     prepare_debug_light_data(current_frame);
 
     // Upload shadow data
     upload_shadow_data(current_frame);
+
+    // Fill BDA addresses directly in per-pass push constants
+    {
+        auto& b = current_frame.buffers;
+
+        // Main pass push constants — all BDA addresses
+        m_obj_config.bdag_camera = b.dynamic_data.device_address();
+        m_obj_config.bdag_objects = b.objects.device_address();
+        m_obj_config.bdag_directional_lights = b.directional_lights.device_address();
+        m_obj_config.bdag_universal_lights = b.universal_lights.device_address();
+        m_obj_config.bdag_cluster_counts = b.cluster_counts.device_address();
+        m_obj_config.bdag_cluster_indices = b.cluster_indices.device_address();
+        m_obj_config.bdag_cluster_config = b.cluster_config.device_address();
+        m_obj_config.bdag_instance_slots = b.instance_slots.device_address();
+        m_obj_config.bdag_bone_matrices = b.bone_matrices.device_address();
+        m_obj_config.bdag_shadow_data = b.shadow_data.device_address();
+        // bdaf_material set per-draw in bind_material()
+
+        // Shadow pass push constants
+        m_shadow_pc.bdag_objects = b.objects.device_address();
+        m_shadow_pc.bdag_instance_slots = b.instance_slots.device_address();
+        m_shadow_pc.bdag_shadow_data = b.shadow_data.device_address();
+
+        // Pick pass push constants
+        m_pick_pc.bdag_camera = b.dynamic_data.device_address();
+        m_pick_pc.bdag_objects = b.objects.device_address();
+        m_pick_pc.bdag_instance_slots = b.instance_slots.device_address();
+        m_pick_pc.bdag_bone_matrices = b.bone_matrices.device_address();
+
+        // Grid pass push constants
+        m_grid_pc.bdag_camera = b.dynamic_data.device_address();
+    }
 }
 
 frame_state&

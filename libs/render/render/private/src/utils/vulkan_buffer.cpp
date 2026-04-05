@@ -68,8 +68,11 @@ vulkan_buffer::vulkan_buffer(vulkan_buffer&& other) noexcept
 void
 vulkan_buffer::clear()
 {
-    glob::glob_state().getr_render_device().delete_immediately(
-        [=](VkDevice vkd, VmaAllocator va) { vmaDestroyBuffer(va, m_buffer, m_allocation); });
+    if (m_buffer != VK_NULL_HANDLE)
+    {
+        glob::glob_state().getr_render_device().delete_immediately(
+            [=](VkDevice vkd, VmaAllocator va) { vmaDestroyBuffer(va, m_buffer, m_allocation); });
+    }
 
     m_buffer = VK_NULL_HANDLE;
     m_allocation = VK_NULL_HANDLE;
@@ -90,6 +93,15 @@ vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
                              nullptr));
 
     return vulkan_buffer{buffer, allocation, bci.size};
+}
+
+VkDeviceAddress
+vulkan_buffer::device_address() const
+{
+    VkBufferDeviceAddressInfo info{};
+    info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    info.buffer = m_buffer;
+    return vkGetBufferDeviceAddress(glob::glob_state().getr_render_device().vk_device(), &info);
 }
 
 vulkan_buffer::~vulkan_buffer()

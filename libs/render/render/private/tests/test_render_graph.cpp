@@ -2,8 +2,73 @@
 
 #include "vulkan_render/vulkan_render_graph.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
+#include "vulkan_render/types/binding_table.h"
+#include "vulkan_render/vk_descriptors.h"
 
 using namespace kryga::render;
+
+// Test descriptor layout cache that returns dummy handles without a VkDevice
+class test_descriptor_layout_cache : public vk_utils::descriptor_layout_cache
+{
+public:
+    VkDescriptorSetLayout
+    create_descriptor_layout(VkDescriptorSetLayoutCreateInfo*) override
+    {
+        return reinterpret_cast<VkDescriptorSetLayout>(++m_counter);
+    }
+
+private:
+    uint64_t m_counter = 0;
+};
+
+// Helper: build a dynobj_layout with named fields (simulates push constant reflection)
+static kryga::utils::dynobj_layout_sptr
+make_pc_layout(std::initializer_list<const char*> field_names)
+{
+    auto layout = std::make_shared<kryga::utils::dynobj_layout>();
+    uint64_t offset = 0;
+    uint64_t index = 0;
+    for (const char* name : field_names)
+    {
+        kryga::utils::dynobj_field f;
+        f.id = AID(name);
+        f.offset = offset;
+        f.size = 8;
+        f.index = index++;
+        layout->get_fields_mut().push_back(std::move(f));
+        offset += 8;
+    }
+    return layout;
+}
+
+// Helper: create a render_pass with a mock shader effect containing given push constant fields
+static render_pass_sptr
+make_pass_with_bda_fields(const kryga::utils::id& pass_name,
+                          const kryga::utils::id& se_name,
+                          std::initializer_list<const char*> field_names)
+{
+    auto pass = std::make_shared<render_pass>(pass_name, rg_pass_type::compute);
+
+    reflection::shader_reflection refl;
+    refl.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    refl.constants = reflection::push_constants{};
+    refl.constants->name = AID("Constants");
+    refl.constants->offset = 0;
+    refl.constants->size =
+        8 * static_cast<uint32_t>(std::initializer_list<const char*>(field_names).size());
+    refl.constants->layout = make_pc_layout(field_names);
+
+    auto module = std::make_shared<shader_module_data>(
+        VK_NULL_HANDLE, kryga::utils::buffer{}, VK_SHADER_STAGE_VERTEX_BIT, std::move(refl));
+
+    auto se = std::make_shared<shader_effect_data>(se_name);
+    se->m_vertex_stage = module;
+
+    pass->get_shader_effects_mut()[se_name] = se;
+    return pass;
+}
 
 // ============================================================================
 // Basic construction tests
@@ -351,4 +416,261 @@ TEST(RenderGraph, deferred_rendering_pipeline_structure)
 
     EXPECT_LT(gbuffer->order(), lighting->order());
     EXPECT_LT(lighting->order(), tonemap->order());
+}
+
+// ============================================================================
+// BDA push constant validation tests
+// ============================================================================
+
+TEST(RenderGraph, bda_validation_passes_when_resources_match)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    auto pass = make_pass_with_bda_fields(
+        AID("shadow"), AID("se_shadow"), {"instance_base", "bdag_objects", "bdag_instance_slots"});
+    pass->resources() = {graph.write(AID("dyn_objects"))};
+    graph.add_pass(pass);
+
+    EXPECT_TRUE(graph.compile());
+}
+
+TEST(RenderGraph, bda_validation_fails_when_resource_missing)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    // dyn_shadow_data is NOT registered
+
+    auto pass = make_pass_with_bda_fields(
+        AID("shadow"), AID("se_shadow"), {"bdag_objects", "bdag_shadow_data"});
+    pass->resources() = {graph.write(AID("dyn_objects"))};
+    graph.add_pass(pass);
+
+    EXPECT_FALSE(graph.compile());
+}
+
+TEST(RenderGraph, bda_validation_ignores_non_bdag_fields)
+{
+    vulkan_render_graph graph;
+
+    // Non-bdag fields and bdaf_ fields — no graph validation needed
+    auto pass = make_pass_with_bda_fields(
+        AID("simple"), AID("se_simple"), {"instance_base", "material_id", "bdaf_material"});
+    graph.add_pass(pass);
+
+    EXPECT_TRUE(graph.compile());
+}
+
+TEST(RenderGraph, bda_validation_checks_all_passes)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    graph.register_buffer(AID("dyn_camera"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    // dyn_shadow_data is NOT registered
+
+    // Pass 1: OK
+    auto pass1 =
+        make_pass_with_bda_fields(AID("main"), AID("se_main"), {"bdag_objects", "bdag_camera"});
+    pass1->resources() = {graph.read(AID("dyn_objects"))};
+    graph.add_pass(pass1);
+
+    // Pass 2: has bdag_shadow_data with no matching resource
+    auto pass2 = make_pass_with_bda_fields(
+        AID("shadow"), AID("se_shadow"), {"bdag_objects", "bdag_shadow_data"});
+    pass2->resources() = {graph.read(AID("dyn_objects"))};
+    graph.add_pass(pass2);
+
+    EXPECT_FALSE(graph.compile());
+}
+
+TEST(RenderGraph, bda_validation_passes_without_shader_effects)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    // Compute pass with no shader effects — should compile fine
+    graph.add_compute_pass(AID("pass"), {graph.write(AID("data"))}, [](VkCommandBuffer) {});
+
+    EXPECT_TRUE(graph.compile());
+}
+
+// ============================================================================
+// Binding table validation tests
+// ============================================================================
+
+TEST(BindingTable, validate_resources_passes_when_all_present)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    graph.register_buffer(AID("dyn_camera"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    table.add_bda(AID("dyn_camera"));
+    table.finalize(cache);
+
+    EXPECT_TRUE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_resources_fails_when_missing)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    // dyn_shadow_data NOT registered
+
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    table.add_bda(AID("dyn_shadow_data"));
+    table.finalize(cache);
+
+    EXPECT_FALSE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_bda_bound_passes_when_all_bound)
+{
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    table.add_bda(AID("dyn_camera"));
+    table.finalize(cache);
+
+    // Simulate frame: bind all declared resources
+    vk_utils::vulkan_buffer dummy_buf_a;
+    vk_utils::vulkan_buffer dummy_buf_b;
+    table.begin_frame();
+    table.bind_buffer(AID("dyn_objects"), dummy_buf_a);
+    table.bind_buffer(AID("dyn_camera"), dummy_buf_b);
+
+    EXPECT_TRUE(table.validate_bda_bound());
+}
+
+TEST(BindingTable, validate_bda_bound_fails_when_not_bound)
+{
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    table.add_bda(AID("dyn_camera"));
+    table.finalize(cache);
+
+    // Simulate frame: only bind one
+    vk_utils::vulkan_buffer dummy_buf;
+    table.begin_frame();
+    table.bind_buffer(AID("dyn_objects"), dummy_buf);
+    // dyn_camera NOT bound
+
+    EXPECT_FALSE(table.validate_bda_bound());
+}
+
+TEST(BindingTable, validate_bda_bound_fails_after_begin_frame_clears)
+{
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    table.finalize(cache);
+
+    // Frame 1: bind resource
+    vk_utils::vulkan_buffer dummy_buf;
+    table.begin_frame();
+    table.bind_buffer(AID("dyn_objects"), dummy_buf);
+    EXPECT_TRUE(table.validate_bda_bound());
+
+    // Frame 2: begin_frame clears bindings, nothing re-bound
+    table.begin_frame();
+    EXPECT_FALSE(table.validate_bda_bound());
+}
+
+TEST(BindingTable, validate_resources_with_descriptor_bindings)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    graph.register_buffer(AID("dyn_lights"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add(
+        AID("dyn_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+    table.add(
+        AID("dyn_lights"), 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+    table.finalize(cache);
+
+    EXPECT_TRUE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_resources_fails_for_missing_descriptor_binding)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    // dyn_lights NOT registered
+
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add(
+        AID("dyn_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+    table.add(
+        AID("dyn_lights"), 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+    table.finalize(cache);
+
+    EXPECT_FALSE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_resources_fails_when_not_finalized_with_descriptors)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+
+    binding_table table;
+    table.add(
+        AID("dyn_config"), 0, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+    // NOT finalized
+
+    EXPECT_FALSE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_resources_passes_bda_only_without_finalize)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    // NOT finalized — fine for BDA-only
+
+    EXPECT_TRUE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_resources_mixed_bda_and_descriptors)
+{
+    vulkan_render_graph graph;
+    graph.register_buffer(AID("dyn_camera"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    graph.register_buffer(AID("dyn_objects"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add_bda(AID("dyn_objects"));
+    table.add(
+        AID("dyn_camera"), 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT);
+    table.finalize(cache);
+
+    EXPECT_TRUE(table.validate_resources(graph, {}));
+}
+
+TEST(BindingTable, validate_resources_skips_per_material_bindings)
+{
+    vulkan_render_graph graph;
+    // "textures" is NOT in the graph — but per_material should be skipped
+
+    test_descriptor_layout_cache cache;
+    binding_table table;
+    table.add(AID("textures"),
+              2,
+              0,
+              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+              VK_SHADER_STAGE_FRAGMENT_BIT,
+              binding_scope::per_material);
+    table.finalize(cache);
+
+    EXPECT_TRUE(table.validate_resources(graph, {}));
 }

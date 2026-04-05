@@ -53,10 +53,12 @@ public:
         std::vector<VkDescriptorSetLayoutBinding> bindings;
     };
 
+    virtual ~descriptor_layout_cache() = default;
+
     void
     cleanup();
 
-    VkDescriptorSetLayout
+    virtual VkDescriptorSetLayout
     create_descriptor_layout(VkDescriptorSetLayoutCreateInfo* info);
 
 private:

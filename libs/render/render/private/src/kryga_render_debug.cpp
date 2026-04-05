@@ -132,27 +132,8 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
     auto* se = m_debug_wire_se;
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
-    // Bind descriptor sets
+    // Sets 0/1 removed — accessed via BDA pointer table in push constants
     auto pipeline_layout = se->m_pipeline_layout;
-    const uint32_t dummy_offset[KGPU_objects_max_binding + 1] = {};
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline_layout,
-                            KGPU_global_descriptor_sets,
-                            1,
-                            &m_global_set,
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_count(),
-                            current_frame.buffers.dynamic_data.get_dyn_offsets_ptr());
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline_layout,
-                            KGPU_objects_descriptor_sets,
-                            1,
-                            &m_objects_set,
-                            KGPU_objects_max_binding + 1,
-                            dummy_offset);
 
     if (m_bindless_set != VK_NULL_HANDLE)
     {
@@ -169,7 +150,7 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
     bind_mesh(cmd, cube);
 
     // Draw each light as a wireframe cube — data already uploaded in prepare_debug_light_data
-    gpu::push_constants pc = {};
+    gpu::push_constants_main pc = m_obj_config;
     pc.material_id = m_debug_wire_mat->gpu_idx();
     pc.use_clustered_lighting = 0;
     pc.directional_light_id = 0;
@@ -187,7 +168,7 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
                            se->m_pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                            0,
-                           sizeof(gpu::push_constants),
+                           sizeof(gpu::push_constants_main),
                            &pc);
 
         if (cube->has_indices())

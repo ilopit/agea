@@ -265,6 +265,15 @@ vulkan_render_graph::compile()
     // Calculate barriers for each pass
     calculate_barriers();
 
+    // Validate all passes: binding table resources + BDA push constant fields
+    for (const auto& pass : m_passes)
+    {
+        if (!pass->validate_resources(*this))
+        {
+            return false;
+        }
+    }
+
     m_compiled = true;
     return true;
 }

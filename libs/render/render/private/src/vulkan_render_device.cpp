@@ -131,6 +131,7 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 
     VkPhysicalDeviceFeatures features_11{};
     features_11.fillModeNonSolid = true;
+    features_11.shaderInt64 = true;  // Required for uint64_t in GLSL (BDA pointer table)
 
     selector.set_required_features(features_11)
         .add_required_extension("VK_EXT_graphics_pipeline_library")
@@ -156,8 +157,13 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     indexing_features.descriptorBindingPartiallyBound = VK_TRUE;
     indexing_features.descriptorBindingVariableDescriptorCount = VK_TRUE;
     indexing_features.runtimeDescriptorArray = VK_TRUE;
-
     deviceBuilder.add_pNext(&indexing_features);
+
+    // Enable buffer device address for BDA-based buffer access
+    VkPhysicalDeviceBufferDeviceAddressFeatures bda_features{};
+    bda_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+    bda_features.bufferDeviceAddress = VK_TRUE;
+    deviceBuilder.add_pNext(&bda_features);
 
     vkb::Device vkbDevice = deviceBuilder.build().value();
 
@@ -175,6 +181,7 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     allocatorInfo.physicalDevice = m_vk_gpu;
     allocatorInfo.device = m_vk_device;
     allocatorInfo.instance = m_vk_instance;
+    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaCreateAllocator(&allocatorInfo, &m_allocator);
 
     vkGetPhysicalDeviceProperties(m_vk_gpu, &m_gpu_properties);
@@ -540,6 +547,12 @@ render_device::create_buffer(size_t alloc_size,
     buffer_ci.pNext = nullptr;
     buffer_ci.size = alloc_size;
 
+    // Add BDA flag for buffers that may be accessed via device address
+    if (usage & (VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+    {
+        usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    }
+
     buffer_ci.usage = usage;
 
     // let the VMA library know that this data should be writable by CPU, but also readable by
@@ -552,5 +565,6 @@ render_device::create_buffer(size_t alloc_size,
 
     return vk_utils::vulkan_buffer::create(buffer_ci, vma_alloc_ci);
 }
+
 }  // namespace render
 }  // namespace kryga

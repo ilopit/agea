@@ -1,6 +1,8 @@
 #include "vulkan_render/types/binding_table.h"
 
 #include "vulkan_render/vulkan_render_graph.h"
+#include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_device.h"
@@ -117,6 +119,21 @@ binding_table::add(const utils::id& name,
     return *this;
 }
 
+binding_table&
+binding_table::add_bda(const utils::id& name)
+{
+    KRG_check(!m_finalized, "Cannot modify finalized binding table");
+
+    for (const auto& b : m_bindings)
+    {
+        KRG_check(b.name != name, "Duplicate binding name");
+    }
+
+    // BDA entries use dummy set/binding/type — they don't participate in descriptor layout
+    m_bindings.push_back({name, 0, 0, VK_DESCRIPTOR_TYPE_MAX_ENUM, 0, binding_scope::bda});
+    return *this;
+}
+
 bool
 binding_table::finalize(vk_utils::descriptor_layout_cache& layout_cache)
 {
@@ -130,6 +147,12 @@ binding_table::finalize(vk_utils::descriptor_layout_cache& layout_cache)
 
     for (const auto& spec : m_bindings)
     {
+        // BDA entries don't participate in descriptor set layouts
+        if (spec.scope == binding_scope::bda)
+        {
+            continue;
+        }
+
         VkDescriptorSetLayoutBinding vk_binding{};
         vk_binding.binding = spec.binding_index;
         vk_binding.descriptorType = spec.type;
@@ -413,6 +436,14 @@ binding_table::bind_buffer(const utils::id& name, vk_utils::vulkan_buffer& buf)
 
     const binding_spec* spec = find_binding(name);
     KRG_check(spec, "Unknown binding name");
+
+    if (spec->scope == binding_scope::bda)
+    {
+        // BDA entries — just track that the resource was bound, no descriptor write
+        m_bound[name] = {&buf, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE};
+        return;
+    }
+
     KRG_check(is_buffer_descriptor(spec->type), "Binding is not a buffer type");
     KRG_check(spec->scope == binding_scope::per_pass,
               "Cannot bind per_material binding via bind_buffer");
@@ -575,27 +606,120 @@ binding_table::get_pass_bindings(uint32_t set_index) const
 }
 
 bool
-binding_table::validate_resources(const vulkan_render_graph& graph) const
+binding_table::validate_resources(
+    const vulkan_render_graph& graph,
+    const std::unordered_map<utils::id, std::shared_ptr<shader_effect_data>>& shader_effects,
+    const char* pass_name) const
 {
-    KRG_check(m_finalized, "Binding table must be finalized before resource validation");
-
     const auto& resources = graph.get_resources();
+    bool valid = true;
+
+    // 1. Validate binding table entries against graph
+    bool has_descriptor_bindings =
+        std::any_of(m_bindings.begin(),
+                    m_bindings.end(),
+                    [](const binding_spec& s) { return s.scope != binding_scope::bda; });
+
+    if (!m_finalized && has_descriptor_bindings)
+    {
+        ALOG_ERROR("Pass '{}': binding table has descriptor entries but is not finalized",
+                   pass_name ? pass_name : "?");
+        return false;
+    }
+
+    if (m_finalized)
+    {
+        for (const auto& spec : m_bindings)
+        {
+            if (spec.scope == binding_scope::per_material)
+            {
+                continue;
+            }
+
+            if (resources.find(spec.name) == resources.end())
+            {
+                if (spec.scope == binding_scope::bda)
+                {
+                    ALOG_ERROR("BDA resource '{}' not found in render graph resources",
+                               spec.name.cstr());
+                }
+                else
+                {
+                    ALOG_ERROR(
+                        "Binding '{}' (set={}, binding={}) not found in render graph resources",
+                        spec.name.cstr(),
+                        spec.set_index,
+                        spec.binding_index);
+                }
+                valid = false;
+            }
+        }
+    }
+
+    // 2. Validate bdag_ push constant fields from shader effects (both stages)
+    //    bdag_ = graph-tracked, must have matching dyn_ resource
+    //    bdaf_ = per-frame/per-draw, skipped
+    constexpr std::string_view bdag_prefix = "bdag_";
+
+    auto validate_stage = [&](const reflection::shader_reflection& refl, const char* se_name)
+    {
+        if (!refl.has_push_constants() || !refl.constants->layout)
+        {
+            return;
+        }
+
+        for (const auto& field : refl.constants->layout->get_fields())
+        {
+            std::string_view name(field.id.cstr());
+            if (!name.starts_with(bdag_prefix))
+            {
+                continue;
+            }
+
+            auto resource_name = "dyn_" + std::string(name.substr(bdag_prefix.size()));
+            if (resources.find(AID(resource_name)) == resources.end())
+            {
+                ALOG_ERROR(
+                    "Shader '{}' in pass '{}': BDA field '{}' has no "
+                    "corresponding render graph resource '{}'",
+                    se_name,
+                    pass_name ? pass_name : "?",
+                    name,
+                    resource_name);
+                valid = false;
+            }
+        }
+    };
+
+    for (const auto& [id, se] : shader_effects)
+    {
+        if (!se)
+        {
+            continue;
+        }
+        se->for_each_stage([&](const shader_module_data& stage)
+                           { validate_stage(stage.get_reflection(), id.cstr()); });
+    }
+
+    return valid;
+}
+
+bool
+binding_table::validate_bda_bound() const
+{
     bool valid = true;
 
     for (const auto& spec : m_bindings)
     {
-        // Skip per_material bindings - bound per-draw, not from render graph
-        if (spec.scope == binding_scope::per_material)
+        if (spec.scope != binding_scope::bda)
         {
             continue;
         }
 
-        if (resources.find(spec.name) == resources.end())
+        auto it = m_bound.find(spec.name);
+        if (it == m_bound.end() || it->second.buffer == nullptr)
         {
-            ALOG_ERROR("Binding '{}' (set={}, binding={}) not found in render graph resources",
-                       spec.name.cstr(),
-                       spec.set_index,
-                       spec.binding_index);
+            ALOG_ERROR("BDA resource '{}' declared but not bound this frame", spec.name.cstr());
             valid = false;
         }
     }

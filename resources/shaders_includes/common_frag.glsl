@@ -1,12 +1,13 @@
-#extension GL_GOOGLE_include_directive: enable
+// Common fragment shader — texture bindings + helpers
+// Push constants, BDA extensions, and dyn_X macros must be declared by
+// including shader BEFORE this file.
+// Required macros (depending on pass):
+//   dyn_camera_data, dyn_object_buffer, dyn_shadow_data,
+//   dyn_cluster_config, dyn_cluster_light_counts, dyn_cluster_light_indices,
+//   dyn_directional_lights_buffer, dyn_gpu_universal_light_data
+
 #extension GL_EXT_nonuniform_qualifier : require
-#include "gpu_types/gpu_light_types.h"
-#include "gpu_types/gpu_camera_types.h"
-#include "gpu_types/gpu_object_types.h"
 #include "gpu_types/gpu_generic_constants.h"
-#include "gpu_types/gpu_push_constants.h"
-#include "gpu_types/gpu_cluster_types.h"
-#include "gpu_types/gpu_shadow_types.h"
 
 // Input
 layout (location = 0) in vec3 in_world_pos;
@@ -17,59 +18,6 @@ layout (location = 4) in flat uint in_object_idx;
 
 // Output
 layout (location = 0) out vec4 out_color;
-
-// Constants
-layout(push_constant) uniform Constants
-{
-    push_constants obj;
-} constants;
-
-// Bindings
-layout (set = KGPU_global_descriptor_sets, binding = 0) uniform camera_vbo
-{
-   camera_data obj;
-} dyn_camera_data;
-
-// Object buffer - provides per-object data including material_id
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_objects_binding) readonly buffer ObjectDataBuffer{
-    object_data objects[];
-} dyn_object_buffer;
-
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_directional_light_binding) readonly buffer DirLightBuffer{
-
-    directional_light_data objects[];
-} dyn_directional_lights_buffer;
-
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_universal_light_binding) readonly buffer LightDataBuffer{
-
-    universal_light_data objects[];
-} dyn_gpu_universal_light_data;
-
-// Clustered lighting bindings
-gpu_struct_std140 cluster_light_count_data {
-    uint count;
-};
-
-gpu_struct_std140 cluster_light_index_data {
-    uint index;
-};
-
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_cluster_light_counts_binding) readonly buffer ClusterLightCountsBuffer{
-    cluster_light_count_data objects[];
-} dyn_cluster_light_counts;
-
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_cluster_light_indices_binding) readonly buffer ClusterLightIndicesBuffer{
-    cluster_light_index_data objects[];
-} dyn_cluster_light_indices;
-
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_cluster_config_binding) readonly buffer ClusterConfigBuffer{
-    cluster_grid_data config;
-} dyn_cluster_config;
-
-// Shadow data SSBO
-layout(std140, set = KGPU_objects_descriptor_sets, binding = KGPU_objects_shadow_data_binding) readonly buffer ShadowDataBuffer{
-    shadow_config_data shadow;
-} dyn_shadow_data;
 
 // Static sampler array (set 2, binding 0) - immutable samplers for runtime selection
 layout(set = KGPU_textures_descriptor_sets, binding = 0) uniform sampler static_samplers[KGPU_SAMPLER_COUNT];
