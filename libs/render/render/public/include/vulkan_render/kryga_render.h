@@ -478,6 +478,8 @@ private:
     void
     init_shadow_passes();
     void
+    init_shadow_resources();
+    void
     upload_shadow_data(render::frame_state& frame);
     void
     compute_cascade_splits(float near, float far, float lambda);

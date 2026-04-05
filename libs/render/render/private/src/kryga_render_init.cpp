@@ -1,12 +1,8 @@
 #include "vulkan_render/kryga_render.h"
-#include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include "vulkan_render/vulkan_render_device.h"
-#include "vulkan_render/types/vulkan_render_pass_builder.h"
 #include "vulkan_render/vulkan_render_loader.h"
-#include "vulkan_render/vk_descriptors.h"
-#include "vulkan_render/utils/vulkan_initializers.h"
-#include "vulkan_render/types/vulkan_texture_data.h"
+#include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 
@@ -20,6 +16,8 @@
 #include <vfs/vfs.h>
 #include <vfs/io.h>
 #include <global_state/global_state.h>
+
+#include <tracy/Tracy.hpp>
 
 #include <cmath>
 
@@ -192,8 +190,9 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
 
-    // Initialize shadow passes
+    // Initialize shadow passes, then register their depth views in bindless + create shaders
     init_shadow_passes();
+    init_shadow_resources();
 
     // Initialize GPU compute shaders (only needed for instanced mode)
     if (m_render_mode == render_mode::instanced)
@@ -284,284 +283,6 @@ vulkan_render::deinit()
     m_cache.textures.clear();
 
     m_frames.clear();
-}
-
-void
-vulkan_render::prepare_render_passes()
-{
-    auto& device = glob::glob_state().getr_render_device();
-
-    {
-        // Use picking preset in headless mode (TRANSFER_SRC layout, no swapchain extension needed)
-        auto preset = device.is_headless() ? render_pass_builder::presets::picking
-                                           : render_pass_builder::presets::swapchain;
-
-        auto main_pass =
-            render_pass_builder()
-                .set_color_format(device.get_swapchain_format())
-                .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-                .set_width_depth(m_width, m_height)
-                .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
-                .set_preset(preset)
-                .build();
-
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),
-                                                                       std::move(main_pass));
-    }
-
-    VkExtent3D image_extent = {m_width, m_height, 1};
-
-    {
-        auto simg_info = vk_utils::make_image_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            image_extent);
-
-        VmaAllocationCreateInfo simg_allocinfo = {};
-        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-        auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
-            simg_info,
-            simg_allocinfo));
-
-        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
-
-        auto image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
-
-        auto ui_pass =
-            render_pass_builder()
-                .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(m_width, m_height)
-                .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
-                                  std::vector<vk_utils::vulkan_image_sptr>{image})
-                .set_enable_stencil(false)
-                .set_preset(render_pass_builder::presets::buffer)
-                .build();
-
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"),
-                                                                       std::move(ui_pass));
-    }
-
-    {
-        auto simg_info = vk_utils::make_image_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-            image_extent);
-
-        VmaAllocationCreateInfo simg_allocinfo = {};
-        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-        auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
-            simg_info,
-            simg_allocinfo));
-
-        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
-
-        auto image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
-
-        auto picking_pass =
-            render_pass_builder()
-                .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(m_width, m_height)
-                .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
-                                  std::vector<vk_utils::vulkan_image_sptr>{image})
-                .set_preset(render_pass_builder::presets::picking)
-                .set_enable_stencil(false)
-                .build();
-
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("picking"),
-                                                                       std::move(picking_pass));
-    }
-}
-
-void
-vulkan_render::prepare_pass_bindings()
-{
-    auto* layout_cache_ptr = glob::glob_state().getr_render_device().descriptor_layout_cache();
-    auto& layout_cache = *layout_cache_ptr;
-
-    // Main pass bindings - names must match shader reflection names (dyn_ prefix)
-    auto* main_pass = get_render_pass(AID("main"));
-    if (main_pass)
-    {
-        // Set 0: Global data (camera)
-        main_pass->bindings().add(AID("dyn_camera_data"),
-                                  KGPU_global_descriptor_sets,
-                                  0,
-                                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        // Set 1: Object data (objects, lights, clusters)
-        main_pass->bindings()
-            .add(AID("dyn_object_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_objects_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_directional_lights_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_directional_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_gpu_universal_light_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_universal_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_counts"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_counts_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_indices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_indices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_config"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_config_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_instance_slots"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_instance_slots_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_bone_matrices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_bone_matrices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_shadow_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_shadow_data_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        // Set 2: Bindless textures and static samplers (managed separately from render graph)
-        main_pass->bindings()
-            .add(AID("static_samplers"),
-                 KGPU_textures_descriptor_sets,
-                 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material)
-            .add(AID("bindless_textures"),
-                 KGPU_textures_descriptor_sets,
-                 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material);
-
-        // Set 3: Material data (per-material)
-        main_pass->bindings().add(AID("dyn_material_buffer"),
-                                  KGPU_materials_descriptor_sets,
-                                  0,
-                                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                                  VK_SHADER_STAGE_FRAGMENT_BIT,
-                                  render::binding_scope::per_material);
-
-        main_pass->finalize_bindings(layout_cache);
-    }
-
-    // Picking pass bindings - needs same bindings as main pass for shader compatibility
-    auto* picking_pass = get_render_pass(AID("picking"));
-    if (picking_pass)
-    {
-        // Set 0: Global data (camera)
-        picking_pass->bindings().add(AID("dyn_camera_data"),
-                                     KGPU_global_descriptor_sets,
-                                     0,
-                                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-                                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        // Set 1: Object data (same as main pass)
-        picking_pass->bindings()
-            .add(AID("dyn_object_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_objects_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_directional_lights_buffer"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_directional_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_gpu_universal_light_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_universal_light_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_counts"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_counts_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_light_indices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_light_indices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_cluster_config"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_cluster_config_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_FRAGMENT_BIT)
-            .add(AID("dyn_instance_slots"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_instance_slots_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_bone_matrices"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_bone_matrices_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT)
-            .add(AID("dyn_shadow_data"),
-                 KGPU_objects_descriptor_sets,
-                 KGPU_objects_shadow_data_binding,
-                 VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        // Set 2: Bindless textures and static samplers (for common_frag.glsl compatibility)
-        picking_pass->bindings()
-            .add(AID("static_samplers"),
-                 KGPU_textures_descriptor_sets,
-                 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material)
-            .add(AID("bindless_textures"),
-                 KGPU_textures_descriptor_sets,
-                 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material);
-
-        picking_pass->finalize_bindings(layout_cache);
-    }
-
-    // UI pass - simple bindings for ImGui rendering
-    auto* ui_pass = get_render_pass(AID("ui"));
-    if (ui_pass)
-    {
-        // Set 0: Font texture sampler
-        ui_pass->bindings().add(AID("fontSampler"),
-                                0,
-                                0,
-                                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                VK_SHADER_STAGE_FRAGMENT_BIT,
-                                render::binding_scope::per_material);
-
-        ui_pass->finalize_bindings(layout_cache);
-    }
 }
 
 void
@@ -670,6 +391,215 @@ vulkan_render::prepare_system_resources()
         m_debug_wire_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
             AID("mat_debug_wire"), AID("debug_wire"), sd, *m_debug_wire_se, utils::dynobj{});
     }
+}
+
+void
+vulkan_render::init_shadow_resources()
+{
+    ZoneScopedN("Render::InitShadowResources");
+
+    // Register CSM depth image views in bindless texture array
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        auto& device = glob::glob_state().getr_render_device();
+        for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
+        {
+            auto depth_view = m_shadow_passes[c]->get_depth_image_view(f);
+
+            uint32_t bindless_idx =
+                KGPU_max_bindless_textures - 1 - (c * FRAMES_IN_FLIGHT + f);
+
+            VkDescriptorImageInfo image_info = {};
+            image_info.imageView = depth_view;
+            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkWriteDescriptorSet write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = m_bindless_set;
+            write.dstBinding = 1;  // bindless_textures binding
+            write.dstArrayElement = bindless_idx;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            write.pImageInfo = &image_info;
+
+            vkUpdateDescriptorSets(device.vk_device(), 1, &write, 0, nullptr);
+
+            m_shadow_map_bindless_indices[c][f] = bindless_idx;
+        }
+        m_shadow_config.directional.shadow_map_indices[c] =
+            m_shadow_map_bindless_indices[c][0];
+    }
+
+    // Register local light depth views in bindless array
+    constexpr uint32_t csm_bindless_count = KGPU_CSM_CASCADE_COUNT * FRAMES_IN_FLIGHT;
+    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
+    {
+        auto vk_dev = glob::glob_state().getr_render_device().vk_device();
+        for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
+        {
+            auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(f);
+            uint32_t local_bindless_idx =
+                KGPU_max_bindless_textures - 1 - csm_bindless_count
+                - (i * FRAMES_IN_FLIGHT + f);
+
+            VkDescriptorImageInfo local_image_info = {};
+            local_image_info.imageView = local_depth_view;
+            local_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkWriteDescriptorSet local_write = {};
+            local_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            local_write.dstSet = m_bindless_set;
+            local_write.dstBinding = 1;
+            local_write.dstArrayElement = local_bindless_idx;
+            local_write.descriptorCount = 1;
+            local_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            local_write.pImageInfo = &local_image_info;
+
+            vkUpdateDescriptorSets(vk_dev, 1, &local_write, 0, nullptr);
+
+            m_shadow_local_bindless_indices[i][f] = local_bindless_idx;
+        }
+    }
+
+    // Create shadow vertex shader effect on the first shadow pass.
+    // Use the pick shader's pipeline layout so descriptor sets are compatible.
+    VkPipelineLayout shared_layout = VK_NULL_HANDLE;
+    if (m_pick_mat && m_pick_mat->get_shader_effect())
+    {
+        shared_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
+    }
+
+    vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
+
+    kryga::utils::buffer vert;
+    if (vfs::load_buffer(se_base / "shadow/se_shadow.vert", vert))
+    {
+        shader_effect_create_info se_ci = {};
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = nullptr;  // No fragment shader for depth-only
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::none;
+        se_ci.cull_mode = VK_CULL_MODE_FRONT_BIT;  // Front-face culling reduces peter-panning
+        se_ci.height = KGPU_SHADOW_MAP_SIZE;
+        se_ci.width = KGPU_SHADOW_MAP_SIZE;
+        se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
+        se_ci.shared_pipeline_layout = shared_layout;
+
+        m_shadow_se = nullptr;
+        auto rc = m_shadow_passes[0]->create_shader_effect(AID("se_shadow"), se_ci, m_shadow_se);
+        if (rc != result_code::ok)
+        {
+            ALOG_WARN("Failed to create shadow shader effect - shadows disabled");
+            m_shadow_se = nullptr;
+        }
+    }
+    else
+    {
+        ALOG_WARN("Failed to load se_shadow.vert - shadows disabled");
+    }
+
+    // Create DPSM vertex shader for point lights
+    kryga::utils::buffer dpsm_vert;
+    if (vfs::load_buffer(se_base / "shadow/se_shadow_dpsm.vert", dpsm_vert))
+    {
+        shader_effect_create_info se_ci = {};
+        se_ci.vert_buffer = &dpsm_vert;
+        se_ci.frag_buffer = nullptr;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::none;
+        se_ci.cull_mode = VK_CULL_MODE_NONE;  // Can't cull in paraboloid space
+        se_ci.height = KGPU_SHADOW_MAP_SIZE;
+        se_ci.width = KGPU_SHADOW_MAP_SIZE;
+        se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
+        se_ci.shared_pipeline_layout = shared_layout;
+
+        m_shadow_dpsm_se = nullptr;
+        auto rc = m_shadow_passes[0]->create_shader_effect(
+            AID("se_shadow_dpsm"), se_ci, m_shadow_dpsm_se);
+        if (rc != result_code::ok)
+        {
+            ALOG_WARN("Failed to create DPSM shadow shader effect");
+            m_shadow_dpsm_se = nullptr;
+        }
+    }
+
+    // Initialize shadow config defaults
+    m_shadow_config.directional.cascade_count = KGPU_CSM_CASCADE_COUNT;
+    m_shadow_config.directional.shadow_bias = 0.005f;
+    m_shadow_config.directional.normal_bias = 0.03f;
+    m_shadow_config.directional.texel_size = 1.0f / static_cast<float>(KGPU_SHADOW_MAP_SIZE);
+    m_shadow_config.directional.pcf_mode = KGPU_PCF_POISSON16;
+    m_shadow_config.shadowed_local_count = 0;
+
+    // Transition all shadow depth images from UNDEFINED to SHADER_READ_ONLY_OPTIMAL.
+    // Without this, the first frame's main pass samples bindless shadow textures that
+    // are still in UNDEFINED layout, producing black output and validation errors.
+    auto& device = glob::glob_state().getr_render_device();
+    device.immediate_submit(
+        [&](VkCommandBuffer cmd)
+        {
+            VkImageMemoryBarrier barrier = {};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+
+            // CSM cascades
+            for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+            {
+                auto& depth_images = m_shadow_passes[c]->get_depth_images();
+                for (auto& img : depth_images)
+                {
+                    barrier.image = img.image();
+                    vkCmdPipelineBarrier(cmd,
+                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                         0,
+                                         0,
+                                         nullptr,
+                                         0,
+                                         nullptr,
+                                         1,
+                                         &barrier);
+                }
+            }
+
+            // Local light shadow passes
+            for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
+            {
+                auto& depth_images = m_shadow_local_passes[i]->get_depth_images();
+                for (auto& img : depth_images)
+                {
+                    barrier.image = img.image();
+                    vkCmdPipelineBarrier(cmd,
+                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                         0,
+                                         0,
+                                         nullptr,
+                                         0,
+                                         nullptr,
+                                         1,
+                                         &barrier);
+                }
+            }
+        });
+
+    ALOG_INFO("Shadow resources initialized: {} CSM cascades, {}x{} resolution, {} frames buffered",
+              KGPU_CSM_CASCADE_COUNT,
+              KGPU_SHADOW_MAP_SIZE,
+              KGPU_SHADOW_MAP_SIZE,
+              FRAMES_IN_FLIGHT);
 }
 
 render_cache&
