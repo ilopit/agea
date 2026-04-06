@@ -10,6 +10,8 @@
 #include "vulkan_render/render_cache.h"
 #include "vulkan_render/vulkan_render_graph.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_enums.h"
+#include "vulkan_render/render_config.h"
 #include "render/utils/frustum.h"
 #include "render/utils/cluster_grid.h"
 #include "render/utils/light_grid.h"
@@ -27,13 +29,6 @@ namespace kryga
 {
 namespace render
 {
-
-// Render mode for A/B performance comparison
-enum class render_mode
-{
-    instanced,  // Batched instanced drawing with GPU cluster culling
-    per_object  // Legacy per-object drawing with CPU light grid
-};
 
 class vulkan_render_loader;
 class render_device;
@@ -177,16 +172,11 @@ struct draw_batch
 class vulkan_render
 {
 public:
-    struct debug_light_config
-    {
-        bool show_wireframe = true;
-        bool show_icons = false;
-    };
     vulkan_render();
     ~vulkan_render();
 
     void
-    init(uint32_t w, uint32_t h, render_mode mode = render_mode::instanced, bool only_rp = false);
+    init(uint32_t w, uint32_t h, const render_config& config, bool only_rp = false);
 
     void
     deinit();
@@ -241,34 +231,22 @@ public:
     render_pass*
     get_render_pass(const utils::id& id);
 
-    void
-    set_grid_visible(bool v)
+    render_config&
+    get_render_config()
     {
-        m_show_grid = v;
+        return m_render_config;
     }
 
-    bool
-    is_grid_visible() const
+    const render_config&
+    get_render_config() const
     {
-        return m_show_grid;
+        return m_render_config;
     }
 
-    gpu::shadow_config_data&
-    get_shadow_config()
+    float
+    get_cascade_split_depth(uint32_t cascade_idx) const
     {
-        return m_shadow_config;
-    }
-
-    float&
-    get_shadow_distance()
-    {
-        return m_shadow_distance;
-    }
-
-    debug_light_config&
-    get_debug_light_config()
-    {
-        return m_debug_light_config;
+        return m_shadow_config.directional.cascades[cascade_idx].split_depth;
     }
 
     uint32_t
@@ -300,6 +278,10 @@ public:
     {
         return m_render_mode == render_mode::instanced;
     }
+
+    // Apply runtime config changes (cluster reinit, render mode switch, etc.)
+    void
+    apply_config_changes();
 
 private:
     void
@@ -530,7 +512,6 @@ private:
     // Grid
     shader_effect_data* m_grid_se = nullptr;
     material_data* m_grid_mat = nullptr;
-    bool m_show_grid = true;
 
     // BDA per-frame tracking — ensures per-draw BDA addresses are set before use
     bool m_bda_material_bound = false;
@@ -584,10 +565,13 @@ private:
 
     // Shadow mapping
     gpu::shadow_config_data m_shadow_config = {};
-    float m_shadow_distance = 200.0f;
 
-    // Debug light visualization
-    debug_light_config m_debug_light_config;
+    // Render config (loaded from render.acfg)
+    render_config m_render_config;
+
+    // Snapshots of last-applied config (to detect runtime changes)
+    render_config::cluster_cfg m_applied_clusters;
+    uint32_t m_applied_shadow_map_size = 0;
     shader_effect_data* m_debug_wire_se = nullptr;
     material_data* m_debug_wire_mat = nullptr;
     uint32_t m_debug_light_draw_count = 0;

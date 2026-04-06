@@ -103,10 +103,10 @@ gizmo_editor::draw()
         ImGui::SameLine();
         ImGui::Text("|");
         ImGui::SameLine();
-        bool grid_visible = glob::glob_state().getr_vulkan_render().is_grid_visible();
+        bool grid_visible = glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid;
         if (ImGui::Checkbox("Grid", &grid_visible))
         {
-            glob::glob_state().getr_vulkan_render().set_grid_visible(grid_visible);
+            glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid = grid_visible;
         }
 
         ImGui::End();

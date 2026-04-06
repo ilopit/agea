@@ -56,14 +56,15 @@ vulkan_render::~vulkan_render()
 }
 
 void
-vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
+vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool only_rp)
 {
     m_width = w;
     m_height = h;
-    m_render_mode = mode;
+    m_render_config = config;
+    m_render_mode = config.mode;
 
     ALOG_INFO("Initializing renderer in {} mode",
-              mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
+              m_render_mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
 
     // Initialize static samplers first - needed for bindless texture layout
     init_static_samplers();
@@ -172,21 +173,21 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
                         m_height,
                         KGPU_znear,  // near plane
                         KGPU_zfar,   // far plane - must match camera!
-                        KGPU_cluster_tile_size,
-                        KGPU_cluster_depth_slices,
-                        KGPU_max_lights_per_cluster);
+                        m_render_config.clusters.tile_size,
+                        m_render_config.clusters.depth_slices,
+                        m_render_config.clusters.max_lights_per_cluster);
 
-    const auto& config = m_cluster_grid.get_config();
-    m_cluster_config.tiles_x = config.tiles_x;
-    m_cluster_config.tiles_y = config.tiles_y;
-    m_cluster_config.depth_slices = config.depth_slices;
-    m_cluster_config.tile_size = config.tile_size;
-    m_cluster_config.near_plane = config.near_plane;
-    m_cluster_config.far_plane = config.far_plane;
-    m_cluster_config.log_depth_ratio = std::log(config.far_plane / config.near_plane);
-    m_cluster_config.max_lights_per_cluster = config.max_lights_per_cluster;
-    m_cluster_config.screen_width = config.screen_width;
-    m_cluster_config.screen_height = config.screen_height;
+    const auto& grid_cfg = m_cluster_grid.get_config();
+    m_cluster_config.tiles_x = grid_cfg.tiles_x;
+    m_cluster_config.tiles_y = grid_cfg.tiles_y;
+    m_cluster_config.depth_slices = grid_cfg.depth_slices;
+    m_cluster_config.tile_size = grid_cfg.tile_size;
+    m_cluster_config.near_plane = grid_cfg.near_plane;
+    m_cluster_config.far_plane = grid_cfg.far_plane;
+    m_cluster_config.log_depth_ratio = std::log(grid_cfg.far_plane / grid_cfg.near_plane);
+    m_cluster_config.max_lights_per_cluster = grid_cfg.max_lights_per_cluster;
+    m_cluster_config.screen_width = grid_cfg.screen_width;
+    m_cluster_config.screen_height = grid_cfg.screen_height;
 
     // Initialize per-object light grid (for non-clustered path)
     m_light_grid.init(50.0f);  // Cell size matching typical light radius
@@ -202,9 +203,76 @@ vulkan_render::init(uint32_t w, uint32_t h, render_mode mode, bool only_rp)
         init_frustum_cull_compute();
     }
 
+    // Snapshot initial config for runtime change detection
+    m_applied_clusters = m_render_config.clusters;
+    m_applied_shadow_map_size = m_render_config.shadows.map_size;
+
     // Setup and compile render graph — compile() validates all passes:
     // binding table resources + BDA push constant fields (bda_X → dyn_X).
     setup_render_graph();
+}
+
+void
+vulkan_render::apply_config_changes()
+{
+    // Cluster config — reinit grid if any parameter changed
+    const auto& c = m_render_config.clusters;
+    if (c.tile_size != m_applied_clusters.tile_size ||
+        c.depth_slices != m_applied_clusters.depth_slices ||
+        c.max_lights_per_cluster != m_applied_clusters.max_lights_per_cluster)
+    {
+        m_cluster_grid.init(
+            m_width, m_height, KGPU_znear, KGPU_zfar, c.tile_size, c.depth_slices, c.max_lights_per_cluster);
+        m_clusters_dirty = true;
+        m_applied_clusters = c;
+
+        ALOG_INFO("Cluster grid reinitialized: tile_size={} depth_slices={} max_lights={}",
+                  c.tile_size,
+                  c.depth_slices,
+                  c.max_lights_per_cluster);
+    }
+
+    // Shadow map resolution — requires recreating shadow passes + shader effects
+    if (m_render_config.shadows.map_size != m_applied_shadow_map_size)
+    {
+        ALOG_INFO("Shadow map resolution changed: {} -> {}",
+                  m_applied_shadow_map_size,
+                  m_render_config.shadows.map_size);
+
+        glob::glob_state().getr_render_device().wait_for_fences();
+
+        // Recreate shadow passes (new image dimensions) and resources (shader effects + bindless)
+        init_shadow_passes();
+        init_shadow_resources();
+
+        m_applied_shadow_map_size = m_render_config.shadows.map_size;
+
+        // Render graph references shadow passes — must rebuild
+        m_render_graph.reset();
+        setup_render_graph();
+    }
+
+    // Render mode — requires full graph rebuild
+    if (m_render_config.mode != m_render_mode)
+    {
+        ALOG_INFO("Switching render mode to {}",
+                  m_render_config.mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
+
+        // Wait for GPU before rebuilding the graph
+        glob::glob_state().getr_render_device().wait_for_fences();
+
+        m_render_mode = m_render_config.mode;
+
+        // Initialize compute passes if switching to instanced mode
+        if (m_render_mode == render_mode::instanced && !m_frustum_cull_pass)
+        {
+            init_cluster_cull_compute();
+            init_frustum_cull_compute();
+        }
+
+        m_render_graph.reset();
+        setup_render_graph();
+    }
 }
 
 void
@@ -445,8 +513,8 @@ vulkan_render::init_shadow_resources()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::none;
         se_ci.cull_mode = VK_CULL_MODE_FRONT_BIT;  // Front-face culling reduces peter-panning
-        se_ci.height = KGPU_SHADOW_MAP_SIZE;
-        se_ci.width = KGPU_SHADOW_MAP_SIZE;
+        se_ci.height = m_render_config.shadows.map_size;
+        se_ci.width = m_render_config.shadows.map_size;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
 
         m_shadow_se = nullptr;
@@ -473,8 +541,8 @@ vulkan_render::init_shadow_resources()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::none;
         se_ci.cull_mode = VK_CULL_MODE_NONE;  // Can't cull in paraboloid space
-        se_ci.height = KGPU_SHADOW_MAP_SIZE;
-        se_ci.width = KGPU_SHADOW_MAP_SIZE;
+        se_ci.height = m_render_config.shadows.map_size;
+        se_ci.width = m_render_config.shadows.map_size;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
 
         m_shadow_dpsm_se = nullptr;
@@ -487,12 +555,12 @@ vulkan_render::init_shadow_resources()
         }
     }
 
-    // Initialize shadow config defaults
-    m_shadow_config.directional.cascade_count = KGPU_CSM_CASCADE_COUNT;
-    m_shadow_config.directional.shadow_bias = 0.005f;
-    m_shadow_config.directional.normal_bias = 0.03f;
-    m_shadow_config.directional.texel_size = 1.0f / static_cast<float>(KGPU_SHADOW_MAP_SIZE);
-    m_shadow_config.directional.pcf_mode = KGPU_PCF_POISSON16;
+    // Initialize shadow config from render_config
+    m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
+    m_shadow_config.directional.shadow_bias = m_render_config.shadows.bias;
+    m_shadow_config.directional.normal_bias = m_render_config.shadows.normal_bias;
+    m_shadow_config.directional.texel_size = 1.0f / static_cast<float>(m_render_config.shadows.map_size);
+    m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.shadowed_local_count = 0;
 
     // Transition all shadow depth images from UNDEFINED to SHADER_READ_ONLY_OPTIMAL.
@@ -559,8 +627,8 @@ vulkan_render::init_shadow_resources()
 
     ALOG_INFO("Shadow resources initialized: {} CSM cascades, {}x{} resolution, {} frames buffered",
               KGPU_CSM_CASCADE_COUNT,
-              KGPU_SHADOW_MAP_SIZE,
-              KGPU_SHADOW_MAP_SIZE,
+              m_render_config.shadows.map_size,
+              m_render_config.shadows.map_size,
               FRAMES_IN_FLIGHT);
 }
 

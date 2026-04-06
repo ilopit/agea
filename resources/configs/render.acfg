@@ -1,0 +1,18 @@
+---
+mode: instanced
+shadows:
+  pcf: poisson16
+  bias: 0.005
+  normal_bias: 0.03
+  cascade_count: 4
+  distance: 200.0
+  map_size: 2048
+clusters:
+  tile_size: 128
+  depth_slices: 12
+  max_lights_per_cluster: 32
+debug:
+  show_grid: true
+  light_wireframe: true
+  light_icons: false
+  frustum_culling: true

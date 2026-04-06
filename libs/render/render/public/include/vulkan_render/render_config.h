@@ -1,0 +1,71 @@
+#pragma once
+
+#include <vulkan_render/render_enums.h>
+
+#include <utils/path.h>
+
+#include <cstdint>
+
+namespace kryga
+{
+namespace render
+{
+
+struct render_config
+{
+    render_mode mode = render_mode::instanced;
+
+    struct shadow_cfg
+    {
+        pcf_mode pcf = pcf_mode::poisson16;
+        float bias = 0.005f;
+        float normal_bias = 0.03f;
+        uint32_t cascade_count = 4;
+        float distance = 200.0f;
+        uint32_t map_size = 2048;
+    } shadows;
+
+    struct cluster_cfg
+    {
+        uint32_t tile_size = 128;
+        uint32_t depth_slices = 12;
+        uint32_t max_lights_per_cluster = 32;
+    } clusters;
+
+    struct debug_cfg
+    {
+        bool show_grid = true;
+        bool light_wireframe = true;
+        bool light_icons = false;
+        bool frustum_culling = true;
+    } debug;
+
+    // Clamp all fields to valid ranges
+    void
+    validate();
+
+    bool
+    load(const utils::path& path);
+
+    bool
+    save(const utils::path& path) const;
+
+    // Load .tmp if it exists, otherwise load base config
+    bool
+    load_with_tmp(const utils::path& base_path);
+
+    // Save current state as .tmp next to the base config
+    bool
+    save_tmp(const utils::path& base_path) const;
+
+    // Delete the .tmp file
+    static void
+    delete_tmp(const utils::path& base_path);
+
+    // Returns base_path with ".tmp" appended
+    static utils::path
+    tmp_path(const utils::path& base_path);
+};
+
+}  // namespace render
+}  // namespace kryga

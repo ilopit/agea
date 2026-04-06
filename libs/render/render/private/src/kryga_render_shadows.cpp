@@ -69,7 +69,7 @@ vulkan_render::compute_shadow_matrices()
 
     float near_clip = KGPU_znear;
     float far_clip = KGPU_zfar;
-    float shadow_far = std::min(far_clip, m_shadow_distance);
+    float shadow_far = std::min(far_clip, m_render_config.shadows.distance);
 
     compute_cascade_splits(near_clip, shadow_far, 0.5f);
 
@@ -128,7 +128,7 @@ vulkan_render::compute_shadow_matrices()
 
         // Texel snapping on the final VP
         glm::mat4 shadow_vp = light_proj * light_view;
-        float half_sm = (float)KGPU_SHADOW_MAP_SIZE * 0.5f;
+        float half_sm = (float)m_render_config.shadows.map_size * 0.5f;
         glm::vec4 origin = shadow_vp * glm::vec4(0, 0, 0, 1);
         float sx = std::round(origin.x * half_sm) - origin.x * half_sm;
         float sy = std::round(origin.y * half_sm) - origin.y * half_sm;
@@ -373,7 +373,7 @@ vulkan_render::select_shadowed_lights()
         shadow.shadow_params =
             glm::vec4(0.005f,                                           // bias
                       0.02f,                                            // normal_bias
-                      1.0f / static_cast<float>(KGPU_SHADOW_MAP_SIZE),  // texel_size
+                      1.0f / static_cast<float>(m_render_config.shadows.map_size),  // texel_size
                       s_near                                            // near_plane
             );
         shadow.far_plane = s_far;

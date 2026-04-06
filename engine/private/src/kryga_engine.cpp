@@ -100,10 +100,12 @@ startup_options::parse(int argc, char** argv, startup_options& out)
             if (strcmp(value, "instanced") == 0)
             {
                 out.render_mode = render::render_mode::instanced;
+                out.has_render_mode = true;
             }
             else if (strcmp(value, "per_object") == 0)
             {
                 out.render_mode = render::render_mode::per_object;
+                out.has_render_mode = true;
             }
             else
             {
@@ -239,6 +241,20 @@ vulkan_engine::init(const startup_options& options)
     auto rp_input = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/inputs.acfg"));
     glob::glob_state().get_input_manager()->load_actions(APATH(rp_input.value()));
 
+    // Load render config (with .tmp fallback for unsaved session state)
+    auto rp_render =
+        glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/render.acfg"));
+    m_render_config_path = APATH(rp_render.value());
+
+    render::render_config render_cfg;
+    render_cfg.load_with_tmp(m_render_config_path);
+
+    // CLI --render-mode override takes precedence over config file
+    if (options.has_render_mode)
+    {
+        render_cfg.mode = options.render_mode;
+    }
+
     glob::glob_state().get_game_editor()->init();
 
     gs.schedule_action(gs::state::state_stage::init,
@@ -268,7 +284,7 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_ui().init();
 
-    glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, options.render_mode);
+    glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, render_cfg);
 
     init_default_resources();
 
@@ -283,6 +299,12 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
+    // Save current render config as .tmp for next session
+    if (!m_render_config_path.str().empty())
+    {
+        glob::glob_state().getr_vulkan_render().get_render_config().save_tmp(m_render_config_path);
+    }
+
     glob::set_input_provider(nullptr);
 
     m_sync_service->stop();

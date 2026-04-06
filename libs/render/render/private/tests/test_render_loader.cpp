@@ -27,7 +27,7 @@ public:
 
         state_mutator__vulkan_render_loader::set(glob::glob_state());
 
-        glob::glob_state().getr_vulkan_render().init(500, 500, render_mode::instanced, true);
+        glob::glob_state().getr_vulkan_render().init(500, 500, render_config{}, true);
     }
 
     void

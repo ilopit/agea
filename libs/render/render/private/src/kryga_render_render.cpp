@@ -121,7 +121,8 @@ vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
         ++m_all_draws;
 
         // Frustum culling - happens here now, not in draw
-        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
+        if (m_render_config.debug.frustum_culling &&
+            !m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -519,7 +520,7 @@ void
 vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
     auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
-    if (!m_show_grid || !m_grid_mat || !m_grid_se || !m)
+    if (!m_render_config.debug.show_grid || !m_grid_mat || !m_grid_se || !m)
     {
         return;
     }
@@ -633,7 +634,8 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
     {
         ++m_all_draws;
         // Frustum culling
-        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
+        if (m_render_config.debug.frustum_culling &&
+            !m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -692,7 +694,8 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
     {
         ++m_all_draws;
         // Frustum culling
-        if (!m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
+        if (m_render_config.debug.frustum_culling &&
+            !m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;

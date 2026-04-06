@@ -25,7 +25,7 @@ vulkan_render::prepare_debug_light_data(render::frame_state& current_frame)
     m_debug_light_draw_count = 0;
     m_debug_light_instance_base = 0;
 
-    if (!m_debug_light_config.show_wireframe)
+    if (!m_render_config.debug.light_wireframe)
     {
         return;
     }
@@ -107,7 +107,7 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
 {
     ZoneScopedN("Render::DrawDebugLights");
 
-    if (!m_debug_light_config.show_wireframe)
+    if (!m_render_config.debug.light_wireframe)
     {
         return;
     }

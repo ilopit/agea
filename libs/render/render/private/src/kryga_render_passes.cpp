@@ -230,7 +230,7 @@ vulkan_render::init_shadow_passes()
                                  .set_depth_format(VK_FORMAT_D32_SFLOAT)
                                  .set_depth_only(true)
                                  .set_image_count(FRAMES_IN_FLIGHT)
-                                 .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
+                                 .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
                                  .set_enable_stencil(false)
                                  .build();
 
@@ -245,7 +245,7 @@ vulkan_render::init_shadow_passes()
                                        .set_depth_format(VK_FORMAT_D32_SFLOAT)
                                        .set_depth_only(true)
                                        .set_image_count(FRAMES_IN_FLIGHT)
-                                       .set_width_depth(KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE)
+                                       .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
                                        .set_enable_stencil(false)
                                        .build();
 

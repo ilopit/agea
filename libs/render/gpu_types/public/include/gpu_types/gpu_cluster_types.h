@@ -8,8 +8,14 @@
 
 // Cluster grid constants
 #define KGPU_cluster_tile_size 128
+#define KGPU_cluster_tile_size_min 16
+#define KGPU_cluster_tile_size_max 256
 #define KGPU_cluster_depth_slices 12
+#define KGPU_cluster_depth_slices_min 1
+#define KGPU_cluster_depth_slices_max 64
 #define KGPU_max_lights_per_cluster 32
+#define KGPU_max_lights_per_cluster_min 1
+#define KGPU_max_lights_per_cluster_max 256
 
 // Descriptor set bindings for cluster data
 #define KGPU_objects_cluster_light_counts_binding 3

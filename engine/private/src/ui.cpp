@@ -28,7 +28,10 @@
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_config.h>
 #include <gpu_types/gpu_shadow_types.h>
+#include <gpu_types/gpu_cluster_types.h>
+#include <vfs/vfs.h>
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -389,41 +392,37 @@ render_config_window::handle()
     }
 
     auto& vr = glob::glob_state().getr_vulkan_render();
-    auto& shadow = vr.get_shadow_config();
+    auto& cfg = vr.get_render_config();
+
+    // Default config for reset comparisons
+    const render::render_config defaults;
+
+    // Helper: small reset button on the same line, right-aligned
+    auto reset_button = [](const char* id, const char* tip) -> bool
+    {
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 18);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        bool clicked = ImGui::SmallButton(id);
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("%s", tip);
+        }
+        return clicked;
+    };
 
     // =========================================================================
     // Shadows
     // =========================================================================
     if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        // Defaults
-        constexpr uint32_t DEF_PCF_MODE = KGPU_PCF_POISSON16;
-        constexpr float DEF_SHADOW_BIAS = 0.005f;
-        constexpr float DEF_NORMAL_BIAS = 0.03f;
-        constexpr int DEF_CASCADE_COUNT = KGPU_CSM_CASCADE_COUNT;
-        constexpr float DEF_SHADOW_DISTANCE = 200.0f;
-
-        // Helper: small reset button on the same line, right-aligned
-        auto reset_button = [](const char* id, const char* tip) -> bool
-        {
-            ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 18);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-            bool clicked = ImGui::SmallButton(id);
-            ImGui::PopStyleColor();
-            if (ImGui::IsItemHovered())
-            {
-                ImGui::SetTooltip("%s", tip);
-            }
-            return clicked;
-        };
-
         // PCF Mode
         const char* pcf_names[] = {
             "3x3 (9 taps)", "5x5 (25 taps)", "7x7 (49 taps)", "Poisson 16", "Poisson 32"};
-        int pcf_mode = static_cast<int>(shadow.directional.pcf_mode);
-        if (ImGui::Combo("PCF Mode", &pcf_mode, pcf_names, IM_ARRAYSIZE(pcf_names)))
+        int pcf = static_cast<int>(cfg.shadows.pcf);
+        if (ImGui::Combo("PCF Mode", &pcf, pcf_names, IM_ARRAYSIZE(pcf_names)))
         {
-            shadow.directional.pcf_mode = static_cast<uint32_t>(pcf_mode);
+            cfg.shadows.pcf = static_cast<render::pcf_mode>(pcf);
         }
         if (ImGui::IsItemHovered())
         {
@@ -434,14 +433,13 @@ render_config_window::handle()
         }
         if (reset_button("D##pcf", "Reset to default: Poisson 16"))
         {
-            shadow.directional.pcf_mode = DEF_PCF_MODE;
+            cfg.shadows.pcf = defaults.shadows.pcf;
         }
 
         // Bias
-        float bias = shadow.directional.shadow_bias;
-        if (ImGui::DragFloat("Shadow Bias", &bias, 0.0001f, 0.0f, 0.1f, "%.4f"))
+        if (ImGui::DragFloat(
+                "Shadow Bias", &cfg.shadows.bias, 0.0001f, KGPU_SHADOW_BIAS_MIN, KGPU_SHADOW_BIAS_MAX, "%.4f"))
         {
-            shadow.directional.shadow_bias = bias;
         }
         if (ImGui::IsItemHovered())
         {
@@ -453,14 +451,18 @@ render_config_window::handle()
         }
         if (reset_button("D##bias", "Reset to default: 0.0050"))
         {
-            shadow.directional.shadow_bias = DEF_SHADOW_BIAS;
+            cfg.shadows.bias = defaults.shadows.bias;
         }
 
         // Normal Bias
-        float normal_bias = shadow.directional.normal_bias;
-        if (ImGui::DragFloat("Normal Bias", &normal_bias, 0.001f, 0.0f, 0.5f, "%.3f"))
+        if (ImGui::DragFloat(
+                "Normal Bias",
+                &cfg.shadows.normal_bias,
+                0.001f,
+                KGPU_SHADOW_NORMAL_BIAS_MIN,
+                KGPU_SHADOW_NORMAL_BIAS_MAX,
+                "%.3f"))
         {
-            shadow.directional.normal_bias = normal_bias;
         }
         if (ImGui::IsItemHovered())
         {
@@ -472,16 +474,17 @@ render_config_window::handle()
         }
         if (reset_button("D##nbias", "Reset to default: 0.030"))
         {
-            shadow.directional.normal_bias = DEF_NORMAL_BIAS;
+            cfg.shadows.normal_bias = defaults.shadows.normal_bias;
         }
 
         ImGui::Spacing();
 
         // Cascade count
-        int cascade_count = static_cast<int>(shadow.directional.cascade_count);
-        if (ImGui::SliderInt("Cascades", &cascade_count, 1, KGPU_CSM_CASCADE_COUNT))
+        int cascade_count = static_cast<int>(cfg.shadows.cascade_count);
+        if (ImGui::SliderInt(
+                "Cascades", &cascade_count, KGPU_CSM_CASCADE_COUNT_MIN, KGPU_CSM_CASCADE_COUNT_MAX))
         {
-            shadow.directional.cascade_count = static_cast<uint32_t>(cascade_count);
+            cfg.shadows.cascade_count = static_cast<uint32_t>(cascade_count);
         }
         if (ImGui::IsItemHovered())
         {
@@ -493,14 +496,18 @@ render_config_window::handle()
         }
         if (reset_button("D##cascades", "Reset to default: 4"))
         {
-            shadow.directional.cascade_count = DEF_CASCADE_COUNT;
+            cfg.shadows.cascade_count = defaults.shadows.cascade_count;
         }
 
         // Shadow distance
-        float& shadow_dist = vr.get_shadow_distance();
-        if (ImGui::DragFloat("Distance", &shadow_dist, 1.0f, 10.0f, 2000.0f, "%.0f m"))
+        if (ImGui::DragFloat(
+                "Distance",
+                &cfg.shadows.distance,
+                1.0f,
+                KGPU_SHADOW_DISTANCE_MIN,
+                KGPU_SHADOW_DISTANCE_MAX,
+                "%.0f m"))
         {
-            shadow_dist = std::max(shadow_dist, 10.0f);
         }
         if (ImGui::IsItemHovered())
         {
@@ -510,32 +517,59 @@ render_config_window::handle()
                 "Higher: shadows visible farther but each cascade is lower resolution.\n"
                 "Ctrl+click to type exact value.");
         }
-        if (reset_button("D##dist", "Reset to default: 100 m"))
+        if (reset_button("D##dist", "Reset to default: 200 m"))
         {
-            shadow_dist = DEF_SHADOW_DISTANCE;
+            cfg.shadows.distance = defaults.shadows.distance;
         }
 
         // Cascade split info
         if (ImGui::TreeNode("Cascade Splits"))
         {
-            for (uint32_t i = 0; i < shadow.directional.cascade_count; ++i)
+            for (uint32_t i = 0; i < cfg.shadows.cascade_count; ++i)
             {
                 ImGui::BulletText(
-                    "Cascade %u: %.1f m", i, shadow.directional.cascades[i].split_depth);
+                    "Cascade %u: %.1f m", i, vr.get_cascade_split_depth(i));
             }
             ImGui::TreePop();
         }
 
         ImGui::Spacing();
+
+        // Shadow map resolution
+        const int sm_sizes[] = {256, 512, 1024, 2048, 4096, 8192};
+        const char* sm_labels[] = {"256", "512", "1024", "2048", "4096", "8192"};
+        int sm_current = 0;
+        for (int i = 0; i < IM_ARRAYSIZE(sm_sizes); ++i)
+        {
+            if (static_cast<int>(cfg.shadows.map_size) == sm_sizes[i])
+            {
+                sm_current = i;
+                break;
+            }
+        }
+        if (ImGui::Combo("Shadow Map Size", &sm_current, sm_labels, IM_ARRAYSIZE(sm_labels)))
+        {
+            cfg.shadows.map_size = static_cast<uint32_t>(sm_sizes[sm_current]);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Resolution of each shadow map (NxN).\n\n"
+                "Higher: sharper shadows, more VRAM.\n"
+                "Lower: softer/blockier shadows, less VRAM.\n\n"
+                "Changes trigger shadow pass rebuild.");
+        }
+        if (reset_button("D##smsize", "Reset to default: 2048"))
+        {
+            cfg.shadows.map_size = defaults.shadows.map_size;
+        }
+
+        ImGui::Spacing();
         ImGui::Separator();
 
-        if (ImGui::Button("Reset All"))
+        if (ImGui::Button("Reset Shadows"))
         {
-            shadow.directional.pcf_mode = DEF_PCF_MODE;
-            shadow.directional.shadow_bias = DEF_SHADOW_BIAS;
-            shadow.directional.normal_bias = DEF_NORMAL_BIAS;
-            shadow.directional.cascade_count = DEF_CASCADE_COUNT;
-            vr.get_shadow_distance() = DEF_SHADOW_DISTANCE;
+            cfg.shadows = defaults.shadows;
         }
         if (ImGui::IsItemHovered())
         {
@@ -543,17 +577,108 @@ render_config_window::handle()
         }
 
         ImGui::SameLine();
-        ImGui::TextDisabled("| %dx%d shadow maps", KGPU_SHADOW_MAP_SIZE, KGPU_SHADOW_MAP_SIZE);
+        ImGui::TextDisabled("| %dx%d shadow maps", cfg.shadows.map_size, cfg.shadows.map_size);
     }
 
     // =========================================================================
-    // Debug Lights
+    // Clusters
     // =========================================================================
-    if (ImGui::CollapsingHeader("Debug Lights"))
+    if (ImGui::CollapsingHeader("Clusters"))
     {
-        auto& cfg = vr.get_debug_light_config();
+        int tile_size = static_cast<int>(cfg.clusters.tile_size);
+        if (ImGui::SliderInt(
+                "Tile Size",
+                &tile_size,
+                KGPU_cluster_tile_size_min,
+                KGPU_cluster_tile_size_max))
+        {
+            cfg.clusters.tile_size = static_cast<uint32_t>(tile_size);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Screen-space tile size in pixels for cluster grid.\n\n"
+                "Smaller: more clusters, finer light assignment, higher CPU/GPU cost.\n"
+                "Larger: fewer clusters, coarser assignment, cheaper.");
+        }
+        if (reset_button("D##tile", "Reset to default"))
+        {
+            cfg.clusters.tile_size = defaults.clusters.tile_size;
+        }
 
-        ImGui::Checkbox("Wireframe", &cfg.show_wireframe);
+        int depth_slices = static_cast<int>(cfg.clusters.depth_slices);
+        if (ImGui::SliderInt(
+                "Depth Slices",
+                &depth_slices,
+                KGPU_cluster_depth_slices_min,
+                KGPU_cluster_depth_slices_max))
+        {
+            cfg.clusters.depth_slices = static_cast<uint32_t>(depth_slices);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Number of logarithmic depth slices.\n\n"
+                "More slices: tighter depth ranges per cluster, fewer false-positive lights.\n"
+                "Fewer slices: more lights assigned to clusters they don't affect.");
+        }
+        if (reset_button("D##depth", "Reset to default"))
+        {
+            cfg.clusters.depth_slices = defaults.clusters.depth_slices;
+        }
+
+        int max_lights = static_cast<int>(cfg.clusters.max_lights_per_cluster);
+        if (ImGui::SliderInt(
+                "Max Lights/Cluster",
+                &max_lights,
+                KGPU_max_lights_per_cluster_min,
+                KGPU_max_lights_per_cluster_max))
+        {
+            cfg.clusters.max_lights_per_cluster = static_cast<uint32_t>(max_lights);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Maximum number of lights that can affect a single cluster.\n\n"
+                "Higher: handles dense light scenarios, uses more memory.\n"
+                "Lower: saves memory, excess lights silently dropped.");
+        }
+        if (reset_button("D##maxl", "Reset to default"))
+        {
+            cfg.clusters.max_lights_per_cluster = defaults.clusters.max_lights_per_cluster;
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+
+        if (ImGui::Button("Reset Clusters"))
+        {
+            cfg.clusters = defaults.clusters;
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Reset cluster settings to defaults");
+        }
+
+        ImGui::SameLine();
+        const auto& grid = vr.get_render_config().clusters;
+        ImGui::TextDisabled("| %ux%u tiles", grid.tile_size, grid.depth_slices);
+    }
+
+    // =========================================================================
+    // Debug
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Debug"))
+    {
+        ImGui::Checkbox("Grid", &cfg.debug.show_grid);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Show ground grid.");
+        }
+
+        ImGui::SameLine();
+
+        ImGui::Checkbox("Wireframe", &cfg.debug.light_wireframe);
         if (ImGui::IsItemHovered())
         {
             ImGui::SetTooltip("Show wireframe shapes at light positions (radius, cone).");
@@ -561,11 +686,75 @@ render_config_window::handle()
 
         ImGui::SameLine();
 
-        ImGui::Checkbox("Icons", &cfg.show_icons);
+        ImGui::Checkbox("Icons", &cfg.debug.light_icons);
         if (ImGui::IsItemHovered())
         {
             ImGui::SetTooltip("Show billboard icons at light positions.");
         }
+
+        ImGui::SameLine();
+
+        ImGui::Checkbox("Frustum Culling", &cfg.debug.frustum_culling);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Enable frustum culling.\n\n"
+                "Per-object mode: CPU-side sphere-frustum test.\n"
+                "Instanced mode: always active (GPU compute).");
+        }
+    }
+
+    // =========================================================================
+    // Render Mode
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Render Mode"))
+    {
+        const char* mode_names[] = {"Instanced", "Per Object"};
+        int mode = static_cast<int>(cfg.mode);
+        if (ImGui::Combo("Mode", &mode, mode_names, IM_ARRAYSIZE(mode_names)))
+        {
+            cfg.mode = static_cast<render::render_mode>(mode);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Instanced: batched drawing with GPU cluster + frustum culling.\n"
+                "Per Object: legacy per-object drawing with CPU light grid.\n\n"
+                "Switching triggers a render graph rebuild.");
+        }
+    }
+
+    // =========================================================================
+    // Save / Reset All
+    // =========================================================================
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    if (ImGui::Button("Save"))
+    {
+        auto rp =
+            glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/render.acfg"));
+        auto path = APATH(rp.value());
+        cfg.save(path);
+        render::render_config::delete_tmp(path);
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("Save current settings to render.acfg");
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Reset All"))
+    {
+        auto mode = cfg.mode;  // Preserve render mode — requires reinit to change
+        cfg = defaults;
+        cfg.mode = mode;
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("Reset all settings to defaults (does not save to file)");
     }
 
     handle_end();

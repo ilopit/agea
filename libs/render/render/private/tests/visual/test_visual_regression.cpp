@@ -154,7 +154,7 @@ public:
         auto device = glob::glob_state().get_render_device();
 
         glob::glob_state().getr_vulkan_render().init(
-            TEST_WIDTH, TEST_HEIGHT, render_mode::instanced, true);
+            TEST_WIDTH, TEST_HEIGHT, render_config{}, true);
 
         auto extent = VkExtent3D{TEST_WIDTH, TEST_HEIGHT, 1};
 
@@ -259,7 +259,7 @@ public:
     {
         // Full init (not only_rp) — sets up SSBOs, render graph, compute passes
         auto& renderer = glob::glob_state().getr_vulkan_render();
-        renderer.init(TEST_WIDTH, TEST_HEIGHT, render_mode::instanced, false);
+        renderer.init(TEST_WIDTH, TEST_HEIGHT, render_config{}, false);
 
         m_main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
     }
@@ -518,7 +518,7 @@ protected:
         renderer.schd_add_light(scene.sun);
         renderer.set_selected_directional_light(sun_id);
 
-        renderer.get_shadow_distance() = enable_shadows ? 50.0f : 0.0f;
+        renderer.get_render_config().shadows.distance = enable_shadows ? 50.0f : 0.0f;
 
         // Floor
         auto floor_mesh_id = AID((prefix + "_floor_mesh").c_str());
@@ -687,7 +687,7 @@ TEST_F(visual_pipeline_test, lit_cubes)
     renderer.set_selected_directional_light(AID("sun"));
 
     // Disable directional shadows — self-shadowing without proper bias tuning
-    renderer.get_shadow_distance() = 0.0f;
+    renderer.get_render_config().shadows.distance = 0.0f;
 
     // Set up camera looking at origin from (0, 1, 4)
     auto eye = glm::vec3(1.5f, 1.0f, 4.0f);
@@ -1108,7 +1108,7 @@ TEST_F(visual_pipeline_test, alpha_blending)
     cam.inv_projection = glm::inverse(cam.projection);
     cam.position = {0, 0, 4};
     renderer.set_camera(cam);
-    renderer.get_shadow_distance() = 0.0f;
+    renderer.get_render_config().shadows.distance = 0.0f;
 
     std::vector<texture_sampler_data> no_tex;
     auto* white_cube = create_cube_mesh(AID("alpha_white_cube"), {1, 1, 1});
@@ -1228,7 +1228,7 @@ TEST_F(visual_pipeline_test, unlit_shader)
     sun->gpu_data.specular = {0.2f, 0.2f, 0.2f};
     renderer.schd_add_light(sun);
     renderer.set_selected_directional_light(AID("unlit_sun"));
-    renderer.get_shadow_distance() = 0.0f;
+    renderer.get_render_config().shadows.distance = 0.0f;
 
     std::vector<texture_sampler_data> no_tex;
 
@@ -1288,7 +1288,7 @@ TEST_F(visual_pipeline_test, directional_light_switching)
     cam.inv_projection = glm::inverse(cam.projection);
     cam.position = {0, 2, 5};
     renderer.set_camera(cam);
-    renderer.get_shadow_distance() = 0.0f;
+    renderer.get_render_config().shadows.distance = 0.0f;
 
     // Two directional lights with very different colors/directions
     auto* sun_warm = cache.directional_lights.alloc(AID("dls_warm"));
@@ -1363,7 +1363,7 @@ TEST_F(visual_pipeline_test, complex_scene)
     sun->gpu_data.specular = {0.5f, 0.5f, 0.5f};
     renderer.schd_add_light(sun);
     renderer.set_selected_directional_light(AID("cs_sun"));
-    renderer.get_shadow_distance() = 50.0f;
+    renderer.get_render_config().shadows.distance = 50.0f;
 
     std::vector<texture_sampler_data> no_tex;
 

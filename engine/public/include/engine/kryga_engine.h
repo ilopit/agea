@@ -2,6 +2,7 @@
 
 #include <vulkan_render/types/vulkan_gpu_types.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_config.h>
 
 #include <utils/id.h>
 #include <utils/line_container.h>
@@ -31,6 +32,7 @@ struct startup_options
     render::render_mode render_mode = render::render_mode::instanced;
     float run_for_seconds = 0.f;  // 0 = unlimited
     bool show_help = false;
+    bool has_render_mode = false;  // true when --render-mode was explicitly passed
 
     // Parse command line arguments
     // Returns false if parsing failed or help was requested
@@ -100,6 +102,9 @@ private:
     render_thread_func();
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited
+
+    // Resolved render config path (for .tmp save on cleanup)
+    utils::path m_render_config_path{""};
 
     gpu::camera_data m_camera_data;
 
