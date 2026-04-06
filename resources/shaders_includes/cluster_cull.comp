@@ -1,5 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "gpu_types/gpu_light_types.h"
 #include "gpu_types/gpu_camera_types.h"
@@ -9,48 +10,33 @@
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 // Cluster configuration
-layout(std140, set = 0, binding = 0) uniform ClusterConfig {
+layout(scalar, set = 0, binding = 0) uniform ClusterConfig {
     cluster_grid_data data;
 } dyn_cluster_config;
 
-// Camera data - uses shared gpu_camera_types.h structure
-layout(std140, set = 0, binding = 1) uniform CameraBuffer {
+// Camera data
+layout(scalar, set = 0, binding = 1) uniform CameraBuffer {
     camera_data camera;
 } dyn_camera_data;
 
 // Light data input
-layout(std140, set = 0, binding = 2) readonly buffer LightBuffer {
+layout(scalar, set = 0, binding = 2) readonly buffer LightBuffer {
     universal_light_data lights[];
 } dyn_gpu_universal_light_data;
 
 // Number of dyn_gpu_universal_light_data.lights (passed via push constants)
 layout(push_constant) uniform PushConstants {
-    push_uint num_lights;
+    uint num_lights;
 } pc;
 
-// Output structures (must match fragment shader's std140 layout - 16 bytes per element)
-struct ClusterLightCountData {
-    uint count;
-    uint _pad0;
-    uint _pad1;
-    uint _pad2;
-};
-
-struct ClusterLightIndexData {
-    uint index;
-    uint _pad0;
-    uint _pad1;
-    uint _pad2;
-};
-
 // Output: cluster light counts
-layout(std430, set = 0, binding = 3) writeonly buffer ClusterLightCounts {
-    ClusterLightCountData counts[];
+layout(scalar, set = 0, binding = 3) writeonly buffer ClusterLightCounts {
+    uint counts[];
 } dyn_cluster_light_counts;
 
 // Output: cluster light indices
-layout(std430, set = 0, binding = 4) writeonly buffer ClusterLightIndices {
-    ClusterLightIndexData indices[];
+layout(scalar, set = 0, binding = 4) writeonly buffer ClusterLightIndices {
+    uint indices[];
 } dyn_cluster_light_indices;
 
 // Convert screen-space point to view-space at given depth
@@ -157,10 +143,10 @@ void main()
         // Sphere-AABB intersection test
         if (sphereIntersectsAABB(lightPosForTest, dyn_gpu_universal_light_data.lights[i].radius, aabbMin, aabbMax))
         {
-            dyn_cluster_light_indices.indices[baseIdx + lightCount].index = dyn_gpu_universal_light_data.lights[i].slot;  // Store actual slot, not loop index
+            dyn_cluster_light_indices.indices[baseIdx + lightCount] = dyn_gpu_universal_light_data.lights[i].slot;  // Store actual slot, not loop index
             lightCount++;
         }
     }
 
-    dyn_cluster_light_counts.counts[clusterIdx].count = lightCount;
+    dyn_cluster_light_counts.counts[clusterIdx] = lightCount;
 }

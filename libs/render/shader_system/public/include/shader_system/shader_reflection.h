@@ -119,7 +119,7 @@ struct shader_reflection_utils
 {
     static bool
     convert_spvr_to_dyn_layout(const utils::id& field_name,
-                               SpvReflectTypeDescription& obj,
+                               SpvReflectBlockVariable& block,
                                gpu_dynobj_builder& dl);
 
     static bool

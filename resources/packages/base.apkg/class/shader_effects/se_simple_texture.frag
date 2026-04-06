@@ -10,7 +10,7 @@ layout(push_constant) uniform Constants { push_constants_main obj; } constants;
 #include "common_frag.glsl"
 
 #include "gpu_types/simple_texture_material__gpu.h"
-layout(buffer_reference, std430) readonly buffer BdaMaterialBuffer {
+layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
     simple_texture_material__gpu objects[];
 };
 #define dyn_material_buffer BdaMaterialBuffer(constants.obj.bdaf_material)

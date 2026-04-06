@@ -13,10 +13,10 @@
 
 GPU_BEGIN_NAMESPACE
 
-std140_struct shadow_cascade_data
+struct shadow_cascade_data
 {
-    std140_mat4 view_proj;
-    std140_float split_depth;
+    mat4 view_proj;
+    float split_depth;
 };
 
 #define KGPU_PCF_3X3 0
@@ -25,32 +25,32 @@ std140_struct shadow_cascade_data
 #define KGPU_PCF_POISSON16 3
 #define KGPU_PCF_POISSON32 4
 
-std140_struct directional_shadow_data
+struct directional_shadow_data
 {
     shadow_cascade_data cascades[KGPU_CSM_CASCADE_COUNT];
-    std140_uvec4 shadow_map_indices;  // packed 4 cascade indices into uvec4
-    std140_uint cascade_count;
-    std140_float shadow_bias;
-    std140_float normal_bias;
-    std140_float texel_size;
-    std140_uint pcf_mode;
+    uvec4 shadow_map_indices;  // packed 4 cascade indices into uvec4
+    uint cascade_count;
+    float shadow_bias;
+    float normal_bias;
+    float texel_size;
+    uint pcf_mode;
 };
 
-std140_struct local_light_shadow_data
+struct local_light_shadow_data
 {
-    std140_mat4 view_proj;
-    std140_mat4 view_proj_back;
-    std140_uvec4 shadow_info;   // x=shadow_map_index, y=shadow_map_index_back, z=light_type,
+    mat4 view_proj;
+    mat4 view_proj_back;
+    uvec4 shadow_info;   // x=shadow_map_index, y=shadow_map_index_back, z=light_type,
                                 // w=unused
-    std140_vec4 shadow_params;  // x=bias, y=normal_bias, z=texel_size, w=near_plane
-    std140_float far_plane;
+    vec4 shadow_params;  // x=bias, y=normal_bias, z=texel_size, w=near_plane
+    float far_plane;
 };
 
-std140_struct shadow_config_data
+struct shadow_config_data
 {
     directional_shadow_data directional;
     local_light_shadow_data local_shadows[KGPU_MAX_SHADOWED_LOCAL_LIGHTS];
-    std140_uint shadowed_local_count;
+    uint shadowed_local_count;
 };
 
 GPU_END_NAMESPACE

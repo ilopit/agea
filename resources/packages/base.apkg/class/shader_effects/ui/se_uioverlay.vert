@@ -1,8 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 
-#include "gpu_types/gpu_port.h"
-
 layout (location = 0) in vec2 in_pos;
 layout (location = 1) in vec2 in_UV;
 layout (location = 2) in vec4 in_color;
@@ -16,8 +14,8 @@ out gl_PerVertex
 };
 
 layout (push_constant) uniform PushConstants {
-    push_vec2 scale;
-    push_vec2 translate;
+    vec2 scale;
+    vec2 translate;
 } pushConstants;
 
 void main() 

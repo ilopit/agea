@@ -431,41 +431,25 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
 
     const auto& config = m_cluster_grid.get_config();
 
-    // std140 padded struct for cluster data (16 bytes per element)
-    struct alignas(16) cluster_data_std140
-    {
-        uint32_t value;
-    };
-
-    // Upload cluster light counts (padded to std140)
+    // Upload cluster light counts (scalar layout — direct uint32_t array)
     {
         const auto& counts = m_cluster_grid.get_cluster_light_counts();
-        const size_t size = counts.size() * sizeof(cluster_data_std140);
+        const size_t size = counts.size() * sizeof(uint32_t);
 
         frame.buffers.cluster_counts.begin();
-        auto* data = reinterpret_cast<cluster_data_std140*>(
-            frame.buffers.cluster_counts.allocate_data((uint32_t)size));
-
-        for (size_t i = 0; i < counts.size(); ++i)
-        {
-            data[i].value = counts[i];
-        }
+        auto* data = frame.buffers.cluster_counts.allocate_data((uint32_t)size);
+        memcpy(data, counts.data(), size);
         frame.buffers.cluster_counts.end();
     }
 
-    // Upload cluster light indices (padded to std140)
+    // Upload cluster light indices (scalar layout — direct uint32_t array)
     {
         const auto& indices = m_cluster_grid.get_cluster_light_indices();
-        const size_t size = indices.size() * sizeof(cluster_data_std140);
+        const size_t size = indices.size() * sizeof(uint32_t);
 
         frame.buffers.cluster_indices.begin();
-        auto* data = reinterpret_cast<cluster_data_std140*>(
-            frame.buffers.cluster_indices.allocate_data((uint32_t)size));
-
-        for (size_t i = 0; i < indices.size(); ++i)
-        {
-            data[i].value = indices[i];
-        }
+        auto* data = frame.buffers.cluster_indices.allocate_data((uint32_t)size);
+        memcpy(data, indices.data(), size);
         frame.buffers.cluster_indices.end();
     }
 

@@ -18,20 +18,20 @@
 GPU_BEGIN_NAMESPACE
 
 // Cluster grid configuration - uploaded as uniform
-std140_struct cluster_grid_data
+struct cluster_grid_data
 {
-    std140_uint tiles_x;
-    std140_uint tiles_y;
-    std140_uint depth_slices;
-    std140_uint tile_size;
+    uint tiles_x;
+    uint tiles_y;
+    uint depth_slices;
+    uint tile_size;
 
-    std140_float near_plane;
-    std140_float far_plane;
-    std140_float log_depth_ratio;  // log(far/near) precomputed
-    std140_uint max_lights_per_cluster;
+    float near_plane;
+    float far_plane;
+    float log_depth_ratio;  // log(far/near) precomputed
+    uint max_lights_per_cluster;
 
-    std140_uint screen_width;   // Actual framebuffer width (for correct NDC calculation)
-    std140_uint screen_height;  // Actual framebuffer height
+    uint screen_width;   // Actual framebuffer width (for correct NDC calculation)
+    uint screen_height;  // Actual framebuffer height
 };
 
 GPU_END_NAMESPACE

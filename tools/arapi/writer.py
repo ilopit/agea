@@ -12,20 +12,21 @@ import arapi.types
 import arapi.utils
 
 
-# GPU type mapping: model_type -> (gpu_type_macro, glsl_type, alignment, size)
+# GPU type mapping: model_type -> (gpu_type, glsl_type, alignment, size)
+# Scalar layout: natural alignment matches GPU
 GPU_TYPE_MAP: Dict[str, Tuple[str, str, int, int]] = {
-    "float": ("std140_float", "float", 4, 4),
-    "double": ("std140_float", "float", 4, 4),  # downcast to float for GPU
-    "int": ("std140_int", "int", 4, 4),
-    "int32_t": ("std140_int", "int", 4, 4),
-    "uint32_t": ("std140_uint", "uint", 4, 4),
-    "bool": ("std140_uint", "uint", 4, 4),  # bool as uint on GPU
-    "::kryga::root::vec2": ("std140_vec2", "vec2", 8, 8),
-    "::kryga::root::vec3": ("std140_vec3", "vec3", 16, 12),
-    "::kryga::root::vec4": ("std140_vec4", "vec4", 16, 16),
-    "::kryga::root::mat3": ("std140_mat3", "mat3", 16, 48),
-    "::kryga::root::mat4": ("std140_mat4", "mat4", 16, 64),
-    "::kryga::root::texture_slot": ("std140_uint", "uint", 4, 4),  # texture slot -> bindless index
+    "float": ("float", "float", 4, 4),
+    "double": ("float", "float", 4, 4),  # downcast to float for GPU
+    "int": ("int", "int", 4, 4),
+    "int32_t": ("int", "int", 4, 4),
+    "uint32_t": ("uint", "uint", 4, 4),
+    "bool": ("uint", "uint", 4, 4),  # bool as uint on GPU
+    "::kryga::root::vec2": ("vec2", "vec2", 4, 8),
+    "::kryga::root::vec3": ("vec3", "vec3", 4, 12),
+    "::kryga::root::vec4": ("vec4", "vec4", 4, 16),
+    "::kryga::root::mat3": ("mat3", "mat3", 4, 36),
+    "::kryga::root::mat4": ("mat4", "mat4", 4, 64),
+    "::kryga::root::texture_slot": ("uint", "uint", 4, 4),  # texture slot -> bindless index
 }
 
 
@@ -96,7 +97,7 @@ def _collect_gpu_fields_from_type(type_obj: arapi.types.kryga_type,
 
       # Get GPU type info
       if is_texture_slot:
-        gpu_type = "std140_uint"
+        gpu_type = "uint"
         glsl_type = "uint"
         alignment = 4
         size = 4
@@ -123,8 +124,8 @@ def _collect_gpu_fields_from_type(type_obj: arapi.types.kryga_type,
     # Move to parent
     current = current.parent_type
 
-  # Sort by alignment descending (largest first for optimal packing)
-  fields.sort(key=lambda f: (-f.alignment, f.name))
+  # Sort alphabetically (scalar layout — no alignment-based packing needed)
+  fields.sort(key=lambda f: f.name)
 
   return fields
 
@@ -197,10 +198,10 @@ def write_gpu_struct(type_obj: arapi.types.kryga_type,
 
 GPU_BEGIN_NAMESPACE
 
-std140_struct {struct_name}
+struct {struct_name}
 {{
-    std140_uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
-    std140_uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
 """)
 
   for field in fields:
@@ -211,7 +212,7 @@ std140_struct {struct_name}
 
 GPU_END_NAMESPACE
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(KRG_GPU_STRUCT_ONLY)
 inline void pack__{struct_name}(
     const {full_model_type}& src,
     ::kryga::gpu::{struct_name}& dst)
@@ -227,7 +228,7 @@ inline void pack__{struct_name}(
     pack_stmt = _generate_pack_statement(field, "src", "dst", full_model_type)
     file_buffer.append(f"{pack_stmt}\n")
 
-  file_buffer.append("""}\n#endif
+  file_buffer.append("""}\n#endif // !KRG_GPU_STRUCT_ONLY
 """)
 
   file_buffer.write_if_changed()

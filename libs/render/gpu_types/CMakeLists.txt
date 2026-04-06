@@ -9,6 +9,10 @@ target_link_libraries(gpu_types PUBLIC
     kryga::utils
 )
 
+target_include_directories(gpu_types PUBLIC
+    ${CMAKE_BINARY_DIR}/kryga_generated
+)
+
 target_precompile_headers(gpu_types PUBLIC
     "$<$<COMPILE_LANGUAGE:CXX>:<glm/glm.hpp$<ANGLE-R>>"
     "$<$<COMPILE_LANGUAGE:CXX>:<glm/gtc/quaternion.hpp$<ANGLE-R>>"

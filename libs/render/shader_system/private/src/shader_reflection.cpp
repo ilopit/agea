@@ -72,130 +72,132 @@ spv_type_to_gpu_type(SpvReflectTypeDescription& desc)
 
 bool
 shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
-                                                    SpvReflectTypeDescription& obj,
+                                                    SpvReflectBlockVariable& block,
                                                     gpu_dynobj_builder& dl)
 {
+    auto* td = block.type_description;
+    if (!td)
+    {
+        return false;
+    }
+
     auto type = kryga::render::gpu_type::nan;
 
     utils::dynobj_field df;
     df.alligment = 1;
     df.id = field_name;
 
-    switch (obj.op)
+    switch (td->op)
     {
     case SpvOpTypeMatrix:
     {
-        KRG_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "Only floats");
-        KRG_check(obj.traits.numeric.matrix.row_count == obj.traits.numeric.matrix.column_count,
+        KRG_check(td->type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT, "Only floats");
+        KRG_check(td->traits.numeric.matrix.row_count == td->traits.numeric.matrix.column_count,
                   "h != w");
         type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_mat2 +
-                                             obj.traits.numeric.matrix.column_count - 2);
-
-        df.alligment = 16;
+                                             td->traits.numeric.matrix.column_count - 2);
         break;
     }
     case SpvOpTypeFloat:
     {
         type = kryga::render::gpu_type::id::g_float;
-        df.alligment = sizeof(float);
         break;
     }
     case SpvOpTypeVector:
     {
-        if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT)
+        if (td->type_flags & SPV_REFLECT_TYPE_FLAG_INT)
         {
             type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_uvec2 +
-                                                 obj.traits.numeric.vector.component_count - 2);
+                                                 td->traits.numeric.vector.component_count - 2);
         }
         else
         {
             type = (kryga::render::gpu_type::id)((uint32_t)::kryga::render::gpu_type::g_vec2 +
-                                                 obj.traits.numeric.vector.component_count - 2);
+                                                 td->traits.numeric.vector.component_count - 2);
         }
-        df.alligment = 16;
         break;
     }
     case SpvOpTypeArray:
     {
         df.is_array = true;
-        df.items_count = obj.traits.array.dims[0];
-        df.items_alighment = 4;  // std430 alignment for scalars
+        df.items_count = td->traits.array.dims[0];
 
-        if (obj.member_count == 0)
+        if (block.member_count == 0)
         {
-            // Primitive type array - determine element type from type_flags
-            if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT)
+            // Primitive type array
+            if (td->type_flags & SPV_REFLECT_TYPE_FLAG_INT)
             {
-                type = obj.traits.numeric.scalar.signedness
+                type = td->traits.numeric.scalar.signedness
                            ? kryga::render::gpu_type::id::g_int
                            : kryga::render::gpu_type::id::g_unsigned;
-                df.alligment = sizeof(uint32_t);
-            }
-            else if (obj.type_flags & SPV_REFLECT_TYPE_FLAG_FLOAT)
-            {
-                type = kryga::render::gpu_type::id::g_float;
-                df.alligment = sizeof(float);
             }
             else
             {
                 type = kryga::render::gpu_type::id::g_float;
             }
+
+            // Derive item stride from SPIR-V array decoration
+            if (df.items_count > 0 && block.size > 0)
+            {
+                df.items_alighment = block.size / df.items_count;
+            }
         }
         else
         {
             gpu_dynobj_builder gdb;
-            gdb.set_id(obj.type_name ? AID(obj.type_name) : AID("array"));
+            gdb.set_id(td->type_name ? AID(td->type_name) : AID("array"));
 
-            for (auto from = obj.members; from < obj.members + obj.member_count; from++)
+            for (uint32_t i = 0; i < block.member_count; ++i)
             {
-                auto member_name =
-                    from->struct_member_name ? AID(from->struct_member_name) : AID("element");
-                convert_spvr_to_dyn_layout(member_name, *from, gdb);
+                auto& member = block.members[i];
+                auto member_name = member.name ? AID(member.name) : AID("element");
+                convert_spvr_to_dyn_layout(member_name, member, gdb);
             }
 
             df.sub_field_layout = gdb.finalize();
+
+            if (df.items_count > 0 && block.size > 0)
+            {
+                df.items_alighment = block.size / df.items_count;
+            }
         }
 
         break;
     }
     case SpvOpTypeInt:
     {
-        KRG_check(obj.type_flags & SPV_REFLECT_TYPE_FLAG_INT, "Only ints");
-
-        type = obj.traits.numeric.scalar.signedness ? kryga::render::gpu_type::id::g_int
+        KRG_check(td->type_flags & SPV_REFLECT_TYPE_FLAG_INT, "Only ints");
+        type = td->traits.numeric.scalar.signedness ? kryga::render::gpu_type::id::g_int
                                                     : kryga::render::gpu_type::id::g_unsigned;
-
-        df.alligment = sizeof(uint32_t);
-
         break;
     }
     case SpvOpTypeStruct:
     {
         gpu_dynobj_builder gdb;
-        gdb.set_id(obj.type_name ? AID(obj.type_name) : AID("struct"));
+        gdb.set_id(td->type_name ? AID(td->type_name) : AID("struct"));
 
-        for (auto from = obj.members; from < obj.members + obj.member_count; from++)
+        for (uint32_t i = 0; i < block.member_count; ++i)
         {
-            auto member_name =
-                from->struct_member_name ? AID(from->struct_member_name) : AID("member");
-            convert_spvr_to_dyn_layout(member_name, *from, gdb);
+            auto& member = block.members[i];
+            auto member_name = member.name ? AID(member.name) : AID("member");
+            convert_spvr_to_dyn_layout(member_name, member, gdb);
         }
 
         df.sub_field_layout = gdb.finalize();
-
         break;
     }
     case SpvOpTypeRuntimeArray:
     {
         gpu_dynobj_builder gdb;
-        gdb.set_id(obj.type_name ? AID(obj.type_name) : AID("runtime_array"));
+        gdb.set_id(td->type_name ? AID(td->type_name) : AID("runtime_array"));
 
-        for (auto from = obj.members; from < obj.members + obj.member_count; from++)
+        for (uint32_t i = 0; i < block.member_count; ++i)
         {
-            auto member_name =
-                from->struct_member_name ? AID(from->struct_member_name) : AID("element");
-            convert_spvr_to_dyn_layout(member_name, *from, gdb);
+            auto& member = block.members[i];
+            auto member_name = member.name ? AID(member.name) : AID("element");
+            convert_spvr_to_dyn_layout(member_name, member, gdb);
         }
+
         df.items_count = uint64_t(-1);
         df.sub_field_layout = gdb.finalize();
         break;
@@ -210,9 +212,20 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
         break;
     }
 
+    // Use SPIR-V offset/size — the compiler already computed the correct layout
     dl.finalize_field(type, df);
+    df.offset = block.offset;
+    df.size = block.size;
 
-    dl.add_field(std::move(df));
+    auto& layout = *dl.get_layout();
+    auto& f = layout.get_fields_mut().emplace_back(std::move(df));
+    f.index = layout.get_fields_mut().size() - 1;
+
+    auto end = f.offset + f.size;
+    if (end > layout.get_object_size())
+    {
+        layout.set_object_size(end);
+    }
 
     return true;
 }
@@ -382,9 +395,23 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
 
             binding_gdb.set_id(AID("binding"));
 
-            if (!convert_spvr_to_dyn_layout(
-                    binding_name, *spv_binding->type_description, binding_gdb))
+            // Use block variable (with SPIR-V offsets) for buffer types,
+            // fall back to type_description for opaque types (samplers, images)
+            bool layout_ok = false;
+            if (spv_binding->block.type_description)
             {
+                layout_ok = convert_spvr_to_dyn_layout(
+                    binding_name, spv_binding->block, binding_gdb);
+            }
+            else if (spv_binding->type_description)
+            {
+                // Opaque types — no block layout, just record type info
+                layout_ok = true;
+            }
+
+            if (!layout_ok)
+            {
+                ALOG_LAZY_ERROR;
                 return false;
             }
 
@@ -613,9 +640,9 @@ shader_reflection_utils::build_shader_push_constants(SpvReflectShaderModule& spv
     gpu_dynobj_builder gdb;
     gdb.set_id(AID("push_constant"));
 
-    // Use instance name (e.g., "pc") as field name, type_description contains struct info
+    // Use instance name (e.g., "pc") as field name, block carries SPIR-V offsets
     auto instance_name = AID(pconstants->name);
-    if (!convert_spvr_to_dyn_layout(instance_name, *pconstants->type_description, gdb))
+    if (!convert_spvr_to_dyn_layout(instance_name, *pconstants, gdb))
     {
         return false;
     }

@@ -13,27 +13,27 @@
 
 GPU_BEGIN_NAMESPACE
 
-push_struct push_constants_main
+struct push_constants_main
 {
-    push_uint material_id;
-    push_uint directional_light_id;
-    push_uint use_clustered_lighting;
-    push_uint instance_base;
-    push_uint local_lights_size;
-    push_uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
-    push_uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
-    push_uint local_light_ids[KGPU_max_lights_per_object];
-    push_uint64 bdag_camera;
-    push_uint64 bdag_objects;
-    push_uint64 bdag_directional_lights;
-    push_uint64 bdag_universal_lights;
-    push_uint64 bdag_cluster_counts;
-    push_uint64 bdag_cluster_indices;
-    push_uint64 bdag_cluster_config;
-    push_uint64 bdag_instance_slots;
-    push_uint64 bdag_bone_matrices;
-    push_uint64 bdag_shadow_data;
-    push_uint64 bdaf_material;
+    uint material_id;
+    uint directional_light_id;
+    uint use_clustered_lighting;
+    uint instance_base;
+    uint local_lights_size;
+    uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint local_light_ids[KGPU_max_lights_per_object];
+    uint64_t bdag_camera;
+    uint64_t bdag_objects;
+    uint64_t bdag_directional_lights;
+    uint64_t bdag_universal_lights;
+    uint64_t bdag_cluster_counts;
+    uint64_t bdag_cluster_indices;
+    uint64_t bdag_cluster_config;
+    uint64_t bdag_instance_slots;
+    uint64_t bdag_bone_matrices;
+    uint64_t bdag_shadow_data;
+    uint64_t bdaf_material;
 };
 
 GPU_END_NAMESPACE

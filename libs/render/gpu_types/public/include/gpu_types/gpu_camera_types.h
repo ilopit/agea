@@ -8,12 +8,12 @@
 
 GPU_BEGIN_NAMESPACE
 
-std140_struct camera_data
+struct camera_data
 {
-    std140_mat4 projection;
-    std140_mat4 inv_projection;
-    std140_mat4 view;
-    std140_vec3 position;
+    mat4 projection;
+    mat4 inv_projection;
+    mat4 view;
+    vec3 position;
 };
 
 GPU_END_NAMESPACE

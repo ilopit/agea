@@ -165,6 +165,12 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     bda_features.bufferDeviceAddress = VK_TRUE;
     deviceBuilder.add_pNext(&bda_features);
 
+    // Enable scalar block layout for natural C++ struct alignment in GPU buffers
+    VkPhysicalDeviceScalarBlockLayoutFeatures scalar_features{};
+    scalar_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
+    scalar_features.scalarBlockLayout = VK_TRUE;
+    deviceBuilder.add_pNext(&scalar_features);
+
     vkb::Device vkbDevice = deviceBuilder.build().value();
 
     // Get the VkDevice handle used in the rest of a vulkan application

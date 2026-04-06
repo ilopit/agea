@@ -107,6 +107,12 @@ public:
         return dynobj_view<T>(0U, (uint8_t*)data, m_fields.data(), shared_from_this());
     }
 
+    void
+    set_object_size(uint64_t size)
+    {
+        m_object_size = size;
+    }
+
     dynobj_field&
     back()
     {

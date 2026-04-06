@@ -1,5 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "gpu_types/gpu_object_types.h"
 #include "gpu_types/gpu_frustum_types.h"
@@ -8,33 +9,30 @@
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 // Frustum planes
-layout(std140, set = 0, binding = 0) uniform FrustumBuffer {
+layout(scalar, set = 0, binding = 0) uniform FrustumBuffer {
     frustum_data frustum;
 } dyn_frustum_data;
 
 // Object data input
-layout(std140, set = 0, binding = 1) readonly buffer ObjectBuffer {
+layout(scalar, set = 0, binding = 1) readonly buffer ObjectBuffer {
     object_data objects[];
 } dyn_object_buffer;
 
 // Visible indices output (atomic append)
-layout(std430, set = 0, binding = 2) buffer VisibleIndices {
+layout(scalar, set = 0, binding = 2) buffer VisibleIndices {
     uint indices[];
 } dyn_visible_indices;
 
 // Cull output (visible count + indirect draw commands)
-layout(std430, set = 0, binding = 3) buffer CullOutput {
+layout(scalar, set = 0, binding = 3) buffer CullOutput {
     uint visible_count;
-    uint _pad0;
-    uint _pad1;
-    uint _pad2;
     // Indirect draw commands follow (one per batch - filled by CPU or second pass)
 } dyn_cull_output;
 
 // Push constants
 layout(push_constant) uniform PushConstants {
-    push_uint object_count;
-    push_uint max_visible;  // Buffer capacity
+    uint object_count;
+    uint max_visible;  // Buffer capacity
 } pc;
 
 // Test sphere against frustum plane
