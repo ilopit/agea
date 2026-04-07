@@ -32,18 +32,17 @@ UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe
 UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe --gtest_filter="visual_pipeline_test.alpha_blending"
 ```
 
-## CRITICAL: Safe reference update workflow
+## CRITICAL: NEVER regenerate references
 
-When a code change affects rendering, NEVER blindly regenerate all references. Follow this process:
+**Claude MUST NEVER run `UPDATE_REFERENCES=1`.** Reference images are maintained by the user only. If a test fails:
 
-1. **Run WITHOUT `UPDATE_REFERENCES` first** — see which tests fail
-2. **Verify failures are expected** — only tests affected by the change should fail
-3. **Investigate unexpected failures** — these are real regressions
-4. **Update ONLY the intentionally changed tests** — use `--gtest_filter` to target them
-5. **Run all tests again** to confirm everything passes
+1. **Run WITHOUT `UPDATE_REFERENCES`** — see which tests fail and the diff details
+2. **Report the failure** to the user with pixel diff %, SSIM, and which tests failed
+3. **Investigate the root cause** — is it a real bug or an expected change?
+4. **Fix the code**, not the reference
+5. **Ask the user** to regenerate references if the change is intentional
 
-Bad: `UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe` (overwrites everything, hides regressions)
-Good: `UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe --gtest_filter="visual_pipeline_test.alpha_blending"`
+The user will run `UPDATE_REFERENCES=1` themselves when they decide the new output is correct. Blindly regenerating hides regressions.
 
 ## Build
 
