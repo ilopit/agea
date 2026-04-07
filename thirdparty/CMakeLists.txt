@@ -112,6 +112,10 @@ externalize(stb_unofficial "stb")
 add_subdirectory(unofficial/cgltf)
 externalize(cgltf_unofficial "cgltf")
 
+#xatlas
+add_subdirectory(unofficial/xatlas)
+externalize(xatlas_unofficial "xatlas")
+
 #glm
 add_subdirectory(unofficial/glm)
 externalize(glm_unofficial "glm")

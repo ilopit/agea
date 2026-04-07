@@ -9,11 +9,21 @@ layout (location = 1) in vec3 in_normal;
 layout (location = 2) in vec3 in_color;
 layout (location = 3) in vec2 in_tex_coord;
 
+#ifndef KRYGA_SKINNED
+layout (location = 4) in vec2 in_lightmap_uv;
+#endif
+
 layout (location = 0) out vec3 out_world_pos;
 layout (location = 1) out vec3 out_normal;
 layout (location = 2) out vec3 out_color;
 layout (location = 3) out vec2 out_tex_coord;
+
+#ifdef KRYGA_LIGHTMAPPED
+layout (location = 4) out vec2 out_lightmap_uv;
+layout (location = 5) out flat uint out_object_idx;
+#else
 layout (location = 4) out flat uint out_object_idx;
+#endif
 
 uint get_object_index(uint instance_base) {
     return dyn_instance_slots.slots[instance_base + gl_InstanceIndex];

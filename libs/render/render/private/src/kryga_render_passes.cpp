@@ -149,6 +149,8 @@ vulkan_render::prepare_pass_bindings()
             .add_bda(AID("dyn_instance_slots"))
             .add_bda(AID("dyn_bone_matrices"))
             .add_bda(AID("dyn_shadow_data"))
+            .add_bda(AID("dyn_probe_data"))
+            .add_bda(AID("dyn_probe_grid"))
             .add_bda(AID("dyn_material_buffer"));
 
         // Set 2: Bindless textures and static samplers (only remaining descriptor set)
@@ -435,6 +437,8 @@ vulkan_render::setup_instanced_render_graph()
     m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_shadow_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_probe_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_probe_grid"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     // GPU frustum culling buffers
     m_render_graph.register_buffer(AID("dyn_frustum_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
@@ -553,6 +557,8 @@ vulkan_render::setup_instanced_render_graph()
             m_render_graph.read(AID("dyn_bone_matrices")),
             m_render_graph.read(AID("dyn_material_buffer")),
             m_render_graph.read(AID("dyn_shadow_data")),
+            m_render_graph.read(AID("dyn_probe_data")),
+            m_render_graph.read(AID("dyn_probe_grid")),
         };
 
         // Shadow map dependencies (ordering only — actual sampling is via bindless)
@@ -605,6 +611,8 @@ vulkan_render::setup_per_object_render_graph()
     m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_shadow_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_probe_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    m_render_graph.register_buffer(AID("dyn_probe_grid"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
@@ -688,7 +696,9 @@ vulkan_render::setup_per_object_render_graph()
                                       m_render_graph.read(AID("dyn_instance_slots")),
                                       m_render_graph.read(AID("dyn_bone_matrices")),
                                       m_render_graph.read(AID("dyn_material_buffer")),
-                                      m_render_graph.read(AID("dyn_shadow_data"))},
+                                      m_render_graph.read(AID("dyn_shadow_data")),
+                                      m_render_graph.read(AID("dyn_probe_data")),
+                                      m_render_graph.read(AID("dyn_probe_grid"))},
                                      get_render_pass(AID("main")),
                                      VkClearColorValue{0, 0, 0, 1.0},
                                      [this](VkCommandBuffer)

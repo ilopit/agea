@@ -388,6 +388,50 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 
 texture_data*
 vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
+                                     const kryga::utils::buffer& data,
+                                     uint32_t w,
+                                     uint32_t h,
+                                     VkFormat vk_format,
+                                     texture_format fmt)
+{
+    KRG_check(!get_texture_data(texture_id), "should never happens");
+
+    auto device = glob::glob_state().get_render_device();
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+
+    auto* td = cache.textures.alloc(texture_id);
+    if (!td)
+    {
+        ALOG_ERROR("Failed to allocate texture in cache");
+        return nullptr;
+    }
+
+    auto staging_buffer = device->create_buffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void* mapped = nullptr;
+    vmaMapMemory(device->allocator(), staging_buffer.allocation(), &mapped);
+    memcpy(mapped, data.data(), (size_t)data.size());
+    vmaUnmapMemory(device->allocator(), staging_buffer.allocation());
+
+    td->image = upload_image(w, h, vk_format, staging_buffer);
+    td->format = fmt;
+
+    VkImageViewCreateInfo image_info =
+        vk_utils::make_imageview_create_info(vk_format, td->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    image_info.subresourceRange.levelCount = td->image->get_mip_levels();
+
+    td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
+
+    glob::glob_state().getr_vulkan_render().schd_update_texture(td);
+
+    m_textures_cache[texture_id] = td;
+
+    return td;
+}
+
+texture_data*
+vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
                                      kryga::render::vk_utils::vulkan_image_sptr image,
                                      kryga::render::vk_utils::vulkan_image_view_sptr view)
 {
@@ -447,6 +491,14 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
 
     // Set material_id for per-object material lookup in shaders
     obj_data.gpu_data.material_id = mat_data.gpu_idx();
+
+    // Default: no light probe assigned (dynamic objects will be assigned per-frame)
+    obj_data.gpu_data.probe_index = 0xFFFFFFFFu;
+
+    // Default: identity lightmap transform (no atlas remap), no lightmap texture
+    obj_data.gpu_data.lightmap_scale = glm::vec2(1.0f, 1.0f);
+    obj_data.gpu_data.lightmap_offset = glm::vec2(0.0f, 0.0f);
+    obj_data.gpu_data.lightmap_texture_index = 0xFFFFFFFFu;
 
     return true;
 }

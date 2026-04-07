@@ -10,6 +10,7 @@
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_frustum_types.h>
 #include <gpu_types/gpu_shadow_types.h>
+#include <gpu_types/gpu_probe_types.h>
 
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
@@ -157,6 +158,15 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
         m_frames[i].buffers.shadow_data = device.create_buffer(sizeof(gpu::shadow_config_data),
                                                                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                                                VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        // Light probe SSBOs (initial: 1 dummy probe + grid config)
+        m_frames[i].buffers.probe_data = device.create_buffer(sizeof(gpu::sh_probe),
+                                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                              VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        m_frames[i].buffers.probe_grid = device.create_buffer(sizeof(gpu::probe_grid_config),
+                                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                              VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     prepare_system_resources();

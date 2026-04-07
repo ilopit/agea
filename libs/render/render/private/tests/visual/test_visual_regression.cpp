@@ -13,6 +13,8 @@
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <vulkan_render/utils/vulkan_image.h>
 #include <vulkan_render/utils/vulkan_initializers.h>
+#include <vulkan_render/bake/lightmap_baker.h>
+#include <vulkan_render/lightmap_atlas.h>
 
 #include <gpu_types/gpu_vertex_types.h>
 #include <gpu_types/gpu_camera_types.h>
@@ -26,6 +28,7 @@
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>
 #include <vfs/rid.h>
+#include <vfs/io.h>
 
 #include <utils/buffer.h>
 #include <utils/dynamic_object.h>
@@ -35,6 +38,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <random>
 
 using namespace kryga;
 using namespace kryga::render;
@@ -1501,4 +1505,278 @@ TEST_F(visual_pipeline_test, complex_scene)
 
     renderer.draw_headless();
     compare("complex_scene", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
+}
+
+// =============================================================================
+// Baked lighting regression: 100+ meshes, GPU lightmap bake, render with baked GI
+// =============================================================================
+TEST_F(visual_pipeline_test, baked_lighting_scene)
+{
+    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& cache = renderer.get_cache();
+
+    // --- Lightmapped shader effect ---
+    kryga::utils::buffer lm_vert_buf, lm_frag_buf;
+    {
+        auto& vfs = glob::glob_state().getr_vfs();
+        auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
+        auto path = APATH(se_path.value());
+
+        kryga::utils::buffer::load(path / "se_lit_lightmapped.vert", lm_vert_buf);
+        kryga::utils::buffer::load(path / "se_lit_lightmapped.frag", lm_frag_buf);
+    }
+    shader_effect_create_info se_ci;
+    se_ci.vert_buffer = &lm_vert_buf;
+    se_ci.frag_buffer = &lm_frag_buf;
+    se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
+    se_ci.width = TEST_WIDTH;
+    se_ci.height = TEST_HEIGHT;
+
+    shader_effect_data* se_lm = nullptr;
+    m_main_pass->create_shader_effect(AID("bk_se_lm"), se_ci, se_lm);
+    ASSERT_TRUE(se_lm);
+
+    // Also need a standard lit shader for non-lightmapped objects (floor)
+    auto* se_lit = create_lit_shader_effect(AID("bk_se_lit"));
+    ASSERT_TRUE(se_lit);
+
+    // --- Camera ---
+    gpu::camera_data cam;
+    cam.projection =
+        glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
+    cam.projection[1][1] *= -1.0f;
+    cam.view = glm::lookAt(glm::vec3(8, 10, 12), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    cam.inv_projection = glm::inverse(cam.projection);
+    cam.position = {8, 10, 12};
+    renderer.set_camera(cam);
+
+    // --- Directional light for baking ---
+    gpu::directional_light_data bake_sun{};
+    bake_sun.direction = {-0.4f, -1.0f, -0.3f};
+    bake_sun.ambient = {0.1f, 0.1f, 0.12f};
+    bake_sun.diffuse = {0.9f, 0.85f, 0.8f};
+    bake_sun.specular = {0.5f, 0.5f, 0.5f};
+
+    // Zero-contribution light in renderer so the pipeline has a valid light buffer,
+    // but all illumination comes from the baked lightmap only.
+    auto* null_sun = cache.directional_lights.alloc(AID("bk_null_sun"));
+    null_sun->gpu_data.direction = {0, -1, 0};
+    null_sun->gpu_data.ambient = {0, 0, 0};
+    null_sun->gpu_data.diffuse = {0, 0, 0};
+    null_sun->gpu_data.specular = {0, 0, 0};
+    renderer.schd_add_light(null_sun);
+    renderer.set_selected_directional_light(AID("bk_null_sun"));
+
+    std::vector<texture_sampler_data> no_tex;
+
+    // --- Floor (non-lightmapped, standard lit) ---
+    auto* floor_mesh = create_plane_mesh(AID("bk_floor_mesh"), {0.5f, 0.5f, 0.5f}, 20.0f);
+    auto floor_gpu = make_solid_color_gpu_data(
+        {0.25f, 0.25f, 0.25f}, {0.5f, 0.5f, 0.5f}, {0.1f, 0.1f, 0.1f}, 4.0f);
+    auto* floor_mat = loader.create_material(
+        AID("bk_mat_floor"), AID("solid_color_material"), no_tex, *se_lit, floor_gpu);
+    renderer.schd_add_material(floor_mat);
+
+    auto floor_m = glm::translate(glm::mat4(1.0f), glm::vec3(0, -0.5f, 0));
+    auto* floor_obj = cache.objects.alloc(AID("bk_floor"));
+    loader.update_object(
+        *floor_obj, *floor_mat, *floor_mesh, floor_m,
+        glm::transpose(glm::inverse(floor_m)), {0, -0.5f, 0});
+    renderer.schd_add_object(floor_obj);
+
+    // --- Lightmapped material ---
+    auto lm_gpu = make_solid_color_gpu_data(
+        {0.2f, 0.2f, 0.2f}, {0.8f, 0.8f, 0.8f}, {0.3f, 0.3f, 0.3f}, 32.0f);
+    auto* lm_mat = loader.create_material(
+        AID("bk_mat_lm"), AID("solid_color_material"), no_tex, *se_lm, lm_gpu);
+    renderer.schd_add_material(lm_mat);
+
+    // --- Create 400 cubes at random positions with varying scales ---
+    // Fixed seed for deterministic output across runs.
+
+    constexpr uint32_t MESH_COUNT = 400;
+    constexpr uint32_t LM_RESOLUTION = 2048;
+    constexpr uint32_t TILE_SIZE = 48;  // Each mesh gets 48x48 texels in the atlas
+
+    // Lightmap atlas for packing
+    lightmap_atlas atlas(LM_RESOLUTION, LM_RESOLUTION);
+
+    // Shared cube geometry with UV2 = UV (covers [0,1])
+    // clang-format off
+    std::vector<gpu::vertex_data> cube_verts = {
+        // Front face
+        {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 0}, {0, 0}},
+        {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 0}, {1, 0}},
+        {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 1}, {1, 1}},
+        {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 1}, {0, 1}},
+        // Back face
+        {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 0}, {0, 0}},
+        {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 0}, {1, 0}},
+        {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 1}, {1, 1}},
+        {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 1}, {0, 1}},
+        // Top face
+        {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {0, 0}, {0, 0}},
+        {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {1, 0}, {1, 0}},
+        {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {1, 1}, {1, 1}},
+        {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {0, 1}, {0, 1}},
+        // Bottom face
+        {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {0, 0}, {0, 0}},
+        {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {1, 0}, {1, 0}},
+        {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {1, 1}, {1, 1}},
+        {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {0, 1}, {0, 1}},
+        // Right face
+        {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 0}, {0, 0}},
+        {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 0}, {1, 0}},
+        {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 1}, {1, 1}},
+        {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 1}, {0, 1}},
+        // Left face
+        {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 0}, {0, 0}},
+        {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 0}, {1, 0}},
+        {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 1}, {1, 1}},
+        {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 1}, {0, 1}},
+    };
+    std::vector<gpu::uint> cube_indices = {
+         0, 1, 2,  2, 3, 0,
+         4, 5, 6,  6, 7, 4,
+         8, 9,10, 10,11, 8,
+        12,13,14, 14,15,12,
+        16,17,18, 18,19,16,
+        20,21,22, 22,23,20,
+    };
+    // clang-format on
+
+    // --- Pack meshes into atlas and prepare baker input ---
+    lightmap_baker baker;
+
+    struct instance_info
+    {
+        glm::vec3 pos;
+        glm::vec2 lightmap_scale;
+        glm::vec2 lightmap_offset;
+        float scale;
+    };
+    std::vector<instance_info> instances;
+
+    float inv_w = 1.0f / float(LM_RESOLUTION);
+    float inv_h = 1.0f / float(LM_RESOLUTION);
+
+    // Deterministic RNG for reproducible positions
+    std::mt19937 rng(42);
+    std::uniform_real_distribution<float> dist_pos(-8.0f, 8.0f);
+    std::uniform_real_distribution<float> dist_y(0.0f, 3.0f);
+    std::uniform_real_distribution<float> dist_scale(0.3f, 1.2f);
+
+    for (uint32_t i = 0; i < MESH_COUNT; ++i)
+    {
+        auto tile_id = AID(("bk_tile_" + std::to_string(i)).c_str());
+
+        bool packed = atlas.allocate(tile_id, TILE_SIZE, TILE_SIZE);
+        ASSERT_TRUE(packed) << "Atlas full at mesh " << i;
+
+        const auto* region = atlas.get_region(tile_id);
+        ASSERT_TRUE(region);
+
+        float wx = dist_pos(rng);
+        float wz = dist_pos(rng);
+        float wy = dist_y(rng);
+        float scale = dist_scale(rng);
+
+        glm::vec2 lm_scale = {float(region->width) * inv_w, float(region->height) * inv_h};
+        glm::vec2 lm_offset = {float(region->x) * inv_w, float(region->y) * inv_h};
+
+        instances.push_back({glm::vec3(wx, wy, wz), lm_scale, lm_offset, scale});
+
+        // Prepare baker input: remap UV2 from [0,1] to atlas coordinates
+        // and transform positions to world space for correct baking
+        std::vector<gpu::vertex_data> remapped = cube_verts;
+        for (auto& v : remapped)
+        {
+            v.position = glm::vec3(wx, wy, wz) + v.position * scale;
+            v.uv2.x = v.uv2.x * lm_scale.x + lm_offset.x;
+            v.uv2.y = v.uv2.y * lm_scale.y + lm_offset.y;
+        }
+
+        baker.add_mesh(remapped.data(),
+                       static_cast<uint32_t>(remapped.size()),
+                       cube_indices.data(),
+                       static_cast<uint32_t>(cube_indices.size()));
+    }
+
+    ASSERT_EQ(instances.size(), MESH_COUNT);
+
+    // --- Bake lightmap (GPU compute) ---
+    bake::bake_settings bake_cfg;
+    bake_cfg.resolution = LM_RESOLUTION;
+    bake_cfg.samples_per_texel = 16;   // Low for test speed
+    bake_cfg.bounce_count = 1;
+    bake_cfg.denoise_iterations = 1;
+    bake_cfg.bake_direct = true;
+    bake_cfg.bake_indirect = true;
+    bake_cfg.bake_ao = true;
+    bake_cfg.ao_radius = 2.0f;
+    bake_cfg.ao_intensity = 1.0f;
+    bake_cfg.directional_lights.push_back(bake_sun);
+    bake_cfg.output_lightmap = vfs::rid("tmp://baked/lightmap.bin");
+    bake_cfg.output_ao = vfs::rid("tmp://baked/ao.bin");
+    bake_cfg.output_png = true;
+
+    auto bake_result = baker.bake(bake_cfg);
+    ASSERT_TRUE(bake_result.success) << "Lightmap bake failed";
+    ASSERT_EQ(bake_result.atlas_width, LM_RESOLUTION);
+
+    // Discard baker to prove we load from disk
+    baker.clear();
+
+    // --- Load baked data back from disk ---
+    std::vector<uint8_t> lm_loaded, ao_loaded;
+    ASSERT_TRUE(vfs::load_file(vfs::rid("tmp://baked/lightmap.bin"), lm_loaded));
+    ASSERT_TRUE(vfs::load_file(vfs::rid("tmp://baked/ao.bin"), ao_loaded));
+    ASSERT_EQ(lm_loaded.size(), LM_RESOLUTION * LM_RESOLUTION * 8);  // RGBA16F = 8 bytes/texel
+    ASSERT_EQ(ao_loaded.size(), LM_RESOLUTION * LM_RESOLUTION * 2);  // R16F = 2 bytes/texel
+
+    kryga::utils::buffer lm_tex_buf(lm_loaded.size());
+    std::memcpy(lm_tex_buf.data(), lm_loaded.data(), lm_loaded.size());
+
+    auto* lm_texture = loader.create_texture(
+        AID("bk_lightmap_tex"), lm_tex_buf,
+        LM_RESOLUTION, LM_RESOLUTION,
+        VK_FORMAT_R16G16B16A16_SFLOAT, texture_format::rgba16f);
+    ASSERT_TRUE(lm_texture);
+    uint32_t lm_bindless_idx = lm_texture->get_bindless_index();
+
+    // --- Create render mesh (shared by all instances, local UV2) ---
+    kryga::utils::buffer vert_buf(cube_verts.size() * sizeof(gpu::vertex_data));
+    std::memcpy(vert_buf.data(), cube_verts.data(), vert_buf.size());
+
+    kryga::utils::buffer idx_buf(cube_indices.size() * sizeof(gpu::uint));
+    std::memcpy(idx_buf.data(), cube_indices.data(), idx_buf.size());
+
+    auto* cube_mesh = loader.create_mesh(
+        AID("bk_cube_mesh"), vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
+    ASSERT_TRUE(cube_mesh);
+
+    // --- Create 400 render objects with per-instance lightmap ---
+    for (uint32_t i = 0; i < MESH_COUNT; ++i)
+    {
+        auto& inst = instances[i];
+        auto obj_id = AID(("bk_obj_" + std::to_string(i)).c_str());
+
+        auto model = glm::translate(glm::mat4(1.0f), inst.pos) *
+                     glm::scale(glm::mat4(1.0f), glm::vec3(inst.scale));
+        auto* obj = cache.objects.alloc(obj_id);
+        loader.update_object(
+            *obj, *lm_mat, *cube_mesh, model,
+            glm::transpose(glm::inverse(model)), inst.pos);
+
+        // Per-instance lightmap binding
+        obj->gpu_data.lightmap_scale = inst.lightmap_scale;
+        obj->gpu_data.lightmap_offset = inst.lightmap_offset;
+        obj->gpu_data.lightmap_texture_index = lm_bindless_idx;
+
+        renderer.schd_add_object(obj);
+    }
+
+    renderer.draw_headless();
+    compare("baked_lighting_scene", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }

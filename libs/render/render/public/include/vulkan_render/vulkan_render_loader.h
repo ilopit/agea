@@ -4,6 +4,7 @@
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_light_data.h"
 #include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
@@ -69,6 +70,14 @@ public:
                    const kryga::utils::buffer& base_color,
                    uint32_t w,
                    uint32_t h);
+
+    texture_data*
+    create_texture(const kryga::utils::id& texture_id,
+                   const kryga::utils::buffer& data,
+                   uint32_t w,
+                   uint32_t h,
+                   VkFormat vk_format,
+                   texture_format fmt);
 
     texture_data*
     create_texture(const kryga::utils::id& texture_id,

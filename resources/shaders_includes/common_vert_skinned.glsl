@@ -1,10 +1,11 @@
 // Common skinned vertex shader include
 // Extends common_vert.glsl with skeletal animation support
 
+#define KRYGA_SKINNED
 #include "common_vert.glsl"
 
-// Additional vertex inputs for skinning (locations 4-5 are input, not output)
-// Note: output location 4 (out_object_idx) uses a separate namespace in Vulkan
+// Additional vertex inputs for skinning
+// skinned_vertex_data has no uv2, bones start at location 4
 layout (location = 4) in uvec4 in_bone_indices;
 layout (location = 5) in vec4 in_bone_weights;
 

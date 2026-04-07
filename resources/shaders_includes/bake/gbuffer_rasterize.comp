@@ -1,0 +1,89 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
+
+#include "gpu_types/gpu_bvh_types.h"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+// Triangle data (contains lightmap UVs, positions, normals)
+layout(scalar, set = 0, binding = 0) readonly buffer Triangles {
+    bake_triangle tris[];
+} dyn_triangles;
+
+// Bake config
+layout(scalar, set = 0, binding = 1) uniform BakeConfig {
+    bake_config config;
+} dyn_config;
+
+// Output G-buffer: world position (xyz) + valid flag (w)
+layout(rgba32f, set = 0, binding = 2) uniform image2D out_position;
+
+// Output G-buffer: world normal (xyz)
+layout(rgba32f, set = 0, binding = 3) uniform image2D out_normal;
+
+// Rasterize one triangle per invocation into lightmap space.
+// For each texel within the triangle's lightmap UV bounding box,
+// test if the texel is inside the triangle using barycentric coords,
+// and if so, write interpolated world position and normal.
+void main()
+{
+    uint tri_idx = gl_GlobalInvocationID.x;
+
+    if (tri_idx >= dyn_config.config.triangle_count)
+        return;
+
+    bake_triangle tri = dyn_triangles.tris[tri_idx];
+
+    float atlas_w = float(dyn_config.config.atlas_width);
+    float atlas_h = float(dyn_config.config.atlas_height);
+
+    // Convert lightmap UVs to texel coordinates
+    vec2 uv0 = tri.lm_uv0 * vec2(atlas_w, atlas_h);
+    vec2 uv1 = tri.lm_uv1 * vec2(atlas_w, atlas_h);
+    vec2 uv2 = tri.lm_uv2 * vec2(atlas_w, atlas_h);
+
+    // Bounding box in texel space
+    vec2 bb_min = floor(min(min(uv0, uv1), uv2));
+    vec2 bb_max = ceil(max(max(uv0, uv1), uv2));
+
+    int x_min = max(int(bb_min.x), 0);
+    int y_min = max(int(bb_min.y), 0);
+    int x_max = min(int(bb_max.x), int(dyn_config.config.atlas_width) - 1);
+    int y_max = min(int(bb_max.y), int(dyn_config.config.atlas_height) - 1);
+
+    // Edge function components for barycentric computation
+    vec2 e01 = uv1 - uv0;
+    vec2 e12 = uv2 - uv1;
+    vec2 e20 = uv0 - uv2;
+
+    float area = e01.x * e20.y - e01.y * e20.x;
+    if (abs(area) < 1e-10)
+        return;  // degenerate triangle
+
+    float inv_area = 1.0 / area;
+
+    for (int y = y_min; y <= y_max; y++)
+    {
+        for (int x = x_min; x <= x_max; x++)
+        {
+            vec2 p = vec2(float(x) + 0.5, float(y) + 0.5);
+
+            // Barycentric coordinates via edge functions
+            float w0 = (e12.x * (p.y - uv1.y) - e12.y * (p.x - uv1.x)) * inv_area;
+            float w1 = (e20.x * (p.y - uv2.y) - e20.y * (p.x - uv2.x)) * inv_area;
+            float w2 = 1.0 - w0 - w1;
+
+            // Conservative rasterization: small epsilon for edge coverage
+            if (w0 >= -0.001 && w1 >= -0.001 && w2 >= -0.001)
+            {
+                // Interpolate world position and normal
+                vec3 world_pos = w0 * tri.v0 + w1 * tri.v1 + w2 * tri.v2;
+                vec3 normal = normalize(w0 * tri.n0 + w1 * tri.n1 + w2 * tri.n2);
+
+                imageStore(out_position, ivec2(x, y), vec4(world_pos, 1.0));
+                imageStore(out_normal, ivec2(x, y), vec4(normal, 1.0));
+            }
+        }
+    }
+}

@@ -155,6 +155,12 @@ FetchContent_Declare(
   GIT_SHALLOW    TRUE
 )
 
+FetchContent_Declare(
+  xatlas
+  GIT_REPOSITORY https://github.com/jpcy/xatlas.git
+  GIT_TAG        16ace528acd2cf1f16a7c0dde99c42c486488dbe
+)
+
 # ==============================================================================
 # Category C: Patched deps (download only)
 # ==============================================================================
@@ -184,3 +190,4 @@ FetchContent_Populate(textedit)
 FetchContent_Populate(vma)
 FetchContent_Populate(cgltf)
 FetchContent_Populate(imguizmo)
+FetchContent_Populate(xatlas)

@@ -1,0 +1,112 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
+
+#include "gpu_types/gpu_bvh_types.h"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// BVH data
+layout(scalar, set = 0, binding = 0) readonly buffer BVHNodes {
+    bvh_node nodes[];
+} dyn_bvh_nodes;
+
+layout(scalar, set = 0, binding = 1) readonly buffer Triangles {
+    bake_triangle tris[];
+} dyn_triangles;
+
+// Bake config
+layout(scalar, set = 0, binding = 2) uniform BakeConfig {
+    bake_config config;
+} dyn_config;
+
+// Output AO texture (single channel in R)
+layout(r16f, set = 0, binding = 3) uniform image2D out_ao;
+
+// G-buffer
+layout(rgba32f, set = 0, binding = 4) readonly uniform image2D gbuf_position;
+layout(rgba32f, set = 0, binding = 5) readonly uniform image2D gbuf_normal;
+
+layout(push_constant) uniform PushConstants {
+    uint frame_seed;
+} pc;
+
+#include "bake/bvh_traversal.glsl"
+
+uint hash(uint x)
+{
+    x ^= x >> 16;
+    x *= 0x45d9f3bu;
+    x ^= x >> 16;
+    x *= 0x45d9f3bu;
+    x ^= x >> 16;
+    return x;
+}
+
+float rand_float(inout uint seed)
+{
+    seed = hash(seed);
+    return float(seed) / float(0xFFFFFFFFu);
+}
+
+vec3 cosine_sample_hemisphere(vec3 normal, inout uint seed)
+{
+    float u1 = rand_float(seed);
+    float u2 = rand_float(seed);
+
+    float r = sqrt(u1);
+    float theta = 2.0 * 3.14159265 * u2;
+
+    float x = r * cos(theta);
+    float y = r * sin(theta);
+    float z = sqrt(max(0.0, 1.0 - u1));
+
+    vec3 up = abs(normal.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 tangent = normalize(cross(up, normal));
+    vec3 bitangent = cross(normal, tangent);
+
+    return normalize(tangent * x + bitangent * y + normal * z);
+}
+
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    if (texel.x >= int(dyn_config.config.atlas_width) ||
+        texel.y >= int(dyn_config.config.atlas_height))
+        return;
+
+    vec4 pos_data = imageLoad(gbuf_position, texel);
+    vec4 norm_data = imageLoad(gbuf_normal, texel);
+
+    if (pos_data.w < 0.5)
+    {
+        imageStore(out_ao, texel, vec4(1.0));
+        return;
+    }
+
+    vec3 world_pos = pos_data.xyz;
+    vec3 normal = normalize(norm_data.xyz);
+
+    uint seed = hash(uint(texel.x) * 7919u + uint(texel.y) * 6271u + pc.frame_seed * 4447u);
+
+    float ao_radius = dyn_config.config.ao_radius;
+    uint num_samples = dyn_config.config.sample_count;
+    uint occluded = 0u;
+
+    for (uint s = 0u; s < num_samples; s++)
+    {
+        vec3 dir = cosine_sample_hemisphere(normal, seed);
+        vec3 origin = world_pos + normal * 0.001;
+
+        if (!trace_shadow(origin, dir, ao_radius))
+        {
+            occluded++;
+        }
+    }
+
+    float ao = 1.0 - (float(occluded) / float(num_samples)) * dyn_config.config.ao_intensity;
+    ao = clamp(ao, 0.0, 1.0);
+
+    imageStore(out_ao, texel, vec4(ao, 0.0, 0.0, 1.0));
+}

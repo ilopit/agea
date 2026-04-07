@@ -9,6 +9,7 @@
 #include "gpu_types/gpu_light_types.h"
 #include "gpu_types/gpu_cluster_types.h"
 #include "gpu_types/gpu_shadow_types.h"
+#include "gpu_types/gpu_probe_types.h"
 
 layout(buffer_reference, scalar) readonly buffer BdaCameraRef {
     camera_data obj;
@@ -51,4 +52,12 @@ layout(buffer_reference, scalar) readonly buffer BdaBoneMatricesRef {
 
 layout(buffer_reference, scalar) readonly buffer BdaShadowDataRef {
     shadow_config_data shadow;
+};
+
+layout(buffer_reference, scalar) readonly buffer BdaProbeDataRef {
+    sh_probe probes[];
+};
+
+layout(buffer_reference, scalar) readonly buffer BdaProbeGridRef {
+    probe_grid_config grid;
 };

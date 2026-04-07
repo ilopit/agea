@@ -13,6 +13,7 @@ struct vertex_data
     vec3 normal;
     vec3 color;
     vec2 uv;
+    vec2 uv2;
 };
 
 struct skinned_vertex_data

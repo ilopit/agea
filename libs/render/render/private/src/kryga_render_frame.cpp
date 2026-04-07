@@ -228,6 +228,8 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_render_graph.bind_buffer(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
     m_render_graph.bind_buffer(AID("dyn_material_buffer"), current_frame.buffers.materials);
     m_render_graph.bind_buffer(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+    m_render_graph.bind_buffer(AID("dyn_probe_data"), current_frame.buffers.probe_data);
+    m_render_graph.bind_buffer(AID("dyn_probe_grid"), current_frame.buffers.probe_grid);
 
     if (is_instanced_mode())
     {
@@ -410,6 +412,8 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
         main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
         main_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+        main_pass->bind(AID("dyn_probe_data"), current_frame.buffers.probe_data);
+        main_pass->bind(AID("dyn_probe_grid"), current_frame.buffers.probe_grid);
         main_pass->bind(AID("dyn_material_buffer"), current_frame.buffers.materials);
 
         KRG_check(static_cast<const render_pass*>(main_pass)->bindings().validate_bda_bound(),
@@ -458,6 +462,8 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         m_obj_config.bdag_instance_slots = b.instance_slots.device_address();
         m_obj_config.bdag_bone_matrices = b.bone_matrices.device_address();
         m_obj_config.bdag_shadow_data = b.shadow_data.device_address();
+        m_obj_config.bdag_probe_data = b.probe_data.device_address();
+        m_obj_config.bdag_probe_grid = b.probe_grid.device_address();
         // bdaf_material set per-draw in bind_material()
 
         // Shadow pass push constants

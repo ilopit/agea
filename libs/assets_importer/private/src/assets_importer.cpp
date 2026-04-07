@@ -2,6 +2,7 @@
 
 #include "assets_importer/mesh_importer.h"
 #include "assets_importer/texture_importer.h"
+#include "assets_importer/uv2_generator.h"
 
 #include <utils/kryga_log.h>
 
@@ -31,6 +32,35 @@ convert_3do_to_amsh(const utils::path& obj_path,
     {
         ALOG_LAZY_ERROR;
         return false;
+    }
+
+    // Generate lightmap UV2 coordinates via xatlas
+    {
+        auto* verts_ptr = reinterpret_cast<const gpu::vertex_data*>(vertices.data());
+        uint32_t vert_count = static_cast<uint32_t>(vertices.size() / sizeof(gpu::vertex_data));
+        auto* inds_ptr = reinterpret_cast<const gpu::uint*>(indices.data());
+        uint32_t ind_count = static_cast<uint32_t>(indices.size() / sizeof(gpu::uint));
+
+        auto uv2_result = asset_importer::uv2_generator::generate_uv2(
+            verts_ptr, vert_count, inds_ptr, ind_count);
+
+        if (uv2_result.success)
+        {
+            // Replace vertex/index buffers with UV2-enriched versions (may have more
+            // vertices due to UV seam splitting)
+            vertices.resize(uv2_result.vertices.size() * sizeof(gpu::vertex_data));
+            memcpy(vertices.data(), uv2_result.vertices.data(),
+                   uv2_result.vertices.size() * sizeof(gpu::vertex_data));
+
+            indices.resize(uv2_result.indices.size() * sizeof(gpu::uint));
+            memcpy(indices.data(), uv2_result.indices.data(),
+                   uv2_result.indices.size() * sizeof(gpu::uint));
+        }
+        else
+        {
+            ALOG_ERROR("assets_importer: UV2 generation failed for {}, lightmap UVs will be invalid",
+                       mesh_id.str());
+        }
     }
 
     auto obj_ext = mesh_id.str() + ".aobj";

@@ -33,6 +33,8 @@ struct push_constants_main
     uint64_t bdag_instance_slots;
     uint64_t bdag_bone_matrices;
     uint64_t bdag_shadow_data;
+    uint64_t bdag_probe_data;
+    uint64_t bdag_probe_grid;
     uint64_t bdaf_material;
 };
 

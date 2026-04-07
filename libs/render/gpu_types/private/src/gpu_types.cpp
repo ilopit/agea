@@ -90,6 +90,7 @@ get_default_vertex_inout_layout()
                         .add_field(AID("in_normal"), render::gpu_type::g_vec3, 1)
                         .add_field(AID("in_color"), render::gpu_type::g_vec3, 1)
                         .add_field(AID("in_tex_coord"), render::gpu_type::g_vec2, 1)
+                        .add_field(AID("in_lightmap_uv"), render::gpu_type::g_vec2, 1)
                         .finalize();
 
     return l;

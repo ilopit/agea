@@ -667,6 +667,7 @@ vulkan_engine::init_default_resources()
                   .add_field(AID("vNormal"), render::gpu_type::g_vec3, 1)
                   .add_field(AID("vColor"), render::gpu_type::g_vec3, 1)
                   .add_field(AID("vTexCoord"), render::gpu_type::g_vec2, 1)
+                  .add_field(AID("vLightmapUV"), render::gpu_type::g_vec2, 1)
                   .finalize();
 
     auto val = render::gpu_dynobj_builder().add_array(AID("verts"), vl, 1, 4, 4).finalize();
@@ -679,10 +680,10 @@ vulkan_engine::init_default_resources()
         using v3 = glm::vec3;
         using v2 = glm::vec2;
 
-        v.subobj(0, 0).write(v3{-1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 0.f});
-        v.subobj(0, 1).write(v3{1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.0, 0.f});
-        v.subobj(0, 2).write(v3{-1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 1.f});
-        v.subobj(0, 3).write(v3{1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.f, 1.f});
+        v.subobj(0, 0).write(v3{-1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 0.f}, v2{0.f, 0.f});
+        v.subobj(0, 1).write(v3{1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.0, 0.f}, v2{0.f, 0.f});
+        v.subobj(0, 2).write(v3{-1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 1.f}, v2{0.f, 0.f});
+        v.subobj(0, 3).write(v3{1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.f, 1.f}, v2{0.f, 0.f});
     }
 
     utils::buffer index_buffer(6 * 4);

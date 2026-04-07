@@ -1,0 +1,90 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
+
+#include "gpu_types/gpu_bvh_types.h"
+#include "gpu_types/gpu_light_types.h"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// BVH data
+layout(scalar, set = 0, binding = 0) readonly buffer BVHNodes {
+    bvh_node nodes[];
+} dyn_bvh_nodes;
+
+layout(scalar, set = 0, binding = 1) readonly buffer Triangles {
+    bake_triangle tris[];
+} dyn_triangles;
+
+// Bake config
+layout(scalar, set = 0, binding = 2) uniform BakeConfig {
+    bake_config config;
+} dyn_config;
+
+// Directional lights
+layout(scalar, set = 0, binding = 3) readonly buffer DirLights {
+    directional_light_data lights[];
+} dyn_dir_lights;
+
+// Output lightmap (direct illumination)
+layout(rgba16f, set = 0, binding = 4) uniform image2D out_lightmap;
+
+// World position and normal G-buffer for the lightmap (computed from UV2 mapping)
+layout(rgba32f, set = 0, binding = 5) readonly uniform image2D gbuf_position;
+layout(rgba32f, set = 0, binding = 6) readonly uniform image2D gbuf_normal;
+
+#include "bake/bvh_traversal.glsl"
+
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    if (texel.x >= int(dyn_config.config.atlas_width) ||
+        texel.y >= int(dyn_config.config.atlas_height))
+        return;
+
+    vec4 pos_data = imageLoad(gbuf_position, texel);
+    vec4 norm_data = imageLoad(gbuf_normal, texel);
+
+    // Alpha = 0 means this texel has no geometry mapped to it
+    if (pos_data.w < 0.5)
+    {
+        imageStore(out_lightmap, texel, vec4(0.0));
+        return;
+    }
+
+    vec3 world_pos = pos_data.xyz;
+    vec3 normal = normalize(norm_data.xyz);
+
+    vec3 result = vec3(0.0);
+
+    if (dyn_dir_lights.lights.length() == 0)
+    {
+        imageStore(out_lightmap, texel, vec4(0.0));
+        return;
+    }
+
+    // Directional light contribution
+    {
+        directional_light_data light = dyn_dir_lights.lights[0];
+        vec3 light_dir = normalize(-light.direction);
+        float ndotl = max(dot(normal, light_dir), 0.0);
+
+        if (ndotl > 0.0)
+        {
+            // Shadow ray: offset along normal to avoid self-intersection
+            vec3 shadow_origin = world_pos + normal * 0.001;
+            bool lit = trace_shadow(shadow_origin, light_dir, 10000.0);
+
+            if (lit)
+            {
+                result += light.diffuse * ndotl;
+            }
+        }
+
+        // Ambient term (baked into lightmap as base illumination)
+        result += light.ambient;
+    }
+
+    imageStore(out_lightmap, texel, vec4(result, 1.0));
+}

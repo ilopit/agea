@@ -12,7 +12,9 @@ namespace render
 enum class texture_format : uint32_t
 {
     unknown = 0,
-    rgba8
+    rgba8,
+    rgba16f,
+    r11g11b10f
 };
 
 // Texture data stored in render_cache via combined_pool

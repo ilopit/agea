@@ -14,7 +14,13 @@ layout (location = 0) in vec3 in_world_pos;
 layout (location = 1) in vec3 in_normal;
 layout (location = 2) in vec3 in_color;
 layout (location = 3) in vec2 in_tex_coord;
+
+#ifdef KRYGA_LIGHTMAPPED
+layout (location = 4) in vec2 in_lightmap_uv;
+layout (location = 5) in flat uint in_object_idx;
+#else
 layout (location = 4) in flat uint in_object_idx;
+#endif
 
 // Output
 layout (location = 0) out vec4 out_color;

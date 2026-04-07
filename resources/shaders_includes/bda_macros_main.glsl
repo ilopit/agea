@@ -11,3 +11,5 @@
 #define dyn_instance_slots             BdaInstanceSlotsRef(constants.obj.bdag_instance_slots)
 #define dyn_bone_matrices              BdaBoneMatricesRef(constants.obj.bdag_bone_matrices)
 #define dyn_shadow_data                BdaShadowDataRef(constants.obj.bdag_shadow_data)
+#define dyn_probe_data                 BdaProbeDataRef(constants.obj.bdag_probe_data)
+#define dyn_probe_grid                 BdaProbeGridRef(constants.obj.bdag_probe_grid)

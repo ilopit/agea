@@ -83,6 +83,10 @@ struct frame_buffers
 
     // Shadow data SSBO
     vk_utils::vulkan_buffer shadow_data;
+
+    // Light probe SSBOs
+    vk_utils::vulkan_buffer probe_data;
+    vk_utils::vulkan_buffer probe_grid;
 };
 
 struct frame_upload_state

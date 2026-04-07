@@ -10,6 +10,7 @@ target_link_libraries(asset_importer PUBLIC
     kryga::stb_unofficial
     kryga::vulkan_render
     kryga::core
+    kryga::xatlas_unofficial
 
     tinyobjloader
 )

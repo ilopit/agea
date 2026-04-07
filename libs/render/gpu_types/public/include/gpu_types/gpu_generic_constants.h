@@ -14,11 +14,13 @@
 #define KGPU_objects_instance_slots_binding 6
 #define KGPU_objects_bone_matrices_binding 7
 #define KGPU_objects_shadow_data_binding 8
-#define KGPU_objects_max_binding KGPU_objects_shadow_data_binding
+#define KGPU_objects_probe_data_binding 9
+#define KGPU_objects_probe_grid_binding 10
+#define KGPU_objects_max_binding KGPU_objects_probe_grid_binding
 #define KGPU_textures_descriptor_sets 2
 #define KGPU_materials_descriptor_sets 3
 
-#define KGPU_max_lights_per_object 32
+#define KGPU_max_lights_per_object 24
 
 #define KGPU_initial_instance_slots_size 8192
 
