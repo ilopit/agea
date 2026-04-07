@@ -10,6 +10,8 @@
 #include "engine/private/ui/package_editor.h"
 #include "engine/private/ui/object_editor.h"
 #include "engine/private/ui/gizmo_editor.h"
+#include "engine/private/ui/action_progress_window.h"
+#include "engine/private/ui/bake_editor.h"
 #include "engine/editor.h"
 
 #include <core/level.h>
@@ -82,6 +84,11 @@ ui::ui()
 
     m_windows[render_config_window::window_title()] = std::make_unique<render_config_window>();
     m_windows[render_config_window::window_title()]->m_show = true;
+
+    m_windows[action_progress_window::window_title()] = std::make_unique<action_progress_window>();
+
+    m_windows[bake_editor::window_title()] = std::make_unique<bake_editor>();
+    m_windows[bake_editor::window_title()]->m_show = true;
 }
 
 ui::~ui()
@@ -128,6 +135,8 @@ ui::init()
 void
 ui::new_frame(float dt)
 {
+    m_actions.tick();
+
     ImGuiIO& io = ImGui::GetIO();
     auto s = glob::glob_state().getr_native_window().get_size();
 

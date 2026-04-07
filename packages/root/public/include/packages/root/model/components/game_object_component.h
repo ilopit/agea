@@ -125,6 +125,12 @@ protected:
     KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
     bool m_visible = false;
 
+    KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
+    bool m_static = true;
+
+    KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
+    bool m_casts_shadows = true;
+
     KRG_ar_property("category=Transform",
                     "access=all",
                     "check=not_same",

@@ -1516,15 +1516,15 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     auto& loader = glob::glob_state().getr_vulkan_render_loader();
     auto& cache = renderer.get_cache();
 
-    // --- Lightmapped shader effect ---
+    // --- Solid color lightmapped shader effect ---
     kryga::utils::buffer lm_vert_buf, lm_frag_buf;
     {
         auto& vfs = glob::glob_state().getr_vfs();
         auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(se_path.value());
 
-        kryga::utils::buffer::load(path / "se_lit_lightmapped.vert", lm_vert_buf);
-        kryga::utils::buffer::load(path / "se_lit_lightmapped.frag", lm_frag_buf);
+        kryga::utils::buffer::load(path / "se_solid_color_lit_lightmapped.vert", lm_vert_buf);
+        kryga::utils::buffer::load(path / "se_solid_color_lit_lightmapped.frag", lm_frag_buf);
     }
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &lm_vert_buf;
@@ -1534,12 +1534,10 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     se_ci.height = TEST_HEIGHT;
 
     shader_effect_data* se_lm = nullptr;
-    m_main_pass->create_shader_effect(AID("bk_se_lm"), se_ci, se_lm);
+    auto se_rc = m_main_pass->create_shader_effect(AID("bk_se_lm"), se_ci, se_lm);
+    ASSERT_EQ(se_rc, result_code::ok) << "Lightmapped shader effect failed to create";
     ASSERT_TRUE(se_lm);
-
-    // Also need a standard lit shader for non-lightmapped objects (floor)
-    auto* se_lit = create_lit_shader_effect(AID("bk_se_lit"));
-    ASSERT_TRUE(se_lit);
+    ASSERT_FALSE(se_lm->m_failed_load) << "Lightmapped shader marked as failed";
 
     // --- Camera ---
     gpu::camera_data cam;
@@ -1554,8 +1552,8 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     // --- Directional light for baking ---
     gpu::directional_light_data bake_sun{};
     bake_sun.direction = {-0.4f, -1.0f, -0.3f};
-    bake_sun.ambient = {0.1f, 0.1f, 0.12f};
-    bake_sun.diffuse = {0.9f, 0.85f, 0.8f};
+    bake_sun.ambient = {0.15f, 0.1f, 0.05f};
+    bake_sun.diffuse = {1.2f, 0.9f, 0.5f};
     bake_sun.specular = {0.5f, 0.5f, 0.5f};
 
     // Zero-contribution light in renderer so the pipeline has a valid light buffer,
@@ -1569,21 +1567,6 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     renderer.set_selected_directional_light(AID("bk_null_sun"));
 
     std::vector<texture_sampler_data> no_tex;
-
-    // --- Floor (non-lightmapped, standard lit) ---
-    auto* floor_mesh = create_plane_mesh(AID("bk_floor_mesh"), {0.5f, 0.5f, 0.5f}, 20.0f);
-    auto floor_gpu = make_solid_color_gpu_data(
-        {0.25f, 0.25f, 0.25f}, {0.5f, 0.5f, 0.5f}, {0.1f, 0.1f, 0.1f}, 4.0f);
-    auto* floor_mat = loader.create_material(
-        AID("bk_mat_floor"), AID("solid_color_material"), no_tex, *se_lit, floor_gpu);
-    renderer.schd_add_material(floor_mat);
-
-    auto floor_m = glm::translate(glm::mat4(1.0f), glm::vec3(0, -0.5f, 0));
-    auto* floor_obj = cache.objects.alloc(AID("bk_floor"));
-    loader.update_object(
-        *floor_obj, *floor_mat, *floor_mesh, floor_m,
-        glm::transpose(glm::inverse(floor_m)), {0, -0.5f, 0});
-    renderer.schd_add_object(floor_obj);
 
     // --- Lightmapped material ---
     auto lm_gpu = make_solid_color_gpu_data(
@@ -1602,39 +1585,43 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     // Lightmap atlas for packing
     lightmap_atlas atlas(LM_RESOLUTION, LM_RESOLUTION);
 
-    // Shared cube geometry with UV2 = UV (covers [0,1])
+    // Shared cube geometry with non-overlapping UV2 per face.
+    // 6 faces packed in a 3x2 grid within [0,1]: each face gets (1/3 x 1/2) cell.
     // clang-format off
+    //                                                               uv2 column/row
+    constexpr float cw = 1.0f / 3.0f;  // cell width
+    constexpr float ch = 1.0f / 2.0f;  // cell height
     std::vector<gpu::vertex_data> cube_verts = {
-        // Front face
-        {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 0}, {0, 0}},
-        {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 0}, {1, 0}},
-        {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 1}, {1, 1}},
-        {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 1}, {0, 1}},
-        // Back face
-        {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 0}, {0, 0}},
-        {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 0}, {1, 0}},
-        {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 1}, {1, 1}},
-        {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 1}, {0, 1}},
-        // Top face
-        {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {0, 0}, {0, 0}},
-        {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {1, 0}, {1, 0}},
-        {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {1, 1}, {1, 1}},
-        {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {0, 1}, {0, 1}},
-        // Bottom face
-        {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {0, 0}, {0, 0}},
-        {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {1, 0}, {1, 0}},
-        {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {1, 1}, {1, 1}},
-        {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {0, 1}, {0, 1}},
-        // Right face
-        {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 0}, {0, 0}},
-        {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 0}, {1, 0}},
-        {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 1}, {1, 1}},
-        {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 1}, {0, 1}},
-        // Left face
-        {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 0}, {0, 0}},
-        {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 0}, {1, 0}},
-        {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 1}, {1, 1}},
-        {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 1}, {0, 1}},
+        // Front face  (col 0, row 0)
+        {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 0}, {0*cw,      0*ch}},
+        {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 0}, {0*cw + cw, 0*ch}},
+        {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 1}, {0*cw + cw, 0*ch + ch}},
+        {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 1}, {0*cw,      0*ch + ch}},
+        // Back face   (col 1, row 0)
+        {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 0}, {1*cw,      0*ch}},
+        {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 0}, {1*cw + cw, 0*ch}},
+        {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 1}, {1*cw + cw, 0*ch + ch}},
+        {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 1}, {1*cw,      0*ch + ch}},
+        // Top face    (col 2, row 0)
+        {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {0, 0}, {2*cw,      0*ch}},
+        {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {1, 0}, {2*cw + cw, 0*ch}},
+        {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {1, 1}, {2*cw + cw, 0*ch + ch}},
+        {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {0, 1}, {2*cw,      0*ch + ch}},
+        // Bottom face (col 0, row 1)
+        {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {0, 0}, {0*cw,      1*ch}},
+        {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {1, 0}, {0*cw + cw, 1*ch}},
+        {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {1, 1}, {0*cw + cw, 1*ch + ch}},
+        {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {0, 1}, {0*cw,      1*ch + ch}},
+        // Right face  (col 1, row 1)
+        {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 0}, {1*cw,      1*ch}},
+        {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 0}, {1*cw + cw, 1*ch}},
+        {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 1}, {1*cw + cw, 1*ch + ch}},
+        {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 1}, {1*cw,      1*ch + ch}},
+        // Left face   (col 2, row 1)
+        {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 0}, {2*cw,      1*ch}},
+        {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 0}, {2*cw + cw, 1*ch}},
+        {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 1}, {2*cw + cw, 1*ch + ch}},
+        {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 1}, {2*cw,      1*ch + ch}},
     };
     std::vector<gpu::uint> cube_indices = {
          0, 1, 2,  2, 3, 0,
@@ -1646,6 +1633,18 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     };
     // clang-format on
 
+    // --- Floor plane mesh (single upward face, UV2 covers full [0,1]) ---
+    float fh = 12.0f;
+    // clang-format off
+    std::vector<gpu::vertex_data> floor_verts = {
+        {{-fh, 0,  fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {0, 0}, {0, 0}},
+        {{ fh, 0,  fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {1, 0}, {1, 0}},
+        {{ fh, 0, -fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {1, 1}, {1, 1}},
+        {{-fh, 0, -fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {0, 1}, {0, 1}},
+    };
+    std::vector<gpu::uint> floor_indices = {0, 1, 2, 2, 3, 0};
+    // clang-format on
+
     // --- Pack meshes into atlas and prepare baker input ---
     lightmap_baker baker;
 
@@ -1655,11 +1654,36 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
         glm::vec2 lightmap_scale;
         glm::vec2 lightmap_offset;
         float scale;
+        bool is_floor;
     };
     std::vector<instance_info> instances;
 
     float inv_w = 1.0f / float(LM_RESOLUTION);
     float inv_h = 1.0f / float(LM_RESOLUTION);
+
+    // Floor gets a larger tile (128x128) for better quality on the big plane
+    constexpr uint32_t FLOOR_TILE = 128;
+    {
+        auto tile_id = AID("bk_tile_floor");
+        bool packed = atlas.allocate(tile_id, FLOOR_TILE, FLOOR_TILE);
+        ASSERT_TRUE(packed);
+        const auto* region = atlas.get_region(tile_id);
+
+        glm::vec2 lm_scale = {float(region->width) * inv_w, float(region->height) * inv_h};
+        glm::vec2 lm_offset = {float(region->x) * inv_w, float(region->y) * inv_h};
+
+        instances.push_back({{0, -0.5f, 0}, lm_scale, lm_offset, 1.0f, true});
+
+        std::vector<gpu::vertex_data> remapped = floor_verts;
+        for (auto& v : remapped)
+        {
+            v.position += glm::vec3(0, -0.5f, 0);
+            v.uv2.x = v.uv2.x * lm_scale.x + lm_offset.x;
+            v.uv2.y = v.uv2.y * lm_scale.y + lm_offset.y;
+        }
+        baker.add_mesh(remapped.data(), static_cast<uint32_t>(remapped.size()),
+                       floor_indices.data(), static_cast<uint32_t>(floor_indices.size()));
+    }
 
     // Deterministic RNG for reproducible positions
     std::mt19937 rng(42);
@@ -1685,7 +1709,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
         glm::vec2 lm_scale = {float(region->width) * inv_w, float(region->height) * inv_h};
         glm::vec2 lm_offset = {float(region->x) * inv_w, float(region->y) * inv_h};
 
-        instances.push_back({glm::vec3(wx, wy, wz), lm_scale, lm_offset, scale});
+        instances.push_back({glm::vec3(wx, wy, wz), lm_scale, lm_offset, scale, false});
 
         // Prepare baker input: remap UV2 from [0,1] to atlas coordinates
         // and transform positions to world space for correct baking
@@ -1703,7 +1727,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
                        static_cast<uint32_t>(cube_indices.size()));
     }
 
-    ASSERT_EQ(instances.size(), MESH_COUNT);
+    ASSERT_EQ(instances.size(), MESH_COUNT + 1);  // 400 cubes + 1 floor
 
     // --- Bake lightmap (GPU compute) ---
     bake::bake_settings bake_cfg;
@@ -1745,28 +1769,35 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     ASSERT_TRUE(lm_texture);
     uint32_t lm_bindless_idx = lm_texture->get_bindless_index();
 
-    // --- Create render mesh (shared by all instances, local UV2) ---
+    // --- Create render meshes ---
     kryga::utils::buffer vert_buf(cube_verts.size() * sizeof(gpu::vertex_data));
     std::memcpy(vert_buf.data(), cube_verts.data(), vert_buf.size());
-
     kryga::utils::buffer idx_buf(cube_indices.size() * sizeof(gpu::uint));
     std::memcpy(idx_buf.data(), cube_indices.data(), idx_buf.size());
-
     auto* cube_mesh = loader.create_mesh(
         AID("bk_cube_mesh"), vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
     ASSERT_TRUE(cube_mesh);
 
-    // --- Create 400 render objects with per-instance lightmap ---
-    for (uint32_t i = 0; i < MESH_COUNT; ++i)
+    kryga::utils::buffer floor_vb(floor_verts.size() * sizeof(gpu::vertex_data));
+    std::memcpy(floor_vb.data(), floor_verts.data(), floor_vb.size());
+    kryga::utils::buffer floor_ib(floor_indices.size() * sizeof(gpu::uint));
+    std::memcpy(floor_ib.data(), floor_indices.data(), floor_ib.size());
+    auto* floor_mesh = loader.create_mesh(
+        AID("bk_floor_mesh"), floor_vb.make_view<gpu::vertex_data>(), floor_ib.make_view<gpu::uint>());
+    ASSERT_TRUE(floor_mesh);
+
+    // --- Create render objects with per-instance lightmap ---
+    for (uint32_t i = 0; i < instances.size(); ++i)
     {
         auto& inst = instances[i];
         auto obj_id = AID(("bk_obj_" + std::to_string(i)).c_str());
 
+        auto* mesh = inst.is_floor ? floor_mesh : cube_mesh;
         auto model = glm::translate(glm::mat4(1.0f), inst.pos) *
                      glm::scale(glm::mat4(1.0f), glm::vec3(inst.scale));
         auto* obj = cache.objects.alloc(obj_id);
         loader.update_object(
-            *obj, *lm_mat, *cube_mesh, model,
+            *obj, *lm_mat, *mesh, model,
             glm::transpose(glm::inverse(model)), inst.pos);
 
         // Per-instance lightmap binding
@@ -1777,6 +1808,11 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
         renderer.schd_add_object(obj);
     }
 
-    renderer.draw_headless();
+    // Triple-buffered (FRAMES_IN_FLIGHT=3): texture registration is queued to
+    // frame N, but draw_headless switches frame index first. Need 3 draws to
+    // cycle back to the frame that has the pending bindless update, then one
+    // more to render with the updated descriptors.
+    for (int i = 0; i < 4; ++i)
+        renderer.draw_headless();
     compare("baked_lighting_scene", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }

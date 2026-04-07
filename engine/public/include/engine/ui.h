@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/model_fwds.h>
+#include <engine/action_queue.h>
 
 #include <global_state/global_state.h>
 #include <utils/check.h>
@@ -192,6 +193,7 @@ public:
     new_frame(float dt);
 
     std::unordered_map<std::string, std::unique_ptr<window>> m_windows;
+    engine::action_queue m_actions;
 };
 
 }  // namespace ui
