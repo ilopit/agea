@@ -6,6 +6,7 @@
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/utils/vulkan_initializers.h"
 
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_frustum_types.h>
@@ -339,18 +340,7 @@ vulkan_render::prepare_system_resources()
     auto rc = main_pass->create_shader_effect(AID("se_error"), se_ci, sed);
     KRG_check(rc == result_code::ok && sed, "Always should be good!");
 
-    vfs::load_buffer(se_base / "system/se_outline.vert", vert);
-    vfs::load_buffer(se_base / "system/se_outline.frag", frag);
-
-    se_ci.ds_mode = depth_stencil_mode::outline;
-
-    sed = nullptr;
-    rc = main_pass->create_shader_effect(AID("se_outline"), se_ci, sed);
-    KRG_check(rc == result_code::ok && sed, "Always should be good!");
-
     std::vector<texture_sampler_data> sd;
-    m_outline_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
-        AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
 
     // Grid shader effect and material
     vfs::load_buffer(se_base / "system/se_grid.vert", vert);
@@ -374,6 +364,78 @@ vulkan_render::prepare_system_resources()
 
     m_grid_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
+
+    // Selection mask shader — renders outlined objects as flat white
+    {
+        auto* sel_pass = get_render_pass(AID("selection_mask"));
+        vfs::load_buffer(se_base / "system/se_selection_mask.vert", vert);
+        vfs::load_buffer(se_base / "system/se_selection_mask.frag", frag);
+
+        se_ci = {};
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::none;
+        se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
+        se_ci.ds_mode = depth_stencil_mode::none;
+        se_ci.height = m_height;
+        se_ci.width = m_width;
+        se_ci.rp = sel_pass;
+
+        m_selection_mask_se = nullptr;
+        rc = sel_pass->create_shader_effect(AID("se_selection_mask"), se_ci, m_selection_mask_se);
+        KRG_check(rc == result_code::ok && m_selection_mask_se, "Selection mask SE failed!");
+
+        m_selection_mask_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+            AID("mat_selection_mask"), AID("selection_mask"), sd, *m_selection_mask_se,
+            utils::dynobj{});
+    }
+
+    // Outline post-process shader — edge detection on selection mask
+    {
+        vfs::load_buffer(se_base / "system/se_outline_post.vert", vert);
+        vfs::load_buffer(se_base / "system/se_outline_post.frag", frag);
+
+        se_ci = {};
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::world;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.cull_mode = VK_CULL_MODE_NONE;
+        se_ci.ds_mode = depth_stencil_mode::none;
+        se_ci.height = m_height;
+        se_ci.width = m_width;
+
+        m_outline_post_se = nullptr;
+        rc = main_pass->create_shader_effect(AID("se_outline_post"), se_ci, m_outline_post_se);
+        KRG_check(rc == result_code::ok && m_outline_post_se, "Outline post SE failed!");
+
+        m_outline_post_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+            AID("mat_outline_post"), AID("outline_post"), sd, *m_outline_post_se, utils::dynobj{});
+
+        // Register the selection mask image in bindless so the post-process can sample it
+        auto* sel_pass = get_render_pass(AID("selection_mask"));
+        auto sel_images = sel_pass->get_color_images();
+        if (!sel_images.empty())
+        {
+            auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+            auto* tex = cache.textures.alloc(AID("selection_mask_texture"));
+            if (tex)
+            {
+                tex->image = sel_images[0];
+                auto swapchain_fmt = glob::glob_state().getr_render_device().get_swapchain_format();
+                auto view_ci = vk_utils::make_imageview_create_info(
+                    swapchain_fmt, sel_images[0]->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+                tex->image_view = vk_utils::vulkan_image_view::create_shared(view_ci);
+                tex->format = texture_format::rgba8;
+                m_selection_mask_bindless_idx = tex->get_bindless_index();
+                schd_update_texture(tex);
+            }
+        }
+    }
 
     // Debug wireframe shader for light visualization
     vfs::load_buffer(se_base / "system/se_debug_wire.vert", vert);

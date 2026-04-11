@@ -291,6 +291,12 @@ private:
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
+    draw_selection_mask(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    void
+    draw_outline_post(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    void
     prepare_debug_light_data(render::frame_state& current_frame);
     void
     draw_debug_lights(VkCommandBuffer cmd, render::frame_state& current_frame);
@@ -496,11 +502,15 @@ private:
     shader_effect_data* m_grid_se = nullptr;
     material_data* m_grid_mat = nullptr;
 
+    // Selection mask + outline post-process
+    shader_effect_data* m_selection_mask_se = nullptr;
+    material_data* m_selection_mask_mat = nullptr;
+    shader_effect_data* m_outline_post_se = nullptr;
+    material_data* m_outline_post_mat = nullptr;
+    uint32_t m_selection_mask_bindless_idx = 0xFFFFFFFFu;
+
     // BDA per-frame tracking — ensures per-draw BDA addresses are set before use
     bool m_bda_material_bound = false;
-
-    // Generic
-    material_data* m_outline_mat = nullptr;
 
     // Descriptors
 

@@ -238,6 +238,10 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     auto ui_images = ui_pass->get_color_images();
     m_render_graph.bind_image(AID("ui_target"), *ui_images[0]);
 
+    auto* mask_pass = get_render_pass(AID("selection_mask"));
+    auto mask_images = mask_pass->get_color_images();
+    m_render_graph.bind_image(AID("selection_mask_target"), *mask_images[0]);
+
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
         if (m_shadow_passes[c])
@@ -389,6 +393,21 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
         KRG_check(static_cast<const render_pass*>(main_pass)->bindings().validate_bda_bound(),
                   "Main pass: not all BDA resources bound this frame");
+    }
+
+    // Selection mask pass BDA binding
+    auto* mask_pass_ptr = get_render_pass(AID("selection_mask"));
+    if (mask_pass_ptr && mask_pass_ptr->are_bindings_finalized())
+    {
+        mask_pass_ptr->begin_frame();
+        mask_pass_ptr->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+        mask_pass_ptr->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+        mask_pass_ptr->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+        mask_pass_ptr->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
+
+        KRG_check(
+            static_cast<const render_pass*>(mask_pass_ptr)->bindings().validate_bda_bound(),
+            "Selection mask pass: not all BDA resources bound this frame");
     }
 
     // Prepare debug light visualization data (must happen before rendering)

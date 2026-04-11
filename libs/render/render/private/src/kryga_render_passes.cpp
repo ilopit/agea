@@ -88,6 +88,46 @@ vulkan_render::prepare_render_passes()
                                                                        std::move(ui_pass));
     }
 
+    // Selection mask — same format as swapchain for pipeline compatibility
+    {
+        auto swapchain_fmt = device.get_swapchain_format();
+
+        auto simg_info = vk_utils::make_image_create_info(
+            swapchain_fmt,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            image_extent);
+
+        VmaAllocationCreateInfo simg_allocinfo = {};
+        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+            simg_info,
+            simg_allocinfo));
+
+        auto image_view_ci = vk_utils::make_imageview_create_info(
+            swapchain_fmt, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+
+        auto image_view = vk_utils::vulkan_image_view::create_shared(image_view_ci);
+
+        auto mask_preset = device.is_headless() ? render_pass_builder::presets::picking
+                                                : render_pass_builder::presets::swapchain;
+
+        auto mask_pass =
+            render_pass_builder()
+                .set_color_format(swapchain_fmt)
+                .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
+                .set_width_depth(m_width, m_height)
+                .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
+                                  std::vector<vk_utils::vulkan_image_sptr>{image})
+                .set_enable_stencil(false)
+                .set_preset(mask_preset)
+                .build();
+
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("selection_mask"),
+                                                                       std::move(mask_pass));
+    }
+
 }
 
 // ============================================================================
@@ -153,6 +193,33 @@ vulkan_render::prepare_pass_bindings()
                                 render::binding_scope::per_material);
 
         ui_pass->finalize_bindings(layout_cache);
+    }
+
+    // Selection mask pass — same BDA as main pass (needs camera + objects + instances)
+    auto* mask_pass = get_render_pass(AID("selection_mask"));
+    if (mask_pass)
+    {
+        mask_pass->bindings()
+            .add_bda(AID("dyn_camera_data"))
+            .add_bda(AID("dyn_object_buffer"))
+            .add_bda(AID("dyn_instance_slots"))
+            .add_bda(AID("dyn_bone_matrices"));
+
+        mask_pass->bindings()
+            .add(AID("static_samplers"),
+                 KGPU_textures_descriptor_sets,
+                 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material)
+            .add(AID("bindless_textures"),
+                 KGPU_textures_descriptor_sets,
+                 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material);
+
+        mask_pass->finalize_bindings(layout_cache);
     }
 }
 
@@ -377,6 +444,7 @@ vulkan_render::setup_instanced_render_graph()
 
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
+    m_render_graph.import_resource(AID("selection_mask_target"), rg_resource_type::image);
 
     // Shadow passes (CSM cascades)
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
@@ -447,6 +515,18 @@ vulkan_render::setup_instanced_render_graph()
                                         }
                                     });
 
+    // Selection mask pass — render outlined objects as flat white to R8 mask
+    m_render_graph.add_graphics_pass(AID("selection_mask"),
+                                     {m_render_graph.write(AID("selection_mask_target")),
+                                      m_render_graph.read(AID("dyn_camera_data")),
+                                      m_render_graph.read(AID("dyn_object_buffer")),
+                                      m_render_graph.read(AID("dyn_instance_slots")),
+                                      m_render_graph.read(AID("dyn_bone_matrices"))},
+                                     get_render_pass(AID("selection_mask")),
+                                     VkClearColorValue{0, 0, 0, 0},
+                                     [this](VkCommandBuffer cmd)
+                                     { draw_selection_mask(cmd, *m_current_frame); });
+
     // UI pass
     m_render_graph.add_graphics_pass(AID("ui"),
                                      {m_render_graph.write(AID("ui_target"))},
@@ -474,6 +554,7 @@ vulkan_render::setup_instanced_render_graph()
             m_render_graph.read(AID("dyn_shadow_data")),
             m_render_graph.read(AID("dyn_probe_data")),
             m_render_graph.read(AID("dyn_probe_grid")),
+            m_render_graph.read(AID("selection_mask_target")),
         };
 
         // Shadow map dependencies (ordering only — actual sampling is via bindless)

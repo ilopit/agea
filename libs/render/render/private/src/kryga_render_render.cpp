@@ -261,47 +261,6 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         }
     }
 
-    // Outline second pass (same material for all)
-    pctx = {};
-    bool has_outlined = false;
-    for (const auto& batch : m_draw_batches)
-    {
-        if (!batch.outlined)
-        {
-            continue;
-        }
-
-        if (!has_outlined)
-        {
-            bind_material(cmd, m_outline_mat, current_frame, pctx, false);
-            has_outlined = true;
-        }
-
-        bind_mesh(cmd, batch.mesh);
-
-        m_obj_config.instance_base = batch.first_instance_offset;
-        m_obj_config.material_id = 0;
-        m_obj_config.use_clustered_lighting = 1;
-        m_obj_config.directional_light_id = 0;
-        copy_texture_indices(m_obj_config, m_outline_mat);
-
-        vkCmdPushConstants(cmd,
-                           pctx.pipeline_layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0,
-                           sizeof(gpu::push_constants_main),
-                           &m_obj_config);
-
-        if (batch.mesh->has_indices())
-        {
-            vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
-        }
-        else
-        {
-            vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
-        }
-    }
-
     // DEBUG — render with all lighting disabled (unlit)
     if (!m_debug_draw_batches.empty())
     {
@@ -429,6 +388,9 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
     // Draw grid overlay
     draw_grid(cmd, current_frame);
 
+    // Draw outline post-process (edge detection on selection mask)
+    draw_outline_post(cmd, current_frame);
+
     // Draw UI overlay
     draw_ui_overlay(cmd, current_frame);
 }
@@ -463,6 +425,133 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
                        0,
                        sizeof(gpu::push_constants_grid),
                        &m_grid_pc);
+
+    if (m->has_indices())
+    {
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    }
+    else
+    {
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
+}
+
+// ============================================================================
+// Draw Functions - Selection Mask (outline pre-pass)
+// ============================================================================
+
+void
+vulkan_render::draw_selection_mask(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+    // Draw outlined objects using their own material pipelines.
+    // This preserves billboard vertex transforms. The RGBA8 mask target
+    // captures any non-zero output as "selected" (sampled as R channel).
+    bind_global_descriptors(cmd, current_frame);
+
+    pipeline_ctx pctx{};
+    material_data* cur_material = nullptr;
+
+    for (const auto& batch : m_draw_batches)
+    {
+        if (!batch.outlined)
+        {
+            continue;
+        }
+
+        if (cur_material != batch.material)
+        {
+            bind_material(cmd, batch.material, current_frame, pctx, false);
+            cur_material = batch.material;
+        }
+
+        bind_mesh(cmd, batch.mesh);
+
+        m_obj_config.instance_base = batch.first_instance_offset;
+        m_obj_config.material_id = batch.material->gpu_idx();
+        m_obj_config.use_clustered_lighting = 1;
+        m_obj_config.directional_light_id = get_selected_directional_light_slot();
+        copy_texture_indices(m_obj_config, batch.material);
+
+        vkCmdPushConstants(cmd, pctx.pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0, sizeof(gpu::push_constants_main), &m_obj_config);
+
+        if (batch.mesh->has_indices())
+        {
+            vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+        }
+        else
+        {
+            vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+        }
+    }
+}
+
+// ============================================================================
+// Draw Functions - Outline Post-Process
+// ============================================================================
+
+void
+vulkan_render::draw_outline_post(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+    if (!m_outline_post_se || m_selection_mask_bindless_idx == 0xFFFFFFFFu)
+    {
+        ALOG_TRACE("outline_post: skipped (se={} idx={})",
+                   (void*)m_outline_post_se, m_selection_mask_bindless_idx);
+        return;
+    }
+
+    // Check if there are any outlined objects
+    bool has_outlined = false;
+    for (const auto& batch : m_draw_batches)
+    {
+        if (batch.outlined)
+        {
+            has_outlined = true;
+            break;
+        }
+    }
+    if (!has_outlined)
+    {
+        return;
+    }
+
+    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    if (!m)
+    {
+        return;
+    }
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_outline_post_se->m_pipeline);
+
+    if (m_bindless_set != VK_NULL_HANDLE)
+    {
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                m_outline_post_se->m_pipeline_layout,
+                                KGPU_textures_descriptor_sets, 1,
+                                &m_bindless_set, 0, nullptr);
+    }
+
+    bind_mesh(cmd, m);
+
+    // Push constants: outline color, texel size, thickness, mask texture index
+    struct outline_pc
+    {
+        glm::vec4 outline_color;
+        glm::vec2 texel_size;
+        float thickness;
+        uint32_t mask_texture_idx;
+    };
+
+    outline_pc pc;
+    pc.outline_color = glm::vec4(0.2f, 0.9f, 0.4f, 1.0f);  // green
+    pc.texel_size = glm::vec2(1.0f / m_width, 1.0f / m_height);
+    pc.thickness = 1.5f;
+    pc.mask_texture_idx = m_selection_mask_bindless_idx;
+
+    vkCmdPushConstants(cmd, m_outline_post_se->m_pipeline_layout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0, sizeof(outline_pc), &pc);
 
     if (m->has_indices())
     {
