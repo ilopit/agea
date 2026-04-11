@@ -29,10 +29,8 @@ class sync_service;
 // Command-line startup options
 struct startup_options
 {
-    render::render_mode render_mode = render::render_mode::instanced;
     float run_for_seconds = 0.f;  // 0 = unlimited
     bool show_help = false;
-    bool has_render_mode = false;  // true when --render-mode was explicitly passed
 
     // Parse command line arguments
     // Returns false if parsing failed or help was requested

@@ -14,8 +14,6 @@ namespace render
 
 struct render_config
 {
-    render_mode mode = render_mode::instanced;
-
     struct shadow_cfg
     {
         pcf_mode pcf = pcf_mode::poisson16;

@@ -170,45 +170,37 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_bda_material_bound = false;
     m_render_graph.set_frame_context(swapchain_image_index, width, height);
 
-    // Build descriptor set for cluster culling (required for instanced mode)
-    if (is_instanced_mode())
-    {
-        KRG_check(m_cluster_cull_pass, "Cluster cull pass required for instanced mode");
-        KRG_check(m_cluster_cull_pass->are_bindings_finalized(),
-                  "Cluster cull bindings not finalized");
+    // Build descriptor set for cluster culling
+    KRG_check(m_cluster_cull_pass, "Cluster cull pass required");
+    KRG_check(m_cluster_cull_pass->are_bindings_finalized(), "Cluster cull bindings not finalized");
 
-        m_cluster_cull_pass->begin_frame();
-        m_cluster_cull_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
-        m_cluster_cull_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-        m_cluster_cull_pass->bind(AID("dyn_gpu_universal_light_data"),
-                                  current_frame.buffers.universal_lights);
-        m_cluster_cull_pass->bind(AID("dyn_cluster_light_counts"),
-                                  current_frame.buffers.cluster_counts);
-        m_cluster_cull_pass->bind(AID("dyn_cluster_light_indices"),
-                                  current_frame.buffers.cluster_indices);
+    m_cluster_cull_pass->begin_frame();
+    m_cluster_cull_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+    m_cluster_cull_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+    m_cluster_cull_pass->bind(AID("dyn_gpu_universal_light_data"),
+                              current_frame.buffers.universal_lights);
+    m_cluster_cull_pass->bind(AID("dyn_cluster_light_counts"),
+                              current_frame.buffers.cluster_counts);
+    m_cluster_cull_pass->bind(AID("dyn_cluster_light_indices"),
+                              current_frame.buffers.cluster_indices);
 
-        m_cluster_cull_descriptor_set = m_cluster_cull_pass->get_descriptor_set(
-            0, *current_frame.frame->m_dynamic_descriptor_allocator);
-    }
+    m_cluster_cull_descriptor_set = m_cluster_cull_pass->get_descriptor_set(
+        0, *current_frame.frame->m_dynamic_descriptor_allocator);
 
-    // Build descriptor set for frustum culling (required for instanced mode)
-    if (is_instanced_mode())
-    {
-        KRG_check(m_frustum_cull_pass, "Frustum cull pass required for instanced mode");
-        KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required for instanced mode");
-        KRG_check(m_frustum_cull_pass->are_bindings_finalized(),
-                  "Frustum cull bindings not finalized");
+    // Build descriptor set for frustum culling
+    KRG_check(m_frustum_cull_pass, "Frustum cull pass required");
+    KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required");
+    KRG_check(m_frustum_cull_pass->are_bindings_finalized(), "Frustum cull bindings not finalized");
 
-        m_frustum_cull_pass->begin_frame();
-        m_frustum_cull_pass->bind(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
-        m_frustum_cull_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-        m_frustum_cull_pass->bind(AID("dyn_visible_indices"),
-                                  current_frame.buffers.visible_indices);
-        m_frustum_cull_pass->bind(AID("dyn_cull_output"), current_frame.buffers.cull_output);
+    m_frustum_cull_pass->begin_frame();
+    m_frustum_cull_pass->bind(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
+    m_frustum_cull_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+    m_frustum_cull_pass->bind(AID("dyn_visible_indices"),
+                              current_frame.buffers.visible_indices);
+    m_frustum_cull_pass->bind(AID("dyn_cull_output"), current_frame.buffers.cull_output);
 
-        m_frustum_cull_descriptor_set = m_frustum_cull_pass->get_descriptor_set(
-            0, *current_frame.frame->m_dynamic_descriptor_allocator);
-    }
+    m_frustum_cull_descriptor_set = m_frustum_cull_pass->get_descriptor_set(
+        0, *current_frame.frame->m_dynamic_descriptor_allocator);
 
     m_render_graph.begin_frame();
 
@@ -231,13 +223,10 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_render_graph.bind_buffer(AID("dyn_probe_data"), current_frame.buffers.probe_data);
     m_render_graph.bind_buffer(AID("dyn_probe_grid"), current_frame.buffers.probe_grid);
 
-    if (is_instanced_mode())
-    {
-        m_render_graph.bind_buffer(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
-        m_render_graph.bind_buffer(AID("dyn_visible_indices"),
-                                   current_frame.buffers.visible_indices);
-        m_render_graph.bind_buffer(AID("dyn_cull_output"), current_frame.buffers.cull_output);
-    }
+    m_render_graph.bind_buffer(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
+    m_render_graph.bind_buffer(AID("dyn_visible_indices"),
+                               current_frame.buffers.visible_indices);
+    m_render_graph.bind_buffer(AID("dyn_cull_output"), current_frame.buffers.cull_output);
 
     // Bind per-frame image resources
     auto* main_pass = get_render_pass(AID("main"));
@@ -353,21 +342,13 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     dyn.upload_data(m_camera_data);
     dyn.end();
 
-    if (is_instanced_mode())
+    // Upload frustum data for GPU frustum culling
+    upload_frustum_data(current_frame);
+
+    // GPU cluster culling
     {
-        // Upload frustum data for GPU frustum culling (required for instanced mode)
-        KRG_check(m_frustum_cull_pass, "Frustum cull pass required for instanced mode");
-        KRG_check(m_gpu_frustum_culling_enabled, "GPU frustum culling required for instanced mode");
-        upload_frustum_data(current_frame);
-
-        // GPU cluster culling required for instanced mode
-        KRG_check(m_cluster_cull_pass, "Cluster cull pass required for instanced mode");
-        KRG_check(m_cluster_cull_shader, "Cluster cull shader required for instanced mode");
-
-        // GPU compute path: upload config and dispatch compute shader
         ZoneScopedN("Render::GPUClusterCull");
 
-        // Upload cluster config (needed by compute shader)
         const auto& config = m_cluster_grid.get_config();
         m_cluster_config.tiles_x = config.tiles_x;
         m_cluster_config.tiles_y = config.tiles_y;
@@ -386,18 +367,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
         current_frame.buffers.cluster_config.end();
 
-        // Dispatch compute shader will be called after command buffer begins
         m_clusters_dirty = false;
-    }
-    else
-    {
-        // Per-object mode: rebuild light grid when lights changed
-        if (m_light_grid_dirty)
-        {
-            ZoneScopedN("Render::RebuildLightGrid");
-            rebuild_light_grid();
-            m_light_grid_dirty = false;
-        }
     }
 
     // Bind BDA resources — validates each buffer is available this frame

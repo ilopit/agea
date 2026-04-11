@@ -3,7 +3,6 @@
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_render_resource.h"
-#include "render/utils/light_grid.h"
 
 #include <utils/id.h>
 
@@ -15,6 +14,12 @@ namespace kryga
 {
 namespace render
 {
+
+enum class light_type
+{
+    spot = 0,
+    point
+};
 
 class vulkan_directional_light_data : public vulkan_render_resource
 {

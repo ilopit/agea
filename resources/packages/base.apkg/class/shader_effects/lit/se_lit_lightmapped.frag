@@ -55,7 +55,7 @@ void main()
             norm, viewDir, shininess, albedo, specular_tex, dirShadow);
 
     // Local lights (point and spot) — still fully realtime
-    if (is_local_lights_enabled() && constants.obj.use_clustered_lighting != 0u)
+    if (is_local_lights_enabled())
     {
         uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
         uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
@@ -65,19 +65,6 @@ void main()
         {
             uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
             universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
-            float localShadow = getLocalLightShadow(light, in_world_pos);
-
-            if(light.type == KGPU_light_type_point)
-                direct += CalcPointLight(light, norm, in_world_pos, viewDir, shininess, albedo, specular_tex) * localShadow;
-            else if(light.type == KGPU_light_type_spot)
-                direct += CalcSpotLight(light, norm, in_world_pos, viewDir, shininess, albedo, specular_tex) * localShadow;
-        }
-    }
-    else if (is_local_lights_enabled())
-    {
-        for (uint i = 0u; i < constants.obj.local_lights_size; i++)
-        {
-            universal_light_data light = dyn_gpu_universal_light_data.objects[constants.obj.local_light_ids[i]];
             float localShadow = getLocalLightShadow(light, in_world_pos);
 
             if(light.type == KGPU_light_type_point)

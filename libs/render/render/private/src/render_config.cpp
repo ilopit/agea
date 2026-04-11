@@ -24,16 +24,6 @@ namespace
 // Enum <-> string tables
 // ============================================================================
 
-const std::unordered_map<std::string, render_mode> render_mode_from_string = {
-    {"instanced", render_mode::instanced},
-    {"per_object", render_mode::per_object},
-};
-
-const std::unordered_map<render_mode, std::string> render_mode_to_string = {
-    {render_mode::instanced, "instanced"},
-    {render_mode::per_object, "per_object"},
-};
-
 const std::unordered_map<std::string, pcf_mode> pcf_mode_from_string = {
     {"3x3", pcf_mode::pcf_3x3},
     {"5x5", pcf_mode::pcf_5x5},
@@ -64,25 +54,6 @@ extract_field(const YAML::Node& node, const char* key, T& field)
         return;
     }
     field = v.as<T>();
-}
-
-void
-extract_field(const YAML::Node& node, const char* key, render_mode& field)
-{
-    auto v = node[key];
-    if (!v || !v.IsScalar())
-    {
-        return;
-    }
-    auto it = render_mode_from_string.find(v.as<std::string>());
-    if (it != render_mode_from_string.end())
-    {
-        field = it->second;
-    }
-    else
-    {
-        ALOG_WARN("Unknown render mode '{}', keeping default", v.as<std::string>());
-    }
 }
 
 void
@@ -211,8 +182,6 @@ render_config::load(const utils::path& path)
         return false;
     }
 
-    extract_field(container, "mode", mode);
-
     if (auto shadows_node = container["shadows"]; shadows_node && shadows_node.IsMap())
     {
         extract_field(shadows_node, "enabled", shadows.enabled);
@@ -260,8 +229,6 @@ bool
 render_config::save(const utils::path& path) const
 {
     YAML::Node root;
-
-    root["mode"] = render_mode_to_string.at(mode);
 
     YAML::Node shadows_node;
     shadows_node["enabled"] = shadows.enabled;
@@ -316,8 +283,6 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
         serialization::container container;
         if (serialization::read_container(cache, container))
         {
-            extract_field(container, "mode", mode);
-
             if (auto s = container["shadows"]; s && s.IsMap())
             {
                 extract_field(s, "pcf", shadows.pcf);
@@ -371,7 +336,6 @@ render_config::save_to_cache(const vfs::rid& cache) const
         vfs::rid(cache.mount_point(), ""));
 
     YAML::Node root;
-    root["mode"] = render_mode_to_string.at(mode);
 
     YAML::Node shadows_node;
     shadows_node["enabled"] = shadows.enabled;

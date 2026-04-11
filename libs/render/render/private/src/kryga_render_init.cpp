@@ -62,10 +62,6 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     m_width = w;
     m_height = h;
     m_render_config = config;
-    m_render_mode = config.mode;
-
-    ALOG_INFO("Initializing renderer in {} mode",
-              m_render_mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
 
     // Initialize static samplers first - needed for bindless texture layout
     init_static_samplers();
@@ -199,19 +195,13 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     m_cluster_config.screen_width = grid_cfg.screen_width;
     m_cluster_config.screen_height = grid_cfg.screen_height;
 
-    // Initialize per-object light grid (for non-clustered path)
-    m_light_grid.init(50.0f);  // Cell size matching typical light radius
-
     // Initialize shadow passes, then register their depth views in bindless + create shaders
     init_shadow_passes();
     init_shadow_resources();
 
-    // Initialize GPU compute shaders (only needed for instanced mode)
-    if (m_render_mode == render_mode::instanced)
-    {
-        init_cluster_cull_compute();
-        init_frustum_cull_compute();
-    }
+    // Initialize GPU compute shaders
+    init_cluster_cull_compute();
+    init_frustum_cull_compute();
 
     // Snapshot initial config for runtime change detection
     m_applied_clusters = m_render_config.clusters;
@@ -262,27 +252,6 @@ vulkan_render::apply_config_changes()
         setup_render_graph();
     }
 
-    // Render mode — requires full graph rebuild
-    if (m_render_config.mode != m_render_mode)
-    {
-        ALOG_INFO("Switching render mode to {}",
-                  m_render_config.mode == render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
-
-        // Wait for GPU before rebuilding the graph
-        glob::glob_state().getr_render_device().wait_for_fences();
-
-        m_render_mode = m_render_config.mode;
-
-        // Initialize compute passes if switching to instanced mode
-        if (m_render_mode == render_mode::instanced && !m_frustum_cull_pass)
-        {
-            init_cluster_cull_compute();
-            init_frustum_cull_compute();
-        }
-
-        m_render_graph.reset();
-        setup_render_graph();
-    }
 }
 
 void

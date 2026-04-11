@@ -29,7 +29,6 @@
 
 #include "packages/base/model/mesh_object.h"
 
-#include <render/utils/light_grid.h>
 
 #include <core/level.h>
 #include <core/lightmap_manifest.h>

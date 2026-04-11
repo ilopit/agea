@@ -20,8 +20,6 @@
 #define KGPU_textures_descriptor_sets 2
 #define KGPU_materials_descriptor_sets 3
 
-#define KGPU_max_lights_per_object 24
-
 #define KGPU_initial_instance_slots_size 8192
 
 #define KGPU_znear 0.1

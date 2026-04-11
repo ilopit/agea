@@ -234,7 +234,6 @@ void
 vulkan_render::schd_add_light(render::vulkan_universal_light_data* ld)
 {
     m_clusters_dirty = true;
-    m_light_grid_dirty = true;
     for (auto& q : m_frames)
     {
         q.uploads.universal_light_queue.emplace_back(ld);
@@ -254,7 +253,6 @@ void
 vulkan_render::schd_update_light(render::vulkan_universal_light_data* ld)
 {
     m_clusters_dirty = true;
-    m_light_grid_dirty = true;
     for (auto& q : m_frames)
     {
         q.uploads.universal_light_queue.emplace_back(ld);
@@ -398,25 +396,6 @@ vulkan_render::build_light_clusters()
     // Build clusters
     m_cluster_grid.build_clusters(
         m_camera_data.view, m_camera_data.projection, inv_projection, lights);
-}
-
-void
-vulkan_render::rebuild_light_grid()
-{
-    KRG_check(m_light_grid.is_initialized(), "Light grid should be initialized");
-
-    m_light_grid.clear();
-
-    // Insert all universal lights into the grid (skip invalid/freed lights)
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
-    {
-        auto* light = m_cache.universal_lights.at(i);
-        if (!light->is_valid())
-        {
-            continue;
-        }
-        m_light_grid.insert_light(light->slot(), light->gpu_data.position, light->gpu_data.radius);
-    }
 }
 
 void

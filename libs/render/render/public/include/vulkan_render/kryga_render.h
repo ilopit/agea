@@ -14,7 +14,6 @@
 #include "vulkan_render/render_config.h"
 #include "render/utils/frustum.h"
 #include "render/utils/cluster_grid.h"
-#include "render/utils/light_grid.h"
 #include "gpu_types/gpu_cluster_types.h"
 #include "gpu_types/gpu_shadow_types.h"
 
@@ -272,19 +271,7 @@ public:
         return m_culled_draws;
     }
 
-    render_mode
-    get_render_mode() const
-    {
-        return m_render_mode;
-    }
-
-    bool
-    is_instanced_mode() const
-    {
-        return m_render_mode == render_mode::instanced;
-    }
-
-    // Apply runtime config changes (cluster reinit, render mode switch, etc.)
+    // Apply runtime config changes (cluster reinit, etc.)
     void
     apply_config_changes();
 
@@ -296,18 +283,11 @@ private:
                  uint32_t width,
                  uint32_t height);
 
-    // Mode-specific drawing functions
     void
     draw_objects_instanced(render::frame_state& frame);
 
     void
-    draw_objects_per_object(render::frame_state& frame);
-
-    void
     draw_picking_instanced(VkCommandBuffer cmd);
-
-    void
-    draw_picking_per_object(VkCommandBuffer cmd);
 
     void
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
@@ -369,10 +349,6 @@ private:
 
     void
     upload_frustum_data(render::frame_state& frame);
-
-    // Per-object light grid methods
-    void
-    rebuild_light_grid();
 
     void
     draw_multi_pipeline_objects_queue(render_line_container& r,
@@ -462,9 +438,6 @@ private:
 
     void
     setup_instanced_render_graph();
-
-    void
-    setup_per_object_render_graph();
 
     // Shadow mapping
     void
@@ -568,10 +541,6 @@ private:
     VkDescriptorSet m_frustum_cull_descriptor_set = VK_NULL_HANDLE;
     bool m_gpu_frustum_culling_enabled = true;
 
-    // Per-object light grid (alternative to clustered)
-    light_grid m_light_grid;
-    bool m_light_grid_dirty = true;
-
     // Frustum for view culling
     frustum m_frustum;
 
@@ -598,9 +567,6 @@ private:
 
     // Selected directional light
     utils::id m_selected_directional_light_id;
-
-    // Render mode (set at init, determines graph configuration)
-    render_mode m_render_mode = render_mode::instanced;
 
     // Instance drawing state
     std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots

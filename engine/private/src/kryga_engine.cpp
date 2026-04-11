@@ -92,32 +92,6 @@ startup_options::parse(int argc, char** argv, startup_options& out)
             out.show_help = true;
             return false;
         }
-        else if (strcmp(arg, "--render-mode") == 0 || strcmp(arg, "-r") == 0)
-        {
-            if (i + 1 >= argc)
-            {
-                ALOG_ERROR("{} requires a value (instanced|per_object)", arg);
-                return false;
-            }
-            ++i;
-            const char* value = argv[i];
-
-            if (strcmp(value, "instanced") == 0)
-            {
-                out.render_mode = render::render_mode::instanced;
-                out.has_render_mode = true;
-            }
-            else if (strcmp(value, "per_object") == 0)
-            {
-                out.render_mode = render::render_mode::per_object;
-                out.has_render_mode = true;
-            }
-            else
-            {
-                ALOG_ERROR("Unknown render mode '{}'. Valid values: instanced, per_object", value);
-                return false;
-            }
-        }
         else if (strcmp(arg, "--run-for") == 0 || strcmp(arg, "-t") == 0)
         {
             if (i + 1 >= argc)
@@ -155,13 +129,8 @@ startup_options::print_help(const char* program_name)
         "Usage: {} [OPTIONS]\n\n"
         "Options:\n"
         "  -h, --help              Show this help message\n"
-        "  -r, --render-mode MODE  Set render mode (default: instanced)\n"
-        "                          Values: instanced, per_object\n"
         "  -t, --run-for SECONDS   Run for specified duration then exit\n"
-        "                          (0 or omit for unlimited)\n\n"
-        "Render Modes:\n"
-        "  instanced   - Batched instanced drawing with GPU cluster culling\n"
-        "  per_object  - Per-object drawing with CPU light grid",
+        "                          (0 or omit for unlimited)",
         program_name);
 }
 
@@ -195,8 +164,6 @@ bool
 vulkan_engine::init(const startup_options& options)
 {
     ALOG_INFO("Initialization started ...");
-    ALOG_INFO("Render mode: {}",
-              options.render_mode == render::render_mode::instanced ? "INSTANCED" : "PER_OBJECT");
 
     m_run_for_seconds = options.run_for_seconds;
     if (m_run_for_seconds > 0.f)
@@ -250,12 +217,6 @@ vulkan_engine::init(const startup_options& options)
     render::render_config render_cfg;
     render_cfg.load_with_cache(vfs::rid("data://configs/render.acfg"),
                                vfs::rid("rtcache://render.acfg"));
-
-    // CLI --render-mode override takes precedence over config file
-    if (options.has_render_mode)
-    {
-        render_cfg.mode = options.render_mode;
-    }
 
     glob::glob_state().get_game_editor()->init();
 

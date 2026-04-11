@@ -183,37 +183,22 @@ vulkan_render::prepare_instance_data(render::frame_state& frame)
     m_draw_batches.clear();
     m_debug_draw_batches.clear();
 
-    if (is_instanced_mode())
+    // Build batches for default queue
+    for (auto& [queue_id, container] : m_default_render_object_queue)
     {
-        // Build batches for default queue
-        for (auto& [queue_id, container] : m_default_render_object_queue)
-        {
-            build_batches_for_queue(container, false);
-        }
-
-        // Build batches for outline queue
-        for (auto& [queue_id, container] : m_outline_render_object_queue)
-        {
-            build_batches_for_queue(container, true);
-        }
-
-        // Build batches for debug queue (separate list — skipped by shadows)
-        for (auto& [queue_id, container] : m_debug_render_object_queue)
-        {
-            build_batches_for_queue_into(container, false, m_debug_draw_batches);
-        }
+        build_batches_for_queue(container, false);
     }
-    else
+
+    // Build batches for outline queue
+    for (auto& [queue_id, container] : m_outline_render_object_queue)
     {
-        // Per-object mode: populate identity buffer (slots[i] = i) so shaders using
-        // get_object_index() with instance_base=0 and firstInstance=slot will work correctly.
-        // get_object_index() = slots[0 + gl_InstanceIndex] = slots[slot] = slot
-        uint32_t max_slot = m_cache.objects.get_size();
-        m_instance_slots_staging.resize(max_slot);
-        for (uint32_t i = 0; i < max_slot; ++i)
-        {
-            m_instance_slots_staging[i] = i;
-        }
+        build_batches_for_queue(container, true);
+    }
+
+    // Build batches for debug queue (separate list — skipped by shadows)
+    for (auto& [queue_id, container] : m_debug_render_object_queue)
+    {
+        build_batches_for_queue_into(container, false, m_debug_draw_batches);
     }
 
     // Upload all instance slots
@@ -255,8 +240,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.instance_base = batch.first_instance_offset;
         m_obj_config.material_id = batch.material->gpu_idx();
         m_obj_config.use_clustered_lighting = 1;
-        m_obj_config.local_lights_size = 0;
-        m_obj_config.directional_light_id = get_selected_directional_light_slot();
+                m_obj_config.directional_light_id = get_selected_directional_light_slot();
         copy_texture_indices(m_obj_config, batch.material);
 
         vkCmdPushConstants(cmd,
@@ -298,8 +282,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.instance_base = batch.first_instance_offset;
         m_obj_config.material_id = 0;
         m_obj_config.use_clustered_lighting = 1;
-        m_obj_config.local_lights_size = 0;
-        m_obj_config.directional_light_id = 0;
+                m_obj_config.directional_light_id = 0;
         copy_texture_indices(m_obj_config, m_outline_mat);
 
         vkCmdPushConstants(cmd,
@@ -347,8 +330,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
             m_obj_config.instance_base = batch.first_instance_offset;
             m_obj_config.material_id = batch.material->gpu_idx();
             m_obj_config.use_clustered_lighting = 0;
-            m_obj_config.local_lights_size = 0;
-            m_obj_config.directional_light_id = 0;
+                        m_obj_config.directional_light_id = 0;
             copy_texture_indices(m_obj_config, batch.material);
 
             vkCmdPushConstants(cmd,
@@ -417,8 +399,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                                                     ? m_cache.directional_lights.at(0)->slot()
                                                     : 0;
             m_obj_config.use_clustered_lighting = 1;
-            m_obj_config.local_lights_size = 0;
-            m_obj_config.material_id = obj->material->gpu_idx();
+                        m_obj_config.material_id = obj->material->gpu_idx();
             m_obj_config.instance_base = transparent_base + transparent_idx;
             copy_texture_indices(m_obj_config, obj->material);
 
@@ -440,78 +421,6 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
 
             ++transparent_idx;
         }
-    }
-
-    // Draw debug light visualization
-    draw_debug_lights(cmd, current_frame);
-
-    // Draw grid overlay
-    draw_grid(cmd, current_frame);
-
-    // Draw UI overlay
-    draw_ui_overlay(cmd, current_frame);
-}
-
-// ============================================================================
-// Draw Functions - Per-Object Mode
-// ============================================================================
-
-void
-vulkan_render::draw_objects_per_object(render::frame_state& current_frame)
-{
-    ZoneScopedN("Render::DrawObjectsPerObject");
-
-    auto cmd = current_frame.frame->m_main_command_buffer;
-
-    // Bind global descriptor sets once for the entire render pass
-    bind_global_descriptors(cmd, current_frame);
-
-    // DEFAULT
-    for (auto& r : m_default_render_object_queue)
-    {
-        draw_objects_queue(r.second, cmd, current_frame, false);
-    }
-
-    // OUTLINE
-    for (auto& r : m_outline_render_object_queue)
-    {
-        draw_objects_queue(r.second, cmd, current_frame, true);
-    }
-
-    pipeline_ctx pctx{};
-    bind_material(cmd, m_outline_mat, current_frame, pctx, false);
-
-    for (auto& r : m_outline_render_object_queue)
-    {
-        draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
-    }
-
-    // DEBUG — render with all lighting disabled (unlit)
-    if (!m_debug_render_object_queue.empty())
-    {
-        uint32_t saved_dir = m_obj_config.enable_directional_light;
-        uint32_t saved_local = m_obj_config.enable_local_lights;
-        uint32_t saved_baked = m_obj_config.enable_baked_light;
-
-        m_obj_config.enable_directional_light = 0;
-        m_obj_config.enable_local_lights = 0;
-        m_obj_config.enable_baked_light = 0;
-
-        for (auto& r : m_debug_render_object_queue)
-        {
-            draw_objects_queue(r.second, cmd, current_frame, false);
-        }
-
-        m_obj_config.enable_directional_light = saved_dir;
-        m_obj_config.enable_local_lights = saved_local;
-        m_obj_config.enable_baked_light = saved_baked;
-    }
-
-    // TRANSPARENT
-    if (!m_transparent_render_object_queue.empty())
-    {
-        update_transparent_objects_queue();
-        draw_multi_pipeline_objects_queue(m_transparent_render_object_queue, cmd, current_frame);
     }
 
     // Draw debug light visualization
@@ -590,32 +499,7 @@ vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
     draw_pick_batches(m_debug_draw_batches);
 }
 
-void
-vulkan_render::draw_picking_per_object(VkCommandBuffer cmd)
-{
-    ZoneScopedN("Render::DrawPickingPerObject");
 
-    // Bind global descriptor sets once for the picking pass
-    bind_global_descriptors(cmd, *m_current_frame);
-
-    pipeline_ctx pctx{};
-    bind_material(cmd, m_pick_mat, *m_current_frame, pctx, false);
-
-    for (auto& [queue_id, container] : m_default_render_object_queue)
-    {
-        draw_same_pipeline_objects_queue(cmd, pctx, container, false);
-    }
-
-    for (auto& [queue_id, container] : m_outline_render_object_queue)
-    {
-        draw_same_pipeline_objects_queue(cmd, pctx, container, false);
-    }
-
-    for (auto& [queue_id, container] : m_debug_render_object_queue)
-    {
-        draw_same_pipeline_objects_queue(cmd, pctx, container, false);
-    }
-}
 
 // ============================================================================
 // Draw Functions - Grid (shared)
@@ -828,22 +712,9 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
     // Set directional light (global)
     m_obj_config.directional_light_id = get_selected_directional_light_slot();
 
-    // Set lighting mode
-    m_obj_config.use_clustered_lighting = is_instanced_mode() ? 1 : 0;
-
-    // Per-object lighting: query light grid for lights affecting this object
-    if (!is_instanced_mode() && m_light_grid.is_initialized())
-    {
-        m_obj_config.local_lights_size = m_light_grid.query_lights(obj->gpu_data.obj_pos,
-                                                                   obj->gpu_data.bounding_radius,
-                                                                   m_obj_config.local_light_ids,
-                                                                   KGPU_max_lights_per_object);
-    }
-    else
-    {
-        m_obj_config.local_lights_size = 0;
-    }
-
+    // Always use clustered lighting
+    m_obj_config.use_clustered_lighting = 1;
+    
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
 

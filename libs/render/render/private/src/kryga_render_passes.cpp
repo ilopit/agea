@@ -400,15 +400,7 @@ vulkan_render::init_frustum_cull_compute()
 void
 vulkan_render::setup_render_graph()
 {
-    switch (m_render_mode)
-    {
-    case render_mode::instanced:
-        setup_instanced_render_graph();
-        break;
-    case render_mode::per_object:
-        setup_per_object_render_graph();
-        break;
-    }
+    setup_instanced_render_graph();
 }
 
 void
@@ -583,129 +575,6 @@ vulkan_render::setup_instanced_render_graph()
 
     bool result = m_render_graph.compile();
     KRG_check(result, "Instanced render graph compilation failed");
-}
-
-void
-vulkan_render::setup_per_object_render_graph()
-{
-    // =========================================================================
-    // PER-OBJECT MODE GRAPH
-    // - No compute pass (CPU light grid used instead)
-    // - Per-object draw calls with firstInstance = slot
-    // - Identity buffer: slots[i] = i
-    // =========================================================================
-
-    // Register resources (same as instanced, but cluster buffers are CPU-filled)
-    m_render_graph.register_buffer(AID("dyn_camera_data"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_object_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_gpu_universal_light_data"),
-                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_directional_lights_buffer"),
-                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_cluster_light_counts"),
-                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_cluster_light_indices"),
-                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_cluster_config"), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_instance_slots"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_bone_matrices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_material_buffer"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_shadow_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_probe_data"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    m_render_graph.register_buffer(AID("dyn_probe_grid"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-    m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
-    m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
-    m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
-
-    // Shadow passes (CSM cascades)
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
-    {
-        auto pass_name = AID("shadow_csm_" + std::to_string(c));
-        m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(pass_name,
-                                         {m_render_graph.write(pass_name),
-                                          m_render_graph.read(AID("dyn_object_buffer")),
-                                          m_render_graph.read(AID("dyn_instance_slots"))},
-                                         m_shadow_passes[c].get(),
-                                         VkClearColorValue{},
-                                         [this, c](VkCommandBuffer cmd)
-                                         { draw_shadow_pass(cmd, c); });
-    }
-
-    // Local light shadow passes: front + back hemispheres
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
-    {
-        auto front_name = AID("shadow_local_" + std::to_string(i));
-        m_render_graph.import_resource(front_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(front_name,
-                                         {m_render_graph.write(front_name),
-                                          m_render_graph.read(AID("dyn_object_buffer")),
-                                          m_render_graph.read(AID("dyn_instance_slots"))},
-                                         m_shadow_local_passes[i * 2].get(),
-                                         VkClearColorValue{},
-                                         [this, i](VkCommandBuffer cmd)
-                                         { draw_shadow_local_pass(cmd, i, false); });
-
-        auto back_name = AID("shadow_local_back_" + std::to_string(i));
-        m_render_graph.import_resource(back_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(back_name,
-                                         {m_render_graph.write(back_name),
-                                          m_render_graph.read(AID("dyn_object_buffer")),
-                                          m_render_graph.read(AID("dyn_instance_slots"))},
-                                         m_shadow_local_passes[i * 2 + 1].get(),
-                                         VkClearColorValue{},
-                                         [this, i](VkCommandBuffer cmd)
-                                         { draw_shadow_local_pass(cmd, i, true); });
-    }
-
-    // NO compute pass - per-object mode uses CPU light grid
-
-    // UI pass
-    m_render_graph.add_graphics_pass(AID("ui"),
-                                     {m_render_graph.write(AID("ui_target"))},
-                                     get_render_pass(AID("ui")),
-                                     VkClearColorValue{0, 0, 0, 0},
-                                     [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
-
-    // Picking pass - per-object drawing
-    m_render_graph.add_graphics_pass(AID("picking"),
-                                     {m_render_graph.write(AID("picking_target")),
-                                      m_render_graph.read(AID("dyn_camera_data")),
-                                      m_render_graph.read(AID("dyn_object_buffer")),
-                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
-                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
-                                      m_render_graph.read(AID("dyn_cluster_config")),
-                                      m_render_graph.read(AID("dyn_instance_slots")),
-                                      m_render_graph.read(AID("dyn_bone_matrices"))},
-                                     get_render_pass(AID("picking")),
-                                     VkClearColorValue{0, 0, 0, 0},
-                                     [this](VkCommandBuffer cmd) { draw_picking_per_object(cmd); });
-
-    // Main pass - per-object drawing (see instanced graph for shadow map note)
-    m_render_graph.add_graphics_pass(AID("main"),
-                                     {m_render_graph.write(AID("swapchain")),
-                                      m_render_graph.read(AID("ui_target")),
-                                      m_render_graph.read(AID("dyn_camera_data")),
-                                      m_render_graph.read(AID("dyn_object_buffer")),
-                                      m_render_graph.read(AID("dyn_gpu_universal_light_data")),
-                                      m_render_graph.read(AID("dyn_directional_lights_buffer")),
-                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
-                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
-                                      m_render_graph.read(AID("dyn_cluster_config")),
-                                      m_render_graph.read(AID("dyn_instance_slots")),
-                                      m_render_graph.read(AID("dyn_bone_matrices")),
-                                      m_render_graph.read(AID("dyn_material_buffer")),
-                                      m_render_graph.read(AID("dyn_shadow_data")),
-                                      m_render_graph.read(AID("dyn_probe_data")),
-                                      m_render_graph.read(AID("dyn_probe_grid"))},
-                                     get_render_pass(AID("main")),
-                                     VkClearColorValue{0, 0, 0, 1.0},
-                                     [this](VkCommandBuffer)
-                                     { draw_objects_per_object(*m_current_frame); });
-
-    bool result = m_render_graph.compile();
-    KRG_check(result, "Per-object render graph compilation failed");
 }
 
 }  // namespace render

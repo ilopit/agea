@@ -9,12 +9,6 @@ namespace kryga
 namespace render
 {
 
-enum class render_mode : uint32_t
-{
-    instanced,  // Batched instanced drawing with GPU cluster culling
-    per_object  // Legacy per-object drawing with CPU light grid
-};
-
 enum class pcf_mode : uint32_t
 {
     pcf_3x3 = KGPU_PCF_3X3,

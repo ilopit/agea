@@ -395,10 +395,6 @@ performance_counters_window::handle()
     ImGui::Text("Cull %  : %3.3lf", culled_draws_avg / all_draws_avg * 100);
     ImGui::Separator();
 
-    // Render mode is set at startup (no runtime switching)
-    bool is_instanced = glob::glob_state().getr_vulkan_render().is_instanced_mode();
-    ImGui::Text("Mode: %s", is_instanced ? "INSTANCED" : "PER_OBJECT");
-
     --lock;
 }
 
@@ -733,26 +729,6 @@ render_config_window::handle()
     }
 
     // =========================================================================
-    // Render Mode
-    // =========================================================================
-    if (ImGui::CollapsingHeader("Render Mode"))
-    {
-        const char* mode_names[] = {"Instanced", "Per Object"};
-        int mode = static_cast<int>(cfg.mode);
-        if (ImGui::Combo("Mode", &mode, mode_names, IM_ARRAYSIZE(mode_names)))
-        {
-            cfg.mode = static_cast<render::render_mode>(mode);
-        }
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip(
-                "Instanced: batched drawing with GPU cluster + frustum culling.\n"
-                "Per Object: legacy per-object drawing with CPU light grid.\n\n"
-                "Switching triggers a render graph rebuild.");
-        }
-    }
-
-    // =========================================================================
     // Save / Reset All
     // =========================================================================
     ImGui::Spacing();
@@ -776,9 +752,7 @@ render_config_window::handle()
 
     if (ImGui::Button("Reset All"))
     {
-        auto mode = cfg.mode;  // Preserve render mode — requires reinit to change
         cfg = defaults;
-        cfg.mode = mode;
     }
     if (ImGui::IsItemHovered())
     {

@@ -19,13 +19,11 @@ struct push_constants_main
     uint directional_light_id;
     uint use_clustered_lighting;
     uint instance_base;
-    uint local_lights_size;
     uint enable_directional_light;
     uint enable_local_lights;
     uint enable_baked_light;
     uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
     uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
-    uint local_light_ids[KGPU_max_lights_per_object];
     uint64_t bdag_camera;
     uint64_t bdag_objects;
     uint64_t bdag_directional_lights;
