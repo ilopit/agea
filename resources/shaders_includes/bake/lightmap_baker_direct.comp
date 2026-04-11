@@ -26,14 +26,81 @@ layout(scalar, set = 0, binding = 3) readonly buffer DirLights {
     directional_light_data lights[];
 } dyn_dir_lights;
 
+// Local lights (point + spot)
+layout(scalar, set = 0, binding = 4) readonly buffer LocalLights {
+    universal_light_data lights[];
+} dyn_local_lights;
+
 // Output lightmap (direct illumination)
-layout(rgba16f, set = 0, binding = 4) uniform image2D out_lightmap;
+layout(rgba16f, set = 0, binding = 5) uniform image2D out_lightmap;
 
 // World position and normal G-buffer for the lightmap (computed from UV2 mapping)
-layout(rgba32f, set = 0, binding = 5) readonly uniform image2D gbuf_position;
-layout(rgba32f, set = 0, binding = 6) readonly uniform image2D gbuf_normal;
+layout(rgba32f, set = 0, binding = 6) readonly uniform image2D gbuf_position;
+layout(rgba32f, set = 0, binding = 7) readonly uniform image2D gbuf_normal;
+
 
 #include "bake/bvh_traversal.glsl"
+
+// Low-discrepancy hash for jitter (based on texel + sample index)
+float hash_f(uint seed)
+{
+    seed ^= seed >> 16;
+    seed *= 0x45d9f3bu;
+    seed ^= seed >> 16;
+    seed *= 0x45d9f3bu;
+    seed ^= seed >> 16;
+    return float(seed) / float(0xFFFFFFFFu);
+}
+
+vec2 hash_v2(uint seed)
+{
+    return vec2(hash_f(seed), hash_f(seed ^ 0x9E3779B9u));
+}
+
+// Build an orthonormal basis around a direction
+void build_basis(vec3 dir, out vec3 tangent, out vec3 bitangent)
+{
+    vec3 up = abs(dir.y) < 0.99 ? vec3(0, 1, 0) : vec3(1, 0, 0);
+    tangent = normalize(cross(up, dir));
+    bitangent = cross(dir, tangent);
+}
+
+// Jitter a direction within a cone of angular radius `spread` (radians)
+vec3 jitter_direction(vec3 dir, float spread, vec2 xi)
+{
+    if (spread < 1e-6)
+        return dir;
+
+    vec3 t, b;
+    build_basis(dir, t, b);
+
+    float angle = xi.x * 2.0 * 3.14159265;
+    float radius = sqrt(xi.y) * spread;
+    return normalize(dir + t * (cos(angle) * radius) + b * (sin(angle) * radius));
+}
+
+// Multi-sample shadow: returns fraction of rays that reach the light [0..1]
+float trace_shadow_soft(vec3 origin, vec3 light_dir, float t_max, uint sample_count,
+                        float spread, uint texel_seed)
+{
+    if (sample_count <= 1u)
+    {
+        return trace_shadow(origin, light_dir, t_max) ? 1.0 : 0.0;
+    }
+
+    float lit_count = 0.0;
+    for (uint s = 0u; s < sample_count; s++)
+    {
+        vec2 xi = hash_v2(texel_seed * 1024u + s);
+        vec3 jittered = jitter_direction(light_dir, spread, xi);
+
+        if (trace_shadow(origin, jittered, t_max))
+        {
+            lit_count += 1.0;
+        }
+    }
+    return lit_count / float(sample_count);
+}
 
 void main()
 {
@@ -58,13 +125,13 @@ void main()
 
     vec3 result = vec3(0.0);
 
-    if (dyn_dir_lights.lights.length() == 0)
-    {
-        imageStore(out_lightmap, texel, vec4(0.0));
-        return;
-    }
+    float bias = dyn_config.config.shadow_bias;
+    uint shadow_samples = dyn_config.config.shadow_samples;
+    float shadow_spread = dyn_config.config.shadow_spread;
+    uint texel_seed = uint(texel.y) * dyn_config.config.atlas_width + uint(texel.x);
 
     // Directional light contribution
+    if (dyn_dir_lights.lights.length() > 0)
     {
         directional_light_data light = dyn_dir_lights.lights[0];
         vec3 light_dir = normalize(-light.direction);
@@ -72,18 +139,59 @@ void main()
 
         if (ndotl > 0.0)
         {
-            // Shadow ray: offset along normal to avoid self-intersection
-            vec3 shadow_origin = world_pos + normal * 0.001;
-            bool lit = trace_shadow(shadow_origin, light_dir, 10000.0);
+            vec3 origin = world_pos + normal * bias;
 
-            if (lit)
-            {
-                result += light.diffuse * ndotl;
-            }
+            float visibility = trace_shadow_soft(
+                origin, light_dir, 10000.0, shadow_samples, shadow_spread, texel_seed);
+            result += light.diffuse * ndotl * visibility;
         }
 
         // Ambient term (baked into lightmap as base illumination)
         result += light.ambient;
+    }
+
+    // Local lights (point + spot)
+    uint local_count = dyn_config.config.local_light_count;
+    for (uint i = 0u; i < local_count; i++)
+    {
+        universal_light_data light = dyn_local_lights.lights[i];
+
+        vec3 to_light = light.position - world_pos;
+        float distance = length(to_light);
+        float d_ratio = distance / light.radius;
+
+        if (d_ratio >= 1.0)
+            continue;
+
+        vec3 light_dir = to_light / distance;
+        float ndotl = max(dot(normal, light_dir), 0.0);
+
+        if (ndotl < 0.0001)
+            continue;
+
+        // Distance attenuation (same as runtime shader)
+        float d_ratio2 = d_ratio * d_ratio;
+        float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+        float d_ratio4 = d_ratio2 * d_ratio2;
+        float window = clamp(1.0 - d_ratio4, 0.0, 1.0);
+        window = window * window;
+        float attenuation = falloff * window;
+
+        // Spot light cone
+        if (light.type == KGPU_light_type_spot)
+        {
+            float theta = dot(light_dir, normalize(-light.direction));
+            float epsilon = light.cut_off - light.outer_cut_off;
+            float intensity = clamp((theta - light.outer_cut_off) / epsilon, 0.0, 1.0);
+            attenuation *= intensity;
+        }
+
+        vec3 origin = world_pos + normal * bias;
+
+        // Shadow rays toward light (soft shadows for local lights too)
+        float visibility = trace_shadow_soft(
+            origin, light_dir, distance - bias, shadow_samples, shadow_spread, texel_seed + i * 65537u);
+        result += light.diffuse * ndotl * attenuation * visibility;
     }
 
     imageStore(out_lightmap, texel, vec4(result, 1.0));

@@ -5,6 +5,7 @@
 #include "engine/editor.h"
 #include "engine/config.h"
 #include "engine/engine_counters.h"
+#include "engine/private/ui/bake_editor.h"
 #include "engine/profiler.h"
 
 #include "engine/private/sync_service.h"
@@ -50,7 +51,11 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
+#include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vk_descriptors.h>
+#include <core/lightmap_manifest.h>
+
+#include <vfs/io.h>
 
 #include <animation/animation_system.h>
 
@@ -284,6 +289,11 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_ui().init();
 
+    // Load bake config (with .tmp fallback for unsaved session state)
+    auto rp_bake = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/bake.acfg"));
+    m_bake_config_path = APATH(rp_bake.value());
+    ui::get_window<ui::bake_editor>()->init(m_bake_config_path);
+
     glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, render_cfg);
 
     init_default_resources();
@@ -299,10 +309,14 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
-    // Save current render config as .tmp for next session
+    // Save configs as .tmp for next session
     if (!m_render_config_path.str().empty())
     {
         glob::glob_state().getr_vulkan_render().get_render_config().save_tmp(m_render_config_path);
+    }
+    if (!m_bake_config_path.str().empty())
+    {
+        ui::get_window<ui::bake_editor>()->save_config();
     }
 
     glob::set_input_provider(nullptr);
@@ -564,6 +578,35 @@ vulkan_engine::load_level(const utils::id& level_id)
 
     core::state_mutator__current_level::set(*result, glob::glob_state());
 
+    // Create lightmap texture if level references baked data
+    if (result->has_lightmap_ref())
+    {
+        auto manifest = std::make_unique<core::lightmap_manifest>();
+        if (manifest->load(result->get_lightmap_manifest_rid()))
+        {
+            std::vector<uint8_t> lm_data;
+            if (vfs::load_file(result->get_lightmap_bin_rid(), lm_data) && !lm_data.empty())
+            {
+                utils::buffer lm_buf(lm_data.size());
+                std::memcpy(lm_buf.data(), lm_data.data(), lm_data.size());
+
+                auto& loader = glob::glob_state().getr_vulkan_render_loader();
+                auto lm_tex_id = AID((result->get_id().str() + "_lightmap").c_str());
+                auto* tex = loader.update_or_create_texture(lm_tex_id,
+                                                            lm_buf,
+                                                            manifest->atlas_width,
+                                                            manifest->atlas_height,
+                                                            VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                            render::texture_format::rgba16f);
+
+                if (tex)
+                {
+                    result->set_lightmap(tex->get_bindless_index(), std::move(manifest));
+                }
+            }
+        }
+    }
+
     return true;
 }
 
@@ -715,7 +758,7 @@ vulkan_engine::init_default_resources()
 void
 vulkan_engine::init_scene()
 {
-    auto level_id = AID("light_sandbox");
+    auto level_id = AID("light_sandbox_baked");
     if (level_id.valid())
     {
         load_level(level_id);
@@ -775,9 +818,10 @@ vulkan_engine::consume_updated_render()
     auto& items = glob::glob_state().getr_queues().get_model().dirty_render;
 
     // TODO: when both a dependency (e.g. shader_effect) and its dependent (e.g. material) are dirty
-    // in the same frame, render_cmd_build on the dependent will rebuild the dependency via traversal,
-    // then the dependency's own queue entry triggers a redundant rebuild. Consider a per-frame
-    // "already processed" flag to skip entries that were already rebuilt during dependency traversal.
+    // in the same frame, render_cmd_build on the dependent will rebuild the dependency via
+    // traversal, then the dependency's own queue entry triggers a redundant rebuild. Consider a
+    // per-frame "already processed" flag to skip entries that were already rebuilt during
+    // dependency traversal.
     for (auto& i : items)
     {
         glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);

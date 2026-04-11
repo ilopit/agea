@@ -79,7 +79,6 @@ void main()
             // Conservative rasterization: small epsilon for edge coverage
             if (w0 >= -0.001 && w1 >= -0.001 && w2 >= -0.001)
             {
-                // Interpolate world position and normal
                 vec3 world_pos = w0 * tri.v0 + w1 * tri.v1 + w2 * tri.v2;
                 vec3 normal = normalize(w0 * tri.n0 + w1 * tri.n1 + w2 * tri.n2);
 

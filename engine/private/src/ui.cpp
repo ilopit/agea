@@ -423,8 +423,17 @@ render_config_window::handle()
     // =========================================================================
     // Shadows
     // =========================================================================
+    if (ImGui::CollapsingHeader("Lighting"))
+    {
+        ImGui::Checkbox("Directional Light", &cfg.lighting.directional_enabled);
+        ImGui::Checkbox("Local Lights (Point/Spot)", &cfg.lighting.local_enabled);
+        ImGui::Checkbox("Baked Light (Lightmaps)", &cfg.lighting.baked_enabled);
+    }
+
     if (ImGui::CollapsingHeader("Shadows", ImGuiTreeNodeFlags_DefaultOpen))
     {
+        ImGui::Checkbox("Shadows Enabled", &cfg.shadows.enabled);
+
         // PCF Mode
         const char* pcf_names[] = {
             "3x3 (9 taps)", "5x5 (25 taps)", "7x7 (49 taps)", "Poisson 16", "Poisson 32"};

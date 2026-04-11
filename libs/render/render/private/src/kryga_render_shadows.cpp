@@ -148,7 +148,7 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
 {
     ZoneScopedN("Render::DrawShadowPass");
 
-    if (!m_shadow_se || m_draw_batches.empty())
+    if (!m_render_config.shadows.enabled || !m_shadow_se || m_draw_batches.empty())
     {
         return;
     }
@@ -167,10 +167,10 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
     pc.directional_light_id = cascade_idx;
     pc.use_clustered_lighting = 0;  // 0 = CSM cascade mode
 
-    // Draw all opaque batches into shadow map
+    // Draw shadow-casting opaque batches into shadow map
     for (const auto& batch : m_draw_batches)
     {
-        if (!batch.mesh)
+        if (!batch.mesh || !batch.cast_shadows)
         {
             continue;
         }
@@ -224,6 +224,11 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
 {
     ZoneScopedN("Render::DrawShadowLocalPass");
 
+    if (!m_render_config.shadows.enabled)
+    {
+        return;
+    }
+
     // Skip if this shadow slot is unused this frame
     if (shadow_idx >= m_shadow_config.shadowed_local_count)
     {
@@ -269,7 +274,7 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
 
     for (const auto& batch : m_draw_batches)
     {
-        if (!batch.mesh)
+        if (!batch.mesh || !batch.cast_shadows)
         {
             continue;
         }

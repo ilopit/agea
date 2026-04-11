@@ -1,0 +1,18 @@
+class_id: mesh_object
+id: ground_plane
+layout: [-1, 0]
+components:
+  - id: ground_plane_root_component
+    class_id: game_object_component
+  - id: ground_plane_mesh
+    class_id: mesh_component
+    material: mt_solid_color_lit_lightmapped
+    mesh: cube_mesh
+    position:
+      x: 0
+      y: -1
+      z: 0
+    scale:
+      x: 50
+      y: 0.1
+      z: 50

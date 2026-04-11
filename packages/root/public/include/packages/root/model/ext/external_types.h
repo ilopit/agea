@@ -5,6 +5,7 @@
 
 #include <utils/id.h>
 #include <utils/buffer.h>
+#include <core/object_layer_flags.h>
 
 // clang-format off
 
@@ -107,5 +108,11 @@ KRG_ar_external_type(copy_handler        = ::kryga::reflection::utils::cpp_defau
                       serialize_handler   = id__save);
 KRG_ar_external_define(::kryga::utils::id);
 
+
+KRG_ar_external_type(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::kryga::core::object_layer_flags>,
+                      load_derive_handler = ::kryga::reflection::utils::cpp_default__load<::kryga::core::object_layer_flags>,
+                      serialize_handler   = ::kryga::reflection::utils::cpp_default__save<::kryga::core::object_layer_flags>,
+                      compare_handler     = ::kryga::reflection::utils::cpp_default__compare<::kryga::core::object_layer_flags>);
+KRG_ar_external_define(::kryga::core::object_layer_flags);
 
 //clang-format on

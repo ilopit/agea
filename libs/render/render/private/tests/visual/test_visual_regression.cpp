@@ -1520,7 +1520,8 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     kryga::utils::buffer lm_vert_buf, lm_frag_buf;
     {
         auto& vfs = glob::glob_state().getr_vfs();
-        auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
+        auto se_path =
+            vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(se_path.value());
 
         kryga::utils::buffer::load(path / "se_solid_color_lit_lightmapped.vert", lm_vert_buf);
@@ -1681,8 +1682,10 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
             v.uv2.x = v.uv2.x * lm_scale.x + lm_offset.x;
             v.uv2.y = v.uv2.y * lm_scale.y + lm_offset.y;
         }
-        baker.add_mesh(remapped.data(), static_cast<uint32_t>(remapped.size()),
-                       floor_indices.data(), static_cast<uint32_t>(floor_indices.size()));
+        baker.add_mesh(remapped.data(),
+                       static_cast<uint32_t>(remapped.size()),
+                       floor_indices.data(),
+                       static_cast<uint32_t>(floor_indices.size()));
     }
 
     // Deterministic RNG for reproducible positions
@@ -1732,7 +1735,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     // --- Bake lightmap (GPU compute) ---
     bake::bake_settings bake_cfg;
     bake_cfg.resolution = LM_RESOLUTION;
-    bake_cfg.samples_per_texel = 16;   // Low for test speed
+    bake_cfg.samples_per_texel = 16;  // Low for test speed
     bake_cfg.bounce_count = 1;
     bake_cfg.denoise_iterations = 1;
     bake_cfg.bake_direct = true;
@@ -1762,10 +1765,12 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     kryga::utils::buffer lm_tex_buf(lm_loaded.size());
     std::memcpy(lm_tex_buf.data(), lm_loaded.data(), lm_loaded.size());
 
-    auto* lm_texture = loader.create_texture(
-        AID("bk_lightmap_tex"), lm_tex_buf,
-        LM_RESOLUTION, LM_RESOLUTION,
-        VK_FORMAT_R16G16B16A16_SFLOAT, texture_format::rgba16f);
+    auto* lm_texture = loader.create_texture(AID("bk_lightmap_tex"),
+                                             lm_tex_buf,
+                                             LM_RESOLUTION,
+                                             LM_RESOLUTION,
+                                             VK_FORMAT_R16G16B16A16_SFLOAT,
+                                             texture_format::rgba16f);
     ASSERT_TRUE(lm_texture);
     uint32_t lm_bindless_idx = lm_texture->get_bindless_index();
 
@@ -1774,16 +1779,18 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     std::memcpy(vert_buf.data(), cube_verts.data(), vert_buf.size());
     kryga::utils::buffer idx_buf(cube_indices.size() * sizeof(gpu::uint));
     std::memcpy(idx_buf.data(), cube_indices.data(), idx_buf.size());
-    auto* cube_mesh = loader.create_mesh(
-        AID("bk_cube_mesh"), vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
+    auto* cube_mesh = loader.create_mesh(AID("bk_cube_mesh"),
+                                         vert_buf.make_view<gpu::vertex_data>(),
+                                         idx_buf.make_view<gpu::uint>());
     ASSERT_TRUE(cube_mesh);
 
     kryga::utils::buffer floor_vb(floor_verts.size() * sizeof(gpu::vertex_data));
     std::memcpy(floor_vb.data(), floor_verts.data(), floor_vb.size());
     kryga::utils::buffer floor_ib(floor_indices.size() * sizeof(gpu::uint));
     std::memcpy(floor_ib.data(), floor_indices.data(), floor_ib.size());
-    auto* floor_mesh = loader.create_mesh(
-        AID("bk_floor_mesh"), floor_vb.make_view<gpu::vertex_data>(), floor_ib.make_view<gpu::uint>());
+    auto* floor_mesh = loader.create_mesh(AID("bk_floor_mesh"),
+                                          floor_vb.make_view<gpu::vertex_data>(),
+                                          floor_ib.make_view<gpu::uint>());
     ASSERT_TRUE(floor_mesh);
 
     // --- Create render objects with per-instance lightmap ---
@@ -1797,8 +1804,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
                      glm::scale(glm::mat4(1.0f), glm::vec3(inst.scale));
         auto* obj = cache.objects.alloc(obj_id);
         loader.update_object(
-            *obj, *lm_mat, *mesh, model,
-            glm::transpose(glm::inverse(model)), inst.pos);
+            *obj, *lm_mat, *mesh, model, glm::transpose(glm::inverse(model)), inst.pos);
 
         // Per-instance lightmap binding
         obj->gpu_data.lightmap_scale = inst.lightmap_scale;
@@ -1813,6 +1819,8 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     // cycle back to the frame that has the pending bindless update, then one
     // more to render with the updated descriptors.
     for (int i = 0; i < 4; ++i)
+    {
         renderer.draw_headless();
+    }
     compare("baked_lighting_scene", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }

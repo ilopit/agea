@@ -30,6 +30,7 @@ game_object_component::construct(construct_params& c)
     extract<vec3>(c.position, m_position);
     extract<vec3>(c.rotation, m_rotation);
     extract<vec3>(c.scale, m_scale);
+    extract<core::object_layer_flags>(c.layers, m_layers);
 
     return true;
 }

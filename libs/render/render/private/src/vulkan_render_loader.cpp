@@ -431,6 +431,48 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 }
 
 texture_data*
+vulkan_render_loader::update_or_create_texture(const kryga::utils::id& texture_id,
+                                               const kryga::utils::buffer& data,
+                                               uint32_t w,
+                                               uint32_t h,
+                                               VkFormat vk_format,
+                                               texture_format fmt)
+{
+    auto* existing = get_texture_data(texture_id);
+    if (!existing)
+    {
+        return create_texture(texture_id, data, w, h, vk_format, fmt);
+    }
+
+    // Replace image data in-place — same bindless slot, safe for in-flight frames.
+    // Old image/view are ref-counted (shared_ptr) and will be destroyed when
+    // all in-flight command buffers finish.
+    auto device = glob::glob_state().get_render_device();
+
+    auto staging_buffer = device->create_buffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void* mapped = nullptr;
+    vmaMapMemory(device->allocator(), staging_buffer.allocation(), &mapped);
+    memcpy(mapped, data.data(), (size_t)data.size());
+    vmaUnmapMemory(device->allocator(), staging_buffer.allocation());
+
+    existing->image = upload_image(w, h, vk_format, staging_buffer);
+    existing->format = fmt;
+
+    VkImageViewCreateInfo image_info =
+        vk_utils::make_imageview_create_info(vk_format, existing->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    image_info.subresourceRange.levelCount = existing->image->get_mip_levels();
+
+    existing->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
+
+    // Re-register in bindless set with the new image view (same slot)
+    glob::glob_state().getr_vulkan_render().schd_update_texture(existing);
+
+    return existing;
+}
+
+texture_data*
 vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
                                      kryga::render::vk_utils::vulkan_image_sptr image,
                                      kryga::render::vk_utils::vulkan_image_view_sptr view)

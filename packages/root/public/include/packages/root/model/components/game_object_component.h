@@ -4,6 +4,7 @@
 
 #include "packages/root/model/components/component.h"
 #include "packages/root/model/core_types/vec3.h"
+#include "core/object_layer_flags.h"
 
 namespace kryga
 {
@@ -33,6 +34,7 @@ public:
         std::optional<vec3> position = vec3(0.f, 0.f, 0.f);
         std::optional<vec3> scale = vec3(1.f, 1.f, 1.f);
         std::optional<vec3> rotation = vec3(0.f, 0.f, 0.f);
+        std::optional<core::object_layer_flags> layers;
     };
     KRG_gen_meta_api;
 
@@ -118,18 +120,39 @@ public:
     void
     mark_transform_dirty();
 
+    // Layer flag helpers — modify in-place, no get-modify-set needed
+    void
+    set_layer_flag(uint32_t flag, bool value)
+    {
+        if (value)
+        {
+            m_layers.bits |= flag;
+        }
+        else
+        {
+            m_layers.bits &= ~flag;
+        }
+    }
+
+    core::object_layer_flags&
+    layers()
+    {
+        return m_layers;
+    }
+
 protected:
     KRG_ar_property("category=Action", "serializable=true", "default=true");
     bool m_tickable = false;
 
-    KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
-    bool m_visible = false;
-
-    KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
-    bool m_static = true;
-
-    KRG_ar_property("category=Rendering", "access=all", "serializable=true", "default=true");
-    bool m_casts_shadows = true;
+    KRG_ar_property("category=Rendering",
+                    "access=all",
+                    "serializable=true",
+                    "default=true",
+                    "property_ser_handler=::kryga::root::property_layer_mask__save",
+                    "property_compare_handler=::kryga::root::property_layer_mask__compare",
+                    "property_load_derive_handler=::kryga::root::property_layer_mask__load");
+    ::kryga::core::object_layer_flags m_layers =
+        ::kryga::core::object_layer_flags::default_static();
 
     KRG_ar_property("category=Transform",
                     "access=all",

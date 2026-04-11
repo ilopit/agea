@@ -81,6 +81,22 @@ uint get_material_id()
     return dyn_object_buffer.objects[in_object_idx].material_id;
 }
 
+// Lighting enable flags (from render config via push constants)
+bool is_directional_light_enabled()
+{
+    return constants.obj.enable_directional_light != 0u;
+}
+
+bool is_local_lights_enabled()
+{
+    return constants.obj.enable_local_lights != 0u;
+}
+
+bool is_baked_light_enabled()
+{
+    return constants.obj.enable_baked_light != 0u;
+}
+
 // ============================================================================
 // Shadow Mapping Helpers
 // ============================================================================

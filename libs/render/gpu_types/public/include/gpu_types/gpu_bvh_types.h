@@ -44,6 +44,10 @@ struct bake_config
     uint bounce_count;
     float ao_radius;
     float ao_intensity;
+    uint local_light_count;
+    float shadow_bias;
+    uint shadow_samples;
+    float shadow_spread;
 };
 
 #define KGPU_BVH_LEAF_FLAG 0x80000000u

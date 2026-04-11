@@ -23,6 +23,7 @@ struct render_config
         uint32_t cascade_count = 4;
         float distance = 200.0f;
         uint32_t map_size = 2048;
+        bool enabled = true;
     } shadows;
 
     struct cluster_cfg
@@ -31,6 +32,13 @@ struct render_config
         uint32_t depth_slices = 12;
         uint32_t max_lights_per_cluster = 32;
     } clusters;
+
+    struct lighting_cfg
+    {
+        bool directional_enabled = true;
+        bool local_enabled = true;  // point + spot
+        bool baked_enabled = true;  // lightmap GI
+    } lighting;
 
     struct debug_cfg
     {

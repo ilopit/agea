@@ -18,4 +18,8 @@ result_code property_texture_slot__copy(reflection::property_context__copy& ctx)
 result_code property_texture_slot__instantiate(reflection::property_context__instantiate& ctx);
 result_code property_texture_slot__load(reflection::property_context__load& ctx);
 
+result_code property_layer_mask__save(reflection::property_context__save& dc);
+result_code property_layer_mask__compare(reflection::property_context__compare& ctx);
+result_code property_layer_mask__load(reflection::property_context__load& ctx);
+
 }  // namespace kryga::root

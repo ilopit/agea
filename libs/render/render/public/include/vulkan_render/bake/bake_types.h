@@ -2,6 +2,7 @@
 
 #include <gpu_types/gpu_light_types.h>
 #include <vfs/rid.h>
+#include <utils/path.h>
 
 #include <cstdint>
 #include <vector>
@@ -13,25 +14,65 @@ namespace render
 namespace bake
 {
 
-struct bake_settings
+enum class bake_preset : uint32_t
 {
-    uint32_t resolution = 1024;           // lightmap atlas resolution
-    uint32_t samples_per_texel = 64;      // ray samples per texel
-    uint32_t bounce_count = 2;            // indirect lighting bounces
-    uint32_t denoise_iterations = 2;      // bilateral filter passes
-    float ao_radius = 2.0f;              // ambient occlusion ray max distance
-    float ao_intensity = 1.0f;           // AO strength multiplier
+    low,
+    medium,
+    high,
+    maximum
+};
+
+// Persistent baker configuration — saved between sessions
+struct bake_config
+{
+    uint32_t resolution = 1024;
+    uint32_t samples_per_texel = 64;
+    uint32_t bounce_count = 2;
+    uint32_t denoise_iterations = 2;
+    float ao_radius = 2.0f;
+    float ao_intensity = 1.0f;
     bool bake_direct = true;
     bool bake_indirect = true;
     bool bake_ao = true;
+    bool save_png = true;
+    float texels_per_unit = 4.0f;
+    int min_tile = 16;
+    int max_tile = 256;
+    float shadow_bias = 0.05f;
+    uint32_t shadow_samples = 16;     // jittered rays per light for soft shadows
+    float shadow_spread = 0.015f;     // angular spread of jitter (radians)
+    uint32_t dilate_iterations = 3;   // gutter dilation passes
 
-    // Scene lights for baking. Must contain at least one light.
+    void
+    apply_preset(bake_preset preset);
+
+    bool
+    load(const utils::path& path);
+
+    bool
+    save(const utils::path& path) const;
+
+    bool
+    load_with_tmp(const utils::path& base_path);
+
+    bool
+    save_tmp(const utils::path& base_path) const;
+
+    static utils::path
+    tmp_path(const utils::path& base_path);
+};
+
+// Per-bake runtime settings — extends config with scene data and output paths
+struct bake_settings : bake_config
+{
+    // Scene lights for baking. Must contain at least one directional light.
     std::vector<gpu::directional_light_data> directional_lights;
+    std::vector<gpu::universal_light_data> local_lights;  // point + spot
 
     // Output paths. Empty rid = don't save to disk.
-    vfs::rid output_lightmap;  // e.g. vfs::rid("tmp://baked/lightmap.bin")
-    vfs::rid output_ao;        // e.g. vfs::rid("tmp://baked/ao.bin")
-    bool output_png = false;   // Also save .png previews (8-bit, for visual inspection)
+    vfs::rid output_lightmap;
+    vfs::rid output_ao;
+    bool output_png = false;
 };
 
 struct bake_result

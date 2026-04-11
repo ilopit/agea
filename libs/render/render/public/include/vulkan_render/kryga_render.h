@@ -171,6 +171,7 @@ struct draw_batch
     uint32_t instance_count;
     uint32_t first_instance_offset;  // offset into instance_slots buffer
     bool outlined;
+    bool cast_shadows;
 };
 
 class vulkan_render
@@ -345,6 +346,11 @@ private:
     build_batches_for_queue(render_line_container& r, bool outlined);
 
     void
+    build_batches_for_queue_into(render_line_container& r,
+                                 bool outlined,
+                                 std::vector<draw_batch>& out_batches);
+
+    void
     upload_instance_slots(render::frame_state& frame);
 
     // GPU compute cluster culling
@@ -491,6 +497,8 @@ private:
 
     render_line_container m_transparent_render_object_queue;
 
+    std::unordered_map<std::string, render_line_container> m_debug_render_object_queue;
+
     utils::id_allocator m_selected_material_alloc;
 
     buffer_layout<material_data*> m_materials_layout;
@@ -597,6 +605,7 @@ private:
     // Instance drawing state
     std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots
     std::vector<draw_batch> m_draw_batches;          // Pre-computed batches for frame
+    std::vector<draw_batch> m_debug_draw_batches;    // Debug object batches (unlit, no shadows)
 
     // Bone matrix staging for skeletal animation
     std::vector<glm::mat4> m_bone_matrices_staging;

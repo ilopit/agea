@@ -305,6 +305,11 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Apply any runtime config changes (cluster reinit, render mode switch)
     apply_config_changes();
 
+    // Set lighting enable flags on push constants (read by shaders)
+    m_obj_config.enable_directional_light = m_render_config.lighting.directional_enabled ? 1 : 0;
+    m_obj_config.enable_local_lights = m_render_config.lighting.local_enabled ? 1 : 0;
+    m_obj_config.enable_baked_light = m_render_config.lighting.baked_enabled ? 1 : 0;
+
     // Update bindless texture descriptors for any newly registered textures
     update_bindless_descriptors();
 

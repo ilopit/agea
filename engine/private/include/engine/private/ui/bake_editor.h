@@ -3,6 +3,7 @@
 #include "engine/ui.h"
 
 #include <vulkan_render/bake/bake_types.h>
+#include <utils/path.h>
 
 namespace kryga
 {
@@ -24,20 +25,17 @@ public:
     }
 
     void
+    init(const utils::path& config_path);
+
+    void
     handle() override;
 
+    void
+    save_config();
+
 private:
-    // Editable settings
-    int m_resolution = 1024;
-    int m_samples = 64;
-    int m_bounces = 2;
-    int m_denoise = 2;
-    float m_ao_radius = 2.0f;
-    float m_ao_intensity = 1.0f;
-    bool m_bake_direct = true;
-    bool m_bake_indirect = true;
-    bool m_bake_ao = true;
-    bool m_save_png = true;
+    render::bake::bake_config m_config;
+    utils::path m_config_path;
 };
 
 }  // namespace ui

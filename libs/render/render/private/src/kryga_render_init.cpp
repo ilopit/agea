@@ -323,7 +323,9 @@ vulkan_render::deinit()
     m_default_render_object_queue.clear();
     m_outline_render_object_queue.clear();
     m_transparent_render_object_queue.clear();
+    m_debug_render_object_queue.clear();
     m_draw_batches.clear();
+    m_debug_draw_batches.clear();
     m_instance_slots_staging.clear();
     m_materials_layout = {};
 

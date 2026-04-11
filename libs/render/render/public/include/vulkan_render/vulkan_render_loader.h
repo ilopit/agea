@@ -84,6 +84,16 @@ public:
                    vk_utils::vulkan_image_sptr image,
                    vk_utils::vulkan_image_view_sptr view);
 
+    // Create or update a texture. If it already exists, replaces image data in-place
+    // (same bindless slot — safe for in-flight frames).
+    texture_data*
+    update_or_create_texture(const kryga::utils::id& texture_id,
+                             const kryga::utils::buffer& data,
+                             uint32_t w,
+                             uint32_t h,
+                             VkFormat vk_format,
+                             texture_format fmt);
+
     void
     destroy_texture_data(const kryga::utils::id& id);
 

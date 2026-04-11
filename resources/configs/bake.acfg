@@ -1,0 +1,13 @@
+resolution: 1024
+samples_per_texel: 64
+bounce_count: 2
+denoise_iterations: 2
+ao_radius: 2.0
+ao_intensity: 1.0
+bake_direct: true
+bake_indirect: true
+bake_ao: true
+save_png: true
+texels_per_unit: 4.0
+min_tile: 16
+max_tile: 256

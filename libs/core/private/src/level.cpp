@@ -187,8 +187,23 @@ level::unload()
 
     m_tickable_objects.clear();
     m_package_ids.clear();
+    clear_lightmap();
 
     m_state = level_state::unloaded;
+}
+
+void
+level::set_lightmap(uint32_t bindless_index, std::unique_ptr<lightmap_manifest> manifest)
+{
+    m_lightmap_bindless_index = bindless_index;
+    m_lightmap_manifest = std::move(manifest);
+}
+
+void
+level::clear_lightmap()
+{
+    m_lightmap_bindless_index = 0xFFFFFFFFu;
+    m_lightmap_manifest.reset();
 }
 
 }  // namespace core

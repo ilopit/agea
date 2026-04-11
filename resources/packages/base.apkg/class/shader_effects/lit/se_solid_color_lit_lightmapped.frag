@@ -37,18 +37,22 @@ void main()
     float dirShadow = calcDirectionalShadow(in_world_pos, norm, viewDepth);
 
     // Sample lightmap: baked indirect illumination (per-instance texture from object_data)
-    vec3 baked_gi = sample_lightmap(
-        in_lightmap_uv,
-        dyn_object_buffer.objects[in_object_idx].lightmap_texture_index,
-        KGPU_SAMPLER_LINEAR_CLAMP);
+    vec3 baked_gi = vec3(0);
+    if (is_baked_light_enabled())
+        baked_gi = sample_lightmap(
+            in_lightmap_uv,
+            dyn_object_buffer.objects[in_object_idx].lightmap_texture_index,
+            KGPU_SAMPLER_LINEAR_CLAMP);
 
     // Realtime direct lighting only (no ambient — lightmap replaces it)
-    vec3 direct = CalcDirLightDirect(
-        dyn_directional_lights_buffer.objects[constants.obj.directional_light_id],
-        norm, viewDir, _mi, dirShadow);
+    vec3 direct = vec3(0);
+    if (is_directional_light_enabled())
+        direct = CalcDirLightDirect(
+            dyn_directional_lights_buffer.objects[constants.obj.directional_light_id],
+            norm, viewDir, _mi, dirShadow);
 
     // Local lights (point and spot) — still fully realtime
-    if (constants.obj.use_clustered_lighting != 0u)
+    if (is_local_lights_enabled() && constants.obj.use_clustered_lighting != 0u)
     {
         uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
         uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
@@ -66,7 +70,7 @@ void main()
                 direct += CalcSpotLight(light, norm, in_world_pos, viewDir, _mi) * localShadow;
         }
     }
-    else
+    else if (is_local_lights_enabled())
     {
         for (uint i = 0u; i < constants.obj.local_lights_size; i++)
         {

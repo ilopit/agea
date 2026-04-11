@@ -146,6 +146,19 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
             }
         }
     }
+    // Read lightmap references from root.cfg (if present)
+    if (container["lightmap_bin"])
+    {
+        auto bin_path = container["lightmap_bin"].as<std::string>("");
+        auto manifest_path = container["lightmap_manifest"].as<std::string>("");
+        if (!bin_path.empty())
+        {
+            l.m_lightmap_bin_rid = vfs_root / bin_path;
+            l.m_lightmap_manifest_rid = vfs_root / manifest_path;
+            ALOG_INFO("level_manager: level references lightmap at {}", bin_path);
+        }
+    }
+
     l.m_state = level_state::loaded;
 
     return &l;
@@ -176,6 +189,14 @@ level_manager::save_level(level& l, const utils::path& path)
     {
         container["packages"].push_back(id.str());
     }
+
+    // Save lightmap references (relative to level root)
+    if (l.has_lightmap_ref())
+    {
+        container["lightmap_bin"] = std::string(l.m_lightmap_bin_rid.relative());
+        container["lightmap_manifest"] = std::string(l.m_lightmap_manifest_rid.relative());
+    }
+
     auto root_path = full_path / "root.cfg";
     if (!serialization::write_container(root_path, container))
     {

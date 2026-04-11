@@ -200,7 +200,7 @@ game_editor::ev_spawn()
                         .getr_current_level()
                         .spawn_object_as_clone<base::mesh_object>(AID("test_cube"), AID(id), sp);
                 auto mc = pp->get_component_at(1)->as<base::mesh_component>();
-                mc->set_visible(true);
+                mc->layers().visible = true;
             }
         }
     }

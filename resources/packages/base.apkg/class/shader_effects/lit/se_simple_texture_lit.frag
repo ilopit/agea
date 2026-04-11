@@ -43,10 +43,11 @@ void main()
 
     // phase 1: directional lighting
     vec3 result = vec3(0);
-    result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, shininess, albedo, specular_tex, dirShadow);
+    if (is_directional_light_enabled())
+        result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, shininess, albedo, specular_tex, dirShadow);
 
     // phase 2: local lights (point and spot)
-    if (constants.obj.use_clustered_lighting != 0u)
+    if (is_local_lights_enabled() && constants.obj.use_clustered_lighting != 0u)
     {
         // Clustered lighting path (viewDepth already computed above)
         uint clusterIdx = getClusterIndex(gl_FragCoord.xy, viewDepth);
@@ -71,7 +72,7 @@ void main()
             }
         }
     }
-    else
+    else if (is_local_lights_enabled())
     {
         // Per-object light grid path - use pre-computed light indices
         for (uint i = 0u; i < constants.obj.local_lights_size; i++)

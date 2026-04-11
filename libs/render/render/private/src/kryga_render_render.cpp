@@ -108,12 +108,21 @@ vulkan_render::upload_instance_slots(render::frame_state& frame)
 void
 vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
 {
+    build_batches_for_queue_into(r, outlined, m_draw_batches);
+}
+
+void
+vulkan_render::build_batches_for_queue_into(render_line_container& r,
+                                            bool outlined,
+                                            std::vector<draw_batch>& out_batches)
+{
     if (r.empty())
     {
         return;
     }
 
     mesh_data* cur_mesh = nullptr;
+    bool cur_cast_shadows = true;
     uint32_t batch_start = (uint32_t)m_instance_slots_staging.size();
 
     for (auto& obj : r)
@@ -134,17 +143,18 @@ vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
             uint32_t instance_count = (uint32_t)m_instance_slots_staging.size() - batch_start;
             if (instance_count > 0)
             {
-                m_draw_batches.push_back({.mesh = cur_mesh,
-                                          .material = r.front()->material,  // same material for
-                                                                            // whole queue
-                                          .instance_count = instance_count,
-                                          .first_instance_offset = batch_start,
-                                          .outlined = outlined});
+                out_batches.push_back({.mesh = cur_mesh,
+                                       .material = r.front()->material,
+                                       .instance_count = instance_count,
+                                       .first_instance_offset = batch_start,
+                                       .outlined = outlined,
+                                       .cast_shadows = cur_cast_shadows});
             }
             batch_start = (uint32_t)m_instance_slots_staging.size();
         }
 
         cur_mesh = obj->mesh;
+        cur_cast_shadows = (obj->layer_flags & render::LAYER_CAST_SHADOWS) != 0;
         m_instance_slots_staging.push_back(obj->slot());
     }
 
@@ -154,11 +164,12 @@ vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
         uint32_t instance_count = (uint32_t)m_instance_slots_staging.size() - batch_start;
         if (instance_count > 0)
         {
-            m_draw_batches.push_back({.mesh = cur_mesh,
-                                      .material = r.front()->material,
-                                      .instance_count = instance_count,
-                                      .first_instance_offset = batch_start,
-                                      .outlined = outlined});
+            out_batches.push_back({.mesh = cur_mesh,
+                                   .material = r.front()->material,
+                                   .instance_count = instance_count,
+                                   .first_instance_offset = batch_start,
+                                   .outlined = outlined,
+                                   .cast_shadows = cur_cast_shadows});
         }
     }
 }
@@ -170,6 +181,7 @@ vulkan_render::prepare_instance_data(render::frame_state& frame)
 
     m_instance_slots_staging.clear();
     m_draw_batches.clear();
+    m_debug_draw_batches.clear();
 
     if (is_instanced_mode())
     {
@@ -183,6 +195,12 @@ vulkan_render::prepare_instance_data(render::frame_state& frame)
         for (auto& [queue_id, container] : m_outline_render_object_queue)
         {
             build_batches_for_queue(container, true);
+        }
+
+        // Build batches for debug queue (separate list — skipped by shadows)
+        for (auto& [queue_id, container] : m_debug_render_object_queue)
+        {
+            build_batches_for_queue_into(container, false, m_debug_draw_batches);
         }
     }
     else
@@ -301,6 +319,61 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         }
     }
 
+    // DEBUG — render with all lighting disabled (unlit)
+    if (!m_debug_draw_batches.empty())
+    {
+        // Save lighting state
+        uint32_t saved_dir = m_obj_config.enable_directional_light;
+        uint32_t saved_local = m_obj_config.enable_local_lights;
+        uint32_t saved_baked = m_obj_config.enable_baked_light;
+
+        m_obj_config.enable_directional_light = 0;
+        m_obj_config.enable_local_lights = 0;
+        m_obj_config.enable_baked_light = 0;
+
+        pctx = {};
+        cur_material = nullptr;
+
+        for (const auto& batch : m_debug_draw_batches)
+        {
+            if (cur_material != batch.material)
+            {
+                bind_material(cmd, batch.material, current_frame, pctx, false);
+                cur_material = batch.material;
+            }
+
+            bind_mesh(cmd, batch.mesh);
+
+            m_obj_config.instance_base = batch.first_instance_offset;
+            m_obj_config.material_id = batch.material->gpu_idx();
+            m_obj_config.use_clustered_lighting = 0;
+            m_obj_config.local_lights_size = 0;
+            m_obj_config.directional_light_id = 0;
+            copy_texture_indices(m_obj_config, batch.material);
+
+            vkCmdPushConstants(cmd,
+                               pctx.pipeline_layout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0,
+                               sizeof(gpu::push_constants_main),
+                               &m_obj_config);
+
+            if (batch.mesh->has_indices())
+            {
+                vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+            }
+            else
+            {
+                vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+            }
+        }
+
+        // Restore lighting state
+        m_obj_config.enable_directional_light = saved_dir;
+        m_obj_config.enable_local_lights = saved_local;
+        m_obj_config.enable_baked_light = saved_baked;
+    }
+
     // TRANSPARENT - needs per-object sorting, add slots after opaque batches
     if (!m_transparent_render_object_queue.empty())
     {
@@ -413,6 +486,27 @@ vulkan_render::draw_objects_per_object(render::frame_state& current_frame)
         draw_same_pipeline_objects_queue(cmd, pctx, r.second, false);
     }
 
+    // DEBUG — render with all lighting disabled (unlit)
+    if (!m_debug_render_object_queue.empty())
+    {
+        uint32_t saved_dir = m_obj_config.enable_directional_light;
+        uint32_t saved_local = m_obj_config.enable_local_lights;
+        uint32_t saved_baked = m_obj_config.enable_baked_light;
+
+        m_obj_config.enable_directional_light = 0;
+        m_obj_config.enable_local_lights = 0;
+        m_obj_config.enable_baked_light = 0;
+
+        for (auto& r : m_debug_render_object_queue)
+        {
+            draw_objects_queue(r.second, cmd, current_frame, false);
+        }
+
+        m_obj_config.enable_directional_light = saved_dir;
+        m_obj_config.enable_local_lights = saved_local;
+        m_obj_config.enable_baked_light = saved_baked;
+    }
+
     // TRANSPARENT
     if (!m_transparent_render_object_queue.empty())
     {
@@ -445,49 +539,55 @@ vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
     pipeline_ctx pctx{};
     bool bound = false;
 
-    for (const auto& batch : m_draw_batches)
+    auto draw_pick_batches = [&](const std::vector<draw_batch>& batches)
     {
-        if (!bound)
+        for (const auto& batch : batches)
         {
-            // Pick shader uses its own pipeline — bind pipeline but skip material descriptors
-            auto pipeline = m_pick_mat->get_shader_effect()->m_pipeline;
-            pctx.pipeline_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
-            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-            if (m_bindless_set != VK_NULL_HANDLE)
+            if (!bound)
             {
-                vkCmdBindDescriptorSets(cmd,
-                                        VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                        pctx.pipeline_layout,
-                                        KGPU_textures_descriptor_sets,
-                                        1,
-                                        &m_bindless_set,
-                                        0,
-                                        nullptr);
+                // Pick shader uses its own pipeline — bind pipeline but skip material descriptors
+                auto pipeline = m_pick_mat->get_shader_effect()->m_pipeline;
+                pctx.pipeline_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
+                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+                if (m_bindless_set != VK_NULL_HANDLE)
+                {
+                    vkCmdBindDescriptorSets(cmd,
+                                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                            pctx.pipeline_layout,
+                                            KGPU_textures_descriptor_sets,
+                                            1,
+                                            &m_bindless_set,
+                                            0,
+                                            nullptr);
+                }
+                bound = true;
             }
-            bound = true;
+
+            bind_mesh(cmd, batch.mesh);
+
+            m_pick_pc.instance_base = batch.first_instance_offset;
+
+            vkCmdPushConstants(cmd,
+                               pctx.pipeline_layout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0,
+                               sizeof(gpu::push_constants_pick),
+                               &m_pick_pc);
+
+            if (batch.mesh->has_indices())
+            {
+                vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+            }
+            else
+            {
+                vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+            }
         }
+    };
 
-        bind_mesh(cmd, batch.mesh);
-
-        m_pick_pc.instance_base = batch.first_instance_offset;
-
-        vkCmdPushConstants(cmd,
-                           pctx.pipeline_layout,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0,
-                           sizeof(gpu::push_constants_pick),
-                           &m_pick_pc);
-
-        if (batch.mesh->has_indices())
-        {
-            vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
-        }
-        else
-        {
-            vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
-        }
-    }
+    draw_pick_batches(m_draw_batches);
+    draw_pick_batches(m_debug_draw_batches);
 }
 
 void
@@ -507,6 +607,11 @@ vulkan_render::draw_picking_per_object(VkCommandBuffer cmd)
     }
 
     for (auto& [queue_id, container] : m_outline_render_object_queue)
+    {
+        draw_same_pipeline_objects_queue(cmd, pctx, container, false);
+    }
+
+    for (auto& [queue_id, container] : m_debug_render_object_queue)
     {
         draw_same_pipeline_objects_queue(cmd, pctx, container, false);
     }
@@ -860,6 +965,10 @@ vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
 
         m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
     }
+    else if ((obj_data->layer_flags & render::LAYER_EDITOR_ONLY))
+    {
+        m_debug_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+    }
     else if (obj_data->queue_id == "transparent")
     {
         m_transparent_render_object_queue.emplace_back(obj_data);
@@ -918,7 +1027,26 @@ vulkan_render::schd_remove_object(render::vulkan_render_data* obj_data)
         }
     }
 
-    if (obj_data->queue_id == "transparent")
+    if ((obj_data->layer_flags & render::LAYER_EDITOR_ONLY))
+    {
+        const std::string id = obj_data->queue_id;
+
+        auto it = m_debug_render_object_queue.find(id);
+        if (it != m_debug_render_object_queue.end())
+        {
+            auto itr = it->second.find(obj_data);
+            if (itr != it->second.end())
+            {
+                it->second.swap_and_remove(itr);
+
+                if (it->second.get_size() == 0)
+                {
+                    m_debug_render_object_queue.erase(id);
+                }
+            }
+        }
+    }
+    else if (obj_data->queue_id == "transparent")
     {
         auto itr = m_transparent_render_object_queue.find(obj_data);
 
@@ -1122,38 +1250,33 @@ vulkan_render::update_ui(frame_state& fs)
     VkDeviceSize vertex_buffer_size = im_draw_data->TotalVtxCount * sizeof(ImDrawVert);
     VkDeviceSize index_buffer_size = im_draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 
-    // Update buffers only if vertex or index count has been changed compared to current
-    // buffer size
     if ((vertex_buffer_size == 0) || (index_buffer_size == 0))
     {
         return;
     }
 
-    // Vertex buffer
-    if ((fs.ui.vertex_count != im_draw_data->TotalVtxCount) ||
-        (fs.ui.index_count != im_draw_data->TotalIdxCount))
+    // Regrow buffers when needed (with 2x headroom to avoid per-frame reallocation)
+    if (vertex_buffer_size > fs.ui.vertex_buffer.get_alloc_size() ||
+        index_buffer_size > fs.ui.index_buffer.get_alloc_size())
     {
-        fs.ui.vertex_count = im_draw_data->TotalVtxCount;
-        fs.ui.index_count = im_draw_data->TotalIdxCount;
-
         VkBufferCreateInfo staging_buffer_ci = {};
         staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         staging_buffer_ci.pNext = nullptr;
-        // this is the total size, in bytes, of the buffer we are allocating
-
-        staging_buffer_ci.size = vertex_buffer_size;
-        staging_buffer_ci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
         VmaAllocationCreateInfo vma_ci = {};
         vma_ci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
+        staging_buffer_ci.size = vertex_buffer_size * 2;
+        staging_buffer_ci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         fs.ui.vertex_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
 
-        staging_buffer_ci.size = index_buffer_size;
+        staging_buffer_ci.size = index_buffer_size * 2;
         staging_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-
         fs.ui.index_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
     }
+
+    fs.ui.vertex_count = im_draw_data->TotalVtxCount;
+    fs.ui.index_count = im_draw_data->TotalIdxCount;
 
     // Upload data
     fs.ui.vertex_buffer.begin();

@@ -97,7 +97,7 @@ void main()
     for (uint s = 0u; s < num_samples; s++)
     {
         vec3 dir = cosine_sample_hemisphere(normal, seed);
-        vec3 origin = world_pos + normal * 0.001;
+        vec3 origin = world_pos + normal * 0.01;
 
         if (!trace_shadow(origin, dir, ao_radius))
         {

@@ -3,6 +3,7 @@
 #include <global_state/global_state.h>
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_command.h>
+#include <core/object_layer_flags.h>
 #include <render_bridge/render_commands_common.h>
 
 #include "packages/root/model/assets/mesh.h"
@@ -29,6 +30,9 @@
 #include "packages/base/model/mesh_object.h"
 
 #include <render/utils/light_grid.h>
+
+#include <core/level.h>
+#include <core/lightmap_manifest.h>
 
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
@@ -96,6 +100,10 @@ struct create_object_cmd : render_cmd::render_command_base
     float bounding_radius = 0.0f;
     uint32_t bone_count = 0;
     std::string queue_id;
+    glm::vec2 lightmap_scale{1.0f, 1.0f};
+    glm::vec2 lightmap_offset{0.0f, 0.0f};
+    uint32_t lightmap_texture_index = 0xFFFFFFFFu;
+    core::object_layer_flags layer_flags;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
@@ -119,8 +127,12 @@ struct create_object_cmd : render_cmd::render_command_base
         }
 
         object_data->gpu_data.bounding_radius = bounding_radius;
+        object_data->gpu_data.lightmap_scale = lightmap_scale;
+        object_data->gpu_data.lightmap_offset = lightmap_offset;
+        object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
         object_data->bone_count = bone_count;
         object_data->queue_id = std::move(queue_id);
+        object_data->layer_flags = layer_flags.bits;
 
         ctx.vr.schd_add_object(object_data);
     }
@@ -136,6 +148,10 @@ struct update_object_cmd : render_cmd::render_command_base
     glm::vec3 position{0.0f};
     float bounding_radius = 0.0f;
     std::string queue_id;
+    glm::vec2 lightmap_scale{1.0f, 1.0f};
+    glm::vec2 lightmap_offset{0.0f, 0.0f};
+    uint32_t lightmap_texture_index = 0xFFFFFFFFu;
+    core::object_layer_flags layer_flags;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
@@ -158,12 +174,17 @@ struct update_object_cmd : render_cmd::render_command_base
             *object_data, *mat_data, *mesh_data, transform, normal_matrix, position);
 
         object_data->gpu_data.bounding_radius = bounding_radius;
+        object_data->gpu_data.lightmap_scale = lightmap_scale;
+        object_data->gpu_data.lightmap_offset = lightmap_offset;
+        object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
 
         auto new_rqid = std::move(queue_id);
-        if (new_rqid != object_data->queue_id)
+        if (new_rqid != object_data->queue_id ||
+            layer_flags.bits != object_data->layer_flags)
         {
             ctx.vr.schd_remove_object(object_data);
             object_data->queue_id = std::move(new_rqid);
+            object_data->layer_flags = layer_flags.bits;
             ctx.vr.schd_add_object(object_data);
         }
         else
@@ -366,6 +387,29 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     auto new_rqid = render_bridge::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
 
+    // Lookup lightmap data from level manifest (if baked)
+    glm::vec2 lm_scale{1.0f, 1.0f};
+    glm::vec2 lm_offset{0.0f, 0.0f};
+    uint32_t lm_tex_idx = 0xFFFFFFFFu;
+
+    if (auto* level = moc.get_level())
+    {
+        if (level->has_lightmap())
+        {
+            auto* manifest = level->get_lightmap_manifest();
+            if (manifest)
+            {
+                auto* entry = manifest->find_entry(moc.get_id());
+                if (entry)
+                {
+                    lm_scale = entry->lightmap_scale;
+                    lm_offset = entry->lightmap_offset;
+                    lm_tex_idx = level->get_lightmap_bindless_index();
+                }
+            }
+        }
+    }
+
     if (!moc.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
@@ -378,6 +422,10 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->bounding_radius = scaled_radius;
         cmd->bone_count = 0;
         cmd->queue_id = new_rqid;
+        cmd->lightmap_scale = lm_scale;
+        cmd->lightmap_offset = lm_offset;
+        cmd->lightmap_texture_index = lm_tex_idx;
+        cmd->layer_flags = moc.get_layers();
 
         moc.set_render_built(true);
         ctx.rb->enqueue_cmd(cmd);
@@ -393,6 +441,10 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->position = glm::vec3(moc.get_world_position());
         cmd->bounding_radius = scaled_radius;
         cmd->queue_id = new_rqid;
+        cmd->lightmap_scale = lm_scale;
+        cmd->lightmap_offset = lm_offset;
+        cmd->lightmap_texture_index = lm_tex_idx;
+        cmd->layer_flags = moc.get_layers();
 
         ctx.rb->enqueue_cmd(cmd);
     }

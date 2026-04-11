@@ -203,6 +203,15 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     config.bounce_count = settings.bounce_count;
     config.ao_radius = settings.ao_radius;
     config.ao_intensity = settings.ao_intensity;
+    config.local_light_count = static_cast<uint32_t>(settings.local_lights.size());
+    config.shadow_bias = settings.shadow_bias;
+    config.shadow_samples = settings.shadow_samples;
+    config.shadow_spread = settings.shadow_spread;
+
+    ALOG_INFO("lightmap_baker: GPU config — shadow_bias={}, shadow_samples={}, shadow_spread={}, "
+              "sample_count={}, local_light_count={}",
+              config.shadow_bias, config.shadow_samples, config.shadow_spread,
+              config.sample_count, config.local_light_count);
 
     auto buf_config = create_uniform_buffer(*device, &config, sizeof(gpu::bake_config));
 
@@ -266,6 +275,14 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         settings.directional_lights.size() * sizeof(gpu::directional_light_data));
     VkDescriptorBufferInfo light_buf_info{buf_dir_light.buffer(), 0, VK_WHOLE_SIZE};
 
+    // Local lights buffer (point + spot) — use a dummy 1-element buffer if empty
+    gpu::universal_light_data dummy_local{};
+    auto buf_local_lights = settings.local_lights.empty()
+        ? create_storage_buffer(*device, &dummy_local, sizeof(gpu::universal_light_data))
+        : create_storage_buffer(*device, settings.local_lights.data(),
+                                settings.local_lights.size() * sizeof(gpu::universal_light_data));
+    VkDescriptorBufferInfo local_light_buf_info{buf_local_lights.buffer(), 0, VK_WHOLE_SIZE};
+
     VkDescriptorSet ds_direct;
     VkDescriptorSetLayout dsl_direct;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
@@ -273,9 +290,10 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         .bind_buffer(1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .bind_buffer(2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
         .bind_buffer(3, &light_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(4, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(5, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(6, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(4, &local_light_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(5, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(6, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(7, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_direct, dsl_direct);
 
     // --- Indirect bounce descriptors ---
@@ -321,6 +339,16 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         .bind_image(3, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .bind_image(4, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_denoise, dsl_denoise);
+
+    // --- Dilate descriptors (fills empty gutter texels adjacent to valid data) ---
+    VkDescriptorSet ds_dilate;
+    VkDescriptorSetLayout dsl_dilate;
+    vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
+        .bind_buffer(0, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(1, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(2, 1, &denoise_out_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(3, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .build(ds_dilate, dsl_dilate);
 
     // =====================================================================
     // Step 5: Create compute pipelines (runtime GLSL → SPIR-V via glslc)
@@ -369,6 +397,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         "data://shaders_includes/bake/ao_baker.comp", "bake_ao");
     auto cs_denoise = compile_bake_shader(
         "data://shaders_includes/bake/lightmap_denoise.comp", "bake_denoise");
+    auto cs_dilate = compile_bake_shader(
+        "data://shaders_includes/bake/lightmap_dilate.comp", "bake_dilate");
 
     if (!cs_gbuf.valid || !cs_direct.valid)
     {
@@ -467,6 +497,44 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                                             cs_denoise.data.m_pipeline_layout, 0, 1, &ds_denoise,
                                             0, nullptr);
                     vkCmdDispatch(cmd, wg_x, wg_y, 1);
+                    insert_compute_barrier(cmd);
+                }
+            }
+
+            // Copy denoised result back to lightmap before dilation
+            if (cs_denoise.valid && settings.denoise_iterations > 0)
+            {
+                VkImageCopy copy{};
+                copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                copy.extent = {W, H, 1};
+                vkCmdCopyImage(cmd, img_denoise_tmp->image(), VK_IMAGE_LAYOUT_GENERAL,
+                               img_lightmap->image(), VK_IMAGE_LAYOUT_GENERAL, 1, &copy);
+                insert_compute_barrier(cmd);
+            }
+
+            // --- Dilation (fill gutter texels to prevent seam artifacts) ---
+            if (cs_dilate.valid)
+            {
+                int dilate_count = static_cast<int>(settings.dilate_iterations);
+                for (int d = 0; d < dilate_count; ++d)
+                {
+                    ALOG_INFO("lightmap_baker: dispatching dilate pass {}/{}", d + 1, dilate_count);
+                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                      cs_dilate.data.m_pipeline);
+                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            cs_dilate.data.m_pipeline_layout, 0, 1, &ds_dilate,
+                                            0, nullptr);
+                    vkCmdDispatch(cmd, wg_x, wg_y, 1);
+                    insert_compute_barrier(cmd);
+
+                    // Copy dilated result back to lightmap for next iteration
+                    VkImageCopy copy{};
+                    copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                    copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                    copy.extent = {W, H, 1};
+                    vkCmdCopyImage(cmd, img_denoise_tmp->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                   img_lightmap->image(), VK_IMAGE_LAYOUT_GENERAL, 1, &copy);
                     insert_compute_barrier(cmd);
                 }
             }

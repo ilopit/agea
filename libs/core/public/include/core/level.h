@@ -5,6 +5,7 @@
 #include "core/caches/line_cache.h"
 #include "core/model_minimal.h"
 #include "core/container.h"
+#include "core/lightmap_manifest.h"
 
 namespace kryga::vfs
 {
@@ -16,6 +17,7 @@ class backend;
 #include <utils/singleton_instance.h>
 
 #include <map>
+#include <memory>
 #include <vector>
 #include <string>
 #include <optional>
@@ -133,6 +135,12 @@ private:
 
     utils::id m_selected_directional_light_id;
 
+    // Baked lighting — paths read from root.cfg, texture created on load by engine
+    vfs::rid m_lightmap_bin_rid;  // empty = no lightmap
+    vfs::rid m_lightmap_manifest_rid;
+    uint32_t m_lightmap_bindless_index = 0xFFFFFFFFu;
+    std::unique_ptr<lightmap_manifest> m_lightmap_manifest;
+
 public:
     void
     set_selected_directional_light(const utils::id& id)
@@ -145,6 +153,51 @@ public:
     {
         return m_selected_directional_light_id;
     }
+
+    // Lightmap references (from root.cfg, set by baker)
+    bool
+    has_lightmap_ref() const
+    {
+        return !m_lightmap_bin_rid.empty();
+    }
+    const vfs::rid&
+    get_lightmap_bin_rid() const
+    {
+        return m_lightmap_bin_rid;
+    }
+    const vfs::rid&
+    get_lightmap_manifest_rid() const
+    {
+        return m_lightmap_manifest_rid;
+    }
+    void
+    set_lightmap_refs(const vfs::rid& bin, const vfs::rid& manifest)
+    {
+        m_lightmap_bin_rid = bin;
+        m_lightmap_manifest_rid = manifest;
+    }
+
+    // Runtime lightmap state (set by engine after texture creation)
+    bool
+    has_lightmap() const
+    {
+        return m_lightmap_bindless_index != 0xFFFFFFFFu;
+    }
+    uint32_t
+    get_lightmap_bindless_index() const
+    {
+        return m_lightmap_bindless_index;
+    }
+    const lightmap_manifest*
+    get_lightmap_manifest() const
+    {
+        return m_lightmap_manifest.get();
+    }
+
+    void
+    set_lightmap(uint32_t bindless_index, std::unique_ptr<lightmap_manifest> manifest);
+    void
+    clear_lightmap();
 };
 
 }  // namespace core

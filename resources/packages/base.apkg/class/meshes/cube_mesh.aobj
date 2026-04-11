@@ -1,4 +1,5 @@
 ---
 type_id: mesh
 id: cube_mesh
-external: class/meshes/cube_mesh.obj
+vertices: class/meshes/cube_mesh.avrt
+indices: class/meshes/cube_mesh.aind

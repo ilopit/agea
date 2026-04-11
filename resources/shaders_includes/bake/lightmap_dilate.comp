@@ -1,0 +1,74 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : require
+
+#include "gpu_types/gpu_bvh_types.h"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Bake config
+layout(scalar, set = 0, binding = 0) uniform BakeConfig {
+    bake_config config;
+} dyn_config;
+
+// Input lightmap
+layout(rgba16f, set = 0, binding = 1) readonly uniform image2D in_lightmap;
+
+// Output lightmap (dilated)
+layout(rgba16f, set = 0, binding = 2) uniform image2D out_lightmap;
+
+// G-buffer position (to detect valid texels via w > 0.5)
+layout(rgba32f, set = 0, binding = 3) readonly uniform image2D gbuf_position;
+
+void main()
+{
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+
+    if (texel.x >= int(dyn_config.config.atlas_width) ||
+        texel.y >= int(dyn_config.config.atlas_height))
+        return;
+
+    vec4 current = imageLoad(in_lightmap, texel);
+
+    // Valid texel (has data) — keep original value
+    if (current.a > 0.5)
+    {
+        imageStore(out_lightmap, texel, current);
+        return;
+    }
+
+    // Empty texel — average nearest valid neighbors (from lightmap, not G-buffer)
+    vec3 sum = vec3(0.0);
+    float count = 0.0;
+
+    for (int dy = -1; dy <= 1; dy++)
+    {
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            if (dx == 0 && dy == 0)
+                continue;
+
+            ivec2 neighbor = texel + ivec2(dx, dy);
+            if (neighbor.x < 0 || neighbor.y < 0 ||
+                neighbor.x >= int(dyn_config.config.atlas_width) ||
+                neighbor.y >= int(dyn_config.config.atlas_height))
+                continue;
+
+            vec4 n_val = imageLoad(in_lightmap, neighbor);
+            if (n_val.a > 0.5)
+            {
+                sum += n_val.rgb;
+                count += 1.0;
+            }
+        }
+    }
+
+    if (count > 0.0)
+    {
+        imageStore(out_lightmap, texel, vec4(sum / count, 1.0));
+    }
+    else
+    {
+        imageStore(out_lightmap, texel, vec4(0.0));
+    }
+}

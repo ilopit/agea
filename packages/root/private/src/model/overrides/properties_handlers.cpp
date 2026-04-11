@@ -1,5 +1,6 @@
 #include "packages/root/model/overrides/properties_handlers.h"
 
+#include "core/object_layer_flags.h"
 #include "core/reflection/property.h"
 #include "core/reflection/reflection_type_utils.h"
 
@@ -412,6 +413,58 @@ property_texture_slot__load(reflection::property_context__load& ctx)
     else
     {
         tex_slot.smp = nullptr;
+    }
+
+    return result_code::ok;
+}
+
+result_code
+property_layer_mask__save(::kryga::reflection::property_context__save& dc)
+{
+    auto& mask = ::kryga::reflection::utils::as_type<core::object_layer_flags>(
+        dc.obj->as_blob() + dc.p->offset);
+
+    serialization::container c;
+    c["visible"] = (bool)mask.visible;
+    c["editor_only"] = (bool)mask.editor_only;
+    c["cast_shadows"] = (bool)mask.cast_shadows;
+    c["receive_light"] = (bool)mask.receive_light;
+    c["contribute_gi"] = (bool)mask.contribute_gi;
+    c["static_object"] = (bool)mask.static_object;
+
+    (*dc.sc)[dc.p->name] = c;
+
+    return result_code::ok;
+}
+
+result_code
+property_layer_mask__compare(::kryga::reflection::property_context__compare& ctx)
+{
+    auto& src = ::kryga::reflection::utils::as_type<core::object_layer_flags>(
+        ctx.src_obj->as_blob() + ctx.p->offset);
+    auto& dst = ::kryga::reflection::utils::as_type<core::object_layer_flags>(
+        ctx.dst_obj->as_blob() + ctx.p->offset);
+
+    return src.bits == dst.bits ? result_code::ok : result_code::failed;
+}
+
+result_code
+property_layer_mask__load(::kryga::reflection::property_context__load& ctx)
+{
+    auto& sc = *ctx.sc;
+    auto node = sc[ctx.dst_property->name];
+
+    auto& mask = ::kryga::reflection::utils::as_type<core::object_layer_flags>(
+        ctx.dst_obj->as_blob() + ctx.dst_property->offset);
+
+    if (node && node.IsMap())
+    {
+        mask.visible = node["visible"].as<bool>(true);
+        mask.editor_only = node["editor_only"].as<bool>(false);
+        mask.cast_shadows = node["cast_shadows"].as<bool>(true);
+        mask.receive_light = node["receive_light"].as<bool>(true);
+        mask.contribute_gi = node["contribute_gi"].as<bool>(true);
+        mask.static_object = node["static_object"].as<bool>(true);
     }
 
     return result_code::ok;
