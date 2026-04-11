@@ -88,39 +88,6 @@ vulkan_render::prepare_render_passes()
                                                                        std::move(ui_pass));
     }
 
-    {
-        auto simg_info = vk_utils::make_image_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-            image_extent);
-
-        VmaAllocationCreateInfo simg_allocinfo = {};
-        simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-        auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
-            simg_info,
-            simg_allocinfo));
-
-        auto swapchain_image_view_ci = vk_utils::make_imageview_create_info(
-            VK_FORMAT_R8G8B8A8_UNORM, image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
-
-        auto image_view = vk_utils::vulkan_image_view::create_shared(swapchain_image_view_ci);
-
-        auto picking_pass =
-            render_pass_builder()
-                .set_color_format(VK_FORMAT_R8G8B8A8_UNORM)
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_width_depth(m_width, m_height)
-                .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
-                                  std::vector<vk_utils::vulkan_image_sptr>{image})
-                .set_preset(render_pass_builder::presets::picking)
-                .set_enable_stencil(false)
-                .build();
-
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("picking"),
-                                                                       std::move(picking_pass));
-    }
 }
 
 // ============================================================================
@@ -171,35 +138,6 @@ vulkan_render::prepare_pass_bindings()
         // Set 3: Material data — now accessed via BDA pointer table
 
         main_pass->finalize_bindings(layout_cache);
-    }
-
-    // Picking pass bindings
-    auto* picking_pass = get_render_pass(AID("picking"));
-    if (picking_pass)
-    {
-        // BDA resources used by picking
-        picking_pass->bindings()
-            .add_bda(AID("dyn_camera_data"))
-            .add_bda(AID("dyn_object_buffer"))
-            .add_bda(AID("dyn_instance_slots"))
-            .add_bda(AID("dyn_bone_matrices"));
-
-        // Set 2: Bindless textures and static samplers
-        picking_pass->bindings()
-            .add(AID("static_samplers"),
-                 KGPU_textures_descriptor_sets,
-                 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material)
-            .add(AID("bindless_textures"),
-                 KGPU_textures_descriptor_sets,
-                 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material);
-
-        picking_pass->finalize_bindings(layout_cache);
     }
 
     // UI pass - simple bindings for ImGui rendering
@@ -439,7 +377,6 @@ vulkan_render::setup_instanced_render_graph()
 
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
-    m_render_graph.import_resource(AID("picking_target"), rg_resource_type::image);
 
     // Shadow passes (CSM cascades)
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
@@ -516,20 +453,6 @@ vulkan_render::setup_instanced_render_graph()
                                      get_render_pass(AID("ui")),
                                      VkClearColorValue{0, 0, 0, 0},
                                      [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
-
-    // Picking pass - instanced batched drawing
-    m_render_graph.add_graphics_pass(AID("picking"),
-                                     {m_render_graph.write(AID("picking_target")),
-                                      m_render_graph.read(AID("dyn_camera_data")),
-                                      m_render_graph.read(AID("dyn_object_buffer")),
-                                      m_render_graph.read(AID("dyn_cluster_light_counts")),
-                                      m_render_graph.read(AID("dyn_cluster_light_indices")),
-                                      m_render_graph.read(AID("dyn_cluster_config")),
-                                      m_render_graph.read(AID("dyn_instance_slots")),
-                                      m_render_graph.read(AID("dyn_bone_matrices"))},
-                                     get_render_pass(AID("picking")),
-                                     VkClearColorValue{0, 0, 0, 0},
-                                     [this](VkCommandBuffer cmd) { draw_picking_instanced(cmd); });
 
     // Main pass - instanced batched drawing
     // Shadow maps are sampled via bindless textures. Declaring them as reads

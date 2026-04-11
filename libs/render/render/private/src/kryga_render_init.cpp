@@ -352,21 +352,6 @@ vulkan_render::prepare_system_resources()
     m_outline_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_outline"), AID("outline"), sd, *sed, utils::dynobj{});
 
-    vfs::load_buffer(se_base / "system/se_pick.vert", vert);
-    vfs::load_buffer(se_base / "system/se_pick.frag", frag);
-
-    auto picking_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
-
-    se_ci.ds_mode = depth_stencil_mode::none;
-    sed = nullptr;
-
-    rc = picking_pass->create_shader_effect(AID("se_pick"), se_ci, sed);
-    KRG_check(rc == result_code::ok && sed, "Always should be good!");
-
-    m_pick_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
-        AID("mat_pick"), AID("pick"), sd, *sed, utils::dynobj{});
-
     // Grid shader effect and material
     vfs::load_buffer(se_base / "system/se_grid.vert", vert);
     vfs::load_buffer(se_base / "system/se_grid.frag", frag);

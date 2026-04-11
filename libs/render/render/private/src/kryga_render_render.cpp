@@ -240,7 +240,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.instance_base = batch.first_instance_offset;
         m_obj_config.material_id = batch.material->gpu_idx();
         m_obj_config.use_clustered_lighting = 1;
-                m_obj_config.directional_light_id = get_selected_directional_light_slot();
+        m_obj_config.directional_light_id = get_selected_directional_light_slot();
         copy_texture_indices(m_obj_config, batch.material);
 
         vkCmdPushConstants(cmd,
@@ -282,7 +282,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         m_obj_config.instance_base = batch.first_instance_offset;
         m_obj_config.material_id = 0;
         m_obj_config.use_clustered_lighting = 1;
-                m_obj_config.directional_light_id = 0;
+        m_obj_config.directional_light_id = 0;
         copy_texture_indices(m_obj_config, m_outline_mat);
 
         vkCmdPushConstants(cmd,
@@ -330,7 +330,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
             m_obj_config.instance_base = batch.first_instance_offset;
             m_obj_config.material_id = batch.material->gpu_idx();
             m_obj_config.use_clustered_lighting = 0;
-                        m_obj_config.directional_light_id = 0;
+            m_obj_config.directional_light_id = 0;
             copy_texture_indices(m_obj_config, batch.material);
 
             vkCmdPushConstants(cmd,
@@ -399,7 +399,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
                                                     ? m_cache.directional_lights.at(0)->slot()
                                                     : 0;
             m_obj_config.use_clustered_lighting = 1;
-                        m_obj_config.material_id = obj->material->gpu_idx();
+            m_obj_config.material_id = obj->material->gpu_idx();
             m_obj_config.instance_base = transparent_base + transparent_idx;
             copy_texture_indices(m_obj_config, obj->material);
 
@@ -435,72 +435,6 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
 
 // ============================================================================
 // Draw Functions - Picking
-// ============================================================================
-
-void
-vulkan_render::draw_picking_instanced(VkCommandBuffer cmd)
-{
-    ZoneScopedN("Render::DrawPickingInstanced");
-
-    // Bind global descriptor sets once for the picking pass
-    bind_global_descriptors(cmd, *m_current_frame);
-
-    pipeline_ctx pctx{};
-    bool bound = false;
-
-    auto draw_pick_batches = [&](const std::vector<draw_batch>& batches)
-    {
-        for (const auto& batch : batches)
-        {
-            if (!bound)
-            {
-                // Pick shader uses its own pipeline — bind pipeline but skip material descriptors
-                auto pipeline = m_pick_mat->get_shader_effect()->m_pipeline;
-                pctx.pipeline_layout = m_pick_mat->get_shader_effect()->m_pipeline_layout;
-                vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-                if (m_bindless_set != VK_NULL_HANDLE)
-                {
-                    vkCmdBindDescriptorSets(cmd,
-                                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                            pctx.pipeline_layout,
-                                            KGPU_textures_descriptor_sets,
-                                            1,
-                                            &m_bindless_set,
-                                            0,
-                                            nullptr);
-                }
-                bound = true;
-            }
-
-            bind_mesh(cmd, batch.mesh);
-
-            m_pick_pc.instance_base = batch.first_instance_offset;
-
-            vkCmdPushConstants(cmd,
-                               pctx.pipeline_layout,
-                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                               0,
-                               sizeof(gpu::push_constants_pick),
-                               &m_pick_pc);
-
-            if (batch.mesh->has_indices())
-            {
-                vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
-            }
-            else
-            {
-                vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
-            }
-        }
-    };
-
-    draw_pick_batches(m_draw_batches);
-    draw_pick_batches(m_debug_draw_batches);
-}
-
-
-
 // ============================================================================
 // Draw Functions - Grid (shared)
 // ============================================================================
@@ -714,7 +648,7 @@ vulkan_render::draw_object(VkCommandBuffer cmd,
 
     // Always use clustered lighting
     m_obj_config.use_clustered_lighting = 1;
-    
+
     auto cur_mesh = obj->mesh;
     m_obj_config.material_id = obj->material->gpu_idx();
 
@@ -829,10 +763,11 @@ void
 vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
 {
     KRG_check(obj_data, "Should be always valid");
+    m_object_bvh_dirty = true;
 
     if (obj_data->outlined)
     {
-        KRG_check(obj_data->queue_id != "transparent", "Not supported!");
+        // KRG_check(obj_data->queue_id != "transparent", "Not supported!");
 
         m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
     }
@@ -877,9 +812,10 @@ void
 vulkan_render::schd_remove_object(render::vulkan_render_data* obj_data)
 {
     KRG_check(obj_data, "Should be always valid");
+    m_object_bvh_dirty = true;
 
     {
-        KRG_check(obj_data->queue_id != "transparent", "Not supported!");
+        // KRG_check(obj_data->queue_id != "transparent", "Not supported!");
 
         const std::string id = obj_data->queue_id;
 

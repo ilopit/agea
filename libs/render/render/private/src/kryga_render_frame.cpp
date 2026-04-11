@@ -231,16 +231,12 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     // Bind per-frame image resources
     auto* main_pass = get_render_pass(AID("main"));
     auto* ui_pass = get_render_pass(AID("ui"));
-    auto* picking_pass = get_render_pass(AID("picking"));
 
     auto main_images = main_pass->get_color_images();
     m_render_graph.bind_image(AID("swapchain"), *main_images[swapchain_image_index]);
 
     auto ui_images = ui_pass->get_color_images();
     m_render_graph.bind_image(AID("ui_target"), *ui_images[0]);
-
-    auto picking_images = picking_pass->get_color_images();
-    m_render_graph.bind_image(AID("picking_target"), *picking_images[0]);
 
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
@@ -395,19 +391,6 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
                   "Main pass: not all BDA resources bound this frame");
     }
 
-    auto* picking_pass = get_render_pass(AID("picking"));
-    if (picking_pass && picking_pass->are_bindings_finalized())
-    {
-        picking_pass->begin_frame();
-        picking_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-        picking_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-        picking_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
-        picking_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
-
-        KRG_check(static_cast<const render_pass*>(picking_pass)->bindings().validate_bda_bound(),
-                  "Picking pass: not all BDA resources bound this frame");
-    }
-
     // Prepare debug light visualization data (must happen before rendering)
     prepare_debug_light_data(current_frame);
 
@@ -446,12 +429,6 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         m_shadow_pc.bdag_instance_slots = b.instance_slots.device_address();
         m_shadow_pc.bdag_shadow_data = b.shadow_data.device_address();
 
-        // Pick pass push constants
-        m_pick_pc.bdag_camera = b.dynamic_data.device_address();
-        m_pick_pc.bdag_objects = b.objects.device_address();
-        m_pick_pc.bdag_instance_slots = b.instance_slots.device_address();
-        m_pick_pc.bdag_bone_matrices = b.bone_matrices.device_address();
-
         // Grid pass push constants
         m_grid_pc.bdag_camera = b.dynamic_data.device_address();
     }
@@ -473,114 +450,114 @@ vulkan_render::resize(uint32_t width, uint32_t height)
 vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
-    // Source for the copy is the last rendered swapchain image
-    auto picking_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("picking"));
-    auto src_image = picking_pass->get_color_images()[0]->image();
-
-    // Create the linear tiled destination image to copy to and to read the memory from
-
-    auto extent = VkExtent3D{m_width, m_height, 1};
-
-    auto image_ci = vk_utils::make_image_create_info(VK_FORMAT_R8G8B8A8_UNORM, 0, extent);
-    image_ci.imageType = VK_IMAGE_TYPE_2D;
-    image_ci.arrayLayers = 1;
-    image_ci.mipLevels = 1;
-    image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
-    image_ci.tiling = VK_IMAGE_TILING_LINEAR;
-    image_ci.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    // Create the image
-
-    VmaAllocationCreateInfo vma_allocinfo = {};
-    vma_allocinfo.usage = VMA_MEMORY_USAGE_GPU_TO_CPU;
-    vma_allocinfo.requiredFlags =
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    auto dst_image = vk_utils::vulkan_image::create(
-        glob::glob_state().getr_render_device().get_vma_allocator_provider(),
-        image_ci,
-        vma_allocinfo);
-
-    auto cmd_buf_ai = vk_utils::make_command_buffer_allocate_info(
-        glob::glob_state().getr_render_device().m_upload_context.m_command_pool, 1);
-
-    VkCommandBuffer cmd_buffer;
-    vkAllocateCommandBuffers(
-        glob::glob_state().getr_render_device().vk_device(), &cmd_buf_ai, &cmd_buffer);
-
-    auto command_buffer_bi = vk_utils::make_command_buffer_begin_info();
-    vkBeginCommandBuffer(cmd_buffer, &command_buffer_bi);
-
-    // Transition destination image to transfer destination layout
-    vk_utils::make_insert_image_memory_barrier(
-        cmd_buffer,
-        dst_image.image(),
-        0,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
-
+    // Rebuild BVH if objects changed
+    if (m_object_bvh_dirty)
     {
-        // Otherwise use image copy (requires us to manually flip components)
-        VkImageCopy image_copy_region{};
-        image_copy_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        image_copy_region.srcSubresource.layerCount = 1;
-        image_copy_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        image_copy_region.dstSubresource.layerCount = 1;
-        image_copy_region.extent = extent;
+        std::vector<bvh_object_entry> entries;
 
-        // Issue the copy command
-        vkCmdCopyImage(cmd_buffer,
-                       src_image,
-                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                       dst_image.image(),
-                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                       1,
-                       &image_copy_region);
+        auto collect = [&](const auto& queue_map)
+        {
+            for (const auto& [qid, container] : queue_map)
+            {
+                for (auto* obj : container)
+                {
+                    if (!obj->renderable)
+                    {
+                        continue;
+                    }
+
+                    // Build world-space AABB from unit local bounds + model matrix
+                    glm::vec3 local_min(-0.5f);
+                    glm::vec3 local_max(0.5f);
+
+                    glm::vec3 world_min(std::numeric_limits<float>::max());
+                    glm::vec3 world_max(std::numeric_limits<float>::lowest());
+
+                    for (int c = 0; c < 8; ++c)
+                    {
+                        glm::vec3 corner(
+                            (c & 1) ? local_max.x : local_min.x,
+                            (c & 2) ? local_max.y : local_min.y,
+                            (c & 4) ? local_max.z : local_min.z);
+                        glm::vec3 world_corner = glm::vec3(
+                            obj->gpu_data.model * glm::vec4(corner, 1.0f));
+                        world_min = glm::min(world_min, world_corner);
+                        world_max = glm::max(world_max, world_corner);
+                    }
+
+                    // Enforce minimum thickness on all axes.
+                    // Billboards and flat quads have zero depth on one axis —
+                    // inflate to make them clickable. Editor-only objects
+                    // (gizmo icons) get a larger minimum for easier picking.
+                    bool is_editor = (obj->layer_flags & render::LAYER_EDITOR_ONLY) != 0;
+                    float min_extent = is_editor ? 1.0f : 0.1f;
+
+                    glm::vec3 center = (world_min + world_max) * 0.5f;
+                    glm::vec3 half = (world_max - world_min) * 0.5f;
+                    half = glm::max(half, glm::vec3(min_extent));
+                    world_min = center - half;
+                    world_max = center + half;
+
+                    entries.push_back({.aabb_min = world_min,
+                                       .aabb_max = world_max,
+                                       .user_id = obj->slot(),
+                                       .user_data = obj});
+                }
+            }
+        };
+
+        collect(m_default_render_object_queue);
+        collect(m_outline_render_object_queue);
+        collect(m_debug_render_object_queue);
+
+        for (auto* obj : m_transparent_render_object_queue)
+        {
+            if (!obj->renderable)
+            {
+                continue;
+            }
+
+            float r = obj->gpu_data.bounding_radius;
+            glm::vec3 local_min(-r);
+            glm::vec3 local_max(r);
+
+            glm::vec3 world_min(std::numeric_limits<float>::max());
+            glm::vec3 world_max(std::numeric_limits<float>::lowest());
+
+            for (int c = 0; c < 8; ++c)
+            {
+                glm::vec3 corner(
+                    (c & 1) ? local_max.x : local_min.x,
+                    (c & 2) ? local_max.y : local_min.y,
+                    (c & 4) ? local_max.z : local_min.z);
+                glm::vec3 world_corner = glm::vec3(
+                    obj->gpu_data.model * glm::vec4(corner, 1.0f));
+                world_min = glm::min(world_min, world_corner);
+                world_max = glm::max(world_max, world_corner);
+            }
+
+            entries.push_back({.aabb_min = world_min,
+                               .aabb_max = world_max,
+                               .user_id = obj->slot(),
+                               .user_data = obj});
+        }
+
+        m_object_bvh.build(entries.data(), static_cast<uint32_t>(entries.size()));
+        m_object_bvh_dirty = false;
     }
 
-    // Transition destination image to general layout, which is the required layout for mapping the
-    // image memory later on
-    vk_utils::make_insert_image_memory_barrier(
-        cmd_buffer,
-        dst_image.image(),
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_ACCESS_MEMORY_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+    // Cast ray — nearest AABB hit wins
+    auto inv_view = glm::inverse(m_camera_data.view);
+    auto r = object_bvh::screen_to_ray(x, y, m_width, m_height,
+                                        m_camera_data.inv_projection, inv_view);
 
-    glob::glob_state().getr_render_device().flush_command_buffer(
-        cmd_buffer, glob::glob_state().getr_render_device().vk_graphics_queue());
-
-    // Map image memory so we can start copying from it
-
-    auto mp = ImGui::GetIO().MousePos;
-
-    auto data = dst_image.map();
-
-    data += (x + y * m_width) * 4;
-
-    uint32_t pixel = 0;
-
-    memcpy(&pixel, data, 4);
-
-    dst_image.unmap();
-
-    auto obj_slot = pixel & 0xFFFFFF;
-
-    if (!obj_slot)
+    raycast_hit hit;
+    if (m_object_bvh.raycast(r, hit))
     {
-        return nullptr;
+        return static_cast<vulkan_render_data*>(hit.user_data);
     }
 
-    return m_cache.objects.at(obj_slot);
+    return nullptr;
 }
 
 void

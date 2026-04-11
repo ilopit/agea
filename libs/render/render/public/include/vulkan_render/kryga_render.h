@@ -14,6 +14,7 @@
 #include "vulkan_render/render_config.h"
 #include "render/utils/frustum.h"
 #include "render/utils/cluster_grid.h"
+#include "render/utils/object_bvh.h"
 #include "gpu_types/gpu_cluster_types.h"
 #include "gpu_types/gpu_shadow_types.h"
 
@@ -287,9 +288,6 @@ private:
     draw_objects_instanced(render::frame_state& frame);
 
     void
-    draw_picking_instanced(VkCommandBuffer cmd);
-
-    void
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
@@ -503,7 +501,6 @@ private:
 
     // Generic
     material_data* m_outline_mat = nullptr;
-    material_data* m_pick_mat = nullptr;
 
     // Descriptors
 
@@ -520,7 +517,6 @@ private:
 
     gpu::push_constants_main m_obj_config = {};
     gpu::push_constants_shadow m_shadow_pc = {};
-    gpu::push_constants_pick m_pick_pc = {};
     gpu::push_constants_grid m_grid_pc = {};
 
     render_cache m_cache;
@@ -543,6 +539,10 @@ private:
 
     // Frustum for view culling
     frustum m_frustum;
+
+    // Object-level BVH for CPU raycasting (picking)
+    object_bvh m_object_bvh;
+    bool m_object_bvh_dirty = true;
 
     // Shadow mapping
     gpu::shadow_config_data m_shadow_config = {};
