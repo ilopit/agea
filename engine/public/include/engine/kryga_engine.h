@@ -103,10 +103,6 @@ private:
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited
 
-    // Resolved config paths (for .tmp save on cleanup)
-    utils::path m_render_config_path{""};
-    utils::path m_bake_config_path{""};
-
     gpu::camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};

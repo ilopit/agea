@@ -3,6 +3,7 @@
 #include <vulkan_render/render_enums.h>
 
 #include <utils/path.h>
+#include <vfs/rid.h>
 
 #include <cstdint>
 
@@ -58,21 +59,13 @@ struct render_config
     bool
     save(const utils::path& path) const;
 
-    // Load .tmp if it exists, otherwise load base config
+    // Load from cache VFS path if it exists, otherwise load base config
     bool
-    load_with_tmp(const utils::path& base_path);
+    load_with_cache(const vfs::rid& base, const vfs::rid& cache);
 
-    // Save current state as .tmp next to the base config
+    // Save current state to cache VFS path
     bool
-    save_tmp(const utils::path& base_path) const;
-
-    // Delete the .tmp file
-    static void
-    delete_tmp(const utils::path& base_path);
-
-    // Returns base_path with ".tmp" appended
-    static utils::path
-    tmp_path(const utils::path& base_path);
+    save_to_cache(const vfs::rid& cache) const;
 };
 
 }  // namespace render

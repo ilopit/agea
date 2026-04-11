@@ -1,6 +1,8 @@
 #include "vulkan_render/render_config.h"
 
+#include <global_state/global_state.h>
 #include <serialization/serialization.h>
+#include <vfs/vfs.h>
 #include <gpu_types/gpu_shadow_types.h>
 #include <gpu_types/gpu_cluster_types.h>
 #include <utils/kryga_log.h>
@@ -213,6 +215,7 @@ render_config::load(const utils::path& path)
 
     if (auto shadows_node = container["shadows"]; shadows_node && shadows_node.IsMap())
     {
+        extract_field(shadows_node, "enabled", shadows.enabled);
         extract_field(shadows_node, "pcf", shadows.pcf);
         extract_field(shadows_node, "bias", shadows.bias);
         extract_field(shadows_node, "normal_bias", shadows.normal_bias);
@@ -226,6 +229,13 @@ render_config::load(const utils::path& path)
         extract_field(clusters_node, "tile_size", clusters.tile_size);
         extract_field(clusters_node, "depth_slices", clusters.depth_slices);
         extract_field(clusters_node, "max_lights_per_cluster", clusters.max_lights_per_cluster);
+    }
+
+    if (auto lighting_node = container["lighting"]; lighting_node && lighting_node.IsMap())
+    {
+        extract_field(lighting_node, "directional", lighting.directional_enabled);
+        extract_field(lighting_node, "local", lighting.local_enabled);
+        extract_field(lighting_node, "baked", lighting.baked_enabled);
     }
 
     if (auto debug_node = container["debug"]; debug_node && debug_node.IsMap())
@@ -254,6 +264,7 @@ render_config::save(const utils::path& path) const
     root["mode"] = render_mode_to_string.at(mode);
 
     YAML::Node shadows_node;
+    shadows_node["enabled"] = shadows.enabled;
     shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
     shadows_node["bias"] = shadows.bias;
     shadows_node["normal_bias"] = shadows.normal_bias;
@@ -267,6 +278,12 @@ render_config::save(const utils::path& path) const
     clusters_node["depth_slices"] = clusters.depth_slices;
     clusters_node["max_lights_per_cluster"] = clusters.max_lights_per_cluster;
     root["clusters"] = clusters_node;
+
+    YAML::Node lighting_node;
+    lighting_node["directional"] = lighting.directional_enabled;
+    lighting_node["local"] = lighting.local_enabled;
+    lighting_node["baked"] = lighting.baked_enabled;
+    root["lighting"] = lighting_node;
 
     YAML::Node debug_node;
     debug_node["show_grid"] = debug.show_grid;
@@ -286,39 +303,106 @@ render_config::save(const utils::path& path) const
 }
 
 // ============================================================================
-// .tmp support
+// Cache support (via VFS)
 // ============================================================================
 
-utils::path
-render_config::tmp_path(const utils::path& base_path)
-{
-    return APATH(base_path.str() + ".tmp");
-}
-
 bool
-render_config::load_with_tmp(const utils::path& base_path)
+render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
 {
-    auto tp = tmp_path(base_path);
-    if (std::filesystem::exists(tp.fs()))
+    auto& vfs = glob::glob_state().getr_vfs();
+    if (vfs.exists(cache))
     {
-        ALOG_INFO("Found render config .tmp, loading session state");
-        return load(tp);
+        ALOG_INFO("Found cached render config at '{}'", cache.str());
+        serialization::container container;
+        if (serialization::read_container(cache, container))
+        {
+            extract_field(container, "mode", mode);
+
+            if (auto s = container["shadows"]; s && s.IsMap())
+            {
+                extract_field(s, "pcf", shadows.pcf);
+                extract_field(s, "bias", shadows.bias);
+                extract_field(s, "normal_bias", shadows.normal_bias);
+                extract_field(s, "cascade_count", shadows.cascade_count);
+                extract_field(s, "distance", shadows.distance);
+                extract_field(s, "map_size", shadows.map_size);
+            }
+
+            if (auto c = container["clusters"]; c && c.IsMap())
+            {
+                extract_field(c, "tile_size", clusters.tile_size);
+                extract_field(c, "depth_slices", clusters.depth_slices);
+                extract_field(c, "max_lights_per_cluster", clusters.max_lights_per_cluster);
+            }
+
+            if (auto l = container["lighting"]; l && l.IsMap())
+            {
+                extract_field(l, "directional", lighting.directional_enabled);
+                extract_field(l, "local", lighting.local_enabled);
+                extract_field(l, "baked", lighting.baked_enabled);
+            }
+
+            if (auto d = container["debug"]; d && d.IsMap())
+            {
+                extract_field(d, "show_grid", debug.show_grid);
+                extract_field(d, "light_wireframe", debug.light_wireframe);
+                extract_field(d, "light_icons", debug.light_icons);
+                extract_field(d, "frustum_culling", debug.frustum_culling);
+            }
+
+            validate();
+            return true;
+        }
     }
-    return load(base_path);
+
+    // Fall back to base config
+    auto rp = vfs.real_path(base);
+    if (rp.has_value())
+    {
+        return load(APATH(rp.value()));
+    }
+    return false;
 }
 
 bool
-render_config::save_tmp(const utils::path& base_path) const
+render_config::save_to_cache(const vfs::rid& cache) const
 {
-    return save(tmp_path(base_path));
-}
+    glob::glob_state().getr_vfs().create_directories(
+        vfs::rid(cache.mount_point(), ""));
 
-void
-render_config::delete_tmp(const utils::path& base_path)
-{
-    auto tp = tmp_path(base_path);
-    std::error_code ec;
-    std::filesystem::remove(tp.fs(), ec);
+    YAML::Node root;
+    root["mode"] = render_mode_to_string.at(mode);
+
+    YAML::Node shadows_node;
+    shadows_node["enabled"] = shadows.enabled;
+    shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
+    shadows_node["bias"] = shadows.bias;
+    shadows_node["normal_bias"] = shadows.normal_bias;
+    shadows_node["cascade_count"] = shadows.cascade_count;
+    shadows_node["distance"] = shadows.distance;
+    shadows_node["map_size"] = shadows.map_size;
+    root["shadows"] = shadows_node;
+
+    YAML::Node clusters_node;
+    clusters_node["tile_size"] = clusters.tile_size;
+    clusters_node["depth_slices"] = clusters.depth_slices;
+    clusters_node["max_lights_per_cluster"] = clusters.max_lights_per_cluster;
+    root["clusters"] = clusters_node;
+
+    YAML::Node lighting_node;
+    lighting_node["directional"] = lighting.directional_enabled;
+    lighting_node["local"] = lighting.local_enabled;
+    lighting_node["baked"] = lighting.baked_enabled;
+    root["lighting"] = lighting_node;
+
+    YAML::Node debug_node;
+    debug_node["show_grid"] = debug.show_grid;
+    debug_node["light_wireframe"] = debug.light_wireframe;
+    debug_node["light_icons"] = debug.light_icons;
+    debug_node["frustum_culling"] = debug.frustum_culling;
+    root["debug"] = debug_node;
+
+    return serialization::write_container(cache, root);
 }
 
 }  // namespace render

@@ -40,18 +40,18 @@ namespace ui
 {
 
 void
-bake_editor::init(const utils::path& config_path)
+bake_editor::init(const vfs::rid& base, const vfs::rid& cache)
 {
-    m_config_path = config_path;
-    m_config.load_with_tmp(m_config_path);
+    m_cache_rid = cache;
+    m_config.load_with_cache(base, cache);
 }
 
 void
 bake_editor::save_config()
 {
-    if (!m_config_path.str().empty())
+    if (!m_cache_rid.empty())
     {
-        m_config.save_tmp(m_config_path);
+        m_config.save_to_cache(m_cache_rid);
     }
 }
 
@@ -67,7 +67,7 @@ bake_editor::handle()
     auto& cfg = m_config;
 
     // --- Presets ---
-    if (ImGui::CollapsingHeader("Presets"))
+    if (ImGui::CollapsingHeader("Presets", ImGuiTreeNodeFlags_DefaultOpen))
     {
         if (ImGui::Button("Low", ImVec2(80, 0)))
         {

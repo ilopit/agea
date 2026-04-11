@@ -246,13 +246,10 @@ vulkan_engine::init(const startup_options& options)
     auto rp_input = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/inputs.acfg"));
     glob::glob_state().get_input_manager()->load_actions(APATH(rp_input.value()));
 
-    // Load render config (with .tmp fallback for unsaved session state)
-    auto rp_render =
-        glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/render.acfg"));
-    m_render_config_path = APATH(rp_render.value());
-
+    // Load render config (with rtcache fallback for session state)
     render::render_config render_cfg;
-    render_cfg.load_with_tmp(m_render_config_path);
+    render_cfg.load_with_cache(vfs::rid("data://configs/render.acfg"),
+                               vfs::rid("rtcache://render.acfg"));
 
     // CLI --render-mode override takes precedence over config file
     if (options.has_render_mode)
@@ -289,10 +286,9 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_ui().init();
 
-    // Load bake config (with .tmp fallback for unsaved session state)
-    auto rp_bake = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/bake.acfg"));
-    m_bake_config_path = APATH(rp_bake.value());
-    ui::get_window<ui::bake_editor>()->init(m_bake_config_path);
+    // Load bake config (with rtcache fallback for session state)
+    ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
+                                            vfs::rid("rtcache://bake.acfg"));
 
     glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, render_cfg);
 
@@ -309,15 +305,10 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
-    // Save configs as .tmp for next session
-    if (!m_render_config_path.str().empty())
-    {
-        glob::glob_state().getr_vulkan_render().get_render_config().save_tmp(m_render_config_path);
-    }
-    if (!m_bake_config_path.str().empty())
-    {
-        ui::get_window<ui::bake_editor>()->save_config();
-    }
+    // Save session state to rtcache
+    glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
+        vfs::rid("rtcache://render.acfg"));
+    ui::get_window<ui::bake_editor>()->save_config();
 
     glob::set_input_provider(nullptr);
 

@@ -109,6 +109,16 @@ ui::init()
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+    // Persist window layout to rtcache directory
+    auto& vfs = glob::glob_state().getr_vfs();
+    vfs.create_directories(vfs::rid("rtcache://"));
+    auto ini_rp = vfs.real_path(vfs::rid("rtcache://imgui.ini"));
+    if (ini_rp.has_value())
+    {
+        static std::string ini_file = ini_rp.value().string();
+        io.IniFilename = ini_file.c_str();
+    }
+
     ImGui_ImplSDL2_InitForVulkan(glob::glob_state().getr_native_window().handle());
 
     // Color scheme
@@ -755,7 +765,7 @@ render_config_window::handle()
             glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/render.acfg"));
         auto path = APATH(rp.value());
         cfg.save(path);
-        render::render_config::delete_tmp(path);
+        glob::glob_state().getr_vfs().remove(vfs::rid("rtcache://render.acfg"));
     }
     if (ImGui::IsItemHovered())
     {

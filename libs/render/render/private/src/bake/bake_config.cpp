@@ -1,9 +1,9 @@
 #include "vulkan_render/bake/bake_types.h"
 
+#include <global_state/global_state.h>
 #include <serialization/serialization.h>
+#include <vfs/vfs.h>
 #include <utils/kryga_log.h>
-
-#include <filesystem>
 
 namespace kryga
 {
@@ -171,27 +171,60 @@ bake_config::save(const utils::path& path) const
     return true;
 }
 
-utils::path
-bake_config::tmp_path(const utils::path& base_path)
-{
-    return APATH(base_path.str() + ".tmp");
-}
-
 bool
-bake_config::load_with_tmp(const utils::path& base_path)
+bake_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
 {
-    auto tp = tmp_path(base_path);
-    if (std::filesystem::exists(tp.fs()))
+    auto& vfs = glob::glob_state().getr_vfs();
+    if (vfs.exists(cache))
     {
-        return load(tp);
+        auto rp = vfs.real_path(cache);
+        if (rp.has_value() && load(APATH(rp.value())))
+        {
+            return true;
+        }
     }
-    return load(base_path);
+
+    auto rp = vfs.real_path(base);
+    if (rp.has_value())
+    {
+        return load(APATH(rp.value()));
+    }
+    return false;
 }
 
 bool
-bake_config::save_tmp(const utils::path& base_path) const
+bake_config::save_to_cache(const vfs::rid& cache) const
 {
-    return save(tmp_path(base_path));
+    glob::glob_state().getr_vfs().create_directories(
+        vfs::rid(cache.mount_point(), ""));
+
+    YAML::Node root;
+    root["resolution"] = resolution;
+    root["samples_per_texel"] = samples_per_texel;
+    root["bounce_count"] = bounce_count;
+    root["denoise_iterations"] = denoise_iterations;
+    root["ao_radius"] = ao_radius;
+    root["ao_intensity"] = ao_intensity;
+    root["bake_direct"] = bake_direct;
+    root["bake_indirect"] = bake_indirect;
+    root["bake_ao"] = bake_ao;
+    root["save_png"] = save_png;
+    root["texels_per_unit"] = texels_per_unit;
+    root["min_tile"] = min_tile;
+    root["max_tile"] = max_tile;
+    root["shadow_bias"] = shadow_bias;
+    root["shadow_samples"] = shadow_samples;
+    root["shadow_spread"] = shadow_spread;
+    root["dilate_iterations"] = dilate_iterations;
+
+    if (!serialization::write_container(cache, root))
+    {
+        ALOG_ERROR("Failed to save bake config to '{}'", cache.str());
+        return false;
+    }
+
+    ALOG_INFO("Saved bake config to '{}'", cache.str());
+    return true;
 }
 
 }  // namespace bake

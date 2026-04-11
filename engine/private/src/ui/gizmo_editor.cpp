@@ -42,7 +42,7 @@ gizmo_editor::draw()
                      nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar |
-                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking);
+                         ImGuiWindowFlags_NoDocking);
 
         // Mode
         bool t = (m_mode == gizmo_mode::translate);

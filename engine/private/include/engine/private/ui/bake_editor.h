@@ -3,7 +3,7 @@
 #include "engine/ui.h"
 
 #include <vulkan_render/bake/bake_types.h>
-#include <utils/path.h>
+#include <vfs/rid.h>
 
 namespace kryga
 {
@@ -25,7 +25,7 @@ public:
     }
 
     void
-    init(const utils::path& config_path);
+    init(const vfs::rid& base, const vfs::rid& cache);
 
     void
     handle() override;
@@ -35,7 +35,7 @@ public:
 
 private:
     render::bake::bake_config m_config;
-    utils::path m_config_path;
+    vfs::rid m_cache_rid;
 };
 
 }  // namespace ui

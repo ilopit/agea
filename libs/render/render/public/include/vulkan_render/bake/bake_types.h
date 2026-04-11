@@ -53,13 +53,10 @@ struct bake_config
     save(const utils::path& path) const;
 
     bool
-    load_with_tmp(const utils::path& base_path);
+    load_with_cache(const vfs::rid& base, const vfs::rid& cache);
 
     bool
-    save_tmp(const utils::path& base_path) const;
-
-    static utils::path
-    tmp_path(const utils::path& base_path);
+    save_to_cache(const vfs::rid& cache) const;
 };
 
 // Per-bake runtime settings — extends config with scene data and output paths

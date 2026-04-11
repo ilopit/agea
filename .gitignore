@@ -8,3 +8,4 @@ build
 
 # Config session state
 resources/configs/*.tmp
+**/imgui.ini

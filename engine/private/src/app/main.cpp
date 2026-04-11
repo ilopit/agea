@@ -54,6 +54,7 @@ main(int argc, char** argv)
         auto& vfs = gs.getr_vfs();
         vfs.mount("data", std::make_unique<kryga::vfs::physical_backend>(root), 0);
         vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(root / "cache"), 0);
+        vfs.mount("rtcache", std::make_unique<kryga::vfs::physical_backend>(root / "rtcache"), 0);
         vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(root / "tmp"), 0);
         vfs.mount(
             "generated",
