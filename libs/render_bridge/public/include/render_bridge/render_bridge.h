@@ -8,6 +8,8 @@
 #include <utils/path.h>
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
+
+#include <unordered_map>
 #include <utils/check.h>
 
 #include <vulkan_render/vulkan_render_loader_create_infos.h>
@@ -64,6 +66,10 @@ public:
 
     utils::dynobj
     collect_gpu_data(root::smart_object& so);
+
+    // Collect all bool properties in "Specialization" category as {name → value} pairs
+    static std::unordered_map<std::string, uint32_t>
+    collect_spec_constants(root::smart_object& so);
 
     utils::dynobj
     extract_gpu_data(root::smart_object& so, const access_template& t);

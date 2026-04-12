@@ -4,9 +4,14 @@
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
+layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
+
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
 #include "bda_macros_main.glsl"
+// Always define KRYGA_LIGHTMAPPED so the lightmap UV output is declared.
+// The fragment shader controls whether it actually samples the lightmap.
+#define KRYGA_LIGHTMAPPED
 #include "common_vert.glsl"
 
 void main()
@@ -20,6 +25,19 @@ void main()
     out_object_idx = obj_idx;
     out_color      = in_color;
     out_tex_coord  = in_tex_coord;
+
+    // Per-instance atlas transform: remap mesh UV2 into this instance's atlas region.
+    // When lightmap is disabled the output is unused by the fragment shader.
+    if (ENABLE_LIGHTMAP)
+    {
+        out_lightmap_uv = in_lightmap_uv * dyn_object_buffer.objects[obj_idx].lightmap_scale
+                        + dyn_object_buffer.objects[obj_idx].lightmap_offset;
+    }
+    else
+    {
+        out_lightmap_uv = vec2(0);
+    }
+
     out_normal     = mat3(normalMatrix) * in_normal;
     out_world_pos  = vec3(modelMatrix * vec4(in_position, 1));
 

@@ -1,11 +1,13 @@
 #pragma once
 
 #include "vulkan_render/types/vulkan_shader_effects_presets.h"
+#include "vulkan_render/vk_pipeline_builder.h"
 #include <utils/buffer.h>
 
 #include <vulkan/vulkan.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace kryga
@@ -35,6 +37,9 @@ struct shader_effect_create_info
 
     // Preprocessor defines passed to glslc (e.g., "ENABLE_LIGHTMAP=1")
     std::vector<std::string> defines;
+
+    // Specialization constants by name — resolved to constant_id via shader reflection
+    std::unordered_map<std::string, uint32_t> spec_constants;
 
     // If set, reuse this pipeline layout instead of building from reflection.
     // The shader effect will NOT own/destroy the layout.

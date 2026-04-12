@@ -511,3 +511,153 @@ void main() {
 
     ASSERT_FALSE(result.has_value()) << "Should reject SSBO without instance name";
 }
+
+// ============================================================================
+// Specialization Constants
+// ============================================================================
+
+TEST_F(shader_compiler_test, reflection_spec_constants_single_bool)
+{
+    const char* vert_source = R"(
+#version 450
+
+layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
+
+void main() {
+    if (ENABLE_LIGHTMAP) {
+        gl_Position = vec4(1.0);
+    } else {
+        gl_Position = vec4(0.0);
+    }
+}
+)";
+
+    auto buf = create_shader_buffer(vert_source, "spec_single.vert");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+
+    const auto& refl = result->reflection;
+    ASSERT_EQ(refl.spec_constants.size(), 1u);
+    EXPECT_EQ(refl.spec_constants[0].name, "ENABLE_LIGHTMAP");
+    EXPECT_EQ(refl.spec_constants[0].constant_id, 0u);
+}
+
+TEST_F(shader_compiler_test, reflection_spec_constants_multiple)
+{
+    const char* frag_source = R"(
+#version 450
+
+layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
+layout(constant_id = 1) const bool ENABLE_FOG = false;
+layout(constant_id = 2) const int SHADOW_QUALITY = 0;
+
+layout(location = 0) out vec4 out_color;
+
+void main() {
+    vec4 c = vec4(1.0);
+    if (ENABLE_LIGHTMAP) c *= 0.5;
+    if (ENABLE_FOG) c *= 0.8;
+    c *= float(SHADOW_QUALITY);
+    out_color = c;
+}
+)";
+
+    auto buf = create_shader_buffer(frag_source, "spec_multi.frag");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+
+    const auto& refl = result->reflection;
+    ASSERT_EQ(refl.spec_constants.size(), 3u);
+
+    // Verify we can find each by name
+    auto* lm = refl.find_spec_constant("ENABLE_LIGHTMAP");
+    auto* fog = refl.find_spec_constant("ENABLE_FOG");
+    auto* sq = refl.find_spec_constant("SHADOW_QUALITY");
+
+    ASSERT_NE(lm, nullptr);
+    ASSERT_NE(fog, nullptr);
+    ASSERT_NE(sq, nullptr);
+
+    EXPECT_EQ(lm->constant_id, 0u);
+    EXPECT_EQ(fog->constant_id, 1u);
+    EXPECT_EQ(sq->constant_id, 2u);
+}
+
+TEST_F(shader_compiler_test, reflection_spec_constants_none)
+{
+    const char* vert_source = R"(
+#version 450
+
+void main() {
+    gl_Position = vec4(0.0);
+}
+)";
+
+    auto buf = create_shader_buffer(vert_source, "spec_none.vert");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+
+    const auto& refl = result->reflection;
+    EXPECT_TRUE(refl.spec_constants.empty());
+    EXPECT_EQ(refl.find_spec_constant("ANYTHING"), nullptr);
+}
+
+TEST_F(shader_compiler_test, reflection_spec_constants_find_by_name_miss)
+{
+    const char* vert_source = R"(
+#version 450
+
+layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
+
+void main() {
+    gl_Position = ENABLE_LIGHTMAP ? vec4(1.0) : vec4(0.0);
+}
+)";
+
+    auto buf = create_shader_buffer(vert_source, "spec_miss.vert");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+
+    const auto& refl = result->reflection;
+    EXPECT_NE(refl.find_spec_constant("ENABLE_LIGHTMAP"), nullptr);
+    EXPECT_EQ(refl.find_spec_constant("ENABLE_FOG"), nullptr);
+    EXPECT_EQ(refl.find_spec_constant(""), nullptr);
+    EXPECT_EQ(refl.find_spec_constant("enable_lightmap"), nullptr);  // case sensitive
+}
+
+TEST_F(shader_compiler_test, reflection_spec_constants_non_sequential_ids)
+{
+    const char* frag_source = R"(
+#version 450
+
+layout(constant_id = 5) const bool FLAG_A = false;
+layout(constant_id = 10) const bool FLAG_B = true;
+
+layout(location = 0) out vec4 out_color;
+
+void main() {
+    out_color = vec4(float(FLAG_A), float(FLAG_B), 0.0, 1.0);
+}
+)";
+
+    auto buf = create_shader_buffer(frag_source, "spec_nonseq.frag");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+
+    const auto& refl = result->reflection;
+    ASSERT_EQ(refl.spec_constants.size(), 2u);
+
+    auto* a = refl.find_spec_constant("FLAG_A");
+    auto* b = refl.find_spec_constant("FLAG_B");
+
+    ASSERT_NE(a, nullptr);
+    ASSERT_NE(b, nullptr);
+
+    EXPECT_EQ(a->constant_id, 5u);
+    EXPECT_EQ(b->constant_id, 10u);
+}

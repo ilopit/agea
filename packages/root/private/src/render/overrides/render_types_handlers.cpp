@@ -179,6 +179,7 @@ struct create_shader_effect_cmd : render_cmd::render_command_base
     bool is_frag_binary = false;
     bool wire_topology = false;
     bool enable_alpha = false;
+    std::unordered_map<std::string, uint32_t> spec_constants;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
@@ -199,6 +200,7 @@ struct create_shader_effect_cmd : render_cmd::render_command_base
             se_ci.enable_dynamic_state = false;
             se_ci.ds_mode = render::depth_stencil_mode::none;
             se_ci.cull_mode = se_ci.is_wire ? VK_CULL_MODE_NONE : VK_CULL_MODE_BACK_BIT;
+            se_ci.spec_constants = spec_constants;
 
             rp->create_shader_effect(id, se_ci, se_data);
         }
@@ -560,6 +562,7 @@ shader_effect__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     cmd->is_frag_binary = se_model.m_is_frag_binary;
     cmd->wire_topology = se_model.m_wire_topology;
     cmd->enable_alpha = se_model.m_enable_alpha_support;
+    cmd->spec_constants = render_bridge::collect_spec_constants(se_model);
 
     se_model.set_render_built(true);
     ctx.rb->enqueue_cmd(cmd);

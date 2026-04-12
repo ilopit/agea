@@ -12,25 +12,30 @@ layout(push_constant) uniform Constants { push_constants_main obj; } constants;
 #define KRYGA_LIGHTMAPPED
 #include "common_frag.glsl"
 
-#include "gpu_types/solid_color_material__gpu.h"
+#include "gpu_types/pbr_material__gpu.h"
 layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
-    solid_color_material__gpu objects[];
+    pbr_material__gpu objects[];
 };
 #define dyn_material_buffer BdaMaterialBuffer(constants.obj.bdaf_material)
 
 #include "lightmap_sampling.glsl"
 
 // Forward declarations
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, uint mat_idx, float shadow);
-vec3 CalcDirLightDirect(directional_light_data light, vec3 normal, vec3 viewDir, uint mat_idx, float shadow);
-vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, uint mat_idx);
-vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, uint mat_idx);
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex, float shadow);
+vec3 CalcDirLightDirect(directional_light_data light, vec3 normal, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex, float shadow);
+vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex);
+vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex);
 
 void main()
 {
+    uint _mi = get_material_id();
+    float shininess = dyn_material_buffer.objects[_mi].shininess;
+
+    vec3 albedo = sample_bindless_texture(dyn_material_buffer.objects[_mi].texture_indices[KGPU_TEXTURE_SLOT_ALBEDO], dyn_material_buffer.objects[_mi].sampler_indices[KGPU_TEXTURE_SLOT_ALBEDO], in_tex_coord).rgb;
+    vec3 specular_tex = sample_bindless_texture(dyn_material_buffer.objects[_mi].texture_indices[KGPU_TEXTURE_SLOT_SPECULAR], dyn_material_buffer.objects[_mi].sampler_indices[KGPU_TEXTURE_SLOT_SPECULAR], in_tex_coord).rgb;
+
     vec3 norm = normalize(in_normal);
     vec3 viewDir = normalize(dyn_camera_data.obj.position - in_world_pos);
-    uint _mi = get_material_id();
 
     vec4 viewPos = dyn_camera_data.obj.view * vec4(in_world_pos, 1.0);
     float viewDepth = -viewPos.z;
@@ -39,8 +44,6 @@ void main()
 
     if (ENABLE_LIGHTMAP)
     {
-        vec3 albedo = dyn_material_buffer.objects[_mi].diffuse;
-
         // Sample lightmap: baked indirect illumination (per-instance texture from object_data)
         vec3 baked_gi = vec3(0);
         if (is_baked_light_enabled())
@@ -54,7 +57,7 @@ void main()
         if (is_directional_light_enabled())
             direct = CalcDirLightDirect(
                 dyn_directional_lights_buffer.objects[constants.obj.directional_light_id],
-                norm, viewDir, _mi, dirShadow);
+                norm, viewDir, shininess, albedo, specular_tex, dirShadow);
 
         // Local lights (point and spot) -- still fully realtime
         if (is_local_lights_enabled())
@@ -70,9 +73,9 @@ void main()
                 float localShadow = getLocalLightShadow(light, in_world_pos);
 
                 if(light.type == KGPU_light_type_point)
-                    direct += CalcPointLight(light, norm, in_world_pos, viewDir, _mi) * localShadow;
+                    direct += CalcPointLight(light, norm, in_world_pos, viewDir, shininess, albedo, specular_tex) * localShadow;
                 else if(light.type == KGPU_light_type_spot)
-                    direct += CalcSpotLight(light, norm, in_world_pos, viewDir, _mi) * localShadow;
+                    direct += CalcSpotLight(light, norm, in_world_pos, viewDir, shininess, albedo, specular_tex) * localShadow;
             }
         }
 
@@ -85,7 +88,7 @@ void main()
         // phase 1: directional lighting
         vec3 result = vec3(0);
         if (is_directional_light_enabled())
-            result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, _mi, dirShadow);
+            result += CalcDirLight(dyn_directional_lights_buffer.objects[constants.obj.directional_light_id], norm, viewDir, shininess, albedo, specular_tex, dirShadow);
 
         // phase 2: local lights (point and spot)
         if (is_local_lights_enabled())
@@ -94,28 +97,7 @@ void main()
 
             uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
             uint baseIdx = clusterIdx * dyn_cluster_config.config.max_lights_per_cluster;
-#if 0
-            // DEBUG: Check ALL lights in cluster, find closest
-            float minDRatio = 999.0;
-            float closestDist = 99999.0;
-            uint closestLightIdx = 0u;
-            for (uint i = 0u; i < lightCount; i++)
-            {
-                uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
-                universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
-                float dist = length(light.position - in_world_pos);
-                float dr = dist / light.radius;
-                if (dr < minDRatio)
-                {
-                    minDRatio = dr;
-                    closestDist = dist;
-                    closestLightIdx = i;
-                }
-            }
-            // Red = min d_ratio (< 1 means should be lit), Green = lightCount/10, Blue = closestLightIdx/10
-            out_color = vec4(minDRatio, float(lightCount) / 10.0, float(closestLightIdx) / 10.0, 1.0);
-            return;
-#endif
+
             // Iterate over lights in this cluster
             for (uint i = 0u; i < lightCount; i++)
             {
@@ -125,11 +107,11 @@ void main()
 
                 if(light.type == KGPU_light_type_point)
                 {
-                    result += CalcPointLight(light, norm, in_world_pos, viewDir, _mi) * localShadow;
+                    result += CalcPointLight(light, norm, in_world_pos, viewDir, shininess, albedo, specular_tex) * localShadow;
                 }
                 else if(light.type == KGPU_light_type_spot)
                 {
-                    result += CalcSpotLight(light, norm, in_world_pos, viewDir, _mi) * localShadow;
+                    result += CalcSpotLight(light, norm, in_world_pos, viewDir, shininess, albedo, specular_tex) * localShadow;
                 }
             }
         }
@@ -139,7 +121,7 @@ void main()
 }
 
 // Directional light with ambient (non-lightmapped path)
-vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, uint mat_idx, float shadow)
+vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex, float shadow)
 {
     vec3 lightDir = normalize(-light.direction);
 
@@ -148,33 +130,33 @@ vec3 CalcDirLight(directional_light_data light, vec3 normal, vec3 viewDir, uint 
 
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), dyn_material_buffer.objects[mat_idx].shininess);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
     // combine results
-    vec3 ambient = light.ambient * dyn_material_buffer.objects[mat_idx].ambient;
-    vec3 diffuse = light.diffuse * diff * dyn_material_buffer.objects[mat_idx].diffuse;
-    vec3 specular = light.specular * spec * dyn_material_buffer.objects[mat_idx].specular;
+    vec3 ambient = light.ambient * albedo;
+    vec3 diffuse = light.diffuse * diff * albedo;
+    vec3 specular = light.specular * spec * specular_tex;
 
     return ambient + (diffuse + specular) * shadow;
 }
 
 // Directional light: direct contribution only (no ambient -- lightmap provides it)
-vec3 CalcDirLightDirect(directional_light_data light, vec3 normal, vec3 viewDir, uint mat_idx, float shadow)
+vec3 CalcDirLightDirect(directional_light_data light, vec3 normal, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex, float shadow)
 {
     vec3 lightDir = normalize(-light.direction);
     float diff = max(dot(normal, lightDir), 0.0);
 
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), dyn_material_buffer.objects[mat_idx].shininess);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
 
-    vec3 diffuse = light.diffuse * diff * dyn_material_buffer.objects[mat_idx].diffuse;
-    vec3 specular = light.specular * spec * dyn_material_buffer.objects[mat_idx].specular;
+    vec3 diffuse = light.diffuse * diff * albedo;
+    vec3 specular = light.specular * spec * specular_tex;
 
     return (diffuse + specular) * shadow;
 }
 
 
 // calculates the color when using a point light.
-vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, uint mat_idx)
+vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -207,17 +189,17 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
 
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), dyn_material_buffer.objects[mat_idx].shininess);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
 
     // combine results
-    vec3 diffuse = light.diffuse * diff * dyn_material_buffer.objects[mat_idx].diffuse;
-    vec3 specular = light.specular * spec * dyn_material_buffer.objects[mat_idx].specular;
+    vec3 diffuse = light.diffuse * diff * albedo;
+    vec3 specular = light.specular * spec * specular_tex;
 
     return (diffuse + specular) * attenuation;
 }
 
 // calculates the color when using a spot light.
-vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, uint mat_idx)
+vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 viewDir, float shininess, vec3 albedo, vec3 specular_tex)
 {
     vec3 lightDir = normalize(light.position - fragPos);
     // diffuse shading
@@ -250,7 +232,7 @@ vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
 
     // specular shading
     vec3 reflectDir = reflect(-lightDir, normal);
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), dyn_material_buffer.objects[mat_idx].shininess);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
 
     // spotlight intensity
     float theta = dot(lightDir, normalize(-light.direction));
@@ -258,8 +240,8 @@ vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
     float intensity = clamp((theta - light.outer_cut_off) / epsilon, 0.0, 1.0);
 
     // combine results
-    vec3 diffuse = light.diffuse * diff * dyn_material_buffer.objects[mat_idx].diffuse;
-    vec3 specular = light.specular * spec * dyn_material_buffer.objects[mat_idx].specular;
+    vec3 diffuse = light.diffuse * diff * albedo;
+    vec3 specular = light.specular * spec * specular_tex;
 
     return (diffuse + specular) * attenuation * intensity;
 }

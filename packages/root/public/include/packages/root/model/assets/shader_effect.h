@@ -44,6 +44,10 @@ public:
 
     KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
     bool m_enable_alpha_support = false;
+
+    // Shader specialization constants — each maps to a constant_id in the shader
+    KRG_ar_property("category=Specialization", "serializable=true", "access=no", "default=false");
+    bool m_enable_lightmap = false;
 };
 
 }  // namespace root

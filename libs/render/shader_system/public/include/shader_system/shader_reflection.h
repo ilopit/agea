@@ -61,6 +61,12 @@ struct compute_info
     uint32_t local_size_z = 1;
 };
 
+struct spec_constant
+{
+    std::string name;
+    uint32_t constant_id;
+};
+
 struct shader_reflection
 {
     VkShaderStageFlagBits stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
@@ -68,6 +74,7 @@ struct shader_reflection
 
     std::optional<push_constants> constants;
     std::vector<descriptor_set> descriptors;
+    std::vector<spec_constant> spec_constants;
 
     interface_block input_interface;
     interface_block output_interface;
@@ -89,6 +96,19 @@ struct shader_reflection
             if (ds.set_index == set_idx)
             {
                 return &ds;
+            }
+        }
+        return nullptr;
+    }
+
+    const spec_constant*
+    find_spec_constant(const std::string& name) const
+    {
+        for (const auto& sc : spec_constants)
+        {
+            if (sc.name == name)
+            {
+                return &sc;
             }
         }
         return nullptr;
@@ -154,6 +174,10 @@ struct shader_reflection_utils
 
     static bool
     build_shader_push_constants(SpvReflectShaderModule& spv_reflection,
+                                reflection::shader_reflection& sr);
+
+    static bool
+    build_shader_spec_constants(SpvReflectShaderModule& spv_reflection,
                                 reflection::shader_reflection& sr);
 
     static bool

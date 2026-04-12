@@ -104,6 +104,44 @@ render_bridge::set_material_texture_bindings(utils::dynobj& gpu_data,
     memcpy(gpu_data.data() + smp_offset, sampler_indices, count * sizeof(uint32_t));
 }
 
+std::unordered_map<std::string, uint32_t>
+render_bridge::collect_spec_constants(root::smart_object& so)
+{
+    std::unordered_map<std::string, uint32_t> result;
+
+    auto* rt = so.get_reflection();
+    if (!rt)
+    {
+        return result;
+    }
+
+    auto ptr = so.as_blob();
+
+    for (const auto& prop : rt->m_properties)
+    {
+        if (prop->category != "Specialization")
+        {
+            continue;
+        }
+
+        // Read the bool value at the property offset
+        bool value = *reinterpret_cast<const bool*>(ptr + prop->offset);
+        if (value)
+        {
+            // Convert property name to shader constant name:
+            // m_enable_lightmap → ENABLE_LIGHTMAP
+            std::string name = prop->name;
+            for (auto& c : name)
+            {
+                c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            }
+            result[name] = 1;
+        }
+    }
+
+    return result;
+}
+
 utils::dynobj
 render_bridge::collect_gpu_data(root::smart_object& so)
 {

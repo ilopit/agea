@@ -1,6 +1,7 @@
 type_id: shader_effect
 id: se_solid_color_lit_lightmapped
-vert: class/shader_effects/lit/se_solid_color_lit_lightmapped.vert
+vert: class/shader_effects/lit/se_lit.vert
 is_vert_binary: false
-frag: class/shader_effects/lit/se_solid_color_lit_lightmapped.frag
+frag: class/shader_effects/lit/se_solid_color_lit.frag
 is_frag_binary: false
+enable_lightmap: true

@@ -537,6 +537,21 @@ shader_reflection_utils::compare_dynfield(const utils::dynobj_field& l,
 }
 
 bool
+shader_reflection_utils::build_shader_spec_constants(SpvReflectShaderModule& spv_reflection,
+                                                     reflection::shader_reflection& sr)
+{
+    for (uint32_t i = 0; i < spv_reflection.spec_constant_count; ++i)
+    {
+        const auto& sc = spv_reflection.spec_constants[i];
+        if (sc.name)
+        {
+            sr.spec_constants.push_back({sc.name, sc.constant_id});
+        }
+    }
+    return true;
+}
+
+bool
 shader_reflection_utils::build_shader_compute_info(SpvReflectShaderModule& spv_reflection,
                                                    reflection::shader_reflection& sr)
 {
@@ -591,6 +606,11 @@ shader_reflection_utils::build_shader_reflection(const uint8_t* spirv_code,
     }
 
     if (!build_shader_push_constants(spvmodule.h, sr))
+    {
+        return false;
+    }
+
+    if (!build_shader_spec_constants(spvmodule.h, sr))
     {
         return false;
     }

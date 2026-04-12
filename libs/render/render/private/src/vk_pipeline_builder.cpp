@@ -40,6 +40,35 @@ pipeline_builder::build(VkDevice device, VkRenderPass pass)
         pipeline_ci.pDynamicState = &m_dynamic_state_ci;
     }
 
+    // Apply specialization constants to all shader stages
+    VkSpecializationInfo spec_info{};
+    std::vector<VkSpecializationMapEntry> spec_map;
+    std::vector<uint32_t> spec_data;
+
+    if (!m_spec_constants.empty())
+    {
+        spec_data.resize(m_spec_constants.size());
+        spec_map.resize(m_spec_constants.size());
+
+        for (size_t i = 0; i < m_spec_constants.size(); ++i)
+        {
+            spec_data[i] = m_spec_constants[i].value;
+            spec_map[i].constantID = m_spec_constants[i].constant_id;
+            spec_map[i].offset = static_cast<uint32_t>(i * sizeof(uint32_t));
+            spec_map[i].size = sizeof(uint32_t);
+        }
+
+        spec_info.mapEntryCount = static_cast<uint32_t>(spec_map.size());
+        spec_info.pMapEntries = spec_map.data();
+        spec_info.dataSize = spec_data.size() * sizeof(uint32_t);
+        spec_info.pData = spec_data.data();
+
+        for (auto& stage : m_shader_stages_ci)
+        {
+            stage.pSpecializationInfo = &spec_info;
+        }
+    }
+
     pipeline_ci.stageCount = (uint32_t)m_shader_stages_ci.size();
     pipeline_ci.pStages = m_shader_stages_ci.data();
     pipeline_ci.pVertexInputState = &m_vertex_input_info_ci;

@@ -307,6 +307,35 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
         pb.m_color_attachment_count = info.rp->get_color_attachment_count();
     }
 
+    // Resolve named spec constants to constant_ids via shader reflection.
+    // Search both stages. Each constantID must appear at most once in VkSpecializationInfo.
+    if (!info.spec_constants.empty())
+    {
+        for (const auto& [name, value] : info.spec_constants)
+        {
+            const reflection::spec_constant* found = nullptr;
+
+            if (vert_module)
+            {
+                found = vert_module->get_reflection().find_spec_constant(name);
+            }
+            if (!found && frag_module)
+            {
+                found = frag_module->get_reflection().find_spec_constant(name);
+            }
+
+            if (found)
+            {
+                pb.m_spec_constants.push_back({found->constant_id, value});
+            }
+            else
+            {
+                ALOG_ERROR("Spec constant '{}' not found in any shader stage", name);
+                return result_code::failed;
+            }
+        }
+    }
+
     auto& device = glob::glob_state().getr_render_device();
     se_data.m_pipeline = pb.build(device.vk_device(), info.rp->vk());
 
