@@ -19,11 +19,13 @@ vulkan_image::vulkan_image(vma_allocator_provider a, int mips_level)
 vulkan_image::vulkan_image(vulkan_image&& other) noexcept
     : m_image(other.m_image)
     , m_allocation(other.m_allocation)
+    , m_format(other.m_format)
     , mipLevels(other.mipLevels)
     , m_allocator(other.m_allocator)
 {
     other.m_image = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
+    other.m_format = VK_FORMAT_UNDEFINED;
     other.mipLevels = 0;
     other.m_allocator = 0;
 }
@@ -46,11 +48,13 @@ vulkan_image::operator=(vulkan_image&& other) noexcept
 
     m_image = other.m_image;
     m_allocation = other.m_allocation;
+    m_format = other.m_format;
     mipLevels = other.mipLevels;
     m_allocator = other.m_allocator;
 
     other.m_image = VK_NULL_HANDLE;
     other.m_allocation = VK_NULL_HANDLE;
+    other.m_format = VK_FORMAT_UNDEFINED;
     other.mipLevels = 0;
     other.m_allocator = nullptr;
 
@@ -70,17 +74,19 @@ vulkan_image::create(vma_allocator_provider allocator,
 {
     vulkan_image new_image(allocator, mips_level);
 
+    new_image.m_format = ici.format;
     vmaCreateImage(allocator(), &ici, &aci, &new_image.m_image, &new_image.m_allocation, nullptr);
 
     return new_image;
 }
 
 vulkan_image
-vulkan_image::create(VkImage image)
+vulkan_image::create(VkImage image, VkFormat format)
 {
     vulkan_image new_image(nullptr, 0);
 
     new_image.m_image = image;
+    new_image.m_format = format;
 
     return new_image;
 }

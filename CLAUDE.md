@@ -129,3 +129,5 @@ Bindings 9-10 added for probes (all shaders declare them for layout compatibilit
 - NEVER change dependency versions
 - Do not read `*.ar.cpp` generated files without permission
 - C++23, static libraries, Vulkan
+- No defensive null-checks / early-returns — use asserts (`KRG_check`) instead. If something should never be null, assert on it; don't silently skip.
+- NEVER run `UPDATE_REFERENCES=1` for visual regression tests without explicit user confirmation. When tests fail, report which tests failed and WHY the output differs before proposing a reference update.

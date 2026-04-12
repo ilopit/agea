@@ -494,12 +494,8 @@ vulkan_render::draw_selection_mask(VkCommandBuffer cmd, render::frame_state& cur
 void
 vulkan_render::draw_outline_post(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
-    if (!m_outline_post_se || m_selection_mask_bindless_idx == 0xFFFFFFFFu)
-    {
-        ALOG_TRACE("outline_post: skipped (se={} idx={})",
-                   (void*)m_outline_post_se, m_selection_mask_bindless_idx);
-        return;
-    }
+    KRG_check(m_outline_post_se, "Outline post shader effect not initialized");
+    KRG_check(m_selection_mask_bindless_idx != 0xFFFFFFFFu, "Selection mask not bound to bindless");
 
     // Check if there are any outlined objects
     bool has_outlined = false;

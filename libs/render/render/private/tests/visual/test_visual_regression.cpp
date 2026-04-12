@@ -74,9 +74,13 @@ class visual_test_base : public ::testing::Test
 {
 protected:
     void
-    compare(const std::string& test_name, render_pass& pass, uint32_t width, uint32_t height)
+    compare(const std::string& test_name,
+            render_pass& pass,
+            uint32_t width,
+            uint32_t height,
+            VkImageLayout src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
     {
-        auto pixels = test::readback_framebuffer(pass, width, height);
+        auto pixels = test::readback_framebuffer(pass, width, height, src_layout);
 
         auto ref_dir = get_reference_dir();
         auto out_dir = get_output_dir();
@@ -121,7 +125,8 @@ protected:
         EXPECT_TRUE(result.pixel_passed)
             << "Pixel diff: " << result.diff_pixel_count << "/" << result.total_pixels << " ("
             << result.diff_percentage << "%)"
-            << "\n  Actual: " << actual_path << "\n  Diff:   " << diff_path;
+            << "\n  Reference: " << ref_path << "\n  Actual:    " << actual_path
+            << "\n  Diff:      " << diff_path;
 
         EXPECT_TRUE(result.ssim_passed)
             << "SSIM: " << result.ssim << " (threshold: " << params.ssim_threshold << ")";
@@ -157,8 +162,12 @@ public:
     {
         auto device = glob::glob_state().get_render_device();
 
-        glob::glob_state().getr_vulkan_render().init(
-            TEST_WIDTH, TEST_HEIGHT, render_config{}, true);
+        render_config cfg{};
+        cfg.debug.show_grid = false;
+        cfg.debug.light_wireframe = false;
+        cfg.debug.light_icons = false;
+
+        glob::glob_state().getr_vulkan_render().init(TEST_WIDTH, TEST_HEIGHT, cfg, true);
 
         auto extent = VkExtent3D{TEST_WIDTH, TEST_HEIGHT, 1};
 
@@ -183,7 +192,6 @@ public:
                           .set_depth_format(VK_FORMAT_D32_SFLOAT)
                           .set_width_depth(TEST_WIDTH, TEST_HEIGHT)
                           .set_color_images({m_color_image_view}, {m_color_image})
-                          .set_preset(render_pass_builder::presets::picking)
                           .set_enable_stencil(false)
                           .build();
     }
@@ -262,8 +270,13 @@ public:
     SetUp() override
     {
         // Full init (not only_rp) — sets up SSBOs, render graph, compute passes
+        render_config cfg{};
+        cfg.debug.show_grid = false;
+        cfg.debug.light_wireframe = false;
+        cfg.debug.light_icons = false;
+
         auto& renderer = glob::glob_state().getr_vulkan_render();
-        renderer.init(TEST_WIDTH, TEST_HEIGHT, render_config{}, false);
+        renderer.init(TEST_WIDTH, TEST_HEIGHT, cfg, false);
 
         m_main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
     }
@@ -273,6 +286,14 @@ public:
     {
         glob::glob_state().get_vulkan_render()->deinit();
         glob::glob_state().getr_vulkan_render_loader().clear_caches();
+    }
+
+    // Render graph puts swapchain in TRANSFER_SRC_OPTIMAL (headless final layout)
+    void
+    compare(const std::string& test_name, render_pass& pass, uint32_t width, uint32_t height)
+    {
+        visual_test_base::compare(
+            test_name, pass, width, height, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     }
 
 protected:
@@ -345,7 +366,7 @@ protected:
             vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(path_rp.value());
 
-        kryga::utils::buffer::load(path / "se_solid_color_lit.vert", vert_buf);
+        kryga::utils::buffer::load(path / "se_lit.vert", vert_buf);
         kryga::utils::buffer::load(path / "se_solid_color_lit.frag", frag_buf);
 
         shader_effect_create_info se_ci;
@@ -523,6 +544,9 @@ protected:
         renderer.set_selected_directional_light(sun_id);
 
         renderer.get_render_config().shadows.distance = enable_shadows ? 50.0f : 0.0f;
+        renderer.get_render_config().lighting.directional_enabled = true;
+        renderer.get_render_config().lighting.local_enabled = true;
+        renderer.get_render_config().lighting.baked_enabled = true;
 
         // Floor
         auto floor_mesh_id = AID((prefix + "_floor_mesh").c_str());
@@ -1524,8 +1548,8 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
             vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(se_path.value());
 
-        kryga::utils::buffer::load(path / "se_solid_color_lit_lightmapped.vert", lm_vert_buf);
-        kryga::utils::buffer::load(path / "se_solid_color_lit_lightmapped.frag", lm_frag_buf);
+        kryga::utils::buffer::load(path / "se_lit.vert", lm_vert_buf);
+        kryga::utils::buffer::load(path / "se_solid_color_lit.frag", lm_frag_buf);
     }
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &lm_vert_buf;
@@ -1533,6 +1557,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
     se_ci.width = TEST_WIDTH;
     se_ci.height = TEST_HEIGHT;
+    se_ci.spec_constants["ENABLE_LIGHTMAP"] = 1;
 
     shader_effect_data* se_lm = nullptr;
     auto se_rc = m_main_pass->create_shader_effect(AID("bk_se_lm"), se_ci, se_lm);
@@ -1566,6 +1591,11 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     null_sun->gpu_data.specular = {0, 0, 0};
     renderer.schd_add_light(null_sun);
     renderer.set_selected_directional_light(AID("bk_null_sun"));
+
+    // Only baked lighting — disable realtime directional and local
+    renderer.get_render_config().lighting.directional_enabled = false;
+    renderer.get_render_config().lighting.local_enabled = false;
+    renderer.get_render_config().lighting.baked_enabled = true;
 
     std::vector<texture_sampler_data> no_tex;
 

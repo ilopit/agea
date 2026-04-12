@@ -9,7 +9,6 @@ layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
 #include "bda_macros_main.glsl"
-#define KRYGA_LIGHTMAPPED
 #include "common_frag.glsl"
 
 #include "gpu_types/pbr_material__gpu.h"

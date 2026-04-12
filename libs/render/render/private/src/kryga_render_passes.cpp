@@ -35,17 +35,12 @@ vulkan_render::prepare_render_passes()
     auto& device = glob::glob_state().getr_render_device();
 
     {
-        // Use picking preset in headless mode (TRANSFER_SRC layout, no swapchain extension needed)
-        auto preset = device.is_headless() ? render_pass_builder::presets::picking
-                                           : render_pass_builder::presets::swapchain;
-
         auto main_pass =
             render_pass_builder()
                 .set_color_format(device.get_swapchain_format())
                 .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
                 .set_width_depth(m_width, m_height)
                 .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
-                .set_preset(preset)
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),
@@ -81,7 +76,6 @@ vulkan_render::prepare_render_passes()
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
                 .set_enable_stencil(false)
-                .set_preset(render_pass_builder::presets::buffer)
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"),
@@ -92,10 +86,11 @@ vulkan_render::prepare_render_passes()
     {
         auto swapchain_fmt = device.get_swapchain_format();
 
-        auto simg_info = vk_utils::make_image_create_info(
-            swapchain_fmt,
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            image_extent);
+        auto simg_info = vk_utils::make_image_create_info(swapchain_fmt,
+                                                          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                                              VK_IMAGE_USAGE_SAMPLED_BIT |
+                                                              VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                                                          image_extent);
 
         VmaAllocationCreateInfo simg_allocinfo = {};
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -110,9 +105,6 @@ vulkan_render::prepare_render_passes()
 
         auto image_view = vk_utils::vulkan_image_view::create_shared(image_view_ci);
 
-        auto mask_preset = device.is_headless() ? render_pass_builder::presets::picking
-                                                : render_pass_builder::presets::swapchain;
-
         auto mask_pass =
             render_pass_builder()
                 .set_color_format(swapchain_fmt)
@@ -120,14 +112,11 @@ vulkan_render::prepare_render_passes()
                 .set_width_depth(m_width, m_height)
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
-                .set_enable_stencil(false)
-                .set_preset(mask_preset)
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("selection_mask"),
                                                                        std::move(mask_pass));
     }
-
 }
 
 // ============================================================================
@@ -233,13 +222,14 @@ vulkan_render::init_shadow_passes()
     // Create 4 depth-only render passes for CSM cascades (triple-buffered)
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
-        m_shadow_passes[c] = render_pass_builder()
-                                 .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                                 .set_depth_only(true)
-                                 .set_image_count(FRAMES_IN_FLIGHT)
-                                 .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
-                                 .set_enable_stencil(false)
-                                 .build();
+        m_shadow_passes[c] =
+            render_pass_builder()
+                .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                .set_depth_only(true)
+                .set_image_count(FRAMES_IN_FLIGHT)
+                .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
+                .set_enable_stencil(false)
+                .build();
 
         m_shadow_passes[c]->set_name(AID("shadow_csm_" + std::to_string(c)));
     }
@@ -248,13 +238,14 @@ vulkan_render::init_shadow_passes()
     // Each local light needs up to 2 passes (point lights need front+back)
     for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
     {
-        m_shadow_local_passes[i] = render_pass_builder()
-                                       .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                                       .set_depth_only(true)
-                                       .set_image_count(FRAMES_IN_FLIGHT)
-                                       .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
-                                       .set_enable_stencil(false)
-                                       .build();
+        m_shadow_local_passes[i] =
+            render_pass_builder()
+                .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                .set_depth_only(true)
+                .set_image_count(FRAMES_IN_FLIGHT)
+                .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
+                .set_enable_stencil(false)
+                .build();
 
         m_shadow_local_passes[i]->set_name(AID("shadow_local_" + std::to_string(i)));
     }
@@ -576,6 +567,13 @@ vulkan_render::setup_instanced_render_graph()
                                          [this](VkCommandBuffer)
                                          { draw_objects_instanced(*m_current_frame); });
     }
+
+    // Swapchain needs a final layout transition after the last pass
+
+    m_render_graph.set_final_layout(AID("swapchain"),
+                                    glob::glob_state().getr_render_device().is_headless()
+                                        ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+                                        : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     bool result = m_render_graph.compile();
     KRG_check(result, "Instanced render graph compilation failed");

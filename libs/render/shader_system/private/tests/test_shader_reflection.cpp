@@ -24,8 +24,8 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
-
+    EXPECT_EQ(refl.stage, VK_SHADER_STAGE_VERTEX_BIT);
+    ASSERT_TRUE(refl.has_push_constants());
     EXPECT_EQ(refl.constants->offset, 0u);
     EXPECT_EQ(refl.constants->size, 64u);  // mat4 = 4x4x4 = 64 bytes
 }
@@ -52,11 +52,9 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
-
+    ASSERT_TRUE(refl.has_push_constants());
     EXPECT_EQ(refl.constants->offset, 0u);
-    // mat4(64) + vec4(16) + float(4) + padding(12) = 96 bytes (or 84 without padding)
-    EXPECT_GE(refl.constants->size, 84u);
+    EXPECT_EQ(refl.constants->size, 84u);  // mat4(64) + vec4(16) + float(4) = 84 (scalar layout)
 }
 
 TEST_F(shader_compiler_test, reflection_push_constants_multiple_fields_in_struct)
@@ -81,17 +79,15 @@ void main() {
 }
 )";
 
-    auto buf = create_shader_buffer(vert_source, "pc_multi.vert");
+    auto buf = create_shader_buffer(vert_source, "pc_multi_struct.vert");
     auto result = shader_compiler::compile_shader(buf);
 
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
-
+    ASSERT_TRUE(refl.has_push_constants());
     EXPECT_EQ(refl.constants->offset, 0u);
-    // mat4(64) + vec4(16) + float(4) + padding(12) = 96 bytes (or 84 without padding)
-    EXPECT_GE(refl.constants->size, 84u);
+    EXPECT_EQ(refl.constants->size, 84u);
 }
 
 TEST_F(shader_compiler_test, reflection_descriptor_set_ubo)
@@ -117,7 +113,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
     ASSERT_GE(refl.descriptors.size(), 1u);
 
     // Find set 0 using helper
@@ -159,7 +154,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
     ASSERT_GE(refl.descriptors.size(), 1u);
 
     // Find set 1 and binding 2 using helpers
@@ -195,7 +189,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
     ASSERT_GE(refl.descriptors.size(), 1u);
 
     // Find set 1 and binding 2 using helpers
@@ -233,7 +226,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
     // Find set 2 using helper
     auto* set2 = refl.find_set(2);
     ASSERT_NE(set2, nullptr) << "Descriptor set 2 not found";
@@ -270,7 +262,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
     ASSERT_NE(refl.input_interface.layout, nullptr);
 
     // Should have 4 input variables (layout is wrapped, access inner layout)
@@ -305,7 +296,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
     ASSERT_NE(refl.output_interface.layout, nullptr);
 
     // Should have 3 output variables (layout is wrapped, access inner layout)
@@ -344,7 +334,6 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
 
     // Should have 3 descriptor sets (0, 1, 2) - use helpers
     EXPECT_GE(refl.descriptors.size(), 3u);
@@ -387,9 +376,11 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
+
+    EXPECT_EQ(refl.stage, VK_SHADER_STAGE_COMPUTE_BIT);
 
     // Check push constants
+    ASSERT_TRUE(refl.has_push_constants());
     EXPECT_EQ(refl.constants->size, 4u);  // uint = 4 bytes
 
     // Check descriptor set 0 with 2 bindings using helper
@@ -401,6 +392,12 @@ void main() {
     {
         EXPECT_EQ(static_cast<int>(b.type), static_cast<int>(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER));
     }
+
+    // Check compute local size
+    ASSERT_TRUE(refl.compute.has_value());
+    EXPECT_EQ(refl.compute->local_size_x, 64u);
+    EXPECT_EQ(refl.compute->local_size_y, 1u);
+    EXPECT_EQ(refl.compute->local_size_z, 1u);
 }
 
 TEST_F(shader_compiler_test, reflection_no_descriptors_minimal_shader)
@@ -421,10 +418,11 @@ void main() {
     ASSERT_TRUE(result.has_value());
 
     const auto& refl = result->reflection;
-    print_reflection(refl);
+
+    EXPECT_EQ(refl.stage, VK_SHADER_STAGE_VERTEX_BIT);
 
     // No push constants
-    ASSERT_TRUE(!refl.constants);
+    EXPECT_FALSE(refl.has_push_constants());
 
     // No descriptor sets (or empty sets)
     for (const auto& ds : refl.descriptors)
@@ -432,12 +430,71 @@ void main() {
         EXPECT_EQ(ds.bindings.size(), 0u);
     }
 
+    // No spec constants
+    EXPECT_TRUE(refl.spec_constants.empty());
+
+    // No compute info
+    EXPECT_FALSE(refl.compute.has_value());
+
     // Should have 1 input (layout is wrapped, access inner layout)
     ASSERT_NE(refl.input_interface.layout, nullptr);
     ASSERT_EQ(refl.input_interface.layout->get_fields().size(), 1u);
     ASSERT_NE(refl.input_interface.layout->get_fields()[0].sub_field_layout, nullptr);
     EXPECT_EQ(refl.input_interface.layout->get_fields()[0].sub_field_layout->get_fields().size(),
               1u);
+}
+
+TEST_F(shader_compiler_test, reflection_find_set_and_binding_miss)
+{
+    const char* vert_source = R"(
+#version 450
+
+layout(location = 0) in vec3 inPosition;
+
+layout(set = 0, binding = 0) uniform CameraData {
+    mat4 view;
+} camera;
+
+void main() {
+    gl_Position = camera.view * vec4(inPosition, 1.0);
+}
+)";
+
+    auto buf = create_shader_buffer(vert_source, "find_miss.vert");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+
+    const auto& refl = result->reflection;
+
+    // Hit
+    EXPECT_NE(refl.find_set(0), nullptr);
+    EXPECT_NE(refl.find_binding(0, 0), nullptr);
+
+    // Miss — non-existent set and binding
+    EXPECT_EQ(refl.find_set(1), nullptr);
+    EXPECT_EQ(refl.find_set(99), nullptr);
+    EXPECT_EQ(refl.find_binding(0, 1), nullptr);
+    EXPECT_EQ(refl.find_binding(1, 0), nullptr);
+}
+
+TEST_F(shader_compiler_test, reflection_fragment_shader_stage)
+{
+    const char* frag_source = R"(
+#version 450
+
+layout(location = 0) out vec4 outColor;
+
+void main() {
+    outColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+)";
+
+    auto buf = create_shader_buffer(frag_source, "stage_frag.frag");
+    auto result = shader_compiler::compile_shader(buf);
+
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->reflection.stage, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 TEST_F(shader_compiler_test, reflection_rejects_unnamed_push_constant)

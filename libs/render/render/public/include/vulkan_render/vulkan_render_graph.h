@@ -33,6 +33,7 @@ struct vulkan_resource
     resource_description base;
     VkBufferUsageFlags buffer_usage = 0;
     VkImageUsageFlags image_usage = 0;
+    VkFormat image_format = VK_FORMAT_UNDEFINED;
     rg_access_info last_access;
     std::variant<vk_utils::vulkan_buffer*, vk_utils::vulkan_image*> binding;
 };
@@ -116,10 +117,15 @@ public:
     bind_buffer(const utils::id& name, vk_utils::vulkan_buffer& buf);
 
     void
-    bind_image(const utils::id& name, vk_utils::vulkan_image& img);
+    bind_image(const utils::id& name, vk_utils::vulkan_image& img, VkImageLayout initial_layout);
 
     void
     set_frame_context(uint32_t swapchain_image_index, uint32_t width, uint32_t height);
+
+    // Set the layout an image must be in after all passes complete (e.g. PRESENT_SRC_KHR).
+    // The render graph inserts a final barrier after the last pass that writes this resource.
+    void
+    set_final_layout(const utils::id& name, VkImageLayout layout);
 
     // Compile and execute
     bool
@@ -163,7 +169,8 @@ private:
     static rg_access_info
     compute_access_for_usage(rg_access_mode usage,
                              rg_pass_type pass_type,
-                             rg_resource_type res_type);
+                             rg_resource_type res_type,
+                             VkFormat image_format = VK_FORMAT_UNDEFINED);
 
     static bool
     needs_barrier(const rg_access_info& prev, const rg_access_info& next);
@@ -180,6 +187,7 @@ private:
     bool m_compiled = false;
 
     std::unordered_set<utils::id> m_bound_this_frame;
+    std::unordered_map<utils::id, VkImageLayout> m_final_layouts;
 };
 
 }  // namespace kryga::render

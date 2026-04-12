@@ -15,10 +15,14 @@ namespace kryga::render::test
 {
 
 // Read back entire color attachment from a render pass as RGBA pixels.
-// The render pass must use an image created with VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-// and finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL (e.g. presets::picking).
+// The image must be created with VK_IMAGE_USAGE_TRANSFER_SRC_BIT.
+// src_layout: the layout the image is currently in. The function transitions
+// it to TRANSFER_SRC_OPTIMAL before the copy.
 inline std::vector<uint8_t>
-readback_framebuffer(render_pass& pass, uint32_t width, uint32_t height)
+readback_framebuffer(render_pass& pass,
+                     uint32_t width,
+                     uint32_t height,
+                     VkImageLayout src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 {
     auto& device = glob::glob_state().getr_render_device();
     auto frame_idx = device.get_current_frame_index();
@@ -49,6 +53,21 @@ readback_framebuffer(render_pass& pass, uint32_t width, uint32_t height)
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
+            // Transition source to TRANSFER_SRC if not already
+            if (src_layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+            {
+                vk_utils::make_insert_image_memory_barrier(
+                    cmd,
+                    src_image,
+                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    VK_ACCESS_TRANSFER_READ_BIT,
+                    src_layout,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
+            }
+
             // Transition destination to TRANSFER_DST
             vk_utils::make_insert_image_memory_barrier(
                 cmd,

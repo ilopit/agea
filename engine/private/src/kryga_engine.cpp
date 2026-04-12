@@ -657,54 +657,7 @@ vulkan_engine::update_cameras()
 void
 vulkan_engine::init_default_resources()
 {
-    auto vl = render::gpu_dynobj_builder()
-                  .add_field(AID("vPosition"), render::gpu_type::g_vec3, 1)
-                  .add_field(AID("vNormal"), render::gpu_type::g_vec3, 1)
-                  .add_field(AID("vColor"), render::gpu_type::g_vec3, 1)
-                  .add_field(AID("vTexCoord"), render::gpu_type::g_vec2, 1)
-                  .add_field(AID("vLightmapUV"), render::gpu_type::g_vec2, 1)
-                  .finalize();
-
-    auto val = render::gpu_dynobj_builder().add_array(AID("verts"), vl, 1, 4, 4).finalize();
-
-    utils::buffer vert_buffer(val->get_object_size());
-
-    {
-        auto v = val->make_view<render::gpu_type>(vert_buffer.data());
-
-        using v3 = glm::vec3;
-        using v2 = glm::vec2;
-
-        v.subobj(0, 0).write(v3{-1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 0.f}, v2{0.f, 0.f});
-        v.subobj(0, 1).write(v3{1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.0, 0.f}, v2{0.f, 0.f});
-        v.subobj(0, 2).write(v3{-1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 1.f}, v2{0.f, 0.f});
-        v.subobj(0, 3).write(v3{1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.f, 1.f}, v2{0.f, 0.f});
-    }
-
-    utils::buffer index_buffer(6 * 4);
-    auto v = index_buffer.make_view<uint32_t>();
-    v.at(0) = 0;
-    v.at(1) = 2;
-    v.at(2) = 1;
-    v.at(3) = 2;
-    v.at(4) = 3;
-    v.at(5) = 1;
-
-    auto vertices = vert_buffer.make_view<gpu::vertex_data>();
-    auto indices = index_buffer.make_view<gpu::uint>();
-
-    glob::glob_state().getr_vulkan_render_loader().create_mesh(
-        AID("plane_mesh"), vertices, indices);
-
-    // auto pkg = glob::package_manager::getr().get_package(AID("root"));
-    //
-    //     root::mesh::construct_params p;
-    //     p.indices = index_buffer;
-    //     p.vertices = vert_buffer;
-    //
-    //     auto obj = pkg->add_object<root::mesh>(AID("plane_mesh"), p);
-    //
-    //     glob::glob_state().getr_render_bridge().render_cmd_build(*obj, true);
+    // plane_mesh is now created by vulkan_render::prepare_system_resources()
 }
 
 void

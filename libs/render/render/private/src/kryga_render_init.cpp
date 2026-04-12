@@ -9,7 +9,9 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 
 #include <gpu_types/gpu_generic_constants.h>
+#include <gpu_types/gpu_vertex_types.h>
 #include <gpu_types/gpu_frustum_types.h>
+#include <gpu_types/dynamic_layout/gpu_types.h>
 #include <gpu_types/gpu_shadow_types.h>
 #include <gpu_types/gpu_probe_types.h>
 
@@ -157,9 +159,8 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
                                                                VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // Light probe SSBOs (initial: 1 dummy probe + grid config)
-        m_frames[i].buffers.probe_data = device.create_buffer(sizeof(gpu::sh_probe),
-                                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                              VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.probe_data = device.create_buffer(
+            sizeof(gpu::sh_probe), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_frames[i].buffers.probe_grid = device.create_buffer(sizeof(gpu::probe_grid_config),
                                                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -222,8 +223,13 @@ vulkan_render::apply_config_changes()
         c.depth_slices != m_applied_clusters.depth_slices ||
         c.max_lights_per_cluster != m_applied_clusters.max_lights_per_cluster)
     {
-        m_cluster_grid.init(
-            m_width, m_height, KGPU_znear, KGPU_zfar, c.tile_size, c.depth_slices, c.max_lights_per_cluster);
+        m_cluster_grid.init(m_width,
+                            m_height,
+                            KGPU_znear,
+                            KGPU_zfar,
+                            c.tile_size,
+                            c.depth_slices,
+                            c.max_lights_per_cluster);
         m_clusters_dirty = true;
         m_applied_clusters = c;
 
@@ -252,7 +258,6 @@ vulkan_render::apply_config_changes()
         m_render_graph.reset();
         setup_render_graph();
     }
-
 }
 
 void
@@ -317,6 +322,46 @@ vulkan_render::prepare_system_resources()
     glob::glob_state().getr_vulkan_render_loader().create_sampler(
         AID("font"), VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
+    // Fullscreen quad used by grid, outline post-process, etc.
+    {
+        auto vl = gpu_dynobj_builder()
+                      .add_field(AID("vPosition"), gpu_type::g_vec3, 1)
+                      .add_field(AID("vNormal"), gpu_type::g_vec3, 1)
+                      .add_field(AID("vColor"), gpu_type::g_vec3, 1)
+                      .add_field(AID("vTexCoord"), gpu_type::g_vec2, 1)
+                      .add_field(AID("vLightmapUV"), gpu_type::g_vec2, 1)
+                      .finalize();
+
+        auto val = gpu_dynobj_builder().add_array(AID("verts"), vl, 1, 4, 4).finalize();
+
+        utils::buffer vert_buffer(val->get_object_size());
+        {
+            auto v = val->make_view<gpu_type>(vert_buffer.data());
+
+            using v3 = glm::vec3;
+            using v2 = glm::vec2;
+
+            v.subobj(0, 0).write(v3{-1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 0.f}, v2{0.f, 0.f});
+            v.subobj(0, 1).write(v3{1.f, 1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.f, 0.f}, v2{0.f, 0.f});
+            v.subobj(0, 2).write(v3{-1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{0.f, 1.f}, v2{0.f, 0.f});
+            v.subobj(0, 3).write(v3{1.f, -1.f, 0.f}, v3{0.f}, v3{0.f}, v2{1.f, 1.f}, v2{0.f, 0.f});
+        }
+
+        utils::buffer index_buffer(6 * 4);
+        auto v = index_buffer.make_view<uint32_t>();
+        v.at(0) = 0;
+        v.at(1) = 2;
+        v.at(2) = 1;
+        v.at(3) = 2;
+        v.at(4) = 3;
+        v.at(5) = 1;
+
+        glob::glob_state().getr_vulkan_render_loader().create_mesh(
+            AID("plane_mesh"),
+            vert_buffer.make_view<gpu::vertex_data>(),
+            index_buffer.make_view<gpu::uint>());
+    }
+
     kryga::utils::buffer vert, frag;
 
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
@@ -364,33 +409,6 @@ vulkan_render::prepare_system_resources()
 
     m_grid_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
         AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
-
-    // Selection mask shader — renders outlined objects as flat white
-    {
-        auto* sel_pass = get_render_pass(AID("selection_mask"));
-        vfs::load_buffer(se_base / "system/se_selection_mask.vert", vert);
-        vfs::load_buffer(se_base / "system/se_selection_mask.frag", frag);
-
-        se_ci = {};
-        se_ci.vert_buffer = &vert;
-        se_ci.frag_buffer = &frag;
-        se_ci.is_wire = false;
-        se_ci.enable_dynamic_state = false;
-        se_ci.alpha = alpha_mode::none;
-        se_ci.cull_mode = VK_CULL_MODE_BACK_BIT;
-        se_ci.ds_mode = depth_stencil_mode::none;
-        se_ci.height = m_height;
-        se_ci.width = m_width;
-        se_ci.rp = sel_pass;
-
-        m_selection_mask_se = nullptr;
-        rc = sel_pass->create_shader_effect(AID("se_selection_mask"), se_ci, m_selection_mask_se);
-        KRG_check(rc == result_code::ok && m_selection_mask_se, "Selection mask SE failed!");
-
-        m_selection_mask_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
-            AID("mat_selection_mask"), AID("selection_mask"), sd, *m_selection_mask_se,
-            utils::dynobj{});
-    }
 
     // Outline post-process shader — edge detection on selection mask
     {
@@ -587,13 +605,14 @@ vulkan_render::init_shadow_resources()
     m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
     m_shadow_config.directional.shadow_bias = m_render_config.shadows.bias;
     m_shadow_config.directional.normal_bias = m_render_config.shadows.normal_bias;
-    m_shadow_config.directional.texel_size = 1.0f / static_cast<float>(m_render_config.shadows.map_size);
+    m_shadow_config.directional.texel_size =
+        1.0f / static_cast<float>(m_render_config.shadows.map_size);
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.shadowed_local_count = 0;
 
     // Transition all shadow depth images from UNDEFINED to SHADER_READ_ONLY_OPTIMAL.
-    // Without this, the first frame's main pass samples bindless shadow textures that
-    // are still in UNDEFINED layout, producing black output and validation errors.
+    // This ensures unused shadow maps (inactive lights) are in a valid layout for sampling.
+    // Active shadow maps will be transitioned by the render graph as needed.
     auto& device = glob::glob_state().getr_render_device();
     device.immediate_submit(
         [&](VkCommandBuffer cmd)

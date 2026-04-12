@@ -22,4 +22,5 @@ void main()
     out_color = in_color;
     out_tex_coord = in_tex_coord;
     out_object_idx = obj_idx;
+    out_lightmap_uv = vec2(0);
 }

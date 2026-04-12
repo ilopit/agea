@@ -195,8 +195,7 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_frustum_cull_pass->begin_frame();
     m_frustum_cull_pass->bind(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
     m_frustum_cull_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-    m_frustum_cull_pass->bind(AID("dyn_visible_indices"),
-                              current_frame.buffers.visible_indices);
+    m_frustum_cull_pass->bind(AID("dyn_visible_indices"), current_frame.buffers.visible_indices);
     m_frustum_cull_pass->bind(AID("dyn_cull_output"), current_frame.buffers.cull_output);
 
     m_frustum_cull_descriptor_set = m_frustum_cull_pass->get_descriptor_set(
@@ -224,24 +223,27 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_render_graph.bind_buffer(AID("dyn_probe_grid"), current_frame.buffers.probe_grid);
 
     m_render_graph.bind_buffer(AID("dyn_frustum_data"), current_frame.buffers.frustum_data);
-    m_render_graph.bind_buffer(AID("dyn_visible_indices"),
-                               current_frame.buffers.visible_indices);
+    m_render_graph.bind_buffer(AID("dyn_visible_indices"), current_frame.buffers.visible_indices);
     m_render_graph.bind_buffer(AID("dyn_cull_output"), current_frame.buffers.cull_output);
 
     // Bind per-frame image resources
+    // All render targets are cleared each frame, so UNDEFINED initial layout is safe.
     auto* main_pass = get_render_pass(AID("main"));
-    auto* ui_pass = get_render_pass(AID("ui"));
-
     auto main_images = main_pass->get_color_images();
-    m_render_graph.bind_image(AID("swapchain"), *main_images[swapchain_image_index]);
+    m_render_graph.bind_image(
+        AID("swapchain"), *main_images[swapchain_image_index], VK_IMAGE_LAYOUT_UNDEFINED);
 
+    auto* ui_pass = get_render_pass(AID("ui"));
     auto ui_images = ui_pass->get_color_images();
-    m_render_graph.bind_image(AID("ui_target"), *ui_images[0]);
+    m_render_graph.bind_image(AID("ui_target"), *ui_images[0], VK_IMAGE_LAYOUT_UNDEFINED);
 
     auto* mask_pass = get_render_pass(AID("selection_mask"));
     auto mask_images = mask_pass->get_color_images();
-    m_render_graph.bind_image(AID("selection_mask_target"), *mask_images[0]);
+    m_render_graph.bind_image(
+        AID("selection_mask_target"), *mask_images[0], VK_IMAGE_LAYOUT_UNDEFINED);
 
+    // Shadow maps start in SHADER_READ_ONLY_OPTIMAL from init_shadow_resources().
+    // Use swapchain_image_index to select correct depth image (triple-buffered).
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
         if (m_shadow_passes[c])
@@ -249,7 +251,10 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
             auto& depth_images = m_shadow_passes[c]->get_depth_images();
             if (!depth_images.empty())
             {
-                m_render_graph.bind_image(AID("shadow_csm_" + std::to_string(c)), depth_images[0]);
+                uint32_t idx = swapchain_image_index % depth_images.size();
+                m_render_graph.bind_image(AID("shadow_csm_" + std::to_string(c)),
+                                          depth_images[idx],
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
         }
     }
@@ -261,7 +266,10 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
             auto& front = m_shadow_local_passes[i * 2]->get_depth_images();
             if (!front.empty())
             {
-                m_render_graph.bind_image(AID("shadow_local_" + std::to_string(i)), front[0]);
+                uint32_t idx = swapchain_image_index % front.size();
+                m_render_graph.bind_image(AID("shadow_local_" + std::to_string(i)),
+                                          front[idx],
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
         }
         if (m_shadow_local_passes[i * 2 + 1])
@@ -269,7 +277,10 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
             auto& back = m_shadow_local_passes[i * 2 + 1]->get_depth_images();
             if (!back.empty())
             {
-                m_render_graph.bind_image(AID("shadow_local_back_" + std::to_string(i)), back[0]);
+                uint32_t idx = swapchain_image_index % back.size();
+                m_render_graph.bind_image(AID("shadow_local_back_" + std::to_string(i)),
+                                          back[idx],
+                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
         }
     }
@@ -405,9 +416,8 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         mask_pass_ptr->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
         mask_pass_ptr->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
 
-        KRG_check(
-            static_cast<const render_pass*>(mask_pass_ptr)->bindings().validate_bda_bound(),
-            "Selection mask pass: not all BDA resources bound this frame");
+        KRG_check(static_cast<const render_pass*>(mask_pass_ptr)->bindings().validate_bda_bound(),
+                  "Selection mask pass: not all BDA resources bound this frame");
     }
 
     // Prepare debug light visualization data (must happen before rendering)
@@ -470,6 +480,7 @@ vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
     // Rebuild BVH if objects changed
+    // TODO, Move to model
     if (m_object_bvh_dirty)
     {
         std::vector<bvh_object_entry> entries;
@@ -494,12 +505,11 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
                     for (int c = 0; c < 8; ++c)
                     {
-                        glm::vec3 corner(
-                            (c & 1) ? local_max.x : local_min.x,
-                            (c & 2) ? local_max.y : local_min.y,
-                            (c & 4) ? local_max.z : local_min.z);
-                        glm::vec3 world_corner = glm::vec3(
-                            obj->gpu_data.model * glm::vec4(corner, 1.0f));
+                        glm::vec3 corner((c & 1) ? local_max.x : local_min.x,
+                                         (c & 2) ? local_max.y : local_min.y,
+                                         (c & 4) ? local_max.z : local_min.z);
+                        glm::vec3 world_corner =
+                            glm::vec3(obj->gpu_data.model * glm::vec4(corner, 1.0f));
                         world_min = glm::min(world_min, world_corner);
                         world_max = glm::max(world_max, world_corner);
                     }
@@ -545,12 +555,10 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
             for (int c = 0; c < 8; ++c)
             {
-                glm::vec3 corner(
-                    (c & 1) ? local_max.x : local_min.x,
-                    (c & 2) ? local_max.y : local_min.y,
-                    (c & 4) ? local_max.z : local_min.z);
-                glm::vec3 world_corner = glm::vec3(
-                    obj->gpu_data.model * glm::vec4(corner, 1.0f));
+                glm::vec3 corner((c & 1) ? local_max.x : local_min.x,
+                                 (c & 2) ? local_max.y : local_min.y,
+                                 (c & 4) ? local_max.z : local_min.z);
+                glm::vec3 world_corner = glm::vec3(obj->gpu_data.model * glm::vec4(corner, 1.0f));
                 world_min = glm::min(world_min, world_corner);
                 world_max = glm::max(world_max, world_corner);
             }
@@ -567,8 +575,8 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     // Cast ray — nearest AABB hit wins
     auto inv_view = glm::inverse(m_camera_data.view);
-    auto r = object_bvh::screen_to_ray(x, y, m_width, m_height,
-                                        m_camera_data.inv_projection, inv_view);
+    auto r =
+        object_bvh::screen_to_ray(x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
 
     raycast_hit hit;
     if (m_object_bvh.raycast(r, hit))

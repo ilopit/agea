@@ -235,7 +235,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         auto images = vkb_swapchain.get_images().value();
         for (auto i : images)
         {
-            auto himg = vk_utils::vulkan_image::create(i);
+            auto himg = vk_utils::vulkan_image::create(i, vkb_swapchain.image_format);
             m_swapchain_images.push_back(std::make_shared<vk_utils::vulkan_image>(std::move(himg)));
         }
 

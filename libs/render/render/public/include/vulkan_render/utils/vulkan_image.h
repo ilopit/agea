@@ -25,7 +25,7 @@ public:
            VmaAllocationCreateInfo aci,
            int mips_level = 0);
 
-    static vulkan_image create(VkImage);
+    static vulkan_image create(VkImage, VkFormat format = VK_FORMAT_UNDEFINED);
 
     KRG_gen_class_non_copyable(vulkan_image);
 
@@ -40,6 +40,12 @@ public:
     image()
     {
         return m_image;
+    }
+
+    VkFormat
+    format() const
+    {
+        return m_format;
     }
 
     std::uint8_t*
@@ -60,6 +66,7 @@ private:
     VmaAllocation m_allocation;
     vma_allocator_provider m_allocator;
     VkImage m_image;
+    VkFormat m_format = VK_FORMAT_UNDEFINED;
     int mipLevels = 1;
     std::uint8_t* m_data_begin = nullptr;
 };

@@ -9,9 +9,6 @@ layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
 #include "bda_macros_main.glsl"
-// Always define KRYGA_LIGHTMAPPED so the lightmap UV output is declared.
-// The fragment shader controls whether it actually samples the lightmap.
-#define KRYGA_LIGHTMAPPED
 #include "common_vert.glsl"
 
 void main()

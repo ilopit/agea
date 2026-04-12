@@ -4,7 +4,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <array>
 #include <memory>
 #include <vector>
 
@@ -17,20 +16,10 @@ using render_pass_sptr = std::shared_ptr<render_pass>;
 class render_pass_builder
 {
 public:
-    enum class presets
-    {
-        swapchain,
-        buffer,
-        picking,
-        depth_only
-    };
-
     render_pass_builder&
     set_color_format(VkFormat f);
     render_pass_builder&
     set_depth_format(VkFormat f);
-    render_pass_builder&
-    set_preset(presets p);
     render_pass_builder&
     set_color_images(const std::vector<vk_utils::vulkan_image_view_sptr>& ivs,
                      const std::vector<vk_utils::vulkan_image_sptr>& is);
@@ -47,7 +36,7 @@ public:
     build();
 
 private:
-    std::array<VkSubpassDependency, 2>
+    std::vector<VkSubpassDependency>
     get_dependencies();
     std::vector<VkAttachmentDescription>
     get_attachments();
@@ -57,8 +46,6 @@ private:
 
     uint32_t m_width = 0U;
     uint32_t m_height = 0U;
-
-    presets m_preset = presets::swapchain;
 
     bool m_enable_stencil = true;
     bool m_depth_only = false;
