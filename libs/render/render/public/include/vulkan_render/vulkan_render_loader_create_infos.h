@@ -5,6 +5,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <string>
+#include <vector>
+
 namespace kryga
 {
 namespace render
@@ -29,6 +32,9 @@ struct shader_effect_create_info
 
     uint32_t width = 0;
     uint32_t height = 0;
+
+    // Preprocessor defines passed to glslc (e.g., "ENABLE_LIGHTMAP=1")
+    std::vector<std::string> defines;
 
     // If set, reuse this pipeline layout instead of building from reflection.
     // The shader effect will NOT own/destroy the layout.

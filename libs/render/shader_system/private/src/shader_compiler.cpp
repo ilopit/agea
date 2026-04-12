@@ -9,7 +9,8 @@ namespace kryga::render
 {
 
 compilation_result
-shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
+shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
+                                const std::vector<std::string>& defines)
 {
     static int shader_id = 0;
 
@@ -44,6 +45,11 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer)
                     APATH(includes.value()).str(),
                     APATH(gpu_includes.value()).str(),
                     APATH(generated_gpu_includes.value()).str());
+
+    for (const auto& def : defines)
+    {
+        params.arguments += " -D" + def;
+    }
 
     uint64_t rc = 0;
     if (!ipc::run_binary(params, rc) || rc != 0)

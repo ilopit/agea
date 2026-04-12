@@ -41,7 +41,8 @@ kryga::result_code
 load_data_shader(const kryga::utils::buffer& input,
                  bool is_binary,
                  VkShaderStageFlagBits stage_bit,
-                 std::shared_ptr<shader_module_data>& sd)
+                 std::shared_ptr<shader_module_data>& sd,
+                 const std::vector<std::string>& defines = {})
 {
     auto device = glob::glob_state().get_render_device();
 
@@ -49,7 +50,7 @@ load_data_shader(const kryga::utils::buffer& input,
 
     if (!is_binary)
     {
-        auto rc = shader_compiler::compile_shader(input);
+        auto rc = shader_compiler::compile_shader(input, defines);
         if (!rc)
         {
             return rc.error();
@@ -369,7 +370,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 {
     std::shared_ptr<shader_module_data> vert_module;
     auto rc = load_data_shader(
-        *info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vert_module);
+        *info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vert_module,
+        info.defines);
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
@@ -380,7 +382,8 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     if (info.frag_buffer)
     {
         rc = load_data_shader(
-            *info.frag_buffer, info.is_vert_binary, VK_SHADER_STAGE_FRAGMENT_BIT, frag_module);
+            *info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT, frag_module,
+            info.defines);
         if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;

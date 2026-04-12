@@ -23,7 +23,8 @@ class shader_compiler
 {
 public:
     static compilation_result
-    compile_shader(const kryga::utils::buffer& raw_buffer);
+    compile_shader(const kryga::utils::buffer& raw_buffer,
+                   const std::vector<std::string>& defines = {});
 
 private:
 };
