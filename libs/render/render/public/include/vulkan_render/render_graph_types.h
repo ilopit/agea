@@ -3,6 +3,7 @@
 #include <utils/id.h>
 #include <vulkan/vulkan.h>
 
+#include <functional>
 #include <vector>
 
 namespace kryga::render
@@ -73,6 +74,62 @@ struct rg_pass_barriers
     std::vector<VkMemoryBarrier> memory_barriers;
     std::vector<VkBufferMemoryBarrier> buffer_barriers;
     std::vector<VkImageMemoryBarrier> image_barriers;
+};
+
+// ============================================================================
+// Subpass types for mobile GPU optimization (tile-based rendering)
+// ============================================================================
+
+// How an attachment is used within a subpass
+enum class subpass_attachment_usage
+{
+    color_output,      // VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    depth_output,      // VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    depth_read_only,   // VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+    input_attachment,  // VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, subpassLoad()
+    preserve           // VK_ATTACHMENT_UNUSED in subpass, preserved for later
+};
+
+// Memory scope for attachment - explicit transient declaration
+enum class attachment_memory_scope
+{
+    persistent,  // Normal DRAM-backed image
+    transient    // VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, tile memory only
+};
+
+// Describes one attachment across all subpasses
+struct subpass_attachment_desc
+{
+    utils::id name;                 // Resource name in render graph
+    VkFormat format;                // Explicit format
+    attachment_memory_scope scope;  // transient or persistent
+    VkAttachmentLoadOp load_op;     // CLEAR, LOAD, DONT_CARE
+    VkAttachmentStoreOp store_op;   // STORE, DONT_CARE
+};
+
+// Per-subpass attachment reference
+struct subpass_attachment_ref
+{
+    uint32_t attachment_index;  // Index into subpass_group_desc::attachments
+    subpass_attachment_usage usage;
+};
+
+// Describes a single subpass within a group
+struct subpass_desc
+{
+    utils::id name;
+    std::vector<subpass_attachment_ref> attachments;
+    std::function<void(VkCommandBuffer, uint32_t subpass_index)> execute;
+};
+
+// Describes a complete multi-subpass render pass
+struct subpass_group_desc
+{
+    utils::id name;
+    std::vector<subpass_attachment_desc> attachments;
+    std::vector<subpass_desc> subpasses;
+    uint32_t width = 0;  // 0 = use frame context
+    uint32_t height = 0;
 };
 
 }  // namespace kryga::render

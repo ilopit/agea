@@ -6,6 +6,8 @@
 
 #include <global_state/global_state.h>
 
+#include <unordered_set>
+
 namespace kryga::render
 {
 
@@ -272,6 +274,261 @@ render_pass_builder::get_dependencies()
     // Render graph handles all synchronization via explicit barriers.
     // No subpass external dependencies needed.
     return {};
+}
+
+// ============================================================================
+// multi_subpass_render_pass_builder
+// ============================================================================
+
+multi_subpass_render_pass_builder::multi_subpass_render_pass_builder(VkDevice device)
+    : m_device(device)
+{
+}
+
+static bool
+is_depth_format(VkFormat fmt)
+{
+    return fmt == VK_FORMAT_D32_SFLOAT || fmt == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+           fmt == VK_FORMAT_D16_UNORM || fmt == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+VkRenderPass
+multi_subpass_render_pass_builder::build(const subpass_group_desc& desc)
+{
+    KRG_check(!desc.subpasses.empty(), "Subpass group must have at least one subpass");
+
+    auto attachments = build_attachments(desc);
+
+    // Storage for attachment references (must outlive VkSubpassDescription)
+    std::vector<std::vector<VkAttachmentReference>> color_refs(desc.subpasses.size());
+    std::vector<VkAttachmentReference> depth_refs(desc.subpasses.size());
+    std::vector<std::vector<VkAttachmentReference>> input_refs(desc.subpasses.size());
+    std::vector<std::vector<uint32_t>> preserve_refs(desc.subpasses.size());
+
+    auto subpasses = build_subpasses(desc, color_refs, depth_refs, input_refs, preserve_refs);
+    auto dependencies = build_dependencies(desc);
+
+    VkRenderPassCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    create_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+    create_info.pAttachments = attachments.data();
+    create_info.subpassCount = static_cast<uint32_t>(subpasses.size());
+    create_info.pSubpasses = subpasses.data();
+    create_info.dependencyCount = static_cast<uint32_t>(dependencies.size());
+    create_info.pDependencies = dependencies.data();
+
+    VkRenderPass render_pass = VK_NULL_HANDLE;
+    VK_CHECK(vkCreateRenderPass(m_device, &create_info, nullptr, &render_pass));
+
+    return render_pass;
+}
+
+std::vector<VkClearValue>
+multi_subpass_render_pass_builder::get_clear_values(const subpass_group_desc& desc) const
+{
+    std::vector<VkClearValue> clear_values;
+    clear_values.reserve(desc.attachments.size());
+
+    for (const auto& attachment : desc.attachments)
+    {
+        VkClearValue clear = {};
+        if (is_depth_format(attachment.format))
+        {
+            clear.depthStencil = {1.0f, 0};
+        }
+        else
+        {
+            clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
+        }
+        clear_values.push_back(clear);
+    }
+
+    return clear_values;
+}
+
+std::vector<VkAttachmentDescription>
+multi_subpass_render_pass_builder::build_attachments(const subpass_group_desc& desc)
+{
+    std::vector<VkAttachmentDescription> attachments;
+    attachments.reserve(desc.attachments.size());
+
+    for (const auto& att : desc.attachments)
+    {
+        VkAttachmentDescription vk_att = {};
+        vk_att.format = att.format;
+        vk_att.samples = VK_SAMPLE_COUNT_1_BIT;
+        vk_att.loadOp = att.load_op;
+        vk_att.storeOp = att.store_op;
+
+        if (is_depth_format(att.format))
+        {
+            vk_att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            vk_att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            vk_att.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            vk_att.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        }
+        else
+        {
+            vk_att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            vk_att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            vk_att.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            vk_att.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        }
+
+        attachments.push_back(vk_att);
+    }
+
+    return attachments;
+}
+
+std::vector<VkSubpassDescription>
+multi_subpass_render_pass_builder::build_subpasses(
+    const subpass_group_desc& desc,
+    std::vector<std::vector<VkAttachmentReference>>& color_refs,
+    std::vector<VkAttachmentReference>& depth_refs,
+    std::vector<std::vector<VkAttachmentReference>>& input_refs,
+    std::vector<std::vector<uint32_t>>& preserve_refs)
+{
+    std::vector<VkSubpassDescription> subpasses;
+    subpasses.reserve(desc.subpasses.size());
+
+    for (size_t sp_idx = 0; sp_idx < desc.subpasses.size(); ++sp_idx)
+    {
+        const auto& sp = desc.subpasses[sp_idx];
+        depth_refs[sp_idx] = {VK_ATTACHMENT_UNUSED, VK_IMAGE_LAYOUT_UNDEFINED};
+
+        // Track which attachments are referenced in this subpass
+        std::unordered_set<uint32_t> referenced_attachments;
+
+        for (const auto& ref : sp.attachments)
+        {
+            referenced_attachments.insert(ref.attachment_index);
+
+            VkAttachmentReference vk_ref = {};
+            vk_ref.attachment = ref.attachment_index;
+
+            switch (ref.usage)
+            {
+            case subpass_attachment_usage::color_output:
+                vk_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                color_refs[sp_idx].push_back(vk_ref);
+                break;
+
+            case subpass_attachment_usage::depth_output:
+                vk_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                depth_refs[sp_idx] = vk_ref;
+                break;
+
+            case subpass_attachment_usage::depth_read_only:
+                vk_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                depth_refs[sp_idx] = vk_ref;
+                break;
+
+            case subpass_attachment_usage::input_attachment:
+                vk_ref.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                input_refs[sp_idx].push_back(vk_ref);
+                break;
+
+            case subpass_attachment_usage::preserve:
+                // Handled below
+                break;
+            }
+        }
+
+        // Build preserve list: attachments not referenced but needed later
+        for (const auto& ref : sp.attachments)
+        {
+            if (ref.usage == subpass_attachment_usage::preserve)
+            {
+                preserve_refs[sp_idx].push_back(ref.attachment_index);
+            }
+        }
+
+        VkSubpassDescription vk_sp = {};
+        vk_sp.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        vk_sp.colorAttachmentCount = static_cast<uint32_t>(color_refs[sp_idx].size());
+        vk_sp.pColorAttachments = color_refs[sp_idx].empty() ? nullptr : color_refs[sp_idx].data();
+        vk_sp.pDepthStencilAttachment =
+            (depth_refs[sp_idx].attachment != VK_ATTACHMENT_UNUSED) ? &depth_refs[sp_idx] : nullptr;
+        vk_sp.inputAttachmentCount = static_cast<uint32_t>(input_refs[sp_idx].size());
+        vk_sp.pInputAttachments = input_refs[sp_idx].empty() ? nullptr : input_refs[sp_idx].data();
+        vk_sp.preserveAttachmentCount = static_cast<uint32_t>(preserve_refs[sp_idx].size());
+        vk_sp.pPreserveAttachments =
+            preserve_refs[sp_idx].empty() ? nullptr : preserve_refs[sp_idx].data();
+        vk_sp.pResolveAttachments = nullptr;
+
+        subpasses.push_back(vk_sp);
+    }
+
+    return subpasses;
+}
+
+std::vector<VkSubpassDependency>
+multi_subpass_render_pass_builder::build_dependencies(const subpass_group_desc& desc)
+{
+    std::vector<VkSubpassDependency> dependencies;
+
+    // External → first subpass dependency
+    {
+        VkSubpassDependency dep = {};
+        dep.srcSubpass = VK_SUBPASS_EXTERNAL;
+        dep.dstSubpass = 0;
+        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dep.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                           VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dep.srcAccessMask = 0;
+        dep.dstAccessMask =
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        dependencies.push_back(dep);
+    }
+
+    // Inter-subpass dependencies for input attachments
+    for (size_t dst_sp = 1; dst_sp < desc.subpasses.size(); ++dst_sp)
+    {
+        const auto& dst_subpass = desc.subpasses[dst_sp];
+
+        for (const auto& ref : dst_subpass.attachments)
+        {
+            if (ref.usage == subpass_attachment_usage::input_attachment)
+            {
+                // Find which subpass wrote this attachment
+                for (size_t src_sp = 0; src_sp < dst_sp; ++src_sp)
+                {
+                    const auto& src_subpass = desc.subpasses[src_sp];
+                    bool writes_attachment = false;
+
+                    for (const auto& src_ref : src_subpass.attachments)
+                    {
+                        if (src_ref.attachment_index == ref.attachment_index &&
+                            (src_ref.usage == subpass_attachment_usage::color_output ||
+                             src_ref.usage == subpass_attachment_usage::depth_output))
+                        {
+                            writes_attachment = true;
+                            break;
+                        }
+                    }
+
+                    if (writes_attachment)
+                    {
+                        VkSubpassDependency dep = {};
+                        dep.srcSubpass = static_cast<uint32_t>(src_sp);
+                        dep.dstSubpass = static_cast<uint32_t>(dst_sp);
+                        dep.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                        dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                        dep.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                        dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+                        dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;  // Tile-local
+                        dependencies.push_back(dep);
+                        break;  // Found the producer
+                    }
+                }
+            }
+        }
+    }
+
+    return dependencies;
 }
 
 }  // namespace kryga::render

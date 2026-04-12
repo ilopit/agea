@@ -1,6 +1,10 @@
 #include "vulkan_render/vulkan_render_graph.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
+#include "vulkan_render/types/vulkan_render_pass_builder.h"
+#include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/vulkan_render_device.h"
 
+#include <global_state/global_state.h>
 #include <utils/check.h>
 #include <utils/kryga_log.h>
 
@@ -50,6 +54,21 @@ vulkan_render_graph::import_resource(const utils::id& name, rg_resource_type typ
     res.base.name = name;
     res.base.type = type;
     res.base.is_imported = true;
+}
+
+void
+vulkan_render_graph::register_transient_image(const utils::id& name,
+                                              VkFormat format,
+                                              VkImageUsageFlags usage)
+{
+    KRG_check(!m_compiled, "Cannot modify compiled graph");
+
+    // Add TRANSIENT_ATTACHMENT flag for tile-memory-only allocation
+    usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+
+    // Size 0 means use frame context dimensions
+    register_image(name, 0, 0, format, usage);
+    m_transient_resources.insert(name);
 }
 
 void
@@ -108,9 +127,136 @@ vulkan_render_graph::add_transfer_pass(const utils::id& name,
 }
 
 void
+vulkan_render_graph::add_subpass_group(subpass_group_desc desc)
+{
+    KRG_check(!m_compiled, "Cannot modify compiled graph");
+    KRG_check(!desc.subpasses.empty(), "Subpass group must have at least one subpass");
+
+    // Map each subpass name to the group name
+    for (const auto& sp : desc.subpasses)
+    {
+        m_pass_to_group[sp.name] = desc.name;
+    }
+
+    m_subpass_groups.push_back(std::move(desc));
+}
+
+void
+vulkan_render_graph::input_attachment(const utils::id& producer, const utils::id& consumer)
+{
+    KRG_check(!m_compiled, "Cannot modify compiled graph");
+
+    m_input_attachment_links[producer] = consumer;
+}
+
+void
+vulkan_render_graph::bind_subpass_attachment(const utils::id& group_name,
+                                             uint32_t attachment_index,
+                                             std::vector<VkImageView> views)
+{
+    KRG_check(m_compiled, "Graph must be compiled first");
+
+    for (auto& group : m_compiled_subpass_groups)
+    {
+        if (group.desc.name == group_name)
+        {
+            if (attachment_index >= group.attachment_views.size())
+            {
+                group.attachment_views.resize(attachment_index + 1);
+            }
+            group.attachment_views[attachment_index] = std::move(views);
+            return;
+        }
+    }
+    KRG_check(false, "Subpass group not found");
+}
+
+bool
+vulkan_render_graph::finalize_subpass_group(const utils::id& group_name,
+                                            uint32_t width,
+                                            uint32_t height)
+{
+    KRG_check(m_compiled, "Graph must be compiled first");
+
+    auto& device = glob::glob_state().getr_render_device();
+    auto vk_device = device.vk_device();
+
+    for (auto& group : m_compiled_subpass_groups)
+    {
+        if (group.desc.name != group_name)
+        {
+            continue;
+        }
+
+        group.width = width;
+        group.height = height;
+
+        // Destroy old framebuffers if any
+        for (auto fb : group.framebuffers)
+        {
+            if (fb != VK_NULL_HANDLE)
+            {
+                vkDestroyFramebuffer(vk_device, fb, nullptr);
+            }
+        }
+        group.framebuffers.clear();
+
+        // Determine number of framebuffers needed (max swapchain count across attachments)
+        size_t fb_count = 1;
+        for (const auto& views : group.attachment_views)
+        {
+            fb_count = std::max(fb_count, views.size());
+        }
+
+        // Create framebuffers
+        for (size_t fb_idx = 0; fb_idx < fb_count; ++fb_idx)
+        {
+            std::vector<VkImageView> fb_views;
+            fb_views.reserve(group.attachment_views.size());
+
+            for (const auto& views : group.attachment_views)
+            {
+                // Use modulo for single-buffered attachments
+                size_t view_idx = fb_idx % views.size();
+                fb_views.push_back(views[view_idx]);
+            }
+
+            VkFramebufferCreateInfo fb_ci = {};
+            fb_ci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            fb_ci.renderPass = group.render_pass;
+            fb_ci.attachmentCount = static_cast<uint32_t>(fb_views.size());
+            fb_ci.pAttachments = fb_views.data();
+            fb_ci.width = width;
+            fb_ci.height = height;
+            fb_ci.layers = 1;
+
+            VkFramebuffer fb = VK_NULL_HANDLE;
+            VkResult result = vkCreateFramebuffer(vk_device, &fb_ci, nullptr, &fb);
+            if (result != VK_SUCCESS)
+            {
+                ALOG_ERROR("Failed to create subpass group framebuffer");
+                return false;
+            }
+            group.framebuffers.push_back(fb);
+        }
+
+        ALOG_INFO("Finalized subpass group '{}': {} framebuffers, {}x{}",
+                  group_name.str(),
+                  group.framebuffers.size(),
+                  width,
+                  height);
+        return true;
+    }
+
+    ALOG_ERROR("Subpass group '{}' not found", group_name.str());
+    return false;
+}
+
+void
 vulkan_render_graph::begin_frame()
 {
     m_bound_this_frame.clear();
+    m_executed_groups.clear();
 }
 
 void
@@ -283,6 +429,19 @@ vulkan_render_graph::compile()
         }
     }
 
+    // Compile subpass groups
+    m_compiled_subpass_groups.clear();
+    for (const auto& group_desc : m_subpass_groups)
+    {
+        compiled_subpass_group compiled;
+        if (!compile_subpass_group(group_desc, compiled))
+        {
+            ALOG_ERROR("Failed to compile subpass group: {}", group_desc.name.str());
+            return false;
+        }
+        m_compiled_subpass_groups.push_back(std::move(compiled));
+    }
+
     m_compiled = true;
     return true;
 }
@@ -329,7 +488,97 @@ vulkan_render_graph::execute(VkCommandBuffer cmd,
     {
         auto& pass = m_passes[idx];
 
-        // Calculate and insert barriers for this pass
+        // Check if this pass is part of a subpass group
+        auto group_it = m_pass_to_group.find(pass->name());
+        if (group_it != m_pass_to_group.end())
+        {
+            const auto& group_name = group_it->second;
+
+            // Already executed this group?
+            if (m_executed_groups.count(group_name) > 0)
+            {
+                // Skip - group was already executed when we hit its first pass
+                continue;
+            }
+
+            // Find the compiled group
+            compiled_subpass_group* group = nullptr;
+            for (auto& g : m_compiled_subpass_groups)
+            {
+                if (g.desc.name == group_name)
+                {
+                    group = &g;
+                    break;
+                }
+            }
+
+            if (!group || group->framebuffers.empty())
+            {
+                ALOG_ERROR("Subpass group '{}' not finalized", group_name.str());
+                return false;
+            }
+
+            // Insert barriers for resources used by the group
+            // (Simplified: just use barriers for this pass's resources)
+            rg_pass_barriers barriers;
+            for (const auto& ref : pass->resources())
+            {
+                if (!ref.resource)
+                    continue;
+
+                auto it = m_resources.find(ref.resource->name);
+                if (it == m_resources.end())
+                    continue;
+
+                auto& res = it->second;
+                rg_access_info required = compute_access_for_usage(
+                    ref.usage, pass->type(), ref.resource->type, res.image_format);
+
+                if (needs_barrier(res.last_access, required))
+                {
+                    barriers.src_stage |= res.last_access.stage;
+                    barriers.dst_stage |= required.stage;
+
+                    if (ref.resource->type == rg_resource_type::image)
+                    {
+                        if (auto** img = std::get_if<vk_utils::vulkan_image*>(&res.binding))
+                        {
+                            bool is_depth = res.image_format == VK_FORMAT_D32_SFLOAT ||
+                                            res.image_format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+                                            res.image_format == VK_FORMAT_D16_UNORM ||
+                                            res.image_format == VK_FORMAT_D24_UNORM_S8_UINT;
+
+                            VkImageMemoryBarrier barrier = {};
+                            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                            barrier.srcAccessMask = res.last_access.access;
+                            barrier.dstAccessMask = required.access;
+                            barrier.oldLayout = res.last_access.layout;
+                            barrier.newLayout = required.layout;
+                            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                            barrier.image = (*img)->image();
+                            barrier.subresourceRange.aspectMask =
+                                is_depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+                            barrier.subresourceRange.baseMipLevel = 0;
+                            barrier.subresourceRange.levelCount = 1;
+                            barrier.subresourceRange.baseArrayLayer = 0;
+                            barrier.subresourceRange.layerCount = 1;
+                            barriers.image_barriers.push_back(barrier);
+                        }
+                    }
+                }
+                res.last_access = required;
+            }
+
+            insert_barriers(cmd, barriers);
+
+            // Execute the subpass group
+            execute_subpass_group(cmd, *group, swapchain_image_index, width, height);
+            m_executed_groups.insert(group_name);
+            continue;
+        }
+
+        // Regular pass (not part of a subpass group)
         rg_pass_barriers barriers;
         for (const auto& ref : pass->resources())
         {
@@ -458,10 +707,17 @@ vulkan_render_graph::execute(VkCommandBuffer cmd,
 void
 vulkan_render_graph::reset()
 {
+    cleanup_subpass_groups();
     m_resources.clear();
     m_passes.clear();
     m_execution_order.clear();
     m_final_layouts.clear();
+    m_transient_resources.clear();
+    m_subpass_groups.clear();
+    m_compiled_subpass_groups.clear();
+    m_input_attachment_links.clear();
+    m_pass_to_group.clear();
+    m_executed_groups.clear();
     m_compiled = false;
 }
 
@@ -659,6 +915,125 @@ vulkan_render_graph::insert_barriers(VkCommandBuffer cmd, const rg_pass_barriers
                          barriers.buffer_barriers.data(),
                          static_cast<uint32_t>(barriers.image_barriers.size()),
                          barriers.image_barriers.data());
+}
+
+// ============================================================================
+// Subpass group support
+// ============================================================================
+
+bool
+vulkan_render_graph::compile_subpass_group(const subpass_group_desc& desc,
+                                           compiled_subpass_group& out)
+{
+    auto& device = glob::glob_state().getr_render_device();
+    auto vk_device = device.vk_device();
+
+    out.desc = desc;
+
+    // Build VkRenderPass
+    multi_subpass_render_pass_builder builder(vk_device);
+    out.render_pass = builder.build(desc);
+    if (out.render_pass == VK_NULL_HANDLE)
+    {
+        ALOG_ERROR("Failed to build subpass group render pass");
+        return false;
+    }
+
+    out.clear_values = builder.get_clear_values(desc);
+
+    // Create transient images for attachments that aren't externally bound
+    // For now, we expect all attachments to be bound externally via bind_image()
+    // Transient allocation will be added when we integrate with resource management
+
+    ALOG_INFO("Compiled subpass group '{}' with {} subpasses",
+              desc.name.str(),
+              desc.subpasses.size());
+
+    return true;
+}
+
+void
+vulkan_render_graph::execute_subpass_group(VkCommandBuffer cmd,
+                                           compiled_subpass_group& group,
+                                           uint32_t swapchain_idx,
+                                           uint32_t width,
+                                           uint32_t height)
+{
+    if (group.framebuffers.empty())
+    {
+        ALOG_ERROR("Subpass group '{}' has no framebuffers - call finalize_subpass_group first",
+                   group.desc.name.str());
+        return;
+    }
+
+    // Select framebuffer for this swapchain index
+    size_t fb_idx = swapchain_idx % group.framebuffers.size();
+    VkFramebuffer fb = group.framebuffers[fb_idx];
+
+    // Use stored dimensions or passed dimensions
+    uint32_t render_width = group.width > 0 ? group.width : width;
+    uint32_t render_height = group.height > 0 ? group.height : height;
+
+    // Begin render pass
+    VkRenderPassBeginInfo rp_begin = {};
+    rp_begin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rp_begin.renderPass = group.render_pass;
+    rp_begin.framebuffer = fb;
+    rp_begin.renderArea.offset = {0, 0};
+    rp_begin.renderArea.extent = {render_width, render_height};
+    rp_begin.clearValueCount = static_cast<uint32_t>(group.clear_values.size());
+    rp_begin.pClearValues = group.clear_values.data();
+
+    vkCmdBeginRenderPass(cmd, &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
+
+    // Execute each subpass
+    for (size_t sp_idx = 0; sp_idx < group.desc.subpasses.size(); ++sp_idx)
+    {
+        if (sp_idx > 0)
+        {
+            vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
+        }
+
+        const auto& subpass = group.desc.subpasses[sp_idx];
+        if (subpass.execute)
+        {
+            subpass.execute(cmd, static_cast<uint32_t>(sp_idx));
+        }
+    }
+
+    vkCmdEndRenderPass(cmd);
+}
+
+void
+vulkan_render_graph::cleanup_subpass_groups()
+{
+    auto& device = glob::glob_state().getr_render_device();
+    auto vk_device = device.vk_device();
+
+    for (auto& group : m_compiled_subpass_groups)
+    {
+        // Destroy framebuffers
+        for (auto fb : group.framebuffers)
+        {
+            if (fb != VK_NULL_HANDLE)
+            {
+                vkDestroyFramebuffer(vk_device, fb, nullptr);
+            }
+        }
+        group.framebuffers.clear();
+
+        // Destroy render pass
+        if (group.render_pass != VK_NULL_HANDLE)
+        {
+            vkDestroyRenderPass(vk_device, group.render_pass, nullptr);
+            group.render_pass = VK_NULL_HANDLE;
+        }
+
+        // Owned images/views are cleaned up by shared_ptr destructors
+        group.owned_views.clear();
+        group.owned_images.clear();
+        group.attachment_views.clear();
+    }
 }
 
 }  // namespace kryga::render

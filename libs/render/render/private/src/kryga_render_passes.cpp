@@ -575,8 +575,119 @@ vulkan_render::setup_instanced_render_graph()
                                         ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
                                         : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
+    // Test subpass group (selection_mask + main combined)
+    // NOTE: Currently disabled for execution because existing pipelines were built
+    // against single-subpass render passes. To enable:
+    // 1. Create shader effects using the subpass group's VkRenderPass
+    // 2. Specify correct subpass index for each shader (0 for mask, 1 for main)
+    // For now, just compile/finalize to prove infrastructure works.
+    constexpr bool enable_subpass_group = false;
+    ALOG_INFO("Setting up test subpass group (enabled={})...", enable_subpass_group);
+    if (enable_subpass_group)
+    {
+        subpass_group_desc group;
+        group.name = AID("main_subpass_group");
+
+        auto& device = glob::glob_state().getr_render_device();
+
+        // Attachment 0: selection mask (could be transient on mobile)
+        group.attachments.push_back({
+            .name = AID("selection_mask_target"),
+            .format = device.get_swapchain_format(),
+            .scope = attachment_memory_scope::persistent,  // transient later
+            .load_op = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        });
+
+        // Attachment 1: swapchain
+        group.attachments.push_back({
+            .name = AID("swapchain"),
+            .format = device.get_swapchain_format(),
+            .scope = attachment_memory_scope::persistent,
+            .load_op = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .store_op = VK_ATTACHMENT_STORE_OP_STORE,
+        });
+
+        // Attachment 2: shared depth
+        group.attachments.push_back({
+            .name = AID("shared_depth"),
+            .format = VK_FORMAT_D32_SFLOAT_S8_UINT,
+            .scope = attachment_memory_scope::persistent,  // transient later
+            .load_op = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        });
+
+        // Subpass 0: selection mask
+        // Name must match the pass name for subpass group detection
+        subpass_desc mask_sp;
+        mask_sp.name = AID("selection_mask");
+        mask_sp.attachments = {
+            {0, subpass_attachment_usage::color_output},
+            {2, subpass_attachment_usage::depth_output},
+        };
+        mask_sp.execute = [this](VkCommandBuffer cmd, uint32_t) {
+            draw_selection_mask(cmd, *m_current_frame);
+        };
+        group.subpasses.push_back(std::move(mask_sp));
+
+        // Subpass 1: main (reads mask as input attachment)
+        subpass_desc main_sp;
+        main_sp.name = AID("main");
+        main_sp.attachments = {
+            {0, subpass_attachment_usage::input_attachment},
+            {1, subpass_attachment_usage::color_output},
+            {2, subpass_attachment_usage::depth_read_only},
+        };
+        main_sp.execute = [this](VkCommandBuffer cmd, uint32_t) {
+            draw_objects_instanced(*m_current_frame);
+        };
+        group.subpasses.push_back(std::move(main_sp));
+
+        m_render_graph.add_subpass_group(std::move(group));
+    }
+
     bool result = m_render_graph.compile();
     KRG_check(result, "Instanced render graph compilation failed");
+
+    // Finalize subpass group with image views from existing passes
+    if (enable_subpass_group)
+    {
+        auto* mask_pass = get_render_pass(AID("selection_mask"));
+        auto* main_pass = get_render_pass(AID("main"));
+
+        if (mask_pass && main_pass)
+        {
+            auto mask_views = mask_pass->get_color_image_views();
+            auto main_views = main_pass->get_color_image_views();
+            const auto& depth_views = mask_pass->get_depth_image_views();
+
+            // Bind attachment 0: selection mask (single-buffered)
+            if (!mask_views.empty())
+            {
+                m_render_graph.bind_subpass_attachment(
+                    AID("main_subpass_group"), 0, {mask_views[0]->vk()});
+            }
+
+            // Bind attachment 1: swapchain (triple-buffered)
+            std::vector<VkImageView> swapchain_views;
+            for (const auto& v : main_views)
+            {
+                swapchain_views.push_back(v->vk());
+            }
+            m_render_graph.bind_subpass_attachment(
+                AID("main_subpass_group"), 1, std::move(swapchain_views));
+
+            // Bind attachment 2: depth (single-buffered from mask pass)
+            if (!depth_views.empty())
+            {
+                m_render_graph.bind_subpass_attachment(
+                    AID("main_subpass_group"), 2, {depth_views[0].vk()});
+            }
+
+            // Create framebuffers
+            m_render_graph.finalize_subpass_group(AID("main_subpass_group"), m_width, m_height);
+        }
+    }
 }
 
 }  // namespace render
