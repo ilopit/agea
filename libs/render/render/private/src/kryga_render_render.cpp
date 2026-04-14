@@ -1454,6 +1454,12 @@ vulkan_render::draw_ui(frame_state& fs)
     {
         return;
     }
+
+    if (!fs.ui.vertex_buffer.buffer() || !fs.ui.index_buffer.buffer())
+    {
+        return;
+    }
+
     ImGuiIO& io = ImGui::GetIO();
 
     // Viewport and scissor are in swapchain image pixel coords.

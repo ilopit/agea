@@ -10,6 +10,7 @@
 #include <thread>
 #include <atomic>
 #include <memory>
+#include <cstdint>
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -38,8 +39,10 @@ class sync_service
 {
 public:
 #if KRG_ENABLE_SYNC_SERVICE
+    static constexpr uint16_t default_port = 10033;
+
     void
-    start();
+    start(uint16_t port = default_port);
 
     void
     stop();
@@ -57,6 +60,12 @@ public:
     add_sync_action(sync_action&& sa);
 
 private:
+    void
+    write_session_file();
+
+    void
+    remove_session_file();
+
     static int
     server_main(sync_service* self);
 
@@ -70,6 +79,7 @@ private:
 
     std::atomic_bool m_is_running = {false};
     std::thread m_main_thread;
+    uint16_t m_port = default_port;
 
     std::mutex m_sync_mutex;
 
