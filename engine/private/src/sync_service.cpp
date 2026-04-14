@@ -3,6 +3,7 @@
 #include "engine/kryga_engine.h"
 
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -13,7 +14,15 @@
 #include <future>
 #include <unordered_set>
 
+#include <global_state/global_state.h>
 #include <utils/kryga_log.h>
+#include <vfs/vfs.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace kryga
 {
@@ -189,15 +198,17 @@ sync_service::handle_request(sync_service* self,
 }
 
 void
-sync_service::start()
+sync_service::start(uint16_t port)
 {
     bool e = false;
     auto result = m_is_running.compare_exchange_strong(e, true);
 
     if (result)
     {
+        m_port = port;
         m_main_thread = std::thread(sync_service::server_main, this);
         m_main_thread.detach();
+        write_session_file();
     }
     else
     {
@@ -208,7 +219,8 @@ sync_service::start()
 void
 sync_service::stop()
 {
-    auto result = m_is_running = false;
+    m_is_running = false;
+    remove_session_file();
 }
 
 void
@@ -228,17 +240,57 @@ sync_service::add_sync_action(sync_action&& sa)
     m_actions.emplace_back(std::move(sa));
 }
 
+void
+sync_service::write_session_file()
+{
+    auto& vfs = glob::glob_state().getr_vfs();
+    vfs.create_directories(vfs::rid("rtcache://"));
+
+    auto session_path = vfs.real_path(vfs::rid("rtcache://session.json"));
+    if (!session_path.has_value())
+    {
+        ALOG_ERROR("Failed to resolve session file path");
+        return;
+    }
+
+#ifdef _WIN32
+    auto pid = static_cast<int64_t>(GetCurrentProcessId());
+#else
+    auto pid = static_cast<int64_t>(getpid());
+#endif
+
+    std::ofstream ofs(session_path.value());
+    if (!ofs)
+    {
+        ALOG_ERROR("Failed to write session file: {}", session_path.value().string());
+        return;
+    }
+
+    ofs << "{\n";
+    ofs << "  \"pid\": " << pid << ",\n";
+    ofs << "  \"port\": " << m_port << "\n";
+    ofs << "}\n";
+
+    ALOG_INFO("Session file written: pid={}, port={}", pid, m_port);
+}
+
+void
+sync_service::remove_session_file()
+{
+    auto& vfs = glob::glob_state().getr_vfs();
+    vfs.remove(vfs::rid("rtcache://session.json"));
+}
+
 int
 sync_service::server_main(sync_service* self)
 {
     auto const address = boost::asio::ip::make_address("0.0.0.0");
-    auto const port = unsigned short(10033);
 
     // The io_context is required for all I/O
     boost::asio::io_context ioc{1};
 
     // The acceptor receives incoming connections
-    tcp::acceptor acceptor{ioc, {address, port}};
+    tcp::acceptor acceptor{ioc, {address, self->m_port}};
     while (self->m_is_running)
     {
         // This will receive the new connection

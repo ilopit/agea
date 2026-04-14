@@ -1207,6 +1207,12 @@ vulkan_render::draw_ui(frame_state& fs)
     {
         return;
     }
+
+    if (!fs.ui.vertex_buffer.buffer() || !fs.ui.index_buffer.buffer())
+    {
+        return;
+    }
+
     ImGuiIO& io = ImGui::GetIO();
 
     VkViewport viewport{};
@@ -1246,9 +1252,6 @@ vulkan_render::draw_ui(frame_state& fs)
                        0,
                        sizeof(ui_push_constants),
                        &m_ui_push_constants);
-
-    KRG_check(fs.ui.vertex_buffer.buffer(), "UI vertex buffer must be valid");
-    KRG_check(fs.ui.index_buffer.buffer(), "UI index buffer must be valid");
 
     VkDeviceSize offsets[1] = {0};
     vkCmdBindVertexBuffers(cmd, 0, 1, &fs.ui.vertex_buffer.buffer(), offsets);
