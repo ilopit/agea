@@ -52,6 +52,13 @@ FetchContent_MakeAvailable(ozz-animation)
 # ==============================================================================
 
 FetchContent_Declare(
+  cli11
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+  GIT_TAG        v2.4.2
+  GIT_SHALLOW    TRUE
+)
+
+FetchContent_Declare(
   glm
   GIT_REPOSITORY https://github.com/g-truc/glm.git
   GIT_TAG        1.0.1
@@ -176,7 +183,7 @@ FetchContent_Declare(
 # ==============================================================================
 
 FetchContent_MakeAvailable(
-  glm googletest jsoncpp lua sol2 spdlog
+  cli11 glm googletest jsoncpp lua sol2 spdlog
   spirv-reflect tinyobjloader vk-bootstrap yaml-cpp
 )
 

@@ -29,6 +29,8 @@ target_link_libraries(engine PUBLIC
     sdl2
 
     TracyClient
+
+    CLI11::CLI11
 )
 
 target_include_directories(engine 

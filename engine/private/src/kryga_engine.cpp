@@ -65,11 +65,12 @@
 
 #include <sol2_unofficial/sol.h>
 
+#include <CLI/CLI.hpp>
+
 #include <fstream>
 #include <algorithm>
 #include <chrono>
 #include <thread>
-#include <cstring>
 
 namespace kryga
 {
@@ -81,42 +82,25 @@ namespace kryga
 bool
 startup_options::parse(int argc, char** argv, startup_options& out)
 {
-    out = {};  // Reset to defaults
+    out = {};
 
-    for (int i = 1; i < argc; ++i)
+    CLI::App app{"Kryga Engine"};
+
+    app.add_option("-t,--run-for", out.run_for_seconds, "Run for specified duration then exit (0 = unlimited)")
+        ->check(CLI::NonNegativeNumber);
+
+    try
     {
-        const char* arg = argv[i];
-
-        if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
+        app.parse(argc, argv);
+    }
+    catch (const CLI::ParseError& e)
+    {
+        out.show_help = (e.get_exit_code() == 0);  // --help returns 0
+        if (!out.show_help)
         {
-            out.show_help = true;
-            return false;
+            ALOG_ERROR("{}", e.what());
         }
-        else if (strcmp(arg, "--run-for") == 0 || strcmp(arg, "-t") == 0)
-        {
-            if (i + 1 >= argc)
-            {
-                ALOG_ERROR("{} requires a value (seconds)", arg);
-                return false;
-            }
-            ++i;
-            const char* value = argv[i];
-
-            char* end = nullptr;
-            float seconds = std::strtof(value, &end);
-            if (end == value || seconds < 0.f)
-            {
-                ALOG_ERROR("Invalid run duration '{}'. Must be a non-negative number.", value);
-                return false;
-            }
-            out.run_for_seconds = seconds;
-        }
-        else
-        {
-            ALOG_ERROR("Unknown argument '{}'", arg);
-            out.show_help = true;
-            return false;
-        }
+        return false;
     }
 
     return true;
@@ -125,13 +109,12 @@ startup_options::parse(int argc, char** argv, startup_options& out)
 void
 startup_options::print_help(const char* program_name)
 {
-    ALOG_INFO(
-        "Usage: {} [OPTIONS]\n\n"
-        "Options:\n"
-        "  -h, --help              Show this help message\n"
-        "  -t, --run-for SECONDS   Run for specified duration then exit\n"
-        "                          (0 or omit for unlimited)",
-        program_name);
+    CLI::App app{"Kryga Engine"};
+    float dummy = 0.f;
+    app.add_option("-t,--run-for", dummy, "Run for specified duration then exit (0 = unlimited)")
+        ->check(CLI::NonNegativeNumber);
+
+    ALOG_INFO("{}", app.help());
 }
 
 vulkan_engine::vulkan_engine()

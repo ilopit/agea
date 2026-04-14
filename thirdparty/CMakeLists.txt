@@ -62,6 +62,7 @@ externalize(ozz_animation "ozz-animation")
 externalize(ozz_animation_offline "ozz-animation")
 
 # externalize Category A deps
+externalize(CLI11 "cli11")
 externalize(glm "glm")
 externalize(jsoncpp_static "jsoncpp")
 externalize(lua_static "lua")
