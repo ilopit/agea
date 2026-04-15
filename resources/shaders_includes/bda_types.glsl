@@ -3,6 +3,8 @@
 // those are defined per-pass in bda_macros_*.glsl files.
 
 #extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference_uvec2 : require
 
 #include "gpu_types/gpu_camera_types.h"
 #include "gpu_types/gpu_object_types.h"

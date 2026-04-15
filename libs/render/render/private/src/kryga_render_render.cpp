@@ -809,7 +809,7 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     if (cur_material->has_gpu_data())
     {
         auto& sm = m_materials_layout.at(cur_material->gpu_type_idx());
-        m_obj_config.bdaf_material = current_frame.buffers.materials.device_address() + sm.offset;
+        m_obj_config.bdaf_material = gpu::make_bda_addr(current_frame.buffers.materials.device_address() + sm.offset);
         m_bda_material_bound = true;
     }
 

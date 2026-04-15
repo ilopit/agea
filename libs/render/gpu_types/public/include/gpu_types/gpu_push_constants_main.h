@@ -7,10 +7,6 @@
 #include <gpu_types/gpu_port.h>
 #include <gpu_types/gpu_generic_constants.h>
 
-#ifndef __cplusplus
-#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
-#endif
-
 GPU_BEGIN_NAMESPACE
 
 struct push_constants_main
@@ -24,19 +20,19 @@ struct push_constants_main
     uint enable_baked_light;
     uint texture_indices[KGPU_MAX_TEXTURE_SLOTS];
     uint sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
-    uint64_t bdag_camera;
-    uint64_t bdag_objects;
-    uint64_t bdag_directional_lights;
-    uint64_t bdag_universal_lights;
-    uint64_t bdag_cluster_counts;
-    uint64_t bdag_cluster_indices;
-    uint64_t bdag_cluster_config;
-    uint64_t bdag_instance_slots;
-    uint64_t bdag_bone_matrices;
-    uint64_t bdag_shadow_data;
-    uint64_t bdag_probe_data;
-    uint64_t bdag_probe_grid;
-    uint64_t bdaf_material;
+    bda_addr bdag_camera;
+    bda_addr bdag_objects;
+    bda_addr bdag_directional_lights;
+    bda_addr bdag_universal_lights;
+    bda_addr bdag_cluster_counts;
+    bda_addr bdag_cluster_indices;
+    bda_addr bdag_cluster_config;
+    bda_addr bdag_instance_slots;
+    bda_addr bdag_bone_matrices;
+    bda_addr bdag_shadow_data;
+    bda_addr bdag_probe_data;
+    bda_addr bdag_probe_grid;
+    bda_addr bdaf_material;
 };
 
 GPU_END_NAMESPACE

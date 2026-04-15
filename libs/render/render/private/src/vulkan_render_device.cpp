@@ -131,11 +131,9 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 
     VkPhysicalDeviceFeatures features_11{};
     features_11.fillModeNonSolid = true;
-    features_11.shaderInt64 = true;  // Required for uint64_t in GLSL (BDA pointer table)
+    // shaderInt64 not required — BDA uses uvec2 via GL_EXT_buffer_reference_uvec2
 
     selector.set_required_features(features_11)
-        .add_required_extension("VK_EXT_graphics_pipeline_library")
-        .add_required_extension("VK_KHR_pipeline_library")
         .set_minimum_version(1, 2)
         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
 

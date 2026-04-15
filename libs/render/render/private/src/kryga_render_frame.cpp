@@ -288,8 +288,9 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_render_graph.execute(
         cmd, glob::glob_state().getr_render_device().get_current_frame_index(), width, height);
 
-    // Verify per-draw BDA addresses were set this frame (if any objects were drawn)
-    if (m_all_draws > 0)
+    // Verify per-draw BDA addresses were set this frame (if any objects were actually drawn)
+    // m_all_draws includes culled objects; only check if at least one object passed culling
+    if (m_all_draws > m_culled_draws)
     {
         KRG_check(m_bda_material_bound,
                   "BDA material address was never set this frame — "
@@ -438,28 +439,28 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     {
         auto& b = current_frame.buffers;
 
-        // Main pass push constants — all BDA addresses
-        m_obj_config.bdag_camera = b.dynamic_data.device_address();
-        m_obj_config.bdag_objects = b.objects.device_address();
-        m_obj_config.bdag_directional_lights = b.directional_lights.device_address();
-        m_obj_config.bdag_universal_lights = b.universal_lights.device_address();
-        m_obj_config.bdag_cluster_counts = b.cluster_counts.device_address();
-        m_obj_config.bdag_cluster_indices = b.cluster_indices.device_address();
-        m_obj_config.bdag_cluster_config = b.cluster_config.device_address();
-        m_obj_config.bdag_instance_slots = b.instance_slots.device_address();
-        m_obj_config.bdag_bone_matrices = b.bone_matrices.device_address();
-        m_obj_config.bdag_shadow_data = b.shadow_data.device_address();
-        m_obj_config.bdag_probe_data = b.probe_data.device_address();
-        m_obj_config.bdag_probe_grid = b.probe_grid.device_address();
+        // Main pass push constants — all BDA addresses (as uvec2 for mobile compatibility)
+        m_obj_config.bdag_camera = gpu::make_bda_addr(b.dynamic_data.device_address());
+        m_obj_config.bdag_objects = gpu::make_bda_addr(b.objects.device_address());
+        m_obj_config.bdag_directional_lights = gpu::make_bda_addr(b.directional_lights.device_address());
+        m_obj_config.bdag_universal_lights = gpu::make_bda_addr(b.universal_lights.device_address());
+        m_obj_config.bdag_cluster_counts = gpu::make_bda_addr(b.cluster_counts.device_address());
+        m_obj_config.bdag_cluster_indices = gpu::make_bda_addr(b.cluster_indices.device_address());
+        m_obj_config.bdag_cluster_config = gpu::make_bda_addr(b.cluster_config.device_address());
+        m_obj_config.bdag_instance_slots = gpu::make_bda_addr(b.instance_slots.device_address());
+        m_obj_config.bdag_bone_matrices = gpu::make_bda_addr(b.bone_matrices.device_address());
+        m_obj_config.bdag_shadow_data = gpu::make_bda_addr(b.shadow_data.device_address());
+        m_obj_config.bdag_probe_data = gpu::make_bda_addr(b.probe_data.device_address());
+        m_obj_config.bdag_probe_grid = gpu::make_bda_addr(b.probe_grid.device_address());
         // bdaf_material set per-draw in bind_material()
 
         // Shadow pass push constants
-        m_shadow_pc.bdag_objects = b.objects.device_address();
-        m_shadow_pc.bdag_instance_slots = b.instance_slots.device_address();
-        m_shadow_pc.bdag_shadow_data = b.shadow_data.device_address();
+        m_shadow_pc.bdag_objects = gpu::make_bda_addr(b.objects.device_address());
+        m_shadow_pc.bdag_instance_slots = gpu::make_bda_addr(b.instance_slots.device_address());
+        m_shadow_pc.bdag_shadow_data = gpu::make_bda_addr(b.shadow_data.device_address());
 
         // Grid pass push constants
-        m_grid_pc.bdag_camera = b.dynamic_data.device_address();
+        m_grid_pc.bdag_camera = gpu::make_bda_addr(b.dynamic_data.device_address());
     }
 }
 

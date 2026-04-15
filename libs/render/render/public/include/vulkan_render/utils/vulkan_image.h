@@ -115,12 +115,13 @@ private:
 
 }  // namespace kryga::render::vk_utils
 
-#define VK_CHECK(x)                      \
-    do                                   \
-    {                                    \
-        VkResult err = x;                \
-        if (err)                         \
-        {                                \
-            KRG_never("Vulkan failed!"); \
-        }                                \
+#define VK_CHECK(x)                                              \
+    do                                                           \
+    {                                                            \
+        VkResult err = x;                                        \
+        if (err)                                                 \
+        {                                                        \
+            fprintf(stderr, "VK_CHECK failed: %d\n", (int)err);  \
+            KRG_never("Vulkan failed!");                         \
+        }                                                        \
     } while (0)
