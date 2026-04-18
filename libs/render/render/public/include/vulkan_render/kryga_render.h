@@ -524,6 +524,8 @@ private:
     VkDescriptorPool m_bindless_pool = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_bindless_layout = VK_NULL_HANDLE;
     VkDescriptorSet m_bindless_set = VK_NULL_HANDLE;
+    textures_update_queue m_global_textures_queue;  // Global queue (not per-frame) for bindless
+                                                    // updates
 
     gpu::push_constants_main m_obj_config = {};
     gpu::push_constants_shadow m_shadow_pc = {};

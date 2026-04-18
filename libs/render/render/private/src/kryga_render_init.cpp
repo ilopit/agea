@@ -310,6 +310,7 @@ vulkan_render::deinit()
     m_cache.universal_lights.clear();
     m_cache.textures.clear();
 
+    m_global_textures_queue.clear();
     m_frames.clear();
 }
 

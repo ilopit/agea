@@ -591,15 +591,13 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 void
 vulkan_render::schd_update_texture(texture_data* tex)
 {
-    auto& q = get_current_frame_transfer_data();
-    q.uploads.textures_queue.emplace_back(tex);
+    m_global_textures_queue.emplace_back(tex);
 }
 
 void
 vulkan_render::update_bindless_descriptors()
 {
-    auto& current_frame = get_current_frame_transfer_data();
-    auto& textures_queue = current_frame.uploads.textures_queue;
+    auto& textures_queue = m_global_textures_queue;
 
     if (textures_queue.empty())
     {
