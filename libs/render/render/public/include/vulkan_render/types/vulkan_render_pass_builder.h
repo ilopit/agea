@@ -5,6 +5,8 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace kryga::render
@@ -31,6 +33,8 @@ public:
     set_depth_only(bool depth_only);
     render_pass_builder&
     set_image_count(uint32_t count);
+    render_pass_builder&
+    set_debug_name(std::string_view name);
 
     render_pass_sptr
     build();
@@ -53,6 +57,8 @@ private:
 
     std::vector<vk_utils::vulkan_image_sptr> m_color_images;
     std::vector<vk_utils::vulkan_image_view_sptr> m_color_image_views;
+
+    std::string m_debug_name;
 };
 
 }  // namespace kryga::render

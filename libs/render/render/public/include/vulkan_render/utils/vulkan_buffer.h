@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <functional>
+#include <string_view>
 
 namespace kryga::render::vk_utils
 {
@@ -19,7 +20,7 @@ public:
     ~vulkan_buffer();
 
     static vulkan_buffer
-    create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci);
+    create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci, std::string_view debug_name = {});
 
     KRG_gen_class_non_copyable(vulkan_buffer);
 

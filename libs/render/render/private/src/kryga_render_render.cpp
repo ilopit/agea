@@ -472,9 +472,12 @@ vulkan_render::draw_selection_mask(VkCommandBuffer cmd, render::frame_state& cur
         m_obj_config.directional_light_id = get_selected_directional_light_slot();
         copy_texture_indices(m_obj_config, batch.material);
 
-        vkCmdPushConstants(cmd, pctx.pipeline_layout,
+        vkCmdPushConstants(cmd,
+                           pctx.pipeline_layout,
                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0, sizeof(gpu::push_constants_main), &m_obj_config);
+                           0,
+                           sizeof(gpu::push_constants_main),
+                           &m_obj_config);
 
         if (batch.mesh->has_indices())
         {
@@ -522,10 +525,14 @@ vulkan_render::draw_outline_post(VkCommandBuffer cmd, render::frame_state& curre
 
     if (m_bindless_set != VK_NULL_HANDLE)
     {
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 m_outline_post_se->m_pipeline_layout,
-                                KGPU_textures_descriptor_sets, 1,
-                                &m_bindless_set, 0, nullptr);
+                                KGPU_textures_descriptor_sets,
+                                1,
+                                &m_bindless_set,
+                                0,
+                                nullptr);
     }
 
     bind_mesh(cmd, m);
@@ -545,9 +552,12 @@ vulkan_render::draw_outline_post(VkCommandBuffer cmd, render::frame_state& curre
     pc.thickness = 1.5f;
     pc.mask_texture_idx = m_selection_mask_bindless_idx;
 
-    vkCmdPushConstants(cmd, m_outline_post_se->m_pipeline_layout,
+    vkCmdPushConstants(cmd,
+                       m_outline_post_se->m_pipeline_layout,
                        VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0, sizeof(outline_pc), &pc);
+                       0,
+                       sizeof(outline_pc),
+                       &pc);
 
     if (m->has_indices())
     {
@@ -809,7 +819,8 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
     if (cur_material->has_gpu_data())
     {
         auto& sm = m_materials_layout.at(cur_material->gpu_type_idx());
-        m_obj_config.bdaf_material = gpu::make_bda_addr(current_frame.buffers.materials.device_address() + sm.offset);
+        m_obj_config.bdaf_material =
+            gpu::make_bda_addr(current_frame.buffers.materials.device_address() + sm.offset);
         m_bda_material_bound = true;
     }
 
@@ -1203,7 +1214,8 @@ vulkan_render::draw_ui(frame_state& fs)
 
     auto im_draw_data = ImGui::GetDrawData();
 
-    if ((!im_draw_data) || (im_draw_data->CmdListsCount == 0))
+    if ((!im_draw_data) || (im_draw_data->CmdListsCount == 0) ||
+        (im_draw_data->TotalVtxCount == 0) || (im_draw_data->TotalIdxCount == 0))
     {
         return;
     }

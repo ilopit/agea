@@ -6,6 +6,7 @@
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/types/vulkan_compute_shader_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 
 #include <shader_system/shader_compiler.h>
 
@@ -27,7 +28,8 @@ namespace
 
 result_code
 load_compute_shader_module(const kryga::utils::buffer& input,
-                           std::shared_ptr<shader_module_data>& sd)
+                           std::shared_ptr<shader_module_data>& sd,
+                           std::string_view debug_name = {})
 {
     auto device = glob::glob_state().get_render_device();
 
@@ -49,6 +51,8 @@ load_compute_shader_module(const kryga::utils::buffer& input,
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
+
+    KRG_VK_NAME(device->vk_device(), module, debug_name);
 
     sd = std::make_shared<shader_module_data>(module,
                                               std::move(compiled.spirv),
@@ -105,6 +109,9 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
 
         vkCreateDescriptorSetLayout(
             device->vk_device(), &layout_cis[i], nullptr, &cs.m_set_layout[i]);
+
+        KRG_VK_NAME_FMT(
+            device->vk_device(), cs.m_set_layout[i], "{}.dsl_{}", cs.get_id().cstr(), i);
     }
 
     // Create pipeline layout
@@ -127,6 +134,12 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
     vkCreatePipelineLayout(
         device->vk_device(), &pipeline_layout_ci, nullptr, &cs.m_pipeline_layout);
 
+    if (cs.m_pipeline_layout != VK_NULL_HANDLE)
+    {
+        KRG_VK_NAME_FMT(
+            device->vk_device(), cs.m_pipeline_layout, "{}.pipeline_layout", cs.get_id().cstr());
+    }
+
     return cs.m_pipeline_layout != VK_NULL_HANDLE;
 }
 
@@ -143,7 +156,9 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
     }
 
     // Load and compile compute shader
-    auto rc = load_compute_shader_module(*info.shader_buffer, cs_data.m_compute_stage);
+    auto rc = load_compute_shader_module(*info.shader_buffer,
+                                         cs_data.m_compute_stage,
+                                         KRG_VK_FMT_NAME("{}.comp", cs_data.get_id().cstr()));
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
@@ -176,6 +191,9 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
+
+    KRG_VK_NAME_FMT(
+        device->vk_device(), cs_data.m_pipeline, "{}.pipeline", cs_data.get_id().cstr());
 
     return result_code::ok;
 }

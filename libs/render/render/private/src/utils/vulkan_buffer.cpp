@@ -1,6 +1,7 @@
 #include "vulkan_render/utils/vulkan_buffer.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
 
 #include <global_state/global_state.h>
@@ -80,17 +81,18 @@ vulkan_buffer::clear()
 }
 
 vulkan_buffer
-vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
+vulkan_buffer::create(VkBufferCreateInfo bci,
+                      VmaAllocationCreateInfo vaci,
+                      std::string_view debug_name)
 {
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    VK_CHECK(vmaCreateBuffer(glob::glob_state().getr_render_device().allocator(),
-                             &bci,
-                             &vaci,
-                             &buffer,
-                             &allocation,
-                             nullptr));
+    auto& device = glob::glob_state().getr_render_device();
+
+    VK_CHECK(vmaCreateBuffer(device.allocator(), &bci, &vaci, &buffer, &allocation, nullptr));
+
+    KRG_VK_NAME(device.vk_device(), buffer, debug_name);
 
     return vulkan_buffer{buffer, allocation, bci.size};
 }

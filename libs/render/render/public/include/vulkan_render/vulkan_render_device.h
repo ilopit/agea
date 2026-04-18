@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <queue>
+#include <string_view>
 
 struct SDL_Window;
 
@@ -127,7 +128,8 @@ public:
     create_buffer(size_t alloc_size,
                   VkBufferUsageFlags usage,
                   VmaMemoryUsage memory_usage,
-                  VkMemoryPropertyFlags required_flags = 0);
+                  VkMemoryPropertyFlags required_flags = 0,
+                  std::string_view debug_name = {});
 
     vk_utils::descriptor_allocator*
     descriptor_allocator()

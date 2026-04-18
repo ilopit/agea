@@ -7,6 +7,7 @@
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_vertex_types.h>
@@ -25,6 +26,8 @@
 #include <tracy/Tracy.hpp>
 
 #include <cmath>
+#include <format>
+#include <string>
 
 namespace kryga
 {
@@ -88,83 +91,125 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     {
         m_frames[i].frame = &device.frame(i);
 
-        m_frames[i].buffers.objects = device.create_buffer(
-            OBJECTS_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.objects =
+            device.create_buffer(OBJECTS_BUFFER_SIZE,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.objects", i));
 
-        m_frames[i].buffers.materials = device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE,
-                                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                             VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.materials =
+            device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.materials", i));
 
         m_frames[i].buffers.universal_lights =
             device.create_buffer(UNIVERSAL_LIGHTS_BUFFER_SIZE,
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.universal_lights", i));
 
         m_frames[i].buffers.directional_lights =
             device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE,
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.directional_lights", i));
 
         m_frames[i].buffers.dynamic_data =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
                                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.dynamic_data", i));
 
         // Cluster buffers - used by both CPU upload and GPU compute
         // CPU_TO_GPU allows CPU writes for fallback, GPU can read/write via SSBO
         m_frames[i].buffers.cluster_counts =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.cluster_counts", i));
 
         m_frames[i].buffers.cluster_indices =
             device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.cluster_indices", i));
 
         m_frames[i].buffers.cluster_config = device.create_buffer(
             DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU);
+            VMA_MEMORY_USAGE_CPU_TO_GPU,
+            0,
+            KRG_VK_FMT_NAME("frame_{}.cluster_config", i));
 
         // Instance slots buffer for instanced drawing
         m_frames[i].buffers.instance_slots =
             device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU);
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.instance_slots", i));
 
         // Bone matrices SSBO for skeletal animation (initial 64KB)
-        m_frames[i].buffers.bone_matrices = device.create_buffer(
-            64 * 1024, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.bone_matrices =
+            device.create_buffer(64 * 1024,
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.bone_matrices", i));
 
         // GPU frustum culling buffers
-        m_frames[i].buffers.frustum_data = device.create_buffer(sizeof(gpu::frustum_data),
-                                                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                                                VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.frustum_data =
+            device.create_buffer(sizeof(gpu::frustum_data),
+                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.frustum_data", i));
 
         m_frames[i].buffers.visible_indices =
             device.create_buffer(OBJECTS_BUFFER_SIZE * sizeof(uint32_t),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_GPU_ONLY);
+                                 VMA_MEMORY_USAGE_GPU_ONLY,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.visible_indices", i));
 
         m_frames[i].buffers.cull_output = device.create_buffer(
             sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
-            VMA_MEMORY_USAGE_GPU_ONLY);
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            0,
+            KRG_VK_FMT_NAME("frame_{}.cull_output", i));
 
         // Shadow data SSBO
-        m_frames[i].buffers.shadow_data = device.create_buffer(sizeof(gpu::shadow_config_data),
-                                                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                               VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.shadow_data =
+            device.create_buffer(sizeof(gpu::shadow_config_data),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.shadow_data", i));
 
         // Light probe SSBOs (initial: 1 dummy probe + grid config)
-        m_frames[i].buffers.probe_data = device.create_buffer(
-            sizeof(gpu::sh_probe), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.probe_data =
+            device.create_buffer(sizeof(gpu::sh_probe),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.probe_data", i));
 
-        m_frames[i].buffers.probe_grid = device.create_buffer(sizeof(gpu::probe_grid_config),
-                                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                              VMA_MEMORY_USAGE_CPU_TO_GPU);
+        m_frames[i].buffers.probe_grid =
+            device.create_buffer(sizeof(gpu::probe_grid_config),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                 0,
+                                 KRG_VK_FMT_NAME("frame_{}.probe_grid", i));
     }
 
     prepare_system_resources();
@@ -764,6 +809,21 @@ vulkan_render::init_static_samplers()
                        VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                        false);
 
+    static const char* sampler_names[KGPU_SAMPLER_COUNT] = {"sampler.linear_repeat",
+                                                            "sampler.linear_clamp",
+                                                            "sampler.linear_mirror",
+                                                            "sampler.nearest_repeat",
+                                                            "sampler.nearest_clamp",
+                                                            "sampler.linear_clamp_border",
+                                                            "sampler.aniso_repeat"};
+    for (int i = 0; i < KGPU_SAMPLER_COUNT; ++i)
+    {
+        if (m_static_samplers[i] != VK_NULL_HANDLE)
+        {
+            KRG_VK_NAME(vk_device, m_static_samplers[i], sampler_names[i]);
+        }
+    }
+
     ALOG_INFO("Static samplers initialized ({} variants)", KGPU_SAMPLER_COUNT);
 }
 
@@ -804,6 +864,7 @@ vulkan_render::init_bindless_textures()
     pool_ci.pPoolSizes = pool_sizes;
 
     VK_CHECK(vkCreateDescriptorPool(vk_device, &pool_ci, nullptr, &m_bindless_pool));
+    KRG_VK_NAME(vk_device, m_bindless_pool, "bindless.pool");
 
     // Create descriptor set layout with two bindings:
     // Binding 0: sampler static_samplers[KGPU_SAMPLER_COUNT] (SAMPLER, immutable)
@@ -845,6 +906,7 @@ vulkan_render::init_bindless_textures()
     layout_ci.pBindings = bindings;
 
     VK_CHECK(vkCreateDescriptorSetLayout(vk_device, &layout_ci, nullptr, &m_bindless_layout));
+    KRG_VK_NAME(vk_device, m_bindless_layout, "bindless.dsl");
 
     // Allocate the single bindless descriptor set
     // Variable count only applies to binding 0 (the last binding with variable count flag)
@@ -864,6 +926,7 @@ vulkan_render::init_bindless_textures()
     set_ai.pSetLayouts = &m_bindless_layout;
 
     VK_CHECK(vkAllocateDescriptorSets(vk_device, &set_ai, &m_bindless_set));
+    KRG_VK_NAME(vk_device, m_bindless_set, "bindless.set");
 
     ALOG_INFO("Bindless textures initialized with {} max textures and {} static samplers",
               KGPU_max_bindless_textures,

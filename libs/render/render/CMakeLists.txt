@@ -48,6 +48,22 @@ target_precompile_headers(vulkan_render PRIVATE
     "$<$<COMPILE_LANGUAGE:CXX>:<imgui.h$<ANGLE-R>>"
 )
 
+# Vulkan validation layers, debug messenger, and object naming.
+# ON by default in Debug/RelWithDebInfo, OFF in Release/MinSizeRel.
+# Override: -DKRYGA_VULKAN_DEBUG=1 (or 0) on the cmake command line.
+if(NOT DEFINED KRYGA_VULKAN_DEBUG)
+    target_compile_definitions(vulkan_render PUBLIC
+        $<$<CONFIG:Debug>:KRYGA_VULKAN_DEBUG=1>
+        $<$<CONFIG:RelWithDebInfo>:KRYGA_VULKAN_DEBUG=1>
+        $<$<CONFIG:Release>:KRYGA_VULKAN_DEBUG=0>
+        $<$<CONFIG:MinSizeRel>:KRYGA_VULKAN_DEBUG=0>
+    )
+else()
+    target_compile_definitions(vulkan_render PUBLIC
+        KRYGA_VULKAN_DEBUG=$<BOOL:${KRYGA_VULKAN_DEBUG}>
+    )
+endif()
+
 kryga_finalize_library(vulkan_render)
 
 add_subdirectory(private/tests)

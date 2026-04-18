@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <functional>
+#include <string_view>
 
 namespace kryga::render::vk_utils
 {
@@ -23,9 +24,11 @@ public:
     create(vma_allocator_provider allocator,
            VkImageCreateInfo ici,
            VmaAllocationCreateInfo aci,
-           int mips_level = 0);
+           int mips_level = 0,
+           std::string_view debug_name = {});
 
-    static vulkan_image create(VkImage, VkFormat format = VK_FORMAT_UNDEFINED);
+    static vulkan_image
+    create(VkImage, VkFormat format = VK_FORMAT_UNDEFINED);
 
     KRG_gen_class_non_copyable(vulkan_image);
 
@@ -87,13 +90,13 @@ public:
     operator=(vulkan_image_view&& other) noexcept;
 
     static vulkan_image_view
-    create(const VkImageViewCreateInfo& iv_ci);
+    create(const VkImageViewCreateInfo& iv_ci, std::string_view debug_name = {});
 
     static vulkan_image_view
     create(VkImageView&& vk_handle);
 
     static vulkan_image_view_sptr
-    create_shared(const VkImageViewCreateInfo& iv_ci);
+    create_shared(const VkImageViewCreateInfo& iv_ci, std::string_view debug_name = {});
 
     static vulkan_image_view_sptr
     create_shared(VkImageView&& vk_handle);
@@ -115,13 +118,13 @@ private:
 
 }  // namespace kryga::render::vk_utils
 
-#define VK_CHECK(x)                                              \
-    do                                                           \
-    {                                                            \
-        VkResult err = x;                                        \
-        if (err)                                                 \
-        {                                                        \
-            fprintf(stderr, "VK_CHECK failed: %d\n", (int)err);  \
-            KRG_never("Vulkan failed!");                         \
-        }                                                        \
+#define VK_CHECK(x)                                             \
+    do                                                          \
+    {                                                           \
+        VkResult err = x;                                       \
+        if (err)                                                \
+        {                                                       \
+            fprintf(stderr, "VK_CHECK failed: %d\n", (int)err); \
+            KRG_never("Vulkan failed!");                        \
+        }                                                       \
     } while (0)

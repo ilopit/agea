@@ -54,7 +54,7 @@ struct local_light_shadow_data
     mat4 view_proj;
     mat4 view_proj_back;
     uvec4 shadow_info;   // x=shadow_map_index, y=shadow_map_index_back, z=light_type,
-                                // w=unused
+                         // w=unused
     vec4 shadow_params;  // x=bias, y=normal_bias, z=texel_size, w=near_plane
     float far_plane;
 };

@@ -5,6 +5,7 @@
 #include "vulkan_render/vk_pipeline_builder.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
@@ -25,6 +26,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string>
 
 namespace kryga
 {
@@ -106,19 +108,37 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 {
     vkb::InstanceBuilder builder;
 
-    // make the vulkan instance, with basic debug features
+    // make the vulkan instance
+#if KRYGA_VULKAN_DEBUG
+    auto inst_ret =
+        builder.set_app_name("KRYGA")
+            .request_validation_layers(true)
+            .set_debug_callback(&vk_utils::debug_messenger_callback)
+            .set_debug_messenger_severity(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+                                          VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            .set_debug_messenger_type(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                      VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+            .set_headless(headless)
+            .require_api_version(1, 2)
+            .build();
+#else
     auto inst_ret = builder.set_app_name("KRYGA")
-                        .request_validation_layers(true)
-                        .use_default_debug_messenger()
+                        .request_validation_layers(false)
                         .set_headless(headless)
                         .require_api_version(1, 2)
                         .build();
+#endif
 
     vkb::Instance vkb_inst = inst_ret.value();
 
     // grab the instance
     m_vk_instance = vkb_inst.instance;
     m_debug_msg = vkb_inst.debug_messenger;
+
+#if KRYGA_VULKAN_DEBUG
+    vk_utils::debug_init(m_vk_instance);
+#endif
 
     if (!headless)
     {
@@ -190,6 +210,9 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 
     vkGetPhysicalDeviceProperties(m_vk_gpu, &m_gpu_properties);
 
+    KRG_VK_NAME(m_vk_device, m_vk_device, "kryga.device");
+    KRG_VK_NAME(m_vk_device, m_graphics_queue, "kryga.graphics_queue");
+
     return true;
 }
 
@@ -200,7 +223,10 @@ render_device::deinit_vulkan()
 
     vkDestroyDevice(m_vk_device, nullptr);
 
-    vkb::destroy_debug_utils_messenger(m_vk_instance, m_debug_msg);
+    if (m_debug_msg != VK_NULL_HANDLE)
+    {
+        vkb::destroy_debug_utils_messenger(m_vk_instance, m_debug_msg);
+    }
 
     vkDestroyInstance(m_vk_instance, nullptr);
 
@@ -231,17 +257,19 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         m_swapchain = vkb_swapchain.swapchain;
 
         auto images = vkb_swapchain.get_images().value();
-        for (auto i : images)
+        for (size_t idx = 0; idx < images.size(); ++idx)
         {
-            auto himg = vk_utils::vulkan_image::create(i, vkb_swapchain.image_format);
+            auto himg = vk_utils::vulkan_image::create(images[idx], vkb_swapchain.image_format);
+            KRG_VK_NAME_FMT(m_vk_device, images[idx], "swapchain.image_{}", idx);
             m_swapchain_images.push_back(std::make_shared<vk_utils::vulkan_image>(std::move(himg)));
         }
 
         auto views = vkb_swapchain.get_image_views().value();
-        for (auto v : views)
+        for (size_t idx = 0; idx < views.size(); ++idx)
         {
+            KRG_VK_NAME_FMT(m_vk_device, views[idx], "swapchain.view_{}", idx);
             m_swapchain_image_views.push_back(
-                vk_utils::vulkan_image_view::create_shared(std::move(v)));
+                vk_utils::vulkan_image_view::create_shared(std::move(views[idx])));
         }
 
         m_swapchain_image_format = vkb_swapchain.image_format;
@@ -316,8 +344,9 @@ render_device::init_commands()
     auto command_pool_ci = vk_utils::make_command_pool_create_info(
         m_graphics_queue_family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-    for (auto& frame : m_frames)
+    for (size_t i = 0; i < m_frames.size(); ++i)
     {
+        auto& frame = m_frames[i];
         VK_CHECK(
             vkCreateCommandPool(m_vk_device, &command_pool_ci, nullptr, &frame.m_command_pool));
 
@@ -327,12 +356,16 @@ render_device::init_commands()
 
         VK_CHECK(vkAllocateCommandBuffers(
             m_vk_device, &command_buffer_ai, &frame.m_main_command_buffer));
+
+        KRG_VK_NAME_FMT(m_vk_device, frame.m_command_pool, "frame_{}.cmd_pool", i);
+        KRG_VK_NAME_FMT(m_vk_device, frame.m_main_command_buffer, "frame_{}.main_cmd", i);
     }
 
     auto upload_command_pool_ci = vk_utils::make_command_pool_create_info(m_graphics_queue_family);
     // create pool for upload context
     VK_CHECK(vkCreateCommandPool(
         m_vk_device, &upload_command_pool_ci, nullptr, &m_upload_context.m_command_pool));
+    KRG_VK_NAME(m_vk_device, m_upload_context.m_command_pool, "upload.cmd_pool");
 
     return true;
 }
@@ -361,20 +394,26 @@ render_device::init_sync_structures()
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = vk_utils::make_semaphore_create_info();
 
-    for (auto& frame : m_frames)
+    for (size_t i = 0; i < m_frames.size(); ++i)
     {
+        auto& frame = m_frames[i];
         VK_CHECK(vkCreateFence(m_vk_device, &fenceCreateInfo, nullptr, &frame.m_render_fence));
 
         VK_CHECK(vkCreateSemaphore(
             m_vk_device, &semaphoreCreateInfo, nullptr, &frame.m_present_semaphore));
         VK_CHECK(vkCreateSemaphore(
             m_vk_device, &semaphoreCreateInfo, nullptr, &frame.m_render_semaphore));
+
+        KRG_VK_NAME_FMT(m_vk_device, frame.m_render_fence, "frame_{}.render_fence", i);
+        KRG_VK_NAME_FMT(m_vk_device, frame.m_present_semaphore, "frame_{}.present_sem", i);
+        KRG_VK_NAME_FMT(m_vk_device, frame.m_render_semaphore, "frame_{}.render_sem", i);
     }
 
     VkFenceCreateInfo uploadFenceCreateInfo = vk_utils::make_fence_create_info();
 
     VK_CHECK(vkCreateFence(
         m_vk_device, &uploadFenceCreateInfo, nullptr, &m_upload_context.m_upload_fence));
+    KRG_VK_NAME(m_vk_device, m_upload_context.m_upload_fence, "upload.fence");
     return true;
 }
 
@@ -543,7 +582,8 @@ vk_utils::vulkan_buffer
 render_device::create_buffer(size_t alloc_size,
                              VkBufferUsageFlags usage,
                              VmaMemoryUsage memory_usage,
-                             VkMemoryPropertyFlags required_flags)
+                             VkMemoryPropertyFlags required_flags,
+                             std::string_view debug_name)
 {
     // allocate vertex buffer
     VkBufferCreateInfo buffer_ci = {};
@@ -567,7 +607,7 @@ render_device::create_buffer(size_t alloc_size,
 
     // allocate the buffer
 
-    return vk_utils::vulkan_buffer::create(buffer_ci, vma_alloc_ci);
+    return vk_utils::vulkan_buffer::create(buffer_ci, vma_alloc_ci, debug_name);
 }
 
 }  // namespace render

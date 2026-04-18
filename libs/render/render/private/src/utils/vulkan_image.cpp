@@ -1,6 +1,7 @@
 #include "vulkan_render/utils/vulkan_image.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
 
 #include <global_state/global_state.h>
@@ -70,12 +71,15 @@ vulkan_image
 vulkan_image::create(vma_allocator_provider allocator,
                      VkImageCreateInfo ici,
                      VmaAllocationCreateInfo aci,
-                     int mips_level)
+                     int mips_level,
+                     std::string_view debug_name)
 {
     vulkan_image new_image(allocator, mips_level);
 
     new_image.m_format = ici.format;
     vmaCreateImage(allocator(), &ici, &aci, &new_image.m_image, &new_image.m_allocation, nullptr);
+
+    KRG_VK_NAME(glob::glob_state().getr_render_device().vk_device(), new_image.m_image, debug_name);
 
     return new_image;
 }
@@ -158,11 +162,17 @@ vulkan_image_view::operator=(vulkan_image_view&& other) noexcept
 }
 
 vulkan_image_view
-vulkan_image_view::create(const VkImageViewCreateInfo& iv_ci)
+vulkan_image_view::create(const VkImageViewCreateInfo& iv_ci, std::string_view debug_name)
 {
     VkImageView iv = VK_NULL_HANDLE;
 
-    vkCreateImageView(glob::glob_state().getr_render_device().vk_device(), &iv_ci, nullptr, &iv);
+    auto vk_device = glob::glob_state().getr_render_device().vk_device();
+    vkCreateImageView(vk_device, &iv_ci, nullptr, &iv);
+
+    if (!debug_name.empty())
+    {
+        KRG_VK_NAME(vk_device, iv, debug_name);
+    }
 
     return vulkan_image_view(iv);
 }
@@ -187,9 +197,9 @@ vulkan_image_view::clear()
 }
 
 vulkan_image_view_sptr
-vulkan_image_view::create_shared(const VkImageViewCreateInfo& iv_ci)
+vulkan_image_view::create_shared(const VkImageViewCreateInfo& iv_ci, std::string_view debug_name)
 {
-    return std::make_shared<vulkan_image_view>(vulkan_image_view::create(iv_ci));
+    return std::make_shared<vulkan_image_view>(vulkan_image_view::create(iv_ci, debug_name));
 }
 
 vulkan_image_view_sptr

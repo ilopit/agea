@@ -41,6 +41,7 @@ vulkan_render::prepare_render_passes()
                 .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
                 .set_width_depth(m_width, m_height)
                 .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
+                .set_debug_name("main")
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),
@@ -76,6 +77,7 @@ vulkan_render::prepare_render_passes()
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
                 .set_enable_stencil(false)
+                .set_debug_name("ui")
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"),
@@ -112,6 +114,7 @@ vulkan_render::prepare_render_passes()
                 .set_width_depth(m_width, m_height)
                 .set_color_images(std::vector<vk_utils::vulkan_image_view_sptr>{image_view},
                                   std::vector<vk_utils::vulkan_image_sptr>{image})
+                .set_debug_name("selection_mask")
                 .build();
 
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("selection_mask"),
@@ -229,6 +232,7 @@ vulkan_render::init_shadow_passes()
                 .set_image_count(FRAMES_IN_FLIGHT)
                 .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
                 .set_enable_stencil(false)
+                .set_debug_name("shadow_csm_" + std::to_string(c))
                 .build();
 
         m_shadow_passes[c]->set_name(AID("shadow_csm_" + std::to_string(c)));
@@ -245,6 +249,7 @@ vulkan_render::init_shadow_passes()
                 .set_image_count(FRAMES_IN_FLIGHT)
                 .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
                 .set_enable_stencil(false)
+                .set_debug_name("shadow_local_" + std::to_string(i))
                 .build();
 
         m_shadow_local_passes[i]->set_name(AID("shadow_local_" + std::to_string(i)));

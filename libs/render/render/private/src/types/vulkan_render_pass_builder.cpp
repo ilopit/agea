@@ -2,9 +2,12 @@
 
 #include "vulkan_render/types/vulkan_render_pass.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
 
 #include <global_state/global_state.h>
+
+#include <string>
 
 namespace kryga::render
 {
@@ -61,6 +64,13 @@ render_pass_builder::set_image_count(uint32_t count)
     return *this;
 }
 
+render_pass_builder&
+render_pass_builder::set_debug_name(std::string_view name)
+{
+    m_debug_name.assign(name);
+    return *this;
+}
+
 render_pass_sptr
 render_pass_builder::build()
 {
@@ -112,6 +122,7 @@ render_pass_builder::build()
         renderPassInfo.pDependencies = dependencies.data();
 
         vkCreateRenderPass(device, &renderPassInfo, nullptr, &rp->m_vk_render_pass);
+        KRG_VK_NAME_FMT(device, rp->m_vk_render_pass, "{}.render_pass", m_debug_name);
     }
 
     // Determine image count: from color images (normal passes) or explicit count (depth-only)
@@ -145,7 +156,9 @@ render_pass_builder::build()
             rp->m_depth_images[i] = vk_utils::vulkan_image::create(
                 glob::glob_state().getr_render_device().get_vma_allocator_provider(),
                 dimg_info,
-                dimg_allocinfo);
+                dimg_allocinfo,
+                0,
+                KRG_VK_FMT_NAME("{}.depth_{}", m_debug_name, i));
 
             auto depth_image_view_ci = vk_utils::make_imageview_create_info(
                 m_depth_format, rp->m_depth_images[i].image(), VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -185,7 +198,9 @@ render_pass_builder::build()
             rp->m_depth_images[i] = vk_utils::vulkan_image::create(
                 glob::glob_state().getr_render_device().get_vma_allocator_provider(),
                 dimg_info,
-                dimg_allocinfo);
+                dimg_allocinfo,
+                0,
+                KRG_VK_FMT_NAME("{}.depth_{}", m_debug_name, i));
 
             int depth_image_view_flags = VK_IMAGE_ASPECT_DEPTH_BIT;
             if (m_enable_stencil)
