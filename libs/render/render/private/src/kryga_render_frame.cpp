@@ -144,7 +144,10 @@ vulkan_render::draw_headless()
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
-    render_frame(cmd, current_frame, 0, m_width, m_height);
+    // swapchain_image_index must match the frame index used by render_graph.execute()
+    // below (get_current_frame_index()) — bind_image and pass framebuffer selection
+    // both index by it, and a mismatch transitions the wrong triple-buffered image.
+    render_frame(cmd, current_frame, device->get_current_frame_index(), m_width, m_height);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 

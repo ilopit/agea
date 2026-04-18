@@ -242,14 +242,19 @@ render_pass_builder::get_attachments()
 
     std::vector<VkAttachmentDescription> attachments(2);
 
-    // Color attachment — render graph handles all layout transitions
+    // Color attachment. initialLayout=UNDEFINED makes the pass self-sufficient for
+    // callers that invoke render_pass::begin directly (e.g. simple regression tests
+    // that bypass the render graph). Safe here because loadOp=CLEAR discards any
+    // prior contents anyway. The render-graph path still transitions into
+    // COLOR_ATTACHMENT_OPTIMAL before begin; re-entering via UNDEFINED here is a
+    // harmless no-op discard.
     attachments[0].format = m_color_format;
     attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
     attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     // Depth attachment — internal to this pass, not in render graph.
