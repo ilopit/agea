@@ -25,6 +25,35 @@ set(BUILD_SHARED_LIBS OFF)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+# Platform options — Android disables editor/dev-only features
+if(ANDROID)
+    set(_krg_default_sync_service OFF)
+    set(_krg_default_editor OFF)
+else()
+    set(_krg_default_sync_service ON)
+    set(_krg_default_editor ON)
+endif()
+
+option(KRG_ENABLE_SYNC_SERVICE "HTTP sync service for live asset/shader reload (requires Boost.Beast)" ${_krg_default_sync_service})
+option(KRG_ENABLE_EDITOR "Editor and dev tooling" ${_krg_default_editor})
+
+# On Android, NDK r26d ships Vulkan 1.3.x headers but vk-bootstrap v1.4.x
+# references 1.4.x-only types (e.g. VkPhysicalDeviceGlobalPriorityQueryFeatures).
+# Fetch Khronos headers matching vk-bootstrap's tag and point Vulkan's include
+# dir at them before find_package runs.
+if(ANDROID)
+    include(FetchContent)
+    FetchContent_Declare(
+      vulkan_headers
+      GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
+      GIT_TAG        v1.4.327
+      GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(vulkan_headers)
+    set(Vulkan_INCLUDE_DIR  "${vulkan_headers_SOURCE_DIR}/include" CACHE PATH "" FORCE)
+    set(Vulkan_INCLUDE_DIRS "${vulkan_headers_SOURCE_DIR}/include" CACHE PATH "" FORCE)
+endif()
+
 find_package(Vulkan REQUIRED)
 
 add_subdirectory(thirdparty)
@@ -48,62 +77,66 @@ add_subdirectory(libs)
 add_subdirectory(packages)
 add_subdirectory(engine)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/assets
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/assets)
+# Host-only resource symlinks for local dev runs. On Android, resources
+# are bundled into the APK (see android/) so no symlinks are needed.
+if(NOT ANDROID)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/assets
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/assets)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/editor
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/editor)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/editor
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/editor)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/shaders_includes
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders_includes)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/shaders_includes
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders_includes)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/libs/render/gpu_types/public/include
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/gpu_types)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/libs/render/gpu_types/public/include
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/gpu_types)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/shaders
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/shaders
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/shaders)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/configs
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/configs)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/configs
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/configs)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/fonts
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/fonts)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/fonts
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/fonts)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/levels
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/levels)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/levels
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/levels)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/objects
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/objects)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/objects
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/objects)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/components
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/components
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/components
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/components
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/components)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/packages
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/packages)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/packages
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/packages)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/test
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/test
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/tools
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/tools)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/tools
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/tools)
 
-execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${PROJECT_SOURCE_DIR}/resources/test_references
-    ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test_references)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${PROJECT_SOURCE_DIR}/resources/test_references
+        ${CMAKE_BINARY_DIR}/project_${CMAKE_BUILD_TYPE}/test_references)
+endif()

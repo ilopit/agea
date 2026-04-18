@@ -3,18 +3,14 @@ KRYGA
 
 ## Build
 
+Build is driven by CMake presets (`CMakePresets.json`). The bash wrappers
+auto-configure on first run.
+
 ### Quick start (MSYS/bash)
 ```bash
-./tools/configure.sh    # Configure cmake
-./tools/build.sh        # Build (Debug)
-```
-
-### Configure options
-```bash
-./tools/configure.sh           # Quiet output
-./tools/configure.sh -v        # Verbose output
-./tools/configure.sh -c        # Clean build directory first
-./tools/configure.sh -c -v     # Clean + verbose
+./tools/build.sh               # Build engine_app (Debug) — configures build/ on first run
+./tools/build.sh -r            # Release
+./tools/build_android.sh       # Android arm64-v8a Debug (needs NDK r26d)
 ```
 
 ### Build options
@@ -25,6 +21,13 @@ KRYGA
 ./tools/build.sh -r            # Build Release
 ./tools/build.sh -j 8          # Use 8 parallel jobs
 ./tools/build.sh <target>      # Build specific target
+```
+
+### Direct preset usage (IDE-friendly)
+```bash
+cmake --preset host                        # configure host
+cmake --build --preset host-debug          # build Debug
+cmake --workflow --preset android-debug    # configure + build Android Debug
 ```
 
 # Stages of type loading 

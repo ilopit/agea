@@ -47,7 +47,7 @@ public:
             (is_shared_ptr<T>::value &&
              std::is_base_of<root::smart_object, typename is_shared_ptr<T>::Type>::value) ||
                 (std::is_pointer<T>::value &&
-                 std::is_base_of<root::smart_object, std::remove_pointer<T>::type>::value),
+                 std::is_base_of<root::smart_object, typename std::remove_pointer<T>::type>::value),
             "False");
     }
 

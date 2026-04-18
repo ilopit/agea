@@ -23,7 +23,9 @@ add_library(packages.root.model STATIC
    ${ROOT_MODEL_GENERATED_SRC}
 )
 
-target_compile_options(packages.root.model PRIVATE /bigobj)
+if(MSVC)
+    target_compile_options(packages.root.model PRIVATE /bigobj)
+endif()
 target_include_directories(packages.root.model PUBLIC
    ${CMAKE_BINARY_DIR}/kryga_generated/packages/root/public/include
    ${CMAKE_BINARY_DIR}/kryga_generated/packages/glue/public/include)
@@ -56,7 +58,9 @@ add_library(packages.root.render STATIC
    ${ROOT_RENDER_GENERATED_SRC}
 )
 
-target_compile_options(packages.root.render PRIVATE /bigobj)
+if(MSVC)
+    target_compile_options(packages.root.render PRIVATE /bigobj)
+endif()
 target_include_directories(packages.root.render PRIVATE
    ${CMAKE_BINARY_DIR}/kryga_generated)
 target_link_libraries(packages.root.render

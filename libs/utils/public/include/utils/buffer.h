@@ -11,55 +11,8 @@ namespace kryga
 {
 namespace utils
 {
-struct buffer;
-
 template <typename T>
-struct buffer_view
-{
-    explicit buffer_view(buffer& b)
-        : m_ref(&b)
-    {
-    }
-
-    T*
-    as()
-    {
-        return (T*)m_ref->data();
-    }
-
-    T&
-    at(uint32_t idx)
-    {
-        return *(as() + idx);
-    }
-
-    uint64_t
-    size() const
-    {
-        return uint64_t(m_ref->size() / sizeof(T));
-    }
-
-    uint64_t
-    size_bytes() const
-    {
-        return m_ref->size();
-    }
-
-    void
-    resize(uint64_t new_size)
-    {
-        m_ref->resize(new_size * sizeof(T));
-    }
-
-    uint8_t*
-    data()
-    {
-        return m_ref->data();
-    }
-
-private:
-    buffer* m_ref = nullptr;
-};
+struct buffer_view;
 
 struct buffer
 {
@@ -189,6 +142,54 @@ private:
     std::string m_vpath;
     std::vector<uint8_t> m_data;
     std::filesystem::file_time_type m_last_write_time;
+};
+
+template <typename T>
+struct buffer_view
+{
+    explicit buffer_view(buffer& b)
+        : m_ref(&b)
+    {
+    }
+
+    T*
+    as()
+    {
+        return (T*)m_ref->data();
+    }
+
+    T&
+    at(uint32_t idx)
+    {
+        return *(as() + idx);
+    }
+
+    uint64_t
+    size() const
+    {
+        return uint64_t(m_ref->size() / sizeof(T));
+    }
+
+    uint64_t
+    size_bytes() const
+    {
+        return m_ref->size();
+    }
+
+    void
+    resize(uint64_t new_size)
+    {
+        m_ref->resize(new_size * sizeof(T));
+    }
+
+    uint8_t*
+    data()
+    {
+        return m_ref->data();
+    }
+
+private:
+    buffer* m_ref = nullptr;
 };
 
 }  // namespace utils

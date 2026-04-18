@@ -108,8 +108,16 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 {
     vkb::InstanceBuilder builder;
 
-    // make the vulkan instance
-#if KRYGA_VULKAN_DEBUG
+    // Validation layers are not available on stock Android devices without
+    // bundling them into the APK (~30MB), so force them off there. Desktop
+    // builds keep the debug path honoring KRYGA_VULKAN_DEBUG.
+#if defined(__ANDROID__)
+    auto inst_ret = builder.set_app_name("KRYGA")
+                        .request_validation_layers(false)
+                        .set_headless(headless)
+                        .require_api_version(1, 2)
+                        .build();
+#elif KRYGA_VULKAN_DEBUG
     auto inst_ret =
         builder.set_app_name("KRYGA")
             .request_validation_layers(true)
@@ -155,7 +163,14 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 
     selector.set_required_features(features_11)
         .set_minimum_version(1, 2)
+#if defined(__ANDROID__)
+        // Android devices are virtually always integrated GPUs (Adreno, Mali,
+        // PowerVR). Preferring "discrete" would drop to fallback scoring and
+        // may pick an unwanted device.
+        .prefer_gpu_device_type(vkb::PreferredDeviceType::integrated);
+#else
         .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete);
+#endif
 
     if (!headless)
     {
@@ -246,8 +261,18 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 
         VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 
+        // Present mode: desktop prefers MAILBOX for low-latency uncapped
+        // framerate. Mobile uses FIFO (vsync) to reduce power draw and thermal
+        // load — chasing max FPS on a phone produces a hot handset and drained
+        // battery without a perceivable benefit.
+#if defined(__ANDROID__)
+        constexpr VkPresentModeKHR k_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+#else
+        constexpr VkPresentModeKHR k_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+#endif
+
         vkb::Swapchain vkb_swapchain = swapchain_builder.use_default_format_selection()
-                                           .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+                                           .set_desired_present_mode(k_present_mode)
                                            .set_desired_extent(width, height)
                                            .set_desired_format(format)
                                            .build()

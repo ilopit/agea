@@ -1,5 +1,8 @@
 #pragma once
-// Compatibility shims for deprecated ImGui APIs used by ImGuiColorTextEdit
+// Compatibility shims for deprecated ImGui APIs used by ImGuiColorTextEdit.
+// Also pulls in <algorithm> since TextEditor.h uses std::sort without
+// including it (MSVC stdlib leaks it transitively, libc++ does not).
+#include <algorithm>
 #include "imgui.h"
 
 namespace ImGui {

@@ -24,7 +24,9 @@ add_library(core STATIC
    ${GENERATED_SRC}
 )
 
-target_compile_options(core PRIVATE /bigobj)
+if(MSVC)
+    target_compile_options(core PRIVATE /bigobj)
+endif()
 
 target_link_libraries(core PUBLIC
    kryga::ar

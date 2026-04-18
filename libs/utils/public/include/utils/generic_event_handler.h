@@ -30,17 +30,17 @@ struct generic_event_handler
         method = (dummy_method_type)m;
     }
 
-    template <typename... method_input_args>
+    template <typename... fire_args>
     method_return_type
-    fire(method_input_args&&... args)
+    fire(fire_args&&... args)
     {
         if constexpr (std::is_same<void, method_return_type>::value)
         {
-            (*obj.*method)(std::forward<method_input_args>(args)...);
+            (*obj.*method)(std::forward<fire_args>(args)...);
         }
         else
         {
-            return (*obj.*method)(std::forward<method_input_args>(args)...);
+            return (*obj.*method)(std::forward<fire_args>(args)...);
         }
     }
 };

@@ -56,7 +56,7 @@ public:
     {
         auto gid = glob::glob_state().get_id_generator()->generate(id);
 
-        return spawn_component(parent, T::AR_TYPE_id(), gid, params)->as<T>();
+        return spawn_component(parent, T::AR_TYPE_id(), gid, params)->template as<T>();
     }
 
     component*

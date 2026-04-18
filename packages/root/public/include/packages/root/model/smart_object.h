@@ -308,7 +308,7 @@ cast_ref(const std::shared_ptr<From>& ref)
     static_assert(std::is_base_of<smart_object, From>::value, "Non a smart object!");
     static_assert(std::is_base_of<smart_object, To>::value, "Non a smart object!");
 
-    if (!ref || !ref->castable_to<To>())
+    if (!ref || !ref->template castable_to<To>())
     {
         return nullptr;
     }
@@ -323,7 +323,7 @@ cast_ref(From* ref)
     static_assert(std::is_base_of<smart_object, From>::value, "Non a smart object!");
     static_assert(std::is_base_of<smart_object, To>::value, "Non a smart object!");
 
-    if (!ref || !ref->castable_to<To>())
+    if (!ref || !ref->template castable_to<To>())
     {
         return nullptr;
     }

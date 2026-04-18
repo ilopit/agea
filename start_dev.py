@@ -20,7 +20,7 @@ def main():
         subprocess.Popen(["start", "", str(VS_SOLUTION)], shell=True)
     else:
         print(f"Warning: Solution not found at {VS_SOLUTION}")
-        print("Run tools/configure.bat first to generate the solution.")
+        print("Run tools/build.sh first (auto-configures via CMake preset 'host').")
 
     # Start Claude Code CLI
     print("Starting Claude...")

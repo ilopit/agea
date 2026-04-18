@@ -166,7 +166,7 @@ public:
     using TYPE_ID = typename TYPE_DESCRIPTOR::id;
 
     static void
-    finalize_field(typename TYPE_ID type, dynobj_field& f)
+    finalize_field(TYPE_ID type, dynobj_field& f)
     {
         f.type = uint32_t(type);
 

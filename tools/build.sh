@@ -1,10 +1,10 @@
 #!/bin/bash
-# Build script for kryga - runs cmake build
+# Build script for kryga host build — thin wrapper around CMake presets.
 # Usage: ./tools/build.sh [options] [target]
 #   -a, --all        Build all targets (default: engine_app)
 #   -v, --verbose    Show full build output
 #   -r, --release    Build Release configuration (default: Debug)
-#   -j, --jobs N     Parallel jobs (default: auto)
+#   -j, --jobs N     Parallel jobs (default: cmake auto)
 #   -h, --help       Show this help
 #   target           Optional target name (default: engine_app)
 
@@ -18,10 +18,11 @@ VERBOSE=0
 CONFIG="Debug"
 JOBS=""
 TARGET="engine_app"
+ALL=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -a|--all)     TARGET=""; shift ;;
+        -a|--all)     ALL=1; TARGET=""; shift ;;
         -v|--verbose) VERBOSE=1; shift ;;
         -r|--release) CONFIG="Release"; shift ;;
         -j|--jobs)    JOBS="$2"; shift 2 ;;
@@ -34,22 +35,30 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Configure on first run. The `host` preset pins generator/arch; after that,
+# the build dir is reusable across configs (VS multi-config).
 if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-    echo "ERROR: Build directory not configured."
-    echo "       Run tools/configure.sh first."
-    exit 1
+    echo "build/ not configured — running configure preset 'host'..."
+    cmake --preset host
 fi
 
-cd "$BUILD_DIR"
+# Preset naming: host-debug, host-release, host-all-debug (-all only at Debug).
+PRESET_CONFIG=$(echo "$CONFIG" | tr '[:upper:]' '[:lower:]')
+if [[ $ALL -eq 1 ]]; then
+    PRESET="host-all-${PRESET_CONFIG}"
+else
+    PRESET="host-${PRESET_CONFIG}"
+fi
 
-BUILD_CMD="cmake --build . --config $CONFIG"
-[[ -n "$TARGET" ]] && BUILD_CMD="$BUILD_CMD --target $TARGET"
-[[ -n "$JOBS" ]] && BUILD_CMD="$BUILD_CMD --parallel $JOBS"
+BUILD_CMD=(cmake --build --preset "$PRESET")
+[[ -n "$TARGET" && $ALL -eq 0 ]] && BUILD_CMD+=(--target "$TARGET")
+[[ -n "$JOBS" ]]                 && BUILD_CMD+=(--parallel "$JOBS")
 
 if [[ $VERBOSE -eq 1 ]]; then
-    $BUILD_CMD
+    "${BUILD_CMD[@]}"
 else
-    $BUILD_CMD -- /verbosity:quiet || { echo "Build failed. Re-running verbose:"; $BUILD_CMD; exit 1; }
+    "${BUILD_CMD[@]}" -- /verbosity:quiet \
+        || { echo "Build failed. Re-running verbose:"; "${BUILD_CMD[@]}"; exit 1; }
 fi
 
 echo "Build complete ($CONFIG)."

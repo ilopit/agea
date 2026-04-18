@@ -1,7 +1,8 @@
 #include "utils/gen_allocator.h"
 
+#include "utils/kryga_log.h"  // brings in std::format on host and the fmt shim on Android
+
 #include <cstdlib>
-#include <format>
 #include <iostream>
 
 namespace kryga::utils

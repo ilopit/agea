@@ -10,6 +10,15 @@ target_link_libraries(vfs
 
     spdlog
 )
+
+if(ANDROID)
+    # AAssetManager comes from libandroid.so; need -llog for __android_log_print
+    # which spdlog/Android sinks may pull in via utils.
+    target_link_libraries(vfs android log)
+endif()
+
 kryga_finalize_library(vfs)
 
-add_subdirectory(private/tests)
+if(NOT ANDROID)
+    add_subdirectory(private/tests)
+endif()

@@ -281,7 +281,7 @@ editor_console::handle()
             exec_command(s);
         }
 
-        strcpy_s(s, 1, "");
+        s[0] = '\0';
         reclaim_focus = true;
     }
 

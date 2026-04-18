@@ -14,15 +14,17 @@ namespace kryga
 namespace vfs
 {
 
+struct mount_config
+{
+    int priority = 0;
+    std::string_view index_filter;        // if non-empty, build_index after mount
+    std::vector<std::string> load_order;  // path prefixes for ordered iteration
+};
+
 class virtual_file_system
 {
 public:
-    struct mount_config
-    {
-        int priority = 0;
-        std::string_view index_filter;        // if non-empty, build_index after mount
-        std::vector<std::string> load_order;  // path prefixes for ordered iteration
-    };
+    using mount_config = ::kryga::vfs::mount_config;
 
     virtual_file_system() = default;
     ~virtual_file_system() = default;

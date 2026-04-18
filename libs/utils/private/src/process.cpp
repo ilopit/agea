@@ -1,6 +1,8 @@
 #include "utils/process.h"
 
+#if defined(_WIN32)
 #include <windows.h>
+#endif
 
 namespace kryga
 {
@@ -10,6 +12,20 @@ namespace
 {
 const size_t MAX_ARGUMENTS_LENGHT = 300;
 }
+
+#if !defined(_WIN32)
+// Non-Windows platforms: process spawning is only used by host dev tooling
+// (shader compiler, asset importer). Android builds exclude those paths, so
+// stub the function here rather than implement fork/exec for a code path
+// nothing reaches at runtime.
+bool
+run_binary(construct_params, std::uint64_t&)
+{
+    return false;
+}
+}  // namespace ipc
+}  // namespace kryga
+#else
 
 bool
 run_binary(construct_params p, std::uint64_t& result_code)
@@ -63,3 +79,4 @@ run_binary(construct_params p, std::uint64_t& result_code)
 }
 }  // namespace ipc
 }  // namespace kryga
+#endif  // _WIN32

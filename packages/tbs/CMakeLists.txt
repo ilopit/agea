@@ -14,7 +14,9 @@ add_library(packages.tbs.model STATIC
    ${TBS_MODEL_SRC}
    ${TBS_MODEL_GENERATED_SRC}
 )
-target_compile_options(packages.tbs.model PRIVATE /bigobj)
+if(MSVC)
+    target_compile_options(packages.tbs.model PRIVATE /bigobj)
+endif()
 target_include_directories(packages.tbs.model PUBLIC
    ${CMAKE_BINARY_DIR}/kryga_generated/packages/tbs/public/include
    ${CMAKE_BINARY_DIR}/kryga_generated/packages/glue/public/include)

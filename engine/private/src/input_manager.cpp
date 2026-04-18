@@ -497,6 +497,61 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         break;
     }
 
+#if defined(__ANDROID__)
+    // Map single-finger touch to left-mouse semantics. SDL's built-in
+    // touch->mouse synthesis is disabled on Android (see native_window.cpp) so
+    // we handle SDL_FINGER events directly. Multi-touch is ignored for now —
+    // only the first finger id is tracked.
+    case SDL_FINGERMOTION:
+    {
+        auto win_w = (float)glob::glob_state().get_native_window()->get_size().w;
+        auto win_h = (float)glob::glob_state().get_native_window()->get_size().h;
+
+        m_mouse_axis_state.x = (int)(sdle.tfinger.x * win_w);
+        m_mouse_axis_state.y = (int)(sdle.tfinger.y * win_h);
+        m_mouse_axis_state.xrel = (int)(sdle.tfinger.dx * win_w);
+        m_mouse_axis_state.yrel = (int)(sdle.tfinger.dy * win_h);
+
+        if (sdle.tfinger.dx != 0.f)
+        {
+            auto* es = &m_events_state[input_event_id::mouse_move_x];
+            auto rel = (k_mouse_sensitivity * sdle.tfinger.dx * win_w) / win_w;
+            es->extra_ampl = rel * glob::glob_state().get_native_window()->aspect_ratio();
+            es->is_active = true;
+            es->to_drop = false;
+            m_active_events.insert(es);
+            m_to_drop_events.push_back(es);
+        }
+
+        if (sdle.tfinger.dy != 0.f)
+        {
+            auto* es = &m_events_state[input_event_id::mouse_move_y];
+            auto rel = (k_mouse_sensitivity * sdle.tfinger.dy * win_h) / win_h;
+            es->extra_ampl = rel;
+            es->is_active = true;
+            es->to_drop = false;
+            m_active_events.insert(es);
+            m_to_drop_events.push_back(es);
+        }
+        break;
+    }
+    case SDL_FINGERDOWN:
+    {
+        auto* es = &m_events_state[input_event_id::mouse_left];
+        es->is_active = true;
+        es->to_drop = false;
+        m_active_events.insert(es);
+        break;
+    }
+    case SDL_FINGERUP:
+    {
+        auto* es = &m_events_state[input_event_id::mouse_left];
+        es->to_drop = true;
+        m_to_drop_events.push_back(es);
+        break;
+    }
+#endif
+
     default:
         return;
     }

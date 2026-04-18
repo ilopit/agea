@@ -25,9 +25,23 @@ native_window::construct(construct_params& c)
 {
     // We initialize SDL and create a window with it.
 
+#if defined(__ANDROID__)
+    // Route SDL_FINGER events through our input_manager directly rather than
+    // having SDL synthesize parallel SDL_MOUSE* events. Otherwise every touch
+    // produces duplicate input.
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+#endif
+
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
 
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
+
+#if defined(__ANDROID__)
+    // On Android the window is fullscreen — dimensions are dictated by the
+    // surface provided by the Activity, not the construct_params values.
+    window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_FULLSCREEN);
+#endif
 
     m_window = SDL_CreateWindow(
         "KRYGA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w, c.h, window_flags);

@@ -6,6 +6,7 @@
 #include <sol2_unofficial/sol.h>
 #include <chrono>
 #include <utils/buffer.h>
+#include <kryga_port/format.h>
 
 #include <TextEditor.h>
 

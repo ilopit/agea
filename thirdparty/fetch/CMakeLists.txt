@@ -8,15 +8,20 @@ cmake_policy(SET CMP0169 OLD)
 # Existing FetchContent deps
 # ==============================================================================
 
-FetchContent_Declare(
-  Boost
-  URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.7z
+# Boost is only needed for the HTTP sync service (live reload in editor).
+# Skipped on Android and any build with KRG_ENABLE_SYNC_SERVICE=OFF to avoid
+# downloading ~100MB and cross-compiling Beast/Asio for mobile.
+if(KRG_ENABLE_SYNC_SERVICE)
+    FetchContent_Declare(
+      Boost
+      URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.7z
 
-  DOWNLOAD_EXTRACT_TIMESTAMP ON
-)
+      DOWNLOAD_EXTRACT_TIMESTAMP ON
+    )
 
-set(BOOST_INCLUDE_LIBRARIES beast url)
-FetchContent_MakeAvailable(Boost)
+    set(BOOST_INCLUDE_LIBRARIES beast url)
+    FetchContent_MakeAvailable(Boost)
+endif()
 
 # Tracy profiler
 option(TRACY_ENABLE "Enable Tracy profiler" ON)
@@ -181,6 +186,13 @@ FetchContent_Declare(
 # ==============================================================================
 # Make available: Category A (have CMakeLists.txt)
 # ==============================================================================
+
+# vk-bootstrap defaults its PIC option to BUILD_SHARED_LIBS (OFF for us), but on
+# Android we link it into libmain.so (SHARED), so it must be PIC. Force the
+# option before MakeAvailable so the target_set_property call picks it up.
+if(ANDROID)
+    set(VK_BOOTSTRAP_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
+endif()
 
 FetchContent_MakeAvailable(
   cli11 glm googletest jsoncpp lua sol2 spdlog

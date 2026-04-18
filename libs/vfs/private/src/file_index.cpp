@@ -5,6 +5,8 @@
 
 #include <utils/kryga_log.h>
 
+#include <algorithm>
+
 namespace kryga
 {
 namespace vfs

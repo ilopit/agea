@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Vulkan 1.0+ device required. Explicit BDA/descriptor_indexing support
+         is checked at runtime by the engine. -->
+    <uses-feature android:name="android.hardware.vulkan.version"
+                  android:version="0x00401000"
+                  android:required="true" />
+    <uses-feature android:name="android.hardware.vulkan.level"
+                  android:version="1"
+                  android:required="true" />
+
+    <!-- Landscape-only for desktop-style engine controls. -->
+    <uses-feature android:name="android.hardware.touchscreen"
+                  android:required="true" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                     tools:ignore="ScopedStorage" />
+
+    <application
+        android:label="Kryga"
+        android:allowBackup="false"
+        android:hasCode="true"
+        android:extractNativeLibs="true">
+
+        <activity
+            android:name="com.kryga.KrygaActivity"
+            android:label="Kryga"
+            android:exported="true"
+            android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+            android:screenOrientation="landscape"
+            android:launchMode="singleInstance"
+            android:preferMinimalPostProcessing="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="android.app.lib_name" android:value="main" />
+        </activity>
+    </application>
+</manifest>

@@ -14,7 +14,9 @@ add_library(packages.test.model STATIC
    ${TEST_MODEL_SRC}
    ${TEST_MODEL_GENERATED_SRC}
 )
-target_compile_options(packages.test.model PRIVATE /bigobj)
+if(MSVC)
+    target_compile_options(packages.test.model PRIVATE /bigobj)
+endif()
 target_include_directories(packages.test.model PUBLIC
    ${CMAKE_BINARY_DIR}/kryga_generated/packages/test/public/include
    ${CMAKE_BINARY_DIR}/kryga_generated/packages/glue/public/include)

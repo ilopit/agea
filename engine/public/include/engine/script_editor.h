@@ -2,6 +2,7 @@
 
 #include <engine/ui.h>
 
+#include <algorithm>
 #include <TextEditor.h>
 
 #include <utils/path.h>

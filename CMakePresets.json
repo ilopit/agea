@@ -1,0 +1,104 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25 },
+
+  "configurePresets": [
+    {
+      "name": "host",
+      "displayName": "Host (Windows x64, VS 2022)",
+      "description": "Multi-config Visual Studio build for the host platform. build/ serves both Debug and Release via --config.",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build"
+    },
+
+    {
+      "name": "android-base",
+      "hidden": true,
+      "description": "Shared Android configuration — arm64-v8a, API 29, NDK r26d. Requires ANDROID_NDK_HOME.",
+      "generator": "Ninja",
+      "toolchainFile": "${sourceDir}/cmake/android.toolchain.cmake"
+    },
+    {
+      "name": "android-debug",
+      "displayName": "Android arm64-v8a Debug",
+      "inherits": "android-base",
+      "binaryDir": "${sourceDir}/build_android/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "android-release",
+      "displayName": "Android arm64-v8a Release",
+      "inherits": "android-base",
+      "binaryDir": "${sourceDir}/build_android/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+
+  "buildPresets": [
+    {
+      "name": "host-debug",
+      "displayName": "Host Debug — engine_app",
+      "configurePreset": "host",
+      "configuration": "Debug",
+      "targets": ["engine_app"]
+    },
+    {
+      "name": "host-release",
+      "displayName": "Host Release — engine_app",
+      "configurePreset": "host",
+      "configuration": "Release",
+      "targets": ["engine_app"]
+    },
+    {
+      "name": "host-all-debug",
+      "displayName": "Host Debug — all targets",
+      "configurePreset": "host",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "android-debug",
+      "displayName": "Android Debug — engine_app",
+      "configurePreset": "android-debug",
+      "targets": ["engine_app"]
+    },
+    {
+      "name": "android-release",
+      "displayName": "Android Release — engine_app",
+      "configurePreset": "android-release",
+      "targets": ["engine_app"]
+    }
+  ],
+
+  "workflowPresets": [
+    {
+      "name": "host-debug",
+      "displayName": "Host Debug: configure + build",
+      "steps": [
+        { "type": "configure", "name": "host" },
+        { "type": "build",     "name": "host-debug" }
+      ]
+    },
+    {
+      "name": "android-debug",
+      "displayName": "Android Debug: configure + build",
+      "steps": [
+        { "type": "configure", "name": "android-debug" },
+        { "type": "build",     "name": "android-debug" }
+      ]
+    },
+    {
+      "name": "android-release",
+      "displayName": "Android Release: configure + build",
+      "steps": [
+        { "type": "configure", "name": "android-release" },
+        { "type": "build",     "name": "android-release" }
+      ]
+    }
+  ]
+}

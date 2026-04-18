@@ -37,6 +37,7 @@ package_editor::handle()
                 {
                     if (ImGui::TreeNodeEx((void*)(std::intptr_t)(i),
                                           ImGuiTreeNodeFlags_Bullet,
+                                          "%s",
                                           obj->get_id().cstr()))
                     {
                         if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())

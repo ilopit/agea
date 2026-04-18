@@ -22,8 +22,8 @@
 #define KRG_concat3(x, y, z) KRG_concat_impl3(x, y, z)
 
 #define KRG_gen_class_cd_default(c) \
-    c## ::##c() = default;          \
-    c## ::##~c() = default;
+    c::c() = default;               \
+    c::~c() = default;
 
 #define KRG_gen_class_non_copyable(c) \
     c(const c&) = delete;             \

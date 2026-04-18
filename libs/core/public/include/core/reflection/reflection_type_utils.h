@@ -4,6 +4,8 @@
 
 #include <serialization/serialization.h>
 
+#include <kryga_port/format.h>
+
 namespace kryga
 {
 namespace reflection

@@ -4,6 +4,7 @@
 
 #include <spdlog/spdlog.h>
 #include "utils/check.h"
+#include "kryga_port/format.h"
 
 namespace kryga
 {

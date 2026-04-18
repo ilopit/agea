@@ -32,7 +32,14 @@ set(JSONCPP_WITH_TESTS OFF)
 set(BUILD_OBJECT_LIBS OFF)
 
 # spdlog
-SET(SPDLOG_USE_STD_FORMAT ON)
+# Android's libc++ (NDK r26d / LLVM 17) ships std::format behind C++23 only;
+# spdlog's own files get compiled at -std=c++20 regardless of project defaults,
+# which makes SPDLOG_USE_STD_FORMAT fail. Use spdlog's bundled fmt on Android.
+if(ANDROID)
+    set(SPDLOG_USE_STD_FORMAT OFF)
+else()
+    set(SPDLOG_USE_STD_FORMAT ON)
+endif()
 
 # spirvreflect
 set(SPIRV_REFLECT_EXECUTABLE OFF)
@@ -51,11 +58,13 @@ set(YAML_CPP_INSTALL OFF)
 add_subdirectory(fetch)
 
 # externalize fetch deps
-externalize(boost_container "boost")
-externalize(boost_context "boost")
-externalize(boost_date_time "boost")
-externalize(boost_exception "boost")
-externalize(boost_url "boost")
+if(KRG_ENABLE_SYNC_SERVICE)
+    externalize(boost_container "boost")
+    externalize(boost_context "boost")
+    externalize(boost_date_time "boost")
+    externalize(boost_exception "boost")
+    externalize(boost_url "boost")
+endif()
 externalize(TracyClient "tracy")
 externalize(ozz_base "ozz-animation")
 externalize(ozz_animation "ozz-animation")

@@ -27,10 +27,18 @@ id::make_id(const char* id_cstr)
 {
     id result;
 
-    if (strncpy_s(result.m_id, id_size_in_bytes() + 1, id_cstr, id_size_in_bytes()))
+    // Safe bounded copy: reject oversize input, otherwise copy and nul-terminate.
+    if (!id_cstr)
     {
         return {};
     }
+    size_t len = strnlen(id_cstr, id_size_in_bytes() + 1);
+    if (len > id_size_in_bytes())
+    {
+        return {};
+    }
+    memcpy(result.m_id, id_cstr, len);
+    result.m_id[len] = '\0';
     return result;
 }
 

@@ -69,14 +69,14 @@ public:
                           const utils::id& id,
                           const spawn_parameters& prms)
     {
-        return spawn_object_as_clone_impl(proto_id, id, prms)->as<T>();
+        return spawn_object_as_clone_impl(proto_id, id, prms)->template as<T>();
     }
 
     template <typename T>
     auto
     spawn_object(const utils::id& id, const typename T::construct_params& prms)
     {
-        return spawn_object_impl(T::AR_TYPE_id(), id, prms)->as<T>();
+        return spawn_object_impl(T::AR_TYPE_id(), id, prms)->template as<T>();
     }
 
     void

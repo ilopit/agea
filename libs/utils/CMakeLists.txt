@@ -3,7 +3,7 @@ file(GLOB LIB_SRC "public/include/utils/*.h" "private/src/*.cpp")
 add_library(utils STATIC
    ${LIB_SRC}
 )
-target_link_libraries(utils spdlog)
+target_link_libraries(utils spdlog kryga_port)
 
 # Ensure spdlog trace macros are active (matches kryga_log.h define)
 target_compile_definitions(utils PUBLIC SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE)
