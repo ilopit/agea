@@ -91,6 +91,13 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
     std::vector<VkPushConstantRange> constants;
     se.generate_constants(constants);
 
+    // If the owning render pass has a finalized binding table, prefer its set layouts
+    // for sets that have any entries. This ensures all shader effects on the same pass
+    // share a consistent pipeline layout that's compatible with descriptor sets allocated
+    // from the binding table.
+    auto* owner_rp = se.get_owner_render_pass();
+    bool use_table_layouts = owner_rp && owner_rp->are_bindings_finalized();
+
     std::array<vulkan_descriptor_set_layout_data, DESCRIPTORS_SETS_COUNT> merged_layouts;
 
     for (uint32_t i = 0; i < DESCRIPTORS_SETS_COUNT; i++)
@@ -142,12 +149,40 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
             continue;
         }
 
+        // Prefer the owning pass's binding-table layout when available — keeps all
+        // shader effects in the pass mutually compatible with the same descriptor sets.
+        // Table layouts are owned by the descriptor_layout_cache, never by the effect.
+        if (use_table_layouts && owner_rp->get_set_layout(i) != VK_NULL_HANDLE)
+        {
+            se.m_set_layout[i] = VK_NULL_HANDLE;  // Mark as not owned
+            continue;
+        }
+
         vkCreateDescriptorSetLayout(
             device->vk_device(), &ly.create_info, nullptr, &se.m_set_layout[i]);
     }
 
-    // Build pipeline layout using the global bindless layout for set 2
+    // Build pipeline layout: prefer table layout for sets that have them, otherwise
+    // use the reflection-derived layout owned by the effect. Set 2 is always the
+    // global bindless layout.
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> pipeline_layouts = se.m_set_layout;
+
+    if (use_table_layouts)
+    {
+        for (uint32_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)
+        {
+            if (i == KGPU_textures_descriptor_sets)
+            {
+                continue;
+            }
+            VkDescriptorSetLayout table_layout = owner_rp->get_set_layout(i);
+            if (table_layout != VK_NULL_HANDLE)
+            {
+                pipeline_layouts[i] = table_layout;
+            }
+        }
+    }
+
     auto bindless_layout = glob::glob_state().get_vulkan_render()->get_bindless_layout();
     if (bindless_layout != VK_NULL_HANDLE)
     {
@@ -174,6 +209,10 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            std::shared_ptr<shader_module_data>& frag_module,
                                            const shader_effect_create_info& info)
 {
+    // Owner pass needs to be set before pipeline-layout creation so it can pull
+    // descriptor set layouts from the pass's binding table (when finalized).
+    se_data.set_owner_render_pass(info.rp);
+
     se_data.m_is_wire = info.is_wire;
     se_data.m_enable_alpha = info.alpha != alpha_mode::none;
 
@@ -398,9 +437,11 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
                                            const shader_effect_create_info& info)
 {
     std::shared_ptr<shader_module_data> vert_module;
-    auto rc = load_data_shader(
-        *info.vert_buffer, info.is_vert_binary, VK_SHADER_STAGE_VERTEX_BIT, vert_module,
-        info.defines);
+    auto rc = load_data_shader(*info.vert_buffer,
+                               info.is_vert_binary,
+                               VK_SHADER_STAGE_VERTEX_BIT,
+                               vert_module,
+                               info.defines);
     if (rc != result_code::ok)
     {
         ALOG_LAZY_ERROR;
@@ -410,9 +451,11 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     std::shared_ptr<shader_module_data> frag_module;
     if (info.frag_buffer)
     {
-        rc = load_data_shader(
-            *info.frag_buffer, info.is_frag_binary, VK_SHADER_STAGE_FRAGMENT_BIT, frag_module,
-            info.defines);
+        rc = load_data_shader(*info.frag_buffer,
+                              info.is_frag_binary,
+                              VK_SHADER_STAGE_FRAGMENT_BIT,
+                              frag_module,
+                              info.defines);
         if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;

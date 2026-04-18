@@ -178,6 +178,13 @@ public:
         return m_current_frame_number;
     }
 
+    void
+    reset_frame_counter()
+    {
+        m_current_frame_number = UINT64_MAX;
+        m_current_frame_index = 0;
+    }
+
     VkSwapchainKHR&
     swapchain()
     {

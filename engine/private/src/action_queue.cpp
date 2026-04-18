@@ -48,7 +48,9 @@ std::string
 action_queue::current_action_name()
 {
     if (!m_running.load())
+    {
         return {};
+    }
     return m_progress.get_status().empty() ? "Working..." : m_progress.get_status();
 }
 
@@ -63,7 +65,9 @@ void
 action_queue::start_worker()
 {
     if (m_worker.joinable())
+    {
         return;
+    }
 
     m_worker = std::thread([this]() { worker_loop(); });
 }
@@ -80,10 +84,14 @@ action_queue::worker_loop()
             m_cv.wait(lock, [&] { return !m_pending.empty() || m_shutdown.load(); });
 
             if (m_shutdown.load())
+            {
                 return;
+            }
 
             if (m_pending.empty())
+            {
                 continue;
+            }
 
             current = std::move(m_pending.front());
             m_pending.pop_front();

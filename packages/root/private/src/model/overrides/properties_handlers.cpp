@@ -421,8 +421,8 @@ property_texture_slot__load(reflection::property_context__load& ctx)
 result_code
 property_layer_mask__save(::kryga::reflection::property_context__save& dc)
 {
-    auto& mask = ::kryga::reflection::utils::as_type<core::object_layer_flags>(
-        dc.obj->as_blob() + dc.p->offset);
+    auto& mask = ::kryga::reflection::utils::as_type<core::object_layer_flags>(dc.obj->as_blob() +
+                                                                               dc.p->offset);
 
     serialization::container c;
     c["visible"] = (bool)mask.visible;

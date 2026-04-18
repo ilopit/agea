@@ -406,8 +406,8 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
         return nullptr;
     }
 
-    auto staging_buffer = device->create_buffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                                VMA_MEMORY_USAGE_CPU_ONLY);
+    auto staging_buffer = device->create_buffer(
+        data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* mapped = nullptr;
     vmaMapMemory(device->allocator(), staging_buffer.allocation(), &mapped);
@@ -417,8 +417,8 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     td->image = upload_image(w, h, vk_format, staging_buffer);
     td->format = fmt;
 
-    VkImageViewCreateInfo image_info =
-        vk_utils::make_imageview_create_info(vk_format, td->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
+        vk_format, td->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
     image_info.subresourceRange.levelCount = td->image->get_mip_levels();
 
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
@@ -449,8 +449,8 @@ vulkan_render_loader::update_or_create_texture(const kryga::utils::id& texture_i
     // all in-flight command buffers finish.
     auto device = glob::glob_state().get_render_device();
 
-    auto staging_buffer = device->create_buffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                                VMA_MEMORY_USAGE_CPU_ONLY);
+    auto staging_buffer = device->create_buffer(
+        data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* mapped = nullptr;
     vmaMapMemory(device->allocator(), staging_buffer.allocation(), &mapped);
@@ -460,8 +460,8 @@ vulkan_render_loader::update_or_create_texture(const kryga::utils::id& texture_i
     existing->image = upload_image(w, h, vk_format, staging_buffer);
     existing->format = fmt;
 
-    VkImageViewCreateInfo image_info =
-        vk_utils::make_imageview_create_info(vk_format, existing->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
+        vk_format, existing->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
     image_info.subresourceRange.levelCount = existing->image->get_mip_levels();
 
     existing->image_view = vk_utils::vulkan_image_view::create_shared(image_info);

@@ -13,9 +13,6 @@ struct push_constants_shadow
     uint instance_base;
     uint directional_light_id;
     uint use_clustered_lighting;
-    bda_addr bdag_objects;
-    bda_addr bdag_instance_slots;
-    bda_addr bdag_shadow_data;
 };
 
 GPU_END_NAMESPACE

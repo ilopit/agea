@@ -119,21 +119,6 @@ binding_table::add(const utils::id& name,
     return *this;
 }
 
-binding_table&
-binding_table::add_bda(const utils::id& name)
-{
-    KRG_check(!m_finalized, "Cannot modify finalized binding table");
-
-    for (const auto& b : m_bindings)
-    {
-        KRG_check(b.name != name, "Duplicate binding name");
-    }
-
-    // BDA entries use dummy set/binding/type — they don't participate in descriptor layout
-    m_bindings.push_back({name, 0, 0, VK_DESCRIPTOR_TYPE_MAX_ENUM, 0, binding_scope::bda});
-    return *this;
-}
-
 bool
 binding_table::finalize(vk_utils::descriptor_layout_cache& layout_cache)
 {
@@ -147,12 +132,6 @@ binding_table::finalize(vk_utils::descriptor_layout_cache& layout_cache)
 
     for (const auto& spec : m_bindings)
     {
-        // BDA entries don't participate in descriptor set layouts
-        if (spec.scope == binding_scope::bda)
-        {
-            continue;
-        }
-
         VkDescriptorSetLayoutBinding vk_binding{};
         vk_binding.binding = spec.binding_index;
         vk_binding.descriptorType = spec.type;
@@ -244,7 +223,7 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
 {
     KRG_check(m_finalized, "Binding table must be finalized before validation");
 
-    // Forward check: every shader binding must exist in the table
+    // Forward check: every shader binding must exist in the table.
     for (const auto& ds : vertex_refl.descriptors)
     {
         for (const auto& b : ds.bindings)
@@ -267,14 +246,10 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
         }
     }
 
-    // Reverse check: for each descriptor set that the shader partially uses,
-    // every per_pass table binding in that set must be declared in at least one stage.
-    // Pipeline layouts are built from shader reflection, while descriptor sets are
-    // allocated from the table's layout. Vulkan requires these layouts to match exactly.
-    // If a shader doesn't reference a set at all, it won't bind that set's descriptor,
-    // so no layout conflict exists and we skip that set.
-
-    // Collect sets that the shader actually uses
+    // Reverse check: for each descriptor set the shader actually uses, every
+    // per_pass table binding in that set must be declared in at least one stage.
+    // Catches dead table entries and missing shader includes. Sets the shader
+    // does not touch at all are skipped (no descriptor set is bound for them).
     std::array<bool, DESCRIPTORS_SETS_COUNT> shader_uses_set{};
     for (const auto& ds : vertex_refl.descriptors)
     {
@@ -304,15 +279,15 @@ binding_table::validate_shader(const reflection::shader_reflection& vertex_refl,
             continue;
         }
 
-        bool found = vertex_refl.find_binding(spec.set_index, spec.binding_index) != nullptr ||
-                     frag_refl.find_binding(spec.set_index, spec.binding_index) != nullptr;
+        const bool found =
+            vertex_refl.find_binding(spec.set_index, spec.binding_index) != nullptr ||
+            frag_refl.find_binding(spec.set_index, spec.binding_index) != nullptr;
 
         if (!found)
         {
             ALOG_ERROR(
                 "Binding table entry '{}' (set={}, binding={}) is per_pass but not declared "
-                "in any shader stage — pipeline layout will have fewer descriptors than the "
-                "allocated descriptor set",
+                "in any shader stage",
                 spec.name.cstr(),
                 spec.set_index,
                 spec.binding_index);
@@ -342,6 +317,7 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
         stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     }
 
+    // Forward check: every shader binding must exist in the table.
     for (const auto& ds : refl.descriptors)
     {
         for (const auto& b : ds.bindings)
@@ -353,8 +329,7 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
         }
     }
 
-    // Reverse check: for sets the shader actually uses, every per_pass table
-    // binding must be declared. See two-stage overload for rationale.
+    // Reverse check — see two-stage overload for rationale.
     std::array<bool, DESCRIPTORS_SETS_COUNT> shader_uses_set{};
     for (const auto& ds : refl.descriptors)
     {
@@ -379,13 +354,11 @@ binding_table::validate_shader(const reflection::shader_reflection& refl) const
 
         if (refl.find_binding(spec.set_index, spec.binding_index) == nullptr)
         {
-            ALOG_ERROR(
-                "{} shader missing table binding '{}' (set={}, binding={}) — "
-                "pipeline layout will not match allocated descriptor set",
-                stage_name,
-                spec.name.cstr(),
-                spec.set_index,
-                spec.binding_index);
+            ALOG_ERROR("{} shader missing table binding '{}' (set={}, binding={})",
+                       stage_name,
+                       spec.name.cstr(),
+                       spec.set_index,
+                       spec.binding_index);
             valid = false;
         }
     }
@@ -436,14 +409,6 @@ binding_table::bind_buffer(const utils::id& name, vk_utils::vulkan_buffer& buf)
 
     const binding_spec* spec = find_binding(name);
     KRG_check(spec, "Unknown binding name");
-
-    if (spec->scope == binding_scope::bda)
-    {
-        // BDA entries — just track that the resource was bound, no descriptor write
-        m_bound[name] = {&buf, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE};
-        return;
-    }
-
     KRG_check(is_buffer_descriptor(spec->type), "Binding is not a buffer type");
     KRG_check(spec->scope == binding_scope::per_pass,
               "Cannot bind per_material binding via bind_buffer");
@@ -606,120 +571,37 @@ binding_table::get_pass_bindings(uint32_t set_index) const
 }
 
 bool
-binding_table::validate_resources(
-    const vulkan_render_graph& graph,
-    const std::unordered_map<utils::id, std::shared_ptr<shader_effect_data>>& shader_effects,
-    const char* pass_name) const
+binding_table::validate_resources(const vulkan_render_graph& graph, const char* pass_name) const
 {
-    const auto& resources = graph.get_resources();
-    bool valid = true;
-
-    // 1. Validate binding table entries against graph
-    bool has_descriptor_bindings =
-        std::any_of(m_bindings.begin(),
-                    m_bindings.end(),
-                    [](const binding_spec& s) { return s.scope != binding_scope::bda; });
-
-    if (!m_finalized && has_descriptor_bindings)
+    if (m_bindings.empty())
     {
-        ALOG_ERROR("Pass '{}': binding table has descriptor entries but is not finalized",
+        return true;  // pass has no bindings to validate (e.g., test passes)
+    }
+
+    if (!m_finalized)
+    {
+        ALOG_ERROR("Pass '{}' has bindings but binding table is not finalized",
                    pass_name ? pass_name : "?");
         return false;
     }
 
-    if (m_finalized)
-    {
-        for (const auto& spec : m_bindings)
-        {
-            if (spec.scope == binding_scope::per_material)
-            {
-                continue;
-            }
-
-            if (resources.find(spec.name) == resources.end())
-            {
-                if (spec.scope == binding_scope::bda)
-                {
-                    ALOG_ERROR("BDA resource '{}' not found in render graph resources",
-                               spec.name.cstr());
-                }
-                else
-                {
-                    ALOG_ERROR(
-                        "Binding '{}' (set={}, binding={}) not found in render graph resources",
-                        spec.name.cstr(),
-                        spec.set_index,
-                        spec.binding_index);
-                }
-                valid = false;
-            }
-        }
-    }
-
-    // 2. Validate bdag_ push constant fields from shader effects (both stages)
-    //    bdag_ = graph-tracked, must have matching dyn_ resource
-    //    bdaf_ = per-frame/per-draw, skipped
-    constexpr std::string_view bdag_prefix = "bdag_";
-
-    auto validate_stage = [&](const reflection::shader_reflection& refl, const char* se_name)
-    {
-        if (!refl.has_push_constants() || !refl.constants->layout)
-        {
-            return;
-        }
-
-        for (const auto& field : refl.constants->layout->get_fields())
-        {
-            std::string_view name(field.id.cstr());
-            if (!name.starts_with(bdag_prefix))
-            {
-                continue;
-            }
-
-            auto resource_name = "dyn_" + std::string(name.substr(bdag_prefix.size()));
-            if (resources.find(AID(resource_name)) == resources.end())
-            {
-                ALOG_ERROR(
-                    "Shader '{}' in pass '{}': BDA field '{}' has no "
-                    "corresponding render graph resource '{}'",
-                    se_name,
-                    pass_name ? pass_name : "?",
-                    name,
-                    resource_name);
-                valid = false;
-            }
-        }
-    };
-
-    for (const auto& [id, se] : shader_effects)
-    {
-        if (!se)
-        {
-            continue;
-        }
-        se->for_each_stage([&](const shader_module_data& stage)
-                           { validate_stage(stage.get_reflection(), id.cstr()); });
-    }
-
-    return valid;
-}
-
-bool
-binding_table::validate_bda_bound() const
-{
+    const auto& resources = graph.get_resources();
     bool valid = true;
 
     for (const auto& spec : m_bindings)
     {
-        if (spec.scope != binding_scope::bda)
+        if (spec.scope == binding_scope::per_material)
         {
             continue;
         }
 
-        auto it = m_bound.find(spec.name);
-        if (it == m_bound.end() || it->second.buffer == nullptr)
+        if (resources.find(spec.name) == resources.end())
         {
-            ALOG_ERROR("BDA resource '{}' declared but not bound this frame", spec.name.cstr());
+            ALOG_ERROR("Pass '{}' binding '{}' (set={}, binding={}) not found in render graph",
+                       pass_name ? pass_name : "?",
+                       spec.name.cstr(),
+                       spec.set_index,
+                       spec.binding_index);
             valid = false;
         }
     }

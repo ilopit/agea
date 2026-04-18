@@ -29,7 +29,6 @@
 
 #include "packages/base/model/mesh_object.h"
 
-
 #include <core/level.h>
 #include <core/lightmap_manifest.h>
 
@@ -178,8 +177,7 @@ struct update_object_cmd : render_cmd::render_command_base
         object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
 
         auto new_rqid = std::move(queue_id);
-        if (new_rqid != object_data->queue_id ||
-            layer_flags.bits != object_data->layer_flags)
+        if (new_rqid != object_data->queue_id || layer_flags.bits != object_data->layer_flags)
         {
             ctx.vr.schd_remove_object(object_data);
             object_data->queue_id = std::move(new_rqid);

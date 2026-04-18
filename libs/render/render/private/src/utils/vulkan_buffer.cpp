@@ -95,15 +95,6 @@ vulkan_buffer::create(VkBufferCreateInfo bci, VmaAllocationCreateInfo vaci)
     return vulkan_buffer{buffer, allocation, bci.size};
 }
 
-VkDeviceAddress
-vulkan_buffer::device_address() const
-{
-    VkBufferDeviceAddressInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-    info.buffer = m_buffer;
-    return vkGetBufferDeviceAddress(glob::glob_state().getr_render_device().vk_device(), &info);
-}
-
 vulkan_buffer::~vulkan_buffer()
 {
     clear();

@@ -1,21 +1,18 @@
 #version 450
 #extension GL_GOOGLE_include_directive: enable
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_buffer_reference_uvec2 : require
 
 layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
 
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
-#include "bda_macros_main.glsl"
+#include "descriptor_bindings_common.glsl"
 #include "common_frag.glsl"
 
 #include "gpu_types/pbr_material__gpu.h"
-layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
+layout(set = KGPU_materials_descriptor_sets, binding = 0, scalar) readonly buffer MaterialBuffer
+{
     pbr_material__gpu objects[];
-};
-#define dyn_material_buffer BdaMaterialBuffer(constants.obj.bdaf_material)
+} dyn_material_buffer;
 
 #include "lightmap_sampling.glsl"
 
@@ -80,7 +77,7 @@ void main()
 
         // Combine: baked GI (indirect) + realtime direct
         vec3 result = blend_baked_and_realtime(baked_gi * albedo, direct);
-        out_color = vec4(result, 1.0);
+        out_color = vec4(apply_dither(result, gl_FragCoord.xy), 1.0);
     }
     else
     {
@@ -115,7 +112,7 @@ void main()
             }
         }
 
-        out_color = vec4(result, 1.0);
+        out_color = vec4(apply_dither(result, gl_FragCoord.xy), 1.0);
     }
 }
 
@@ -191,10 +188,11 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
 
     // combine results
+    vec3 ambient = light.ambient * albedo;
     vec3 diffuse = light.diffuse * diff * albedo;
     vec3 specular = light.specular * spec * specular_tex;
 
-    return (diffuse + specular) * attenuation;
+    return (ambient + diffuse + specular) * attenuation;
 }
 
 // calculates the color when using a spot light.
@@ -239,8 +237,9 @@ vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
     float intensity = clamp((theta - light.outer_cut_off) / epsilon, 0.0, 1.0);
 
     // combine results
+    vec3 ambient = light.ambient * albedo;
     vec3 diffuse = light.diffuse * diff * albedo;
     vec3 specular = light.specular * spec * specular_tex;
 
-    return (diffuse + specular) * attenuation * intensity;
+    return (ambient + diffuse + specular) * attenuation * intensity;
 }

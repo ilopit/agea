@@ -123,6 +123,111 @@ vulkan_render::prepare_render_passes()
 // Pass Descriptor Bindings
 // ============================================================================
 
+namespace
+{
+
+void
+register_main_pass_bindings(render::render_pass& pass)
+{
+    // Set 0: per-frame camera UBO
+    pass.bindings().add(AID("dyn_camera_data"),
+                        KGPU_global_descriptor_sets,
+                        0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    // Set 1: per-frame object/light/cluster/instance/bone/shadow/probe buffers.
+    // Stage flags use VERTEX|FRAGMENT for every binding because the shared
+    // descriptor_bindings_common.glsl declares every binding in both stages, and
+    // SPIR-V reflection keeps declared-but-unused bindings.
+    constexpr VkShaderStageFlags vf_stages =
+        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    pass.bindings()
+        .add(AID("dyn_object_buffer"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_objects_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_directional_lights_buffer"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_directional_light_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_gpu_universal_light_data"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_universal_light_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_cluster_light_counts"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_cluster_light_counts_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_cluster_light_indices"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_cluster_light_indices_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_cluster_config"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_cluster_config_binding,
+             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+             vf_stages)
+        .add(AID("dyn_instance_slots"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_instance_slots_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_bone_matrices"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_bone_matrices_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_shadow_data"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_shadow_data_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_probe_data"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_probe_data_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages)
+        .add(AID("dyn_probe_grid"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_probe_grid_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             vf_stages);
+
+    // Set 2: Bindless textures and static samplers (per_material — managed by global bindless set)
+    pass.bindings()
+        .add(AID("static_samplers"),
+             KGPU_textures_descriptor_sets,
+             0,
+             VK_DESCRIPTOR_TYPE_SAMPLER,
+             VK_SHADER_STAGE_FRAGMENT_BIT,
+             render::binding_scope::per_material)
+        .add(AID("bindless_textures"),
+             KGPU_textures_descriptor_sets,
+             1,
+             VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+             VK_SHADER_STAGE_FRAGMENT_BIT,
+             render::binding_scope::per_material);
+
+    // Set 3: per-material data — descriptor set built per material type from
+    // the materials buffer at the type's segment offset. Marked per_material so
+    // binding_table::build_set skips it; we manage these sets manually.
+    pass.bindings().add(AID("dyn_material_buffer"),
+                        KGPU_materials_descriptor_sets,
+                        0,
+                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                        VK_SHADER_STAGE_FRAGMENT_BIT,
+                        render::binding_scope::per_material);
+}
+
+}  // namespace
+
 void
 vulkan_render::prepare_pass_bindings()
 {
@@ -133,39 +238,7 @@ vulkan_render::prepare_pass_bindings()
     auto* main_pass = get_render_pass(AID("main"));
     if (main_pass)
     {
-        // BDA resources — accessed via pointer table, tracked for per-frame validation
-        main_pass->bindings()
-            .add_bda(AID("dyn_camera_data"))
-            .add_bda(AID("dyn_object_buffer"))
-            .add_bda(AID("dyn_directional_lights_buffer"))
-            .add_bda(AID("dyn_gpu_universal_light_data"))
-            .add_bda(AID("dyn_cluster_light_counts"))
-            .add_bda(AID("dyn_cluster_light_indices"))
-            .add_bda(AID("dyn_cluster_config"))
-            .add_bda(AID("dyn_instance_slots"))
-            .add_bda(AID("dyn_bone_matrices"))
-            .add_bda(AID("dyn_shadow_data"))
-            .add_bda(AID("dyn_probe_data"))
-            .add_bda(AID("dyn_probe_grid"))
-            .add_bda(AID("dyn_material_buffer"));
-
-        // Set 2: Bindless textures and static samplers (only remaining descriptor set)
-        main_pass->bindings()
-            .add(AID("static_samplers"),
-                 KGPU_textures_descriptor_sets,
-                 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material)
-            .add(AID("bindless_textures"),
-                 KGPU_textures_descriptor_sets,
-                 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material);
-
-        // Set 3: Material data — now accessed via BDA pointer table
-
+        register_main_pass_bindings(*main_pass);
         main_pass->finalize_bindings(layout_cache);
     }
 
@@ -184,30 +257,12 @@ vulkan_render::prepare_pass_bindings()
         ui_pass->finalize_bindings(layout_cache);
     }
 
-    // Selection mask pass — same BDA as main pass (needs camera + objects + instances)
+    // Selection mask pass — reuses material shader effects from main pass, so binding
+    // layout must match main pass exactly.
     auto* mask_pass = get_render_pass(AID("selection_mask"));
     if (mask_pass)
     {
-        mask_pass->bindings()
-            .add_bda(AID("dyn_camera_data"))
-            .add_bda(AID("dyn_object_buffer"))
-            .add_bda(AID("dyn_instance_slots"))
-            .add_bda(AID("dyn_bone_matrices"));
-
-        mask_pass->bindings()
-            .add(AID("static_samplers"),
-                 KGPU_textures_descriptor_sets,
-                 0,
-                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material)
-            .add(AID("bindless_textures"),
-                 KGPU_textures_descriptor_sets,
-                 1,
-                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-                 VK_SHADER_STAGE_FRAGMENT_BIT,
-                 render::binding_scope::per_material);
-
+        register_main_pass_bindings(*mask_pass);
         mask_pass->finalize_bindings(layout_cache);
     }
 }
@@ -249,6 +304,31 @@ vulkan_render::init_shadow_passes()
 
         m_shadow_local_passes[i]->set_name(AID("shadow_local_" + std::to_string(i)));
     }
+
+    // Bindings for shadow shaders are owned by cascade-0's binding table.
+    // Shader effects are created on cascade-0 and reused across all shadow passes.
+    auto* layout_cache_ptr = glob::glob_state().getr_render_device().descriptor_layout_cache();
+    auto& layout_cache = *layout_cache_ptr;
+
+    auto& shadow_pass = *m_shadow_passes[0];
+    shadow_pass.bindings()
+        .add(AID("dyn_object_buffer"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_objects_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_VERTEX_BIT)
+        .add(AID("dyn_instance_slots"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_instance_slots_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_VERTEX_BIT)
+        .add(AID("dyn_shadow_data"),
+             KGPU_objects_descriptor_sets,
+             KGPU_objects_shadow_data_binding,
+             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+             VK_SHADER_STAGE_VERTEX_BIT);
+
+    shadow_pass.finalize_bindings(layout_cache);
 }
 
 // ============================================================================

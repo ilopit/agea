@@ -102,11 +102,7 @@ render_config::validate()
         value = std::clamp(value, lo, hi);
         if (value != original)
         {
-            ALOG_WARN("render_config: '{}' value {} clamped to [{}, {}]",
-                      name,
-                      original,
-                      lo,
-                      hi);
+            ALOG_WARN("render_config: '{}' value {} clamped to [{}, {}]", name, original, lo, hi);
         }
     };
 
@@ -146,8 +142,9 @@ render_config::validate()
         // Pick the closer power of two
         uint32_t lower = v >> 1;
         shadows.map_size = (v - original <= original - lower) ? v : lower;
-        shadows.map_size = std::clamp(
-            shadows.map_size, (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN, (uint32_t)KGPU_SHADOW_MAP_SIZE_MAX);
+        shadows.map_size = std::clamp(shadows.map_size,
+                                      (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN,
+                                      (uint32_t)KGPU_SHADOW_MAP_SIZE_MAX);
         ALOG_WARN("render_config: 'shadows.map_size' value {} is not a power of two, rounded to {}",
                   original,
                   shadows.map_size);
@@ -332,8 +329,7 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
 bool
 render_config::save_to_cache(const vfs::rid& cache) const
 {
-    glob::glob_state().getr_vfs().create_directories(
-        vfs::rid(cache.mount_point(), ""));
+    glob::glob_state().getr_vfs().create_directories(vfs::rid(cache.mount_point(), ""));
 
     YAML::Node root;
 

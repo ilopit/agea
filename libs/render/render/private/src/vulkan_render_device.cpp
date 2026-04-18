@@ -131,7 +131,6 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
 
     VkPhysicalDeviceFeatures features_11{};
     features_11.fillModeNonSolid = true;
-    // shaderInt64 not required — BDA uses uvec2 via GL_EXT_buffer_reference_uvec2
 
     selector.set_required_features(features_11)
         .set_minimum_version(1, 2)
@@ -157,12 +156,6 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     indexing_features.runtimeDescriptorArray = VK_TRUE;
     deviceBuilder.add_pNext(&indexing_features);
 
-    // Enable buffer device address for BDA-based buffer access
-    VkPhysicalDeviceBufferDeviceAddressFeatures bda_features{};
-    bda_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-    bda_features.bufferDeviceAddress = VK_TRUE;
-    deviceBuilder.add_pNext(&bda_features);
-
     // Enable scalar block layout for natural C++ struct alignment in GPU buffers
     VkPhysicalDeviceScalarBlockLayoutFeatures scalar_features{};
     scalar_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
@@ -185,7 +178,6 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     allocatorInfo.physicalDevice = m_vk_gpu;
     allocatorInfo.device = m_vk_device;
     allocatorInfo.instance = m_vk_instance;
-    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaCreateAllocator(&allocatorInfo, &m_allocator);
 
     vkGetPhysicalDeviceProperties(m_vk_gpu, &m_gpu_properties);
@@ -550,12 +542,6 @@ render_device::create_buffer(size_t alloc_size,
     buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_ci.pNext = nullptr;
     buffer_ci.size = alloc_size;
-
-    // Add BDA flag for buffers that may be accessed via device address
-    if (usage & (VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
-    {
-        usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-    }
 
     buffer_ci.usage = usage;
 

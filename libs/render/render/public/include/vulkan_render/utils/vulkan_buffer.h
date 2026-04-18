@@ -36,9 +36,6 @@ public:
         return m_buffer;
     }
 
-    VkDeviceAddress
-    device_address() const;
-
     VmaAllocation
     allocation() const
     {

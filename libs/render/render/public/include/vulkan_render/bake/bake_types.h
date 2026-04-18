@@ -39,9 +39,9 @@ struct bake_config
     int min_tile = 16;
     int max_tile = 256;
     float shadow_bias = 0.05f;
-    uint32_t shadow_samples = 16;     // jittered rays per light for soft shadows
-    float shadow_spread = 0.015f;     // angular spread of jitter (radians)
-    uint32_t dilate_iterations = 3;   // gutter dilation passes
+    uint32_t shadow_samples = 16;    // jittered rays per light for soft shadows
+    float shadow_spread = 0.015f;    // angular spread of jitter (radians)
+    uint32_t dilate_iterations = 3;  // gutter dilation passes
 
     void
     apply_preset(bake_preset preset);

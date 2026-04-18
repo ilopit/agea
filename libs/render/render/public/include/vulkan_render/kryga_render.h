@@ -509,13 +509,13 @@ private:
     material_data* m_outline_post_mat = nullptr;
     uint32_t m_selection_mask_bindless_idx = 0xFFFFFFFFu;
 
-    // BDA per-frame tracking — ensures per-draw BDA addresses are set before use
-    bool m_bda_material_bound = false;
+    // Descriptors — built once per frame from the main pass binding table.
+    VkDescriptorSet m_main_global_set = VK_NULL_HANDLE;     // camera UBO
+    VkDescriptorSet m_main_objects_set = VK_NULL_HANDLE;    // objects/lights/clusters/instances/...
+    VkDescriptorSet m_shadow_objects_set = VK_NULL_HANDLE;  // objects/instance_slots/shadow_data
 
-    // Descriptors
-
-    VkDescriptorSet m_objects_set = VK_NULL_HANDLE;
-    VkDescriptorSet m_global_set = VK_NULL_HANDLE;
+    // Per-material-type descriptor set for set 3 (material buffer), rebuilt per frame.
+    std::vector<VkDescriptorSet> m_material_sets;
 
     // Static samplers (7 sampler variants for runtime selection)
     VkSampler m_static_samplers[7] = {};  // KGPU_SAMPLER_COUNT
@@ -524,10 +524,11 @@ private:
     VkDescriptorPool m_bindless_pool = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_bindless_layout = VK_NULL_HANDLE;
     VkDescriptorSet m_bindless_set = VK_NULL_HANDLE;
+    textures_update_queue m_global_textures_queue;  // Global queue (not per-frame) for bindless
+                                                    // updates
 
     gpu::push_constants_main m_obj_config = {};
     gpu::push_constants_shadow m_shadow_pc = {};
-    gpu::push_constants_grid m_grid_pc = {};
 
     render_cache m_cache;
 

@@ -128,12 +128,25 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
         return;
     }
 
-    // Bind debug wire pipeline
+    // Bind debug wire pipeline.
     auto* se = m_debug_wire_se;
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
-    // Sets 0/1 removed — accessed via BDA pointer table in push constants
     auto pipeline_layout = se->m_pipeline_layout;
+
+    // Set 0 (camera) + set 1 (objects buffer) — debug_wire reads model matrices.
+    if (m_main_global_set != VK_NULL_HANDLE && m_main_objects_set != VK_NULL_HANDLE)
+    {
+        VkDescriptorSet sets[2] = {m_main_global_set, m_main_objects_set};
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_layout,
+                                KGPU_global_descriptor_sets,
+                                2,
+                                sets,
+                                0,
+                                nullptr);
+    }
 
     if (m_bindless_set != VK_NULL_HANDLE)
     {

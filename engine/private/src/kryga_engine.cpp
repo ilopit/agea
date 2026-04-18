@@ -86,7 +86,9 @@ startup_options::parse(int argc, char** argv, startup_options& out)
 
     CLI::App app{"Kryga Engine"};
 
-    app.add_option("-t,--run-for", out.run_for_seconds, "Run for specified duration then exit (0 = unlimited)")
+    app.add_option("-t,--run-for",
+                   out.run_for_seconds,
+                   "Run for specified duration then exit (0 = unlimited)")
         ->check(CLI::NonNegativeNumber);
 
     try

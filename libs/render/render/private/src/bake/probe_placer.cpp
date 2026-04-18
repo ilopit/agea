@@ -42,9 +42,12 @@ place_probes_grid(const gpu::vertex_data* vertices,
 
     float spacing = params.spacing;
 
-    uint32_t nx = std::max(1u, static_cast<uint32_t>(std::ceil((scene_max.x - scene_min.x) / spacing))) + 1;
-    uint32_t ny = std::max(1u, static_cast<uint32_t>(std::ceil((scene_max.y - scene_min.y) / spacing))) + 1;
-    uint32_t nz = std::max(1u, static_cast<uint32_t>(std::ceil((scene_max.z - scene_min.z) / spacing))) + 1;
+    uint32_t nx =
+        std::max(1u, static_cast<uint32_t>(std::ceil((scene_max.x - scene_min.x) / spacing))) + 1;
+    uint32_t ny =
+        std::max(1u, static_cast<uint32_t>(std::ceil((scene_max.y - scene_min.y) / spacing))) + 1;
+    uint32_t nz =
+        std::max(1u, static_cast<uint32_t>(std::ceil((scene_max.z - scene_min.z) / spacing))) + 1;
 
     result.positions.reserve(nx * ny * nz);
 
@@ -71,7 +74,11 @@ place_probes_grid(const gpu::vertex_data* vertices,
     gc.grid_size_z = nz;
 
     ALOG_INFO("probe_placer: placed {} probes ({}x{}x{}) with spacing {:.1f}",
-              result.positions.size(), nx, ny, nz, spacing);
+              result.positions.size(),
+              nx,
+              ny,
+              nz,
+              spacing);
 
     return result;
 }

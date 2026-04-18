@@ -93,8 +93,10 @@ private:
     bool
     load_level(const utils::id& level_id);
 
-    void consume_updated_render();
-    void consume_updated_transforms();
+    void
+    consume_updated_render();
+    void
+    consume_updated_transforms();
 
     void
     render_thread_func();

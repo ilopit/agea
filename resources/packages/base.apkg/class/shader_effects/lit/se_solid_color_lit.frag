@@ -1,21 +1,18 @@
 #version 450
 #extension GL_GOOGLE_include_directive: enable
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_buffer_reference_uvec2 : require
 
 layout(constant_id = 0) const bool ENABLE_LIGHTMAP = false;
 
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
-#include "bda_macros_main.glsl"
+#include "descriptor_bindings_common.glsl"
 #include "common_frag.glsl"
 
 #include "gpu_types/solid_color_material__gpu.h"
-layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
+layout(set = KGPU_materials_descriptor_sets, binding = 0, scalar) readonly buffer MaterialBuffer
+{
     solid_color_material__gpu objects[];
-};
-#define dyn_material_buffer BdaMaterialBuffer(constants.obj.bdaf_material)
+} dyn_material_buffer;
 
 #include "lightmap_sampling.glsl"
 
@@ -77,7 +74,7 @@ void main()
 
         // Combine: baked GI (indirect) + realtime direct
         vec3 result = blend_baked_and_realtime(baked_gi * albedo, direct);
-        out_color = vec4(result, 1.0);
+        out_color = vec4(apply_dither(result, gl_FragCoord.xy), 1.0);
     }
     else
     {
@@ -93,28 +90,6 @@ void main()
 
             uint lightCount = dyn_cluster_light_counts.objects[clusterIdx].count;
             uint baseIdx = clusterIdx * dyn_cluster_config.config.max_lights_per_cluster;
-#if 0
-            // DEBUG: Check ALL lights in cluster, find closest
-            float minDRatio = 999.0;
-            float closestDist = 99999.0;
-            uint closestLightIdx = 0u;
-            for (uint i = 0u; i < lightCount; i++)
-            {
-                uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
-                universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
-                float dist = length(light.position - in_world_pos);
-                float dr = dist / light.radius;
-                if (dr < minDRatio)
-                {
-                    minDRatio = dr;
-                    closestDist = dist;
-                    closestLightIdx = i;
-                }
-            }
-            // Red = min d_ratio (< 1 means should be lit), Green = lightCount/10, Blue = closestLightIdx/10
-            out_color = vec4(minDRatio, float(lightCount) / 10.0, float(closestLightIdx) / 10.0, 1.0);
-            return;
-#endif
             // Iterate over lights in this cluster
             for (uint i = 0u; i < lightCount; i++)
             {
@@ -133,7 +108,7 @@ void main()
             }
         }
 
-        out_color = vec4(result, 1.0);
+        out_color = vec4(apply_dither(result, gl_FragCoord.xy), 1.0);
     }
 }
 
@@ -209,10 +184,11 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), dyn_material_buffer.objects[mat_idx].shininess);
 
     // combine results
+    vec3 ambient = light.ambient * dyn_material_buffer.objects[mat_idx].ambient;
     vec3 diffuse = light.diffuse * diff * dyn_material_buffer.objects[mat_idx].diffuse;
     vec3 specular = light.specular * spec * dyn_material_buffer.objects[mat_idx].specular;
 
-    return (diffuse + specular) * attenuation;
+    return (ambient + diffuse + specular) * attenuation;
 }
 
 // calculates the color when using a spot light.
@@ -257,8 +233,9 @@ vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
     float intensity = clamp((theta - light.outer_cut_off) / epsilon, 0.0, 1.0);
 
     // combine results
+    vec3 ambient = light.ambient * dyn_material_buffer.objects[mat_idx].ambient;
     vec3 diffuse = light.diffuse * diff * dyn_material_buffer.objects[mat_idx].diffuse;
     vec3 specular = light.specular * spec * dyn_material_buffer.objects[mat_idx].specular;
 
-    return (diffuse + specular) * attenuation * intensity;
+    return (ambient + diffuse + specular) * attenuation * intensity;
 }

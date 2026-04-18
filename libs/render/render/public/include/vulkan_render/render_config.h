@@ -47,6 +47,12 @@ struct render_config
         bool frustum_culling = true;
     } debug;
 
+    struct selection_cfg
+    {
+        float outline_color[4] = {0.2f, 0.9f, 0.4f, 1.0f};
+        float outline_thickness = 1.5f;
+    } selection;
+
     // Clamp all fields to valid ranges
     void
     validate();

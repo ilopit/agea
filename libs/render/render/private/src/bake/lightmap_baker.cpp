@@ -57,18 +57,18 @@ namespace
 vk_utils::vulkan_buffer
 create_storage_buffer(render_device& device, const void* data, size_t size)
 {
-    auto staging = device.create_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                        VMA_MEMORY_USAGE_CPU_ONLY);
+    auto staging =
+        device.create_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     void* mapped = nullptr;
     vmaMapMemory(device.allocator(), staging.allocation(), &mapped);
     memcpy(mapped, data, size);
     vmaUnmapMemory(device.allocator(), staging.allocation());
 
-    auto gpu_buf = device.create_buffer(
-        size,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY);
+    auto gpu_buf =
+        device.create_buffer(size,
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             VMA_MEMORY_USAGE_GPU_ONLY);
 
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
@@ -84,10 +84,8 @@ create_storage_buffer(render_device& device, const void* data, size_t size)
 vk_utils::vulkan_buffer
 create_uniform_buffer(render_device& device, const void* data, size_t size)
 {
-    auto buf = device.create_buffer(
-        size,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    auto buf =
+        device.create_buffer(size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
     void* mapped = nullptr;
     vmaMapMemory(device.allocator(), buf.allocation(), &mapped);
@@ -101,11 +99,11 @@ vk_utils::vulkan_image_sptr
 create_storage_image(render_device& device, uint32_t w, uint32_t h, VkFormat format)
 {
     VkExtent3D extent{w, h, 1};
-    auto ci = vk_utils::make_image_create_info(
-        format,
-        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-        extent);
+    auto ci = vk_utils::make_image_create_info(format,
+                                               VK_IMAGE_USAGE_STORAGE_BIT |
+                                                   VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                                   VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                               extent);
 
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -117,10 +115,15 @@ create_storage_image(render_device& device, uint32_t w, uint32_t h, VkFormat for
         [&](VkCommandBuffer cmd)
         {
             VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-            vk_utils::make_insert_image_memory_barrier(
-                cmd, img.image(), 0, VK_ACCESS_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, range);
+            vk_utils::make_insert_image_memory_barrier(cmd,
+                                                       img.image(),
+                                                       0,
+                                                       VK_ACCESS_SHADER_WRITE_BIT,
+                                                       VK_IMAGE_LAYOUT_UNDEFINED,
+                                                       VK_IMAGE_LAYOUT_GENERAL,
+                                                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                       range);
         });
 
     return std::make_shared<vk_utils::vulkan_image>(std::move(img));
@@ -133,8 +136,15 @@ insert_compute_barrier(VkCommandBuffer cmd)
     barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0,
+    vkCmdPipelineBarrier(cmd,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0,
+                         1,
+                         &barrier,
+                         0,
+                         nullptr,
+                         0,
                          nullptr);
 }
 
@@ -164,12 +174,13 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     // Step 1: Build BVH
     // =====================================================================
     ALOG_INFO("lightmap_baker: building BVH for {} verts, {} indices",
-              m_vertices.size(), m_indices.size());
+              m_vertices.size(),
+              m_indices.size());
 
     auto bvh = bake::build_bvh(m_vertices.data(),
-                                static_cast<uint32_t>(m_vertices.size()),
-                                m_indices.data(),
-                                static_cast<uint32_t>(m_indices.size()));
+                               static_cast<uint32_t>(m_vertices.size()),
+                               m_indices.data(),
+                               static_cast<uint32_t>(m_indices.size()));
 
     if (bvh.nodes.empty())
     {
@@ -188,8 +199,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     // =====================================================================
     // Step 2: Upload GPU resources
     // =====================================================================
-    auto buf_bvh_nodes = create_storage_buffer(
-        *device, bvh.nodes.data(), bvh.nodes.size() * sizeof(gpu::bvh_node));
+    auto buf_bvh_nodes =
+        create_storage_buffer(*device, bvh.nodes.data(), bvh.nodes.size() * sizeof(gpu::bvh_node));
 
     auto buf_triangles = create_storage_buffer(
         *device, bvh.triangles.data(), bvh.triangles.size() * sizeof(gpu::bake_triangle));
@@ -208,10 +219,14 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     config.shadow_samples = settings.shadow_samples;
     config.shadow_spread = settings.shadow_spread;
 
-    ALOG_INFO("lightmap_baker: GPU config — shadow_bias={}, shadow_samples={}, shadow_spread={}, "
-              "sample_count={}, local_light_count={}",
-              config.shadow_bias, config.shadow_samples, config.shadow_spread,
-              config.sample_count, config.local_light_count);
+    ALOG_INFO(
+        "lightmap_baker: GPU config — shadow_bias={}, shadow_samples={}, shadow_spread={}, "
+        "sample_count={}, local_light_count={}",
+        config.shadow_bias,
+        config.shadow_samples,
+        config.shadow_spread,
+        config.sample_count,
+        config.local_light_count);
 
     auto buf_config = create_uniform_buffer(*device, &config, sizeof(gpu::bake_config));
 
@@ -228,7 +243,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     // Create image views for descriptor binding
     auto make_view = [](vk_utils::vulkan_image_sptr& img, VkFormat fmt)
     {
-        auto ci = vk_utils::make_imageview_create_info(fmt, img->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+        auto ci =
+            vk_utils::make_imageview_create_info(fmt, img->image(), VK_IMAGE_ASPECT_COLOR_BIT);
         return vk_utils::vulkan_image_view::create_shared(ci);
     };
 
@@ -248,68 +264,103 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     // --- G-buffer rasterize descriptors (set 0) ---
     VkDescriptorBufferInfo tri_buf_info{buf_triangles.buffer(), 0, VK_WHOLE_SIZE};
     VkDescriptorBufferInfo config_buf_info{buf_config.buffer(), 0, VK_WHOLE_SIZE};
-    VkDescriptorImageInfo pos_img_info{VK_NULL_HANDLE, view_gbuf_pos->vk(), VK_IMAGE_LAYOUT_GENERAL};
-    VkDescriptorImageInfo norm_img_info{VK_NULL_HANDLE, view_gbuf_normal->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo pos_img_info{
+        VK_NULL_HANDLE, view_gbuf_pos->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo norm_img_info{
+        VK_NULL_HANDLE, view_gbuf_normal->vk(), VK_IMAGE_LAYOUT_GENERAL};
 
     VkDescriptorSet ds_gbuf;
     VkDescriptorSetLayout dsl_gbuf;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
-        .bind_buffer(0, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(1, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(2, 1, &pos_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(3, 1, &norm_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            0, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            1, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            2, 1, &pos_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            3, 1, &norm_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_gbuf, dsl_gbuf);
 
     // --- Direct light descriptors ---
     VkDescriptorBufferInfo bvh_buf_info{buf_bvh_nodes.buffer(), 0, VK_WHOLE_SIZE};
-    VkDescriptorImageInfo lightmap_img_info{VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
-    VkDescriptorImageInfo pos_read_info{VK_NULL_HANDLE, view_gbuf_pos->vk(), VK_IMAGE_LAYOUT_GENERAL};
-    VkDescriptorImageInfo norm_read_info{VK_NULL_HANDLE, view_gbuf_normal->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo lightmap_img_info{
+        VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo pos_read_info{
+        VK_NULL_HANDLE, view_gbuf_pos->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo norm_read_info{
+        VK_NULL_HANDLE, view_gbuf_normal->vk(), VK_IMAGE_LAYOUT_GENERAL};
 
     // Scene must provide at least one directional light for baking
     KRG_check(!settings.directional_lights.empty(),
               "lightmap_baker: no directional lights provided in bake_settings");
 
     auto buf_dir_light = create_storage_buffer(
-        *device, settings.directional_lights.data(),
+        *device,
+        settings.directional_lights.data(),
         settings.directional_lights.size() * sizeof(gpu::directional_light_data));
     VkDescriptorBufferInfo light_buf_info{buf_dir_light.buffer(), 0, VK_WHOLE_SIZE};
 
     // Local lights buffer (point + spot) — use a dummy 1-element buffer if empty
     gpu::universal_light_data dummy_local{};
-    auto buf_local_lights = settings.local_lights.empty()
-        ? create_storage_buffer(*device, &dummy_local, sizeof(gpu::universal_light_data))
-        : create_storage_buffer(*device, settings.local_lights.data(),
-                                settings.local_lights.size() * sizeof(gpu::universal_light_data));
+    auto buf_local_lights =
+        settings.local_lights.empty()
+            ? create_storage_buffer(*device, &dummy_local, sizeof(gpu::universal_light_data))
+            : create_storage_buffer(
+                  *device,
+                  settings.local_lights.data(),
+                  settings.local_lights.size() * sizeof(gpu::universal_light_data));
     VkDescriptorBufferInfo local_light_buf_info{buf_local_lights.buffer(), 0, VK_WHOLE_SIZE};
 
     VkDescriptorSet ds_direct;
     VkDescriptorSetLayout dsl_direct;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
-        .bind_buffer(0, &bvh_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(3, &light_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(4, &local_light_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(5, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(6, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(7, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            0, &bvh_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            3, &light_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(4,
+                     &local_light_buf_info,
+                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                     VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            5, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            6, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            7, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_direct, dsl_direct);
 
     // --- Indirect bounce descriptors ---
-    VkDescriptorImageInfo lightmap_read_info{VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
-    VkDescriptorImageInfo bounce_write_info{VK_NULL_HANDLE, view_lightmap_bounce->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo lightmap_read_info{
+        VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo bounce_write_info{
+        VK_NULL_HANDLE, view_lightmap_bounce->vk(), VK_IMAGE_LAYOUT_GENERAL};
 
     VkDescriptorSet ds_indirect;
     VkDescriptorSetLayout dsl_indirect;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
-        .bind_buffer(0, &bvh_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(3, 1, &lightmap_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(4, 1, &bounce_write_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(5, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(6, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            0, &bvh_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(3,
+                    1,
+                    &lightmap_read_info,
+                    VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                    VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            4, 1, &bounce_write_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            5, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            6, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_indirect, dsl_indirect);
 
     // --- AO descriptors ---
@@ -318,36 +369,53 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     VkDescriptorSet ds_ao;
     VkDescriptorSetLayout dsl_ao;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
-        .bind_buffer(0, &bvh_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_buffer(2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(3, 1, &ao_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(4, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(5, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            0, &bvh_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            1, &tri_buf_info, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            2, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            3, 1, &ao_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            4, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            5, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_ao, dsl_ao);
 
     // --- Denoise descriptors ---
-    VkDescriptorImageInfo denoise_in_info{VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
-    VkDescriptorImageInfo denoise_out_info{VK_NULL_HANDLE, view_denoise_tmp->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo denoise_in_info{
+        VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo denoise_out_info{
+        VK_NULL_HANDLE, view_denoise_tmp->vk(), VK_IMAGE_LAYOUT_GENERAL};
 
     VkDescriptorSet ds_denoise;
     VkDescriptorSetLayout dsl_denoise;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
-        .bind_buffer(0, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(1, 1, &denoise_in_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(2, 1, &denoise_out_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(3, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(4, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            0, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            1, 1, &denoise_in_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            2, 1, &denoise_out_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            3, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            4, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_denoise, dsl_denoise);
 
     // --- Dilate descriptors (fills empty gutter texels adjacent to valid data) ---
     VkDescriptorSet ds_dilate;
     VkDescriptorSetLayout dsl_dilate;
     vk_utils::descriptor_builder::begin(&layout_cache, &desc_alloc)
-        .bind_buffer(0, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(1, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(2, 1, &denoise_out_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
-        .bind_image(3, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_buffer(
+            0, &config_buf_info, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            1, 1, &lightmap_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            2, 1, &denoise_out_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(
+            3, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_dilate, dsl_dilate);
 
     // =====================================================================
@@ -387,18 +455,17 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         return s;
     };
 
-    auto cs_gbuf = compile_bake_shader(
-        "data://shaders_includes/bake/gbuffer_rasterize.comp", "bake_gbuf");
-    auto cs_direct = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_baker_direct.comp", "bake_direct");
+    auto cs_gbuf =
+        compile_bake_shader("data://shaders_includes/bake/gbuffer_rasterize.comp", "bake_gbuf");
+    auto cs_direct = compile_bake_shader("data://shaders_includes/bake/lightmap_baker_direct.comp",
+                                         "bake_direct");
     auto cs_indirect = compile_bake_shader(
         "data://shaders_includes/bake/lightmap_baker_indirect.comp", "bake_indirect");
-    auto cs_ao = compile_bake_shader(
-        "data://shaders_includes/bake/ao_baker.comp", "bake_ao");
-    auto cs_denoise = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_denoise.comp", "bake_denoise");
-    auto cs_dilate = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_dilate.comp", "bake_dilate");
+    auto cs_ao = compile_bake_shader("data://shaders_includes/bake/ao_baker.comp", "bake_ao");
+    auto cs_denoise =
+        compile_bake_shader("data://shaders_includes/bake/lightmap_denoise.comp", "bake_denoise");
+    auto cs_dilate =
+        compile_bake_shader("data://shaders_includes/bake/lightmap_dilate.comp", "bake_dilate");
 
     if (!cs_gbuf.valid || !cs_direct.valid)
     {
@@ -420,8 +487,14 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             // --- G-buffer rasterization ---
             ALOG_INFO("lightmap_baker: dispatching G-buffer rasterization");
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_gbuf.data.m_pipeline);
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                    cs_gbuf.data.m_pipeline_layout, 0, 1, &ds_gbuf, 0, nullptr);
+            vkCmdBindDescriptorSets(cmd,
+                                    VK_PIPELINE_BIND_POINT_COMPUTE,
+                                    cs_gbuf.data.m_pipeline_layout,
+                                    0,
+                                    1,
+                                    &ds_gbuf,
+                                    0,
+                                    nullptr);
             vkCmdDispatch(cmd, tri_wg, 1, 1);
             insert_compute_barrier(cmd);
 
@@ -430,8 +503,13 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             {
                 ALOG_INFO("lightmap_baker: dispatching direct lighting");
                 vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_direct.data.m_pipeline);
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                        cs_direct.data.m_pipeline_layout, 0, 1, &ds_direct, 0,
+                vkCmdBindDescriptorSets(cmd,
+                                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        cs_direct.data.m_pipeline_layout,
+                                        0,
+                                        1,
+                                        &ds_direct,
+                                        0,
                                         nullptr);
                 vkCmdDispatch(cmd, wg_x, wg_y, 1);
                 insert_compute_barrier(cmd);
@@ -440,23 +518,35 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             // --- Indirect bounces ---
             if (settings.bake_indirect && !cs_indirect.valid)
             {
-                ALOG_WARN("lightmap_baker: indirect bake requested but shader failed to compile, skipping");
+                ALOG_WARN(
+                    "lightmap_baker: indirect bake requested but shader failed to compile, "
+                    "skipping");
             }
             if (settings.bake_indirect && cs_indirect.valid)
             {
                 for (uint32_t bounce = 0; bounce < settings.bounce_count; ++bounce)
                 {
                     ALOG_INFO("lightmap_baker: dispatching indirect bounce {}/{}",
-                              bounce + 1, settings.bounce_count);
+                              bounce + 1,
+                              settings.bounce_count);
 
                     uint32_t seed = bounce * 7919u + 12347u;
-                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      cs_indirect.data.m_pipeline);
-                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                            cs_indirect.data.m_pipeline_layout, 0, 1, &ds_indirect,
-                                            0, nullptr);
-                    vkCmdPushConstants(cmd, cs_indirect.data.m_pipeline_layout,
-                                       VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &seed);
+                    vkCmdBindPipeline(
+                        cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_indirect.data.m_pipeline);
+                    vkCmdBindDescriptorSets(cmd,
+                                            VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            cs_indirect.data.m_pipeline_layout,
+                                            0,
+                                            1,
+                                            &ds_indirect,
+                                            0,
+                                            nullptr);
+                    vkCmdPushConstants(cmd,
+                                       cs_indirect.data.m_pipeline_layout,
+                                       VK_SHADER_STAGE_COMPUTE_BIT,
+                                       0,
+                                       sizeof(uint32_t),
+                                       &seed);
                     vkCmdDispatch(cmd, wg_x, wg_y, 1);
                     insert_compute_barrier(cmd);
                 }
@@ -465,17 +555,28 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             // --- AO ---
             if (settings.bake_ao && !cs_ao.valid)
             {
-                ALOG_WARN("lightmap_baker: AO bake requested but shader failed to compile, skipping");
+                ALOG_WARN(
+                    "lightmap_baker: AO bake requested but shader failed to compile, skipping");
             }
             if (settings.bake_ao && cs_ao.valid)
             {
                 ALOG_INFO("lightmap_baker: dispatching AO");
                 uint32_t ao_seed = 91813u;
                 vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_ao.data.m_pipeline);
-                vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                        cs_ao.data.m_pipeline_layout, 0, 1, &ds_ao, 0, nullptr);
-                vkCmdPushConstants(cmd, cs_ao.data.m_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT,
-                                   0, sizeof(uint32_t), &ao_seed);
+                vkCmdBindDescriptorSets(cmd,
+                                        VK_PIPELINE_BIND_POINT_COMPUTE,
+                                        cs_ao.data.m_pipeline_layout,
+                                        0,
+                                        1,
+                                        &ds_ao,
+                                        0,
+                                        nullptr);
+                vkCmdPushConstants(cmd,
+                                   cs_ao.data.m_pipeline_layout,
+                                   VK_SHADER_STAGE_COMPUTE_BIT,
+                                   0,
+                                   sizeof(uint32_t),
+                                   &ao_seed);
                 vkCmdDispatch(cmd, wg_x, wg_y, 1);
                 insert_compute_barrier(cmd);
             }
@@ -483,19 +584,26 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             // --- Denoise ---
             if (!cs_denoise.valid && settings.denoise_iterations > 0)
             {
-                ALOG_WARN("lightmap_baker: denoise requested but shader failed to compile, skipping");
+                ALOG_WARN(
+                    "lightmap_baker: denoise requested but shader failed to compile, skipping");
             }
             if (cs_denoise.valid)
             {
                 for (uint32_t d = 0; d < settings.denoise_iterations; ++d)
                 {
                     ALOG_INFO("lightmap_baker: dispatching denoise pass {}/{}",
-                              d + 1, settings.denoise_iterations);
-                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      cs_denoise.data.m_pipeline);
-                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                            cs_denoise.data.m_pipeline_layout, 0, 1, &ds_denoise,
-                                            0, nullptr);
+                              d + 1,
+                              settings.denoise_iterations);
+                    vkCmdBindPipeline(
+                        cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_denoise.data.m_pipeline);
+                    vkCmdBindDescriptorSets(cmd,
+                                            VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            cs_denoise.data.m_pipeline_layout,
+                                            0,
+                                            1,
+                                            &ds_denoise,
+                                            0,
+                                            nullptr);
                     vkCmdDispatch(cmd, wg_x, wg_y, 1);
                     insert_compute_barrier(cmd);
                 }
@@ -508,8 +616,13 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                 copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                 copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                 copy.extent = {W, H, 1};
-                vkCmdCopyImage(cmd, img_denoise_tmp->image(), VK_IMAGE_LAYOUT_GENERAL,
-                               img_lightmap->image(), VK_IMAGE_LAYOUT_GENERAL, 1, &copy);
+                vkCmdCopyImage(cmd,
+                               img_denoise_tmp->image(),
+                               VK_IMAGE_LAYOUT_GENERAL,
+                               img_lightmap->image(),
+                               VK_IMAGE_LAYOUT_GENERAL,
+                               1,
+                               &copy);
                 insert_compute_barrier(cmd);
             }
 
@@ -520,11 +633,16 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                 for (int d = 0; d < dilate_count; ++d)
                 {
                     ALOG_INFO("lightmap_baker: dispatching dilate pass {}/{}", d + 1, dilate_count);
-                    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                      cs_dilate.data.m_pipeline);
-                    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                            cs_dilate.data.m_pipeline_layout, 0, 1, &ds_dilate,
-                                            0, nullptr);
+                    vkCmdBindPipeline(
+                        cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_dilate.data.m_pipeline);
+                    vkCmdBindDescriptorSets(cmd,
+                                            VK_PIPELINE_BIND_POINT_COMPUTE,
+                                            cs_dilate.data.m_pipeline_layout,
+                                            0,
+                                            1,
+                                            &ds_dilate,
+                                            0,
+                                            nullptr);
                     vkCmdDispatch(cmd, wg_x, wg_y, 1);
                     insert_compute_barrier(cmd);
 
@@ -533,8 +651,13 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                     copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                     copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                     copy.extent = {W, H, 1};
-                    vkCmdCopyImage(cmd, img_denoise_tmp->image(), VK_IMAGE_LAYOUT_GENERAL,
-                                   img_lightmap->image(), VK_IMAGE_LAYOUT_GENERAL, 1, &copy);
+                    vkCmdCopyImage(cmd,
+                                   img_denoise_tmp->image(),
+                                   VK_IMAGE_LAYOUT_GENERAL,
+                                   img_lightmap->image(),
+                                   VK_IMAGE_LAYOUT_GENERAL,
+                                   1,
+                                   &copy);
                     insert_compute_barrier(cmd);
                 }
             }
@@ -551,8 +674,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     {
         // Create readback image (linear tiling, host-visible)
         VkExtent3D extent{W, H, 1};
-        auto dst_ci = vk_utils::make_image_create_info(VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
+        auto dst_ci = vk_utils::make_image_create_info(
+            VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
         dst_ci.tiling = VK_IMAGE_TILING_LINEAR;
 
         VmaAllocationCreateInfo dst_aci{};
@@ -569,32 +692,49 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                 VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
                 // Transition lightmap for transfer source
-                vk_utils::make_insert_image_memory_barrier(
-                    cmd, img_lightmap->image(), VK_ACCESS_SHADER_WRITE_BIT,
-                    VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, range);
+                vk_utils::make_insert_image_memory_barrier(cmd,
+                                                           img_lightmap->image(),
+                                                           VK_ACCESS_SHADER_WRITE_BIT,
+                                                           VK_ACCESS_TRANSFER_READ_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                           range);
 
                 // Transition readback image
-                vk_utils::make_insert_image_memory_barrier(
-                    cmd, readback_img.image(), 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, range);
+                vk_utils::make_insert_image_memory_barrier(cmd,
+                                                           readback_img.image(),
+                                                           0,
+                                                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                           VK_IMAGE_LAYOUT_UNDEFINED,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                           range);
 
                 VkImageCopy copy_region{};
                 copy_region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                 copy_region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                 copy_region.extent = extent;
 
-                vkCmdCopyImage(cmd, img_lightmap->image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               readback_img.image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                vkCmdCopyImage(cmd,
+                               img_lightmap->image(),
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readback_img.image(),
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                               1,
                                &copy_region);
 
-                vk_utils::make_insert_image_memory_barrier(
-                    cmd, readback_img.image(), VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_HOST_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_HOST_BIT, range);
+                vk_utils::make_insert_image_memory_barrier(cmd,
+                                                           readback_img.image(),
+                                                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                           VK_ACCESS_HOST_READ_BIT,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                           VK_PIPELINE_STAGE_HOST_BIT,
+                                                           range);
             });
 
         auto* mapped = readback_img.map();
@@ -618,8 +758,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         m_ao_data.resize(ao_byte_size);
 
         VkExtent3D extent{W, H, 1};
-        auto dst_ci =
-            vk_utils::make_image_create_info(VK_FORMAT_R16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
+        auto dst_ci = vk_utils::make_image_create_info(
+            VK_FORMAT_R16_SFLOAT, VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
         dst_ci.tiling = VK_IMAGE_TILING_LINEAR;
 
         VmaAllocationCreateInfo dst_aci{};
@@ -635,30 +775,48 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             {
                 VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
-                vk_utils::make_insert_image_memory_barrier(
-                    cmd, img_ao->image(), VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-                    VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, range);
+                vk_utils::make_insert_image_memory_barrier(cmd,
+                                                           img_ao->image(),
+                                                           VK_ACCESS_SHADER_WRITE_BIT,
+                                                           VK_ACCESS_TRANSFER_READ_BIT,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                           range);
 
-                vk_utils::make_insert_image_memory_barrier(
-                    cmd, readback_img.image(), 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, range);
+                vk_utils::make_insert_image_memory_barrier(cmd,
+                                                           readback_img.image(),
+                                                           0,
+                                                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                           VK_IMAGE_LAYOUT_UNDEFINED,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                           range);
 
                 VkImageCopy copy_region{};
                 copy_region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                 copy_region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
                 copy_region.extent = extent;
 
-                vkCmdCopyImage(cmd, img_ao->image(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               readback_img.image(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                vkCmdCopyImage(cmd,
+                               img_ao->image(),
+                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               readback_img.image(),
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                               1,
                                &copy_region);
 
-                vk_utils::make_insert_image_memory_barrier(
-                    cmd, readback_img.image(), VK_ACCESS_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_HOST_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_HOST_BIT, range);
+                vk_utils::make_insert_image_memory_barrier(cmd,
+                                                           readback_img.image(),
+                                                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                           VK_ACCESS_HOST_READ_BIT,
+                                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                           VK_IMAGE_LAYOUT_GENERAL,
+                                                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                           VK_PIPELINE_STAGE_HOST_BIT,
+                                                           range);
             });
 
         auto* mapped = readback_img.map();
@@ -682,7 +840,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     {
         if (!vfs::save_file(settings.output_lightmap, m_lightmap_data))
         {
-            ALOG_ERROR("lightmap_baker: failed to save lightmap to {}", settings.output_lightmap.str());
+            ALOG_ERROR("lightmap_baker: failed to save lightmap to {}",
+                       settings.output_lightmap.str());
         }
         else
         {
@@ -711,17 +870,19 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             uint32_t exp = (h >> 10) & 0x1F;
             uint32_t mant = h & 0x3FF;
             if (exp == 0)
+            {
                 return sign ? -0.0f : 0.0f;
+            }
             if (exp == 31)
+            {
                 return sign ? -INFINITY : INFINITY;
+            }
             float f = std::ldexp(static_cast<float>(mant | 0x400), static_cast<int>(exp) - 25);
             return sign ? -f : f;
         };
 
         auto to_u8 = [](float v) -> uint8_t
-        {
-            return static_cast<uint8_t>(std::min(255.0f, std::max(0.0f, v * 255.0f)));
-        };
+        { return static_cast<uint8_t>(std::min(255.0f, std::max(0.0f, v * 255.0f))); };
 
         if (!settings.output_lightmap.empty() && !m_lightmap_data.empty())
         {
@@ -739,9 +900,11 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             auto rel = std::string(png_rid.relative());
             auto dot = rel.rfind('.');
             if (dot != std::string::npos)
+            {
                 rel = rel.substr(0, dot) + ".png";
-            auto png_path = glob::glob_state().getr_vfs().real_path(
-                vfs::rid(png_rid.mount_point(), rel));
+            }
+            auto png_path =
+                glob::glob_state().getr_vfs().real_path(vfs::rid(png_rid.mount_point(), rel));
             if (png_path)
             {
                 save_png(APATH(png_path.value()).str(), rgba8.data(), W, H);
@@ -765,9 +928,11 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             auto rel = std::string(png_rid.relative());
             auto dot = rel.rfind('.');
             if (dot != std::string::npos)
+            {
                 rel = rel.substr(0, dot) + ".png";
-            auto png_path = glob::glob_state().getr_vfs().real_path(
-                vfs::rid(png_rid.mount_point(), rel));
+            }
+            auto png_path =
+                glob::glob_state().getr_vfs().real_path(vfs::rid(png_rid.mount_point(), rel));
             if (png_path)
             {
                 save_png(APATH(png_path.value()).str(), rgba8.data(), W, H);
@@ -789,7 +954,11 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     result.success = true;
 
     ALOG_INFO("lightmap_baker: bake complete in {:.1f}ms ({}x{}, {} tris, {} nodes)",
-              result.bake_time_ms, W, H, result.total_triangles, result.total_nodes);
+              result.bake_time_ms,
+              W,
+              H,
+              result.total_triangles,
+              result.total_nodes);
 
     return result;
 }

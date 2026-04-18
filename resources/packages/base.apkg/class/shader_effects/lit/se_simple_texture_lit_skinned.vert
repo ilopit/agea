@@ -1,12 +1,9 @@
 #version 450
 #extension GL_GOOGLE_include_directive: enable
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_buffer_reference_uvec2 : require
 
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
-#include "bda_macros_main.glsl"
+#include "descriptor_bindings_common.glsl"
 #include "common_vert_skinned.glsl"
 
 void main()

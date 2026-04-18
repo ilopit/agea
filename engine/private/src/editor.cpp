@@ -372,7 +372,8 @@ game_editor::enter_play_mode()
     m_saved_position = m_camera_data.position;
     m_saved_pitch = m_pitch;
     m_saved_yaw = m_yaw;
-    m_saved_grid_visible = glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid;
+    m_saved_grid_visible =
+        glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid;
     glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid = false;
 
     m_active_camera = nullptr;
@@ -455,7 +456,8 @@ game_editor::exit_play_mode()
     m_pitch = m_saved_pitch;
     m_yaw = m_saved_yaw;
     m_updated = true;
-    glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid = m_saved_grid_visible;
+    glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid =
+        m_saved_grid_visible;
 
     m_mode = editor_mode::editor;
 }

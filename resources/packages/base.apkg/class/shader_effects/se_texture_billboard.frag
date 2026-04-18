@@ -1,19 +1,16 @@
 #version 450
 #extension GL_GOOGLE_include_directive: enable
-#extension GL_EXT_buffer_reference : require
-#extension GL_EXT_buffer_reference2 : require
-#extension GL_EXT_buffer_reference_uvec2 : require
 
 #include "gpu_types/gpu_push_constants_main.h"
 layout(push_constant) uniform Constants { push_constants_main obj; } constants;
-#include "bda_macros_main.glsl"
+#include "descriptor_bindings_common.glsl"
 #include "common_frag.glsl"
 
 #include "gpu_types/simple_texture_material__gpu.h"
-layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
+layout(set = KGPU_materials_descriptor_sets, binding = 0, scalar) readonly buffer MaterialBuffer
+{
     simple_texture_material__gpu objects[];
-};
-#define dyn_material_buffer BdaMaterialBuffer(constants.obj.bdaf_material)
+} dyn_material_buffer;
 
 void main()
 {

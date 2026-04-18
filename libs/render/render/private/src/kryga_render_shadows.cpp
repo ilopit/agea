@@ -161,6 +161,19 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
+    // Set 1: objects, instance_slots, shadow_data — built once per frame.
+    if (m_shadow_objects_set != VK_NULL_HANDLE)
+    {
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                se->m_pipeline_layout,
+                                KGPU_objects_descriptor_sets,
+                                1,
+                                &m_shadow_objects_set,
+                                0,
+                                nullptr);
+    }
+
     // Shadow push constants with cascade index
     gpu::push_constants_shadow pc = m_shadow_pc;
     pc.instance_base = 0;
@@ -256,6 +269,18 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
     }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
+
+    if (m_shadow_objects_set != VK_NULL_HANDLE)
+    {
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                se->m_pipeline_layout,
+                                KGPU_objects_descriptor_sets,
+                                1,
+                                &m_shadow_objects_set,
+                                0,
+                                nullptr);
+    }
 
     // Shadow push constants
     gpu::push_constants_shadow pc = m_shadow_pc;
@@ -376,10 +401,10 @@ vulkan_render::select_shadowed_lights()
         float s_near = 0.1f;
         float s_far = light->gpu_data.radius;
         shadow.shadow_params =
-            glm::vec4(0.005f,                                           // bias
-                      0.02f,                                            // normal_bias
+            glm::vec4(0.005f,                                                       // bias
+                      0.02f,                                                        // normal_bias
                       1.0f / static_cast<float>(m_render_config.shadows.map_size),  // texel_size
-                      s_near                                            // near_plane
+                      s_near                                                        // near_plane
             );
         shadow.far_plane = s_far;
 

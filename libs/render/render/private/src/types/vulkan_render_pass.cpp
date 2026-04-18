@@ -329,7 +329,7 @@ render_pass::are_bindings_finalized() const
 bool
 render_pass::validate_resources(const vulkan_render_graph& graph) const
 {
-    return m_binding_table.validate_resources(graph, m_shader_effects, m_name.cstr());
+    return m_binding_table.validate_resources(graph, m_name.cstr());
 }
 
 void

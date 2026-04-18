@@ -29,15 +29,15 @@ struct sh_probe
 // Probe grid configuration (scalar layout)
 struct probe_grid_config
 {
-    vec3 grid_min;         // world-space AABB minimum
-    float spacing;         // distance between probes
-    vec3 grid_max;         // world-space AABB maximum
-    uint probe_count;      // total number of active probes
-    uint grid_size_x;      // probes per axis
+    vec3 grid_min;     // world-space AABB minimum
+    float spacing;     // distance between probes
+    vec3 grid_max;     // world-space AABB maximum
+    uint probe_count;  // total number of active probes
+    uint grid_size_x;  // probes per axis
     uint grid_size_y;
     uint grid_size_z;
 };
 
 GPU_END_NAMESPACE
 
-#endif // GPU_PROBE_TYPES_H
+#endif  // GPU_PROBE_TYPES_H

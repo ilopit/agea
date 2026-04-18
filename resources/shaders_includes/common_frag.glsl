@@ -39,6 +39,14 @@ vec4 sample_bindless_texture(uint texture_idx, uint sampler_idx, vec2 uv)
         uv);
 }
 
+// Interleaved Gradient Noise (Jimenez 2014) — cheap screen-space noise in [0,1).
+// Used for dithering 8-bit output to mask gradient banding.
+vec3 apply_dither(vec3 color, vec2 pixel)
+{
+    float n = fract(52.9829189 * fract(0.06711056 * pixel.x + 0.00583715 * pixel.y));
+    return color + (n - 0.5) / 255.0;
+}
+
 // Cluster lighting helper functions
 uint getDepthSlice(float viewDepth)
 {

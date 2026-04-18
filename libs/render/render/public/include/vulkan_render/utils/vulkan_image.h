@@ -25,7 +25,8 @@ public:
            VmaAllocationCreateInfo aci,
            int mips_level = 0);
 
-    static vulkan_image create(VkImage, VkFormat format = VK_FORMAT_UNDEFINED);
+    static vulkan_image
+    create(VkImage, VkFormat format = VK_FORMAT_UNDEFINED);
 
     KRG_gen_class_non_copyable(vulkan_image);
 
@@ -115,13 +116,13 @@ private:
 
 }  // namespace kryga::render::vk_utils
 
-#define VK_CHECK(x)                                              \
-    do                                                           \
-    {                                                            \
-        VkResult err = x;                                        \
-        if (err)                                                 \
-        {                                                        \
-            fprintf(stderr, "VK_CHECK failed: %d\n", (int)err);  \
-            KRG_never("Vulkan failed!");                         \
-        }                                                        \
+#define VK_CHECK(x)                                             \
+    do                                                          \
+    {                                                           \
+        VkResult err = x;                                       \
+        if (err)                                                \
+        {                                                       \
+            fprintf(stderr, "VK_CHECK failed: %d\n", (int)err); \
+            KRG_never("Vulkan failed!");                        \
+        }                                                       \
     } while (0)

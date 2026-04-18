@@ -144,7 +144,7 @@ vulkan_render::draw_headless()
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
-    render_frame(cmd, current_frame, 0, m_width, m_height);
+    render_frame(cmd, current_frame, device->get_current_frame_index(), m_width, m_height);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
@@ -167,7 +167,6 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     prepare_draw_resources(current_frame);
 
     m_current_frame = &current_frame;
-    m_bda_material_bound = false;
     m_render_graph.set_frame_context(swapchain_image_index, width, height);
 
     // Build descriptor set for cluster culling
@@ -285,17 +284,7 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
         }
     }
 
-    m_render_graph.execute(
-        cmd, glob::glob_state().getr_render_device().get_current_frame_index(), width, height);
-
-    // Verify per-draw BDA addresses were set this frame (if any objects were actually drawn)
-    // m_all_draws includes culled objects; only check if at least one object passed culling
-    if (m_all_draws > m_culled_draws)
-    {
-        KRG_check(m_bda_material_bound,
-                  "BDA material address was never set this frame — "
-                  "bind_material() must be called before drawing objects");
-    }
+    m_render_graph.execute(cmd, swapchain_image_index, width, height);
 }
 
 void
@@ -382,45 +371,6 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         m_clusters_dirty = false;
     }
 
-    // Bind BDA resources — validates each buffer is available this frame
-    auto* main_pass = get_render_pass(AID("main"));
-    if (main_pass && main_pass->are_bindings_finalized())
-    {
-        main_pass->begin_frame();
-        main_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-        main_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-        main_pass->bind(AID("dyn_directional_lights_buffer"),
-                        current_frame.buffers.directional_lights);
-        main_pass->bind(AID("dyn_gpu_universal_light_data"),
-                        current_frame.buffers.universal_lights);
-        main_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
-        main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
-        main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
-        main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
-        main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
-        main_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
-        main_pass->bind(AID("dyn_probe_data"), current_frame.buffers.probe_data);
-        main_pass->bind(AID("dyn_probe_grid"), current_frame.buffers.probe_grid);
-        main_pass->bind(AID("dyn_material_buffer"), current_frame.buffers.materials);
-
-        KRG_check(static_cast<const render_pass*>(main_pass)->bindings().validate_bda_bound(),
-                  "Main pass: not all BDA resources bound this frame");
-    }
-
-    // Selection mask pass BDA binding
-    auto* mask_pass_ptr = get_render_pass(AID("selection_mask"));
-    if (mask_pass_ptr && mask_pass_ptr->are_bindings_finalized())
-    {
-        mask_pass_ptr->begin_frame();
-        mask_pass_ptr->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
-        mask_pass_ptr->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
-        mask_pass_ptr->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
-        mask_pass_ptr->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
-
-        KRG_check(static_cast<const render_pass*>(mask_pass_ptr)->bindings().validate_bda_bound(),
-                  "Selection mask pass: not all BDA resources bound this frame");
-    }
-
     // Prepare debug light visualization data (must happen before rendering)
     prepare_debug_light_data(current_frame);
 
@@ -435,32 +385,81 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Upload shadow data
     upload_shadow_data(current_frame);
 
-    // Fill BDA addresses directly in per-pass push constants
+    // Build per-frame descriptor sets for the main pass (set 0 = camera, set 1 = SSBOs).
+    // selection_mask pass shares an identical binding-table layout (cached), so the
+    // same sets bind cleanly to either pipeline.
+    auto* main_pass = get_render_pass(AID("main"));
+    KRG_check(main_pass && main_pass->are_bindings_finalized(),
+              "Main pass binding table must be finalized");
+
+    main_pass->begin_frame();
+    main_pass->bind(AID("dyn_camera_data"), current_frame.buffers.dynamic_data);
+    main_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+    main_pass->bind(AID("dyn_directional_lights_buffer"), current_frame.buffers.directional_lights);
+    main_pass->bind(AID("dyn_gpu_universal_light_data"), current_frame.buffers.universal_lights);
+    main_pass->bind(AID("dyn_cluster_light_counts"), current_frame.buffers.cluster_counts);
+    main_pass->bind(AID("dyn_cluster_light_indices"), current_frame.buffers.cluster_indices);
+    main_pass->bind(AID("dyn_cluster_config"), current_frame.buffers.cluster_config);
+    main_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+    main_pass->bind(AID("dyn_bone_matrices"), current_frame.buffers.bone_matrices);
+    main_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+    main_pass->bind(AID("dyn_probe_data"), current_frame.buffers.probe_data);
+    main_pass->bind(AID("dyn_probe_grid"), current_frame.buffers.probe_grid);
+
+    auto& dyn_alloc = *current_frame.frame->m_dynamic_descriptor_allocator;
+    m_main_global_set = main_pass->get_descriptor_set(KGPU_global_descriptor_sets, dyn_alloc);
+    m_main_objects_set = main_pass->get_descriptor_set(KGPU_objects_descriptor_sets, dyn_alloc);
+
+    // Per-material-type set 3 (material buffer): one descriptor per active material type,
+    // pointing at the type's segment in the shared materials buffer.
     {
-        auto& b = current_frame.buffers;
+        auto vk_dev = glob::glob_state().getr_render_device().vk_device();
+        VkDescriptorSetLayout mat_layout =
+            main_pass->get_set_layout(KGPU_materials_descriptor_sets);
+        m_material_sets.assign(m_materials_layout.get_segments_size(), VK_NULL_HANDLE);
 
-        // Main pass push constants — all BDA addresses (as uvec2 for mobile compatibility)
-        m_obj_config.bdag_camera = gpu::make_bda_addr(b.dynamic_data.device_address());
-        m_obj_config.bdag_objects = gpu::make_bda_addr(b.objects.device_address());
-        m_obj_config.bdag_directional_lights = gpu::make_bda_addr(b.directional_lights.device_address());
-        m_obj_config.bdag_universal_lights = gpu::make_bda_addr(b.universal_lights.device_address());
-        m_obj_config.bdag_cluster_counts = gpu::make_bda_addr(b.cluster_counts.device_address());
-        m_obj_config.bdag_cluster_indices = gpu::make_bda_addr(b.cluster_indices.device_address());
-        m_obj_config.bdag_cluster_config = gpu::make_bda_addr(b.cluster_config.device_address());
-        m_obj_config.bdag_instance_slots = gpu::make_bda_addr(b.instance_slots.device_address());
-        m_obj_config.bdag_bone_matrices = gpu::make_bda_addr(b.bone_matrices.device_address());
-        m_obj_config.bdag_shadow_data = gpu::make_bda_addr(b.shadow_data.device_address());
-        m_obj_config.bdag_probe_data = gpu::make_bda_addr(b.probe_data.device_address());
-        m_obj_config.bdag_probe_grid = gpu::make_bda_addr(b.probe_grid.device_address());
-        // bdaf_material set per-draw in bind_material()
+        for (uint64_t i = 0; i < m_materials_layout.get_segments_size(); ++i)
+        {
+            auto& seg = m_materials_layout.at(i);
+            if (!seg.in_usage)
+            {
+                continue;
+            }
 
-        // Shadow pass push constants
-        m_shadow_pc.bdag_objects = gpu::make_bda_addr(b.objects.device_address());
-        m_shadow_pc.bdag_instance_slots = gpu::make_bda_addr(b.instance_slots.device_address());
-        m_shadow_pc.bdag_shadow_data = gpu::make_bda_addr(b.shadow_data.device_address());
+            VkDescriptorSet set = VK_NULL_HANDLE;
+            if (!dyn_alloc.allocate(&set, mat_layout))
+            {
+                continue;
+            }
 
-        // Grid pass push constants
-        m_grid_pc.bdag_camera = gpu::make_bda_addr(b.dynamic_data.device_address());
+            VkDescriptorBufferInfo info{};
+            info.buffer = current_frame.buffers.materials.buffer();
+            info.offset = seg.offset;
+            info.range = seg.get_allocated_size();
+
+            VkWriteDescriptorSet write{};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = set;
+            write.dstBinding = 0;
+            write.dstArrayElement = 0;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            write.pBufferInfo = &info;
+
+            vkUpdateDescriptorSets(vk_dev, 1, &write, 0, nullptr);
+            m_material_sets[i] = set;
+        }
+    }
+
+    // Shadow pass set 1 (objects, instance_slots, shadow_data — used by all shadow draws).
+    auto* shadow_pass = m_shadow_passes[0].get();
+    if (shadow_pass && shadow_pass->are_bindings_finalized())
+    {
+        shadow_pass->begin_frame();
+        shadow_pass->bind(AID("dyn_object_buffer"), current_frame.buffers.objects);
+        shadow_pass->bind(AID("dyn_instance_slots"), current_frame.buffers.instance_slots);
+        shadow_pass->bind(AID("dyn_shadow_data"), current_frame.buffers.shadow_data);
+        m_shadow_objects_set = shadow_pass->get_descriptor_set(KGPU_objects_descriptor_sets, dyn_alloc);
     }
 }
 
@@ -591,17 +590,13 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 void
 vulkan_render::schd_update_texture(texture_data* tex)
 {
-    auto& q = get_current_frame_transfer_data();
-    q.uploads.textures_queue.emplace_back(tex);
+    m_global_textures_queue.emplace_back(tex);
 }
 
 void
 vulkan_render::update_bindless_descriptors()
 {
-    auto& current_frame = get_current_frame_transfer_data();
-    auto& textures_queue = current_frame.uploads.textures_queue;
-
-    if (textures_queue.empty())
+    if (m_global_textures_queue.empty())
     {
         return;
     }
@@ -610,10 +605,10 @@ vulkan_render::update_bindless_descriptors()
 
     std::vector<VkDescriptorImageInfo> image_infos;
     std::vector<VkWriteDescriptorSet> writes;
-    image_infos.reserve(textures_queue.get_size());
-    writes.reserve(textures_queue.get_size());
+    image_infos.reserve(m_global_textures_queue.get_size());
+    writes.reserve(m_global_textures_queue.get_size());
 
-    for (auto* tex : textures_queue)
+    for (auto* tex : m_global_textures_queue)
     {
         if (!tex || !tex->image_view)
         {
@@ -643,7 +638,7 @@ vulkan_render::update_bindless_descriptors()
             device->vk_device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
-    textures_queue.clear();
+    m_global_textures_queue.clear();
 }
 
 }  // namespace render
