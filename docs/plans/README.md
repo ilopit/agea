@@ -24,6 +24,7 @@ For scope discussion: 01 + 04 + 06.
 
 ## Relationship to other repo docs
 
+- [`../issues/`](../issues/) — known issues and technical debt tracking, per subsystem. Referenced from Doc 04.
 - `CLAUDE.md` — engine architecture reference for contributors. Kept separate; updates there are not automatic when these docs change.
 
 ## Decisions already locked
