@@ -1,7 +1,5 @@
 # 02 — Target Player & Market
 
-Rewritten for the voxel sudoku genre. Previous match-3 audience analysis is discarded.
-
 ## Who the player is
 
 ### Primary — "Picross / Sudoku regulars"
@@ -28,13 +26,11 @@ Rewritten for the voxel sudoku genre. Previous match-3 audience analysis is disc
 
 ## What the player is *not*
 
-- Not the match-3 audience. Royal Match retention tactics (streaks, lives, FOMO events) will repel this audience.
+- Not chasing streaks, lives, or FOMO events — those tactics repel this audience.
 - Not a competitive or social gamer. No leaderboards needed.
 - Not a graphics enthusiast. They will not tolerate a 180 MB download for a puzzle game.
 
-## Regional strategy — revised
-
-Match-3 emerging-markets-first plan does not fit this genre.
+## Regional strategy
 
 ### Likely primary regions
 
@@ -47,11 +43,11 @@ Match-3 emerging-markets-first plan does not fit this genre.
 - **France, Italy, Spain** — localize if volume warrants.
 - **Nordics** — small but high-ARPU puzzle audience.
 
-### Deprioritized vs. previous plan
+### Deprioritized regions
 
 - India, Brazil, Indonesia, Philippines, Mexico.
 - Volume exists, but genre penetration is low and willingness to pay for a niche puzzle is low.
-- Not excluded — the BDA min-spec is already narrowing the device floor in these markets, so coincidental reach is fine; targeted launch marketing is not.
+- Not excluded — the BDA min-spec narrows the device floor in these markets anyway, so coincidental reach is fine; targeted launch marketing is not.
 
 ### Language priorities
 
@@ -66,7 +62,7 @@ Driven by the engine min-spec (Vulkan 1.2 + BDA):
 - 3+ GB RAM.
 - Roughly: Snapdragon 855+ / Exynos 990+ class devices.
 
-This is mid-to-upper-tier Android. It aligns naturally with the developed-markets demographic we're targeting. It would have been a problem for the match-3 plan; for voxel sudoku it is close to a non-issue.
+This is mid-to-upper-tier Android. It aligns naturally with the developed-markets demographic we're targeting, so the min-spec is close to a non-issue for this audience.
 
 ## Comparable titles
 

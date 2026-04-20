@@ -8,8 +8,8 @@ Created: 2026-04-20
 
 | # | Doc | Purpose |
 |---|-----|---------|
-| 01 | [Vision & pivot](01-vision.md) | Product + engine vision. Genre decision. What success looks like. |
-| 02 | [Target player & market](02-target-player.md) | Audience profile, regions, comps. Rewritten for voxel sudoku. |
+| 01 | [Vision](01-vision.md) | Product + engine vision. What success looks like. |
+| 02 | [Target player & market](02-target-player.md) | Audience profile, regions, comps. |
 | 03 | [Game design](03-game-design.md) | Core mechanics, progression, meta, monetization shape. |
 | 04 | [Engine roadmap](04-engine-roadmap.md) | What to build, defer, cut — keyed to the engine audit. |
 | 05 | [Mobile port](05-mobile-port.md) | Mobile client strategy. Cross-references `plans/android_port.md`. |
@@ -31,8 +31,8 @@ For scope discussion: 01 + 04 + 06.
 
 ## Decisions already locked
 
-- **Genre:** simplified voxel sudoku. Not match-3. Not TBS.
-- **`packages/tbs`** (hex grid): out of scope for the first game. Treat as legacy; removal tracked in Doc 04.
+- **Genre:** simplified voxel sudoku.
+- **`packages/tbs`** (hex grid): out of scope for the first game. Exclusion tracked in Doc 04.
 - **Render API:** Vulkan 1.2 + BDA only. No GL/ES fallback.
 - **First platform:** Android. iOS deferred (Doc 07).
 - **Engine reuse goal:** kryga powers this game and future casual puzzle titles.

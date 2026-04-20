@@ -23,10 +23,8 @@ Living list. Update as decisions are made or risks materialize.
 |------|------------|--------|------------|
 | Voxel sudoku TAM smaller than hoped → install ceiling is low | High | Medium | Acknowledge up-front: this project's success is shipping + learning, not revenue. See Doc 01 success definition. |
 | Organic discovery fails → 0 installs despite good product | Medium | High | Invest in store-page presentation (screenshots, trailer) in M5. Plan at least one Reddit / HN / puzzle-community post around launch. |
-| Match-3 audience thinking leaks into later decisions | Medium | Medium | Any audience-adjacent decision goes through Doc 02. If Doc 02 doesn't justify it, don't do it. |
 | Monetization model mismatch (freemium vs. premium) | Medium | Medium | Delay binding decision until soft launch data (Doc 03). Soft-launch cheap → iterate. |
 | Tutorial failure — new players don't grasp the mechanic | Medium | High | External playtest at M3 exit gate. If testers fail, redesign tutorial before M4. |
-| Genre-mismatched soft-launch markets (IN/BR/PH from old plan) if accidentally carried over | Low | Medium | Soft-launch markets explicitly JP + DE in Doc 06. Delete references to IN/BR/PH from any future doc. |
 
 ### Solo-dev
 
@@ -57,7 +55,7 @@ Each has a latest-sensible-decision deadline. Decide by then or commit to defaul
    - Default: shape gallery + palette unlocks (Doc 03).
    - Decide by: M4 start.
 5. **Target regions for soft launch.**
-   - Recommended: JP + DE (Doc 06). Previous IN/BR/PH plan is retired.
+   - Recommended: JP + DE (Doc 06).
    - Decide by: M5.
 
 ### Technical

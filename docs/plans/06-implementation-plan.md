@@ -139,7 +139,7 @@ Scope:
 
 Scope:
 
-- Open testing track or limited-region production launch — recommend JP + DE as first soft-launch markets for this genre (see Doc 02). Diverges from the previous IN/BR/PH plan.
+- Open testing track or limited-region production launch — recommend JP + DE as first soft-launch markets for this genre (see Doc 02).
 - Monitor crash reports, Play Console stats, store reviews.
 - Fix crashes and blockers. Do **not** add features.
 - Revisit monetization model if conversion data undermines the choice made in M3–M5.

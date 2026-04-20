@@ -1,4 +1,4 @@
-# 01 — Vision & Pivot
+# 01 — Vision
 
 ## One-liner
 
@@ -13,33 +13,22 @@ Two intertwined products built by a solo developer:
 
 Both ship together. The engine is the primary long-term asset; the game is the proof that the engine can ship.
 
-## Pivot decision (as of 2026-04-20)
-
-Earlier product writing framed this as a 3D low-poly match-3 targeting Women 30–55 in emerging markets. **That framing is dropped.** The game is a simplified voxel sudoku.
-
-Consequences:
-
-- Match-3 comps (Royal Match, Toon Blast, Gardenscapes) no longer apply.
-- Audience, regions, monetization shape, session patterns all change (see Doc 02).
-- `packages/tbs` (hex-grid TBS code) is **not** the game. Out of scope for the first title. Flagged for removal in Doc 04.
-- Emerging-markets-first regional strategy is probably wrong for this genre. Re-evaluated in Doc 02.
-
 ## Why this genre
 
 **Benefits:**
 
 - Reuses engine strengths: 3D rendering, baked lighting, clean low-poly aesthetic all line up with the look Picross-style players expect.
 - Logic-driven gameplay, not progression-driven → no live-ops, no whales, no FOMO mechanics to build.
-- Much smaller competitive field than match-3 — niche but loyal audience.
+- Niche but loyal audience in a less saturated competitive field.
 - Content is small and structured (grids with clues) → amenable to a generator + solver pipeline once basics work.
-- Session shape (3–15 min per puzzle) matches solo-dev content velocity better than an endless-runner or level-based match-3 that demands constant new content.
+- Session shape (3–15 min per puzzle) matches solo-dev content velocity without demanding a constant live content stream.
 
 **Drawbacks to accept:**
 
-- TAM is orders of magnitude smaller than match-3. "Scale" ambition has to be recalibrated.
+- Small TAM for a casual mobile game. Scale ambition has to be modest.
 - Niche genres reward quality and trust — hard to stand out without a polished first release.
 - Puzzle design is a distinct skill. Solo dev means you are also the puzzle designer or you build a generator that must be correct.
-- Picross-style buyers often expect no ads / premium feel. Freemium patterns from match-3 don't map cleanly.
+- Picross-style buyers expect a no-ads / premium feel. Mainstream casual freemium patterns don't map cleanly.
 
 ## Why a custom engine
 
