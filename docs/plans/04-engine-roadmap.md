@@ -81,9 +81,8 @@ Ordered by dependency, not calendar.
 
 ### Android build pipeline
 
-- Execute `plans/android_port.md` Phases 0–3.
+- Execute the mobile port plan (Doc 05).
 - AAB output, signed, installable on a real phone.
-- Not in scope here — see Doc 05.
 
 ## Build — P1 (needed for a polished v1 or soft launch)
 
@@ -124,14 +123,48 @@ Ordered by dependency, not calendar.
 
 Cutting does **not** mean deleting. It means de-prioritizing and excluding from the critical path.
 
-## Known-already-planned (don't duplicate)
+## Known technical debt
 
-These live in `plans/` and should not be re-stated here:
+Engine issues that don't block shipping this game but are explicit items to be aware of. Priority is to ship; fix these as they become blocking.
 
-- `plans/android_port.md` — Android port phases (see Doc 05).
-- `plans/render/` — render subsystem plans.
-- `plans/meshes.md` — mesh pipeline.
-- `plans/editor/` — editor-side plans.
+### Mesh system
+
+- **UV2 always present in `vertex_data`** (~18% overhead for non-lightmapped meshes). Current struct is 52 bytes; would be 44 without UV2. Fix: split UV2 into a separate vertex stream (binding 1). Dummy buffer bound for non-lightmapped draws. Pattern used by Unreal's `FStaticMeshVertexBuffers`.
+- **OBJ importer resets vertex buffer per shape.** `mesh_importer.cpp:53` resizes inside the shape loop — multi-shape OBJs lose all but the last shape. Fix: accumulate across shapes with offset.
+- **OBJ importer UB on missing normals / texcoords / colors.** `mesh_importer.cpp:72-83` accesses attrib arrays without bounds checks. Fix: check `idx.*_index >= 0` and defaults.
+
+### Shadow system
+
+- **Shadow center hardcoded to origin** (`kryga_render_shadows.cpp:258`). Largest cascade is ~242 units — anything >240m from origin has no directional shadow. Fix: texel-snap the shadow center to the camera.
+- **No frustum culling for shadow passes.** All `m_draw_batches` iterated per pass (4 CSM + up to 16 local = up to 20× geometry). Fix: per-pass frustum cull.
+- **DPSM distortion near equator.** Seams between hemispheres, non-uniform resolution, PCF not uniform in world space. Fix: cube shadow maps (more memory) or VSM with a tetrahedral warp.
+- **Constant bias causes acne + peter-panning simultaneously.** Fix: slope-scaled depth bias via Vulkan pipeline state (`depthBiasConstantFactor` / `depthBiasSlopeFactor`) or in-shader `max(bias, slope * tan(angle))`.
+- **PCF mode is global** — local lights can't opt out of expensive PCF. A 7×7 PCF × 8 local lights = 392 shadow taps per fragment.
+- **Cascade radius over-allocated** — wastes shadow-map resolution. Calculation doesn't account for camera offset from shadow-center origin.
+- **Per-frame `std::vector` + `std::sort` in `select_shadowed_lights`** (`kryga_render_shadows.cpp:558`). Fix: pre-allocated fixed-size array.
+- **Point-light view always looks at +Z.** DPSM quality poor if visible geometry isn't +Z-aligned. Fix: orient view toward camera or dominant geometry.
+- **No shadow-map atlas — 320 MB of depth memory** (20 × 2048² × 4 bytes) allocated even when most local passes are empty. Fix: atlas into 1–2 large textures.
+- **Cascade blending doubles taps** in the 10% transition zone (64 shadow taps with Poisson32).
+- **No NaN guard on `acos(outer_cut_off)`** for spot lights. Invalid input propagates NaN through the shadow matrix.
+
+### Validation / debug
+
+- **Validation layer on in all builds** (~5–15% CPU overhead). Gate off on Release after the mobile branch lands.
+- **GPU-Assisted Validation not enabled** — known friction with BDA + descriptor indexing; 2–10× frame-time hit. Keep as opt-in via CLI flag.
+- **Synchronization Validation deferred** — doubles CPU validation cost. Enable during render-graph / barrier work only.
+- **Best Practices layer** high signal on mobile — enable during Android perf passes only.
+- **Debug Printf** mutually exclusive with GPU-AV in older SDKs. Add behind a dedicated shader-include helper when needed.
+- **Dedupe key** is `(messageIdNumber << 32) ^ fnv1a(pMessage[:192])`. Hides new instances of the same VUID with different object handles. Fix: call `debug_reset_dedupe()` at scene boundaries.
+- **Object naming** done for core + loader paths (device, queues, per-frame buffers, render passes, shader effects, compute, bindless pool). Still unnamed: per-frame descriptor sets (noise), cached `VkDescriptorSetLayout`s, framebuffers, bake intermediate buffers, UI vertex / index buffers.
+- **Break-on-error Windows-only.** No Linux/macOS equivalent. Android: `raise(SIGTRAP)` when the port goes live.
+
+### Editor
+
+- **ImGui `CollapsingHeader` state not persisted between sessions.** `imgui.ini` only saves window-level state. Affects bake presets, render config, editor panels. Options: serialize to config file, use `ImGui::GetStateStorage()` manual save/load, or accept session-only.
+
+### Package organization
+
+- **Split packages for assets and module types.** Current `packages/` conflates content data with typed class modules. Split into separate asset packages and module-type packages for cleaner load ordering and reuse.
 
 ## Roadmap tensions and tradeoffs
 

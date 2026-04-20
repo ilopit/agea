@@ -8,7 +8,7 @@ Living list. Update as decisions are made or risks materialize.
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| BDA + Vulkan 1.2 min-spec excludes too many target devices | Medium | Medium | Accept narrower reach (genre-aligned anyway). If soft launch shows real device rejections, build SSBO fallback per `plans/android_port.md` Phase 3.2. |
+| BDA + Vulkan 1.2 min-spec excludes too many target devices | Medium | Medium | Accept narrower reach (genre-aligned anyway). If soft launch shows real device rejections, build SSBO fallback per Doc 05 Phase 3. |
 | Android lifecycle edge cases (surface loss, audio focus, low-memory kill) eat weeks in M2/M3 | High | High | Real-device testing from day one of M2. Do not rely on emulator. Budget buffer in M2. |
 | Custom UI system underdelivers → UX regressions | Medium | Medium | 2-week timebox in M0. If exceeded, fall back to RmlUi. Don't sink a month before deciding. |
 | Puzzle solver has correctness bugs → puzzles with >1 solution ship | Medium | High | Solver is the single most test-worthy component. Table-driven unit tests against hand-solved puzzles, starting in M1. Every puzzle in a pack runs the solver in CI before release. |

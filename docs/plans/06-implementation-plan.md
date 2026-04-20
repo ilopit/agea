@@ -10,7 +10,7 @@ Ballpark timelines assume solo, part-time pace. Numbers in weeks. Treat as relat
 |---|------|-------|-----------|
 | M0 | Engine foundation for this game | ~4 | nothing |
 | M1 | Playable desktop prototype | ~4 | M0 |
-| M2 | Android build works | ~4 | M1 + `plans/android_port.md` |
+| M2 | Android build works | ~4 | M1 + Doc 05 |
 | M3 | Vertical slice on Android | ~4 | M2 |
 | M4 | Content & polish | ~6 | M3 |
 | M5 | Shipping infrastructure | ~4 | M4 |
@@ -62,7 +62,7 @@ Notable: **this is the first time we know the core loop is fun or flat.** Be wil
 
 Scope:
 
-- Execute `plans/android_port.md` Phases 0–3 (feasibility, build system, platform layer, Vulkan adaptation).
+- Execute Doc 05 Phases 0–3 (feasibility, build system, platform layer, Vulkan adaptation).
 - Touch input gestures (tap, long-press, two-finger orbit, pinch) — upgrade from port plan's "multi-touch ignored initially".
 - VFS APK backend.
 - Lifecycle save/restore during onPause/onResume.

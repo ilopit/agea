@@ -12,7 +12,7 @@ Created: 2026-04-20
 | 02 | [Target player & market](02-target-player.md) | Audience profile, regions, comps. |
 | 03 | [Game design](03-game-design.md) | Core mechanics, progression, meta, monetization shape. |
 | 04 | [Engine roadmap](04-engine-roadmap.md) | What to build, defer, cut — keyed to the engine audit. |
-| 05 | [Mobile port](05-mobile-port.md) | Mobile client strategy. Cross-references `plans/android_port.md`. |
+| 05 | [Mobile port](05-mobile-port.md) | Full mobile port plan — policy, execution phases, file changes, exit criteria. |
 | 06 | [Implementation plan](06-implementation-plan.md) | Milestone rollup with phase gates and exit criteria. |
 | 07 | [Risks & open questions](07-risks-open-questions.md) | Known risks, unresolved decisions, deferred choices. |
 
@@ -22,12 +22,9 @@ For a first-time reader: 01 → 02 → 03 → 04 → 05 → 06 → 07.
 For status check: 06 (milestones) → 07 (open questions).
 For scope discussion: 01 + 04 + 06.
 
-## Relationship to existing docs
+## Relationship to other repo docs
 
-- `plans/android_port.md` — **execution plan** for Android. Not duplicated here. Doc 05 is the policy layer that points at it.
-- `plans/render/` and `plans/meshes.md` — technical plans for engine subsystems. Not duplicated.
-- `known_issues/` — active bug tracking. Not design scope.
-- `CLAUDE.md` — engine architecture reference for contributors.
+- `CLAUDE.md` — engine architecture reference for contributors. Kept separate; updates there are not automatic when these docs change.
 
 ## Decisions already locked
 
