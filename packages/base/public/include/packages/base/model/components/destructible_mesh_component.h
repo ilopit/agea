@@ -7,6 +7,8 @@
 #include <physics/destructible_physics.h>
 #include <physics/physics_types.h>
 
+#include <utils/id.h>
+
 #include <vector>
 
 namespace kryga
@@ -17,17 +19,21 @@ class destructible_mesh_asset;
 
 // Destructible mesh component.
 //
-// Mirrors the role of mesh_component but references a destructible_mesh_asset
-// instead of a raw mesh+material pair. The component owns an opaque physics
-// handle (currently backed by physics_stub; will be replaced by the real
-// physics subsystem without changing this API).
-//
-// Render behaviour (v1 scaffolding):
-//   - Unbroken: renders the source mesh of the referenced asset, identical
-//     to a regular mesh_component.
-//   - Broken: rendering is currently unchanged — chunk-mesh upload and
-//     per-chunk render objects land together with the real physics PR, since
-//     the per-chunk transforms come from the physics side.
+// Mirrors mesh_component but references a destructible_mesh_asset. Runtime
+// flow:
+//   - First cmd_build: pre-fracture source mesh into chunks (stored in
+//     m_chunk_shapes), upload each chunk vertex/index buffer as a render
+//     mesh resource (m_chunk_mesh_ids), register with physics.
+//   - While unbroken: renders the source mesh; on_tick pushes the current
+//     world transform into physics so chunks spawn at the right origin
+//     when the object breaks.
+//   - On break (apply_impact/shatter): cmd_build destroys the source render
+//     object and creates one render object per chunk (m_chunk_render_ids).
+//     on_tick marks render dirty each frame to forward chunk transforms
+//     from Jolt into update_object_cmds.
+//   - On expiry (lifetime elapsed since break): cmd_build destroys all
+//     chunk render objects + their mesh resources, unregisters from
+//     physics, and flips m_disposed so subsequent builds are no-ops.
 // clang-format off
 KRG_ar_class(render_cmd_builder   = destructible_mesh_component__cmd_builder,
               render_cmd_destroyer = destructible_mesh_component__cmd_destroyer);
@@ -47,6 +53,26 @@ public:
 
     bool
     construct(construct_params& c);
+
+    // Override game_object_component::on_tick — syncs physics world
+    // transform while intact and forwards chunk transforms to render
+    // after break.
+    void
+    on_tick(float dt) override;
+
+    // Gameplay entry: force this destructible into the broken state.
+    // Returns true iff this call caused the transition; subsequent calls
+    // on an already-broken object return false.
+    KRG_ar_function("category=gameplay");
+    bool
+    shatter();
+
+    // Gameplay entry: apply damage. Returns true iff this call caused the
+    // break. Use shatter() for "instant break" and apply_damage() for
+    // accumulation against the asset's damage threshold.
+    KRG_ar_function("category=gameplay");
+    bool
+    apply_damage(float amount);
 
     destructible_mesh_asset*
     get_asset() const
@@ -98,6 +124,50 @@ public:
         return m_chunk_shapes;
     }
 
+    std::vector<utils::id>&
+    get_chunk_mesh_ids()
+    {
+        return m_chunk_mesh_ids;
+    }
+    const std::vector<utils::id>&
+    get_chunk_mesh_ids() const
+    {
+        return m_chunk_mesh_ids;
+    }
+
+    std::vector<utils::id>&
+    get_chunk_render_ids()
+    {
+        return m_chunk_render_ids;
+    }
+    const std::vector<utils::id>&
+    get_chunk_render_ids() const
+    {
+        return m_chunk_render_ids;
+    }
+
+    bool
+    get_chunks_rendering() const
+    {
+        return m_chunks_rendering;
+    }
+    void
+    set_chunks_rendering(bool v)
+    {
+        m_chunks_rendering = v;
+    }
+
+    bool
+    get_disposed() const
+    {
+        return m_disposed;
+    }
+    void
+    set_disposed(bool v)
+    {
+        m_disposed = v;
+    }
+
 protected:
     KRG_ar_property("category=Assets",
                     "serializable=true",
@@ -109,8 +179,12 @@ protected:
 
     float m_base_bounding_radius = 0.0f;
     bool m_is_broken = false;
+    bool m_chunks_rendering = false;
+    bool m_disposed = false;
     physics::destructible_handle m_physics_handle{};
     std::vector<physics::chunk_shape> m_chunk_shapes;
+    std::vector<utils::id> m_chunk_mesh_ids;
+    std::vector<utils::id> m_chunk_render_ids;
 };
 
 }  // namespace base

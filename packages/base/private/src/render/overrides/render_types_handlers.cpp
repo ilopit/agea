@@ -24,6 +24,11 @@
 
 #include <voronoi_fracture/voronoi_fracture.h>
 
+#include <physics/physics_system.h>
+#include <physics/destructible_physics.h>
+
+#include <utils/buffer.h>
+
 #include "packages/base/model/lights/point_light.h"
 #include "packages/base/model/lights/spot_light.h"
 #include "packages/base/model/lights/directional_light.h"
@@ -210,6 +215,36 @@ struct destroy_object_cmd : render_cmd::render_command_base
             ctx.vr.schd_remove_object(object_data);
             ctx.vr.get_cache().objects.release(object_data);
         }
+    }
+};
+
+// ============================================================================
+// Render commands — chunk meshes (destructible pieces)
+// ============================================================================
+
+struct create_chunk_mesh_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    std::shared_ptr<utils::buffer> vertices;
+    std::shared_ptr<utils::buffer> indices;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        auto vbv = vertices->make_view<gpu::vertex_data>();
+        auto ibv = indices->make_view<gpu::uint>();
+        ctx.loader.create_mesh(id, vbv, ibv);
+    }
+};
+
+struct destroy_mesh_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        ctx.loader.destroy_mesh_data(id);
     }
 };
 
@@ -987,14 +1022,23 @@ animated_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_buil
 // ============================================================================
 // Command builders — destructible_mesh_component
 // ============================================================================
-//
-// v1 scaffolding: renders the source mesh of the referenced asset, just like
-// mesh_component. Chunk-mesh upload and per-chunk render objects for the
-// broken state are deferred to the PR that introduces the real physics
-// subsystem — the per-chunk transforms originate on the physics side, so the
-// two changes are naturally co-located. Voronoi fracturing of the source mesh
-// is already available via libs/voronoi_fracture and will be invoked from the
-// physics registration path.
+
+namespace
+{
+
+utils::id
+chunk_mesh_id_for(const utils::id& component_id, uint32_t i)
+{
+    return AID(std::string(component_id.cstr()) + "::chunk_mesh_" + std::to_string(i));
+}
+
+utils::id
+chunk_render_id_for(const utils::id& component_id, uint32_t i)
+{
+    return AID(std::string(component_id.cstr()) + "::chunk_obj_" + std::to_string(i));
+}
+
+}  // namespace
 
 result_code
 destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
@@ -1003,6 +1047,12 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     KRG_return_nok(rc);
 
     auto& dmc = ctx.obj->asr<base::destructible_mesh_component>();
+
+    if (dmc.get_disposed())
+    {
+        // Lifetime elapsed — nothing to render any more.
+        return result_code::ok;
+    }
 
     auto* asset = dmc.get_asset();
     if (!asset || !asset->get_source_mesh() || !asset->get_material())
@@ -1030,38 +1080,78 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
     auto new_rqid = render_bridge::make_qid_from_model(*material, *source_mesh);
 
+    auto* ps = glob::glob_state().get_physics_system();
+
+    // ------------------------------------------------------------------
+    // First build: pre-fracture, upload chunk meshes, register physics,
+    // create the source-mesh render object for the unbroken state.
+    // ------------------------------------------------------------------
     if (!dmc.get_render_built())
     {
         auto& chunk_shapes = dmc.get_chunk_shapes();
-        if (chunk_shapes.empty())
+
+        auto vbuf = source_mesh->get_vertices_buffer().make_view<gpu::vertex_data>();
+        auto ibuf = source_mesh->get_indices_buffer().make_view<gpu::uint>();
+
+        voronoi_fracture::fracture_params fparams{};
+        fparams.seed = asset->get_fracture_seed();
+        fparams.cell_count = asset->get_cell_count();
+
+        auto fresult = voronoi_fracture::fracture_mesh(vbuf.as(),
+                                                       static_cast<uint32_t>(vbuf.size()),
+                                                       ibuf.as(),
+                                                       static_cast<uint32_t>(ibuf.size()),
+                                                       fparams);
+
+        chunk_shapes.clear();
+        chunk_shapes.reserve(fresult.chunks.size());
+        dmc.get_chunk_mesh_ids().clear();
+        dmc.get_chunk_mesh_ids().reserve(fresult.chunks.size());
+
+        for (uint32_t i = 0; i < fresult.chunks.size(); ++i)
         {
-            auto vbuf = source_mesh->get_vertices_buffer().make_view<gpu::vertex_data>();
-            auto ibuf = source_mesh->get_indices_buffer().make_view<gpu::uint>();
+            const auto& ch = fresult.chunks[i];
 
-            voronoi_fracture::fracture_params fparams{};
-            fparams.seed = asset->get_fracture_seed();
-            fparams.cell_count = asset->get_cell_count();
+            physics::chunk_shape cs;
+            cs.aabb_min = ch.aabb_min;
+            cs.aabb_max = ch.aabb_max;
+            cs.seed_point = ch.seed_point;
+            chunk_shapes.push_back(cs);
 
-            auto fresult = voronoi_fracture::fracture_mesh(
-                vbuf.as(),
-                static_cast<uint32_t>(vbuf.size()),
-                ibuf.as(),
-                static_cast<uint32_t>(ibuf.size()),
-                fparams);
+            utils::id chunk_mesh_id = chunk_mesh_id_for(dmc.get_id(), i);
+            dmc.get_chunk_mesh_ids().push_back(chunk_mesh_id);
 
-            chunk_shapes.reserve(fresult.chunks.size());
-            for (const auto& ch : fresult.chunks)
-            {
-                physics::chunk_shape cs;
-                cs.aabb_min = ch.aabb_min;
-                cs.aabb_max = ch.aabb_max;
-                cs.seed_point = ch.seed_point;
-                chunk_shapes.push_back(cs);
-            }
+            auto vb =
+                std::make_shared<utils::buffer>(ch.vertices.size() * sizeof(gpu::vertex_data));
+            std::memcpy(vb->data(),
+                        ch.vertices.data(),
+                        ch.vertices.size() * sizeof(gpu::vertex_data));
 
-            ALOG_INFO("destructible_mesh {}: pre-fractured into {} chunks",
-                      dmc.get_id().str(),
-                      chunk_shapes.size());
+            auto ib = std::make_shared<utils::buffer>(ch.indices.size() * sizeof(gpu::uint));
+            std::memcpy(ib->data(),
+                        ch.indices.data(),
+                        ch.indices.size() * sizeof(gpu::uint));
+
+            auto* cmd = ctx.rb->alloc_cmd<create_chunk_mesh_cmd>();
+            cmd->id = chunk_mesh_id;
+            cmd->vertices = std::move(vb);
+            cmd->indices = std::move(ib);
+            ctx.rb->enqueue_cmd(cmd);
+        }
+
+        ALOG_INFO("destructible_mesh {}: pre-fractured into {} chunks",
+                  dmc.get_id().str(),
+                  chunk_shapes.size());
+
+        if (ps)
+        {
+            auto& dp = ps->destructibles();
+            auto handle =
+                dp.register_destructible(chunk_shapes, asset->get_damage_threshold());
+            dp.set_lifetime(handle, asset->get_lifetime());
+            dp.set_explosion_strength(handle, asset->get_explosion_strength());
+            dp.set_world_transform(handle, dmc.get_transform_matrix());
+            dmc.set_physics_handle(handle);
         }
 
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
@@ -1075,11 +1165,126 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         cmd->bone_count = 0;
         cmd->queue_id = new_rqid;
         cmd->layer_flags = dmc.get_layers();
+        ctx.rb->enqueue_cmd(cmd);
 
         dmc.set_render_built(true);
-        ctx.rb->enqueue_cmd(cmd);
+        return result_code::ok;
     }
-    else
+
+    // ------------------------------------------------------------------
+    // Subsequent builds: advance based on physics state.
+    // ------------------------------------------------------------------
+    bool broken = false;
+    bool expired = false;
+    if (ps && dmc.get_physics_handle().valid())
+    {
+        auto& dp = ps->destructibles();
+        broken = dp.is_broken(dmc.get_physics_handle());
+        expired = dp.is_expired(dmc.get_physics_handle());
+    }
+
+    // Transition to broken — destroy source object, create per-chunk render
+    // objects at their current physics transforms.
+    if (broken && !dmc.get_chunks_rendering() && !expired)
+    {
+        {
+            auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+            cmd->id = dmc.get_id();
+            ctx.rb->enqueue_cmd(cmd);
+        }
+
+        dmc.get_chunk_render_ids().clear();
+        dmc.get_chunk_render_ids().reserve(dmc.get_chunk_shapes().size());
+
+        for (uint32_t i = 0; i < dmc.get_chunk_shapes().size(); ++i)
+        {
+            utils::id chunk_render_id = chunk_render_id_for(dmc.get_id(), i);
+            dmc.get_chunk_render_ids().push_back(chunk_render_id);
+
+            const auto& cs = dmc.get_chunk_shapes()[i];
+            float chunk_radius =
+                0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
+
+            glm::mat4 xf(1.0f);
+            if (ps)
+            {
+                xf = ps->destructibles().get_chunk_transform(dmc.get_physics_handle(), i);
+            }
+
+            auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+            cmd->id = chunk_render_id;
+            cmd->mesh_id = dmc.get_chunk_mesh_ids()[i];
+            cmd->material_id = material->get_id();
+            cmd->transform = xf;
+            cmd->normal_matrix = glm::transpose(glm::inverse(xf));
+            cmd->position = glm::vec3(xf[3]);
+            cmd->bounding_radius = chunk_radius;
+            cmd->bone_count = 0;
+            cmd->queue_id = new_rqid;
+            cmd->layer_flags = dmc.get_layers();
+            ctx.rb->enqueue_cmd(cmd);
+        }
+
+        dmc.set_chunks_rendering(true);
+        return result_code::ok;
+    }
+
+    // Broken steady — forward chunk transforms from physics.
+    if (broken && dmc.get_chunks_rendering() && !expired)
+    {
+        for (uint32_t i = 0; i < dmc.get_chunk_render_ids().size(); ++i)
+        {
+            glm::mat4 xf(1.0f);
+            if (ps)
+            {
+                xf = ps->destructibles().get_chunk_transform(dmc.get_physics_handle(), i);
+            }
+
+            const auto& cs = dmc.get_chunk_shapes()[i];
+            float chunk_radius =
+                0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
+
+            auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
+            cmd->id = dmc.get_chunk_render_ids()[i];
+            cmd->transform = xf;
+            cmd->normal_matrix = glm::transpose(glm::inverse(xf));
+            cmd->position = glm::vec3(xf[3]);
+            cmd->bounding_radius = chunk_radius;
+            ctx.rb->enqueue_cmd(cmd);
+        }
+        return result_code::ok;
+    }
+
+    // Expired — tear down chunks + meshes, unregister from physics.
+    if (expired && dmc.get_chunks_rendering())
+    {
+        for (const auto& chunk_render_id : dmc.get_chunk_render_ids())
+        {
+            auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+            cmd->id = chunk_render_id;
+            ctx.rb->enqueue_cmd(cmd);
+        }
+        for (const auto& chunk_mesh_id : dmc.get_chunk_mesh_ids())
+        {
+            auto* cmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
+            cmd->id = chunk_mesh_id;
+            ctx.rb->enqueue_cmd(cmd);
+        }
+
+        if (ps && dmc.get_physics_handle().valid())
+        {
+            ps->destructibles().unregister_destructible(dmc.get_physics_handle());
+            dmc.set_physics_handle({});
+        }
+
+        dmc.get_chunk_render_ids().clear();
+        dmc.set_chunks_rendering(false);
+        dmc.set_disposed(true);
+        return result_code::ok;
+    }
+
+    // Unbroken — push transform updates for the source mesh.
+    if (!broken)
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->id = dmc.get_id();
@@ -1091,7 +1296,6 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         cmd->bounding_radius = scaled_radius;
         cmd->queue_id = new_rqid;
         cmd->layer_flags = dmc.get_layers();
-
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -1108,27 +1312,53 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
     result_code rc = result_code::nav;
     if (asset)
     {
-        if (auto* mat = asset->get_material();
-            mat && is_same_source(*ctx.obj, *mat))
+        if (auto* mat = asset->get_material(); mat && is_same_source(*ctx.obj, *mat))
         {
             rc = ctx.rb->render_cmd_destroy(*mat, ctx.flag);
             KRG_return_nok(rc);
         }
 
-        if (auto* src = asset->get_source_mesh();
-            src && is_same_source(*ctx.obj, *src))
+        if (auto* src = asset->get_source_mesh(); src && is_same_source(*ctx.obj, *src))
         {
             rc = ctx.rb->render_cmd_destroy(*src, ctx.flag);
             KRG_return_nok(rc);
         }
     }
 
-    if (dmc.get_render_built())
+    // Destroy any still-live chunk render objects.
+    if (dmc.get_chunks_rendering())
+    {
+        for (const auto& chunk_render_id : dmc.get_chunk_render_ids())
+        {
+            auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+            cmd->id = chunk_render_id;
+            ctx.rb->enqueue_cmd(cmd);
+        }
+    }
+
+    // Destroy chunk mesh resources uploaded on first build.
+    for (const auto& chunk_mesh_id : dmc.get_chunk_mesh_ids())
+    {
+        auto* cmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
+        cmd->id = chunk_mesh_id;
+        ctx.rb->enqueue_cmd(cmd);
+    }
+
+    // Destroy the unbroken source mesh render object if it's still alive.
+    if (dmc.get_render_built() && !dmc.get_chunks_rendering() && !dmc.get_disposed())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
         cmd->id = dmc.get_id();
-        dmc.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
+    }
+    dmc.set_render_built(false);
+
+    // Unregister from physics (no-op if expiry already tore it down).
+    if (auto* ps = glob::glob_state().get_physics_system();
+        ps && dmc.get_physics_handle().valid())
+    {
+        ps->destructibles().unregister_destructible(dmc.get_physics_handle());
+        dmc.set_physics_handle({});
     }
 
     rc = root::game_object_component__cmd_destroyer(ctx);

@@ -68,6 +68,18 @@ public:
         return m_damage_threshold;
     }
 
+    float
+    get_lifetime() const
+    {
+        return m_lifetime;
+    }
+
+    float
+    get_explosion_strength() const
+    {
+        return m_explosion_strength;
+    }
+
 protected:
     KRG_ar_property("category=assets",
                     "serializable=true",
@@ -107,6 +119,20 @@ protected:
                     "access=all",
                     "default=true");
     float m_damage_threshold = 100.0f;
+
+    KRG_ar_property("category=fracture",
+                    "serializable=true",
+                    "check=not_same",
+                    "access=all",
+                    "default=true");
+    float m_lifetime = 3.0f;
+
+    KRG_ar_property("category=fracture",
+                    "serializable=true",
+                    "check=not_same",
+                    "access=all",
+                    "default=true");
+    float m_explosion_strength = 8.0f;
 };
 
 }  // namespace base
