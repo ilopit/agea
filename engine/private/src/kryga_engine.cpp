@@ -594,7 +594,7 @@ vulkan_engine::consume_updated_transforms()
                 if (m->get_render_built())
                 {
                     auto* cmd = rb.alloc_cmd<update_transform_cmd>();
-                    cmd->id = m->get_id();
+                    cmd->object_handle = m->get_render_object_handle();
                     cmd->transform = m->get_transform_matrix();
                     cmd->normal_matrix = m->get_normal_matrix();
                     cmd->position = glm::vec3(m->get_world_position());

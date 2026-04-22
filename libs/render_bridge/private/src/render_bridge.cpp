@@ -12,6 +12,7 @@
 
 #include <vulkan_render/utils/vulkan_initializers.h>
 #include <vulkan_render/types/vulkan_render_data.h>
+#include <vulkan_render/render_cache.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/types/vulkan_material_data.h>
@@ -245,6 +246,17 @@ render_bridge::drain_queue()
             cmd->execute(exec_ctx);
             cmd->~render_command_base();
         });
+
+    // Refill the model's handle batch for the next frame. Happens on the render
+    // thread after all commands have drained; model thread picks it up on wake.
+    constexpr size_t OBJECTS_BATCH_TARGET = 128;
+    vr.get_cache().objects.refill_batch(OBJECTS_BATCH_TARGET);
+}
+
+utils::slot_handle<render::vulkan_render_data>
+render_bridge::alloc_object_handle()
+{
+    return glob::glob_state().getr_vulkan_render().get_cache().objects.alloc_handle();
 }
 
 void
@@ -318,7 +330,7 @@ render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 void
 update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
 {
-    auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+    auto* object_data = ctx.vr.get_cache().objects.get(object_handle);
     if (!object_data)
     {
         return;

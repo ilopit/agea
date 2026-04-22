@@ -26,9 +26,14 @@ public:
     combined_pool(bool offset)
     {
         (void)offset;
-        m_items.emplace_back(AID("INVALID"), 0);
-        m_generations.emplace_back(0);
-        m_alive.emplace_back(false);
+        // Match ensure_slot semantics: create a sentinel and immediately destroy
+        // it so slot 0 holds dead memory. This keeps all non-alive slots uniform
+        // regardless of how they came into existence (constructor / ensure_slot /
+        // release / release_handle).
+        T& sentinel = m_items.emplace_back(AID("INVALID"), 0);
+        sentinel.~T();
+        m_generations.emplace_back(uint16_t{0});
+        m_alive.emplace_back(uint8_t{0});
     }
 
     // ---------- Legacy id-keyed API (transitional) ----------

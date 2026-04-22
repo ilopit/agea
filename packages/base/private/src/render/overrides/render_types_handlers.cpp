@@ -90,6 +90,7 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 
 struct create_object_cmd : render_cmd::render_command_base
 {
+    utils::slot_handle<render::vulkan_render_data> object_handle;
     utils::id id;
     utils::id mesh_id;
     utils::id material_id;
@@ -116,7 +117,8 @@ struct create_object_cmd : render_cmd::render_command_base
             return;
         }
 
-        auto* object_data = ctx.vr.get_cache().objects.alloc(id);
+        auto* object_data =
+            ctx.vr.get_cache().objects.materialize(object_handle, id);
 
         if (!ctx.loader.update_object(
                 *object_data, *mat_data, *mesh_data, transform, normal_matrix, position))
@@ -139,7 +141,7 @@ struct create_object_cmd : render_cmd::render_command_base
 
 struct update_object_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::vulkan_render_data> object_handle;
     utils::id mesh_id;
     utils::id material_id;
     glm::mat4 transform{1.0f};
@@ -155,7 +157,7 @@ struct update_object_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+        auto* object_data = ctx.vr.get_cache().objects.get(object_handle);
         if (!object_data)
         {
             return;
@@ -195,16 +197,16 @@ struct update_object_cmd : render_cmd::render_command_base
 
 struct destroy_object_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::vulkan_render_data> object_handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+        auto* object_data = ctx.vr.get_cache().objects.get(object_handle);
         if (object_data)
         {
             ctx.vr.schd_remove_object(object_data);
-            ctx.vr.get_cache().objects.release(object_data);
+            ctx.vr.get_cache().objects.release_handle(object_handle);
         }
     }
 };
@@ -411,7 +413,11 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     if (!moc.get_render_built())
     {
+        auto handle = ctx.rb->alloc_object_handle();
+        moc.set_render_object_handle(handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+        cmd->object_handle = handle;
         cmd->id = moc.get_id();
         cmd->mesh_id = moc.get_mesh()->get_id();
         cmd->material_id = moc.get_material()->get_id();
@@ -432,7 +438,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
-        cmd->id = moc.get_id();
+        cmd->object_handle = moc.get_render_object_handle();
         cmd->mesh_id = moc.get_mesh()->get_id();
         cmd->material_id = moc.get_material()->get_id();
         cmd->transform = moc.get_transform_matrix();
@@ -476,7 +482,9 @@ mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
     if (moc.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-        cmd->id = moc.get_id();
+        cmd->object_handle = moc.get_render_object_handle();
+        moc.set_render_object_handle(
+            utils::slot_handle<render::vulkan_render_data>::invalid());
         moc.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
@@ -907,7 +915,11 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
 
     if (!amc.get_render_built())
     {
+        auto handle = ctx.rb->alloc_object_handle();
+        amc.set_render_object_handle(handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+        cmd->object_handle = handle;
         cmd->id = amc.get_id();
         cmd->mesh_id = mesh_id;
         cmd->material_id = mat_model->get_id();
@@ -924,7 +936,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
-        cmd->id = amc.get_id();
+        cmd->object_handle = amc.get_render_object_handle();
         cmd->mesh_id = mesh_id;
         cmd->material_id = mat_model->get_id();
         cmd->transform = amc.get_transform_matrix();
@@ -969,7 +981,9 @@ animated_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_buil
     if (amc.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-        cmd->id = amc.get_id();
+        cmd->object_handle = amc.get_render_object_handle();
+        amc.set_render_object_handle(
+            utils::slot_handle<render::vulkan_render_data>::invalid());
         amc.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
