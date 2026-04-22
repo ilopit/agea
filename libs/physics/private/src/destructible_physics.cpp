@@ -9,9 +9,7 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm_unofficial/glm.h>
 
 #include <random>
 #include <unordered_map>
@@ -28,12 +26,6 @@ JPH::Vec3
 to_jph(const glm::vec3& v)
 {
     return JPH::Vec3(v.x, v.y, v.z);
-}
-
-glm::vec3
-from_jph(const JPH::Vec3& v)
-{
-    return glm::vec3(v.GetX(), v.GetY(), v.GetZ());
 }
 
 glm::mat4
