@@ -37,7 +37,7 @@ target_link_libraries(packages.base.model PUBLIC
 
    kryga::sol2_unofficial
 
-   kryga::physics_stub
+   kryga::physics
 
    lua_static
 )

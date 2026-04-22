@@ -17,6 +17,7 @@ target_link_libraries(engine PUBLIC
     kryga::render_bridge
     kryga::native
     kryga::vfs
+    kryga::physics
 
     kryga::textedit_unofficial
     kryga::imguizmo_unofficial

@@ -1052,7 +1052,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             chunk_shapes.reserve(fresult.chunks.size());
             for (const auto& ch : fresult.chunks)
             {
-                physics_stub::chunk_shape cs;
+                physics::chunk_shape cs;
                 cs.aabb_min = ch.aabb_min;
                 cs.aabb_max = ch.aabb_max;
                 cs.seed_point = ch.seed_point;

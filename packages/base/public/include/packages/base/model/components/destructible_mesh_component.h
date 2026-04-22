@@ -4,7 +4,8 @@
 
 #include "packages/root/model/components/game_object_component.h"
 
-#include <physics_stub/destructible_physics.h>
+#include <physics/destructible_physics.h>
+#include <physics/physics_types.h>
 
 #include <vector>
 
@@ -64,13 +65,13 @@ public:
         m_base_bounding_radius = r;
     }
 
-    const physics_stub::destructible_handle&
+    const physics::destructible_handle&
     get_physics_handle() const
     {
         return m_physics_handle;
     }
     void
-    set_physics_handle(physics_stub::destructible_handle h)
+    set_physics_handle(physics::destructible_handle h)
     {
         m_physics_handle = h;
     }
@@ -86,12 +87,12 @@ public:
         m_is_broken = v;
     }
 
-    std::vector<physics_stub::chunk_shape>&
+    std::vector<physics::chunk_shape>&
     get_chunk_shapes()
     {
         return m_chunk_shapes;
     }
-    const std::vector<physics_stub::chunk_shape>&
+    const std::vector<physics::chunk_shape>&
     get_chunk_shapes() const
     {
         return m_chunk_shapes;
@@ -108,8 +109,8 @@ protected:
 
     float m_base_bounding_radius = 0.0f;
     bool m_is_broken = false;
-    physics_stub::destructible_handle m_physics_handle{};
-    std::vector<physics_stub::chunk_shape> m_chunk_shapes;
+    physics::destructible_handle m_physics_handle{};
+    std::vector<physics::chunk_shape> m_chunk_shapes;
 };
 
 }  // namespace base

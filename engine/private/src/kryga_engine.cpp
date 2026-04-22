@@ -59,6 +59,8 @@
 
 #include <animation/animation_system.h>
 
+#include <physics/physics_system.h>
+
 #include <utils/kryga_log.h>
 #include <utils/process.h>
 #include <utils/clock.h>
@@ -182,10 +184,16 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__queues::set(gs);
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
+    state_mutator__physics_system::set(gs);
 
     glob::glob_state().getr_animation_system().set_render_data_resolver(
         [](const utils::id& id) -> render::vulkan_render_data*
         { return glob::glob_state().getr_vulkan_render().get_cache().objects.find_by_id(id); });
+
+    // Bring up the Jolt physics world. Fallback ground plane is installed now;
+    // the real static mesh is rebuilt after the level is loaded (see below).
+    glob::glob_state().getr_physics_system().init();
+    glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
 
     gs.run_connect();
     init_default_scripting();
@@ -265,6 +273,11 @@ vulkan_engine::cleanup()
     glob::glob_state().get_vulkan_render_loader()->clear_caches();
 
     glob::glob_state().get_render_device()->destruct();
+
+    if (auto* phys = glob::glob_state().get_physics_system())
+    {
+        phys->shutdown();
+    }
 
     glob::glob_state_reset();
 }
@@ -436,6 +449,16 @@ vulkan_engine::tick(float dt)
     if (auto* anim = glob::glob_state().get_animation_system())
     {
         anim->tick(dt);
+    }
+
+    if (auto* phys = glob::glob_state().get_physics_system())
+    {
+        // Physics only advances in play mode. In editor mode chunks would drift
+        // on their own which is confusing while authoring.
+        if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
+        {
+            phys->tick(dt);
+        }
     }
 }
 
