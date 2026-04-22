@@ -18,7 +18,11 @@
 
 #include "packages/base/model/components/mesh_component.h"
 #include "packages/base/model/components/animated_mesh_component.h"
+#include "packages/base/model/components/destructible_mesh_component.h"
+#include "packages/base/model/assets/destructible_mesh_asset.h"
 #include "packages/root/model/game_object.h"
+
+#include <voronoi_fracture/voronoi_fracture.h>
 
 #include "packages/base/model/lights/point_light.h"
 #include "packages/base/model/lights/spot_light.h"
@@ -971,6 +975,159 @@ animated_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_buil
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
         cmd->id = amc.get_id();
         amc.set_render_built(false);
+        ctx.rb->enqueue_cmd(cmd);
+    }
+
+    rc = root::game_object_component__cmd_destroyer(ctx);
+    KRG_return_nok(rc);
+
+    return result_code::ok;
+}
+
+// ============================================================================
+// Command builders — destructible_mesh_component
+// ============================================================================
+//
+// v1 scaffolding: renders the source mesh of the referenced asset, just like
+// mesh_component. Chunk-mesh upload and per-chunk render objects for the
+// broken state are deferred to the PR that introduces the real physics
+// subsystem — the per-chunk transforms originate on the physics side, so the
+// two changes are naturally co-located. Voronoi fracturing of the source mesh
+// is already available via libs/voronoi_fracture and will be invoked from the
+// physics registration path.
+
+result_code
+destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
+{
+    auto rc = root::game_object_component__cmd_builder(ctx);
+    KRG_return_nok(rc);
+
+    auto& dmc = ctx.obj->asr<base::destructible_mesh_component>();
+
+    auto* asset = dmc.get_asset();
+    if (!asset || !asset->get_source_mesh() || !asset->get_material())
+    {
+        return result_code::failed;
+    }
+
+    auto* source_mesh = asset->get_source_mesh();
+    auto* material = asset->get_material();
+
+    rc = ctx.rb->render_cmd_build(*material, ctx.flag);
+    KRG_return_nok(rc);
+
+    rc = ctx.rb->render_cmd_build(*source_mesh, ctx.flag);
+    KRG_return_nok(rc);
+
+    dmc.update_matrix();
+
+    float base_radius = source_mesh->get_bounding_radius();
+    dmc.set_base_bounding_radius(base_radius);
+
+    auto scale = dmc.get_scale();
+    float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+    float scaled_radius = base_radius * max_scale;
+
+    auto new_rqid = render_bridge::make_qid_from_model(*material, *source_mesh);
+
+    if (!dmc.get_render_built())
+    {
+        auto& chunk_shapes = dmc.get_chunk_shapes();
+        if (chunk_shapes.empty())
+        {
+            auto vbuf = source_mesh->get_vertices_buffer().make_view<gpu::vertex_data>();
+            auto ibuf = source_mesh->get_indices_buffer().make_view<gpu::uint>();
+
+            voronoi_fracture::fracture_params fparams{};
+            fparams.seed = asset->get_fracture_seed();
+            fparams.cell_count = asset->get_cell_count();
+
+            auto fresult = voronoi_fracture::fracture_mesh(
+                vbuf.as(),
+                static_cast<uint32_t>(vbuf.size()),
+                ibuf.as(),
+                static_cast<uint32_t>(ibuf.size()),
+                fparams);
+
+            chunk_shapes.reserve(fresult.chunks.size());
+            for (const auto& ch : fresult.chunks)
+            {
+                physics_stub::chunk_shape cs;
+                cs.aabb_min = ch.aabb_min;
+                cs.aabb_max = ch.aabb_max;
+                cs.seed_point = ch.seed_point;
+                chunk_shapes.push_back(cs);
+            }
+
+            ALOG_INFO("destructible_mesh {}: pre-fractured into {} chunks",
+                      dmc.get_id().str(),
+                      chunk_shapes.size());
+        }
+
+        auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+        cmd->id = dmc.get_id();
+        cmd->mesh_id = source_mesh->get_id();
+        cmd->material_id = material->get_id();
+        cmd->transform = dmc.get_transform_matrix();
+        cmd->normal_matrix = dmc.get_normal_matrix();
+        cmd->position = glm::vec3(dmc.get_world_position());
+        cmd->bounding_radius = scaled_radius;
+        cmd->bone_count = 0;
+        cmd->queue_id = new_rqid;
+        cmd->layer_flags = dmc.get_layers();
+
+        dmc.set_render_built(true);
+        ctx.rb->enqueue_cmd(cmd);
+    }
+    else
+    {
+        auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
+        cmd->id = dmc.get_id();
+        cmd->mesh_id = source_mesh->get_id();
+        cmd->material_id = material->get_id();
+        cmd->transform = dmc.get_transform_matrix();
+        cmd->normal_matrix = dmc.get_normal_matrix();
+        cmd->position = glm::vec3(dmc.get_world_position());
+        cmd->bounding_radius = scaled_radius;
+        cmd->queue_id = new_rqid;
+        cmd->layer_flags = dmc.get_layers();
+
+        ctx.rb->enqueue_cmd(cmd);
+    }
+
+    return result_code::ok;
+}
+
+result_code
+destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
+{
+    auto& dmc = ctx.obj->asr<base::destructible_mesh_component>();
+
+    auto* asset = dmc.get_asset();
+
+    result_code rc = result_code::nav;
+    if (asset)
+    {
+        if (auto* mat = asset->get_material();
+            mat && is_same_source(*ctx.obj, *mat))
+        {
+            rc = ctx.rb->render_cmd_destroy(*mat, ctx.flag);
+            KRG_return_nok(rc);
+        }
+
+        if (auto* src = asset->get_source_mesh();
+            src && is_same_source(*ctx.obj, *src))
+        {
+            rc = ctx.rb->render_cmd_destroy(*src, ctx.flag);
+            KRG_return_nok(rc);
+        }
+    }
+
+    if (dmc.get_render_built())
+    {
+        auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+        cmd->id = dmc.get_id();
+        dmc.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
 
