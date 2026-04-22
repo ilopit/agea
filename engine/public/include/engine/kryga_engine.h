@@ -93,6 +93,13 @@ private:
     bool
     load_level(const utils::id& level_id);
 
+    // Scans the current level, builds a Jolt MeshShape from every
+    // mesh_component's geometry transformed into world space, and replaces
+    // the physics world's static body. Safe to re-call when the level
+    // changes.
+    void
+    rebuild_physics_static_world();
+
     void consume_updated_render();
     void consume_updated_transforms();
 

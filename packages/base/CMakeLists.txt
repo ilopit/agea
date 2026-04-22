@@ -37,6 +37,8 @@ target_link_libraries(packages.base.model PUBLIC
 
    kryga::sol2_unofficial
 
+   kryga::physics
+
    lua_static
 )
 target_compile_definitions(packages.base.model PUBLIC KRG_build__model)
@@ -65,6 +67,7 @@ target_link_libraries(packages.base.render
    kryga::render_bridge
    kryga::gpu_types
    kryga::animation
+   kryga::voronoi_fracture
 )
 target_compile_definitions(packages.base.render PUBLIC KRG_build__render)
 kryga_finalize_library(packages.base.render)

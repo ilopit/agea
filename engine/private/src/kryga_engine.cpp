@@ -59,6 +59,12 @@
 
 #include <animation/animation_system.h>
 
+#include <physics/physics_system.h>
+
+#include <packages/base/model/components/destructible_mesh_component.h>
+
+#include <gpu_types/gpu_vertex_types.h>
+
 #include <utils/kryga_log.h>
 #include <utils/process.h>
 #include <utils/clock.h>
@@ -182,10 +188,16 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__queues::set(gs);
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
+    state_mutator__physics_system::set(gs);
 
     glob::glob_state().getr_animation_system().set_render_data_resolver(
         [](const utils::id& id) -> render::vulkan_render_data*
         { return glob::glob_state().getr_vulkan_render().get_cache().objects.find_by_id(id); });
+
+    // Bring up the Jolt physics world. Fallback ground plane is installed now;
+    // the real static mesh is rebuilt after the level is loaded (see below).
+    glob::glob_state().getr_physics_system().init();
+    glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
 
     gs.run_connect();
     init_default_scripting();
@@ -240,6 +252,10 @@ vulkan_engine::init(const startup_options& options)
 
     init_scene();
 
+    // Now that scene geometry is loaded, swap the fallback ground plane out
+    // for a MeshShape built from the level's static mesh_components.
+    rebuild_physics_static_world();
+
     m_sync_service->start();
 
     ALOG_INFO("Initialization completed");
@@ -265,6 +281,11 @@ vulkan_engine::cleanup()
     glob::glob_state().get_vulkan_render_loader()->clear_caches();
 
     glob::glob_state().get_render_device()->destruct();
+
+    if (auto* phys = glob::glob_state().get_physics_system())
+    {
+        phys->shutdown();
+    }
 
     glob::glob_state_reset();
 }
@@ -436,6 +457,16 @@ vulkan_engine::tick(float dt)
     if (auto* anim = glob::glob_state().get_animation_system())
     {
         anim->tick(dt);
+    }
+
+    if (auto* phys = glob::glob_state().get_physics_system())
+    {
+        // Physics only advances in play mode. In editor mode chunks would drift
+        // on their own which is confusing while authoring.
+        if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
+        {
+            phys->tick(dt);
+        }
     }
 }
 
@@ -669,6 +700,84 @@ vulkan_engine::init_scene()
                 (float)KGPU_zfar);
         }
     }
+}
+
+void
+vulkan_engine::rebuild_physics_static_world()
+{
+    auto* ps = glob::glob_state().get_physics_system();
+    if (!ps)
+    {
+        return;
+    }
+
+    auto* level = glob::glob_state().get_current_level();
+    if (!level)
+    {
+        // No level — keep whatever fallback (ground plane) is in place.
+        return;
+    }
+
+    std::vector<physics::static_world_mesh> meshes;
+
+    level->get_game_objects().call_on_items(
+        [&meshes](root::game_object* go) -> bool
+        {
+            if (!go)
+            {
+                return true;
+            }
+            for (auto* comp : go->get_renderable_components())
+            {
+                // Skip destructibles — once broken they stop being collision
+                // anyway, and keeping their pre-break body around would
+                // collide with the chunks spawning on top of it.
+                if (comp->castable_to<base::destructible_mesh_component>())
+                {
+                    continue;
+                }
+
+                auto* mc = comp->as<base::mesh_component>();
+                if (!mc || !mc->get_mesh())
+                {
+                    continue;
+                }
+
+                auto* mesh = mc->get_mesh();
+                auto vbuf = mesh->get_vertices_buffer().make_view<gpu::vertex_data>();
+                auto ibuf = mesh->get_indices_buffer().make_view<gpu::uint>();
+                if (vbuf.size() == 0 || ibuf.size() < 3)
+                {
+                    continue;
+                }
+
+                const glm::mat4 xf = mc->get_transform_matrix();
+
+                physics::static_world_mesh entry;
+                entry.vertices.reserve(vbuf.size());
+                for (uint32_t i = 0; i < vbuf.size(); ++i)
+                {
+                    glm::vec4 p = xf * glm::vec4(vbuf.as()[i].position, 1.0f);
+                    entry.vertices.emplace_back(p.x, p.y, p.z);
+                }
+                entry.indices.reserve(ibuf.size());
+                for (uint32_t i = 0; i < ibuf.size(); ++i)
+                {
+                    entry.indices.push_back(ibuf.as()[i]);
+                }
+                meshes.push_back(std::move(entry));
+            }
+            return true;
+        });
+
+    if (meshes.empty())
+    {
+        ALOG_INFO("physics: no static meshes found in level, keeping ground plane");
+        return;
+    }
+
+    ps->build_static_world(meshes);
+    ALOG_INFO("physics: built static world from {} meshes", meshes.size());
 }
 
 void

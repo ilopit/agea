@@ -86,6 +86,11 @@ namespace animation
 class animation_system;
 }  // namespace animation
 
+namespace physics
+{
+class physics_system;
+}  // namespace physics
+
 namespace engine
 {
 class game_editor;
@@ -116,6 +121,7 @@ struct state_mutator__engine_counters;
 struct state_mutator__queues;
 struct state_mutator__render_bridge;
 struct state_mutator__animation_system;
+struct state_mutator__physics_system;
 
 namespace gs
 {
@@ -176,6 +182,7 @@ class state
     friend class ::kryga::state_mutator__queues;
     friend class ::kryga::state_mutator__render_bridge;
     friend class ::kryga::state_mutator__animation_system;
+    friend class ::kryga::state_mutator__physics_system;
 
 public:
     enum class state_stage
@@ -254,6 +261,7 @@ public:
     KRG_gen_getter(render_bridge, render_bridge);
     
     KRG_gen_getter(animation_system, animation::animation_system);
+    KRG_gen_getter(physics_system, physics::physics_system);
     template <typename T>
     T*
     create_box(std::string name)
@@ -337,6 +345,7 @@ private:
     core::queues*                   m_queues = nullptr;
     render_bridge*                  m_render_bridge = nullptr;
     animation::animation_system*    m_animation_system = nullptr;
+    physics::physics_system*        m_physics_system = nullptr;
 
     // clang-format on
 
@@ -429,6 +438,12 @@ struct state_mutator__render_bridge
 };
 
 struct state_mutator__animation_system
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__physics_system
 {
     static void
     set(gs::state& s);
