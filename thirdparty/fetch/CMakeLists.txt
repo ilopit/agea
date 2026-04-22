@@ -126,6 +126,32 @@ FetchContent_Declare(
   GIT_TAG        aa8d4e4750ec9fe9f8cc680eb90f1b15955c817e
 )
 
+# Jolt Physics
+# Its CMakeLists.txt lives in the `Build/` subdirectory.
+set(INTERPROCEDURAL_OPTIMIZATION          OFF CACHE BOOL "" FORCE)
+set(CROSS_PLATFORM_DETERMINISTIC          OFF CACHE BOOL "" FORCE)
+set(DOUBLE_PRECISION                      OFF CACHE BOOL "" FORCE)
+set(GENERATE_DEBUG_SYMBOLS                ON  CACHE BOOL "" FORCE)
+set(OVERRIDE_CXX_FLAGS                    OFF CACHE BOOL "" FORCE)
+set(CPP_EXCEPTIONS_ENABLED                ON  CACHE BOOL "" FORCE)
+set(CPP_RTTI_ENABLED                      ON  CACHE BOOL "" FORCE)
+set(OBJECT_LAYER_BITS                     16  CACHE STRING "" FORCE)
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY       OFF CACHE BOOL "" FORCE)
+set(ENABLE_ALL_WARNINGS                   OFF CACHE BOOL "" FORCE)
+set(TARGET_UNIT_TESTS                     OFF CACHE BOOL "" FORCE)
+set(TARGET_HELLO_WORLD                    OFF CACHE BOOL "" FORCE)
+set(TARGET_PERFORMANCE_TEST               OFF CACHE BOOL "" FORCE)
+set(TARGET_SAMPLES                        OFF CACHE BOOL "" FORCE)
+set(TARGET_VIEWER                         OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+  JoltPhysics
+  GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+  GIT_TAG        v5.2.0
+  GIT_SHALLOW    TRUE
+  SOURCE_SUBDIR  Build
+)
+
 # ==============================================================================
 # Category B: No CMakeLists.txt (download only, compiled by unofficial wrappers)
 # ==============================================================================
@@ -185,6 +211,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(
   cli11 glm googletest jsoncpp lua sol2 spdlog
   spirv-reflect tinyobjloader vk-bootstrap yaml-cpp
+  JoltPhysics
 )
 
 # ==============================================================================
