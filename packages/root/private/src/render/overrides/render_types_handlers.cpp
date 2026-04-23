@@ -231,7 +231,7 @@ struct destroy_shader_effect_cmd : render_cmd::render_command_base
 struct texture_slot_info
 {
     uint32_t slot = 0;
-    utils::id texture_id;
+    utils::slot_handle<render::texture_data> texture_handle;
     uint8_t static_sampler_index = 0;
 };
 
@@ -258,9 +258,9 @@ struct create_material_cmd : render_cmd::render_command_base
         std::vector<render::texture_sampler_data> samples;
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_id.valid())
+            if (slot.texture_handle.is_valid())
             {
-                auto* td = ctx.loader.get_texture_data(slot.texture_id);
+                auto* td = ctx.loader.get_texture_data(slot.texture_handle);
                 if (td)
                 {
                     render::texture_sampler_data tsd;
@@ -281,9 +281,9 @@ struct create_material_cmd : render_cmd::render_command_base
 
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_id.valid() && slot.slot < KGPU_MAX_TEXTURE_SLOTS)
+            if (slot.texture_handle.is_valid() && slot.slot < KGPU_MAX_TEXTURE_SLOTS)
             {
-                auto* td = ctx.loader.get_texture_data(slot.texture_id);
+                auto* td = ctx.loader.get_texture_data(slot.texture_handle);
                 if (td)
                 {
                     gpu_texture_indices[slot.slot] = td->get_bindless_index();
@@ -346,9 +346,9 @@ struct update_material_cmd : render_cmd::render_command_base
         std::vector<render::texture_sampler_data> samples;
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_id.valid())
+            if (slot.texture_handle.is_valid())
             {
-                auto* td = ctx.loader.get_texture_data(slot.texture_id);
+                auto* td = ctx.loader.get_texture_data(slot.texture_handle);
                 if (td)
                 {
                     render::texture_sampler_data tsd;
@@ -369,9 +369,9 @@ struct update_material_cmd : render_cmd::render_command_base
 
         for (auto& slot : texture_slots)
         {
-            if (slot.texture_id.valid() && slot.slot < KGPU_MAX_TEXTURE_SLOTS)
+            if (slot.texture_handle.is_valid() && slot.slot < KGPU_MAX_TEXTURE_SLOTS)
             {
-                auto* td = ctx.loader.get_texture_data(slot.texture_id);
+                auto* td = ctx.loader.get_texture_data(slot.texture_handle);
                 if (td)
                 {
                     gpu_texture_indices[slot.slot] = td->get_bindless_index();
@@ -622,7 +622,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
             {
                 return result_code::failed;
             }
-            slot_info.texture_id = ts.second.txt->get_id();
+            slot_info.texture_handle = ts.second.txt->get_render_handle();
         }
 
         if (ts.second.smp)

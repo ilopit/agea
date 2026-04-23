@@ -323,12 +323,12 @@ struct update_light_cmd : render_cmd::render_command_base
 
 struct select_directional_light_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::vulkan_directional_light_data> handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        ctx.vr.set_selected_directional_light(id);
+        ctx.vr.set_selected_directional_light(handle);
     }
 };
 
@@ -554,7 +554,7 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
     if (lc_model.get_selected())
     {
         auto* cmd = ctx.rb->alloc_cmd<select_directional_light_cmd>();
-        cmd->id = lc_model.get_id();
+        cmd->handle = lc_model.get_render_light_handle();
         ctx.rb->enqueue_cmd(cmd);
     }
 
