@@ -11,7 +11,7 @@
 #include <cstring>
 #include <vector>
 
-namespace kryga::render::test
+namespace kryga::render
 {
 
 // Read back entire color attachment from a render pass as RGBA pixels.
@@ -32,7 +32,6 @@ readback_framebuffer(render_pass& pass,
 
     auto extent = VkExtent3D{width, height, 1};
 
-    // Create linear-tiled destination image for CPU readback
     auto image_ci = vk_utils::make_image_create_info(VK_FORMAT_R8G8B8A8_UNORM, 0, extent);
     image_ci.imageType = VK_IMAGE_TYPE_2D;
     image_ci.arrayLayers = 1;
@@ -53,7 +52,6 @@ readback_framebuffer(render_pass& pass,
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
-            // Transition source to TRANSFER_SRC if not already
             if (src_layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
             {
                 vk_utils::make_insert_image_memory_barrier(
@@ -68,7 +66,6 @@ readback_framebuffer(render_pass& pass,
                     VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
             }
 
-            // Transition destination to TRANSFER_DST
             vk_utils::make_insert_image_memory_barrier(
                 cmd,
                 dst_image.image(),
@@ -95,7 +92,6 @@ readback_framebuffer(render_pass& pass,
                            1,
                            &region);
 
-            // Transition destination to GENERAL for mapping
             vk_utils::make_insert_image_memory_barrier(
                 cmd,
                 dst_image.image(),
@@ -109,10 +105,9 @@ readback_framebuffer(render_pass& pass,
         });
 
     auto* data = dst_image.map();
-    std::vector<uint8_t> pixels(width * height * 4);
+    std::vector<uint8_t> pixels(static_cast<size_t>(width) * height * 4);
     std::memcpy(pixels.data(), data, pixels.size());
 
-    // Handle B8G8R8A8 → R8G8B8A8 swizzle (main pass uses BGRA swapchain format)
     if (pass.get_color_format() == VK_FORMAT_B8G8R8A8_UNORM ||
         pass.get_color_format() == VK_FORMAT_B8G8R8A8_SRGB)
     {
@@ -126,4 +121,4 @@ readback_framebuffer(render_pass& pass,
     return pixels;
 }
 
-}  // namespace kryga::render::test
+}  // namespace kryga::render

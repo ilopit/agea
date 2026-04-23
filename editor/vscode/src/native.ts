@@ -1,0 +1,57 @@
+// Native addon loader. Compiled by cmake-js into ../native/build/Release/
+// during `npm install` in the native/ directory. Wrapped here in a typed
+// facade so the rest of the extension can stay addon-agnostic.
+
+import * as path from "path";
+import { FrameHeader, InputEvent } from "./protocol";
+
+export interface KrygaNative {
+  open(name: string, sizeBytes: number): number;
+  close(handle: number): void;
+  readHeader(handle: number): FrameHeader;
+  getSlotBuffer(handle: number, slotIndex: number): Buffer;
+  claimSlot(handle: number, slotIndex: number): void;
+  releaseSlot(handle: number): void;
+
+  // Phase 2: signaled wait + input writer.
+  //   subscribeFrames returns true if the frame_ready event was successfully
+  //   attached and a worker thread was started. The callback fires on the
+  //   JS thread once per frame_ready signal (auto-reset semantics).
+  //   postInput returns false when the ring is full and the event was dropped.
+  subscribeFrames(
+    handle: number,
+    opts: { name: string; callback: () => void },
+  ): boolean;
+  postInput(handle: number, event: InputEvent): boolean;
+
+  // Phase 4 control channel. Editor sends records as ASCII lines; engine
+  // pushes selection / propertyChanged records.
+  postMessageIn(handle: number, message: string): boolean;
+  drainMessagesOut(handle: number): string[];
+}
+
+let cached: KrygaNative | null = null;
+
+export function loadNative(): KrygaNative {
+  if (cached) return cached;
+
+  const candidates = [
+    path.resolve(__dirname, "../native/build/Release/kryga_native.node"),
+    path.resolve(__dirname, "../native/build/Debug/kryga_native.node"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      cached = require(candidate) as KrygaNative;
+      return cached;
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  throw new Error(
+    `kryga_native addon not found. Build it first:\n` +
+      `    cd editor/vscode/native && npm install\n\n` +
+      `Searched:\n  ${candidates.join("\n  ")}`,
+  );
+}

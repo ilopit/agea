@@ -43,6 +43,11 @@ main(int argc, char** argv)
         return 1;
     }
 
+    if (options.wait_for_debugger)
+    {
+        kryga::wait_for_debugger();
+    }
+
 #if WIN32
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 #endif
@@ -65,7 +70,16 @@ main(int argc, char** argv)
         kryga::state_mutator__engine::set(&engine, gs);
 
         engine.init(options);
-        engine.run();
+
+        if (options.is_headless())
+        {
+            engine.run_headless();
+        }
+        else
+        {
+            engine.run();
+        }
+
         engine.cleanup();
     }
 

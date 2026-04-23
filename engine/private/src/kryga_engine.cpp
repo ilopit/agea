@@ -52,8 +52,15 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
+#include <vulkan_render/types/vulkan_render_pass.h>
+#include <vulkan_render/utils/readback.h>
 #include <vulkan_render/vk_descriptors.h>
 #include <core/lightmap_manifest.h>
+
+#include <render/utils/image_compare.h>
+
+#include <editor_ipc/frame_protocol.h>
+#include <editor_ipc/frame_publisher.h>
 
 #include <vfs/io.h>
 
@@ -69,8 +76,17 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cctype>
 #include <chrono>
+#include <cstdio>
+#include <string_view>
 #include <thread>
+
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__linux__) || defined(__APPLE__)
+#include <unistd.h>
+#endif
 
 namespace kryga
 {
@@ -79,15 +95,65 @@ namespace kryga
 // Startup Options
 // ============================================================================
 
+namespace
+{
+bool
+is_debugger_present_now()
+{
+#if defined(_WIN32)
+    return ::IsDebuggerPresent() != 0;
+#elif defined(__linux__)
+    std::ifstream f("/proc/self/status");
+    std::string line;
+    while (std::getline(f, line))
+    {
+        constexpr std::string_view key = "TracerPid:";
+        if (line.rfind(key, 0) == 0)
+        {
+            int pid = std::atoi(line.data() + key.size());
+            return pid != 0;
+        }
+    }
+    return false;
+#else
+    return false;
+#endif
+}
+
+void
+add_common_options(CLI::App& app, startup_options& out)
+{
+    app.add_option("-t,--run-for", out.run_for_seconds,
+                   "Run for specified duration then exit (0 = unlimited)")
+        ->check(CLI::NonNegativeNumber);
+
+    app.add_option("--editor-ipc", out.editor_ipc_name,
+                   "Run headless and publish frames on this IPC channel "
+                   "(Phase 0: name is accepted and logged; transport wired in Phase 1).");
+
+    app.add_option("--dump-first-frame", out.dump_first_frame_path,
+                   "Run headless, render a warm-up burst, then save the final color "
+                   "image to this PNG path and exit. Used to verify the headless pipeline.");
+
+    app.add_option("--headless-width", out.headless_width,
+                   "Headless render target width (default 1024).")
+        ->check(CLI::PositiveNumber);
+    app.add_option("--headless-height", out.headless_height,
+                   "Headless render target height (default 1024).")
+        ->check(CLI::PositiveNumber);
+
+    app.add_flag("--wait-for-debugger", out.wait_for_debugger,
+                 "Print the process PID and block until a debugger attaches.");
+}
+}  // namespace
+
 bool
 startup_options::parse(int argc, char** argv, startup_options& out)
 {
     out = {};
 
     CLI::App app{"Kryga Engine"};
-
-    app.add_option("-t,--run-for", out.run_for_seconds, "Run for specified duration then exit (0 = unlimited)")
-        ->check(CLI::NonNegativeNumber);
+    add_common_options(app, out);
 
     try
     {
@@ -110,15 +176,42 @@ void
 startup_options::print_help(const char* program_name)
 {
     CLI::App app{"Kryga Engine"};
-    float dummy = 0.f;
-    app.add_option("-t,--run-for", dummy, "Run for specified duration then exit (0 = unlimited)")
-        ->check(CLI::NonNegativeNumber);
+    startup_options dummy;
+    add_common_options(app, dummy);
 
     ALOG_INFO("{}", app.help());
 }
 
+void
+wait_for_debugger(std::chrono::seconds timeout)
+{
+#if defined(_WIN32)
+    auto pid = static_cast<unsigned long>(::GetCurrentProcessId());
+#else
+    auto pid = static_cast<unsigned long>(::getpid());
+#endif
+
+    ALOG_INFO("Waiting for debugger to attach. PID={} (timeout {}s)",
+              pid,
+              static_cast<long long>(timeout.count()));
+
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        if (is_debugger_present_now())
+        {
+            ALOG_INFO("Debugger attached — continuing.");
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    }
+
+    ALOG_WARN("wait_for_debugger: timeout elapsed, continuing without debugger.");
+}
+
 vulkan_engine::vulkan_engine()
     : m_sync_service(std::make_unique<sync_service>())
+    , m_frame_publisher(std::make_unique<editor_ipc::frame_publisher>())
 {
 }
 
@@ -152,6 +245,20 @@ vulkan_engine::init(const startup_options& options)
     if (m_run_for_seconds > 0.f)
     {
         ALOG_INFO("Run duration limit: {} seconds", m_run_for_seconds);
+    }
+
+    m_headless = options.is_headless();
+    m_editor_ipc_name = options.editor_ipc_name;
+    m_dump_first_frame_path = options.dump_first_frame_path;
+    m_headless_width = options.headless_width;
+    m_headless_height = options.headless_height;
+    if (m_headless)
+    {
+        ALOG_INFO("Headless mode: {}x{}, editor-ipc='{}', dump-first-frame='{}'",
+                  m_headless_width,
+                  m_headless_height,
+                  m_editor_ipc_name,
+                  m_dump_first_frame_path);
     }
 
     auto& gs = glob::glob_state();
@@ -212,14 +319,28 @@ vulkan_engine::init(const startup_options& options)
     rwc.h = 900 * 2;
     auto window = glob::glob_state().get_native_window();
 
-    if (!window->construct(rwc))
+    if (m_headless)
     {
-        ALOG_LAZY_ERROR;
-        return false;
+        // No OS window / SDL init — but still report a valid size to every
+        // subsystem that queries native_window for aspect ratio, viewport
+        // extent, etc. Override rwc with the headless resolution so the
+        // render target and cluster grid are sized correctly.
+        rwc.w = static_cast<int>(m_headless_width);
+        rwc.h = static_cast<int>(m_headless_height);
+        window->set_headless_size(rwc.w, rwc.h);
+    }
+    else
+    {
+        if (!window->construct(rwc))
+        {
+            ALOG_LAZY_ERROR;
+            return false;
+        }
     }
 
     render::render_device::construct_params rdc;
-    rdc.window = window->handle();
+    rdc.window = m_headless ? nullptr : window->handle();
+    rdc.headless = m_headless;
 
     auto device = glob::glob_state().get_render_device();
     if (!device->construct(rdc))
@@ -228,11 +349,16 @@ vulkan_engine::init(const startup_options& options)
         return false;
     }
 
-    glob::glob_state().getr_ui().init();
+    // ImGui + editor UI windows need a real SDL window + swapchain. In headless
+    // mode we drive the scene programmatically (or via IPC in later phases).
+    if (!m_headless)
+    {
+        glob::glob_state().getr_ui().init();
 
-    // Load bake config (with rtcache fallback for session state)
-    ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
-                                            vfs::rid("rtcache://bake.acfg"));
+        // Load bake config (with rtcache fallback for session state)
+        ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
+                                                vfs::rid("rtcache://bake.acfg"));
+    }
 
     glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, render_cfg);
 
@@ -242,6 +368,21 @@ vulkan_engine::init(const startup_options& options)
 
     m_sync_service->start();
 
+    if (m_headless && !m_editor_ipc_name.empty())
+    {
+        editor_ipc::frame_publisher::config pub_cfg;
+        pub_cfg.name = m_editor_ipc_name;
+        pub_cfg.max_width = m_headless_width;
+        pub_cfg.max_height = m_headless_height;
+        pub_cfg.format = editor_ipc::pf_rgba8;
+
+        if (!m_frame_publisher->init(*device, pub_cfg))
+        {
+            ALOG_ERROR("frame_publisher init failed: {}", m_frame_publisher->last_error());
+            return false;
+        }
+    }
+
     ALOG_INFO("Initialization completed");
     return true;
 }
@@ -249,14 +390,23 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
-    // Save session state to rtcache
-    glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
-        vfs::rid("rtcache://render.acfg"));
-    ui::get_window<ui::bake_editor>()->save_config();
+    // In headless we never created the UI / bake editor, so skip the state
+    // save that touches them.
+    if (!m_headless)
+    {
+        glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
+            vfs::rid("rtcache://render.acfg"));
+        ui::get_window<ui::bake_editor>()->save_config();
+    }
 
     glob::set_input_provider(nullptr);
 
     m_sync_service->stop();
+
+    if (m_frame_publisher && m_frame_publisher->is_open())
+    {
+        m_frame_publisher->shutdown(*glob::glob_state().get_render_device());
+    }
 
     glob::glob_state().get_render_device()->wait_for_fences();
 
@@ -421,6 +571,183 @@ vulkan_engine::run()
     m_render_cv.notify_one();
     m_render_thread.join();
 }
+
+void
+vulkan_engine::run_headless()
+{
+    KRG_check(m_headless, "run_headless requires headless mode");
+
+    auto& device = glob::glob_state().getr_render_device();
+    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& bridge = glob::glob_state().getr_render_bridge();
+
+    // The render graph and async uploads take a couple of frames to become
+    // coherent (FRAMES_IN_FLIGHT = 3). Render a small warm-up burst before
+    // dumping so the dumped frame matches what a steady-state viewer sees.
+    const uint32_t warmup_frames = static_cast<uint32_t>(FRAMES_IN_FLIGHT) + 1;
+
+    const float frame_time = 1.f / glob::glob_state().get_config()->fps_lock;
+    float total_elapsed = 0.f;
+    uint32_t frames_drawn = 0;
+
+    ALOG_INFO("Headless loop: starting (warmup={} frames)", warmup_frames);
+
+    while (true)
+    {
+        if (m_run_for_seconds > 0.f && total_elapsed >= m_run_for_seconds)
+        {
+            ALOG_INFO("Run duration limit reached ({} seconds), exiting.", m_run_for_seconds);
+            break;
+        }
+
+        KRG_make_scope(frame);
+        KRG_PROFILE_SCOPE("HeadlessFrame");
+
+        // Order matches run(): arena reclaim first (previous frame is done,
+        // this is the only thread that consumes render commands), then tick /
+        // enqueue, then drain + draw.
+        bridge.reset_arena();
+
+        // Phase 4: drain control messages. See handle_ipc_message for
+        // the message format. Phase 5: resend schemas whenever a
+        // consumer attaches (0→1 transition) so a late-connecting editor
+        // always has them.
+        if (m_frame_publisher && m_frame_publisher->is_open())
+        {
+            const bool attached_now = m_frame_publisher->is_consumer_attached();
+            if (attached_now && !m_schemas_sent_for_consumer)
+            {
+                send_schemas();
+                m_schemas_sent_for_consumer = true;
+            }
+            else if (!attached_now && m_schemas_sent_for_consumer)
+            {
+                m_schemas_sent_for_consumer = false;
+            }
+
+            m_frame_publisher->drain_messages_in(
+                [this](std::string_view msg) { handle_ipc_message(msg); });
+        }
+
+        // Phase 2: drain input events from the VS Code side and route
+        // them into the edit-mode camera. Mouse-move deltas become
+        // look-up / look-left; mouse-button[R] toggles "looking" which
+        // is the same gate the SDL path uses for right-drag camera.
+        if (m_frame_publisher && m_frame_publisher->is_open())
+        {
+            struct accumulator
+            {
+                float look_up = 0.f;
+                float look_left = 0.f;
+                bool looking = false;
+                bool looking_set = false;
+            } acc;
+            constexpr float mouse_sensitivity = 0.1f;
+            m_frame_publisher->drain_input(
+                [&](const editor_ipc::input_event& e)
+                {
+                    switch (e.type)
+                    {
+                    case editor_ipc::iev_mouse_move:
+                        acc.look_up -= static_cast<float>(e.d) * mouse_sensitivity;
+                        acc.look_left -= static_cast<float>(e.c) * mouse_sensitivity;
+                        break;
+                    case editor_ipc::iev_mouse_button:
+                        if (e.a == 1)  // right button
+                        {
+                            acc.looking = (e.b != 0);
+                            acc.looking_set = true;
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                });
+            if (acc.look_up != 0.f || acc.look_left != 0.f || acc.looking_set)
+            {
+                auto* editor = glob::glob_state().get_game_editor();
+                editor->apply_ipc_input(
+                    0.f, 0.f, acc.look_up, acc.look_left,
+                    acc.looking_set ? acc.looking : acc.look_up != 0.f || acc.look_left != 0.f);
+            }
+        }
+
+        tick(frame_time);
+        execute_sync_requests();
+
+        update_cameras();
+        renderer.set_camera(m_camera_data);
+
+        consume_updated_render();
+        consume_updated_transforms();
+
+        bridge.drain_queue();
+        renderer.draw_headless();
+
+        ++frames_drawn;
+
+        const bool warm = frames_drawn >= warmup_frames;
+
+        // Source of truth for the rendered frame: the "main" render pass'
+        // current-frame color image. draw_headless() leaves it in
+        // COLOR_ATTACHMENT_OPTIMAL; both the publisher and the PNG path
+        // barrier it through TRANSFER_SRC_OPTIMAL and back.
+        auto* main_pass = renderer.get_render_pass(AID("main"));
+        KRG_check(main_pass, "main render pass must exist to publish / dump frame");
+        const auto& color_images = main_pass->get_color_images();
+        KRG_check(!color_images.empty(), "main render pass has no color images");
+        const auto frame_idx = device.get_current_frame_index();
+        auto* color_image = color_images[frame_idx % color_images.size()].get();
+        KRG_check(color_image, "main render pass color image slot is null");
+
+        if (warm && m_frame_publisher && m_frame_publisher->is_open())
+        {
+            m_frame_publisher->publish(device,
+                                       color_image->image(),
+                                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                       main_pass->get_color_format(),
+                                       m_headless_width,
+                                       m_headless_height);
+        }
+
+        if (warm && !m_dump_first_frame_path.empty())
+        {
+            vkDeviceWaitIdle(device.vk_device());
+
+            auto pixels = render::readback_framebuffer(
+                *main_pass, m_headless_width, m_headless_height);
+
+            if (render::save_png(m_dump_first_frame_path,
+                                 pixels.data(),
+                                 m_headless_width,
+                                 m_headless_height))
+            {
+                ALOG_INFO("Headless: dumped first frame to '{}' ({}x{})",
+                          m_dump_first_frame_path,
+                          m_headless_width,
+                          m_headless_height);
+            }
+            else
+            {
+                ALOG_ERROR("Headless: failed to save PNG to '{}'", m_dump_first_frame_path);
+            }
+
+            if (m_editor_ipc_name.empty())
+            {
+                break;
+            }
+
+            // Dump once per run.
+            m_dump_first_frame_path.clear();
+        }
+
+        total_elapsed += frame_time;
+        KRG_PROFILE_FRAME_MARK();
+    }
+
+    ALOG_INFO("Headless loop: drew {} frame(s)", frames_drawn);
+}
+
 void
 vulkan_engine::tick(float dt)
 {
@@ -698,6 +1025,182 @@ vulkan_engine::init_default_scripting()
         [pm](const char* id) -> bool { return pm->load_package(AID(id)); });
 
     gs.create_box_with_obj("lua_pm", std::move(lua_pm));
+}
+
+namespace
+{
+// Split an ASCII message into tokens on whitespace. Each token that
+// contains '=' is treated as key=value; tokens without '=' count as flags
+// stored in `kv[token] = ""`. The caller ideally puts the message verb
+// first (also stored in `kv["_"] = verb`).
+struct parsed_msg
+{
+    std::unordered_map<std::string, std::string> kv;
+};
+
+parsed_msg
+parse_ipc_msg(std::string_view msg)
+{
+    parsed_msg out;
+    size_t i = 0;
+    bool first = true;
+    while (i < msg.size())
+    {
+        while (i < msg.size() && std::isspace(static_cast<unsigned char>(msg[i]))) ++i;
+        size_t start = i;
+        while (i < msg.size() && !std::isspace(static_cast<unsigned char>(msg[i]))) ++i;
+        if (start == i) break;
+        std::string_view tok(msg.data() + start, i - start);
+
+        if (first)
+        {
+            out.kv["_"] = std::string(tok);
+            first = false;
+            continue;
+        }
+        auto eq = tok.find('=');
+        if (eq == std::string_view::npos)
+        {
+            out.kv[std::string(tok)] = "";
+        }
+        else
+        {
+            out.kv[std::string(tok.substr(0, eq))] = std::string(tok.substr(eq + 1));
+        }
+    }
+    return out;
+}
+
+float
+to_float(const std::string& s, float fallback)
+{
+    try
+    {
+        return std::stof(s);
+    }
+    catch (...)
+    {
+        return fallback;
+    }
+}
+}  // namespace
+
+void
+vulkan_engine::send_schemas()
+{
+    if (!m_frame_publisher || !m_frame_publisher->is_open()) return;
+
+    // Phase 5: walk the reflection registry and emit one `schema` record
+    // per registered type. Record format:
+    //
+    //     schema type=<name> [f=<field_name>:<type_id>:<offset> ...]
+    //
+    // The consumer caches these by type name. Records longer than
+    // MSG_SLOT_BYTES are truncated by frame_publisher::push_message_out;
+    // that's acceptable for Phase 5 (types with >50 fields are rare and
+    // the truncated record still teaches the consumer the first N).
+    // Chunking can be added if this becomes a real problem.
+    auto* reg = glob::glob_state().get_rm();
+    if (!reg) return;
+    const auto& types = reg->get_types_to_name();
+
+    uint32_t sent = 0;
+    for (const auto& [type_name, rtype] : types)
+    {
+        if (!rtype) continue;
+
+        std::string line = "schema type=";
+        line += rtype->type_name.str();
+
+        for (const auto& prop : rtype->m_properties)
+        {
+            if (!prop) continue;
+            char buf[96];
+            const int n = std::snprintf(buf, sizeof(buf), " f=%s:%d:%zu",
+                                        prop->name.c_str(),
+                                        prop->type.type_id,
+                                        prop->offset);
+            if (n > 0) line.append(buf, static_cast<size_t>(n));
+        }
+
+        if (m_frame_publisher->push_message_out(line)) ++sent;
+    }
+
+    ALOG_INFO("send_schemas: pushed {} type schemas", sent);
+}
+
+void
+vulkan_engine::send_selection()
+{
+    if (!m_frame_publisher || !m_frame_publisher->is_open()) return;
+
+    // Phase 4 exposes a single hardcoded selection: the editor's camera
+    // position. Phase 5 generalises this via the reflection system.
+    auto* editor = glob::glob_state().get_game_editor();
+    const glm::vec3 pos{editor->get_camera_data().position};
+
+    char buf[256];
+    const int n = std::snprintf(
+        buf, sizeof(buf),
+        "selection entity=play_camera pos_x=%.4f pos_y=%.4f pos_z=%.4f",
+        pos.x, pos.y, pos.z);
+    if (n > 0)
+    {
+        m_frame_publisher->push_message_out(
+            std::string_view(buf, static_cast<size_t>(n)));
+    }
+}
+
+void
+vulkan_engine::handle_ipc_message(std::string_view msg)
+{
+    if (msg.empty()) return;
+    auto parsed = parse_ipc_msg(msg);
+    const auto& verb = parsed.kv["_"];
+
+    if (verb == "requestSelection")
+    {
+        send_selection();
+        return;
+    }
+    if (verb == "setProperty")
+    {
+        const auto& path = parsed.kv["path"];
+        const auto& value_s = parsed.kv["value"];
+        const float value = to_float(value_s, 0.f);
+
+        // Phase 4: only camera.position.{x,y,z} is wired. Extending to
+        // arbitrary objects / components is Phase 5's job.
+        auto* editor = glob::glob_state().get_game_editor();
+        auto data = editor->get_camera_data();
+        glm::vec3 pos{data.position};
+        if (path == "camera.position.x") pos.x = value;
+        else if (path == "camera.position.y") pos.y = value;
+        else if (path == "camera.position.z") pos.z = value;
+        else
+        {
+            ALOG_WARN("handle_ipc_message: unknown property path '{}'", path);
+            return;
+        }
+
+        // Reach into the editor's state via an explicit setter rather than
+        // poking private fields. Avoids an unrelated header-rotation
+        // churn; the new method is tiny.
+        editor->set_camera_position(pos);
+
+        char echo[128];
+        const int n = std::snprintf(echo, sizeof(echo),
+                                    "propertyChanged path=%s value=%.6f",
+                                    path.c_str(), value);
+        if (n > 0 && m_frame_publisher)
+        {
+            m_frame_publisher->push_message_out(
+                std::string_view(echo, static_cast<size_t>(n)));
+        }
+        return;
+    }
+
+    ALOG_WARN("handle_ipc_message: unknown verb '{}'", verb);
 }
 
 void

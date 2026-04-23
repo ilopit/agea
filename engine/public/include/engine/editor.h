@@ -81,6 +81,18 @@ public:
     base::camera_component*
     get_active_camera() const;
 
+    // IPC-driven input (Phase 2). Bypasses SDL / input_manager and feeds
+    // deltas directly into the edit-mode camera. `looking` toggles whether
+    // yaw/pitch deltas are consumed this frame (equivalent to "mouse-right
+    // held" in the SDL path).
+    void
+    apply_ipc_input(float forward, float left, float look_up, float look_left, bool looking);
+
+    // Phase 4: direct setter for IPC-driven property edits. Sets m_updated
+    // so update_camera() rebuilds the view matrix next tick.
+    void
+    set_camera_position(const glm::vec3& pos);
+
 private:
     glm::mat4
     get_rotation_matrix();
@@ -99,6 +111,7 @@ private:
     gpu::camera_data m_camera_data;
 
     bool m_updated = true;
+    bool m_ipc_looking = false;  // true → apply yaw/pitch even without mouse-right held.
 
     editor_mode m_mode = editor_mode::editor;
     glm::vec3 m_saved_position;
