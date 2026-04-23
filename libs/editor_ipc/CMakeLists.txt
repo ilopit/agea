@@ -1,4 +1,16 @@
-file(GLOB LIB_SRC "public/include/editor_ipc/*.h" "private/src/*.cpp")
+# editor_ipc is the static library; shmdump_main.cpp is a separate
+# executable target, listed explicitly so we don't pull main() into the lib.
+set(LIB_SRC
+    public/include/editor_ipc/frame_protocol.h
+    public/include/editor_ipc/shared_memory.h
+    public/include/editor_ipc/named_event.h
+    public/include/editor_ipc/input_reader.h
+    public/include/editor_ipc/frame_publisher.h
+    private/src/shared_memory.cpp
+    private/src/named_event.cpp
+    private/src/input_reader.cpp
+    private/src/frame_publisher.cpp
+)
 
 add_library(editor_ipc STATIC
    ${LIB_SRC}
@@ -19,3 +31,12 @@ if(UNIX)
 endif()
 
 kryga_finalize_library(editor_ipc)
+
+# Diagnostic CLI: attaches to a running region, prints header atomics,
+# optionally saves the most recent ready slot to PNG.
+add_executable(editor_ipc_shmdump private/src/shmdump_main.cpp)
+target_link_libraries(editor_ipc_shmdump PRIVATE
+    kryga::editor_ipc
+    kryga::render_utils
+)
+kryga_finalize_executable(editor_ipc_shmdump)

@@ -149,6 +149,25 @@ frame_publisher::drain_input(const std::function<void(const input_event&)>& fn,
     return reader.drain(fn, max_events);
 }
 
+void
+frame_publisher::resize(uint32_t width, uint32_t height)
+{
+    if (!is_open()) return;
+    KRG_check(width <= m_cfg.max_width && height <= m_cfg.max_height,
+              "frame_publisher::resize: exceeds provisioned max dims");
+
+    auto* h = header();
+    const uint32_t cur_w = h->current_width.load(std::memory_order_acquire);
+    const uint32_t cur_h = h->current_height.load(std::memory_order_acquire);
+    if (cur_w == width && cur_h == height) return;
+
+    // Ordering: store dims first, then bump generation. Consumer reads
+    // generation, reads dims, re-reads generation; mismatch → retry.
+    h->current_width.store(width, std::memory_order_release);
+    h->current_height.store(height, std::memory_order_release);
+    h->generation.fetch_add(1, std::memory_order_acq_rel);
+}
+
 uint32_t
 frame_publisher::pick_write_slot() const
 {

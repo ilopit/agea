@@ -110,12 +110,23 @@ export class ViewportSession {
     const slot = header.latestReadySlot;
     if (slot === SLOT_NONE) return;
 
+    const genBefore = header.generation;
+
     this.native.claimSlot(this.handle, slot);
     try {
       const buf = this.native.getSlotBuffer(this.handle, slot);
       const pixels = Buffer.from(
         buf.slice(0, header.currentWidth * header.currentHeight * 4),
       );
+
+      // Seqlock-style check: if the publisher bumped `generation` between
+      // our first readHeader and now, the dims we read no longer match
+      // what the slot actually contains (publisher changed resolution).
+      // Discard the frame; next tick will pick up the new generation.
+      const after = this.native.readHeader(this.handle);
+      if (after.generation !== genBefore) {
+        return;
+      }
 
       this.panel.webview.postMessage({
         type: "frame",

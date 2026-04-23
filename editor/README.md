@@ -94,3 +94,46 @@ Frames are therefore copied three times between GPU and canvas (staging →
 shm → post-message → WebGL texture). Phase 1 accepts this; Phase 2 adds the
 signaled wait but does not reduce copies. The copy count is noted so it's
 easy to find when profiling later.
+
+## Diagnostics (Phase 3)
+
+### `editor_ipc_shmdump`
+
+Attaches to a running region without disturbing the publisher or the
+editor:
+
+```
+tools/run.sh editor_ipc_shmdump <name> <max_width> <max_height> [out.png]
+```
+
+Prints every header atomic (magic, version, dims, frame_counter,
+latest_ready_slot, publisher_alive, consumer_attached, input ring
+head/tail) and optionally saves the most recent ready slot to a PNG.
+Useful when the editor shows a black viewport: if shmdump shows frames
+arriving, the problem is in the extension / webview; if shmdump sees
+frame_counter frozen, it's upstream.
+
+### Robustness behaviors
+
+- **Engine crashes mid-session.** The extension's 1 Hz watchdog reads
+  `publisher_alive == 0` and triggers a reconnect loop (retries
+  `open()` every 500 ms). No VS Code restart needed. On the next
+  engine start, `frame_publisher::init()` calls
+  `shared_memory::unlink_stale()` to clear the POSIX region before
+  creating a fresh one with the same name.
+- **Extension starts before engine.** `open()` returns -1 until the
+  engine creates the region; the viewport shows "disconnected" and
+  retries every 500 ms.
+- **Extension disconnects mid-frame.** `reading_slot` is cleared in a
+  `finally` block so the publisher is never stuck thinking a consumer
+  is still reading a slot.
+- **Engine resizes the viewport.** `frame_publisher::resize(w, h)`
+  updates `current_width/height` and bumps `generation`. The consumer
+  reads `generation` twice around each frame copy (seqlock style); a
+  mismatch discards the in-flight frame. Resize must stay within the
+  `max_width`/`max_height` provisioned at `init()` — a true max-dim
+  change is a full tear-down and reconnect.
+- **Ring overflow.** `postInput` returns false when the input ring is
+  full (256 slots). The extension currently drops the event rather
+  than blocking the JS thread. Noted here so a future "batch input"
+  sender knows it must handle rejection.

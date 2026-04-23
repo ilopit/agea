@@ -79,6 +79,14 @@ public:
     uint32_t
     drain_input(const std::function<void(const input_event&)>& fn, uint32_t max_events = 1024);
 
+    // Resize handshake (Phase 3). Updates current_width / current_height
+    // and bumps generation, which consumers use to detect that dimensions
+    // changed mid-session. Required to stay within the max_width/max_height
+    // provisioned at init() — true max resize means tearing the region
+    // down and recreating with a new name.
+    void
+    resize(uint32_t width, uint32_t height);
+
     bool
     is_open() const
     {
