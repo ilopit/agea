@@ -149,6 +149,89 @@
     }
   });
 
+  // --------------------------------------------------------------------
+  // Input forwarding: canvas events → postMessage → extension.
+  // --------------------------------------------------------------------
+
+  // Canvas-pixel coordinates (not CSS) so the engine can map to its own
+  // viewport without knowing the webview devicePixelRatio.
+  function toCanvasCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    return {
+      x: Math.round((e.clientX - rect.left) * sx),
+      y: Math.round((e.clientY - rect.top) * sy),
+    };
+  }
+
+  let lastPos = null;
+  canvas.addEventListener("pointermove", (e) => {
+    const p = toCanvasCoords(e);
+    const dx = lastPos ? p.x - lastPos.x : 0;
+    const dy = lastPos ? p.y - lastPos.y : 0;
+    lastPos = p;
+    vscode.postMessage({
+      type: "input.mouseMove",
+      x: p.x,
+      y: p.y,
+      dx: dx,
+      dy: dy,
+    });
+  });
+
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    vscode.postMessage({
+      type: "input.mouseButton",
+      button: e.button,
+      down: true,
+    });
+  });
+  canvas.addEventListener("pointerup", (e) => {
+    canvas.releasePointerCapture(e.pointerId);
+    vscode.postMessage({
+      type: "input.mouseButton",
+      button: e.button,
+      down: false,
+    });
+  });
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    vscode.postMessage({
+      type: "input.mouseWheel",
+      deltaY: e.deltaY,
+      deltaX: e.deltaX,
+    });
+  }, { passive: false });
+
+  function keyEventToMods(e) {
+    let m = 0;
+    if (e.shiftKey) m |= 1;
+    if (e.ctrlKey) m |= 2;
+    if (e.altKey) m |= 4;
+    if (e.metaKey) m |= 8;
+    return m;
+  }
+
+  window.addEventListener("keydown", (e) => {
+    vscode.postMessage({
+      type: "input.key",
+      keyCode: e.keyCode,
+      down: true,
+      mods: keyEventToMods(e),
+    });
+  });
+  window.addEventListener("keyup", (e) => {
+    vscode.postMessage({
+      type: "input.key",
+      keyCode: e.keyCode,
+      down: false,
+      mods: keyEventToMods(e),
+    });
+  });
+
   // Inform the extension we're ready to receive.
   vscode.postMessage({ type: "ready" });
 })();

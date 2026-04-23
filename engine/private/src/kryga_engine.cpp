@@ -59,6 +59,7 @@
 
 #include <render/utils/image_compare.h>
 
+#include <editor_ipc/frame_protocol.h>
 #include <editor_ipc/frame_publisher.h>
 
 #include <vfs/io.h>
@@ -603,6 +604,49 @@ vulkan_engine::run_headless()
         // this is the only thread that consumes render commands), then tick /
         // enqueue, then drain + draw.
         bridge.reset_arena();
+
+        // Phase 2: drain input events from the VS Code side and route
+        // them into the edit-mode camera. Mouse-move deltas become
+        // look-up / look-left; mouse-button[R] toggles "looking" which
+        // is the same gate the SDL path uses for right-drag camera.
+        if (m_frame_publisher && m_frame_publisher->is_open())
+        {
+            struct accumulator
+            {
+                float look_up = 0.f;
+                float look_left = 0.f;
+                bool looking = false;
+                bool looking_set = false;
+            } acc;
+            constexpr float mouse_sensitivity = 0.1f;
+            m_frame_publisher->drain_input(
+                [&](const editor_ipc::input_event& e)
+                {
+                    switch (e.type)
+                    {
+                    case editor_ipc::iev_mouse_move:
+                        acc.look_up -= static_cast<float>(e.d) * mouse_sensitivity;
+                        acc.look_left -= static_cast<float>(e.c) * mouse_sensitivity;
+                        break;
+                    case editor_ipc::iev_mouse_button:
+                        if (e.a == 1)  // right button
+                        {
+                            acc.looking = (e.b != 0);
+                            acc.looking_set = true;
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                });
+            if (acc.look_up != 0.f || acc.look_left != 0.f || acc.looking_set)
+            {
+                auto* editor = glob::glob_state().get_game_editor();
+                editor->apply_ipc_input(
+                    0.f, 0.f, acc.look_up, acc.look_left,
+                    acc.looking_set ? acc.looking : acc.look_up != 0.f || acc.look_left != 0.f);
+            }
+        }
 
         tick(frame_time);
         execute_sync_requests();

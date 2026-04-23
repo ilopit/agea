@@ -42,7 +42,11 @@ inline constexpr uint32_t SHM_MAGIC = 0x4B524741u;
 
 // Bump when any field layout in frame_header changes. Publisher and consumer
 // refuse to attach across a version mismatch.
-inline constexpr uint32_t SHM_VERSION = 1;
+//   v1: Phase 1 — triple-buffered frame slots only.
+//   v2: Phase 2 — add input ring (head/tail/capacity + ring blob).
+inline constexpr uint32_t SHM_VERSION = 2;
+
+inline constexpr uint32_t INPUT_RING_CAPACITY = 256;
 
 inline constexpr uint32_t NUM_SLOTS = 3;
 inline constexpr uint32_t SLOT_NONE = 0xFFFFFFFFu;
@@ -52,6 +56,37 @@ enum pixel_format : uint32_t
     pf_rgba8 = 0,
     pf_bgra8 = 1,
 };
+
+// Input events. POD layout, written directly into the ring blob by the
+// consumer (VS Code side) and drained by the engine. Fields `a`..`d` are
+// interpreted per `type`:
+//
+//   mouse_move:   a = x (canvas pixels), b = y, c = dx, d = dy
+//   mouse_button: a = button (0=L, 1=R, 2=M), b = down (0/1), c/d unused
+//   mouse_wheel:  a = delta_y*120 (fixed-point), b = delta_x*120
+//   key:          a = key_code (SDL-compatible), b = down (0/1), c = mods
+//
+// `timestamp_ms` is a monotonic millisecond counter from the producer's
+// clock — useful for logging, not for input prediction.
+enum input_event_type : uint32_t
+{
+    iev_mouse_move = 0,
+    iev_mouse_button = 1,
+    iev_mouse_wheel = 2,
+    iev_key = 3,
+};
+
+struct input_event
+{
+    uint32_t type;
+    uint32_t timestamp_ms;
+    int32_t a;
+    int32_t b;
+    int32_t c;
+    int32_t d;
+};
+static_assert(sizeof(input_event) == 24, "input_event layout must match across processes");
+static_assert(std::is_standard_layout_v<input_event>);
 
 // Fixed-size, standard-layout header. Reader and writer both mmap the same
 // region; all cross-process coordination lives in the atomic members below.
@@ -100,10 +135,16 @@ struct frame_header
     std::atomic<uint32_t> publisher_alive;   // 0 / 1
     std::atomic<uint32_t> consumer_attached; // 0 / 1
 
-    // Reserved for Phase 2 (pointer to input ring). Ignored by Phase 1.
+    // Input ring (Phase 2). `input_ring_offset` points into the region at
+    // an array of `input_ring_capacity` input_event slots (INPUT_RING_CAPACITY
+    // in practice). Writer (VS Code) bumps `input_ring_head`; reader (engine)
+    // bumps `input_ring_tail`. Empty when head == tail; full when
+    // (head + 1) % capacity == tail — one slot is sacrificed to disambiguate.
     uint64_t input_ring_offset;
-    uint32_t input_ring_size;
+    uint32_t input_ring_capacity;
     uint32_t _reserved0;
+    std::atomic<uint32_t> input_ring_head;
+    std::atomic<uint32_t> input_ring_tail;
 };
 
 static_assert(std::is_standard_layout_v<frame_header>,
@@ -126,6 +167,8 @@ struct region_layout
 {
     size_t total_bytes;
     uint64_t slot_offsets[NUM_SLOTS];
+    uint64_t input_ring_offset;
+    uint32_t input_ring_bytes;
     uint32_t stride_bytes;
     uint32_t slot_bytes;
 };
@@ -136,6 +179,7 @@ compute_region_layout(uint32_t max_width, uint32_t max_height)
     region_layout out{};
     out.stride_bytes = max_width * 4;
     out.slot_bytes = out.stride_bytes * max_height;
+    out.input_ring_bytes = INPUT_RING_CAPACITY * sizeof(input_event);
 
     size_t cursor = align_up(sizeof(frame_header), CACHE_LINE);
     for (uint32_t i = 0; i < NUM_SLOTS; ++i)
@@ -143,6 +187,8 @@ compute_region_layout(uint32_t max_width, uint32_t max_height)
         out.slot_offsets[i] = cursor;
         cursor += align_up(out.slot_bytes, CACHE_LINE);
     }
+    out.input_ring_offset = cursor;
+    cursor += align_up(out.input_ring_bytes, CACHE_LINE);
     out.total_bytes = cursor;
     return out;
 }

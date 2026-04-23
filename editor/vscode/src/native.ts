@@ -3,7 +3,7 @@
 // facade so the rest of the extension can stay addon-agnostic.
 
 import * as path from "path";
-import { FrameHeader } from "./protocol";
+import { FrameHeader, InputEvent } from "./protocol";
 
 export interface KrygaNative {
   open(name: string, sizeBytes: number): number;
@@ -12,6 +12,17 @@ export interface KrygaNative {
   getSlotBuffer(handle: number, slotIndex: number): Buffer;
   claimSlot(handle: number, slotIndex: number): void;
   releaseSlot(handle: number): void;
+
+  // Phase 2: signaled wait + input writer.
+  //   subscribeFrames returns true if the frame_ready event was successfully
+  //   attached and a worker thread was started. The callback fires on the
+  //   JS thread once per frame_ready signal (auto-reset semantics).
+  //   postInput returns false when the ring is full and the event was dropped.
+  subscribeFrames(
+    handle: number,
+    opts: { name: string; callback: () => void },
+  ): boolean;
+  postInput(handle: number, event: InputEvent): boolean;
 }
 
 let cached: KrygaNative | null = null;

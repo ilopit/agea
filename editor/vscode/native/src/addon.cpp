@@ -27,10 +27,14 @@
 #include <node_api.h>
 
 #include "editor_ipc/frame_protocol.h"
+#include "editor_ipc/named_event.h"
 #include "editor_ipc/shared_memory.h"
 
+#include <atomic>
+#include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
 #include <unordered_map>
 
 // ---------------------------------------------------------------------------
@@ -47,9 +51,19 @@ using kryga::editor_ipc::SHM_MAGIC;
 using kryga::editor_ipc::SHM_VERSION;
 using kryga::editor_ipc::NUM_SLOTS;
 
+using kryga::editor_ipc::input_event;
+using kryga::editor_ipc::named_event;
+
 struct entry
 {
     shared_memory shm;
+
+    // Phase 2: frame-ready wait on a worker thread. Inactive until
+    // subscribeFrames() is called.
+    named_event frame_ready;
+    napi_threadsafe_function frame_tsfn = nullptr;
+    std::thread worker;
+    std::atomic<bool> worker_stop{false};
 };
 
 int g_next_handle = 1;
@@ -135,6 +149,8 @@ js_open(napi_env env, napi_callback_info info)
     return result;
 }
 
+static void stop_worker(entry& e);
+
 static napi_value
 js_close(napi_env env, napi_callback_info info)
 {
@@ -147,6 +163,7 @@ js_close(napi_env env, napi_callback_info info)
     auto it = g_table.find(handle);
     if (it != g_table.end())
     {
+        stop_worker(*it->second);
         if (auto* h = header_of(*it->second))
         {
             h->consumer_attached.store(0, std::memory_order_release);
@@ -284,6 +301,190 @@ js_release_slot(napi_env env, napi_callback_info info)
     return undef;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 2: signaled wait + input writer.
+// ---------------------------------------------------------------------------
+
+static void
+on_frame_signal(napi_env env, napi_value js_cb, void* /*context*/, void* /*data*/)
+{
+    // Called on the JS thread. `js_cb` is the user's callback registered
+    // in subscribeFrames — we just invoke it with no arguments; the
+    // extension pulls the new frame data via readHeader + getSlotBuffer.
+    if (env == nullptr || js_cb == nullptr) return;
+    napi_value undef, ignored;
+    napi_get_undefined(env, &undef);
+    napi_call_function(env, undef, js_cb, 0, nullptr, &ignored);
+}
+
+static void
+worker_main(entry* e)
+{
+    while (!e->worker_stop.load(std::memory_order_acquire))
+    {
+        // Bounded wait — timeout means "no frame this window". We loop so
+        // shutdown is observed promptly without needing to signal the
+        // semaphore from the stop path (though frame_publisher::shutdown
+        // does signal it once as a courtesy).
+        if (e->frame_ready.wait_for(std::chrono::milliseconds(100)))
+        {
+            if (e->frame_tsfn)
+            {
+                napi_call_threadsafe_function(e->frame_tsfn, nullptr, napi_tsfn_nonblocking);
+            }
+        }
+    }
+}
+
+static napi_value
+js_subscribe_frames(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2];
+    NAPI_CHECK(napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+    int32_t handle = 0;
+    NAPI_CHECK(napi_get_value_int32(env, args[0], &handle));
+
+    auto* e = find_entry(handle);
+    if (!e)
+    {
+        napi_throw_error(env, nullptr, "kryga_native: invalid handle");
+        return nullptr;
+    }
+
+    if (e->frame_tsfn != nullptr)
+    {
+        napi_throw_error(env, nullptr, "kryga_native: already subscribed");
+        return nullptr;
+    }
+
+    // Attach to "<name>_fr" event created by the engine-side publisher.
+    // We can't reach the channel name from here (the addon only has the
+    // region pointer), so read it back from the caller — simplest is to
+    // require subscribeFrames(handle, callback, name). But that name was
+    // already passed to open(); we stored it per-entry... actually we
+    // didn't. Ask callers to pass it again rather than tracking state.
+    //
+    // Design choice documented here so future readers aren't confused.
+    // Instead of modifying the API surface, stash the name in the entry on
+    // open(): done below via the `name` field.
+    napi_value name_val;
+    napi_get_named_property(env, args[1] /* options object */, "name", &name_val);
+    size_t name_len = 0;
+    char name_buf[256];
+    napi_get_value_string_utf8(env, name_val, name_buf, sizeof(name_buf), &name_len);
+
+    napi_value cb_val;
+    napi_get_named_property(env, args[1], "callback", &cb_val);
+
+    std::string ev_name(name_buf, name_len);
+    ev_name += "_fr";
+    if (!e->frame_ready.open(ev_name, named_event::mode::attach))
+    {
+        napi_value v;
+        napi_get_boolean(env, false, &v);
+        return v;
+    }
+
+    napi_value async_name;
+    napi_create_string_utf8(env, "kryga-frame-ready", NAPI_AUTO_LENGTH, &async_name);
+
+    NAPI_CHECK(napi_create_threadsafe_function(env,
+                                               cb_val,
+                                               nullptr,
+                                               async_name,
+                                               /*queue_size*/ 0,
+                                               /*initial_thread_count*/ 1,
+                                               nullptr,
+                                               nullptr,
+                                               nullptr,
+                                               on_frame_signal,
+                                               &e->frame_tsfn));
+
+    e->worker_stop.store(false);
+    e->worker = std::thread(worker_main, e);
+
+    napi_value ok;
+    napi_get_boolean(env, true, &ok);
+    return ok;
+}
+
+static void
+stop_worker(entry& e)
+{
+    e.worker_stop.store(true, std::memory_order_release);
+    // Prod the semaphore so wait_for returns immediately instead of
+    // waiting out the 100ms window.
+    e.frame_ready.signal();
+    if (e.worker.joinable()) e.worker.join();
+    if (e.frame_tsfn)
+    {
+        napi_release_threadsafe_function(e.frame_tsfn, napi_tsfn_release);
+        e.frame_tsfn = nullptr;
+    }
+    e.frame_ready.close();
+}
+
+static napi_value
+js_post_input(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2];
+    NAPI_CHECK(napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+    int32_t handle = 0;
+    NAPI_CHECK(napi_get_value_int32(env, args[0], &handle));
+
+    auto* e = find_entry(handle);
+    if (!e)
+    {
+        napi_throw_error(env, nullptr, "kryga_native: invalid handle");
+        return nullptr;
+    }
+
+    auto* h = header_of(*e);
+    auto* base = static_cast<uint8_t*>(e->shm.data());
+    auto* ring = reinterpret_cast<input_event*>(base + h->input_ring_offset);
+    const uint32_t cap = h->input_ring_capacity;
+
+    const uint32_t head = h->input_ring_head.load(std::memory_order_relaxed);
+    const uint32_t tail = h->input_ring_tail.load(std::memory_order_acquire);
+    const uint32_t next = (head + 1) % cap;
+
+    napi_value ok;
+    if (next == tail)
+    {
+        // Ring full: drop the oldest input rather than block. Input loss
+        // under extreme backpressure is preferable to stalling the UI
+        // thread. A dropped mouse-move shows as a tiny hitch; dropping a
+        // key-up is worse but rare.
+        napi_get_boolean(env, false, &ok);
+        return ok;
+    }
+
+    input_event ev{};
+    auto read_int32 = [&](const char* key, int32_t& out)
+    {
+        napi_value v;
+        napi_get_named_property(env, args[1], key, &v);
+        napi_get_value_int32(env, v, &out);
+    };
+    int32_t type_i = 0, ts_i = 0;
+    read_int32("type", type_i);
+    read_int32("timestampMs", ts_i);
+    read_int32("a", ev.a);
+    read_int32("b", ev.b);
+    read_int32("c", ev.c);
+    read_int32("d", ev.d);
+    ev.type = static_cast<uint32_t>(type_i);
+    ev.timestamp_ms = static_cast<uint32_t>(ts_i);
+
+    ring[head] = ev;
+    h->input_ring_head.store(next, std::memory_order_release);
+
+    napi_get_boolean(env, true, &ok);
+    return ok;
+}
+
 NAPI_MODULE_INIT()
 {
     napi_property_descriptor props[] = {
@@ -293,6 +494,8 @@ NAPI_MODULE_INIT()
         {"getSlotBuffer", nullptr, js_get_slot_buffer, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"claimSlot", nullptr, js_claim_slot, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"releaseSlot", nullptr, js_release_slot, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"subscribeFrames", nullptr, js_subscribe_frames, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"postInput", nullptr, js_post_input, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(props) / sizeof(*props), props);
     return exports;

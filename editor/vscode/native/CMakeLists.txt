@@ -15,9 +15,10 @@ include_directories(${CMAKE_JS_INC})
 
 add_library(kryga_native SHARED
     src/addon.cpp
-    # Reuse the engine-side shared-memory wrapper verbatim. The engine lib
-    # itself would drag in Vulkan; this one .cpp has no such deps.
+    # Reuse engine-side primitives verbatim — they are Vulkan-free by design
+    # so the addon does not drag in Vulkan, VMA, or spdlog.
     ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/editor_ipc/private/src/shared_memory.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../../libs/editor_ipc/private/src/named_event.cpp
 )
 
 # Node addons must be named .node regardless of platform.

@@ -270,6 +270,20 @@ game_editor::get_rotation_matrix()
 }
 
 void
+game_editor::apply_ipc_input(float forward, float left, float look_up, float look_left, bool looking)
+{
+    m_forward_delta += forward;
+    m_left_delta += left;
+    m_look_up_delta += look_up;
+    m_look_left_delta += look_left;
+    m_ipc_looking = looking;
+    if (forward || left || look_up || look_left || looking)
+    {
+        m_updated = true;
+    }
+}
+
+void
 game_editor::on_tick(float dt)
 {
     if (m_mode == editor_mode::playing && m_input)
@@ -309,7 +323,10 @@ game_editor::update_camera()
         return;
     }
 
-    if (glob::glob_state().get_input_manager()->get_input_state(kryga::core::mouse_right))
+    const bool looking =
+        glob::glob_state().get_input_manager()->get_input_state(kryga::core::mouse_right) ||
+        m_ipc_looking;
+    if (looking)
     {
         m_yaw += m_look_left_delta;
         m_pitch += m_look_up_delta;

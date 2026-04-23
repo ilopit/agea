@@ -1,4 +1,5 @@
 #include "editor_ipc/frame_publisher.h"
+#include "editor_ipc/input_reader.h"
 
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/utils/vulkan_initializers.h>
@@ -61,8 +62,18 @@ frame_publisher::init(render::render_device& device, const config& cfg)
     h->current_height.store(m_cfg.max_height, std::memory_order_release);
     h->publisher_alive.store(1, std::memory_order_release);
     h->consumer_attached.store(0, std::memory_order_release);
-    h->input_ring_offset = 0;
-    h->input_ring_size = 0;
+    h->input_ring_offset = m_layout.input_ring_offset;
+    h->input_ring_capacity = INPUT_RING_CAPACITY;
+    h->input_ring_head.store(0, std::memory_order_release);
+    h->input_ring_tail.store(0, std::memory_order_release);
+
+    // frame_ready event used by the addon in its worker thread.
+    if (!m_frame_ready.open(m_cfg.name + "_fr", named_event::mode::create))
+    {
+        m_last_error = "frame_publisher: " + m_frame_ready.last_error();
+        m_shm.close();
+        return false;
+    }
 
     // Allocate the staging buffer: host-visible, host-coherent, large enough
     // for one full frame at max resolution.
@@ -109,6 +120,11 @@ frame_publisher::shutdown(render::render_device& device)
         h->publisher_alive.store(0, std::memory_order_release);
     }
 
+    // Kick the consumer once so it sees publisher_alive == 0 immediately
+    // instead of waiting out a poll interval.
+    m_frame_ready.signal();
+    m_frame_ready.close();
+
     if (m_staging_buffer != VK_NULL_HANDLE)
     {
         vmaDestroyBuffer(
@@ -122,6 +138,15 @@ frame_publisher::shutdown(render::render_device& device)
     }
 
     m_shm.close();
+}
+
+uint32_t
+frame_publisher::drain_input(const std::function<void(const input_event&)>& fn,
+                             uint32_t max_events)
+{
+    if (!is_open()) return 0;
+    input_reader reader(header(), m_shm.data());
+    return reader.drain(fn, max_events);
 }
 
 uint32_t
@@ -253,6 +278,12 @@ frame_publisher::publish(render::render_device& device,
     // is a tie-breaker for consumers that miss a slot update.
     h->latest_ready_slot.store(slot, std::memory_order_release);
     h->frame_counter.fetch_add(1, std::memory_order_acq_rel);
+
+    // Signal the consumer's worker thread. Auto-reset: one wait consumes
+    // one signal. If the consumer is backlogged (wait hasn't returned yet),
+    // the next signal is coalesced — that is fine, we only ever want the
+    // consumer to know "a new frame is available" not "N frames are queued".
+    m_frame_ready.signal();
 }
 
 }  // namespace kryga::editor_ipc

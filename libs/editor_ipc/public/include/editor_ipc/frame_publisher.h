@@ -12,10 +12,12 @@
 // frame_publisher entirely.
 
 #include "editor_ipc/frame_protocol.h"
+#include "editor_ipc/named_event.h"
 #include "editor_ipc/shared_memory.h"
 
 #include <vulkan/vulkan.h>
 
+#include <functional>
 #include <string>
 
 namespace kryga::render
@@ -71,6 +73,12 @@ public:
             uint32_t width,
             uint32_t height);
 
+    // Drain up to `max_events` queued input events from the ring and pass
+    // each to `fn`. Returns the number drained. Non-blocking; safe to call
+    // every frame even when the ring is empty.
+    uint32_t
+    drain_input(const std::function<void(const input_event&)>& fn, uint32_t max_events = 1024);
+
     bool
     is_open() const
     {
@@ -106,6 +114,10 @@ private:
     void* m_staging_allocation = nullptr;  // VmaAllocation, erased to keep this header VMA-free.
     void* m_staging_mapped = nullptr;
     size_t m_staging_size = 0;
+
+    // Phase 2: consumers wait on this after every publish() instead of
+    // polling. The name is derived from the channel: "<name>_fr".
+    named_event m_frame_ready;
 };
 
 }  // namespace kryga::editor_ipc
