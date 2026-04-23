@@ -1,0 +1,14 @@
+{
+  "name": "kryga-native",
+  "version": "0.0.1",
+  "description": "Native (N-API) bindings for the Kryga editor shared-memory transport.",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "install": "cmake-js compile",
+    "rebuild": "cmake-js rebuild"
+  },
+  "dependencies": {
+    "cmake-js": "^7.3.0"
+  }
+}

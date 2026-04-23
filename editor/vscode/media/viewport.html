@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; img-src {{CSP_SOURCE}} data:; script-src {{CSP_SOURCE}}; style-src 'unsafe-inline';">
+    <title>Kryga Viewport</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #bbb; font-family: sans-serif; overflow: hidden; }
+      #viewport { width: 100%; height: calc(100% - 24px); display: block; image-rendering: pixelated; }
+      #status { height: 24px; padding: 4px 8px; font-size: 11px; background: #000; border-top: 1px solid #222; }
+      #status.connected { color: #8c8; }
+      #status.disconnected { color: #c88; }
+    </style>
+  </head>
+  <body>
+    <canvas id="viewport"></canvas>
+    <div id="status" class="disconnected">disconnected</div>
+    <script src="{{VIEWPORT_JS}}"></script>
+  </body>
+</html>

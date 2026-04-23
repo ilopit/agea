@@ -18,7 +18,27 @@
         "command": "kryga.openViewport",
         "title": "Kryga: Open Viewport"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Kryga",
+      "properties": {
+        "kryga.ipcName": {
+          "type": "string",
+          "default": "default",
+          "description": "Default IPC channel name shown by Open Viewport."
+        },
+        "kryga.maxWidth": {
+          "type": "number",
+          "default": 1024,
+          "description": "Max frame width. Must match --headless-width on the engine."
+        },
+        "kryga.maxHeight": {
+          "type": "number",
+          "default": 1024,
+          "description": "Max frame height. Must match --headless-height on the engine."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

@@ -1,34 +1,55 @@
-// Phase 0 scaffold for the Kryga VS Code editor.
+// Kryga editor extension — Phase 1 frame consumer.
 //
-// No IPC, no N-API addon, no frame transport yet — those land in Phase 1.
-// This file exists only to keep the extension project buildable and to host a
-// single command that opens a placeholder webview panel. The command body is
-// deliberately trivial; any real behaviour belongs in a later phase.
+// Opens a webview viewport, attaches to the engine's shared-memory region,
+// and pumps frames into the webview at 60 Hz (polling).
 
 import * as vscode from "vscode";
 
-export function activate(context: vscode.ExtensionContext): void {
-  const disposable = vscode.commands.registerCommand(
-    "kryga.openViewport",
-    () => {
-      const panel = vscode.window.createWebviewPanel(
-        "kryga.viewport",
-        "Kryga Viewport",
-        vscode.ViewColumn.Active,
-        { enableScripts: true, retainContextWhenHidden: true },
-      );
+import { loadNative } from "./native";
+import { ViewportSession } from "./viewport";
 
-      panel.webview.html = `<!doctype html>
-<html>
-  <body style="background:#111;color:#bbb;font-family:sans-serif;padding:1rem;">
-    <h2>Kryga Viewport (Phase 0 scaffold)</h2>
-    <p>Frame transport is wired in Phase 1.</p>
-  </body>
-</html>`;
+export function activate(context: vscode.ExtensionContext): void {
+  const sessions: ViewportSession[] = [];
+
+  const openCmd = vscode.commands.registerCommand(
+    "kryga.openViewport",
+    async () => {
+      const config = vscode.workspace.getConfiguration("kryga");
+      const defaultName = config.get<string>("ipcName") ?? "default";
+      const maxWidth = config.get<number>("maxWidth") ?? 1024;
+      const maxHeight = config.get<number>("maxHeight") ?? 1024;
+
+      const name = await vscode.window.showInputBox({
+        prompt: "IPC channel name (passed to engine as --editor-ipc <name>)",
+        value: defaultName,
+      });
+      if (!name) return;
+
+      let native;
+      try {
+        native = loadNative();
+      } catch (e) {
+        vscode.window.showErrorMessage(
+          `Kryga: native addon is not built yet. ${(e as Error).message}`,
+        );
+        return;
+      }
+
+      const session = new ViewportSession(
+        native,
+        { name, maxWidth, maxHeight },
+        context.extensionUri,
+      );
+      sessions.push(session);
     },
   );
 
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(openCmd);
+  context.subscriptions.push({
+    dispose: () => {
+      for (const s of sessions) s.dispose();
+    },
+  });
 }
 
 export function deactivate(): void {}

@@ -59,6 +59,8 @@
 
 #include <render/utils/image_compare.h>
 
+#include <editor_ipc/frame_publisher.h>
+
 #include <vfs/io.h>
 
 #include <animation/animation_system.h>
@@ -205,6 +207,7 @@ wait_for_debugger(std::chrono::seconds timeout)
 
 vulkan_engine::vulkan_engine()
     : m_sync_service(std::make_unique<sync_service>())
+    , m_frame_publisher(std::make_unique<editor_ipc::frame_publisher>())
 {
 }
 
@@ -361,6 +364,21 @@ vulkan_engine::init(const startup_options& options)
 
     m_sync_service->start();
 
+    if (m_headless && !m_editor_ipc_name.empty())
+    {
+        editor_ipc::frame_publisher::config pub_cfg;
+        pub_cfg.name = m_editor_ipc_name;
+        pub_cfg.max_width = m_headless_width;
+        pub_cfg.max_height = m_headless_height;
+        pub_cfg.format = editor_ipc::pf_rgba8;
+
+        if (!m_frame_publisher->init(*device, pub_cfg))
+        {
+            ALOG_ERROR("frame_publisher init failed: {}", m_frame_publisher->last_error());
+            return false;
+        }
+    }
+
     ALOG_INFO("Initialization completed");
     return true;
 }
@@ -368,14 +386,23 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
-    // Save session state to rtcache
-    glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
-        vfs::rid("rtcache://render.acfg"));
-    ui::get_window<ui::bake_editor>()->save_config();
+    // In headless we never created the UI / bake editor, so skip the state
+    // save that touches them.
+    if (!m_headless)
+    {
+        glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
+            vfs::rid("rtcache://render.acfg"));
+        ui::get_window<ui::bake_editor>()->save_config();
+    }
 
     glob::set_input_provider(nullptr);
 
     m_sync_service->stop();
+
+    if (m_frame_publisher && m_frame_publisher->is_open())
+    {
+        m_frame_publisher->shutdown(*glob::glob_state().get_render_device());
+    }
 
     glob::glob_state().get_render_device()->wait_for_fences();
 
@@ -591,19 +618,34 @@ vulkan_engine::run_headless()
 
         ++frames_drawn;
 
-        // Phase 0: after the warm-up burst, optionally dump the final color
-        // image and exit. Once IPC is wired (Phase 1), this branch becomes the
-        // publish-frame step and the loop keeps running.
-        if (frames_drawn >= warmup_frames && !m_dump_first_frame_path.empty())
+        const bool warm = frames_drawn >= warmup_frames;
+
+        // Source of truth for the rendered frame: the "main" render pass'
+        // current-frame color image. draw_headless() leaves it in
+        // COLOR_ATTACHMENT_OPTIMAL; both the publisher and the PNG path
+        // barrier it through TRANSFER_SRC_OPTIMAL and back.
+        auto* main_pass = renderer.get_render_pass(AID("main"));
+        KRG_check(main_pass, "main render pass must exist to publish / dump frame");
+        const auto& color_images = main_pass->get_color_images();
+        KRG_check(!color_images.empty(), "main render pass has no color images");
+        const auto frame_idx = device.get_current_frame_index();
+        auto* color_image = color_images[frame_idx % color_images.size()].get();
+        KRG_check(color_image, "main render pass color image slot is null");
+
+        if (warm && m_frame_publisher && m_frame_publisher->is_open())
+        {
+            m_frame_publisher->publish(device,
+                                       color_image->image(),
+                                       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                       main_pass->get_color_format(),
+                                       m_headless_width,
+                                       m_headless_height);
+        }
+
+        if (warm && !m_dump_first_frame_path.empty())
         {
             vkDeviceWaitIdle(device.vk_device());
 
-            auto* main_pass = renderer.get_render_pass(AID("main"));
-            KRG_check(main_pass, "main render pass must exist to read back frame");
-
-            // After draw_headless the render graph has transitioned the swapchain
-            // color image to COLOR_ATTACHMENT_OPTIMAL (the readback path barriers
-            // it down to TRANSFER_SRC_OPTIMAL before the copy).
             auto pixels = render::readback_framebuffer(
                 *main_pass, m_headless_width, m_headless_height);
 
@@ -622,15 +664,12 @@ vulkan_engine::run_headless()
                 ALOG_ERROR("Headless: failed to save PNG to '{}'", m_dump_first_frame_path);
             }
 
-            // Only request-and-exit on a dump-only run (no IPC consumer). When
-            // editor_ipc is set we stay in the loop so later phases can keep
-            // publishing frames.
             if (m_editor_ipc_name.empty())
             {
                 break;
             }
 
-            // Clear so we only dump once per run.
+            // Dump once per run.
             m_dump_first_frame_path.clear();
         }
 

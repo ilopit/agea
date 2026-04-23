@@ -25,6 +25,10 @@ union SDL_Event;
 
 namespace kryga
 {
+namespace editor_ipc
+{
+class frame_publisher;
+}
 class native_window;
 class sync_service;
 
@@ -151,6 +155,7 @@ private:
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
     std::unique_ptr<sync_service> m_sync_service;
+    std::unique_ptr<editor_ipc::frame_publisher> m_frame_publisher;
 
     // Render thread synchronization (lock-step)
     std::thread m_render_thread;
