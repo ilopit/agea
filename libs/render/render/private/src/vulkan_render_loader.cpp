@@ -380,8 +380,6 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     // Mark texture dirty for bindless descriptor update
     glob::glob_state().getr_vulkan_render().schd_update_texture(td);
 
-    m_textures_cache[texture_id] = td;
-
     return td;
 }
 
@@ -423,8 +421,6 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
 
     glob::glob_state().getr_vulkan_render().schd_update_texture(td);
-
-    m_textures_cache[texture_id] = td;
 
     return td;
 }
@@ -494,7 +490,59 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     // Mark texture dirty for bindless descriptor update
     glob::glob_state().getr_vulkan_render().schd_update_texture(td);
 
-    m_textures_cache[texture_id] = td;
+    return td;
+}
+
+texture_data*
+vulkan_render_loader::get_texture_data(const kryga::utils::id& id)
+{
+    return glob::glob_state().getr_vulkan_render().get_cache().textures.find_by_id(id);
+}
+
+texture_data*
+vulkan_render_loader::get_texture_data(utils::slot_handle<texture_data> h)
+{
+    return glob::glob_state().getr_vulkan_render().get_cache().textures.get(h);
+}
+
+texture_data*
+vulkan_render_loader::create_texture(utils::slot_handle<texture_data> handle,
+                                     const kryga::utils::id& texture_id,
+                                     const kryga::utils::buffer& base_color,
+                                     uint32_t w,
+                                     uint32_t h)
+{
+    KRG_check(!get_texture_data(texture_id), "should never happens");
+
+    auto device = glob::glob_state().get_render_device();
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+
+    auto* td = cache.textures.materialize(handle, texture_id);
+    if (!td)
+    {
+        ALOG_ERROR("Failed to materialize texture in cache");
+        return nullptr;
+    }
+
+    VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
+
+    auto staging_buffer = device->create_buffer(
+        base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+    void* data = nullptr;
+    vmaMapMemory(device->allocator(), staging_buffer.allocation(), &data);
+    memcpy(data, base_color.data(), (size_t)base_color.size());
+    vmaUnmapMemory(device->allocator(), staging_buffer.allocation());
+
+    td->image = upload_image(w, h, image_format, staging_buffer);
+
+    VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
+        VK_FORMAT_R8G8B8A8_UNORM, td->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+    image_info.subresourceRange.levelCount = td->image->get_mip_levels();
+
+    td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
+
+    glob::glob_state().getr_vulkan_render().schd_update_texture(td);
 
     return td;
 }
@@ -502,14 +550,19 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 void
 vulkan_render_loader::destroy_texture_data(const kryga::utils::id& id)
 {
-    auto itr = m_textures_cache.find(id);
-    if (itr != m_textures_cache.end())
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+    auto* td = cache.textures.find_by_id(id);
+    if (td)
     {
-        // Release from cache
-        auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
-        cache.textures.release(itr->second);
-        m_textures_cache.erase(itr);
+        cache.textures.release(td);
     }
+}
+
+void
+vulkan_render_loader::destroy_texture_data(utils::slot_handle<texture_data> h)
+{
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+    cache.textures.release_handle(h);
 }
 
 bool

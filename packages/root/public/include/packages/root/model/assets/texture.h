@@ -5,9 +5,15 @@
 #include "packages/root/model/assets/asset.h"
 
 #include <utils/buffer.h>
+#include <utils/slot_handle.h>
 
 namespace kryga
 {
+namespace render
+{
+class texture_data;
+}
+
 namespace root
 {
 
@@ -29,6 +35,18 @@ public:
         return m_base_color;
     }
 
+    utils::slot_handle<render::texture_data>
+    get_render_handle() const
+    {
+        return m_render_handle;
+    }
+
+    void
+    set_render_handle(utils::slot_handle<render::texture_data> h)
+    {
+        m_render_handle = h;
+    }
+
 protected:
     KRG_ar_property("category=meta", "access=all", "serializable=true");
     utils::buffer m_base_color;
@@ -38,6 +56,8 @@ protected:
 
     KRG_ar_property("category=meta", "access=all", "serializable=true");
     uint32_t m_height;
+
+    utils::slot_handle<render::texture_data> m_render_handle;
 };
 
 }  // namespace root

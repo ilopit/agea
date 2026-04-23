@@ -147,6 +147,7 @@ struct destroy_mesh_cmd : render_cmd::render_command_base
 
 struct create_texture_cmd : render_cmd::render_command_base
 {
+    utils::slot_handle<render::texture_data> handle;
     utils::id id;
     std::shared_ptr<utils::buffer> pixels;
     uint32_t width = 0;
@@ -156,18 +157,18 @@ struct create_texture_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        ctx.loader.create_texture(id, *pixels, width, height);
+        ctx.loader.create_texture(handle, id, *pixels, width, height);
     }
 };
 
 struct destroy_texture_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::texture_data> handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        ctx.loader.destroy_texture_data(id);
+        ctx.loader.destroy_texture_data(handle);
     }
 };
 
@@ -494,7 +495,11 @@ texture__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     auto w = t.get_width();
     auto h = t.get_height();
 
+    auto handle = ctx.rb->alloc_texture_handle();
+    t.set_render_handle(handle);
+
     auto* cmd = ctx.rb->alloc_cmd<create_texture_cmd>();
+    cmd->handle = handle;
     cmd->id = t.get_id();
     cmd->width = w;
     cmd->height = h;
@@ -533,7 +538,8 @@ texture__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
     if (txt_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_texture_cmd>();
-        cmd->id = txt_model.get_id();
+        cmd->handle = txt_model.get_render_handle();
+        txt_model.set_render_handle(utils::slot_handle<render::texture_data>::invalid());
         txt_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }

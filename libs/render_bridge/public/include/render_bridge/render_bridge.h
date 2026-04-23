@@ -32,6 +32,7 @@ namespace render
 {
 class material_data;
 class mesh_data;
+class texture_data;
 class vulkan_render_data;
 class vulkan_directional_light_data;
 class vulkan_universal_light_data;
@@ -129,6 +130,9 @@ public:
 
     utils::slot_handle<render::mesh_data>
     alloc_mesh_handle();
+
+    utils::slot_handle<render::texture_data>
+    alloc_texture_handle();
 
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
