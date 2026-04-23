@@ -10,8 +10,11 @@ namespace kryga
 namespace render
 {
 
-material_data::material_data(const ::kryga::utils::id& id, const ::kryga::utils::id& type_id)
+material_data::material_data(const ::kryga::utils::id& id,
+                             gpu_data_index_type slot,
+                             const ::kryga::utils::id& type_id)
     : m_id(id)
+    , m_slot(slot)
     , m_type_id(type_id)
 {
 }

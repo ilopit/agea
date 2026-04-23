@@ -5,10 +5,17 @@
 #include "packages/root/model/assets/asset.h"
 #include "packages/root/model/assets/texture_slot.h"
 
+#include <utils/slot_handle.h>
+
 #include <unordered_map>
 
 namespace kryga
 {
+namespace render
+{
+class material_data;
+}
+
 namespace root
 {
 class shader_effect;
@@ -48,6 +55,18 @@ public:
     void
     set_slot(const utils::id& slot, const texture_slot&);
 
+    utils::slot_handle<render::material_data>
+    get_render_handle() const
+    {
+        return m_render_handle;
+    }
+
+    void
+    set_render_handle(utils::slot_handle<render::material_data> h)
+    {
+        m_render_handle = h;
+    }
+
 protected:
     KRG_ar_property("category=Properties",
                     "access=cpp_only",
@@ -56,6 +75,8 @@ protected:
     shader_effect* m_shader_effect = nullptr;
 
     std::unordered_map<utils::id, texture_slot> m_texture_slots;
+
+    utils::slot_handle<render::material_data> m_render_handle;
 };
 
 }  // namespace root

@@ -557,7 +557,8 @@ vulkan_render_loader::destroy_mesh_data(const kryga::utils::id& id)
 }
 
 material_data*
-vulkan_render_loader::create_material(const kryga::utils::id& id,
+vulkan_render_loader::create_material(utils::slot_handle<material_data> handle,
+                                      const kryga::utils::id& id,
                                       const kryga::utils::id& type_id,
                                       std::vector<texture_sampler_data>& samples,
                                       shader_effect_data& se_data,
@@ -567,7 +568,7 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 
     auto device = glob::glob_state().get_render_device();
 
-    auto mat_data = std::make_shared<material_data>(id, type_id);
+    auto* mat_data = m_materials_cache.materialize(handle, id, type_id);
 
     // Note: Layout validation removed - compile-time generated GPU structs
     // are guaranteed to match shader MaterialData layout by construction.
@@ -619,9 +620,7 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 
     mat_data->set_gpu_data(gpu_params);
 
-    m_materials_cache[id] = mat_data;
-
-    return mat_data.get();
+    return mat_data;
 }
 
 sampler_data*
@@ -674,14 +673,9 @@ vulkan_render_loader::update_material(material_data& mat_data,
 }
 
 void
-vulkan_render_loader::destroy_material_data(const kryga::utils::id& id)
+vulkan_render_loader::destroy_material_data(utils::slot_handle<material_data> h)
 {
-    auto itr = m_materials_cache.find(id);
-    if (itr != m_materials_cache.end())
-    {
-        // shedule_to_deltete_t(std::move(itr->second));
-        m_materials_cache.erase(itr);
-    }
+    m_materials_cache.release_handle(h);
 }
 
 void

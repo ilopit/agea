@@ -24,13 +24,27 @@ struct texture_sampler_data
 class material_data
 {
 public:
-    material_data(const ::kryga::utils::id& id, const ::kryga::utils::id& type_id);
+    material_data(const ::kryga::utils::id& id,
+                  gpu_data_index_type slot,
+                  const ::kryga::utils::id& type_id);
     ~material_data();
+
+    const kryga::utils::id&
+    id() const
+    {
+        return m_id;
+    }
 
     const kryga::utils::id&
     get_id() const
     {
         return m_id;
+    }
+
+    gpu_data_index_type
+    slot() const
+    {
+        return m_slot;
     }
 
     const kryga::utils::id&
@@ -175,6 +189,7 @@ public:
 
 private:
     ::kryga::utils::id m_id;
+    gpu_data_index_type m_slot = 0;
     ::kryga::utils::id m_type_id;
     gpu_data_index_type m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;

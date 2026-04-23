@@ -124,6 +124,9 @@ public:
     utils::slot_handle<render::vulkan_universal_light_data>
     alloc_universal_light_handle();
 
+    utils::slot_handle<render::material_data>
+    alloc_material_handle();
+
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
 

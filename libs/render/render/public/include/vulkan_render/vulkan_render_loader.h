@@ -12,6 +12,7 @@
 #include <error_handling/error_handling.h>
 
 #include <utils/buffer.h>
+#include <utils/combined_pool.h>
 #include <utils/id.h>
 #include <utils/path.h>
 #include <utils/check.h>
@@ -112,17 +113,24 @@ public:
     material_data*
     get_material_data(const kryga::utils::id& id)
     {
-        return get_data<material_data>(m_materials_cache, id);
+        return m_materials_cache.find_by_id(id);
     }
 
-    std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>>&
-    get_materials_cache()
+    material_data*
+    get_material_data(utils::slot_handle<material_data> h)
+    {
+        return m_materials_cache.get(h);
+    }
+
+    utils::combined_pool<material_data>&
+    get_materials_pool()
     {
         return m_materials_cache;
     }
 
     material_data*
-    create_material(const kryga::utils::id& id,
+    create_material(utils::slot_handle<material_data> handle,
+                    const kryga::utils::id& id,
                     const kryga::utils::id& type_id,
                     std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
@@ -135,7 +143,7 @@ public:
                     const kryga::utils::dynobj& params);
 
     void
-    destroy_material_data(const kryga::utils::id& id);
+    destroy_material_data(utils::slot_handle<material_data> h);
 
     /*************************/
     void
@@ -210,7 +218,7 @@ private:
     // Note: textures are now stored in render_cache.textures (combined_pool)
     // This map just provides ID-based lookup
     std::unordered_map<kryga::utils::id, texture_data*> m_textures_cache;
-    std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>> m_materials_cache;
+    utils::combined_pool<material_data> m_materials_cache;
     std::unordered_map<kryga::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
 
     std::unordered_map<kryga::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;

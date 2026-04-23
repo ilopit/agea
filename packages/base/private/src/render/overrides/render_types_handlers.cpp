@@ -91,9 +91,9 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 struct create_object_cmd : render_cmd::render_command_base
 {
     utils::slot_handle<render::vulkan_render_data> object_handle;
+    utils::slot_handle<render::material_data> material_handle;
     utils::id id;
     utils::id mesh_id;
-    utils::id material_id;
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
@@ -109,7 +109,7 @@ struct create_object_cmd : render_cmd::render_command_base
     execute(render_cmd::render_exec_context& ctx) override
     {
         auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
-        auto* mat_data = ctx.loader.get_material_data(material_id);
+        auto* mat_data = ctx.loader.get_material_data(material_handle);
 
         if (!mesh_data || !mat_data)
         {
@@ -142,8 +142,8 @@ struct create_object_cmd : render_cmd::render_command_base
 struct update_object_cmd : render_cmd::render_command_base
 {
     utils::slot_handle<render::vulkan_render_data> object_handle;
+    utils::slot_handle<render::material_data> material_handle;
     utils::id mesh_id;
-    utils::id material_id;
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
@@ -164,7 +164,7 @@ struct update_object_cmd : render_cmd::render_command_base
         }
 
         auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
-        auto* mat_data = ctx.loader.get_material_data(material_id);
+        auto* mat_data = ctx.loader.get_material_data(material_handle);
 
         if (!mesh_data || !mat_data)
         {
@@ -418,7 +418,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->object_handle = handle;
         cmd->id = moc.get_id();
         cmd->mesh_id = moc.get_mesh()->get_id();
-        cmd->material_id = moc.get_material()->get_id();
+        cmd->material_handle = moc.get_material()->get_render_handle();
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
         cmd->position = glm::vec3(moc.get_world_position());
@@ -438,7 +438,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->object_handle = moc.get_render_object_handle();
         cmd->mesh_id = moc.get_mesh()->get_id();
-        cmd->material_id = moc.get_material()->get_id();
+        cmd->material_handle = moc.get_material()->get_render_handle();
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
         cmd->position = glm::vec3(moc.get_world_position());
@@ -938,7 +938,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         cmd->object_handle = handle;
         cmd->id = amc.get_id();
         cmd->mesh_id = mesh_id;
-        cmd->material_id = mat_model->get_id();
+        cmd->material_handle = mat_model->get_render_handle();
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
         cmd->position = glm::vec3(amc.get_world_position());
@@ -954,7 +954,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->object_handle = amc.get_render_object_handle();
         cmd->mesh_id = mesh_id;
-        cmd->material_id = mat_model->get_id();
+        cmd->material_handle = mat_model->get_render_handle();
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
         cmd->position = glm::vec3(amc.get_world_position());

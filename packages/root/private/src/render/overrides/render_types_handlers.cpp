@@ -235,6 +235,7 @@ struct texture_slot_info
 
 struct create_material_cmd : render_cmd::render_command_base
 {
+    utils::slot_handle<render::material_data> handle;
     utils::id id;
     utils::id type_id;
     utils::id shader_effect_id;
@@ -295,7 +296,8 @@ struct create_material_cmd : render_cmd::render_command_base
         render_bridge::set_material_texture_bindings(
             gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
-        auto* mat_data = ctx.loader.create_material(id, type_id, samples, *se_data, gpu_data);
+        auto* mat_data =
+            ctx.loader.create_material(handle, id, type_id, samples, *se_data, gpu_data);
 
         if (mat_data)
         {
@@ -317,7 +319,7 @@ struct create_material_cmd : render_cmd::render_command_base
 
 struct update_material_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::material_data> handle;
     utils::id shader_effect_id;
     std::vector<texture_slot_info> texture_slots;
     utils::dynobj gpu_data;
@@ -325,7 +327,7 @@ struct update_material_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* mat_data = ctx.loader.get_material_data(id);
+        auto* mat_data = ctx.loader.get_material_data(handle);
         if (!mat_data)
         {
             return;
@@ -401,16 +403,16 @@ struct update_material_cmd : render_cmd::render_command_base
 
 struct destroy_material_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::material_data> handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* mat_data = ctx.loader.get_material_data(id);
+        auto* mat_data = ctx.loader.get_material_data(handle);
         if (mat_data)
         {
             ctx.vr.schd_remove_material(mat_data);
-            ctx.loader.destroy_material_data(id);
+            ctx.loader.destroy_material_data(handle);
         }
     }
 };
@@ -627,7 +629,11 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     if (!mat_model.get_render_built())
     {
+        auto handle = ctx.rb->alloc_material_handle();
+        mat_model.set_render_handle(handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_material_cmd>();
+        cmd->handle = handle;
         cmd->id = mat_model.get_id();
         cmd->type_id = mat_model.get_type_id();
         cmd->shader_effect_id = se_model->get_id();
@@ -640,7 +646,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_material_cmd>();
-        cmd->id = mat_model.get_id();
+        cmd->handle = mat_model.get_render_handle();
         cmd->shader_effect_id = se_model->get_id();
         cmd->texture_slots = std::move(slots);
         cmd->gpu_data = std::move(dyn_gpu_data);
@@ -659,7 +665,8 @@ material__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
     if (mat_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_material_cmd>();
-        cmd->id = mat_model.get_id();
+        cmd->handle = mat_model.get_render_handle();
+        mat_model.set_render_handle(utils::slot_handle<render::material_data>::invalid());
         mat_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
