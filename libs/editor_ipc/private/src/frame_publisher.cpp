@@ -158,6 +158,14 @@ frame_publisher::drain_input(const std::function<void(const input_event&)>& fn,
     return reader.drain(fn, max_events);
 }
 
+bool
+frame_publisher::is_consumer_attached() const
+{
+    if (!is_open()) return false;
+    auto* h = static_cast<const frame_header*>(m_shm.data());
+    return h->consumer_attached.load(std::memory_order_acquire) != 0;
+}
+
 namespace
 {
 // Helpers for the control-message rings. Each slot is MSG_SLOT_BYTES of:

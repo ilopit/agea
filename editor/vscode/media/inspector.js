@@ -133,6 +133,12 @@
     componentsEl.appendChild(transform);
   }
 
+  // Phase 5: schema cache, keyed by type name. Populated on `schema`
+  // records. Each field: { name, typeId, offset }. A later pass will map
+  // typeId → UI widget (float, vec3, bool, enum); today we stash the data
+  // so the mechanism is provable end-to-end.
+  const schemas = new Map();
+
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (msg.type === "status") {
@@ -141,6 +147,25 @@
       return;
     }
     if (msg.type === "engineMessage") {
+      // Re-parse schema records at the raw-string level so we can
+      // preserve multiple `f=` tokens (the key-value collapse in
+      // parseRecord would otherwise keep only the last one).
+      if (msg.payload.startsWith("schema ")) {
+        const tokens = msg.payload.trim().split(/\s+/);
+        let type = null;
+        const fields = [];
+        for (let i = 1; i < tokens.length; ++i) {
+          const t = tokens[i];
+          if (t.startsWith("type=")) type = t.slice(5);
+          else if (t.startsWith("f=")) {
+            const [name, typeId, offset] = t.slice(2).split(":");
+            fields.push({ name, typeId: parseInt(typeId, 10), offset: parseInt(offset, 10) });
+          }
+        }
+        if (type) schemas.set(type, fields);
+        return;
+      }
+
       const rec = parseRecord(msg.payload);
       if (!rec) return;
       if (rec.verb === "selection") {

@@ -111,6 +111,12 @@ public:
         return m_shm.is_open();
     }
 
+    // Observer of the consumer_attached flag (set by the addon on open()
+    // and cleared on close()). Phase 5 uses this to detect when a late-
+    // connecting editor needs the current schema set re-sent.
+    bool
+    is_consumer_attached() const;
+
     const std::string&
     last_error() const
     {

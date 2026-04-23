@@ -608,10 +608,23 @@ vulkan_engine::run_headless()
         // enqueue, then drain + draw.
         bridge.reset_arena();
 
-        // Phase 4: drain control messages. See handle_ipc_message for the
-        // message format.
+        // Phase 4: drain control messages. See handle_ipc_message for
+        // the message format. Phase 5: resend schemas whenever a
+        // consumer attaches (0→1 transition) so a late-connecting editor
+        // always has them.
         if (m_frame_publisher && m_frame_publisher->is_open())
         {
+            const bool attached_now = m_frame_publisher->is_consumer_attached();
+            if (attached_now && !m_schemas_sent_for_consumer)
+            {
+                send_schemas();
+                m_schemas_sent_for_consumer = true;
+            }
+            else if (!attached_now && m_schemas_sent_for_consumer)
+            {
+                m_schemas_sent_for_consumer = false;
+            }
+
             m_frame_publisher->drain_messages_in(
                 [this](std::string_view msg) { handle_ipc_message(msg); });
         }
@@ -1071,6 +1084,50 @@ to_float(const std::string& s, float fallback)
     }
 }
 }  // namespace
+
+void
+vulkan_engine::send_schemas()
+{
+    if (!m_frame_publisher || !m_frame_publisher->is_open()) return;
+
+    // Phase 5: walk the reflection registry and emit one `schema` record
+    // per registered type. Record format:
+    //
+    //     schema type=<name> [f=<field_name>:<type_id>:<offset> ...]
+    //
+    // The consumer caches these by type name. Records longer than
+    // MSG_SLOT_BYTES are truncated by frame_publisher::push_message_out;
+    // that's acceptable for Phase 5 (types with >50 fields are rare and
+    // the truncated record still teaches the consumer the first N).
+    // Chunking can be added if this becomes a real problem.
+    auto* reg = glob::glob_state().get_rm();
+    if (!reg) return;
+    const auto& types = reg->get_types_to_name();
+
+    uint32_t sent = 0;
+    for (const auto& [type_name, rtype] : types)
+    {
+        if (!rtype) continue;
+
+        std::string line = "schema type=";
+        line += rtype->type_name.str();
+
+        for (const auto& prop : rtype->m_properties)
+        {
+            if (!prop) continue;
+            char buf[96];
+            const int n = std::snprintf(buf, sizeof(buf), " f=%s:%d:%zu",
+                                        prop->name.c_str(),
+                                        prop->type.type_id,
+                                        prop->offset);
+            if (n > 0) line.append(buf, static_cast<size_t>(n));
+        }
+
+        if (m_frame_publisher->push_message_out(line)) ++sent;
+    }
+
+    ALOG_INFO("send_schemas: pushed {} type schemas", sent);
+}
 
 void
 vulkan_engine::send_selection()

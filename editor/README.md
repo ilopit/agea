@@ -128,6 +128,52 @@ wins).
   paths means adding case branches in `vulkan_engine::handle_ipc_message`
   until Phase 5 replaces the dispatcher with a reflection walk.
 
+## Reflection bridge (Phase 5 — scaffold)
+
+Phase 5 wires the engine's existing reflection system (`KRG_ar_*`
+macros, argen.py, `reflection_type_registry`) into the IPC schema
+stream. On every consumer attach the engine walks every registered
+type and pushes one record of the form
+
+```
+schema type=Transform f=position:17:0 f=rotation:18:12 f=scale:17:28
+```
+
+to the editor, where each `f=` triplet is `name:type_id:offset`. The
+inspector caches these schemas keyed by type name.
+
+What's in scope for this phase:
+
+- `frame_publisher::is_consumer_attached()` — lets the engine re-emit
+  schemas on every reconnect (late-attaching editor still gets them).
+- `vulkan_engine::send_schemas()` — registry walk. Records longer than
+  `MSG_SLOT_BYTES` (512) are truncated by `push_message_out`; chunking
+  is documented as a follow-up but not needed for current type widths.
+- Inspector schema cache — populated on `schema` records.
+
+What's intentionally *not* in this phase:
+
+- **Generic `setProperty` dispatch**. The engine still routes property
+  edits through the hardcoded Phase 4 switch in `handle_ipc_message`.
+  Replacing it requires a type-safe writer API on
+  `reflection::property` — something like
+  `property::set_value(obj, std::string_view value_text)` — which
+  touches every type's argen-generated code and is out of scope for the
+  IPC layer. When that exists, the dispatcher becomes a two-line
+  registry lookup.
+- **Generic inspector rendering**. The schema cache is populated but the
+  UI still renders the hardcoded camera-position Vector3. Wiring
+  type_id → widget (float, vec3, quat, bool, enum) is the natural next
+  step once the engine writer API lands.
+- **Entity selection by click** (raycast in viewport → entity id → push
+  `selection`). The engine's picking path exists
+  (`object_id_under_coordinate`) and can be reused; not wired here.
+
+Phase 5 is thus a *capability* scaffold: the schema channel proves the
+extension can render any registered component once the writer API is in
+place. The original plan described Phase 5 as "optional, defer until
+painful" — treating it as scaffolding keeps that deferral honest.
+
 ## Diagnostics (Phase 3)
 
 ### `editor_ipc_shmdump`

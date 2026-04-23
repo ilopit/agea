@@ -143,6 +143,15 @@ private:
     void
     send_selection();
 
+    // Phase 5: enumerate all registered reflection_type entries and push
+    // one `schema` record per type. Called once when a consumer attaches
+    // (consumer_attached 0→1 transition). The inspector caches schemas
+    // keyed by type name and switches from hardcoded component layouts
+    // to generic rendering when an incoming selection references a type
+    // it has a schema for.
+    void
+    send_schemas();
+
     void
     update_cameras();
 
@@ -179,6 +188,9 @@ private:
     bool m_render_work_ready = false;
     bool m_render_done = true;
     bool m_render_shutdown = false;
+
+    // Phase 5: remembered attach state, so we know when to emit schemas.
+    bool m_schemas_sent_for_consumer = false;
 };
 
 }  // namespace kryga
