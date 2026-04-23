@@ -393,6 +393,9 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
 
     // Draw UI overlay
     draw_ui_overlay(cmd, current_frame);
+
+    // Draw retained-mode UI panels (packages/ui widgets)
+    draw_ui_panels(cmd);
 }
 
 // ============================================================================
@@ -1289,6 +1292,53 @@ vulkan_render::draw_ui(frame_state& fs)
             index_offset += pcmd->ElemCount;
         }
         vertex_offset += cmd_list->VtxBuffer.Size;
+    }
+}
+
+// ============================================================================
+// UI Panels (packages/ui retained-mode widgets)
+// ============================================================================
+
+void
+vulkan_render::ui_panel_create_or_update(const utils::id& id, const ui_panel_entry& e)
+{
+    m_ui_panels[id] = e;
+}
+
+void
+vulkan_render::ui_panel_destroy(const utils::id& id)
+{
+    m_ui_panels.erase(id);
+}
+
+void
+vulkan_render::draw_ui_panels(VkCommandBuffer cmd)
+{
+    if (!m_ui_panel_se || m_ui_panels.empty())
+    {
+        return;
+    }
+
+    struct ui_panel_push_constants
+    {
+        glm::vec4 rect_ndc;
+        glm::vec4 color_opacity;
+    };
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_panel_se->m_pipeline);
+
+    auto pipeline_layout = m_ui_panel_se->m_pipeline_layout;
+
+    for (auto& [id, entry] : m_ui_panels)
+    {
+        ui_panel_push_constants pc{entry.rect_ndc, entry.color_opacity};
+        vkCmdPushConstants(cmd,
+                           pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(pc),
+                           &pc);
+        vkCmdDraw(cmd, 6, 1, 0, 0);
     }
 }
 

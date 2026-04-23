@@ -210,6 +210,21 @@ public:
 
     void schd_remove_object(render::vulkan_render_data* obj_data);
     void schd_remove_material(render::material_data* mat_data);
+
+    // UI panel cache — parallel render path used by packages/ui.
+    // Widgets push a {rect_ndc, color_opacity} entry and a single draw call
+    // is issued per panel at the tail of the main pass. No mesh, material,
+    // object_data or instancing involved.
+    struct ui_panel_entry
+    {
+        glm::vec4 rect_ndc{-1.f, -1.f, 1.f, 1.f};
+        glm::vec4 color_opacity{1.f};
+    };
+    void ui_panel_create_or_update(const utils::id& id, const ui_panel_entry& e);
+    void ui_panel_destroy(const utils::id& id);
+
+    uint32_t get_viewport_width() const { return m_width; }
+    uint32_t get_viewport_height() const { return m_height; }
     // clang-format on
 
     void
@@ -501,6 +516,14 @@ private:
     // Grid
     shader_effect_data* m_grid_se = nullptr;
     material_data* m_grid_mat = nullptr;
+
+    // UI panels (packages/ui retained-mode widgets).
+    // Owned pipeline + unordered cache of entries. Drawn as the last step
+    // inside the main-pass lambda via draw_ui_panels().
+    shader_effect_data* m_ui_panel_se = nullptr;
+    std::unordered_map<utils::id, ui_panel_entry> m_ui_panels;
+    void init_ui_panel_pipeline();
+    void draw_ui_panels(VkCommandBuffer cmd);
 
     // Selection mask + outline post-process
     shader_effect_data* m_selection_mask_se = nullptr;
