@@ -247,16 +247,38 @@ render_bridge::drain_queue()
             cmd->~render_command_base();
         });
 
-    // Refill the model's handle batch for the next frame. Happens on the render
-    // thread after all commands have drained; model thread picks it up on wake.
+    // Refill the model's handle batches for the next frame. Happens on the
+    // render thread after all commands have drained; model thread picks them up
+    // on wake.
     constexpr size_t OBJECTS_BATCH_TARGET = 128;
+    constexpr size_t LIGHTS_BATCH_TARGET = 16;
     vr.get_cache().objects.refill_batch(OBJECTS_BATCH_TARGET);
+    vr.get_cache().directional_lights.refill_batch(LIGHTS_BATCH_TARGET);
+    vr.get_cache().universal_lights.refill_batch(LIGHTS_BATCH_TARGET);
 }
 
 utils::slot_handle<render::vulkan_render_data>
 render_bridge::alloc_object_handle()
 {
     return glob::glob_state().getr_vulkan_render().get_cache().objects.alloc_handle();
+}
+
+utils::slot_handle<render::vulkan_directional_light_data>
+render_bridge::alloc_directional_light_handle()
+{
+    return glob::glob_state()
+        .getr_vulkan_render()
+        .get_cache()
+        .directional_lights.alloc_handle();
+}
+
+utils::slot_handle<render::vulkan_universal_light_data>
+render_bridge::alloc_universal_light_handle()
+{
+    return glob::glob_state()
+        .getr_vulkan_render()
+        .get_cache()
+        .universal_lights.alloc_handle();
 }
 
 void

@@ -33,6 +33,8 @@ namespace render
 class material_data;
 class mesh_data;
 class vulkan_render_data;
+class vulkan_directional_light_data;
+class vulkan_universal_light_data;
 struct vertex_input_description;
 }  // namespace render
 
@@ -115,6 +117,12 @@ public:
     // until the command's execute() materializes the slot.
     utils::slot_handle<render::vulkan_render_data>
     alloc_object_handle();
+
+    utils::slot_handle<render::vulkan_directional_light_data>
+    alloc_directional_light_handle();
+
+    utils::slot_handle<render::vulkan_universal_light_data>
+    alloc_universal_light_handle();
 
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;

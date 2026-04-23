@@ -225,6 +225,8 @@ enum class light_kind : uint8_t
 struct create_light_cmd : render_cmd::render_command_base
 {
     utils::id id;
+    utils::slot_handle<render::vulkan_directional_light_data> dir_handle;
+    utils::slot_handle<render::vulkan_universal_light_data> uni_handle;
     light_kind kind = light_kind::point;
     glm::vec3 position{0.0f};
     glm::vec3 ambient{0.0f};
@@ -240,7 +242,8 @@ struct create_light_cmd : render_cmd::render_command_base
     {
         if (kind == light_kind::directional)
         {
-            auto* rh = ctx.vr.get_cache().directional_lights.alloc(id);
+            auto* rh =
+                ctx.vr.get_cache().directional_lights.materialize(dir_handle, id);
             rh->gpu_data.ambient = ambient;
             rh->gpu_data.diffuse = diffuse;
             rh->gpu_data.specular = specular;
@@ -251,7 +254,8 @@ struct create_light_cmd : render_cmd::render_command_base
         {
             auto lt =
                 (kind == light_kind::spot) ? render::light_type::spot : render::light_type::point;
-            auto* rh = ctx.vr.get_cache().universal_lights.alloc(id, lt);
+            auto* rh =
+                ctx.vr.get_cache().universal_lights.materialize(uni_handle, id, lt);
             rh->gpu_data.position = position;
             rh->gpu_data.ambient = ambient;
             rh->gpu_data.diffuse = diffuse;
@@ -267,7 +271,8 @@ struct create_light_cmd : render_cmd::render_command_base
 
 struct update_light_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::vulkan_directional_light_data> dir_handle;
+    utils::slot_handle<render::vulkan_universal_light_data> uni_handle;
     light_kind kind = light_kind::point;
     glm::vec3 position{0.0f};
     glm::vec3 ambient{0.0f};
@@ -283,7 +288,7 @@ struct update_light_cmd : render_cmd::render_command_base
     {
         if (kind == light_kind::directional)
         {
-            auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
+            auto* rh = ctx.vr.get_cache().directional_lights.get(dir_handle);
             if (!rh)
             {
                 return;
@@ -297,7 +302,7 @@ struct update_light_cmd : render_cmd::render_command_base
         }
         else
         {
-            auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
+            auto* rh = ctx.vr.get_cache().universal_lights.get(uni_handle);
             if (!rh)
             {
                 return;
@@ -329,7 +334,8 @@ struct select_directional_light_cmd : render_cmd::render_command_base
 
 struct destroy_light_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::vulkan_directional_light_data> dir_handle;
+    utils::slot_handle<render::vulkan_universal_light_data> uni_handle;
     light_kind kind = light_kind::point;
 
     void
@@ -337,19 +343,11 @@ struct destroy_light_cmd : render_cmd::render_command_base
     {
         if (kind == light_kind::directional)
         {
-            auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
-            if (rh)
-            {
-                ctx.vr.get_cache().directional_lights.release(rh);
-            }
+            ctx.vr.get_cache().directional_lights.release_handle(dir_handle);
         }
         else
         {
-            auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
-            if (rh)
-            {
-                ctx.vr.get_cache().universal_lights.release(rh);
-            }
+            ctx.vr.get_cache().universal_lights.release_handle(uni_handle);
         }
     }
 };
@@ -525,8 +523,12 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
 
     if (!lc_model.get_render_built())
     {
+        auto handle = ctx.rb->alloc_directional_light_handle();
+        lc_model.set_render_light_handle(handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->dir_handle = handle;
         cmd->kind = light_kind::directional;
         cmd->ambient = lc_model.get_ambient();
         cmd->diffuse = lc_model.get_diffuse();
@@ -539,7 +541,7 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
-        cmd->id = lc_model.get_id();
+        cmd->dir_handle = lc_model.get_render_light_handle();
         cmd->kind = light_kind::directional;
         cmd->ambient = lc_model.get_ambient();
         cmd->diffuse = lc_model.get_diffuse();
@@ -567,8 +569,10 @@ directional_light_component__cmd_destroyer(reflection::type_context__render_cmd_
     if (plc_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
-        cmd->id = plc_model.get_id();
+        cmd->dir_handle = plc_model.get_render_light_handle();
         cmd->kind = light_kind::directional;
+        plc_model.set_render_light_handle(
+            utils::slot_handle<render::vulkan_directional_light_data>::invalid());
         plc_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
@@ -585,8 +589,12 @@ spot_light_component__cmd_builder(reflection::type_context__render_cmd_build& ct
 
     if (!lc_model.get_render_built())
     {
+        auto handle = ctx.rb->alloc_universal_light_handle();
+        lc_model.set_render_light_handle(handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->uni_handle = handle;
         cmd->kind = light_kind::spot;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -603,7 +611,7 @@ spot_light_component__cmd_builder(reflection::type_context__render_cmd_build& ct
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
-        cmd->id = lc_model.get_id();
+        cmd->uni_handle = lc_model.get_render_light_handle();
         cmd->kind = light_kind::spot;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -628,8 +636,10 @@ spot_light_component__cmd_destroyer(reflection::type_context__render_cmd_build& 
     if (slc_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
-        cmd->id = slc_model.get_id();
+        cmd->uni_handle = slc_model.get_render_light_handle();
         cmd->kind = light_kind::spot;
+        slc_model.set_render_light_handle(
+            utils::slot_handle<render::vulkan_universal_light_data>::invalid());
         slc_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
@@ -646,8 +656,12 @@ point_light_component__cmd_builder(reflection::type_context__render_cmd_build& c
 
     if (!lc_model.get_render_built())
     {
+        auto handle = ctx.rb->alloc_universal_light_handle();
+        lc_model.set_render_light_handle(handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->uni_handle = handle;
         cmd->kind = light_kind::point;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -661,7 +675,7 @@ point_light_component__cmd_builder(reflection::type_context__render_cmd_build& c
     else
     {
         auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
-        cmd->id = lc_model.get_id();
+        cmd->uni_handle = lc_model.get_render_light_handle();
         cmd->kind = light_kind::point;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -683,8 +697,10 @@ point_light_component__cmd_destroyer(reflection::type_context__render_cmd_build&
     if (plc_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
-        cmd->id = plc_model.get_id();
+        cmd->uni_handle = plc_model.get_render_light_handle();
         cmd->kind = light_kind::point;
+        plc_model.set_render_light_handle(
+            utils::slot_handle<render::vulkan_universal_light_data>::invalid());
         plc_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
