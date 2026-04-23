@@ -4,8 +4,15 @@
 
 #include "packages/root/model/components/game_object_component.h"
 
+#include <utils/slot_handle.h>
+
 namespace kryga
 {
+namespace render
+{
+class vulkan_directional_light_data;
+}
+
 namespace base
 {
 // clang-format off
@@ -22,6 +29,18 @@ public:
     KRG_gen_construct_params{};
     KRG_gen_meta_api;
 
+    utils::slot_handle<render::vulkan_directional_light_data>
+    get_render_light_handle() const
+    {
+        return m_render_light_handle;
+    }
+
+    void
+    set_render_light_handle(utils::slot_handle<render::vulkan_directional_light_data> h)
+    {
+        m_render_light_handle = h;
+    }
+
 protected:
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
     ::kryga::root::vec3 m_ambient = glm::vec3{0.8f};
@@ -37,6 +56,8 @@ protected:
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
     bool m_selected = false;
+
+    utils::slot_handle<render::vulkan_directional_light_data> m_render_light_handle;
 };
 
 }  // namespace base

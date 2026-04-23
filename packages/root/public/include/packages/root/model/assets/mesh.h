@@ -5,12 +5,18 @@
 #include "packages/root/model/assets/asset.h"
 
 #include "utils/buffer.h"
+#include "utils/slot_handle.h"
 
 #include <vector>
 #include <string>
 
 namespace kryga
 {
+namespace render
+{
+class mesh_data;
+}
+
 namespace root
 {
 // clang-format off
@@ -82,6 +88,18 @@ public:
         m_bounding_radius = r;
     }
 
+    utils::slot_handle<render::mesh_data>
+    get_render_handle() const
+    {
+        return m_render_handle;
+    }
+
+    void
+    set_render_handle(utils::slot_handle<render::mesh_data> h)
+    {
+        m_render_handle = h;
+    }
+
 protected:
     KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_vertices = {};
@@ -93,6 +111,8 @@ protected:
     utils::buffer m_external = {};
 
     float m_bounding_radius = 0.0f;
+
+    utils::slot_handle<render::mesh_data> m_render_handle;
 };
 
 }  // namespace root

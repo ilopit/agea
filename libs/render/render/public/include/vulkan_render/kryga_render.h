@@ -20,6 +20,7 @@
 
 #include <utils/check.h>
 #include <utils/id.h>
+#include <utils/slot_handle.h>
 #include <utils/line_container.h>
 #include <utils/id_allocator.h>
 
@@ -214,6 +215,10 @@ public:
 
     void
     set_selected_directional_light(const utils::id& id);
+
+    void
+    set_selected_directional_light(
+        utils::slot_handle<render::vulkan_directional_light_data> h);
 
     uint32_t
     get_selected_directional_light_slot();
@@ -577,8 +582,10 @@ private:
     shader_effect_data* m_shadow_se = nullptr;
     shader_effect_data* m_shadow_dpsm_se = nullptr;
 
-    // Selected directional light
-    utils::id m_selected_directional_light_id;
+    // Selected directional light (stored as a handle; id-based setters
+    // resolve to handle via find_by_id for backward-compat callers).
+    utils::slot_handle<render::vulkan_directional_light_data>
+        m_selected_directional_light_handle;
 
     // Instance drawing state
     std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots

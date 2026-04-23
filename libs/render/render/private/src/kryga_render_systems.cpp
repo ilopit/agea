@@ -262,15 +262,34 @@ vulkan_render::schd_update_light(render::vulkan_universal_light_data* ld)
 void
 vulkan_render::set_selected_directional_light(const utils::id& id)
 {
-    m_selected_directional_light_id = id;
+    // Backward-compat path: resolve id to handle once at set time.
+    if (!id.valid())
+    {
+        m_selected_directional_light_handle =
+            utils::slot_handle<render::vulkan_directional_light_data>::invalid();
+        return;
+    }
+    auto* rh = m_cache.directional_lights.find_by_id(id);
+    if (rh)
+    {
+        m_selected_directional_light_handle =
+            utils::slot_handle<render::vulkan_directional_light_data>{rh->slot(), 0};
+    }
+}
+
+void
+vulkan_render::set_selected_directional_light(
+    utils::slot_handle<render::vulkan_directional_light_data> h)
+{
+    m_selected_directional_light_handle = h;
 }
 
 uint32_t
 vulkan_render::get_selected_directional_light_slot()
 {
-    if (m_selected_directional_light_id.valid())
+    if (m_selected_directional_light_handle.is_valid())
     {
-        auto* rh = m_cache.directional_lights.find_by_id(m_selected_directional_light_id);
+        auto* rh = m_cache.directional_lights.get(m_selected_directional_light_handle);
         if (rh)
         {
             return rh->slot();

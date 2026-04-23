@@ -6,6 +6,8 @@
 #include "packages/root/model/core_types/vec3.h"
 #include "core/object_layer_flags.h"
 
+#include <utils/slot_handle.h>
+
 namespace kryga
 {
 
@@ -140,6 +142,21 @@ public:
         return m_layers;
     }
 
+    // Render-side slot handle for this component's vulkan_render_data entry.
+    // Allocated by render_bridge on first build; carried through create/update/
+    // destroy commands to avoid id->slot lookup on the render thread.
+    utils::slot_handle<render::vulkan_render_data>
+    get_render_object_handle() const
+    {
+        return m_render_object_handle;
+    }
+
+    void
+    set_render_object_handle(utils::slot_handle<render::vulkan_render_data> h)
+    {
+        m_render_object_handle = h;
+    }
+
 protected:
     KRG_ar_property("category=Action", "serializable=true", "default=true");
     bool m_tickable = false;
@@ -187,6 +204,8 @@ protected:
     bool m_has_dirty_transform = false;
 
     game_object_component* m_render_root = nullptr;
+
+    utils::slot_handle<render::vulkan_render_data> m_render_object_handle;
 };
 
 }  // namespace root

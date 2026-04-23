@@ -24,8 +24,9 @@ convert_to_vertex_input_description(kryga::utils::dynobj_layout& dol);
 class mesh_data
 {
 public:
-    mesh_data(const ::kryga::utils::id& id)
+    mesh_data(const ::kryga::utils::id& id, gpu_data_index_type slot)
         : m_id(id)
+        , m_slot(slot)
     {
     }
     ~mesh_data();
@@ -33,6 +34,18 @@ public:
     mesh_data(mesh_data&& other) noexcept = default;
     mesh_data&
     operator=(mesh_data&& other) noexcept = default;
+
+    const ::kryga::utils::id&
+    id() const
+    {
+        return m_id;
+    }
+
+    gpu_data_index_type
+    slot() const
+    {
+        return m_slot;
+    }
 
     uint32_t
     vertices_size()
@@ -68,6 +81,7 @@ public:
 
 private:
     ::kryga::utils::id m_id;
+    gpu_data_index_type m_slot = 0;
 };
 }  // namespace render
 

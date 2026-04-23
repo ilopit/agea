@@ -7,6 +7,7 @@
 
 #include <utils/path.h>
 #include <utils/id.h>
+#include <utils/slot_handle.h>
 #include <utils/dynamic_object.h>
 
 #include <unordered_map>
@@ -31,6 +32,10 @@ namespace render
 {
 class material_data;
 class mesh_data;
+class texture_data;
+class vulkan_render_data;
+class vulkan_directional_light_data;
+class vulkan_universal_light_data;
 struct vertex_input_description;
 }  // namespace render
 
@@ -106,6 +111,28 @@ public:
     // Reset the arena (called from main thread after render done)
     void
     reset_arena();
+
+    // Main-thread: reserve a handle into the render-side objects cache.
+    // Pops from the pre-handed batch or atomically bumps the overflow counter.
+    // The returned handle is stuffed into create_object_cmd and is not valid
+    // until the command's execute() materializes the slot.
+    utils::slot_handle<render::vulkan_render_data>
+    alloc_object_handle();
+
+    utils::slot_handle<render::vulkan_directional_light_data>
+    alloc_directional_light_handle();
+
+    utils::slot_handle<render::vulkan_universal_light_data>
+    alloc_universal_light_handle();
+
+    utils::slot_handle<render::material_data>
+    alloc_material_handle();
+
+    utils::slot_handle<render::mesh_data>
+    alloc_mesh_handle();
+
+    utils::slot_handle<render::texture_data>
+    alloc_texture_handle();
 
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;

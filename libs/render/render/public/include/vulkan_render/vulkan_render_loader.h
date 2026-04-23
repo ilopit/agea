@@ -12,6 +12,7 @@
 #include <error_handling/error_handling.h>
 
 #include <utils/buffer.h>
+#include <utils/combined_pool.h>
 #include <utils/id.h>
 #include <utils/path.h>
 #include <utils/check.h>
@@ -40,30 +41,50 @@ public:
     mesh_data*
     get_mesh_data(const kryga::utils::id& id)
     {
-        return get_data<mesh_data>(m_meshes_cache, id);
+        return m_meshes_cache.find_by_id(id);
     }
 
     mesh_data*
-    create_mesh(const kryga::utils::id& mesh_id,
+    get_mesh_data(utils::slot_handle<mesh_data> h)
+    {
+        return m_meshes_cache.get(h);
+    }
+
+    utils::combined_pool<mesh_data>&
+    get_meshes_pool()
+    {
+        return m_meshes_cache;
+    }
+
+    mesh_data*
+    create_mesh(utils::slot_handle<mesh_data> handle,
+                const kryga::utils::id& mesh_id,
                 kryga::utils::buffer_view<gpu::vertex_data> vertices,
                 kryga::utils::buffer_view<gpu::uint> indices);
 
     mesh_data*
-    create_skinned_mesh(const kryga::utils::id& mesh_id,
+    create_skinned_mesh(utils::slot_handle<mesh_data> handle,
+                        const kryga::utils::id& mesh_id,
                         kryga::utils::buffer_view<gpu::skinned_vertex_data> vertices,
                         kryga::utils::buffer_view<gpu::uint> indices);
 
     void
-    destroy_mesh_data(const kryga::utils::id& id);
+    destroy_mesh_data(utils::slot_handle<mesh_data> h);
 
     /*************************/
 
     texture_data*
-    get_texture_data(const kryga::utils::id& id)
-    {
-        auto itr = m_textures_cache.find(id);
-        return itr != m_textures_cache.end() ? itr->second : nullptr;
-    }
+    get_texture_data(const kryga::utils::id& id);
+
+    texture_data*
+    get_texture_data(utils::slot_handle<texture_data> h);
+
+    texture_data*
+    create_texture(utils::slot_handle<texture_data> handle,
+                   const kryga::utils::id& texture_id,
+                   const kryga::utils::buffer& base_color,
+                   uint32_t w,
+                   uint32_t h);
 
     texture_data*
     create_texture(const kryga::utils::id& texture_id,
@@ -97,6 +118,9 @@ public:
     void
     destroy_texture_data(const kryga::utils::id& id);
 
+    void
+    destroy_texture_data(utils::slot_handle<texture_data> h);
+
     /*************************/
 
     bool
@@ -112,17 +136,24 @@ public:
     material_data*
     get_material_data(const kryga::utils::id& id)
     {
-        return get_data<material_data>(m_materials_cache, id);
+        return m_materials_cache.find_by_id(id);
     }
 
-    std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>>&
-    get_materials_cache()
+    material_data*
+    get_material_data(utils::slot_handle<material_data> h)
+    {
+        return m_materials_cache.get(h);
+    }
+
+    utils::combined_pool<material_data>&
+    get_materials_pool()
     {
         return m_materials_cache;
     }
 
     material_data*
-    create_material(const kryga::utils::id& id,
+    create_material(utils::slot_handle<material_data> handle,
+                    const kryga::utils::id& id,
                     const kryga::utils::id& type_id,
                     std::vector<texture_sampler_data>& textures_data,
                     shader_effect_data& se_data,
@@ -135,7 +166,7 @@ public:
                     const kryga::utils::dynobj& params);
 
     void
-    destroy_material_data(const kryga::utils::id& id);
+    destroy_material_data(utils::slot_handle<material_data> h);
 
     /*************************/
     void
@@ -206,11 +237,10 @@ private:
         return m_materials_index[type_id]++;
     }
 
-    std::unordered_map<kryga::utils::id, std::shared_ptr<mesh_data>> m_meshes_cache;
-    // Note: textures are now stored in render_cache.textures (combined_pool)
-    // This map just provides ID-based lookup
-    std::unordered_map<kryga::utils::id, texture_data*> m_textures_cache;
-    std::unordered_map<kryga::utils::id, std::shared_ptr<material_data>> m_materials_cache;
+    utils::combined_pool<mesh_data> m_meshes_cache;
+    // Textures stored in render_cache.textures (combined_pool). ID lookup
+    // goes through its m_mapping.
+    utils::combined_pool<material_data> m_materials_cache;
     std::unordered_map<kryga::utils::id, std::shared_ptr<shader_module_data>> m_shaders_cache;
 
     std::unordered_map<kryga::utils::id, std::shared_ptr<sampler_data>> m_samplers_cache;
