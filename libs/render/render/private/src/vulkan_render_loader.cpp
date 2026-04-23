@@ -147,7 +147,8 @@ upload_image(int texWidth,
 }  // namespace
 
 mesh_data*
-vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
+vulkan_render_loader::create_mesh(utils::slot_handle<mesh_data> handle,
+                                  const kryga::utils::id& mesh_id,
                                   kryga::utils::buffer_view<gpu::vertex_data> vbv,
                                   kryga::utils::buffer_view<gpu::uint> ibv)
 {
@@ -155,7 +156,7 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
 
     auto device = glob::glob_state().get_render_device();
 
-    auto md = std::make_shared<mesh_data>(mesh_id);
+    auto* md = m_meshes_cache.materialize(handle, mesh_id);
     md->m_indices_size = (uint32_t)ibv.size();
     md->m_vertices_size = (uint32_t)vbv.size();
 
@@ -246,13 +247,12 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
             }
         });
 
-    m_meshes_cache[mesh_id] = md;
-
-    return md.get();
+    return md;
 }
 
 mesh_data*
-vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
+vulkan_render_loader::create_skinned_mesh(utils::slot_handle<mesh_data> handle,
+                                          const kryga::utils::id& mesh_id,
                                           kryga::utils::buffer_view<gpu::skinned_vertex_data> vbv,
                                           kryga::utils::buffer_view<gpu::uint> ibv)
 {
@@ -260,7 +260,7 @@ vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
 
     auto device = glob::glob_state().get_render_device();
 
-    auto md = std::make_shared<mesh_data>(mesh_id);
+    auto* md = m_meshes_cache.materialize(handle, mesh_id);
     md->m_indices_size = (uint32_t)ibv.size();
     md->m_vertices_size = (uint32_t)vbv.size();
     md->m_is_skinned = true;
@@ -337,8 +337,7 @@ vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
             }
         });
 
-    m_meshes_cache[mesh_id] = md;
-    return md.get();
+    return md;
 }
 
 texture_data*
@@ -546,14 +545,9 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
 }
 
 void
-vulkan_render_loader::destroy_mesh_data(const kryga::utils::id& id)
+vulkan_render_loader::destroy_mesh_data(utils::slot_handle<mesh_data> h)
 {
-    auto itr = m_meshes_cache.find(id);
-    if (itr != m_meshes_cache.end())
-    {
-        // shedule_to_deltete_t(std::move(itr->second));
-        m_meshes_cache.erase(itr);
-    }
+    m_meshes_cache.release_handle(h);
 }
 
 material_data*

@@ -92,8 +92,8 @@ struct create_object_cmd : render_cmd::render_command_base
 {
     utils::slot_handle<render::vulkan_render_data> object_handle;
     utils::slot_handle<render::material_data> material_handle;
+    utils::slot_handle<render::mesh_data> mesh_handle;
     utils::id id;
-    utils::id mesh_id;
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
@@ -108,7 +108,7 @@ struct create_object_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
+        auto* mesh_data = ctx.loader.get_mesh_data(mesh_handle);
         auto* mat_data = ctx.loader.get_material_data(material_handle);
 
         if (!mesh_data || !mat_data)
@@ -143,7 +143,7 @@ struct update_object_cmd : render_cmd::render_command_base
 {
     utils::slot_handle<render::vulkan_render_data> object_handle;
     utils::slot_handle<render::material_data> material_handle;
-    utils::id mesh_id;
+    utils::slot_handle<render::mesh_data> mesh_handle;
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
@@ -163,7 +163,7 @@ struct update_object_cmd : render_cmd::render_command_base
             return;
         }
 
-        auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
+        auto* mesh_data = ctx.loader.get_mesh_data(mesh_handle);
         auto* mat_data = ctx.loader.get_material_data(material_handle);
 
         if (!mesh_data || !mat_data)
@@ -417,7 +417,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
         cmd->object_handle = handle;
         cmd->id = moc.get_id();
-        cmd->mesh_id = moc.get_mesh()->get_id();
+        cmd->mesh_handle = moc.get_mesh()->get_render_handle();
         cmd->material_handle = moc.get_material()->get_render_handle();
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
@@ -437,7 +437,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->object_handle = moc.get_render_object_handle();
-        cmd->mesh_id = moc.get_mesh()->get_id();
+        cmd->mesh_handle = moc.get_mesh()->get_render_handle();
         cmd->material_handle = moc.get_material()->get_render_handle();
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
@@ -873,10 +873,9 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
                    gltf_mesh.indices.data(),
                    gltf_mesh.indices.size() * sizeof(gpu::uint));
 
-            anim_sys.set_skinned_mesh_created(skeleton_id);
-
             struct create_skinned_mesh_cmd : render_cmd::render_command_base
             {
+                utils::slot_handle<render::mesh_data> handle;
                 utils::id id;
                 std::shared_ptr<utils::buffer> vertices;
                 std::shared_ptr<utils::buffer> indices;
@@ -886,11 +885,15 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
                 {
                     auto vbv = vertices->make_view<gpu::skinned_vertex_data>();
                     auto ibv = indices->make_view<gpu::uint>();
-                    ctx.loader.create_skinned_mesh(id, vbv, ibv);
+                    ctx.loader.create_skinned_mesh(handle, id, vbv, ibv);
                 }
             };
 
+            auto mesh_handle = ctx.rb->alloc_mesh_handle();
+            anim_sys.set_skinned_mesh_created(skeleton_id, mesh_handle);
+
             auto* cmd = ctx.rb->alloc_cmd<create_skinned_mesh_cmd>();
+            cmd->handle = mesh_handle;
             cmd->id = mesh_id;
             cmd->vertices = std::move(vert_buf);
             cmd->indices = std::move(idx_buf);
@@ -898,6 +901,10 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
             ctx.rb->enqueue_cmd(cmd);
         }
     }
+
+    // Always resolve the skinned-mesh handle for this component — it may have
+    // been created earlier by a different amc instance sharing the skeleton.
+    amc.set_skinned_mesh_handle(anim_sys.get_skinned_mesh_handle(skeleton_id));
 
     auto* mat_model = amc.get_material();
     if (!mat_model)
@@ -937,7 +944,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
         cmd->object_handle = handle;
         cmd->id = amc.get_id();
-        cmd->mesh_id = mesh_id;
+        cmd->mesh_handle = amc.get_skinned_mesh_handle();
         cmd->material_handle = mat_model->get_render_handle();
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
@@ -953,7 +960,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->object_handle = amc.get_render_object_handle();
-        cmd->mesh_id = mesh_id;
+        cmd->mesh_handle = amc.get_skinned_mesh_handle();
         cmd->material_handle = mat_model->get_render_handle();
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();

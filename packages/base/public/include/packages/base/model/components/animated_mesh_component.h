@@ -6,9 +6,15 @@
 
 #include <utils/buffer.h>
 #include <utils/id.h>
+#include <utils/slot_handle.h>
 
 namespace kryga
 {
+namespace render
+{
+class mesh_data;
+}
+
 namespace root
 {
 class material;
@@ -64,6 +70,18 @@ public:
         m_skeleton_id = v;
     }
 
+    utils::slot_handle<render::mesh_data>
+    get_skinned_mesh_handle() const
+    {
+        return m_skinned_mesh_handle;
+    }
+
+    void
+    set_skinned_mesh_handle(utils::slot_handle<render::mesh_data> h)
+    {
+        m_skinned_mesh_handle = h;
+    }
+
 protected:
     KRG_ar_property("category=Assets", "serializable=true", "invalidates=render", "access=all");
     utils::buffer m_gltf;
@@ -88,6 +106,8 @@ protected:
     float m_base_bounding_radius = 0.0f;
     utils::id m_anim_instance_id;
     utils::id m_skeleton_id;
+
+    utils::slot_handle<render::mesh_data> m_skinned_mesh_handle;
 };
 
 }  // namespace base

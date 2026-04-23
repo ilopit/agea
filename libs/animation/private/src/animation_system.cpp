@@ -494,13 +494,26 @@ animation_system::has_skinned_mesh(const utils::id& skel_id) const
 }
 
 void
-animation_system::set_skinned_mesh_created(const utils::id& skel_id)
+animation_system::set_skinned_mesh_created(const utils::id& skel_id,
+                                            utils::slot_handle<render::mesh_data> handle)
 {
     auto it = m_skeletons.find(skel_id);
     if (it != m_skeletons.end())
     {
         it->second.skinned_mesh_created = true;
+        it->second.skinned_mesh_handle = handle;
     }
+}
+
+utils::slot_handle<render::mesh_data>
+animation_system::get_skinned_mesh_handle(const utils::id& skel_id) const
+{
+    auto it = m_skeletons.find(skel_id);
+    if (it != m_skeletons.end())
+    {
+        return it->second.skinned_mesh_handle;
+    }
+    return utils::slot_handle<render::mesh_data>::invalid();
 }
 
 }  // namespace animation

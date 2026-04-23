@@ -127,6 +127,9 @@ public:
     utils::slot_handle<render::material_data>
     alloc_material_handle();
 
+    utils::slot_handle<render::mesh_data>
+    alloc_mesh_handle();
+
 private:
     std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
 

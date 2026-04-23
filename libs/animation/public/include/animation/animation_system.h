@@ -10,6 +10,7 @@
 #include <ozz/base/maths/soa_transform.h>
 
 #include <utils/id.h>
+#include <utils/slot_handle.h>
 
 #include <functional>
 #include <memory>
@@ -23,6 +24,7 @@ namespace render
 {
 class vulkan_render;
 class vulkan_render_data;
+class mesh_data;
 }  // namespace render
 
 namespace animation
@@ -90,7 +92,11 @@ public:
     has_skinned_mesh(const utils::id& skel_id) const;
 
     void
-    set_skinned_mesh_created(const utils::id& skel_id);
+    set_skinned_mesh_created(const utils::id& skel_id,
+                             utils::slot_handle<render::mesh_data> handle);
+
+    utils::slot_handle<render::mesh_data>
+    get_skinned_mesh_handle(const utils::id& skel_id) const;
 
 private:
     struct registered_skeleton
@@ -99,6 +105,7 @@ private:
         std::vector<glm::mat4> inverse_bind_matrices;
         std::vector<int32_t> joint_remaps;
         bool skinned_mesh_created = false;
+        utils::slot_handle<render::mesh_data> skinned_mesh_handle;
     };
 
     struct layer_state

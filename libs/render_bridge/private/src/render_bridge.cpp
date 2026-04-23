@@ -253,10 +253,12 @@ render_bridge::drain_queue()
     constexpr size_t OBJECTS_BATCH_TARGET = 128;
     constexpr size_t LIGHTS_BATCH_TARGET = 16;
     constexpr size_t MATERIALS_BATCH_TARGET = 32;
+    constexpr size_t MESHES_BATCH_TARGET = 32;
     vr.get_cache().objects.refill_batch(OBJECTS_BATCH_TARGET);
     vr.get_cache().directional_lights.refill_batch(LIGHTS_BATCH_TARGET);
     vr.get_cache().universal_lights.refill_batch(LIGHTS_BATCH_TARGET);
     loader.get_materials_pool().refill_batch(MATERIALS_BATCH_TARGET);
+    loader.get_meshes_pool().refill_batch(MESHES_BATCH_TARGET);
 }
 
 utils::slot_handle<render::vulkan_render_data>
@@ -289,6 +291,15 @@ render_bridge::alloc_material_handle()
     return glob::glob_state()
         .getr_vulkan_render_loader()
         .get_materials_pool()
+        .alloc_handle();
+}
+
+utils::slot_handle<render::mesh_data>
+render_bridge::alloc_mesh_handle()
+{
+    return glob::glob_state()
+        .getr_vulkan_render_loader()
+        .get_meshes_pool()
         .alloc_handle();
 }
 

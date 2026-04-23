@@ -103,6 +103,7 @@ map_sampler_to_static_index(const sampler& smp)
 
 struct create_mesh_cmd : render_cmd::render_command_base
 {
+    utils::slot_handle<render::mesh_data> handle;
     utils::id id;
     std::shared_ptr<utils::buffer> vertices;
     std::shared_ptr<utils::buffer> indices;
@@ -122,25 +123,25 @@ struct create_mesh_cmd : render_cmd::render_command_base
         {
             auto vbv = vertices->make_view<gpu::skinned_vertex_data>();
             auto ibv = indices->make_view<gpu::uint>();
-            ctx.loader.create_skinned_mesh(id, vbv, ibv);
+            ctx.loader.create_skinned_mesh(handle, id, vbv, ibv);
         }
         else
         {
             auto vbv = vertices->make_view<gpu::vertex_data>();
             auto ibv = indices->make_view<gpu::uint>();
-            ctx.loader.create_mesh(id, vbv, ibv);
+            ctx.loader.create_mesh(handle, id, vbv, ibv);
         }
     }
 };
 
 struct destroy_mesh_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    utils::slot_handle<render::mesh_data> handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        ctx.loader.destroy_mesh_data(id);
+        ctx.loader.destroy_mesh_data(handle);
     }
 };
 
@@ -449,7 +450,11 @@ mesh__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     }
     msh_model.set_bounding_radius(std::sqrt(max_dist_sq));
 
+    auto handle = ctx.rb->alloc_mesh_handle();
+    msh_model.set_render_handle(handle);
+
     auto* cmd = ctx.rb->alloc_cmd<create_mesh_cmd>();
+    cmd->handle = handle;
     cmd->id = msh_model.get_id();
     cmd->vertices = std::make_shared<utils::buffer>(msh_model.get_vertices_buffer());
     cmd->indices = std::make_shared<utils::buffer>(msh_model.get_indices_buffer());
@@ -469,7 +474,8 @@ mesh__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
     if (msh_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
-        cmd->id = msh_model.get_id();
+        cmd->handle = msh_model.get_render_handle();
+        msh_model.set_render_handle(utils::slot_handle<render::mesh_data>::invalid());
         msh_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
