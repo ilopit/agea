@@ -76,7 +76,10 @@
 
 #include <fstream>
 #include <algorithm>
+#include <cctype>
 #include <chrono>
+#include <cstdio>
+#include <string_view>
 #include <thread>
 
 #if defined(_WIN32)
@@ -605,6 +608,14 @@ vulkan_engine::run_headless()
         // enqueue, then drain + draw.
         bridge.reset_arena();
 
+        // Phase 4: drain control messages. See handle_ipc_message for the
+        // message format.
+        if (m_frame_publisher && m_frame_publisher->is_open())
+        {
+            m_frame_publisher->drain_messages_in(
+                [this](std::string_view msg) { handle_ipc_message(msg); });
+        }
+
         // Phase 2: drain input events from the VS Code side and route
         // them into the edit-mode camera. Mouse-move deltas become
         // look-up / look-left; mouse-button[R] toggles "looking" which
@@ -1001,6 +1012,138 @@ vulkan_engine::init_default_scripting()
         [pm](const char* id) -> bool { return pm->load_package(AID(id)); });
 
     gs.create_box_with_obj("lua_pm", std::move(lua_pm));
+}
+
+namespace
+{
+// Split an ASCII message into tokens on whitespace. Each token that
+// contains '=' is treated as key=value; tokens without '=' count as flags
+// stored in `kv[token] = ""`. The caller ideally puts the message verb
+// first (also stored in `kv["_"] = verb`).
+struct parsed_msg
+{
+    std::unordered_map<std::string, std::string> kv;
+};
+
+parsed_msg
+parse_ipc_msg(std::string_view msg)
+{
+    parsed_msg out;
+    size_t i = 0;
+    bool first = true;
+    while (i < msg.size())
+    {
+        while (i < msg.size() && std::isspace(static_cast<unsigned char>(msg[i]))) ++i;
+        size_t start = i;
+        while (i < msg.size() && !std::isspace(static_cast<unsigned char>(msg[i]))) ++i;
+        if (start == i) break;
+        std::string_view tok(msg.data() + start, i - start);
+
+        if (first)
+        {
+            out.kv["_"] = std::string(tok);
+            first = false;
+            continue;
+        }
+        auto eq = tok.find('=');
+        if (eq == std::string_view::npos)
+        {
+            out.kv[std::string(tok)] = "";
+        }
+        else
+        {
+            out.kv[std::string(tok.substr(0, eq))] = std::string(tok.substr(eq + 1));
+        }
+    }
+    return out;
+}
+
+float
+to_float(const std::string& s, float fallback)
+{
+    try
+    {
+        return std::stof(s);
+    }
+    catch (...)
+    {
+        return fallback;
+    }
+}
+}  // namespace
+
+void
+vulkan_engine::send_selection()
+{
+    if (!m_frame_publisher || !m_frame_publisher->is_open()) return;
+
+    // Phase 4 exposes a single hardcoded selection: the editor's camera
+    // position. Phase 5 generalises this via the reflection system.
+    auto* editor = glob::glob_state().get_game_editor();
+    const glm::vec3 pos{editor->get_camera_data().position};
+
+    char buf[256];
+    const int n = std::snprintf(
+        buf, sizeof(buf),
+        "selection entity=play_camera pos_x=%.4f pos_y=%.4f pos_z=%.4f",
+        pos.x, pos.y, pos.z);
+    if (n > 0)
+    {
+        m_frame_publisher->push_message_out(
+            std::string_view(buf, static_cast<size_t>(n)));
+    }
+}
+
+void
+vulkan_engine::handle_ipc_message(std::string_view msg)
+{
+    if (msg.empty()) return;
+    auto parsed = parse_ipc_msg(msg);
+    const auto& verb = parsed.kv["_"];
+
+    if (verb == "requestSelection")
+    {
+        send_selection();
+        return;
+    }
+    if (verb == "setProperty")
+    {
+        const auto& path = parsed.kv["path"];
+        const auto& value_s = parsed.kv["value"];
+        const float value = to_float(value_s, 0.f);
+
+        // Phase 4: only camera.position.{x,y,z} is wired. Extending to
+        // arbitrary objects / components is Phase 5's job.
+        auto* editor = glob::glob_state().get_game_editor();
+        auto data = editor->get_camera_data();
+        glm::vec3 pos{data.position};
+        if (path == "camera.position.x") pos.x = value;
+        else if (path == "camera.position.y") pos.y = value;
+        else if (path == "camera.position.z") pos.z = value;
+        else
+        {
+            ALOG_WARN("handle_ipc_message: unknown property path '{}'", path);
+            return;
+        }
+
+        // Reach into the editor's state via an explicit setter rather than
+        // poking private fields. Avoids an unrelated header-rotation
+        // churn; the new method is tiny.
+        editor->set_camera_position(pos);
+
+        char echo[128];
+        const int n = std::snprintf(echo, sizeof(echo),
+                                    "propertyChanged path=%s value=%.6f",
+                                    path.c_str(), value);
+        if (n > 0 && m_frame_publisher)
+        {
+            m_frame_publisher->push_message_out(
+                std::string_view(echo, static_cast<size_t>(n)));
+        }
+        return;
+    }
+
+    ALOG_WARN("handle_ipc_message: unknown verb '{}'", verb);
 }
 
 void

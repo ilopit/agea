@@ -67,6 +67,15 @@ frame_publisher::init(render::render_device& device, const config& cfg)
     h->input_ring_head.store(0, std::memory_order_release);
     h->input_ring_tail.store(0, std::memory_order_release);
 
+    h->msg_in_offset = m_layout.msg_in_offset;
+    h->msg_out_offset = m_layout.msg_out_offset;
+    h->msg_ring_capacity = MSG_RING_CAPACITY;
+    h->msg_slot_bytes = MSG_SLOT_BYTES;
+    h->msg_in_head.store(0, std::memory_order_release);
+    h->msg_in_tail.store(0, std::memory_order_release);
+    h->msg_out_head.store(0, std::memory_order_release);
+    h->msg_out_tail.store(0, std::memory_order_release);
+
     // frame_ready event used by the addon in its worker thread.
     if (!m_frame_ready.open(m_cfg.name + "_fr", named_event::mode::create))
     {
@@ -147,6 +156,72 @@ frame_publisher::drain_input(const std::function<void(const input_event&)>& fn,
     if (!is_open()) return 0;
     input_reader reader(header(), m_shm.data());
     return reader.drain(fn, max_events);
+}
+
+namespace
+{
+// Helpers for the control-message rings. Each slot is MSG_SLOT_BYTES of:
+//   [uint32_t payload_length][payload bytes...]
+inline uint8_t*
+msg_slot(uint8_t* ring_base, uint32_t idx)
+{
+    return ring_base + static_cast<size_t>(idx) * MSG_SLOT_BYTES;
+}
+}  // namespace
+
+uint32_t
+frame_publisher::drain_messages_in(const std::function<void(std::string_view)>& fn,
+                                   uint32_t max_messages)
+{
+    if (!is_open()) return 0;
+    auto* h = header();
+    auto* base = static_cast<uint8_t*>(m_shm.data()) + h->msg_in_offset;
+
+    uint32_t head = h->msg_in_head.load(std::memory_order_acquire);
+    uint32_t tail = h->msg_in_tail.load(std::memory_order_relaxed);
+    const uint32_t cap = h->msg_ring_capacity;
+    const uint32_t slot_sz = h->msg_slot_bytes;
+
+    uint32_t consumed = 0;
+    while (tail != head && consumed < max_messages)
+    {
+        auto* slot = msg_slot(base, tail);
+        uint32_t payload_len = 0;
+        std::memcpy(&payload_len, slot, sizeof(payload_len));
+        if (payload_len > slot_sz - 4) payload_len = slot_sz - 4;  // truncated on write.
+        fn(std::string_view(reinterpret_cast<const char*>(slot + 4), payload_len));
+        tail = (tail + 1) % cap;
+        ++consumed;
+    }
+
+    if (consumed)
+    {
+        h->msg_in_tail.store(tail, std::memory_order_release);
+    }
+    return consumed;
+}
+
+bool
+frame_publisher::push_message_out(std::string_view payload)
+{
+    if (!is_open()) return false;
+    auto* h = header();
+    auto* base = static_cast<uint8_t*>(m_shm.data()) + h->msg_out_offset;
+    const uint32_t cap = h->msg_ring_capacity;
+    const uint32_t slot_sz = h->msg_slot_bytes;
+
+    const uint32_t head = h->msg_out_head.load(std::memory_order_relaxed);
+    const uint32_t tail = h->msg_out_tail.load(std::memory_order_acquire);
+    const uint32_t next = (head + 1) % cap;
+    if (next == tail) return false;  // full
+
+    auto* slot = msg_slot(base, head);
+    const uint32_t payload_len = static_cast<uint32_t>(payload.size());
+    const uint32_t written = payload_len < slot_sz - 4 ? payload_len : slot_sz - 4;
+    std::memcpy(slot, &payload_len, sizeof(payload_len));
+    std::memcpy(slot + 4, payload.data(), written);
+    h->msg_out_head.store(next, std::memory_order_release);
+    return true;
 }
 
 void

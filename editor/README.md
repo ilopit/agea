@@ -95,6 +95,39 @@ shm → post-message → WebGL texture). Phase 1 accepts this; Phase 2 adds the
 signaled wait but does not reduce copies. The copy count is noted so it's
 easy to find when profiling later.
 
+## Property inspector (Phase 4)
+
+`Kryga: Open Property Inspector` opens a side panel bound to the same IPC
+channel as the viewport. Phase 4 wires exactly one component — the
+edit-camera position — through a drag-scrub Vector3 input. This proves the
+full round trip:
+
+```
+UI drag         postMessage → extension
+                postMessageIn("setProperty path=camera.position.x value=1.5")
+engine tick     drain_messages_in → handle_ipc_message
+                -> game_editor::set_camera_position(...)
+                -> push_message_out("propertyChanged path=... value=...")
+extension poll  drainMessagesOut → webview postMessage
+                -> inspector script updates its selection snapshot
+```
+
+Wire format is intentionally un-JSON: each record is a single line of
+`verb key=value ...` ASCII tokens, so the engine doesn't need a JSON
+parser. The full message rings (64 slots × 512 bytes each, one ring per
+direction) live in the same shared-memory region as the frame slots.
+Ring overflow drops the outgoing message (drag-scrub is naturally
+idempotent so dropped `setProperty`s just mean the next preview tick
+wins).
+
+### Scope of Phase 4
+
+- `requestSelection` returns a hardcoded `selection entity=play_camera`.
+  Entity selection by clicking the viewport is Phase 5 work.
+- Only `camera.position.{x,y,z}` paths are handled by the engine. Adding
+  paths means adding case branches in `vulkan_engine::handle_ipc_message`
+  until Phase 5 replaces the dispatcher with a reflection walk.
+
 ## Diagnostics (Phase 3)
 
 ### `editor_ipc_shmdump`

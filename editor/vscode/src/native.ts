@@ -23,6 +23,11 @@ export interface KrygaNative {
     opts: { name: string; callback: () => void },
   ): boolean;
   postInput(handle: number, event: InputEvent): boolean;
+
+  // Phase 4 control channel. Editor sends records as ASCII lines; engine
+  // pushes selection / propertyChanged records.
+  postMessageIn(handle: number, message: string): boolean;
+  drainMessagesOut(handle: number): string[];
 }
 
 let cached: KrygaNative | null = null;

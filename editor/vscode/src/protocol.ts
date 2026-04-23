@@ -4,12 +4,14 @@
 // to attach on mismatch.
 
 export const SHM_MAGIC = 0x4b524741; // 'KRGA'
-export const SHM_VERSION = 2;
+export const SHM_VERSION = 3;
 export const NUM_SLOTS = 3;
 export const SLOT_NONE = 0xffffffff;
 export const CACHE_LINE = 64;
 export const INPUT_RING_CAPACITY = 256;
 export const INPUT_EVENT_BYTES = 24;
+export const MSG_RING_CAPACITY = 64;
+export const MSG_SLOT_BYTES = 512;
 
 export enum PixelFormat {
   Rgba8 = 0,
@@ -20,31 +22,32 @@ function alignUp(value: number, alignment: number): number {
   return (value + alignment - 1) & ~(alignment - 1);
 }
 
-// sizeof(frame_header) in bytes. Must match the C++ layout; see comment in
-// frame_protocol.h. Field-by-field offsets with alignment:
+// sizeof(frame_header) in bytes, Phase 4 layout. Extends Phase 2's header
+// with two control-message rings (in + out):
 //
-//   8 × uint32        = 32 (magic..slot_bytes)
-//   3 × uint64        = 24 (slot_offsets[3]) — offset 32..56
-//   atomic<u32> gen   =  4 — offset 56
-//   atomic<u64> ctr   =  8 — needs 8-byte align, pad to 64 → 64..72
-//   6 × atomic<u32>   = 24 (latest..consumer_attached) — 72..96
-//   uint64 ring_off   =  8 — 96..104
-//   uint32 ring_cap   =  4 — 104..108
-//   uint32 _reserved0 =  4 — 108..112
-//   atomic<u32> head  =  4 — 112..116
-//   atomic<u32> tail  =  4 — 116..120
-//                     ---
-//                      120 bytes (8-byte aligned, no trailing padding).
-export const FRAME_HEADER_BYTES = 120;
+//   120 bytes (Phase 2 header)
+//   +  8 msg_in_offset  u64
+//   +  8 msg_out_offset u64
+//   +  4 msg_ring_capacity
+//   +  4 msg_slot_bytes
+//   +  4 msg_in_head
+//   +  4 msg_in_tail
+//   +  4 msg_out_head
+//   +  4 msg_out_tail
+//   = 160 bytes (8-byte aligned, no trailing padding)
+export const FRAME_HEADER_BYTES = 160;
 
 export function computeRegionBytes(maxWidth: number, maxHeight: number): number {
   const slotBytes = maxWidth * 4 * maxHeight;
-  const ringBytes = INPUT_RING_CAPACITY * INPUT_EVENT_BYTES;
+  const inputRingBytes = INPUT_RING_CAPACITY * INPUT_EVENT_BYTES;
+  const msgRingBytes = MSG_RING_CAPACITY * MSG_SLOT_BYTES;
   let cursor = alignUp(FRAME_HEADER_BYTES, CACHE_LINE);
   for (let i = 0; i < NUM_SLOTS; ++i) {
     cursor += alignUp(slotBytes, CACHE_LINE);
   }
-  cursor += alignUp(ringBytes, CACHE_LINE);
+  cursor += alignUp(inputRingBytes, CACHE_LINE);
+  cursor += alignUp(msgRingBytes, CACHE_LINE); // msg_in
+  cursor += alignUp(msgRingBytes, CACHE_LINE); // msg_out
   return cursor;
 }
 

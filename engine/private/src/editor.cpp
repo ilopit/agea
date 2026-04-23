@@ -270,6 +270,13 @@ game_editor::get_rotation_matrix()
 }
 
 void
+game_editor::set_camera_position(const glm::vec3& pos)
+{
+    m_camera_data.position = glm::vec4(pos, 1.f);
+    m_updated = true;
+}
+
+void
 game_editor::apply_ipc_input(float forward, float left, float look_up, float look_left, bool looking)
 {
     m_forward_delta += forward;

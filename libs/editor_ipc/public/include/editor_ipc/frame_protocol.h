@@ -44,9 +44,18 @@ inline constexpr uint32_t SHM_MAGIC = 0x4B524741u;
 // refuse to attach across a version mismatch.
 //   v1: Phase 1 — triple-buffered frame slots only.
 //   v2: Phase 2 — add input ring (head/tail/capacity + ring blob).
-inline constexpr uint32_t SHM_VERSION = 2;
+//   v3: Phase 4 — add two control-message rings (engine⇄editor JSON msgs).
+inline constexpr uint32_t SHM_VERSION = 3;
 
 inline constexpr uint32_t INPUT_RING_CAPACITY = 256;
+
+// Control-message channel (Phase 4). Two rings — one in each direction.
+// Each slot holds a fixed-size blob of UTF-8 bytes; the first 4 bytes are
+// the byte length of the payload (little-endian), the remainder is payload
+// (opaque to editor_ipc, JSON in practice). Messages longer than MSG_SLOT_BYTES
+// are silently truncated; producers are expected to stay under the cap.
+inline constexpr uint32_t MSG_RING_CAPACITY = 64;
+inline constexpr uint32_t MSG_SLOT_BYTES = 512;
 
 inline constexpr uint32_t NUM_SLOTS = 3;
 inline constexpr uint32_t SLOT_NONE = 0xFFFFFFFFu;
@@ -145,6 +154,19 @@ struct frame_header
     uint32_t _reserved0;
     std::atomic<uint32_t> input_ring_head;
     std::atomic<uint32_t> input_ring_tail;
+
+    // Control-message rings (Phase 4). `msg_in` is editor → engine,
+    // `msg_out` is engine → editor. Each ring has MSG_RING_CAPACITY slots
+    // of MSG_SLOT_BYTES each. Slot format: first uint32_t is payload
+    // length (bytes), remainder is payload.
+    uint64_t msg_in_offset;
+    uint64_t msg_out_offset;
+    uint32_t msg_ring_capacity;
+    uint32_t msg_slot_bytes;
+    std::atomic<uint32_t> msg_in_head;
+    std::atomic<uint32_t> msg_in_tail;
+    std::atomic<uint32_t> msg_out_head;
+    std::atomic<uint32_t> msg_out_tail;
 };
 
 static_assert(std::is_standard_layout_v<frame_header>,
@@ -168,7 +190,10 @@ struct region_layout
     size_t total_bytes;
     uint64_t slot_offsets[NUM_SLOTS];
     uint64_t input_ring_offset;
+    uint64_t msg_in_offset;
+    uint64_t msg_out_offset;
     uint32_t input_ring_bytes;
+    uint32_t msg_ring_bytes;
     uint32_t stride_bytes;
     uint32_t slot_bytes;
 };
@@ -180,6 +205,7 @@ compute_region_layout(uint32_t max_width, uint32_t max_height)
     out.stride_bytes = max_width * 4;
     out.slot_bytes = out.stride_bytes * max_height;
     out.input_ring_bytes = INPUT_RING_CAPACITY * sizeof(input_event);
+    out.msg_ring_bytes = MSG_RING_CAPACITY * MSG_SLOT_BYTES;
 
     size_t cursor = align_up(sizeof(frame_header), CACHE_LINE);
     for (uint32_t i = 0; i < NUM_SLOTS; ++i)
@@ -189,6 +215,10 @@ compute_region_layout(uint32_t max_width, uint32_t max_height)
     }
     out.input_ring_offset = cursor;
     cursor += align_up(out.input_ring_bytes, CACHE_LINE);
+    out.msg_in_offset = cursor;
+    cursor += align_up(out.msg_ring_bytes, CACHE_LINE);
+    out.msg_out_offset = cursor;
+    cursor += align_up(out.msg_ring_bytes, CACHE_LINE);
     out.total_bytes = cursor;
     return out;
 }

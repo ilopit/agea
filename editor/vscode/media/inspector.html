@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; script-src {{CSP_SOURCE}}; style-src 'unsafe-inline';">
+    <title>Kryga Inspector</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #1d1d1d; color: #ddd; font-family: sans-serif; font-size: 12px; }
+      body { padding: 8px; }
+      .hdr { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid #333; margin-bottom: 8px; }
+      button { background: #333; color: #ddd; border: 1px solid #444; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+      button:hover { background: #444; }
+      .entity { color: #aaa; font-style: italic; }
+      .component { margin-top: 8px; padding: 4px; border: 1px solid #333; }
+      .component h3 { margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #9c9; }
+      .field { display: grid; grid-template-columns: 70px 1fr; gap: 6px; align-items: center; margin: 2px 0; }
+      .label { color: #999; }
+      .vec { display: flex; gap: 4px; }
+      .scrub {
+        background: #222;
+        color: #ddd;
+        border: 1px solid #333;
+        padding: 2px 4px;
+        font-family: monospace;
+        font-size: 11px;
+        width: 100%;
+        cursor: ew-resize;
+      }
+      .scrub:focus { cursor: text; outline: 1px solid #5a8; }
+      .axis-x { border-left: 3px solid #c66; }
+      .axis-y { border-left: 3px solid #6c6; }
+      .axis-z { border-left: 3px solid #66c; }
+      #status { float: right; color: #888; }
+      #status.connected { color: #8c8; }
+      #status.disconnected { color: #c88; }
+    </style>
+  </head>
+  <body>
+    <div class="hdr">
+      <button id="refresh">Refresh</button>
+      <span class="entity" id="entity">(no selection)</span>
+      <span id="status" class="disconnected">disconnected</span>
+    </div>
+    <div id="components"></div>
+    <script src="{{INSPECTOR_JS}}"></script>
+  </body>
+</html>

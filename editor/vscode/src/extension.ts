@@ -7,23 +7,34 @@ import * as vscode from "vscode";
 
 import { loadNative } from "./native";
 import { ViewportSession } from "./viewport";
+import { InspectorSession } from "./inspector";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const sessions: ViewportSession[] = [];
+  const viewports: ViewportSession[] = [];
+  const inspectors: InspectorSession[] = [];
+
+  async function promptConfig(): Promise<
+    { name: string; maxWidth: number; maxHeight: number } | null
+  > {
+    const config = vscode.workspace.getConfiguration("kryga");
+    const defaultName = config.get<string>("ipcName") ?? "default";
+    const name = await vscode.window.showInputBox({
+      prompt: "IPC channel name (passed to engine as --editor-ipc <name>)",
+      value: defaultName,
+    });
+    if (!name) return null;
+    return {
+      name,
+      maxWidth: config.get<number>("maxWidth") ?? 1024,
+      maxHeight: config.get<number>("maxHeight") ?? 1024,
+    };
+  }
 
   const openCmd = vscode.commands.registerCommand(
     "kryga.openViewport",
     async () => {
-      const config = vscode.workspace.getConfiguration("kryga");
-      const defaultName = config.get<string>("ipcName") ?? "default";
-      const maxWidth = config.get<number>("maxWidth") ?? 1024;
-      const maxHeight = config.get<number>("maxHeight") ?? 1024;
-
-      const name = await vscode.window.showInputBox({
-        prompt: "IPC channel name (passed to engine as --editor-ipc <name>)",
-        value: defaultName,
-      });
-      if (!name) return;
+      const cfg = await promptConfig();
+      if (!cfg) return;
 
       let native;
       try {
@@ -35,19 +46,35 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      const session = new ViewportSession(
-        native,
-        { name, maxWidth, maxHeight },
-        context.extensionUri,
-      );
-      sessions.push(session);
+      viewports.push(new ViewportSession(native, cfg, context.extensionUri));
     },
   );
 
-  context.subscriptions.push(openCmd);
+  const openInspectorCmd = vscode.commands.registerCommand(
+    "kryga.openInspector",
+    async () => {
+      const cfg = await promptConfig();
+      if (!cfg) return;
+
+      let native;
+      try {
+        native = loadNative();
+      } catch (e) {
+        vscode.window.showErrorMessage(
+          `Kryga: native addon is not built yet. ${(e as Error).message}`,
+        );
+        return;
+      }
+
+      inspectors.push(new InspectorSession(native, cfg, context.extensionUri));
+    },
+  );
+
+  context.subscriptions.push(openCmd, openInspectorCmd);
   context.subscriptions.push({
     dispose: () => {
-      for (const s of sessions) s.dispose();
+      for (const s of viewports) s.dispose();
+      for (const s of inspectors) s.dispose();
     },
   });
 }

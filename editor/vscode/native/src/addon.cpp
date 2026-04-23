@@ -425,6 +425,102 @@ stop_worker(entry& e)
     e.frame_ready.close();
 }
 
+// ---------------------------------------------------------------------------
+// Phase 4: control channel (editor ⇄ engine). Separate ring from input.
+// ---------------------------------------------------------------------------
+
+static napi_value
+js_post_message_in(napi_env env, napi_callback_info info)
+{
+    size_t argc = 2;
+    napi_value args[2];
+    NAPI_CHECK(napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+    int32_t handle = 0;
+    NAPI_CHECK(napi_get_value_int32(env, args[0], &handle));
+
+    auto* e = find_entry(handle);
+    if (!e)
+    {
+        napi_throw_error(env, nullptr, "kryga_native: invalid handle");
+        return nullptr;
+    }
+
+    size_t msg_len = 0;
+    char msg_buf[kryga::editor_ipc::MSG_SLOT_BYTES];
+    NAPI_CHECK(napi_get_value_string_utf8(env, args[1], msg_buf, sizeof(msg_buf), &msg_len));
+
+    auto* h = header_of(*e);
+    auto* base = static_cast<uint8_t*>(e->shm.data()) + h->msg_in_offset;
+    const uint32_t cap = h->msg_ring_capacity;
+    const uint32_t slot_sz = h->msg_slot_bytes;
+
+    const uint32_t head = h->msg_in_head.load(std::memory_order_relaxed);
+    const uint32_t tail = h->msg_in_tail.load(std::memory_order_acquire);
+    const uint32_t next = (head + 1) % cap;
+
+    napi_value ok;
+    if (next == tail)
+    {
+        napi_get_boolean(env, false, &ok);
+        return ok;
+    }
+
+    auto* slot = base + static_cast<size_t>(head) * slot_sz;
+    const uint32_t payload_len = static_cast<uint32_t>(msg_len);
+    const uint32_t written = payload_len < slot_sz - 4 ? payload_len : slot_sz - 4;
+    std::memcpy(slot, &payload_len, sizeof(payload_len));
+    std::memcpy(slot + 4, msg_buf, written);
+    h->msg_in_head.store(next, std::memory_order_release);
+    napi_get_boolean(env, true, &ok);
+    return ok;
+}
+
+static napi_value
+js_drain_messages_out(napi_env env, napi_callback_info info)
+{
+    size_t argc = 1;
+    napi_value args[1];
+    NAPI_CHECK(napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+    int32_t handle = 0;
+    NAPI_CHECK(napi_get_value_int32(env, args[0], &handle));
+
+    auto* e = find_entry(handle);
+    if (!e)
+    {
+        napi_throw_error(env, nullptr, "kryga_native: invalid handle");
+        return nullptr;
+    }
+
+    auto* h = header_of(*e);
+    auto* base = static_cast<uint8_t*>(e->shm.data()) + h->msg_out_offset;
+    const uint32_t cap = h->msg_ring_capacity;
+    const uint32_t slot_sz = h->msg_slot_bytes;
+
+    uint32_t head = h->msg_out_head.load(std::memory_order_acquire);
+    uint32_t tail = h->msg_out_tail.load(std::memory_order_relaxed);
+
+    napi_value arr;
+    NAPI_CHECK(napi_create_array(env, &arr));
+    uint32_t out_idx = 0;
+    while (tail != head)
+    {
+        auto* slot = base + static_cast<size_t>(tail) * slot_sz;
+        uint32_t payload_len = 0;
+        std::memcpy(&payload_len, slot, sizeof(payload_len));
+        if (payload_len > slot_sz - 4) payload_len = slot_sz - 4;
+        napi_value s;
+        napi_create_string_utf8(env, reinterpret_cast<const char*>(slot + 4),
+                                payload_len, &s);
+        napi_set_element(env, arr, out_idx++, s);
+        tail = (tail + 1) % cap;
+    }
+    if (out_idx)
+    {
+        h->msg_out_tail.store(tail, std::memory_order_release);
+    }
+    return arr;
+}
+
 static napi_value
 js_post_input(napi_env env, napi_callback_info info)
 {
@@ -496,6 +592,8 @@ NAPI_MODULE_INIT()
         {"releaseSlot", nullptr, js_release_slot, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"subscribeFrames", nullptr, js_subscribe_frames, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"postInput", nullptr, js_post_input, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"postMessageIn", nullptr, js_post_message_in, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"drainMessagesOut", nullptr, js_drain_messages_out, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
     napi_define_properties(env, exports, sizeof(props) / sizeof(*props), props);
     return exports;

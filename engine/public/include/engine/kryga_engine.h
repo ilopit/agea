@@ -129,6 +129,20 @@ public:
     unload_render_resources(core::package& l);
 
 private:
+    // Phase 4: tiny record-based IPC control protocol. Messages are ASCII
+    // lines like
+    //     requestSelection
+    //     setProperty path=camera.position.x value=1.5
+    // and the engine replies with e.g.
+    //     selection entity=play_camera pos_x=0 pos_y=2 pos_z=-5 ...
+    //     propertyChanged path=camera.position.x value=1.5
+    // Keeping the wire format trivial so we do not need a JSON library.
+    void
+    handle_ipc_message(std::string_view msg);
+
+    void
+    send_selection();
+
     void
     update_cameras();
 

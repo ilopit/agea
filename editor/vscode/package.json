@@ -17,6 +17,10 @@
       {
         "command": "kryga.openViewport",
         "title": "Kryga: Open Viewport"
+      },
+      {
+        "command": "kryga.openInspector",
+        "title": "Kryga: Open Property Inspector"
       }
     ],
     "configuration": {

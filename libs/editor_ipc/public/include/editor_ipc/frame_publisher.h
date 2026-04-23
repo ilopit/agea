@@ -19,6 +19,7 @@
 
 #include <functional>
 #include <string>
+#include <string_view>
 
 namespace kryga::render
 {
@@ -78,6 +79,23 @@ public:
     // every frame even when the ring is empty.
     uint32_t
     drain_input(const std::function<void(const input_event&)>& fn, uint32_t max_events = 1024);
+
+    // Control channel (Phase 4). `msg_in` is editor → engine, `msg_out`
+    // is engine → editor. Messages are UTF-8 (JSON in practice). Payloads
+    // longer than MSG_SLOT_BYTES - 4 are truncated (the size prefix
+    // reflects the original length so consumers can detect truncation).
+    //
+    // drain_messages_in: called from the engine's tick to pull incoming
+    // editor commands. Callback receives a string_view into the ring slot;
+    // the view is invalidated once the callback returns (tail is bumped).
+    uint32_t
+    drain_messages_in(const std::function<void(std::string_view)>& fn,
+                      uint32_t max_messages = 64);
+
+    // push_message_out: called from the engine to send an event to the
+    // editor. Returns false if the ring is full (message dropped).
+    bool
+    push_message_out(std::string_view payload);
 
     // Resize handshake (Phase 3). Updates current_width / current_height
     // and bumps generation, which consumers use to detect that dimensions

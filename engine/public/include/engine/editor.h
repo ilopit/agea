@@ -88,6 +88,11 @@ public:
     void
     apply_ipc_input(float forward, float left, float look_up, float look_left, bool looking);
 
+    // Phase 4: direct setter for IPC-driven property edits. Sets m_updated
+    // so update_camera() rebuilds the view matrix next tick.
+    void
+    set_camera_position(const glm::vec3& pos);
+
 private:
     glm::mat4
     get_rotation_matrix();
