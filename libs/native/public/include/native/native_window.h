@@ -39,8 +39,17 @@ public:
     size
     get_size();
 
+    // Used when there is no SDL window (headless mode) so systems that query
+    // window size (camera aspect, render-pass extent) see a consistent value.
+    void
+    set_headless_size(int w, int h)
+    {
+        m_headless_size = {w, h};
+    }
+
 private:
     struct SDL_Window* m_window = nullptr;
+    size m_headless_size{1024, 1024};
 };
 
 }  // namespace kryga
