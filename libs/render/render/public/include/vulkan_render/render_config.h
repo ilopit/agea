@@ -47,6 +47,26 @@ struct render_config
         bool frustum_culling = true;
     } debug;
 
+    // Render-scale: draw the scene into a reduced-resolution target, then
+    // nearest-upscale it to the swapchain. UI overlays stay full-res.
+    // Used for the "pixel art" look and for framerate scaling.
+    struct render_scale_cfg
+    {
+        bool enabled = false;
+        uint32_t divisor = 3;  // 1 = full-res; 3 = 1/3 per axis (1080p -> 360p)
+    } render_scale;
+
+    // Depth-based silhouette outline (Holland-style edge detection). Requires
+    // render_scale.enabled=true in the current implementation — outline is drawn
+    // in the composite pass.
+    struct outline_cfg
+    {
+        bool enabled = false;
+        float color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+        float depth_threshold = 0.08f;
+        float normal_threshold = 0.35f;
+    } outline;
+
     // Clamp all fields to valid ranges
     void
     validate();

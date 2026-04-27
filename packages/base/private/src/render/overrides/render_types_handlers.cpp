@@ -96,6 +96,7 @@ struct create_object_cmd : render_cmd::render_command_base
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
+    glm::vec3 bounding_sphere_center{0.0f};
     float bounding_radius = 0.0f;
     uint32_t bone_count = 0;
     std::string queue_id;
@@ -126,6 +127,7 @@ struct create_object_cmd : render_cmd::render_command_base
         }
 
         object_data->gpu_data.bounding_radius = bounding_radius;
+        object_data->gpu_data.bounding_sphere_center = bounding_sphere_center;
         object_data->gpu_data.lightmap_scale = lightmap_scale;
         object_data->gpu_data.lightmap_offset = lightmap_offset;
         object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
@@ -145,6 +147,7 @@ struct update_object_cmd : render_cmd::render_command_base
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
+    glm::vec3 bounding_sphere_center{0.0f};
     float bounding_radius = 0.0f;
     std::string queue_id;
     glm::vec2 lightmap_scale{1.0f, 1.0f};
@@ -173,6 +176,7 @@ struct update_object_cmd : render_cmd::render_command_base
             *object_data, *mat_data, *mesh_data, transform, normal_matrix, position);
 
         object_data->gpu_data.bounding_radius = bounding_radius;
+        object_data->gpu_data.bounding_sphere_center = bounding_sphere_center;
         object_data->gpu_data.lightmap_scale = lightmap_scale;
         object_data->gpu_data.lightmap_offset = lightmap_offset;
         object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
@@ -384,6 +388,11 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
     float scaled_radius = base_radius * max_scale;
 
+    const auto& local_centroid = moc.get_mesh()->get_local_centroid();
+    glm::vec4 world_center4 =
+        moc.get_transform_matrix() * glm::vec4(local_centroid.x, local_centroid.y, local_centroid.z, 1.0f);
+    glm::vec3 world_sphere_center{world_center4.x, world_center4.y, world_center4.z};
+
     auto new_rqid = render_bridge::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
 
     // Lookup lightmap data from level manifest (if baked)
@@ -418,6 +427,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
         cmd->position = glm::vec3(moc.get_world_position());
+        cmd->bounding_sphere_center = world_sphere_center;
         cmd->bounding_radius = scaled_radius;
         cmd->bone_count = 0;
         cmd->queue_id = new_rqid;
@@ -438,6 +448,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
         cmd->position = glm::vec3(moc.get_world_position());
+        cmd->bounding_sphere_center = world_sphere_center;
         cmd->bounding_radius = scaled_radius;
         cmd->queue_id = new_rqid;
         cmd->lightmap_scale = lm_scale;
@@ -829,13 +840,22 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         {
             auto& gltf_mesh = gltf_result.meshes[0];
 
-            float max_dist_sq = 0.0f;
+            glm::vec3 vmin{std::numeric_limits<float>::max()};
+            glm::vec3 vmax{std::numeric_limits<float>::lowest()};
             for (const auto& v : gltf_mesh.vertices)
             {
-                float dist_sq = glm::dot(v.position, v.position);
-                max_dist_sq = std::max(max_dist_sq, dist_sq);
+                vmin = glm::min(vmin, v.position);
+                vmax = glm::max(vmax, v.position);
             }
-            amc.set_base_bounding_radius(std::sqrt(max_dist_sq));
+            glm::vec3 amc_centroid = (vmin + vmax) * 0.5f;
+            float max_dc_sq = 0.0f;
+            for (const auto& v : gltf_mesh.vertices)
+            {
+                glm::vec3 d = v.position - amc_centroid;
+                max_dc_sq = std::max(max_dc_sq, glm::dot(d, d));
+            }
+            amc.set_base_bounding_radius(std::sqrt(max_dc_sq));
+            amc.set_base_centroid(amc_centroid);
 
             auto vert_buf = std::make_shared<utils::buffer>(gltf_mesh.vertices.size() *
                                                             sizeof(gpu::skinned_vertex_data));
@@ -891,6 +911,11 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
     float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
     float scaled_radius = amc.get_base_bounding_radius() * max_scale;
 
+    glm::vec3 amc_local_centroid = amc.get_base_centroid();
+    glm::vec4 amc_world_center4 =
+        amc.get_transform_matrix() * glm::vec4(amc_local_centroid, 1.0f);
+    glm::vec3 amc_world_sphere_center{amc_world_center4.x, amc_world_center4.y, amc_world_center4.z};
+
     auto* skel = anim_sys.get_skeleton(skeleton_id);
     uint32_t bone_count = skel ? static_cast<uint32_t>(skel->num_joints()) : 0;
 
@@ -914,6 +939,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
         cmd->position = glm::vec3(amc.get_world_position());
+        cmd->bounding_sphere_center = amc_world_sphere_center;
         cmd->bounding_radius = scaled_radius;
         cmd->bone_count = bone_count;
         cmd->queue_id = new_rqid;
@@ -930,6 +956,7 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
         cmd->position = glm::vec3(amc.get_world_position());
+        cmd->bounding_sphere_center = amc_world_sphere_center;
         cmd->bounding_radius = scaled_radius;
         cmd->queue_id = new_rqid;
 

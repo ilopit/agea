@@ -71,6 +71,13 @@ render_pass_builder::set_debug_name(std::string_view name)
     return *this;
 }
 
+render_pass_builder&
+render_pass_builder::set_sampled_depth(bool sampled)
+{
+    m_sampled_depth = sampled;
+    return *this;
+}
+
 render_pass_sptr
 render_pass_builder::build()
 {
@@ -133,7 +140,7 @@ render_pass_builder::build()
     VkExtent3D depth_image_extent = {m_width, m_height, 1};
 
     VkImageUsageFlags depth_usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    if (m_depth_only)
+    if (m_depth_only || m_sampled_depth)
     {
         depth_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
     }
@@ -232,6 +239,8 @@ render_pass_builder::build()
         rp->m_color_format = m_color_format;
         rp->m_depth_format = m_depth_format;
         rp->m_color_attachment_count = 1;
+        rp->m_fixed_width = m_width;
+        rp->m_fixed_height = m_height;
     }
 
     return rp;
@@ -274,6 +283,8 @@ render_pass_builder::get_attachments()
 
     // Depth attachment — internal to this pass, not in render graph.
     // Use UNDEFINED initial layout so VkRenderPass handles the transition.
+    // When sampled_depth is requested, finish in DEPTH_STENCIL_READ_ONLY so a
+    // downstream pass can sample via bindless without a manual barrier.
     attachments[1].format = m_depth_format;
     attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
     attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -281,7 +292,9 @@ render_pass_builder::get_attachments()
     attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    attachments[1].finalLayout = m_sampled_depth
+                                     ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                                     : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     return attachments;
 }

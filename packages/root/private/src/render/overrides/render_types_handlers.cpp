@@ -23,6 +23,8 @@
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
 
+#include <limits>
+
 #include <serialization/serialization.h>
 
 #include <assets_importer/mesh_importer.h>
@@ -438,14 +440,23 @@ mesh__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     }
 
     auto vbv = msh_model.get_vertices_buffer().make_view<gpu::vertex_data>();
-    float max_dist_sq = 0.0f;
+    glm::vec3 vmin{std::numeric_limits<float>::max()};
+    glm::vec3 vmax{std::numeric_limits<float>::lowest()};
     for (size_t i = 0; i < vbv.size(); ++i)
     {
         const auto& pos = vbv.at(i).position;
-        float dist_sq = glm::dot(pos, pos);
-        max_dist_sq = std::max(max_dist_sq, dist_sq);
+        vmin = glm::min(vmin, pos);
+        vmax = glm::max(vmax, pos);
     }
-    msh_model.set_bounding_radius(std::sqrt(max_dist_sq));
+    glm::vec3 centroid = (vmin + vmax) * 0.5f;
+    float max_dist_from_centroid_sq = 0.0f;
+    for (size_t i = 0; i < vbv.size(); ++i)
+    {
+        glm::vec3 d = vbv.at(i).position - centroid;
+        max_dist_from_centroid_sq = std::max(max_dist_from_centroid_sq, glm::dot(d, d));
+    }
+    msh_model.set_bounding_radius(std::sqrt(max_dist_from_centroid_sq));
+    msh_model.set_local_centroid({centroid.x, centroid.y, centroid.z});
 
     auto* cmd = ctx.rb->alloc_cmd<create_mesh_cmd>();
     cmd->id = msh_model.get_id();

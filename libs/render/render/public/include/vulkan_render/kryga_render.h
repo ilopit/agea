@@ -186,6 +186,14 @@ public:
     void
     deinit();
 
+    // Live render-scale change. Rebuilds scene_lowres images + main-pass
+    // framebuffer/depth at the new size; keeps VkRenderPass + all shader
+    // effects intact (compatible since attachment formats don't change and
+    // pipelines use dynamic viewport). Returns false if render_scale isn't
+    // enabled or the divisor is invalid.
+    bool
+    reconfigure_render_scale_live(uint32_t new_divisor);
+
     void
     set_camera(gpu::camera_data d);
 
@@ -303,6 +311,21 @@ private:
 
     void
     draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    // Nearest-neighbor upscale of scene_lowres_target to full-res swapchain.
+    // Only called from the composite pass when render_config.render_scale.enabled is true.
+    void
+    draw_scene_upscale(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    // Composite pass entry — nearest upscale + UI overlay. Only called when
+    // render_config.render_scale.enabled is true.
+    void
+    draw_composite(VkCommandBuffer cmd, render::frame_state& current_frame);
+
+    // Depth-edge outline (composite pass). Only drawn when
+    // render_config.outline.enabled is true.
+    void
+    draw_depth_outline(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     void
     prepare_draw_resources(render::frame_state& frame);
@@ -508,6 +531,22 @@ private:
     shader_effect_data* m_outline_post_se = nullptr;
     material_data* m_outline_post_mat = nullptr;
     uint32_t m_selection_mask_bindless_idx = 0xFFFFFFFFu;
+
+    // Low-res scene target + composite pass for render_scale mode.
+    // Populated only when m_render_config.render_scale.enabled is true.
+    std::vector<vk_utils::vulkan_image_sptr> m_scene_lowres_images;
+    std::vector<vk_utils::vulkan_image_view_sptr> m_scene_lowres_views;
+    render_pass_sptr m_composite_pass;
+    shader_effect_data* m_scene_upscale_se = nullptr;
+    material_data* m_scene_upscale_mat = nullptr;
+    texture_data* m_scene_upscale_txt = nullptr;
+    uint32_t m_scene_lowres_width = 0;
+    uint32_t m_scene_lowres_height = 0;
+
+    // Depth-based silhouette outline (composite pass). Populated only when
+    // m_render_config.outline.enabled && m_render_config.render_scale.enabled.
+    shader_effect_data* m_depth_outline_se = nullptr;
+    uint32_t m_scene_depth_bindless_idx = 0xFFFFFFFFu;
 
     // BDA per-frame tracking — ensures per-draw BDA addresses are set before use
     bool m_bda_material_bound = false;

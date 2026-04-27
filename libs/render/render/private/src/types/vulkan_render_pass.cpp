@@ -1,6 +1,7 @@
 #include "vulkan_render/types/vulkan_render_pass.h"
 
 #include "vulkan_render/utils/vulkan_initializers.h"
+#include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
@@ -108,6 +109,22 @@ render_pass::execute(VkCommandBuffer cmd,
         uint32_t pass_height = m_fixed_height > 0 ? m_fixed_height : height;
         begin(cmd, swapchain_image_index, pass_width, pass_height);
 
+        // All graphics pipelines use dynamic viewport/scissor so they can survive
+        // target resizes without rebuild. Set them to match the pass's framebuffer.
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float)pass_width;
+        viewport.height = (float)pass_height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = {pass_width, pass_height};
+        vkCmdSetScissor(cmd, 0, 1, &scissor);
+
         if (m_execute)
         {
             m_execute(cmd);
@@ -126,6 +143,100 @@ render_pass::execute(VkCommandBuffer cmd,
 }
 
 // =============================================================================
+// Runtime target swap
+// =============================================================================
+
+bool
+render_pass::replace_color_targets(
+    const std::vector<vk_utils::vulkan_image_sptr>& new_color_images,
+    const std::vector<vk_utils::vulkan_image_view_sptr>& new_color_views,
+    uint32_t new_width,
+    uint32_t new_height,
+    bool sampled_depth,
+    bool enable_stencil,
+    const std::string& debug_name)
+{
+    if (new_color_images.size() != new_color_views.size() || new_color_images.empty())
+    {
+        return false;
+    }
+
+    auto& device = glob::glob_state().getr_render_device();
+    VkDevice vkd = device.vk_device();
+
+    // Destroy old framebuffers (KEEP m_vk_render_pass)
+    for (auto f : m_framebuffers)
+    {
+        vkDestroyFramebuffer(vkd, f, nullptr);
+    }
+    m_framebuffers.clear();
+
+    // Release old depth resources (destructors free VMA allocations)
+    m_depth_image_views.clear();
+    m_depth_images.clear();
+
+    // Swap in new color targets
+    m_color_images = new_color_images;
+    m_color_image_views = new_color_views;
+
+    const uint32_t image_count = static_cast<uint32_t>(new_color_images.size());
+
+    VkExtent3D depth_extent = {new_width, new_height, 1};
+    VkImageUsageFlags depth_usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    if (sampled_depth)
+    {
+        depth_usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+
+    auto dimg_info = vk_utils::make_image_create_info(m_depth_format, depth_usage, depth_extent);
+    VmaAllocationCreateInfo dimg_alloc = {};
+    dimg_alloc.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    dimg_alloc.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    m_depth_images.resize(image_count);
+    m_depth_image_views.resize(image_count);
+
+    int view_aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    if (enable_stencil)
+    {
+        view_aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
+    for (uint32_t i = 0; i < image_count; ++i)
+    {
+        m_depth_images[i] = vk_utils::vulkan_image::create(
+            device.get_vma_allocator_provider(),
+            dimg_info,
+            dimg_alloc,
+            0,
+            KRG_VK_FMT_NAME("{}.depth_{}", debug_name, i));
+
+        auto view_ci = vk_utils::make_imageview_create_info(
+            m_depth_format, m_depth_images[i].image(), view_aspect);
+        m_depth_image_views[i] = vk_utils::vulkan_image_view::create(view_ci);
+    }
+
+    // Rebuild framebuffers with new dimensions
+    auto fb_info = vk_utils::make_framebuffer_create_info(m_vk_render_pass,
+                                                          VkExtent2D{new_width, new_height});
+    m_framebuffers.resize(image_count);
+    for (uint32_t i = 0; i < image_count; ++i)
+    {
+        VkImageView atts[2] = {m_color_image_views[i]->vk(), m_depth_image_views[i].vk()};
+        fb_info.pAttachments = atts;
+        fb_info.attachmentCount = 2;
+        if (vkCreateFramebuffer(vkd, &fb_info, nullptr, &m_framebuffers[i]) != VK_SUCCESS)
+        {
+            return false;
+        }
+    }
+
+    m_fixed_width = new_width;
+    m_fixed_height = new_height;
+    return true;
+}
+
+// =============================================================================
 // Shader effect management
 // =============================================================================
 
@@ -140,6 +251,18 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
 
     auto info_copy = info;
     info_copy.rp = this;
+    // Default the pipeline viewport/scissor size to this pass's fixed dimensions
+    // when the SE doesn't supply explicit values. Required for render_scale mode
+    // where the main pass renders at low-res; without this the shader loader
+    // falls back to native window size, producing a cropped/scaled image.
+    if (info_copy.width == 0 && m_fixed_width > 0)
+    {
+        info_copy.width = m_fixed_width;
+    }
+    if (info_copy.height == 0 && m_fixed_height > 0)
+    {
+        info_copy.height = m_fixed_height;
+    }
 
     auto rc = vulkan_shader_loader::create_shader_effect(*effect, info_copy);
 

@@ -1,0 +1,7 @@
+type_id: simple_texture_material
+id: LeatherPartsMat
+shader_effect: se_simple_texture_lit
+simple_texture:
+    texture: FlightHelmet_Materials_LeatherPartsMat_BaseColor
+    slot: 0
+    sampler: default

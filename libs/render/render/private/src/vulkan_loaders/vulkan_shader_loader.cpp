@@ -293,13 +293,11 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_vertex_input_info_ci.vertexBindingDescriptionCount =
         (uint32_t)vert_input_description.bindings.size();
 
-    if (info.enable_dynamic_state)
-    {
-        std::vector<VkDynamicState> dynamic_state_enables = {VK_DYNAMIC_STATE_VIEWPORT,
-                                                             VK_DYNAMIC_STATE_SCISSOR};
-
-        pb.m_dynamic_state_enables = dynamic_state_enables;
-    }
+    // Always enable dynamic viewport/scissor. Static viewport forces pipeline
+    // rebuilds whenever the render target resizes (e.g. render_scale change,
+    // future window resize). Dynamic cost is 2 x vkCmdSet* per pass — negligible.
+    pb.m_dynamic_state_enables = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    (void)info.enable_dynamic_state;
 
     auto vert_shader = vert_module->vk_module();
     pb.m_shader_stages_ci.push_back(

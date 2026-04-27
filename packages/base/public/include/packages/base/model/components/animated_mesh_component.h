@@ -7,6 +7,8 @@
 #include <utils/buffer.h>
 #include <utils/id.h>
 
+#include <glm/vec3.hpp>
+
 namespace kryga
 {
 namespace root
@@ -48,6 +50,17 @@ public:
         m_base_bounding_radius = r;
     }
 
+    const glm::vec3&
+    get_base_centroid() const
+    {
+        return m_base_centroid;
+    }
+    void
+    set_base_centroid(const glm::vec3& c)
+    {
+        m_base_centroid = c;
+    }
+
     const utils::id&
     get_animation_instance_id() const
     {
@@ -86,6 +99,7 @@ protected:
 
     // Runtime state (not serialized)
     float m_base_bounding_radius = 0.0f;
+    glm::vec3 m_base_centroid{0.0f};
     utils::id m_anim_instance_id;
     utils::id m_skeleton_id;
 };

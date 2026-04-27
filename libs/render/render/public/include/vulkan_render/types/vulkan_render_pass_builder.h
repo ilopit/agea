@@ -35,6 +35,8 @@ public:
     set_image_count(uint32_t count);
     render_pass_builder&
     set_debug_name(std::string_view name);
+    render_pass_builder&
+    set_sampled_depth(bool sampled);
 
     render_pass_sptr
     build();
@@ -53,6 +55,7 @@ private:
 
     bool m_enable_stencil = true;
     bool m_depth_only = false;
+    bool m_sampled_depth = false;
     uint32_t m_image_count = 0;
 
     std::vector<vk_utils::vulkan_image_sptr> m_color_images;

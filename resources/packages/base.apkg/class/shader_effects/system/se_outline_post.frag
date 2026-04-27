@@ -1,7 +1,7 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : require
 
-layout (location = 0) in vec2 in_uv;
+layout (location = 0) in vec2 in_tex_coord;
 layout (location = 0) out vec4 out_color;
 
 layout (set = 2, binding = 0) uniform sampler static_samplers[7];
@@ -25,7 +25,7 @@ float sample_mask(vec2 uv)
 
 void main()
 {
-    float c = sample_mask(in_uv);
+    float c = sample_mask(in_tex_coord);
 
     float edge = 0.0;
     for (int dy = -1; dy <= 1; dy++)
@@ -36,7 +36,7 @@ void main()
                 continue;
 
             vec2 offset = vec2(float(dx), float(dy)) * params.texel_size * params.thickness;
-            float n = sample_mask(in_uv + offset);
+            float n = sample_mask(in_tex_coord + offset);
 
             if (abs(c - n) > 0.1)
             {

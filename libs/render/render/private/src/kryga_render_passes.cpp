@@ -20,6 +20,8 @@
 
 #include <tracy/Tracy.hpp>
 
+#include <algorithm>
+
 namespace kryga
 {
 namespace render
@@ -33,17 +35,64 @@ void
 vulkan_render::prepare_render_passes()
 {
     auto& device = glob::glob_state().getr_render_device();
+    auto swapchain_fmt = device.get_swapchain_format();
+
+    // Render-scale: create a reduced-resolution scene target. The main pass will
+    // render into this; a composite pass will nearest-upscale it to swapchain.
+    const bool render_scale = m_render_config.render_scale.enabled;
+    const uint32_t scale = std::max(1u, m_render_config.render_scale.divisor);
+    m_scene_lowres_width = render_scale ? std::max(1u, m_width / scale) : m_width;
+    m_scene_lowres_height = render_scale ? std::max(1u, m_height / scale) : m_height;
+
+    if (render_scale)
+    {
+        // Single image; the render graph serializes main-write → composite-read
+        // inside one frame, so triple-buffering is not needed here.
+        VkExtent3D lowres_extent = {m_scene_lowres_width, m_scene_lowres_height, 1};
+        m_scene_lowres_images.clear();
+        m_scene_lowres_views.clear();
+
+        auto img_info = vk_utils::make_image_create_info(
+            swapchain_fmt,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            lowres_extent);
+
+        VmaAllocationCreateInfo img_alloc = {};
+        img_alloc.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+        auto img = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+            device.get_vma_allocator_provider(), img_info, img_alloc));
+
+        auto view_ci = vk_utils::make_imageview_create_info(
+            swapchain_fmt, img->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+        auto view = vk_utils::vulkan_image_view::create_shared(view_ci);
+
+        m_scene_lowres_images.push_back(std::move(img));
+        m_scene_lowres_views.push_back(std::move(view));
+    }
+
+    const bool outline_enabled = render_scale && m_render_config.outline.enabled;
 
     {
-        auto main_pass =
-            render_pass_builder()
-                .set_color_format(device.get_swapchain_format())
-                .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-                .set_width_depth(m_width, m_height)
-                .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
-                .set_debug_name("main")
-                .build();
+        auto builder = render_pass_builder()
+                           .set_color_format(swapchain_fmt)
+                           .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
+                           .set_sampled_depth(outline_enabled)
+                           .set_debug_name("main");
 
+        if (render_scale)
+        {
+            builder.set_width_depth(m_scene_lowres_width, m_scene_lowres_height)
+                .set_color_images(m_scene_lowres_views, m_scene_lowres_images);
+        }
+        else
+        {
+            builder.set_width_depth(m_width, m_height)
+                .set_color_images(device.get_swapchain_image_views(),
+                                  device.get_swapchain_images());
+        }
+
+        auto main_pass = builder.build();
         glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),
                                                                        std::move(main_pass));
     }
@@ -84,10 +133,27 @@ vulkan_render::prepare_render_passes()
                                                                        std::move(ui_pass));
     }
 
+    // Composite pass — only needed when render_scale upscale is enabled.
+    // Writes to swapchain at full resolution. Samples the scene_lowres target
+    // and draws the UI overlay on top.
+    if (render_scale)
+    {
+        auto composite_pass =
+            render_pass_builder()
+                .set_color_format(swapchain_fmt)
+                .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                .set_width_depth(m_width, m_height)
+                .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
+                .set_enable_stencil(false)
+                .set_debug_name("composite")
+                .build();
+
+        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("composite"),
+                                                                       std::move(composite_pass));
+    }
+
     // Selection mask — same format as swapchain for pipeline compatibility
     {
-        auto swapchain_fmt = device.get_swapchain_format();
-
         auto simg_info = vk_utils::make_image_create_info(swapchain_fmt,
                                                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                                               VK_IMAGE_USAGE_SAMPLED_BIT |
@@ -212,6 +278,27 @@ vulkan_render::prepare_pass_bindings()
                  render::binding_scope::per_material);
 
         mask_pass->finalize_bindings(layout_cache);
+    }
+
+    // Composite pass (render_scale only) — needs bindless textures to sample the
+    // low-res scene target by its bindless index.
+    if (auto* composite_pass = get_render_pass(AID("composite")); composite_pass)
+    {
+        composite_pass->bindings()
+            .add(AID("static_samplers"),
+                 KGPU_textures_descriptor_sets,
+                 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material)
+            .add(AID("bindless_textures"),
+                 KGPU_textures_descriptor_sets,
+                 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material);
+
+        composite_pass->finalize_bindings(layout_cache);
     }
 }
 
@@ -438,9 +525,15 @@ vulkan_render::setup_instanced_render_graph()
     m_render_graph.register_buffer(AID("dyn_visible_indices"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     m_render_graph.register_buffer(AID("dyn_cull_output"), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
+    const bool render_scale = m_render_config.render_scale.enabled;
+
     m_render_graph.import_resource(AID("swapchain"), rg_resource_type::image);
     m_render_graph.import_resource(AID("ui_target"), rg_resource_type::image);
     m_render_graph.import_resource(AID("selection_mask_target"), rg_resource_type::image);
+    if (render_scale)
+    {
+        m_render_graph.import_resource(AID("scene_lowres_target"), rg_resource_type::image);
+    }
 
     // Shadow passes (CSM cascades)
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
@@ -534,9 +627,11 @@ vulkan_render::setup_instanced_render_graph()
     // Shadow maps are sampled via bindless textures. Declaring them as reads
     // ensures the render graph orders shadow passes before the main pass.
     {
+        auto main_write = render_scale ? m_render_graph.write(AID("scene_lowres_target"))
+                                       : m_render_graph.write(AID("swapchain"));
+
         std::vector<rg_resource_ref> main_resources = {
-            m_render_graph.write(AID("swapchain")),
-            m_render_graph.read(AID("ui_target")),
+            main_write,
             m_render_graph.read(AID("dyn_camera_data")),
             m_render_graph.read(AID("dyn_object_buffer")),
             m_render_graph.read(AID("dyn_gpu_universal_light_data")),
@@ -552,6 +647,13 @@ vulkan_render::setup_instanced_render_graph()
             m_render_graph.read(AID("dyn_probe_grid")),
             m_render_graph.read(AID("selection_mask_target")),
         };
+
+        // When render_scale is off, main pass also composites UI on top of swapchain.
+        // When on, UI is drawn in the composite pass instead.
+        if (!render_scale)
+        {
+            main_resources.push_back(m_render_graph.read(AID("ui_target")));
+        }
 
         // Shadow map dependencies (ordering only — actual sampling is via bindless)
         for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
@@ -571,6 +673,20 @@ vulkan_render::setup_instanced_render_graph()
                                          VkClearColorValue{0, 0, 0, 1.0},
                                          [this](VkCommandBuffer)
                                          { draw_objects_instanced(*m_current_frame); });
+    }
+
+    // Composite pass — upscales the low-res scene target to swapchain, then draws UI.
+    // Only present when render_scale is enabled.
+    if (render_scale)
+    {
+        m_render_graph.add_graphics_pass(AID("composite"),
+                                         {m_render_graph.write(AID("swapchain")),
+                                          m_render_graph.read(AID("scene_lowres_target")),
+                                          m_render_graph.read(AID("ui_target"))},
+                                         get_render_pass(AID("composite")),
+                                         VkClearColorValue{0, 0, 0, 1.0},
+                                         [this](VkCommandBuffer cmd)
+                                         { draw_composite(cmd, *m_current_frame); });
     }
 
     // Swapchain needs a final layout transition after the last pass

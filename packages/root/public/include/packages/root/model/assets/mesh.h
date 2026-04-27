@@ -3,6 +3,7 @@
 #include "packages/root/model/mesh.ar.h"
 
 #include "packages/root/model/assets/asset.h"
+#include "packages/root/model/core_types/vec3.h"
 
 #include "utils/buffer.h"
 
@@ -82,6 +83,17 @@ public:
         m_bounding_radius = r;
     }
 
+    const ::kryga::root::vec3&
+    get_local_centroid() const
+    {
+        return m_local_centroid;
+    }
+    void
+    set_local_centroid(const ::kryga::root::vec3& c)
+    {
+        m_local_centroid = c;
+    }
+
 protected:
     KRG_ar_property("category=assets", "serializable=true", "default=true");
     utils::buffer m_vertices = {};
@@ -93,6 +105,7 @@ protected:
     utils::buffer m_external = {};
 
     float m_bounding_radius = 0.0f;
+    ::kryga::root::vec3 m_local_centroid = {};
 };
 
 }  // namespace root

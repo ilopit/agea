@@ -21,6 +21,7 @@ struct object_data
     vec2 lightmap_scale;   // Per-instance lightmap atlas scale
     vec2 lightmap_offset;  // Per-instance lightmap atlas offset
     uint lightmap_texture_index;  // Bindless texture index for lightmap (0xFFFFFFFF = none)
+    vec3 bounding_sphere_center;  // World-space sphere center for frustum cull (geometry centroid, not obj_pos)
 };
 
 GPU_END_NAMESPACE

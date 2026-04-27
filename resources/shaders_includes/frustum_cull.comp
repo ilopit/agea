@@ -63,8 +63,8 @@ void main()
     if (objectIdx >= pc.object_count)
         return;
 
-    // Get object bounding sphere
-    vec3 center = dyn_object_buffer.objects[objectIdx].obj_pos;
+    // Get object bounding sphere (center is geometry centroid in world space, not the authored object pivot)
+    vec3 center = dyn_object_buffer.objects[objectIdx].bounding_sphere_center;
     float radius = dyn_object_buffer.objects[objectIdx].bounding_radius;
 
     // Skip invalid objects (radius <= 0 means not renderable)

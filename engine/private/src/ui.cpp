@@ -729,6 +729,38 @@ render_config_window::handle()
     }
 
     // =========================================================================
+    // Render Scale
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Render Scale"))
+    {
+        ImGui::Checkbox("Enabled##render_scale", &cfg.render_scale.enabled);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Render scene at lower resolution then nearest-upscale.");
+        }
+
+        int divisor = (int)cfg.render_scale.divisor;
+        if (ImGui::SliderInt("Divisor##render_scale", &divisor, 1, 10))
+        {
+            if (cfg.render_scale.enabled && divisor >= 1)
+            {
+                glob::glob_state().getr_vulkan_render().reconfigure_render_scale_live(
+                    (uint32_t)divisor);
+            }
+            else
+            {
+                cfg.render_scale.divisor = (uint32_t)divisor;
+            }
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Scene is rendered at window_size / divisor, then nearest-upscaled.\n"
+                "1 = native resolution. Higher = chunkier pixels.");
+        }
+    }
+
+    // =========================================================================
     // Save / Reset All
     // =========================================================================
     ImGui::Spacing();

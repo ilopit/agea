@@ -163,6 +163,14 @@ render_config::validate()
                (uint32_t)KGPU_max_lights_per_cluster_min,
                (uint32_t)KGPU_max_lights_per_cluster_max,
                "clusters.max_lights_per_cluster");
+
+    // Render-scale — divisor must be >= 1; cap at 10 to avoid nonsensical values.
+    clamp_warn(render_scale.divisor, 1u, 10u, "render_scale.divisor");
+
+    // Outline thresholds are unbounded in principle, but clamp to a sane range
+    // so a malformed config doesn't produce a solid-color screen.
+    clamp_warn(outline.depth_threshold, 0.0f, 10.0f, "outline.depth_threshold");
+    clamp_warn(outline.normal_threshold, 0.0f, 1.0f, "outline.normal_threshold");
 }
 
 // ============================================================================
@@ -212,6 +220,19 @@ render_config::load(const utils::path& path)
         extract_field(debug_node, "frustum_culling", debug.frustum_culling);
     }
 
+    if (auto rs_node = container["render_scale"]; rs_node && rs_node.IsMap())
+    {
+        extract_field(rs_node, "enabled", render_scale.enabled);
+        extract_field(rs_node, "divisor", render_scale.divisor);
+    }
+
+    if (auto ol_node = container["outline"]; ol_node && ol_node.IsMap())
+    {
+        extract_field(ol_node, "enabled", outline.enabled);
+        extract_field(ol_node, "depth_threshold", outline.depth_threshold);
+        extract_field(ol_node, "normal_threshold", outline.normal_threshold);
+    }
+
     validate();
 
     ALOG_INFO("Loaded render config from '{}'", path.str());
@@ -255,6 +276,17 @@ render_config::save(const utils::path& path) const
     debug_node["light_icons"] = debug.light_icons;
     debug_node["frustum_culling"] = debug.frustum_culling;
     root["debug"] = debug_node;
+
+    YAML::Node rs_node;
+    rs_node["enabled"] = render_scale.enabled;
+    rs_node["divisor"] = render_scale.divisor;
+    root["render_scale"] = rs_node;
+
+    YAML::Node ol_node;
+    ol_node["enabled"] = outline.enabled;
+    ol_node["depth_threshold"] = outline.depth_threshold;
+    ol_node["normal_threshold"] = outline.normal_threshold;
+    root["outline"] = ol_node;
 
     if (!serialization::write_container(path, root))
     {
@@ -312,6 +344,19 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
                 extract_field(d, "frustum_culling", debug.frustum_culling);
             }
 
+            if (auto rs = container["render_scale"]; rs && rs.IsMap())
+            {
+                extract_field(rs, "enabled", render_scale.enabled);
+                extract_field(rs, "divisor", render_scale.divisor);
+            }
+
+            if (auto ol = container["outline"]; ol && ol.IsMap())
+            {
+                extract_field(ol, "enabled", outline.enabled);
+                extract_field(ol, "depth_threshold", outline.depth_threshold);
+                extract_field(ol, "normal_threshold", outline.normal_threshold);
+            }
+
             validate();
             return true;
         }
@@ -361,6 +406,17 @@ render_config::save_to_cache(const vfs::rid& cache) const
     debug_node["light_icons"] = debug.light_icons;
     debug_node["frustum_culling"] = debug.frustum_culling;
     root["debug"] = debug_node;
+
+    YAML::Node rs_node;
+    rs_node["enabled"] = render_scale.enabled;
+    rs_node["divisor"] = render_scale.divisor;
+    root["render_scale"] = rs_node;
+
+    YAML::Node ol_node;
+    ol_node["enabled"] = outline.enabled;
+    ol_node["depth_threshold"] = outline.depth_threshold;
+    ol_node["normal_threshold"] = outline.normal_threshold;
+    root["outline"] = ol_node;
 
     return serialization::write_container(cache, root);
 }

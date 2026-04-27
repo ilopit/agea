@@ -131,7 +131,7 @@ vulkan_render::build_batches_for_queue_into(render_line_container& r,
 
         // Frustum culling - happens here now, not in draw
         if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
+            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -391,8 +391,12 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
     // Draw outline post-process (edge detection on selection mask)
     draw_outline_post(cmd, current_frame);
 
-    // Draw UI overlay
-    draw_ui_overlay(cmd, current_frame);
+    // UI is drawn in the composite pass when render_scale is enabled, to keep it
+    // at full resolution. Otherwise it composites here on the swapchain.
+    if (!m_render_config.render_scale.enabled)
+    {
+        draw_ui_overlay(cmd, current_frame);
+    }
 }
 
 // ============================================================================
@@ -570,6 +574,145 @@ vulkan_render::draw_outline_post(VkCommandBuffer cmd, render::frame_state& curre
 }
 
 // ============================================================================
+// Draw Functions - Scene Upscale (render_scale)
+// ============================================================================
+
+void
+vulkan_render::draw_scene_upscale(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+    if (!m_scene_upscale_mat || !m_scene_upscale_se)
+    {
+        return;
+    }
+
+    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    if (!m)
+    {
+        return;
+    }
+
+    auto pipeline_layout = m_scene_upscale_se->m_pipeline_layout;
+
+    vkCmdBindPipeline(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_scene_upscale_se->m_pipeline);
+
+    if (m_bindless_set != VK_NULL_HANDLE)
+    {
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_layout,
+                                KGPU_textures_descriptor_sets,
+                                1,
+                                &m_bindless_set,
+                                0,
+                                nullptr);
+    }
+
+    bind_mesh(cmd, m);
+
+    copy_texture_indices(m_obj_config, m_scene_upscale_mat);
+    vkCmdPushConstants(cmd,
+                       pipeline_layout,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0,
+                       sizeof(gpu::push_constants_main),
+                       &m_obj_config);
+
+    if (!m->has_indices())
+    {
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
+    else
+    {
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    }
+}
+
+void
+vulkan_render::draw_composite(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+    draw_scene_upscale(cmd, current_frame);
+    draw_depth_outline(cmd, current_frame);
+    draw_ui_overlay(cmd, current_frame);
+}
+
+void
+vulkan_render::draw_depth_outline(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+    if (!m_render_config.outline.enabled || !m_depth_outline_se ||
+        m_scene_depth_bindless_idx == 0xFFFFFFFFu)
+    {
+        return;
+    }
+
+    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    if (!m)
+    {
+        return;
+    }
+
+    auto pipeline_layout = m_depth_outline_se->m_pipeline_layout;
+
+    vkCmdBindPipeline(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_depth_outline_se->m_pipeline);
+
+    if (m_bindless_set != VK_NULL_HANDLE)
+    {
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_layout,
+                                KGPU_textures_descriptor_sets,
+                                1,
+                                &m_bindless_set,
+                                0,
+                                nullptr);
+    }
+
+    bind_mesh(cmd, m);
+
+    struct outline_pc
+    {
+        glm::vec4 outline_color;
+        glm::vec2 texel_size;
+        float depth_threshold;
+        float normal_threshold;
+        uint32_t depth_texture_idx;
+        float near_plane;
+        float far_plane;
+        uint32_t _pad;
+    };
+
+    outline_pc pc;
+    const auto& cfg = m_render_config.outline;
+    pc.outline_color =
+        glm::vec4(cfg.color[0], cfg.color[1], cfg.color[2], cfg.color[3]);
+    // texel_size is in low-res scene coordinates — that's where the depth texture lives
+    pc.texel_size = glm::vec2(1.0f / m_scene_lowres_width, 1.0f / m_scene_lowres_height);
+    pc.depth_threshold = cfg.depth_threshold;
+    pc.normal_threshold = cfg.normal_threshold;
+    pc.depth_texture_idx = m_scene_depth_bindless_idx;
+    pc.near_plane = m_cluster_config.near_plane;
+    pc.far_plane = m_cluster_config.far_plane;
+    pc._pad = 0;
+
+    vkCmdPushConstants(cmd,
+                       pipeline_layout,
+                       VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0,
+                       sizeof(outline_pc),
+                       &pc);
+
+    if (m->has_indices())
+    {
+        vkCmdDrawIndexed(cmd, m->indices_size(), 1, 0, 0, 0);
+    }
+    else
+    {
+        vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
+    }
+}
+
+// ============================================================================
 // Draw Functions - UI Overlay (shared)
 // ============================================================================
 
@@ -653,7 +796,7 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
         ++m_all_draws;
         // Frustum culling
         if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
+            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -713,7 +856,7 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
         ++m_all_draws;
         // Frustum culling
         if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.obj_pos, obj->gpu_data.bounding_radius))
+            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -1111,8 +1254,12 @@ vulkan_render::prepare_ui_pipeline()
         vfs::load_buffer(se_ui_base / "se_upload.vert", vert);
         vfs::load_buffer(se_ui_base / "se_upload.frag", frag);
 
-        auto main_pass =
-            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+        // In render_scale mode the UI copy is drawn inside the composite pass, which has
+        // a different depth format than main. Create the pipeline against the pass
+        // that will actually execute it.
+        auto host_pass_id = m_render_config.render_scale.enabled ? AID("composite") : AID("main");
+        auto host_pass =
+            glob::glob_state().getr_vulkan_render_loader().get_render_pass(host_pass_id);
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
@@ -1122,7 +1269,7 @@ vulkan_render::prepare_ui_pipeline()
         se_ci.alpha = alpha_mode::ui;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
 
-        main_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
+        host_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
 
         std::vector<texture_sampler_data> samples(1);
         samples.front().texture = m_ui_target_txt;
@@ -1130,6 +1277,50 @@ vulkan_render::prepare_ui_pipeline()
 
         m_ui_target_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
+    }
+
+    // Scene upscale — reuses the ui/se_upload shaders (texture blit), created on
+    // the composite render pass. Sampler is NEAREST for the pixelated look.
+    if (m_render_config.render_scale.enabled && !m_scene_lowres_views.empty())
+    {
+        kryga::utils::buffer vert, frag;
+        vfs::load_buffer(se_ui_base / "se_upload.vert", vert);
+        vfs::load_buffer(se_ui_base / "se_upload.frag", frag);
+
+        auto composite_pass =
+            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));
+        KRG_check(composite_pass, "composite pass must exist when render_scale is enabled");
+
+        shader_effect_create_info se_ci;
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::ui;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+
+        composite_pass->create_shader_effect(AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
+
+        m_scene_upscale_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
+            AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
+
+        std::vector<texture_sampler_data> samples(1);
+        samples.front().texture = m_scene_upscale_txt;
+        samples.front().slot = 0;
+
+        m_scene_upscale_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+            AID("mat_scene_upscale"),
+            AID("scene_upscale"),
+            samples,
+            *m_scene_upscale_se,
+            utils::dynobj{});
+
+        // Override the default (LINEAR_REPEAT) sampler with NEAREST_CLAMP so the
+        // upscale keeps chunky pixel edges instead of bilinear-smoothing them.
+        if (m_scene_upscale_mat)
+        {
+            m_scene_upscale_mat->set_bindless_sampler_index(0, KGPU_SAMPLER_NEAREST_CLAMP);
+        }
     }
 }
 

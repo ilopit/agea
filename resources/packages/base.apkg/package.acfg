@@ -7,12 +7,14 @@ class_obj_mapping:
   - se_solid_color_lit: class/shader_effects/lit/se_solid_color_lit.aobj
   - se_solid_color_lit_lightmapped: class/shader_effects/lit/se_solid_color_lit_lightmapped.aobj
   - se_simple_texture_lit_skinned: class/shader_effects/lit/se_simple_texture_lit_skinned.aobj
+  - se_toon: class/shader_effects/lit/se_toon.aobj
 
   - txt_directional_light: class/textures/txt_directional_light.aobj
   - txt_container: class/textures/txt_container.aobj
   - txt_container_spec: class/textures/txt_container_spec.aobj
   - txt_lamp: class/textures/txt_lamp.aobj
   - txt_red: class/textures/txt_red.aobj
+  - txt_grey: class/textures/txt_grey.aobj
   - txt_spot_light: class/textures/txt_spot_light.aobj
 
   - mt_red: class/materials/mt_red.aobj
@@ -26,6 +28,7 @@ class_obj_mapping:
   - mt_container: class/materials/mt_container.aobj
   - mt_wire: class/materials/mt_wire.aobj
   - mt_skinned_lit: class/materials/mt_skinned_lit.aobj
+  - mt_toon: class/materials/mt_toon.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
   - plane_mesh: class/meshes/plane_mesh.aobj

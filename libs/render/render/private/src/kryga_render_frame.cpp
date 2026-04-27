@@ -231,10 +231,17 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
 
     // Bind per-frame image resources
     // All render targets are cleared each frame, so UNDEFINED initial layout is safe.
-    auto* main_pass = get_render_pass(AID("main"));
-    auto main_images = main_pass->get_color_images();
+    const bool render_scale = m_render_config.render_scale.enabled;
+    auto& device = glob::glob_state().getr_render_device();
+    auto swapchain_images = device.get_swapchain_images();
     m_render_graph.bind_image(
-        AID("swapchain"), *main_images[swapchain_image_index], VK_IMAGE_LAYOUT_UNDEFINED);
+        AID("swapchain"), *swapchain_images[swapchain_image_index], VK_IMAGE_LAYOUT_UNDEFINED);
+
+    if (render_scale && !m_scene_lowres_images.empty())
+    {
+        m_render_graph.bind_image(
+            AID("scene_lowres_target"), *m_scene_lowres_images[0], VK_IMAGE_LAYOUT_UNDEFINED);
+    }
 
     auto* ui_pass = get_render_pass(AID("ui"));
     auto ui_images = ui_pass->get_color_images();
@@ -551,21 +558,9 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
             }
 
             float r = obj->gpu_data.bounding_radius;
-            glm::vec3 local_min(-r);
-            glm::vec3 local_max(r);
-
-            glm::vec3 world_min(std::numeric_limits<float>::max());
-            glm::vec3 world_max(std::numeric_limits<float>::lowest());
-
-            for (int c = 0; c < 8; ++c)
-            {
-                glm::vec3 corner((c & 1) ? local_max.x : local_min.x,
-                                 (c & 2) ? local_max.y : local_min.y,
-                                 (c & 4) ? local_max.z : local_min.z);
-                glm::vec3 world_corner = glm::vec3(obj->gpu_data.model * glm::vec4(corner, 1.0f));
-                world_min = glm::min(world_min, world_corner);
-                world_max = glm::max(world_max, world_corner);
-            }
+            glm::vec3 c = obj->gpu_data.bounding_sphere_center;
+            glm::vec3 world_min = c - glm::vec3(r);
+            glm::vec3 world_max = c + glm::vec3(r);
 
             entries.push_back({.aabb_min = world_min,
                                .aabb_max = world_max,

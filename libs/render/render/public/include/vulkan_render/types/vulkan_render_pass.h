@@ -194,6 +194,24 @@ public:
     bool
     validate_fragment_outputs(const reflection::interface_block& frag_outputs) const;
 
+    // =========================================================================
+    // Runtime target swap — used for render_scale divisor changes.
+    // Destroys existing framebuffers + depth images, stores the supplied color
+    // targets, creates new depth images at the new size, and rebuilds
+    // framebuffers. KEEPS m_vk_render_pass and all shader effects intact so
+    // pipelines stay valid (attachment formats are unchanged).
+    // =========================================================================
+
+    bool
+    replace_color_targets(
+        const std::vector<vk_utils::vulkan_image_sptr>& new_color_images,
+        const std::vector<vk_utils::vulkan_image_view_sptr>& new_color_views,
+        uint32_t new_width,
+        uint32_t new_height,
+        bool sampled_depth,
+        bool enable_stencil,
+        const std::string& debug_name);
+
 private:
     // Pass identity and type
     utils::id m_name;

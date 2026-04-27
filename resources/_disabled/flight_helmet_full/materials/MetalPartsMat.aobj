@@ -1,0 +1,7 @@
+type_id: simple_texture_material
+id: MetalPartsMat
+shader_effect: se_simple_texture_lit
+simple_texture:
+    texture: FlightHelmet_Materials_MetalPartsMat_BaseColor
+    slot: 0
+    sampler: default

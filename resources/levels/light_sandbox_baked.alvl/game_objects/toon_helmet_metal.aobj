@@ -1,0 +1,18 @@
+class_id: mesh_object
+id: toon_helmet_metal
+layout: [-1, 0]
+components:
+  - id: toon_helmet_metal_root_component
+    class_id: game_object_component
+  - id: toon_helmet_metal_mesh
+    class_id: mesh_component
+    material: mt_toon
+    mesh: MetalParts_low_mesh
+    position:
+      x: 8
+      y: 0
+      z: -10
+    scale:
+      x: 15
+      y: 15
+      z: 15
