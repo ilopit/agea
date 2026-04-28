@@ -1,12 +1,37 @@
 #include "shader_system/shader_compiler.h"
 
-#include <utils/process.h>
 #include <utils/kryga_log.h>
+
+#if !defined(__ANDROID__)
+#include <utils/process.h>
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>
+#endif
 
 namespace kryga::render
 {
+
+#if defined(__ANDROID__)
+
+// Android ships pre-cooked SPIR-V (tools/cook runs at host build time and the
+// gradle pipeline copies the cooked tree into APK assets). Runtime GLSL
+// compilation would require glslc + writable scratch + the include tree to be
+// reachable via real_path, none of which hold inside an APK. Reaching this
+// path means a non-binary shader slipped through cooking — fail loudly so the
+// asset gets fixed instead of silently producing a black screen.
+compilation_result
+shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
+                                const std::vector<std::string>& /*defines*/)
+{
+    ALOG_ERROR("shader_compiler::compile_shader called on Android (vpath '{}'). "
+               "Runtime GLSL compilation is unsupported — shader must be "
+               "cooked via tools/cook with is_*_binary=true.",
+               raw_buffer.get_vpath());
+    KRG_never("Runtime shader compilation attempted on Android");
+    return std::unexpected(result_code::compilation_failed);
+}
+
+#else
 
 compilation_result
 shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
@@ -65,7 +90,6 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
         return std::unexpected(result_code::compilation_failed);
     }
 
-    // Build reflection data from SPIR-V
     if (!shader_reflection_utils::build_shader_reflection(
             cs.spirv.data(), cs.spirv.size(), cs.reflection))
     {
@@ -75,5 +99,7 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
 
     return cs;
 }
+
+#endif
 
 }  // namespace kryga::render

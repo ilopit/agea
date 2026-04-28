@@ -148,12 +148,16 @@ ui::new_frame(float dt)
     m_actions.tick();
 
     ImGuiIO& io = ImGui::GetIO();
-    auto s = glob::glob_state().getr_native_window().get_size();
-
-    io.DisplaySize = ImVec2((float)s.w, (float)s.h);
+    // SDL2 backend resets DisplaySize from SDL_GetWindowSize inside
+    // ImGui_ImplSDL2_NewFrame — override before AND after that call.
+    auto& vr = glob::glob_state().getr_vulkan_render();
+    io.DisplaySize = ImVec2((float)vr.width(), (float)vr.height());
     io.DeltaTime = dt;
 
     ImGui_ImplSDL2_NewFrame();
+    io.DisplaySize = ImVec2((float)vr.width(), (float)vr.height());
+    io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
     ImGui::NewFrame();
 
     // Fullscreen dockspace — all windows can dock into this, central node is transparent for 3D
@@ -407,7 +411,8 @@ render_config_window::handle()
     }
 
     auto& vr = glob::glob_state().getr_vulkan_render();
-    auto& cfg = vr.get_render_config();
+    // Mutate pending — apply_pending_render_config() picks it up between frames.
+    auto& cfg = vr.get_pending_render_config();
 
     // Default config for reset comparisons
     const render::render_config defaults;
@@ -740,17 +745,9 @@ render_config_window::handle()
         }
 
         int divisor = (int)cfg.render_scale.divisor;
-        if (ImGui::SliderInt("Divisor##render_scale", &divisor, 1, 10))
+        if (ImGui::SliderInt("Divisor##render_scale", &divisor, 1, 10) && divisor >= 1)
         {
-            if (cfg.render_scale.enabled && divisor >= 1)
-            {
-                glob::glob_state().getr_vulkan_render().reconfigure_render_scale_live(
-                    (uint32_t)divisor);
-            }
-            else
-            {
-                cfg.render_scale.divisor = (uint32_t)divisor;
-            }
+            cfg.render_scale.divisor = (uint32_t)divisor;
         }
         if (ImGui::IsItemHovered())
         {

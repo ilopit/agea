@@ -5,6 +5,8 @@
 
 #include <utils/check.h>
 
+#include <vfs/rid.h>
+
 namespace kryga
 {
 namespace editor
@@ -13,7 +15,7 @@ class config
 {
 public:
     void
-    load(const utils::path& config);
+    load(const vfs::rid& config);
 
     bool force_recompile_shaders = false;
     uint32_t fps_lock = 30;

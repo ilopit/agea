@@ -61,7 +61,18 @@ load_data_shader(const kryga::utils::buffer& input,
     }
     else
     {
-        KRG_never("Not supported");
+        // Buffer already contains SPIR-V bytes (precooked by tools/cook).
+        // Copy into compiled.spirv so ownership is clear, then build
+        // reflection from the SPV directly.
+        compiled.spirv.resize(input.size());
+        std::memcpy(compiled.spirv.data(), input.data(), input.size());
+        if (!shader_reflection_utils::build_shader_reflection(
+                compiled.spirv.data(), compiled.spirv.size(), compiled.reflection))
+        {
+            ALOG_ERROR("load_data_shader: failed to build reflection from precooked SPIR-V (vpath '{}')",
+                       input.get_vpath());
+            return result_code::failed;
+        }
     }
 
     VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,

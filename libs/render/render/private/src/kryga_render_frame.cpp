@@ -73,14 +73,21 @@ vulkan_render::draw_main()
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
     VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));
 
-    // Acquire swapchain image
+    // Tolerate VK_SUBOPTIMAL_KHR — see vkQueuePresentKHR below.
     uint32_t swapchain_image_index = 0U;
-    VK_CHECK(vkAcquireNextImageKHR(device->vk_device(),
-                                   device->swapchain(),
-                                   1000000000,
-                                   current_frame.frame->m_present_semaphore,
-                                   nullptr,
-                                   &swapchain_image_index));
+    {
+        VkResult ar = vkAcquireNextImageKHR(device->vk_device(),
+                                            device->swapchain(),
+                                            1000000000,
+                                            current_frame.frame->m_present_semaphore,
+                                            nullptr,
+                                            &swapchain_image_index);
+        if (ar != VK_SUCCESS && ar != VK_SUBOPTIMAL_KHR)
+        {
+            ALOG_ERROR("vkAcquireNextImageKHR failed: {}", (int)ar);
+            KRG_never("vkAcquireNextImageKHR failed");
+        }
+    }
 
     auto cmd = current_frame.frame->m_main_command_buffer;
     auto cmd_begin_info =
@@ -117,7 +124,15 @@ vulkan_render::draw_main()
     present_info.waitSemaphoreCount = 1;
     present_info.pImageIndices = &swapchain_image_index;
 
-    VK_CHECK(vkQueuePresentKHR(device->vk_graphics_queue(), &present_info));
+    // VK_SUBOPTIMAL_KHR is expected on Android: we use IDENTITY preTransform
+    // while the surface's currentTransform may be rotated. The PE composites
+    // the rotation at present time and the image is still displayed correctly.
+    VkResult pr = vkQueuePresentKHR(device->vk_graphics_queue(), &present_info);
+    if (pr != VK_SUCCESS && pr != VK_SUBOPTIMAL_KHR)
+    {
+        ALOG_ERROR("vkQueuePresentKHR failed: {}", (int)pr);
+        KRG_never("vkQueuePresentKHR failed");
+    }
 }
 
 void
@@ -574,8 +589,8 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     // Cast ray — nearest AABB hit wins
     auto inv_view = glm::inverse(m_camera_data.view);
-    auto r =
-        object_bvh::screen_to_ray(x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
+    auto r = object_bvh::screen_to_ray(
+        x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
 
     raycast_hit hit;
     if (m_object_bvh.raycast(r, hit))

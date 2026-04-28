@@ -50,8 +50,13 @@ target_precompile_headers(vulkan_render PRIVATE
 
 # Vulkan validation layers, debug messenger, and object naming.
 # ON by default in Debug/RelWithDebInfo, OFF in Release/MinSizeRel.
+# Forced OFF on Android because validation layers aren't bundled there and
+# the emulator's goldfish_vk stubs out VK_EXT_debug_utils entry points (calling
+# them aborts the process).
 # Override: -DKRYGA_VULKAN_DEBUG=1 (or 0) on the cmake command line.
-if(NOT DEFINED KRYGA_VULKAN_DEBUG)
+if(ANDROID)
+    target_compile_definitions(vulkan_render PUBLIC KRYGA_VULKAN_DEBUG=0)
+elseif(NOT DEFINED KRYGA_VULKAN_DEBUG)
     target_compile_definitions(vulkan_render PUBLIC
         $<$<CONFIG:Debug>:KRYGA_VULKAN_DEBUG=1>
         $<$<CONFIG:RelWithDebInfo>:KRYGA_VULKAN_DEBUG=1>

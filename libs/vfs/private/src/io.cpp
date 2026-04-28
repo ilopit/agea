@@ -62,5 +62,52 @@ save_file(const rid& id, const std::vector<uint8_t>& blob)
     return vfs.write_bytes(id, data);
 }
 
+bool
+load_index_manifest(const rid& manifest_id, std::vector<index_entry>& out)
+{
+    out.clear();
+
+    auto& vfs = glob::glob_state().getr_vfs();
+    std::string text;
+    if (!vfs.read_string(manifest_id, text))
+    {
+        return false;
+    }
+
+    // One path per line, '#' starts a comment, blank lines skipped.
+    size_t pos = 0;
+    while (pos < text.size())
+    {
+        size_t eol = text.find('\n', pos);
+        std::string_view line(text.data() + pos,
+                              (eol == std::string::npos ? text.size() : eol) - pos);
+        pos = (eol == std::string::npos ? text.size() : eol + 1);
+
+        // Trim CR + spaces.
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' ' || line.back() == '\t'))
+        {
+            line.remove_suffix(1);
+        }
+        while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
+        {
+            line.remove_prefix(1);
+        }
+        if (line.empty() || line.front() == '#')
+        {
+            continue;
+        }
+
+        index_entry e;
+        e.relative.assign(line);
+        auto slash = e.relative.rfind('/');
+        auto fname = (slash == std::string::npos) ? e.relative : e.relative.substr(slash + 1);
+        auto dot = fname.rfind('.');
+        e.stem = (dot == std::string::npos) ? fname : fname.substr(0, dot);
+        out.push_back(std::move(e));
+    }
+
+    return true;
+}
+
 }  // namespace vfs
 }  // namespace kryga

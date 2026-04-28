@@ -194,8 +194,29 @@ public:
     bool
     reconfigure_render_scale_live(uint32_t new_divisor);
 
+    // Toggle render_scale on/off at runtime. Rebuilds the composite pass +
+    // scene_upscale / depth_outline / ui_copy shader effects, swaps main
+    // pass color targets between scene_lowres images and the swapchain
+    // (preserving main pass's VkRenderPass identity so other SEs survive),
+    // and rebuilds the render graph. Materials, textures, meshes, frames,
+    // bindless texture indices, and game-object render data all survive.
+    bool
+    reconfigure_render_scale_enabled(bool enabled);
+
     void
     set_camera(gpu::camera_data d);
+
+    uint32_t
+    width() const
+    {
+        return m_width;
+    }
+
+    uint32_t
+    height() const
+    {
+        return m_height;
+    }
 
     void
     draw_main();
@@ -244,6 +265,11 @@ public:
     render_pass*
     get_render_pass(const utils::id& id);
 
+    // Active config — what the renderer is currently using. UI/tools should
+    // mutate via get_pending_render_config() instead, so the change picks up
+    // the apply_pending_render_config() gate that handles topology rebuilds
+    // and frame-boundary timing. Direct write access kept for tests and
+    // internal callers that intentionally bypass the apply pipeline.
     render_config&
     get_render_config()
     {
@@ -255,6 +281,28 @@ public:
     {
         return m_render_config;
     }
+
+    // Pending config — UI/tools mutate this freely. Picked up by
+    // apply_pending_render_config() once per frame at a safe point
+    // (between render-done and next-frame-begin).
+    render_config&
+    get_pending_render_config()
+    {
+        return m_pending_render_config;
+    }
+
+    const render_config&
+    get_pending_render_config() const
+    {
+        return m_pending_render_config;
+    }
+
+    // Diff pending vs active and apply changes. Topology fields trigger the
+    // appropriate reconfigure_*; other fields are simple value copies. Must
+    // be called outside any rendering work — vkDeviceWaitIdle is invoked
+    // when topology changes are needed.
+    void
+    apply_pending_render_config();
 
     float
     get_cascade_split_depth(uint32_t cascade_idx) const
@@ -600,6 +648,7 @@ private:
 
     // Render config (loaded from render.acfg)
     render_config m_render_config;
+    render_config m_pending_render_config;
 
     // Snapshots of last-applied config (to detect runtime changes)
     render_config::cluster_cfg m_applied_clusters;
@@ -633,6 +682,7 @@ private:
     // Current frame state pointer (used by render graph callbacks)
     frame_state* m_current_frame = nullptr;
 
+    // Render target dimensions — match the swapchain image extent.
     uint32_t m_width = 0;
     uint32_t m_height = 0;
 };

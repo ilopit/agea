@@ -190,11 +190,9 @@ vulkan_engine::init(const startup_options& options)
     gs.run_connect();
     init_default_scripting();
 
-    auto rp_main = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/kryga.acfg"));
-    glob::glob_state().get_config()->load(APATH(rp_main.value()));
+    glob::glob_state().get_config()->load(vfs::rid("data://configs/kryga.acfg"));
 
-    auto rp_input = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/inputs.acfg"));
-    glob::glob_state().get_input_manager()->load_actions(APATH(rp_input.value()));
+    glob::glob_state().get_input_manager()->load_actions(vfs::rid("data://configs/inputs.acfg"));
 
     // Load render config (with rtcache fallback for session state)
     render::render_config render_cfg;
@@ -234,7 +232,15 @@ vulkan_engine::init(const startup_options& options)
     ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
                                             vfs::rid("rtcache://bake.acfg"));
 
-    glob::glob_state().getr_vulkan_render().init(rwc.w, rwc.h, render_cfg);
+    // Use the actual window size after SDL settled it — on Android fullscreen
+    // the requested rwc.w/rwc.h is ignored and the surface is device-sized
+    // (2280x1080 on Pixel 4 landscape). Passing the requested values here
+    // produces a coord mismatch: viewport/ImGui draw into a 3200x1800 logical
+    // space while the swapchain is only 2280x1080, collapsing everything into
+    // the lower-left ~70% of the screen.
+    auto actual_size = window->get_size();
+    glob::glob_state().getr_vulkan_render().init(
+        (uint32_t)actual_size.w, (uint32_t)actual_size.h, render_cfg);
 
     init_default_resources();
 
@@ -364,6 +370,11 @@ vulkan_engine::run()
         // Render thread is done — all commands executed and destructed.
         // Safe to reclaim arena memory for next frame.
         glob::glob_state().getr_render_bridge().reset_arena();
+
+        // Apply config edits the UI made during ui_tick. Topology changes
+        // (e.g. render_scale.enabled) call vkDeviceWaitIdle and rebuild GPU
+        // resources here, BEFORE the next frame's render starts.
+        glob::glob_state().getr_vulkan_render().apply_pending_render_config();
 
         {
             auto& ctrs = ::kryga::glob::glob_state().getr_engine_counters();
@@ -570,6 +581,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 
     return true;
 }
+
 
 void
 vulkan_engine::consume_updated_transforms()

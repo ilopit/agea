@@ -38,6 +38,14 @@ public:
     backend*
     mount(const rid& target, std::filesystem::path root, const mount_config& cfg = {});
 
+    // Scoped mount that populates its file index from a cooked `.kryga_index`
+    // manifest (emitted by tools/cook). Does not need a filesystem path —
+    // works uniformly on desktop physical mounts and Android APK asset mounts.
+    // `manifest` rid must resolve through an existing mount; typically
+    // `target / ".kryga_index"`.
+    backend*
+    mount_from_manifest(const rid& target, const rid& manifest, const mount_config& cfg = {});
+
     // Mount a pre-built backend (for tests, memory backends, etc.)
     void
     mount(std::string mount_point, std::unique_ptr<backend> b, int priority);

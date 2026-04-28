@@ -12,3 +12,8 @@ add_subdirectory(animation)
 add_subdirectory(serialization)
 add_subdirectory(testing)
 add_subdirectory(utils)
+
+# Content-cooker. Desktop-only: cross-compiled Android .so can't run on host.
+if(NOT ANDROID)
+    add_subdirectory(cook)
+endif()

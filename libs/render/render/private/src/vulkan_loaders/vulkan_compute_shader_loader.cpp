@@ -33,12 +33,17 @@ load_compute_shader_module(const kryga::utils::buffer& input,
 {
     auto device = glob::glob_state().get_render_device();
 
-    auto result = shader_compiler::compile_shader(input);
-    if (!result)
+    // Input buffer is expected to hold precooked SPIR-V (see tools/cook).
+    compiled_shader compiled;
+    compiled.spirv.resize(input.size());
+    std::memcpy(compiled.spirv.data(), input.data(), input.size());
+    if (!shader_reflection_utils::build_shader_reflection(
+            compiled.spirv.data(), compiled.spirv.size(), compiled.reflection))
     {
-        return result.error();
+        ALOG_ERROR("load_compute_shader_module: failed to build reflection for '{}'",
+                   input.get_vpath());
+        return result_code::failed;
     }
-    auto compiled = std::move(result.value());
 
     VkShaderModuleCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                                            .pNext = VK_NULL_HANDLE,

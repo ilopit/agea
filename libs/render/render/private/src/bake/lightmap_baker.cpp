@@ -388,17 +388,17 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     };
 
     auto cs_gbuf = compile_bake_shader(
-        "data://shaders_includes/bake/gbuffer_rasterize.comp", "bake_gbuf");
+        "data://shaders_includes/bake/gbuffer_rasterize.comp.spv", "bake_gbuf");
     auto cs_direct = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_baker_direct.comp", "bake_direct");
+        "data://shaders_includes/bake/lightmap_baker_direct.comp.spv", "bake_direct");
     auto cs_indirect = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_baker_indirect.comp", "bake_indirect");
+        "data://shaders_includes/bake/lightmap_baker_indirect.comp.spv", "bake_indirect");
     auto cs_ao = compile_bake_shader(
-        "data://shaders_includes/bake/ao_baker.comp", "bake_ao");
+        "data://shaders_includes/bake/ao_baker.comp.spv", "bake_ao");
     auto cs_denoise = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_denoise.comp", "bake_denoise");
+        "data://shaders_includes/bake/lightmap_denoise.comp.spv", "bake_denoise");
     auto cs_dilate = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_dilate.comp", "bake_dilate");
+        "data://shaders_includes/bake/lightmap_dilate.comp.spv", "bake_dilate");
 
     if (!cs_gbuf.valid || !cs_direct.valid)
     {

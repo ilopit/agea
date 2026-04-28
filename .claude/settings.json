@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew:*)",
+      "Bash(bash tools/build.sh:*)",
+      "Bash(bash tools/run.sh:*)",
+      "Bash(bash tools/build_android.sh:*)",
+      "Bash(tools/build_android.sh:*)",
+      "Bash(bash tools/configure.sh:*)",
+      "Bash(python tools/android_dev.py:*)",
+      "Bash(python3 tools/android_dev.py:*)",
+      "Bash(tools/android_dev.py:*)",
+      "Bash(export ANDROID_HOME=*)",
+      "Bash(export ANDROID_NDK_HOME=*)",
+      "Bash(export JAVA_HOME=*)",
+      "Bash(export PATH=*)"
+    ]
+  }
+}

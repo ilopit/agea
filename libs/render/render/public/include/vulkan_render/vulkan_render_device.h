@@ -210,6 +210,14 @@ public:
         return m_depth_format;
     }
 
+    // Swapchain image extent. Equal to the display-visible size — the
+    // presentation engine composites any rotation at present time.
+    VkExtent2D
+    swapchain_extent() const
+    {
+        return m_swapchain_extent;
+    }
+
     std::vector<vk_utils::vulkan_image_sptr>
     get_swapchain_images()
     {
@@ -275,6 +283,8 @@ public:
 
     VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
     VkFormat m_swapchain_image_format = VK_FORMAT_UNDEFINED;
+
+    VkExtent2D m_swapchain_extent{0, 0};
 
     std::vector<vk_utils::vulkan_image_sptr> m_swapchain_images;
     std::vector<vk_utils::vulkan_image_view_sptr> m_swapchain_image_views;

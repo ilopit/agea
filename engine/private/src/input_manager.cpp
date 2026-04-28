@@ -274,11 +274,11 @@ input_manager::input_tick(float dur_seconds)
 }
 
 bool
-input_manager::load_actions(const utils::path& path)
+input_manager::load_actions(const vfs::rid& rid)
 {
     serialization::container c;
 
-    if (!serialization::read_container(path, c))
+    if (!serialization::read_container(rid, c))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -430,6 +430,14 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
     }
     case SDL_MOUSEMOTION:
 
+        // On Android we enable SDL_HINT_TOUCH_MOUSE_EVENTS so ImGui's SDL2
+        // backend receives taps as mouse events. The same hint causes SDL to
+        // synthesize SDL_MOUSE* events from every SDL_FINGER* event — which
+        // would duplicate input here (we also handle SDL_FINGERDOWN below).
+        // Skip the synthesized events; the `which` field is SDL_TOUCH_MOUSEID
+        // when the event came from touch.
+        if (sdle.motion.which == SDL_TOUCH_MOUSEID) { break; }
+
         m_mouse_axis_state.x = sdle.motion.x;
         m_mouse_axis_state.y = sdle.motion.y;
         m_mouse_axis_state.xrel = sdle.motion.xrel;
@@ -470,6 +478,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         break;
     case SDL_MOUSEBUTTONDOWN:
     {
+        if (sdle.button.which == SDL_TOUCH_MOUSEID) { return; }
+
         if (!from_sdl_mouse_btm_code(sdle.button.button, id))
         {
             return;
@@ -485,6 +495,8 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
     }
     case SDL_MOUSEBUTTONUP:
     {
+        if (sdle.button.which == SDL_TOUCH_MOUSEID) { return; }
+
         if (!from_sdl_mouse_btm_code(sdle.button.button, id))
         {
             return;
@@ -498,10 +510,12 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
     }
 
 #if defined(__ANDROID__)
-    // Map single-finger touch to left-mouse semantics. SDL's built-in
-    // touch->mouse synthesis is disabled on Android (see native_window.cpp) so
-    // we handle SDL_FINGER events directly. Multi-touch is ignored for now —
-    // only the first finger id is tracked.
+    // Map single-finger touch to left-mouse semantics for our own input map
+    // (input_actions from inputs.acfg). ImGui is fed via SDL's synthesized
+    // mouse events (SDL_HINT_TOUCH_MOUSE_EVENTS=1); the SDL_MOUSE* handlers
+    // above filter those synthetic events out to avoid duplicating what we
+    // process directly from the SDL_FINGER* events below. Multi-touch is
+    // ignored for now — only the first finger id is tracked.
     case SDL_FINGERMOTION:
     {
         auto win_w = (float)glob::glob_state().get_native_window()->get_size().w;

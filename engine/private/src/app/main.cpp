@@ -11,6 +11,7 @@
 #include <vfs/android_asset_backend.h>
 
 #include <SDL.h>
+#include <SDL_hints.h>
 #include <SDL_system.h>
 
 #include <android/asset_manager.h>
@@ -59,6 +60,15 @@ main(int argc, char** argv)
 
 #if WIN32
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+#endif
+
+#if defined(__ANDROID__)
+    // AndroidManifest.xml declares `screenOrientation="landscape"` (fixed to
+    // one landscape rotation). SDL derives its own `setRequestedOrientation`
+    // call from this hint; when unset it defaults to SENSOR_LANDSCAPE (enum 6)
+    // which lets the device flip between both landscape rotations. Match the
+    // manifest so both layers agree and startup is predictable.
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft");
 #endif
     {
         auto& gs = kryga::glob::glob_state();

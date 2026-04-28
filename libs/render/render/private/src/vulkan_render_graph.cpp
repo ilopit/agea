@@ -306,7 +306,7 @@ vulkan_render_graph::execute(VkCommandBuffer cmd,
     {
         if (m_bound_this_frame.find(name) == m_bound_this_frame.end())
         {
-            ALOG_ERROR("Resource not bound this frame");
+            ALOG_ERROR("Resource not bound this frame: '{}'", name.cstr());
             return false;
         }
     }

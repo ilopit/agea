@@ -18,6 +18,7 @@
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>
 #include <vfs/rid.h>
+#include <vfs/io.h>
 
 #include <utils/kryga_log.h>
 #include <utils/string_utility.h>
@@ -291,21 +292,12 @@ buffer__load(reflection::type_context__load& ctx)
         return result_code::failed;
     }
 
-    auto real = glob::glob_state().getr_vfs().real_path(rid);
-    if (!real.has_value())
-    {
-        ALOG_ERROR("buffer__load: real_path failed for '{}'", rid.str());
-        return result_code::failed;
-    }
-    ALOG_TRACE("buffer__load: '{}' -> '{}'", rel_path.str(), real.value().generic_string());
-
-    auto package_path = APATH(real.value());
+    // Read via VFS so APK-asset backends on Android work uniformly with
+    // physical backends on desktop — no `real_path` requirement.
     auto& f = reflection::utils::as_type<::kryga::utils::buffer>(ctx.obj);
-    f.set_file(package_path);
-
-    if (!utils::buffer::load(package_path, f))
+    if (!vfs::load_buffer(rid, f))
     {
-        ALOG_LAZY_ERROR;
+        ALOG_ERROR("buffer__load: VFS load failed for '{}'", rid.str());
         return result_code::failed;
     }
 

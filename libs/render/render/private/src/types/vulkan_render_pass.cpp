@@ -245,6 +245,12 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
                                   const shader_effect_create_info& info,
                                   shader_effect_data*& sed)
 {
+    if (get_shader_effect(id))
+    {
+        ALOG_ERROR("create_shader_effect: id '{}' already exists in pass '{}'",
+                   id.cstr(),
+                   m_name.cstr());
+    }
     KRG_check(!get_shader_effect(id), "should never happens");
 
     auto effect = std::make_shared<shader_effect_data>(id);

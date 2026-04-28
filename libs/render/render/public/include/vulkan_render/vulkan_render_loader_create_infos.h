@@ -20,9 +20,11 @@ class render_pass;
 struct shader_effect_create_info
 {
     kryga::utils::buffer* vert_buffer = nullptr;
-    bool is_vert_binary = false;
+    // Default true — shaders are cooked to SPV at build time by tools/cook.
+    // Set false only if passing raw GLSL (e.g. a desktop hot-reload path).
+    bool is_vert_binary = true;
     kryga::utils::buffer* frag_buffer = nullptr;
-    bool is_frag_binary = false;
+    bool is_frag_binary = true;
     bool is_wire = false;
     alpha_mode alpha = alpha_mode::none;
     bool enable_dynamic_state = false;

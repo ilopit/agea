@@ -9,6 +9,8 @@
 #include <utils/check.h>
 #include <utils/generic_event_handler.h>
 
+#include <vfs/rid.h>
+
 #include <SDL_events.h>
 
 #include <unordered_map>
@@ -134,7 +136,7 @@ public:
     input_tick(float dt);
 
     bool
-    load_actions(const utils::path& path);
+    load_actions(const vfs::rid& rid);
 
     void
     fire_input_event();

@@ -6,6 +6,8 @@
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
+#include "vulkan_render/types/vulkan_render_pass_builder.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
 
@@ -65,9 +67,13 @@ vulkan_render::~vulkan_render()
 void
 vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool only_rp)
 {
-    m_width = w;
-    m_height = h;
+    auto& device = glob::glob_state().getr_render_device();
+    auto extent = device.swapchain_extent();
+    m_width = extent.width;
+    m_height = extent.height;
+
     m_render_config = config;
+    m_pending_render_config = config;
 
     // Initialize static samplers first - needed for bindless texture layout
     init_static_samplers();
@@ -82,8 +88,6 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     {
         return;
     }
-
-    auto& device = glob::glob_state().getr_render_device();
 
     m_frames.resize(device.frame_size());
 
@@ -410,6 +414,287 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     return true;
 }
 
+bool
+vulkan_render::reconfigure_render_scale_enabled(bool enabled)
+{
+    if (enabled == m_render_config.render_scale.enabled)
+    {
+        return true;
+    }
+
+    auto& device = glob::glob_state().getr_render_device();
+    vkDeviceWaitIdle(device.vk_device());
+
+    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+
+    // Tear down render-scale-dependent state. m_ui_copy_se's pipeline was
+    // compiled against the old host pass and must be dropped regardless of
+    // direction.
+    m_scene_upscale_se = nullptr;
+    m_scene_upscale_mat = nullptr;
+    m_scene_upscale_txt = nullptr;
+    m_depth_outline_se = nullptr;
+    m_ui_copy_se = nullptr;
+    m_ui_target_mat = nullptr;
+
+    loader.destroy_material_data(AID("mat_ui_copy"));
+    loader.destroy_material_data(AID("mat_scene_upscale"));
+    loader.destroy_texture_data(AID("scene_lowres_txt"));
+
+    if (m_render_config.render_scale.enabled)
+    {
+        // Currently on — tearing render_scale path down.
+        loader.destroy_render_pass(AID("composite"));
+        m_composite_pass.reset();
+        m_scene_lowres_views.clear();
+        m_scene_lowres_images.clear();
+    }
+
+    m_render_config.render_scale.enabled = enabled;
+
+    auto* main_pass = loader.get_render_pass(AID("main"));
+    KRG_check(main_pass, "main render pass missing");
+
+    auto swapchain_fmt = device.get_swapchain_format();
+
+    if (enabled)
+    {
+        const uint32_t scale = std::max(1u, m_render_config.render_scale.divisor);
+        const uint32_t lw = std::max(1u, m_width / scale);
+        const uint32_t lh = std::max(1u, m_height / scale);
+        m_scene_lowres_width = lw;
+        m_scene_lowres_height = lh;
+
+        VkExtent3D extent = {lw, lh, 1};
+        auto img_info = vk_utils::make_image_create_info(
+            swapchain_fmt,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            extent);
+        VmaAllocationCreateInfo img_alloc = {};
+        img_alloc.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        auto img = std::make_shared<vk_utils::vulkan_image>(
+            vk_utils::vulkan_image::create(device.get_vma_allocator_provider(), img_info, img_alloc));
+        auto view_ci = vk_utils::make_imageview_create_info(
+            swapchain_fmt, img->image(), VK_IMAGE_ASPECT_COLOR_BIT);
+        auto view = vk_utils::vulkan_image_view::create_shared(view_ci);
+        m_scene_lowres_images = {img};
+        m_scene_lowres_views = {view};
+
+        // Swap main pass to scene_lowres. replace_color_targets keeps
+        // VkRenderPass identity, so SEs compiled against main survive.
+        if (!main_pass->replace_color_targets(m_scene_lowres_images,
+                                              m_scene_lowres_views,
+                                              lw,
+                                              lh,
+                                              m_render_config.outline.enabled,
+                                              true,
+                                              "main"))
+        {
+            return false;
+        }
+
+        auto composite_pass = render_pass_builder()
+                                  .set_color_format(swapchain_fmt)
+                                  .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                                  .set_width_depth(m_width, m_height)
+                                  .set_color_images(device.get_swapchain_image_views(),
+                                                    device.get_swapchain_images())
+                                  .set_enable_stencil(false)
+                                  .set_debug_name("composite")
+                                  .build();
+        loader.add_render_pass(AID("composite"), std::move(composite_pass));
+
+        // Bindings — must mirror prepare_pass_bindings()'s composite section.
+        auto* composite_for_bindings = loader.get_render_pass(AID("composite"));
+        auto* layout_cache = device.descriptor_layout_cache();
+        composite_for_bindings->bindings()
+            .add(AID("static_samplers"),
+                 KGPU_textures_descriptor_sets,
+                 0,
+                 VK_DESCRIPTOR_TYPE_SAMPLER,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material)
+            .add(AID("bindless_textures"),
+                 KGPU_textures_descriptor_sets,
+                 1,
+                 VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                 VK_SHADER_STAGE_FRAGMENT_BIT,
+                 render::binding_scope::per_material);
+        composite_for_bindings->finalize_bindings(*layout_cache);
+    }
+    else
+    {
+        m_scene_lowres_width = m_width;
+        m_scene_lowres_height = m_height;
+        if (!main_pass->replace_color_targets(device.get_swapchain_images(),
+                                              device.get_swapchain_image_views(),
+                                              m_width,
+                                              m_height,
+                                              false,
+                                              true,
+                                              "main"))
+        {
+            return false;
+        }
+    }
+
+    // Refresh scene_depth_texture bindless slot if outline is active —
+    // main pass's depth image was recreated by replace_color_targets.
+    if (m_render_config.outline.enabled && !main_pass->get_depth_images().empty())
+    {
+        auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture"));
+        if (dtex)
+        {
+            auto& depth_img = main_pass->get_depth_images()[0];
+            auto img_handle = depth_img.image();
+            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(
+                new vk_utils::vulkan_image(
+                    vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+            auto depth_view_ci = vk_utils::make_imageview_create_info(
+                VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
+            auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
+            dtex->image = std::move(img_sptr);
+            dtex->image_view = std::move(depth_view);
+            m_scene_depth_bindless_idx = dtex->get_bindless_index();
+            schd_update_texture(dtex);
+        }
+    }
+
+    // Recreate ui_copy SE on the now-correct host pass. ui_copy lives on
+    // main when render_scale is off, on composite when on — destroy from
+    // BOTH possible owners so a stale entry from the previous state doesn't
+    // collide with the new creation.
+    if (auto* main_for_uicopy = loader.get_render_pass(AID("main")))
+    {
+        main_for_uicopy->destroy_shader_effect(AID("se_ui_copy"));
+    }
+    if (auto* composite_for_uicopy = loader.get_render_pass(AID("composite")))
+    {
+        composite_for_uicopy->destroy_shader_effect(AID("se_ui_copy"));
+    }
+    {
+        vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
+        kryga::utils::buffer vert, frag;
+        vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
+        vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
+
+        auto host_pass_id = enabled ? AID("composite") : AID("main");
+        auto host_pass = loader.get_render_pass(host_pass_id);
+        KRG_check(host_pass, "host pass for se_ui_copy missing");
+
+        shader_effect_create_info se_ci;
+        se_ci.vert_buffer = &vert;
+        se_ci.frag_buffer = &frag;
+        se_ci.is_wire = false;
+        se_ci.enable_dynamic_state = false;
+        se_ci.alpha = alpha_mode::ui;
+        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+
+        host_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
+
+        std::vector<texture_sampler_data> samples(1);
+        samples.front().texture = m_ui_target_txt;
+        samples.front().slot = 0;
+
+        m_ui_target_mat = loader.create_material(
+            AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
+    }
+
+    if (enabled)
+    {
+        auto* composite_pass = loader.get_render_pass(AID("composite"));
+        KRG_check(composite_pass, "composite pass should exist after enable");
+
+        vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
+        vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
+
+        // Scene upscale
+        {
+            kryga::utils::buffer vert, frag;
+            vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
+            vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
+
+            shader_effect_create_info se_ci;
+            se_ci.vert_buffer = &vert;
+            se_ci.frag_buffer = &frag;
+            se_ci.is_wire = false;
+            se_ci.enable_dynamic_state = false;
+            se_ci.alpha = alpha_mode::ui;
+            se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+
+            composite_pass->create_shader_effect(
+                AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
+
+            m_scene_upscale_txt = loader.create_texture(
+                AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
+
+            std::vector<texture_sampler_data> samples(1);
+            samples.front().texture = m_scene_upscale_txt;
+            samples.front().slot = 0;
+
+            m_scene_upscale_mat = loader.create_material(AID("mat_scene_upscale"),
+                                                         AID("scene_upscale"),
+                                                         samples,
+                                                         *m_scene_upscale_se,
+                                                         utils::dynobj{});
+
+            if (m_scene_upscale_mat)
+            {
+                m_scene_upscale_mat->set_bindless_sampler_index(0, KGPU_SAMPLER_NEAREST_CLAMP);
+            }
+        }
+
+        // Depth outline (only when outline is also enabled)
+        if (m_render_config.outline.enabled)
+        {
+            kryga::utils::buffer overt, ofrag;
+            vfs::load_buffer(se_base / "system/se_fullscreen.vert.spv", overt);
+            vfs::load_buffer(se_base / "system/se_depth_outline.frag.spv", ofrag);
+
+            shader_effect_create_info ose_ci;
+            ose_ci.vert_buffer = &overt;
+            ose_ci.frag_buffer = &ofrag;
+            ose_ci.is_wire = false;
+            ose_ci.enable_dynamic_state = false;
+            ose_ci.alpha = alpha_mode::ui;
+            ose_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+
+            composite_pass->create_shader_effect(
+                AID("se_depth_outline"), ose_ci, m_depth_outline_se);
+        }
+    }
+
+    m_render_graph.reset();
+    setup_render_graph();
+
+    ALOG_INFO("render_scale.enabled toggled: {}", enabled);
+    return true;
+}
+
+void
+vulkan_render::apply_pending_render_config()
+{
+    // Topology changes — must run reconfigure functions, which themselves
+    // update the corresponding fields in m_render_config and do GPU work.
+    if (m_pending_render_config.render_scale.enabled != m_render_config.render_scale.enabled)
+    {
+        reconfigure_render_scale_enabled(m_pending_render_config.render_scale.enabled);
+    }
+
+    // Live-reconfigurable: divisor (only meaningful when render_scale is enabled).
+    if (m_render_config.render_scale.enabled &&
+        m_pending_render_config.render_scale.divisor != m_render_config.render_scale.divisor)
+    {
+        reconfigure_render_scale_live(m_pending_render_config.render_scale.divisor);
+    }
+
+    // Catch-all: copy any remaining data-only fields (debug toggles, colors,
+    // thresholds, etc.) from pending to active. Reconfigure functions above
+    // already wrote the topology-affecting fields, so this is a no-op for
+    // those.
+    m_render_config = m_pending_render_config;
+}
+
 void
 vulkan_render::deinit()
 {
@@ -528,8 +813,8 @@ vulkan_render::prepare_system_resources()
 
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
-    vfs::load_buffer(se_base / "error/se_error.vert", vert);
-    vfs::load_buffer(se_base / "error/se_error.frag", frag);
+    vfs::load_buffer(se_base / "error/se_error.vert.spv", vert);
+    vfs::load_buffer(se_base / "error/se_error.frag.spv", frag);
 
     auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
@@ -550,8 +835,8 @@ vulkan_render::prepare_system_resources()
     std::vector<texture_sampler_data> sd;
 
     // Grid shader effect and material
-    vfs::load_buffer(se_base / "system/se_grid.vert", vert);
-    vfs::load_buffer(se_base / "system/se_grid.frag", frag);
+    vfs::load_buffer(se_base / "system/se_grid.vert.spv", vert);
+    vfs::load_buffer(se_base / "system/se_grid.frag.spv", frag);
 
     se_ci = {};
     se_ci.vert_buffer = &vert;
@@ -574,8 +859,8 @@ vulkan_render::prepare_system_resources()
 
     // Outline post-process shader — edge detection on selection mask
     {
-        vfs::load_buffer(se_base / "system/se_fullscreen.vert", vert);
-        vfs::load_buffer(se_base / "system/se_outline_post.frag", frag);
+        vfs::load_buffer(se_base / "system/se_fullscreen.vert.spv", vert);
+        vfs::load_buffer(se_base / "system/se_outline_post.frag.spv", frag);
 
         se_ci = {};
         se_ci.vert_buffer = &vert;
@@ -627,8 +912,8 @@ vulkan_render::prepare_system_resources()
         if (composite_pass)
         {
             kryga::utils::buffer overt, ofrag;
-            vfs::load_buffer(se_base / "system/se_fullscreen.vert", overt);
-            vfs::load_buffer(se_base / "system/se_depth_outline.frag", ofrag);
+            vfs::load_buffer(se_base / "system/se_fullscreen.vert.spv", overt);
+            vfs::load_buffer(se_base / "system/se_depth_outline.frag.spv", ofrag);
 
             shader_effect_create_info ose_ci;
             ose_ci.vert_buffer = &overt;
@@ -675,8 +960,8 @@ vulkan_render::prepare_system_resources()
     }
 
     // Debug wireframe shader for light visualization
-    vfs::load_buffer(se_base / "system/se_debug_wire.vert", vert);
-    vfs::load_buffer(se_base / "system/se_debug_wire.frag", frag);
+    vfs::load_buffer(se_base / "system/se_debug_wire.vert.spv", vert);
+    vfs::load_buffer(se_base / "system/se_debug_wire.frag.spv", frag);
 
     se_ci = {};
     se_ci.vert_buffer = &vert;
@@ -769,7 +1054,7 @@ vulkan_render::init_shadow_resources()
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
     kryga::utils::buffer vert;
-    if (vfs::load_buffer(se_base / "shadow/se_shadow.vert", vert))
+    if (vfs::load_buffer(se_base / "shadow/se_shadow.vert.spv", vert))
     {
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &vert;
@@ -797,7 +1082,7 @@ vulkan_render::init_shadow_resources()
 
     // Create DPSM vertex shader for point lights
     kryga::utils::buffer dpsm_vert;
-    if (vfs::load_buffer(se_base / "shadow/se_shadow_dpsm.vert", dpsm_vert))
+    if (vfs::load_buffer(se_base / "shadow/se_shadow_dpsm.vert.spv", dpsm_vert))
     {
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &dpsm_vert;

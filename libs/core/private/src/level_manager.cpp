@@ -70,21 +70,18 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
     }
 
     auto& vfs = glob::glob_state().getr_vfs();
-    auto real = vfs.real_path(vfs_root);
-    if (!real.has_value())
-    {
-        ALOG_ERROR("Level real path not found: {}", vfs_root.str());
-        return nullptr;
-    }
 
-    l.m_backend = vfs.mount(vfs_root,
-                            real.value(),
-                            {.index_filter = ".aobj",
-                             .load_order = {"class/textures",
-                                            "class/shader_effects",
-                                            "class/materials",
-                                            "class/meshes",
-                                            "class/components"}});
+    // Populate the file index from the cooked `.kryga_index` manifest emitted
+    // by tools/cook. Works uniformly on desktop physical mounts and Android
+    // APK asset mounts — no `real_path` required.
+    l.m_backend = vfs.mount_from_manifest(
+        vfs_root,
+        vfs_root / "kryga_index",
+        {.load_order = {"class/textures",
+                        "class/shader_effects",
+                        "class/materials",
+                        "class/meshes",
+                        "class/components"}});
     if (!l.m_backend)
     {
         ALOG_LAZY_ERROR;

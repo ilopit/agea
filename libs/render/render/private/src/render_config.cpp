@@ -178,12 +178,12 @@ render_config::validate()
 // ============================================================================
 
 bool
-render_config::load(const utils::path& path)
+render_config::load(const vfs::rid& rid)
 {
     serialization::container container;
-    if (!serialization::read_container(path, container))
+    if (!serialization::read_container(rid, container))
     {
-        ALOG_WARN("Failed to load render config from '{}', using defaults", path.str());
+        ALOG_WARN("Failed to load render config from '{}', using defaults", rid.str());
         return false;
     }
 
@@ -235,7 +235,7 @@ render_config::load(const utils::path& path)
 
     validate();
 
-    ALOG_INFO("Loaded render config from '{}'", path.str());
+    ALOG_INFO("Loaded render config from '{}'", rid.str());
     return true;
 }
 
@@ -362,13 +362,8 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
         }
     }
 
-    // Fall back to base config
-    auto rp = vfs.real_path(base);
-    if (rp.has_value())
-    {
-        return load(APATH(rp.value()));
-    }
-    return false;
+    // Fall back to base config (read via VFS so APK-asset backends work)
+    return load(base);
 }
 
 bool

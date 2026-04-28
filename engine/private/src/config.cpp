@@ -41,10 +41,10 @@ extract_field(kryga::serialization::container& c, const std::string& key, T& fie
 }  // namespace
 
 void
-config::load(const utils::path& config_path)
+config::load(const vfs::rid& config_rid)
 {
     serialization::container container;
-    if (!serialization::read_container(config_path, container))
+    if (!serialization::read_container(config_rid, container))
     {
         return;
     }

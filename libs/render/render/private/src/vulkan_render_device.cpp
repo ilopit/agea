@@ -17,6 +17,7 @@
 
 #include <utils/process.h>
 #include <utils/file_utils.h>
+#include <utils/kryga_log.h>
 
 #include <global_state/global_state.h>
 
@@ -112,10 +113,13 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     // bundling them into the APK (~30MB), so force them off there. Desktop
     // builds keep the debug path honoring KRYGA_VULKAN_DEBUG.
 #if defined(__ANDROID__)
+    // Android emulators and many real devices only expose Vulkan 1.1; the
+    // 1.2-core features we need (descriptor indexing, BDA, scalar block
+    // layout) are all available as extensions in 1.1.
     auto inst_ret = builder.set_app_name("KRYGA")
                         .request_validation_layers(false)
                         .set_headless(headless)
-                        .require_api_version(1, 2)
+                        .require_api_version(1, 1)
                         .build();
 #elif KRYGA_VULKAN_DEBUG
     auto inst_ret =
@@ -161,6 +165,10 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     features_11.fillModeNonSolid = true;
     // shaderInt64 not required — BDA uses uvec2 via GL_EXT_buffer_reference_uvec2
 
+    // Instance version stays at 1.1 on Android for wider loader compat
+    // (some Android 10 loaders don't ship a 1.2 instance), but physical
+    // devices must expose 1.2+ so our feature structs (descriptor indexing,
+    // BDA, scalar block layout) map to core structs rather than extensions.
     selector.set_required_features(features_11)
         .set_minimum_version(1, 2)
 #if defined(__ANDROID__)
@@ -177,7 +185,46 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
         selector.set_surface(m_surface);
     }
 
-    vkb::PhysicalDevice physicalDevice = selector.select().value();
+#if 0
+    // Diagnostic: enumerate GPUs + core-1.2 extension flags at init.
+    // Flip to #if 1 when triaging device-specific issues (Adreno/Mali/emulator)
+    // without a repro device.
+    {
+        uint32_t count = 0;
+        vkEnumeratePhysicalDevices(m_vk_instance, &count, nullptr);
+        std::vector<VkPhysicalDevice> devs(count);
+        vkEnumeratePhysicalDevices(m_vk_instance, &count, devs.data());
+        for (auto pd : devs)
+        {
+            VkPhysicalDeviceProperties props{};
+            vkGetPhysicalDeviceProperties(pd, &props);
+            uint32_t ext_count = 0;
+            vkEnumerateDeviceExtensionProperties(pd, nullptr, &ext_count, nullptr);
+            std::vector<VkExtensionProperties> exts(ext_count);
+            vkEnumerateDeviceExtensionProperties(pd, nullptr, &ext_count, exts.data());
+            auto has = [&](const char* name) {
+                for (auto& e : exts)
+                    if (std::string_view(e.extensionName) == name)
+                        return true;
+                return false;
+            };
+            ALOG_INFO("GPU: '{}' api={}.{}.{} indexing={} bda={} scalar={}",
+                      props.deviceName,
+                      VK_VERSION_MAJOR(props.apiVersion),
+                      VK_VERSION_MINOR(props.apiVersion),
+                      VK_VERSION_PATCH(props.apiVersion),
+                      has(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME),
+                      has(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME),
+                      has(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME));
+        }
+    }
+#endif
+    auto pd_ret = selector.select();
+    if (!pd_ret.has_value())
+    {
+        ALOG_ERROR("vkb::PhysicalDeviceSelector::select failed: {}", pd_ret.error().message());
+    }
+    vkb::PhysicalDevice physicalDevice = pd_ret.value();
     // create the final vulkan device
 
     vkb::DeviceBuilder deviceBuilder{physicalDevice};
@@ -204,7 +251,12 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     scalar_features.scalarBlockLayout = VK_TRUE;
     deviceBuilder.add_pNext(&scalar_features);
 
-    vkb::Device vkbDevice = deviceBuilder.build().value();
+    auto dev_ret = deviceBuilder.build();
+    if (!dev_ret.has_value())
+    {
+        ALOG_ERROR("vkb::DeviceBuilder::build failed: {}", dev_ret.error().message());
+    }
+    vkb::Device vkbDevice = dev_ret.value();
 
     // Get the VkDevice handle used in the rest of a vulkan application
     m_vk_device = vkbDevice.device;
@@ -221,6 +273,15 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     allocatorInfo.device = m_vk_device;
     allocatorInfo.instance = m_vk_instance;
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+#if defined(__ANDROID__)
+    // Android's libvulkan.so only exports Vulkan 1.0 entry points, so VMA is
+    // built with VMA_DYNAMIC_VULKAN_FUNCTIONS=1 — it needs these two function
+    // pointers to resolve the rest at runtime.
+    VmaVulkanFunctions vk_funcs{};
+    vk_funcs.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
+    vk_funcs.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+    allocatorInfo.pVulkanFunctions = &vk_funcs;
+#endif
     vmaCreateAllocator(&allocatorInfo, &m_allocator);
 
     vkGetPhysicalDeviceProperties(m_vk_gpu, &m_gpu_properties);
@@ -252,11 +313,34 @@ bool
 render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 {
     m_swapchain_image_format = VK_FORMAT_B8G8R8A8_UNORM;
-    // hardcoding the depth format to 32 bit float
     m_depth_format = VK_FORMAT_D32_SFLOAT_S8_UINT;
 
     if (!headless)
     {
+        VkSurfaceCapabilitiesKHR caps{};
+        VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_vk_gpu, m_surface, &caps));
+
+        // Prefer IDENTITY preTransform when supported; the presentation
+        // engine handles any rotation at present time. Mismatched
+        // preTransform vs currentTransform yields VK_SUBOPTIMAL_KHR, which
+        // we tolerate in vkAcquireNextImageKHR/vkQueuePresentKHR.
+        VkSurfaceTransformFlagBitsKHR pre_transform =
+            (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+                ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+                : caps.currentTransform;
+
+        uint32_t buffer_w = width;
+        uint32_t buffer_h = height;
+        // Spec: currentExtent members are set together — sentinel 0xFFFFFFFF
+        // means "surface size determined by swapchain extent" (desktop). On a
+        // fixed-size surface (Android) caps.currentExtent is authoritative.
+        if (caps.currentExtent.width != 0xFFFFFFFFu &&
+            caps.currentExtent.height != 0xFFFFFFFFu)
+        {
+            buffer_w = caps.currentExtent.width;
+            buffer_h = caps.currentExtent.height;
+        }
+
         vkb::SwapchainBuilder swapchain_builder{m_vk_gpu, m_vk_device, m_surface};
 
         VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
@@ -271,12 +355,15 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         constexpr VkPresentModeKHR k_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
 #endif
 
-        vkb::Swapchain vkb_swapchain = swapchain_builder.use_default_format_selection()
-                                           .set_desired_present_mode(k_present_mode)
-                                           .set_desired_extent(width, height)
+        vkb::Swapchain vkb_swapchain = swapchain_builder.set_desired_present_mode(k_present_mode)
+                                           .set_desired_extent(buffer_w, buffer_h)
                                            .set_desired_format(format)
+                                           .set_pre_transform_flags(pre_transform)
                                            .build()
                                            .value();
+        // vkb may clamp the requested extent to caps min/max/current —
+        // capture the actual swapchain image extent for downstream sizing.
+        m_swapchain_extent = vkb_swapchain.extent;
 
         // store swapchain and its related images
         m_swapchain = vkb_swapchain.swapchain;
@@ -301,7 +388,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
     }
     else
     {
-        // depth image size will match the window
+        m_swapchain_extent = {width, height};
         VkExtent3D swapchain_image_extent = {width, height, 1};
 
         auto simg_info = vk_utils::make_image_create_info(

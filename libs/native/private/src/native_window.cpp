@@ -26,10 +26,14 @@ native_window::construct(construct_params& c)
     // We initialize SDL and create a window with it.
 
 #if defined(__ANDROID__)
-    // Route SDL_FINGER events through our input_manager directly rather than
-    // having SDL synthesize parallel SDL_MOUSE* events. Otherwise every touch
-    // produces duplicate input.
-    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    // Let SDL synthesize SDL_MOUSE* events from SDL_FINGER events. ImGui's
+    // SDL2 backend reads mouse events, not finger events — without this hint
+    // set to "1", taps never propagate to ImGui and UI is unclickable on
+    // Android. `input_manager` filters synthesized mouse events by checking
+    // `SDL_MOUSEMOTION.which == SDL_TOUCH_MOUSEID` to avoid duplicate input.
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+    // Don't synthesize finger events from mouse — we don't have a real mouse
+    // on Android so this would only matter on Chromebooks etc.
     SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
 #endif
 

@@ -1,6 +1,9 @@
 #include "vfs/vfs.h"
 #include "vfs/physical_backend.h"
+#include "vfs/manifest_backend.h"
+#include "vfs/io.h"
 
+#include <utils/check.h>
 #include <utils/kryga_log.h>
 
 #include <algorithm>
@@ -37,6 +40,63 @@ virtual_file_system::mount(const rid& target, std::filesystem::path root, const 
 
     ALOG_INFO(
         "VFS: mounting '{}' backend '{}' at priority {}", target.str(), be->name(), cfg.priority);
+    m_mounts.push_back({std::string(target.mount_point()),
+                        std::string(target.relative()),
+                        std::move(be),
+                        cfg.priority});
+
+    std::stable_sort(m_mounts.begin(),
+                     m_mounts.end(),
+                     [](const mount_entry& a, const mount_entry& b)
+                     {
+                         if (a.mount_point != b.mount_point)
+                         {
+                             return a.mount_point < b.mount_point;
+                         }
+                         return a.priority > b.priority;
+                     });
+
+    return ptr;
+}
+
+backend*
+virtual_file_system::mount_from_manifest(const rid& target,
+                                         const rid& manifest,
+                                         const mount_config& cfg)
+{
+    KRG_check(!target.relative().empty(),
+              "Scoped mount requires a subpath (e.g. data://packages/base.apkg)");
+
+    std::vector<index_entry> entries;
+    if (!load_index_manifest(manifest, entries))
+    {
+        ALOG_ERROR("VFS: mount_from_manifest: failed to load manifest '{}'", manifest.str());
+        return nullptr;
+    }
+
+    auto be = std::make_unique<manifest_backend>();
+    for (auto& e : entries)
+    {
+        if (!be->m_index.add(e.stem, e.relative))
+        {
+            ALOG_ERROR("VFS: mount_from_manifest: duplicate stem '{}' in '{}'",
+                       e.stem,
+                       manifest.str());
+            return nullptr;
+        }
+    }
+    if (!cfg.load_order.empty())
+    {
+        be->m_index.set_load_order(cfg.load_order);
+    }
+
+    auto* ptr = be.get();
+    ALOG_INFO("VFS: mounting '{}' backend '{}' from manifest '{}' (entries={}, priority={})",
+              target.str(),
+              be->name(),
+              manifest.str(),
+              entries.size(),
+              cfg.priority);
     m_mounts.push_back({std::string(target.mount_point()),
                         std::string(target.relative()),
                         std::move(be),

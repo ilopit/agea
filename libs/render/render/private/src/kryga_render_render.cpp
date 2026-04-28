@@ -1181,13 +1181,27 @@ vulkan_render::prepare_ui_resources()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    // Create font texture
-    auto font_rp =
-        glob::glob_state().getr_vfs().real_path(vfs::rid("data://fonts/Roboto-Medium.ttf"));
-    auto f = APATH(font_rp.value()).str();
+    // Create font texture. Read TTF bytes via VFS so APK-asset mounts work
+    // (Android has no filesystem path for bundled fonts).
+    // Note: AddFontFromMemoryTTF takes ownership of the pointer and frees
+    // it on atlas destruction — give each call a heap copy.
+    std::vector<uint8_t> font_bytes;
+    if (!glob::glob_state().getr_vfs().read_bytes(
+            vfs::rid("data://fonts/Roboto-Medium.ttf"), font_bytes))
+    {
+        KRG_never("Failed to load font data://fonts/Roboto-Medium.ttf");
+    }
 
-    auto f_normal = io.Fonts->AddFontFromFileTTF(f.c_str(), 28.0f);
-    auto f_big = io.Fonts->AddFontFromFileTTF(f.c_str(), 33.0f);
+    auto clone_ttf = [&font_bytes]() -> void* {
+        void* buf = IM_ALLOC(font_bytes.size());
+        memcpy(buf, font_bytes.data(), font_bytes.size());
+        return buf;
+    };
+
+    auto f_normal = io.Fonts->AddFontFromMemoryTTF(
+        clone_ttf(), static_cast<int>(font_bytes.size()), 28.0f);
+    auto f_big = io.Fonts->AddFontFromMemoryTTF(
+        clone_ttf(), static_cast<int>(font_bytes.size()), 33.0f);
 
     glob::glob_state().getr_vulkan_render_loader().create_font(AID("normal"), f_normal);
     glob::glob_state().getr_vulkan_render_loader().create_font(AID("big"), f_big);
@@ -1218,8 +1232,8 @@ vulkan_render::prepare_ui_pipeline()
     {
         kryga::utils::buffer vert, frag;
 
-        vfs::load_buffer(se_ui_base / "se_uioverlay.vert", vert);
-        vfs::load_buffer(se_ui_base / "se_uioverlay.frag", frag);
+        vfs::load_buffer(se_ui_base / "se_uioverlay.vert.spv", vert);
+        vfs::load_buffer(se_ui_base / "se_uioverlay.frag.spv", frag);
 
         auto layout = render::gpu_dynobj_builder()
                           .set_id(AID("interface"))
@@ -1251,8 +1265,8 @@ vulkan_render::prepare_ui_pipeline()
     {
         kryga::utils::buffer vert, frag;
 
-        vfs::load_buffer(se_ui_base / "se_upload.vert", vert);
-        vfs::load_buffer(se_ui_base / "se_upload.frag", frag);
+        vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
+        vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
 
         // In render_scale mode the UI copy is drawn inside the composite pass, which has
         // a different depth format than main. Create the pipeline against the pass
@@ -1284,8 +1298,8 @@ vulkan_render::prepare_ui_pipeline()
     if (m_render_config.render_scale.enabled && !m_scene_lowres_views.empty())
     {
         kryga::utils::buffer vert, frag;
-        vfs::load_buffer(se_ui_base / "se_upload.vert", vert);
-        vfs::load_buffer(se_ui_base / "se_upload.frag", frag);
+        vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
+        vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
 
         auto composite_pass =
             glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));
@@ -1412,15 +1426,17 @@ vulkan_render::draw_ui(frame_state& fs)
     }
     ImGuiIO& io = ImGui::GetIO();
 
+    // Viewport and scissor are in swapchain image pixel coords.
+    auto& device = glob::glob_state().getr_render_device();
+    auto extent = device.swapchain_extent();
     VkViewport viewport{};
-    viewport.width = io.DisplaySize.x;
-    viewport.height = io.DisplaySize.y;
+    viewport.width = (float)extent.width;
+    viewport.height = (float)extent.height;
     viewport.minDepth = 0.;
     viewport.maxDepth = 1.f;
 
     VkRect2D scissor{};
-    scissor.extent.width = (uint32_t)io.DisplaySize.x;
-    scissor.extent.height = (uint32_t)io.DisplaySize.y;
+    scissor.extent = extent;
     scissor.offset.x = 0;
     scissor.offset.y = 0;
 
@@ -1450,8 +1466,16 @@ vulkan_render::draw_ui(frame_state& fs)
                        sizeof(ui_push_constants),
                        &m_ui_push_constants);
 
-    KRG_check(fs.ui.vertex_buffer.buffer(), "UI vertex buffer must be valid");
-    KRG_check(fs.ui.index_buffer.buffer(), "UI index buffer must be valid");
+    // Defensive: `update_ui` is the producer for these buffers and uses a
+    // near-identical early-exit condition, but the two early-exits aren't
+    // byte-identical (update_ui checks size==0, draw_ui checks count==0 plus
+    // CmdListsCount). If a frame slips through with valid ImGui draw data
+    // but no buffer yet (first-frame-after-init race or similar), skip this
+    // frame's UI rather than dereferencing a null VkBuffer.
+    if (!fs.ui.vertex_buffer.buffer() || !fs.ui.index_buffer.buffer())
+    {
+        return;
+    }
 
     VkDeviceSize offsets[1] = {0};
     vkCmdBindVertexBuffers(cmd, 0, 1, &fs.ui.vertex_buffer.buffer(), offsets);
@@ -1468,7 +1492,7 @@ vulkan_render::draw_ui(frame_state& fs)
             VkRect2D scissorRect;
             scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
             scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
-            scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
+            scissorRect.extent.width  = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
             scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
             vkCmdSetScissor(fs.frame->m_main_command_buffer, 0, 1, &scissorRect);
             vkCmdDrawIndexed(fs.frame->m_main_command_buffer,

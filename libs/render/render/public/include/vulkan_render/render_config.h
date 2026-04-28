@@ -72,7 +72,7 @@ struct render_config
     validate();
 
     bool
-    load(const utils::path& path);
+    load(const vfs::rid& rid);
 
     bool
     save(const utils::path& path) const;

@@ -76,25 +76,21 @@ package::init()
     KRG_check(vfs_paths::is_valid_package_root(vfs_root), "Package must be under data://packages/");
 
     auto& vfs = glob::glob_state().getr_vfs();
-    auto real = vfs.real_path(vfs_root);
-    if (!real.has_value())
-    {
-        ALOG_ERROR("Package not found: {}", vfs_root.str());
-        return false;
-    }
     m_vfs_root = vfs_root;
 
-    m_backend = vfs.mount(vfs_root,
-                          real.value(),
-                          {.index_filter = ".aobj",
-                           .load_order = {"class/textures",
-                                          "class/shader_effects",
-                                          "class/materials",
-                                          "class/meshes",
-                                          "class/components"}});
+    // Populate the file index from the cooked `.kryga_index` manifest
+    // (emitted by tools/cook). Works uniformly on desktop and APK assets.
+    m_backend = vfs.mount_from_manifest(
+        vfs_root,
+        vfs_root / "kryga_index",
+        {.load_order = {"class/textures",
+                        "class/shader_effects",
+                        "class/materials",
+                        "class/meshes",
+                        "class/components"}});
     if (!m_backend)
     {
-        ALOG_LAZY_ERROR;
+        ALOG_ERROR("Package not found (no manifest): {}", vfs_root.str());
         return false;
     }
 

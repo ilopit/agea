@@ -10,3 +10,6 @@ build_android
 # Config session state
 resources/configs/*.tmp
 **/imgui.ini
+
+# Runtime log
+kryga_log.txt

@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "com.kryga"
-        minSdk = 29        // Android 10
-        targetSdk = 29
+        minSdk = 29        // Android 10 — lowest device we intend to support
+        targetSdk = 34     // Android 14 — matches emulator image we test on (gfxstream Vulkan)
         versionCode = 1
         versionName = "0.1"
 
@@ -61,7 +61,11 @@ android {
                 "src/main/java",
                 "${krygaRoot}/build_android/debug/_deps/sdl2_source-src/android-project/app/src/main/java"
             )
-            assets.srcDirs("${krygaRoot}/resources")
+            // Cooked content is what the engine reads on-device. The cooker
+            // (tools/cook, C++) emits to build/cooked/ with the full runtime
+            // tree: precompiled .spv shaders, rewritten shader-effect .aobj
+            // descriptors (is_*_binary=true), and every other asset as-is.
+            assets.srcDirs("${krygaRoot}/build/cooked")
         }
     }
 
@@ -82,4 +86,47 @@ android {
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
+}
+
+// Invoke the C++ cooker (build/project_Debug/bin/kryga_cook.exe) to
+// regenerate build/cooked/ before gradle merges assets.
+//
+// Pre-req: a desktop build must have produced kryga_cook.exe at least once
+// (same bootstrap requirement as SDL's Java sources under build_android/
+// debug/_deps/…). If kryga_cook.exe is missing the task fails with a clear
+// message pointing at `tools/build.sh kryga_cook`.
+val krygaCookExe = File("${krygaRoot}/build/project_Debug/bin/kryga_cook.exe")
+
+val cookContent = tasks.register<Exec>("cookContent") {
+    group = "kryga"
+    description = "Runs kryga_cook to produce build/cooked/ for APK packaging"
+    workingDir = krygaRoot
+    commandLine(
+        krygaCookExe.absolutePath,
+        "--source", "${krygaRoot}/resources",
+        "--output", "${krygaRoot}/build/cooked",
+        "--include", "${krygaRoot}/libs/render/gpu_types/public/include",
+        "--include", "${krygaRoot}/build/kryga_generated"
+    )
+    doFirst {
+        if (!krygaCookExe.exists()) {
+            throw GradleException(
+                "kryga_cook.exe not found at ${krygaCookExe.absolutePath}. " +
+                "Run `tools/build.sh kryga_cook` on the host first."
+            )
+        }
+    }
+    inputs.dir("${krygaRoot}/resources")
+    inputs.dir("${krygaRoot}/libs/render/gpu_types/public/include")
+    inputs.dir("${krygaRoot}/build/kryga_generated")
+    inputs.file(krygaCookExe)
+    outputs.dir("${krygaRoot}/build/cooked")
+}
+
+androidComponents.onVariants { variant ->
+    afterEvaluate {
+        tasks.named("merge${variant.name.replaceFirstChar { it.uppercase() }}Assets") {
+            dependsOn(cookContent)
+        }
+    }
 }
