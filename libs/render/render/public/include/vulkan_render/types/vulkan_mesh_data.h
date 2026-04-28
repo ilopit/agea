@@ -6,6 +6,8 @@
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
 
+#include <glm/vec3.hpp>
+
 namespace kryga
 {
 namespace render
@@ -60,6 +62,10 @@ public:
 
     uint32_t m_vertices_size = 0U;
     uint32_t m_indices_size = 0U;
+    // Tight sphere around the geometry centroid (NOT the local origin).
+    // m_local_centroid + m_bounding_radius together define the sphere in
+    // local space — transform the center, scale the radius for world bounds.
+    glm::vec3 m_local_centroid{0.0f};
     float m_bounding_radius = 0.0f;
     bool m_is_skinned = false;
 

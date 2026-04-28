@@ -159,15 +159,30 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
     md->m_indices_size = (uint32_t)ibv.size();
     md->m_vertices_size = (uint32_t)vbv.size();
 
-    // Calculate bounding radius from vertices (distance from origin)
-    float max_dist_sq = 0.0f;
-    for (uint32_t i = 0; i < vbv.size(); ++i)
+    // Tight bounding sphere: AABB-midpoint centroid + max distance from
+    // centroid. Computing radius from the local origin (the previous
+    // implementation) over-sizes the sphere whenever vertices are offset
+    // from origin — common for instanced or sub-mesh geometry.
     {
-        const auto& pos = vbv.at(i).position;
-        float dist_sq = glm::dot(pos, pos);
-        max_dist_sq = std::max(max_dist_sq, dist_sq);
+        glm::vec3 vmin{std::numeric_limits<float>::max()};
+        glm::vec3 vmax{std::numeric_limits<float>::lowest()};
+        for (uint32_t i = 0; i < vbv.size(); ++i)
+        {
+            const auto& pos = vbv.at(i).position;
+            vmin = glm::min(vmin, pos);
+            vmax = glm::max(vmax, pos);
+        }
+        glm::vec3 centroid = (vmin + vmax) * 0.5f;
+
+        float max_dist_sq = 0.0f;
+        for (uint32_t i = 0; i < vbv.size(); ++i)
+        {
+            glm::vec3 d = vbv.at(i).position - centroid;
+            max_dist_sq = std::max(max_dist_sq, glm::dot(d, d));
+        }
+        md->m_local_centroid = centroid;
+        md->m_bounding_radius = std::sqrt(max_dist_sq);
     }
-    md->m_bounding_radius = std::sqrt(max_dist_sq);
 
     const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
     const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
@@ -265,15 +280,27 @@ vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
     md->m_vertices_size = (uint32_t)vbv.size();
     md->m_is_skinned = true;
 
-    // Calculate bounding radius from vertices
-    float max_dist_sq = 0.0f;
-    for (uint32_t i = 0; i < vbv.size(); ++i)
+    // Tight bounding sphere — see create_mesh() comment.
     {
-        const auto& pos = vbv.at(i).position;
-        float dist_sq = glm::dot(pos, pos);
-        max_dist_sq = std::max(max_dist_sq, dist_sq);
+        glm::vec3 vmin{std::numeric_limits<float>::max()};
+        glm::vec3 vmax{std::numeric_limits<float>::lowest()};
+        for (uint32_t i = 0; i < vbv.size(); ++i)
+        {
+            const auto& pos = vbv.at(i).position;
+            vmin = glm::min(vmin, pos);
+            vmax = glm::max(vmax, pos);
+        }
+        glm::vec3 centroid = (vmin + vmax) * 0.5f;
+
+        float max_dist_sq = 0.0f;
+        for (uint32_t i = 0; i < vbv.size(); ++i)
+        {
+            glm::vec3 d = vbv.at(i).position - centroid;
+            max_dist_sq = std::max(max_dist_sq, glm::dot(d, d));
+        }
+        md->m_local_centroid = centroid;
+        md->m_bounding_radius = std::sqrt(max_dist_sq);
     }
-    md->m_bounding_radius = std::sqrt(max_dist_sq);
 
     const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
     const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
@@ -528,8 +555,18 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
     obj_data.gpu_data.normal = normal_matrix;
     obj_data.gpu_data.obj_pos = obj_pos;
 
-    obj_data.gpu_data.bounding_radius = mesh_data.m_bounding_radius;
-    obj_data.gpu_data.bounding_sphere_center = obj_pos;
+    // Frustum-cull sphere: world-space centroid + scale-aware radius.
+    // Conservative for non-uniform scale (uses max axis), but never
+    // under-culls. Callers (cmd handlers) may overwrite these with
+    // explicitly-supplied values; the defaults here are valid for direct
+    // callers (tests, ad-hoc code).
+    obj_data.gpu_data.bounding_sphere_center =
+        glm::vec3(model_matrix * glm::vec4(mesh_data.m_local_centroid, 1.0f));
+    const float sx = glm::length(glm::vec3(model_matrix[0]));
+    const float sy = glm::length(glm::vec3(model_matrix[1]));
+    const float sz = glm::length(glm::vec3(model_matrix[2]));
+    const float max_scale = std::max({sx, sy, sz});
+    obj_data.gpu_data.bounding_radius = mesh_data.m_bounding_radius * max_scale;
 
     // Set material_id for per-object material lookup in shaders
     obj_data.gpu_data.material_id = mat_data.gpu_idx();
