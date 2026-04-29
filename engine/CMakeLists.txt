@@ -29,9 +29,11 @@ target_link_libraries(engine PUBLIC
     kryga::render_bridge
     kryga::native
     kryga::vfs
+    kryga::asset_converter
 
     kryga::textedit_unofficial
     kryga::imguizmo_unofficial
+    kryga::imguifiledialog_unofficial
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 
@@ -78,3 +80,5 @@ target_include_directories(engine_app
 target_link_libraries(engine_app PRIVATE
     engine
 )
+
+add_subdirectory(private/tests/engine_regression)

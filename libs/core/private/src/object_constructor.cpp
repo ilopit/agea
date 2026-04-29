@@ -438,10 +438,18 @@ object_constructor::construct_obj(const utils::id& type_id,
                                   const utils::id& id,
                                   const root::smart_object::construct_params& params)
 {
-    auto flags =
-        m_mode == object_load_type::instance_obj ? ks_instance_constructed : ks_class_constructed;
+    // Always derive from the type's CDO. This guarantees get_class_obj() is set,
+    // which object_save_internal / game_object_components_save rely on to emit a
+    // valid `class_id:`. Runtime spawns (level::spawn_object, game_object::spawn_component)
+    // then round-trip through save cleanly.
+    auto proto_result = preload_proto(type_id);
+    if (!proto_result)
+    {
+        return proto_result;
+    }
 
-    auto alloc_result = alloc_empty_object(type_id, id, flags, nullptr);
+    auto flags = m_mode == object_load_type::instance_obj ? ks_instance_derived : ks_class_derived;
+    auto alloc_result = alloc_empty_object(type_id, id, flags, proto_result.value());
     if (!alloc_result)
     {
         return alloc_result;

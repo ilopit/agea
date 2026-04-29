@@ -266,10 +266,11 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_input_assembly_ci =
         vk_utils::make_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
-    auto width =
-        info.width ? info.width : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
-    auto height =
-        info.height ? info.height : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
+    // Fallback to vulkan_render's render target size — works in both windowed
+    // and headless modes. native_window is only available in windowed mode.
+    auto& vr = glob::glob_state().getr_vulkan_render();
+    auto width = info.width ? info.width : vr.get_width();
+    auto height = info.height ? info.height : vr.get_height();
 
     pb.m_viewport.x = 0.0f;
     pb.m_viewport.y = 0.0f;

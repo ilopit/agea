@@ -7,6 +7,8 @@
 
 #include "core/container.h"
 
+#include <vector>
+
 namespace kryga::vfs
 {
 class backend;
@@ -158,6 +160,13 @@ public:
     virtual bool
     init();
 
+    // Build OLC without mounting a VFS backend. Use when the package will be
+    // populated from in-memory construction (e.g. asset conversion) and written
+    // to disk via object_constructor::object_save, rather than loaded from an
+    // existing .apkg directory. State is left unloaded; caller may set as needed.
+    void
+    init_for_conversion();
+
     void
     unload();
 
@@ -271,6 +280,18 @@ public:
         return m_rts;
     }
 
+    const std::vector<utils::id>&
+    get_runtime_dependencies() const
+    {
+        return m_runtime_dependencies;
+    }
+
+    void
+    set_runtime_dependencies(std::vector<utils::id> deps)
+    {
+        m_runtime_dependencies = std::move(deps);
+    }
+
     void
     complete_load()
     {
@@ -300,6 +321,8 @@ private:
 
     std::unique_ptr<package_object_builder> m_object_builder;
     std::unordered_map<utils::id, reflection::reflection_type*> m_rts;
+
+    std::vector<utils::id> m_runtime_dependencies;
 };
 
 }  // namespace core

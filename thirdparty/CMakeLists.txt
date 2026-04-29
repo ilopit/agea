@@ -106,6 +106,10 @@ externalize(imgui_unofficial "imgui")
 add_subdirectory(unofficial/imguizmo)
 externalize(imguizmo_unofficial "imguizmo")
 
+#imguifiledialog
+add_subdirectory(unofficial/imguifiledialog)
+externalize(imguifiledialog_unofficial "imguifiledialog")
+
 #vma
 add_subdirectory(unofficial/vma)
 externalize(vma_unofficial "vma")

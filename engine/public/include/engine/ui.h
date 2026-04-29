@@ -21,6 +21,8 @@ namespace kryga
 namespace ui
 {
 
+class gizmo_editor;
+
 struct selection_context
 {
     ImGuiTreeNodeFlags base_flags;
@@ -194,6 +196,8 @@ public:
 
     std::unordered_map<std::string, std::unique_ptr<window>> m_windows;
     engine::action_queue m_actions;
+    std::unique_ptr<gizmo_editor> m_gizmo_editor;
+    std::string m_imgui_ini_path;  // backing storage for io.IniFilename
 };
 
 }  // namespace ui

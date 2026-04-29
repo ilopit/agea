@@ -102,6 +102,17 @@ package::init()
 }
 
 void
+package::init_for_conversion()
+{
+    m_occ = object_load_context_builder()
+                .set_package(this)
+                .set_proto_local_set(&m_proto_local_cs)
+                .set_ownable_cache(&m_objects)
+                .set_instance_local_set(&m_instance_local_cs)
+                .build();
+}
+
+void
 package::load_types()
 {
     if (m_type_builder)

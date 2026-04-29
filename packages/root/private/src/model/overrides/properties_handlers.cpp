@@ -377,6 +377,18 @@ property_texture_slot__load(reflection::property_context__load& ctx)
     auto item = sc[ctx.src_property->name];
 
     const auto id = AID(ctx.src_property->name);
+
+    // Texture slot properties are optional — converter may omit them for
+    // materials that don't use that slot. Treat missing as empty.
+    if (!item || !item["texture"] || !item["texture"].IsScalar())
+    {
+        auto& tex_slot = src->get_slot(id);
+        tex_slot.txt = nullptr;
+        tex_slot.slot = 0;
+        tex_slot.smp = nullptr;
+        return result_code::ok;
+    }
+
     const auto texture_id = AID(item["texture"].as<std::string>());
 
     // Load texture

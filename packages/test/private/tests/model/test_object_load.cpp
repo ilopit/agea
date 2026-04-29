@@ -720,8 +720,9 @@ TEST_F(test_preloaded_test_package, object_construct_in_package_context)
     ASSERT_EQ(obj->get_id(), AID("constructed_game_object"));
     ASSERT_EQ(obj->get_type_id(), AID("game_object"));
 
-    // Package context creates proto objects
-    ASSERT_TRUE(verify_flags(*obj, core::ks_class_constructed));
+    // construct_obj always derives from the type's CDO so the result has a valid
+    // class_obj and can round-trip through object_save.
+    ASSERT_TRUE(verify_flags(*obj, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*obj));
 
     auto go = obj->as<root::game_object>();
@@ -738,22 +739,28 @@ TEST_F(test_preloaded_test_package, object_construct_invalid_type_fails)
     auto result = core::object_constructor(&lc).construct_obj(
         AID("nonexistent_type_xyz"), AID("should_fail"), params);
 
+    // construct_obj now calls preload_proto first. For an unregistered type in a
+    // package context preload_proto tries load_package_obj → vfs resolve fails →
+    // path_not_found. Pre-refactor this returned id_not_found via alloc_empty_object.
     ASSERT_FALSE(result.has_value());
-    ASSERT_EQ(result.error(), result_code::id_not_found);
+    ASSERT_EQ(result.error(), result_code::path_not_found);
 }
 
 TEST_F(test_preloaded_test_package, object_construct_in_level_context)
 {
-    // Create a level - its constructor sets up load context automatically
-    core::level test_level(AID("test_construct_level"));
-
-    auto& lc = test_level.get_load_context();
+    // construct_obj in instance mode must be invoked with an OLC that already has
+    // the type's package protos available. Using a bare `core::level` would give
+    // us an empty OLC, and the new preload_proto cascade would try to synthesize
+    // CDOs in the level's local cache — not how runtime spawns actually work.
+    // test::package's OLC already has root+base+test packages registered, so we
+    // pass it with instance_obj mode to simulate a level-style spawn.
+    auto& lc = test::package::instance().get_load_context();
 
     root::game_object::construct_params params;
     params.pos = {5.0f, 6.0f, 7.0f};
 
-    auto result = core::object_constructor(&lc).construct_obj(
-        AID("game_object"), AID("level_constructed_object"), params);
+    auto result = core::object_constructor(&lc, core::object_load_type::instance_obj)
+                      .construct_obj(AID("game_object"), AID("level_constructed_object"), params);
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
@@ -762,8 +769,10 @@ TEST_F(test_preloaded_test_package, object_construct_in_level_context)
     ASSERT_EQ(obj->get_id(), AID("level_constructed_object"));
     ASSERT_EQ(obj->get_type_id(), AID("game_object"));
 
-    // Level context creates instance objects
-    ASSERT_TRUE(verify_flags(*obj, core::ks_instance_constructed));
+    // construct_obj always derives — instance mode flags include both instance_obj
+    // and derived_obj, and class_obj is the type CDO. Previously this path produced
+    // proto-less "constructed" objects that couldn't round-trip through save.
+    ASSERT_TRUE(verify_flags(*obj, core::ks_instance_derived));
     ASSERT_TRUE(validate_class_obj(*obj));
 
     auto go = obj->as<root::game_object>();
@@ -950,37 +959,26 @@ TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
 {
     auto& lc = test::package::instance().get_load_context();
 
-    // Construct a game_object via object_construct
+    // construct_obj always derives from the type's CDO, so the constructed object
+    // has class_obj set and can be saved directly — no clone step required.
     root::game_object::construct_params params;
     auto construct_result = core::object_constructor(&lc).construct_obj(
-        AID("game_object"), AID("rt_constructed_proto"), params);
+        AID("game_object"), AID("rt_constructed_obj"), params);
     ASSERT_TRUE(construct_result.has_value());
-    auto proto = construct_result.value();
-    ASSERT_TRUE(proto);
+    auto obj = construct_result.value();
+    ASSERT_TRUE(obj);
 
-    // Verify the constructed object has expected type
-    ASSERT_EQ(proto->get_type_id(), AID("game_object"));
+    ASSERT_EQ(obj->get_type_id(), AID("game_object"));
+    ASSERT_TRUE(verify_flags(*obj, core::ks_class_derived));
+    ASSERT_TRUE(validate_class_obj(*obj));
 
-    // Clone as class_obj to get a derived object that has class_obj set (required for save)
-    std::vector<root::smart_object*> cloned_objs;
-    auto clone_result = test_object_clone(
-        *proto, core::object_load_type::class_obj, AID("rt_constructed_derived"), lc, cloned_objs);
-    ASSERT_TRUE(clone_result.has_value());
-    auto derived = clone_result.value();
-    ASSERT_TRUE(derived);
-
-    // Verify save succeeds for runtime-constructed objects
     auto temp_dir = utils::path(std::filesystem::temp_directory_path());
     auto save_path = temp_dir / "rt_constructed.aobj";
 
-    auto save_rc = core::object_constructor::object_save(*derived, save_path);
+    auto save_rc = core::object_constructor::object_save(*obj, save_path);
     ASSERT_EQ(save_rc, result_code::ok);
     ASSERT_TRUE(std::filesystem::exists(save_path.fs()));
     ASSERT_GT(std::filesystem::file_size(save_path.fs()), 0u);
-
-    // NOTE: set_position/get_position is not tested because cloned game_objects
-    // don't have m_root_component initialized (requires full post_construct chain).
-    // Round-trip reload is also skipped due to the asset ref format mismatch.
 
     std::filesystem::remove(save_path.fs());
 }

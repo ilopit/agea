@@ -442,9 +442,25 @@ glob_state();
 
 void
 glob_state_reset();
+
+// Process-lifetime registry for schedule actions added via static initializers
+// (KRG_gen__static_schedule). Unlike gs::state::m_scheduled_actions — which gets
+// cleared on glob_state_reset — these persist across resets so hot reload and
+// tests that re-init the engine actually re-run package registrations etc.
+//
+// Internally: keyed by state_stage; each stage's vector is replayed at the start
+// of the corresponding gs::state::run_X() call.
+struct persistent_schedule
+{
+    static int
+    add(gs::state::state_stage stage, gs::scheduled_action action);
+
+    static void
+    run(gs::state::state_stage stage, gs::state& s);
+};
 }  // namespace glob
 }  // namespace kryga
 
 #define KRG_gen__static_schedule(when, action)          \
     const int KRG_concat2(si_identifier, __COUNTER__) = \
-        kryga::glob::glob_state().schedule_action(when, action)
+        kryga::glob::persistent_schedule::add(when, action)

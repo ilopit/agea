@@ -39,16 +39,30 @@ native_window::construct(construct_params& c)
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER);
 
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
-
+    Uint32 flags = SDL_WINDOW_VULKAN;
+    if (c.hidden)
+    {
+        flags |= SDL_WINDOW_HIDDEN;
+    }
 #if defined(__ANDROID__)
     // On Android the window is fullscreen — dimensions are dictated by the
     // surface provided by the Activity, not the construct_params values.
-    window_flags = (SDL_WindowFlags)(window_flags | SDL_WINDOW_FULLSCREEN);
+    flags |= SDL_WINDOW_FULLSCREEN;
 #endif
 
-    m_window = SDL_CreateWindow(
-        "KRYGA v0.1", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, c.w, c.h, window_flags);
+    m_window = SDL_CreateWindow("KRYGA v0.1",
+                                SDL_WINDOWPOS_UNDEFINED,
+                                SDL_WINDOWPOS_UNDEFINED,
+                                c.w,
+                                c.h,
+                                static_cast<SDL_WindowFlags>(flags));
+
+    // Hidden headless windows don't need an icon — skip filesystem + surface setup.
+    if (c.hidden)
+    {
+        return !!m_window;
+    }
+
     auto icon_rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://editor/icon_256.png"));
 
     int tex_width = 0, tex_height = 0, tex_channels = 0;

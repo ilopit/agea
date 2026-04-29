@@ -19,7 +19,7 @@ if(KRG_ENABLE_SYNC_SERVICE)
       DOWNLOAD_EXTRACT_TIMESTAMP ON
     )
 
-    set(BOOST_INCLUDE_LIBRARIES beast url)
+    set(BOOST_INCLUDE_LIBRARIES beast url process filesystem)
     FetchContent_MakeAvailable(Boost)
 endif()
 
@@ -183,6 +183,13 @@ FetchContent_Declare(
   GIT_TAG        a15acd87a3f3241a29ea1363ceafc680dca3a96b
 )
 
+FetchContent_Declare(
+  imguifiledialog
+  GIT_REPOSITORY https://github.com/aiekick/ImGuiFileDialog.git
+  GIT_TAG        v0.6.7
+  GIT_SHALLOW    TRUE
+)
+
 # ==============================================================================
 # Make available: Category A (have CMakeLists.txt)
 # ==============================================================================
@@ -209,4 +216,5 @@ FetchContent_Populate(textedit)
 FetchContent_Populate(vma)
 FetchContent_Populate(cgltf)
 FetchContent_Populate(imguizmo)
+FetchContent_Populate(imguifiledialog)
 FetchContent_Populate(xatlas)

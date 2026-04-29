@@ -32,6 +32,11 @@ struct startup_options
     float run_for_seconds = 0.f;  // 0 = unlimited
     bool show_help = false;
 
+    // Test-harness / headless mode (set programmatically, not parsed from CLI).
+    // Skips SDL window, input manager, UI, game_editor. Uses offscreen render target.
+    // Pair with tick_headless() for frame rendering.
+    bool headless = false;
+
     // Parse command line arguments
     // Returns false if parsing failed or help was requested
     static bool
@@ -68,6 +73,11 @@ public:
     void
     tick(float dt);
 
+    // Run one render frame without input/UI/event pump. Used in headless test mode.
+    // Caller is responsible for any prior camera/render_bridge setup.
+    void
+    tick_headless();
+
     void
     execute_sync_requests();
 
@@ -86,12 +96,14 @@ public:
     bool
     unload_render_resources(core::package& l);
 
+    // Load a level by id: runs the level_manager pipeline, marks it current,
+    // uploads lightmap texture if baked. Public so headless tests can drive it.
+    bool
+    load_level(const utils::id& level_id);
+
 private:
     void
     update_cameras();
-
-    bool
-    load_level(const utils::id& level_id);
 
     void consume_updated_render();
     void consume_updated_transforms();
@@ -100,6 +112,7 @@ private:
     render_thread_func();
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited
+    bool m_headless = false;
 
     gpu::camera_data m_camera_data;
 

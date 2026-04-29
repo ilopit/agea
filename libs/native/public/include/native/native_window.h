@@ -19,6 +19,10 @@ public:
     {
         int w = 1600;
         int h = 900;
+        // When true, the SDL window is created with SDL_WINDOW_HIDDEN — never
+        // appears on screen, doesn't steal focus. Used by headless tests so the
+        // ImGui SDL backend still has a valid SDL_Window* without a visible UI.
+        bool hidden = false;
     };
 
     bool

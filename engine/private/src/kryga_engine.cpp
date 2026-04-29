@@ -154,6 +154,8 @@ vulkan_engine::init(const startup_options& options)
         ALOG_INFO("Run duration limit: {} seconds", m_run_for_seconds);
     }
 
+    m_headless = options.headless;
+
     auto& gs = glob::glob_state();
     core::state_mutator__lua_api::set(gs);
     core::state_mutator__caches::set(gs);
@@ -171,8 +173,14 @@ vulkan_engine::init(const startup_options& options)
 
     state_mutator__config::set(gs);
     state_mutator__game_editor::set(gs);
-    state_mutator__input_manager::set(gs);
-    glob::set_input_provider(glob::glob_state().get_input_manager());
+    // input_manager is the only subsystem that truly can't run headless —
+    // it hooks the OS event pump which tests don't drive. Everything else
+    // (native_window, ui) works against a hidden SDL window.
+    if (!m_headless)
+    {
+        state_mutator__input_manager::set(gs);
+        glob::set_input_provider(glob::glob_state().get_input_manager());
+    }
     state_mutator__render_device::set(gs);
     state_mutator__vulkan_render::set(gs);
     state_mutator__vulkan_render_loader::set(gs);
@@ -192,32 +200,61 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().get_config()->load(vfs::rid("data://configs/kryga.acfg"));
 
-    glob::glob_state().get_input_manager()->load_actions(vfs::rid("data://configs/inputs.acfg"));
+    if (!m_headless)
+    {
+        glob::glob_state().get_input_manager()->load_actions(
+            vfs::rid("data://configs/inputs.acfg"));
+    }
 
     // Load render config (with rtcache fallback for session state)
     render::render_config render_cfg;
     render_cfg.load_with_cache(vfs::rid("data://configs/render.acfg"),
                                vfs::rid("rtcache://render.acfg"));
 
-    glob::glob_state().get_game_editor()->init();
+    if (!m_headless)
+    {
+        // game_editor::init registers input actions — requires input_manager, which
+        // headless mode skips
+        glob::glob_state().get_game_editor()->init();
+    }
 
     gs.schedule_action(gs::state::state_stage::init,
                        [](kryga::gs::state& s) { s.get_pm()->init(); });
     gs.run_init();
 
-    native_window::construct_params rwc;
-    rwc.w = 1600 * 2;
-    rwc.h = 900 * 2;
-    auto window = glob::glob_state().get_native_window();
+    render::render_device::construct_params rdc;
+    uint32_t render_w = 1600 * 2;
+    uint32_t render_h = 900 * 2;
 
+    if (m_headless)
+    {
+        render_w = 512;
+        render_h = 512;
+    }
+
+    // Always construct a window. In headless mode it's hidden — ImGui/UI still
+    // need a valid SDL_Window* but we don't want anything appearing on screen.
+    native_window::construct_params rwc;
+    rwc.w = render_w;
+    rwc.h = render_h;
+    rwc.hidden = m_headless;
+    auto window = glob::glob_state().get_native_window();
     if (!window->construct(rwc))
     {
         ALOG_LAZY_ERROR;
         return false;
     }
 
-    render::render_device::construct_params rdc;
-    rdc.window = window->handle();
+    if (m_headless)
+    {
+        rdc.headless = true;
+    }
+    else
+    {
+        // Headless render_device ignores the window; windowed mode binds to it
+        // for swapchain/surface creation.
+        rdc.window = window->handle();
+    }
 
     auto device = glob::glob_state().get_render_device();
     if (!device->construct(rdc))
@@ -228,9 +265,13 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_ui().init();
 
-    // Load bake config (with rtcache fallback for session state)
-    ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
-                                            vfs::rid("rtcache://bake.acfg"));
+    if (!m_headless)
+    {
+        // Load bake config (with rtcache fallback for session state) — editor-only
+        // feature, skip in headless
+        ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
+                                                vfs::rid("rtcache://bake.acfg"));
+    }
 
     // Use the actual window size after SDL settled it — on Android fullscreen
     // the requested rwc.w/rwc.h is ignored and the surface is device-sized
@@ -244,9 +285,14 @@ vulkan_engine::init(const startup_options& options)
 
     init_default_resources();
 
-    init_scene();
+    if (!m_headless)
+    {
+        // init_scene hardcodes a level + uses native_window.aspect_ratio; tests load
+        // their own level and set their own camera
+        init_scene();
 
-    m_sync_service->start();
+        m_sync_service->start();
+    }
 
     ALOG_INFO("Initialization completed");
     return true;
@@ -255,12 +301,15 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
-    // Save session state to rtcache
-    glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
-        vfs::rid("rtcache://render.acfg"));
-    ui::get_window<ui::bake_editor>()->save_config();
+    // Save session state to rtcache (non-headless only — headless tests don't touch session cfg)
+    if (!m_headless)
+    {
+        glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
+            vfs::rid("rtcache://render.acfg"));
+        ui::get_window<ui::bake_editor>()->save_config();
 
-    glob::set_input_provider(nullptr);
+        glob::set_input_provider(nullptr);
+    }
 
     m_sync_service->stop();
 
@@ -316,6 +365,11 @@ vulkan_engine::render_thread_func()
 void
 vulkan_engine::run()
 {
+    // run() pumps SDL events and calls ui->new_frame → requires an input_manager
+    // and an active SDL event loop. Headless mode skips input_manager, so tests
+    // must drive rendering via tick_headless() instead.
+    KRG_check(!m_headless, "vulkan_engine::run() is not supported in headless mode — use tick_headless()");
+
     float frame_time = 1.f / glob::glob_state().get_config()->fps_lock;
     const std::chrono::microseconds frame_time_int(1000000 /
                                                    glob::glob_state().get_config()->fps_lock);
@@ -432,6 +486,18 @@ vulkan_engine::run()
     m_render_cv.notify_one();
     m_render_thread.join();
 }
+void
+vulkan_engine::tick_headless()
+{
+    // Process dirty-render items queued by level/package load
+    consume_updated_render();
+    consume_updated_transforms();
+
+    glob::glob_state().getr_render_bridge().drain_queue();
+    glob::glob_state().getr_vulkan_render().draw_headless();
+    glob::glob_state().getr_render_bridge().reset_arena();
+}
+
 void
 vulkan_engine::tick(float dt)
 {

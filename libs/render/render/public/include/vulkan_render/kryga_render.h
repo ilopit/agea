@@ -265,6 +265,18 @@ public:
     render_pass*
     get_render_pass(const utils::id& id);
 
+    uint32_t
+    get_width() const
+    {
+        return m_width;
+    }
+
+    uint32_t
+    get_height() const
+    {
+        return m_height;
+    }
+
     // Active config — what the renderer is currently using. UI/tools should
     // mutate via get_pending_render_config() instead, so the change picks up
     // the apply_pending_render_config() gate that handles topology rebuilds

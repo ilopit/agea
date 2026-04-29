@@ -2,6 +2,7 @@
 
 #include <utils/kryga_log.h>
 
+#include <array>
 #include <iostream>
 
 namespace kryga::glob
@@ -18,6 +19,38 @@ glob_state_reset()
 {
     glob_state() = {};
 }
+
+namespace
+{
+using stage_actions = std::array<std::vector<::kryga::gs::scheduled_action>,
+                                 (size_t)::kryga::gs::state::state_stage::number_of_stages>;
+
+stage_actions&
+persistent_actions()
+{
+    static stage_actions g;
+    return g;
+}
+}  // namespace
+
+int
+persistent_schedule::add(::kryga::gs::state::state_stage stage,
+                         ::kryga::gs::scheduled_action action)
+{
+    auto& bucket = persistent_actions()[(size_t)stage];
+    bucket.push_back(std::move(action));
+    return (int)bucket.size();
+}
+
+void
+persistent_schedule::run(::kryga::gs::state::state_stage stage, ::kryga::gs::state& s)
+{
+    for (auto& a : persistent_actions()[(size_t)stage])
+    {
+        a(s);
+    }
+}
+
 }  // namespace kryga::glob
 
 namespace kryga::gs
@@ -50,6 +83,12 @@ state::operator=(state&& other)
     {
         cleanup();
         m_stage = state_stage::create;
+        // Clear scheduled actions - static initializers may have added actions
+        // that shouldn't persist across state resets
+        for (auto& actions : m_scheduled_actions)
+        {
+            actions.clear();
+        }
     }
 
     return *this;
@@ -110,6 +149,10 @@ state::run_init()
 void
 state::run_items(state_stage stage)
 {
+    // Persistent (static-init) actions fire first every time — they register
+    // subsystems that must survive glob_state_reset (root/base packages etc).
+    ::kryga::glob::persistent_schedule::run(stage, *this);
+
     auto& node = m_scheduled_actions[(size_t)stage];
     for (auto& a : node)
     {

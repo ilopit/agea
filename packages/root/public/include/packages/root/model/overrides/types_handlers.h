@@ -21,6 +21,7 @@ result_code color__to_string(reflection::type_context__to_string& ctx);
 result_code buffer__save(reflection::type_context__save& ctx);
 result_code buffer__load(reflection::type_context__load& ctx);
 result_code buffer__copy(reflection::type_context__copy& ctx);
+result_code buffer__compare(reflection::type_context__compare& ctx);
 result_code buffer__to_string(reflection::type_context__to_string& ctx);
 
 result_code id__save(reflection::type_context__save& ctx);

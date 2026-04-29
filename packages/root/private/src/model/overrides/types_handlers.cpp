@@ -20,6 +20,8 @@
 #include <vfs/rid.h>
 #include <vfs/io.h>
 
+#include <cstring>
+
 #include <utils/kryga_log.h>
 #include <utils/string_utility.h>
 
@@ -37,9 +39,14 @@ load_smart_object(blob_ptr ptr,
 {
     auto& field = reflection::utils::as_type<::kryga::root::smart_object*>(ptr);
 
-    const auto id = AID(jc.as<std::string>());
+    const auto id_str = jc.as<std::string>();
+    if (id_str.empty())
+    {
+        field = nullptr;
+        return result_code::ok;
+    }
 
-    auto result = ctor.load_obj(id);
+    auto result = ctor.load_obj(AID(id_str));
     if (!result)
     {
         return result.error();
@@ -117,7 +124,10 @@ smart_obj__save(reflection::type_context__save& ctx)
 {
     auto field = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.obj);
 
-    (*ctx.jc)["id"] = field->get_id().str();
+    // Must match load: smart_obj__load reads jc.as<std::string>() expecting a
+    // scalar id. Writing a mapping breaks round-trip for converter output.
+    // Null pointer round-trips as empty string (see load_smart_object).
+    *ctx.jc = field ? field->get_id().str() : std::string{};
 
     return result_code::ok;
 }
@@ -141,8 +151,18 @@ smart_obj__to_string(reflection::type_context__to_string& ctx)
 kryga::result_code
 smart_obj__compare(reflection::type_context__compare& ctx)
 {
-    KRG_unused(ctx);
-    return result_code::failed;
+    auto left = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.left_obj);
+    auto right = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.right_obj);
+
+    if (left == right)
+    {
+        return result_code::ok;
+    }
+    if (!left || !right)
+    {
+        return result_code::failed;
+    }
+    return left->get_id() == right->get_id() ? result_code::ok : result_code::failed;
 }
 
 result_code
@@ -260,6 +280,22 @@ texture_slot__load(reflection::type_context__load& ctx)
     }
 
     return result_code::ok;
+}
+
+kryga::result_code
+buffer__compare(reflection::type_context__compare& ctx)
+{
+    auto& a = reflection::utils::as_type<::kryga::utils::buffer>(ctx.left_obj);
+    auto& b = reflection::utils::as_type<::kryga::utils::buffer>(ctx.right_obj);
+    if (a.size() != b.size())
+    {
+        return result_code::failed;
+    }
+    if (a.size() == 0)
+    {
+        return result_code::ok;
+    }
+    return std::memcmp(a.data(), b.data(), a.size()) == 0 ? result_code::ok : result_code::failed;
 }
 
 kryga::result_code

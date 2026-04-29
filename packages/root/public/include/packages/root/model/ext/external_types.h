@@ -98,7 +98,8 @@ KRG_ar_external_define(::std::string);
 KRG_ar_external_type(to_string_handler   = buffer__to_string,
                       copy_handler        = buffer__copy,
                       load_derive_handler = buffer__load,
-                      serialize_handler   = buffer__save);
+                      serialize_handler   = buffer__save,
+                      compare_handler     = buffer__compare);
 KRG_ar_external_define(::kryga::utils::buffer);
 
 

@@ -94,6 +94,12 @@ public:
         return m_package_ids;
     }
 
+    void
+    add_package_id(const utils::id& id)
+    {
+        m_package_ids.push_back(id);
+    }
+
     object_load_context&
     get_load_context() const
     {

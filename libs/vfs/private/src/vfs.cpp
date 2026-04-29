@@ -488,6 +488,12 @@ virtual_file_system::real_path(const rid& id) const
         return std::nullopt;
     }
 
+    // Prefer the highest-priority mount that actually contains the file.
+    // If no mount has it (e.g. write-path resolution for a new file), fall back
+    // to the first matching mount — physical_backend::real_path just joins the
+    // path, so any matching mount is a valid candidate location.
+    std::optional<std::filesystem::path> fallback;
+
     for (auto& e : m_mounts)
     {
         if (e.mount_point != id.mount_point())
@@ -510,13 +516,21 @@ virtual_file_system::real_path(const rid& id) const
         }
 
         auto rp = e.be->real_path(lookup);
-        if (rp.has_value())
+        if (!rp.has_value())
+        {
+            continue;
+        }
+        if (std::filesystem::exists(*rp))
         {
             return rp;
         }
+        if (!fallback.has_value())
+        {
+            fallback = rp;
+        }
     }
 
-    return std::nullopt;
+    return fallback;
 }
 
 temp_dir_context

@@ -152,12 +152,43 @@ package_manager::load_package(const utils::id& id)
         return true;
     }
 
+    // Read dependencies from package.acfg before constructing the package so we
+    // can transitively load them first. Static packages (root/base/...) are
+    // already loaded by package_manager::init(); load_package() on them
+    // short-circuits above.
+    std::vector<utils::id> runtime_deps;
+    {
+        auto acfg_rid = vfs_paths::package_root(id) / "package.acfg";
+        serialization::container meta;
+        if (serialization::read_container(acfg_rid, meta))
+        {
+            auto deps_node = meta["dependencies"];
+            if (deps_node && deps_node.IsSequence())
+            {
+                for (auto&& item : deps_node)
+                {
+                    runtime_deps.push_back(AID(item.as<std::string>()));
+                }
+            }
+        }
+    }
+
+    for (const auto& dep_id : runtime_deps)
+    {
+        if (!load_package(dep_id))
+        {
+            ALOG_ERROR("Failed to load dep [{0}] of package [{1}]", dep_id.cstr(), id.cstr());
+            return false;
+        }
+    }
+
     auto new_package = std::make_unique<package>(AID(id.str()));
     if (!new_package->init())
     {
         ALOG_ERROR("Failed to init package {}", id.cstr());
         return false;
     }
+    new_package->set_runtime_dependencies(std::move(runtime_deps));
 
     {
         auto& vfs = glob::glob_state().getr_vfs();

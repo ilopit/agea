@@ -24,29 +24,11 @@ class property;
 namespace core
 {
 
-static inline const auto ks_class_constructed = root::smart_object_flags{.instance_obj = false,
-                                                                         .derived_obj = false,
-                                                                         .runtime_obj = true,
-                                                                         .mirror_obj = false,
-                                                                         .default_obj = false};
-
-static inline const auto ks_instance_constructed = root::smart_object_flags{.instance_obj = true,
-                                                                            .derived_obj = false,
-                                                                            .runtime_obj = true,
-                                                                            .mirror_obj = false,
-                                                                            .default_obj = false};
-
 static inline const auto ks_class_default = root::smart_object_flags{.instance_obj = false,
                                                                      .derived_obj = false,
                                                                      .runtime_obj = true,
                                                                      .mirror_obj = false,
                                                                      .default_obj = true};
-
-static inline const auto ks_class = root::smart_object_flags{.instance_obj = false,
-                                                             .derived_obj = false,
-                                                             .runtime_obj = false,
-                                                             .mirror_obj = false,
-                                                             .default_obj = false};
 
 static inline const auto ks_class_derived = root::smart_object_flags{.instance_obj = false,
                                                                      .derived_obj = true,
@@ -59,12 +41,6 @@ static inline const auto ks_instance_derived = root::smart_object_flags{.instanc
                                                                         .runtime_obj = false,
                                                                         .mirror_obj = false,
                                                                         .default_obj = false};
-
-static inline const auto ks_instance_mirror = root::smart_object_flags{.instance_obj = true,
-                                                                       .derived_obj = false,
-                                                                       .runtime_obj = true,
-                                                                       .mirror_obj = true,
-                                                                       .default_obj = false};
 
 class object_constructor
 {

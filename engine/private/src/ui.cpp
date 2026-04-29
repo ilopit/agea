@@ -12,6 +12,7 @@
 #include "engine/private/ui/gizmo_editor.h"
 #include "engine/private/ui/action_progress_window.h"
 #include "engine/private/ui/bake_editor.h"
+#include "engine/private/ui/converter_window.h"
 #include "engine/editor.h"
 
 #include <core/level.h>
@@ -59,9 +60,8 @@ state_mutator__ui::set(gs::state& s)
 namespace ui
 {
 
-static gizmo_editor s_gizmo_editor;
-
 ui::ui()
+    : m_gizmo_editor(std::make_unique<gizmo_editor>())
 {
     property_drawers::init();
 
@@ -89,6 +89,9 @@ ui::ui()
 
     m_windows[bake_editor::window_title()] = std::make_unique<bake_editor>();
     m_windows[bake_editor::window_title()]->m_show = true;
+
+    m_windows[converter_window::window_title()] = std::make_unique<converter_window>();
+    m_windows[converter_window::window_title()]->m_show = true;
 }
 
 ui::~ui()
@@ -115,8 +118,8 @@ ui::init()
     auto ini_rp = vfs.real_path(vfs::rid("rtcache://imgui.ini"));
     if (ini_rp.has_value())
     {
-        static std::string ini_file = ini_rp.value().string();
-        io.IniFilename = ini_file.c_str();
+        m_imgui_ini_path = ini_rp.value().string();
+        io.IniFilename = m_imgui_ini_path.c_str();
     }
 
     ImGui_ImplSDL2_InitForVulkan(glob::glob_state().getr_native_window().handle());
@@ -198,7 +201,7 @@ ui::new_frame(float dt)
 
     ImGuizmo::BeginFrame();
 
-    s_gizmo_editor.draw();
+    m_gizmo_editor->draw();
 
     ImGui::Render();
 }
