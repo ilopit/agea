@@ -214,6 +214,7 @@ render_config::load(const vfs::rid& rid)
 
     if (auto debug_node = container["debug"]; debug_node && debug_node.IsMap())
     {
+        extract_field(debug_node, "editor_mode", debug.editor_mode);
         extract_field(debug_node, "show_grid", debug.show_grid);
         extract_field(debug_node, "light_wireframe", debug.light_wireframe);
         extract_field(debug_node, "light_icons", debug.light_icons);
@@ -271,6 +272,7 @@ render_config::save(const utils::path& path) const
     root["lighting"] = lighting_node;
 
     YAML::Node debug_node;
+    debug_node["editor_mode"] = debug.editor_mode;
     debug_node["show_grid"] = debug.show_grid;
     debug_node["light_wireframe"] = debug.light_wireframe;
     debug_node["light_icons"] = debug.light_icons;
@@ -338,6 +340,7 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
 
             if (auto d = container["debug"]; d && d.IsMap())
             {
+                extract_field(d, "editor_mode", debug.editor_mode);
                 extract_field(d, "show_grid", debug.show_grid);
                 extract_field(d, "light_wireframe", debug.light_wireframe);
                 extract_field(d, "light_icons", debug.light_icons);
@@ -396,6 +399,7 @@ render_config::save_to_cache(const vfs::rid& cache) const
     root["lighting"] = lighting_node;
 
     YAML::Node debug_node;
+    debug_node["editor_mode"] = debug.editor_mode;
     debug_node["show_grid"] = debug.show_grid;
     debug_node["light_wireframe"] = debug.light_wireframe;
     debug_node["light_icons"] = debug.light_icons;

@@ -3,12 +3,19 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
+#extension GL_EXT_nonuniform_qualifier : require
 
 #include "gpu_types/gpu_push_constants_grid.h"
 layout(push_constant) uniform Constants { push_constants_grid obj; } constants;
 #include "bda_macros_grid.glsl"
 
 #include "gpu_types/gpu_generic_constants.h"
+
+// Bindless depth sampling — used when the grid is drawn in the composite pass
+// (render_scale on) to test against scene depth. scene_depth_idx == 0xFFFFFFFFu
+// means the grid is in the main pass and the native depth test handles it.
+layout(set = KGPU_textures_descriptor_sets, binding = 0) uniform sampler static_samplers[KGPU_SAMPLER_COUNT];
+layout(set = KGPU_textures_descriptor_sets, binding = 1) uniform texture2D bindless_textures[];
 
 layout (location = 0) in vec3 in_near_point;
 layout (location = 1) in vec3 in_far_point;
@@ -85,6 +92,21 @@ void main()
     // Write depth from world-space intersection point
     float depth = compute_depth(world_pos);
     gl_FragDepth = clamp(depth, 0.0, 1.0);
+
+    // Manual occlusion against scene depth when the native depth attachment is
+    // not the scene's (composite pass, render_scale on). The depth texture is
+    // lowres; expect ~1 lowres-pixel shimmer along silhouettes — the cost of
+    // not running a full-res depth prepass.
+    if (constants.obj.scene_depth_idx != 0xFFFFFFFFu)
+    {
+        vec2 uv = gl_FragCoord.xy * constants.obj.screen_size_inv;
+        float scene_depth = texture(
+            sampler2D(bindless_textures[nonuniformEXT(constants.obj.scene_depth_idx)],
+                      static_samplers[KGPU_SAMPLER_NEAREST_CLAMP]),
+            uv).r;
+        if (gl_FragDepth > scene_depth)
+            discard;
+    }
 
     out_color = color;
 }

@@ -466,8 +466,12 @@ render_config_window::handle()
         }
 
         // Bias
-        if (ImGui::DragFloat(
-                "Shadow Bias", &cfg.shadows.bias, 0.0001f, KGPU_SHADOW_BIAS_MIN, KGPU_SHADOW_BIAS_MAX, "%.4f"))
+        if (ImGui::DragFloat("Shadow Bias",
+                             &cfg.shadows.bias,
+                             0.0001f,
+                             KGPU_SHADOW_BIAS_MIN,
+                             KGPU_SHADOW_BIAS_MAX,
+                             "%.4f"))
         {
         }
         if (ImGui::IsItemHovered())
@@ -484,13 +488,12 @@ render_config_window::handle()
         }
 
         // Normal Bias
-        if (ImGui::DragFloat(
-                "Normal Bias",
-                &cfg.shadows.normal_bias,
-                0.001f,
-                KGPU_SHADOW_NORMAL_BIAS_MIN,
-                KGPU_SHADOW_NORMAL_BIAS_MAX,
-                "%.3f"))
+        if (ImGui::DragFloat("Normal Bias",
+                             &cfg.shadows.normal_bias,
+                             0.001f,
+                             KGPU_SHADOW_NORMAL_BIAS_MIN,
+                             KGPU_SHADOW_NORMAL_BIAS_MAX,
+                             "%.3f"))
         {
         }
         if (ImGui::IsItemHovered())
@@ -529,13 +532,12 @@ render_config_window::handle()
         }
 
         // Shadow distance
-        if (ImGui::DragFloat(
-                "Distance",
-                &cfg.shadows.distance,
-                1.0f,
-                KGPU_SHADOW_DISTANCE_MIN,
-                KGPU_SHADOW_DISTANCE_MAX,
-                "%.0f m"))
+        if (ImGui::DragFloat("Distance",
+                             &cfg.shadows.distance,
+                             1.0f,
+                             KGPU_SHADOW_DISTANCE_MIN,
+                             KGPU_SHADOW_DISTANCE_MAX,
+                             "%.0f m"))
         {
         }
         if (ImGui::IsItemHovered())
@@ -556,8 +558,7 @@ render_config_window::handle()
         {
             for (uint32_t i = 0; i < cfg.shadows.cascade_count; ++i)
             {
-                ImGui::BulletText(
-                    "Cascade %u: %.1f m", i, vr.get_cascade_split_depth(i));
+                ImGui::BulletText("Cascade %u: %.1f m", i, vr.get_cascade_split_depth(i));
             }
             ImGui::TreePop();
         }
@@ -616,10 +617,7 @@ render_config_window::handle()
     {
         int tile_size = static_cast<int>(cfg.clusters.tile_size);
         if (ImGui::SliderInt(
-                "Tile Size",
-                &tile_size,
-                KGPU_cluster_tile_size_min,
-                KGPU_cluster_tile_size_max))
+                "Tile Size", &tile_size, KGPU_cluster_tile_size_min, KGPU_cluster_tile_size_max))
         {
             cfg.clusters.tile_size = static_cast<uint32_t>(tile_size);
         }
@@ -636,11 +634,10 @@ render_config_window::handle()
         }
 
         int depth_slices = static_cast<int>(cfg.clusters.depth_slices);
-        if (ImGui::SliderInt(
-                "Depth Slices",
-                &depth_slices,
-                KGPU_cluster_depth_slices_min,
-                KGPU_cluster_depth_slices_max))
+        if (ImGui::SliderInt("Depth Slices",
+                             &depth_slices,
+                             KGPU_cluster_depth_slices_min,
+                             KGPU_cluster_depth_slices_max))
         {
             cfg.clusters.depth_slices = static_cast<uint32_t>(depth_slices);
         }
@@ -657,11 +654,10 @@ render_config_window::handle()
         }
 
         int max_lights = static_cast<int>(cfg.clusters.max_lights_per_cluster);
-        if (ImGui::SliderInt(
-                "Max Lights/Cluster",
-                &max_lights,
-                KGPU_max_lights_per_cluster_min,
-                KGPU_max_lights_per_cluster_max))
+        if (ImGui::SliderInt("Max Lights/Cluster",
+                             &max_lights,
+                             KGPU_max_lights_per_cluster_min,
+                             KGPU_max_lights_per_cluster_max))
         {
             cfg.clusters.max_lights_per_cluster = static_cast<uint32_t>(max_lights);
         }
@@ -699,6 +695,16 @@ render_config_window::handle()
     // =========================================================================
     if (ImGui::CollapsingHeader("Debug"))
     {
+        ImGui::Checkbox("Editor Mode", &cfg.debug.editor_mode);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Master toggle for editor-only visuals (grid, gizmos, debug "
+                "wireframes, light icon billboards). Off = preview as game.");
+        }
+
+        ImGui::SameLine();
+
         ImGui::Checkbox("Grid", &cfg.debug.show_grid);
         if (ImGui::IsItemHovered())
         {
@@ -766,8 +772,7 @@ render_config_window::handle()
 
     if (ImGui::Button("Save"))
     {
-        auto rp =
-            glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/render.acfg"));
+        auto rp = glob::glob_state().getr_vfs().real_path(vfs::rid("data://configs/render.acfg"));
         auto path = APATH(rp.value());
         cfg.save(path);
         glob::glob_state().getr_vfs().remove(vfs::rid("rtcache://render.acfg"));

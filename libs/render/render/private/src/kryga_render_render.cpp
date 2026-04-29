@@ -131,7 +131,8 @@ vulkan_render::build_batches_for_queue_into(render_line_container& r,
 
         // Frustum culling - happens here now, not in draw
         if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
+            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center,
+                                         obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -261,60 +262,6 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         }
     }
 
-    // DEBUG — render with all lighting disabled (unlit)
-    if (!m_debug_draw_batches.empty())
-    {
-        // Save lighting state
-        uint32_t saved_dir = m_obj_config.enable_directional_light;
-        uint32_t saved_local = m_obj_config.enable_local_lights;
-        uint32_t saved_baked = m_obj_config.enable_baked_light;
-
-        m_obj_config.enable_directional_light = 0;
-        m_obj_config.enable_local_lights = 0;
-        m_obj_config.enable_baked_light = 0;
-
-        pctx = {};
-        cur_material = nullptr;
-
-        for (const auto& batch : m_debug_draw_batches)
-        {
-            if (cur_material != batch.material)
-            {
-                bind_material(cmd, batch.material, current_frame, pctx, false);
-                cur_material = batch.material;
-            }
-
-            bind_mesh(cmd, batch.mesh);
-
-            m_obj_config.instance_base = batch.first_instance_offset;
-            m_obj_config.material_id = batch.material->gpu_idx();
-            m_obj_config.use_clustered_lighting = 0;
-            m_obj_config.directional_light_id = 0;
-            copy_texture_indices(m_obj_config, batch.material);
-
-            vkCmdPushConstants(cmd,
-                               pctx.pipeline_layout,
-                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                               0,
-                               sizeof(gpu::push_constants_main),
-                               &m_obj_config);
-
-            if (batch.mesh->has_indices())
-            {
-                vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
-            }
-            else
-            {
-                vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
-            }
-        }
-
-        // Restore lighting state
-        m_obj_config.enable_directional_light = saved_dir;
-        m_obj_config.enable_local_lights = saved_local;
-        m_obj_config.enable_baked_light = saved_baked;
-    }
-
     // TRANSPARENT - needs per-object sorting, add slots after opaque batches
     if (!m_transparent_render_object_queue.empty())
     {
@@ -382,19 +329,13 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         }
     }
 
-    // Draw debug light visualization
-    draw_debug_lights(cmd, current_frame);
-
-    // Draw grid overlay
-    draw_grid(cmd, current_frame);
-
-    // Draw outline post-process (edge detection on selection mask)
-    draw_outline_post(cmd, current_frame);
-
-    // UI is drawn in the composite pass when render_scale is enabled, to keep it
-    // at full resolution. Otherwise it composites here on the swapchain.
+    // Debug overlays + outline post are drawn at full res. When render-scale is
+    // on they happen in the composite pass instead — drawing them here would put
+    // them on the lowres scene target, getting smeared by the upscale.
     if (!m_render_config.render_scale.enabled)
     {
+        draw_debug_overlay(cmd, current_frame);
+        draw_outline_post(cmd, current_frame);
         draw_ui_overlay(cmd, current_frame);
     }
 }
@@ -418,7 +359,20 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_grid_se->m_pipeline);
 
-    // Set 0 removed — camera accessed via BDA pointer table in push constants
+    // Bindless set must be (re)bound under grid's own pipeline layout — push
+    // constant ranges differ from previously bound pipelines (e.g. debug_wire),
+    // which under Vulkan layout-compatibility rules invalidates the prior bind.
+    if (m_bindless_set != VK_NULL_HANDLE)
+    {
+        vkCmdBindDescriptorSets(cmd,
+                                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                pipeline_layout,
+                                KGPU_textures_descriptor_sets,
+                                1,
+                                &m_bindless_set,
+                                0,
+                                nullptr);
+    }
 
     bind_mesh(cmd, m);
 
@@ -438,6 +392,81 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
     {
         vkCmdDraw(cmd, m->vertices_size(), 1, 0, 0);
     }
+}
+
+// ============================================================================
+// Draw Functions - Debug overlay (full-res, always drawn after the scene)
+// ============================================================================
+
+void
+vulkan_render::draw_debug_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
+{
+#ifndef KRG_ENABLE_EDITOR
+    (void)cmd;
+    (void)current_frame;
+#else
+    // Master gate — runtime-toggleable in editor for "preview as game" mode.
+    if (!m_render_config.debug.editor_mode)
+    {
+        return;
+    }
+
+    // Editor-only render bucket (LAYER_EDITOR_ONLY objects, e.g. light gizmo billboards).
+    // Drawn unlit — lighting state saved/restored around the loop.
+    if (!m_debug_draw_batches.empty())
+    {
+        uint32_t saved_dir = m_obj_config.enable_directional_light;
+        uint32_t saved_local = m_obj_config.enable_local_lights;
+        uint32_t saved_baked = m_obj_config.enable_baked_light;
+
+        m_obj_config.enable_directional_light = 0;
+        m_obj_config.enable_local_lights = 0;
+        m_obj_config.enable_baked_light = 0;
+
+        pipeline_ctx pctx{};
+        material_data* cur_material = nullptr;
+
+        for (const auto& batch : m_debug_draw_batches)
+        {
+            if (cur_material != batch.material)
+            {
+                bind_material(cmd, batch.material, current_frame, pctx, false);
+                cur_material = batch.material;
+            }
+
+            bind_mesh(cmd, batch.mesh);
+
+            m_obj_config.instance_base = batch.first_instance_offset;
+            m_obj_config.material_id = batch.material->gpu_idx();
+            m_obj_config.use_clustered_lighting = 0;
+            m_obj_config.directional_light_id = 0;
+            copy_texture_indices(m_obj_config, batch.material);
+
+            vkCmdPushConstants(cmd,
+                               pctx.pipeline_layout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0,
+                               sizeof(gpu::push_constants_main),
+                               &m_obj_config);
+
+            if (batch.mesh->has_indices())
+            {
+                vkCmdDrawIndexed(cmd, batch.mesh->indices_size(), batch.instance_count, 0, 0, 0);
+            }
+            else
+            {
+                vkCmdDraw(cmd, batch.mesh->vertices_size(), batch.instance_count, 0, 0);
+            }
+        }
+
+        m_obj_config.enable_directional_light = saved_dir;
+        m_obj_config.enable_local_lights = saved_local;
+        m_obj_config.enable_baked_light = saved_baked;
+    }
+
+    draw_debug_lights(cmd, current_frame);
+    draw_grid(cmd, current_frame);
+#endif
 }
 
 // ============================================================================
@@ -593,8 +622,7 @@ vulkan_render::draw_scene_upscale(VkCommandBuffer cmd, render::frame_state& curr
 
     auto pipeline_layout = m_scene_upscale_se->m_pipeline_layout;
 
-    vkCmdBindPipeline(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_scene_upscale_se->m_pipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_scene_upscale_se->m_pipeline);
 
     if (m_bindless_set != VK_NULL_HANDLE)
     {
@@ -633,6 +661,9 @@ vulkan_render::draw_composite(VkCommandBuffer cmd, render::frame_state& current_
 {
     draw_scene_upscale(cmd, current_frame);
     draw_depth_outline(cmd, current_frame);
+    // Full-res overlays — order: debug visuals, outline edge-detect, UI on top.
+    draw_debug_overlay(cmd, current_frame);
+    draw_outline_post(cmd, current_frame);
     draw_ui_overlay(cmd, current_frame);
 }
 
@@ -653,8 +684,7 @@ vulkan_render::draw_depth_outline(VkCommandBuffer cmd, render::frame_state& curr
 
     auto pipeline_layout = m_depth_outline_se->m_pipeline_layout;
 
-    vkCmdBindPipeline(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_depth_outline_se->m_pipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_depth_outline_se->m_pipeline);
 
     if (m_bindless_set != VK_NULL_HANDLE)
     {
@@ -684,8 +714,7 @@ vulkan_render::draw_depth_outline(VkCommandBuffer cmd, render::frame_state& curr
 
     outline_pc pc;
     const auto& cfg = m_render_config.outline;
-    pc.outline_color =
-        glm::vec4(cfg.color[0], cfg.color[1], cfg.color[2], cfg.color[3]);
+    pc.outline_color = glm::vec4(cfg.color[0], cfg.color[1], cfg.color[2], cfg.color[3]);
     // texel_size is in low-res scene coordinates — that's where the depth texture lives
     pc.texel_size = glm::vec2(1.0f / m_scene_lowres_width, 1.0f / m_scene_lowres_height);
     pc.depth_threshold = cfg.depth_threshold;
@@ -695,12 +724,8 @@ vulkan_render::draw_depth_outline(VkCommandBuffer cmd, render::frame_state& curr
     pc.far_plane = m_cluster_config.far_plane;
     pc._pad = 0;
 
-    vkCmdPushConstants(cmd,
-                       pipeline_layout,
-                       VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0,
-                       sizeof(outline_pc),
-                       &pc);
+    vkCmdPushConstants(
+        cmd, pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(outline_pc), &pc);
 
     if (m->has_indices())
     {
@@ -796,7 +821,8 @@ vulkan_render::draw_multi_pipeline_objects_queue(render_line_container& r,
         ++m_all_draws;
         // Frustum culling
         if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
+            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center,
+                                         obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -856,7 +882,8 @@ vulkan_render::draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
         ++m_all_draws;
         // Frustum culling
         if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
+            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center,
+                                         obj->gpu_data.bounding_radius))
         {
             ++m_culled_draws;
             continue;
@@ -1186,22 +1213,23 @@ vulkan_render::prepare_ui_resources()
     // Note: AddFontFromMemoryTTF takes ownership of the pointer and frees
     // it on atlas destruction — give each call a heap copy.
     std::vector<uint8_t> font_bytes;
-    if (!glob::glob_state().getr_vfs().read_bytes(
-            vfs::rid("data://fonts/Roboto-Medium.ttf"), font_bytes))
+    if (!glob::glob_state().getr_vfs().read_bytes(vfs::rid("data://fonts/Roboto-Medium.ttf"),
+                                                  font_bytes))
     {
         KRG_never("Failed to load font data://fonts/Roboto-Medium.ttf");
     }
 
-    auto clone_ttf = [&font_bytes]() -> void* {
+    auto clone_ttf = [&font_bytes]() -> void*
+    {
         void* buf = IM_ALLOC(font_bytes.size());
         memcpy(buf, font_bytes.data(), font_bytes.size());
         return buf;
     };
 
-    auto f_normal = io.Fonts->AddFontFromMemoryTTF(
-        clone_ttf(), static_cast<int>(font_bytes.size()), 28.0f);
-    auto f_big = io.Fonts->AddFontFromMemoryTTF(
-        clone_ttf(), static_cast<int>(font_bytes.size()), 33.0f);
+    auto f_normal =
+        io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 28.0f);
+    auto f_big =
+        io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 33.0f);
 
     glob::glob_state().getr_vulkan_render_loader().create_font(AID("normal"), f_normal);
     glob::glob_state().getr_vulkan_render_loader().create_font(AID("big"), f_big);
@@ -1282,6 +1310,7 @@ vulkan_render::prepare_ui_pipeline()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::ui;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.depth_write = false;
 
         host_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
 
@@ -1312,6 +1341,7 @@ vulkan_render::prepare_ui_pipeline()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::ui;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.depth_write = false;
 
         composite_pass->create_shader_effect(AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
 
@@ -1322,12 +1352,12 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_scene_upscale_txt;
         samples.front().slot = 0;
 
-        m_scene_upscale_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
-            AID("mat_scene_upscale"),
-            AID("scene_upscale"),
-            samples,
-            *m_scene_upscale_se,
-            utils::dynobj{});
+        m_scene_upscale_mat =
+            glob::glob_state().getr_vulkan_render_loader().create_material(AID("mat_scene_upscale"),
+                                                                           AID("scene_upscale"),
+                                                                           samples,
+                                                                           *m_scene_upscale_se,
+                                                                           utils::dynobj{});
 
         // Override the default (LINEAR_REPEAT) sampler with NEAREST_CLAMP so the
         // upscale keeps chunky pixel edges instead of bilinear-smoothing them.
@@ -1492,7 +1522,7 @@ vulkan_render::draw_ui(frame_state& fs)
             VkRect2D scissorRect;
             scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
             scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
-            scissorRect.extent.width  = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
+            scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
             scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
             vkCmdSetScissor(fs.frame->m_main_command_buffer, 0, 1, &scissorRect);
             vkCmdDrawIndexed(fs.frame->m_main_command_buffer,

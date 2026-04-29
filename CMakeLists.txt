@@ -37,6 +37,10 @@ endif()
 option(KRG_ENABLE_SYNC_SERVICE "HTTP sync service for live asset/shader reload (requires Boost.Beast)" ${_krg_default_sync_service})
 option(KRG_ENABLE_EDITOR "Editor and dev tooling" ${_krg_default_editor})
 
+if(KRG_ENABLE_EDITOR)
+    add_compile_definitions(KRG_ENABLE_EDITOR=1)
+endif()
+
 # On Android, NDK r26d ships Vulkan 1.3.x headers but vk-bootstrap v1.4.x
 # references 1.4.x-only types (e.g. VkPhysicalDeviceGlobalPriorityQueryFeatures).
 # Fetch Khronos headers matching vk-bootstrap's tag and point Vulkan's include

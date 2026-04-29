@@ -486,6 +486,14 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 
         // Grid pass push constants
         m_grid_pc.bdag_camera = gpu::make_bda_addr(b.dynamic_data.device_address());
+        // When the grid runs in main pass (render_scale off) it relies on the
+        // native depth test — leave scene_depth_idx invalid so the shader skips
+        // the manual occlusion check (would also be a read-write hazard since
+        // main is writing the depth attachment).
+        m_grid_pc.scene_depth_idx =
+            m_render_config.render_scale.enabled ? m_scene_depth_bindless_idx : 0xFFFFFFFFu;
+        m_grid_pc.screen_size_inv =
+            glm::vec2(1.0f / static_cast<float>(m_width), 1.0f / static_cast<float>(m_height));
     }
 }
 

@@ -73,11 +73,15 @@ vulkan_render::prepare_render_passes()
 
     const bool outline_enabled = render_scale && m_render_config.outline.enabled;
 
+    // Always create main with sampled depth — VkRenderPass identity is preserved
+    // across runtime render_scale toggles, so finalLayout must be ready for the
+    // sampling case (composite samples main's depth for depth_outline and for
+    // grid occlusion). Cost is one extra usage flag on the depth image.
     {
         auto builder = render_pass_builder()
                            .set_color_format(swapchain_fmt)
                            .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
-                           .set_sampled_depth(outline_enabled)
+                           .set_sampled_depth(true)
                            .set_debug_name("main");
 
         if (render_scale)
@@ -134,17 +138,19 @@ vulkan_render::prepare_render_passes()
     }
 
     // Composite pass — only needed when render_scale upscale is enabled.
-    // Writes to swapchain at full resolution. Samples the scene_lowres target
-    // and draws the UI overlay on top.
+    // Writes to swapchain at full resolution. Samples the scene_lowres target,
+    // draws debug overlays (grid, light gizmos), then the UI overlay on top.
+    // Depth format matches main_pass so pipelines created against main_pass
+    // (grid, debug wireframe, billboards) remain render-pass-compatible when
+    // bound inside this pass.
     if (render_scale)
     {
         auto composite_pass =
             render_pass_builder()
                 .set_color_format(swapchain_fmt)
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
+                .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
                 .set_width_depth(m_width, m_height)
                 .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
-                .set_enable_stencil(false)
                 .set_debug_name("composite")
                 .build();
 

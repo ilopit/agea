@@ -95,12 +95,11 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     {
         m_frames[i].frame = &device.frame(i);
 
-        m_frames[i].buffers.objects =
-            device.create_buffer(OBJECTS_BUFFER_SIZE,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.objects", i));
+        m_frames[i].buffers.objects = device.create_buffer(OBJECTS_BUFFER_SIZE,
+                                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                           VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                                           0,
+                                                           KRG_VK_FMT_NAME("frame_{}.objects", i));
 
         m_frames[i].buffers.materials =
             device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE,
@@ -225,9 +224,12 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
         prepare_ui_pipeline();
     }
 
-    // Initialize clustered lighting (must match camera near/far planes)
-    m_cluster_grid.init(m_width,
-                        m_height,
+    // Initialize clustered lighting (must match camera near/far planes).
+    // Uses the effective rendering resolution — when render_scale is on the
+    // scene rasters at lowres, so the tile grid must be sized for that pixel
+    // grid. m_scene_lowres_* is already set by prepare_render_passes above.
+    m_cluster_grid.init(m_scene_lowres_width,
+                        m_scene_lowres_height,
                         KGPU_znear,  // near plane
                         KGPU_zfar,   // far plane - must match camera!
                         m_render_config.clusters.tile_size,
@@ -272,8 +274,8 @@ vulkan_render::apply_config_changes()
         c.depth_slices != m_applied_clusters.depth_slices ||
         c.max_lights_per_cluster != m_applied_clusters.max_lights_per_cluster)
     {
-        m_cluster_grid.init(m_width,
-                            m_height,
+        m_cluster_grid.init(m_scene_lowres_width,
+                            m_scene_lowres_height,
                             KGPU_znear,
                             KGPU_zfar,
                             c.tile_size,
@@ -346,15 +348,26 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     auto new_view = vk_utils::vulkan_image_view::create_shared(new_view_ci);
 
     // Swap into main pass — keeps VkRenderPass + SEs intact.
-    auto* main_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+    auto* main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
     if (!main_pass)
     {
         return false;
     }
+
+    // Drop scene_depth_texture's view+wrapper BEFORE replace_color_targets
+    // destroys main's old depth image (see toggle path for full rationale).
+    if (auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture")))
+    {
+        dtex->image_view.reset();
+        dtex->image.reset();
+    }
+
     const bool outline_enabled = m_render_config.outline.enabled;
-    if (!main_pass->replace_color_targets({new_img}, {new_view}, new_w, new_h,
-                                          /*sampled_depth=*/outline_enabled,
+    if (!main_pass->replace_color_targets({new_img},
+                                          {new_view},
+                                          new_w,
+                                          new_h,
+                                          /*sampled_depth=*/true,
                                           /*enable_stencil=*/true,
                                           "main"))
     {
@@ -371,16 +384,18 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     m_scene_upscale_txt = loader.create_texture(AID("scene_lowres_txt"), new_img, new_view);
     if (m_scene_upscale_mat && m_scene_upscale_txt)
     {
-        m_scene_upscale_mat->set_bindless_texture_index(0, m_scene_upscale_txt->get_bindless_index());
+        m_scene_upscale_mat->set_bindless_texture_index(0,
+                                                        m_scene_upscale_txt->get_bindless_index());
         m_scene_upscale_mat->set_bindless_sampler_index(0, KGPU_SAMPLER_NEAREST_CLAMP);
     }
 
-    // When outline is active the outline shader samples main-pass depth by
-    // bindless index. We destroyed+recreated the depth image above, so the
-    // previous bindless slot now points at a freed view. Update the existing
-    // texture_data in-place (init_scene_depth created it directly via
-    // cache.textures.alloc, so we can't use loader.destroy_texture_data here).
-    if (outline_enabled && !main_pass->get_depth_images().empty())
+    // Whenever render_scale is on, downstream samples main-pass depth: outline
+    // (when outline.enabled) and the grid (always — for occlusion). We
+    // destroyed+recreated the depth image above, so the previous bindless slot
+    // now points at a freed view. Update the existing texture_data in-place
+    // (init_scene_depth created it directly via cache.textures.alloc, so we
+    // can't use loader.destroy_texture_data here).
+    if (m_render_config.render_scale.enabled && !main_pass->get_depth_images().empty())
     {
         auto& cache = get_cache();
         auto* dtex = cache.textures.find_by_id(AID("scene_depth_texture"));
@@ -388,9 +403,8 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
         {
             auto& depth_img = main_pass->get_depth_images()[0];
             auto img_handle = depth_img.image();
-            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(
-                new vk_utils::vulkan_image(
-                    vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(new vk_utils::vulkan_image(
+                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
 
             auto depth_view_ci = vk_utils::make_imageview_create_info(
                 VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -410,7 +424,20 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     m_scene_lowres_height = new_h;
     m_render_config.render_scale.divisor = new_divisor;
 
-    ALOG_INFO("render_scale live reconfig: divisor={} scene_lowres={}x{}", new_divisor, new_w, new_h);
+    // Cluster grid tiles are sized in scene-pixels — must match the new
+    // rendering resolution, otherwise GPU-side fragment-to-cluster mapping
+    // diverges from CPU-side culling and produces lighting artifacts.
+    m_cluster_grid.init(m_scene_lowres_width,
+                        m_scene_lowres_height,
+                        KGPU_znear,
+                        KGPU_zfar,
+                        m_render_config.clusters.tile_size,
+                        m_render_config.clusters.depth_slices,
+                        m_render_config.clusters.max_lights_per_cluster);
+    m_clusters_dirty = true;
+
+    ALOG_INFO(
+        "render_scale live reconfig: divisor={} scene_lowres={}x{}", new_divisor, new_w, new_h);
     return true;
 }
 
@@ -440,6 +467,15 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
     loader.destroy_material_data(AID("mat_ui_copy"));
     loader.destroy_material_data(AID("mat_scene_upscale"));
     loader.destroy_texture_data(AID("scene_lowres_txt"));
+
+    // Drop scene_depth_texture's view+wrapper BEFORE replace_color_targets
+    // destroys main's old depth image. Otherwise the view outlives its image
+    // and the eventual vkDestroyImageView corrupts validation-layer state.
+    if (auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture")))
+    {
+        dtex->image_view.reset();
+        dtex->image.reset();
+    }
 
     if (m_render_config.render_scale.enabled)
     {
@@ -472,8 +508,8 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
             extent);
         VmaAllocationCreateInfo img_alloc = {};
         img_alloc.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-        auto img = std::make_shared<vk_utils::vulkan_image>(
-            vk_utils::vulkan_image::create(device.get_vma_allocator_provider(), img_info, img_alloc));
+        auto img = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
+            device.get_vma_allocator_provider(), img_info, img_alloc));
         auto view_ci = vk_utils::make_imageview_create_info(
             swapchain_fmt, img->image(), VK_IMAGE_ASPECT_COLOR_BIT);
         auto view = vk_utils::vulkan_image_view::create_shared(view_ci);
@@ -482,26 +518,27 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
 
         // Swap main pass to scene_lowres. replace_color_targets keeps
         // VkRenderPass identity, so SEs compiled against main survive.
+        // sampled_depth=true: depth ends in READ_ONLY layout for composite to
+        // sample (used by depth_outline AND the grid for occlusion).
         if (!main_pass->replace_color_targets(m_scene_lowres_images,
                                               m_scene_lowres_views,
                                               lw,
                                               lh,
-                                              m_render_config.outline.enabled,
+                                              true,
                                               true,
                                               "main"))
         {
             return false;
         }
 
-        auto composite_pass = render_pass_builder()
-                                  .set_color_format(swapchain_fmt)
-                                  .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                                  .set_width_depth(m_width, m_height)
-                                  .set_color_images(device.get_swapchain_image_views(),
-                                                    device.get_swapchain_images())
-                                  .set_enable_stencil(false)
-                                  .set_debug_name("composite")
-                                  .build();
+        auto composite_pass =
+            render_pass_builder()
+                .set_color_format(swapchain_fmt)
+                .set_depth_format(VK_FORMAT_D32_SFLOAT_S8_UINT)
+                .set_width_depth(m_width, m_height)
+                .set_color_images(device.get_swapchain_image_views(), device.get_swapchain_images())
+                .set_debug_name("composite")
+                .build();
         loader.add_render_pass(AID("composite"), std::move(composite_pass));
 
         // Bindings — must mirror prepare_pass_bindings()'s composite section.
@@ -526,11 +563,14 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
     {
         m_scene_lowres_width = m_width;
         m_scene_lowres_height = m_height;
+        // sampled_depth=true — main_pass's finalLayout is fixed at READ_ONLY
+        // (sampled_depth=true at builder time); image must carry SAMPLED usage
+        // so the layout transition is legal even when nobody currently samples.
         if (!main_pass->replace_color_targets(device.get_swapchain_images(),
                                               device.get_swapchain_image_views(),
                                               m_width,
                                               m_height,
-                                              false,
+                                              true,
                                               true,
                                               "main"))
         {
@@ -538,23 +578,30 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         }
     }
 
-    // Refresh scene_depth_texture bindless slot if outline is active —
-    // main pass's depth image was recreated by replace_color_targets.
-    if (m_render_config.outline.enabled && !main_pass->get_depth_images().empty())
+    // Register / refresh scene_depth_texture bindless slot whenever render_scale
+    // is on — main pass's depth image was recreated by replace_color_targets
+    // and is sampled by composite (depth_outline + grid occlusion). Allocate
+    // the texture entry on first transition (when initial config had
+    // render_scale off, the init-path alloc was skipped).
+    if (m_render_config.render_scale.enabled && !main_pass->get_depth_images().empty())
     {
         auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture"));
+        if (!dtex)
+        {
+            dtex = m_cache.textures.alloc(AID("scene_depth_texture"));
+        }
         if (dtex)
         {
             auto& depth_img = main_pass->get_depth_images()[0];
             auto img_handle = depth_img.image();
-            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(
-                new vk_utils::vulkan_image(
-                    vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(new vk_utils::vulkan_image(
+                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
             auto depth_view_ci = vk_utils::make_imageview_create_info(
                 VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
             auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
             dtex->image = std::move(img_sptr);
             dtex->image_view = std::move(depth_view);
+            dtex->format = texture_format::unknown;
             m_scene_depth_bindless_idx = dtex->get_bindless_index();
             schd_update_texture(dtex);
         }
@@ -589,6 +636,7 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::ui;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.depth_write = false;
 
         host_pass->create_shader_effect(AID("se_ui_copy"), se_ci, m_ui_copy_se);
 
@@ -621,6 +669,7 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
             se_ci.enable_dynamic_state = false;
             se_ci.alpha = alpha_mode::ui;
             se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+            se_ci.depth_write = false;
 
             composite_pass->create_shader_effect(
                 AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
@@ -658,11 +707,25 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
             ose_ci.enable_dynamic_state = false;
             ose_ci.alpha = alpha_mode::ui;
             ose_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+            ose_ci.depth_write = false;
 
             composite_pass->create_shader_effect(
                 AID("se_depth_outline"), ose_ci, m_depth_outline_se);
         }
     }
+
+    // Cluster grid tiles are sized in scene-pixels — must match the new
+    // rendering resolution after the toggle, otherwise GPU-side fragment-to-
+    // cluster mapping diverges from CPU-side culling and produces lighting
+    // artifacts at the new scale.
+    m_cluster_grid.init(m_scene_lowres_width,
+                        m_scene_lowres_height,
+                        KGPU_znear,
+                        KGPU_zfar,
+                        m_render_config.clusters.tile_size,
+                        m_render_config.clusters.depth_slices,
+                        m_render_config.clusters.max_lights_per_cluster);
+    m_clusters_dirty = true;
 
     m_render_graph.reset();
     setup_render_graph();
@@ -700,6 +763,16 @@ vulkan_render::deinit()
 {
     // Wait for all GPU operations to complete before destroying resources
     vkDeviceWaitIdle(glob::glob_state().get_render_device()->vk_device());
+
+    // Drop scene_depth_texture's image_view BEFORE the loader's clear_caches
+    // destroys main_pass (and with it the underlying depth image). The view
+    // is non-owning of the image but the destruction order still matters to
+    // the validation layer's image-view tracking.
+    if (auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture")))
+    {
+        dtex->image_view.reset();
+        dtex->image.reset();
+    }
 
     // Render-scale / composite resources. Must release before VMA teardown
     // because scene_lowres images own VMA allocations.
@@ -869,6 +942,7 @@ vulkan_render::prepare_system_resources()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::world;
         se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+        se_ci.depth_write = false;
         se_ci.cull_mode = VK_CULL_MODE_NONE;
         se_ci.ds_mode = depth_stencil_mode::none;
         se_ci.height = m_height;
@@ -902,8 +976,39 @@ vulkan_render::prepare_system_resources()
         }
     }
 
-    // Depth-outline post-process — creates a shader effect on the composite pass
-    // (render_scale mode only) and registers the main pass's depth image in bindless.
+    // Register main-pass depth in bindless whenever render_scale is on. Sampled
+    // by depth_outline (when outline.enabled) and by the grid for occlusion.
+    if (m_render_config.render_scale.enabled)
+    {
+        auto* main_pass_for_depth =
+            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+        if (main_pass_for_depth && !main_pass_for_depth->get_depth_images().empty())
+        {
+            auto& depth_img = main_pass_for_depth->get_depth_images()[0];
+
+            // Non-owning wrapper sptr — the render pass owns the actual image.
+            auto img_handle = depth_img.image();
+            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(new vk_utils::vulkan_image(
+                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+
+            auto depth_view_ci = vk_utils::make_imageview_create_info(
+                VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
+            auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
+
+            auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+            auto* dtex = cache.textures.alloc(AID("scene_depth_texture"));
+            if (dtex)
+            {
+                dtex->image = std::move(img_sptr);
+                dtex->image_view = std::move(depth_view);
+                dtex->format = texture_format::unknown;
+                m_scene_depth_bindless_idx = dtex->get_bindless_index();
+                schd_update_texture(dtex);
+            }
+        }
+    }
+
+    // Depth-outline post-process — shader effect on the composite pass.
     if (m_render_config.render_scale.enabled && m_render_config.outline.enabled)
     {
         auto* composite_pass =
@@ -922,40 +1027,10 @@ vulkan_render::prepare_system_resources()
             ose_ci.enable_dynamic_state = false;
             ose_ci.alpha = alpha_mode::ui;  // alpha blend over upscaled scene
             ose_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+            ose_ci.depth_write = false;
 
             composite_pass->create_shader_effect(
                 AID("se_depth_outline"), ose_ci, m_depth_outline_se);
-
-            // Register the main pass's depth image in bindless so the outline
-            // shader can sample it. The main pass's finalLayout for depth is
-            // DEPTH_STENCIL_READ_ONLY when outline is enabled, so this is safe.
-            auto* main_pass_for_depth =
-                glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
-            if (main_pass_for_depth && !main_pass_for_depth->get_depth_images().empty())
-            {
-                auto& depth_img = main_pass_for_depth->get_depth_images()[0];
-
-                // Non-owning wrapper sptr — the render pass owns the actual image.
-                auto img_handle = depth_img.image();
-                auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(
-                    new vk_utils::vulkan_image(
-                        vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
-
-                auto depth_view_ci = vk_utils::make_imageview_create_info(
-                    VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
-                auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
-
-                auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
-                auto* dtex = cache.textures.alloc(AID("scene_depth_texture"));
-                if (dtex)
-                {
-                    dtex->image = std::move(img_sptr);
-                    dtex->image_view = std::move(depth_view);
-                    dtex->format = texture_format::unknown;
-                    m_scene_depth_bindless_idx = dtex->get_bindless_index();
-                    schd_update_texture(dtex);
-                }
-            }
         }
     }
 

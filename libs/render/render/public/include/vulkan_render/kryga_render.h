@@ -346,6 +346,12 @@ private:
     void
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
 
+    // Editor-only overlay: debug bucket (light gizmo billboards via LAYER_EDITOR_ONLY),
+    // wireframe light cubes, and the world grid. Drawn at full res — called from
+    // the composite pass when render-scale is on, otherwise from the main pass.
+    void
+    draw_debug_overlay(VkCommandBuffer cmd, render::frame_state& current_frame);
+
     void
     draw_selection_mask(VkCommandBuffer cmd, render::frame_state& current_frame);
 

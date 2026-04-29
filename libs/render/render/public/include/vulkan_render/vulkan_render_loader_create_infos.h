@@ -31,6 +31,10 @@ struct shader_effect_create_info
     utils::dynobj_layout_sptr expected_input_vertex_layout;
     render_pass* rp = VK_NULL_HANDLE;
     VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
+    // Set false for blit/overlay-style effects that share a render pass with
+    // depth-testing draws — otherwise gl_Position.z = 0 from a fullscreen quad
+    // overwrites the depth buffer and breaks subsequent depth-tested draws.
+    bool depth_write = true;
     VkCullModeFlags cull_mode = VK_CULL_MODE_NONE;
     depth_stencil_mode ds_mode = depth_stencil_mode::none;
 
