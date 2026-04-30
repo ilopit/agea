@@ -16,7 +16,7 @@
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
-#include <imgui.h>
+#include <kryga_port/imgui.h>
 
 #include <vfs/vfs.h>
 #include <vfs/io.h>
@@ -403,11 +403,10 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
 void
 vulkan_render::draw_debug_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
-#ifndef KRG_ENABLE_EDITOR
-    (void)cmd;
-    (void)current_frame;
-#else
     // Master gate — runtime-toggleable in editor for "preview as game" mode.
+    // Note: this lib is compiled once, used by both kryga_game and
+    // kryga_editor. Game build naturally never sets editor_mode true via UI
+    // (no UI), so the runtime check below is sufficient.
     if (!m_render_config.debug.editor_mode)
     {
         return;
@@ -468,7 +467,6 @@ vulkan_render::draw_debug_overlay(VkCommandBuffer cmd, render::frame_state& curr
 
     draw_debug_lights(cmd, current_frame);
     draw_grid(cmd, current_frame);
-#endif
 }
 
 // ============================================================================
@@ -1205,6 +1203,12 @@ vulkan_render::update_transparent_objects_queue()
               { return l->distance_to_camera > r->distance_to_camera; });
 }
 
+// ============================================================================
+// ImGui-using methods — bodies compiled out in game builds. Call sites are
+// also guarded with #if KRG_EDITOR (init.cpp / frame.cpp / passes.cpp), so
+// linker never resolves these symbols in kryga_game.
+// ============================================================================
+#if KRG_EDITOR
 void
 vulkan_render::prepare_ui_resources()
 {
@@ -1560,6 +1564,7 @@ vulkan_render::draw_ui(frame_state& fs)
         vertex_offset += cmd_list->VtxBuffer.Size;
     }
 }
+#endif  // KRG_EDITOR
 
 }  // namespace render
 }  // namespace kryga

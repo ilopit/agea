@@ -9,7 +9,7 @@ add_executable(visual_regression_tests
 )
 
 target_link_libraries(visual_regression_tests
-    kryga::vulkan_render
+    kryga::vulkan_render_impl_editor
     kryga::render_utils
     kryga::asset_converter
     gtest

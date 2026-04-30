@@ -1,14 +1,16 @@
 #include "engine/kryga_engine.h"
 
-#include "engine/ui.h"
 #include "engine/input_manager.h"
-#include "engine/editor.h"
 #include "engine/config.h"
 #include "engine/engine_counters.h"
-#include "engine/private/ui/bake_editor.h"
 #include "engine/profiler.h"
 
+#if KRG_EDITOR
+#include "engine/ui.h"
+#include "engine/editor.h"
+#include "engine/private/ui/bake_editor.h"
 #include "engine/private/sync_service.h"
+#endif
 
 #include <core/caches/caches_map.h>
 #include <core/id_generator.h>
@@ -118,7 +120,9 @@ startup_options::print_help(const char* program_name)
 }
 
 vulkan_engine::vulkan_engine()
+#if KRG_EDITOR
     : m_sync_service(std::make_unique<sync_service>())
+#endif
 {
 }
 
@@ -172,7 +176,9 @@ vulkan_engine::init(const startup_options& options)
     gs.run_create();
 
     state_mutator__config::set(gs);
+#if KRG_EDITOR
     state_mutator__game_editor::set(gs);
+#endif
     // input_manager is the only subsystem that truly can't run headless —
     // it hooks the OS event pump which tests don't drive. Everything else
     // (native_window, ui) works against a hidden SDL window.
@@ -184,7 +190,9 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__render_device::set(gs);
     state_mutator__vulkan_render::set(gs);
     state_mutator__vulkan_render_loader::set(gs);
+#if KRG_EDITOR
     state_mutator__ui::set(gs);
+#endif
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
     state_mutator__queues::set(gs);
@@ -211,12 +219,14 @@ vulkan_engine::init(const startup_options& options)
     render_cfg.load_with_cache(vfs::rid("data://configs/render.acfg"),
                                vfs::rid("rtcache://render.acfg"));
 
+#if KRG_EDITOR
     if (!m_headless)
     {
         // game_editor::init registers input actions — requires input_manager, which
         // headless mode skips
         glob::glob_state().get_game_editor()->init();
     }
+#endif
 
     gs.schedule_action(gs::state::state_stage::init,
                        [](kryga::gs::state& s) { s.get_pm()->init(); });
@@ -265,6 +275,7 @@ vulkan_engine::init(const startup_options& options)
         return false;
     }
 
+#if KRG_EDITOR
     glob::glob_state().getr_ui().init();
 
     if (!m_headless)
@@ -274,6 +285,7 @@ vulkan_engine::init(const startup_options& options)
         ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
                                                 vfs::rid("rtcache://bake.acfg"));
     }
+#endif
 
     // Use the actual window size after SDL settled it — on Android fullscreen
     // the requested rwc.w/rwc.h is ignored and the surface is device-sized
@@ -293,7 +305,9 @@ vulkan_engine::init(const startup_options& options)
         // their own level and set their own camera
         init_scene();
 
+#if KRG_EDITOR
         m_sync_service->start();
+#endif
     }
 
     ALOG_INFO("Initialization completed");
@@ -308,12 +322,16 @@ vulkan_engine::cleanup()
     {
         glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
             vfs::rid("rtcache://render.acfg"));
+#if KRG_EDITOR
         ui::get_window<ui::bake_editor>()->save_config();
+#endif
 
         glob::set_input_provider(nullptr);
     }
 
+#if KRG_EDITOR
     m_sync_service->stop();
+#endif
 
     glob::glob_state().get_render_device()->wait_for_fences();
 
@@ -406,11 +424,13 @@ vulkan_engine::run()
 
             glob::glob_state().get_input_manager()->fire_input_event();
         }
+#if KRG_EDITOR
         {
             KRG_make_scope(ui_tick);
             KRG_PROFILE_SCOPE("UI");
             glob::glob_state().get_ui()->new_frame(frame_time);
         }
+#endif
         {
             KRG_make_scope(tick);
             KRG_PROFILE_SCOPE("Tick");
@@ -503,6 +523,7 @@ vulkan_engine::tick_headless()
 void
 vulkan_engine::tick(float dt)
 {
+#if KRG_EDITOR
     glob::glob_state().get_game_editor()->on_tick(dt);
     if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
     {
@@ -511,6 +532,13 @@ vulkan_engine::tick(float dt)
             lvl->tick(dt);
         }
     }
+#else
+    // Game build — always playing, level always ticks.
+    if (auto lvl = glob::glob_state().get_current_level())
+    {
+        lvl->tick(dt);
+    }
+#endif
 
     if (auto* anim = glob::glob_state().get_animation_system())
     {
@@ -521,6 +549,10 @@ vulkan_engine::tick(float dt)
 void
 vulkan_engine::execute_sync_requests()
 {
+#if !KRG_EDITOR
+    // Sync service is editor-only.
+    return;
+#else
     if (!m_sync_service->has_sync_actions())
     {
         return;
@@ -574,6 +606,7 @@ vulkan_engine::execute_sync_requests()
             sa.to_signal.set_value("");
         }
     }
+#endif
 }
 
 bool
@@ -699,6 +732,7 @@ vulkan_engine::consume_updated_transforms()
 void
 vulkan_engine::update_cameras()
 {
+#if KRG_EDITOR
     auto editor = glob::glob_state().get_game_editor();
     auto* cam = editor->get_active_camera();
     if (editor->get_mode() == engine::editor_mode::playing && cam)
@@ -715,6 +749,37 @@ vulkan_engine::update_cameras()
     {
         m_camera_data = editor->get_camera_data();
     }
+#else
+    // Game build — find first active camera in current level.
+    base::camera_component* cam = nullptr;
+    if (auto lvl = glob::glob_state().get_current_level())
+    {
+        for (auto& [id, obj] : lvl->get_game_objects().get_items())
+        {
+            auto go = obj->as<root::game_object>();
+            if (!go) continue;
+            for (auto c : go->get_renderable_components())
+            {
+                if (auto cc = c->as<base::camera_component>())
+                {
+                    if (cc->is_active_camera())
+                    {
+                        cam = cc;
+                        break;
+                    }
+                }
+            }
+            if (cam) break;
+        }
+    }
+    KRG_check(cam, "Game build requires an active camera in the level.");
+    float aspect = glob::glob_state().getr_native_window().aspect_ratio();
+    cam->set_aspect_ratio(aspect);
+    m_camera_data.projection = cam->get_perspective();
+    m_camera_data.inv_projection = cam->get_inv_projection();
+    m_camera_data.view = cam->get_view();
+    m_camera_data.position = cam->get_owner()->get_position();
+#endif
 }
 
 void
@@ -730,9 +795,11 @@ vulkan_engine::init_scene()
     if (level_id.valid())
     {
         load_level(level_id);
-        //
+#if KRG_EDITOR
+        // Editor-only debug helpers that populate the sandbox scene.
         glob::glob_state().getr_game_editor().ev_spawn();
         glob::glob_state().getr_game_editor().ev_lights();
+#endif
     }
 
     if (auto lvl = glob::glob_state().get_current_level())
@@ -748,6 +815,17 @@ vulkan_engine::init_scene()
                 (float)KGPU_znear,
                 (float)KGPU_zfar);
         }
+
+#if !KRG_EDITOR
+        // Game build is always "playing" — fire begin_play on level objects.
+        for (auto& [id, obj] : lvl->get_game_objects().get_items())
+        {
+            if (auto go = obj->as<root::game_object>())
+            {
+                go->begin_play();
+            }
+        }
+#endif
     }
 }
 

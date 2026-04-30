@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
 cmake_policy(VERSION 4.0)
 
 project ("kryga")
@@ -25,21 +25,39 @@ set(BUILD_SHARED_LIBS OFF)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-# Platform options — Android disables editor/dev-only features
+# ---------------------------------------------------------------------------
+# Build axes
+# ---------------------------------------------------------------------------
+# Form factor (mutually exclusive, one always set):
+#   KRG_DESKTOP / KRG_MOBILE — set globally based on the toolchain platform.
+#
+# Build mode (mutually exclusive, one always set, defined on the *executable*
+# and its private engine library, NOT globally):
+#   KRG_GAME   — game-only target. Editor TUs not compiled in. Smallest binary.
+#   KRG_EDITOR — editor target. Includes editor UI, gizmos, console, profiler,
+#                sync service, runtime play-mode toggle.
+#
+# Mobile builds always produce KRG_GAME (no editor on Android/iOS).
+# Desktop builds produce both kryga_game and kryga_editor by default.
 if(ANDROID)
+    add_compile_definitions(KRG_MOBILE=1 KRG_PLATFORM_ANDROID=1)
     set(_krg_default_sync_service OFF)
-    set(_krg_default_editor OFF)
+    set(_krg_build_editor_target OFF)
 else()
+    add_compile_definitions(KRG_DESKTOP=1)
+    if(WIN32)
+        add_compile_definitions(KRG_PLATFORM_WIN32=1)
+    elseif(APPLE)
+        add_compile_definitions(KRG_PLATFORM_APPLE=1)
+    elseif(UNIX)
+        add_compile_definitions(KRG_PLATFORM_LINUX=1)
+    endif()
     set(_krg_default_sync_service ON)
-    set(_krg_default_editor ON)
+    set(_krg_build_editor_target ON)
 endif()
 
 option(KRG_ENABLE_SYNC_SERVICE "HTTP sync service for live asset/shader reload (requires Boost.Beast)" ${_krg_default_sync_service})
-option(KRG_ENABLE_EDITOR "Editor and dev tooling" ${_krg_default_editor})
-
-if(KRG_ENABLE_EDITOR)
-    add_compile_definitions(KRG_ENABLE_EDITOR=1)
-endif()
+option(KRG_BUILD_EDITOR_TARGET  "Build the kryga_editor executable (desktop only)"                    ${_krg_build_editor_target})
 
 # On Android, NDK r26d ships Vulkan 1.3.x headers but vk-bootstrap v1.4.x
 # references 1.4.x-only types (e.g. VkPhysicalDeviceGlobalPriorityQueryFeatures).
@@ -89,16 +107,19 @@ add_subdirectory(libs)
 add_subdirectory(packages)
 add_subdirectory(engine)
 
-# Content cooker CLI — desktop only.
-if(NOT ANDROID)
+# Content cooker CLI — editor-only (not built into shipped game). Game devs
+# still need cooked content but get it from a prior editor build sharing the
+# same build/cooked/ dir; Android sources its cooked tree from the same place
+# (gradle task cookContent depends on kryga_cook.exe being built once on the
+# desktop editor side).
+if(KRG_BUILD_EDITOR_TARGET)
     add_subdirectory(tools/cook)
 
-    # `run_cook` custom target: invokes kryga_cook.exe over resources/ into
-    # build/cooked/. Part of ALL so a normal build produces cooked content;
-    # engine_app depends on it so the symlinks below resolve to actual files
-    # at launch time. (Named with `run_` prefix to avoid colliding with the
-    # `cook` static library at libs/cook.)
-    add_custom_target(run_cook ALL
+    # `cook_resources` custom target: invokes kryga_cook.exe over resources/
+    # into build/cooked/. Part of ALL so a normal build produces cooked
+    # content; kryga_editor depends on it so the symlinks below resolve to
+    # actual files at launch time.
+    add_custom_target(cook_resources ALL
         COMMAND $<TARGET_FILE:kryga_cook>
                 --source ${PROJECT_SOURCE_DIR}/resources
                 --output ${KRG_COOKED_DIR}
@@ -110,7 +131,12 @@ if(NOT ANDROID)
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Cooking resources → ${KRG_COOKED_DIR}"
         VERBATIM)
-    add_dependencies(engine_app run_cook)
+    add_dependencies(kryga_editor cook_resources)
+    # Game build also benefits from cooked content existing — depend on it
+    # too when both targets are present in the same build.
+    if(TARGET kryga_game)
+        add_dependencies(kryga_game cook_resources)
+    endif()
 endif()
 
 # Host-only resource symlinks for local dev runs. On Android, cooked content

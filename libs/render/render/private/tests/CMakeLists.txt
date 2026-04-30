@@ -9,7 +9,7 @@ add_executable (vulkan_render_tests
  )
 
 target_link_libraries(vulkan_render_tests
-    kryga::vulkan_render
+    kryga::vulkan_render_impl_editor
     gtest
     gtest_main
 )

@@ -43,8 +43,8 @@ struct render_config
     {
         // Master gate for all editor-only visuals (grid, debug wireframes,
         // editor_only mesh components like light gizmo billboards). Runtime-
-        // toggleable in the editor; in non-editor builds (KRG_ENABLE_EDITOR
-        // undefined) the rendering path is compiled out regardless of value.
+        // toggleable in the editor. Game builds never set this to true (no UI
+        // to toggle it), so the rendering branch is naturally dead.
         bool editor_mode = true;
         bool show_grid = true;
         bool light_wireframe = true;

@@ -21,7 +21,7 @@
 
 #include <utils/kryga_log.h>
 
-#include <imgui.h>
+#include <kryga_port/imgui.h>
 
 #include <cmath>
 
@@ -97,7 +97,9 @@ vulkan_render::draw_main()
     auto width = (uint32_t)glob::glob_state().get_native_window()->get_size().w;
     auto height = (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
+#if KRG_EDITOR
     update_ui(current_frame);
+#endif
 
     render_frame(cmd, current_frame, swapchain_image_index, width, height);
 
@@ -506,8 +508,17 @@ vulkan_render::get_current_frame_transfer_data()
 void
 vulkan_render::resize(uint32_t width, uint32_t height)
 {
+#if KRG_EDITOR
+    if (!ImGui::GetCurrentContext())
+    {
+        return;
+    }
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize = ImVec2((float)(width), (float)(height));
+#else
+    (void)width;
+    (void)height;
+#endif
 }
 
 vulkan_render_data*

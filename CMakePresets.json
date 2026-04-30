@@ -42,17 +42,17 @@
   "buildPresets": [
     {
       "name": "host-debug",
-      "displayName": "Host Debug — engine_app",
+      "displayName": "Host Debug — kryga_editor",
       "configurePreset": "host",
       "configuration": "Debug",
-      "targets": ["engine_app"]
+      "targets": ["kryga_editor"]
     },
     {
       "name": "host-release",
-      "displayName": "Host Release — engine_app",
+      "displayName": "Host Release — kryga_editor",
       "configurePreset": "host",
       "configuration": "Release",
-      "targets": ["engine_app"]
+      "targets": ["kryga_editor"]
     },
     {
       "name": "host-all-debug",
@@ -63,15 +63,15 @@
 
     {
       "name": "android-debug",
-      "displayName": "Android Debug — engine_app",
+      "displayName": "Android Debug — kryga_game",
       "configurePreset": "android-debug",
-      "targets": ["engine_app"]
+      "targets": ["kryga_game"]
     },
     {
       "name": "android-release",
-      "displayName": "Android Release — engine_app",
+      "displayName": "Android Release — kryga_game",
       "configurePreset": "android-release",
-      "targets": ["engine_app"]
+      "targets": ["kryga_game"]
     }
   ],
 

@@ -219,12 +219,15 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
 
     prepare_system_resources();
 
-    // Skip UI setup in headless mode (no ImGui context)
-    if (!device.is_headless())
+#if KRG_EDITOR
+    // Editor build: set up ImGui font atlas and UI pipeline. Skipped when
+    // headless (no window) or when no ImGui context exists yet.
+    if (!device.is_headless() && ImGui::GetCurrentContext())
     {
         prepare_ui_resources();
         prepare_ui_pipeline();
     }
+#endif
 
     // Initialize clustered lighting (must match camera near/far planes).
     // Uses the effective rendering resolution — when render_scale is on the

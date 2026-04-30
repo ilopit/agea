@@ -372,8 +372,13 @@ game_editor::enter_play_mode()
     m_saved_position = m_camera_data.position;
     m_saved_pitch = m_pitch;
     m_saved_yaw = m_yaw;
-    m_saved_grid_visible = glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid;
-    glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid = false;
+    auto& dbg = glob::glob_state().getr_vulkan_render().get_render_config().debug;
+    m_saved_grid_visible = dbg.show_grid;
+    m_saved_editor_mode_visuals = dbg.editor_mode;
+    // Master gate — disables grid, gizmo billboards, debug wireframes, light
+    // icons. The "preview as game" runtime switch.
+    dbg.show_grid = false;
+    dbg.editor_mode = false;
 
     m_active_camera = nullptr;
     m_input = nullptr;
@@ -455,7 +460,9 @@ game_editor::exit_play_mode()
     m_pitch = m_saved_pitch;
     m_yaw = m_saved_yaw;
     m_updated = true;
-    glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid = m_saved_grid_visible;
+    auto& dbg = glob::glob_state().getr_vulkan_render().get_render_config().debug;
+    dbg.show_grid = m_saved_grid_visible;
+    dbg.editor_mode = m_saved_editor_mode_visuals;
 
     m_mode = editor_mode::editor;
 }

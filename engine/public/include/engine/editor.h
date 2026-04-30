@@ -105,6 +105,7 @@ private:
     float m_saved_pitch = 0.f;
     float m_saved_yaw = 0.f;
     bool m_saved_grid_visible = true;
+    bool m_saved_editor_mode_visuals = true;
 
     base::camera_component* m_active_camera = nullptr;
     base::input_component* m_input = nullptr;

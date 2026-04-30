@@ -626,12 +626,18 @@ vulkan_render::setup_instanced_render_graph()
                                      [this](VkCommandBuffer cmd)
                                      { draw_selection_mask(cmd, *m_current_frame); });
 
-    // UI pass
+    // UI pass — editor only. Game build doesn't render ImGui, so no need
+    // to set up the pass; m_ui_target_mat stays null and draw_ui_overlay
+    // early-returns. Other reads of "ui_target" still work because the
+    // import is unconditional (line above) — the resource exists, just
+    // never has anything written to it in the game flavor.
+#if KRG_EDITOR
     m_render_graph.add_graphics_pass(AID("ui"),
                                      {m_render_graph.write(AID("ui_target"))},
                                      get_render_pass(AID("ui")),
                                      VkClearColorValue{0, 0, 0, 0},
                                      [this](VkCommandBuffer) { draw_ui(*m_current_frame); });
+#endif
 
     // Main pass - instanced batched drawing
     // Shadow maps are sampled via bindless textures. Declaring them as reads

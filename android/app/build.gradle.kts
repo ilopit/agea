@@ -26,18 +26,20 @@ android {
                 arguments += listOf(
                     "-DCMAKE_TOOLCHAIN_FILE=${krygaRoot}/cmake/android.toolchain.cmake",
                     "-DKRG_ENABLE_SYNC_SERVICE=OFF",
-                    "-DKRG_ENABLE_EDITOR=OFF",
                     "-DBUILD_SHARED_LIBS=OFF",
                     // Echo ANDROID_STL explicitly so AGP auto-packages libc++_shared.so
                     // into the APK. The toolchain sets it internally, but AGP only
                     // reads the top-level CMake arguments here.
                     "-DANDROID_STL=c++_shared"
                 )
-                // libmain.so is the SDL-loaded entry; libSDL2.so is pulled in as a dep.
-                // C++ standard is set in root CMakeLists.txt via CMAKE_CXX_STANDARD 23,
-                // which clang 17 translates to -std=c++2b (the raw -std=c++23 spelling
-                // isn't accepted by NDK r26d's clang).
-                targets += listOf("engine_app", "SDL2")
+                // kryga_game is the SDL-loaded entry (output named libmain.so);
+                // libSDL2.so is pulled in as a dep. The android branch in
+                // engine/CMakeLists.txt builds kryga_game as SHARED with
+                // OUTPUT_NAME=main. C++ standard is set in root CMakeLists.txt
+                // via CMAKE_CXX_STANDARD 23, which clang 17 translates to
+                // -std=c++2b (the raw -std=c++23 spelling isn't accepted by
+                // NDK r26d's clang).
+                targets += listOf("kryga_game", "SDL2")
             }
         }
     }
@@ -91,10 +93,11 @@ dependencies {
 // Invoke the C++ cooker (build/project_Debug/bin/kryga_cook.exe) to
 // regenerate build/cooked/ before gradle merges assets.
 //
-// Pre-req: a desktop build must have produced kryga_cook.exe at least once
-// (same bootstrap requirement as SDL's Java sources under build_android/
-// debug/_deps/…). If kryga_cook.exe is missing the task fails with a clear
-// message pointing at `tools/build.sh kryga_cook`.
+// Pre-req: a desktop editor build must have produced kryga_cook.exe at least
+// once (the cooker is editor-only — see KRG_BUILD_EDITOR_TARGET in root
+// CMakeLists.txt). Same bootstrap requirement as SDL's Java sources under
+// build_android/debug/_deps/…. If kryga_cook.exe is missing the task fails
+// with a clear message pointing at `tools/build.sh kryga_cook`.
 val krygaCookExe = File("${krygaRoot}/build/project_Debug/bin/kryga_cook.exe")
 
 val cookContent = tasks.register<Exec>("cookContent") {

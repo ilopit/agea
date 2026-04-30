@@ -24,7 +24,9 @@ union SDL_Event;
 namespace kryga
 {
 class native_window;
+#if KRG_EDITOR
 class sync_service;
+#endif
 
 // Command-line startup options
 struct startup_options
@@ -118,7 +120,9 @@ private:
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
+#if KRG_EDITOR
     std::unique_ptr<sync_service> m_sync_service;
+#endif
 
     // Render thread synchronization (lock-step)
     std::thread m_render_thread;

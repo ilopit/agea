@@ -1,12 +1,12 @@
 #!/bin/bash
 # Build script for kryga host build — thin wrapper around CMake presets.
 # Usage: ./tools/build.sh [options] [target]
-#   -a, --all        Build all targets (default: engine_app)
+#   -a, --all        Build all targets (default: kryga_editor)
 #   -v, --verbose    Show full build output
 #   -r, --release    Build Release configuration (default: Debug)
 #   -j, --jobs N     Parallel jobs (default: cmake auto)
 #   -h, --help       Show this help
-#   target           Optional target name (default: engine_app)
+#   target           Optional target name (default: kryga_editor)
 
 set -e
 
@@ -17,7 +17,7 @@ BUILD_DIR="$ROOT_DIR/build"
 VERBOSE=0
 CONFIG="Debug"
 JOBS=""
-TARGET="engine_app"
+TARGET="kryga_editor"
 ALL=0
 
 while [[ $# -gt 0 ]]; do

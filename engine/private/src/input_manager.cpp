@@ -8,10 +8,12 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
-#include <imgui.h>
+#include <kryga_port/imgui.h>
 
+#if KRG_EDITOR
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
+#endif
 
 namespace kryga
 {
@@ -257,17 +259,24 @@ input_manager::input_tick(float dur_seconds)
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0)
     {
+#if KRG_EDITOR
         ImGui_ImplSDL2_ProcessEvent(&e);
+#endif
         if (e.type == SDL_QUIT)
         {
             return false;
         }
 
+#if KRG_EDITOR
         ImGuiIO& io = ImGui::GetIO();
         if (!io.WantCaptureKeyboard)
         {
             consume_sdl_events(e);
         }
+#else
+        // Game build — no ImGui to capture input; all events go to game.
+        consume_sdl_events(e);
+#endif
     }
 
     return true;
