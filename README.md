@@ -8,14 +8,14 @@ auto-configure on first run.
 
 ### Quick start (MSYS/bash)
 ```bash
-./tools/build.sh               # Build engine_app (Debug) — configures build/ on first run
+./tools/build.sh               # Build kryga_editor (Debug) — configures build/ on first run
 ./tools/build.sh -r            # Release
 ./tools/build_android.sh       # Android arm64-v8a Debug (needs NDK r26d)
 ```
 
 ### Build options
 ```bash
-./tools/build.sh               # Build engine_app (Debug, quiet)
+./tools/build.sh               # Build kryga_editor (Debug, quiet)
 ./tools/build.sh -a            # Build all targets
 ./tools/build.sh -v            # Verbose output
 ./tools/build.sh -r            # Build Release

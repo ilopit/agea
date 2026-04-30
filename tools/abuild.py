@@ -48,7 +48,7 @@ def main():
     os.system(config_cmd)
 
     if build_engine:
-        build_cmd = "cmake --build {0} --target engine_app".format(kryga_build_dir)
+        build_cmd = "cmake --build {0} --target kryga_editor".format(kryga_build_dir)
         os.system(build_cmd)
 
     if open_env:

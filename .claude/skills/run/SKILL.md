@@ -20,7 +20,9 @@ tools/run.sh $ARGUMENTS
 
 - `/run visual_regression_tests.exe`
 - `/run vulkan_render_tests.exe --gtest_filter="render_device*"`
-- `/run -r engine_app.exe`
+- `/run kryga_editor.exe` — desktop editor build (full UI, runtime play-mode toggle)
+- `/run kryga_game.exe` — desktop game build (no editor UI, ImGui stripped)
+- `/run -r kryga_editor.exe` — Release build
 
 ## Instructions
 

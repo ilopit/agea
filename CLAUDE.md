@@ -16,8 +16,12 @@ When responding to ideas or proposals:
 ### Feedback (after every response, about the user's request)
 - **Score:** 1-10 (how clear/well-scoped the request was) | **Good:** one positive | **Bad:** one suggestion to improve the request
 
-## Build & Run — use `/build` and `/run` skills
-- Build: `tools/build.sh [options] [target]` — `-v` verbose, `-r` release, `-j N` jobs, `-a` all targets. Default: `engine_app` Debug.
+## Build & Run — use `/run` skill, build via `tools/build.sh`
+- Build: `tools/build.sh [options] [target]` — `-v` verbose, `-r` release, `-j N` jobs, `-a` all targets. Default: `kryga_editor` Debug (desktop). On Android the only target is `kryga_game`.
+- Targets:
+  - `kryga_editor` — full editor: ImGui UI, gizmos, console, profiler overlay, sync service, runtime play-mode toggle (F5/Esc).
+  - `kryga_game` — clean game: no ImGui, no editor UI, no sync service. ~1.9 MB smaller than editor on desktop.
+  - `kryga_cook` — content cooker (editor target only — produces `build/cooked/`).
 - Run: `tools/run.sh [-r] <exe> [args]` — runs from `build/project_<Config>/bin/`. Never `cd` to bin manually.
 - Visual regression: `tools/run.sh visual_regression_tests.exe`, update refs with `UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe`
 

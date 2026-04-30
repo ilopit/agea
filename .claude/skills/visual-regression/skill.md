@@ -50,10 +50,13 @@ The user will run `UPDATE_REFERENCES=1` themselves when they decide the new outp
 tools/build.sh visual_regression_tests
 ```
 
-If GPU struct layout changes (e.g. adding material fields), build `engine_app` first to trigger argen:
+If GPU struct layout changes (e.g. adding material fields), build `kryga_editor` first to trigger argen:
 ```
-tools/build.sh engine_app && tools/build.sh visual_regression_tests
+tools/build.sh kryga_editor && tools/build.sh visual_regression_tests
 ```
+
+(Visual tests link `vulkan_render_impl_editor` — the editor flavor of the
+render lib that includes ImGui-related test paths.)
 
 ## Adding a new test
 

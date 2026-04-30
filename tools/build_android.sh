@@ -7,7 +7,7 @@
 #   -v, --verbose    Show full configure/build output
 #   -j, --jobs N     Parallel jobs (default: cmake auto)
 #   -h, --help       Show this help
-#   target           Optional target name (default: engine_app)
+#   target           Optional target name (default: kryga_game)
 #
 # Prerequisites:
 #   - ANDROID_NDK_HOME pointing at NDK r26d root (see plans/android_ndk_setup.md)
@@ -23,7 +23,7 @@ CLEAN=0
 CONFIG="Debug"
 VERBOSE=0
 JOBS=""
-TARGET="engine_app"
+TARGET="kryga_game"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
