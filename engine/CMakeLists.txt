@@ -128,9 +128,12 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::native
         kryga::vfs
         kryga::kryga_port
+        kryga::asset_converter
+        kryga::project_paths
 
         kryga::textedit_unofficial
         kryga::imguizmo_unofficial
+        kryga::imguifiledialog_unofficial
 
         ${KRG_ACTIVE_MODULES_TARGETS}
 
@@ -142,7 +145,7 @@ if(KRG_BUILD_EDITOR_TARGET)
     )
 
     if(KRG_ENABLE_SYNC_SERVICE)
-        target_link_libraries(engine_editor PUBLIC boost_beast Boost::url)
+        target_link_libraries(engine_editor PUBLIC boost_beast Boost::url Boost::process)
     endif()
 
     target_include_directories(engine_editor

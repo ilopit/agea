@@ -9,6 +9,8 @@ target_link_libraries(vfs
     kryga::global_state
 
     spdlog
+
+    Boost::filesystem
 )
 
 if(ANDROID)
