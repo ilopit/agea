@@ -44,6 +44,7 @@ set(ENGINE_EDITOR_SRC
     "private/src/ui.cpp"
     "private/src/ui/action_progress_window.cpp"
     "private/src/ui/bake_editor.cpp"
+    "private/src/ui/converter_window.cpp"
     "private/src/ui/gizmo_editor.cpp"
     "private/src/ui/object_editor.cpp"
     "private/src/ui/package_editor.cpp"

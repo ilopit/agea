@@ -403,14 +403,24 @@ vulkan_render::draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame
 void
 vulkan_render::draw_debug_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
-    // Master gate — runtime-toggleable in editor for "preview as game" mode.
-    // Note: this lib is compiled once, used by both kryga_game and
-    // kryga_editor. Game build naturally never sets editor_mode true via UI
-    // (no UI), so the runtime check below is sufficient.
+    // Build-time gate: debug overlays (light gizmo billboards, grid, debug
+    // wireframes) are editor-only and have no place in a shipped game build.
+    // The render lib is compiled twice — once per flavor — so this whole
+    // function is dead code in vulkan_render_impl_game.
+    //
+    // The runtime `debug.editor_mode` flag below is the editor's "preview as
+    // game" toggle: turn it off to see the scene as the game build will see it
+    // without restarting. It defaults to true and is shared via rtcache, so a
+    // pure runtime check would let an editor session leak `editor_mode=true`
+    // into the next game launch — which is exactly the bug this guard fixes.
+#if !KRG_EDITOR
+    return;
+#else
     if (!m_render_config.debug.editor_mode)
     {
         return;
     }
+#endif
 
     // Editor-only render bucket (LAYER_EDITOR_ONLY objects, e.g. light gizmo billboards).
     // Drawn unlit — lighting state saved/restored around the loop.
@@ -1338,56 +1348,6 @@ vulkan_render::prepare_ui_pipeline()
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 
-    // Scene upscale — reuses the ui/se_upload shaders (texture blit), created on
-    // the composite render pass. Sampler is NEAREST for the pixelated look.
-    if (m_render_config.render_scale.enabled && !m_scene_lowres_views.empty())
-    {
-        auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
-        auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
-        if (!vert_r || !frag_r)
-        {
-            ALOG_ERROR("Failed to load se_upload shaders — scene upscale pipeline not created");
-            return;
-        }
-        auto& vert = *vert_r;
-        auto& frag = *frag_r;
-
-        auto composite_pass =
-            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));
-        KRG_check(composite_pass, "composite pass must exist when render_scale is enabled");
-
-        shader_effect_create_info se_ci;
-        se_ci.vert_buffer = &vert;
-        se_ci.frag_buffer = &frag;
-        se_ci.is_wire = false;
-        se_ci.enable_dynamic_state = false;
-        se_ci.alpha = alpha_mode::ui;
-        se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
-        se_ci.depth_write = false;
-
-        composite_pass->create_shader_effect(AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
-
-        m_scene_upscale_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
-            AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
-
-        std::vector<texture_sampler_data> samples(1);
-        samples.front().texture = m_scene_upscale_txt;
-        samples.front().slot = 0;
-
-        m_scene_upscale_mat =
-            glob::glob_state().getr_vulkan_render_loader().create_material(AID("mat_scene_upscale"),
-                                                                           AID("scene_upscale"),
-                                                                           samples,
-                                                                           *m_scene_upscale_se,
-                                                                           utils::dynobj{});
-
-        // Override the default (LINEAR_REPEAT) sampler with NEAREST_CLAMP so the
-        // upscale keeps chunky pixel edges instead of bilinear-smoothing them.
-        if (m_scene_upscale_mat)
-        {
-            m_scene_upscale_mat->set_bindless_sampler_index(0, KGPU_SAMPLER_NEAREST_CLAMP);
-        }
-    }
 }
 
 void
@@ -1565,6 +1525,66 @@ vulkan_render::draw_ui(frame_state& fs)
     }
 }
 #endif  // KRG_EDITOR
+
+// ============================================================================
+// Scene upscale pipeline — runs in BOTH editor and game when render_scale is on.
+// Reuses se_upload from the ui/ shaders (a texture blit) but is otherwise
+// independent of ImGui/UI, so cannot live inside the editor-gated UI block.
+// ============================================================================
+void
+vulkan_render::prepare_scene_upscale_pipeline()
+{
+    if (!m_render_config.render_scale.enabled || m_scene_lowres_views.empty())
+    {
+        return;
+    }
+
+    vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
+
+    auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
+    auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
+    if (!vert_r || !frag_r)
+    {
+        ALOG_ERROR("Failed to load se_upload shaders — scene upscale pipeline not created");
+        return;
+    }
+
+    auto composite_pass =
+        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));
+    KRG_check(composite_pass, "composite pass must exist when render_scale is enabled");
+
+    shader_effect_create_info se_ci;
+    se_ci.vert_buffer = &(*vert_r);
+    se_ci.frag_buffer = &(*frag_r);
+    se_ci.is_wire = false;
+    se_ci.enable_dynamic_state = false;
+    se_ci.alpha = alpha_mode::ui;
+    se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+    se_ci.depth_write = false;
+
+    composite_pass->create_shader_effect(AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
+
+    m_scene_upscale_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
+        AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
+
+    std::vector<texture_sampler_data> samples(1);
+    samples.front().texture = m_scene_upscale_txt;
+    samples.front().slot = 0;
+
+    m_scene_upscale_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+        AID("mat_scene_upscale"),
+        AID("scene_upscale"),
+        samples,
+        *m_scene_upscale_se,
+        utils::dynobj{});
+
+    // Override the default (LINEAR_REPEAT) sampler with NEAREST_CLAMP so the
+    // upscale keeps chunky pixel edges instead of bilinear-smoothing them.
+    if (m_scene_upscale_mat)
+    {
+        m_scene_upscale_mat->set_bindless_sampler_index(0, KGPU_SAMPLER_NEAREST_CLAMP);
+    }
+}
 
 }  // namespace render
 }  // namespace kryga

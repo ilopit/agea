@@ -504,6 +504,8 @@ private:
     prepare_ui_pipeline();
     void
     prepare_ui_resources();
+    void
+    prepare_scene_upscale_pipeline();
 
     // Static samplers
     void

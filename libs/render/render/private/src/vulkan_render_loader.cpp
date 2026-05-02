@@ -740,6 +740,35 @@ vulkan_render_loader::destroy_render_pass(const kryga::utils::id& id)
 void
 vulkan_render_loader::clear_caches()
 {
+    ALOG_INFO("clear_caches: meshes={} textures={} materials={} shaders={} "
+              "samplers={} render_passes={} materials_index={}",
+              m_meshes_cache.size(),
+              m_textures_cache.size(),
+              m_materials_cache.size(),
+              m_shaders_cache.size(),
+              m_samplers_cache.size(),
+              m_render_passes.size(),
+              m_materials_index.size());
+
+    for (auto& [id, td] : m_textures_cache)
+    {
+        ALOG_INFO("  texture id={} td={:p}", id.cstr(), (void*)td);
+        if (td)
+        {
+            ALOG_INFO("    td->id={} image_sptr_use={}",
+                      td->id().cstr(),
+                      td->image ? (long)td->image.use_count() : -1L);
+            if (td->image)
+            {
+                ALOG_INFO("    image_handle={:p}", (void*)td->image->image());
+            }
+        }
+    }
+    for (auto& [id, rp] : m_render_passes)
+    {
+        ALOG_INFO("  render_pass id={}", id.cstr());
+    }
+
     m_meshes_cache.clear();
     m_textures_cache.clear();
     m_materials_cache.clear();

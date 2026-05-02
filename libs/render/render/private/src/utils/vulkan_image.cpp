@@ -5,6 +5,7 @@
 #include "vulkan_render/vulkan_render_device.h"
 
 #include <global_state/global_state.h>
+#include <utils/kryga_log.h>
 
 namespace kryga::render::vk_utils
 {

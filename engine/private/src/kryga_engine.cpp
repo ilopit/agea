@@ -335,9 +335,9 @@ vulkan_engine::cleanup()
 
     glob::glob_state().get_render_device()->wait_for_fences();
 
-    glob::glob_state().getr_vulkan_render().deinit();
-
     glob::glob_state().get_vulkan_render_loader()->clear_caches();
+
+    glob::glob_state().getr_vulkan_render().deinit();
 
     glob::glob_state().get_render_device()->destruct();
 
