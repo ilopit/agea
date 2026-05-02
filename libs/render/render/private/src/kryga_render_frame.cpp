@@ -348,6 +348,9 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Upload bone matrices for skeletal animation
     upload_bone_matrices(current_frame);
 
+    // Upload light probes if a schd_set_probes is pending for this frame.
+    upload_probe_data(current_frame);
+
     if (current_frame.uploads.has_objects())
     {
         ZoneScopedN("Render::UploadObjects");

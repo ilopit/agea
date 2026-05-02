@@ -294,6 +294,57 @@ vulkan_render::clear_upload_queue()
 }
 
 void
+vulkan_render::schd_set_probes(std::vector<gpu::sh_probe> probes,
+                               const gpu::probe_grid_config& grid_config)
+{
+    m_probes = std::move(probes);
+    m_probe_grid_config = grid_config;
+    // Seed at FRAMES_IN_FLIGHT so each frame's SSBO gets the new payload at
+    // its next prepare_draw_resources. A second schd_set_probes call before
+    // all frames have caught up just resets the counter, ensuring the latest
+    // data lands in every frame.
+    m_probes_pending_uploads = static_cast<uint32_t>(m_frames.size());
+}
+
+void
+vulkan_render::upload_probe_data(render::frame_state& frame)
+{
+    if (m_probes_pending_uploads == 0)
+    {
+        return;
+    }
+
+    auto& device = glob::glob_state().getr_render_device();
+
+    // SSBO is created with sizeof(sh_probe) at init so it's always valid;
+    // grow with 2x slack when the payload exceeds capacity.
+    const size_t payload =
+        std::max<size_t>(m_probes.size(), 1) * sizeof(gpu::sh_probe);
+
+    if (payload >= frame.buffers.probe_data.get_alloc_size())
+    {
+        frame.buffers.probe_data = device.create_buffer(payload * 2,
+                                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                        VMA_MEMORY_USAGE_CPU_TO_GPU);
+    }
+
+    frame.buffers.probe_data.begin();
+    if (!m_probes.empty())
+    {
+        auto* dst = frame.buffers.probe_data.allocate_data(
+            static_cast<uint32_t>(m_probes.size() * sizeof(gpu::sh_probe)));
+        memcpy(dst, m_probes.data(), m_probes.size() * sizeof(gpu::sh_probe));
+    }
+    frame.buffers.probe_data.end();
+
+    frame.buffers.probe_grid.begin();
+    frame.buffers.probe_grid.upload_data(m_probe_grid_config);
+    frame.buffers.probe_grid.end();
+
+    --m_probes_pending_uploads;
+}
+
+void
 vulkan_render::upload_gpu_object_data(gpu::object_data* object_SSBO)
 {
     auto& to_update = get_current_frame_transfer_data().uploads.objects_queue;

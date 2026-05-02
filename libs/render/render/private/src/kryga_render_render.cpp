@@ -1325,9 +1325,8 @@ vulkan_render::prepare_ui_pipeline()
         // In render_scale mode the UI copy is drawn inside the composite pass, which has
         // a different depth format than main. Create the pipeline against the pass
         // that will actually execute it.
-        auto host_pass_id = m_render_config.render_scale.enabled ? AID("composite") : AID("main");
         auto host_pass =
-            glob::glob_state().getr_vulkan_render_loader().get_render_pass(host_pass_id);
+            glob::glob_state().getr_vulkan_render_loader().get_render_pass(get_host_pass_id());
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;

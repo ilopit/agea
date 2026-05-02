@@ -752,17 +752,10 @@ vulkan_render_loader::clear_caches()
 
     for (auto& [id, td] : m_textures_cache)
     {
-        ALOG_INFO("  texture id={} td={:p}", id.cstr(), (void*)td);
-        if (td)
-        {
-            ALOG_INFO("    td->id={} image_sptr_use={}",
-                      td->id().cstr(),
-                      td->image ? (long)td->image.use_count() : -1L);
-            if (td->image)
-            {
-                ALOG_INFO("    image_handle={:p}", (void*)td->image->image());
-            }
-        }
+        // Texture data is owned by render_cache.textures (combined_pool),
+        // which renderer.deinit() clears BEFORE this method runs. The td*
+        // here is dangling — log only the id (string-pooled, safe).
+        ALOG_INFO("  texture id={}", id.cstr());
     }
     for (auto& [id, rp] : m_render_passes)
     {

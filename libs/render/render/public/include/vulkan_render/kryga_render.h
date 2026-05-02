@@ -17,6 +17,7 @@
 #include "render/utils/object_bvh.h"
 #include "gpu_types/gpu_cluster_types.h"
 #include "gpu_types/gpu_shadow_types.h"
+#include "gpu_types/gpu_probe_types.h"
 
 #include <utils/check.h>
 #include <utils/id.h>
@@ -253,6 +254,16 @@ public:
         return m_bone_matrices_staging;
     }
 
+    // Replace the current set of light probes (SH L2 coefficients indexed by
+    // gpu::object_data::probe_index). Buffered like other schd_* APIs: the
+    // payload is stashed on the cache and applied to each frame's SSBO at
+    // its next prepare_draw_resources, so callers don't need to know the
+    // current frame index and don't risk writing to a frame that's still
+    // in-flight on the GPU.
+    void
+    schd_set_probes(std::vector<gpu::sh_probe> probes,
+                    const gpu::probe_grid_config& grid_config);
+
     void
     clear_upload_queue();
 
@@ -292,6 +303,16 @@ public:
     get_render_config() const
     {
         return m_render_config;
+    }
+
+    // ID of the render pass that writes the final swapchain image. This is
+    // "composite" when render_scale is enabled and "main" otherwise. Tests
+    // and tools that read back the final framebuffer should resolve the pass
+    // through this accessor instead of hardcoding the name.
+    utils::id
+    get_host_pass_id() const
+    {
+        return m_render_config.render_scale.enabled ? AID("composite") : AID("main");
     }
 
     // Pending config — UI/tools mutate this freely. Picked up by
@@ -402,6 +423,7 @@ private:
     void upload_directional_light_data(render::frame_state& frame);
     void upload_material_data(render::frame_state& frame);
     void upload_bone_matrices(render::frame_state& frame);
+    void upload_probe_data(render::frame_state& frame);
     // clang-format on
 
     // Clustered lighting methods
@@ -695,6 +717,13 @@ private:
 
     // Bone matrix staging for skeletal animation
     std::vector<glm::mat4> m_bone_matrices_staging;
+
+    // Light probes — bulk replacement (no per-element queue). schd_set_probes
+    // updates the cache and seeds m_probes_pending_uploads with FRAMES_IN_FLIGHT
+    // so each frame's SSBO picks up the new payload at its next prepare pass.
+    std::vector<gpu::sh_probe> m_probes;
+    gpu::probe_grid_config m_probe_grid_config{};
+    uint32_t m_probes_pending_uploads = 0;
 
     // Render graph
     vulkan_render_graph m_render_graph;
