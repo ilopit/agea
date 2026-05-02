@@ -144,6 +144,8 @@ public:
     {
         render::render_device::construct_params rdc;
         rdc.headless = true;
+        rdc.width = TEST_WIDTH;
+        rdc.height = TEST_HEIGHT;
 
         auto device = glob::glob_state().get_render_device();
         ASSERT_TRUE(device->construct(rdc));
@@ -253,6 +255,8 @@ public:
     {
         render::render_device::construct_params rdc;
         rdc.headless = true;
+        rdc.width = TEST_WIDTH;
+        rdc.height = TEST_HEIGHT;
 
         auto device = glob::glob_state().get_render_device();
         ASSERT_TRUE(device->construct(rdc));
@@ -366,8 +370,8 @@ protected:
             vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(path_rp.value());
 
-        kryga::utils::buffer::load(path / "se_lit.vert", vert_buf);
-        kryga::utils::buffer::load(path / "se_solid_color_lit.frag", frag_buf);
+        kryga::utils::buffer::load(path / "se_lit.vert.spv", vert_buf);
+        kryga::utils::buffer::load(path / "se_solid_color_lit.frag.spv", frag_buf);
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert_buf;
@@ -584,8 +588,8 @@ protected:
         auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects"));
         auto path = APATH(se_path.value());
 
-        kryga::utils::buffer::load(path / "se_solid_color.vert", vert_buf);
-        kryga::utils::buffer::load(path / "se_solid_color.frag", frag_buf);
+        kryga::utils::buffer::load(path / "se_solid_color.vert.spv", vert_buf);
+        kryga::utils::buffer::load(path / "se_solid_color.frag.spv", frag_buf);
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert_buf;
@@ -609,8 +613,8 @@ protected:
         auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects"));
         auto path = APATH(se_path.value());
 
-        kryga::utils::buffer::load(path / "se_solid_color.vert", vert_buf);
-        kryga::utils::buffer::load(path / "se_solid_color_alpha.frag", frag_buf);
+        kryga::utils::buffer::load(path / "se_solid_color.vert.spv", vert_buf);
+        kryga::utils::buffer::load(path / "se_solid_color_alpha.frag.spv", frag_buf);
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert_buf;
@@ -1548,8 +1552,8 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
             vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
         auto path = APATH(se_path.value());
 
-        kryga::utils::buffer::load(path / "se_lit.vert", lm_vert_buf);
-        kryga::utils::buffer::load(path / "se_solid_color_lit.frag", lm_frag_buf);
+        kryga::utils::buffer::load(path / "se_lit.vert.spv", lm_vert_buf);
+        kryga::utils::buffer::load(path / "se_solid_color_lit.frag.spv", lm_frag_buf);
     }
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &lm_vert_buf;
