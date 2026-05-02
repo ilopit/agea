@@ -614,239 +614,8 @@ converter_context::create_material(core::package& pkg,
     return mat;
 }
 
-base::mesh_object*
-converter_context::place_mesh_object(core::level& lvl,
-                                     const utils::id& id,
-                                     root::mesh* mesh,
-                                     root::material* material,
-                                     const parsed_transform& xform)
-{
-    auto& olc = lvl.get_load_context();
-
-    auto* cdo = olc.find_proto_obj(AID("mesh_object"));
-    if (!cdo)
-    {
-        ALOG_ERROR("mesh_object CDO not found");
-        return nullptr;
-    }
-
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
-    auto result = ctor.clone_obj(*cdo, id);
-
-    if (!result)
-    {
-        ALOG_ERROR("Failed to place mesh_object: {}", id.str());
-        return nullptr;
-    }
-
-    auto* obj = result.value()->as<base::mesh_object>();
-
-    auto* root_comp = obj->get_root_component();
-    KRG_check(root_comp, "game_object must have a root component after instantiate");
-
-    base::mesh_component::construct_params mc_params;
-    mc_params.position = root::vec3(xform.position);
-    mc_params.rotation = root::vec3(xform.rotation);
-    mc_params.scale = root::vec3(xform.scale);
-    mc_params.mesh_handle = mesh;
-    mc_params.material_handle = material;
-
-    auto mc_id = utils::id::make_id(id.str() + "_mesh");
-    auto* mc = obj->spawn_component<base::mesh_component>(root_comp, mc_id, mc_params);
-    if (!mc)
-    {
-        ALOG_ERROR("Failed to spawn mesh_component on mesh_object [{}]", id.str());
-        return nullptr;
-    }
-
-    // spawn_component links the component as a child of root via add_child but
-    // does NOT push it to m_components (the flat list the save path iterates).
-    // Rebuild m_components from the root tree so the mesh_component appears in
-    // the serialized output and gets the correct layout index.
-    obj->recreate_structure_from_layout();
-
-    return obj;
-}
-
-base::point_light*
-converter_context::place_point_light(core::level& lvl,
-                                     const utils::id& id,
-                                     const parsed_light& data,
-                                     const parsed_transform& xform)
-{
-    auto& olc = lvl.get_load_context();
-
-    auto* cdo = olc.find_proto_obj(AID("point_light"));
-    if (!cdo)
-    {
-        ALOG_ERROR("point_light CDO not found");
-        return nullptr;
-    }
-
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
-    auto result = ctor.clone_obj(*cdo, id);
-
-    if (!result)
-    {
-        ALOG_ERROR("Failed to place point_light: {}", id.str());
-        return nullptr;
-    }
-
-    auto* obj = result.value()->as<base::point_light>();
-
-    obj->set_position(root::vec3(xform.position));
-
-    for (auto& comp : obj->get_components())
-    {
-        if (auto* lc = comp.as<base::point_light_component>())
-        {
-            glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
-            glm::vec3 ambient = diffuse * 0.1f;
-
-            lc->set_ambient(root::vec3(ambient));
-            lc->set_diffuse(root::vec3(diffuse));
-            lc->set_specular(root::vec3(diffuse));
-            lc->set_radius(data.range);
-            break;
-        }
-    }
-
-    return obj;
-}
-
-base::directional_light*
-converter_context::place_directional_light(core::level& lvl,
-                                           const utils::id& id,
-                                           const parsed_light& data,
-                                           const parsed_transform& xform)
-{
-    auto& olc = lvl.get_load_context();
-
-    auto* cdo = olc.find_proto_obj(AID("directional_light"));
-    if (!cdo)
-    {
-        ALOG_ERROR("directional_light CDO not found");
-        return nullptr;
-    }
-
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
-    auto result = ctor.clone_obj(*cdo, id);
-
-    if (!result)
-    {
-        ALOG_ERROR("Failed to place directional_light: {}", id.str());
-        return nullptr;
-    }
-
-    auto* obj = result.value()->as<base::directional_light>();
-
-    obj->set_position(root::vec3(xform.position));
-    obj->set_rotation(root::vec3(xform.rotation));
-
-    for (auto& comp : obj->get_components())
-    {
-        if (auto* lc = comp.as<base::directional_light_component>())
-        {
-            glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
-            glm::vec3 ambient = diffuse * 0.1f;
-
-            lc->set_ambient(root::vec3(ambient));
-            lc->set_diffuse(root::vec3(diffuse));
-            lc->set_specular(root::vec3(diffuse));
-            lc->set_direction(root::vec3(glm::vec3(0.f, -1.f, 0.f)));
-            break;
-        }
-    }
-
-    return obj;
-}
-
-base::spot_light*
-converter_context::place_spot_light(core::level& lvl,
-                                    const utils::id& id,
-                                    const parsed_light& data,
-                                    const parsed_transform& xform)
-{
-    auto& olc = lvl.get_load_context();
-
-    auto* cdo = olc.find_proto_obj(AID("spot_light"));
-    if (!cdo)
-    {
-        ALOG_ERROR("spot_light CDO not found");
-        return nullptr;
-    }
-
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
-    auto result = ctor.clone_obj(*cdo, id);
-
-    if (!result)
-    {
-        ALOG_ERROR("Failed to place spot_light: {}", id.str());
-        return nullptr;
-    }
-
-    auto* obj = result.value()->as<base::spot_light>();
-
-    obj->set_position(root::vec3(xform.position));
-    obj->set_rotation(root::vec3(xform.rotation));
-
-    for (auto& comp : obj->get_components())
-    {
-        if (auto* lc = comp.as<base::spot_light_component>())
-        {
-            glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
-            glm::vec3 ambient = diffuse * 0.1f;
-
-            lc->set_ambient(root::vec3(ambient));
-            lc->set_diffuse(root::vec3(diffuse));
-            lc->set_specular(root::vec3(diffuse));
-            lc->set_direction(root::vec3(glm::vec3(0.f, -1.f, 0.f)));
-            lc->set_radius(data.range);
-            lc->set_cut_off(glm::degrees(data.inner_cone));
-            lc->set_outer_cut_off(glm::degrees(data.outer_cone));
-            break;
-        }
-    }
-
-    return obj;
-}
-
-base::camera_object*
-converter_context::place_camera(core::level& lvl,
-                                const utils::id& id,
-                                const parsed_camera& data,
-                                const parsed_transform& xform)
-{
-    auto& olc = lvl.get_load_context();
-
-    auto* cdo = olc.find_proto_obj(AID("camera_object"));
-    if (!cdo)
-    {
-        ALOG_ERROR("camera_object CDO not found");
-        return nullptr;
-    }
-
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
-    auto result = ctor.clone_obj(*cdo, id);
-
-    if (!result)
-    {
-        ALOG_ERROR("Failed to place camera_object: {}", id.str());
-        return nullptr;
-    }
-
-    auto* obj = result.value()->as<base::camera_object>();
-
-    obj->set_position(root::vec3(xform.position));
-    obj->set_rotation(root::vec3(xform.rotation));
-
-    if (auto* cam = obj->get_camera_component())
-    {
-        cam->set_perspective(data.fov, data.aspect_ratio, data.znear, data.zfar);
-    }
-
-    return obj;
-}
+// (Old per-class place_* helpers removed — see place_scene_root +
+//  spawn_node_component below.)
 
 std::string
 converter_context::make_id(const converter_options& opts, const std::string& name) const
@@ -1017,8 +786,95 @@ converter_context::create_package_assets(core::package& pkg,
     return true;
 }
 
+namespace
+{
+
+// Lookup helpers shared between place_scene_root and spawn_node_component.
+root::mesh*
+lookup_node_mesh(core::package& pkg,
+                 const parsed_scene& scene,
+                 const converter_options& opts,
+                 const parsed_node& node,
+                 const std::string& (*log_id)(const std::string&) = nullptr)
+{
+    (void)log_id;
+    if (node.mesh_index < 0 || size_t(node.mesh_index) >= scene.meshes.size())
+    {
+        return nullptr;
+    }
+    const auto& md = scene.meshes[node.mesh_index];
+    std::string mesh_id = opts.prefix.empty() ? md.name : opts.prefix + md.name;
+    auto* proto = pkg.get_load_context().find_proto_obj(utils::id::make_id(mesh_id));
+    return proto ? proto->as<root::mesh>() : nullptr;
+}
+
+root::material*
+lookup_node_material(core::package& pkg,
+                     const parsed_scene& scene,
+                     const converter_options& opts,
+                     const parsed_node& node)
+{
+    if (node.material_index < 0 || size_t(node.material_index) >= scene.materials.size())
+    {
+        return nullptr;
+    }
+    const auto& mt = scene.materials[node.material_index];
+    std::string mat_id = opts.prefix.empty() ? mt.name : opts.prefix + mt.name;
+    if (mat_id.substr(0, 3) != "mt_")
+    {
+        mat_id = "mt_" + mat_id;
+    }
+    auto* proto = pkg.get_load_context().find_proto_obj(utils::id::make_id(mat_id));
+    return proto ? proto->as<root::material>() : nullptr;
+}
+
 void
-converter_context::place_node_recursive(core::level& lvl,
+configure_point_light(base::point_light_component* lc, const parsed_light& data)
+{
+    glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
+    glm::vec3 ambient = diffuse * 0.1f;
+    lc->set_ambient(root::vec3(ambient));
+    lc->set_diffuse(root::vec3(diffuse));
+    lc->set_specular(root::vec3(diffuse));
+    lc->set_radius(data.range);
+}
+
+void
+configure_directional_light(base::directional_light_component* lc, const parsed_light& data)
+{
+    glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
+    glm::vec3 ambient = diffuse * 0.1f;
+    lc->set_ambient(root::vec3(ambient));
+    lc->set_diffuse(root::vec3(diffuse));
+    lc->set_specular(root::vec3(diffuse));
+    lc->set_direction(root::vec3(glm::vec3(0.f, -1.f, 0.f)));
+}
+
+void
+configure_spot_light(base::spot_light_component* lc, const parsed_light& data)
+{
+    glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
+    glm::vec3 ambient = diffuse * 0.1f;
+    lc->set_ambient(root::vec3(ambient));
+    lc->set_diffuse(root::vec3(diffuse));
+    lc->set_specular(root::vec3(diffuse));
+    lc->set_direction(root::vec3(glm::vec3(0.f, -1.f, 0.f)));
+    lc->set_radius(data.range);
+    lc->set_cut_off(glm::degrees(data.inner_cone));
+    lc->set_outer_cut_off(glm::degrees(data.outer_cone));
+}
+
+void
+configure_camera(base::camera_component* cc, const parsed_camera& data)
+{
+    cc->set_perspective(data.fov, data.aspect_ratio, data.znear, data.zfar);
+}
+
+}  // namespace
+
+root::component*
+converter_context::spawn_node_component(root::game_object* obj,
+                                        root::component* parent,
                                         core::package& pkg,
                                         const parsed_scene& scene,
                                         const converter_options& opts,
@@ -1026,96 +882,246 @@ converter_context::place_node_recursive(core::level& lvl,
 {
     if (node_idx < 0 || static_cast<size_t>(node_idx) >= scene.nodes.size())
     {
-        return;
+        return nullptr;
     }
 
     const auto& node = scene.nodes[node_idx];
-    std::string obj_id = make_id(opts, node.name);
+    auto cid = utils::id::make_id(make_id(opts, node.name));
 
-    ALOG_INFO(
-        "[converter] place node[{}] name=[{}] mesh={} material={} light={} camera={} children={}",
-        node_idx,
-        node.name,
-        node.mesh_index,
-        node.material_index,
-        node.light_index,
-        node.camera_index,
-        node.children.size());
+    root::component* this_comp = nullptr;
 
     if (node.mesh_index >= 0 && static_cast<size_t>(node.mesh_index) < scene.meshes.size())
     {
-        const auto& mesh_data = scene.meshes[node.mesh_index];
-        std::string mesh_id = make_id(opts, mesh_data.name);
-
-        ALOG_INFO("[converter]   lookup mesh [{}] (scene name=[{}]) in pkg=[{}]",
-                  mesh_id,
-                  mesh_data.name,
-                  pkg.get_id().str());
-
-        auto* mesh_proto = pkg.get_load_context().find_proto_obj(AID(mesh_id));
-        if (!mesh_proto)
+        auto* mesh = lookup_node_mesh(pkg, scene, opts, node);
+        if (!mesh)
         {
-            ALOG_WARN("[converter]   MESH NOT FOUND: id=[{}] scene_name=[{}] pkg=[{}] prefix=[{}]",
-                      mesh_id,
-                      mesh_data.name,
-                      pkg.get_id().str(),
-                      opts.prefix);
-            log_package_contents(pkg, "on mesh miss");
-            return;
+            ALOG_WARN("[converter]   MESH NOT FOUND for node [{}]", node.name);
+            return nullptr;
         }
-        root::mesh* mesh = mesh_proto->as<root::mesh>();
+        auto* material = lookup_node_material(pkg, scene, opts, node);
 
-        root::material* material = nullptr;
-        if (node.material_index >= 0 &&
-            static_cast<size_t>(node.material_index) < scene.materials.size())
-        {
-            const auto& mat_data = scene.materials[node.material_index];
-            std::string mat_id = make_material_id(opts, mat_data.name);
-            auto* mat_proto = pkg.get_load_context().find_proto_obj(AID(mat_id));
-            if (mat_proto)
-            {
-                material = mat_proto->as<root::material>();
-            }
-            else
-            {
-                ALOG_WARN("[converter]   MAT NOT FOUND: id=[{}] scene_name=[{}] pkg=[{}]",
-                          mat_id,
-                          mat_data.name,
-                          pkg.get_id().str());
-            }
-        }
-
-        place_mesh_object(lvl, AID(obj_id), mesh, material, node.transform);
+        base::mesh_component::construct_params p;
+        p.mesh_handle = mesh;
+        p.material_handle = material;
+        this_comp = obj->spawn_component<base::mesh_component>(parent, cid, p);
     }
-
-    if (node.light_index >= 0 && static_cast<size_t>(node.light_index) < scene.lights.size())
+    else if (node.light_index >= 0 && size_t(node.light_index) < scene.lights.size())
     {
         const auto& light = scene.lights[node.light_index];
-
         switch (light.type)
         {
         case parsed_light_type::point:
-            place_point_light(lvl, AID(obj_id), light, node.transform);
-            break;
-        case parsed_light_type::directional:
-            place_directional_light(lvl, AID(obj_id), light, node.transform);
-            break;
-        case parsed_light_type::spot:
-            place_spot_light(lvl, AID(obj_id), light, node.transform);
+        {
+            auto* lc = obj->spawn_component<base::point_light_component>(parent, cid, {});
+            if (lc) configure_point_light(lc, light);
+            this_comp = lc;
             break;
         }
+        case parsed_light_type::directional:
+        {
+            auto* lc = obj->spawn_component<base::directional_light_component>(parent, cid, {});
+            if (lc) configure_directional_light(lc, light);
+            this_comp = lc;
+            break;
+        }
+        case parsed_light_type::spot:
+        {
+            auto* lc = obj->spawn_component<base::spot_light_component>(parent, cid, {});
+            if (lc) configure_spot_light(lc, light);
+            this_comp = lc;
+            break;
+        }
+        }
     }
-
-    if (node.camera_index >= 0 && static_cast<size_t>(node.camera_index) < scene.cameras.size())
+    else if (node.camera_index >= 0 && size_t(node.camera_index) < scene.cameras.size())
     {
         const auto& camera = scene.cameras[node.camera_index];
-        place_camera(lvl, AID(obj_id), camera, node.transform);
+        auto* cc = obj->spawn_component<base::camera_component>(parent, cid, {});
+        if (cc) configure_camera(cc, camera);
+        this_comp = cc;
+    }
+    else
+    {
+        // Pure transform node — game_object_component preserves the node's
+        // transform so descendants compose correctly.
+        this_comp = obj->spawn_component<root::game_object_component>(parent, cid, {});
+    }
+
+    if (!this_comp)
+    {
+        return nullptr;
+    }
+
+    // Apply node's local transform via the inherited game_object_component
+    // setters — avoids the camera_component::construct_params::scale (mat4)
+    // that hides the vec3 from the base.
+    if (auto* goc = this_comp->as<root::game_object_component>())
+    {
+        goc->set_position(root::vec3(node.transform.position));
+        goc->set_rotation(root::vec3(node.transform.rotation));
+        goc->set_scale(root::vec3(node.transform.scale));
     }
 
     for (int child_idx : node.children)
     {
-        place_node_recursive(lvl, pkg, scene, opts, child_idx);
+        spawn_node_component(obj, this_comp, pkg, scene, opts, child_idx);
     }
+
+    return this_comp;
+}
+
+void
+converter_context::place_scene_root(core::level& lvl,
+                                    core::package& pkg,
+                                    const parsed_scene& scene,
+                                    const converter_options& opts,
+                                    int root_idx)
+{
+    if (root_idx < 0 || static_cast<size_t>(root_idx) >= scene.nodes.size())
+    {
+        return;
+    }
+
+    const auto& root_node = scene.nodes[root_idx];
+    auto obj_id = utils::id::make_id(make_id(opts, root_node.name));
+
+    ALOG_INFO("[converter] place scene root[{}] name=[{}] mesh={} light={} camera={} children={}",
+              root_idx,
+              root_node.name,
+              root_node.mesh_index,
+              root_node.light_index,
+              root_node.camera_index,
+              root_node.children.size());
+
+    // Pick the umbrella class from the root node's payload. Single-payload
+    // single-node scenes get the convenience subclass (mesh_object/point_light
+    // /directional_light/spot_light/camera_object); transform-only roots get
+    // plain game_object.
+    utils::id cdo_id = AID("game_object");
+    if (root_node.mesh_index >= 0 && size_t(root_node.mesh_index) < scene.meshes.size())
+    {
+        cdo_id = AID("mesh_object");
+    }
+    else if (root_node.light_index >= 0 && size_t(root_node.light_index) < scene.lights.size())
+    {
+        switch (scene.lights[root_node.light_index].type)
+        {
+        case parsed_light_type::point:       cdo_id = AID("point_light"); break;
+        case parsed_light_type::directional: cdo_id = AID("directional_light"); break;
+        case parsed_light_type::spot:        cdo_id = AID("spot_light"); break;
+        }
+    }
+    else if (root_node.camera_index >= 0 &&
+             size_t(root_node.camera_index) < scene.cameras.size())
+    {
+        cdo_id = AID("camera_object");
+    }
+
+    auto& olc = lvl.get_load_context();
+    auto* cdo = olc.find_proto_obj(cdo_id);
+    if (!cdo)
+    {
+        ALOG_ERROR("CDO not found for scene root [{}]: {}", root_node.name, cdo_id.str());
+        return;
+    }
+
+    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
+    auto result = ctor.clone_obj(*cdo, obj_id);
+    if (!result)
+    {
+        ALOG_ERROR("Failed to clone game_object for scene root [{}]", root_node.name);
+        return;
+    }
+
+    auto* obj = result.value()->as<root::game_object>();
+    if (!obj)
+    {
+        ALOG_ERROR("Cloned object is not a game_object: {}", obj_id.str());
+        return;
+    }
+
+    auto* root_comp = obj->get_root_component();
+    KRG_check(root_comp, "game_object must have a root component after clone");
+
+    // Root component carries the root node's transform. Payload components
+    // (mesh/light/camera) sit at identity local under it, so descendants and
+    // payload share the same world transform via root_comp.
+    root_comp->set_position(root::vec3(root_node.transform.position));
+    root_comp->set_rotation(root::vec3(root_node.transform.rotation));
+    root_comp->set_scale(root::vec3(root_node.transform.scale));
+
+    // Attach payload to root_component:
+    //   * mesh root → spawn mesh_component manually (mesh_object doesn't auto-spawn)
+    //   * light/camera root → light/camera_object's construct() already auto-spawned
+    //     the matching component during clone; just configure it.
+    if (cdo_id == AID("mesh_object"))
+    {
+        if (auto* mesh = lookup_node_mesh(pkg, scene, opts, root_node))
+        {
+            auto* material = lookup_node_material(pkg, scene, opts, root_node);
+            base::mesh_component::construct_params p;
+            p.mesh_handle = mesh;
+            p.material_handle = material;
+            auto mc_id = utils::id::make_id(obj_id.str() + "_mesh");
+            obj->spawn_component<base::mesh_component>(root_comp, mc_id, p);
+        }
+        else
+        {
+            ALOG_WARN("[converter]   MESH NOT FOUND for root node [{}]", root_node.name);
+        }
+    }
+    else if (cdo_id == AID("point_light") || cdo_id == AID("directional_light") ||
+             cdo_id == AID("spot_light"))
+    {
+        const auto& light = scene.lights[root_node.light_index];
+        for (auto& comp : obj->get_components())
+        {
+            if (light.type == parsed_light_type::point)
+            {
+                if (auto* lc = comp.as<base::point_light_component>())
+                {
+                    configure_point_light(lc, light);
+                    break;
+                }
+            }
+            else if (light.type == parsed_light_type::directional)
+            {
+                if (auto* lc = comp.as<base::directional_light_component>())
+                {
+                    configure_directional_light(lc, light);
+                    break;
+                }
+            }
+            else if (light.type == parsed_light_type::spot)
+            {
+                if (auto* lc = comp.as<base::spot_light_component>())
+                {
+                    configure_spot_light(lc, light);
+                    break;
+                }
+            }
+        }
+    }
+    else if (cdo_id == AID("camera_object"))
+    {
+        const auto& camera = scene.cameras[root_node.camera_index];
+        for (auto& comp : obj->get_components())
+        {
+            if (auto* cc = comp.as<base::camera_component>())
+            {
+                configure_camera(cc, camera);
+                break;
+            }
+        }
+    }
+
+    // Recurse children — their components live under root_comp's tree.
+    for (int child_idx : root_node.children)
+    {
+        spawn_node_component(obj, root_comp, pkg, scene, opts, child_idx);
+    }
+
+    obj->recreate_structure_from_layout();
 }
 
 bool
@@ -1128,7 +1134,7 @@ converter_context::place_level_instances(core::level& lvl,
 
     for (int root_idx : scene.root_nodes)
     {
-        place_node_recursive(lvl, pkg, scene, opts, root_idx);
+        place_scene_root(lvl, pkg, scene, opts, root_idx);
         ++placed_count;
     }
 

@@ -51,10 +51,20 @@ render_device::construct(construct_params& params)
 {
     m_headless = params.headless;
 
-    auto width =
-        params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
-    auto height =
-        params.headless ? 1024U : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
+    if (params.headless && (params.width < 128 || params.height < 128))
+    {
+        ALOG_ERROR("headless render_device requires non-zero width/height (got {}x{})",
+                   params.width,
+                   params.height);
+        return false;
+    }
+
+    uint32_t width = params.headless
+                         ? params.width
+                         : (uint32_t)glob::glob_state().get_native_window()->get_size().w;
+    uint32_t height = params.headless
+                          ? params.height
+                          : (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
     init_vulkan(params.window, params.headless);
 

@@ -18,6 +18,8 @@
 #include <vfs/io.h>
 #include <global_state/global_state.h>
 
+#include <shader_system/shader_loader.h>
+
 #include <tracy/Tracy.hpp>
 
 #include <algorithm>
@@ -358,12 +360,13 @@ vulkan_render::init_cluster_cull_compute()
 {
     ZoneScopedN("Render::InitClusterCullCompute");
 
-    kryga::utils::buffer shader_buffer;
-    if (!vfs::load_buffer(vfs::rid("data://shaders_includes/cluster_cull.comp.spv"), shader_buffer))
+    auto shader_buffer_r = render::shader_loader::load(vfs::rid("data://shaders_includes/cluster_cull.comp.spv"));
+    if (!shader_buffer_r)
     {
         ALOG_WARN("Failed to load cluster_cull.comp.spv - GPU cluster culling disabled");
         return;
     }
+    auto& shader_buffer = *shader_buffer_r;
 
     // Create compute pass - bindings are owned by the pass, shader is created through it
     m_cluster_cull_pass = std::make_shared<render_pass>(AID("cluster_cull"), rg_pass_type::compute);
@@ -427,13 +430,14 @@ vulkan_render::init_frustum_cull_compute()
 {
     ZoneScopedN("Render::InitFrustumCullCompute");
 
-    kryga::utils::buffer shader_buffer;
-    if (!vfs::load_buffer(vfs::rid("data://shaders_includes/frustum_cull.comp.spv"), shader_buffer))
+    auto shader_buffer_r = render::shader_loader::load(vfs::rid("data://shaders_includes/frustum_cull.comp.spv"));
+    if (!shader_buffer_r)
     {
         ALOG_WARN("Failed to load frustum_cull.comp - GPU frustum culling disabled");
         m_gpu_frustum_culling_enabled = false;
         return;
     }
+    auto& shader_buffer = *shader_buffer_r;
 
     // Create compute pass - bindings are owned by the pass
     m_frustum_cull_pass = std::make_shared<render_pass>(AID("frustum_cull"), rg_pass_type::compute);

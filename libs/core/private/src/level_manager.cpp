@@ -82,6 +82,31 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
                         "class/materials",
                         "class/meshes",
                         "class/components"}});
+
+    // Fallback: walk the filesystem if no manifest. Desktop-only — Android
+    // APK assets have no real_path so the cooked manifest is required there.
+    // This lets uncooked content (e.g. converter output in regression tests)
+    // load without a separate cook step.
+    if (!l.m_backend)
+    {
+        auto rp = vfs.real_path(vfs_root);
+        if (rp.has_value())
+        {
+            ALOG_WARN("Level [{}] has no kryga_index manifest; falling back to filesystem "
+                      "scan at [{}]. This path will NOT work in GAME mode (cooked/shipping "
+                      "builds, Android APK) — run tools/cook before shipping.",
+                      vfs_root.str(),
+                      rp.value().string());
+            l.m_backend = vfs.mount(vfs_root,
+                                    rp.value(),
+                                    {.index_filter = ".aobj",
+                                     .load_order = {"class/textures",
+                                                    "class/shader_effects",
+                                                    "class/materials",
+                                                    "class/meshes",
+                                                    "class/components"}});
+        }
+    }
     if (!l.m_backend)
     {
         ALOG_LAZY_ERROR;

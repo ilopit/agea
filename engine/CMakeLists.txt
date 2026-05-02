@@ -30,6 +30,7 @@ target_link_libraries(engine PUBLIC
     kryga::native
     kryga::vfs
     kryga::asset_converter
+    kryga::project_paths
 
     kryga::textedit_unofficial
     kryga::imguizmo_unofficial
@@ -45,7 +46,8 @@ target_link_libraries(engine PUBLIC
 )
 
 if(KRG_ENABLE_SYNC_SERVICE)
-    target_link_libraries(engine PUBLIC boost_beast Boost::url)
+    target_link_libraries(engine PUBLIC
+        boost_beast Boost::url Boost::process Boost::filesystem)
 endif()
 
 target_include_directories(engine 

@@ -15,4 +15,8 @@ target_link_libraries(engine_regression_tests
     gtest
 )
 
+# All paths are discovered at runtime via kryga::paths::resolve() — no
+# compile-time path defines. Test fails loudly if no kryga.project anchor
+# is reachable from argv[0] / CWD or no KRYGA_PROJECT_ROOT env var is set.
+
 kryga_finalize_executable(engine_regression_tests)

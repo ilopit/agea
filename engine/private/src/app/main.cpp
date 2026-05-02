@@ -6,6 +6,8 @@
 #include <vfs/vfs_state.h>
 #include <vfs/physical_backend.h>
 
+#include <project_paths/project_paths.h>
+
 #if defined(__ANDROID__)
 
 #include <vfs/android_asset_backend.h>
@@ -27,24 +29,19 @@
 
 #endif
 
-#if !defined(__ANDROID__)
-static std::filesystem::path
-get_exe_dir()
-{
-#if WIN32
-    wchar_t buf[MAX_PATH];
-    GetModuleFileNameW(nullptr, buf, MAX_PATH);
-    return std::filesystem::path(buf).parent_path();
-#else
-    return std::filesystem::canonical("/proc/self/exe").parent_path();
-#endif
-}
-#endif
-
 int
 main(int argc, char** argv)
 {
     kryga::utils::setup_logger(spdlog::level::level_enum::trace);
+
+    // Hand argv[0] to the path resolver before anything else needs paths.
+    // On Android argv[0] is the package name, not a path — pass nullptr so
+    // resolver short-circuits to staged-only.
+#if defined(__ANDROID__)
+    kryga::paths::set_exe_path(nullptr);
+#else
+    kryga::paths::set_exe_path(argc > 0 ? argv[0] : nullptr);
+#endif
 
     // Parse command-line arguments
     kryga::startup_options options;
@@ -99,14 +96,20 @@ main(int argc, char** argv)
         // `generated` points at argen.py output bundled into the APK under assets/kryga_generated/
         vfs.mount("generated", std::make_unique<kryga::vfs::android_asset_backend>(asset_manager, "kryga_generated"), 0);
 #else
-        auto root = get_exe_dir().parent_path();
+        auto layout = kryga::paths::resolve();
+        if (!layout)
+        {
+            ALOG_ERROR("Failed to resolve project paths — engine cannot start");
+            return 1;
+        }
+        const auto& root = layout->staged_root;
         vfs.mount("data", std::make_unique<kryga::vfs::physical_backend>(root), 0);
         vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(root / "cache"), 0);
         vfs.mount("rtcache", std::make_unique<kryga::vfs::physical_backend>(root / "rtcache"), 0);
         vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(root / "tmp"), 0);
         vfs.mount(
             "generated",
-            std::make_unique<kryga::vfs::physical_backend>(root.parent_path() / "kryga_generated"),
+            std::make_unique<kryga::vfs::physical_backend>(layout->generated_dir),
             0);
 #endif
 

@@ -248,6 +248,8 @@ vulkan_engine::init(const startup_options& options)
     if (m_headless)
     {
         rdc.headless = true;
+        rdc.width = render_w;
+        rdc.height = render_h;
     }
     else
     {

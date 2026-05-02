@@ -26,6 +26,8 @@ class mesh;
 class texture;
 class material;
 class shader_effect;
+class game_object;
+class component;
 }  // namespace root
 
 namespace base
@@ -231,38 +233,6 @@ public:
                     root::texture* diffuse_tex,
                     root::texture* specular_tex);
 
-    // Instance construction (into specified level)
-    base::mesh_object*
-    place_mesh_object(core::level& lvl,
-                      const utils::id& id,
-                      root::mesh* mesh,
-                      root::material* material,
-                      const parsed_transform& xform);
-
-    base::point_light*
-    place_point_light(core::level& lvl,
-                      const utils::id& id,
-                      const parsed_light& data,
-                      const parsed_transform& xform);
-
-    base::directional_light*
-    place_directional_light(core::level& lvl,
-                            const utils::id& id,
-                            const parsed_light& data,
-                            const parsed_transform& xform);
-
-    base::spot_light*
-    place_spot_light(core::level& lvl,
-                     const utils::id& id,
-                     const parsed_light& data,
-                     const parsed_transform& xform);
-
-    base::camera_object*
-    place_camera(core::level& lvl,
-                 const utils::id& id,
-                 const parsed_camera& data,
-                 const parsed_transform& xform);
-
     // High-level conversion
     bool
     convert(const parsed_scene& scene, const converter_options& opts);
@@ -292,8 +262,24 @@ private:
                           const parsed_scene& scene,
                           const converter_options& opts);
 
+    // Place one glTF scene root as a single game_object whose component
+    // tree mirrors the node tree below. Umbrella class is picked from the
+    // root node's payload (mesh_object / point_light / etc., or plain
+    // game_object for transform-only roots).
     void
-    place_node_recursive(core::level& lvl,
+    place_scene_root(core::level& lvl,
+                     core::package& pkg,
+                     const parsed_scene& scene,
+                     const converter_options& opts,
+                     int root_idx);
+
+    // Spawn one component for a non-root glTF node into `obj`'s tree as a
+    // child of `parent`. Component subclass is determined by node payload.
+    // Recurses into children of the node with the spawned component as the
+    // new parent. Returns the spawned component, or nullptr on failure.
+    root::component*
+    spawn_node_component(root::game_object* obj,
+                         root::component* parent,
                          core::package& pkg,
                          const parsed_scene& scene,
                          const converter_options& opts,

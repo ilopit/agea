@@ -22,6 +22,8 @@
 #include <vfs/io.h>
 #include <global_state/global_state.h>
 
+#include <shader_system/shader_loader.h>
+
 #include <algorithm>
 
 namespace kryga
@@ -1258,10 +1260,15 @@ vulkan_render::prepare_ui_pipeline()
     vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
 
     {
-        kryga::utils::buffer vert, frag;
-
-        vfs::load_buffer(se_ui_base / "se_uioverlay.vert.spv", vert);
-        vfs::load_buffer(se_ui_base / "se_uioverlay.frag.spv", frag);
+        auto vert_r = render::shader_loader::load(se_ui_base / "se_uioverlay.vert.spv");
+        auto frag_r = render::shader_loader::load(se_ui_base / "se_uioverlay.frag.spv");
+        if (!vert_r || !frag_r)
+        {
+            ALOG_ERROR("Failed to load se_uioverlay shaders — UI pipeline not created");
+            return;
+        }
+        auto& vert = *vert_r;
+        auto& frag = *frag_r;
 
         auto layout = render::gpu_dynobj_builder()
                           .set_id(AID("interface"))
@@ -1291,10 +1298,15 @@ vulkan_render::prepare_ui_pipeline()
             AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
     }
     {
-        kryga::utils::buffer vert, frag;
-
-        vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
-        vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
+        auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
+        auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
+        if (!vert_r || !frag_r)
+        {
+            ALOG_ERROR("Failed to load se_upload shaders — UI copy pipeline not created");
+            return;
+        }
+        auto& vert = *vert_r;
+        auto& frag = *frag_r;
 
         // In render_scale mode the UI copy is drawn inside the composite pass, which has
         // a different depth format than main. Create the pipeline against the pass
@@ -1326,9 +1338,15 @@ vulkan_render::prepare_ui_pipeline()
     // the composite render pass. Sampler is NEAREST for the pixelated look.
     if (m_render_config.render_scale.enabled && !m_scene_lowres_views.empty())
     {
-        kryga::utils::buffer vert, frag;
-        vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
-        vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
+        auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
+        auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
+        if (!vert_r || !frag_r)
+        {
+            ALOG_ERROR("Failed to load se_upload shaders — scene upscale pipeline not created");
+            return;
+        }
+        auto& vert = *vert_r;
+        auto& frag = *frag_r;
 
         auto composite_pass =
             glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));

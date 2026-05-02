@@ -63,12 +63,19 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
     auto gpu_includes = vfs.real_path(vfs::rid("data://gpu_types"));
     auto generated_gpu_includes = vfs.real_path(vfs::rid("generated"));
 
+    // Shaders write `#include "gpu_types/foo.h"` — glslc's `-I` must point at
+    // the *parent* of the gpu_types/ directory. Both the engine_app symlink
+    // (`<bin>/gpu_types -> .../include`) and the regression test's direct VFS
+    // mount land on a real path ending in `/gpu_types`; strip the last
+    // component so the include resolves correctly.
+    auto gpu_includes_root = gpu_includes.value().parent_path();
+
     params.arguments =
         std::format("-V {0} -o {1} --target-env=vulkan1.2 --target-spv=spv1.5 -I {2} -I {3} -I {4}",
                     raw_buffer.get_file().str(),
                     compiled_path.str(),
                     APATH(includes.value()).str(),
-                    APATH(gpu_includes.value()).str(),
+                    APATH(gpu_includes_root).str(),
                     APATH(generated_gpu_includes.value()).str());
 
     for (const auto& def : defines)

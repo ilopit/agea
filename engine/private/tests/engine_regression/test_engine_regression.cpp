@@ -9,6 +9,8 @@
 
 #include <global_state/global_state.h>
 
+#include <project_paths/project_paths.h>
+
 #include <vfs/vfs.h>
 #include <vfs/vfs_state.h>
 #include <vfs/physical_backend.h>
@@ -28,6 +30,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <iostream>
 
 using namespace kryga;
 namespace fs = std::filesystem;
@@ -38,58 +41,79 @@ namespace
 constexpr uint32_t TEST_WIDTH = 512;
 constexpr uint32_t TEST_HEIGHT = 512;
 
-// Locate the engine resource root (build/project_<Config>/). Tests run from
-// bin/, so parent_path() gives us the config dir.
-fs::path
-get_engine_root()
+// Cached layout. Asserts dev mode — engine_regression has no use case outside
+// the source tree (it depends on raw resources/, gpu_types includes, and
+// converter source assets).
+const paths::resolved_layout&
+dev_layout()
 {
-    return fs::current_path().parent_path();
-}
-
-// kryga_generated lives as a sibling of project_<Config>/ (shared across configs)
-fs::path
-get_generated_root()
-{
-    return get_engine_root().parent_path() / "kryga_generated";
+    static const paths::resolved_layout cached = []() {
+        auto l = paths::resolve();
+        if (!l || !l->is_dev_layout)
+        {
+            std::cerr << "engine_regression requires a dev project layout — set "
+                         "KRYGA_PROJECT_ROOT or run from a tree containing kryga.project\n";
+            std::abort();
+        }
+        return *l;
+    }();
+    return cached;
 }
 
 fs::path
 get_test_asset(const char* name)
 {
-    // Tests run from build/project_<Config>/bin — test assets live at
-    // build/test_assets/converter, reached via engine_root's parent.
-    auto p = get_engine_root().parent_path() / "test_assets" / "converter" / name;
+    auto p = dev_layout().source_root / "build" / "test_assets" / "converter" / name;
     return fs::exists(p) ? p : fs::path{};
 }
 
 fs::path
 get_test_scratch()
 {
-    auto p = get_engine_root() / "tmp" / "engine_regression";
+    auto p = paths::scratch_dir("engine_regression");
     std::error_code ec;
     fs::remove_all(p, ec);       // clean slate
     fs::create_directories(p);
     return p;
 }
 
-// Install minimal VFS + engine-expected mounts. Call AFTER glob_state_reset.
-// scratch overlays data:// at higher priority so converted packages/levels
-// are discoverable next to the stock engine resources.
+// Install VFS for the engine phase. Source resources are layered with
+// gpu_types (so `data://gpu_types/foo.h` resolves) and the converter scratch
+// (so the just-written package/level overlay the source tree). Cache + tmp
+// live under scratch so each test run starts clean.
 void
-install_vfs(const fs::path& engine_root,
-            const fs::path& scratch_root,
-            const fs::path& generated_root)
+install_vfs(const fs::path& scratch_root)
 {
     auto& gs = glob::glob_state();
     state_mutator__vfs::set(gs);
     auto& vfs = gs.getr_vfs();
 
-    vfs.mount("data", std::make_unique<vfs::physical_backend>(engine_root), 0);
+    const auto& l = dev_layout();
+    auto resources_dir = l.source_root / "resources";
+    auto gpu_types_parent = l.source_root / "libs" / "render" / "gpu_types" / "public" / "include";
+
+    vfs.mount("data", std::make_unique<vfs::physical_backend>(resources_dir), 0);
+    vfs.mount("data", std::make_unique<vfs::physical_backend>(gpu_types_parent), 5);
     vfs.mount("data", std::make_unique<vfs::physical_backend>(scratch_root), 10);
-    vfs.mount("cache", std::make_unique<vfs::physical_backend>(engine_root / "cache"), 0);
-    vfs.mount("rtcache", std::make_unique<vfs::physical_backend>(engine_root / "rtcache"), 0);
-    vfs.mount("tmp", std::make_unique<vfs::physical_backend>(engine_root / "tmp"), 0);
-    vfs.mount("generated", std::make_unique<vfs::physical_backend>(generated_root), 0);
+    vfs.mount("generated", std::make_unique<vfs::physical_backend>(l.generated_dir), 0);
+    vfs.mount("cache",
+              std::make_unique<vfs::physical_backend>(scratch_root / "cache"),
+              0);
+    vfs.mount("rtcache",
+              std::make_unique<vfs::physical_backend>(scratch_root / "rtcache"),
+              0);
+    vfs.mount("tmp",
+              std::make_unique<vfs::physical_backend>(scratch_root / "tmp"),
+              0);
+}
+
+// Resolve a vfs rid to its concrete filesystem path. Asserts the rid is
+// reachable — call only after install_vfs and only for paths the test owns.
+fs::path
+real_path(const vfs::rid& id)
+{
+    auto rp = glob::glob_state().getr_vfs().real_path(id);
+    return rp.has_value() ? fs::path(rp.value()) : fs::path{};
 }
 
 // converter writes both <name>.apkg and <name>.alvl into output_root flat.
@@ -119,17 +143,21 @@ warmup(vulkan_engine& engine, int frames = 6)
     }
 }
 
+// Resolve via VFS so the path comes from data://test_references/ (whichever
+// mount currently holds it) rather than a hardcoded fs root.
 std::string
-get_reference_path(const fs::path& engine_root, const char* test_name)
+get_reference_path(const char* test_name)
 {
-    return (engine_root / "test_references" / (std::string(test_name) + ".png")).string();
+    auto p = real_path(vfs::rid("data", "test_references/" + std::string(test_name) + ".png"));
+    return p.string();
 }
 
 std::string
-get_output_path(const fs::path& engine_root, const char* test_name)
+get_output_path(const char* test_name)
 {
-    auto dir = engine_root / "tmp" / "engine_regression_output";
-    fs::create_directories(dir);
+    auto dir = real_path(vfs::rid("tmp", "")) / "engine_regression_output";
+    std::error_code ec;
+    fs::create_directories(dir, ec);
     return (dir / (std::string(test_name) + "_actual.png")).string();
 }
 
@@ -153,8 +181,6 @@ TEST(engine_regression, converts_and_renders_box_textured)
         GTEST_SKIP() << "Box.glb not found in build/test_assets/converter";
     }
 
-    auto engine_root = get_engine_root();
-    auto generated_root = get_generated_root();
     auto scratch_root = get_test_scratch();
 
     // Step 1: parse glTF (no global state needed for this)
@@ -167,7 +193,8 @@ TEST(engine_regression, converts_and_renders_box_textured)
     // directories produced by save_package/save_level).
     {
         converter::converter_context ctx;
-        ASSERT_TRUE(ctx.init(engine_root, scratch_root / "packages"));
+        ASSERT_TRUE(ctx.init(dev_layout().source_root / "resources",
+                             scratch_root / "packages"));
 
         converter::converter_options opts;
         opts.mode = converter::converter_mode::level_with_package;
@@ -183,7 +210,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
     relocate_level(scratch_root, "box");
 
     // Step 4: install VFS fresh (glob_state was just reset)
-    install_vfs(engine_root, scratch_root, generated_root);
+    install_vfs(scratch_root);
 
     // Step 5: headless engine → load level → render → compare
     {
@@ -225,8 +252,8 @@ TEST(engine_regression, converts_and_renders_box_textured)
         auto pixels = render::test::readback_framebuffer(
             *main_pass, TEST_WIDTH, TEST_HEIGHT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-        auto ref_path = get_reference_path(engine_root, "engine_converts_box_textured");
-        auto actual_path = get_output_path(engine_root, "engine_converts_box_textured");
+        auto ref_path = get_reference_path("engine_converts_box_textured");
+        auto actual_path = get_output_path("engine_converts_box_textured");
 
         if (std::getenv("UPDATE_REFERENCES"))
         {

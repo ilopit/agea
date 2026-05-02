@@ -88,6 +88,29 @@ package::init()
                         "class/materials",
                         "class/meshes",
                         "class/components"}});
+
+    // Fallback: walk the filesystem if no manifest. Desktop-only — Android
+    // APK assets have no real_path so the cooked manifest is required there.
+    if (!m_backend)
+    {
+        auto rp = vfs.real_path(vfs_root);
+        if (rp.has_value())
+        {
+            ALOG_WARN("Package [{}] has no kryga_index manifest; falling back to filesystem "
+                      "scan at [{}]. This path will NOT work in GAME mode (cooked/shipping "
+                      "builds, Android APK) — run tools/cook before shipping.",
+                      m_id.cstr(),
+                      rp.value().string());
+            m_backend = vfs.mount(vfs_root,
+                                  rp.value(),
+                                  {.index_filter = ".aobj",
+                                   .load_order = {"class/textures",
+                                                  "class/shader_effects",
+                                                  "class/materials",
+                                                  "class/meshes",
+                                                  "class/components"}});
+        }
+    }
     if (!m_backend)
     {
         ALOG_ERROR("Package not found (no manifest): {}", vfs_root.str());

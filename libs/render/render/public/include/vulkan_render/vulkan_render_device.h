@@ -56,6 +56,10 @@ public:
     {
         SDL_Window* window = nullptr;
         bool headless = false;
+        // Headless-only: target swapchain dimensions, both required (non-zero).
+        // Windowed mode reads the size from `window`.
+        uint32_t width = 0;
+        uint32_t height = 0;
     };
 
     bool

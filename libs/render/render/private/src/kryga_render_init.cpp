@@ -25,6 +25,8 @@
 #include <vfs/io.h>
 #include <global_state/global_state.h>
 
+#include <shader_system/shader_loader.h>
+
 #include <tracy/Tracy.hpp>
 
 #include <cmath>
@@ -621,9 +623,15 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
     }
     {
         vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
-        kryga::utils::buffer vert, frag;
-        vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
-        vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
+        auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
+        auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
+        if (!vert_r || !frag_r)
+        {
+            ALOG_ERROR("Failed to load se_upload shaders — render-scale reconfigure aborted");
+            return false;
+        }
+        auto& vert = *vert_r;
+        auto& frag = *frag_r;
 
         auto host_pass_id = enabled ? AID("composite") : AID("main");
         auto host_pass = loader.get_render_pass(host_pass_id);
@@ -658,9 +666,15 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
 
         // Scene upscale
         {
-            kryga::utils::buffer vert, frag;
-            vfs::load_buffer(se_ui_base / "se_upload.vert.spv", vert);
-            vfs::load_buffer(se_ui_base / "se_upload.frag.spv", frag);
+            auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
+            auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
+            if (!vert_r || !frag_r)
+            {
+                ALOG_ERROR("Failed to load se_upload shaders for scene upscale");
+                return false;
+            }
+            auto& vert = *vert_r;
+            auto& frag = *frag_r;
 
             shader_effect_create_info se_ci;
             se_ci.vert_buffer = &vert;
@@ -696,9 +710,15 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         // Depth outline (only when outline is also enabled)
         if (m_render_config.outline.enabled)
         {
-            kryga::utils::buffer overt, ofrag;
-            vfs::load_buffer(se_base / "system/se_fullscreen.vert.spv", overt);
-            vfs::load_buffer(se_base / "system/se_depth_outline.frag.spv", ofrag);
+            auto overt_r = render::shader_loader::load(se_base / "system/se_fullscreen.vert.spv");
+            auto ofrag_r = render::shader_loader::load(se_base / "system/se_depth_outline.frag.spv");
+            if (!overt_r || !ofrag_r)
+            {
+                ALOG_ERROR("Failed to load depth-outline shaders");
+                return false;
+            }
+            auto& overt = *overt_r;
+            auto& ofrag = *ofrag_r;
 
             shader_effect_create_info ose_ci;
             ose_ci.vert_buffer = &overt;
@@ -886,8 +906,24 @@ vulkan_render::prepare_system_resources()
 
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
-    vfs::load_buffer(se_base / "error/se_error.vert.spv", vert);
-    vfs::load_buffer(se_base / "error/se_error.frag.spv", frag);
+    auto load_pair = [&vert, &frag](const vfs::rid& v_rid, const vfs::rid& f_rid) -> bool {
+        auto v_r = render::shader_loader::load(v_rid);
+        auto f_r = render::shader_loader::load(f_rid);
+        if (!v_r || !f_r)
+        {
+            ALOG_ERROR("Failed to load shader pair: [{}] / [{}]", v_rid.str(), f_rid.str());
+            return false;
+        }
+        vert = std::move(*v_r);
+        frag = std::move(*f_r);
+        return true;
+    };
+
+    if (!load_pair(se_base / "error/se_error.vert.spv",
+                   se_base / "error/se_error.frag.spv"))
+    {
+        return;
+    }
 
     auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
 
@@ -908,8 +944,11 @@ vulkan_render::prepare_system_resources()
     std::vector<texture_sampler_data> sd;
 
     // Grid shader effect and material
-    vfs::load_buffer(se_base / "system/se_grid.vert.spv", vert);
-    vfs::load_buffer(se_base / "system/se_grid.frag.spv", frag);
+    if (!load_pair(se_base / "system/se_grid.vert.spv",
+                   se_base / "system/se_grid.frag.spv"))
+    {
+        return;
+    }
 
     se_ci = {};
     se_ci.vert_buffer = &vert;
@@ -932,8 +971,11 @@ vulkan_render::prepare_system_resources()
 
     // Outline post-process shader — edge detection on selection mask
     {
-        vfs::load_buffer(se_base / "system/se_fullscreen.vert.spv", vert);
-        vfs::load_buffer(se_base / "system/se_outline_post.frag.spv", frag);
+        if (!load_pair(se_base / "system/se_fullscreen.vert.spv",
+                       se_base / "system/se_outline_post.frag.spv"))
+        {
+            return;
+        }
 
         se_ci = {};
         se_ci.vert_buffer = &vert;
@@ -1016,9 +1058,15 @@ vulkan_render::prepare_system_resources()
 
         if (composite_pass)
         {
-            kryga::utils::buffer overt, ofrag;
-            vfs::load_buffer(se_base / "system/se_fullscreen.vert.spv", overt);
-            vfs::load_buffer(se_base / "system/se_depth_outline.frag.spv", ofrag);
+            auto overt_r = render::shader_loader::load(se_base / "system/se_fullscreen.vert.spv");
+            auto ofrag_r = render::shader_loader::load(se_base / "system/se_depth_outline.frag.spv");
+            if (!overt_r || !ofrag_r)
+            {
+                ALOG_ERROR("Failed to load depth-outline composite shaders");
+                return;
+            }
+            auto& overt = *overt_r;
+            auto& ofrag = *ofrag_r;
 
             shader_effect_create_info ose_ci;
             ose_ci.vert_buffer = &overt;
@@ -1035,8 +1083,11 @@ vulkan_render::prepare_system_resources()
     }
 
     // Debug wireframe shader for light visualization
-    vfs::load_buffer(se_base / "system/se_debug_wire.vert.spv", vert);
-    vfs::load_buffer(se_base / "system/se_debug_wire.frag.spv", frag);
+    if (!load_pair(se_base / "system/se_debug_wire.vert.spv",
+                   se_base / "system/se_debug_wire.frag.spv"))
+    {
+        return;
+    }
 
     se_ci = {};
     se_ci.vert_buffer = &vert;
@@ -1128,9 +1179,10 @@ vulkan_render::init_shadow_resources()
     // With BDA, no shared pipeline layout needed — shadow shaders build their own.
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
-    kryga::utils::buffer vert;
-    if (vfs::load_buffer(se_base / "shadow/se_shadow.vert.spv", vert))
+    auto vert_r = render::shader_loader::load(se_base / "shadow/se_shadow.vert.spv");
+    if (vert_r)
     {
+        auto& vert = *vert_r;
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &vert;
         se_ci.frag_buffer = nullptr;  // No fragment shader for depth-only
@@ -1156,9 +1208,10 @@ vulkan_render::init_shadow_resources()
     }
 
     // Create DPSM vertex shader for point lights
-    kryga::utils::buffer dpsm_vert;
-    if (vfs::load_buffer(se_base / "shadow/se_shadow_dpsm.vert.spv", dpsm_vert))
+    auto dpsm_vert_r = render::shader_loader::load(se_base / "shadow/se_shadow_dpsm.vert.spv");
+    if (dpsm_vert_r)
     {
+        auto& dpsm_vert = *dpsm_vert_r;
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &dpsm_vert;
         se_ci.frag_buffer = nullptr;
