@@ -16,6 +16,8 @@
 
 #include <render/utils/image_compare.h>
 
+#include <shader_system/shader_compiler.h>
+
 #include <vk_mem_alloc.h>
 
 #include <chrono>
@@ -314,6 +316,8 @@ lightmap_baker::bake(const bake::bake_settings& settings)
 
     // --- AO descriptors ---
     VkDescriptorImageInfo ao_img_info{VK_NULL_HANDLE, view_ao->vk(), VK_IMAGE_LAYOUT_GENERAL};
+    VkDescriptorImageInfo ao_lightmap_info{
+        VK_NULL_HANDLE, view_lightmap->vk(), VK_IMAGE_LAYOUT_GENERAL};
 
     VkDescriptorSet ds_ao;
     VkDescriptorSetLayout dsl_ao;
@@ -324,6 +328,7 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         .bind_image(3, 1, &ao_img_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .bind_image(4, 1, &pos_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .bind_image(5, 1, &norm_read_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
+        .bind_image(6, 1, &ao_lightmap_info, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT)
         .build(ds_ao, dsl_ao);
 
     // --- Denoise descriptors ---
@@ -361,25 +366,50 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         bool valid = false;
     };
 
-    auto compile_bake_shader = [&](const char* vfs_path, const char* name) -> bake_shader
+    // Compile bake compute shaders directly from .comp source via glslc at
+    // runtime — same path the renderer's runtime-compiled tests use. Avoids
+    // the cook_resources step: edit a .comp, run the test, the new shader
+    // takes effect immediately. Slight cost: glslc is invoked per bake call.
+    auto compile_bake_shader = [&](const char* source_vfs_path, const char* name) -> bake_shader
     {
         bake_shader s;
         s.data = compute_shader_data(AID(name));
 
-        utils::buffer shader_buf;
-        if (!vfs::load_buffer(vfs::rid(vfs_path), shader_buf))
+        auto& vfs = glob::glob_state().getr_vfs();
+        auto real = vfs.real_path(vfs::rid(source_vfs_path));
+        if (!real.has_value())
         {
-            ALOG_ERROR("lightmap_baker: failed to load {}", vfs_path);
+            ALOG_ERROR("lightmap_baker: source not found in VFS: {}", source_vfs_path);
             return s;
         }
 
+        utils::buffer source_buf;
+        if (!utils::buffer::load(APATH(real.value()), source_buf))
+        {
+            ALOG_ERROR("lightmap_baker: failed to load source from {}",
+                       APATH(real.value()).str());
+            return s;
+        }
+
+        auto compiled = shader_compiler::compile_shader(source_buf);
+        if (!compiled.has_value())
+        {
+            ALOG_ERROR("lightmap_baker: glslc compile failed for {}", source_vfs_path);
+            return s;
+        }
+
+        auto& spv = compiled.value().spirv;
+        utils::buffer spv_buf(spv.size());
+        std::memcpy(spv_buf.data(), spv.data(), spv.size());
+        spv_buf.set_vpath(source_vfs_path);
+
         compute_shader_create_info info;
-        info.shader_buffer = &shader_buf;
+        info.shader_buffer = &spv_buf;
 
         auto rc = vulkan_compute_shader_loader::create_compute_shader(s.data, info);
         if (rc != result_code::ok)
         {
-            ALOG_ERROR("lightmap_baker: failed to compile {}", vfs_path);
+            ALOG_ERROR("lightmap_baker: create_compute_shader failed for {}", source_vfs_path);
             return s;
         }
 
@@ -388,17 +418,17 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     };
 
     auto cs_gbuf = compile_bake_shader(
-        "data://shaders_includes/bake/gbuffer_rasterize.comp.spv", "bake_gbuf");
+        "data://shaders_includes/bake/gbuffer_rasterize.comp", "bake_gbuf");
     auto cs_direct = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_baker_direct.comp.spv", "bake_direct");
+        "data://shaders_includes/bake/lightmap_baker_direct.comp", "bake_direct");
     auto cs_indirect = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_baker_indirect.comp.spv", "bake_indirect");
+        "data://shaders_includes/bake/lightmap_baker_indirect.comp", "bake_indirect");
     auto cs_ao = compile_bake_shader(
-        "data://shaders_includes/bake/ao_baker.comp.spv", "bake_ao");
+        "data://shaders_includes/bake/ao_baker.comp", "bake_ao");
     auto cs_denoise = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_denoise.comp.spv", "bake_denoise");
+        "data://shaders_includes/bake/lightmap_denoise.comp", "bake_denoise");
     auto cs_dilate = compile_bake_shader(
-        "data://shaders_includes/bake/lightmap_dilate.comp.spv", "bake_dilate");
+        "data://shaders_includes/bake/lightmap_dilate.comp", "bake_dilate");
 
     if (!cs_gbuf.valid || !cs_direct.valid)
     {

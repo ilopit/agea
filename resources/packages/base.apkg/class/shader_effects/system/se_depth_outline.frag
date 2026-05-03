@@ -1,5 +1,6 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "gpu_types/gpu_generic_constants.h"
 
@@ -9,7 +10,7 @@ layout(set = KGPU_textures_descriptor_sets, binding = 1) uniform texture2D bindl
 layout (location = 0) in vec2 in_tex_coord;
 layout (location = 0) out vec4 out_color;
 
-layout(push_constant) uniform Constants
+layout(push_constant, scalar) uniform Constants
 {
     vec4 outline_color;
     vec2 texel_size;        // 1/width, 1/height of scene depth target

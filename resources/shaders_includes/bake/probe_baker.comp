@@ -34,7 +34,7 @@ layout(scalar, set = 0, binding = 5) buffer ProbeCoefficients {
     sh_probe probes[];
 } dyn_out_probes;
 
-layout(push_constant) uniform PushConstants {
+layout(push_constant, scalar) uniform PushConstants {
     uint probe_count;
     uint sample_count;
 } pc;

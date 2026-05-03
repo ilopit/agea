@@ -1,5 +1,6 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "gpu_types/gpu_generic_constants.h"
 #include "gpu_types/gpu_push_constants_main.h"
@@ -11,7 +12,7 @@ layout (location = 0) in vec2 in_tex_coord;
 
 layout (location = 0) out vec4 out_color;
 
-layout(push_constant) uniform Constants
+layout(push_constant, scalar) uniform Constants
 {
     push_constants_main obj;
 } constants;

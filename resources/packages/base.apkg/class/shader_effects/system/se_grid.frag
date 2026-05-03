@@ -3,10 +3,11 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
+#extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_nonuniform_qualifier : require
 
 #include "gpu_types/gpu_push_constants_grid.h"
-layout(push_constant) uniform Constants { push_constants_grid obj; } constants;
+layout(push_constant, scalar) uniform Constants { push_constants_grid obj; } constants;
 #include "bda_macros_grid.glsl"
 
 #include "gpu_types/gpu_generic_constants.h"

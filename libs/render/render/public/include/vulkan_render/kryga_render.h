@@ -466,29 +466,19 @@ private:
     upload_frustum_data(render::frame_state& frame);
 
     void
-    draw_multi_pipeline_objects_queue(render_line_container& r,
-                                      VkCommandBuffer cmd,
-                                      render::frame_state& current_frame);
-
-    void
-    draw_objects_queue(render_line_container& r,
-                       VkCommandBuffer cmd,
-                       render::frame_state& current_frame,
-                       bool outlined);
-
-    void
-    draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
-                                     const pipeline_ctx& pctx,
-                                     const render_line_container& r,
-                                     bool rebind_images = true);
-
-    void
-    draw_object(VkCommandBuffer cmd,
-                const pipeline_ctx& pctx,
-                const render::vulkan_render_data* obj);
-
-    void
     bind_mesh(VkCommandBuffer cmd, mesh_data* cur_mesh);
+
+    void
+    draw_mesh(VkCommandBuffer cmd,
+              mesh_data* m,
+              uint32_t instance_count = 1,
+              uint32_t first_instance = 0);
+
+    void
+    bind_bindless(VkCommandBuffer cmd, VkPipelineLayout layout);
+
+    void
+    draw_fullscreen_quad(VkCommandBuffer cmd, shader_effect_data* se, const void* push_data);
 
     void
     bind_global_descriptors(VkCommandBuffer cmd, render::frame_state& current_frame);

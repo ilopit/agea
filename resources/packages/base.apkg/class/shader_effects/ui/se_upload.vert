@@ -1,5 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive: enable
+#extension GL_EXT_scalar_block_layout : require
 
 #include "gpu_types/gpu_push_constants_main.h"
 
@@ -11,7 +12,7 @@ layout (location = 4) in vec2 in_lightmap_uv;
 
 layout (location = 0) out vec2 out_tex_coord;
 
-layout(push_constant) uniform Constants
+layout(push_constant, scalar) uniform Constants
 {
     push_constants_main obj;
 } constants;

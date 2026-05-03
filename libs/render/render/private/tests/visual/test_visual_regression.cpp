@@ -746,46 +746,57 @@ protected:
         return sed;
     }
 
-    // Cube vertex layout with per-face packed UV2 (3x2 grid in [0,1]). Used by
-    // baked tests so each face gets its own lightmap region inside an instance
-    // tile. Returns a fresh copy that the caller can transform/remap.
+    // Cube vertex layout with per-face packed UV2 (3x2 grid in [0,1]). Each
+    // face is inset by `pad` of its cell on each side so adjacent faces don't
+    // share boundary texels — dilate fills the gutter with each face's own
+    // data, eliminating the dark seam at face/face junctions in the bake.
+    // Used by baked tests so each face gets its own lightmap region inside
+    // an instance tile. Returns a fresh copy that the caller can transform/remap.
     std::vector<gpu::vertex_data>
     make_cube_lm_verts() const
     {
         constexpr float cw = 1.0f / 3.0f;
         constexpr float ch = 1.0f / 2.0f;
+        constexpr float face_pad = 0.06f;  // 6% of each cell on each side
+        constexpr float ipad_u = cw * face_pad;
+        constexpr float ipad_v = ch * face_pad;
+        // u(col, x) maps corner_x in {0,1} to inset UV: [col*cw + ipad_u, (col+1)*cw - ipad_u]
+        auto u = [](int col, int corner_x)
+        { return col * cw + ipad_u + corner_x * (cw - 2 * ipad_u); };
+        auto v = [](int row, int corner_y)
+        { return row * ch + ipad_v + corner_y * (ch - 2 * ipad_v); };
         // clang-format off
         return {
             // Front  (col 0, row 0)
-            {{-0.5f,-0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {0,0}, {0*cw,      0*ch}},
-            {{ 0.5f,-0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {1,0}, {0*cw + cw, 0*ch}},
-            {{ 0.5f, 0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {1,1}, {0*cw + cw, 0*ch + ch}},
-            {{-0.5f, 0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {0,1}, {0*cw,      0*ch + ch}},
+            {{-0.5f,-0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {0,0}, {u(0,0), v(0,0)}},
+            {{ 0.5f,-0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {1,0}, {u(0,1), v(0,0)}},
+            {{ 0.5f, 0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {1,1}, {u(0,1), v(0,1)}},
+            {{-0.5f, 0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {0,1}, {u(0,0), v(0,1)}},
             // Back   (col 1, row 0)
-            {{ 0.5f,-0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {0,0}, {1*cw,      0*ch}},
-            {{-0.5f,-0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {1,0}, {1*cw + cw, 0*ch}},
-            {{-0.5f, 0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {1,1}, {1*cw + cw, 0*ch + ch}},
-            {{ 0.5f, 0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {0,1}, {1*cw,      0*ch + ch}},
+            {{ 0.5f,-0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {0,0}, {u(1,0), v(0,0)}},
+            {{-0.5f,-0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {1,0}, {u(1,1), v(0,0)}},
+            {{-0.5f, 0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {1,1}, {u(1,1), v(0,1)}},
+            {{ 0.5f, 0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {0,1}, {u(1,0), v(0,1)}},
             // Top    (col 2, row 0)
-            {{-0.5f, 0.5f, 0.5f}, { 0, 1, 0}, {1,1,1}, {0,0}, {2*cw,      0*ch}},
-            {{ 0.5f, 0.5f, 0.5f}, { 0, 1, 0}, {1,1,1}, {1,0}, {2*cw + cw, 0*ch}},
-            {{ 0.5f, 0.5f,-0.5f}, { 0, 1, 0}, {1,1,1}, {1,1}, {2*cw + cw, 0*ch + ch}},
-            {{-0.5f, 0.5f,-0.5f}, { 0, 1, 0}, {1,1,1}, {0,1}, {2*cw,      0*ch + ch}},
+            {{-0.5f, 0.5f, 0.5f}, { 0, 1, 0}, {1,1,1}, {0,0}, {u(2,0), v(0,0)}},
+            {{ 0.5f, 0.5f, 0.5f}, { 0, 1, 0}, {1,1,1}, {1,0}, {u(2,1), v(0,0)}},
+            {{ 0.5f, 0.5f,-0.5f}, { 0, 1, 0}, {1,1,1}, {1,1}, {u(2,1), v(0,1)}},
+            {{-0.5f, 0.5f,-0.5f}, { 0, 1, 0}, {1,1,1}, {0,1}, {u(2,0), v(0,1)}},
             // Bottom (col 0, row 1)
-            {{-0.5f,-0.5f,-0.5f}, { 0,-1, 0}, {1,1,1}, {0,0}, {0*cw,      1*ch}},
-            {{ 0.5f,-0.5f,-0.5f}, { 0,-1, 0}, {1,1,1}, {1,0}, {0*cw + cw, 1*ch}},
-            {{ 0.5f,-0.5f, 0.5f}, { 0,-1, 0}, {1,1,1}, {1,1}, {0*cw + cw, 1*ch + ch}},
-            {{-0.5f,-0.5f, 0.5f}, { 0,-1, 0}, {1,1,1}, {0,1}, {0*cw,      1*ch + ch}},
+            {{-0.5f,-0.5f,-0.5f}, { 0,-1, 0}, {1,1,1}, {0,0}, {u(0,0), v(1,0)}},
+            {{ 0.5f,-0.5f,-0.5f}, { 0,-1, 0}, {1,1,1}, {1,0}, {u(0,1), v(1,0)}},
+            {{ 0.5f,-0.5f, 0.5f}, { 0,-1, 0}, {1,1,1}, {1,1}, {u(0,1), v(1,1)}},
+            {{-0.5f,-0.5f, 0.5f}, { 0,-1, 0}, {1,1,1}, {0,1}, {u(0,0), v(1,1)}},
             // Right  (col 1, row 1)
-            {{ 0.5f,-0.5f, 0.5f}, { 1, 0, 0}, {1,1,1}, {0,0}, {1*cw,      1*ch}},
-            {{ 0.5f,-0.5f,-0.5f}, { 1, 0, 0}, {1,1,1}, {1,0}, {1*cw + cw, 1*ch}},
-            {{ 0.5f, 0.5f,-0.5f}, { 1, 0, 0}, {1,1,1}, {1,1}, {1*cw + cw, 1*ch + ch}},
-            {{ 0.5f, 0.5f, 0.5f}, { 1, 0, 0}, {1,1,1}, {0,1}, {1*cw,      1*ch + ch}},
+            {{ 0.5f,-0.5f, 0.5f}, { 1, 0, 0}, {1,1,1}, {0,0}, {u(1,0), v(1,0)}},
+            {{ 0.5f,-0.5f,-0.5f}, { 1, 0, 0}, {1,1,1}, {1,0}, {u(1,1), v(1,0)}},
+            {{ 0.5f, 0.5f,-0.5f}, { 1, 0, 0}, {1,1,1}, {1,1}, {u(1,1), v(1,1)}},
+            {{ 0.5f, 0.5f, 0.5f}, { 1, 0, 0}, {1,1,1}, {0,1}, {u(1,0), v(1,1)}},
             // Left   (col 2, row 1)
-            {{-0.5f,-0.5f,-0.5f}, {-1, 0, 0}, {1,1,1}, {0,0}, {2*cw,      1*ch}},
-            {{-0.5f,-0.5f, 0.5f}, {-1, 0, 0}, {1,1,1}, {1,0}, {2*cw + cw, 1*ch}},
-            {{-0.5f, 0.5f, 0.5f}, {-1, 0, 0}, {1,1,1}, {1,1}, {2*cw + cw, 1*ch + ch}},
-            {{-0.5f, 0.5f,-0.5f}, {-1, 0, 0}, {1,1,1}, {0,1}, {2*cw,      1*ch + ch}},
+            {{-0.5f,-0.5f,-0.5f}, {-1, 0, 0}, {1,1,1}, {0,0}, {u(2,0), v(1,0)}},
+            {{-0.5f,-0.5f, 0.5f}, {-1, 0, 0}, {1,1,1}, {1,0}, {u(2,1), v(1,0)}},
+            {{-0.5f, 0.5f, 0.5f}, {-1, 0, 0}, {1,1,1}, {1,1}, {u(2,1), v(1,1)}},
+            {{-0.5f, 0.5f,-0.5f}, {-1, 0, 0}, {1,1,1}, {0,1}, {u(2,0), v(1,1)}},
         };
         // clang-format on
     }
@@ -884,6 +895,14 @@ protected:
         // Pack tiles + feed transformed geometry into the baker.
         lightmap_baker baker;
 
+        // 6% padding on each side per chart: rendered geometry samples the
+        // inner 88% of the atlas region; the outer 12% (6% each side) is
+        // gutter that `dilate_iterations` fills with chart values, so
+        // bilinear filtering at chart boundaries no longer bleeds into the
+        // neighboring chart's atlas data.
+        constexpr float k_chart_padding = 0.06f;
+        const float chart_scale_factor = 1.0f - 2.0f * k_chart_padding;
+
         for (size_t i = 0; i < instances.size(); ++i)
         {
             auto& inst = instances[i];
@@ -894,8 +913,11 @@ protected:
             const auto* region = atlas.get_region(tile_id);
             ASSERT_TRUE(region);
 
-            inst.lightmap_scale = {float(region->width) * inv_w, float(region->height) * inv_h};
-            inst.lightmap_offset = {float(region->x) * inv_w, float(region->y) * inv_h};
+            inst.lightmap_scale = {float(region->width) * chart_scale_factor * inv_w,
+                                   float(region->height) * chart_scale_factor * inv_h};
+            inst.lightmap_offset = {
+                (float(region->x) + float(region->width) * k_chart_padding) * inv_w,
+                (float(region->y) + float(region->height) * k_chart_padding) * inv_h};
 
             std::vector<gpu::vertex_data> remapped;
             std::vector<gpu::uint> remapped_idx;
@@ -2037,41 +2059,50 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
 
     // Shared cube geometry with non-overlapping UV2 per face.
     // 6 faces packed in a 3x2 grid within [0,1]: each face gets (1/3 x 1/2) cell.
+    // 6% per-face inset gives dilate room to fill between adjacent faces so
+    // bilinear filtering at face boundaries doesn't bleed across charts and
+    // produce dark seams (matches make_cube_lm_verts in the bake tests).
     // clang-format off
-    //                                                               uv2 column/row
     constexpr float cw = 1.0f / 3.0f;  // cell width
     constexpr float ch = 1.0f / 2.0f;  // cell height
+    constexpr float face_pad = 0.06f;
+    constexpr float ipad_u = cw * face_pad;
+    constexpr float ipad_v = ch * face_pad;
+    auto u = [](int col, int corner_x)
+    { return col * cw + ipad_u + corner_x * (cw - 2 * ipad_u); };
+    auto v = [](int row, int corner_y)
+    { return row * ch + ipad_v + corner_y * (ch - 2 * ipad_v); };
     std::vector<gpu::vertex_data> cube_verts = {
         // Front face  (col 0, row 0)
-        {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 0}, {0*cw,      0*ch}},
-        {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 0}, {0*cw + cw, 0*ch}},
-        {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 1}, {0*cw + cw, 0*ch + ch}},
-        {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 1}, {0*cw,      0*ch + ch}},
+        {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 0}, {u(0,0), v(0,0)}},
+        {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 0}, {u(0,1), v(0,0)}},
+        {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 1}, {u(0,1), v(0,1)}},
+        {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 1}, {u(0,0), v(0,1)}},
         // Back face   (col 1, row 0)
-        {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 0}, {1*cw,      0*ch}},
-        {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 0}, {1*cw + cw, 0*ch}},
-        {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 1}, {1*cw + cw, 0*ch + ch}},
-        {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 1}, {1*cw,      0*ch + ch}},
+        {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 0}, {u(1,0), v(0,0)}},
+        {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 0}, {u(1,1), v(0,0)}},
+        {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 1}, {u(1,1), v(0,1)}},
+        {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 1}, {u(1,0), v(0,1)}},
         // Top face    (col 2, row 0)
-        {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {0, 0}, {2*cw,      0*ch}},
-        {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {1, 0}, {2*cw + cw, 0*ch}},
-        {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {1, 1}, {2*cw + cw, 0*ch + ch}},
-        {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {0, 1}, {2*cw,      0*ch + ch}},
+        {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {0, 0}, {u(2,0), v(0,0)}},
+        {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {1, 0}, {u(2,1), v(0,0)}},
+        {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {1, 1}, {u(2,1), v(0,1)}},
+        {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {0, 1}, {u(2,0), v(0,1)}},
         // Bottom face (col 0, row 1)
-        {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {0, 0}, {0*cw,      1*ch}},
-        {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {1, 0}, {0*cw + cw, 1*ch}},
-        {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {1, 1}, {0*cw + cw, 1*ch + ch}},
-        {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {0, 1}, {0*cw,      1*ch + ch}},
+        {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {0, 0}, {u(0,0), v(1,0)}},
+        {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {1, 0}, {u(0,1), v(1,0)}},
+        {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {1, 1}, {u(0,1), v(1,1)}},
+        {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {0, 1}, {u(0,0), v(1,1)}},
         // Right face  (col 1, row 1)
-        {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 0}, {1*cw,      1*ch}},
-        {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 0}, {1*cw + cw, 1*ch}},
-        {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 1}, {1*cw + cw, 1*ch + ch}},
-        {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 1}, {1*cw,      1*ch + ch}},
+        {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 0}, {u(1,0), v(1,0)}},
+        {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 0}, {u(1,1), v(1,0)}},
+        {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 1}, {u(1,1), v(1,1)}},
+        {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 1}, {u(1,0), v(1,1)}},
         // Left face   (col 2, row 1)
-        {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 0}, {2*cw,      1*ch}},
-        {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 0}, {2*cw + cw, 1*ch}},
-        {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 1}, {2*cw + cw, 1*ch + ch}},
-        {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 1}, {2*cw,      1*ch + ch}},
+        {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 0}, {u(2,0), v(1,0)}},
+        {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 0}, {u(2,1), v(1,0)}},
+        {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 1}, {u(2,1), v(1,1)}},
+        {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 1}, {u(2,0), v(1,1)}},
     };
     std::vector<gpu::uint> cube_indices = {
          0, 1, 2,  2, 3, 0,
@@ -2184,9 +2215,9 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     // --- Bake lightmap (GPU compute) ---
     bake::bake_settings bake_cfg;
     bake_cfg.resolution = LM_RESOLUTION;
-    bake_cfg.samples_per_texel = 16;  // Low for test speed
+    bake_cfg.samples_per_texel = 256;
     bake_cfg.bounce_count = 1;
-    bake_cfg.denoise_iterations = 1;
+    bake_cfg.denoise_iterations = 4;
     bake_cfg.bake_direct = true;
     bake_cfg.bake_indirect = true;
     bake_cfg.bake_ao = true;
@@ -4272,12 +4303,12 @@ TEST_F(visual_pipeline_test, bake_lightmap_direct_only)
 
     bake::bake_settings cfg;
     cfg.resolution = 512;
-    cfg.samples_per_texel = 8;
+    cfg.samples_per_texel = 128;
     cfg.bounce_count = 0;
     cfg.bake_direct = true;
     cfg.bake_indirect = false;
     cfg.bake_ao = false;
-    cfg.denoise_iterations = 1;
+    cfg.denoise_iterations = 4;
     cfg.dilate_iterations = 3;
 
     run_compact_bake_test("bake_lightmap_direct_only",
@@ -4288,27 +4319,38 @@ TEST_F(visual_pipeline_test, bake_lightmap_direct_only)
                           cfg);
 }
 
-// Bake direct + indirect (bounce_count=2). Red wall next to a white floor —
-// the bounce light should tint the floor near the wall reddish. Diff vs
+// Bake direct + indirect (bounce_count=3). Red wall next to a white floor —
+// the bounce light tints the floor near the wall reddish. Diff vs
 // bake_lightmap_direct_only isolates the indirect pass.
+//
+// Setup tuned so the bounce is visible:
+//   - Sun direction has +X component so it actually lights the wall's -X
+//     face (previously sun was straight down and the wall got 0 direct
+//     light, defeating the test).
+//   - Sun is moderate intensity instead of HDR-saturating, so the white
+//     floor renders as a mid-bright surface that can show a red tint
+//     instead of clipping to pure white.
+//   - Floor color skewed slightly cool (cyan-ish) so the warm red bounce
+//     stands out against it.
 TEST_F(visual_pipeline_test, bake_lightmap_indirect)
 {
     gpu::directional_light_data sun{};
-    sun.direction = {0.0f, -1.0f, -0.3f};
-    sun.ambient = {0.05f, 0.05f, 0.05f};
-    sun.diffuse = {1.5f, 1.4f, 1.3f};
+    sun.direction = {0.6f, -1.0f, 0.0f};
+    sun.ambient = {0.02f, 0.02f, 0.02f};
+    sun.diffuse = {0.7f, 0.65f, 0.55f};
     sun.specular = {0, 0, 0};
 
     std::vector<bake_instance> insts;
     bake_instance floor;
     floor.pos = {0, -0.5f, 0};
     floor.scale = 4.0f;
-    floor.color = {0.95f, 0.95f, 0.95f};   // white floor catches red bounce
+    floor.color = {0.85f, 0.88f, 0.92f};   // cool floor catches red bounce
     floor.is_floor = true;
     insts.push_back(floor);
 
-    // Red wall standing on +X side (rotated 90° around Y so its +Z normal
-    // faces -X toward the floor center).
+    // Red wall standing on +X side (rotated -90° around Y so its +Z normal
+    // ends up facing -X, toward the floor center). The +X-tilted sun above
+    // strikes this -X face.
     bake_instance wall;
     wall.pos = {3.5f, 0.5f, 0.0f};
     wall.scale = 2.0f;
@@ -4319,24 +4361,26 @@ TEST_F(visual_pipeline_test, bake_lightmap_indirect)
 
     bake::bake_settings cfg;
     cfg.resolution = 512;
-    cfg.samples_per_texel = 24;
-    cfg.bounce_count = 2;
+    cfg.samples_per_texel = 512;
+    cfg.bounce_count = 3;
     cfg.bake_direct = true;
     cfg.bake_indirect = true;
     cfg.bake_ao = false;
-    cfg.denoise_iterations = 2;
+    cfg.denoise_iterations = 4;
     cfg.dilate_iterations = 3;
 
     run_compact_bake_test("bake_lightmap_indirect",
                           insts,
-                          /*cam=*/{0, 4, 6},
-                          /*tgt=*/{1.0f, 0, 0},
+                          /*cam=*/{-1.5f, 3.0f, 4.0f},
+                          /*tgt=*/{2.0f, 0, 0},
                           sun,
                           cfg);
 }
 
-// AO-only bake (no direct, no indirect). Scene is dark overall but cube
-// crevice / floor contact darkens visibly. Isolates ao_baker.comp.
+// AO-only bake (no direct, no indirect). The baker writes (ao, ao, ao) into
+// the lightmap output when only AO is requested, so the runtime samples
+// `lightmap * albedo = AO * material_diffuse` and shows the AO darkening on
+// the per-instance albedo without any direct light. Isolates ao_baker.comp.
 TEST_F(visual_pipeline_test, bake_ao_only)
 {
     gpu::directional_light_data sun{};
@@ -4345,10 +4389,6 @@ TEST_F(visual_pipeline_test, bake_ao_only)
     sun.diffuse = {0, 0, 0};
     sun.specular = {0, 0, 0};
 
-    // AO multiplies into baked GI; with direct/indirect off we still need a
-    // baseline color to see the AO darkening. The compact helper writes
-    // diffuse as baked_gi modulator, so set per-instance color = white and
-    // rely on the AO-only path to darken contact regions.
     std::vector<bake_instance> insts;
     bake_instance floor;
     floor.pos = {0, -0.5f, 0};
@@ -4369,15 +4409,15 @@ TEST_F(visual_pipeline_test, bake_ao_only)
 
     bake::bake_settings cfg;
     cfg.resolution = 512;
-    cfg.samples_per_texel = 32;
+    cfg.samples_per_texel = 1024;
     cfg.bounce_count = 0;
     cfg.bake_direct = false;
     cfg.bake_indirect = false;
     cfg.bake_ao = true;
     cfg.ao_radius = 1.5f;
-    cfg.ao_intensity = 1.5f;
-    cfg.denoise_iterations = 1;
-    cfg.dilate_iterations = 3;
+    cfg.ao_intensity = 1.0f;
+    cfg.denoise_iterations = 8;
+    cfg.dilate_iterations = 6;
 
     run_compact_bake_test("bake_ao_only",
                           insts,
@@ -4412,12 +4452,12 @@ TEST_F(visual_pipeline_test, bake_lightmap_seams)
 
     bake::bake_settings cfg;
     cfg.resolution = 512;
-    cfg.samples_per_texel = 16;
+    cfg.samples_per_texel = 256;
     cfg.bounce_count = 1;
     cfg.bake_direct = true;
     cfg.bake_indirect = true;
     cfg.bake_ao = false;
-    cfg.denoise_iterations = 1;
+    cfg.denoise_iterations = 4;
     cfg.dilate_iterations = 8;   // heavy dilation — proves gutter coverage
 
     run_compact_bake_test("bake_lightmap_seams",
@@ -4600,12 +4640,12 @@ TEST_F(visual_pipeline_test, toggle_lighting_baked_off)
 
     bake::bake_settings cfg;
     cfg.resolution = 512;
-    cfg.samples_per_texel = 8;
+    cfg.samples_per_texel = 128;
     cfg.bounce_count = 0;
     cfg.bake_direct = true;
     cfg.bake_indirect = false;
     cfg.bake_ao = false;
-    cfg.denoise_iterations = 1;
+    cfg.denoise_iterations = 4;
     cfg.dilate_iterations = 3;
 
     // Run the bake + render path, then disable baked lighting at the runtime

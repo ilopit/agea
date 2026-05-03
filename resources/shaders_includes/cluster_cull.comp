@@ -25,7 +25,7 @@ layout(scalar, set = 0, binding = 2) readonly buffer LightBuffer {
 } dyn_gpu_universal_light_data;
 
 // Number of dyn_gpu_universal_light_data.lights (passed via push constants)
-layout(push_constant) uniform PushConstants {
+layout(push_constant, scalar) uniform PushConstants {
     uint num_lights;
 } pc;
 

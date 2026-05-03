@@ -3,9 +3,10 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
 #extension GL_EXT_buffer_reference_uvec2 : require
+#extension GL_EXT_scalar_block_layout : require
 
 #include "gpu_types/gpu_push_constants_shadow.h"
-layout(push_constant) uniform Constants { push_constants_shadow obj; } constants;
+layout(push_constant, scalar) uniform Constants { push_constants_shadow obj; } constants;
 #include "bda_macros_shadow.glsl"
 
 #include "gpu_types/gpu_generic_constants.h"

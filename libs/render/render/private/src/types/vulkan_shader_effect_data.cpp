@@ -95,20 +95,80 @@ shader_effect_data::generate_set_layouts(
 void
 shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constants)
 {
-    if (m_vertex_stage->get_reflection().constants)
+    // Project convention: both shader stages declare the same push-constant
+    // struct using `layout(push_constant, scalar)`. C++ structs match scalar
+    // layout because `bda_addr` has no `alignas`. The two reflections must
+    // therefore agree on (offset, size); if they don't, a stage is using a
+    // different layout decoration (e.g. std430 mixed with scalar) — assert
+    // here so the mismatch fails at shader effect creation rather than as
+    // a silent UB at draw time.
+    const reflection::push_constants* vert =
+        (m_vertex_stage && m_vertex_stage->get_reflection().constants)
+            ? &*m_vertex_stage->get_reflection().constants
+            : nullptr;
+    const reflection::push_constants* frag =
+        (m_frag_stage && m_frag_stage->get_reflection().constants)
+            ? &*m_frag_stage->get_reflection().constants
+            : nullptr;
+
+    if (!vert && !frag)
     {
-        shader_reflection_utils::convert_to_vk_push_constants(
-            *m_vertex_stage->get_reflection().constants,
-            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT,
-            constants.emplace_back());
+        return;
     }
 
-    if (m_frag_stage && m_frag_stage->get_reflection().constants)
+    VkShaderStageFlags stages = 0;
+    uint32_t offset = 0;
+    uint32_t size = 0;
+
+    if (vert)
     {
-        shader_reflection_utils::convert_to_vk_push_constants(
-            *m_frag_stage->get_reflection().constants,
-            VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
-            constants.emplace_back());
+        stages |= VK_SHADER_STAGE_VERTEX_BIT;
+        offset = vert->offset;
+        size = vert->size;
+    }
+    if (frag)
+    {
+        stages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (vert)
+        {
+            if (vert->offset != frag->offset || vert->size != frag->size)
+            {
+                ALOG_ERROR("Push constant layout mismatch on shader effect '{}': vert "
+                           "(offset={}, size={}) != frag (offset={}, size={}). Both stages "
+                           "must use `layout(push_constant, scalar)` and declare the same struct.",
+                           m_id.cstr(),
+                           vert->offset,
+                           vert->size,
+                           frag->offset,
+                           frag->size);
+                KRG_check(false, "Push constant layout mismatch between stages");
+            }
+        }
+        else
+        {
+            offset = frag->offset;
+            size = frag->size;
+        }
+    }
+
+    VkPushConstantRange r{};
+    r.stageFlags = stages;
+    r.offset = offset;
+    r.size = size;
+    constants.push_back(r);
+}
+
+void
+shader_effect_data::push_constants(VkCommandBuffer cmd, const void* data) const
+{
+    for (const auto& range : m_push_constant_ranges)
+    {
+        vkCmdPushConstants(cmd,
+                           m_pipeline_layout,
+                           range.stageFlags,
+                           range.offset,
+                           range.size,
+                           static_cast<const uint8_t*>(data) + range.offset);
     }
 }
 

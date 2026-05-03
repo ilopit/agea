@@ -23,6 +23,7 @@ When responding to ideas or proposals:
   - `kryga_game` — clean game: no ImGui, no editor UI, no sync service. ~1.9 MB smaller than editor on desktop.
   - `kryga_cook` — content cooker (editor target only — produces `build/cooked/`).
 - Run: `tools/run.sh [-r] <exe> [args]` — runs from `build/project_<Config>/bin/`. Never `cd` to bin manually.
+- Reconfigure: `cmake --preset host` (NOT `cmake -S . -B build`). `tools/build.sh` only auto-configures on first run; CMake `file(GLOB)` for sources means adding/renaming a `.cpp` requires a manual reconfigure or the build fails with "cannot open source file" pointing at the old path.
 - Visual regression: `tools/run.sh visual_regression_tests.exe`, update refs with `UPDATE_REFERENCES=1 tools/run.sh visual_regression_tests.exe`
 
 ## Structure

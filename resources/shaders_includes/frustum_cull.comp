@@ -30,7 +30,7 @@ layout(scalar, set = 0, binding = 3) buffer CullOutput {
 } dyn_cull_output;
 
 // Push constants
-layout(push_constant) uniform PushConstants {
+layout(push_constant, scalar) uniform PushConstants {
     uint object_count;
     uint max_visible;  // Buffer capacity
 } pc;

@@ -27,7 +27,14 @@ layout(r16f, set = 0, binding = 3) uniform image2D out_ao;
 layout(rgba32f, set = 0, binding = 4) readonly uniform image2D gbuf_position;
 layout(rgba32f, set = 0, binding = 5) readonly uniform image2D gbuf_normal;
 
-layout(push_constant) uniform PushConstants {
+// Lightmap image (RW): existing direct + indirect contribution, multiplied
+// here by AO. If empty (AO-only bake), treated as white baseline so the
+// runtime renders `lightmap * material_diffuse = AO * albedo`. Subsequent
+// denoise + dilate passes operate on this combined output, so AO seams and
+// noise get the same treatment as direct/indirect lightmap data.
+layout(rgba16f, set = 0, binding = 6) uniform image2D out_lightmap;
+
+layout(push_constant, scalar) uniform PushConstants {
     uint frame_seed;
 } pc;
 
@@ -94,10 +101,16 @@ void main()
     uint num_samples = dyn_config.config.sample_count;
     uint occluded = 0u;
 
+    // Bias along the normal to avoid self-intersection at grazing ray angles.
+    // 0.01 is too tight for thin features (small cubes, 1-unit scale): rays
+    // nearly parallel to a perpendicular face self-intersect due to floating
+    // point error and produce black dots at chart-boundary texels. 0.03 is
+    // ~3% of the smallest test mesh's extent — far enough to avoid the
+    // re-hit but small enough not to wash out genuine contact AO.
     for (uint s = 0u; s < num_samples; s++)
     {
         vec3 dir = cosine_sample_hemisphere(normal, seed);
-        vec3 origin = world_pos + normal * 0.01;
+        vec3 origin = world_pos + normal * 0.03;
 
         if (!trace_shadow(origin, dir, ao_radius))
         {
@@ -109,4 +122,11 @@ void main()
     ao = clamp(ao, 0.0, 1.0);
 
     imageStore(out_ao, texel, vec4(ao, 0.0, 0.0, 1.0));
+
+    // Combine AO into the lightmap output. Empty lightmap (AO-only bake) is
+    // treated as white so the runtime sees `lightmap = (ao,ao,ao)`.
+    vec4 lm = imageLoad(out_lightmap, texel);
+    float lm_sum = lm.r + lm.g + lm.b;
+    vec3 lm_rgb = lm_sum > 0.001 ? lm.rgb : vec3(1.0);
+    imageStore(out_lightmap, texel, vec4(lm_rgb * ao, 1.0));
 }

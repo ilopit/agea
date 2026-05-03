@@ -49,6 +49,16 @@ public:
     void
     generate_constants(std::vector<VkPushConstantRange>& constants);
 
+    // Push the prefix of `data` covered by each VkPushConstantRange in the
+    // pipeline layout, using the stage flags and (offset, size) the shader
+    // effect actually declares. This avoids stage/size mismatches when the
+    // vertex and fragment stages reflect different push-constant struct
+    // sizes (e.g. C++ trailing padding present in the vertex shader's
+    // generated header but absent from a hand-written fragment shader).
+    // Caller must ensure `data` is at least max(range.offset+range.size) big.
+    void
+    push_constants(VkCommandBuffer cmd, const void* data) const;
+
     void
     set_expected_vertex_input(const utils::dynobj_layout_sptr& v)
     {
@@ -60,6 +70,10 @@ public:
     VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout;
+
+    // Push constant ranges used to build m_pipeline_layout. Stored so
+    // draw-time push_constants() can match the layout exactly per stage.
+    std::vector<VkPushConstantRange> m_push_constant_ranges;
 
     utils::dynobj_layout_sptr m_expected_vertex_input;
 

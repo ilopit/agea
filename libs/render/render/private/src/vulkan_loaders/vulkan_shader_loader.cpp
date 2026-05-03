@@ -105,6 +105,7 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
 
     std::vector<VkPushConstantRange> constants;
     se.generate_constants(constants);
+    se.m_push_constant_ranges = constants;
 
     std::array<vulkan_descriptor_set_layout_data, DESCRIPTORS_SETS_COUNT> merged_layouts;
 

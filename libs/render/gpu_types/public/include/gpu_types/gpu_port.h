@@ -19,8 +19,9 @@ using uvec2 = ::glm::uvec2;
 using uvec4 = ::glm::uvec4;
 
 // BDA address as uvec2 - avoids shaderInt64 requirement on mobile
-// alignas(8) matches GLSL std430 uvec2 alignment (vec2 of uint is 8-byte aligned)
-struct alignas(8) bda_addr
+// No alignment: push-constant blocks use scalar layout (VK_EXT_scalar_block_layout)
+// which packs uvec2 with 4-byte alignment, matching natural C++ layout.
+struct bda_addr
 {
     uint32_t lo;
     uint32_t hi;
