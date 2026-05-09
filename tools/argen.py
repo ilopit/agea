@@ -76,13 +76,16 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
   context.render_sources_dir = os.path.join(output_dir, "packages", module_name, "private",
                                             "render")
   context.render_header_dir = os.path.join(output_dir, "packages", module_name, "render", "public")
+  context.editor_sources_dir = os.path.join(output_dir, "packages", module_name, "private",
+                                            "editor")
   context.global_dir = os.path.join(output_dir, "packages/glue/public/include/glue")
   context.gpu_types_dir = os.path.join(output_dir, "gpu_types")
 
   # Initialize folder structure
   directories = [
       context.model_sources_dir, context.model_header_dir, context.render_sources_dir,
-      context.render_header_dir, context.package_header_dir, context.global_dir
+      context.render_header_dir, context.editor_sources_dir, context.package_header_dir,
+      context.global_dir
   ]
 
   for directory in directories:
@@ -129,6 +132,11 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
   if context.render_has_types_overrides or context.render_has_custom_resources:
     output_file = os.path.join(context.render_sources_dir, f"package.{module_name}.render.ar.cpp")
     arapi.writer.write_render_types_reflection(output_file, context)
+
+  # Write editor reflection if needed
+  if context.editor_has_overrides:
+    output_file = os.path.join(context.editor_sources_dir, f"package.{module_name}.editor.ar.cpp")
+    arapi.writer.write_editor_types_reflection(output_file, context)
 
   # Write GPU structs for types with gpu_data properties
   arapi.writer.write_all_gpu_structs(context)

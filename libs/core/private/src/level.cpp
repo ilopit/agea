@@ -176,8 +176,12 @@ level::tick(float dt)
 void
 level::unregister_objects()
 {
+    // Level holds instance objects, not class objects — removal must target
+    // the global instance cache. Previously passed class_set, which is a
+    // no-op (level instances aren't there) and left stale entries in
+    // instance cache, asserting on the next load_level().
     container::unregister_in_global_cache(
-        m_instance_local_cs, *glob::glob_state().get_class_set(), m_id, "instance");
+        m_instance_local_cs, *glob::glob_state().get_instance_set(), m_id, "instance");
 }
 
 void

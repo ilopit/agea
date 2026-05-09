@@ -495,6 +495,18 @@ game_editor::get_active_camera() const
     return m_active_camera;
 }
 
+void
+game_editor::set_selected(const utils::id& id)
+{
+    m_selected = id;
+}
+
+utils::id
+game_editor::get_selected() const
+{
+    return m_selected;
+}
+
 }  // namespace engine
 
 }  // namespace kryga

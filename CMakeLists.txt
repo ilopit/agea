@@ -41,7 +41,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Desktop builds produce both kryga_game and kryga_editor by default.
 if(ANDROID)
     add_compile_definitions(KRG_MOBILE=1 KRG_PLATFORM_ANDROID=1)
-    set(_krg_default_sync_service OFF)
     set(_krg_build_editor_target OFF)
 else()
     add_compile_definitions(KRG_DESKTOP=1)
@@ -52,11 +51,9 @@ else()
     elseif(UNIX)
         add_compile_definitions(KRG_PLATFORM_LINUX=1)
     endif()
-    set(_krg_default_sync_service ON)
     set(_krg_build_editor_target ON)
 endif()
 
-option(KRG_ENABLE_SYNC_SERVICE "HTTP sync service for live asset/shader reload (requires Boost.Beast)" ${_krg_default_sync_service})
 option(KRG_BUILD_EDITOR_TARGET  "Build the kryga_editor executable (desktop only)"                    ${_krg_build_editor_target})
 
 # On Android, NDK r26d ships Vulkan 1.3.x headers but vk-bootstrap v1.4.x

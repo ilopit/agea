@@ -23,8 +23,9 @@ shader_module_data::~shader_module_data()
 {
     if (m_vk_module != VK_NULL_HANDLE)
     {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vkd, VmaAllocator) { vkDestroyShaderModule(vkd, m_vk_module, nullptr); });
+        glob::glob_state().getr_render_device().schedule_to_delete(
+            [mod = m_vk_module](VkDevice vkd, VmaAllocator)
+            { vkDestroyShaderModule(vkd, mod, nullptr); });
     }
 }
 }  // namespace render

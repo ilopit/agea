@@ -11,6 +11,8 @@
 
 #include <serialization/serialization.h>
 
+#include <json/json.h>
+
 #include <cinttypes>
 #include <array>
 
@@ -267,6 +269,34 @@ property::compare_item(property_context__compare& context)
 
     type_context__compare type_ctx{src_ptr, dst_ptr};
     return context.p->rtype->compare(type_ctx);
+}
+
+result_code
+property::default_json_get(property_context__json_get& ctx)
+{
+    if (!ctx.p->rtype || !ctx.p->rtype->json_save)
+    {
+        return result_code::failed;
+    }
+    type_context__json_save type_ctx{};
+    type_ctx.owner_obj = ctx.obj;
+    type_ctx.obj = ctx.obj->as_blob() + ctx.p->offset;
+    type_ctx.jc = ctx.jc;
+    return ctx.p->rtype->json_save(type_ctx);
+}
+
+result_code
+property::default_json_set(property_context__json_set& ctx)
+{
+    if (!ctx.p->rtype || !ctx.p->rtype->json_load)
+    {
+        return result_code::failed;
+    }
+    type_context__json_load type_ctx{};
+    type_ctx.owner_obj = ctx.obj;
+    type_ctx.obj = ctx.obj->as_blob() + ctx.p->offset;
+    type_ctx.jc = ctx.jc;
+    return ctx.p->rtype->json_load(type_ctx);
 }
 
 }  // namespace reflection

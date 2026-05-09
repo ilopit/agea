@@ -8,20 +8,20 @@ cmake_policy(SET CMP0169 OLD)
 # Existing FetchContent deps
 # ==============================================================================
 
-# Boost is only needed for the HTTP sync service (live reload in editor).
-# Skipped on Android and any build with KRG_ENABLE_SYNC_SERVICE=OFF to avoid
-# downloading ~100MB and cross-compiling Beast/Asio for mobile.
-if(KRG_ENABLE_SYNC_SERVICE)
-    FetchContent_Declare(
-      Boost
-      URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.7z
+# Boost: asio for the rpc TCP server (libs/rpc), filesystem for VFS path
+# operations (libs/vfs). Other engine subsystems pull these transitively.
+FetchContent_Declare(
+  Boost
+  URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.7z
 
-      DOWNLOAD_EXTRACT_TIMESTAMP ON
-    )
+  DOWNLOAD_EXTRACT_TIMESTAMP ON
+)
 
-    set(BOOST_INCLUDE_LIBRARIES beast url process filesystem)
-    FetchContent_MakeAvailable(Boost)
+set(BOOST_INCLUDE_LIBRARIES filesystem)
+if(KRG_BUILD_EDITOR_TARGET)
+    list(APPEND BOOST_INCLUDE_LIBRARIES asio process)
 endif()
+FetchContent_MakeAvailable(Boost)
 
 # Tracy profiler
 option(TRACY_ENABLE "Enable Tracy profiler" ON)

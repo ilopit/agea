@@ -90,6 +90,33 @@ target_compile_definitions(packages.root.render PUBLIC KRG_build__builder)
 kryga_finalize_library(packages.root.builder)
 
 
+##### Editor (editor-only, gated by KRG_BUILD_EDITOR_TARGET)
+if(KRG_BUILD_EDITOR_TARGET)
+    set(ROOT_EDITOR_PREFIX "public/include/packages/root/editor")
+    kryga_gather_sources(ROOT_EDITOR_OVERRIDES_SRC "editor_overrides"
+        "${ROOT_EDITOR_PREFIX}/overrides/*.h" "private/src/editor/overrides/*.cpp")
+    kryga_gather_sources(ROOT_EDITOR_GENERATED_SRC "editor_generated"
+        "${CMAKE_BINARY_DIR}/kryga_generated/packages/root/private/editor/*.cpp")
+
+    add_library(packages.root.editor STATIC
+        ${ROOT_EDITOR_OVERRIDES_SRC}
+        ${ROOT_EDITOR_GENERATED_SRC}
+    )
+    target_include_directories(packages.root.editor PRIVATE
+        ${CMAKE_BINARY_DIR}/kryga_generated)
+    target_link_libraries(packages.root.editor
+        kryga::packages.root.model
+        jsoncpp_static
+    )
+    target_compile_definitions(packages.root.editor PUBLIC KRG_build__editor)
+    kryga_finalize_library(packages.root.editor)
+
+    set(KRG_EDITOR_MODULES_TARGETS
+        ${KRG_EDITOR_MODULES_TARGETS}
+        packages.root.editor
+        CACHE INTERNAL "")
+endif()
+
 set(KRG_ACTIVE_MODULES_TARGETS
    ${KRG_ACTIVE_MODULES_TARGETS}
    packages.root.model

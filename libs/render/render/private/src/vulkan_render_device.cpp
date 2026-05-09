@@ -87,13 +87,7 @@ render_device::destruct()
         vkDeviceWaitIdle(m_vk_device);
     }
 
-    // Flush all pending delayed deletions before tearing down
-    while (!m_delayed_delete_queue.empty())
-    {
-        auto action = std::move(m_delayed_delete_queue.top());
-        m_delayed_delete_queue.pop();
-        action.del(m_vk_device, m_allocator);
-    }
+    flush_deferred_deletions();
 
     for (auto& frame : m_frames)
     {
@@ -110,6 +104,10 @@ render_device::destruct()
     deinit_swapchain();
 
     deinit_descriptors();
+
+    // deinit_* above may have scheduled more deferred deletions (e.g. swapchain
+    // image views) — flush again before destroying the device and allocator.
+    flush_deferred_deletions();
 
     deinit_vulkan();
 }
@@ -640,17 +638,24 @@ render_device::delete_immediately(delayed_deleter d)
 void
 render_device::delete_scheduled_actions()
 {
-    if (m_delayed_delete_queue.empty())
-    {
-        return;
-    }
-
-    auto device = glob::glob_state().get_render_device();
-    auto current_frame = device->get_current_frame_number();
+    auto current_frame = get_current_frame_number();
     while (!m_delayed_delete_queue.empty() &&
            m_delayed_delete_queue.top().frame_idx <= current_frame)
     {
+        auto del = m_delayed_delete_queue.top().del;
         m_delayed_delete_queue.pop();
+        del(m_vk_device, m_allocator);
+    }
+}
+
+void
+render_device::flush_deferred_deletions()
+{
+    while (!m_delayed_delete_queue.empty())
+    {
+        auto del = m_delayed_delete_queue.top().del;
+        m_delayed_delete_queue.pop();
+        del(m_vk_device, m_allocator);
     }
 }
 

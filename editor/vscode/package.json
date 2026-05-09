@@ -1,0 +1,111 @@
+{
+  "name": "kryga-editor",
+  "displayName": "Kryga Editor",
+  "description": "VS Code front-end for the Kryga engine.",
+  "version": "0.0.1",
+  "publisher": "kryga",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:kryga.project"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "kryga.connect",
+        "title": "Kryga: Connect to engine"
+      },
+      {
+        "command": "kryga.disconnect",
+        "title": "Kryga: Disconnect from engine"
+      },
+      {
+        "command": "kryga.ping",
+        "title": "Kryga: Ping engine"
+      },
+      {
+        "command": "kryga.showOutput",
+        "title": "Kryga: Show engine log output"
+      },
+      {
+        "command": "kryga.scene.refresh",
+        "title": "Kryga: Refresh scene tree",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "kryga.level.load",
+        "title": "Kryga: Load level…"
+      },
+      {
+        "command": "kryga.engine.toggleMode",
+        "title": "Kryga: Toggle play/edit mode"
+      },
+      {
+        "command": "kryga.engine.editMode",
+        "title": "Kryga: Enter edit mode"
+      },
+      {
+        "command": "kryga.engine.playMode",
+        "title": "Kryga: Enter play mode"
+      },
+      {
+        "command": "kryga.engine.start",
+        "title": "Kryga: Start engine"
+      },
+      {
+        "command": "kryga.engine.stop",
+        "title": "Kryga: Stop engine"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kryga",
+          "title": "Kryga",
+          "icon": "$(symbol-misc)"
+        }
+      ]
+    },
+    "views": {
+      "kryga": [
+        {
+          "id": "kryga.scene",
+          "name": "Scene"
+        },
+        {
+          "id": "kryga.inspector",
+          "name": "Inspector",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "kryga.scene.refresh",
+          "when": "view == kryga.scene",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}

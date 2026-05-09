@@ -58,13 +58,6 @@ set(YAML_CPP_INSTALL OFF)
 add_subdirectory(fetch)
 
 # externalize fetch deps
-if(KRG_ENABLE_SYNC_SERVICE)
-    externalize(boost_container "boost")
-    externalize(boost_context "boost")
-    externalize(boost_date_time "boost")
-    externalize(boost_exception "boost")
-    externalize(boost_url "boost")
-endif()
 externalize(TracyClient "tracy")
 externalize(ozz_base "ozz-animation")
 externalize(ozz_animation "ozz-animation")

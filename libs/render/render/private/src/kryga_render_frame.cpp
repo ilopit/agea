@@ -70,6 +70,8 @@ vulkan_render::draw_main()
     }
     VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
 
+    device->delete_scheduled_actions();
+
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
     VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));
 
@@ -152,6 +154,8 @@ vulkan_render::draw_headless()
     VK_CHECK(vkWaitForFences(
         device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
     VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
+
+    device->delete_scheduled_actions();
 
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
     VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));

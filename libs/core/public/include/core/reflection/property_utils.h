@@ -10,6 +10,11 @@ namespace YAML
 class Node;
 }
 
+namespace Json
+{
+class Value;
+}
+
 namespace kryga
 {
 
@@ -77,6 +82,20 @@ struct property_context__to_string
     std::string result;
 };
 
+struct property_context__json_get
+{
+    property* p = nullptr;
+    root::smart_object* obj = nullptr;
+    Json::Value* jc = nullptr;
+};
+
+struct property_context__json_set
+{
+    property* p = nullptr;
+    root::smart_object* obj = nullptr;
+    const Json::Value* jc = nullptr;
+};
+
 // clang-format off
 
 using property_handler__save            = result_code(*)(property_context__save&);
@@ -85,6 +104,8 @@ using property_handler__copy            = result_code(*)(property_context__copy&
 using property_handler__instantiate     = result_code(*)(property_context__instantiate&);
 using property_handler__load            = result_code(*)(property_context__load&);
 using property_handler__to_string       = result_code(*)(property_context__to_string&);
+using property_handler__json_get        = result_code(*)(property_context__json_get&);
+using property_handler__json_set        = result_code(*)(property_context__json_set&);
 
 // clang-format on
 

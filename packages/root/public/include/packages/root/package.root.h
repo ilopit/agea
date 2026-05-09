@@ -12,7 +12,8 @@ namespace kryga::root
 KRG_ar_package(model.has_types_overrides = true,
                 model.has_properties_overrides = true,
                 render.has_overrides = true,
-                render.has_resources = false);
+                render.has_resources = false,
+                editor.has_overrides = true);
 class package : public ::kryga::core::package
 // clang-format on
 {

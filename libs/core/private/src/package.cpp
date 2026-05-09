@@ -52,6 +52,7 @@ package::unload()
 
     destroy_default_types_objects();
     destroy_render_resources();
+    destroy_editor_types();
     destroy_render_types();
     destroy_types();
 
@@ -203,6 +204,24 @@ package::destroy_render_types()
     if (m_render_types_loader)
     {
         m_render_types_loader->destroy(*this);
+    }
+}
+
+void
+package::load_editor_types()
+{
+    if (m_editor_types_loader)
+    {
+        m_editor_types_loader->build(*this);
+    }
+}
+
+void
+package::destroy_editor_types()
+{
+    if (m_editor_types_loader)
+    {
+        m_editor_types_loader->destroy(*this);
     }
 }
 

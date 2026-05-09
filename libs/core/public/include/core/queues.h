@@ -56,11 +56,30 @@ public:
             command_queue.push(std::move(cmd));
         }
 
+        // Retire the current arena so its memory survives until the render
+        // thread has drained all commands allocated from it.  A fresh arena
+        // becomes active for subsequent allocations.
+        void
+        retire_arena()
+        {
+            m_pending_retire.push_back(std::move(arena));
+            arena = utils::memory_arena{};
+        }
+
+        // Reset the active arena and release arenas that the render thread
+        // has already drained.  Arenas retired since the last reset move
+        // into the draining slot — they survive one more render cycle.
         void
         reset_arena()
         {
             arena.reset();
+            m_draining_arenas.clear();
+            m_draining_arenas.swap(m_pending_retire);
         }
+
+    private:
+        std::vector<utils::memory_arena> m_pending_retire;
+        std::vector<utils::memory_arena> m_draining_arenas;
     };
 
     model&

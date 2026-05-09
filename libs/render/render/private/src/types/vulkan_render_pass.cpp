@@ -33,12 +33,12 @@ render_pass::~render_pass()
 {
     if (m_vk_render_pass != VK_NULL_HANDLE)
     {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vkd, VmaAllocator)
+        glob::glob_state().getr_render_device().schedule_to_delete(
+            [rp = m_vk_render_pass, fbs = m_framebuffers](VkDevice vkd, VmaAllocator)
             {
-                vkDestroyRenderPass(vkd, m_vk_render_pass, nullptr);
+                vkDestroyRenderPass(vkd, rp, nullptr);
 
-                for (auto f : m_framebuffers)
+                for (auto f : fbs)
                 {
                     vkDestroyFramebuffer(vkd, f, nullptr);
                 }

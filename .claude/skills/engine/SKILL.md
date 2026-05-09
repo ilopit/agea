@@ -19,21 +19,24 @@ python tools/engine_control.py ping
 # Sync a file (hot-reload shaders, scripts)
 python tools/engine_control.py sync <file_path>
 
-# Show session info (PID, port)
+# Show discovery info (PID, port)
 python tools/engine_control.py status
 ```
 
-## Options
-
-- `--config`, `-c` — Build config: Debug (default) or Release
-- `--port`, `-p` — Override HTTP port (default: 10033)
-- `--session`, `-s` — Path to session.json (auto-detected)
-
 ## How it works
 
-1. Engine writes `rtcache://session.json` on startup with PID and port
-2. Python scripts read this file to find/communicate with engine
-3. Session file is at `build/project_<Config>/rtcache/session.json`
+1. The engine starts a TCP+JSON-RPC server (editor builds only) and writes a
+   discovery file at `<project_root>/tmp/editor_rpc.json` containing `{pid,
+   port, version}`. The port is OS-picked, not fixed.
+2. `engine_control.py` reads the discovery file and connects to the port.
+3. The Python script frames JSON-RPC 2.0 messages with LSP-style
+   `Content-Length: N\r\n\r\n<body>` and dispatches to the matching server
+   handler:
+   - `ping` → engine echoes the params
+   - `sync.reload` → engine queues a sync action and blocks until the main
+     thread processes the file (5s timeout)
+   - `kill` is local — uses the PID from the discovery file + taskkill /
+     SIGTERM, no RPC.
 
 ## Supported sync file types
 
@@ -45,10 +48,10 @@ python tools/engine_control.py status
 ```bash
 # Kill and restart
 python tools/engine_control.py kill
-tools/run.sh engine_app.exe
+tools/run.sh kryga_editor.exe
 
-# Hot-reload a shader
-python tools/engine_control.py sync resources/shaders/pbr.frag
+# Hot-reload a shader (path must be absolute)
+python tools/engine_control.py sync F:/dev/kryga/4/resources/packages/base.apkg/class/shader_effects/se_simple_texture.frag
 
 # Check status
 python tools/engine_control.py status

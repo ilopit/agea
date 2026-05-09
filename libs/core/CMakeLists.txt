@@ -43,6 +43,8 @@ target_link_libraries(core PUBLIC
 
    lua_static
    kryga::sol2_unofficial
+
+   jsoncpp_static
 )
 
 kryga_finalize_library(core)

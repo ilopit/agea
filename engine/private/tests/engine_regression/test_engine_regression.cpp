@@ -1,4 +1,4 @@
-#include "readback.h"
+#include <vulkan_render/utils/readback.h>
 
 #include <gtest/gtest.h>
 
@@ -47,7 +47,8 @@ constexpr uint32_t TEST_HEIGHT = 512;
 const paths::resolved_layout&
 dev_layout()
 {
-    static const paths::resolved_layout cached = []() {
+    static const paths::resolved_layout cached = []()
+    {
         auto l = paths::resolve();
         if (!l || !l->is_dev_layout)
         {
@@ -72,7 +73,7 @@ get_test_scratch()
 {
     auto p = paths::scratch_dir("engine_regression");
     std::error_code ec;
-    fs::remove_all(p, ec);       // clean slate
+    fs::remove_all(p, ec);  // clean slate
     fs::create_directories(p);
     return p;
 }
@@ -96,15 +97,9 @@ install_vfs(const fs::path& scratch_root)
     vfs.mount("data", std::make_unique<vfs::physical_backend>(gpu_types_parent), 5);
     vfs.mount("data", std::make_unique<vfs::physical_backend>(scratch_root), 10);
     vfs.mount("generated", std::make_unique<vfs::physical_backend>(l.generated_dir), 0);
-    vfs.mount("cache",
-              std::make_unique<vfs::physical_backend>(scratch_root / "cache"),
-              0);
-    vfs.mount("rtcache",
-              std::make_unique<vfs::physical_backend>(scratch_root / "rtcache"),
-              0);
-    vfs.mount("tmp",
-              std::make_unique<vfs::physical_backend>(scratch_root / "tmp"),
-              0);
+    vfs.mount("cache", std::make_unique<vfs::physical_backend>(scratch_root / "cache"), 0);
+    vfs.mount("rtcache", std::make_unique<vfs::physical_backend>(scratch_root / "rtcache"), 0);
+    vfs.mount("tmp", std::make_unique<vfs::physical_backend>(scratch_root / "tmp"), 0);
 }
 
 // Resolve a vfs rid to its concrete filesystem path. Asserts the rid is
@@ -193,8 +188,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
     // directories produced by save_package/save_level).
     {
         converter::converter_context ctx;
-        ASSERT_TRUE(ctx.init(dev_layout().source_root / "resources",
-                             scratch_root / "packages"));
+        ASSERT_TRUE(ctx.init(dev_layout().source_root / "resources", scratch_root / "packages"));
 
         converter::converter_options opts;
         opts.mode = converter::converter_mode::level_with_package;
@@ -249,7 +243,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
         auto* main_pass = renderer.get_render_pass(AID("main"));
         ASSERT_TRUE(main_pass);
 
-        auto pixels = render::test::readback_framebuffer(
+        auto pixels = render::readback_framebuffer(
             *main_pass, TEST_WIDTH, TEST_HEIGHT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         auto ref_path = get_reference_path("engine_converts_box_textured");
@@ -258,8 +252,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
         if (std::getenv("UPDATE_REFERENCES"))
         {
             fs::create_directories(fs::path(ref_path).parent_path());
-            ASSERT_TRUE(
-                render::save_png(ref_path, pixels.data(), TEST_WIDTH, TEST_HEIGHT));
+            ASSERT_TRUE(render::save_png(ref_path, pixels.data(), TEST_WIDTH, TEST_HEIGHT));
             GTEST_SKIP() << "Updated reference: " << ref_path;
         }
 
@@ -290,8 +283,8 @@ TEST(engine_regression, converts_and_renders_box_textured)
         }
 
         EXPECT_TRUE(result.pixel_passed)
-            << "Pixel diff: " << result.diff_pixel_count << "/" << result.total_pixels
-            << " (" << result.diff_percentage << "%)"
+            << "Pixel diff: " << result.diff_pixel_count << "/" << result.total_pixels << " ("
+            << result.diff_percentage << "%)"
             << "\n  Reference: " << ref_path << "\n  Actual:    " << actual_path;
         EXPECT_TRUE(result.ssim_passed)
             << "SSIM: " << result.ssim << " (threshold: " << params.ssim_threshold << ")";

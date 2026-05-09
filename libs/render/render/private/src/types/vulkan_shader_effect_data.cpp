@@ -43,20 +43,24 @@ shader_effect_data::reset()
 
     if (m_pipeline)
     {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vd, VmaAllocator)
+        glob::glob_state().getr_render_device().schedule_to_delete(
+            [owns_layout = m_owns_pipeline_layout,
+             set_layout = m_set_layout,
+             pl = m_pipeline_layout,
+             pipe = m_pipeline,
+             stencil_pipe = m_with_stencil_pipeline](VkDevice vd, VmaAllocator)
             {
-                if (m_owns_pipeline_layout)
+                if (owns_layout)
                 {
-                    for (auto l : m_set_layout)
+                    for (auto l : set_layout)
                     {
                         vkDestroyDescriptorSetLayout(vd, l, nullptr);
                     }
-                    vkDestroyPipelineLayout(vd, m_pipeline_layout, nullptr);
+                    vkDestroyPipelineLayout(vd, pl, nullptr);
                 }
 
-                vkDestroyPipeline(vd, m_pipeline, nullptr);
-                vkDestroyPipeline(vd, m_with_stencil_pipeline, nullptr);
+                vkDestroyPipeline(vd, pipe, nullptr);
+                vkDestroyPipeline(vd, stencil_pipe, nullptr);
             });
 
         for (size_t i = 0; i < DESCRIPTORS_SETS_COUNT; ++i)

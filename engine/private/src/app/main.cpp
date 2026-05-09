@@ -79,7 +79,8 @@ main(int argc, char** argv)
         jobject activity = (jobject)SDL_AndroidGetActivity();
 
         jclass activity_class = env->GetObjectClass(activity);
-        jmethodID get_assets = env->GetMethodID(activity_class, "getAssets", "()Landroid/content/res/AssetManager;");
+        jmethodID get_assets =
+            env->GetMethodID(activity_class, "getAssets", "()Landroid/content/res/AssetManager;");
         jobject asset_manager_obj = env->CallObjectMethod(activity, get_assets);
         AAssetManager* asset_manager = AAssetManager_fromJava(env, asset_manager_obj);
 
@@ -90,11 +91,15 @@ main(int argc, char** argv)
 
         // Internal storage for cache/temp — physical, writable, sandboxed per-app.
         std::filesystem::path internal = SDL_AndroidGetInternalStoragePath();
-        vfs.mount("cache",     std::make_unique<kryga::vfs::physical_backend>(internal / "cache"), 0);
-        vfs.mount("rtcache",   std::make_unique<kryga::vfs::physical_backend>(internal / "rtcache"), 0);
-        vfs.mount("tmp",       std::make_unique<kryga::vfs::physical_backend>(internal / "tmp"), 0);
+        vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(internal / "cache"), 0);
+        vfs.mount(
+            "rtcache", std::make_unique<kryga::vfs::physical_backend>(internal / "rtcache"), 0);
+        vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(internal / "tmp"), 0);
         // `generated` points at argen.py output bundled into the APK under assets/kryga_generated/
-        vfs.mount("generated", std::make_unique<kryga::vfs::android_asset_backend>(asset_manager, "kryga_generated"), 0);
+        vfs.mount(
+            "generated",
+            std::make_unique<kryga::vfs::android_asset_backend>(asset_manager, "kryga_generated"),
+            0);
 #else
         auto layout = kryga::paths::resolve();
         if (!layout)
@@ -103,14 +108,39 @@ main(int argc, char** argv)
             return 1;
         }
         const auto& root = layout->staged_root;
+
+        // data:// — content root.
+        //   editor: source resources/ so authored levels/shaders/etc. are
+        //           visible without a cook step. Runtime GLSL compilation
+        //           (vulkan_shader_loader.cpp:53) handles the .vert/.frag
+        //           direct path when is_*_binary is false.
+        //   game:   cooked output under staged_root.
+#if KRG_EDITOR
+        if (layout->source_root.empty())
+        {
+            ALOG_ERROR(
+                "editor build requires a dev layout (source_root) — "
+                "no 'kryga.project' anchor found");
+            return 1;
+        }
+        vfs.mount("data",
+                  std::make_unique<kryga::vfs::physical_backend>(layout->source_root / "resources"),
+                  0);
+        // Shaders write `#include "gpu_types/foo.h"`. The cooker stages a
+        // gpu_types symlink at staged_root pointing at this dir; the editor
+        // bypasses staging so we mount it explicitly at lower priority.
+        vfs.mount("data",
+                  std::make_unique<kryga::vfs::physical_backend>(
+                      layout->source_root / "libs/render/gpu_types/public/include"),
+                  -1);
+#else
         vfs.mount("data", std::make_unique<kryga::vfs::physical_backend>(root), 0);
+#endif
         vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(root / "cache"), 0);
         vfs.mount("rtcache", std::make_unique<kryga::vfs::physical_backend>(root / "rtcache"), 0);
         vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(root / "tmp"), 0);
         vfs.mount(
-            "generated",
-            std::make_unique<kryga::vfs::physical_backend>(layout->generated_dir),
-            0);
+            "generated", std::make_unique<kryga::vfs::physical_backend>(layout->generated_dir), 0);
 #endif
 
         kryga::vulkan_engine engine;

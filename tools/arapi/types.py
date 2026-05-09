@@ -64,6 +64,8 @@ class kryga_type:
     self.instantiate_handler = ""
     self.render_cmd_builder = ""
     self.render_cmd_destroyer = ""
+    self.json_save_handler = ""
+    self.json_load_handler = ""
 
     self.ordered = False
 
@@ -101,6 +103,7 @@ class file_context:
     self.model_has_properties_overrides: bool = False
     self.render_has_types_overrides: bool = False
     self.render_has_custom_resources: bool = False
+    self.editor_has_overrides: bool = False
     self.dependencies: list[str] = []
 
     self.properies_access_methods: str = ''
@@ -109,11 +112,13 @@ class file_context:
     self.types: list[kryga_type] = []
     self.model_overrides: list[str] = []
     self.render_overrides: list[str] = []
+    self.editor_overrides: list[str] = []
     self.model_header_dir = None
     self.package_header_dir = None
     self.model_sources_dir = None
     self.render_header_dir = None
     self.render_sources_dir = None
+    self.editor_sources_dir = None
     self.global_dir = None
     self.gpu_types_dir = None
 

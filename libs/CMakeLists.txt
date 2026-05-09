@@ -14,6 +14,9 @@ add_subdirectory(animation)
 add_subdirectory(serialization)
 add_subdirectory(testing)
 add_subdirectory(utils)
+if(KRG_BUILD_EDITOR_TARGET)
+    add_subdirectory(rpc)
+endif()
 
 # Content-cooker. Desktop-only: cross-compiled Android .so can't run on host.
 if(NOT ANDROID)

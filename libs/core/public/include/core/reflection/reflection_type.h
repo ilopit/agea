@@ -10,6 +10,15 @@
 
 #include <vector>
 
+// Forward decl so reflection_type can carry json_save/json_load function
+// pointers without dragging jsoncpp into core's compile graph. Implementations
+// live in the editor RPC path (libs/core/private/src/reflection/json_*.cpp)
+// where jsoncpp is actually pulled in.
+namespace Json
+{
+class Value;
+}
+
 namespace kryga
 {
 
@@ -75,6 +84,23 @@ struct type_context__alloc
     const utils::id* id = nullptr;
 };
 
+// JSON-native variants used by the editor RPC. Engine YAML save/load is the
+// canonical content path; these are the wire-format twins so RPC doesn't pay
+// a YAML→JSON conversion per call. Types opt in by registering both.
+struct type_context__json_save
+{
+    const root::smart_object* owner_obj = nullptr;
+    blob_ptr obj = nullptr;
+    Json::Value* jc = nullptr;
+};
+
+struct type_context__json_load
+{
+    root::smart_object* owner_obj = nullptr;
+    blob_ptr obj = nullptr;
+    const Json::Value* jc = nullptr;
+};
+
 using type_handler__save = result_code (*)(type_context__save&);
 using type_handler__load = result_code (*)(type_context__load&);
 using type_handler__copy = result_code (*)(type_context__copy&);
@@ -86,6 +112,8 @@ using type_handler__render_cmd_destroyer = result_code (*)(type_context__render_
 using type_handler__gpu_pack = void (*)(const void* src, void* dst);
 using type_handler__alloc = std::shared_ptr<root::smart_object> (*)(type_context__alloc&);
 using type_handler__cparams_alloc = std::unique_ptr<::kryga::root::base_construct_params> (*)();
+using type_handler__json_save = result_code (*)(type_context__json_save&);
+using type_handler__json_load = result_code (*)(type_context__json_load&);
 
 using property_list = std::vector<std::shared_ptr<property>>;
 using function_list = std::vector<std::shared_ptr<function>>;
@@ -134,6 +162,13 @@ struct reflection_type
     type_handler__instantiate                   instantiate = nullptr;
     type_handler__compare                       compare = nullptr;
     type_handler__to_string                     to_string = nullptr;
+
+    // Editor RPC wire format. Optional — if either is null the RPC layer
+    // logs and skips the field. Defaults registered for primitives + vec*
+    // by reflection::register_default_json_handlers(); types in new packages
+    // can register their own.
+    type_handler__json_save                     json_save = nullptr;
+    type_handler__json_load                     json_load = nullptr;
 
     type_handler__render_cmd_builder            render_cmd_builder = nullptr;
     type_handler__render_cmd_destroyer          render_cmd_destroyer = nullptr;

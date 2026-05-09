@@ -10,6 +10,7 @@
 #include <core/model_fwds.h>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <future>
@@ -25,7 +26,11 @@ namespace kryga
 {
 class native_window;
 #if KRG_EDITOR
-class sync_service;
+namespace rpc
+{
+class rpc_server;
+class rpc_log_sink;
+}  // namespace rpc
 #endif
 
 // Command-line startup options
@@ -81,9 +86,6 @@ public:
     tick_headless();
 
     void
-    execute_sync_requests();
-
-    void
     init_default_resources();
 
     void
@@ -103,12 +105,35 @@ public:
     bool
     load_level(const utils::id& level_id);
 
+#if KRG_EDITOR
+    // RPC handlers run on the server's I/O thread. ALL state access goes
+    // through this queue so the main thread is the sole owner of engine
+    // state — no mutexes scattered across mutated fields.
+    //
+    // queue_main_action: fire-and-forget. Use for high-frequency mutations
+    //   where I/O-thread latency matters more than per-call confirmation
+    //   (e.g. properties.set during drag-scrub).
+    // wait_main_action:  queue + block on completion. Use when the response
+    //   needs to reflect the work's result (reads, single mutations that
+    //   want explicit ok/err in the response).
+    void
+    queue_main_action(std::function<void()> a);
+    bool
+    wait_main_action(std::function<void()> a,
+                     std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
+
+    void
+    request_shutdown() { m_shutdown_requested.store(true, std::memory_order_relaxed); }
+#endif
+
 private:
     void
     update_cameras();
 
-    void consume_updated_render();
-    void consume_updated_transforms();
+    void
+    consume_updated_render();
+    void
+    consume_updated_transforms();
 
     void
     render_thread_func();
@@ -121,7 +146,24 @@ private:
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
 #if KRG_EDITOR
-    std::unique_ptr<sync_service> m_sync_service;
+    std::unique_ptr<rpc::rpc_server> m_rpc_server;
+    std::shared_ptr<rpc::rpc_log_sink> m_rpc_log_sink;
+    // Polled each tick to detect spawn/destroy without instrumenting core.
+    // Count-only signal: misses same-count membership swaps, good enough for
+    // Phase B tree refresh.
+    std::atomic<bool> m_shutdown_requested{false};
+    size_t m_last_known_object_count = 0;
+
+    // Track editor/play mode transitions so external tooling sees changes
+    // even when triggered via the engine's own UI (F5/Esc).
+    int m_last_known_mode = -1;
+
+    // Backing storage + drain helper for the public queue_main_action /
+    // wait_main_action above.
+    std::mutex m_rpc_action_mutex;
+    std::vector<std::function<void()>> m_rpc_actions;
+    void
+    drain_main_actions();
 #endif
 
     // Render thread synchronization (lock-step)

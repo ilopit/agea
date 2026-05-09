@@ -245,6 +245,9 @@ public:
     void
     delete_scheduled_actions();
 
+    void
+    flush_deferred_deletions();
+
     // private:
     bool
     init_vulkan(SDL_Window* window, bool headless);
@@ -314,7 +317,7 @@ public:
         bool
         operator()(const delayed_delete_action& l, const delayed_delete_action& r)
         {
-            return l.frame_idx < r.frame_idx;
+            return l.frame_idx > r.frame_idx;
         }
     };
 

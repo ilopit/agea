@@ -29,6 +29,7 @@ INCLUDE_PREFIX_LEN = len(INCLUDE_PREFIX)
 # KRYGA macro markers
 MACRO_MODEL_OVERRIDES = "KRG_ar_model_overrides()"
 MACRO_RENDER_OVERRIDES = "KRG_ar_render_overrides()"
+MACRO_EDITOR_OVERRIDES = "KRG_ar_editor_overrides()"
 MACRO_CLASS = "KRG_ar_class"
 MACRO_STRUCT = "KRG_ar_struct"
 MACRO_FUNCTION = "KRG_ar_function"
@@ -68,12 +69,15 @@ TYPE_KEY_ARCHITYPE = "architype"
 TYPE_KEY_BUILT_IN = "built_in"
 TYPE_KEY_RENDER_CMD_BUILDER = "render_cmd_builder"
 TYPE_KEY_RENDER_CMD_DESTROYER = "render_cmd_destroyer"
+TYPE_KEY_JSON_SAVE_HANDLER = "json_save_handler"
+TYPE_KEY_JSON_LOAD_HANDLER = "json_load_handler"
 
 # Package config keys
 PKG_KEY_MODEL_TYPES_OVERRIDES = "model.has_types_overrides"
 PKG_KEY_MODEL_PROPERTIES_OVERRIDES = "model.has_properties_overrides"
 PKG_KEY_RENDER_OVERRIDES = "render.has_overrides"
 PKG_KEY_RENDER_RESOURCES = "render.has_resources"
+PKG_KEY_EDITOR_OVERRIDES = "editor.has_overrides"
 # Note: "dependancies" is intentionally misspelled to match C++ macro API
 PKG_KEY_DEPENDENCIES = "dependancies"
 
@@ -178,6 +182,8 @@ _MODEL_TYPE_ATTR_MAP = {
     TYPE_KEY_LOAD_DERIVE_HANDLER: 'load_derive_handler',
     TYPE_KEY_TO_STRING_HANDLER: 'to_string_handler',
     TYPE_KEY_ARCHITYPE: 'architype',
+    TYPE_KEY_JSON_SAVE_HANDLER: 'json_save_handler',
+    TYPE_KEY_JSON_LOAD_HANDLER: 'json_load_handler',
 }
 
 # Mapping from type config keys to attribute names for render overrides
@@ -669,6 +675,8 @@ def _parse_package(lines: List[str], index: int, lines_count: int,
         context.render_has_types_overrides = value == "true"
       elif key == PKG_KEY_RENDER_RESOURCES:
         context.render_has_custom_resources = value == "true"
+      elif key == PKG_KEY_EDITOR_OVERRIDES:
+        context.editor_has_overrides = value == "true"
       elif key == PKG_KEY_DEPENDENCIES:
         context.dependencies = value.split(":")
 
@@ -711,6 +719,18 @@ def _handle_render_overrides(context: arapi.types.file_context, file_rel_path: s
     """
   include_path = file_rel_path.removeprefix(INCLUDE_PREFIX)
   context.render_overrides.append(include_path)
+  context.includes.add(f'#include "{include_path}"')
+
+
+def _handle_editor_overrides(context: arapi.types.file_context, file_rel_path: str) -> None:
+  """Handle KRG_ar_editor_overrides macro.
+
+    Args:
+        context: File context to update
+        file_rel_path: Relative file path
+    """
+  include_path = file_rel_path.removeprefix(INCLUDE_PREFIX)
+  context.editor_overrides.append(include_path)
   context.includes.add(f'#include "{include_path}"')
 
 
@@ -796,6 +816,12 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
     # Handle render overrides
     if line.startswith(MACRO_RENDER_OVERRIDES):
       _handle_render_overrides(context, original_file_rel_path)
+      i += 1
+      continue
+
+    # Handle editor overrides
+    if line.startswith(MACRO_EDITOR_OVERRIDES):
+      _handle_editor_overrides(context, original_file_rel_path)
       i += 1
       continue
 

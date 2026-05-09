@@ -126,6 +126,24 @@ struct package_types_default_objects_builder
     }
 };
 
+struct package_editor_types_builder
+{
+    virtual ~package_editor_types_builder()
+    {
+    }
+
+    virtual bool
+    build(package& sp)
+    {
+        return true;
+    }
+    virtual bool
+    destroy(package& sp)
+    {
+        return true;
+    }
+};
+
 struct package_render_custom_resource_builder
 {
     virtual ~package_render_custom_resource_builder()
@@ -213,6 +231,7 @@ public:
         static_assert(std::is_base_of_v<package_types_builder, T> ||
                           std::is_base_of_v<package_types_custom_loader, T> ||
                           std::is_base_of_v<package_render_types_builder, T> ||
+                          std::is_base_of_v<package_editor_types_builder, T> ||
                           std::is_base_of_v<package_types_default_objects_builder, T> ||
                           std::is_base_of_v<package_render_custom_resource_builder, T> ||
                           std::is_base_of_v<package_object_builder, T>,
@@ -229,6 +248,10 @@ public:
         else if constexpr (std::is_base_of_v<package_render_types_builder, T>)
         {
             m_render_types_loader = std::make_unique<T>();
+        }
+        else if constexpr (std::is_base_of_v<package_editor_types_builder, T>)
+        {
+            m_editor_types_loader = std::make_unique<T>();
         }
         else if constexpr (std::is_base_of_v<package_render_custom_resource_builder, T>)
         {
@@ -259,6 +282,9 @@ public:
 
     void load_render_types();
     void destroy_render_types();
+
+    void load_editor_types();
+    void destroy_editor_types();
 
     void finalize_reflection();
     
@@ -298,6 +324,7 @@ public:
         init();
         load_types();
         load_render_types();
+        load_editor_types();
         finalize_reflection();
         load_render_resources();
         create_default_types_objects();
@@ -316,6 +343,7 @@ private:
     std::unique_ptr<package_types_builder> m_type_builder;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;
     std::unique_ptr<package_render_types_builder> m_render_types_loader;
+    std::unique_ptr<package_editor_types_builder> m_editor_types_loader;
     std::unique_ptr<package_render_custom_resource_builder> m_render_resources_loader;
     std::unique_ptr<package_types_default_objects_builder> m_default_object_builder;
 

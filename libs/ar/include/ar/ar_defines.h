@@ -11,3 +11,4 @@
 #define KRG_ar_package(...)
 #define KRG_ar_model_overrides(...)
 #define KRG_ar_render_overrides(...)
+#define KRG_ar_editor_overrides(...)

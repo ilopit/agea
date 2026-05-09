@@ -3,6 +3,7 @@
 #include <vulkan_render/types/vulkan_gpu_types.h>
 
 #include <utils/check.h>
+#include <utils/id.h>
 
 namespace kryga
 {
@@ -26,6 +27,15 @@ class game_editor
 public:
     void
     init();
+
+    // Selection state. Currently a single object id; multi-select can extend
+    // this later. Main-thread only — RPC handlers reach this through the
+    // engine's main-thread action queue.
+    void
+    set_selected(const utils::id& id);
+
+    utils::id
+    get_selected() const;
 
     void
     on_tick(float dur_sec);
@@ -109,6 +119,10 @@ private:
 
     base::camera_component* m_active_camera = nullptr;
     base::input_component* m_input = nullptr;
+
+    // Selection state. RPC handlers route through the engine's main-thread
+    // action queue, so this is single-thread-owned — no mutex needed.
+    utils::id m_selected;
 };
 }  // namespace engine
 }  // namespace kryga

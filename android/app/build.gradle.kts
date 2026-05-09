@@ -25,7 +25,6 @@ android {
             cmake {
                 arguments += listOf(
                     "-DCMAKE_TOOLCHAIN_FILE=${krygaRoot}/cmake/android.toolchain.cmake",
-                    "-DKRG_ENABLE_SYNC_SERVICE=OFF",
                     "-DBUILD_SHARED_LIBS=OFF",
                     // Echo ANDROID_STL explicitly so AGP auto-packages libc++_shared.so
                     // into the APK. The toolchain sets it internally, but AGP only

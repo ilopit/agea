@@ -27,6 +27,8 @@ public:
     property_handler__instantiate    instantiate_handler     = default_instantiate;
     property_handler__load           load_handler            = default_load;
     property_handler__to_string      to_string_handler       = default_to_string;
+    property_handler__json_get       json_get                = default_json_get;
+    property_handler__json_set       json_set                = default_json_set;
 
     // clang-format on
 
@@ -51,6 +53,12 @@ private:
 
     static result_code
     default_to_string(property_context__to_string& context);
+
+    static result_code
+    default_json_get(property_context__json_get& context);
+
+    static result_code
+    default_json_set(property_context__json_set& context);
 
     static result_code
     deserialize_collection(reflection::property& p,

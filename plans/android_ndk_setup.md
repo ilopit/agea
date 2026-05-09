@@ -55,10 +55,10 @@ Add `%ANDROID_HOME%\platform-tools` to PATH for `adb`.
           -G Ninja ^
           -DCMAKE_BUILD_TYPE=Release
 
-Expected: configure succeeds, `KRG_ENABLE_SYNC_SERVICE` is OFF (skips Boost download),
-`KRG_BUILD_EDITOR_TARGET` is OFF (Android only ever builds `kryga_game` — the
-mobile target compiles with `KRG_GAME=1` / `KRG_MOBILE=1`). SDL2 source is
-fetched and configured for arm64-v8a.
+Expected: configure succeeds, `KRG_BUILD_EDITOR_TARGET` is OFF (Android only
+ever builds `kryga_game` — the mobile target compiles with `KRG_GAME=1` /
+`KRG_MOBILE=1`). Boost is fetched (asio + filesystem + process — minimal
+subset, no Beast). SDL2 source is fetched and configured for arm64-v8a.
 
 ## 6. First build
 

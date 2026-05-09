@@ -248,6 +248,12 @@ render_bridge::drain_queue()
 }
 
 void
+render_bridge::retire_arena()
+{
+    glob::glob_state().getr_queues().get_render().retire_arena();
+}
+
+void
 render_bridge::reset_arena()
 {
     glob::glob_state().getr_queues().get_render().reset_arena();

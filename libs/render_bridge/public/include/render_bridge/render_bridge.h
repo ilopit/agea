@@ -103,6 +103,11 @@ public:
     void
     drain_queue();
 
+    // Retire the active arena so its memory survives until the render thread
+    // has drained all commands allocated from it (called from main thread).
+    void
+    retire_arena();
+
     // Reset the arena (called from main thread after render done)
     void
     reset_arena();

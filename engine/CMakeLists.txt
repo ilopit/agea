@@ -10,8 +10,7 @@
 #                   Used by `kryga_editor` exe (desktop only).
 #
 # kryga_engine.cpp / main.cpp are shared between the two via #if KRG_EDITOR
-# guards on editor-specific touchpoints (game_editor singleton, sync_service,
-# UI init).
+# guards on editor-specific touchpoints (game_editor singleton, rpc, UI init).
 
 # All TUs that do not depend on editor-only headers/symbols.
 set(ENGINE_GAME_SRC
@@ -37,9 +36,13 @@ set(ENGINE_EDITOR_SRC
     "public/include/engine/property_drawers.h"
     "public/include/engine/script_editor.h"
     "public/include/engine/ui.h"
+    "private/include/engine/private/engine_rpc.h"
+    "private/include/engine/private/property_rpc.h"
     "private/src/console.cpp"
     "private/src/editor.cpp"
+    "private/src/engine_rpc.cpp"
     "private/src/property_drawers.cpp"
+    "private/src/property_rpc.cpp"
     "private/src/script_editor.cpp"
     "private/src/ui.cpp"
     "private/src/ui/action_progress_window.cpp"
@@ -49,11 +52,6 @@ set(ENGINE_EDITOR_SRC
     "private/src/ui/object_editor.cpp"
     "private/src/ui/package_editor.cpp"
 )
-
-# Sync service — desktop-only HTTP shader/asset live reload. Editor-only.
-if(KRG_ENABLE_SYNC_SERVICE)
-    list(APPEND ENGINE_EDITOR_SRC "private/src/sync_service.cpp")
-endif()
 
 file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/kryga_generated/engine/*.cpp")
 
@@ -67,7 +65,6 @@ add_library(engine STATIC
 
 target_compile_definitions(engine PUBLIC
     KRG_GAME=1
-    KRG_ENABLE_SYNC_SERVICE=0
 )
 
 target_link_libraries(engine PUBLIC
@@ -113,11 +110,6 @@ if(KRG_BUILD_EDITOR_TARGET)
     target_compile_definitions(engine_editor PUBLIC
         KRG_EDITOR=1
     )
-    if(KRG_ENABLE_SYNC_SERVICE)
-        target_compile_definitions(engine_editor PUBLIC KRG_ENABLE_SYNC_SERVICE=1)
-    else()
-        target_compile_definitions(engine_editor PUBLIC KRG_ENABLE_SYNC_SERVICE=0)
-    endif()
 
     target_link_libraries(engine_editor PUBLIC
         kryga::utils
@@ -131,23 +123,25 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::kryga_port
         kryga::asset_converter
         kryga::project_paths
+        kryga::rpc
 
         kryga::textedit_unofficial
         kryga::imguizmo_unofficial
         kryga::imguifiledialog_unofficial
 
         ${KRG_ACTIVE_MODULES_TARGETS}
+        ${KRG_EDITOR_MODULES_TARGETS}
 
         sdl2
 
         TracyClient
 
         CLI11::CLI11
-    )
 
-    if(KRG_ENABLE_SYNC_SERVICE)
-        target_link_libraries(engine_editor PUBLIC boost_beast Boost::url Boost::process)
-    endif()
+        # Used by the asset converter UI (engine/private/src/ui/converter_window.cpp)
+        # to launch external tools.
+        Boost::process
+    )
 
     target_include_directories(engine_editor
         PUBLIC

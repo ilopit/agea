@@ -13,3 +13,9 @@ resources/configs/*.tmp
 
 # Runtime log
 kryga_log.txt
+
+# Editor console history written next to the running exe
+**/editor_console.*.log
+
+# Engine runtime tmp dir (RPC discovery file, transient state)
+/tmp/

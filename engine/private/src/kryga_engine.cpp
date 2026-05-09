@@ -9,7 +9,15 @@
 #include "engine/ui.h"
 #include "engine/editor.h"
 #include "engine/private/ui/bake_editor.h"
-#include "engine/private/sync_service.h"
+
+#include <rpc/rpc_server.h>
+#include <rpc/rpc_log_sink.h>
+
+#include "engine/private/engine_rpc.h"
+
+#include <project_paths/project_paths.h>
+
+#include <json/json.h>
 #endif
 
 #include <core/caches/caches_map.h>
@@ -69,7 +77,9 @@
 
 #include <CLI/CLI.hpp>
 
+#include <filesystem>
 #include <fstream>
+#include <functional>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -121,7 +131,7 @@ startup_options::print_help(const char* program_name)
 
 vulkan_engine::vulkan_engine()
 #if KRG_EDITOR
-    : m_sync_service(std::make_unique<sync_service>())
+    : m_rpc_server(std::make_unique<rpc::rpc_server>())
 #endif
 {
 }
@@ -306,7 +316,43 @@ vulkan_engine::init(const startup_options& options)
         init_scene();
 
 #if KRG_EDITOR
-        m_sync_service->start();
+        // rpc: bind on a free port (OS-picked), publish discovery file
+        // for the VS Code extension to find. Single-engine assumption per
+        // project (multi-engine could key by PID later).
+        engine_private::register_rpc_handlers(*this, *m_rpc_server);
+
+        // Discovery file lives at <source_root>/tmp/editor_rpc.json — a stable
+        // path independent of build config so VS Code (and other tooling) can
+        // find a running engine without knowing whether it's a Debug or
+        // Release build. Falls back to tmp:// for non-dev layouts where
+        // source_root isn't known.
+        std::optional<std::filesystem::path> disco_path;
+        if (auto layout = kryga::paths::resolve();
+            layout && !layout->source_root.empty())
+        {
+            auto p = layout->source_root / "tmp" / "editor_rpc.json";
+            std::error_code ec;
+            std::filesystem::create_directories(p.parent_path(), ec);
+            disco_path = std::move(p);
+        }
+        else
+        {
+            disco_path = glob::glob_state().getr_vfs().real_path(
+                vfs::rid("tmp://editor_rpc.json"));
+        }
+        if (disco_path.has_value())
+        {
+            m_rpc_server->start(0, disco_path->string());
+
+            m_rpc_log_sink =
+                std::make_shared<rpc::rpc_log_sink>(*m_rpc_server);
+            spdlog::default_logger()->sinks().push_back(m_rpc_log_sink);
+        }
+        else
+        {
+            ALOG_WARN("rpc: could not resolve discovery file path — "
+                      "RPC server not started");
+        }
 #endif
     }
 
@@ -330,7 +376,16 @@ vulkan_engine::cleanup()
     }
 
 #if KRG_EDITOR
-    m_sync_service->stop();
+    // Detach RPC log sink BEFORE stopping the server so a late spdlog write
+    // doesn't notify into a dead server.
+    if (m_rpc_log_sink)
+    {
+        auto& sinks = spdlog::default_logger()->sinks();
+        sinks.erase(std::remove(sinks.begin(), sinks.end(), m_rpc_log_sink),
+                    sinks.end());
+        m_rpc_log_sink.reset();
+    }
+    m_rpc_server->stop();
 #endif
 
     glob::glob_state().get_render_device()->wait_for_fences();
@@ -407,6 +462,13 @@ vulkan_engine::run()
             ALOG_INFO("Run duration limit reached ({} seconds), exiting.", m_run_for_seconds);
             break;
         }
+#if KRG_EDITOR
+        if (m_shutdown_requested.load(std::memory_order_relaxed))
+        {
+            ALOG_INFO("Shutdown requested via RPC, exiting.");
+            break;
+        }
+#endif
 
         KRG_make_scope(frame);
         KRG_PROFILE_SCOPE("Frame");
@@ -462,11 +524,6 @@ vulkan_engine::run()
         }
 
         {
-            KRG_make_scope(sync);
-            KRG_PROFILE_SCOPE("Sync");
-            execute_sync_requests();
-        }
-        {
             KRG_make_scope(consume_updates);
             KRG_PROFILE_SCOPE("ConsumeUpdates");
 
@@ -520,16 +577,100 @@ vulkan_engine::tick_headless()
     glob::glob_state().getr_render_bridge().reset_arena();
 }
 
+#if KRG_EDITOR
+void
+vulkan_engine::queue_main_action(std::function<void()> a)
+{
+    std::lock_guard<std::mutex> lk(m_rpc_action_mutex);
+    m_rpc_actions.push_back(std::move(a));
+}
+
+bool
+vulkan_engine::wait_main_action(std::function<void()> a,
+                                std::chrono::milliseconds timeout)
+{
+    auto p = std::make_shared<std::promise<void>>();
+    auto fut = p->get_future();
+    queue_main_action([p, work = std::move(a)]() mutable
+    {
+        try
+        {
+            work();
+            p->set_value();
+        }
+        catch (...)
+        {
+            p->set_exception(std::current_exception());
+        }
+    });
+    if (fut.wait_for(timeout) != std::future_status::ready)
+    {
+        return false;
+    }
+    fut.get();
+    return true;
+}
+
+void
+vulkan_engine::drain_main_actions()
+{
+    std::vector<std::function<void()>> local;
+    {
+        std::lock_guard<std::mutex> lk(m_rpc_action_mutex);
+        local.swap(m_rpc_actions);
+    }
+    for (auto& a : local)
+    {
+        a();
+    }
+}
+#endif
+
 void
 vulkan_engine::tick(float dt)
 {
 #if KRG_EDITOR
+    drain_main_actions();
+
+    if (m_rpc_server)
+    {
+        int mode_now = static_cast<int>(
+            glob::glob_state().get_game_editor()->get_mode());
+        if (mode_now != m_last_known_mode)
+        {
+            m_last_known_mode = mode_now;
+            Json::Value note(Json::objectValue);
+            note["mode"] =
+                (mode_now == static_cast<int>(engine::editor_mode::playing))
+                    ? std::string("play") : std::string("edit");
+            m_rpc_server->notify("engine.mode.changed", note);
+        }
+    }
+
     glob::glob_state().get_game_editor()->on_tick(dt);
     if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
     {
         if (auto lvl = glob::glob_state().get_current_level())
         {
             lvl->tick(dt);
+        }
+    }
+
+    // Notify VS Code of object-set changes. Polled rather than hooked into
+    // level::spawn/unregister to keep core decoupled from RPC.
+    if (m_rpc_server)
+    {
+        size_t new_count = 0;
+        if (auto lvl = glob::glob_state().get_current_level())
+        {
+            new_count = lvl->get_game_objects().get_items().size();
+        }
+        if (new_count != m_last_known_object_count)
+        {
+            m_last_known_object_count = new_count;
+            Json::Value note(Json::objectValue);
+            note["count"] = static_cast<Json::UInt64>(new_count);
+            m_rpc_server->notify("scene.changed", note);
         }
     }
 #else
@@ -546,75 +687,28 @@ vulkan_engine::tick(float dt)
     }
 }
 
-void
-vulkan_engine::execute_sync_requests()
-{
-#if !KRG_EDITOR
-    // Sync service is editor-only.
-    return;
-#else
-    if (!m_sync_service->has_sync_actions())
-    {
-        return;
-    }
-
-    std::vector<sync_action> actions;
-    m_sync_service->extract_data(actions);
-
-    for (auto& sa : actions)
-    {
-        std::string name, ext;
-        sa.path_to_resources.parse_file_name_and_ext(name, ext);
-
-        if (ext == "lua")
-        {
-            auto lua = glob::glob_state().get_lua();
-
-            auto lua_r = lua->state().script_file(sa.path_to_resources.str());
-
-            std::string result = lua->buffer();
-            lua->reset();
-            if (lua_r.status() != sol::call_status::ok)
-            {
-                sol::error err = lua_r;
-                result += err.what();
-            }
-
-            sa.to_signal.set_value(result);
-        }
-        else if (ext == "vert" || ext == "frag")
-        {
-            auto sec = glob::glob_state().get_class_shader_effects_cache();
-
-            auto ptr = sec->get_item(AID(name));
-            ptr->mark_render_dirty();
-
-            auto dep = glob::glob_state().getr_render_bridge().get_dependency().get_node(ptr);
-
-            glob::glob_state().getr_render_bridge().get_dependency().print(false);
-
-            for (auto o : dep.m_children)
-            {
-                auto mt = o->as<root::asset>();
-                mt->mark_render_dirty();
-            }
-
-            sa.to_signal.set_value("");
-        }
-        else
-        {
-            sa.to_signal.set_value("");
-        }
-    }
-#endif
-}
-
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
     auto lm = glob::glob_state().get_lm();
     auto cs = glob::glob_state().get_class_set();
     auto is = glob::glob_state().get_instance_set();
+
+    // Tear down the current level if any.  Destroy commands are enqueued
+    // into the SPSC queue (arena-allocated).  Retire the current arena so
+    // its memory survives until the render thread drains the commands.
+    // The render thread calls schedule_to_delete with authoritative
+    // m_current_frame_number — no cross-thread read.
+#if KRG_EDITOR
+    glob::glob_state().get_game_editor()->set_selected(utils::id());
+#endif
+    if (auto* prev = glob::glob_state().get_current_level())
+    {
+        unload_render_resources(*prev);
+        lm->unload_level(*prev);
+
+        glob::glob_state().getr_render_bridge().retire_arena();
+    }
 
     auto result = lm->load_level(level_id);
     if (!result)

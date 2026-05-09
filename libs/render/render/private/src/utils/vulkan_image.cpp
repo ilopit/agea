@@ -108,8 +108,8 @@ vulkan_image::clear()
 
     if (m_allocator)
     {
-        rd.delete_immediately([=](VkDevice vk, VmaAllocator va)
-                              { vmaDestroyImage(va, m_image, m_allocation); });
+        rd.schedule_to_delete([img = m_image, alloc = m_allocation](VkDevice, VmaAllocator va)
+                              { vmaDestroyImage(va, img, alloc); });
     }
 
     m_image = VK_NULL_HANDLE;
@@ -192,8 +192,9 @@ vulkan_image_view::clear()
 {
     if (m_vk_handle)
     {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vd, VmaAllocator) { vkDestroyImageView(vd, m_vk_handle, nullptr); });
+        glob::glob_state().getr_render_device().schedule_to_delete(
+            [iv = m_vk_handle](VkDevice vd, VmaAllocator)
+            { vkDestroyImageView(vd, iv, nullptr); });
     }
 }
 

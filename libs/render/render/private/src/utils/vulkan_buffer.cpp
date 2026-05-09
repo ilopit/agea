@@ -71,8 +71,9 @@ vulkan_buffer::clear()
 {
     if (m_buffer != VK_NULL_HANDLE)
     {
-        glob::glob_state().getr_render_device().delete_immediately(
-            [=](VkDevice vkd, VmaAllocator va) { vmaDestroyBuffer(va, m_buffer, m_allocation); });
+        glob::glob_state().getr_render_device().schedule_to_delete(
+            [buf = m_buffer, alloc = m_allocation](VkDevice, VmaAllocator va)
+            { vmaDestroyBuffer(va, buf, alloc); });
     }
 
     m_buffer = VK_NULL_HANDLE;
