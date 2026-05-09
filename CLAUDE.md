@@ -47,6 +47,18 @@ cmake/           CMake scripts
 - `resource_locator` — resolves paths by category (assets, shaders, levels)
 - `ar` — reflection macros (`KRG_ar_*`) parsed by argen.py → `build/kryga_generated/`
 - `utils` — id, path, buffer, allocators, singletons, logging
+- `animation` — ozz-based skeletal animation: blending layers, two-bone/aim IK, per-instance playback
+- `assets_importer` — imports meshes (OBJ→amsh) and textures (image→atxt), UV2 generation via xatlas
+- `asset_converter_v2` — headless glTF/OBJ→engine converter: parses scenes, emits packages and levels
+- `cook` — content cooker: compiles shaders to SPIR-V via glslc, rewrites aobj descriptors, copies assets
+- `serialization` — YAML-based read/write of data containers via vfs paths
+- `vfs` — virtual file system: mountable backends (physical, memory, manifest, Android APK), rid-based I/O
+- `project_paths` — discovers repo/staged layout by walking up from exe to `kryga.project` anchor file
+- `kryga_port` — header-only platform portability shims: OS detection macros, `<format>` polyfill, ImGui gate
+- `native` — SDL window creation and management
+- `rpc` — JSON-RPC 2.0 server over localhost TCP (LSP framing) with spdlog notification sink
+- `error_handling` — engine-wide `result_code` enum (ok, failed, serialization_error, etc.)
+- `testing` — GTest base fixtures with engine workspace setup/teardown
 
 ### Renderer internals
 - Shader effects created on render_pass via `render_pass::create_shader_effect()`
