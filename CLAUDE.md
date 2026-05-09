@@ -34,6 +34,9 @@ packages/        Game modules — 3 layers: <name>.model, <name>.render, <name>.
 resources/       Runtime data, shaders, .apkg packages
   shaders_includes/  Shared GLSL (common_vert.glsl, common_frag.glsl)
   packages/base.apkg/class/shader_effects/  System/UI shaders
+docs/            Design docs & issue tracking
+  plans/         Design docs (vision, game design, engine roadmap, milestones) — see docs/plans/README.md
+  issues/        Per-subsystem known issues & tech debt (meshes, shadows, validation, editor, packages)
 tools/           Scripts (argen.py reflection generator)
 thirdparty/      NEVER modify (except thirdparty/unofficial, thirdparty/CMakeLists.txt)
 cmake/           CMake scripts
@@ -44,7 +47,6 @@ cmake/           CMake scripts
 - `global_state` — singleton state: `kryga::glob::glob_state()`, lifecycle: create→connect→init→ready
 - `render/` — Vulkan subsystem: `gpu_types` (shared C++/GLSL headers), `shader_system`, `render`, `utils`
 - `render_bridge` — connects model objects to Vulkan render data
-- `resource_locator` — resolves paths by category (assets, shaders, levels)
 - `ar` — reflection macros (`KRG_ar_*`) parsed by argen.py → `build/kryga_generated/`
 - `utils` — id, path, buffer, allocators, singletons, logging
 - `animation` — ozz-based skeletal animation: blending layers, two-bone/aim IK, per-instance playback
@@ -141,6 +143,24 @@ Bindings 9-10 added for probes (all shaders declare them for layout compatibilit
 - All shaders consuming `vertex_data` must declare `layout(location=4) in vec2 in_lightmap_uv` even if unused — needed for correct vertex stride (52 bytes).
 - Lightmap texture is bound per-instance via `object_data.lightmap_texture_index`, NOT per-material. `pbr_material` has no lightmap slot.
 - Compute shaders are compiled at runtime via glslc.exe, not at build time.
+
+## Engine Roadmap
+
+Full design docs in `docs/plans/`, known issues in `docs/issues/`.
+
+### Key platform decisions
+- **Render API:** Vulkan 1.2 + BDA only, no GL/ES fallback
+- **Android target:** API 30+, arm64-v8a, Adreno 640+ / Mali-G77+. iOS deferred.
+- **BDA addresses:** `uvec2` via `GL_EXT_buffer_reference_uvec2` (not `uint64_t` / `shaderInt64`)
+
+### Subsystem priorities (Doc 04)
+- **P0 (build):** audio (miniaudio), player-facing UI (custom minimal), save system, touch+gestures, app state machine, event bus, Android build pipeline
+- **Keep as-is:** Vulkan core, baked lighting, shadows, clustered lights, glTF import, ImGui editor, scene/package system, `.apkg`+VFS, reflection
+- **Defer:** dynamic resolution scaling, post-processing, cloud save, hot-reload, analytics/ads/IAP SDKs
+- **Cut:** `packages/tbs` (hex grid), DPSM, GPU particles
+
+### Known issues & tech debt
+Tracked in `docs/issues/` per subsystem: meshes, shadows, validation, editor UI state, package organization.
 
 ## Rules
 - NEVER change dependency versions
