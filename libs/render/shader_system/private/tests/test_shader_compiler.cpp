@@ -105,7 +105,7 @@ void main() {
     auto result = shader_compiler::compile_shader(buf);
 
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), result_code::compilation_failed);
+    EXPECT_EQ(result.error().code, result_code::compilation_failed);
 }
 
 TEST_F(shader_compiler_test, compile_shader_with_ubo)
@@ -194,5 +194,6 @@ void main() {
     auto result = shader_compiler::compile_shader(buf);
 
     EXPECT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), result_code::compilation_failed);
+    EXPECT_EQ(result.error().code, result_code::compilation_failed);
+    EXPECT_FALSE(result.error().diagnostics.empty());
 }

@@ -55,7 +55,7 @@ load_data_shader(const kryga::utils::buffer& input,
         auto rc = shader_compiler::compile_shader(input, defines);
         if (!rc)
         {
-            return rc.error();
+            return rc.error().code;
         }
         compiled = std::move(rc.value());
     }

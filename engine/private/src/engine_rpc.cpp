@@ -16,6 +16,9 @@
 
 #include <packages/root/model/assets/asset.h>
 #include <packages/root/model/assets/shader_effect.h>
+#include <packages/root/model/game_object.h>
+#include <packages/root/model/components/component.h>
+#include <core/reflection/reflection_type.h>
 
 #include <vfs/vfs.h>
 
@@ -32,25 +35,22 @@
 namespace kryga::engine_private
 {
 
+// Shader diagnostic protocol: the render layer emits "diagnostics.shader"
+// notifications with {diagnostics: [{file, line, column, severity, message}]}
+// when shader compilation fails. "diagnostics.clear" clears them on success.
+// See shader_compiler.h for the structured error type.
+
 void
 register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
 {
-    // ping — pure echo, no state, no queue.
     server.on_request(
         "ping",
         [](const Json::Value& params, Json::Value& result, std::string&)
         { result = params; });
 
-    // All other handlers go through the main-thread action queue. Reads use
-    // wait_main_action (block I/O thread until main produces the result).
-    // High-volume mutations (properties.set during drag-scrub) use
-    // queue_main_action (fire-and-forget; client reconciles via
-    // properties.changed). Bulk mutations (level.load, engine.setMode) also
-    // fire-and-forget — they have observable effects via other notifications.
-
     server.on_request(
         "sync.reload",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("path"))
             {
@@ -78,7 +78,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                             out += e.what();
                         }
                     }
-                    else if (ext == "vert" || ext == "frag")
+                    else if (ext == "vert" || ext == "frag" || ext == "comp")
                     {
                         auto sec = glob::glob_state().get_class_shader_effects_cache();
                         auto ptr = sec->get_item(AID(name));
@@ -96,6 +96,31 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                             KRG_check(mt, "shader dep child is not an asset");
                             mt->mark_render_dirty();
                         }
+                        // Clear previous diagnostics on successful reload
+                        Json::Value clear(Json::objectValue);
+                        server.notify("diagnostics.clear", clear);
+                    }
+                    else if (ext == "glsl")
+                    {
+                        // Shared includes changed — mark all shader effects dirty.
+                        auto sec = glob::glob_state().get_class_shader_effects_cache();
+                        for (auto& [id, obj] : sec->get_items())
+                        {
+                            auto se = obj->as<root::shader_effect>();
+                            if (se) se->mark_render_dirty();
+                        }
+                        auto& dep = glob::glob_state().getr_render_bridge().get_dependency();
+                        for (auto& [id, obj] : sec->get_items())
+                        {
+                            auto node = dep.get_node(obj);
+                            for (auto o : node.m_children)
+                            {
+                                auto mt = o->as<root::asset>();
+                                if (mt) mt->mark_render_dirty();
+                            }
+                        }
+                        Json::Value clear(Json::objectValue);
+                        server.notify("diagnostics.clear", clear);
                     }
                     else
                     {
@@ -172,10 +197,18 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     Json::Value children(Json::arrayValue);
                     for (const auto& kv : lvl->get_game_objects().get_items())
                     {
+                        auto* go = kv.second->as<root::game_object>();
                         Json::Value node(Json::objectValue);
                         node["id"] = kv.first.str();
                         node["label"] = kv.first.str();
-                        node["has_children"] = false;
+                        node["kind"] = "game_object";
+                        bool has_components = go &&
+                            !go->get_subcomponents().empty();
+                        node["has_children"] = has_components;
+                        if (go && go->get_reflection())
+                        {
+                            node["type_name"] = go->get_reflection()->type_name.str();
+                        }
                         children.append(std::move(node));
                     }
                     r["children"] = std::move(children);
@@ -186,17 +219,152 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
 
     server.on_request(
         "scene.getChildren",
-        [](const Json::Value& params, Json::Value& result, std::string& err)
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
-            // No state access — input validation only.
             if (!params.isObject() || !params.isMember("id"))
             {
                 err = "missing 'id' parameter";
                 return;
             }
+            std::string id_str = params["id"].asString();
             Json::Value r(Json::objectValue);
-            r["children"] = Json::Value(Json::arrayValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    r["children"] = Json::Value(Json::arrayValue);
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) return;
+
+                    auto* go = lvl->find_game_object(AID(id_str));
+                    if (!go) return;
+
+                    Json::Value children(Json::arrayValue);
+                    for (auto* comp : go->get_subcomponents())
+                    {
+                        Json::Value node(Json::objectValue);
+                        node["id"] = comp->get_id().str();
+                        std::string label;
+                        if (comp->get_reflection())
+                        {
+                            label = comp->get_reflection()->type_name.str();
+                        }
+                        if (label.empty()) label = comp->get_id().str();
+                        node["label"] = label;
+                        node["kind"] = "component";
+                        node["has_children"] = false;
+                        if (comp->get_reflection())
+                        {
+                            node["type_name"] = comp->get_reflection()->type_name.str();
+                        }
+                        children.append(std::move(node));
+                    }
+                    r["children"] = std::move(children);
+                });
+            if (!done) { err = "scene.getChildren timed out"; return; }
             result = r;
+        });
+
+    server.on_request(
+        "scene.create",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("name"))
+            {
+                err = "missing 'name' parameter";
+                return;
+            }
+            std::string name = params["name"].asString();
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    root::game_object::construct_params cp;
+                    auto* go = lvl->spawn_object<root::game_object>(AID(name), cp);
+                    if (!go) { local_err = "spawn_object failed"; return; }
+                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                });
+            if (!done) { err = "scene.create timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            Json::Value r(Json::objectValue);
+            r["id"] = name;
+            result = r;
+        });
+
+    server.on_request(
+        "scene.delete",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto* go = lvl->find_game_object(AID(id_str));
+                    if (!go) { local_err = "game_object not found: " + id_str; return; }
+                    auto& cache = lvl->get_game_objects();
+                    cache.remove_item(*go);
+                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                });
+            if (!done) { err = "scene.delete timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            result = Json::Value(Json::objectValue);
+        });
+
+    server.on_request(
+        "scene.duplicate",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            std::string new_id;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto* go = lvl->find_game_object(AID(id_str));
+                    if (!go) { local_err = "game_object not found: " + id_str; return; }
+                    auto gen_id = glob::glob_state().get_id_generator()->generate(AID(id_str));
+                    root::game_object::construct_params cp;
+                    cp.pos = go->get_position();
+                    auto* clone = lvl->spawn_object<root::game_object>(gen_id, cp);
+                    if (!clone) { local_err = "duplicate failed"; return; }
+                    new_id = gen_id.str();
+                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                });
+            if (!done) { err = "scene.duplicate timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            Json::Value r(Json::objectValue);
+            r["id"] = new_id;
+            result = r;
+        });
+
+    server.on_request(
+        "scene.rename",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id") || !params.isMember("name"))
+            {
+                err = "missing 'id' or 'name' parameter";
+                return;
+            }
+            // Rename is not trivially supported in the object model (id is immutable
+            // in the cache). Return a clear error until the engine supports it.
+            err = "rename not yet supported by the engine object model";
         });
 
     server.on_request(
@@ -352,10 +520,6 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result["ok"] = true;
         });
 
-    // properties.set is fire-and-forget so high-volume drag-scrub doesn't
-    // wedge the I/O thread one frame per sample. Echo via properties.changed
-    // gives the client confirmation; on failure the engine logs (no error
-    // notification today — TODO if it bites).
     server.on_request(
         "properties.set",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)

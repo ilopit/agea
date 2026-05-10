@@ -1,13 +1,11 @@
-// Phase A: connect to a running engine, stream log lines into an
-// OutputChannel, expose a few commands. No webviews, no scene tree, no
-// inspector — those land in Phases B–D.
-
 import * as path from "path";
 import * as fs from "fs";
 import * as vscode from "vscode";
 import { RpcClient } from "./rpc";
-import { SceneTreeProvider } from "./sceneTree";
+import { SceneTreeProvider, SceneNode } from "./sceneTree";
 import { InspectorProvider } from "./inspector";
+import { HotReloadWatcher } from "./hotReload";
+import { DiagnosticsManager } from "./diagnostics";
 
 interface LogParams {
   level: "trace" | "debug" | "info" | "warn" | "error" | "fatal";
@@ -75,25 +73,19 @@ function updateModeItem(): void {
   }
 }
 
-// Find an existing engine via the discovery file. Returns the live PID if
-// the process is still up, undefined otherwise. Stale discovery files (PID
-// belongs to nothing) are treated as "no engine running" — `process.kill(pid,0)`
-// throws ESRCH in that case.
 function detectRunningEngine(root: string): number | undefined {
   try {
     const info = JSON.parse(
       fs.readFileSync(path.join(root, "tmp", "editor_rpc.json"), "utf8"),
     ) as { pid: number };
     if (typeof info.pid !== "number") return undefined;
-    process.kill(info.pid, 0);  // probe — throws if dead
+    process.kill(info.pid, 0);
     return info.pid;
   } catch {
     return undefined;
   }
 }
 
-// Locate the kryga_editor binary built by `tools/build.sh`. Prefers Debug
-// (default config); falls back to Release. Returns absolute path or undefined.
 function findEngineBinary(root: string): string | undefined {
   const exe = process.platform === "win32" ? "kryga_editor.exe" : "kryga_editor";
   for (const cfg of ["Debug", "Release"]) {
@@ -142,6 +134,7 @@ export function activate(context: vscode.ExtensionContext): void {
     output?.appendLine(`[${tag}] ${p.text}`);
   });
 
+  // --- Inspector ---
   const inspectorProvider = new InspectorProvider(client);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -164,13 +157,13 @@ export function activate(context: vscode.ExtensionContext): void {
     updateModeItem();
   });
 
+  // --- Scene Tree ---
   const sceneProvider = new SceneTreeProvider(client);
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider("kryga.scene", sceneProvider),
   );
 
   client.onNotification("scene.changed", () => sceneProvider.refresh());
-  // Connection-state changes can produce/withdraw the tree contents.
   client.onState(async (state) => {
     sceneProvider.refresh();
     if (state !== "connected") {
@@ -183,15 +176,45 @@ export function activate(context: vscode.ExtensionContext): void {
           updateModeItem();
         }
       } catch {
-        // engine may not have getMode in older builds — ignore.
+        // engine may not have getMode in older builds
       }
     }
   });
+
+  // --- Hot Reload ---
+  const hotReload = new HotReloadWatcher(client, root);
+  context.subscriptions.push({ dispose: () => hotReload.dispose() });
+
+  // --- Diagnostics ---
+  const diagnostics = new DiagnosticsManager(client, root);
+  context.subscriptions.push({ dispose: () => diagnostics.dispose() });
+
+  // --- Commands ---
 
   context.subscriptions.push(
     vscode.commands.registerCommand("kryga.scene.refresh", () =>
       sceneProvider.refresh(),
     ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.scene.filter", async () => {
+      const current = sceneProvider.getFilter();
+      const value = await vscode.window.showInputBox({
+        prompt: "Filter scene tree by name",
+        value: current,
+        placeHolder: "Type to filter…",
+      });
+      if (value !== undefined) {
+        sceneProvider.setFilter(value);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.scene.clearFilter", () => {
+      sceneProvider.setFilter("");
+    }),
   );
 
   context.subscriptions.push(
@@ -205,8 +228,73 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.scene.create", async () => {
+      const name = await vscode.window.showInputBox({
+        prompt: "New game object name",
+        placeHolder: "my_object",
+      });
+      if (!name) return;
+      try {
+        await client?.request("scene.create", { name });
+        sceneProvider.refresh();
+      } catch (e) {
+        vscode.window.showErrorMessage(`Kryga: create failed — ${e}`);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.scene.duplicate", async (node: SceneNode) => {
+      const id = node?.id;
+      if (!id) return;
+      try {
+        await client?.request("scene.duplicate", { id });
+        sceneProvider.refresh();
+      } catch (e) {
+        vscode.window.showErrorMessage(`Kryga: duplicate failed — ${e}`);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.scene.rename", async (node: SceneNode) => {
+      const id = node?.id;
+      if (!id) return;
+      const newName = await vscode.window.showInputBox({
+        prompt: `Rename "${node.label}"`,
+        value: node.label,
+      });
+      if (!newName || newName === node.label) return;
+      try {
+        await client?.request("scene.rename", { id, name: newName });
+        sceneProvider.refresh();
+      } catch (e) {
+        vscode.window.showErrorMessage(`Kryga: rename failed — ${e}`);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.scene.delete", async (node: SceneNode) => {
+      const id = node?.id;
+      if (!id) return;
+      const confirm = await vscode.window.showWarningMessage(
+        `Delete "${node.label}"?`,
+        { modal: true },
+        "Delete",
+      );
+      if (confirm !== "Delete") return;
+      try {
+        await client?.request("scene.delete", { id });
+        sceneProvider.refresh();
+      } catch (e) {
+        vscode.window.showErrorMessage(`Kryga: delete failed — ${e}`);
+      }
+    }),
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand("kryga.connect", () => {
-      // Bringing up the discovery watch on demand. start() is idempotent.
       client?.start();
     }),
   );
@@ -267,7 +355,6 @@ export function activate(context: vscode.ExtensionContext): void {
       const target = currentMode === "play" ? "edit" : "play";
       try {
         await client?.request("engine.setMode", { mode: target });
-        // mode item updates via engine.mode.changed notification.
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: setMode failed — ${e}`);
       }
@@ -311,8 +398,6 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       const cwd = path.dirname(exe);
-      // Reuse a previous Kryga terminal if it's still alive; the
-      // VS Code Terminal API doesn't auto-clean closed terminals from our ref.
       if (engineTerminal && engineTerminal.exitStatus !== undefined) {
         engineTerminal = undefined;
       }
@@ -320,8 +405,6 @@ export function activate(context: vscode.ExtensionContext): void {
         name: "Kryga Engine",
         cwd,
       });
-      // `& "...kryga_editor.exe"` — the `&` call operator handles paths with
-      // spaces in PowerShell, which is the default integrated shell on Windows.
       const cmd =
         process.platform === "win32"
           ? `& "${exe}"`
@@ -347,8 +430,6 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
       try {
-        // On Windows, SIGTERM maps to TerminateProcess (hard kill, no cleanup).
-        // Prefer RPC shutdown above when the connection is alive.
         process.kill(pid, "SIGTERM");
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: kill PID ${pid} failed — ${e}`);

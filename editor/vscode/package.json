@@ -2,7 +2,7 @@
   "name": "kryga-editor",
   "displayName": "Kryga Editor",
   "description": "VS Code front-end for the Kryga engine.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "kryga",
   "private": true,
   "engines": {
@@ -39,6 +39,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "kryga.scene.filter",
+        "title": "Kryga: Filter scene tree…",
+        "icon": "$(search)"
+      },
+      {
+        "command": "kryga.scene.clearFilter",
+        "title": "Kryga: Clear scene filter",
+        "icon": "$(close)"
+      },
+      {
         "command": "kryga.level.load",
         "title": "Kryga: Load level…"
       },
@@ -61,6 +71,22 @@
       {
         "command": "kryga.engine.stop",
         "title": "Kryga: Stop engine"
+      },
+      {
+        "command": "kryga.scene.duplicate",
+        "title": "Duplicate"
+      },
+      {
+        "command": "kryga.scene.delete",
+        "title": "Delete"
+      },
+      {
+        "command": "kryga.scene.rename",
+        "title": "Rename…"
+      },
+      {
+        "command": "kryga.scene.create",
+        "title": "Create Game Object…"
       }
     ],
     "viewsContainers": {
@@ -91,8 +117,50 @@
           "command": "kryga.scene.refresh",
           "when": "view == kryga.scene",
           "group": "navigation"
+        },
+        {
+          "command": "kryga.scene.filter",
+          "when": "view == kryga.scene",
+          "group": "navigation"
+        },
+        {
+          "command": "kryga.scene.create",
+          "when": "view == kryga.scene"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "kryga.scene.duplicate",
+          "when": "view == kryga.scene && viewItem == krygaObject",
+          "group": "1_edit@1"
+        },
+        {
+          "command": "kryga.scene.rename",
+          "when": "view == kryga.scene && viewItem == krygaObject",
+          "group": "1_edit@2"
+        },
+        {
+          "command": "kryga.scene.delete",
+          "when": "view == kryga.scene && viewItem == krygaObject",
+          "group": "2_destructive@1"
         }
       ]
+    },
+    "configuration": {
+      "title": "Kryga",
+      "properties": {
+        "kryga.hotReload.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically reload shaders and Lua scripts on file save."
+        },
+        "kryga.hotReload.extensions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [".vert", ".frag", ".comp", ".lua", ".glsl"],
+          "description": "File extensions that trigger hot-reload on save."
+        }
+      }
     }
   },
   "scripts": {

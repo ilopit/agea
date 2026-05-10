@@ -1,5 +1,5 @@
 
-#include <vulkan_render/utils/readback.h>
+#include "visual_readback.h"
 
 #include <gtest/gtest.h>
 
@@ -85,7 +85,7 @@ protected:
             uint32_t height,
             VkImageLayout src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
     {
-        auto pixels = readback_framebuffer(pass, width, height, src_layout);
+        auto pixels = test::readback_framebuffer(pass, width, height, src_layout);
 
         auto ref_dir = get_reference_dir();
         auto out_dir = get_output_dir();

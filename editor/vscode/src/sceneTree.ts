@@ -1,18 +1,12 @@
-// Scene tree fed by the engine over RPC.
-//
-// Phase B: flat list of game_objects under a single level node. The engine's
-// `scene.getRoot` returns the level id and a children array of {id, label,
-// has_children}; `scene.getChildren` is currently always empty (component
-// nesting comes later). Refresh is triggered by the `scene.changed`
-// notification from the engine, which fires when the object count changes.
-
 import * as vscode from "vscode";
 import { RpcClient } from "./rpc";
 
-interface SceneNode {
+export interface SceneNode {
   id: string;
   label: string;
   has_children: boolean;
+  kind: "game_object" | "component";
+  type_name?: string;
 }
 
 interface GetRootResult {
@@ -27,11 +21,21 @@ interface GetChildrenResult {
 export class SceneTreeProvider implements vscode.TreeDataProvider<SceneNode> {
   private readonly _onDidChange = new vscode.EventEmitter<SceneNode | undefined>();
   readonly onDidChangeTreeData = this._onDidChange.event;
+  private filter = "";
 
   constructor(private readonly client: RpcClient) {}
 
   refresh(): void {
     this._onDidChange.fire(undefined);
+  }
+
+  setFilter(text: string): void {
+    this.filter = text.toLowerCase();
+    this._onDidChange.fire(undefined);
+  }
+
+  getFilter(): string {
+    return this.filter;
   }
 
   getTreeItem(node: SceneNode): vscode.TreeItem {
@@ -42,13 +46,20 @@ export class SceneTreeProvider implements vscode.TreeDataProvider<SceneNode> {
         : vscode.TreeItemCollapsibleState.None,
     );
     item.id = node.id;
-    item.tooltip = node.id;
-    item.contextValue = "krygaObject";
-    item.command = {
-      command: "kryga.scene.select",
-      title: "Select",
-      arguments: [node.id],
-    };
+    item.tooltip = node.type_name
+      ? `${node.id}\n${node.type_name}`
+      : node.id;
+    item.contextValue = node.kind === "game_object" ? "krygaObject" : "krygaComponent";
+    if (node.kind === "game_object") {
+      item.iconPath = new vscode.ThemeIcon("symbol-object");
+      item.command = {
+        command: "kryga.scene.select",
+        title: "Select",
+        arguments: [node.id],
+      };
+    } else {
+      item.iconPath = new vscode.ThemeIcon("symbol-property");
+    }
     return item;
   }
 
@@ -59,7 +70,14 @@ export class SceneTreeProvider implements vscode.TreeDataProvider<SceneNode> {
     try {
       if (!parent) {
         const root = await this.client.request<GetRootResult>("scene.getRoot");
-        return root.children ?? [];
+        let children = root.children ?? [];
+        if (this.filter) {
+          children = children.filter(
+            (n) => n.label.toLowerCase().includes(this.filter) ||
+                   n.id.toLowerCase().includes(this.filter),
+          );
+        }
+        return children;
       }
       const sub = await this.client.request<GetChildrenResult>("scene.getChildren", {
         id: parent.id,

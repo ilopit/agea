@@ -447,6 +447,24 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     device->immediate_submit(
         [&](VkCommandBuffer cmd)
         {
+            // Clear all storage images so shaders never read stale memory
+            // (VK_IMAGE_LAYOUT_UNDEFINED does not guarantee zeroed content).
+            VkClearColorValue zero_color{};
+            VkImageSubresourceRange clear_range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            vkCmdClearColorImage(cmd, img_gbuf_pos->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                 &zero_color, 1, &clear_range);
+            vkCmdClearColorImage(cmd, img_gbuf_normal->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                 &zero_color, 1, &clear_range);
+            vkCmdClearColorImage(cmd, img_lightmap->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                 &zero_color, 1, &clear_range);
+            vkCmdClearColorImage(cmd, img_lightmap_bounce->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                 &zero_color, 1, &clear_range);
+            vkCmdClearColorImage(cmd, img_ao->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                 &zero_color, 1, &clear_range);
+            vkCmdClearColorImage(cmd, img_denoise_tmp->image(), VK_IMAGE_LAYOUT_GENERAL,
+                                 &zero_color, 1, &clear_range);
+            insert_compute_barrier(cmd);
+
             // --- G-buffer rasterization ---
             ALOG_INFO("lightmap_baker: dispatching G-buffer rasterization");
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, cs_gbuf.data.m_pipeline);

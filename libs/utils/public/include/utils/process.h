@@ -18,6 +18,11 @@ struct construct_params
 
 bool
 run_binary(construct_params params, std::uint64_t& result_code);
+
+bool
+run_binary_capture(construct_params params,
+                   std::uint64_t& result_code,
+                   std::string& captured_output);
 }  // namespace ipc
 
 }  // namespace kryga

@@ -458,15 +458,14 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Prepare debug light visualization data (must happen before rendering)
     prepare_debug_light_data(current_frame);
 
-    // Sync render_config → GPU shadow config (UI may have changed values)
+    KRG_check(m_shadow_se, "Shadow shader effect must be loaded");
+
     m_shadow_config.directional.shadow_bias = m_render_config.shadows.bias;
     m_shadow_config.directional.normal_bias = m_render_config.shadows.normal_bias;
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
     m_shadow_config.directional.texel_size =
         1.0f / static_cast<float>(m_render_config.shadows.map_size);
-
-    // Upload shadow data
     upload_shadow_data(current_frame);
 
     // Fill BDA addresses directly in per-pass push constants

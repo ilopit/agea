@@ -860,6 +860,10 @@ vulkan_render::deinit()
 
     m_global_textures_queue.clear();
     m_frames.clear();
+
+    // Flush all deferred deletions now — vkDeviceWaitIdle above guarantees no
+    // GPU work is in flight, so every scheduled resource is safe to destroy.
+    glob::glob_state().getr_render_device().flush_deferred_deletions();
 }
 
 void
@@ -1243,6 +1247,7 @@ vulkan_render::init_shadow_resources()
     }
 
     // Initialize shadow config from render_config
+    KRG_check(m_shadow_se, "Shadow shader effect must be loaded");
     m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
     m_shadow_config.directional.shadow_bias = m_render_config.shadows.bias;
     m_shadow_config.directional.normal_bias = m_render_config.shadows.normal_bias;

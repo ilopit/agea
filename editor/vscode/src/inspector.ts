@@ -1,12 +1,3 @@
-// Property inspector webview. Subscribes to selection.changed → fetches
-// properties.get → renders categorized fields. Two-way: edits inside the
-// webview send setProperty messages back to the extension, which calls
-// properties.set on the engine. Engine echoes via properties.changed, which
-// the extension forwards to the webview for reconciliation.
-//
-// Webview-side script + HTML are inlined as a single string for simplicity;
-// move into media/*.html if this grows.
-
 import * as vscode from "vscode";
 import { RpcClient } from "./rpc";
 
@@ -15,6 +6,8 @@ interface Field {
   kind: string;
   value: unknown;
   readonly?: boolean;
+  enum_values?: string[];
+  hints?: string[];
 }
 
 interface Category {
@@ -58,8 +51,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
             name: msg.name,
             value: msg.value,
           });
-          // Engine echoes via properties.changed → reconciliation handled
-          // there. No further action here.
         } catch (e) {
           vscode.window.showErrorMessage(`Kryga: set failed — ${e}`);
         }
@@ -73,7 +64,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  // Called by extension when selection changes.
   setSelection(id: string | undefined): void {
     this.currentId = id;
     if (!this.view) return;
@@ -84,7 +74,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     this.refreshFor(id);
   }
 
-  // Called by extension on properties.changed notification.
   reconcile(change: PropertyChanged): void {
     this.post({ type: "reconcile", change });
   }
@@ -154,8 +143,8 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       background: var(--vscode-editor-inactiveSelectionBackground);
       border-radius: 2px;
     }
-    .category-header::before { content: "▾ "; }
-    .category.collapsed .category-header::before { content: "▸ "; }
+    .category-header::before { content: "\\25BE "; }
+    .category.collapsed .category-header::before { content: "\\25B8 "; }
     .category.collapsed .fields { display: none; }
     .fields { padding: 4px 4px 4px 12px; }
     .field {
@@ -187,6 +176,16 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     }
     .field-value input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .field-value input[type="checkbox"] { margin: 0; }
+    .field-value select {
+      flex: 1;
+      min-width: 0;
+      padding: 1px 4px;
+      color: var(--vscode-input-foreground);
+      background: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border, transparent);
+      font-family: inherit;
+      font-size: inherit;
+    }
     .field-value .ro {
       font-family: var(--vscode-editor-font-family);
       color: var(--vscode-descriptionForeground);
@@ -201,6 +200,27 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       flex: 1;
       min-width: 0;
     }
+    .color-row {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+      align-items: center;
+    }
+    .color-row .vec-input { flex: 1; }
+    .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-input-border, #444);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .color-swatch input[type="color"] {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
     .err { color: var(--vscode-errorForeground); padding: 8px; }
   </style>
 </head>
@@ -212,8 +232,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     let currentPayload = null;
     let fullPrecision = false;
 
-    // Track collapsed categories per (owner_id, category_name) so re-renders
-    // don't reset open/close state. Stored in webview memory (not persisted).
     const collapsedKeys = new Set();
     const keyOf = (ownerId, catName) => ownerId + '\\u0000' + catName;
 
@@ -232,8 +250,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         render(currentPayload);
       } else if (m.type === 'reconcile') {
         if (!currentPayload) return;
-        // Patch in-memory payload then update the matching field's UI value
-        // without rebuilding the whole DOM.
         for (const owner of currentPayload.owners) {
           if (owner.id !== m.change.owner_id) continue;
           for (const cat of owner.categories) {
@@ -281,7 +297,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         ownerEl.className = 'owner';
         const t = document.createElement('div');
         t.className = 'owner-title';
-        t.textContent = owner.type + (owner.id !== p.id ? '  —  ' + owner.id : '');
+        t.textContent = owner.type + (owner.id !== p.id ? '  \\u2014  ' + owner.id : '');
         ownerEl.appendChild(t);
 
         for (const cat of owner.categories) {
@@ -312,6 +328,13 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       }
     }
 
+    function isColorHint(f) {
+      if (f.hints && f.hints.includes('color')) return true;
+      const n = f.name.toLowerCase();
+      return n.includes('color') || n.includes('colour') || n === 'tint'
+          || n === 'albedo' || n === 'emissive';
+    }
+
     function renderField(ownerId, f) {
       const el = document.createElement('div');
       el.className = 'field';
@@ -327,11 +350,22 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       const val = document.createElement('div');
       val.className = 'field-value';
 
-      if (f.readonly || !editable(f.kind)) {
+      if (f.readonly || !editable(f.kind, f)) {
         const ro = document.createElement('span');
         ro.className = 'ro';
         ro.textContent = formatRo(f.value);
         val.appendChild(ro);
+      } else if (f.enum_values && f.enum_values.length > 0) {
+        const sel = document.createElement('select');
+        for (const ev of f.enum_values) {
+          const opt = document.createElement('option');
+          opt.value = ev;
+          opt.textContent = ev;
+          if (String(f.value) === ev) opt.selected = true;
+          sel.appendChild(opt);
+        }
+        sel.addEventListener('change', () => send(ownerId, f.name, sel.value));
+        val.appendChild(sel);
       } else if (f.kind === 'bool') {
         const cb = document.createElement('input');
         cb.type = 'checkbox';
@@ -354,6 +388,8 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         val.appendChild(inp);
       } else if (isVec(f.kind)) {
         const cols = vecLen(f.kind);
+        const useColor = (cols === 3 || cols === 4) && isColorHint(f);
+
         const wrap = document.createElement('div');
         wrap.className = 'vec-input';
         wrap.style.setProperty('--cols', String(cols));
@@ -366,6 +402,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
             const arr = inputs.map(x => parseFloat(x.value) || 0);
             inputs.forEach((x, j) => x.value = fmtNum(arr[j], f.kind));
             send(ownerId, f.name, arr);
+            if (swatch) updateSwatch(swatch, arr);
           });
           inp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') inp.blur();
@@ -374,9 +411,38 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
           wrap.appendChild(inp);
         }
         attachScrub(label, () => inputs.map(x => parseFloat(x.value) || 0),
-                    (vs) => inputs.forEach((inp, i) => inp.value = fmtNum(vs[i], f.kind)),
+                    (vs) => { inputs.forEach((inp, i) => inp.value = fmtNum(vs[i], f.kind)); if (swatch) updateSwatch(swatch, vs); },
                     (vs) => send(ownerId, f.name, vs));
-        val.appendChild(wrap);
+
+        let swatch = null;
+        if (useColor) {
+          const row = document.createElement('div');
+          row.className = 'color-row';
+
+          swatch = document.createElement('div');
+          swatch.className = 'color-swatch';
+          const arr = Array.isArray(f.value) ? f.value : [0,0,0];
+          updateSwatch(swatch, arr);
+
+          const picker = document.createElement('input');
+          picker.type = 'color';
+          picker.value = rgbToHex(arr);
+          picker.addEventListener('input', () => {
+            const rgb = hexToRgb(picker.value);
+            inputs.forEach((inp, i) => { if (i < 3) inp.value = fmtNum(rgb[i], f.kind); });
+            const result = inputs.map(x => parseFloat(x.value) || 0);
+            updateSwatch(swatch, result);
+            send(ownerId, f.name, result);
+          });
+          swatch.addEventListener('click', () => picker.click());
+          swatch.appendChild(picker);
+
+          row.appendChild(swatch);
+          row.appendChild(wrap);
+          val.appendChild(row);
+        } else {
+          val.appendChild(wrap);
+        }
       } else if (f.kind === 'string' || f.kind === 'id') {
         const inp = document.createElement('input');
         inp.type = 'text';
@@ -389,11 +455,31 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       return el;
     }
 
+    function updateSwatch(swatch, arr) {
+      const r = Math.round(clamp01(arr[0]) * 255);
+      const g = Math.round(clamp01(arr[1]) * 255);
+      const b = Math.round(clamp01(arr[2]) * 255);
+      swatch.style.background = 'rgb(' + r + ',' + g + ',' + b + ')';
+    }
+    function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+    function rgbToHex(arr) {
+      const r = Math.round(clamp01(arr[0]) * 255);
+      const g = Math.round(clamp01(arr[1]) * 255);
+      const b = Math.round(clamp01(arr[2]) * 255);
+      return '#' + [r,g,b].map(c => c.toString(16).padStart(2,'0')).join('');
+    }
+    function hexToRgb(hex) {
+      const m = hex.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+      if (!m) return [0,0,0];
+      return [parseInt(m[1],16)/255, parseInt(m[2],16)/255, parseInt(m[3],16)/255];
+    }
+
     function send(owner_id, name, value) {
       vscode.postMessage({ type: 'setProperty', owner_id, name, value });
     }
 
-    function editable(kind) {
+    function editable(kind, f) {
+      if (f && f.enum_values && f.enum_values.length > 0) return true;
       return kind === 'bool' || kind === 'string' || kind === 'id'
         || isNumeric(kind) || isVec(kind);
     }
@@ -427,9 +513,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       const kind = fieldEl.dataset.kind;
       inp.value = fmtNum(v, kind);
     }
-    // Display rounding: floats get 6 significant digits, integers as-is.
-    // Engine-side value is unaffected — this only shapes what we paint.
-    // When fullPrecision is on, fall back to native toString().
     function fmtNum(n, kind) {
       if (n === null || n === undefined || !Number.isFinite(Number(n))) return '0';
       const num = Number(n);
@@ -448,8 +531,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         return parseFloat(v.toPrecision(6)).toString();
       }
       if (typeof v === 'object') {
-        // Vec maps {x,y,z[,w]} render bracketed in their natural order;
-        // arbitrary maps (custom types) render key:value pairs.
         const vecKeys = ['x', 'y', 'z', 'w'].filter(k => k in v);
         if (vecKeys.length > 0 && Object.keys(v).every(k => vecKeys.includes(k))) {
           return '[' + vecKeys.map(k => formatRo(v[k])).join(', ') + ']';
@@ -459,8 +540,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       return String(v);
     }
 
-    // Drag-scrub: mousedown on label, mousemove dx*step adjusts value(s),
-    // mouseup commits. Scalar uses readNum/writeNum; vec uses array helpers.
     function attachScrub(label, read, write, commit) {
       label.classList.add('scrub');
       let dragging = false, startX = 0, startVal = null, last = null;
@@ -474,10 +553,6 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       window.addEventListener('mousemove', (e) => {
         if (!dragging) return;
         const dx = e.clientX - startX;
-        // Adaptive step: ~1% of the field magnitude per pixel, with a floor of
-        // 0.1 so zero/near-zero fields still scrub at a usable rate. Shift =
-        // ×0.1 fine, Alt = ×10 coarse. Vec uses the largest component as the
-        // magnitude reference so all three scale together.
         const ref = Array.isArray(startVal)
           ? Math.max(0.1, ...startVal.map(v => Math.abs(v)))
           : Math.max(0.1, Math.abs(startVal));
@@ -516,9 +591,15 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         for (let i = 0; i < inputs.length; ++i) {
           if (document.activeElement !== inputs[i]) inputs[i].value = fmtNum(value[i], kind);
         }
+        const swatch = el.querySelector('.color-swatch');
+        if (swatch) updateSwatch(swatch, value);
       } else if (kind === 'string' || kind === 'id') {
         const inp = el.querySelector('input[type="text"]');
         if (inp && document.activeElement !== inp) inp.value = String(value ?? '');
+      } else {
+        // enum or other — try select
+        const selEl = el.querySelector('select');
+        if (selEl) selEl.value = String(value ?? '');
       }
     }
     function cssEscape(s) {

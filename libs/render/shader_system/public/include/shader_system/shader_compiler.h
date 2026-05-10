@@ -5,19 +5,35 @@
 #include <utils/buffer.h>
 #include <error_handling/error_handling.h>
 #include <expected>
+#include <string>
+#include <vector>
 
 namespace kryga::render
 {
 
-// TODO: Consider making reflection optional if shader count grows significantly
-//       and some shaders don't need reflection data (e.g. simple post-process effects)
 struct compiled_shader
 {
     kryga::utils::buffer spirv;
     reflection::shader_reflection reflection;
 };
 
-using compilation_result = std::expected<compiled_shader, result_code>;
+struct shader_diagnostic
+{
+    std::string file;
+    int line = 0;
+    int column = 0;
+    std::string severity;
+    std::string message;
+};
+
+struct compilation_error
+{
+    result_code code = result_code::compilation_failed;
+    std::string raw_output;
+    std::vector<shader_diagnostic> diagnostics;
+};
+
+using compilation_result = std::expected<compiled_shader, compilation_error>;
 
 class shader_compiler
 {

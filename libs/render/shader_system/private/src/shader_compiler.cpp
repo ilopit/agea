@@ -6,6 +6,7 @@
 #include <utils/process.h>
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>
+#include <regex>
 #endif
 
 namespace kryga::render
@@ -13,12 +14,6 @@ namespace kryga::render
 
 #if defined(__ANDROID__)
 
-// Android ships pre-cooked SPIR-V (tools/cook runs at host build time and the
-// gradle pipeline copies the cooked tree into APK assets). Runtime GLSL
-// compilation would require glslc + writable scratch + the include tree to be
-// reachable via real_path, none of which hold inside an APK. Reaching this
-// path means a non-binary shader slipped through cooking — fail loudly so the
-// asset gets fixed instead of silently producing a black screen.
 compilation_result
 shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
                                 const std::vector<std::string>& /*defines*/)
@@ -28,10 +23,37 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
                "cooked via tools/cook with is_*_binary=true.",
                raw_buffer.get_vpath());
     KRG_never("Runtime shader compilation attempted on Android");
-    return std::unexpected(result_code::compilation_failed);
+    return std::unexpected(compilation_error{result_code::compilation_failed});
 }
 
 #else
+
+namespace
+{
+
+std::vector<shader_diagnostic>
+parse_glslc_output(const std::string& output)
+{
+    std::vector<shader_diagnostic> diags;
+    static const std::regex pattern(
+        R"(([^:]+):(\d+):(?:(\d+):)?\s*(error|warning):\s*(.+))");
+    std::sregex_iterator it(output.begin(), output.end(), pattern);
+    std::sregex_iterator end;
+    for (; it != end; ++it)
+    {
+        auto& m = *it;
+        shader_diagnostic d;
+        d.file = m[1].str();
+        d.line = std::stoi(m[2].str());
+        d.column = m[3].matched ? std::stoi(m[3].str()) : 0;
+        d.severity = m[4].str();
+        d.message = m[5].str();
+        diags.push_back(std::move(d));
+    }
+    return diags;
+}
+
+}  // namespace
 
 compilation_result
 shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
@@ -56,18 +78,13 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
     if (compiled_path.exists())
     {
         ALOG_ERROR("Tmp file already exists!");
-        return std::unexpected(result_code::failed);
+        return std::unexpected(compilation_error{result_code::failed});
     }
 
     auto includes = vfs.real_path(vfs::rid("data://shaders_includes"));
     auto gpu_includes = vfs.real_path(vfs::rid("data://gpu_types"));
     auto generated_gpu_includes = vfs.real_path(vfs::rid("generated"));
 
-    // Shaders write `#include "gpu_types/foo.h"` — glslc's `-I` must point at
-    // the *parent* of the gpu_types/ directory. Both the engine_app symlink
-    // (`<bin>/gpu_types -> .../include`) and the regression test's direct VFS
-    // mount land on a real path ending in `/gpu_types`; strip the last
-    // component so the include resolves correctly.
     auto gpu_includes_root = gpu_includes.value().parent_path();
 
     params.arguments =
@@ -86,22 +103,30 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
     uint64_t rc = 0;
     if (!ipc::run_binary(params, rc) || rc != 0)
     {
-        ALOG_ERROR("Shader compilation failed");
-        return std::unexpected(result_code::compilation_failed);
+        // Try again with capture to get structured error info for diagnostics.
+        std::string captured;
+        ipc::run_binary_capture(params, rc, captured);
+
+        ALOG_ERROR("Shader compilation failed: {}", captured);
+        compilation_error err;
+        err.code = result_code::compilation_failed;
+        err.raw_output = std::move(captured);
+        err.diagnostics = parse_glslc_output(err.raw_output);
+        return std::unexpected(std::move(err));
     }
 
     compiled_shader cs;
     if (!kryga::utils::buffer::load(compiled_path, cs.spirv))
     {
         ALOG_ERROR("Failed to load compiled shader");
-        return std::unexpected(result_code::compilation_failed);
+        return std::unexpected(compilation_error{result_code::compilation_failed});
     }
 
     if (!shader_reflection_utils::build_shader_reflection(
             cs.spirv.data(), cs.spirv.size(), cs.reflection))
     {
         ALOG_ERROR("Failed to build shader reflection");
-        return std::unexpected(result_code::compilation_failed);
+        return std::unexpected(compilation_error{result_code::compilation_failed});
     }
 
     return cs;
