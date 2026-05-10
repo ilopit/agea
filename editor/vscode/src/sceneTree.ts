@@ -52,14 +52,14 @@ export class SceneTreeProvider implements vscode.TreeDataProvider<SceneNode> {
     item.contextValue = node.kind === "game_object" ? "krygaObject" : "krygaComponent";
     if (node.kind === "game_object") {
       item.iconPath = new vscode.ThemeIcon("symbol-object");
-      item.command = {
-        command: "kryga.scene.select",
-        title: "Select",
-        arguments: [node.id],
-      };
     } else {
       item.iconPath = new vscode.ThemeIcon("symbol-property");
     }
+    item.command = {
+      command: "kryga.scene.select",
+      title: "Select",
+      arguments: [node.id],
+    };
     return item;
   }
 

@@ -134,6 +134,27 @@ encode_game_object_properties(root::game_object& go)
     return res;
 }
 
+Json::Value
+encode_component_properties(root::component& comp)
+{
+    auto* go = comp.get_owner();
+    if (go)
+    {
+        Json::Value res = encode_game_object_properties(*go);
+        res["selected"] = comp.get_id().str();
+        return res;
+    }
+
+    Json::Value res(Json::objectValue);
+    res["id"] = comp.get_id().str();
+    res["selected"] = comp.get_id().str();
+
+    Json::Value owners(Json::arrayValue);
+    owners.append(encode_owner(comp));
+    res["owners"] = owners;
+    return res;
+}
+
 root::smart_object*
 find_owner(const std::string& id_str)
 {

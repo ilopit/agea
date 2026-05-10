@@ -235,28 +235,38 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     auto* lvl = glob::glob_state().get_current_level();
                     if (!lvl) return;
 
-                    auto* go = lvl->find_game_object(AID(id_str));
-                    if (!go) return;
-
-                    Json::Value children(Json::arrayValue);
-                    for (auto* comp : go->get_subcomponents())
+                    auto make_component_node = [](root::component* comp) -> Json::Value
                     {
                         Json::Value node(Json::objectValue);
                         node["id"] = comp->get_id().str();
-                        std::string label;
+                        std::string label = comp->get_id().str();
                         if (comp->get_reflection())
-                        {
-                            label = comp->get_reflection()->type_name.str();
-                        }
-                        if (label.empty()) label = comp->get_id().str();
+                            label += " (" + comp->get_reflection()->type_name.str() + ")";
                         node["label"] = label;
                         node["kind"] = "component";
-                        node["has_children"] = false;
+                        node["has_children"] = !comp->get_children().empty();
                         if (comp->get_reflection())
-                        {
                             node["type_name"] = comp->get_reflection()->type_name.str();
+                        return node;
+                    };
+
+                    auto* obj = lvl->find_object(AID(id_str));
+                    if (!obj) return;
+
+                    Json::Value children(Json::arrayValue);
+                    if (auto* go = obj->as<root::game_object>())
+                    {
+                        for (auto* comp : go->get_subcomponents())
+                        {
+                            if (comp->get_parent_idx() != root::NO_parent)
+                                continue;
+                            children.append(make_component_node(comp));
                         }
-                        children.append(std::move(node));
+                    }
+                    else if (auto* comp = obj->as<root::component>())
+                    {
+                        for (auto* child : comp->get_children())
+                            children.append(make_component_node(child));
                     }
                     r["children"] = std::move(children);
                 });
@@ -384,13 +394,13 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 {
                     auto* lvl = glob::glob_state().get_current_level();
                     if (!lvl) { local_err = "no level loaded"; return; }
-                    auto* go = lvl->find_game_object(AID(id_str));
-                    if (!go)
-                    {
-                        local_err = "game_object not found: " + id_str;
-                        return;
-                    }
-                    r = engine_private::encode_game_object_properties(*go);
+                    auto* obj = lvl->find_object(AID(id_str));
+                    if (!obj) { local_err = "object not found: " + id_str; return; }
+                    if (auto* go = obj->as<root::game_object>())
+                        r = engine_private::encode_game_object_properties(*go);
+                    else
+                        r = engine_private::encode_component_properties(
+                            *static_cast<root::component*>(obj));
                 });
             if (!done) { err = "properties.get timed out"; return; }
             if (!local_err.empty()) { err = std::move(local_err); return; }

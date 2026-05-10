@@ -54,6 +54,9 @@ public:
     root::component*
     find_component(const utils::id& id);
 
+    root::smart_object*
+    find_object(const utils::id& id);
+
     template <typename T>
     auto
     spawn_object_from_proto(const utils::id& proto_id,

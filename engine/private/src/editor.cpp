@@ -498,7 +498,42 @@ game_editor::get_active_camera() const
 void
 game_editor::set_selected(const utils::id& id)
 {
+    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& cache = renderer.get_cache();
+    auto* lvl = glob::glob_state().get_current_level();
+
+    auto set_outline = [&](const utils::id& sel_id, bool value)
+    {
+        if (!sel_id.valid() || !lvl) return;
+        auto* obj = lvl->find_object(sel_id);
+        if (!obj) return;
+
+        if (auto* go = obj->as<root::game_object>())
+        {
+            for (auto* comp : go->get_subcomponents())
+            {
+                auto* rd = cache.objects.find_by_id(comp->get_id());
+                if (rd)
+                {
+                    rd->outlined = value;
+                    renderer.schd_update_object_queue(rd);
+                }
+            }
+        }
+        else
+        {
+            auto* rd = cache.objects.find_by_id(sel_id);
+            if (rd)
+            {
+                rd->outlined = value;
+                renderer.schd_update_object_queue(rd);
+            }
+        }
+    };
+
+    set_outline(m_selected, false);
     m_selected = id;
+    set_outline(m_selected, true);
 }
 
 utils::id

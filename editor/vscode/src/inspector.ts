@@ -128,6 +128,35 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       padding: 4px 0;
       margin-bottom: 4px;
     }
+    .comp-picker {
+      margin-bottom: 6px;
+      border: 1px solid var(--vscode-sideBar-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .comp-picker-item {
+      padding: 3px 8px;
+      cursor: pointer;
+      font-size: 0.85em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .comp-picker-item:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+    .comp-picker-item.active {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+    }
+    .comp-picker-item .icon { opacity: 0.7; }
+    .breadcrumb {
+      font-size: 0.85em;
+      color: var(--vscode-textLink-foreground);
+      cursor: pointer;
+      padding: 2px 0 4px 0;
+    }
+    .breadcrumb:hover { text-decoration: underline; }
     .owner { margin-bottom: 8px; }
     .owner-title {
       font-size: 0.9em;
@@ -231,6 +260,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     const root = document.getElementById('root');
     let currentPayload = null;
     let fullPrecision = false;
+    let selectedOwner = null;
 
     const collapsedKeys = new Set();
     const keyOf = (ownerId, catName) => ownerId + '\\u0000' + catName;
@@ -239,14 +269,17 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       const m = ev.data;
       if (m.type === 'empty') {
         currentPayload = null;
+        selectedOwner = null;
         root.className = 'empty';
         root.textContent = 'No selection.';
       } else if (m.type === 'error') {
         currentPayload = null;
+        selectedOwner = null;
         root.className = 'err';
         root.textContent = 'Error: ' + m.message;
       } else if (m.type === 'load') {
         currentPayload = m.payload;
+        selectedOwner = m.payload.selected || null;
         render(currentPayload);
       } else if (m.type === 'reconcile') {
         if (!currentPayload) return;
@@ -289,7 +322,40 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       header.textContent = p.id;
       root.appendChild(header);
 
-      for (const owner of p.owners) {
+      // Component picker
+      if (p.owners.length > 1) {
+        if (selectedOwner) {
+          const bc = document.createElement('div');
+          bc.className = 'breadcrumb';
+          bc.textContent = '\\u2190 Show all components';
+          bc.addEventListener('click', () => { selectedOwner = null; render(p); });
+          root.appendChild(bc);
+        }
+        const picker = document.createElement('div');
+        picker.className = 'comp-picker';
+        for (const owner of p.owners) {
+          const item = document.createElement('div');
+          item.className = 'comp-picker-item';
+          if (selectedOwner === owner.id) item.classList.add('active');
+          const icon = document.createElement('span');
+          icon.className = 'icon';
+          icon.textContent = owner.id === p.id ? '\\u25C6' : '\\u25CB';
+          item.appendChild(icon);
+          item.appendChild(document.createTextNode(owner.type || owner.id));
+          item.addEventListener('click', () => {
+            selectedOwner = owner.id;
+            render(p);
+          });
+          picker.appendChild(item);
+        }
+        root.appendChild(picker);
+      }
+
+      const visibleOwners = selectedOwner
+        ? p.owners.filter(o => o.id === selectedOwner)
+        : p.owners;
+
+      for (const owner of visibleOwners) {
         const empty = owner.categories.every(c => c.fields.length === 0);
         if (empty) continue;
 

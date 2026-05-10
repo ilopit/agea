@@ -15,6 +15,7 @@ namespace root
 {
 class smart_object;
 class game_object;
+class component;
 }  // namespace root
 
 namespace engine_private
@@ -37,6 +38,10 @@ namespace engine_private
 //   }
 Json::Value
 encode_game_object_properties(root::game_object& go);
+
+// Build the inspector payload for a single component.
+Json::Value
+encode_component_properties(root::component& comp);
 
 // Locate an inspectable owner (game_object or component) by id in the
 // current level. Returns null if not found.
