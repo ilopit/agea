@@ -7,8 +7,13 @@
 #include <rpc/rpc_server.h>
 
 #include <core/level.h>
+#include <core/level_manager.h>
 #include <core/caches/caches_map.h>
 #include <core/reflection/lua_api.h>
+#include <core/reflection/reflection_type.h>
+#include <core/architype.h>
+
+#include <vulkan_render/types/vulkan_render_data.h>
 
 #include <global_state/global_state.h>
 
@@ -18,7 +23,6 @@
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/component.h>
-#include <core/reflection/reflection_type.h>
 
 #include <vfs/vfs.h>
 
@@ -349,9 +353,10 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     auto* go = lvl->find_game_object(AID(id_str));
                     if (!go) { local_err = "game_object not found: " + id_str; return; }
                     auto gen_id = glob::glob_state().get_id_generator()->generate(AID(id_str));
-                    root::game_object::construct_params cp;
-                    cp.pos = go->get_position();
-                    auto* clone = lvl->spawn_object<root::game_object>(gen_id, cp);
+                    core::spawn_parameters sp;
+                    sp.position = go->get_position();
+                    auto* clone = lvl->spawn_object_as_clone<root::game_object>(
+                        go->get_id(), gen_id, sp);
                     if (!clone) { local_err = "duplicate failed"; return; }
                     new_id = gen_id.str();
                     server.notify("scene.changed", Json::Value(Json::objectValue));
@@ -571,6 +576,244 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             Json::Value r(Json::objectValue);
             r["queued"] = true;
             result = r;
+        });
+
+    // =========================================================================
+    // Transform API
+    // =========================================================================
+
+    server.on_request(
+        "transform.get",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto* obj = lvl->find_object(AID(id_str));
+                    if (!obj) { local_err = "object not found: " + id_str; return; }
+
+                    root::game_object_component* goc = nullptr;
+                    if (auto* go = obj->as<root::game_object>())
+                        goc = go->get_root_component();
+                    else if (auto* comp = obj->as<root::component>())
+                        goc = dynamic_cast<root::game_object_component*>(comp);
+
+                    if (!goc) { local_err = "object has no transform"; return; }
+
+                    auto pos = goc->get_position();
+                    auto rot = goc->get_rotation();
+                    auto scl = goc->get_scale();
+
+                    Json::Value jp(Json::arrayValue);
+                    jp.append(pos.x); jp.append(pos.y); jp.append(pos.z);
+                    r["position"] = jp;
+
+                    Json::Value jr(Json::arrayValue);
+                    jr.append(rot.x); jr.append(rot.y); jr.append(rot.z);
+                    r["rotation"] = jr;
+
+                    Json::Value js(Json::arrayValue);
+                    js.append(scl.x); js.append(scl.y); js.append(scl.z);
+                    r["scale"] = js;
+                });
+            if (!done) { err = "transform.get timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            result = r;
+        });
+
+    server.on_request(
+        "transform.set",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            Json::Value pos_val = params.get("position", Json::nullValue);
+            Json::Value rot_val = params.get("rotation", Json::nullValue);
+            Json::Value scl_val = params.get("scale", Json::nullValue);
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto* obj = lvl->find_object(AID(id_str));
+                    if (!obj) { local_err = "object not found: " + id_str; return; }
+
+                    root::game_object_component* goc = nullptr;
+                    if (auto* go = obj->as<root::game_object>())
+                        goc = go->get_root_component();
+                    else if (auto* comp = obj->as<root::component>())
+                        goc = dynamic_cast<root::game_object_component*>(comp);
+
+                    if (!goc) { local_err = "object has no transform"; return; }
+
+                    if (pos_val.isArray() && pos_val.size() == 3)
+                        goc->set_position({pos_val[0].asFloat(),
+                                           pos_val[1].asFloat(),
+                                           pos_val[2].asFloat()});
+                    if (rot_val.isArray() && rot_val.size() == 3)
+                        goc->set_rotation({rot_val[0].asFloat(),
+                                           rot_val[1].asFloat(),
+                                           rot_val[2].asFloat()});
+                    if (scl_val.isArray() && scl_val.size() == 3)
+                        goc->set_scale({scl_val[0].asFloat(),
+                                        scl_val[1].asFloat(),
+                                        scl_val[2].asFloat()});
+                });
+            if (!done) { err = "transform.set timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            result = Json::Value(Json::objectValue);
+        });
+
+    // =========================================================================
+    // Component API
+    // =========================================================================
+
+    server.on_request(
+        "component.listTypes",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::arrayValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* rm = glob::glob_state().get_rm();
+                    if (!rm) return;
+                    for (auto& [name, rt] : rm->get_types_to_name())
+                    {
+                        if (rt->arch != core::architype::component)
+                            continue;
+                        Json::Value entry(Json::objectValue);
+                        entry["type_id"] = rt->type_name.str();
+                        r.append(std::move(entry));
+                    }
+                });
+            if (!done) { err = "component.listTypes timed out"; return; }
+            result = r;
+        });
+
+    server.on_request(
+        "component.add",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() ||
+                !params.isMember("object_id") ||
+                !params.isMember("type_id"))
+            {
+                err = "missing 'object_id' or 'type_id' parameter";
+                return;
+            }
+            std::string object_id = params["object_id"].asString();
+            std::string type_id = params["type_id"].asString();
+            std::string comp_name = params.get("name", type_id).asString();
+            std::string local_err;
+            std::string new_id;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto* go = lvl->find_game_object(AID(object_id));
+                    if (!go) { local_err = "game_object not found: " + object_id; return; }
+                    auto* parent = go->get_root_component();
+                    if (!parent) { local_err = "game_object has no root component"; return; }
+                    root::component::construct_params cp;
+                    auto* comp = go->spawn_component(
+                        parent, AID(type_id), AID(comp_name), cp);
+                    if (!comp) { local_err = "failed to spawn component"; return; }
+                    new_id = comp->get_id().str();
+                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                });
+            if (!done) { err = "component.add timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            Json::Value r(Json::objectValue);
+            r["id"] = new_id;
+            result = r;
+        });
+
+    // =========================================================================
+    // Level API
+    // =========================================================================
+
+    server.on_request(
+        "level.save",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto& vfs = glob::glob_state().getr_vfs();
+                    auto levels_path = vfs.real_path(vfs::rid("data://levels"));
+                    if (!levels_path)
+                    {
+                        local_err = "cannot resolve levels path";
+                        return;
+                    }
+                    kryga::utils::path save_path(levels_path.value());
+                    if (!core::level_manager::save_level(*lvl, save_path))
+                        local_err = "save_level failed";
+                });
+            if (!done) { err = "level.save timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            Json::Value r(Json::objectValue);
+            r["ok"] = true;
+            result = r;
+        });
+
+    // =========================================================================
+    // Visibility / Layer API
+    // =========================================================================
+
+    server.on_request(
+        "visibility.set",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            bool visible = params.get("visible", true).asBool();
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl) { local_err = "no level loaded"; return; }
+                    auto* obj = lvl->find_object(AID(id_str));
+                    if (!obj) { local_err = "object not found: " + id_str; return; }
+
+                    root::game_object_component* goc = nullptr;
+                    if (auto* go = obj->as<root::game_object>())
+                        goc = go->get_root_component();
+                    else if (auto* comp = obj->as<root::component>())
+                        goc = dynamic_cast<root::game_object_component*>(comp);
+
+                    if (!goc) { local_err = "object has no layer flags"; return; }
+                    goc->set_layer_flag(render::LAYER_VISIBLE, visible);
+                    goc->mark_render_dirty();
+                });
+            if (!done) { err = "visibility.set timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            result = Json::Value(Json::objectValue);
         });
 }
 

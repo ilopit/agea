@@ -811,6 +811,11 @@ vulkan_engine::consume_updated_transforms()
                         glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
                     cmd->bounding_radius = m->get_base_bounding_radius() * max_s;
 
+                    const auto& lc = m->get_mesh()->get_local_centroid();
+                    glm::vec4 wc = m->get_transform_matrix() *
+                        glm::vec4(lc.x, lc.y, lc.z, 1.0f);
+                    cmd->bounding_sphere_center = glm::vec3(wc);
+
                     rb.enqueue_cmd(cmd);
                 }
                 m->set_dirty_transform(false);

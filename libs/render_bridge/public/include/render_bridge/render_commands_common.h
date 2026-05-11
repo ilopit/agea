@@ -15,6 +15,7 @@ struct update_transform_cmd : render_cmd::render_command_base
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
+    glm::vec3 bounding_sphere_center{0.0f};
     float bounding_radius = 0.0f;
 
     void

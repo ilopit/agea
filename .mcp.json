@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "kryga-scene": {
+      "command": "python",
+      "args": ["tools/mcp_scene_server.py"],
+      "cwd": "."
+    }
+  }
+}
