@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { RpcClient } from "./rpc";
 import { SceneTreeProvider, SceneNode } from "./sceneTree";
 import { InspectorProvider } from "./inspector";
+import { openRenderConfig, refreshRenderConfig } from "./renderConfig";
 import { HotReloadWatcher } from "./hotReload";
 import { DiagnosticsManager } from "./diagnostics";
 
@@ -178,6 +179,7 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch {
         // engine may not have getMode in older builds
       }
+      refreshRenderConfig(client!);
     }
   });
 
@@ -290,6 +292,12 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: delete failed — ${e}`);
       }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.renderConfig", () => {
+      openRenderConfig(client!);
     }),
   );
 

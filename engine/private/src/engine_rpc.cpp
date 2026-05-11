@@ -14,6 +14,8 @@
 #include <core/architype.h>
 
 #include <vulkan_render/types/vulkan_render_data.h>
+#include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_config.h>
 
 #include <global_state/global_state.h>
 
@@ -780,6 +782,211 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // =========================================================================
     // Visibility / Layer API
     // =========================================================================
+
+    // =========================================================================
+    // Render Config API
+    // =========================================================================
+
+    server.on_request(
+        "render_config.get",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cfg = glob::glob_state()
+                                    .getr_vulkan_render()
+                                    .get_render_config();
+
+                    // Shadows
+                    Json::Value sh(Json::objectValue);
+                    sh["enabled"] = cfg.shadows.enabled;
+                    sh["pcf"] = static_cast<int>(cfg.shadows.pcf);
+
+                    const char* pcf_names[] = {
+                        "pcf_3x3", "pcf_5x5", "pcf_7x7", "poisson16", "poisson32"};
+                    int pcf_idx = static_cast<int>(cfg.shadows.pcf);
+                    sh["pcf_name"] = (pcf_idx >= 0 && pcf_idx < 5)
+                                         ? pcf_names[pcf_idx] : "unknown";
+
+                    sh["bias"] = cfg.shadows.bias;
+                    sh["normal_bias"] = cfg.shadows.normal_bias;
+                    sh["cascade_count"] = cfg.shadows.cascade_count;
+                    sh["distance"] = cfg.shadows.distance;
+                    sh["map_size"] = cfg.shadows.map_size;
+                    r["shadows"] = sh;
+
+                    // Clusters
+                    Json::Value cl(Json::objectValue);
+                    cl["tile_size"] = cfg.clusters.tile_size;
+                    cl["depth_slices"] = cfg.clusters.depth_slices;
+                    cl["max_lights_per_cluster"] = cfg.clusters.max_lights_per_cluster;
+                    r["clusters"] = cl;
+
+                    // Lighting
+                    Json::Value lt(Json::objectValue);
+                    lt["directional_enabled"] = cfg.lighting.directional_enabled;
+                    lt["local_enabled"] = cfg.lighting.local_enabled;
+                    lt["baked_enabled"] = cfg.lighting.baked_enabled;
+                    r["lighting"] = lt;
+
+                    // Debug
+                    Json::Value db(Json::objectValue);
+                    db["editor_mode"] = cfg.debug.editor_mode;
+                    db["show_grid"] = cfg.debug.show_grid;
+                    db["light_wireframe"] = cfg.debug.light_wireframe;
+                    db["light_icons"] = cfg.debug.light_icons;
+                    db["frustum_culling"] = cfg.debug.frustum_culling;
+                    r["debug"] = db;
+
+                    // Render scale
+                    Json::Value rs(Json::objectValue);
+                    rs["enabled"] = cfg.render_scale.enabled;
+                    rs["divisor"] = cfg.render_scale.divisor;
+                    r["render_scale"] = rs;
+
+                    // Outline
+                    Json::Value ol(Json::objectValue);
+                    ol["enabled"] = cfg.outline.enabled;
+                    Json::Value color(Json::arrayValue);
+                    for (int i = 0; i < 4; ++i) color.append(cfg.outline.color[i]);
+                    ol["color"] = color;
+                    ol["depth_threshold"] = cfg.outline.depth_threshold;
+                    ol["normal_threshold"] = cfg.outline.normal_threshold;
+                    r["outline"] = ol;
+                });
+            if (!done) { err = "render_config.get timed out"; return; }
+            result = r;
+        });
+
+    server.on_request(
+        "render_config.set",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject())
+            {
+                err = "params must be an object";
+                return;
+            }
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cfg = glob::glob_state()
+                                    .getr_vulkan_render()
+                                    .get_pending_render_config();
+
+                    // Shadows
+                    if (params.isMember("shadows"))
+                    {
+                        auto& s = params["shadows"];
+                        if (s.isMember("enabled"))
+                            cfg.shadows.enabled = s["enabled"].asBool();
+                        if (s.isMember("pcf"))
+                        {
+                            auto& v = s["pcf"];
+                            if (v.isString())
+                            {
+                                std::string name = v.asString();
+                                if (name == "pcf_3x3") cfg.shadows.pcf = render::pcf_mode::pcf_3x3;
+                                else if (name == "pcf_5x5") cfg.shadows.pcf = render::pcf_mode::pcf_5x5;
+                                else if (name == "pcf_7x7") cfg.shadows.pcf = render::pcf_mode::pcf_7x7;
+                                else if (name == "poisson16") cfg.shadows.pcf = render::pcf_mode::poisson16;
+                                else if (name == "poisson32") cfg.shadows.pcf = render::pcf_mode::poisson32;
+                                else { local_err = "unknown pcf mode: " + name; return; }
+                            }
+                            else
+                            {
+                                cfg.shadows.pcf = static_cast<render::pcf_mode>(v.asInt());
+                            }
+                        }
+                        if (s.isMember("bias"))
+                            cfg.shadows.bias = s["bias"].asFloat();
+                        if (s.isMember("normal_bias"))
+                            cfg.shadows.normal_bias = s["normal_bias"].asFloat();
+                        if (s.isMember("cascade_count"))
+                            cfg.shadows.cascade_count = s["cascade_count"].asUInt();
+                        if (s.isMember("distance"))
+                            cfg.shadows.distance = s["distance"].asFloat();
+                        if (s.isMember("map_size"))
+                            cfg.shadows.map_size = s["map_size"].asUInt();
+                    }
+
+                    // Clusters
+                    if (params.isMember("clusters"))
+                    {
+                        auto& c = params["clusters"];
+                        if (c.isMember("tile_size"))
+                            cfg.clusters.tile_size = c["tile_size"].asUInt();
+                        if (c.isMember("depth_slices"))
+                            cfg.clusters.depth_slices = c["depth_slices"].asUInt();
+                        if (c.isMember("max_lights_per_cluster"))
+                            cfg.clusters.max_lights_per_cluster = c["max_lights_per_cluster"].asUInt();
+                    }
+
+                    // Lighting
+                    if (params.isMember("lighting"))
+                    {
+                        auto& l = params["lighting"];
+                        if (l.isMember("directional_enabled"))
+                            cfg.lighting.directional_enabled = l["directional_enabled"].asBool();
+                        if (l.isMember("local_enabled"))
+                            cfg.lighting.local_enabled = l["local_enabled"].asBool();
+                        if (l.isMember("baked_enabled"))
+                            cfg.lighting.baked_enabled = l["baked_enabled"].asBool();
+                    }
+
+                    // Debug
+                    if (params.isMember("debug"))
+                    {
+                        auto& d = params["debug"];
+                        if (d.isMember("editor_mode"))
+                            cfg.debug.editor_mode = d["editor_mode"].asBool();
+                        if (d.isMember("show_grid"))
+                            cfg.debug.show_grid = d["show_grid"].asBool();
+                        if (d.isMember("light_wireframe"))
+                            cfg.debug.light_wireframe = d["light_wireframe"].asBool();
+                        if (d.isMember("light_icons"))
+                            cfg.debug.light_icons = d["light_icons"].asBool();
+                        if (d.isMember("frustum_culling"))
+                            cfg.debug.frustum_culling = d["frustum_culling"].asBool();
+                    }
+
+                    // Render scale
+                    if (params.isMember("render_scale"))
+                    {
+                        auto& rs = params["render_scale"];
+                        if (rs.isMember("enabled"))
+                            cfg.render_scale.enabled = rs["enabled"].asBool();
+                        if (rs.isMember("divisor"))
+                            cfg.render_scale.divisor = rs["divisor"].asUInt();
+                    }
+
+                    // Outline
+                    if (params.isMember("outline"))
+                    {
+                        auto& o = params["outline"];
+                        if (o.isMember("enabled"))
+                            cfg.outline.enabled = o["enabled"].asBool();
+                        if (o.isMember("color") && o["color"].isArray() && o["color"].size() == 4)
+                        {
+                            for (int i = 0; i < 4; ++i)
+                                cfg.outline.color[i] = o["color"][i].asFloat();
+                        }
+                        if (o.isMember("depth_threshold"))
+                            cfg.outline.depth_threshold = o["depth_threshold"].asFloat();
+                        if (o.isMember("normal_threshold"))
+                            cfg.outline.normal_threshold = o["normal_threshold"].asFloat();
+                    }
+
+                    cfg.validate();
+                });
+            if (!done) { err = "render_config.set timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            result = Json::Value(Json::objectValue);
+            result["ok"] = true;
+        });
 
     server.on_request(
         "visibility.set",

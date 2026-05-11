@@ -73,6 +73,11 @@
         "title": "Kryga: Stop engine"
       },
       {
+        "command": "kryga.renderConfig",
+        "title": "Kryga: Render Config",
+        "icon": "$(gear)"
+      },
+      {
         "command": "kryga.scene.duplicate",
         "title": "Duplicate"
       },
@@ -126,6 +131,11 @@
         {
           "command": "kryga.scene.create",
           "when": "view == kryga.scene"
+        },
+        {
+          "command": "kryga.renderConfig",
+          "when": "view == kryga.scene",
+          "group": "navigation"
         }
       ],
       "view/item/context": [

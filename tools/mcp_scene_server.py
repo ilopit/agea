@@ -277,6 +277,27 @@ TOOLS = [
         }
     ),
     Tool(
+        name="kryga_render_config_get",
+        description="Get all render configuration: shadows, lighting, clusters, debug, render_scale, outline",
+        inputSchema={"type": "object", "properties": {}, "required": []}
+    ),
+    Tool(
+        name="kryga_render_config_set",
+        description="Set render config fields. Pass only the sections/fields you want to change. Sections: shadows, lighting, clusters, debug, render_scale, outline.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "shadows": {"type": "object", "description": "enabled(bool), pcf(string: pcf_3x3/pcf_5x5/pcf_7x7/poisson16/poisson32), bias(float), normal_bias(float), cascade_count(int), distance(float), map_size(int)"},
+                "lighting": {"type": "object", "description": "directional_enabled(bool), local_enabled(bool), baked_enabled(bool)"},
+                "clusters": {"type": "object", "description": "tile_size(int), depth_slices(int), max_lights_per_cluster(int)"},
+                "debug": {"type": "object", "description": "editor_mode(bool), show_grid(bool), light_wireframe(bool), light_icons(bool), frustum_culling(bool)"},
+                "render_scale": {"type": "object", "description": "enabled(bool), divisor(int 1-10)"},
+                "outline": {"type": "object", "description": "enabled(bool), color([r,g,b,a] 0-1), depth_threshold(float), normal_threshold(float)"},
+            },
+            "required": []
+        }
+    ),
+    Tool(
         name="kryga_batch_duplicate",
         description="Duplicate a game object multiple times, optionally placing each clone at a given position. Returns list of created IDs.",
         inputSchema={
@@ -321,6 +342,10 @@ TOOL_RPC_MAP = {
     "kryga_level_list": ("level.list", lambda p: {}),
     "kryga_level_load": ("level.load", lambda p: {"id": p["id"]}),
     "kryga_level_save": ("level.save", lambda p: {}),
+    "kryga_render_config_get": ("render_config.get", lambda p: {}),
+    "kryga_render_config_set": ("render_config.set", lambda p: {
+        k: p[k] for k in ("shadows", "lighting", "clusters", "debug", "render_scale", "outline") if k in p
+    }),
 }
 
 
