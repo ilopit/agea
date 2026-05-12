@@ -195,8 +195,7 @@ bake_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
 bool
 bake_config::save_to_cache(const vfs::rid& cache) const
 {
-    glob::glob_state().getr_vfs().create_directories(
-        vfs::rid(cache.mount_point(), ""));
+    glob::glob_state().getr_vfs().create_directories(vfs::rid(cache.mount_point(), ""));
 
     YAML::Node root;
     root["resolution"] = resolution;

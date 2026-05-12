@@ -56,4 +56,4 @@ struct bake_config
 
 GPU_END_NAMESPACE
 
-#endif // GPU_BVH_TYPES_H
+#endif  // GPU_BVH_TYPES_H

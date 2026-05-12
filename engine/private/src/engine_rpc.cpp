@@ -63,8 +63,12 @@ mat4_json(const glm::mat4& m)
 {
     Json::Value a(Json::arrayValue);
     for (int c = 0; c < 4; ++c)
+    {
         for (int r = 0; r < 4; ++r)
+        {
             a.append(m[c][r]);
+        }
+    }
     return a;
 }
 
@@ -78,10 +82,9 @@ mat4_json(const glm::mat4& m)
 void
 register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
 {
-    server.on_request(
-        "ping",
-        [](const Json::Value& params, Json::Value& result, std::string&)
-        { result = params; });
+    server.on_request("ping",
+                      [](const Json::Value& params, Json::Value& result, std::string&)
+                      { result = params; });
 
     server.on_request(
         "sync.reload",
@@ -123,8 +126,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                             return;
                         }
                         ptr->mark_render_dirty();
-                        auto dep = glob::glob_state().getr_render_bridge()
-                                       .get_dependency().get_node(ptr);
+                        auto dep =
+                            glob::glob_state().getr_render_bridge().get_dependency().get_node(ptr);
                         for (auto o : dep.m_children)
                         {
                             auto mt = o->as<root::asset>();
@@ -142,7 +145,10 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         for (auto& [id, obj] : sec->get_items())
                         {
                             auto se = obj->as<root::shader_effect>();
-                            if (se) se->mark_render_dirty();
+                            if (se)
+                            {
+                                se->mark_render_dirty();
+                            }
                         }
                         auto& dep = glob::glob_state().getr_render_bridge().get_dependency();
                         for (auto& [id, obj] : sec->get_items())
@@ -151,7 +157,10 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                             for (auto o : node.m_children)
                             {
                                 auto mt = o->as<root::asset>();
-                                if (mt) mt->mark_render_dirty();
+                                if (mt)
+                                {
+                                    mt->mark_render_dirty();
+                                }
                             }
                         }
                         Json::Value clear(Json::objectValue);
@@ -173,20 +182,23 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result = r;
         });
 
-    server.on_request(
-        "selection.get",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            Json::Value r(Json::objectValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto sel = glob::glob_state().get_game_editor()->get_selected();
-                    r["id"] = sel.valid() ? sel.str() : std::string();
-                });
-            if (!done) { err = "selection.get timed out"; return; }
-            result = r;
-        });
+    server.on_request("selection.get",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          Json::Value r(Json::objectValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto sel = glob::glob_state().get_game_editor()->get_selected();
+                                  r["id"] = sel.valid() ? sel.str() : std::string();
+                              });
+                          if (!done)
+                          {
+                              err = "selection.get timed out";
+                              return;
+                          }
+                          result = r;
+                      });
 
     server.on_request(
         "selection.set",
@@ -201,56 +213,61 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&server, id_str]()
                 {
-                    utils::id new_sel =
-                        id_str.empty() ? utils::id() : AID(id_str);
+                    utils::id new_sel = id_str.empty() ? utils::id() : AID(id_str);
                     glob::glob_state().get_game_editor()->set_selected(new_sel);
                     Json::Value note(Json::objectValue);
                     note["id"] = id_str;
                     server.notify("selection.changed", note);
                 });
-            if (!done) { err = "selection.set timed out"; return; }
+            if (!done)
+            {
+                err = "selection.set timed out";
+                return;
+            }
             result = Json::Value(Json::objectValue);
         });
 
-    server.on_request(
-        "scene.getRoot",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            Json::Value r(Json::objectValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto lvl = glob::glob_state().get_current_level();
-                    if (!lvl)
-                    {
-                        r["level"] = std::string();
-                        r["children"] = Json::Value(Json::arrayValue);
-                        return;
-                    }
-                    r["level"] = lvl->get_id().str();
+    server.on_request("scene.getRoot",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          Json::Value r(Json::objectValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto lvl = glob::glob_state().get_current_level();
+                                  if (!lvl)
+                                  {
+                                      r["level"] = std::string();
+                                      r["children"] = Json::Value(Json::arrayValue);
+                                      return;
+                                  }
+                                  r["level"] = lvl->get_id().str();
 
-                    Json::Value children(Json::arrayValue);
-                    for (const auto& kv : lvl->get_game_objects().get_items())
-                    {
-                        auto* go = kv.second->as<root::game_object>();
-                        Json::Value node(Json::objectValue);
-                        node["id"] = kv.first.str();
-                        node["label"] = kv.first.str();
-                        node["kind"] = "game_object";
-                        bool has_components = go &&
-                            !go->get_subcomponents().empty();
-                        node["has_children"] = has_components;
-                        if (go && go->get_reflection())
-                        {
-                            node["type_name"] = go->get_reflection()->type_name.str();
-                        }
-                        children.append(std::move(node));
-                    }
-                    r["children"] = std::move(children);
-                });
-            if (!done) { err = "scene.getRoot timed out"; return; }
-            result = r;
-        });
+                                  Json::Value children(Json::arrayValue);
+                                  for (const auto& kv : lvl->get_game_objects().get_items())
+                                  {
+                                      auto* go = kv.second->as<root::game_object>();
+                                      Json::Value node(Json::objectValue);
+                                      node["id"] = kv.first.str();
+                                      node["label"] = kv.first.str();
+                                      node["kind"] = "game_object";
+                                      bool has_components = go && !go->get_subcomponents().empty();
+                                      node["has_children"] = has_components;
+                                      if (go && go->get_reflection())
+                                      {
+                                          node["type_name"] = go->get_reflection()->type_name.str();
+                                      }
+                                      children.append(std::move(node));
+                                  }
+                                  r["children"] = std::move(children);
+                              });
+                          if (!done)
+                          {
+                              err = "scene.getRoot timed out";
+                              return;
+                          }
+                          result = r;
+                      });
 
     server.on_request(
         "scene.getChildren",
@@ -268,7 +285,10 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 {
                     r["children"] = Json::Value(Json::arrayValue);
                     auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) return;
+                    if (!lvl)
+                    {
+                        return;
+                    }
 
                     auto make_component_node = [](root::component* comp) -> Json::Value
                     {
@@ -276,17 +296,24 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         node["id"] = comp->get_id().str();
                         std::string label = comp->get_id().str();
                         if (comp->get_reflection())
+                        {
                             label += " (" + comp->get_reflection()->type_name.str() + ")";
+                        }
                         node["label"] = label;
                         node["kind"] = "component";
                         node["has_children"] = !comp->get_children().empty();
                         if (comp->get_reflection())
+                        {
                             node["type_name"] = comp->get_reflection()->type_name.str();
+                        }
                         return node;
                     };
 
                     auto* obj = lvl->find_object(AID(id_str));
-                    if (!obj) return;
+                    if (!obj)
+                    {
+                        return;
+                    }
 
                     Json::Value children(Json::arrayValue);
                     if (auto* go = obj->as<root::game_object>())
@@ -294,18 +321,26 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         for (auto* comp : go->get_subcomponents())
                         {
                             if (comp->get_parent_idx() != root::NO_parent)
+                            {
                                 continue;
+                            }
                             children.append(make_component_node(comp));
                         }
                     }
                     else if (auto* comp = obj->as<root::component>())
                     {
                         for (auto* child : comp->get_children())
+                        {
                             children.append(make_component_node(child));
+                        }
                     }
                     r["children"] = std::move(children);
                 });
-            if (!done) { err = "scene.getChildren timed out"; return; }
+            if (!done)
+            {
+                err = "scene.getChildren timed out";
+                return;
+            }
             result = r;
         });
 
@@ -324,14 +359,30 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
+                    if (!lvl)
+                    {
+                        local_err = "no level loaded";
+                        return;
+                    }
                     root::game_object::construct_params cp;
                     auto* go = lvl->spawn_object<root::game_object>(AID(name), cp);
-                    if (!go) { local_err = "spawn_object failed"; return; }
+                    if (!go)
+                    {
+                        local_err = "spawn_object failed";
+                        return;
+                    }
                     server.notify("scene.changed", Json::Value(Json::objectValue));
                 });
-            if (!done) { err = "scene.create timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "scene.create timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             Json::Value r(Json::objectValue);
             r["id"] = name;
             result = r;
@@ -352,15 +403,31 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
+                    if (!lvl)
+                    {
+                        local_err = "no level loaded";
+                        return;
+                    }
                     auto* go = lvl->find_game_object(AID(id_str));
-                    if (!go) { local_err = "game_object not found: " + id_str; return; }
+                    if (!go)
+                    {
+                        local_err = "game_object not found: " + id_str;
+                        return;
+                    }
                     auto& cache = lvl->get_game_objects();
                     cache.remove_item(*go);
                     server.notify("scene.changed", Json::Value(Json::objectValue));
                 });
-            if (!done) { err = "scene.delete timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "scene.delete timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             result = Json::Value(Json::objectValue);
         });
 
@@ -380,20 +447,40 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
+                    if (!lvl)
+                    {
+                        local_err = "no level loaded";
+                        return;
+                    }
                     auto* go = lvl->find_game_object(AID(id_str));
-                    if (!go) { local_err = "game_object not found: " + id_str; return; }
+                    if (!go)
+                    {
+                        local_err = "game_object not found: " + id_str;
+                        return;
+                    }
                     auto gen_id = glob::glob_state().get_id_generator()->generate(AID(id_str));
                     core::spawn_parameters sp;
                     sp.position = go->get_position();
-                    auto* clone = lvl->spawn_object_as_clone<root::game_object>(
-                        go->get_id(), gen_id, sp);
-                    if (!clone) { local_err = "duplicate failed"; return; }
+                    auto* clone =
+                        lvl->spawn_object_as_clone<root::game_object>(go->get_id(), gen_id, sp);
+                    if (!clone)
+                    {
+                        local_err = "duplicate failed";
+                        return;
+                    }
                     new_id = gen_id.str();
                     server.notify("scene.changed", Json::Value(Json::objectValue));
                 });
-            if (!done) { err = "scene.duplicate timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "scene.duplicate timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             Json::Value r(Json::objectValue);
             r["id"] = new_id;
             result = r;
@@ -413,35 +500,54 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             err = "rename not yet supported by the engine object model";
         });
 
-    server.on_request(
-        "properties.get",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
-            {
-                err = "missing 'id' parameter";
-                return;
-            }
-            std::string id_str = params["id"].asString();
-            std::string local_err;
-            Json::Value r;
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
-                    auto* obj = lvl->find_object(AID(id_str));
-                    if (!obj) { local_err = "object not found: " + id_str; return; }
-                    if (auto* go = obj->as<root::game_object>())
-                        r = engine_private::encode_game_object_properties(*go);
-                    else
-                        r = engine_private::encode_component_properties(
-                            *static_cast<root::component*>(obj));
-                });
-            if (!done) { err = "properties.get timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
-            result = r;
-        });
+    server.on_request("properties.get",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          std::string local_err;
+                          Json::Value r;
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* lvl = glob::glob_state().get_current_level();
+                                  if (!lvl)
+                                  {
+                                      local_err = "no level loaded";
+                                      return;
+                                  }
+                                  auto* obj = lvl->find_object(AID(id_str));
+                                  if (!obj)
+                                  {
+                                      local_err = "object not found: " + id_str;
+                                      return;
+                                  }
+                                  if (auto* go = obj->as<root::game_object>())
+                                  {
+                                      r = engine_private::encode_game_object_properties(*go);
+                                  }
+                                  else
+                                  {
+                                      r = engine_private::encode_component_properties(
+                                          *static_cast<root::component*>(obj));
+                                  }
+                              });
+                          if (!done)
+                          {
+                              err = "properties.get timed out";
+                              return;
+                          }
+                          if (!local_err.empty())
+                          {
+                              err = std::move(local_err);
+                              return;
+                          }
+                          result = r;
+                      });
 
     server.on_request(
         "level.list",
@@ -457,13 +563,11 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     if (p && std::filesystem::exists(*p))
                     {
                         const std::string ext = ".alvl";
-                        for (const auto& entry :
-                             std::filesystem::directory_iterator(*p))
+                        for (const auto& entry : std::filesystem::directory_iterator(*p))
                         {
                             auto name = entry.path().filename().string();
                             if (name.size() > ext.size() &&
-                                name.compare(name.size() - ext.size(),
-                                             ext.size(), ext) == 0)
+                                name.compare(name.size() - ext.size(), ext.size(), ext) == 0)
                             {
                                 arr.append(name.substr(0, name.size() - ext.size()));
                             }
@@ -479,100 +583,102 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         r["current"] = std::string();
                     }
                 });
-            if (!done) { err = "level.list timed out"; return; }
-            result = r;
-        });
-
-    server.on_request(
-        "level.load",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
+            if (!done)
             {
-                err = "missing 'id' parameter";
+                err = "level.list timed out";
                 return;
             }
-            std::string id_str = params["id"].asString();
-            eng.queue_main_action(
-                [&eng, id_str]()
-                {
-                    if (!eng.load_level(AID(id_str)))
-                    {
-                        ALOG_WARN("level.load: failed to load '{}'", id_str);
-                    }
-                });
-            Json::Value r(Json::objectValue);
-            r["queued"] = true;
             result = r;
         });
 
-    server.on_request(
-        "engine.getMode",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            Json::Value r(Json::objectValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto mode = glob::glob_state().get_game_editor()->get_mode();
-                    r["mode"] =
-                        (mode == engine::editor_mode::playing)
-                            ? std::string("play") : std::string("edit");
-                });
-            if (!done) { err = "engine.getMode timed out"; return; }
-            result = r;
-        });
+    server.on_request("level.load",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          eng.queue_main_action(
+                              [&eng, id_str]()
+                              {
+                                  if (!eng.load_level(AID(id_str)))
+                                  {
+                                      ALOG_WARN("level.load: failed to load '{}'", id_str);
+                                  }
+                              });
+                          Json::Value r(Json::objectValue);
+                          r["queued"] = true;
+                          result = r;
+                      });
 
-    server.on_request(
-        "engine.setMode",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("mode"))
-            {
-                err = "missing 'mode' parameter (expect 'edit' or 'play')";
-                return;
-            }
-            std::string m = params["mode"].asString();
-            if (m != "edit" && m != "play")
-            {
-                err = "mode must be 'edit' or 'play', got: " + m;
-                return;
-            }
-            eng.queue_main_action(
-                [m]()
-                {
-                    auto* ge = glob::glob_state().get_game_editor();
-                    auto current = ge->get_mode();
-                    if (m == "play" && current != engine::editor_mode::playing)
-                    {
-                        ge->enter_play_mode();
-                    }
-                    else if (m == "edit" && current == engine::editor_mode::playing)
-                    {
-                        ge->exit_play_mode();
-                    }
-                });
-            Json::Value r(Json::objectValue);
-            r["queued"] = true;
-            result = r;
-        });
+    server.on_request("engine.getMode",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          Json::Value r(Json::objectValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto mode = glob::glob_state().get_game_editor()->get_mode();
+                                  r["mode"] = (mode == engine::editor_mode::playing)
+                                                  ? std::string("play")
+                                                  : std::string("edit");
+                              });
+                          if (!done)
+                          {
+                              err = "engine.getMode timed out";
+                              return;
+                          }
+                          result = r;
+                      });
 
-    server.on_request(
-        "engine.shutdown",
-        [&eng](const Json::Value&, Json::Value& result, std::string&)
-        {
-            eng.request_shutdown();
-            result = Json::Value(Json::objectValue);
-            result["ok"] = true;
-        });
+    server.on_request("engine.setMode",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("mode"))
+                          {
+                              err = "missing 'mode' parameter (expect 'edit' or 'play')";
+                              return;
+                          }
+                          std::string m = params["mode"].asString();
+                          if (m != "edit" && m != "play")
+                          {
+                              err = "mode must be 'edit' or 'play', got: " + m;
+                              return;
+                          }
+                          eng.queue_main_action(
+                              [m]()
+                              {
+                                  auto* ge = glob::glob_state().get_game_editor();
+                                  auto current = ge->get_mode();
+                                  if (m == "play" && current != engine::editor_mode::playing)
+                                  {
+                                      ge->enter_play_mode();
+                                  }
+                                  else if (m == "edit" && current == engine::editor_mode::playing)
+                                  {
+                                      ge->exit_play_mode();
+                                  }
+                              });
+                          Json::Value r(Json::objectValue);
+                          r["queued"] = true;
+                          result = r;
+                      });
+
+    server.on_request("engine.shutdown",
+                      [&eng](const Json::Value&, Json::Value& result, std::string&)
+                      {
+                          eng.request_shutdown();
+                          result = Json::Value(Json::objectValue);
+                          result["ok"] = true;
+                      });
 
     server.on_request(
         "properties.set",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
-            if (!params.isObject() ||
-                !params.isMember("owner_id") ||
-                !params.isMember("name") ||
+            if (!params.isObject() || !params.isMember("owner_id") || !params.isMember("name") ||
                 !params.isMember("value"))
             {
                 err = "missing 'owner_id'/'name'/'value' parameter";
@@ -591,8 +697,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         return;
                     }
                     Json::Value canonical;
-                    std::string set_err = engine_private::set_owner_field(
-                        *owner, name, value, canonical);
+                    std::string set_err =
+                        engine_private::set_owner_field(*owner, name, value, canonical);
                     if (!set_err.empty())
                     {
                         ALOG_WARN("properties.set: {}", set_err);
@@ -613,54 +719,83 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Transform API
     // =========================================================================
 
-    server.on_request(
-        "transform.get",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
-            {
-                err = "missing 'id' parameter";
-                return;
-            }
-            std::string id_str = params["id"].asString();
-            std::string local_err;
-            Json::Value r(Json::objectValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
-                    auto* obj = lvl->find_object(AID(id_str));
-                    if (!obj) { local_err = "object not found: " + id_str; return; }
+    server.on_request("transform.get",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          std::string local_err;
+                          Json::Value r(Json::objectValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* lvl = glob::glob_state().get_current_level();
+                                  if (!lvl)
+                                  {
+                                      local_err = "no level loaded";
+                                      return;
+                                  }
+                                  auto* obj = lvl->find_object(AID(id_str));
+                                  if (!obj)
+                                  {
+                                      local_err = "object not found: " + id_str;
+                                      return;
+                                  }
 
-                    root::game_object_component* goc = nullptr;
-                    if (auto* go = obj->as<root::game_object>())
-                        goc = go->get_root_component();
-                    else if (auto* comp = obj->as<root::component>())
-                        goc = dynamic_cast<root::game_object_component*>(comp);
+                                  root::game_object_component* goc = nullptr;
+                                  if (auto* go = obj->as<root::game_object>())
+                                  {
+                                      goc = go->get_root_component();
+                                  }
+                                  else if (auto* comp = obj->as<root::component>())
+                                  {
+                                      goc = dynamic_cast<root::game_object_component*>(comp);
+                                  }
 
-                    if (!goc) { local_err = "object has no transform"; return; }
+                                  if (!goc)
+                                  {
+                                      local_err = "object has no transform";
+                                      return;
+                                  }
 
-                    auto pos = goc->get_position();
-                    auto rot = goc->get_rotation();
-                    auto scl = goc->get_scale();
+                                  auto pos = goc->get_position();
+                                  auto rot = goc->get_rotation();
+                                  auto scl = goc->get_scale();
 
-                    Json::Value jp(Json::arrayValue);
-                    jp.append(pos.x); jp.append(pos.y); jp.append(pos.z);
-                    r["position"] = jp;
+                                  Json::Value jp(Json::arrayValue);
+                                  jp.append(pos.x);
+                                  jp.append(pos.y);
+                                  jp.append(pos.z);
+                                  r["position"] = jp;
 
-                    Json::Value jr(Json::arrayValue);
-                    jr.append(rot.x); jr.append(rot.y); jr.append(rot.z);
-                    r["rotation"] = jr;
+                                  Json::Value jr(Json::arrayValue);
+                                  jr.append(rot.x);
+                                  jr.append(rot.y);
+                                  jr.append(rot.z);
+                                  r["rotation"] = jr;
 
-                    Json::Value js(Json::arrayValue);
-                    js.append(scl.x); js.append(scl.y); js.append(scl.z);
-                    r["scale"] = js;
-                });
-            if (!done) { err = "transform.get timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
-            result = r;
-        });
+                                  Json::Value js(Json::arrayValue);
+                                  js.append(scl.x);
+                                  js.append(scl.y);
+                                  js.append(scl.z);
+                                  r["scale"] = js;
+                              });
+                          if (!done)
+                          {
+                              err = "transform.get timed out";
+                              return;
+                          }
+                          if (!local_err.empty())
+                          {
+                              err = std::move(local_err);
+                              return;
+                          }
+                          result = r;
+                      });
 
     server.on_request(
         "transform.set",
@@ -680,33 +815,60 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
+                    if (!lvl)
+                    {
+                        local_err = "no level loaded";
+                        return;
+                    }
                     auto* obj = lvl->find_object(AID(id_str));
-                    if (!obj) { local_err = "object not found: " + id_str; return; }
+                    if (!obj)
+                    {
+                        local_err = "object not found: " + id_str;
+                        return;
+                    }
 
                     root::game_object_component* goc = nullptr;
                     if (auto* go = obj->as<root::game_object>())
+                    {
                         goc = go->get_root_component();
+                    }
                     else if (auto* comp = obj->as<root::component>())
+                    {
                         goc = dynamic_cast<root::game_object_component*>(comp);
+                    }
 
-                    if (!goc) { local_err = "object has no transform"; return; }
+                    if (!goc)
+                    {
+                        local_err = "object has no transform";
+                        return;
+                    }
 
                     if (pos_val.isArray() && pos_val.size() == 3)
-                        goc->set_position({pos_val[0].asFloat(),
-                                           pos_val[1].asFloat(),
-                                           pos_val[2].asFloat()});
+                    {
+                        goc->set_position(
+                            {pos_val[0].asFloat(), pos_val[1].asFloat(), pos_val[2].asFloat()});
+                    }
                     if (rot_val.isArray() && rot_val.size() == 3)
-                        goc->set_rotation({rot_val[0].asFloat(),
-                                           rot_val[1].asFloat(),
-                                           rot_val[2].asFloat()});
+                    {
+                        goc->set_rotation(
+                            {rot_val[0].asFloat(), rot_val[1].asFloat(), rot_val[2].asFloat()});
+                    }
                     if (scl_val.isArray() && scl_val.size() == 3)
-                        goc->set_scale({scl_val[0].asFloat(),
-                                        scl_val[1].asFloat(),
-                                        scl_val[2].asFloat()});
+                    {
+                        goc->set_scale(
+                            {scl_val[0].asFloat(), scl_val[1].asFloat(), scl_val[2].asFloat()});
+                    }
                 });
-            if (!done) { err = "transform.set timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "transform.set timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             result = Json::Value(Json::objectValue);
         });
 
@@ -714,36 +876,42 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Component API
     // =========================================================================
 
-    server.on_request(
-        "component.listTypes",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            Json::Value r(Json::arrayValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto* rm = glob::glob_state().get_rm();
-                    if (!rm) return;
-                    for (auto& [name, rt] : rm->get_types_to_name())
-                    {
-                        if (rt->arch != core::architype::component)
-                            continue;
-                        Json::Value entry(Json::objectValue);
-                        entry["type_id"] = rt->type_name.str();
-                        r.append(std::move(entry));
-                    }
-                });
-            if (!done) { err = "component.listTypes timed out"; return; }
-            result = r;
-        });
+    server.on_request("component.listTypes",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          Json::Value r(Json::arrayValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* rm = glob::glob_state().get_rm();
+                                  if (!rm)
+                                  {
+                                      return;
+                                  }
+                                  for (auto& [name, rt] : rm->get_types_to_name())
+                                  {
+                                      if (rt->arch != core::architype::component)
+                                      {
+                                          continue;
+                                      }
+                                      Json::Value entry(Json::objectValue);
+                                      entry["type_id"] = rt->type_name.str();
+                                      r.append(std::move(entry));
+                                  }
+                              });
+                          if (!done)
+                          {
+                              err = "component.listTypes timed out";
+                              return;
+                          }
+                          result = r;
+                      });
 
     server.on_request(
         "component.add",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
-            if (!params.isObject() ||
-                !params.isMember("object_id") ||
-                !params.isMember("type_id"))
+            if (!params.isObject() || !params.isMember("object_id") || !params.isMember("type_id"))
             {
                 err = "missing 'object_id' or 'type_id' parameter";
                 return;
@@ -757,20 +925,43 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
+                    if (!lvl)
+                    {
+                        local_err = "no level loaded";
+                        return;
+                    }
                     auto* go = lvl->find_game_object(AID(object_id));
-                    if (!go) { local_err = "game_object not found: " + object_id; return; }
+                    if (!go)
+                    {
+                        local_err = "game_object not found: " + object_id;
+                        return;
+                    }
                     auto* parent = go->get_root_component();
-                    if (!parent) { local_err = "game_object has no root component"; return; }
+                    if (!parent)
+                    {
+                        local_err = "game_object has no root component";
+                        return;
+                    }
                     root::component::construct_params cp;
-                    auto* comp = go->spawn_component(
-                        parent, AID(type_id), AID(comp_name), cp);
-                    if (!comp) { local_err = "failed to spawn component"; return; }
+                    auto* comp = go->spawn_component(parent, AID(type_id), AID(comp_name), cp);
+                    if (!comp)
+                    {
+                        local_err = "failed to spawn component";
+                        return;
+                    }
                     new_id = comp->get_id().str();
                     server.notify("scene.changed", Json::Value(Json::objectValue));
                 });
-            if (!done) { err = "component.add timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "component.add timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             Json::Value r(Json::objectValue);
             r["id"] = new_id;
             result = r;
@@ -780,33 +971,46 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Level API
     // =========================================================================
 
-    server.on_request(
-        "level.save",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            std::string local_err;
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
-                    auto& vfs = glob::glob_state().getr_vfs();
-                    auto levels_path = vfs.real_path(vfs::rid("data://levels"));
-                    if (!levels_path)
-                    {
-                        local_err = "cannot resolve levels path";
-                        return;
-                    }
-                    kryga::utils::path save_path(levels_path.value());
-                    if (!core::level_manager::save_level(*lvl, save_path))
-                        local_err = "save_level failed";
-                });
-            if (!done) { err = "level.save timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
-            Json::Value r(Json::objectValue);
-            r["ok"] = true;
-            result = r;
-        });
+    server.on_request("level.save",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          std::string local_err;
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* lvl = glob::glob_state().get_current_level();
+                                  if (!lvl)
+                                  {
+                                      local_err = "no level loaded";
+                                      return;
+                                  }
+                                  auto& vfs = glob::glob_state().getr_vfs();
+                                  auto levels_path = vfs.real_path(vfs::rid("data://levels"));
+                                  if (!levels_path)
+                                  {
+                                      local_err = "cannot resolve levels path";
+                                      return;
+                                  }
+                                  kryga::utils::path save_path(levels_path.value());
+                                  if (!core::level_manager::save_level(*lvl, save_path))
+                                  {
+                                      local_err = "save_level failed";
+                                  }
+                              });
+                          if (!done)
+                          {
+                              err = "level.save timed out";
+                              return;
+                          }
+                          if (!local_err.empty())
+                          {
+                              err = std::move(local_err);
+                              return;
+                          }
+                          Json::Value r(Json::objectValue);
+                          r["ok"] = true;
+                          result = r;
+                      });
 
     // =========================================================================
     // Visibility / Layer API
@@ -824,9 +1028,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cfg = glob::glob_state()
-                                    .getr_vulkan_render()
-                                    .get_render_config();
+                    auto& cfg = glob::glob_state().getr_vulkan_render().get_render_config();
 
                     // Shadows
                     Json::Value sh(Json::objectValue);
@@ -836,8 +1038,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     const char* pcf_names[] = {
                         "pcf_3x3", "pcf_5x5", "pcf_7x7", "poisson16", "poisson32"};
                     int pcf_idx = static_cast<int>(cfg.shadows.pcf);
-                    sh["pcf_name"] = (pcf_idx >= 0 && pcf_idx < 5)
-                                         ? pcf_names[pcf_idx] : "unknown";
+                    sh["pcf_name"] = (pcf_idx >= 0 && pcf_idx < 5) ? pcf_names[pcf_idx] : "unknown";
 
                     sh["bias"] = cfg.shadows.bias;
                     sh["normal_bias"] = cfg.shadows.normal_bias;
@@ -879,13 +1080,20 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     Json::Value ol(Json::objectValue);
                     ol["enabled"] = cfg.outline.enabled;
                     Json::Value color(Json::arrayValue);
-                    for (int i = 0; i < 4; ++i) color.append(cfg.outline.color[i]);
+                    for (int i = 0; i < 4; ++i)
+                    {
+                        color.append(cfg.outline.color[i]);
+                    }
                     ol["color"] = color;
                     ol["depth_threshold"] = cfg.outline.depth_threshold;
                     ol["normal_threshold"] = cfg.outline.normal_threshold;
                     r["outline"] = ol;
                 });
-            if (!done) { err = "render_config.get timed out"; return; }
+            if (!done)
+            {
+                err = "render_config.get timed out";
+                return;
+            }
             result = r;
         });
 
@@ -902,28 +1110,47 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cfg = glob::glob_state()
-                                    .getr_vulkan_render()
-                                    .get_pending_render_config();
+                    auto& cfg = glob::glob_state().getr_vulkan_render().get_pending_render_config();
 
                     // Shadows
                     if (params.isMember("shadows"))
                     {
                         auto& s = params["shadows"];
                         if (s.isMember("enabled"))
+                        {
                             cfg.shadows.enabled = s["enabled"].asBool();
+                        }
                         if (s.isMember("pcf"))
                         {
                             auto& v = s["pcf"];
                             if (v.isString())
                             {
                                 std::string name = v.asString();
-                                if (name == "pcf_3x3") cfg.shadows.pcf = render::pcf_mode::pcf_3x3;
-                                else if (name == "pcf_5x5") cfg.shadows.pcf = render::pcf_mode::pcf_5x5;
-                                else if (name == "pcf_7x7") cfg.shadows.pcf = render::pcf_mode::pcf_7x7;
-                                else if (name == "poisson16") cfg.shadows.pcf = render::pcf_mode::poisson16;
-                                else if (name == "poisson32") cfg.shadows.pcf = render::pcf_mode::poisson32;
-                                else { local_err = "unknown pcf mode: " + name; return; }
+                                if (name == "pcf_3x3")
+                                {
+                                    cfg.shadows.pcf = render::pcf_mode::pcf_3x3;
+                                }
+                                else if (name == "pcf_5x5")
+                                {
+                                    cfg.shadows.pcf = render::pcf_mode::pcf_5x5;
+                                }
+                                else if (name == "pcf_7x7")
+                                {
+                                    cfg.shadows.pcf = render::pcf_mode::pcf_7x7;
+                                }
+                                else if (name == "poisson16")
+                                {
+                                    cfg.shadows.pcf = render::pcf_mode::poisson16;
+                                }
+                                else if (name == "poisson32")
+                                {
+                                    cfg.shadows.pcf = render::pcf_mode::poisson32;
+                                }
+                                else
+                                {
+                                    local_err = "unknown pcf mode: " + name;
+                                    return;
+                                }
                             }
                             else
                             {
@@ -931,15 +1158,25 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                             }
                         }
                         if (s.isMember("bias"))
+                        {
                             cfg.shadows.bias = s["bias"].asFloat();
+                        }
                         if (s.isMember("normal_bias"))
+                        {
                             cfg.shadows.normal_bias = s["normal_bias"].asFloat();
+                        }
                         if (s.isMember("cascade_count"))
+                        {
                             cfg.shadows.cascade_count = s["cascade_count"].asUInt();
+                        }
                         if (s.isMember("distance"))
+                        {
                             cfg.shadows.distance = s["distance"].asFloat();
+                        }
                         if (s.isMember("map_size"))
+                        {
                             cfg.shadows.map_size = s["map_size"].asUInt();
+                        }
                     }
 
                     // Clusters
@@ -947,11 +1184,18 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     {
                         auto& c = params["clusters"];
                         if (c.isMember("tile_size"))
+                        {
                             cfg.clusters.tile_size = c["tile_size"].asUInt();
+                        }
                         if (c.isMember("depth_slices"))
+                        {
                             cfg.clusters.depth_slices = c["depth_slices"].asUInt();
+                        }
                         if (c.isMember("max_lights_per_cluster"))
-                            cfg.clusters.max_lights_per_cluster = c["max_lights_per_cluster"].asUInt();
+                        {
+                            cfg.clusters.max_lights_per_cluster =
+                                c["max_lights_per_cluster"].asUInt();
+                        }
                     }
 
                     // Lighting
@@ -959,11 +1203,17 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     {
                         auto& l = params["lighting"];
                         if (l.isMember("directional_enabled"))
+                        {
                             cfg.lighting.directional_enabled = l["directional_enabled"].asBool();
+                        }
                         if (l.isMember("local_enabled"))
+                        {
                             cfg.lighting.local_enabled = l["local_enabled"].asBool();
+                        }
                         if (l.isMember("baked_enabled"))
+                        {
                             cfg.lighting.baked_enabled = l["baked_enabled"].asBool();
+                        }
                     }
 
                     // Debug
@@ -971,15 +1221,25 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     {
                         auto& d = params["debug"];
                         if (d.isMember("editor_mode"))
+                        {
                             cfg.debug.editor_mode = d["editor_mode"].asBool();
+                        }
                         if (d.isMember("show_grid"))
+                        {
                             cfg.debug.show_grid = d["show_grid"].asBool();
+                        }
                         if (d.isMember("light_wireframe"))
+                        {
                             cfg.debug.light_wireframe = d["light_wireframe"].asBool();
+                        }
                         if (d.isMember("light_icons"))
+                        {
                             cfg.debug.light_icons = d["light_icons"].asBool();
+                        }
                         if (d.isMember("frustum_culling"))
+                        {
                             cfg.debug.frustum_culling = d["frustum_culling"].asBool();
+                        }
                     }
 
                     // Render scale
@@ -987,9 +1247,13 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     {
                         auto& rs = params["render_scale"];
                         if (rs.isMember("enabled"))
+                        {
                             cfg.render_scale.enabled = rs["enabled"].asBool();
+                        }
                         if (rs.isMember("divisor"))
+                        {
                             cfg.render_scale.divisor = rs["divisor"].asUInt();
+                        }
                     }
 
                     // Outline
@@ -997,22 +1261,38 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     {
                         auto& o = params["outline"];
                         if (o.isMember("enabled"))
+                        {
                             cfg.outline.enabled = o["enabled"].asBool();
+                        }
                         if (o.isMember("color") && o["color"].isArray() && o["color"].size() == 4)
                         {
                             for (int i = 0; i < 4; ++i)
+                            {
                                 cfg.outline.color[i] = o["color"][i].asFloat();
+                            }
                         }
                         if (o.isMember("depth_threshold"))
+                        {
                             cfg.outline.depth_threshold = o["depth_threshold"].asFloat();
+                        }
                         if (o.isMember("normal_threshold"))
+                        {
                             cfg.outline.normal_threshold = o["normal_threshold"].asFloat();
+                        }
                     }
 
                     cfg.validate();
                 });
-            if (!done) { err = "render_config.set timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "render_config.set timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             result = Json::Value(Json::objectValue);
             result["ok"] = true;
         });
@@ -1021,25 +1301,26 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Render State (read-only debug inspection)
     // =========================================================================
 
-    server.on_request(
-        "render_state.camera",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            Json::Value r(Json::objectValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto& cam = glob::glob_state()
-                                    .getr_vulkan_render()
-                                    .get_camera();
-                    r["position"] = vec3_json(cam.position);
-                    r["view"] = mat4_json(cam.view);
-                    r["projection"] = mat4_json(cam.projection);
-                    r["inv_projection"] = mat4_json(cam.inv_projection);
-                });
-            if (!done) { err = "render_state.camera timed out"; return; }
-            result = r;
-        });
+    server.on_request("render_state.camera",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          Json::Value r(Json::objectValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto& cam = glob::glob_state().getr_vulkan_render().get_camera();
+                                  r["position"] = vec3_json(cam.position);
+                                  r["view"] = mat4_json(cam.view);
+                                  r["projection"] = mat4_json(cam.projection);
+                                  r["inv_projection"] = mat4_json(cam.inv_projection);
+                              });
+                          if (!done)
+                          {
+                              err = "render_state.camera timed out";
+                              return;
+                          }
+                          result = r;
+                      });
 
     server.on_request(
         "render_state.object",
@@ -1056,9 +1337,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cache = glob::glob_state()
-                                      .getr_vulkan_render()
-                                      .get_cache();
+                    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
                     auto* obj = cache.objects.find_by_id(AID(id_str));
                     if (!obj)
                     {
@@ -1125,14 +1404,24 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         auto& tex_indices = obj->material->get_bindless_texture_indices();
                         Json::Value ti(Json::arrayValue);
                         for (auto idx : tex_indices)
+                        {
                             ti.append(idx);
+                        }
                         mt["texture_indices"] = ti;
 
                         r["material"] = mt;
                     }
                 });
-            if (!done) { err = "render_state.object timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
+            if (!done)
+            {
+                err = "render_state.object timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
             result = r;
         });
 
@@ -1150,8 +1439,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     r["height"] = vr.get_height();
                     r["all_draws"] = vr.get_all_draws();
                     r["culled_draws"] = vr.get_culled_draws();
-                    r["object_count"] =
-                        static_cast<Json::UInt64>(cache.objects.get_actual_size());
+                    r["object_count"] = static_cast<Json::UInt64>(cache.objects.get_actual_size());
                     r["directional_light_count"] =
                         static_cast<Json::UInt64>(cache.directional_lights.get_actual_size());
                     r["universal_light_count"] =
@@ -1159,7 +1447,11 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     r["texture_count"] =
                         static_cast<Json::UInt64>(cache.textures.get_actual_size());
                 });
-            if (!done) { err = "render_state.stats timed out"; return; }
+            if (!done)
+            {
+                err = "render_state.stats timed out";
+                return;
+            }
             result = r;
         });
 
@@ -1171,9 +1463,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cache = glob::glob_state()
-                                      .getr_vulkan_render()
-                                      .get_cache();
+                    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
 
                     auto summarize = [](const render::vulkan_render_data& obj) -> Json::Value
                     {
@@ -1181,7 +1471,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         o["id"] = obj.id().str();
                         o["slot"] = obj.slot();
                         o["position"] = vec3_json(obj.gpu_data.obj_pos);
-                        o["bounding_sphere_center"] = vec3_json(obj.gpu_data.bounding_sphere_center);
+                        o["bounding_sphere_center"] =
+                            vec3_json(obj.gpu_data.bounding_sphere_center);
                         o["bounding_radius"] = obj.gpu_data.bounding_radius;
                         o["material_id"] = obj.gpu_data.material_id;
                         o["queue_id"] = obj.queue_id;
@@ -1189,9 +1480,13 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         o["renderable"] = obj.renderable;
                         o["outlined"] = obj.outlined;
                         if (obj.mesh)
+                        {
                             o["mesh_id"] = obj.mesh->get_id().str();
+                        }
                         if (obj.material)
+                        {
                             o["material_name"] = obj.material->get_id().str();
+                        }
                         return o;
                     };
 
@@ -1204,7 +1499,9 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         {
                             auto* obj = cache.objects.find_by_id(AID(id_val.asString()));
                             if (obj)
+                            {
                                 arr.append(summarize(*obj));
+                            }
                         }
                     }
                     // Mode 2: offset + limit pagination (or all)
@@ -1215,9 +1512,13 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         if (params.isObject())
                         {
                             if (params.isMember("offset"))
+                            {
                                 offset = params["offset"].asUInt();
+                            }
                             if (params.isMember("limit"))
+                            {
                                 limit = params["limit"].asUInt();
+                            }
                         }
 
                         uint32_t idx = 0;
@@ -1225,7 +1526,10 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         cache.objects.for_each(
                             [&](const render::vulkan_render_data& obj)
                             {
-                                if (added >= limit) return;
+                                if (added >= limit)
+                                {
+                                    return;
+                                }
                                 if (idx >= offset)
                                 {
                                     arr.append(summarize(obj));
@@ -1236,101 +1540,128 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
 
                     r["objects"] = arr;
-                    r["total"] =
-                        static_cast<Json::UInt64>(cache.objects.get_actual_size());
+                    r["total"] = static_cast<Json::UInt64>(cache.objects.get_actual_size());
                 });
-            if (!done) { err = "render_state.objects timed out"; return; }
-            result = r;
-        });
-
-    server.on_request(
-        "render_state.lights",
-        [&eng](const Json::Value&, Json::Value& result, std::string& err)
-        {
-            Json::Value r(Json::objectValue);
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto& cache = glob::glob_state()
-                                      .getr_vulkan_render()
-                                      .get_cache();
-
-                    // Directional lights
-                    Json::Value dir(Json::arrayValue);
-                    cache.directional_lights.for_each(
-                        [&](const render::vulkan_directional_light_data& dl)
-                        {
-                            Json::Value l(Json::objectValue);
-                            l["id"] = dl.id().str();
-                            l["slot"] = dl.slot();
-                            l["direction"] = vec3_json(dl.gpu_data.direction);
-                            l["ambient"] = vec3_json(dl.gpu_data.ambient);
-                            l["diffuse"] = vec3_json(dl.gpu_data.diffuse);
-                            l["specular"] = vec3_json(dl.gpu_data.specular);
-                            dir.append(std::move(l));
-                        });
-                    r["directional"] = dir;
-
-                    // Universal lights (point + spot)
-                    Json::Value uni(Json::arrayValue);
-                    cache.universal_lights.for_each(
-                        [&](const render::vulkan_universal_light_data& ul)
-                        {
-                            Json::Value l(Json::objectValue);
-                            l["id"] = ul.id().str();
-                            l["slot"] = ul.slot();
-                            l["type"] = ul.gpu_data.type == 0 ? "spot" : "point";
-                            l["position"] = vec3_json(ul.gpu_data.position);
-                            l["direction"] = vec3_json(ul.gpu_data.direction);
-                            l["ambient"] = vec3_json(ul.gpu_data.ambient);
-                            l["diffuse"] = vec3_json(ul.gpu_data.diffuse);
-                            l["specular"] = vec3_json(ul.gpu_data.specular);
-                            l["radius"] = ul.gpu_data.radius;
-                            l["cut_off"] = ul.gpu_data.cut_off;
-                            l["outer_cut_off"] = ul.gpu_data.outer_cut_off;
-                            l["shadow_index"] = ul.gpu_data.shadow_index;
-                            uni.append(std::move(l));
-                        });
-                    r["universal"] = uni;
-                });
-            if (!done) { err = "render_state.lights timed out"; return; }
-            result = r;
-        });
-
-    server.on_request(
-        "visibility.set",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
+            if (!done)
             {
-                err = "missing 'id' parameter";
+                err = "render_state.objects timed out";
                 return;
             }
-            std::string id_str = params["id"].asString();
-            bool visible = params.get("visible", true).asBool();
-            std::string local_err;
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto* lvl = glob::glob_state().get_current_level();
-                    if (!lvl) { local_err = "no level loaded"; return; }
-                    auto* obj = lvl->find_object(AID(id_str));
-                    if (!obj) { local_err = "object not found: " + id_str; return; }
-
-                    root::game_object_component* goc = nullptr;
-                    if (auto* go = obj->as<root::game_object>())
-                        goc = go->get_root_component();
-                    else if (auto* comp = obj->as<root::component>())
-                        goc = dynamic_cast<root::game_object_component*>(comp);
-
-                    if (!goc) { local_err = "object has no layer flags"; return; }
-                    goc->set_layer_flag(render::LAYER_VISIBLE, visible);
-                    goc->mark_render_dirty();
-                });
-            if (!done) { err = "visibility.set timed out"; return; }
-            if (!local_err.empty()) { err = std::move(local_err); return; }
-            result = Json::Value(Json::objectValue);
+            result = r;
         });
+
+    server.on_request("render_state.lights",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          Json::Value r(Json::objectValue);
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+
+                                  // Directional lights
+                                  Json::Value dir(Json::arrayValue);
+                                  cache.directional_lights.for_each(
+                                      [&](const render::vulkan_directional_light_data& dl)
+                                      {
+                                          Json::Value l(Json::objectValue);
+                                          l["id"] = dl.id().str();
+                                          l["slot"] = dl.slot();
+                                          l["direction"] = vec3_json(dl.gpu_data.direction);
+                                          l["ambient"] = vec3_json(dl.gpu_data.ambient);
+                                          l["diffuse"] = vec3_json(dl.gpu_data.diffuse);
+                                          l["specular"] = vec3_json(dl.gpu_data.specular);
+                                          dir.append(std::move(l));
+                                      });
+                                  r["directional"] = dir;
+
+                                  // Universal lights (point + spot)
+                                  Json::Value uni(Json::arrayValue);
+                                  cache.universal_lights.for_each(
+                                      [&](const render::vulkan_universal_light_data& ul)
+                                      {
+                                          Json::Value l(Json::objectValue);
+                                          l["id"] = ul.id().str();
+                                          l["slot"] = ul.slot();
+                                          l["type"] = ul.gpu_data.type == 0 ? "spot" : "point";
+                                          l["position"] = vec3_json(ul.gpu_data.position);
+                                          l["direction"] = vec3_json(ul.gpu_data.direction);
+                                          l["ambient"] = vec3_json(ul.gpu_data.ambient);
+                                          l["diffuse"] = vec3_json(ul.gpu_data.diffuse);
+                                          l["specular"] = vec3_json(ul.gpu_data.specular);
+                                          l["radius"] = ul.gpu_data.radius;
+                                          l["cut_off"] = ul.gpu_data.cut_off;
+                                          l["outer_cut_off"] = ul.gpu_data.outer_cut_off;
+                                          l["shadow_index"] = ul.gpu_data.shadow_index;
+                                          uni.append(std::move(l));
+                                      });
+                                  r["universal"] = uni;
+                              });
+                          if (!done)
+                          {
+                              err = "render_state.lights timed out";
+                              return;
+                          }
+                          result = r;
+                      });
+
+    server.on_request("visibility.set",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          bool visible = params.get("visible", true).asBool();
+                          std::string local_err;
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* lvl = glob::glob_state().get_current_level();
+                                  if (!lvl)
+                                  {
+                                      local_err = "no level loaded";
+                                      return;
+                                  }
+                                  auto* obj = lvl->find_object(AID(id_str));
+                                  if (!obj)
+                                  {
+                                      local_err = "object not found: " + id_str;
+                                      return;
+                                  }
+
+                                  root::game_object_component* goc = nullptr;
+                                  if (auto* go = obj->as<root::game_object>())
+                                  {
+                                      goc = go->get_root_component();
+                                  }
+                                  else if (auto* comp = obj->as<root::component>())
+                                  {
+                                      goc = dynamic_cast<root::game_object_component*>(comp);
+                                  }
+
+                                  if (!goc)
+                                  {
+                                      local_err = "object has no layer flags";
+                                      return;
+                                  }
+                                  goc->set_layer_flag(render::LAYER_VISIBLE, visible);
+                                  goc->mark_render_dirty();
+                              });
+                          if (!done)
+                          {
+                              err = "visibility.set timed out";
+                              return;
+                          }
+                          if (!local_err.empty())
+                          {
+                              err = std::move(local_err);
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                      });
 }
 
 }  // namespace kryga::engine_private

@@ -531,13 +531,8 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         // VkRenderPass identity, so SEs compiled against main survive.
         // sampled_depth=true: depth ends in READ_ONLY layout for composite to
         // sample (used by depth_outline AND the grid for occlusion).
-        if (!main_pass->replace_color_targets(m_scene_lowres_images,
-                                              m_scene_lowres_views,
-                                              lw,
-                                              lh,
-                                              true,
-                                              true,
-                                              "main"))
+        if (!main_pass->replace_color_targets(
+                m_scene_lowres_images, m_scene_lowres_views, lw, lh, true, true, "main"))
         {
             return false;
         }
@@ -720,7 +715,8 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         if (m_render_config.outline.enabled)
         {
             auto overt_r = render::shader_loader::load(se_base / "system/se_fullscreen.vert.spv");
-            auto ofrag_r = render::shader_loader::load(se_base / "system/se_depth_outline.frag.spv");
+            auto ofrag_r =
+                render::shader_loader::load(se_base / "system/se_depth_outline.frag.spv");
             if (!overt_r || !ofrag_r)
             {
                 ALOG_ERROR("Failed to load depth-outline shaders");
@@ -919,7 +915,8 @@ vulkan_render::prepare_system_resources()
 
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
-    auto load_pair = [&vert, &frag](const vfs::rid& v_rid, const vfs::rid& f_rid) -> bool {
+    auto load_pair = [&vert, &frag](const vfs::rid& v_rid, const vfs::rid& f_rid) -> bool
+    {
         auto v_r = render::shader_loader::load(v_rid);
         auto f_r = render::shader_loader::load(f_rid);
         if (!v_r || !f_r)
@@ -932,8 +929,7 @@ vulkan_render::prepare_system_resources()
         return true;
     };
 
-    if (!load_pair(se_base / "error/se_error.vert.spv",
-                   se_base / "error/se_error.frag.spv"))
+    if (!load_pair(se_base / "error/se_error.vert.spv", se_base / "error/se_error.frag.spv"))
     {
         return;
     }
@@ -957,8 +953,7 @@ vulkan_render::prepare_system_resources()
     std::vector<texture_sampler_data> sd;
 
     // Grid shader effect and material
-    if (!load_pair(se_base / "system/se_grid.vert.spv",
-                   se_base / "system/se_grid.frag.spv"))
+    if (!load_pair(se_base / "system/se_grid.vert.spv", se_base / "system/se_grid.frag.spv"))
     {
         return;
     }
@@ -1072,7 +1067,8 @@ vulkan_render::prepare_system_resources()
         if (composite_pass)
         {
             auto overt_r = render::shader_loader::load(se_base / "system/se_fullscreen.vert.spv");
-            auto ofrag_r = render::shader_loader::load(se_base / "system/se_depth_outline.frag.spv");
+            auto ofrag_r =
+                render::shader_loader::load(se_base / "system/se_depth_outline.frag.spv");
             if (!overt_r || !ofrag_r)
             {
                 ALOG_ERROR("Failed to load depth-outline composite shaders");

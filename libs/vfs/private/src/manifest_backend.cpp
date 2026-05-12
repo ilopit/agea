@@ -24,15 +24,13 @@ manifest_backend::stat(std::string_view /*relative_path*/) const
 }
 
 bool
-manifest_backend::read_all(std::string_view /*relative_path*/,
-                           std::vector<uint8_t>& /*out*/) const
+manifest_backend::read_all(std::string_view /*relative_path*/, std::vector<uint8_t>& /*out*/) const
 {
     return false;
 }
 
 bool
-manifest_backend::write_all(std::string_view /*relative_path*/,
-                            std::span<const uint8_t> /*data*/)
+manifest_backend::write_all(std::string_view /*relative_path*/, std::span<const uint8_t> /*data*/)
 {
     return false;
 }

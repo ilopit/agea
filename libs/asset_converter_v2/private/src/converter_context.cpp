@@ -913,21 +913,30 @@ converter_context::spawn_node_component(root::game_object* obj,
         case parsed_light_type::point:
         {
             auto* lc = obj->spawn_component<base::point_light_component>(parent, cid, {});
-            if (lc) configure_point_light(lc, light);
+            if (lc)
+            {
+                configure_point_light(lc, light);
+            }
             this_comp = lc;
             break;
         }
         case parsed_light_type::directional:
         {
             auto* lc = obj->spawn_component<base::directional_light_component>(parent, cid, {});
-            if (lc) configure_directional_light(lc, light);
+            if (lc)
+            {
+                configure_directional_light(lc, light);
+            }
             this_comp = lc;
             break;
         }
         case parsed_light_type::spot:
         {
             auto* lc = obj->spawn_component<base::spot_light_component>(parent, cid, {});
-            if (lc) configure_spot_light(lc, light);
+            if (lc)
+            {
+                configure_spot_light(lc, light);
+            }
             this_comp = lc;
             break;
         }
@@ -937,7 +946,10 @@ converter_context::spawn_node_component(root::game_object* obj,
     {
         const auto& camera = scene.cameras[node.camera_index];
         auto* cc = obj->spawn_component<base::camera_component>(parent, cid, {});
-        if (cc) configure_camera(cc, camera);
+        if (cc)
+        {
+            configure_camera(cc, camera);
+        }
         this_comp = cc;
     }
     else
@@ -1006,13 +1018,18 @@ converter_context::place_scene_root(core::level& lvl,
     {
         switch (scene.lights[root_node.light_index].type)
         {
-        case parsed_light_type::point:       cdo_id = AID("point_light"); break;
-        case parsed_light_type::directional: cdo_id = AID("directional_light"); break;
-        case parsed_light_type::spot:        cdo_id = AID("spot_light"); break;
+        case parsed_light_type::point:
+            cdo_id = AID("point_light");
+            break;
+        case parsed_light_type::directional:
+            cdo_id = AID("directional_light");
+            break;
+        case parsed_light_type::spot:
+            cdo_id = AID("spot_light");
+            break;
         }
     }
-    else if (root_node.camera_index >= 0 &&
-             size_t(root_node.camera_index) < scene.cameras.size())
+    else if (root_node.camera_index >= 0 && size_t(root_node.camera_index) < scene.cameras.size())
     {
         cdo_id = AID("camera_object");
     }

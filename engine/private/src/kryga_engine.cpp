@@ -98,7 +98,9 @@ startup_options::parse(int argc, char** argv, startup_options& out)
 
     CLI::App app{"Kryga Engine"};
 
-    app.add_option("-t,--run-for", out.run_for_seconds, "Run for specified duration then exit (0 = unlimited)")
+    app.add_option("-t,--run-for",
+                   out.run_for_seconds,
+                   "Run for specified duration then exit (0 = unlimited)")
         ->check(CLI::NonNegativeNumber);
 
     try
@@ -327,8 +329,7 @@ vulkan_engine::init(const startup_options& options)
         // Release build. Falls back to tmp:// for non-dev layouts where
         // source_root isn't known.
         std::optional<std::filesystem::path> disco_path;
-        if (auto layout = kryga::paths::resolve();
-            layout && !layout->source_root.empty())
+        if (auto layout = kryga::paths::resolve(); layout && !layout->source_root.empty())
         {
             auto p = layout->source_root / "tmp" / "editor_rpc.json";
             std::error_code ec;
@@ -337,21 +338,20 @@ vulkan_engine::init(const startup_options& options)
         }
         else
         {
-            disco_path = glob::glob_state().getr_vfs().real_path(
-                vfs::rid("tmp://editor_rpc.json"));
+            disco_path = glob::glob_state().getr_vfs().real_path(vfs::rid("tmp://editor_rpc.json"));
         }
         if (disco_path.has_value())
         {
             m_rpc_server->start(0, disco_path->string());
 
-            m_rpc_log_sink =
-                std::make_shared<rpc::rpc_log_sink>(*m_rpc_server);
+            m_rpc_log_sink = std::make_shared<rpc::rpc_log_sink>(*m_rpc_server);
             spdlog::default_logger()->sinks().push_back(m_rpc_log_sink);
         }
         else
         {
-            ALOG_WARN("rpc: could not resolve discovery file path — "
-                      "RPC server not started");
+            ALOG_WARN(
+                "rpc: could not resolve discovery file path — "
+                "RPC server not started");
         }
 #endif
     }
@@ -381,8 +381,7 @@ vulkan_engine::cleanup()
     if (m_rpc_log_sink)
     {
         auto& sinks = spdlog::default_logger()->sinks();
-        sinks.erase(std::remove(sinks.begin(), sinks.end(), m_rpc_log_sink),
-                    sinks.end());
+        sinks.erase(std::remove(sinks.begin(), sinks.end(), m_rpc_log_sink), sinks.end());
         m_rpc_log_sink.reset();
     }
     m_rpc_server->stop();
@@ -443,7 +442,8 @@ vulkan_engine::run()
     // run() pumps SDL events and calls ui->new_frame → requires an input_manager
     // and an active SDL event loop. Headless mode skips input_manager, so tests
     // must drive rendering via tick_headless() instead.
-    KRG_check(!m_headless, "vulkan_engine::run() is not supported in headless mode — use tick_headless()");
+    KRG_check(!m_headless,
+              "vulkan_engine::run() is not supported in headless mode — use tick_headless()");
 
     float frame_time = 1.f / glob::glob_state().get_config()->fps_lock;
     const std::chrono::microseconds frame_time_int(1000000 /
@@ -586,23 +586,23 @@ vulkan_engine::queue_main_action(std::function<void()> a)
 }
 
 bool
-vulkan_engine::wait_main_action(std::function<void()> a,
-                                std::chrono::milliseconds timeout)
+vulkan_engine::wait_main_action(std::function<void()> a, std::chrono::milliseconds timeout)
 {
     auto p = std::make_shared<std::promise<void>>();
     auto fut = p->get_future();
-    queue_main_action([p, work = std::move(a)]() mutable
-    {
-        try
+    queue_main_action(
+        [p, work = std::move(a)]() mutable
         {
-            work();
-            p->set_value();
-        }
-        catch (...)
-        {
-            p->set_exception(std::current_exception());
-        }
-    });
+            try
+            {
+                work();
+                p->set_value();
+            }
+            catch (...)
+            {
+                p->set_exception(std::current_exception());
+            }
+        });
     if (fut.wait_for(timeout) != std::future_status::ready)
     {
         return false;
@@ -634,15 +634,14 @@ vulkan_engine::tick(float dt)
 
     if (m_rpc_server)
     {
-        int mode_now = static_cast<int>(
-            glob::glob_state().get_game_editor()->get_mode());
+        int mode_now = static_cast<int>(glob::glob_state().get_game_editor()->get_mode());
         if (mode_now != m_last_known_mode)
         {
             m_last_known_mode = mode_now;
             Json::Value note(Json::objectValue);
-            note["mode"] =
-                (mode_now == static_cast<int>(engine::editor_mode::playing))
-                    ? std::string("play") : std::string("edit");
+            note["mode"] = (mode_now == static_cast<int>(engine::editor_mode::playing))
+                               ? std::string("play")
+                               : std::string("edit");
             m_rpc_server->notify("engine.mode.changed", note);
         }
     }
@@ -777,7 +776,6 @@ vulkan_engine::unload_render_resources(core::package& l)
     return true;
 }
 
-
 void
 vulkan_engine::consume_updated_transforms()
 {
@@ -812,8 +810,7 @@ vulkan_engine::consume_updated_transforms()
                     cmd->bounding_radius = m->get_base_bounding_radius() * max_s;
 
                     const auto& lc = m->get_mesh()->get_local_centroid();
-                    glm::vec4 wc = m->get_transform_matrix() *
-                        glm::vec4(lc.x, lc.y, lc.z, 1.0f);
+                    glm::vec4 wc = m->get_transform_matrix() * glm::vec4(lc.x, lc.y, lc.z, 1.0f);
                     cmd->bounding_sphere_center = glm::vec3(wc);
 
                     rb.enqueue_cmd(cmd);
@@ -856,7 +853,10 @@ vulkan_engine::update_cameras()
         for (auto& [id, obj] : lvl->get_game_objects().get_items())
         {
             auto go = obj->as<root::game_object>();
-            if (!go) continue;
+            if (!go)
+            {
+                continue;
+            }
             for (auto c : go->get_renderable_components())
             {
                 if (auto cc = c->as<base::camera_component>())
@@ -868,7 +868,10 @@ vulkan_engine::update_cameras()
                     }
                 }
             }
-            if (cam) break;
+            if (cam)
+            {
+                break;
+            }
         }
     }
     KRG_check(cam, "Game build requires an active camera in the level.");

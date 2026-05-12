@@ -132,7 +132,10 @@ android_asset_backend::enumerate(std::string_view relative_path,
     // time and bundle it into the APK.
     if (recursive)
     {
-        ALOG_WARN("android_asset_backend::enumerate: recursive enumeration is not supported by AAssetManager; only top-level files will be visited for '{}'", full);
+        ALOG_WARN(
+            "android_asset_backend::enumerate: recursive enumeration is not supported by "
+            "AAssetManager; only top-level files will be visited for '{}'",
+            full);
     }
 
     while (const char* fname = AAssetDir_getNextFileName(d))

@@ -18,10 +18,11 @@ compilation_result
 shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
                                 const std::vector<std::string>& /*defines*/)
 {
-    ALOG_ERROR("shader_compiler::compile_shader called on Android (vpath '{}'). "
-               "Runtime GLSL compilation is unsupported — shader must be "
-               "cooked via tools/cook with is_*_binary=true.",
-               raw_buffer.get_vpath());
+    ALOG_ERROR(
+        "shader_compiler::compile_shader called on Android (vpath '{}'). "
+        "Runtime GLSL compilation is unsupported — shader must be "
+        "cooked via tools/cook with is_*_binary=true.",
+        raw_buffer.get_vpath());
     KRG_never("Runtime shader compilation attempted on Android");
     return std::unexpected(compilation_error{result_code::compilation_failed});
 }
@@ -35,8 +36,7 @@ std::vector<shader_diagnostic>
 parse_glslc_output(const std::string& output)
 {
     std::vector<shader_diagnostic> diags;
-    static const std::regex pattern(
-        R"(([^:]+):(\d+):(?:(\d+):)?\s*(error|warning):\s*(.+))");
+    static const std::regex pattern(R"(([^:]+):(\d+):(?:(\d+):)?\s*(error|warning):\s*(.+))");
     std::sregex_iterator it(output.begin(), output.end(), pattern);
     std::sregex_iterator end;
     for (; it != end; ++it)

@@ -204,12 +204,12 @@ render_pass::replace_color_targets(
 
     for (uint32_t i = 0; i < image_count; ++i)
     {
-        m_depth_images[i] = vk_utils::vulkan_image::create(
-            device.get_vma_allocator_provider(),
-            dimg_info,
-            dimg_alloc,
-            0,
-            KRG_VK_FMT_NAME("{}.depth_{}", debug_name, i));
+        m_depth_images[i] =
+            vk_utils::vulkan_image::create(device.get_vma_allocator_provider(),
+                                           dimg_info,
+                                           dimg_alloc,
+                                           0,
+                                           KRG_VK_FMT_NAME("{}.depth_{}", debug_name, i));
 
         auto view_ci = vk_utils::make_imageview_create_info(
             m_depth_format, m_depth_images[i].image(), view_aspect);
@@ -217,8 +217,8 @@ render_pass::replace_color_targets(
     }
 
     // Rebuild framebuffers with new dimensions
-    auto fb_info = vk_utils::make_framebuffer_create_info(m_vk_render_pass,
-                                                          VkExtent2D{new_width, new_height});
+    auto fb_info =
+        vk_utils::make_framebuffer_create_info(m_vk_render_pass, VkExtent2D{new_width, new_height});
     m_framebuffers.resize(image_count);
     for (uint32_t i = 0; i < image_count; ++i)
     {
@@ -247,9 +247,8 @@ render_pass::create_shader_effect(const kryga::utils::id& id,
 {
     if (get_shader_effect(id))
     {
-        ALOG_ERROR("create_shader_effect: id '{}' already exists in pass '{}'",
-                   id.cstr(),
-                   m_name.cstr());
+        ALOG_ERROR(
+            "create_shader_effect: id '{}' already exists in pass '{}'", id.cstr(), m_name.cstr());
     }
     KRG_check(!get_shader_effect(id), "should never happens");
 

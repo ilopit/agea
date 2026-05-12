@@ -137,14 +137,15 @@ shader_effect_data::generate_constants(std::vector<VkPushConstantRange>& constan
         {
             if (vert->offset != frag->offset || vert->size != frag->size)
             {
-                ALOG_ERROR("Push constant layout mismatch on shader effect '{}': vert "
-                           "(offset={}, size={}) != frag (offset={}, size={}). Both stages "
-                           "must use `layout(push_constant, scalar)` and declare the same struct.",
-                           m_id.cstr(),
-                           vert->offset,
-                           vert->size,
-                           frag->offset,
-                           frag->size);
+                ALOG_ERROR(
+                    "Push constant layout mismatch on shader effect '{}': vert "
+                    "(offset={}, size={}) != frag (offset={}, size={}). Both stages "
+                    "must use `layout(push_constant, scalar)` and declare the same struct.",
+                    m_id.cstr(),
+                    vert->offset,
+                    vert->size,
+                    frag->offset,
+                    frag->size);
                 KRG_check(false, "Push constant layout mismatch between stages");
             }
         }

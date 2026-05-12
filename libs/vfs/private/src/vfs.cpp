@@ -79,9 +79,8 @@ virtual_file_system::mount_from_manifest(const rid& target,
     {
         if (!be->m_index.add(e.stem, e.relative))
         {
-            ALOG_ERROR("VFS: mount_from_manifest: duplicate stem '{}' in '{}'",
-                       e.stem,
-                       manifest.str());
+            ALOG_ERROR(
+                "VFS: mount_from_manifest: duplicate stem '{}' in '{}'", e.stem, manifest.str());
             return nullptr;
         }
     }

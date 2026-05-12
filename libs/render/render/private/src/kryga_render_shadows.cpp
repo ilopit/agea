@@ -376,10 +376,10 @@ vulkan_render::select_shadowed_lights()
         float s_near = 0.1f;
         float s_far = light->gpu_data.radius;
         shadow.shadow_params =
-            glm::vec4(0.005f,                                           // bias
-                      0.02f,                                            // normal_bias
+            glm::vec4(0.005f,                                                       // bias
+                      0.02f,                                                        // normal_bias
                       1.0f / static_cast<float>(m_render_config.shadows.map_size),  // texel_size
-                      s_near                                            // near_plane
+                      s_near                                                        // near_plane
             );
         shadow.far_plane = s_far;
 

@@ -22,9 +22,8 @@ struct handler_result
     std::string error_message;
 };
 
-using request_handler = std::function<void(const Json::Value& params,
-                                           Json::Value& result_out,
-                                           std::string& error_out)>;
+using request_handler =
+    std::function<void(const Json::Value& params, Json::Value& result_out, std::string& error_out)>;
 
 // JSON-RPC 2.0 server over a localhost TCP socket using LSP-style message
 // framing (Content-Length: N\r\n\r\n{json}). Supports multiple concurrent
@@ -42,7 +41,8 @@ public:
     ~rpc_server();
 
     rpc_server(const rpc_server&) = delete;
-    rpc_server& operator=(const rpc_server&) = delete;
+    rpc_server&
+    operator=(const rpc_server&) = delete;
 
     // Bind to 127.0.0.1:port (port=0 = OS picks a free port). Writes a JSON
     // discovery file to `discovery_abs_path` containing {pid, port}.

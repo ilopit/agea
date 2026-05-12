@@ -41,25 +41,28 @@ convert_3do_to_amsh(const utils::path& obj_path,
         auto* inds_ptr = reinterpret_cast<const gpu::uint*>(indices.data());
         uint32_t ind_count = static_cast<uint32_t>(indices.size() / sizeof(gpu::uint));
 
-        auto uv2_result = asset_importer::uv2_generator::generate_uv2(
-            verts_ptr, vert_count, inds_ptr, ind_count);
+        auto uv2_result =
+            asset_importer::uv2_generator::generate_uv2(verts_ptr, vert_count, inds_ptr, ind_count);
 
         if (uv2_result.success)
         {
             // Replace vertex/index buffers with UV2-enriched versions (may have more
             // vertices due to UV seam splitting)
             vertices.resize(uv2_result.vertices.size() * sizeof(gpu::vertex_data));
-            memcpy(vertices.data(), uv2_result.vertices.data(),
+            memcpy(vertices.data(),
+                   uv2_result.vertices.data(),
                    uv2_result.vertices.size() * sizeof(gpu::vertex_data));
 
             indices.resize(uv2_result.indices.size() * sizeof(gpu::uint));
-            memcpy(indices.data(), uv2_result.indices.data(),
+            memcpy(indices.data(),
+                   uv2_result.indices.data(),
                    uv2_result.indices.size() * sizeof(gpu::uint));
         }
         else
         {
-            ALOG_ERROR("assets_importer: UV2 generation failed for {}, lightmap UVs will be invalid",
-                       mesh_id.str());
+            ALOG_ERROR(
+                "assets_importer: UV2 generation failed for {}, lightmap UVs will be invalid",
+                mesh_id.str());
         }
     }
 

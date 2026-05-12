@@ -15,10 +15,10 @@ namespace uv2_generator
 
 struct uv2_generate_params
 {
-    uint32_t max_chart_size = 0;        // 0 = auto
-    float texels_per_unit = 0.0f;       // 0 = auto
-    uint32_t padding = 4;               // padding between charts in texels (>=2 for bilinear)
-    uint32_t resolution = 1024;         // target atlas resolution for packing
+    uint32_t max_chart_size = 0;   // 0 = auto
+    float texels_per_unit = 0.0f;  // 0 = auto
+    uint32_t padding = 4;          // padding between charts in texels (>=2 for bilinear)
+    uint32_t resolution = 1024;    // target atlas resolution for packing
 };
 
 struct uv2_result

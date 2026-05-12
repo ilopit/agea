@@ -475,8 +475,10 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
         // Main pass push constants — all BDA addresses (as uvec2 for mobile compatibility)
         m_obj_config.bdag_camera = gpu::make_bda_addr(b.dynamic_data.device_address());
         m_obj_config.bdag_objects = gpu::make_bda_addr(b.objects.device_address());
-        m_obj_config.bdag_directional_lights = gpu::make_bda_addr(b.directional_lights.device_address());
-        m_obj_config.bdag_universal_lights = gpu::make_bda_addr(b.universal_lights.device_address());
+        m_obj_config.bdag_directional_lights =
+            gpu::make_bda_addr(b.directional_lights.device_address());
+        m_obj_config.bdag_universal_lights =
+            gpu::make_bda_addr(b.universal_lights.device_address());
         m_obj_config.bdag_cluster_counts = gpu::make_bda_addr(b.cluster_counts.device_address());
         m_obj_config.bdag_cluster_indices = gpu::make_bda_addr(b.cluster_indices.device_address());
         m_obj_config.bdag_cluster_config = gpu::make_bda_addr(b.cluster_config.device_address());
@@ -614,8 +616,8 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     // Cast ray — nearest AABB hit wins
     auto inv_view = glm::inverse(m_camera_data.view);
-    auto r = object_bvh::screen_to_ray(
-        x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
+    auto r =
+        object_bvh::screen_to_ray(x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
 
     raycast_hit hit;
     if (m_object_bvh.raycast(r, hit))

@@ -18,8 +18,7 @@ sampler_data::~sampler_data()
     if (m_sampler)
     {
         glob::glob_state().getr_render_device().schedule_to_delete(
-            [s = m_sampler](VkDevice vkd, VmaAllocator)
-            { vkDestroySampler(vkd, s, nullptr); });
+            [s = m_sampler](VkDevice vkd, VmaAllocator) { vkDestroySampler(vkd, s, nullptr); });
     }
 }
 

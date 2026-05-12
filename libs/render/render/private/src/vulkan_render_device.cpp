@@ -342,8 +342,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         // Spec: currentExtent members are set together — sentinel 0xFFFFFFFF
         // means "surface size determined by swapchain extent" (desktop). On a
         // fixed-size surface (Android) caps.currentExtent is authoritative.
-        if (caps.currentExtent.width != 0xFFFFFFFFu &&
-            caps.currentExtent.height != 0xFFFFFFFFu)
+        if (caps.currentExtent.width != 0xFFFFFFFFu && caps.currentExtent.height != 0xFFFFFFFFu)
         {
             buffer_w = caps.currentExtent.width;
             buffer_h = caps.currentExtent.height;

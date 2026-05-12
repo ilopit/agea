@@ -27,7 +27,10 @@ bool__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 bool__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isBool() && !ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isBool() && !ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<bool*>(ctx.obj) = ctx.jc->asBool();
     return kryga::result_code::ok;
 }
@@ -42,7 +45,10 @@ int8__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 int8__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<int8_t*>(ctx.obj) = static_cast<int8_t>(ctx.jc->asInt());
     return kryga::result_code::ok;
 }
@@ -57,7 +63,10 @@ int16__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 int16__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<int16_t*>(ctx.obj) = static_cast<int16_t>(ctx.jc->asInt());
     return kryga::result_code::ok;
 }
@@ -72,7 +81,10 @@ int32__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 int32__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<int32_t*>(ctx.obj) = ctx.jc->asInt();
     return kryga::result_code::ok;
 }
@@ -87,7 +99,10 @@ int64__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 int64__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<int64_t*>(ctx.obj) = ctx.jc->asInt64();
     return kryga::result_code::ok;
 }
@@ -102,7 +117,10 @@ uint8__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 uint8__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<uint8_t*>(ctx.obj) = static_cast<uint8_t>(ctx.jc->asUInt());
     return kryga::result_code::ok;
 }
@@ -117,7 +135,10 @@ uint16__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 uint16__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<uint16_t*>(ctx.obj) = static_cast<uint16_t>(ctx.jc->asUInt());
     return kryga::result_code::ok;
 }
@@ -132,7 +153,10 @@ uint32__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 uint32__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<uint32_t*>(ctx.obj) = ctx.jc->asUInt();
     return kryga::result_code::ok;
 }
@@ -147,7 +171,10 @@ uint64__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 uint64__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<uint64_t*>(ctx.obj) = ctx.jc->asUInt64();
     return kryga::result_code::ok;
 }
@@ -162,7 +189,10 @@ float__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 float__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<float*>(ctx.obj) = ctx.jc->asFloat();
     return kryga::result_code::ok;
 }
@@ -177,7 +207,10 @@ double__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 double__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isNumeric()) return kryga::result_code::failed;
+    if (!ctx.jc->isNumeric())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<double*>(ctx.obj) = ctx.jc->asDouble();
     return kryga::result_code::ok;
 }
@@ -192,7 +225,10 @@ string__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 string__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isString()) return kryga::result_code::failed;
+    if (!ctx.jc->isString())
+    {
+        return kryga::result_code::failed;
+    }
     *reinterpret_cast<std::string*>(ctx.obj) = ctx.jc->asString();
     return kryga::result_code::ok;
 }
@@ -209,7 +245,10 @@ id__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 id__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isString()) return kryga::result_code::failed;
+    if (!ctx.jc->isString())
+    {
+        return kryga::result_code::failed;
+    }
     auto s = ctx.jc->asString();
     kryga::reflection::utils::as_type<kryga::utils::id>(ctx.obj) =
         s.empty() ? kryga::utils::id() : AID(s);
@@ -231,9 +270,17 @@ vec2__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 vec2__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isArray() || ctx.jc->size() != 2) return kryga::result_code::failed;
+    if (!ctx.jc->isArray() || ctx.jc->size() != 2)
+    {
+        return kryga::result_code::failed;
+    }
     for (Json::ArrayIndex i = 0; i < 2; ++i)
-        if (!(*ctx.jc)[i].isNumeric()) return kryga::result_code::failed;
+    {
+        if (!(*ctx.jc)[i].isNumeric())
+        {
+            return kryga::result_code::failed;
+        }
+    }
     auto& dst = kryga::reflection::utils::as_type<::kryga::root::vec2>(ctx.obj);
     dst.x = (*ctx.jc)[0].asFloat();
     dst.y = (*ctx.jc)[1].asFloat();
@@ -256,9 +303,17 @@ vec3__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 vec3__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isArray() || ctx.jc->size() != 3) return kryga::result_code::failed;
+    if (!ctx.jc->isArray() || ctx.jc->size() != 3)
+    {
+        return kryga::result_code::failed;
+    }
     for (Json::ArrayIndex i = 0; i < 3; ++i)
-        if (!(*ctx.jc)[i].isNumeric()) return kryga::result_code::failed;
+    {
+        if (!(*ctx.jc)[i].isNumeric())
+        {
+            return kryga::result_code::failed;
+        }
+    }
     auto& dst = kryga::reflection::utils::as_type<::kryga::root::vec3>(ctx.obj);
     dst.x = (*ctx.jc)[0].asFloat();
     dst.y = (*ctx.jc)[1].asFloat();
@@ -283,9 +338,17 @@ vec4__json_save(reflection::type_context__json_save& ctx)
 kryga::result_code
 vec4__json_load(reflection::type_context__json_load& ctx)
 {
-    if (!ctx.jc->isArray() || ctx.jc->size() != 4) return kryga::result_code::failed;
+    if (!ctx.jc->isArray() || ctx.jc->size() != 4)
+    {
+        return kryga::result_code::failed;
+    }
     for (Json::ArrayIndex i = 0; i < 4; ++i)
-        if (!(*ctx.jc)[i].isNumeric()) return kryga::result_code::failed;
+    {
+        if (!(*ctx.jc)[i].isNumeric())
+        {
+            return kryga::result_code::failed;
+        }
+    }
     auto& dst = kryga::reflection::utils::as_type<::kryga::root::vec4>(ctx.obj);
     dst.x = (*ctx.jc)[0].asFloat();
     dst.y = (*ctx.jc)[1].asFloat();

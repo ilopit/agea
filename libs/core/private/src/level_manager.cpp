@@ -74,14 +74,13 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
     // Populate the file index from the cooked `.kryga_index` manifest emitted
     // by tools/cook. Works uniformly on desktop physical mounts and Android
     // APK asset mounts — no `real_path` required.
-    l.m_backend = vfs.mount_from_manifest(
-        vfs_root,
-        vfs_root / "kryga_index",
-        {.load_order = {"class/textures",
-                        "class/shader_effects",
-                        "class/materials",
-                        "class/meshes",
-                        "class/components"}});
+    l.m_backend = vfs.mount_from_manifest(vfs_root,
+                                          vfs_root / "kryga_index",
+                                          {.load_order = {"class/textures",
+                                                          "class/shader_effects",
+                                                          "class/materials",
+                                                          "class/meshes",
+                                                          "class/components"}});
 
     // Fallback: walk the filesystem if no manifest. Desktop-only — Android
     // APK assets have no real_path so the cooked manifest is required there.
@@ -92,11 +91,12 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
         auto rp = vfs.real_path(vfs_root);
         if (rp.has_value())
         {
-            ALOG_WARN("Level [{}] has no kryga_index manifest; falling back to filesystem "
-                      "scan at [{}]. This path will NOT work in GAME mode (cooked/shipping "
-                      "builds, Android APK) — run tools/cook before shipping.",
-                      vfs_root.str(),
-                      rp.value().string());
+            ALOG_WARN(
+                "Level [{}] has no kryga_index manifest; falling back to filesystem "
+                "scan at [{}]. This path will NOT work in GAME mode (cooked/shipping "
+                "builds, Android APK) — run tools/cook before shipping.",
+                vfs_root.str(),
+                rp.value().string());
             l.m_backend = vfs.mount(vfs_root,
                                     rp.value(),
                                     {.index_filter = ".aobj",

@@ -81,9 +81,7 @@ run_binary(construct_params p, std::uint64_t& result_code)
 }
 
 bool
-run_binary_capture(construct_params p,
-                   std::uint64_t& result_code,
-                   std::string& captured_output)
+run_binary_capture(construct_params p, std::uint64_t& result_code, std::string& captured_output)
 {
     SECURITY_ATTRIBUTES sa = {};
     sa.nLength = sizeof(sa);

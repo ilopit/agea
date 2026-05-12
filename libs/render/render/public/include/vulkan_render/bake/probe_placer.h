@@ -16,8 +16,8 @@ namespace bake
 
 struct probe_placement_params
 {
-    float spacing = 2.0f;              // distance between probes
-    float margin = 0.5f;               // extra space around scene bounds
+    float spacing = 2.0f;  // distance between probes
+    float margin = 0.5f;   // extra space around scene bounds
 };
 
 struct probe_placement_result

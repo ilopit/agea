@@ -177,18 +177,25 @@ queue_end_label(VkQueue queue);
 // NOTE: the returned string_view references a temporary whose lifetime ends at the enclosing
 // full expression. Always pass the macro expansion directly as a function argument — do NOT
 // bind to `auto v = KRG_VK_..._NAME(...)`, the view would dangle.
-#define KRG_VK_DBG_NAME(name_expr) ::std::string_view{(name_expr)}
-#define KRG_VK_FMT_NAME(...) ::std::string_view{::std::format(__VA_ARGS__)}
+#define KRG_VK_DBG_NAME(name_expr) \
+    ::std::string_view             \
+    {                              \
+        (name_expr)                \
+    }
+#define KRG_VK_FMT_NAME(...)       \
+    ::std::string_view             \
+    {                              \
+        ::std::format(__VA_ARGS__) \
+    }
 
 #define KRG_VK_NAME(device, handle, name_expr) \
     ::kryga::render::vk_utils::set_debug_name((device), (handle), (name_expr))
 
 // Shorthand: name an object using std::format inline. Equivalent to
 // KRG_VK_NAME(device, handle, KRG_VK_FMT_NAME(fmt, args...)).
-#define KRG_VK_NAME_FMT(device, handle, ...)                 \
-    ::kryga::render::vk_utils::set_debug_name((device),      \
-                                              (handle),      \
-                                              ::std::string_view{::std::format(__VA_ARGS__)})
+#define KRG_VK_NAME_FMT(device, handle, ...)   \
+    ::kryga::render::vk_utils::set_debug_name( \
+        (device), (handle), ::std::string_view{::std::format(__VA_ARGS__)})
 
 #define KRG_VK_LABEL_BEGIN(cmd, name_expr) \
     ::kryga::render::vk_utils::cmd_begin_label((cmd), (name_expr))
@@ -198,9 +205,9 @@ queue_end_label(VkQueue queue);
 #define KRG_VK_LABEL_INSERT(cmd, name_expr) \
     ::kryga::render::vk_utils::cmd_insert_label((cmd), (name_expr))
 
-#define KRG_VK_SCOPED_LABEL(cmd, name_expr)                                     \
-    ::kryga::render::vk_utils::scoped_cmd_label KRG_VK_DETAIL_CONCAT(           \
-        _krg_scoped_label_, __LINE__)((cmd), (name_expr))
+#define KRG_VK_SCOPED_LABEL(cmd, name_expr)                                              \
+    ::kryga::render::vk_utils::scoped_cmd_label KRG_VK_DETAIL_CONCAT(_krg_scoped_label_, \
+                                                                     __LINE__)((cmd), (name_expr))
 
 #define KRG_VK_QUEUE_LABEL_BEGIN(queue, name_expr) \
     ::kryga::render::vk_utils::queue_begin_label((queue), (name_expr))
@@ -209,8 +216,14 @@ queue_end_label(VkQueue queue);
 
 #else
 
-#define KRG_VK_DBG_NAME(name_expr) ::std::string_view{}
-#define KRG_VK_FMT_NAME(...) ::std::string_view{}
+#define KRG_VK_DBG_NAME(name_expr) \
+    ::std::string_view             \
+    {                              \
+    }
+#define KRG_VK_FMT_NAME(...) \
+    ::std::string_view       \
+    {                        \
+    }
 
 #define KRG_VK_NAME(device, handle, name_expr) ((void)0)
 #define KRG_VK_NAME_FMT(device, handle, ...) ((void)0)

@@ -58,13 +58,17 @@ action_progress_window::handle()
         {
             if (it->success)
             {
-                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "[OK] %s (%.0fms)",
-                                   it->name.c_str(), it->duration_ms);
+                ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
+                                   "[OK] %s (%.0fms)",
+                                   it->name.c_str(),
+                                   it->duration_ms);
             }
             else
             {
-                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "[FAIL] %s: %s",
-                                   it->name.c_str(), it->error.c_str());
+                ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
+                                   "[FAIL] %s: %s",
+                                   it->name.c_str(),
+                                   it->error.c_str());
             }
         }
 

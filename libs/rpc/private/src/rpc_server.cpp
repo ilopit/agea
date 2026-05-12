@@ -163,10 +163,14 @@ struct rpc_server::impl
     uint16_t bound_port = 0;
     std::string discovery_path;
 
-    void do_accept();
-    void handle_request(const Json::Value& msg, session& sender);
-    void remove_client(session* s);
-    void broadcast(const Json::Value& msg);
+    void
+    do_accept();
+    void
+    handle_request(const Json::Value& msg, session& sender);
+    void
+    remove_client(session* s);
+    void
+    broadcast(const Json::Value& msg);
 };
 
 // ---------------------------------------------------------------------------
@@ -258,22 +262,21 @@ private:
     do_write()
     {
         auto self = shared_from_this();
-        asio::async_write(
-            m_socket,
-            asio::buffer(m_write_queue.front()),
-            [this, self](boost::system::error_code ec, std::size_t)
-            {
-                if (ec)
-                {
-                    on_disconnect();
-                    return;
-                }
-                m_write_queue.pop_front();
-                if (!m_write_queue.empty())
-                {
-                    do_write();
-                }
-            });
+        asio::async_write(m_socket,
+                          asio::buffer(m_write_queue.front()),
+                          [this, self](boost::system::error_code ec, std::size_t)
+                          {
+                              if (ec)
+                              {
+                                  on_disconnect();
+                                  return;
+                              }
+                              m_write_queue.pop_front();
+                              if (!m_write_queue.empty())
+                              {
+                                  do_write();
+                              }
+                          });
     }
 
     void
@@ -314,9 +317,10 @@ rpc_server::impl::do_accept()
 
             if (clients.size() > 1)
             {
-                ALOG_WARN("rpc: multiple clients connected ({} total) "
-                          "— concurrent writes may conflict",
-                          clients.size());
+                ALOG_WARN(
+                    "rpc: multiple clients connected ({} total) "
+                    "— concurrent writes may conflict",
+                    clients.size());
             }
 
             ALOG_INFO("rpc: client #{} connected", s->session_id());
@@ -363,12 +367,11 @@ rpc_server::impl::handle_request(const Json::Value& msg, session& sender)
 void
 rpc_server::impl::remove_client(session* s)
 {
-    auto it = std::find_if(clients.begin(), clients.end(),
-                           [s](const auto& c) { return c.get() == s; });
+    auto it =
+        std::find_if(clients.begin(), clients.end(), [s](const auto& c) { return c.get() == s; });
     if (it != clients.end())
     {
-        ALOG_INFO("rpc: client #{} removed ({} remaining)",
-                  s->session_id(), clients.size() - 1);
+        ALOG_INFO("rpc: client #{} removed ({} remaining)", s->session_id(), clients.size() - 1);
         clients.erase(it);
     }
 }

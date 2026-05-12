@@ -37,7 +37,7 @@ struct object_bvh_node
     glm::vec3 aabb_min;
     glm::vec3 aabb_max;
     uint32_t left_or_first;  // internal: left child index, leaf: first object index
-    uint32_t count;           // 0 = internal node, >0 = leaf with count objects
+    uint32_t count;          // 0 = internal node, >0 = leaf with count objects
 };
 
 class object_bvh

@@ -172,7 +172,8 @@ resolve()
     }
 
     // 1. Env var
-    if (const char* env_root = std::getenv(std::string(env_var_name).c_str()); env_root && *env_root)
+    if (const char* env_root = std::getenv(std::string(env_var_name).c_str());
+        env_root && *env_root)
     {
         fs::path root(env_root);
         if (!has_anchor(root))
@@ -206,8 +207,8 @@ resolve()
     {
         if (auto anchor_dir = walk_up_for_anchor(cwd))
         {
-            g_cached = make_dev_layout(*anchor_dir,
-                                       staged_root.empty() ? *anchor_dir : staged_root);
+            g_cached =
+                make_dev_layout(*anchor_dir, staged_root.empty() ? *anchor_dir : staged_root);
             ALOG_INFO("paths::resolve: dev layout (cwd-walk) source_root=[{}] staged_root=[{}]",
                       g_cached->source_root.string(),
                       g_cached->staged_root.string());
@@ -224,10 +225,11 @@ resolve()
     }
 
     // 5. Failure
-    ALOG_ERROR("paths::resolve: could not determine project root — no {} anchor reachable, no "
-               "exe path discovered, no {} env var",
-               anchor_filename,
-               env_var_name);
+    ALOG_ERROR(
+        "paths::resolve: could not determine project root — no {} anchor reachable, no "
+        "exe path discovered, no {} env var",
+        anchor_filename,
+        env_var_name);
     return std::nullopt;
 }
 

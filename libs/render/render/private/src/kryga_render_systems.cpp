@@ -318,14 +318,12 @@ vulkan_render::upload_probe_data(render::frame_state& frame)
 
     // SSBO is created with sizeof(sh_probe) at init so it's always valid;
     // grow with 2x slack when the payload exceeds capacity.
-    const size_t payload =
-        std::max<size_t>(m_probes.size(), 1) * sizeof(gpu::sh_probe);
+    const size_t payload = std::max<size_t>(m_probes.size(), 1) * sizeof(gpu::sh_probe);
 
     if (payload >= frame.buffers.probe_data.get_alloc_size())
     {
-        frame.buffers.probe_data = device.create_buffer(payload * 2,
-                                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                        VMA_MEMORY_USAGE_CPU_TO_GPU);
+        frame.buffers.probe_data = device.create_buffer(
+            payload * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
     }
 
     frame.buffers.probe_data.begin();

@@ -203,14 +203,13 @@ public:
     // =========================================================================
 
     bool
-    replace_color_targets(
-        const std::vector<vk_utils::vulkan_image_sptr>& new_color_images,
-        const std::vector<vk_utils::vulkan_image_view_sptr>& new_color_views,
-        uint32_t new_width,
-        uint32_t new_height,
-        bool sampled_depth,
-        bool enable_stencil,
-        const std::string& debug_name);
+    replace_color_targets(const std::vector<vk_utils::vulkan_image_sptr>& new_color_images,
+                          const std::vector<vk_utils::vulkan_image_view_sptr>& new_color_views,
+                          uint32_t new_width,
+                          uint32_t new_height,
+                          bool sampled_depth,
+                          bool enable_stencil,
+                          const std::string& debug_name);
 
 private:
     // Pass identity and type

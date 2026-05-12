@@ -360,7 +360,8 @@ vulkan_render::init_cluster_cull_compute()
 {
     ZoneScopedN("Render::InitClusterCullCompute");
 
-    auto shader_buffer_r = render::shader_loader::load(vfs::rid("data://shaders_includes/cluster_cull.comp.spv"));
+    auto shader_buffer_r =
+        render::shader_loader::load(vfs::rid("data://shaders_includes/cluster_cull.comp.spv"));
     if (!shader_buffer_r)
     {
         ALOG_WARN("Failed to load cluster_cull.comp.spv - GPU cluster culling disabled");
@@ -430,7 +431,8 @@ vulkan_render::init_frustum_cull_compute()
 {
     ZoneScopedN("Render::InitFrustumCullCompute");
 
-    auto shader_buffer_r = render::shader_loader::load(vfs::rid("data://shaders_includes/frustum_cull.comp.spv"));
+    auto shader_buffer_r =
+        render::shader_loader::load(vfs::rid("data://shaders_includes/frustum_cull.comp.spv"));
     if (!shader_buffer_r)
     {
         ALOG_WARN("Failed to load frustum_cull.comp - GPU frustum culling disabled");

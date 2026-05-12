@@ -15,10 +15,10 @@
 namespace std
 {
 using fmt::format;
+using fmt::format_string;
 using fmt::format_to;
 using fmt::vformat;
 using fmt::vformat_to;
-using fmt::format_string;
 }  // namespace std
 
 #else

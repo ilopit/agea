@@ -14,7 +14,10 @@ namespace
 
 // Ray-AABB intersection (slab method). Returns t of entry point, or -1 on miss.
 float
-ray_aabb(const ray& r, const glm::vec3& inv_dir, const glm::vec3& aabb_min, const glm::vec3& aabb_max)
+ray_aabb(const ray& r,
+         const glm::vec3& inv_dir,
+         const glm::vec3& aabb_min,
+         const glm::vec3& aabb_max)
 {
     glm::vec3 t0 = (aabb_min - r.origin) * inv_dir;
     glm::vec3 t1 = (aabb_max - r.origin) * inv_dir;
@@ -191,11 +194,11 @@ object_bvh::raycast(const ray& r, raycast_hit& out_hit) const
 
 ray
 object_bvh::screen_to_ray(uint32_t screen_x,
-                           uint32_t screen_y,
-                           uint32_t screen_w,
-                           uint32_t screen_h,
-                           const glm::mat4& inv_projection,
-                           const glm::mat4& inv_view)
+                          uint32_t screen_y,
+                          uint32_t screen_w,
+                          uint32_t screen_h,
+                          const glm::mat4& inv_projection,
+                          const glm::mat4& inv_view)
 {
     float ndc_x = (2.0f * screen_x / screen_w) - 1.0f;
     float ndc_y = (2.0f * screen_y / screen_h) - 1.0f;

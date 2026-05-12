@@ -23,8 +23,8 @@ constexpr uint32_t LAYER_RECEIVE_LIGHT = 1u << 3;
 constexpr uint32_t LAYER_CONTRIBUTE_GI = 1u << 4;
 constexpr uint32_t LAYER_STATIC_OBJECT = 1u << 5;
 
-constexpr uint32_t LAYER_DEFAULT_STATIC =
-    LAYER_VISIBLE | LAYER_CAST_SHADOWS | LAYER_RECEIVE_LIGHT | LAYER_CONTRIBUTE_GI | LAYER_STATIC_OBJECT;
+constexpr uint32_t LAYER_DEFAULT_STATIC = LAYER_VISIBLE | LAYER_CAST_SHADOWS | LAYER_RECEIVE_LIGHT |
+                                          LAYER_CONTRIBUTE_GI | LAYER_STATIC_OBJECT;
 
 class vulkan_render_data : public vulkan_render_resource
 {

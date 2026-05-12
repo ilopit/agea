@@ -123,7 +123,10 @@ public:
                      std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
 
     void
-    request_shutdown() { m_shutdown_requested.store(true, std::memory_order_relaxed); }
+    request_shutdown()
+    {
+        m_shutdown_requested.store(true, std::memory_order_relaxed);
+    }
 #endif
 
 private:

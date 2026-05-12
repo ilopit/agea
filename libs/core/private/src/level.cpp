@@ -44,9 +44,13 @@ root::smart_object*
 level::find_object(const utils::id& id)
 {
     if (auto* go = find_game_object(id))
+    {
         return go;
+    }
     if (auto* c = find_component(id))
+    {
         return c;
+    }
     return nullptr;
 }
 

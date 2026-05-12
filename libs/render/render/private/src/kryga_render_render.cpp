@@ -605,7 +605,6 @@ vulkan_render::prepare_ui_pipeline()
         m_ui_target_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
-
 }
 
 void
@@ -725,12 +724,12 @@ vulkan_render::prepare_scene_upscale_pipeline()
     samples.front().texture = m_scene_upscale_txt;
     samples.front().slot = 0;
 
-    m_scene_upscale_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
-        AID("mat_scene_upscale"),
-        AID("scene_upscale"),
-        samples,
-        *m_scene_upscale_se,
-        utils::dynobj{});
+    m_scene_upscale_mat =
+        glob::glob_state().getr_vulkan_render_loader().create_material(AID("mat_scene_upscale"),
+                                                                       AID("scene_upscale"),
+                                                                       samples,
+                                                                       *m_scene_upscale_se,
+                                                                       utils::dynobj{});
 
     // Override the default (LINEAR_REPEAT) sampler with NEAREST_CLAMP so the
     // upscale keeps chunky pixel edges instead of bilinear-smoothing them.

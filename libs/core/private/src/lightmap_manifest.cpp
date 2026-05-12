@@ -51,7 +51,9 @@ lightmap_manifest::load(const vfs::rid& id)
         {
             auto id_str = obj["id"].as<std::string>("");
             if (id_str.empty())
+            {
                 continue;
+            }
 
             lightmap_object_entry entry;
             entry.region_x = obj["region_x"].as<uint32_t>(0);
@@ -68,7 +70,9 @@ lightmap_manifest::load(const vfs::rid& id)
     }
 
     ALOG_INFO("lightmap_manifest: loaded {}x{} atlas with {} entries",
-              atlas_width, atlas_height, objects.size());
+              atlas_width,
+              atlas_height,
+              objects.size());
     return true;
 }
 

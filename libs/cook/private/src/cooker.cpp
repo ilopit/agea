@@ -44,7 +44,9 @@ has_ext(const fs::path& p, const std::vector<std::string_view>& exts)
     for (auto& x : exts)
     {
         if (e == x)
+        {
             return true;
+        }
     }
     return false;
 }
@@ -57,7 +59,9 @@ looks_like_glsl(const fs::path& p)
 {
     std::ifstream f(p, std::ios::binary);
     if (!f.is_open())
+    {
         return false;
+    }
     char buf[512]{};
     f.read(buf, sizeof(buf) - 1);
     std::string_view s(buf, static_cast<size_t>(f.gcount()));
@@ -65,7 +69,9 @@ looks_like_glsl(const fs::path& p)
     size_t i = 0;
     auto is_space = [](char c) { return c == ' ' || c == '\t' || c == '\r' || c == '\n'; };
     while (i < s.size() && is_space(s[i]))
+    {
         ++i;
+    }
     // Accept a leading `//` or `/*` comment block, then look for `#version`
     // anywhere in the sniffed window — good enough for our shader sources.
     return s.find("#version") != std::string_view::npos;
@@ -91,7 +97,9 @@ mtime_or_min(const fs::path& p)
     std::error_code ec;
     auto t = fs::last_write_time(p, ec);
     if (ec)
+    {
         return fs::file_time_type::min();
+    }
     return t;
 }
 
@@ -99,12 +107,16 @@ bool
 older_than_any(const fs::path& target, const std::vector<fs::path>& inputs)
 {
     if (!fs::exists(target))
+    {
         return true;
+    }
     auto t = mtime_or_min(target);
     for (auto& in : inputs)
     {
         if (mtime_or_min(in) > t)
+        {
             return true;
+        }
     }
     return false;
 }
@@ -140,12 +152,11 @@ compile_shader(const fs::path& glslc,
 
     // Keep debug info / block instance names — the SPIR-V reflection step
     // depends on them (see shader_reflection.cpp).
-    std::string args = std::format(
-        "--target-env={} --target-spv={} -O0 -o \"{}\" \"{}\"",
-        opts.target_env,
-        opts.target_spv,
-        job.output_spv.generic_string(),
-        job.source.generic_string());
+    std::string args = std::format("--target-env={} --target-spv={} -O0 -o \"{}\" \"{}\"",
+                                   opts.target_env,
+                                   opts.target_spv,
+                                   job.output_spv.generic_string(),
+                                   job.source.generic_string());
     for (auto& inc : include_dirs)
     {
         args += std::format(" -I \"{}\"", inc.generic_string());
@@ -181,10 +192,14 @@ gather_shader_jobs(const options& opts)
             continue;
         }
         if (!it->is_regular_file())
+        {
             continue;
+        }
         auto& p = it->path();
         if (!is_shader_entry_point(p))
+        {
             continue;
+        }
 
         auto rel = fs::relative(p, opts.source_root, ec);
         if (ec)
@@ -239,10 +254,13 @@ rewrite_shader_effect_aobj(const fs::path& src_aobj,
         return false;
     }
 
-    auto redirect = [](YAML::Node& node, const char* path_key, const char* bin_key) {
+    auto redirect = [](YAML::Node& node, const char* path_key, const char* bin_key)
+    {
         auto path_node = node[path_key];
         if (!path_node || !path_node.IsScalar())
+        {
             return;
+        }
         auto p = path_node.as<std::string>();
         // Append .spv — package-relative rid with a `.spv` suffix resolves
         // against the same `data://` mount the source would have.
@@ -305,7 +323,9 @@ write_index_manifest(const fs::path& dir_in_cooked,
                      stats& s)
 {
     if (aobj_paths.empty())
+    {
         return;
+    }
     auto manifest = dir_in_cooked / "kryga_index";
     ensure_dir(dir_in_cooked);
     std::ofstream out(manifest, std::ios::binary);
@@ -340,7 +360,9 @@ emit_index_manifests(const fs::path& cooked_root, stats& s)
             continue;
         }
         if (!it->is_directory())
+        {
             continue;
+        }
         auto& p = it->path();
         auto ext = p.extension().string();
         if (ext == ".apkg" || ext == ".alvl")
@@ -360,10 +382,14 @@ emit_index_manifests(const fs::path& cooked_root, stats& s)
             continue;
         }
         if (!it->is_regular_file())
+        {
             continue;
+        }
         auto& p = it->path();
         if (p.extension() != ".aobj")
+        {
             continue;
+        }
 
         fs::path scan = p.parent_path();
         fs::path mount_root;
@@ -378,7 +404,9 @@ emit_index_manifests(const fs::path& cooked_root, stats& s)
             scan = scan.parent_path();
         }
         if (mount_root.empty())
+        {
             continue;
+        }
 
         auto rel = fs::relative(p, mount_root, ec);
         if (ec)
@@ -440,16 +468,14 @@ cook(const options& opts)
 
     if (!fs::is_directory(opts.source_root))
     {
-        ALOG_ERROR("cook: source_root not a directory: {}",
-                   opts.source_root.generic_string());
+        ALOG_ERROR("cook: source_root not a directory: {}", opts.source_root.generic_string());
         s.errors++;
         return s;
     }
     ensure_dir(opts.output_root);
 
-    fs::path glslc = opts.glslc_path.empty()
-                         ? opts.source_root / "tools" / "glslc.exe"
-                         : opts.glslc_path;
+    fs::path glslc =
+        opts.glslc_path.empty() ? opts.source_root / "tools" / "glslc.exe" : opts.glslc_path;
     if (!fs::exists(glslc))
     {
         ALOG_ERROR("cook: glslc not found at {}", glslc.generic_string());
@@ -485,7 +511,9 @@ cook(const options& opts)
                 continue;
             }
             if (!it->is_regular_file())
+            {
                 continue;
+            }
             auto& p = it->path();
             if (has_ext(p, {".glsl", ".h"}))
             {
@@ -511,22 +539,24 @@ cook(const options& opts)
 
     if (!work.empty())
     {
-        ALOG_INFO("cook: compiling {} shaders ({} up-to-date)",
-                  work.size(),
-                  s.shaders_up_to_date);
+        ALOG_INFO("cook: compiling {} shaders ({} up-to-date)", work.size(), s.shaders_up_to_date);
 
-        int jobs_n = opts.jobs > 0 ? opts.jobs : std::max(1u, std::thread::hardware_concurrency() - 1);
+        int jobs_n =
+            opts.jobs > 0 ? opts.jobs : std::max(1u, std::thread::hardware_concurrency() - 1);
         std::atomic<size_t> next_idx{0};
         std::atomic<int> compiled{0};
         std::atomic<int> failed{0};
         std::mutex log_mu;
 
-        auto worker = [&]() {
+        auto worker = [&]()
+        {
             while (true)
             {
                 size_t idx = next_idx.fetch_add(1);
                 if (idx >= work.size())
+                {
                     return;
+                }
                 auto& j = work[idx];
                 std::string err;
                 if (compile_shader(glslc, j, opts, includes, err))
@@ -556,7 +586,9 @@ cook(const options& opts)
             pool.emplace_back(worker);
         }
         for (auto& t : pool)
+        {
             t.join();
+        }
 
         s.shaders_compiled = compiled.load();
         s.errors += failed.load();
@@ -574,15 +606,21 @@ cook(const options& opts)
             continue;
         }
         if (!it->is_regular_file())
+        {
             continue;
+        }
         auto& p = it->path();
 
         // Shader entry points: already handled in phase 1.
         if (is_shader_entry_point(p))
+        {
             continue;
+        }
         // Shader includes: don't ship to cooked tree.
         if (is_shader_include(p))
+        {
             continue;
+        }
 
         auto rel = fs::relative(p, opts.source_root, ec);
         if (ec)
@@ -612,41 +650,51 @@ cook(const options& opts)
                 if (rewrite_shader_effect_aobj(p, dst, opts.force, rewritten, err))
                 {
                     if (rewritten)
+                    {
                         s.aobj_rewritten++;
+                    }
                 }
                 else
                 {
-                    ALOG_ERROR("cook: .aobj rewrite failed {}: {}",
-                               rel.generic_string(),
-                               err);
+                    ALOG_ERROR("cook: .aobj rewrite failed {}: {}", rel.generic_string(), err);
                     s.errors++;
                 }
                 continue;
             }
 
             if (copy_file(p, dst, opts.force))
+            {
                 s.aobj_copied++;
+            }
             else
+            {
                 s.errors++;
+            }
             continue;
         }
 
         if (copy_file(p, dst, opts.force))
+        {
             s.files_copied++;
+        }
         else
+        {
             s.errors++;
+        }
     }
 
     // --- 3. emit kryga_index manifests for every *.apkg / *.alvl ------
     emit_index_manifests(opts.output_root, s);
 
-    ALOG_INFO("cook: {} shaders compiled, {} up-to-date, {} .aobj rewritten, {} copied, {} other files copied, {} errors",
-              s.shaders_compiled,
-              s.shaders_up_to_date,
-              s.aobj_rewritten,
-              s.aobj_copied,
-              s.files_copied,
-              s.errors);
+    ALOG_INFO(
+        "cook: {} shaders compiled, {} up-to-date, {} .aobj rewritten, {} copied, {} other files "
+        "copied, {} errors",
+        s.shaders_compiled,
+        s.shaders_up_to_date,
+        s.aobj_rewritten,
+        s.aobj_copied,
+        s.files_copied,
+        s.errors);
 
     return s;
 }

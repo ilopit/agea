@@ -29,8 +29,7 @@ bool
 strip_spv_suffix(std::string_view rel, std::string& out)
 {
     constexpr std::string_view ext = ".spv";
-    if (rel.size() <= ext.size() ||
-        rel.substr(rel.size() - ext.size()) != ext)
+    if (rel.size() <= ext.size() || rel.substr(rel.size() - ext.size()) != ext)
     {
         return false;
     }

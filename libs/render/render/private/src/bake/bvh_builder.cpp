@@ -105,8 +105,14 @@ build_recursive(std::vector<build_node>& nodes,
 
     glm::vec3 extent = centroid_bounds.mx - centroid_bounds.mn;
     int best_axis = 0;
-    if (extent.y > extent.x) best_axis = 1;
-    if (extent.z > extent[best_axis]) best_axis = 2;
+    if (extent.y > extent.x)
+    {
+        best_axis = 1;
+    }
+    if (extent.z > extent[best_axis])
+    {
+        best_axis = 2;
+    }
 
     float axis_extent = extent[best_axis];
 
@@ -130,8 +136,8 @@ build_recursive(std::vector<build_node>& nodes,
     for (uint32_t i = begin; i < end; ++i)
     {
         float c = tri_centroids[tri_indices[i]][best_axis];
-        uint32_t b = std::min(static_cast<uint32_t>((c - centroid_bounds.mn[best_axis]) * inv_extent),
-                              SAH_BINS - 1);
+        uint32_t b = std::min(
+            static_cast<uint32_t>((c - centroid_bounds.mn[best_axis]) * inv_extent), SAH_BINS - 1);
         bins[b].count++;
         bins[b].bounds.expand(tri_bounds[tri_indices[i]]);
     }
@@ -199,9 +205,10 @@ build_recursive(std::vector<build_node>& nodes,
     float split_pos = centroid_bounds.mn[best_axis] +
                       static_cast<float>(best_split) * axis_extent / static_cast<float>(SAH_BINS);
 
-    auto mid_it = std::partition(tri_indices.begin() + begin, tri_indices.begin() + end,
-                                 [&](uint32_t idx)
-                                 { return tri_centroids[idx][best_axis] < split_pos; });
+    auto mid_it =
+        std::partition(tri_indices.begin() + begin,
+                       tri_indices.begin() + end,
+                       [&](uint32_t idx) { return tri_centroids[idx][best_axis] < split_pos; });
 
     uint32_t mid = static_cast<uint32_t>(mid_it - tri_indices.begin());
 

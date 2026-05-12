@@ -69,8 +69,9 @@ load_data_shader(const kryga::utils::buffer& input,
         if (!shader_reflection_utils::build_shader_reflection(
                 compiled.spirv.data(), compiled.spirv.size(), compiled.reflection))
         {
-            ALOG_ERROR("load_data_shader: failed to build reflection from precooked SPIR-V (vpath '{}')",
-                       input.get_vpath());
+            ALOG_ERROR(
+                "load_data_shader: failed to build reflection from precooked SPIR-V (vpath '{}')",
+                input.get_vpath());
             return result_code::failed;
         }
     }

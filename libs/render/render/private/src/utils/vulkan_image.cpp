@@ -193,8 +193,7 @@ vulkan_image_view::clear()
     if (m_vk_handle)
     {
         glob::glob_state().getr_render_device().schedule_to_delete(
-            [iv = m_vk_handle](VkDevice vd, VmaAllocator)
-            { vkDestroyImageView(vd, iv, nullptr); });
+            [iv = m_vk_handle](VkDevice vd, VmaAllocator) { vkDestroyImageView(vd, iv, nullptr); });
     }
 }
 

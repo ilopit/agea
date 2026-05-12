@@ -27,7 +27,11 @@ struct bda_addr
     uint32_t hi;
 
     bda_addr() = default;
-    constexpr bda_addr(uint32_t low, uint32_t high) : lo(low), hi(high) {}
+    constexpr bda_addr(uint32_t low, uint32_t high)
+        : lo(low)
+        , hi(high)
+    {
+    }
 };
 
 inline bda_addr

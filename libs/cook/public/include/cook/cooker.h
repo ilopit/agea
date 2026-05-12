@@ -24,7 +24,8 @@ struct options
     // Extra `-I <dir>` entries passed to glslc for shader compilation.
     // The following are always included automatically in this order:
     //   1. <source_root>/shaders_includes
-    //   2. <repo>/libs/render/gpu_types/public/include   (if extra_include_roots contains the argen dir)
+    //   2. <repo>/libs/render/gpu_types/public/include   (if extra_include_roots contains the argen
+    //   dir)
     //   3. every entry in this vector, in order
     // The repo root is inferred as <source_root>/..
     std::vector<std::filesystem::path> extra_include_dirs;

@@ -110,9 +110,8 @@ vulkan_buffer::device_address() const
 #if defined(__ANDROID__)
     // Android's libvulkan.so only exports Vulkan 1.0 symbols. Load the 1.2 core
     // function pointer dynamically on first use and cache it.
-    static PFN_vkGetBufferDeviceAddress pfn =
-        reinterpret_cast<PFN_vkGetBufferDeviceAddress>(
-            vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddress"));
+    static PFN_vkGetBufferDeviceAddress pfn = reinterpret_cast<PFN_vkGetBufferDeviceAddress>(
+        vkGetDeviceProcAddr(device, "vkGetBufferDeviceAddress"));
     return pfn(device, &info);
 #else
     return vkGetBufferDeviceAddress(device, &info);

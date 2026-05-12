@@ -504,9 +504,15 @@ game_editor::set_selected(const utils::id& id)
 
     auto set_outline = [&](const utils::id& sel_id, bool value)
     {
-        if (!sel_id.valid() || !lvl) return;
+        if (!sel_id.valid() || !lvl)
+        {
+            return;
+        }
         auto* obj = lvl->find_object(sel_id);
-        if (!obj) return;
+        if (!obj)
+        {
+            return;
+        }
 
         if (auto* go = obj->as<root::game_object>())
         {

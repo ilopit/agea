@@ -400,8 +400,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
             bool layout_ok = false;
             if (spv_binding->block.type_description)
             {
-                layout_ok = convert_spvr_to_dyn_layout(
-                    binding_name, spv_binding->block, binding_gdb);
+                layout_ok =
+                    convert_spvr_to_dyn_layout(binding_name, spv_binding->block, binding_gdb);
             }
             else if (spv_binding->type_description)
             {

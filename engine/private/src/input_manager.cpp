@@ -445,7 +445,10 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         // would duplicate input here (we also handle SDL_FINGERDOWN below).
         // Skip the synthesized events; the `which` field is SDL_TOUCH_MOUSEID
         // when the event came from touch.
-        if (sdle.motion.which == SDL_TOUCH_MOUSEID) { break; }
+        if (sdle.motion.which == SDL_TOUCH_MOUSEID)
+        {
+            break;
+        }
 
         m_mouse_axis_state.x = sdle.motion.x;
         m_mouse_axis_state.y = sdle.motion.y;
@@ -487,7 +490,10 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         break;
     case SDL_MOUSEBUTTONDOWN:
     {
-        if (sdle.button.which == SDL_TOUCH_MOUSEID) { return; }
+        if (sdle.button.which == SDL_TOUCH_MOUSEID)
+        {
+            return;
+        }
 
         if (!from_sdl_mouse_btm_code(sdle.button.button, id))
         {
@@ -504,7 +510,10 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
     }
     case SDL_MOUSEBUTTONUP:
     {
-        if (sdle.button.which == SDL_TOUCH_MOUSEID) { return; }
+        if (sdle.button.which == SDL_TOUCH_MOUSEID)
+        {
+            return;
+        }
 
         if (!from_sdl_mouse_btm_code(sdle.button.button, id))
         {

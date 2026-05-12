@@ -53,7 +53,8 @@ generate_uv2(const gpu::vertex_data* vertices,
     xatlas::ChartOptions chart_options;
     if (params.max_chart_size > 0)
     {
-        chart_options.maxChartArea = static_cast<float>(params.max_chart_size * params.max_chart_size);
+        chart_options.maxChartArea =
+            static_cast<float>(params.max_chart_size * params.max_chart_size);
     }
 
     // Configure atlas packing
@@ -103,7 +104,10 @@ generate_uv2(const gpu::vertex_data* vertices,
     result.success = true;
 
     ALOG_INFO("uv2_generator: generated {}x{} atlas, {} verts (was {}), {} charts",
-              atlas->width, atlas->height, output_mesh.vertexCount, vertex_count,
+              atlas->width,
+              atlas->height,
+              output_mesh.vertexCount,
+              vertex_count,
               output_mesh.chartCount);
 
     xatlas::Destroy(atlas);

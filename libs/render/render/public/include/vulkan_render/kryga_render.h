@@ -267,8 +267,7 @@ public:
     // current frame index and don't risk writing to a frame that's still
     // in-flight on the GPU.
     void
-    schd_set_probes(std::vector<gpu::sh_probe> probes,
-                    const gpu::probe_grid_config& grid_config);
+    schd_set_probes(std::vector<gpu::sh_probe> probes, const gpu::probe_grid_config& grid_config);
 
     void
     clear_upload_queue();
