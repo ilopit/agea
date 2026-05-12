@@ -101,6 +101,16 @@ public:
         m_free_slots.push_back(slot_id);
     }
 
+    template <typename Fn>
+    void
+    for_each(Fn&& fn) const
+    {
+        for (auto& [id, ptr] : m_mapping)
+        {
+            fn(*ptr);
+        }
+    }
+
     void
     clear()
     {

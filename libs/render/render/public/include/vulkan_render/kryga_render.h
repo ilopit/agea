@@ -207,6 +207,12 @@ public:
     void
     set_camera(gpu::camera_data d);
 
+    const gpu::camera_data&
+    get_camera() const
+    {
+        return m_camera_data;
+    }
+
     uint32_t
     width() const
     {

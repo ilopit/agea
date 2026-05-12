@@ -14,6 +14,10 @@
 #include <core/architype.h>
 
 #include <vulkan_render/types/vulkan_render_data.h>
+#include <vulkan_render/types/vulkan_light_data.h>
+#include <vulkan_render/types/vulkan_material_data.h>
+#include <vulkan_render/types/vulkan_mesh_data.h>
+#include <vulkan_render/render_cache.h>
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_config.h>
 
@@ -40,6 +44,31 @@
 
 namespace kryga::engine_private
 {
+
+namespace
+{
+
+Json::Value
+vec3_json(const glm::vec3& v)
+{
+    Json::Value a(Json::arrayValue);
+    a.append(v.x);
+    a.append(v.y);
+    a.append(v.z);
+    return a;
+}
+
+Json::Value
+mat4_json(const glm::mat4& m)
+{
+    Json::Value a(Json::arrayValue);
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r)
+            a.append(m[c][r]);
+    return a;
+}
+
+}  // namespace
 
 // Shader diagnostic protocol: the render layer emits "diagnostics.shader"
 // notifications with {diagnostics: [{file, line, column, severity, message}]}
@@ -986,6 +1015,286 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             if (!local_err.empty()) { err = std::move(local_err); return; }
             result = Json::Value(Json::objectValue);
             result["ok"] = true;
+        });
+
+    // =========================================================================
+    // Render State (read-only debug inspection)
+    // =========================================================================
+
+    server.on_request(
+        "render_state.camera",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cam = glob::glob_state()
+                                    .getr_vulkan_render()
+                                    .get_camera();
+                    r["position"] = vec3_json(cam.position);
+                    r["view"] = mat4_json(cam.view);
+                    r["projection"] = mat4_json(cam.projection);
+                    r["inv_projection"] = mat4_json(cam.inv_projection);
+                });
+            if (!done) { err = "render_state.camera timed out"; return; }
+            result = r;
+        });
+
+    server.on_request(
+        "render_state.object",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cache = glob::glob_state()
+                                      .getr_vulkan_render()
+                                      .get_cache();
+                    auto* obj = cache.objects.find_by_id(AID(id_str));
+                    if (!obj)
+                    {
+                        local_err = "render object not found: " + id_str;
+                        return;
+                    }
+
+                    r["id"] = obj->id().str();
+                    r["slot"] = obj->slot();
+                    r["renderable"] = obj->renderable;
+                    r["outlined"] = obj->outlined;
+                    r["queue_id"] = obj->queue_id;
+                    r["layer_flags"] = obj->layer_flags;
+                    r["distance_to_camera"] = obj->distance_to_camera;
+                    r["bounding_radius"] = obj->bounding_radius;
+
+                    // GPU data
+                    auto& gd = obj->gpu_data;
+                    Json::Value gpu(Json::objectValue);
+                    gpu["model"] = mat4_json(gd.model);
+                    gpu["normal"] = mat4_json(gd.normal);
+                    gpu["obj_pos"] = vec3_json(gd.obj_pos);
+                    gpu["bounding_sphere_center"] = vec3_json(gd.bounding_sphere_center);
+                    gpu["bounding_radius"] = gd.bounding_radius;
+                    gpu["material_id"] = gd.material_id;
+                    gpu["bone_offset"] = gd.bone_offset;
+                    gpu["bone_count"] = gd.bone_count;
+                    gpu["probe_index"] = gd.probe_index;
+
+                    Json::Value lm_scale(Json::arrayValue);
+                    lm_scale.append(gd.lightmap_scale.x);
+                    lm_scale.append(gd.lightmap_scale.y);
+                    gpu["lightmap_scale"] = lm_scale;
+
+                    Json::Value lm_off(Json::arrayValue);
+                    lm_off.append(gd.lightmap_offset.x);
+                    lm_off.append(gd.lightmap_offset.y);
+                    gpu["lightmap_offset"] = lm_off;
+
+                    gpu["lightmap_texture_index"] = gd.lightmap_texture_index;
+                    r["gpu_data"] = gpu;
+
+                    // Mesh info
+                    if (obj->mesh)
+                    {
+                        Json::Value m(Json::objectValue);
+                        m["id"] = obj->mesh->get_id().str();
+                        m["vertices"] = obj->mesh->vertices_size();
+                        m["indices"] = obj->mesh->indices_size();
+                        m["is_skinned"] = obj->mesh->m_is_skinned;
+                        m["local_centroid"] = vec3_json(obj->mesh->m_local_centroid);
+                        m["bounding_radius"] = obj->mesh->m_bounding_radius;
+                        r["mesh"] = m;
+                    }
+
+                    // Material info
+                    if (obj->material)
+                    {
+                        Json::Value mt(Json::objectValue);
+                        mt["id"] = obj->material->get_id().str();
+                        mt["gpu_idx"] = obj->material->gpu_idx();
+                        mt["has_gpu_data"] = obj->material->has_gpu_data();
+
+                        auto& tex_indices = obj->material->get_bindless_texture_indices();
+                        Json::Value ti(Json::arrayValue);
+                        for (auto idx : tex_indices)
+                            ti.append(idx);
+                        mt["texture_indices"] = ti;
+
+                        r["material"] = mt;
+                    }
+                });
+            if (!done) { err = "render_state.object timed out"; return; }
+            if (!local_err.empty()) { err = std::move(local_err); return; }
+            result = r;
+        });
+
+    server.on_request(
+        "render_state.stats",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& vr = glob::glob_state().getr_vulkan_render();
+                    auto& cache = vr.get_cache();
+                    r["width"] = vr.get_width();
+                    r["height"] = vr.get_height();
+                    r["all_draws"] = vr.get_all_draws();
+                    r["culled_draws"] = vr.get_culled_draws();
+                    r["object_count"] =
+                        static_cast<Json::UInt64>(cache.objects.get_actual_size());
+                    r["directional_light_count"] =
+                        static_cast<Json::UInt64>(cache.directional_lights.get_actual_size());
+                    r["universal_light_count"] =
+                        static_cast<Json::UInt64>(cache.universal_lights.get_actual_size());
+                    r["texture_count"] =
+                        static_cast<Json::UInt64>(cache.textures.get_actual_size());
+                });
+            if (!done) { err = "render_state.stats timed out"; return; }
+            result = r;
+        });
+
+    server.on_request(
+        "render_state.objects",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cache = glob::glob_state()
+                                      .getr_vulkan_render()
+                                      .get_cache();
+
+                    auto summarize = [](const render::vulkan_render_data& obj) -> Json::Value
+                    {
+                        Json::Value o(Json::objectValue);
+                        o["id"] = obj.id().str();
+                        o["slot"] = obj.slot();
+                        o["position"] = vec3_json(obj.gpu_data.obj_pos);
+                        o["bounding_sphere_center"] = vec3_json(obj.gpu_data.bounding_sphere_center);
+                        o["bounding_radius"] = obj.gpu_data.bounding_radius;
+                        o["material_id"] = obj.gpu_data.material_id;
+                        o["queue_id"] = obj.queue_id;
+                        o["layer_flags"] = obj.layer_flags;
+                        o["renderable"] = obj.renderable;
+                        o["outlined"] = obj.outlined;
+                        if (obj.mesh)
+                            o["mesh_id"] = obj.mesh->get_id().str();
+                        if (obj.material)
+                            o["material_name"] = obj.material->get_id().str();
+                        return o;
+                    };
+
+                    Json::Value arr(Json::arrayValue);
+
+                    // Mode 1: specific IDs
+                    if (params.isObject() && params.isMember("ids") && params["ids"].isArray())
+                    {
+                        for (const auto& id_val : params["ids"])
+                        {
+                            auto* obj = cache.objects.find_by_id(AID(id_val.asString()));
+                            if (obj)
+                                arr.append(summarize(*obj));
+                        }
+                    }
+                    // Mode 2: offset + limit pagination (or all)
+                    else
+                    {
+                        uint32_t offset = 0;
+                        uint32_t limit = UINT32_MAX;
+                        if (params.isObject())
+                        {
+                            if (params.isMember("offset"))
+                                offset = params["offset"].asUInt();
+                            if (params.isMember("limit"))
+                                limit = params["limit"].asUInt();
+                        }
+
+                        uint32_t idx = 0;
+                        uint32_t added = 0;
+                        cache.objects.for_each(
+                            [&](const render::vulkan_render_data& obj)
+                            {
+                                if (added >= limit) return;
+                                if (idx >= offset)
+                                {
+                                    arr.append(summarize(obj));
+                                    ++added;
+                                }
+                                ++idx;
+                            });
+                    }
+
+                    r["objects"] = arr;
+                    r["total"] =
+                        static_cast<Json::UInt64>(cache.objects.get_actual_size());
+                });
+            if (!done) { err = "render_state.objects timed out"; return; }
+            result = r;
+        });
+
+    server.on_request(
+        "render_state.lights",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cache = glob::glob_state()
+                                      .getr_vulkan_render()
+                                      .get_cache();
+
+                    // Directional lights
+                    Json::Value dir(Json::arrayValue);
+                    cache.directional_lights.for_each(
+                        [&](const render::vulkan_directional_light_data& dl)
+                        {
+                            Json::Value l(Json::objectValue);
+                            l["id"] = dl.id().str();
+                            l["slot"] = dl.slot();
+                            l["direction"] = vec3_json(dl.gpu_data.direction);
+                            l["ambient"] = vec3_json(dl.gpu_data.ambient);
+                            l["diffuse"] = vec3_json(dl.gpu_data.diffuse);
+                            l["specular"] = vec3_json(dl.gpu_data.specular);
+                            dir.append(std::move(l));
+                        });
+                    r["directional"] = dir;
+
+                    // Universal lights (point + spot)
+                    Json::Value uni(Json::arrayValue);
+                    cache.universal_lights.for_each(
+                        [&](const render::vulkan_universal_light_data& ul)
+                        {
+                            Json::Value l(Json::objectValue);
+                            l["id"] = ul.id().str();
+                            l["slot"] = ul.slot();
+                            l["type"] = ul.gpu_data.type == 0 ? "spot" : "point";
+                            l["position"] = vec3_json(ul.gpu_data.position);
+                            l["direction"] = vec3_json(ul.gpu_data.direction);
+                            l["ambient"] = vec3_json(ul.gpu_data.ambient);
+                            l["diffuse"] = vec3_json(ul.gpu_data.diffuse);
+                            l["specular"] = vec3_json(ul.gpu_data.specular);
+                            l["radius"] = ul.gpu_data.radius;
+                            l["cut_off"] = ul.gpu_data.cut_off;
+                            l["outer_cut_off"] = ul.gpu_data.outer_cut_off;
+                            l["shadow_index"] = ul.gpu_data.shadow_index;
+                            uni.append(std::move(l));
+                        });
+                    r["universal"] = uni;
+                });
+            if (!done) { err = "render_state.lights timed out"; return; }
+            result = r;
         });
 
     server.on_request(

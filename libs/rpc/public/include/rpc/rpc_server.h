@@ -27,12 +27,14 @@ using request_handler = std::function<void(const Json::Value& params,
                                            std::string& error_out)>;
 
 // JSON-RPC 2.0 server over a localhost TCP socket using LSP-style message
-// framing (Content-Length: N\r\n\r\n{json}). Single client at a time —
-// a second connect kicks the first.
+// framing (Content-Length: N\r\n\r\n{json}). Supports multiple concurrent
+// clients — a warning is logged when more than one is connected since
+// concurrent writes may conflict.
 //
 // Threading: handlers and notifications can be called from any thread.
-// Handlers run on the server's I/O thread; notify() pushes onto an
-// outbound queue. No assumption is made about the engine main thread.
+// Each client gets its own reader/writer threads. notify() broadcasts
+// to all connected clients. No assumption is made about the engine main
+// thread.
 class rpc_server
 {
 public:
@@ -62,8 +64,8 @@ public:
     void
     on_request(const std::string& method, request_handler h);
 
-    // Push a notification to the connected client. Drops silently if no
-    // client is attached. Thread-safe.
+    // Push a notification to all connected clients. Drops silently if no
+    // clients are attached. Thread-safe.
     void
     notify(const std::string& method, const Json::Value& params);
 

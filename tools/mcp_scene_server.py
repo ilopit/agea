@@ -277,6 +277,43 @@ TOOLS = [
         }
     ),
     Tool(
+        name="kryga_render_state_camera",
+        description="Get current camera state: position, view matrix, projection matrix",
+        inputSchema={"type": "object", "properties": {}, "required": []}
+    ),
+    Tool(
+        name="kryga_render_state_object",
+        description="Get render-side state for an object: GPU data (transform, bounding sphere, material_id), mesh info, material info, layer flags, queue_id",
+        inputSchema={
+            "type": "object",
+            "properties": {"id": {"type": "string", "description": "Object or component ID"}},
+            "required": ["id"]
+        }
+    ),
+    Tool(
+        name="kryga_render_state_objects",
+        description="List render objects. Modes: (1) pass 'ids' array for specific objects, (2) pass 'offset'+'limit' for pagination, (3) no params for all. Returns summary per object: id, position, bounding sphere, material, mesh, queue, layers.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "ids": {"type": "array", "items": {"type": "string"}, "description": "Specific object IDs to fetch"},
+                "offset": {"type": "integer", "description": "Skip first N objects (pagination mode)"},
+                "limit": {"type": "integer", "description": "Max objects to return (pagination mode)"},
+            },
+            "required": []
+        }
+    ),
+    Tool(
+        name="kryga_render_state_stats",
+        description="Get render statistics: draw counts, culled draws, viewport dimensions, object/light/texture counts",
+        inputSchema={"type": "object", "properties": {}, "required": []}
+    ),
+    Tool(
+        name="kryga_render_state_lights",
+        description="Get all lights in the render cache: directional (direction, ambient, diffuse, specular) and universal/point/spot (position, radius, etc.)",
+        inputSchema={"type": "object", "properties": {}, "required": []}
+    ),
+    Tool(
         name="kryga_render_config_get",
         description="Get all render configuration: shadows, lighting, clusters, debug, render_scale, outline",
         inputSchema={"type": "object", "properties": {}, "required": []}
@@ -342,6 +379,13 @@ TOOL_RPC_MAP = {
     "kryga_level_list": ("level.list", lambda p: {}),
     "kryga_level_load": ("level.load", lambda p: {"id": p["id"]}),
     "kryga_level_save": ("level.save", lambda p: {}),
+    "kryga_render_state_camera": ("render_state.camera", lambda p: {}),
+    "kryga_render_state_object": ("render_state.object", lambda p: {"id": p["id"]}),
+    "kryga_render_state_objects": ("render_state.objects", lambda p: {
+        k: p[k] for k in ("ids", "offset", "limit") if k in p
+    }),
+    "kryga_render_state_stats": ("render_state.stats", lambda p: {}),
+    "kryga_render_state_lights": ("render_state.lights", lambda p: {}),
     "kryga_render_config_get": ("render_config.get", lambda p: {}),
     "kryga_render_config_set": ("render_config.set", lambda p: {
         k: p[k] for k in ("shadows", "lighting", "clusters", "debug", "render_scale", "outline") if k in p

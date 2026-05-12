@@ -5,20 +5,22 @@
 
 #include <json/json.h>
 
+#include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/post.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
-#include <condition_variable>
 #include <cstdio>
 #include <deque>
 #include <fstream>
 #include <memory>
-#include <mutex>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -42,7 +44,6 @@ using tcp = asio::ip::tcp;
 namespace
 {
 
-// LSP-style message framing: "Content-Length: N\r\n\r\n<N bytes of UTF-8 JSON>"
 std::string
 frame_message(const std::string& payload)
 {
@@ -51,8 +52,6 @@ frame_message(const std::string& payload)
     return os.str();
 }
 
-// Try to extract one framed message from `buffer`. On success consumes the
-// framed bytes from the front and writes payload into `payload_out`.
 bool
 try_consume_frame(std::vector<char>& buffer, std::string& payload_out)
 {
@@ -138,152 +137,103 @@ make_notification(const std::string& method, const Json::Value& params)
 
 }  // namespace
 
+// ---------------------------------------------------------------------------
+// impl — declared with nested session forward-ref, defined below
+// ---------------------------------------------------------------------------
+
 struct rpc_server::impl
 {
+    struct session;
+
     std::unordered_map<std::string, request_handler> handlers;
 
     asio::io_context io_ctx;
+    using work_guard_t = asio::executor_work_guard<asio::io_context::executor_type>;
+    std::optional<work_guard_t> work_guard;
+
     std::unique_ptr<tcp::acceptor> acceptor;
 
-    // Active client. Guarded by client_mutex so the writer and accept threads
-    // don't race on socket destruction. asio::ip::tcp::socket is not
-    // thread-safe but writes are serialized through a single writer thread.
-    std::mutex client_mutex;
-    std::shared_ptr<tcp::socket> client;
+    std::vector<std::shared_ptr<session>> clients;
 
     std::atomic<bool> running{false};
-
-    std::mutex out_mutex;
-    std::condition_variable out_cv;
-    std::deque<std::string> out_queue;  // pre-framed messages
+    uint32_t next_client_id = 1;
 
     std::thread io_thread;
-    std::thread writer_thread;
 
     uint16_t bound_port = 0;
     std::string discovery_path;
 
-    void
-    handle_request(const Json::Value& msg)
+    void do_accept();
+    void handle_request(const Json::Value& msg, session& sender);
+    void remove_client(session* s);
+    void broadcast(const Json::Value& msg);
+};
+
+// ---------------------------------------------------------------------------
+// session
+// ---------------------------------------------------------------------------
+
+struct rpc_server::impl::session : public std::enable_shared_from_this<session>
+{
+    session(tcp::socket socket, uint32_t id, impl& server)
+        : m_socket(std::move(socket))
+        , m_id(id)
+        , m_server(server)
     {
-        const auto& id = msg["id"];
-        const std::string method = msg.get("method", "").asString();
-        const Json::Value& params = msg["params"];
+        m_read_buf.reserve(4096);
+    }
 
-        auto it = handlers.find(method);
-        if (it == handlers.end())
-        {
-            // -32601 = method not found per JSON-RPC 2.0
-            push_outbound(make_response_err(id, -32601, "method not found: " + method));
-            return;
-        }
+    void
+    start()
+    {
+        do_read();
+    }
 
-        Json::Value result(Json::nullValue);
-        std::string err;
-        try
+    void
+    send(const Json::Value& msg)
+    {
+        std::string framed = frame_message(serialize(msg));
+        bool was_idle = m_write_queue.empty();
+        m_write_queue.push_back(std::move(framed));
+        if (was_idle)
         {
-            it->second(params, result, err);
-        }
-        catch (const std::exception& e)
-        {
-            err = std::string("handler exception: ") + e.what();
-        }
-
-        if (!err.empty())
-        {
-            push_outbound(make_response_err(id, -32000, err));
-        }
-        else
-        {
-            push_outbound(make_response_ok(id, result));
+            do_write();
         }
     }
 
     void
-    push_outbound(const Json::Value& msg)
+    close()
     {
-        std::string payload = serialize(msg);
-        std::string framed = frame_message(payload);
-        {
-            std::lock_guard lk(out_mutex);
-            out_queue.push_back(std::move(framed));
-        }
-        out_cv.notify_one();
+        boost::system::error_code ignore;
+        m_socket.shutdown(tcp::socket::shutdown_both, ignore);
+        m_socket.close(ignore);
     }
 
-    // Take the current client (if any), under the lock, swap to nullptr.
-    // Returned shared_ptr keeps the socket alive while the caller closes it.
-    std::shared_ptr<tcp::socket>
-    detach_client()
+    uint32_t
+    session_id() const
     {
-        std::lock_guard lk(client_mutex);
-        std::shared_ptr<tcp::socket> taken;
-        client.swap(taken);
-        return taken;
+        return m_id;
     }
 
+private:
     void
-    drop_client()
+    do_read()
     {
-        auto taken = detach_client();
-        if (taken)
-        {
-            boost::system::error_code ignore;
-            taken->shutdown(tcp::socket::shutdown_both, ignore);
-            taken->close(ignore);
-        }
-        out_cv.notify_all();
-    }
-
-    void
-    accept_and_serve()
-    {
-        while (running.load())
-        {
-            auto sock = std::make_shared<tcp::socket>(io_ctx);
-
-            boost::system::error_code ec;
-            acceptor->accept(*sock, ec);
-            if (ec)
+        auto self = shared_from_this();
+        m_socket.async_read_some(
+            asio::buffer(m_tmp),
+            [this, self](boost::system::error_code ec, std::size_t bytes)
             {
-                if (!running.load())
+                if (ec)
                 {
-                    break;
+                    on_disconnect();
+                    return;
                 }
-                continue;
-            }
 
-            // Kick previous client if any. Assigning the new socket under the
-            // lock; the previous socket is closed after we release the lock so
-            // we don't block writers any longer than necessary.
-            std::shared_ptr<tcp::socket> prev;
-            {
-                std::lock_guard lk(client_mutex);
-                prev = std::move(client);
-                client = sock;
-            }
-            if (prev)
-            {
-                boost::system::error_code ignore;
-                prev->shutdown(tcp::socket::shutdown_both, ignore);
-                prev->close(ignore);
-            }
-            ALOG_INFO("rpc: client connected");
-
-            std::vector<char> rx;
-            rx.reserve(4096);
-            while (running.load())
-            {
-                char tmp[4096];
-                std::size_t n = sock->read_some(asio::buffer(tmp, sizeof(tmp)), ec);
-                if (ec || n == 0)
-                {
-                    break;
-                }
-                rx.insert(rx.end(), tmp, tmp + n);
+                m_read_buf.insert(m_read_buf.end(), m_tmp.data(), m_tmp.data() + bytes);
 
                 std::string payload;
-                while (try_consume_frame(rx, payload))
+                while (try_consume_frame(m_read_buf, payload))
                 {
                     Json::Value msg;
                     Json::CharReaderBuilder b;
@@ -291,93 +241,150 @@ struct rpc_server::impl
                     std::istringstream is(payload);
                     if (!Json::parseFromStream(b, is, &msg, &parse_err))
                     {
-                        ALOG_WARN("rpc: bad JSON: {}", parse_err);
+                        ALOG_WARN("rpc: client #{} bad JSON: {}", m_id, parse_err);
                         continue;
                     }
                     if (msg.isMember("method") && msg.isMember("id"))
                     {
-                        handle_request(msg);
-                    }
-                    else
-                    {
-                        // Notifications from client are not handled today.
-                        ALOG_WARN("rpc: ignoring non-request message");
+                        m_server.handle_request(msg, *this);
                     }
                 }
-            }
 
-            ALOG_INFO("rpc: client disconnected");
-            // Only close if it's still our client (drop_client / new accept
-            // may have swapped it already).
-            std::shared_ptr<tcp::socket> mine_if_still_current;
-            {
-                std::lock_guard lk(client_mutex);
-                if (client == sock)
-                {
-                    mine_if_still_current = std::move(client);
-                }
-            }
-            if (mine_if_still_current)
-            {
-                boost::system::error_code ignore;
-                mine_if_still_current->shutdown(tcp::socket::shutdown_both, ignore);
-                mine_if_still_current->close(ignore);
-            }
-            out_cv.notify_all();
-        }
+                do_read();
+            });
     }
 
     void
-    writer_loop()
+    do_write()
     {
-        while (running.load())
-        {
-            std::string framed;
+        auto self = shared_from_this();
+        asio::async_write(
+            m_socket,
+            asio::buffer(m_write_queue.front()),
+            [this, self](boost::system::error_code ec, std::size_t)
             {
-                std::unique_lock lk(out_mutex);
-                out_cv.wait(lk, [&] { return !running.load() || !out_queue.empty(); });
-                if (!running.load())
+                if (ec)
                 {
+                    on_disconnect();
                     return;
                 }
-                framed = std::move(out_queue.front());
-                out_queue.pop_front();
-            }
+                m_write_queue.pop_front();
+                if (!m_write_queue.empty())
+                {
+                    do_write();
+                }
+            });
+    }
 
-            std::shared_ptr<tcp::socket> sock;
-            {
-                std::lock_guard lk(client_mutex);
-                sock = client;
-            }
-            if (!sock)
-            {
-                // No client — drop. (Notifications fired with no consumer.)
-                continue;
-            }
-            boost::system::error_code ec;
-            asio::write(*sock, asio::buffer(framed), ec);
+    void
+    on_disconnect()
+    {
+        ALOG_INFO("rpc: client #{} disconnected", m_id);
+        close();
+        m_server.remove_client(this);
+    }
+
+    tcp::socket m_socket;
+    uint32_t m_id;
+    impl& m_server;
+
+    std::vector<char> m_read_buf;
+    std::array<char, 4096> m_tmp{};
+
+    std::deque<std::string> m_write_queue;
+};
+
+// ---------------------------------------------------------------------------
+// impl method definitions
+// ---------------------------------------------------------------------------
+
+void
+rpc_server::impl::do_accept()
+{
+    acceptor->async_accept(
+        [this](boost::system::error_code ec, tcp::socket socket)
+        {
             if (ec)
             {
-                // Write failure → drop. The read loop will notice the socket
-                // is gone on next read_some and exit.
-                std::shared_ptr<tcp::socket> taken;
-                {
-                    std::lock_guard lk(client_mutex);
-                    if (client == sock)
-                    {
-                        taken = std::move(client);
-                    }
-                }
-                if (taken)
-                {
-                    boost::system::error_code ignore;
-                    taken->shutdown(tcp::socket::shutdown_both, ignore);
-                    taken->close(ignore);
-                }
+                return;
             }
-        }
+
+            auto s = std::make_shared<session>(std::move(socket), next_client_id++, *this);
+            clients.push_back(s);
+
+            if (clients.size() > 1)
+            {
+                ALOG_WARN("rpc: multiple clients connected ({} total) "
+                          "— concurrent writes may conflict",
+                          clients.size());
+            }
+
+            ALOG_INFO("rpc: client #{} connected", s->session_id());
+            s->start();
+            do_accept();
+        });
+}
+
+void
+rpc_server::impl::handle_request(const Json::Value& msg, session& sender)
+{
+    const auto& id = msg["id"];
+    const std::string method = msg.get("method", "").asString();
+    const Json::Value& params = msg["params"];
+
+    auto it = handlers.find(method);
+    if (it == handlers.end())
+    {
+        sender.send(make_response_err(id, -32601, "method not found: " + method));
+        return;
     }
-};
+
+    Json::Value result(Json::nullValue);
+    std::string err;
+    try
+    {
+        it->second(params, result, err);
+    }
+    catch (const std::exception& e)
+    {
+        err = std::string("handler exception: ") + e.what();
+    }
+
+    if (!err.empty())
+    {
+        sender.send(make_response_err(id, -32000, err));
+    }
+    else
+    {
+        sender.send(make_response_ok(id, result));
+    }
+}
+
+void
+rpc_server::impl::remove_client(session* s)
+{
+    auto it = std::find_if(clients.begin(), clients.end(),
+                           [s](const auto& c) { return c.get() == s; });
+    if (it != clients.end())
+    {
+        ALOG_INFO("rpc: client #{} removed ({} remaining)",
+                  s->session_id(), clients.size() - 1);
+        clients.erase(it);
+    }
+}
+
+void
+rpc_server::impl::broadcast(const Json::Value& msg)
+{
+    for (auto& c : clients)
+    {
+        c->send(msg);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// rpc_server
+// ---------------------------------------------------------------------------
 
 rpc_server::rpc_server()
     : m_impl(std::make_unique<impl>())
@@ -413,7 +420,7 @@ rpc_server::start(uint16_t port, const std::string& discovery_abs_path)
         ALOG_ERROR("rpc: bind() to 127.0.0.1:{} failed: {}", port, ec.message());
         return false;
     }
-    m_impl->acceptor->listen(1, ec);
+    m_impl->acceptor->listen(4, ec);
     if (ec)
     {
         ALOG_ERROR("rpc: listen() failed: {}", ec.message());
@@ -424,7 +431,7 @@ rpc_server::start(uint16_t port, const std::string& discovery_abs_path)
     m_impl->discovery_path = discovery_abs_path;
     m_impl->running.store(true);
 
-    // Discovery file: write {pid, port} as JSON.
+    // Discovery file
     {
         Json::Value d(Json::objectValue);
         d["pid"] = static_cast<Json::UInt64>(KRG_GETPID());
@@ -441,8 +448,10 @@ rpc_server::start(uint16_t port, const std::string& discovery_abs_path)
         }
     }
 
-    m_impl->writer_thread = std::thread(&impl::writer_loop, m_impl.get());
-    m_impl->io_thread = std::thread(&impl::accept_and_serve, m_impl.get());
+    m_impl->io_ctx.restart();
+    m_impl->work_guard.emplace(m_impl->io_ctx.get_executor());
+    m_impl->do_accept();
+    m_impl->io_thread = std::thread([impl = m_impl.get()]() { impl->io_ctx.run(); });
 
     ALOG_INFO("rpc: listening on 127.0.0.1:{} (pid {})", m_impl->bound_port, KRG_GETPID());
     return true;
@@ -462,21 +471,23 @@ rpc_server::stop()
         return;
     }
 
-    if (m_impl->acceptor)
-    {
-        boost::system::error_code ignore;
-        m_impl->acceptor->close(ignore);  // unblocks accept()
-    }
-    m_impl->drop_client();
-    m_impl->out_cv.notify_all();
+    asio::post(m_impl->io_ctx,
+               [impl = m_impl.get()]()
+               {
+                   boost::system::error_code ignore;
+                   impl->acceptor->close(ignore);
+                   for (auto& c : impl->clients)
+                   {
+                       c->close();
+                   }
+                   impl->clients.clear();
+               });
+
+    m_impl->work_guard.reset();
 
     if (m_impl->io_thread.joinable())
     {
         m_impl->io_thread.join();
-    }
-    if (m_impl->writer_thread.joinable())
-    {
-        m_impl->writer_thread.join();
     }
 
     m_impl->acceptor.reset();
@@ -501,7 +512,9 @@ rpc_server::notify(const std::string& method, const Json::Value& params)
     {
         return;
     }
-    m_impl->push_outbound(make_notification(method, params));
+    asio::post(m_impl->io_ctx,
+               [impl = m_impl.get(), msg = make_notification(method, params)]()
+               { impl->broadcast(msg); });
 }
 
 }  // namespace kryga::rpc
