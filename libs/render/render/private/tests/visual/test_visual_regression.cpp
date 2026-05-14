@@ -5098,6 +5098,222 @@ TEST_F(visual_pipeline_test, voronoi_fractured_cube)
     compare("voronoi_fractured_cube", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
+TEST_F(visual_pipeline_test, voronoi_fractured_convex)
+{
+    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& cache = renderer.get_cache();
+
+    auto* se = create_lit_shader_effect(AID("se_frac_cx"));
+    ASSERT_TRUE(se);
+
+    auto scene = setup_scene("frac_cx", {3, 2.5f, 4}, {0, 0, 0}, se);
+
+    std::vector<gpu::vertex_data> sphere_verts;
+    std::vector<gpu::uint> sphere_idx;
+    {
+        constexpr uint32_t stacks = 32, slices = 32;
+        constexpr float radius = 1.0f;
+        for (uint32_t i = 0; i <= stacks; ++i)
+        {
+            float phi = glm::pi<float>() * float(i) / float(stacks);
+            for (uint32_t j = 0; j <= slices; ++j)
+            {
+                float theta = 2.0f * glm::pi<float>() * float(j) / float(slices);
+                glm::vec3 n = {std::sin(phi) * std::cos(theta),
+                               std::cos(phi),
+                               std::sin(phi) * std::sin(theta)};
+                glm::vec3 p = n * radius;
+                glm::vec2 uv = {float(j) / float(slices), float(i) / float(stacks)};
+                sphere_verts.push_back({p, n, {1, 1, 1}, uv});
+            }
+        }
+        for (uint32_t i = 0; i < stacks; ++i)
+        {
+            for (uint32_t j = 0; j < slices; ++j)
+            {
+                uint32_t a = i * (slices + 1) + j;
+                uint32_t b = a + slices + 1;
+                sphere_idx.insert(sphere_idx.end(), {a, a + 1, b, a + 1, b + 1, b});
+            }
+        }
+    }
+
+    voronoi_fracture::fracture_params fp;
+    fp.seed = 42;
+    fp.cell_count = 8;
+    fp.fill = voronoi_fracture::fill_mode::convex;
+    fp.roughness = 0.0f;
+    fp.depth = 2;
+    auto result = voronoi_fracture::fracture_mesh(sphere_verts.data(),
+                                                  (uint32_t)sphere_verts.size(),
+                                                  sphere_idx.data(),
+                                                  (uint32_t)sphere_idx.size(),
+                                                  fp);
+    ASSERT_FALSE(result.chunks.empty());
+
+    // clang-format off
+    const glm::vec3 palette[] = {
+        {0.9f, 0.2f, 0.2f}, {0.2f, 0.7f, 0.3f}, {0.2f, 0.3f, 0.9f},
+        {0.9f, 0.8f, 0.1f}, {0.8f, 0.3f, 0.8f}, {0.1f, 0.8f, 0.8f},
+        {0.9f, 0.5f, 0.1f}, {0.4f, 0.9f, 0.7f},
+    };
+    // clang-format on
+
+    std::vector<texture_sampler_data> no_tex;
+
+    for (uint32_t i = 0; i < result.chunks.size(); ++i)
+    {
+        auto& ck = result.chunks[i];
+        if (ck.indices.empty())
+        {
+            continue;
+        }
+
+        auto suffix = std::to_string(i);
+        auto color = palette[i % 8];
+
+        auto gpu_data = make_solid_color_gpu_data(color * 0.4f, color, {0.6f, 0.6f, 0.6f}, 32.0f);
+        auto* mat = loader.create_material(
+            AID(("fcx_mat_" + suffix).c_str()), AID("solid_color_material"), no_tex, *se, gpu_data);
+        renderer.schd_add_material(mat);
+
+        kryga::utils::buffer vb(ck.vertices.size() * sizeof(gpu::vertex_data));
+        std::memcpy(vb.data(), ck.vertices.data(), vb.size());
+        kryga::utils::buffer ib(ck.indices.size() * sizeof(gpu::uint));
+        std::memcpy(ib.data(), ck.indices.data(), ib.size());
+
+        auto* mesh = loader.create_mesh(AID(("fcx_mesh_" + suffix).c_str()),
+                                        vb.make_view<gpu::vertex_data>(),
+                                        ib.make_view<gpu::uint>());
+
+        glm::vec3 center = (ck.aabb_min + ck.aabb_max) * 0.5f;
+        float len = glm::length(center);
+        glm::vec3 dir = len > 1e-6f ? center / len : glm::vec3(0, 1, 0);
+        glm::vec3 offset = dir * 0.6f;
+        auto model = glm::translate(glm::mat4(1.0f), offset);
+
+        auto* obj = cache.objects.alloc(AID(("fcx_obj_" + suffix).c_str()));
+        loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), offset);
+        renderer.schd_add_object(obj);
+    }
+
+    renderer.draw_headless();
+    compare("voronoi_fractured_convex", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
+}
+
+TEST_F(visual_pipeline_test, voronoi_presets)
+{
+    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& cache = renderer.get_cache();
+
+    auto* se = create_lit_shader_effect(AID("se_vp"));
+    ASSERT_TRUE(se);
+
+    auto scene = setup_scene("vp", {0, 3.0f, 10}, {0, 0, 0}, se);
+
+    // Shared sphere
+    std::vector<gpu::vertex_data> sv;
+    std::vector<gpu::uint> si;
+    {
+        constexpr uint32_t stacks = 32, slices = 32;
+        for (uint32_t i = 0; i <= stacks; ++i)
+        {
+            float phi = glm::pi<float>() * float(i) / float(stacks);
+            for (uint32_t j = 0; j <= slices; ++j)
+            {
+                float theta = 2.0f * glm::pi<float>() * float(j) / float(slices);
+                glm::vec3 n = {std::sin(phi) * std::cos(theta),
+                               std::cos(phi),
+                               std::sin(phi) * std::sin(theta)};
+                sv.push_back({n, n, {1, 1, 1}, {float(j) / slices, float(i) / stacks}});
+            }
+        }
+        for (uint32_t i = 0; i < stacks; ++i)
+        {
+            for (uint32_t j = 0; j < slices; ++j)
+            {
+                uint32_t a = i * (slices + 1) + j, b = a + slices + 1;
+                si.insert(si.end(), {a, a + 1, b, a + 1, b + 1, b});
+            }
+        }
+    }
+
+    // clang-format off
+    const glm::vec3 palette[] = {
+        {0.9f, 0.2f, 0.2f}, {0.2f, 0.7f, 0.3f}, {0.2f, 0.3f, 0.9f},
+        {0.9f, 0.8f, 0.1f}, {0.8f, 0.3f, 0.8f}, {0.1f, 0.8f, 0.8f},
+        {0.9f, 0.5f, 0.1f}, {0.4f, 0.9f, 0.7f},
+    };
+    // clang-format on
+
+    struct preset
+    {
+        float x;
+        voronoi_fracture::fracture_params fp;
+    };
+
+    // 1=baseline  2=detail×4  3=depth×2  4=rough  5=all combined
+    preset presets[] = {
+        {-4.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.0f, 1, 1}},
+        {-2.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.0f, 1, 4}},
+        {0.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.0f, 2, 1}},
+        {2.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.05f, 1, 1}},
+        {4.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.02f, 2, 4}},
+    };
+
+    std::vector<texture_sampler_data> no_tex;
+
+    for (int pi = 0; pi < 5; ++pi)
+    {
+        auto& pr = presets[pi];
+        auto result = voronoi_fracture::fracture_mesh(
+            sv.data(), (uint32_t)sv.size(), si.data(), (uint32_t)si.size(), pr.fp);
+
+        for (uint32_t i = 0; i < result.chunks.size(); ++i)
+        {
+            auto& ck = result.chunks[i];
+            if (ck.indices.empty())
+            {
+                continue;
+            }
+
+            auto tag = std::to_string(pi) + "_" + std::to_string(i);
+            auto color = palette[i % 8];
+
+            auto gpu_data =
+                make_solid_color_gpu_data(color * 0.4f, color, {0.6f, 0.6f, 0.6f}, 32.0f);
+            auto* mat = loader.create_material(
+                AID(("vp_m_" + tag).c_str()), AID("solid_color_material"), no_tex, *se, gpu_data);
+            renderer.schd_add_material(mat);
+
+            kryga::utils::buffer vb(ck.vertices.size() * sizeof(gpu::vertex_data));
+            std::memcpy(vb.data(), ck.vertices.data(), vb.size());
+            kryga::utils::buffer ib(ck.indices.size() * sizeof(gpu::uint));
+            std::memcpy(ib.data(), ck.indices.data(), ib.size());
+
+            auto* mesh = loader.create_mesh(AID(("vp_x_" + tag).c_str()),
+                                            vb.make_view<gpu::vertex_data>(),
+                                            ib.make_view<gpu::uint>());
+
+            glm::vec3 center = (ck.aabb_min + ck.aabb_max) * 0.5f;
+            float len = glm::length(center);
+            glm::vec3 dir = len > 1e-6f ? center / len : glm::vec3(0, 1, 0);
+            glm::vec3 offset = glm::vec3(pr.x, 0, 0) + dir * 0.3f;
+            auto model = glm::translate(glm::mat4(1.0f), offset);
+
+            auto* obj = cache.objects.alloc(AID(("vp_o_" + tag).c_str()));
+            loader.update_object(
+                *obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), offset);
+            renderer.schd_add_object(obj);
+        }
+    }
+
+    renderer.draw_headless();
+    compare("voronoi_presets", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
+}
+
 // =============================================================================
 // No-op: grid-offscreen
 // =============================================================================

@@ -12,10 +12,20 @@ namespace kryga
 namespace voronoi_fracture
 {
 
+enum class fill_mode : uint8_t
+{
+    surface,  // open shells of the source surface (default)
+    convex    // convex hull per chunk — closed, solid geometry
+};
+
 struct fracture_params
 {
     uint32_t seed = 0;
     uint32_t cell_count = 8;
+    fill_mode fill = fill_mode::surface;
+    float roughness = 0.0f;
+    uint32_t depth = 1;
+    uint32_t detail = 1;
 };
 
 struct chunk
@@ -40,6 +50,12 @@ struct fracture_result
 // RNG (params.seed). Each source triangle is assigned to the cell whose seed
 // point is nearest to the triangle centroid — triangles straddling a cell
 // boundary are not split.
+//
+// fill_mode::surface (default) — chunks are open shells of the source surface.
+// fill_mode::convex — each chunk is replaced by the convex hull of its vertex
+// positions, giving closed solid geometry with flat-shaded faces. Vertex color
+// and UVs are reset (caller typically overrides color per chunk). Falls back to
+// surface mode for degenerate chunks (< 4 non-coplanar vertices).
 //
 // Empty cells (no triangles assigned) are dropped from the result.
 fracture_result
