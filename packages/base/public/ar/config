@@ -18,3 +18,6 @@ include/packages/base/model/assets/solid_color_material.h
 include/packages/base/model/assets/solid_color_alpha_material.h
 include/packages/base/model/assets/simple_texture_material.h
 include/packages/base/model/assets/toon_material.h
+include/packages/base/model/assets/destructible_mesh_asset.h
+include/packages/base/model/components/destructible_mesh_component.h
+include/packages/base/model/destructible_mesh_object.h

@@ -148,6 +148,9 @@ private:
     consume_updated_transforms();
 
     void
+    rebuild_physics_static_world();
+
+    void
     render_thread_func();
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited

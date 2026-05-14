@@ -40,6 +40,10 @@ namespace animation
 {
 class animation_system;
 }
+namespace physics
+{
+class physics_system;
+}
 namespace engine
 {
 class editor_system;
@@ -83,6 +87,7 @@ struct state_mutator__lua_api;
 // Systems
 struct state_mutator__render;
 struct state_mutator__animation_system;
+struct state_mutator__physics_system;
 struct state_mutator__editor_system;
 struct state_mutator__vfs;
 
@@ -147,6 +152,7 @@ class state
     friend class core::state_mutator__lua_api;
     friend class ::kryga::state_mutator__render_bridge;
     friend class ::kryga::state_mutator__engine_counters;
+    friend class ::kryga::state_mutator__physics_system;
 
     // Singletons
     friend class ::kryga::state_mutator__engine;
@@ -208,6 +214,8 @@ public:
     void
     register_system(system* sys);
 
+    KRG_gen_getter(physics_system, physics::physics_system);
+
     template <typename T>
     T*
     create_box(std::string name)
@@ -258,6 +266,7 @@ private:
     reflection::lua_api*            m_lua = nullptr;
     render_bridge*                  m_render_bridge = nullptr;
     engine_counters*                m_engine_counters = nullptr;
+    physics::physics_system*        m_physics_system = nullptr;
 
     // Singletons
     vulkan_engine*                  m_engine = nullptr;
@@ -341,6 +350,12 @@ struct state_mutator__native_window
 };
 
 struct state_mutator__config
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__physics_system
 {
     static void
     set(gs::state& s);
