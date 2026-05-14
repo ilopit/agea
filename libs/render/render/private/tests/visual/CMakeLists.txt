@@ -13,6 +13,7 @@ target_link_libraries(visual_regression_tests
     kryga::render_utils
     kryga::asset_converter
     kryga::project_paths
+    kryga::voronoi_fracture
     gtest
 )
 

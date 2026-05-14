@@ -20,6 +20,7 @@
 #include <vulkan_render/lightmap_atlas.h>
 
 #include <gpu_types/gpu_vertex_types.h>
+#include <voronoi_fracture/voronoi_fracture.h>
 #include <gpu_types/gpu_camera_types.h>
 #include <gpu_types/gpu_light_types.h>
 #include <gpu_types/gpu_push_constants_main.h>
@@ -4992,6 +4993,114 @@ TEST_F(visual_pipeline_test, noop_outline_no_marked)
     compare("noop_outline_no_marked", *host_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
+TEST_F(visual_pipeline_test, voronoi_fractured_cube)
+{
+    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& cache = renderer.get_cache();
+
+    auto* se = create_lit_shader_effect(AID("se_frac"));
+    ASSERT_TRUE(se);
+
+    auto scene = setup_scene("frac", {3, 2.5f, 4}, {0, 0, 0}, se);
+
+    // High-poly sphere so Voronoi cell boundaries are visible (2048 tris)
+    std::vector<gpu::vertex_data> sphere_verts;
+    std::vector<gpu::uint> sphere_idx;
+    {
+        constexpr uint32_t stacks = 32, slices = 32;
+        constexpr float radius = 1.0f;
+        for (uint32_t i = 0; i <= stacks; ++i)
+        {
+            float phi = glm::pi<float>() * float(i) / float(stacks);
+            for (uint32_t j = 0; j <= slices; ++j)
+            {
+                float theta = 2.0f * glm::pi<float>() * float(j) / float(slices);
+                glm::vec3 n = {std::sin(phi) * std::cos(theta),
+                               std::cos(phi),
+                               std::sin(phi) * std::sin(theta)};
+                glm::vec3 p = n * radius;
+                glm::vec2 uv = {float(j) / float(slices), float(i) / float(stacks)};
+                sphere_verts.push_back({p, n, {1, 1, 1}, uv});
+            }
+        }
+        for (uint32_t i = 0; i < stacks; ++i)
+        {
+            for (uint32_t j = 0; j < slices; ++j)
+            {
+                uint32_t a = i * (slices + 1) + j;
+                uint32_t b = a + slices + 1;
+                sphere_idx.insert(sphere_idx.end(), {a, a + 1, b, a + 1, b + 1, b});
+            }
+        }
+    }
+
+    voronoi_fracture::fracture_params fp;
+    fp.seed = 42;
+    fp.cell_count = 8;
+    auto result = voronoi_fracture::fracture_mesh(sphere_verts.data(),
+                                                  (uint32_t)sphere_verts.size(),
+                                                  sphere_idx.data(),
+                                                  (uint32_t)sphere_idx.size(),
+                                                  fp);
+    ASSERT_FALSE(result.chunks.empty());
+
+    // clang-format off
+    const glm::vec3 palette[] = {
+        {0.9f, 0.2f, 0.2f}, {0.2f, 0.7f, 0.3f}, {0.2f, 0.3f, 0.9f},
+        {0.9f, 0.8f, 0.1f}, {0.8f, 0.3f, 0.8f}, {0.1f, 0.8f, 0.8f},
+        {0.9f, 0.5f, 0.1f}, {0.4f, 0.9f, 0.7f},
+    };
+    // clang-format on
+
+    std::vector<texture_sampler_data> no_tex;
+
+    for (uint32_t i = 0; i < result.chunks.size(); ++i)
+    {
+        auto& ck = result.chunks[i];
+        if (ck.indices.empty())
+        {
+            continue;
+        }
+
+        auto suffix = std::to_string(i);
+        auto color = palette[i % 8];
+
+        auto gpu_data = make_solid_color_gpu_data(color * 0.4f, color, {0.6f, 0.6f, 0.6f}, 32.0f);
+        auto* mat = loader.create_material(AID(("frac_mat_" + suffix).c_str()),
+                                           AID("solid_color_material"),
+                                           no_tex,
+                                           *se,
+                                           gpu_data);
+        renderer.schd_add_material(mat);
+
+        kryga::utils::buffer vb(ck.vertices.size() * sizeof(gpu::vertex_data));
+        std::memcpy(vb.data(), ck.vertices.data(), vb.size());
+        kryga::utils::buffer ib(ck.indices.size() * sizeof(gpu::uint));
+        std::memcpy(ib.data(), ck.indices.data(), ib.size());
+
+        auto* mesh = loader.create_mesh(AID(("frac_mesh_" + suffix).c_str()),
+                                        vb.make_view<gpu::vertex_data>(),
+                                        ib.make_view<gpu::uint>());
+
+        // Explode outward from origin along seed point direction
+        float len = glm::length(ck.seed_point);
+        glm::vec3 dir = len > 1e-6f ? ck.seed_point / len : glm::vec3(0, 1, 0);
+        glm::vec3 offset = dir * 1.2f;
+        auto model = glm::translate(glm::mat4(1.0f), offset);
+
+        auto* obj = cache.objects.alloc(AID(("frac_obj_" + suffix).c_str()));
+        loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), offset);
+        renderer.schd_add_object(obj);
+    }
+
+    renderer.draw_headless();
+    compare("voronoi_fractured_cube", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
+}
+
+// =============================================================================
+// No-op: grid-offscreen
+// =============================================================================
 TEST_F(visual_pipeline_test, noop_grid_offscreen)
 {
     // Anti-regression: enable the grid at init, but point the camera at the
