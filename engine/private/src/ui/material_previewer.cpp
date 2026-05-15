@@ -270,11 +270,6 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
                 mat_data->set_bindless_sampler_index(ts2.slot, render_bridge::map_sampler_to_static_index(*ts2.smp));
             }
         }
-
-        if (!gpu_data.empty())
-        {
-            glob::glob_state().getr_vulkan_render().schd_add_material(mat_data);
-        }
     }
 
     return mat_data;
@@ -304,9 +299,9 @@ make_preview_request(render::material_data* mat, render::mesh_data* mesh, VkDesc
     req.object.lightmap_texture_index = UINT32_MAX;
     req.object.probe_index = UINT32_MAX;
 
-    req.directional_light.direction[0] = 0.5f;
-    req.directional_light.direction[1] = 0.7f;
-    req.directional_light.direction[2] = 0.5f;
+    req.directional_light.direction[0] = -0.5f;
+    req.directional_light.direction[1] = -0.7f;
+    req.directional_light.direction[2] = -0.5f;
     float len = std::sqrt(0.5f * 0.5f + 0.7f * 0.7f + 0.5f * 0.5f);
     req.directional_light.direction[0] /= len;
     req.directional_light.direction[1] /= len;
