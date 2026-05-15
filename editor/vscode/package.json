@@ -78,6 +78,14 @@
         "icon": "$(gear)"
       },
       {
+        "command": "kryga.bakeEditor",
+        "title": "Kryga: Lightmap Baker"
+      },
+      {
+        "command": "kryga.converter",
+        "title": "Kryga: Asset Converter"
+      },
+      {
         "command": "kryga.scene.duplicate",
         "title": "Duplicate"
       },
@@ -112,6 +120,11 @@
         {
           "id": "kryga.inspector",
           "name": "Inspector",
+          "type": "webview"
+        },
+        {
+          "id": "kryga.actionProgress",
+          "name": "Actions",
           "type": "webview"
         }
       ]

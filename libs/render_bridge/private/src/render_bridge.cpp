@@ -8,7 +8,9 @@
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/root/model/assets/material.h>
+#include <packages/root/model/assets/sampler.h>
 #include <glue/type_ids.ar.h>
+#include <gpu_types/gpu_generic_constants.h>
 
 #include <vulkan_render/utils/vulkan_initializers.h>
 #include <vulkan_render/types/vulkan_render_data.h>
@@ -315,6 +317,47 @@ render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
     obj.set_state(root::smart_object_state::constructed);
 
     return rc;
+}
+
+uint8_t
+render_bridge::map_sampler_to_static_index(const root::sampler& smp)
+{
+    bool is_linear = (smp.get_min_filter() == root::sampler_filter::linear);
+    auto addr = smp.get_address_u();
+
+    if (smp.get_anisotropy() && is_linear && addr == root::sampler_address::repeat)
+    {
+        return KGPU_SAMPLER_ANISO_REPEAT;
+    }
+
+    if (is_linear)
+    {
+        switch (addr)
+        {
+        case root::sampler_address::repeat:
+            return KGPU_SAMPLER_LINEAR_REPEAT;
+        case root::sampler_address::mirrored_repeat:
+            return KGPU_SAMPLER_LINEAR_MIRROR;
+        case root::sampler_address::clamp_to_edge:
+            return KGPU_SAMPLER_LINEAR_CLAMP;
+        case root::sampler_address::clamp_to_border:
+            return KGPU_SAMPLER_LINEAR_CLAMP_BORDER;
+        }
+    }
+    else
+    {
+        switch (addr)
+        {
+        case root::sampler_address::repeat:
+        case root::sampler_address::mirrored_repeat:
+            return KGPU_SAMPLER_NEAREST_REPEAT;
+        case root::sampler_address::clamp_to_edge:
+        case root::sampler_address::clamp_to_border:
+            return KGPU_SAMPLER_NEAREST_CLAMP;
+        }
+    }
+
+    return KGPU_SAMPLER_LINEAR_REPEAT;
 }
 
 // ============================================================================

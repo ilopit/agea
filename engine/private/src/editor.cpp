@@ -548,6 +548,29 @@ game_editor::get_selected() const
     return m_selected;
 }
 
+root::game_object*
+game_editor::get_selected_game_object() const
+{
+    if (!m_selected.valid())
+    {
+        return nullptr;
+    }
+
+    auto* lvl = glob::glob_state().get_current_level();
+    if (!lvl)
+    {
+        return nullptr;
+    }
+
+    auto* obj = lvl->find_object(m_selected);
+    if (!obj)
+    {
+        return nullptr;
+    }
+
+    return obj->as<root::game_object>();
+}
+
 }  // namespace engine
 
 }  // namespace kryga

@@ -1,17 +1,12 @@
 #pragma once
 
-#include <core/model_fwds.h>
 #include <engine/action_queue.h>
 
 #include <global_state/global_state.h>
-#include <utils/check.h>
 
 #include <memory>
 #include <unordered_map>
-#include <vector>
-#include <functional>
 #include <string>
-#include <array>
 
 #include <imgui.h>
 
@@ -22,13 +17,7 @@ namespace ui
 {
 
 class gizmo_editor;
-
-struct selection_context
-{
-    ImGuiTreeNodeFlags base_flags;
-    int i = 0;
-    int selected = -1;
-};
+class material_previewer;
 
 class window
 {
@@ -84,85 +73,6 @@ public:
     int lock = 0;
 };
 
-class level_editor_window : public window
-{
-public:
-    static const char*
-    window_title()
-    {
-        return "Level editor";
-    }
-
-    level_editor_window()
-        : window(window_title())
-    {
-    }
-
-    void
-    handle() override;
-
-    void
-    draw_object(root::game_object* obj);
-};
-
-class components_editor : public window
-{
-public:
-    static const char*
-    window_title()
-    {
-        return "Components editor";
-    }
-
-    components_editor()
-        : window(window_title())
-    {
-    }
-
-    void
-    show(root::game_object_component* obj)
-    {
-        m_obj = obj;
-        m_show = true;
-    }
-
-    void
-    handle() override;
-
-    root::game_object_component* m_obj = nullptr;
-};
-
-class materials_selector : public window
-{
-public:
-    static const char*
-    window_title()
-    {
-        return "Materials selector";
-    }
-
-    materials_selector()
-        : window(window_title())
-    {
-        m_filtering_text.fill('\0');
-    }
-
-    using selection_callback = std::function<void(const std::string&)>;
-
-    void
-    show(const selection_callback& cb)
-    {
-        m_selection_cb = cb;
-        m_show = true;
-    }
-
-    void
-    handle() override;
-
-    std::array<char, 128> m_filtering_text;
-    selection_callback m_selection_cb;
-};
-
 class render_config_window : public window
 {
 public:
@@ -194,21 +104,25 @@ public:
     void
     new_frame(float dt);
 
+    material_previewer&
+    get_material_previewer()
+    {
+        return *m_material_previewer;
+    }
+
     std::unordered_map<std::string, std::unique_ptr<window>> m_windows;
     engine::action_queue m_actions;
     std::unique_ptr<gizmo_editor> m_gizmo_editor;
+    std::unique_ptr<material_previewer> m_material_previewer;
     std::string m_imgui_ini_path;  // backing storage for io.IniFilename
 };
 
-}  // namespace ui
-
-namespace ui
-{
 template <typename T>
 static T*
 get_window()
 {
     return (T*)glob::glob_state().get_ui()->m_windows[T::window_title()].get();
 }
+
 }  // namespace ui
 }  // namespace kryga

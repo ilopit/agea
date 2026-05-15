@@ -2,34 +2,17 @@
 
 #include <global_state/global_state.h>
 
-#include "engine/script_editor.h"
 #include "engine/console.h"
-#include "engine/property_drawers.h"
 #include "engine/engine_counters.h"
 
-#include "engine/private/ui/package_editor.h"
-#include "engine/private/ui/object_editor.h"
 #include "engine/private/ui/gizmo_editor.h"
-#include "engine/private/ui/action_progress_window.h"
+#include "engine/private/ui/material_previewer.h"
 #include "engine/private/ui/bake_editor.h"
 #include "engine/private/ui/converter_window.h"
 #include "engine/editor.h"
 
-#include <core/level.h>
-#include <core/caches/caches_map.h>
-#include <core/reflection/property.h>
-#include <core/reflection/lua_api.h>
-
-#include <packages/root/model/game_object.h>
-#include <packages/root/model/assets/material.h>
-
-#include <core/package.h>
-#include <core/package_manager.h>
-
 #include <native/native_window.h>
 
-#include <vulkan_render/types/vulkan_texture_data.h>
-#include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_config.h>
 #include <gpu_types/gpu_shadow_types.h>
@@ -43,9 +26,6 @@
 #include <backends/imgui_impl_vulkan.h>
 
 #include <ImGuizmo.h>
-
-#include <algorithm>
-#include <array>
 
 namespace kryga
 {
@@ -62,21 +42,10 @@ namespace ui
 
 ui::ui()
     : m_gizmo_editor(std::make_unique<gizmo_editor>())
+    , m_material_previewer(std::make_unique<material_previewer>())
 {
-    property_drawers::init();
-
-    m_windows[level_editor_window::window_title()] = std::make_unique<level_editor_window>();
-    m_windows[level_editor_window::window_title()]->m_show = true;
-
-    m_windows[materials_selector::window_title()] = std::make_unique<materials_selector>();
-    m_windows[object_editor::window_title()] = std::make_unique<object_editor>();
-    m_windows[components_editor::window_title()] = std::make_unique<components_editor>();
-
     m_windows[editor_console::window_title()] = std::make_unique<editor_console>();
     m_windows[editor_console::window_title()]->m_show = true;
-
-    m_windows[package_editor::window_title()] = std::make_unique<package_editor>();
-    m_windows[package_editor::window_title()]->m_show = true;
 
     m_windows[performance_counters_window::window_title()] =
         std::make_unique<performance_counters_window>();
@@ -85,13 +54,8 @@ ui::ui()
     m_windows[render_config_window::window_title()] = std::make_unique<render_config_window>();
     m_windows[render_config_window::window_title()]->m_show = true;
 
-    m_windows[action_progress_window::window_title()] = std::make_unique<action_progress_window>();
-
     m_windows[bake_editor::window_title()] = std::make_unique<bake_editor>();
-    m_windows[bake_editor::window_title()]->m_show = true;
-
     m_windows[converter_window::window_title()] = std::make_unique<converter_window>();
-    m_windows[converter_window::window_title()]->m_show = true;
 }
 
 ui::~ui()
@@ -150,6 +114,12 @@ ui::new_frame(float dt)
 {
     m_actions.tick();
 
+    auto* conv = get_window<converter_window>();
+    if (conv)
+    {
+        conv->poll();
+    }
+
     ImGuiIO& io = ImGui::GetIO();
     // SDL2 backend resets DisplaySize from SDL_GetWindowSize inside
     // ImGui_ImplSDL2_NewFrame — override before AND after that call.
@@ -171,14 +141,12 @@ ui::new_frame(float dt)
 
     if (playing)
     {
-        // Only show performance counters during play mode
         auto it = m_windows.find(performance_counters_window::window_title());
         if (it != m_windows.end())
         {
             it->second->handle();
         }
 
-        // PLAYING indicator overlay
         ImGui::SetNextWindowPos(
             ImVec2(io.DisplaySize.x * 0.5f, 8.f), ImGuiCond_Always, ImVec2(0.5f, 0.f));
         ImGui::SetNextWindowSize(ImVec2(0, 0));
@@ -234,141 +202,6 @@ window::handle_end()
 }
 
 void
-level_editor_window::handle()
-{
-    if (!handle_begin(ImGuiWindowFlags_MenuBar))
-    {
-        return;
-    }
-
-    auto level = ::kryga::glob::glob_state().get_current_level();
-
-    if (ImGui::TreeNode("Level Objects"))
-    {
-        for (auto& o : level->get_game_objects().get_items())
-        {
-            if (auto game_obj = o.second->as<root::game_object>())
-            {
-                draw_object(game_obj);
-            }
-        }
-        ImGui::TreePop();
-    }
-    handle_end();
-}
-
-void
-level_editor_window::draw_object(root::game_object* obj)
-{
-    bool opened = ImGui::TreeNode(obj->get_id().cstr());
-    if (ImGui::IsItemClicked())
-    {
-        get_window<object_editor>()->show(obj);
-    }
-    if (opened)
-    {
-        ImGui::TreePop();
-    }
-}
-
-void
-materials_selector::handle()
-{
-    if (!handle_begin())
-    {
-        return;
-    }
-
-    ImGui::Text("Select material:");
-    ImGui::InputText("##material", m_filtering_text.data(), m_filtering_text.size(), 0);
-    ImGui::Separator();
-
-    glob::glob_state().get_class_materials_cache()->call_on_items(
-        [this](root::material* m)
-        {
-            {
-                auto mat_id = m->get_id().str();
-                if (mat_id.find(m_filtering_text.data()) == std::string::npos)
-                {
-                    return true;
-                }
-
-                auto open = ImGui::TreeNodeEx(mat_id.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-                if (open)
-                {
-                    ImGui::Separator();
-                    ImGui::Columns(2);
-                    ImGui::SetColumnWidth(-1, 120);
-                    ImGui::Text("Preview");
-                    if (ImGui::Button("Use"))
-                    {
-                        m_selection_cb(mat_id);
-                    }
-                    ImGui::NextColumn();
-                    // ImGui::Image(m->get_material_data()->texture_set, ImVec2{160, 160});
-
-                    ImGui::Columns(1);
-
-                    ImGui::Separator();
-                    ImGui::TreePop();
-                }
-            }
-            return true;
-        });
-
-    handle_end();
-}
-
-void
-components_editor::handle()
-{
-    if (!handle_begin(ImGuiWindowFlags_NoFocusOnAppearing))
-    {
-        return;
-    }
-
-    ImGui::Columns(2);
-    ImGui::Separator();
-    auto& list = m_obj->get_reflection()->m_editor_properties;
-
-    for (auto& categories : list)
-    {
-        ImGui::Columns(1);
-        ImGui::Separator();
-        ImGui::Text("%s", categories.first.c_str());
-        ImGui::Separator();
-        ImGui::Columns(2);
-
-        for (auto& p : categories.second)
-        {
-            ImGui::Text("%s", p->name.data());
-            ImGui::NextColumn();
-            if (p->name == "material_id")
-            {
-                if (ImGui::Button("e"))
-                {
-                    auto handler = [&p, this](const std::string& selected)
-                    {
-                        auto str = (std::string*)((char*)m_obj + p->offset);
-
-                        (*str) = selected;
-
-                        // m_obj->mark_dirty();
-                    };
-
-                    get_window<materials_selector>()->show(handler);
-                }
-                ImGui::SameLine();
-            }
-            property_drawers::draw_ro(m_obj, *p);
-            ImGui::NextColumn();
-        }
-    }
-
-    handle_end();
-}
-
-void
 performance_counters_window::handle()
 {
     if (!lock)
@@ -399,7 +232,8 @@ performance_counters_window::handle()
     ImGui::Separator();
     ImGui::Text("Objects : %3.3lf", objects_avg);
     ImGui::Text("Draws   : %3.3lf", all_draws_avg);
-    ImGui::Text("Cull %  : %3.3lf", culled_draws_avg / all_draws_avg * 100);
+    ImGui::Text("Cull %  : %3.3lf",
+                all_draws_avg > 0 ? culled_draws_avg / all_draws_avg * 100 : 0.0);
     ImGui::Separator();
 
     --lock;

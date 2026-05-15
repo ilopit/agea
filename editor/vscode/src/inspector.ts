@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { RpcClient } from "./rpc";
+import { openMaterialBrowser } from "./materialBrowser";
 
 interface Field {
   name: string;
@@ -19,6 +20,7 @@ interface Owner {
   id: string;
   type: string;
   categories: Category[];
+  material_id?: string;
 }
 
 interface PropertiesPayload {
@@ -54,6 +56,8 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         } catch (e) {
           vscode.window.showErrorMessage(`Kryga: set failed — ${e}`);
         }
+      } else if (msg?.type === "openMaterialBrowser") {
+        openMaterialBrowser(this.client, msg.owner_id, msg.current_material);
       }
     });
 
@@ -101,7 +105,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+        content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
   <style>
     :root { color-scheme: var(--vscode-color-scheme); }
     body {
@@ -250,6 +254,27 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       height: 0;
       position: absolute;
     }
+    .material-link {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      margin: 4px 0;
+      background: var(--vscode-editor-inactiveSelectionBackground);
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.9em;
+    }
+    .material-link:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+    .material-link .mat-icon { opacity: 0.6; }
+    .material-link .mat-name {
+      color: var(--vscode-textLink-foreground);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .err { color: var(--vscode-errorForeground); padding: 8px; }
   </style>
 </head>
@@ -384,7 +409,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
           const fields = document.createElement('div');
           fields.className = 'fields';
           for (const f of cat.fields) {
-            fields.appendChild(renderField(owner.id, f));
+            fields.appendChild(renderField(owner.id, f, owner.material_id));
           }
           catEl.appendChild(fields);
           ownerEl.appendChild(catEl);
@@ -401,7 +426,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
           || n === 'albedo' || n === 'emissive';
     }
 
-    function renderField(ownerId, f) {
+    function renderField(ownerId, f, materialId) {
       const el = document.createElement('div');
       el.className = 'field';
       el.dataset.ownerId = ownerId;
@@ -416,7 +441,22 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
       const val = document.createElement('div');
       val.className = 'field-value';
 
-      if (f.readonly || !editable(f.kind, f)) {
+      if (f.kind === 'material' && materialId) {
+        const link = document.createElement('div');
+        link.className = 'material-link';
+        const icon = document.createElement('span');
+        icon.className = 'mat-icon';
+        icon.textContent = '◉';
+        link.appendChild(icon);
+        const name = document.createElement('span');
+        name.className = 'mat-name';
+        name.textContent = materialId;
+        link.appendChild(name);
+        link.addEventListener('click', () => {
+          vscode.postMessage({ type: 'openMaterialBrowser', owner_id: ownerId, current_material: materialId });
+        });
+        val.appendChild(link);
+      } else if (f.readonly || !editable(f.kind, f)) {
         const ro = document.createElement('span');
         ro.className = 'ro';
         ro.textContent = formatRo(f.value);

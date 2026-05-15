@@ -9,6 +9,7 @@
 #include "engine/ui.h"
 #include "engine/editor.h"
 #include "engine/private/ui/bake_editor.h"
+#include "engine/private/ui/material_previewer.h"
 
 #include <rpc/rpc_server.h>
 #include <rpc/rpc_log_sink.h>
@@ -388,6 +389,10 @@ vulkan_engine::cleanup()
 #endif
 
     glob::glob_state().get_render_device()->wait_for_fences();
+
+#if KRG_EDITOR
+    glob::glob_state().getr_ui().get_material_previewer().destroy();
+#endif
 
     glob::glob_state().get_vulkan_render_loader()->clear_caches();
 

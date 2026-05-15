@@ -33,24 +33,18 @@ set(ENGINE_GAME_SRC
 set(ENGINE_EDITOR_SRC
     "public/include/engine/console.h"
     "public/include/engine/editor.h"
-    "public/include/engine/property_drawers.h"
-    "public/include/engine/script_editor.h"
     "public/include/engine/ui.h"
     "private/include/engine/private/engine_rpc.h"
     "private/include/engine/private/property_rpc.h"
     "private/src/console.cpp"
     "private/src/editor.cpp"
     "private/src/engine_rpc.cpp"
-    "private/src/property_drawers.cpp"
     "private/src/property_rpc.cpp"
-    "private/src/script_editor.cpp"
     "private/src/ui.cpp"
-    "private/src/ui/action_progress_window.cpp"
     "private/src/ui/bake_editor.cpp"
     "private/src/ui/converter_window.cpp"
     "private/src/ui/gizmo_editor.cpp"
-    "private/src/ui/object_editor.cpp"
-    "private/src/ui/package_editor.cpp"
+    "private/src/ui/material_previewer.cpp"
 )
 
 file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/kryga_generated/engine/*.cpp")
@@ -125,9 +119,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::project_paths
         kryga::rpc
 
-        kryga::textedit_unofficial
         kryga::imguizmo_unofficial
-        kryga::imguifiledialog_unofficial
 
         ${KRG_ACTIVE_MODULES_TARGETS}
         ${KRG_EDITOR_MODULES_TARGETS}

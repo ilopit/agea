@@ -1,7 +1,5 @@
 #include "engine/private/ui/gizmo_editor.h"
-#include "engine/private/ui/object_editor.h"
 #include "engine/editor.h"
-#include "engine/ui.h"
 
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/game_object_component.h>
@@ -114,14 +112,7 @@ gizmo_editor::draw()
         ImGui::End();
     }
 
-    // Object selection checks — everything below needs a selected object
-    auto* obj_editor = get_window<object_editor>();
-    if (!obj_editor || !obj_editor->current_object)
-    {
-        return;
-    }
-
-    auto* game_obj = obj_editor->current_object->as<root::game_object>();
+    auto* game_obj = glob::glob_state().getr_game_editor().get_selected_game_object();
     if (!game_obj)
     {
         return;

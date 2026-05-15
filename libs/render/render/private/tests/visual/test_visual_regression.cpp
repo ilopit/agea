@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <render/utils/image_compare.h>
+#include <render/utils/mesh_primitives.h>
 
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
@@ -478,7 +479,6 @@ protected:
             id, vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());
     }
 
-    // Create a sphere mesh (UV sphere) for testing rounded geometry
     mesh_data*
     create_sphere_mesh(const utils::id& id,
                        const glm::vec3& color,
@@ -486,41 +486,15 @@ protected:
                        uint32_t slices = 16,
                        float radius = 0.5f)
     {
-        std::vector<gpu::vertex_data> verts;
-        std::vector<gpu::uint> indices;
-
-        for (uint32_t i = 0; i <= stacks; ++i)
-        {
-            float phi = glm::pi<float>() * float(i) / float(stacks);
-            for (uint32_t j = 0; j <= slices; ++j)
-            {
-                float theta = 2.0f * glm::pi<float>() * float(j) / float(slices);
-                glm::vec3 n = {std::sin(phi) * std::cos(theta),
-                               std::cos(phi),
-                               std::sin(phi) * std::sin(theta)};
-                glm::vec3 p = n * radius;
-                glm::vec2 uv = {float(j) / float(slices), float(i) / float(stacks)};
-                verts.push_back({p, n, color, uv});
-            }
-        }
-
-        for (uint32_t i = 0; i < stacks; ++i)
-        {
-            for (uint32_t j = 0; j < slices; ++j)
-            {
-                uint32_t a = i * (slices + 1) + j;
-                uint32_t b = a + slices + 1;
-                indices.insert(indices.end(), {a, a + 1, b, a + 1, b + 1, b});
-            }
-        }
+        auto sphere = render::generate_sphere(radius, stacks, slices, color.r, color.g, color.b);
 
         auto& loader = glob::glob_state().getr_vulkan_render_loader();
 
-        kryga::utils::buffer vert_buf(verts.size() * sizeof(gpu::vertex_data));
-        std::memcpy(vert_buf.data(), verts.data(), vert_buf.size());
+        kryga::utils::buffer vert_buf(sphere.vertices.size() * sizeof(gpu::vertex_data));
+        std::memcpy(vert_buf.data(), sphere.vertices.data(), vert_buf.size());
 
-        kryga::utils::buffer idx_buf(indices.size() * sizeof(gpu::uint));
-        std::memcpy(idx_buf.data(), indices.data(), idx_buf.size());
+        kryga::utils::buffer idx_buf(sphere.indices.size() * sizeof(gpu::uint));
+        std::memcpy(idx_buf.data(), sphere.indices.data(), idx_buf.size());
 
         return loader.create_mesh(
             id, vert_buf.make_view<gpu::vertex_data>(), idx_buf.make_view<gpu::uint>());

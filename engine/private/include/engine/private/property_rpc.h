@@ -21,6 +21,10 @@ class component;
 namespace engine_private
 {
 
+// Encode a single smart_object's properties for the inspector/editor.
+Json::Value
+encode_owner(root::smart_object& obj);
+
 // Build the inspector payload for a game_object: own properties plus a
 // flattened list of its component tree, each owner stamped with its id and
 // reflection type name.

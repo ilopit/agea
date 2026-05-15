@@ -4,7 +4,10 @@ import * as vscode from "vscode";
 import { RpcClient } from "./rpc";
 import { SceneTreeProvider, SceneNode } from "./sceneTree";
 import { InspectorProvider } from "./inspector";
+import { ActionProgressProvider } from "./actionProgress";
 import { openRenderConfig, refreshRenderConfig } from "./renderConfig";
+import { openBakeEditor } from "./bakeEditor";
+import { openConverter } from "./converter";
 import { HotReloadWatcher } from "./hotReload";
 import { DiagnosticsManager } from "./diagnostics";
 
@@ -141,6 +144,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewViewProvider(
       "kryga.inspector",
       inspectorProvider,
+    ),
+  );
+
+  // --- Action Progress ---
+  const actionProgressProvider = new ActionProgressProvider(client);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      "kryga.actionProgress",
+      actionProgressProvider,
     ),
   );
 
@@ -298,6 +310,18 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("kryga.renderConfig", () => {
       openRenderConfig(client!);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.bakeEditor", () => {
+      openBakeEditor(client!);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("kryga.converter", () => {
+      openConverter(client!);
     }),
   );
 

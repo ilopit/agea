@@ -243,6 +243,7 @@ public:
     void schd_update_light(render::vulkan_directional_light_data* ld);
     void schd_update_light(render::vulkan_universal_light_data* ld);
     void schd_update_texture(render::texture_data* tex);
+    void flush_pending_texture_updates(); // main thread only; for immediate-submit paths
 
     void schd_remove_object(render::vulkan_render_data* obj_data);
     void schd_remove_material(render::material_data* mat_data);
@@ -358,6 +359,12 @@ public:
     get_bindless_layout() const
     {
         return m_bindless_layout;
+    }
+
+    VkDescriptorSet
+    get_bindless_set() const
+    {
+        return m_bindless_set;
     }
 
     uint32_t

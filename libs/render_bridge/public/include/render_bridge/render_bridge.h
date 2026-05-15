@@ -25,6 +25,7 @@ namespace kryga
 namespace root
 {
 class smart_object;
+class sampler;
 }
 
 namespace render
@@ -57,6 +58,9 @@ public:
 
     static bool
     is_kryga_mesh(const utils::path& p);
+
+    static uint8_t
+    map_sampler_to_static_index(const root::sampler& smp);
 
     kryga::result_code
     render_cmd_build(root::smart_object& obj, bool sub_objects);

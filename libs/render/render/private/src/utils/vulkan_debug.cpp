@@ -1,5 +1,6 @@
 #include "vulkan_render/utils/vulkan_debug.h"
 
+#include <utils/fnv_hash.h>
 #include <utils/kryga_log.h>
 
 #include <cstring>
@@ -35,26 +36,14 @@ dedupe()
     return s;
 }
 
-uint64_t
-fnv1a(const char* s, size_t n)
-{
-    uint64_t h = 0xcbf29ce484222325ULL;
-    for (size_t i = 0; i < n && s[i]; ++i)
-    {
-        h ^= static_cast<uint8_t>(s[i]);
-        h *= 0x100000001b3ULL;
-    }
-    return h;
-}
-
 bool
 already_seen(int32_t id, const char* msg)
 {
-    // Combine id + prefix of message so different VUIDs on same id still log separately.
     uint64_t key = static_cast<uint32_t>(id);
     if (msg)
     {
-        key = (key << 32) ^ fnv1a(msg, 192);
+        size_t n = (std::min)(std::strlen(msg), size_t(192));
+        key = (key << 32) ^ fnv_hash(msg, n);
     }
     auto& d = dedupe();
     std::lock_guard<std::mutex> lk(d.mtx);

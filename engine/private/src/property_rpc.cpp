@@ -7,6 +7,10 @@
 
 #include <global_state/global_state.h>
 
+#include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_cache.h>
+#include <vulkan_render/types/vulkan_material_data.h>
+
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/component.h>
@@ -16,8 +20,6 @@
 #include <utils/kryga_log.h>
 
 namespace kryga::engine_private
-{
-namespace
 {
 
 Json::Value
@@ -76,7 +78,7 @@ encode_owner(root::smart_object& obj)
             if (p->json_get(get_ctx) == result_code::ok)
             {
                 field["value"] = val;
-                if (!p->rtype->json_load)
+                if (!p->rtype->json_load || !p->serializable)
                 {
                     field["readonly"] = true;
                 }
@@ -94,8 +96,19 @@ encode_owner(root::smart_object& obj)
     }
 
     owner["categories"] = cats;
+
+    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+    auto* robj = cache.objects.find_by_id(obj.get_id());
+    if (robj && robj->material)
+    {
+        owner["material_id"] = robj->material->get_id().str();
+    }
+
     return owner;
 }
+
+namespace
+{
 
 void
 walk_components(root::game_object_component* root_comp,

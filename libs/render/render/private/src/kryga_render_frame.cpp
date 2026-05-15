@@ -684,5 +684,11 @@ vulkan_render::update_bindless_descriptors()
     textures_queue.clear();
 }
 
+void
+vulkan_render::flush_pending_texture_updates()
+{
+    update_bindless_descriptors();
+}
+
 }  // namespace render
 }  // namespace kryga

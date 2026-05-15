@@ -53,52 +53,6 @@ namespace kryga
 namespace root
 {
 
-// Forward declaration
-static uint8_t
-map_sampler_to_static_index(const sampler& smp);
-
-// Maps sampler model properties to static sampler index
-static uint8_t
-map_sampler_to_static_index(const sampler& smp)
-{
-    bool is_linear = (smp.get_min_filter() == sampler_filter::linear);
-    auto addr = smp.get_address_u();
-
-    if (smp.get_anisotropy() && is_linear && addr == sampler_address::repeat)
-    {
-        return KGPU_SAMPLER_ANISO_REPEAT;
-    }
-
-    if (is_linear)
-    {
-        switch (addr)
-        {
-        case sampler_address::repeat:
-            return KGPU_SAMPLER_LINEAR_REPEAT;
-        case sampler_address::mirrored_repeat:
-            return KGPU_SAMPLER_LINEAR_MIRROR;
-        case sampler_address::clamp_to_edge:
-            return KGPU_SAMPLER_LINEAR_CLAMP;
-        case sampler_address::clamp_to_border:
-            return KGPU_SAMPLER_LINEAR_CLAMP_BORDER;
-        }
-    }
-    else
-    {
-        switch (addr)
-        {
-        case sampler_address::repeat:
-        case sampler_address::mirrored_repeat:
-            return KGPU_SAMPLER_NEAREST_REPEAT;
-        case sampler_address::clamp_to_edge:
-        case sampler_address::clamp_to_border:
-            return KGPU_SAMPLER_NEAREST_CLAMP;
-        }
-    }
-
-    return KGPU_SAMPLER_LINEAR_REPEAT;
-}
-
 // ============================================================================
 // Render commands
 // ============================================================================
@@ -625,7 +579,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         if (ts.second.smp)
         {
             ctx.rb->render_cmd_build(*ts.second.smp, ctx.flag);
-            slot_info.static_sampler_index = map_sampler_to_static_index(*ts.second.smp);
+            slot_info.static_sampler_index = render_bridge::map_sampler_to_static_index(*ts.second.smp);
         }
 
         slots.push_back(slot_info);

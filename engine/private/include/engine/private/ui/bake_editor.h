@@ -10,6 +10,14 @@ namespace kryga
 namespace ui
 {
 
+struct bake_scene_info
+{
+    int static_count = 0;
+    int directional_count = 0;
+    int local_light_count = 0;
+    bool level_loaded = false;
+};
+
 class bake_editor : public window
 {
 public:
@@ -32,6 +40,18 @@ public:
 
     void
     save_config();
+
+    render::bake::bake_config&
+    get_config()
+    {
+        return m_config;
+    }
+
+    bake_scene_info
+    collect_scene_info() const;
+
+    bool
+    submit_bake();
 
 private:
     render::bake::bake_config m_config;

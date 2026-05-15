@@ -7,6 +7,11 @@
 
 namespace kryga
 {
+namespace root
+{
+class game_object;
+}
+
 namespace base
 {
 class camera_component;
@@ -36,6 +41,9 @@ public:
 
     utils::id
     get_selected() const;
+
+    root::game_object*
+    get_selected_game_object() const;
 
     void
     on_tick(float dur_sec);

@@ -2,12 +2,17 @@
 
 #include "engine/kryga_engine.h"
 #include "engine/editor.h"
+#include "engine/ui.h"
 #include "engine/private/property_rpc.h"
+#include "engine/private/ui/bake_editor.h"
+#include "engine/private/ui/converter_window.h"
+#include "engine/private/ui/material_previewer.h"
 
 #include <rpc/rpc_server.h>
 
 #include <core/level.h>
 #include <core/level_manager.h>
+#include <core/package.h>
 #include <core/caches/caches_map.h>
 #include <core/reflection/lua_api.h>
 #include <core/reflection/reflection_type.h>
@@ -17,8 +22,11 @@
 #include <vulkan_render/types/vulkan_light_data.h>
 #include <vulkan_render/types/vulkan_material_data.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
+#include <vulkan_render/types/vulkan_shader_effect_data.h>
+#include <vulkan_render/types/vulkan_render_pass.h>
 #include <vulkan_render/render_cache.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/render_config.h>
 
 #include <global_state/global_state.h>
@@ -26,6 +34,7 @@
 #include <render_bridge/render_bridge.h>
 
 #include <packages/root/model/assets/asset.h>
+#include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/component.h>
@@ -1662,6 +1671,698 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           }
                           result = Json::Value(Json::objectValue);
                       });
+
+    // ── Materials ─────────────────────────────────────────────────────
+
+    server.on_request("material.list",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  Json::Value arr(Json::arrayValue);
+                                  for (auto& [id, obj] :
+                                       glob::glob_state().getr_class_materials_cache().get_items())
+                                  {
+                                      auto* rt = obj->get_reflection();
+                                      Json::Value item(Json::objectValue);
+                                      item["id"] = id.str();
+                                      item["type"] = rt ? rt->type_name.str() : std::string();
+                                      auto* pkg = obj->get_package();
+                                      item["package"] = pkg ? pkg->get_id().str() : std::string();
+
+                                      auto& mat = obj->asr<root::material>();
+                                      item["has_preview"] = mat.get_shader_effect() != nullptr;
+
+                                      arr.append(std::move(item));
+                                  }
+                                  result = Json::Value(Json::objectValue);
+                                  result["materials"] = std::move(arr);
+                              });
+                          if (!done)
+                          {
+                              err = "material.list timed out";
+                          }
+                      });
+
+    server.on_request(
+        "material.preview",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            uint32_t size = params.get("size", 128).asUInt();
+
+            std::string b64;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    b64 = glob::glob_state().getr_ui().get_material_previewer().render_preview(
+                        AID(id_str), size);
+                });
+            if (!done)
+            {
+                err = "material.preview timed out";
+                return;
+            }
+            if (b64.empty())
+            {
+                err = "material not found or preview failed: " + id_str;
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["image"] = "data:image/png;base64," + b64;
+        });
+
+    server.on_request(
+        "material.assign",
+        [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("owner_id") ||
+                !params.isMember("material_id"))
+            {
+                err = "missing 'owner_id' or 'material_id' parameter";
+                return;
+            }
+            std::string owner_id = params["owner_id"].asString();
+            std::string material_id = params["material_id"].asString();
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+                    auto* robj = cache.objects.find_by_id(AID(owner_id));
+                    if (!robj)
+                    {
+                        local_err = "render object not found: " + owner_id;
+                        return;
+                    }
+                    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+                    auto* mat = loader.get_material_data(AID(material_id));
+                    if (!mat)
+                    {
+                        local_err = "material not found: " + material_id;
+                        return;
+                    }
+                    robj->material = mat;
+                    robj->renderable = true;
+                });
+            if (!done)
+            {
+                err = "material.assign timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["ok"] = true;
+            Json::Value note(Json::objectValue);
+            note["owner_id"] = owner_id;
+            note["material_id"] = material_id;
+            server.notify("material.assigned", note);
+        });
+
+    server.on_request(
+        "material.edit",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            Json::Value props;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* inst = glob::glob_state().getr_ui().get_material_previewer().begin_edit(
+                        AID(id_str));
+                    if (!inst)
+                    {
+                        local_err = "failed to begin edit for: " + id_str;
+                        return;
+                    }
+                    props = encode_owner(*inst);
+                });
+            if (!done)
+            {
+                err = "material.edit timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["material"] = props;
+        });
+
+    server.on_request(
+        "material.setField",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id") || !params.isMember("field") ||
+                !params.isMember("value"))
+            {
+                err = "missing 'id', 'field', or 'value' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string field = params["field"].asString();
+            Json::Value value = params["value"];
+
+            std::string local_err;
+            Json::Value echo_value;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* inst = glob::glob_state().getr_ui().get_material_previewer().get_editing(
+                        AID(id_str));
+                    if (!inst)
+                    {
+                        local_err = "no active edit session for: " + id_str;
+                        return;
+                    }
+                    local_err = set_owner_field(*inst, field, value, echo_value);
+
+                    glob::glob_state().getr_ui().get_material_previewer().invalidate(AID(id_str));
+                });
+            if (!done)
+            {
+                err = "material.setField timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["value"] = echo_value;
+        });
+
+    server.on_request(
+        "material.save",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    if (!glob::glob_state().getr_ui().get_material_previewer().save_edit(
+                            AID(id_str)))
+                    {
+                        local_err = "save failed for: " + id_str;
+                    }
+                });
+            if (!done)
+            {
+                err = "material.save timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["ok"] = true;
+        });
+
+    server.on_request(
+        "material.discard",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    glob::glob_state().getr_ui().get_material_previewer().discard_edit(AID(id_str));
+                });
+            if (!done)
+            {
+                err = "material.discard timed out";
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["ok"] = true;
+        });
+
+    // ── Action queue ─────────────────────────────────────────────────────
+
+    server.on_request("actions.getStatus",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto& actions = glob::glob_state().getr_ui().m_actions;
+
+                                  result = Json::Value(Json::objectValue);
+                                  result["busy"] = actions.is_busy();
+                                  result["current_name"] = actions.current_name();
+                                  result["progress"] = actions.current_progress()->progress.load();
+                                  result["status"] = actions.current_progress()->get_status();
+                                  result["queued_count"] =
+                                      static_cast<Json::UInt>(actions.queued_count());
+
+                                  Json::Value fin(Json::arrayValue);
+                                  for (auto& r : actions.finished())
+                                  {
+                                      Json::Value item(Json::objectValue);
+                                      item["name"] = r.name;
+                                      item["success"] = r.success;
+                                      if (!r.error.empty())
+                                      {
+                                          item["error"] = r.error;
+                                      }
+                                      item["duration_ms"] = r.duration_ms;
+                                      fin.append(std::move(item));
+                                  }
+                                  result["finished"] = std::move(fin);
+                              });
+                          if (!done)
+                          {
+                              err = "actions.getStatus timed out";
+                          }
+                      });
+
+    server.on_request("actions.clearFinished",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]() { glob::glob_state().getr_ui().m_actions.clear_finished(); });
+                          if (!done)
+                          {
+                              err = "actions.clearFinished timed out";
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["ok"] = true;
+                      });
+
+    // ── Bake editor ────────────────────────────────────────────────────
+
+    server.on_request("bake.getConfig",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* be = ui::get_window<ui::bake_editor>();
+                                  KRG_check(be, "bake_editor window not registered");
+                                  auto& cfg = be->get_config();
+
+                                  result = Json::Value(Json::objectValue);
+                                  result["resolution"] = cfg.resolution;
+                                  result["samples_per_texel"] = cfg.samples_per_texel;
+                                  result["bounce_count"] = cfg.bounce_count;
+                                  result["denoise_iterations"] = cfg.denoise_iterations;
+                                  result["ao_radius"] = cfg.ao_radius;
+                                  result["ao_intensity"] = cfg.ao_intensity;
+                                  result["bake_direct"] = cfg.bake_direct;
+                                  result["bake_indirect"] = cfg.bake_indirect;
+                                  result["bake_ao"] = cfg.bake_ao;
+                                  result["save_png"] = cfg.save_png;
+                                  result["texels_per_unit"] = cfg.texels_per_unit;
+                                  result["min_tile"] = cfg.min_tile;
+                                  result["max_tile"] = cfg.max_tile;
+                                  result["shadow_bias"] = cfg.shadow_bias;
+                                  result["shadow_samples"] = cfg.shadow_samples;
+                                  result["shadow_spread"] = cfg.shadow_spread;
+                                  result["dilate_iterations"] = cfg.dilate_iterations;
+                              });
+                          if (!done)
+                          {
+                              err = "bake.getConfig timed out";
+                          }
+                      });
+
+    server.on_request("bake.setConfig",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject())
+                          {
+                              err = "params must be an object";
+                              return;
+                          }
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* be = ui::get_window<ui::bake_editor>();
+                                  KRG_check(be, "bake_editor window not registered");
+                                  auto& cfg = be->get_config();
+
+                                  if (params.isMember("resolution"))
+                                  {
+                                      cfg.resolution = params["resolution"].asUInt();
+                                  }
+                                  if (params.isMember("samples_per_texel"))
+                                  {
+                                      cfg.samples_per_texel = params["samples_per_texel"].asUInt();
+                                  }
+                                  if (params.isMember("bounce_count"))
+                                  {
+                                      cfg.bounce_count = params["bounce_count"].asUInt();
+                                  }
+                                  if (params.isMember("denoise_iterations"))
+                                  {
+                                      cfg.denoise_iterations =
+                                          params["denoise_iterations"].asUInt();
+                                  }
+                                  if (params.isMember("ao_radius"))
+                                  {
+                                      cfg.ao_radius = params["ao_radius"].asFloat();
+                                  }
+                                  if (params.isMember("ao_intensity"))
+                                  {
+                                      cfg.ao_intensity = params["ao_intensity"].asFloat();
+                                  }
+                                  if (params.isMember("bake_direct"))
+                                  {
+                                      cfg.bake_direct = params["bake_direct"].asBool();
+                                  }
+                                  if (params.isMember("bake_indirect"))
+                                  {
+                                      cfg.bake_indirect = params["bake_indirect"].asBool();
+                                  }
+                                  if (params.isMember("bake_ao"))
+                                  {
+                                      cfg.bake_ao = params["bake_ao"].asBool();
+                                  }
+                                  if (params.isMember("save_png"))
+                                  {
+                                      cfg.save_png = params["save_png"].asBool();
+                                  }
+                                  if (params.isMember("texels_per_unit"))
+                                  {
+                                      cfg.texels_per_unit = params["texels_per_unit"].asFloat();
+                                  }
+                                  if (params.isMember("min_tile"))
+                                  {
+                                      cfg.min_tile = params["min_tile"].asInt();
+                                  }
+                                  if (params.isMember("max_tile"))
+                                  {
+                                      cfg.max_tile = params["max_tile"].asInt();
+                                  }
+                                  if (params.isMember("shadow_bias"))
+                                  {
+                                      cfg.shadow_bias = params["shadow_bias"].asFloat();
+                                  }
+                                  if (params.isMember("shadow_samples"))
+                                  {
+                                      cfg.shadow_samples = params["shadow_samples"].asUInt();
+                                  }
+                                  if (params.isMember("shadow_spread"))
+                                  {
+                                      cfg.shadow_spread = params["shadow_spread"].asFloat();
+                                  }
+                                  if (params.isMember("dilate_iterations"))
+                                  {
+                                      cfg.dilate_iterations = params["dilate_iterations"].asUInt();
+                                  }
+                              });
+                          if (!done)
+                          {
+                              err = "bake.setConfig timed out";
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["ok"] = true;
+                      });
+
+    server.on_request("bake.applyPreset",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("preset"))
+                          {
+                              err = "missing 'preset' parameter";
+                              return;
+                          }
+                          std::string preset_str = params["preset"].asString();
+                          render::bake::bake_preset preset;
+                          if (preset_str == "low")
+                          {
+                              preset = render::bake::bake_preset::low;
+                          }
+                          else if (preset_str == "medium")
+                          {
+                              preset = render::bake::bake_preset::medium;
+                          }
+                          else if (preset_str == "high")
+                          {
+                              preset = render::bake::bake_preset::high;
+                          }
+                          else if (preset_str == "maximum")
+                          {
+                              preset = render::bake::bake_preset::maximum;
+                          }
+                          else
+                          {
+                              err = "invalid preset: " + preset_str;
+                              return;
+                          }
+
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* be = ui::get_window<ui::bake_editor>();
+                                  KRG_check(be, "bake_editor window not registered");
+                                  be->get_config().apply_preset(preset);
+                              });
+                          if (!done)
+                          {
+                              err = "bake.applyPreset timed out";
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["ok"] = true;
+                      });
+
+    server.on_request("bake.getSceneInfo",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* be = ui::get_window<ui::bake_editor>();
+                                  KRG_check(be, "bake_editor window not registered");
+                                  auto info = be->collect_scene_info();
+
+                                  result = Json::Value(Json::objectValue);
+                                  result["static_count"] = info.static_count;
+                                  result["directional_count"] = info.directional_count;
+                                  result["local_light_count"] = info.local_light_count;
+                                  result["level_loaded"] = info.level_loaded;
+                              });
+                          if (!done)
+                          {
+                              err = "bake.getSceneInfo timed out";
+                          }
+                      });
+
+    server.on_request("bake.start",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          std::string local_err;
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* be = ui::get_window<ui::bake_editor>();
+                                  KRG_check(be, "bake_editor window not registered");
+
+                                  if (!be->submit_bake())
+                                  {
+                                      local_err =
+                                          "cannot bake: no level, no meshes, no lights, or busy";
+                                  }
+                              });
+                          if (!done)
+                          {
+                              err = "bake.start timed out";
+                              return;
+                          }
+                          if (!local_err.empty())
+                          {
+                              err = std::move(local_err);
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["queued"] = true;
+                      });
+
+    // ── Converter ─────────────────────────────────────────────────────
+
+    server.on_request(
+        "converter.start",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject())
+            {
+                err = "params must be an object";
+                return;
+            }
+
+            std::string input = params.get("input", "").asString();
+            std::string output_root = params.get("output_root", "").asString();
+            std::string name = params.get("name", "").asString();
+            std::string mode = params.get("mode", "package").asString();
+            std::string existing = params.get("existing_package", "").asString();
+
+            std::vector<std::string> deps;
+            if (params.isMember("deps") && params["deps"].isArray())
+            {
+                for (const auto& d : params["deps"])
+                {
+                    deps.push_back(d.asString());
+                }
+            }
+
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* conv = ui::get_window<ui::converter_window>();
+                    KRG_check(conv, "converter_window not registered");
+
+                    if (!conv->submit_conversion(input, output_root, name, mode, existing, deps))
+                    {
+                        local_err = conv->get_status_text();
+                    }
+                });
+            if (!done)
+            {
+                err = "converter.start timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["queued"] = true;
+        });
+
+    server.on_request("converter.getStatus",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* conv = ui::get_window<ui::converter_window>();
+                                  KRG_check(conv, "converter_window not registered");
+
+                                  result = Json::Value(Json::objectValue);
+                                  result["running"] = conv->is_running();
+                                  result["status"] = conv->get_status_text();
+                                  result["is_error"] = conv->is_status_error();
+                              });
+                          if (!done)
+                          {
+                              err = "converter.getStatus timed out";
+                          }
+                      });
+
+    server.on_request("converter.listDeps",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          std::string output_root;
+                          if (params.isObject() && params.isMember("output_root"))
+                          {
+                              output_root = params["output_root"].asString();
+                          }
+
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto deps = ui::converter_window::list_deps(output_root);
+
+                                  result = Json::Value(Json::objectValue);
+                                  Json::Value arr(Json::arrayValue);
+                                  for (const auto& [id, checked] : deps)
+                                  {
+                                      Json::Value item(Json::objectValue);
+                                      item["id"] = id;
+                                      item["checked"] = checked;
+                                      arr.append(std::move(item));
+                                  }
+                                  result["deps"] = std::move(arr);
+                              });
+                          if (!done)
+                          {
+                              err = "converter.listDeps timed out";
+                          }
+                      });
+
+    // Wire converter completion → RPC notification
+    {
+        auto* conv = ui::get_window<ui::converter_window>();
+        KRG_check(conv, "converter_window not registered");
+        conv->set_completed_callback(
+            [&server](const ui::converter_result& cr)
+            {
+                Json::Value params(Json::objectValue);
+                params["success"] = cr.success;
+                params["exit_code"] = cr.exit_code;
+                if (!cr.log_tail.empty())
+                {
+                    params["log_tail"] = cr.log_tail;
+                }
+                server.notify("converter.completed", params);
+            });
+    }
+
+    // Wire action queue events → RPC notifications
+    glob::glob_state().getr_ui().m_actions.set_event_callback(
+        [&server](const engine::action_event& evt)
+        {
+            Json::Value params(Json::objectValue);
+            params["name"] = evt.name;
+
+            switch (evt.type)
+            {
+            case engine::action_event_type::started:
+                server.notify("action.started", params);
+                break;
+            case engine::action_event_type::progress:
+                params["progress"] = evt.progress;
+                params["status"] = evt.status;
+                server.notify("action.progress", params);
+                break;
+            case engine::action_event_type::completed:
+                params["success"] = evt.success;
+                if (!evt.error.empty())
+                {
+                    params["error"] = evt.error;
+                }
+                params["duration_ms"] = evt.duration_ms;
+                server.notify("action.completed", params);
+                break;
+            }
+        });
 }
 
 }  // namespace kryga::engine_private

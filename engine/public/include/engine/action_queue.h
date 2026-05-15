@@ -51,6 +51,26 @@ struct action_result
     float duration_ms = 0.0f;
 };
 
+enum class action_event_type
+{
+    started,
+    progress,
+    completed
+};
+
+struct action_event
+{
+    action_event_type type;
+    std::string name;
+    float progress = 0.0f;
+    std::string status;
+    bool success = false;
+    std::string error;
+    float duration_ms = 0.0f;
+};
+
+using action_event_callback = std::function<void(const action_event&)>;
+
 // Simple single-worker action queue. Actions run one at a time on a background thread.
 // The main thread polls for completion and can read progress.
 class action_queue
@@ -58,6 +78,9 @@ class action_queue
 public:
     action_queue() = default;
     ~action_queue();
+
+    void
+    set_event_callback(action_event_callback cb);
 
     // Submit an action. It will run after any currently queued actions complete.
     void
@@ -73,6 +96,10 @@ public:
     {
         return m_running.load();
     }
+
+    // Canonical name of the currently running action (empty if idle)
+    std::string
+    current_name();
 
     // Current action name (empty if idle)
     std::string
@@ -113,6 +140,7 @@ private:
 
     action_progress m_progress;
     std::atomic<bool> m_running{false};
+    std::string m_current_name;
 
     std::vector<action_result> m_finished;
 
@@ -123,6 +151,9 @@ private:
     std::thread m_worker;
     std::atomic<bool> m_shutdown{false};
     std::condition_variable m_cv;
+
+    action_event_callback m_event_callback;
+    float m_last_reported_progress = 0.0f;
 };
 
 }  // namespace engine

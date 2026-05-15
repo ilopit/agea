@@ -6,9 +6,6 @@
 #include <vfs/vfs.h>
 #include <vfs/vfs_state.h>
 
-#include <imgui.h>
-#include <ImGuiFileDialog.h>
-
 #include <set>
 #include <unordered_map>
 
@@ -30,8 +27,6 @@
 #if WIN32
 #include <windows.h>
 #endif
-
-#include <cstring>
 
 namespace kryga::ui
 {
@@ -86,17 +81,6 @@ read_file_tail(const std::filesystem::path& p, size_t max_chars = 4096)
     std::string out(to_read, '\0');
     in.read(out.data(), static_cast<std::streamsize>(to_read));
     return out;
-}
-
-constexpr const char* k_input_dlg_key = "ConverterInputDlg";
-constexpr const char* k_output_dlg_key = "ConverterOutputDlg";
-
-void
-copy_path_to_buffer(const std::string& s, char* buf, size_t cap)
-{
-    size_t n = std::min(s.size(), cap - 1);
-    std::memcpy(buf, s.data(), n);
-    buf[n] = '\0';
 }
 
 bool
@@ -167,269 +151,200 @@ converter_window::converter_window()
 converter_window::~converter_window() = default;
 
 void
-converter_window::handle()
+converter_window::set_completed_callback(converter_completed_callback cb)
 {
-    if (!handle_begin())
+    m_completed_callback = std::move(cb);
+}
+
+void
+converter_window::poll()
+{
+    if (!m_async || !m_async->proc)
     {
         return;
     }
 
-    static const char* modes[] = {"package", "extend", "level", "level+package"};
-
-    // Poll the running converter, if any.
-    if (m_async && m_async->proc)
+    boost::system::error_code ec;
+    bool still_running = m_async->proc->running(ec);
+    if (ec)
     {
-        boost::system::error_code ec;
-        bool still_running = m_async->proc->running(ec);
-        if (ec)
+        m_status = std::string("ERROR: running() failed: ") + ec.message();
+        m_status_is_error = true;
+
+        converter_result cr;
+        cr.success = false;
+        cr.exit_code = -1;
+        cr.log_tail = m_status;
+        m_async.reset();
+        if (m_completed_callback)
         {
-            m_status = std::string("ERROR: running() failed: ") + ec.message();
-            m_status_is_error = true;
-            m_async.reset();
+            m_completed_callback(cr);
         }
-        else if (!still_running)
+        return;
+    }
+
+    if (still_running)
+    {
+        return;
+    }
+
+    boost::system::error_code wec;
+    int rc = m_async->proc->wait(wec);
+    std::string log_tail = read_file_tail(m_async->log_path);
+
+    converter_result cr;
+    cr.exit_code = rc;
+
+    if (wec)
+    {
+        m_status = "ERROR: wait failed: " + wec.message() + "\n" + log_tail;
+        m_status_is_error = true;
+        cr.success = false;
+        cr.log_tail = m_status;
+    }
+    else if (rc != 0)
+    {
+        std::ostringstream os;
+        os << "ERROR: asset_converter exited with code " << rc << "\n" << log_tail;
+        m_status = os.str();
+        m_status_is_error = true;
+        cr.success = false;
+        cr.log_tail = m_status;
+    }
+    else
+    {
+        m_status = "OK\n" + log_tail;
+        m_status_is_error = false;
+        cr.success = true;
+        cr.log_tail = log_tail;
+    }
+
+    m_async.reset();
+    if (m_completed_callback)
+    {
+        m_completed_callback(cr);
+    }
+}
+
+bool
+converter_window::is_running() const
+{
+    return m_async != nullptr;
+}
+
+std::string
+converter_window::get_status_text() const
+{
+    return m_status;
+}
+
+bool
+converter_window::is_status_error() const
+{
+    return m_status_is_error;
+}
+
+bool
+converter_window::submit_conversion(const std::string& input,
+                                    const std::string& output_root,
+                                    const std::string& name,
+                                    const std::string& mode,
+                                    const std::string& existing_package,
+                                    const std::vector<std::string>& deps)
+{
+    if (m_async)
+    {
+        return false;
+    }
+
+    if (input.empty() || output_root.empty() || name.empty())
+    {
+        m_status = "ERROR: input, output root, and name are required";
+        m_status_is_error = true;
+        return false;
+    }
+    if ((mode == "extend" || mode == "level") && existing_package.empty())
+    {
+        m_status = "ERROR: --existing-package id is required for this mode";
+        m_status_is_error = true;
+        return false;
+    }
+
+    auto exe_path = get_exe_dir() / "asset_converter.exe";
+    if (!std::filesystem::exists(exe_path))
+    {
+        auto alt = get_exe_dir() / "asset_converter";
+        if (std::filesystem::exists(alt))
         {
-            boost::system::error_code wec;
-            int rc = m_async->proc->wait(wec);
-            std::string log_tail = read_file_tail(m_async->log_path);
-
-            if (wec)
-            {
-                m_status = "ERROR: wait failed: " + wec.message() + "\n" + log_tail;
-                m_status_is_error = true;
-            }
-            else if (rc != 0)
-            {
-                std::ostringstream os;
-                os << "ERROR: asset_converter exited with code " << rc << "\n" << log_tail;
-                m_status = os.str();
-                m_status_is_error = true;
-            }
-            else
-            {
-                m_status = "OK\n" + log_tail;
-                m_status_is_error = false;
-            }
-
-            m_async.reset();
-        }
-    }
-
-    const bool busy = (m_async != nullptr);
-
-    ImGui::Text("Import 3D assets via asset_converter.exe");
-    ImGui::Separator();
-
-    ImGui::BeginDisabled(busy);
-
-    ImGui::InputText("##input_path", m_input_path.data(), m_input_path.size());
-    ImGui::SameLine();
-    if (ImGui::Button("Browse...##input"))
-    {
-        IGFD::FileDialogConfig cfg;
-        cfg.path = ".";
-        cfg.flags = ImGuiFileDialogFlags_Modal;
-        ImGuiFileDialog::Instance()->OpenDialog(
-            k_input_dlg_key, "Select input asset", "3D assets{.glb,.gltf,.obj},All files{.*}", cfg);
-    }
-    ImGui::SameLine();
-    ImGui::TextUnformatted("Input file (.glb/.gltf/.obj)");
-
-    ImGui::InputText("##output_root", m_output_path.data(), m_output_path.size());
-    ImGui::SameLine();
-    if (ImGui::Button("Browse...##output"))
-    {
-        IGFD::FileDialogConfig cfg;
-        cfg.path = ".";
-        cfg.flags = ImGuiFileDialogFlags_Modal;
-        ImGuiFileDialog::Instance()->OpenDialog(
-            k_output_dlg_key, "Select output directory", nullptr, cfg);
-    }
-    ImGui::SameLine();
-    ImGui::TextUnformatted("Output root (directory)");
-
-    ImGui::InputText("Name (id + filename base)", m_name.data(), m_name.size());
-    ImGui::Combo("Mode", &m_mode_index, modes, IM_ARRAYSIZE(modes));
-    ImGui::InputText(
-        "Existing package id (extend/level)", m_existing_package.data(), m_existing_package.size());
-    ImGui::EndDisabled();
-
-    ImGui::Separator();
-
-    std::string output_root_now(m_output_path.data());
-    if (!m_deps_initialized || output_root_now != m_last_scanned_output_root)
-    {
-        rescan_deps(output_root_now, m_dep_checklist);
-        m_last_scanned_output_root = output_root_now;
-        m_deps_initialized = true;
-    }
-
-    ImGui::TextUnformatted("Dependencies:");
-    ImGui::SameLine();
-    ImGui::BeginDisabled(busy);
-    if (ImGui::SmallButton("Refresh##deps"))
-    {
-        rescan_deps(output_root_now, m_dep_checklist);
-    }
-    ImGui::EndDisabled();
-
-    ImGui::BeginChild("##deps_child", ImVec2(0, 120), true);
-    for (auto& [id, checked] : m_dep_checklist)
-    {
-        bool locked = is_always_on_dep(id);
-        ImGui::BeginDisabled(busy || locked);
-        bool c = checked;
-        if (ImGui::Checkbox(id.c_str(), &c) && !locked)
-        {
-            checked = c;
-        }
-        if (locked)
-        {
-            checked = true;
-        }
-        ImGui::EndDisabled();
-    }
-    ImGui::EndChild();
-
-    ImGui::Separator();
-
-    ImGui::BeginDisabled(busy);
-    bool clicked = ImGui::Button("Convert", ImVec2(120, 0));
-    ImGui::EndDisabled();
-
-    if (busy)
-    {
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.2f, 1.0f), "Running...");
-    }
-
-    if (clicked && !busy)
-    {
-        std::string input(m_input_path.data());
-        std::string output_root(m_output_path.data());
-        std::string name(m_name.data());
-        std::string existing(m_existing_package.data());
-        std::string mode = modes[m_mode_index];
-
-        if (input.empty() || output_root.empty() || name.empty())
-        {
-            m_status = "ERROR: input, output root, and name are required";
-            m_status_is_error = true;
-        }
-        else if ((mode == "extend" || mode == "level") && existing.empty())
-        {
-            m_status = "ERROR: --existing-package id is required for this mode";
-            m_status_is_error = true;
-        }
-        else
-        {
-            auto exe_path = get_exe_dir() / "asset_converter.exe";
-            if (!std::filesystem::exists(exe_path))
-            {
-                auto alt = get_exe_dir() / "asset_converter";
-                if (std::filesystem::exists(alt))
-                {
-                    exe_path = alt;
-                }
-            }
-
-            auto data_root = resolve_data_root();
-
-            std::error_code mkec;
-            std::filesystem::create_directories(output_root, mkec);
-
-            auto log_path = std::filesystem::temp_directory_path() / "kryga_asset_converter.log";
-
-            std::vector<std::string> args = {
-                "--input",
-                input,
-                "--data-root",
-                data_root.string(),
-                "--output-root",
-                output_root,
-                "--name",
-                name,
-                "--mode",
-                mode,
-            };
-            if (mode == "extend" || mode == "level")
-            {
-                args.push_back("--existing-package");
-                args.push_back(existing);
-            }
-            for (const auto& [id, checked] : m_dep_checklist)
-            {
-                if (checked)
-                {
-                    args.push_back("--dep");
-                    args.push_back(id);
-                }
-            }
-
-            boost::filesystem::path bexe(exe_path.string());
-            boost::filesystem::path blog(log_path.string());
-
-            auto async = std::make_unique<async_state>();
-            async->log_path = log_path;
-
-            try
-            {
-                async->proc.emplace(
-                    async->ctx.get_executor(), bexe, args, bp::process_stdio{{}, blog, blog});
-                m_async = std::move(async);
-                m_status.clear();
-                m_status_is_error = false;
-            }
-            catch (const std::exception& e)
-            {
-                m_status = std::string("ERROR: launch failed: ") + e.what() +
-                           " (exe: " + exe_path.string() + ")";
-                m_status_is_error = true;
-            }
+            exe_path = alt;
         }
     }
 
-    if (!m_status.empty())
+    auto data_root = resolve_data_root();
+
+    std::error_code mkec;
+    std::filesystem::create_directories(output_root, mkec);
+
+    auto log_path = std::filesystem::temp_directory_path() / "kryga_asset_converter.log";
+
+    std::vector<std::string> args = {
+        "--input",
+        input,
+        "--data-root",
+        data_root.string(),
+        "--output-root",
+        output_root,
+        "--name",
+        name,
+        "--mode",
+        mode,
+    };
+    if (mode == "extend" || mode == "level")
     {
-        ImGui::Separator();
-        if (m_status_is_error)
-        {
-            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "%s", m_status.c_str());
-        }
-        else
-        {
-            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s", m_status.c_str());
-        }
+        args.push_back("--existing-package");
+        args.push_back(existing_package);
+    }
+    for (const auto& id : deps)
+    {
+        args.push_back("--dep");
+        args.push_back(id);
     }
 
-    ImVec2 min_size(600.0f, 400.0f);
-    ImVec2 max_size(FLT_MAX, FLT_MAX);
+    boost::filesystem::path bexe(exe_path.string());
+    boost::filesystem::path blog(log_path.string());
 
-    if (ImGuiFileDialog::Instance()->Display(
-            k_input_dlg_key, ImGuiWindowFlags_NoCollapse, min_size, max_size))
+    auto async = std::make_unique<async_state>();
+    async->log_path = log_path;
+
+    try
     {
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            copy_path_to_buffer(ImGuiFileDialog::Instance()->GetFilePathName(),
-                                m_input_path.data(),
-                                m_input_path.size());
-        }
-        ImGuiFileDialog::Instance()->Close();
+        async->proc.emplace(
+            async->ctx.get_executor(), bexe, args, bp::process_stdio{{}, blog, blog});
+        m_async = std::move(async);
+        m_status.clear();
+        m_status_is_error = false;
+        return true;
     }
-
-    if (ImGuiFileDialog::Instance()->Display(
-            k_output_dlg_key, ImGuiWindowFlags_NoCollapse, min_size, max_size))
+    catch (const std::exception& e)
     {
-        if (ImGuiFileDialog::Instance()->IsOk())
-        {
-            copy_path_to_buffer(ImGuiFileDialog::Instance()->GetCurrentPath(),
-                                m_output_path.data(),
-                                m_output_path.size());
-        }
-        ImGuiFileDialog::Instance()->Close();
+        m_status =
+            std::string("ERROR: launch failed: ") + e.what() + " (exe: " + exe_path.string() + ")";
+        m_status_is_error = true;
+        return false;
     }
+}
 
-    handle_end();
+std::vector<std::pair<std::string, bool>>
+converter_window::list_deps(const std::string& output_root)
+{
+    std::vector<std::pair<std::string, bool>> result;
+    rescan_deps(output_root, result);
+    return result;
+}
+
+void
+converter_window::handle()
+{
 }
 
 }  // namespace kryga::ui
