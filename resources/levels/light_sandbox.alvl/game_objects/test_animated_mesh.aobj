@@ -1,11 +1,11 @@
-class_id: animated_mesh_object
+type_id: animated_mesh_object
 id: test_animated_mesh
 layout: [-1, 0]
 components:
   - id: test_animated_mesh_root
-    class_id: game_object_component
+    type_id: game_object_component
   - id: test_animated_mesh_comp
-    class_id: animated_mesh_component
+    type_id: animated_mesh_component
     gltf: meshes/Fox.glb
     material: mt_skinned_lit
     clip_name: Survey

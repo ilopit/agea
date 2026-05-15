@@ -1,11 +1,11 @@
-class_id: mesh_object
+type_id: mesh_object
 id: test_cube
 layout: [-1, 0]
 components: 
   - id: test_cube_root_component
-    class_id: game_object_component
+    type_id: game_object_component
   - id: test_cube_mesh
-    class_id: mesh_component
+    type_id: mesh_component
     material: mt_toon
     mesh: cube_mesh
     position:

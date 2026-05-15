@@ -1,11 +1,11 @@
-class_id: directional_light
+type_id: directional_light
 id: sun_evening
 layout: [-1, 0]
 components:
   - id: sun_evening_root
-    class_id: game_object_component
+    type_id: game_object_component
   - id: sun_evening_lc
-    class_id: directional_light_component
+    type_id: directional_light_component
     ambient:
       x: 0.1
       y: 0.08

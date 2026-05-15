@@ -1,11 +1,11 @@
-class_id: directional_light
+type_id: directional_light
 id: sun
 layout: [-1, 0, 0]
 components:
   - id: sun_root
-    class_id: game_object_component
+    type_id: game_object_component
   - id: sun_icon
-    class_id: mesh_component
+    type_id: mesh_component
     material: mt_billboard_directional_light
     mesh: plane_mesh
     layers:
@@ -20,7 +20,7 @@ components:
       y: 10
       z: 0
   - id: sun_lc
-    class_id: directional_light_component
+    type_id: directional_light_component
     ambient:
       x: 0.15
       y: 0.15

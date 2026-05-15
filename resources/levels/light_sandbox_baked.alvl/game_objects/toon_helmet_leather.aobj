@@ -1,11 +1,11 @@
-class_id: mesh_object
+type_id: mesh_object
 id: toon_helmet_leather
 layout: [-1, 0]
 components:
   - id: toon_helmet_leather_root_component
-    class_id: game_object_component
+    type_id: game_object_component
   - id: toon_helmet_leather_mesh
-    class_id: mesh_component
+    type_id: mesh_component
     material: mt_toon
     mesh: LeatherParts_low_mesh
     position:

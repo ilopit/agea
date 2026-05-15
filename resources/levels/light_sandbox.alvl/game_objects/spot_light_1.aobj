@@ -1,11 +1,11 @@
-class_id: spot_light
+type_id: spot_light
 id: spot_light_1
 layout: [-1, 0, 0]
 components:
   - id: spot_light_1_root
-    class_id: game_object_component
+    type_id: game_object_component
   - id: spot_light_1_icon
-    class_id: mesh_component
+    type_id: mesh_component
     material: mt_billboard_spot_light
     mesh: plane_mesh
     layers:
@@ -20,7 +20,7 @@ components:
       y: 6
       z: 0
   - id: spot_light_1_lc
-    class_id: spot_light_component
+    type_id: spot_light_component
     ambient:
       x: 0.02
       y: 0.02

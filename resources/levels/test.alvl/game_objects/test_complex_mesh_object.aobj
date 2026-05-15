@@ -1,11 +1,11 @@
-class_id: mesh_object
+type_id: mesh_object
 id: test_complex_mesh_object
 layout: [-1, 0]
 components: 
   - id: test_root_component_0
-    class_id: game_object_component
+    type_id: game_object_component
   - id: test_root_component_1
-    class_id: mesh_component
+    type_id: mesh_component
     material: test_material
     mesh: test_mesh
     position:
