@@ -101,7 +101,7 @@ game_object_components_save(::kryga::reflection::property_context__save& dc)
         component_container["id"] = id;
 
         auto pid = obj_component->get_class_obj()->get_id().str();
-        component_container["class_id"] = pid;
+        component_container["type_id"] = pid;
 
         reflection::property_context__save internal_sc{
             nullptr, obj_component, &component_container};
@@ -248,7 +248,7 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
             {
                 auto comp_id = item["id"].IsDefined() ? item["id"].as<std::string>() : "unknown";
                 auto comp_class =
-                    item["class_id"].IsDefined() ? item["class_id"].as<std::string>() : "unknown";
+                    item["type_id"].IsDefined() ? item["type_id"].as<std::string>() : "unknown";
                 ALOG_ERROR(
                     "Failed to load component [{}] (class [{}]) at index [{}] for object [{}]",
                     comp_id,
@@ -292,12 +292,76 @@ texture_slot_prototype(::kryga::reflection::property_context__prototype& dc)
 result_code
 property_texture_slot__save(::kryga::reflection::property_context__save& dc)
 {
+    auto* mat = const_cast<root::smart_object*>(dc.obj)->as<root::material>();
+    auto id = AID(dc.p->name);
+    auto& slots = mat->get_texture_slots();
+    auto it = slots.find(id);
+    if (it == slots.end() || !it->second.txt)
+    {
+        return result_code::ok;
+    }
+
+    auto& slot = it->second;
+    auto& sc = *dc.sc;
+
+    sc[dc.p->name]["texture"] = slot.txt->get_id().str();
+    sc[dc.p->name]["slot"] = slot.slot;
+    if (slot.smp)
+    {
+        sc[dc.p->name]["sampler"] = slot.smp->get_id().str();
+    }
+
     return result_code::ok;
 }
 
 result_code
 property_texture_slot__compare(::kryga::reflection::property_context__compare& ctx)
 {
+    auto* src = const_cast<root::smart_object*>(ctx.src_obj)->as<root::material>();
+    auto* dst = const_cast<root::smart_object*>(ctx.dst_obj)->as<root::material>();
+
+    auto id = AID(ctx.p->name);
+    auto& src_slots = src->get_texture_slots();
+    auto& dst_slots = dst->get_texture_slots();
+
+    auto src_it = src_slots.find(id);
+    auto dst_it = dst_slots.find(id);
+
+    bool src_empty = (src_it == src_slots.end() || !src_it->second.txt);
+    bool dst_empty = (dst_it == dst_slots.end() || !dst_it->second.txt);
+
+    if (src_empty && dst_empty)
+    {
+        return result_code::ok;
+    }
+    if (src_empty != dst_empty)
+    {
+        return result_code::failed;
+    }
+
+    auto& s = src_it->second;
+    auto& d = dst_it->second;
+
+    if (s.txt->get_id() != d.txt->get_id())
+    {
+        return result_code::failed;
+    }
+    if (s.slot != d.slot)
+    {
+        return result_code::failed;
+    }
+
+    bool src_smp = s.smp != nullptr;
+    bool dst_smp = d.smp != nullptr;
+    if (src_smp != dst_smp)
+    {
+        return result_code::failed;
+    }
+    if (src_smp && dst_smp && s.smp->get_id() != d.smp->get_id())
+    {
+        return result_code::failed;
+    }
+
     return result_code::ok;
 }
 

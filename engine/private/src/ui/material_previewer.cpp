@@ -741,9 +741,12 @@ material_previewer::save_edit(const utils::id& material_id)
         }
     }
 
+    auto& class_mat = class_obj->asr<root::material>();
+
     auto& loader = glob::glob_state().getr_vulkan_render_loader();
     loader.destroy_material_data(session.instance_id);
-    loader.destroy_material_data(material_id);
+
+    class_mat.mark_render_dirty();
 
     pkg->get_load_context().remove_obj(*instance);
 

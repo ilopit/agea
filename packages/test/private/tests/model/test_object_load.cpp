@@ -28,6 +28,8 @@
 #include <packages/base/model/components/mesh_component.h>
 #include <packages/base/model/assets/simple_texture_material.h>
 
+#include <serialization/serialization.h>
+
 #include <utils/kryga_log.h>
 #include <utils/file_utils.h>
 
@@ -979,6 +981,41 @@ TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
     ASSERT_EQ(save_rc, result_code::ok);
     ASSERT_TRUE(std::filesystem::exists(save_path.fs()));
     ASSERT_GT(std::filesystem::file_size(save_path.fs()), 0u);
+
+    std::filesystem::remove(save_path.fs());
+}
+
+TEST_F(test_preloaded_test_package, object_save_material_preserves_texture_slots)
+{
+    auto& lc = test::package::instance().get_load_context();
+    setup_test_backend(lc);
+
+    std::vector<root::smart_object*> loaded;
+    auto load_result =
+        test_object_load(AID("test_material"), core::object_load_type::class_obj, lc, loaded);
+    ASSERT_TRUE(load_result.has_value());
+    auto* material = load_result.value()->as<base::simple_texture_material>();
+    ASSERT_TRUE(material);
+
+    auto& slots = material->get_texture_slots();
+    auto slot_it = slots.find(AID("simple_texture"));
+    ASSERT_NE(slot_it, slots.end());
+    ASSERT_TRUE(slot_it->second.txt) << "texture slot should be populated after load";
+
+    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
+    auto save_path = temp_dir / "test_material_texture_slot.aobj";
+
+    auto save_rc = core::object_constructor::object_save(*material, save_path);
+    ASSERT_EQ(save_rc, result_code::ok);
+
+    serialization::container sc;
+    ASSERT_TRUE(serialization::read_container(save_path, sc));
+
+    ASSERT_TRUE(sc["simple_texture"].IsDefined()) << "texture slot missing from saved file";
+    ASSERT_TRUE(sc["simple_texture"]["texture"].IsDefined())
+        << "texture id missing from saved texture slot";
+    EXPECT_EQ(sc["simple_texture"]["texture"].as<std::string>(), "texture");
+    EXPECT_EQ(sc["simple_texture"]["slot"].as<uint32_t>(), 0u);
 
     std::filesystem::remove(save_path.fs());
 }

@@ -138,8 +138,8 @@ object_constructor::object_load_internal(serialization::container& container)
 {
     auto id = AID(container["id"].as<std::string>());
 
-    auto proto_id = container["class_id"].IsDefined() ? AID(container["class_id"].as<std::string>())
-                                                      : AID(container["type_id"].as<std::string>());
+    auto proto_id = container["type_id"].IsDefined() ? AID(container["type_id"].as<std::string>())
+                                                     : AID(container["class_id"].as<std::string>());
 
     auto src_result = preload_proto(proto_id);
     if (!src_result)
@@ -258,8 +258,8 @@ object_constructor::load_level_obj(const utils::id& id)
 
     // Load derive with instance context
     auto container_id = AID(c["id"].as<std::string>());
-    auto proto_id = c["class_id"].IsDefined() ? AID(c["class_id"].as<std::string>())
-                                              : AID(c["type_id"].as<std::string>());
+    auto proto_id = c["type_id"].IsDefined() ? AID(c["type_id"].as<std::string>())
+                                             : AID(c["class_id"].as<std::string>());
 
     auto proto = m_olc->find_proto_obj(proto_id);
     if (!proto)
@@ -669,7 +669,7 @@ object_constructor::object_save_internal(serialization::container& sc,
 {
     auto proto_obj = obj.get_class_obj();
     auto cid = proto_obj->get_id().str();
-    sc["class_id"] = cid;
+    sc["type_id"] = cid;
 
     auto id = obj.get_id().str();
     sc["id"] = id;

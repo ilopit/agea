@@ -42,6 +42,12 @@ public:
         return m_texture_slots;
     }
 
+    const std::unordered_map<utils::id, texture_slot>&
+    get_texture_slots() const
+    {
+        return m_texture_slots;
+    }
+
     texture_slot&
     get_slot(const utils::id& slot);
 
