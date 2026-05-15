@@ -15,5 +15,13 @@
       "Bash(export JAVA_HOME=*)",
       "Bash(export PATH=*)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" =~ \\.(h|cpp)$ ]] && [[ ! \"$FILE\" =~ ^build/ ]]; then CLANG_FORMAT=\"/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe\"; if [ -x \"$CLANG_FORMAT\" ]; then \"$CLANG_FORMAT\" -i \"$FILE\"; fi; fi'"
+      }
+    ]
   }
 }
