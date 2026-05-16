@@ -199,11 +199,7 @@ vulkan_engine::init(const startup_options& options)
 
     state_mutator__config::set(gs);
     state_mutator__render::set(gs);
-#if KRG_EDITOR
-    state_mutator__editor_system::set(gs);
-#endif
 
-    state_mutator__animation_system::set(gs);
     // input_manager is the only subsystem that truly can't run headless —
     // it hooks the OS event pump which tests don't drive. Everything else
     // (native_window, ui) works against a hidden SDL window.
@@ -216,6 +212,14 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__engine_counters::set(gs);
     state_mutator__queues::set(gs);
     state_mutator__render_bridge::set(gs);
+    state_mutator__animation_system::set(gs);
+#if KRG_EDITOR
+    state_mutator__editor_system::set(gs);
+#endif
+
+    glob::glob_state().getr_animation_system().set_render_data_resolver(
+        [](const utils::id& id) -> render::vulkan_render_data*
+        { return glob::glob_state().getr_render().renderer.get_cache().objects.find_by_id(id); });
 
     gs.run_connect();
     init_default_scripting();

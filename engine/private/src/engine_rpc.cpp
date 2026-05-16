@@ -101,26 +101,29 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       [](const Json::Value& params, Json::Value& result, std::string&)
                       { result = params; });
 
-    server.on_request(
-        "engine.waitFrame",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            int count = params.get("count", 1).asInt();
-            if (count < 1)
-                count = 1;
-            if (count > 60)
-                count = 60;
-            for (int i = 0; i < count; ++i)
-            {
-                if (!eng.wait_main_action([]() {}))
-                {
-                    err = "waitFrame timed out";
-                    return;
-                }
-            }
-            result = Json::Value(Json::objectValue);
-            result["ok"] = true;
-        });
+    server.on_request("engine.waitFrame",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          int count = params.get("count", 1).asInt();
+                          if (count < 1)
+                          {
+                              count = 1;
+                          }
+                          if (count > 60)
+                          {
+                              count = 60;
+                          }
+                          for (int i = 0; i < count; ++i)
+                          {
+                              if (!eng.wait_main_action([]() {}))
+                              {
+                                  err = "waitFrame timed out";
+                                  return;
+                              }
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["ok"] = true;
+                      });
 
     server.on_request(
         "sync.reload",

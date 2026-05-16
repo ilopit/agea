@@ -698,6 +698,14 @@ vulkan_render_loader::update_material(material_data& mat_data,
     mat_data.set_texture_samples(samples);
     mat_data.set_gpu_data(gpu_params);
 
+    for (const auto& sample : samples)
+    {
+        if (sample.texture)
+        {
+            mat_data.set_bindless_texture_index(sample.slot, sample.texture->get_bindless_index());
+        }
+    }
+
     return true;
 }
 

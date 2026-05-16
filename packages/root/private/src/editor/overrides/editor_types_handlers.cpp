@@ -9,6 +9,7 @@
 
 #include <core/model_system.h>
 #include <core/caches/caches_map.h>
+#include <core/model_system.h>
 #include <core/reflection/reflection_type_utils.h>
 
 #include <global_state/global_state.h>

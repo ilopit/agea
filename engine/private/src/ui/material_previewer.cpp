@@ -731,7 +731,74 @@ material_previewer::save_edit(const utils::id& material_id)
     auto& loader = glob::glob_state().getr_render().loader;
     loader.destroy_material_data(session.instance_id);
 
-    class_mat.mark_render_dirty();
+    auto& model = glob::glob_state().getr_model();
+    auto& olc = pkg->get_load_context();
+    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
+
+    model.instance_caches.materials.call_on_items(
+        [&](root::material* inst_mat)
+        {
+            if (inst_mat->get_class_obj() != class_obj)
+            {
+                return true;
+            }
+            if (!inst_mat->get_flags().instance_obj)
+            {
+                return true;
+            }
+
+            auto src_blob = class_obj->as_blob();
+            auto dst_blob = inst_mat->as_blob();
+
+            for (auto& p : rt->m_serialization_properties)
+            {
+                if (p->gpu_texture_slot < 0)
+                {
+                    continue;
+                }
+                auto& src_ts =
+                    *reinterpret_cast<const root::texture_slot*>(src_blob + p->offset);
+                auto& dst_ts = *reinterpret_cast<root::texture_slot*>(dst_blob + p->offset);
+
+                dst_ts.slot = src_ts.slot;
+
+                if (src_ts.txt)
+                {
+                    auto* inst_txt =
+                        model.instance_caches.textures.get_item(src_ts.txt->get_id());
+                    if (!inst_txt)
+                    {
+                        auto r = ctor.instantiate_obj(*src_ts.txt, src_ts.txt->get_id());
+                        if (r)
+                        {
+                            inst_txt = r.value()->as<root::texture>();
+                        }
+                    }
+                    dst_ts.txt = inst_txt;
+                }
+                else
+                {
+                    dst_ts.txt = nullptr;
+                }
+
+                if (src_ts.smp)
+                {
+                    auto* inst_smp =
+                        model.instance_caches.samplers.get_item(src_ts.smp->get_id());
+                    if (inst_smp)
+                    {
+                        dst_ts.smp = inst_smp;
+                    }
+                }
+                else
+                {
+                    dst_ts.smp = nullptr;
+                }
+            }
+
+            inst_mat->mark_render_dirty();
+            return true;
+        });
 
     pkg->get_load_context().remove_obj(*instance);
 
