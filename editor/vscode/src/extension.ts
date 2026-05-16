@@ -156,12 +156,12 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  client.onNotification("selection.changed", (p: SelectionChangedParams) => {
+  client.onNotification("model.selection.changed", (p: SelectionChangedParams) => {
     output?.appendLine(`[selection] ${p.id || "(none)"}`);
     inspectorProvider.setSelection(p.id || undefined);
   });
 
-  client.onNotification("properties.changed", (p: any) => {
+  client.onNotification("model.properties.changed", (p: any) => {
     inspectorProvider.reconcile(p);
   });
 
@@ -176,7 +176,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerTreeDataProvider("kryga.scene", sceneProvider),
   );
 
-  client.onNotification("scene.changed", () => sceneProvider.refresh());
+  client.onNotification("model.scene.changed", () => sceneProvider.refresh());
   client.onState(async (state) => {
     sceneProvider.refresh();
     if (state !== "connected") {
@@ -234,9 +234,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("kryga.scene.select", async (id: string) => {
       try {
-        await client?.request("selection.set", { id });
+        await client?.request("model.selection.set", { id });
       } catch (e) {
-        vscode.window.showErrorMessage(`Kryga: selection.set failed: ${e}`);
+        vscode.window.showErrorMessage(`Kryga: model.selection.set failed: ${e}`);
       }
     }),
   );
@@ -249,7 +249,7 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       if (!name) return;
       try {
-        await client?.request("scene.create", { name });
+        await client?.request("model.scene.create", { name });
         sceneProvider.refresh();
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: create failed — ${e}`);
@@ -262,7 +262,7 @@ export function activate(context: vscode.ExtensionContext): void {
       const id = node?.id;
       if (!id) return;
       try {
-        await client?.request("scene.duplicate", { id });
+        await client?.request("model.scene.duplicate", { id });
         sceneProvider.refresh();
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: duplicate failed — ${e}`);
@@ -280,7 +280,7 @@ export function activate(context: vscode.ExtensionContext): void {
       });
       if (!newName || newName === node.label) return;
       try {
-        await client?.request("scene.rename", { id, name: newName });
+        await client?.request("model.scene.rename", { id, name: newName });
         sceneProvider.refresh();
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: rename failed — ${e}`);
@@ -299,7 +299,7 @@ export function activate(context: vscode.ExtensionContext): void {
       );
       if (confirm !== "Delete") return;
       try {
-        await client?.request("scene.delete", { id });
+        await client?.request("model.scene.delete", { id });
         sceneProvider.refresh();
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: delete failed — ${e}`);
@@ -361,7 +361,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("kryga.level.load", async () => {
       try {
         const list = await client?.request<{ levels: string[]; current: string }>(
-          "level.list",
+          "model.level.list",
         );
         if (!list || list.levels.length === 0) {
           vscode.window.showInformationMessage("Kryga: no levels found.");
@@ -375,9 +375,9 @@ export function activate(context: vscode.ExtensionContext): void {
           placeHolder: "Select a level to load",
         });
         if (!pick) return;
-        await client?.request("level.load", { id: pick.label });
+        await client?.request("model.level.load", { id: pick.label });
       } catch (e) {
-        vscode.window.showErrorMessage(`Kryga: level.load failed — ${e}`);
+        vscode.window.showErrorMessage(`Kryga: model.level.load failed — ${e}`);
       }
     }),
   );

@@ -21,9 +21,9 @@ export function openRenderConfig(client: RpcClient): void {
   currentPanel.webview.onDidReceiveMessage(async (msg) => {
     if (msg?.type === "set") {
       try {
-        await client.request("render_config.set", msg.patch);
+        await client.request("render.config.set", msg.patch);
       } catch (e) {
-        vscode.window.showErrorMessage(`Kryga: render_config.set failed — ${e}`);
+        vscode.window.showErrorMessage(`Kryga: render.config.set failed — ${e}`);
       }
     } else if (msg?.type === "refresh" || msg?.type === "ready") {
       refresh(client);
@@ -43,7 +43,7 @@ export function refreshRenderConfig(client: RpcClient): void {
 
 async function refresh(client: RpcClient): Promise<void> {
   try {
-    const cfg = await client.request("render_config.get");
+    const cfg = await client.request("render.config.get");
     currentPanel?.webview.postMessage({ type: "load", config: cfg });
   } catch (e) {
     currentPanel?.webview.postMessage({ type: "error", message: String(e) });

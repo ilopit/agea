@@ -33,16 +33,12 @@ public:
     }
 
 protected:
-    // clang-format off
     KRG_ar_property("category=Properties",
-                     "serializable=true",
-                     "property_ser_handler=::kryga::root::property_texture_slot__save",
-                     "property_compare_handler=::kryga::root::property_texture_slot__compare",
-                     "property_copy_handler=::kryga::root::property_texture_slot__copy",
-                     "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
-                     "property_load_derive_handler=::kryga::root::property_texture_slot__load");
+                    "serializable=true",
+                    "invalidates=render",
+                    "access=all",
+                    "gpu_texture_slot=0");
     ::kryga::root::texture_slot m_diffuse_txt;
-    // clang-format on
 
     KRG_ar_property("category=Properties",
                     "serializable=true",

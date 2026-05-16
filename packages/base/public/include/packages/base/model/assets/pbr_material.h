@@ -3,6 +3,7 @@
 #include "packages/base/model/pbr_material.ar.h"
 
 #include "packages/root/model/assets/material.h"
+#include "packages/root/model/assets/texture_slot.h"
 #include "packages/root/model/core_types/vec3.h"
 
 namespace kryga
@@ -25,24 +26,18 @@ public:
         return true;
     };
 
-    KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "property_ser_handler=::kryga::root::property_texture_slot__save",
-        "property_compare_handler=::kryga::root::property_texture_slot__compare",
-        "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
-        "property_load_derive_handler=::kryga::root::property_texture_slot__load",
-        "property_copy_handler=::kryga::root::property_texture_slot__copy");
+    KRG_ar_property("category=Properties",
+                    "serializable=true",
+                    "invalidates=render",
+                    "access=all",
+                    "gpu_texture_slot=0");
     ::kryga::root::texture_slot m_diffuse_txt;
 
-    KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "property_ser_handler=::kryga::root::property_texture_slot__save",
-        "property_compare_handler=::kryga::root::property_texture_slot__compare",
-        "property_instantiate_handler=::kryga::root::property_texture_slot__instantiate",
-        "property_load_derive_handler=::kryga::root::property_texture_slot__load",
-        "property_copy_handler=::kryga::root::property_texture_slot__copy");
+    KRG_ar_property("category=Properties",
+                    "serializable=true",
+                    "invalidates=render",
+                    "access=all",
+                    "gpu_texture_slot=1");
     ::kryga::root::texture_slot m_specular_txt;
 
     KRG_ar_property("category=Properties",

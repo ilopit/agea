@@ -36,8 +36,11 @@
 #include <packages/root/model/assets/asset.h>
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/shader_effect.h>
+#include <packages/root/model/assets/texture.h>
+#include <packages/root/model/assets/sampler.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/component.h>
+#include <packages/base/model/components/mesh_component.h>
 
 #include <vfs/vfs.h>
 
@@ -191,7 +194,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result = r;
         });
 
-    server.on_request("selection.get",
+    server.on_request("model.selection.get",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           Json::Value r(Json::objectValue);
@@ -210,7 +213,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "selection.set",
+        "model.selection.set",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -226,7 +229,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     glob::glob_state().get_game_editor()->set_selected(new_sel);
                     Json::Value note(Json::objectValue);
                     note["id"] = id_str;
-                    server.notify("selection.changed", note);
+                    server.notify("model.selection.changed", note);
                 });
             if (!done)
             {
@@ -236,7 +239,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result = Json::Value(Json::objectValue);
         });
 
-    server.on_request("scene.getRoot",
+    server.on_request("model.scene.getRoot",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           Json::Value r(Json::objectValue);
@@ -279,7 +282,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "scene.getChildren",
+        "model.scene.getChildren",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -354,7 +357,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "scene.create",
+        "model.scene.create",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("name"))
@@ -380,7 +383,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         local_err = "spawn_object failed";
                         return;
                     }
-                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                    server.notify("model.scene.changed", Json::Value(Json::objectValue));
                 });
             if (!done)
             {
@@ -398,7 +401,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "scene.delete",
+        "model.scene.delete",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -425,7 +428,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
                     auto& cache = lvl->get_game_objects();
                     cache.remove_item(*go);
-                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                    server.notify("model.scene.changed", Json::Value(Json::objectValue));
                 });
             if (!done)
             {
@@ -441,7 +444,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "scene.duplicate",
+        "model.scene.duplicate",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -478,7 +481,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         return;
                     }
                     new_id = gen_id.str();
-                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                    server.notify("model.scene.changed", Json::Value(Json::objectValue));
                 });
             if (!done)
             {
@@ -496,7 +499,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "scene.rename",
+        "model.scene.rename",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id") || !params.isMember("name"))
@@ -509,7 +512,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             err = "rename not yet supported by the engine object model";
         });
 
-    server.on_request("properties.get",
+    server.on_request("model.properties.get",
                       [&eng](const Json::Value& params, Json::Value& result, std::string& err)
                       {
                           if (!params.isObject() || !params.isMember("id"))
@@ -559,7 +562,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "level.list",
+        "model.level.list",
         [&eng](const Json::Value&, Json::Value& result, std::string& err)
         {
             Json::Value r(Json::objectValue);
@@ -600,7 +603,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result = r;
         });
 
-    server.on_request("level.load",
+    server.on_request("model.level.load",
                       [&eng](const Json::Value& params, Json::Value& result, std::string& err)
                       {
                           if (!params.isObject() || !params.isMember("id"))
@@ -684,7 +687,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "properties.set",
+        "model.properties.set",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("owner_id") || !params.isMember("name") ||
@@ -707,7 +710,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
                     Json::Value canonical;
                     std::string set_err =
-                        engine_private::set_owner_field(*owner, name, value, canonical);
+                        engine_private::write_property(*owner, name, value, canonical);
                     if (!set_err.empty())
                     {
                         ALOG_WARN("properties.set: {}", set_err);
@@ -717,7 +720,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     note["owner_id"] = owner_id;
                     note["name"] = name;
                     note["value"] = canonical;
-                    server.notify("properties.changed", note);
+                    server.notify("model.properties.changed", note);
                 });
             Json::Value r(Json::objectValue);
             r["queued"] = true;
@@ -728,7 +731,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Transform API
     // =========================================================================
 
-    server.on_request("transform.get",
+    server.on_request("model.transform.get",
                       [&eng](const Json::Value& params, Json::Value& result, std::string& err)
                       {
                           if (!params.isObject() || !params.isMember("id"))
@@ -807,7 +810,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "transform.set",
+        "model.transform.set",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -885,7 +888,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Component API
     // =========================================================================
 
-    server.on_request("component.listTypes",
+    server.on_request("model.component.listTypes",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           Json::Value r(Json::arrayValue);
@@ -917,7 +920,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "component.add",
+        "model.component.add",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("object_id") || !params.isMember("type_id"))
@@ -959,7 +962,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         return;
                     }
                     new_id = comp->get_id().str();
-                    server.notify("scene.changed", Json::Value(Json::objectValue));
+                    server.notify("model.scene.changed", Json::Value(Json::objectValue));
                 });
             if (!done)
             {
@@ -980,7 +983,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Level API
     // =========================================================================
 
-    server.on_request("level.save",
+    server.on_request("model.level.save",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           std::string local_err;
@@ -1030,7 +1033,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // =========================================================================
 
     server.on_request(
-        "render_config.get",
+        "render.config.get",
         [&eng](const Json::Value&, Json::Value& result, std::string& err)
         {
             Json::Value r(Json::objectValue);
@@ -1107,7 +1110,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "render_config.set",
+        "render.config.set",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject())
@@ -1310,7 +1313,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     // Render State (read-only debug inspection)
     // =========================================================================
 
-    server.on_request("render_state.camera",
+    server.on_request("render.state.camera",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           Json::Value r(Json::objectValue);
@@ -1332,7 +1335,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "render_state.object",
+        "render.state.object",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -1435,7 +1438,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "render_state.stats",
+        "render.state.stats",
         [&eng](const Json::Value&, Json::Value& result, std::string& err)
         {
             Json::Value r(Json::objectValue);
@@ -1465,7 +1468,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "render_state.objects",
+        "render.state.objects",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             Json::Value r(Json::objectValue);
@@ -1559,7 +1562,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result = r;
         });
 
-    server.on_request("render_state.lights",
+    server.on_request("render.state.lights",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           Json::Value r(Json::objectValue);
@@ -1614,7 +1617,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           result = r;
                       });
 
-    server.on_request("visibility.set",
+    server.on_request("render.visibility.set",
                       [&eng](const Json::Value& params, Json::Value& result, std::string& err)
                       {
                           if (!params.isObject() || !params.isMember("id"))
@@ -1674,7 +1677,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
 
     // ── Materials ─────────────────────────────────────────────────────
 
-    server.on_request("material.list",
+    server.on_request("model.material.list",
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           bool done = eng.wait_main_action(
@@ -1706,7 +1709,43 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       });
 
     server.on_request(
-        "material.preview",
+        "model.material.get",
+        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        {
+            if (!params.isObject() || !params.isMember("id"))
+            {
+                err = "missing 'id' parameter";
+                return;
+            }
+            std::string id_str = params["id"].asString();
+            std::string local_err;
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto* mat =
+                        glob::glob_state().getr_class_materials_cache().get_item(AID(id_str));
+                    if (!mat)
+                    {
+                        local_err = "material not found: " + id_str;
+                        return;
+                    }
+                    result = Json::Value(Json::objectValue);
+                    result["material"] = encode_owner(*mat);
+                });
+            if (!done)
+            {
+                err = "material.get timed out";
+                return;
+            }
+            if (!local_err.empty())
+            {
+                err = std::move(local_err);
+                return;
+            }
+        });
+
+    server.on_request(
+        "render.material.preview",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -1739,7 +1778,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "material.assign",
+        "model.material.assign",
         [&eng, &server](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("owner_id") ||
@@ -1754,26 +1793,36 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
-                    auto* robj = cache.objects.find_by_id(AID(owner_id));
-                    if (!robj)
+                    auto* lvl = glob::glob_state().get_current_level();
+                    if (!lvl)
                     {
-                        local_err = "render object not found: " + owner_id;
+                        local_err = "no level loaded";
                         return;
                     }
-                    auto& loader = glob::glob_state().getr_vulkan_render_loader();
-                    auto* mat = loader.get_material_data(AID(material_id));
-                    if (!mat)
+                    auto* comp = lvl->find_component(AID(owner_id));
+                    if (!comp)
+                    {
+                        local_err = "component not found: " + owner_id;
+                        return;
+                    }
+                    auto* mesh_comp = comp->as<base::mesh_component>();
+                    if (!mesh_comp)
+                    {
+                        local_err = "not a mesh component: " + owner_id;
+                        return;
+                    }
+                    auto* mat_obj =
+                        glob::glob_state().getr_class_materials_cache().get_item(AID(material_id));
+                    if (!mat_obj)
                     {
                         local_err = "material not found: " + material_id;
                         return;
                     }
-                    robj->material = mat;
-                    robj->renderable = true;
+                    mesh_comp->set_material(mat_obj->as<root::material>());
                 });
             if (!done)
             {
-                err = "material.assign timed out";
+                err = "model.material.assign timed out";
                 return;
             }
             if (!local_err.empty())
@@ -1786,11 +1835,11 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             Json::Value note(Json::objectValue);
             note["owner_id"] = owner_id;
             note["material_id"] = material_id;
-            server.notify("material.assigned", note);
+            server.notify("model.material.assigned", note);
         });
 
     server.on_request(
-        "material.edit",
+        "model.material.edit",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -1828,7 +1877,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "material.setField",
+        "model.material.setField",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id") || !params.isMember("field") ||
@@ -1853,7 +1902,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         local_err = "no active edit session for: " + id_str;
                         return;
                     }
-                    local_err = set_owner_field(*inst, field, value, echo_value);
+                    local_err = write_property(*inst, field, value, echo_value);
 
                     glob::glob_state().getr_ui().get_material_previewer().invalidate(AID(id_str));
                 });
@@ -1871,8 +1920,33 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result["value"] = echo_value;
         });
 
+    server.on_request("model.texture.list",
+                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+                      {
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  Json::Value arr(Json::arrayValue);
+                                  for (auto& [id, obj] :
+                                       glob::glob_state().getr_class_textures_cache().get_items())
+                                  {
+                                      Json::Value item(Json::objectValue);
+                                      item["id"] = id.str();
+                                      auto* pkg = obj->get_package();
+                                      item["package"] = pkg ? pkg->get_id().str() : std::string();
+                                      arr.append(std::move(item));
+                                  }
+                                  result = Json::Value(Json::objectValue);
+                                  result["textures"] = std::move(arr);
+                              });
+                          if (!done)
+                          {
+                              err = "texture.list timed out";
+                          }
+                      });
+
     server.on_request(
-        "material.save",
+        "model.material.save",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))
@@ -1906,7 +1980,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
         });
 
     server.on_request(
-        "material.discard",
+        "model.material.discard",
         [&eng](const Json::Value& params, Json::Value& result, std::string& err)
         {
             if (!params.isObject() || !params.isMember("id"))

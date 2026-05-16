@@ -110,6 +110,14 @@ using type_handler__to_string = result_code (*)(type_context__to_string&);
 using type_handler__render_cmd_builder = result_code (*)(type_context__render_cmd_build&);
 using type_handler__render_cmd_destroyer = result_code (*)(type_context__render_cmd_build&);
 using type_handler__gpu_pack = void (*)(const void* src, void* dst);
+
+struct gpu_texture_slot_ref
+{
+    uint32_t slot;
+    const void* data;
+};
+using type_handler__gpu_texture_collect = uint32_t (*)(const void* src, gpu_texture_slot_ref* out);
+
 using type_handler__alloc = std::shared_ptr<root::smart_object> (*)(type_context__alloc&);
 using type_handler__cparams_alloc = std::unique_ptr<::kryga::root::base_construct_params> (*)();
 using type_handler__json_save = result_code (*)(type_context__json_save&);
@@ -175,6 +183,9 @@ struct reflection_type
 
     type_handler__gpu_pack                      gpu_pack = nullptr;
     size_t                                      gpu_data_size = 0;
+
+    type_handler__gpu_texture_collect           gpu_texture_collect = nullptr;
+    uint32_t                                    gpu_texture_slot_count = 0;
 
     // clang-format on
 

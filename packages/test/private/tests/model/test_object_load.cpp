@@ -997,10 +997,7 @@ TEST_F(test_preloaded_test_package, object_save_material_preserves_texture_slots
     auto* material = load_result.value()->as<base::simple_texture_material>();
     ASSERT_TRUE(material);
 
-    auto& slots = material->get_texture_slots();
-    auto slot_it = slots.find(AID("simple_texture"));
-    ASSERT_NE(slot_it, slots.end());
-    ASSERT_TRUE(slot_it->second.txt) << "texture slot should be populated after load";
+    ASSERT_TRUE(material->simple_texture().txt) << "texture slot should be populated after load";
 
     auto temp_dir = utils::path(std::filesystem::temp_directory_path());
     auto save_path = temp_dir / "test_material_texture_slot.aobj";

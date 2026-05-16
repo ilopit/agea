@@ -69,7 +69,7 @@ export class SceneTreeProvider implements vscode.TreeDataProvider<SceneNode> {
     }
     try {
       if (!parent) {
-        const root = await this.client.request<GetRootResult>("scene.getRoot");
+        const root = await this.client.request<GetRootResult>("model.scene.getRoot");
         let children = root.children ?? [];
         if (this.filter) {
           children = children.filter(
@@ -79,7 +79,7 @@ export class SceneTreeProvider implements vscode.TreeDataProvider<SceneNode> {
         }
         return children;
       }
-      const sub = await this.client.request<GetChildrenResult>("scene.getChildren", {
+      const sub = await this.client.request<GetChildrenResult>("model.scene.getChildren", {
         id: parent.id,
       });
       return sub.children ?? [];

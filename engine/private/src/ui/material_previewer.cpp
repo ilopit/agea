@@ -24,6 +24,7 @@
 #include <vfs/rid.h>
 
 #include <packages/root/model/assets/material.h>
+#include <packages/root/model/assets/texture_slot.h>
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/root/model/assets/texture.h>
 #include <packages/root/model/assets/sampler.h>
@@ -100,28 +101,6 @@ compute_content_hash(root::material& mat)
                 auto s = Json::writeString(b, val);
                 ch.feed_str(s);
             }
-        }
-    }
-
-    // Sort texture slots for deterministic hashing
-    auto& slots = mat.get_texture_slots();
-    std::vector<std::pair<std::string, const root::texture_slot*>> sorted_slots;
-    sorted_slots.reserve(slots.size());
-    for (auto& [id, ts] : slots)
-    {
-        sorted_slots.emplace_back(id.str(), &ts);
-    }
-    std::sort(sorted_slots.begin(),
-              sorted_slots.end(),
-              [](const auto& a, const auto& b) { return a.first < b.first; });
-
-    for (size_t i = 0; i < sorted_slots.size(); ++i)
-    {
-        ch.feed_str(sorted_slots[i].first);
-        ch.feed(&sorted_slots[i].second->slot, sizeof(sorted_slots[i].second->slot));
-        if (sorted_slots[i].second->txt)
-        {
-            ch.feed_str(sorted_slots[i].second->txt->get_id().str());
         }
     }
 
@@ -217,7 +196,7 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
         return nullptr;
     }
 
-    auto& txt_models = mat_model.get_texture_slots();
+    auto collected = glob::glob_state().getr_render_bridge().collect_gpu_data(mat_model);
 
     std::vector<render::texture_sampler_data> samples;
     uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
@@ -228,9 +207,10 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
         gpu_sampler_indices[i] = 0;
     }
 
-    for (auto& pair : txt_models)
+    for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
     {
-        auto& ts = pair.second;
+        auto slot = collected.texture_slots[i].slot;
+        auto& ts = *static_cast<const root::texture_slot*>(collected.texture_slots[i].data);
         if (ts.txt)
         {
             auto* td = ensure_texture(*ts.txt);
@@ -238,36 +218,37 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
             {
                 render::texture_sampler_data tsd;
                 tsd.texture = td;
-                tsd.slot = ts.slot;
+                tsd.slot = slot;
                 samples.push_back(tsd);
 
-                if (ts.slot < KGPU_MAX_TEXTURE_SLOTS)
+                if (slot < KGPU_MAX_TEXTURE_SLOTS)
                 {
-                    gpu_texture_indices[ts.slot] = td->get_bindless_index();
+                    gpu_texture_indices[slot] = td->get_bindless_index();
                 }
             }
         }
-        if (ts.smp && ts.slot < KGPU_MAX_TEXTURE_SLOTS)
+        if (ts.smp && slot < KGPU_MAX_TEXTURE_SLOTS)
         {
-            gpu_sampler_indices[ts.slot] = render_bridge::map_sampler_to_static_index(*ts.smp);
+            gpu_sampler_indices[slot] = render_bridge::map_sampler_to_static_index(*ts.smp);
         }
     }
 
-    auto gpu_data = glob::glob_state().getr_render_bridge().collect_gpu_data(mat_model);
     render_bridge::set_material_texture_bindings(
-        gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
+        collected.gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
-    auto* mat_data =
-        loader.create_material(gpu_id, mat_model.get_type_id(), samples, *se_data, gpu_data);
+    auto* mat_data = loader.create_material(
+        gpu_id, mat_model.get_type_id(), samples, *se_data, collected.gpu_data);
 
     if (mat_data)
     {
-        for (auto it = txt_models.begin(); it != txt_models.end(); ++it)
+        for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
         {
-            auto& ts2 = it->second;
-            if (ts2.smp && ts2.slot < KGPU_MAX_TEXTURE_SLOTS)
+            auto slot = collected.texture_slots[i].slot;
+            auto& ts = *static_cast<const root::texture_slot*>(collected.texture_slots[i].data);
+            if (ts.smp && slot < KGPU_MAX_TEXTURE_SLOTS)
             {
-                mat_data->set_bindless_sampler_index(ts2.slot, render_bridge::map_sampler_to_static_index(*ts2.smp));
+                mat_data->set_bindless_sampler_index(
+                    slot, render_bridge::map_sampler_to_static_index(*ts.smp));
             }
         }
     }
@@ -276,7 +257,9 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
 }
 
 offscreen_draw_request
-make_preview_request(render::material_data* mat, render::mesh_data* mesh, VkDescriptorSet bindless_set)
+make_preview_request(render::material_data* mat,
+                     render::mesh_data* mesh,
+                     VkDescriptorSet bindless_set)
 {
     auto* se = mat->get_shader_effect();
 
@@ -727,6 +710,8 @@ material_previewer::save_edit(const utils::id& material_id)
         }
     }
 
+    auto& class_mat = class_obj->asr<root::material>();
+
     auto& vfs = glob::glob_state().getr_vfs();
     auto* pkg = class_obj->get_package();
     KRG_check(pkg, "class material has no package");
@@ -740,8 +725,6 @@ material_previewer::save_edit(const utils::id& material_id)
             core::object_constructor::object_save(*class_obj, utils::path(phys->string()));
         }
     }
-
-    auto& class_mat = class_obj->asr<root::material>();
 
     auto& loader = glob::glob_state().getr_vulkan_render_loader();
     loader.destroy_material_data(session.instance_id);

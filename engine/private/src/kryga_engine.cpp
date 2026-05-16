@@ -104,6 +104,13 @@ startup_options::parse(int argc, char** argv, startup_options& out)
                    "Run for specified duration then exit (0 = unlimited)")
         ->check(CLI::NonNegativeNumber);
 
+    app.add_option(
+        "-l,--level", out.level, "Level to load on startup (default: light_sandbox_baked)");
+
+    app.add_option("-d,--discovery",
+                   out.discovery,
+                   "Path for the RPC discovery JSON file (default: tmp/editor_rpc.json)");
+
     try
     {
         app.parse(argc, argv);
@@ -126,8 +133,14 @@ startup_options::print_help(const char* program_name)
 {
     CLI::App app{"Kryga Engine"};
     float dummy = 0.f;
+    std::string dummy_s;
     app.add_option("-t,--run-for", dummy, "Run for specified duration then exit (0 = unlimited)")
         ->check(CLI::NonNegativeNumber);
+    app.add_option(
+        "-l,--level", dummy_s, "Level to load on startup (default: light_sandbox_baked)");
+    app.add_option("-d,--discovery",
+                   dummy_s,
+                   "Path for the RPC discovery JSON file (default: tmp/editor_rpc.json)");
 
     ALOG_INFO("{}", app.help());
 }
@@ -171,6 +184,8 @@ vulkan_engine::init(const startup_options& options)
         ALOG_INFO("Run duration limit: {} seconds", m_run_for_seconds);
     }
 
+    m_initial_level = options.level;
+    m_discovery_path = options.discovery;
     m_headless = options.headless;
 
     auto& gs = glob::glob_state();
@@ -324,13 +339,15 @@ vulkan_engine::init(const startup_options& options)
         // project (multi-engine could key by PID later).
         engine_private::register_rpc_handlers(*this, *m_rpc_server);
 
-        // Discovery file lives at <source_root>/tmp/editor_rpc.json — a stable
-        // path independent of build config so VS Code (and other tooling) can
-        // find a running engine without knowing whether it's a Debug or
-        // Release build. Falls back to tmp:// for non-dev layouts where
-        // source_root isn't known.
         std::optional<std::filesystem::path> disco_path;
-        if (auto layout = kryga::paths::resolve(); layout && !layout->source_root.empty())
+        if (!m_discovery_path.empty())
+        {
+            std::filesystem::path p{m_discovery_path};
+            std::error_code ec;
+            std::filesystem::create_directories(p.parent_path(), ec);
+            disco_path = std::move(p);
+        }
+        else if (auto layout = kryga::paths::resolve(); layout && !layout->source_root.empty())
         {
             auto p = layout->source_root / "tmp" / "editor_rpc.json";
             std::error_code ec;
@@ -674,7 +691,7 @@ vulkan_engine::tick(float dt)
             m_last_known_object_count = new_count;
             Json::Value note(Json::objectValue);
             note["count"] = static_cast<Json::UInt64>(new_count);
-            m_rpc_server->notify("scene.changed", note);
+            m_rpc_server->notify("model.scene.changed", note);
         }
     }
 #else
@@ -898,7 +915,8 @@ vulkan_engine::init_default_resources()
 void
 vulkan_engine::init_scene()
 {
-    auto level_id = AID("light_sandbox_baked");
+    auto level_id =
+        m_initial_level.empty() ? AID("light_sandbox_baked") : AID(m_initial_level.c_str());
     if (level_id.valid())
     {
         load_level(level_id);

@@ -15,6 +15,9 @@
 #include <vulkan_render/vulkan_render_loader_create_infos.h>
 
 #include <core/model_minimal.h>
+#include <core/reflection/reflection_type.h>
+
+#include <gpu_types/gpu_generic_constants.h>
 
 #include <new>
 #include <unordered_map>
@@ -26,7 +29,14 @@ namespace root
 {
 class smart_object;
 class sampler;
-}
+}  // namespace root
+
+struct collected_gpu_data
+{
+    utils::dynobj gpu_data;
+    reflection::gpu_texture_slot_ref texture_slots[KGPU_MAX_TEXTURE_SLOTS];
+    uint32_t texture_slot_count = 0;
+};
 
 namespace render
 {
@@ -68,15 +78,12 @@ public:
     kryga::result_code
     render_cmd_destroy(root::smart_object& obj, bool sub_objects);
 
-    utils::dynobj
+    collected_gpu_data
     collect_gpu_data(root::smart_object& so);
 
     // Collect all bool properties in "Specialization" category as {name → value} pairs
     static std::unordered_map<std::string, uint32_t>
     collect_spec_constants(root::smart_object& so);
-
-    utils::dynobj
-    extract_gpu_data(root::smart_object& so, const access_template& t);
 
     static void
     set_material_texture_bindings(utils::dynobj& gpu_data,

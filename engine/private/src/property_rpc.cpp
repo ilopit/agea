@@ -188,11 +188,27 @@ find_owner(const std::string& id_str)
     return nullptr;
 }
 
+static reflection::property*
+find_editor_property(const reflection::reflection_type& rt, const std::string& name)
+{
+    for (auto& [cat_name, props] : rt.m_editor_properties)
+    {
+        for (auto& p : props)
+        {
+            if (p->name == name)
+            {
+                return p.get();
+            }
+        }
+    }
+    return nullptr;
+}
+
 std::string
-set_owner_field(root::smart_object& owner,
-                const std::string& field_name,
-                const Json::Value& value,
-                Json::Value& out_value)
+write_property(root::smart_object& owner,
+               const std::string& field_name,
+               const Json::Value& value,
+               Json::Value& out_value)
 {
     auto* rt = owner.get_reflection();
     if (!rt)
@@ -200,41 +216,25 @@ set_owner_field(root::smart_object& owner,
         return "owner has no reflection";
     }
 
-    reflection::property* found = nullptr;
-    for (auto& [cat_name, props] : rt->m_editor_properties)
-    {
-        for (auto& p : props)
-        {
-            if (p->name == field_name)
-            {
-                found = p.get();
-                break;
-            }
-        }
-        if (found)
-        {
-            break;
-        }
-    }
-
-    if (!found)
+    auto* prop = find_editor_property(*rt, field_name);
+    if (!prop)
     {
         return "field not found: " + field_name;
     }
-    if (!found->rtype || !found->rtype->json_load)
+    if (!prop->rtype || !prop->rtype->json_load)
     {
         return "field is not editable: " + field_name;
     }
 
-    reflection::property_context__json_set set_ctx{found, &owner, &value};
-    if (found->json_set(set_ctx) != result_code::ok)
+    reflection::property_context__json_set set_ctx{prop, &owner, &value};
+    if (prop->json_set(set_ctx) != result_code::ok)
     {
-        return "value did not match field type '" + found->rtype->type_name.str() + "'";
+        return "value did not match field type '" + prop->rtype->type_name.str() + "'";
     }
 
     Json::Value echo;
-    reflection::property_context__json_get get_ctx{found, &owner, &echo};
-    if (found->json_get(get_ctx) == result_code::ok)
+    reflection::property_context__json_get get_ctx{prop, &owner, &echo};
+    if (prop->json_get(get_ctx) == result_code::ok)
     {
         out_value = echo;
     }

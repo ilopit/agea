@@ -37,53 +37,6 @@ state_mutator__render_bridge::set(gs::state& s)
     s.m_render_bridge = p;
 }
 
-utils::dynobj
-render_bridge::extract_gpu_data(root::smart_object& so, const access_template& ct)
-{
-    auto src_obj_ptr = so.as_blob();
-
-    utils::dynobj dyn_obj(ct.layout);
-
-    auto v = dyn_obj.root<render::gpu_type>();
-
-    auto fn = v.field_count();
-
-    // First 2 fields are texture_indices and sampler_indices arrays
-    // Initialize them to invalid (UINT32_MAX) - they'll be set later via
-    // set_material_texture_bindings
-    constexpr uint32_t INVALID_INDEX = UINT32_MAX;
-    constexpr int num_binding_fields = 2;  // texture_indices array, sampler_indices array
-
-    for (int i = 0; i < num_binding_fields; ++i)
-    {
-        auto field = v.field_by_idx(i);
-        if (field)
-        {
-            // Fill entire array with invalid indices
-            for (uint32_t j = 0; j < KGPU_MAX_TEXTURE_SLOTS; ++j)
-            {
-                memcpy(dyn_obj.data() + field->offset + j * sizeof(uint32_t),
-                       &INVALID_INDEX,
-                       sizeof(uint32_t));
-            }
-        }
-    }
-
-    // Skip binding fields, copy remaining material properties
-    KRG_check(ct.offset_in_object.size() == fn - num_binding_fields,
-              "Should match property count!");
-
-    auto oitr = ct.offset_in_object.begin();
-    uint64_t idx = num_binding_fields;  // Start after texture bindings
-    while (auto field = v.field_by_idx(idx++))
-    {
-        memcpy(dyn_obj.data() + field->offset, src_obj_ptr + *oitr, field->size);
-        ++oitr;
-    }
-
-    return dyn_obj;
-}
-
 void
 render_bridge::set_material_texture_bindings(utils::dynobj& gpu_data,
                                              const uint32_t* texture_indices,
@@ -144,22 +97,23 @@ render_bridge::collect_spec_constants(root::smart_object& so)
     return result;
 }
 
-utils::dynobj
+collected_gpu_data
 render_bridge::collect_gpu_data(root::smart_object& so)
 {
     auto* rt = so.get_reflection();
 
-    if (!rt || !rt->gpu_pack || rt->gpu_data_size == 0)
+    collected_gpu_data result;
+
+    if (rt && rt->gpu_pack && rt->gpu_data_size > 0)
     {
-        return {};  // No GPU data for this type
+        result.gpu_data.resize(rt->gpu_data_size);
+        rt->gpu_pack(&so, result.gpu_data.data());
     }
 
-    // Create dynobj with raw buffer (no layout needed for compile-time structs)
-    utils::dynobj result;
-    result.resize(rt->gpu_data_size);
-
-    // Pack model data into GPU struct
-    rt->gpu_pack(&so, result.data());
+    if (rt && rt->gpu_texture_collect)
+    {
+        result.texture_slot_count = rt->gpu_texture_collect(&so, result.texture_slots);
+    }
 
     return result;
 }

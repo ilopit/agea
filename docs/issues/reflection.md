@@ -22,11 +22,3 @@ bool transient = false;  // skip in object_save, auto-save, dirty tracking
 `object_save` / `object_save_internal` would check and early-return (or assert) if the flag is set. Editor-side systems (undo, auto-save) would skip flagged objects.
 
 **Alternative — separate cache**: Keep transient objects in a dedicated cache outside the OLC entirely, so they never mix with persistable objects. Heavier refactor, but eliminates the problem structurally instead of with a flag.
-
-## 2. `serializable=false` properties appear editable in inspector [low, resolved]
-
-Properties with `serializable=false` + `gpu_data=MaterialData` (e.g. `simple_texture_material::m_diffuse`) had `json_load` handlers and appeared editable in the inspector, but changes could never persist — `object_save` / `diff_object_properties` only iterate `m_serialization_properties`.
-
-**Status**: Fixed — `encode_owner` in `property_rpc.cpp` now checks `p->serializable` and marks non-serializable fields as `readonly`. The `save_material_edit` path also skips non-serializable properties during instance→class copy.
-
-**Files**: `engine/private/src/property_rpc.cpp:81`, `engine/private/src/ui/material_previewer.cpp` (save_material_edit).

@@ -116,12 +116,25 @@ game_editor::ev_mouse_press()
     uint32_t w = glob::glob_state().getr_input_manager().get_mouse_state().x;
     uint32_t h = glob::glob_state().getr_input_manager().get_mouse_state().y;
 
-    auto obj = glob::glob_state().getr_vulkan_render().object_id_under_coordinate(w, h);
-    if (obj)
+    auto* robj = glob::glob_state().getr_vulkan_render().object_id_under_coordinate(w, h);
+    if (!robj)
     {
-        obj->outlined = !obj->outlined;
-        glob::glob_state().getr_vulkan_render().schd_update_object_queue(obj);
+        set_selected({});
+        return;
     }
+
+    auto clicked_id = robj->id();
+    auto* lvl = glob::glob_state().get_current_level();
+    if (!lvl)
+    {
+        return;
+    }
+
+    auto* comp = lvl->find_component(clicked_id);
+    auto* go = comp ? comp->get_owner() : nullptr;
+    auto new_sel = go ? go->get_id() : clicked_id;
+
+    set_selected(new_sel == m_selected ? utils::id() : new_sel);
 }
 
 void

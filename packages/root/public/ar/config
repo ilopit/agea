@@ -13,6 +13,7 @@ include/packages/root/model/components/game_object_component.h
 include/packages/root/model/ext/external_types.h
 include/packages/root/model/assets/asset.h
 include/packages/root/model/assets/material.h
+include/packages/root/model/assets/texture_slot.h
 include/packages/root/model/assets/mesh.h
 include/packages/root/model/assets/texture.h
 include/packages/root/model/assets/sampler.h

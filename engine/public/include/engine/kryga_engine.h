@@ -16,6 +16,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <vector>
 #include <unordered_map>
@@ -37,6 +38,8 @@ class rpc_log_sink;
 struct startup_options
 {
     float run_for_seconds = 0.f;  // 0 = unlimited
+    std::string level;            // empty = default (light_sandbox_baked)
+    std::string discovery;        // empty = default (tmp/editor_rpc.json)
     bool show_help = false;
 
     // Test-harness / headless mode (set programmatically, not parsed from CLI).
@@ -142,6 +145,8 @@ private:
     render_thread_func();
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited
+    std::string m_initial_level;
+    std::string m_discovery_path;
     bool m_headless = false;
 
     gpu::camera_data m_camera_data;

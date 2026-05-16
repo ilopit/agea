@@ -42,6 +42,9 @@ result_code vec3__json_load(reflection::type_context__json_load& ctx);
 result_code vec4__json_save(reflection::type_context__json_save& ctx);
 result_code vec4__json_load(reflection::type_context__json_load& ctx);
 
+result_code texture_slot__json_save(reflection::type_context__json_save& ctx);
+result_code texture_slot__json_load(reflection::type_context__json_load& ctx);
+
 // clang-format on
 
 }  // namespace kryga::root

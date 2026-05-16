@@ -6,6 +6,7 @@
 
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
+#include "packages/root/model/assets/texture_slot.h"
 #include "packages/root/model/assets/texture.h"
 #include "packages/root/model/assets/sampler.h"
 #include "packages/root/model/assets/shader_effect.h"
@@ -558,28 +559,29 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
     auto& mat_model = ctx.obj->asr<root::material>();
 
-    auto& txt_models = mat_model.get_texture_slots();
+    auto collected = ctx.rb->collect_gpu_data(mat_model);
 
     std::vector<texture_slot_info> slots;
-
-    for (auto& ts : txt_models)
+    for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
     {
-        texture_slot_info slot_info;
-        slot_info.slot = ts.second.slot;
+        auto& ts = *static_cast<const root::texture_slot*>(collected.texture_slots[i].data);
 
-        if (ts.second.txt)
+        texture_slot_info slot_info;
+        slot_info.slot = collected.texture_slots[i].slot;
+
+        if (ts.txt)
         {
-            if (ctx.rb->render_cmd_build(*ts.second.txt, ctx.flag) != result_code::ok)
+            if (ctx.rb->render_cmd_build(*ts.txt, ctx.flag) != result_code::ok)
             {
                 return result_code::failed;
             }
-            slot_info.texture_id = ts.second.txt->get_id();
+            slot_info.texture_id = ts.txt->get_id();
         }
 
-        if (ts.second.smp)
+        if (ts.smp)
         {
-            ctx.rb->render_cmd_build(*ts.second.smp, ctx.flag);
-            slot_info.static_sampler_index = render_bridge::map_sampler_to_static_index(*ts.second.smp);
+            ctx.rb->render_cmd_build(*ts.smp, ctx.flag);
+            slot_info.static_sampler_index = render_bridge::map_sampler_to_static_index(*ts.smp);
         }
 
         slots.push_back(slot_info);
@@ -588,8 +590,6 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     auto se_model = mat_model.get_shader_effect();
     ctx.rb->render_cmd_build(*se_model, ctx.flag);
 
-    auto dyn_gpu_data = ctx.rb->collect_gpu_data(mat_model);
-
     if (!mat_model.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<create_material_cmd>();
@@ -597,7 +597,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->type_id = mat_model.get_type_id();
         cmd->shader_effect_id = se_model->get_id();
         cmd->texture_slots = std::move(slots);
-        cmd->gpu_data = std::move(dyn_gpu_data);
+        cmd->gpu_data = std::move(collected.gpu_data);
 
         mat_model.set_render_built(true);
         ctx.rb->enqueue_cmd(cmd);
@@ -608,7 +608,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->id = mat_model.get_id();
         cmd->shader_effect_id = se_model->get_id();
         cmd->texture_slots = std::move(slots);
-        cmd->gpu_data = std::move(dyn_gpu_data);
+        cmd->gpu_data = std::move(collected.gpu_data);
 
         ctx.rb->enqueue_cmd(cmd);
     }

@@ -48,7 +48,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage(async (msg) => {
       if (msg?.type === "setProperty") {
         try {
-          await this.client.request("properties.set", {
+          await this.client.request("model.properties.set", {
             owner_id: msg.owner_id,
             name: msg.name,
             value: msg.value,
@@ -85,7 +85,7 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
   private async refreshFor(id: string): Promise<void> {
     try {
       const payload = await this.client.request<PropertiesPayload>(
-        "properties.get",
+        "model.properties.get",
         { id },
       );
       this.post({ type: "load", payload });

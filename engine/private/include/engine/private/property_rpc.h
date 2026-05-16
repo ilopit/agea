@@ -52,14 +52,13 @@ encode_component_properties(root::component& comp);
 root::smart_object*
 find_owner(const std::string& id_str);
 
-// Set a single field on the owner. Returns empty string on success, error
-// message otherwise. On success writes the canonical JSON value back into
-// out_value (echoed via properties.changed).
+// Write a JSON value into a reflected property by name. Returns empty string
+// on success, error message otherwise. Echoes the canonical value into out_value.
 std::string
-set_owner_field(root::smart_object& owner,
-                const std::string& field_name,
-                const Json::Value& value,
-                Json::Value& out_value);
+write_property(root::smart_object& owner,
+               const std::string& field_name,
+               const Json::Value& value,
+               Json::Value& out_value);
 
 }  // namespace engine_private
 }  // namespace kryga

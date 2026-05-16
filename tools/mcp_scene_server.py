@@ -352,42 +352,42 @@ TOOLS = [
 # Map tool names to RPC methods and param transforms
 TOOL_RPC_MAP = {
     "kryga_ping": ("ping", lambda p: {}),
-    "kryga_scene_list": ("scene.getRoot", lambda p: {}),
-    "kryga_scene_children": ("scene.getChildren", lambda p: {"id": p["id"]}),
-    "kryga_scene_create": ("scene.create", lambda p: {"name": p["name"]}),
-    "kryga_scene_delete": ("scene.delete", lambda p: {"id": p["id"]}),
-    "kryga_scene_duplicate": ("scene.duplicate", lambda p: {"id": p["id"]}),
-    "kryga_select": ("selection.set", lambda p: {"id": p["id"]}),
-    "kryga_transform_get": ("transform.get", lambda p: {"id": p["id"]}),
-    "kryga_transform_set": ("transform.set", lambda p: {
+    "kryga_scene_list": ("model.scene.getRoot", lambda p: {}),
+    "kryga_scene_children": ("model.scene.getChildren", lambda p: {"id": p["id"]}),
+    "kryga_scene_create": ("model.scene.create", lambda p: {"name": p["name"]}),
+    "kryga_scene_delete": ("model.scene.delete", lambda p: {"id": p["id"]}),
+    "kryga_scene_duplicate": ("model.scene.duplicate", lambda p: {"id": p["id"]}),
+    "kryga_select": ("model.selection.set", lambda p: {"id": p["id"]}),
+    "kryga_transform_get": ("model.transform.get", lambda p: {"id": p["id"]}),
+    "kryga_transform_set": ("model.transform.set", lambda p: {
         "id": p["id"],
         **{k: p[k] for k in ("position", "rotation", "scale") if k in p}
     }),
-    "kryga_properties_get": ("properties.get", lambda p: {"id": p["id"]}),
-    "kryga_properties_set": ("properties.set", lambda p: {
+    "kryga_properties_get": ("model.properties.get", lambda p: {"id": p["id"]}),
+    "kryga_properties_set": ("model.properties.set", lambda p: {
         "owner_id": p["owner_id"], "name": p["name"], "value": p["value"]
     }),
-    "kryga_component_list_types": ("component.listTypes", lambda p: {}),
-    "kryga_component_add": ("component.add", lambda p: {
+    "kryga_component_list_types": ("model.component.listTypes", lambda p: {}),
+    "kryga_component_add": ("model.component.add", lambda p: {
         "object_id": p["object_id"],
         "type_id": p["type_id"],
         **({"name": p["name"]} if "name" in p else {})
     }),
-    "kryga_visibility_set": ("visibility.set", lambda p: {
+    "kryga_visibility_set": ("render.visibility.set", lambda p: {
         "id": p["id"], "visible": p["visible"]
     }),
-    "kryga_level_list": ("level.list", lambda p: {}),
-    "kryga_level_load": ("level.load", lambda p: {"id": p["id"]}),
-    "kryga_level_save": ("level.save", lambda p: {}),
-    "kryga_render_state_camera": ("render_state.camera", lambda p: {}),
-    "kryga_render_state_object": ("render_state.object", lambda p: {"id": p["id"]}),
-    "kryga_render_state_objects": ("render_state.objects", lambda p: {
+    "kryga_level_list": ("model.level.list", lambda p: {}),
+    "kryga_level_load": ("model.level.load", lambda p: {"id": p["id"]}),
+    "kryga_level_save": ("model.level.save", lambda p: {}),
+    "kryga_render_state_camera": ("render.state.camera", lambda p: {}),
+    "kryga_render_state_object": ("render.state.object", lambda p: {"id": p["id"]}),
+    "kryga_render_state_objects": ("render.state.objects", lambda p: {
         k: p[k] for k in ("ids", "offset", "limit") if k in p
     }),
-    "kryga_render_state_stats": ("render_state.stats", lambda p: {}),
-    "kryga_render_state_lights": ("render_state.lights", lambda p: {}),
-    "kryga_render_config_get": ("render_config.get", lambda p: {}),
-    "kryga_render_config_set": ("render_config.set", lambda p: {
+    "kryga_render_state_stats": ("render.state.stats", lambda p: {}),
+    "kryga_render_state_lights": ("render.state.lights", lambda p: {}),
+    "kryga_render_config_get": ("render.config.get", lambda p: {}),
+    "kryga_render_config_set": ("render.config.set", lambda p: {
         k: p[k] for k in ("shadows", "lighting", "clusters", "debug", "render_scale", "outline") if k in p
     }),
 }
@@ -419,13 +419,13 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             positions = arguments.get("positions", [])
             created = []
             for i in range(count):
-                dup = engine.call("scene.duplicate", {"id": src_id})
+                dup = engine.call("model.scene.duplicate", {"id": src_id})
                 new_id = dup.get("id") if isinstance(dup, dict) else None
                 if not new_id:
                     created.append({"index": i, "error": "duplicate returned no id", "raw": dup})
                     continue
                 if i < len(positions):
-                    engine.call("transform.set", {"id": new_id, "position": positions[i]})
+                    engine.call("model.transform.set", {"id": new_id, "position": positions[i]})
                     created.append({"id": new_id, "position": positions[i]})
                 else:
                     created.append({"id": new_id})

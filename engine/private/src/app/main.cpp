@@ -136,9 +136,18 @@ main(int argc, char** argv)
 #else
         vfs.mount("data", std::make_unique<kryga::vfs::physical_backend>(root), 0);
 #endif
-        vfs.mount("cache", std::make_unique<kryga::vfs::physical_backend>(root / "cache"), 0);
-        vfs.mount("rtcache", std::make_unique<kryga::vfs::physical_backend>(root / "rtcache"), 0);
-        vfs.mount("tmp", std::make_unique<kryga::vfs::physical_backend>(root / "tmp"), 0);
+        // When --discovery is set, isolate mutable VFS mounts so multiple
+        // engine instances don't clobber each other's shader cache / tmp files.
+        auto instance_id = std::filesystem::path(options.discovery).stem().string();
+        auto suffix = instance_id.empty() ? "" : ("_" + instance_id);
+
+        vfs.mount(
+            "cache", std::make_unique<kryga::vfs::physical_backend>(root / ("cache" + suffix)), 0);
+        vfs.mount("rtcache",
+                  std::make_unique<kryga::vfs::physical_backend>(root / ("rtcache" + suffix)),
+                  0);
+        vfs.mount(
+            "tmp", std::make_unique<kryga::vfs::physical_backend>(root / ("tmp" + suffix)), 0);
         vfs.mount(
             "generated", std::make_unique<kryga::vfs::physical_backend>(layout->generated_dir), 0);
 #endif

@@ -13,7 +13,9 @@ KRG_ar_struct(copy_handler                  = texture_slot__copy,
               compare_handler                = texture_slot__compare,
               serialize_handler              = texture_slot__save,
               load_derive_handler            = texture_slot__load,
-              deserialize_handler            = texture_slot__deserialize);
+              deserialize_handler            = texture_slot__deserialize,
+              json_save_handler              = texture_slot__json_save,
+              json_load_handler              = texture_slot__json_load);
 struct texture_slot
 {
     uint32_t slot = 0;

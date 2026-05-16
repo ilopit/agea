@@ -4,6 +4,7 @@
 
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
+#include "packages/root/model/assets/texture_slot.h"
 #include "packages/root/model/assets/texture.h"
 #include "packages/root/model/assets/sampler.h"
 #include "packages/root/model/assets/shader_effect.h"
@@ -168,41 +169,80 @@ smart_obj__compare(reflection::type_context__compare& ctx)
 result_code
 texture_slot__save(reflection::type_context__save& ctx)
 {
-    KRG_unused(ctx);
+    auto& ts = reflection::utils::as_type<texture_slot>(ctx.obj);
+    if (!ts.txt)
+    {
+        return result_code::ok;
+    }
+
+    auto& sc = *ctx.jc;
+    sc["texture"] = ts.txt->get_id().str();
+    sc["slot"] = ts.slot;
+    if (ts.smp)
+    {
+        sc["sampler"] = ts.smp->get_id().str();
+    }
+
     return result_code::ok;
 }
 
 result_code
 texture_slot__compare(reflection::type_context__compare& ctx)
 {
-    KRG_unused(ctx);
+    auto& left = reflection::utils::as_type<texture_slot>(ctx.left_obj);
+    auto& right = reflection::utils::as_type<texture_slot>(ctx.right_obj);
+
+    bool left_empty = !left.txt;
+    bool right_empty = !right.txt;
+
+    if (left_empty && right_empty)
+    {
+        return result_code::ok;
+    }
+    if (left_empty != right_empty)
+    {
+        return result_code::failed;
+    }
+    if (left.txt->get_id() != right.txt->get_id())
+    {
+        return result_code::failed;
+    }
+    if (left.slot != right.slot)
+    {
+        return result_code::failed;
+    }
+
+    bool left_smp = left.smp != nullptr;
+    bool right_smp = right.smp != nullptr;
+    if (left_smp != right_smp)
+    {
+        return result_code::failed;
+    }
+    if (left_smp && right_smp && left.smp->get_id() != right.smp->get_id())
+    {
+        return result_code::failed;
+    }
+
     return result_code::ok;
 }
 
 result_code
 texture_slot__copy(reflection::type_context__copy& ctx)
 {
-    auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.src_obj);
-    auto& dst = reflection::utils::as_type<::kryga::root::material*>(ctx.dst_obj);
+    auto& src = reflection::utils::as_type<texture_slot>(ctx.src_obj);
+    auto& dst = reflection::utils::as_type<texture_slot>(ctx.dst_obj);
 
-    auto& src_slot = src->get_slot(src->get_id());
-    dst->set_slot(src->get_id(), src_slot);
+    dst = src;
 
-    // Clone texture
-    if (src_slot.txt)
+    if (src.txt)
     {
-        auto clone_result = ctx.ctor->clone_obj(*src_slot.txt, src_slot.txt->get_id());
-
+        auto clone_result = ctx.ctor->clone_obj(*src.txt, src.txt->get_id());
         if (!clone_result)
         {
             return clone_result.error();
         }
-
-        dst->get_slot(src->get_id()).txt = clone_result.value()->as<root::texture>();
+        dst.txt = clone_result.value()->as<root::texture>();
     }
-
-    // Samplers are shared assets - just copy pointer
-    dst->get_slot(src->get_id()).smp = src_slot.smp;
 
     return result_code::ok;
 }
@@ -210,27 +250,25 @@ texture_slot__copy(reflection::type_context__copy& ctx)
 result_code
 texture_slot__instantiate(reflection::type_context__copy& ctx)
 {
-    auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.src_obj);
-    auto& dst = reflection::utils::as_type<::kryga::root::material*>(ctx.dst_obj);
+    auto& src = reflection::utils::as_type<texture_slot>(ctx.src_obj);
+    auto& dst = reflection::utils::as_type<texture_slot>(ctx.dst_obj);
 
-    auto& src_slot = src->get_slot(src->get_id());
-    dst->set_slot(src->get_id(), src_slot);
+    dst = src;
 
-    // Clone texture
-    if (src_slot.txt)
+    if (src.txt)
     {
-        auto clone_result = ctx.ctor->clone_obj(*src_slot.txt, src_slot.txt->get_id());
-
-        if (!clone_result)
+        root::smart_object* obj = ctx.ctor->get_olc()->find_obj(src.txt->get_id());
+        if (!obj)
         {
-            return clone_result.error();
+            auto result = ctx.ctor->instantiate_obj(*src.txt, src.txt->get_id());
+            if (!result)
+            {
+                return result.error();
+            }
+            obj = result.value();
         }
-
-        dst->get_slot(src->get_id()).txt = clone_result.value()->as<root::texture>();
+        dst.txt = obj->as<root::texture>();
     }
-
-    // Samplers are shared assets - just copy pointer
-    dst->get_slot(src->get_id()).smp = src_slot.smp;
 
     return result_code::ok;
 }
@@ -238,11 +276,19 @@ texture_slot__instantiate(reflection::type_context__copy& ctx)
 result_code
 texture_slot__load(reflection::type_context__load& ctx)
 {
-    auto& src = reflection::utils::as_type<::kryga::root::material*>(ctx.obj);
+    auto& ts = reflection::utils::as_type<texture_slot>(ctx.obj);
+    auto& jc = *ctx.jc;
 
-    const auto texture_id = AID((*ctx.jc)["texture"].as<std::string>());
+    if (!jc["texture"] || !jc["texture"].IsScalar())
+    {
+        ts.txt = nullptr;
+        ts.slot = 0;
+        ts.smp = nullptr;
+        return result_code::ok;
+    }
 
-    // Load texture
+    const auto texture_id = AID(jc["texture"].as<std::string>());
+
     auto tex_result = ctx.ctor->load_obj(texture_id);
     if (!tex_result)
     {
@@ -250,33 +296,26 @@ texture_slot__load(reflection::type_context__load& ctx)
         return tex_result.error();
     }
 
-    auto loaded_obj = tex_result.value();
+    ts.txt = tex_result.value()->as<root::texture>();
+    ts.slot = jc["slot"].as<uint32_t>();
 
-    const auto slot = (*ctx.jc)["slot"].as<uint32_t>();
-
-    auto& tex_slot = src->get_slot(src->get_id());
-    tex_slot.txt = loaded_obj->as<root::texture>();
-    tex_slot.slot = slot;
-
-    // Load sampler (optional)
-    auto& jc = *ctx.jc;
     if (jc["sampler"] && jc["sampler"].IsScalar())
     {
         const auto sampler_id = AID(jc["sampler"].as<std::string>());
         auto smp_result = ctx.ctor->load_obj(sampler_id);
         if (smp_result)
         {
-            tex_slot.smp = smp_result.value()->as<root::sampler>();
+            ts.smp = smp_result.value()->as<root::sampler>();
         }
         else
         {
             ALOG_WARN("Sampler not found: {}, using default", sampler_id.str());
-            tex_slot.smp = nullptr;
+            ts.smp = nullptr;
         }
     }
     else
     {
-        tex_slot.smp = nullptr;
+        ts.smp = nullptr;
     }
 
     return result_code::ok;

@@ -3,8 +3,14 @@
 #include <packages/root/model/core_types/vec2.h>
 #include <packages/root/model/core_types/vec3.h>
 #include <packages/root/model/core_types/vec4.h>
+#include <packages/root/model/assets/texture_slot.h>
+#include <packages/root/model/assets/texture.h>
+#include <packages/root/model/assets/sampler.h>
 
+#include <core/caches/caches_map.h>
 #include <core/reflection/reflection_type_utils.h>
+
+#include <global_state/global_state.h>
 
 #include <json/json.h>
 
@@ -354,6 +360,109 @@ vec4__json_load(reflection::type_context__json_load& ctx)
     dst.y = (*ctx.jc)[1].asFloat();
     dst.z = (*ctx.jc)[2].asFloat();
     dst.w = (*ctx.jc)[3].asFloat();
+    return kryga::result_code::ok;
+}
+
+// ========  TEXTURE_SLOT  ===========================
+
+kryga::result_code
+texture_slot__json_save(reflection::type_context__json_save& ctx)
+{
+    auto& ts = kryga::reflection::utils::as_type<texture_slot>(ctx.obj);
+    auto& jc = *ctx.jc;
+    jc = Json::Value(Json::objectValue);
+    jc["texture"] = ts.txt ? ts.txt->get_id().str() : std::string();
+    jc["slot"] = ts.slot;
+    jc["sampler"] = ts.smp ? ts.smp->get_id().str() : std::string();
+    return kryga::result_code::ok;
+}
+
+static root::smart_object*
+find_texture(const utils::id& id)
+{
+    auto& gs = glob::glob_state();
+    auto* obj = gs.getr_class_textures_cache().get_item(id);
+    if (!obj)
+    {
+        obj = gs.getr_instance_textures_cache().get_item(id);
+    }
+    return obj;
+}
+
+static root::smart_object*
+find_sampler(const utils::id& id)
+{
+    auto& gs = glob::glob_state();
+    auto* obj = gs.getr_class_samplers_cache().get_item(id);
+    if (!obj)
+    {
+        obj = gs.getr_instance_samplers_cache().get_item(id);
+    }
+    return obj;
+}
+
+kryga::result_code
+texture_slot__json_load(reflection::type_context__json_load& ctx)
+{
+    auto& ts = kryga::reflection::utils::as_type<texture_slot>(ctx.obj);
+
+    if (ctx.jc->isString())
+    {
+        auto tex_id_str = ctx.jc->asString();
+        if (tex_id_str.empty())
+        {
+            ts.txt = nullptr;
+            return kryga::result_code::ok;
+        }
+        auto* tex_obj = find_texture(AID(tex_id_str));
+        if (!tex_obj)
+        {
+            return kryga::result_code::failed;
+        }
+        ts.txt = tex_obj->as<texture>();
+        return kryga::result_code::ok;
+    }
+
+    if (!ctx.jc->isObject())
+    {
+        return kryga::result_code::failed;
+    }
+
+    auto& jc = *ctx.jc;
+    auto tex_str = jc.get("texture", "").asString();
+    if (tex_str.empty())
+    {
+        ts.txt = nullptr;
+    }
+    else
+    {
+        auto* tex_obj = find_texture(AID(tex_str));
+        if (!tex_obj)
+        {
+            return kryga::result_code::failed;
+        }
+        ts.txt = tex_obj->as<texture>();
+    }
+
+    if (jc.isMember("slot"))
+    {
+        ts.slot = jc["slot"].asUInt();
+    }
+
+    auto smp_str = jc.get("sampler", "").asString();
+    if (smp_str.empty())
+    {
+        ts.smp = nullptr;
+    }
+    else
+    {
+        auto* smp_obj = find_sampler(AID(smp_str));
+        if (smp_obj)
+        {
+            ts.smp = smp_obj->as<sampler>();
+        }
+    }
+
     return kryga::result_code::ok;
 }
 

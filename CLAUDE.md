@@ -94,3 +94,4 @@ Tracked in `docs/issues/` per subsystem: meshes, shadows, validation, editor UI 
 - C++23, static libraries, Vulkan
 - No defensive null-checks / early-returns — use asserts (`KRG_check`) instead. If something should never be null, assert on it; don't silently skip.
 - NEVER run `UPDATE_REFERENCES=1` for visual regression tests without explicit user confirmation. When tests fail, report which tests failed and WHY the output differs before proposing a reference update.
+- **Render layer is read-only.** All state changes go through the model layer; render is a projection. Never create RPCs or code paths that directly mutate render cache/GPU state — always mutate the model and let `mark_render_dirty()` / render_bridge propagate.

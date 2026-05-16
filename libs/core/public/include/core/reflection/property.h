@@ -104,6 +104,7 @@ public:
     reflection_type* rtype = nullptr;
 
     std::string gpu_data;
+    int32_t gpu_texture_slot                                       = -1;
     // clang-format on
 };
 

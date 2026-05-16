@@ -36,7 +36,7 @@ export function openMaterialBrowser(
       try {
         const res = await client.request<{
           materials: { id: string; type: string }[];
-        }>("material.list", {});
+        }>("model.material.list", {});
         panel?.webview.postMessage({
           type: "materials",
           materials: res.materials,
@@ -52,7 +52,7 @@ export function openMaterialBrowser(
     } else if (msg.type === "requestPreview") {
       try {
         const res = await client.request<{ image: string }>(
-          "material.preview",
+          "render.material.preview",
           { id: msg.material_id, size: msg.size || 128 },
         );
         panel?.webview.postMessage({
@@ -66,7 +66,7 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "assign") {
       try {
-        await client.request("material.assign", {
+        await client.request("model.material.assign", {
           owner_id: msg.owner_id,
           material_id: msg.material_id,
         });
@@ -80,7 +80,7 @@ export function openMaterialBrowser(
     } else if (msg.type === "editMaterial") {
       try {
         const res = await client.request<{ material: unknown }>(
-          "material.edit",
+          "model.material.edit",
           { id: msg.material_id },
         );
         panel?.webview.postMessage({
@@ -94,7 +94,7 @@ export function openMaterialBrowser(
     } else if (msg.type === "editField") {
       try {
         const res = await client.request<{ value: unknown }>(
-          "material.setField",
+          "model.material.setField",
           { id: msg.material_id, field: msg.field, value: msg.value },
         );
         panel?.webview.postMessage({
@@ -108,7 +108,7 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "saveEdit") {
       try {
-        await client.request("material.save", { id: msg.material_id });
+        await client.request("model.material.save", { id: msg.material_id });
         panel?.webview.postMessage({
           type: "editSaved",
           material_id: msg.material_id,
@@ -118,7 +118,7 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "discardEdit") {
       try {
-        await client.request("material.discard", { id: msg.material_id });
+        await client.request("model.material.discard", { id: msg.material_id });
         panel?.webview.postMessage({
           type: "editDiscarded",
           material_id: msg.material_id,
