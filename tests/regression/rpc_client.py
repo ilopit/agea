@@ -236,6 +236,15 @@ class EngineRPC:
                 pass
             self._sock = None
 
+    def wait_frame(self, count: int = 1) -> None:
+        """Block until the engine completes `count` full frame cycles.
+
+        After this returns, any model mutations made before the call are
+        guaranteed to be reflected in the render cache (consume_updated_render
+        has run).
+        """
+        self.call("engine.waitFrame", {"count": count})
+
     def call_queued(
         self,
         method: str,

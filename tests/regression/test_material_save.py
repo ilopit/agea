@@ -8,8 +8,6 @@ Detectable via render.state.object:
 These tests also verify material field values survive every operation
 (edit, setField, save, discard) using the model.material.get RPC.
 """
-import time
-
 from .conftest import EXPECTED_RENDER_OBJECTS
 from . import assertions
 
@@ -61,7 +59,7 @@ class TestMaterialSaveRegression:
 
         engine.call("model.material.edit", {"id": MATERIAL_ID})
         engine.call("model.material.save", {"id": MATERIAL_ID})
-        time.sleep(0.5)
+        engine.wait_frame()
 
         self._check_all_objects_valid(engine)
         fields_after = _get_material_fields(engine)
@@ -81,7 +79,7 @@ class TestMaterialSaveRegression:
             {"id": MATERIAL_ID, "field": "band_count", "value": new_band_count},
         )
         engine.call("model.material.save", {"id": MATERIAL_ID})
-        time.sleep(0.5)
+        engine.wait_frame()
 
         self._check_all_objects_valid(engine)
         fields_after = _get_material_fields(engine)
@@ -96,7 +94,7 @@ class TestMaterialSaveRegression:
             {"id": MATERIAL_ID, "field": "band_count", "value": original_band_count},
         )
         engine.call("model.material.save", {"id": MATERIAL_ID})
-        time.sleep(0.5)
+        engine.wait_frame()
 
     def test_material_discard_reverts_field_changes(self, engine):
         """Edit + setField + discard must revert all fields to original."""
@@ -143,7 +141,7 @@ class TestMaterialSaveRegression:
             {"id": MATERIAL_ID, "field": "diffuse_txt", "value": new_texture},
         )
         engine.call("model.material.save", {"id": MATERIAL_ID})
-        time.sleep(0.5)
+        engine.wait_frame()
 
         self._check_all_objects_valid(engine)
         saved_slots = _get_texture_slots(engine)
@@ -157,7 +155,7 @@ class TestMaterialSaveRegression:
             {"id": MATERIAL_ID, "field": "diffuse_txt", "value": original_texture},
         )
         engine.call("model.material.save", {"id": MATERIAL_ID})
-        time.sleep(0.5)
+        engine.wait_frame()
 
     def test_set_texture_discard_reverts(self, engine):
         """Edit + setField(texture) + discard — texture reverts to original."""
