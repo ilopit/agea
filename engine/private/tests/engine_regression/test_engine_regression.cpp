@@ -18,6 +18,7 @@
 
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 
 #include <render/utils/image_compare.h>
@@ -217,7 +218,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
         ASSERT_TRUE(engine.load_level(AID("box")));
 
         // Camera: look at origin from above and aside
-        auto& renderer = glob::glob_state().getr_vulkan_render();
+        auto& renderer = glob::glob_state().getr_render().renderer;
         gpu::camera_data cam{};
         cam.projection = glm::perspective(
             glm::radians(45.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);

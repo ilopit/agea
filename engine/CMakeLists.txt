@@ -33,11 +33,13 @@ set(ENGINE_GAME_SRC
 set(ENGINE_EDITOR_SRC
     "public/include/engine/console.h"
     "public/include/engine/editor.h"
+    "public/include/engine/editor_system.h"
     "public/include/engine/ui.h"
     "private/include/engine/private/engine_rpc.h"
     "private/include/engine/private/property_rpc.h"
     "private/src/console.cpp"
     "private/src/editor.cpp"
+    "private/src/editor_system.cpp"
     "private/src/engine_rpc.cpp"
     "private/src/property_rpc.cpp"
     "private/src/ui.cpp"

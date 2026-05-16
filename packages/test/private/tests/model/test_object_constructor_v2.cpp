@@ -4,6 +4,7 @@
 #include <core/package_manager.h>
 #include <core/level.h>
 #include <core/level_manager.h>
+#include <core/model_system.h>
 #include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
 #include <core/architype.h>
@@ -40,7 +41,6 @@ struct test_object_constructor : base_test
         glob::glob_state_reset();
 
         auto& gs = glob::glob_state();
-        core::state_mutator__id_generator::set(gs);
         state_mutator__vfs::set(gs);
         {
             auto root = std::filesystem::current_path().parent_path();
@@ -53,14 +53,9 @@ struct test_object_constructor : base_test
                 std::make_unique<vfs::physical_backend>(root.parent_path() / "kryga_generated"),
                 0);
         }
-        core::state_mutator__caches::set(gs);
-        core::state_mutator__reflection_manager::set(gs);
         core::state_mutator__lua_api::set(gs);
-        core::state_mutator__package_manager::set(gs);
-        auto& pm = gs.getr_pm();
-
-        gs.schedule_action(gs::state::state_stage::create,
-                           [](gs::state& s) { core::state_mutator__level_manager::set(s); });
+        core::state_mutator__model::set(gs);
+        auto& pm = gs.getr_model().packages;
         gs.run_create();
 
         {

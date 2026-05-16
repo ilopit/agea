@@ -24,6 +24,7 @@
 #include <vfs/vfs.h>
 #include <vfs/io.h>
 #include <global_state/global_state.h>
+#include <vulkan_render/render_system.h>
 
 #include <shader_system/shader_loader.h>
 
@@ -35,13 +36,6 @@
 
 namespace kryga
 {
-void
-state_mutator__vulkan_render::set(gs::state& s)
-{
-    auto p = s.create_box<render::vulkan_render>("vulkan_render");
-    s.m_vulkan_render = p;
-}
-
 namespace render
 {
 namespace
@@ -69,7 +63,7 @@ vulkan_render::~vulkan_render()
 void
 vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool only_rp)
 {
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     auto extent = device.swapchain_extent();
     m_width = extent.width;
     m_height = extent.height;
@@ -308,7 +302,7 @@ vulkan_render::apply_config_changes()
                   m_applied_shadow_map_size,
                   m_render_config.shadows.map_size);
 
-        glob::glob_state().getr_render_device().wait_for_fences();
+        glob::glob_state().getr_render().device.wait_for_fences();
 
         // Recreate shadow passes (new image dimensions) and resources (shader effects + bindless)
         init_shadow_passes();
@@ -336,7 +330,7 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
         return true;
     }
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     vkDeviceWaitIdle(device.vk_device());
 
     const uint32_t new_w = std::max(1u, m_width / new_divisor);
@@ -359,7 +353,7 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     auto new_view = vk_utils::vulkan_image_view::create_shared(new_view_ci);
 
     // Swap into main pass — keeps VkRenderPass + SEs intact.
-    auto* main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+    auto* main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
     if (!main_pass)
     {
         return false;
@@ -386,7 +380,7 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     }
 
     // Replace the scene_upscale texture so the composite pass samples the new image.
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     if (m_scene_upscale_txt)
     {
         loader.destroy_texture_data(AID("scene_lowres_txt"));
@@ -460,10 +454,10 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         return true;
     }
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     vkDeviceWaitIdle(device.vk_device());
 
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
 
     // Tear down render-scale-dependent state. m_ui_copy_se's pipeline was
     // compiled against the old host pass and must be dropped regardless of
@@ -787,7 +781,7 @@ void
 vulkan_render::deinit()
 {
     // Wait for all GPU operations to complete before destroying resources
-    vkDeviceWaitIdle(glob::glob_state().get_render_device()->vk_device());
+    vkDeviceWaitIdle(glob::glob_state().getr_render().device.vk_device());
 
     // Drop scene_depth_texture's image_view BEFORE the loader's clear_caches
     // destroys main_pass (and with it the underlying depth image). The view
@@ -859,17 +853,17 @@ vulkan_render::deinit()
 
     // Flush all deferred deletions now — vkDeviceWaitIdle above guarantees no
     // GPU work is in flight, so every scheduled resource is safe to destroy.
-    glob::glob_state().getr_render_device().flush_deferred_deletions();
+    glob::glob_state().getr_render().device.flush_deferred_deletions();
 }
 
 void
 vulkan_render::prepare_system_resources()
 {
-    glob::glob_state().getr_vulkan_render_loader().create_sampler(
-        AID("default"), VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
+    glob::glob_state().getr_render().loader.create_sampler(AID("default"),
+                                                           VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
 
-    glob::glob_state().getr_vulkan_render_loader().create_sampler(
-        AID("font"), VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+    glob::glob_state().getr_render().loader.create_sampler(AID("font"),
+                                                           VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
     // Fullscreen quad used by grid, outline post-process, etc.
     {
@@ -905,7 +899,7 @@ vulkan_render::prepare_system_resources()
         v.at(4) = 3;
         v.at(5) = 1;
 
-        glob::glob_state().getr_vulkan_render_loader().create_mesh(
+        glob::glob_state().getr_render().loader.create_mesh(
             AID("plane_mesh"),
             vert_buffer.make_view<gpu::vertex_data>(),
             index_buffer.make_view<gpu::uint>());
@@ -934,7 +928,7 @@ vulkan_render::prepare_system_resources()
         return;
     }
 
-    auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+    auto main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;
@@ -974,7 +968,7 @@ vulkan_render::prepare_system_resources()
     rc = main_pass->create_shader_effect(AID("se_grid"), se_ci, m_grid_se);
     KRG_check(rc == result_code::ok && m_grid_se, "Grid shader effect creation failed!");
 
-    m_grid_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+    m_grid_mat = glob::glob_state().getr_render().loader.create_material(
         AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
 
     // Outline post-process shader — edge detection on selection mask
@@ -1002,7 +996,7 @@ vulkan_render::prepare_system_resources()
         rc = main_pass->create_shader_effect(AID("se_outline_post"), se_ci, m_outline_post_se);
         KRG_check(rc == result_code::ok && m_outline_post_se, "Outline post SE failed!");
 
-        m_outline_post_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+        m_outline_post_mat = glob::glob_state().getr_render().loader.create_material(
             AID("mat_outline_post"), AID("outline_post"), sd, *m_outline_post_se, utils::dynobj{});
 
         // Register the selection mask image in bindless so the post-process can sample it
@@ -1010,12 +1004,12 @@ vulkan_render::prepare_system_resources()
         auto sel_images = sel_pass->get_color_images();
         if (!sel_images.empty())
         {
-            auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+            auto& cache = glob::glob_state().getr_render().renderer.get_cache();
             auto* tex = cache.textures.alloc(AID("selection_mask_texture"));
             if (tex)
             {
                 tex->image = sel_images[0];
-                auto swapchain_fmt = glob::glob_state().getr_render_device().get_swapchain_format();
+                auto swapchain_fmt = glob::glob_state().getr_render().device.get_swapchain_format();
                 auto view_ci = vk_utils::make_imageview_create_info(
                     swapchain_fmt, sel_images[0]->image(), VK_IMAGE_ASPECT_COLOR_BIT);
                 tex->image_view = vk_utils::vulkan_image_view::create_shared(view_ci);
@@ -1031,7 +1025,7 @@ vulkan_render::prepare_system_resources()
     if (m_render_config.render_scale.enabled)
     {
         auto* main_pass_for_depth =
-            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+            glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
         if (main_pass_for_depth && !main_pass_for_depth->get_depth_images().empty())
         {
             auto& depth_img = main_pass_for_depth->get_depth_images()[0];
@@ -1045,7 +1039,7 @@ vulkan_render::prepare_system_resources()
                 VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
             auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
 
-            auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+            auto& cache = glob::glob_state().getr_render().renderer.get_cache();
             auto* dtex = cache.textures.alloc(AID("scene_depth_texture"));
             if (dtex)
             {
@@ -1062,7 +1056,7 @@ vulkan_render::prepare_system_resources()
     if (m_render_config.render_scale.enabled && m_render_config.outline.enabled)
     {
         auto* composite_pass =
-            glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));
+            glob::glob_state().getr_render().loader.get_render_pass(AID("composite"));
 
         if (composite_pass)
         {
@@ -1114,7 +1108,7 @@ vulkan_render::prepare_system_resources()
     rc = main_pass->create_shader_effect(AID("se_debug_wire"), se_ci, m_debug_wire_se);
     if (rc == result_code::ok && m_debug_wire_se)
     {
-        m_debug_wire_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+        m_debug_wire_mat = glob::glob_state().getr_render().loader.create_material(
             AID("mat_debug_wire"), AID("debug_wire"), sd, *m_debug_wire_se, utils::dynobj{});
     }
 }
@@ -1127,7 +1121,7 @@ vulkan_render::init_shadow_resources()
     // Register CSM depth image views in bindless texture array
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
-        auto& device = glob::glob_state().getr_render_device();
+        auto& device = glob::glob_state().getr_render().device;
         for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
         {
             auto depth_view = m_shadow_passes[c]->get_depth_image_view(f);
@@ -1158,7 +1152,7 @@ vulkan_render::init_shadow_resources()
     constexpr uint32_t csm_bindless_count = KGPU_CSM_CASCADE_COUNT * FRAMES_IN_FLIGHT;
     for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
     {
-        auto vk_dev = glob::glob_state().getr_render_device().vk_device();
+        auto vk_dev = glob::glob_state().getr_render().device.vk_device();
         for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
         {
             auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(f);
@@ -1255,7 +1249,7 @@ vulkan_render::init_shadow_resources()
     // Transition all shadow depth images from UNDEFINED to SHADER_READ_ONLY_OPTIMAL.
     // This ensures unused shadow maps (inactive lights) are in a valid layout for sampling.
     // Active shadow maps will be transitioned by the render graph as needed.
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
@@ -1330,13 +1324,13 @@ vulkan_render::get_cache()
 render_pass*
 vulkan_render::get_render_pass(const utils::id& id)
 {
-    return glob::glob_state().getr_vulkan_render_loader().get_render_pass(id);
+    return glob::glob_state().getr_render().loader.get_render_pass(id);
 }
 
 void
 vulkan_render::init_static_samplers()
 {
-    auto vk_device = glob::glob_state().get_render_device()->vk_device();
+    auto vk_device = glob::glob_state().getr_render().device.vk_device();
 
     // Helper to create a sampler with given parameters
     auto create_sampler = [vk_device](
@@ -1426,7 +1420,7 @@ vulkan_render::init_static_samplers()
 void
 vulkan_render::deinit_static_samplers()
 {
-    auto vk_device = glob::glob_state().get_render_device()->vk_device();
+    auto vk_device = glob::glob_state().getr_render().device.vk_device();
 
     for (int i = 0; i < KGPU_SAMPLER_COUNT; ++i)
     {
@@ -1441,8 +1435,8 @@ vulkan_render::deinit_static_samplers()
 void
 vulkan_render::init_bindless_textures()
 {
-    auto device = glob::glob_state().get_render_device();
-    auto vk_device = device->vk_device();
+    auto& device = glob::glob_state().getr_render().device;
+    auto vk_device = device.vk_device();
 
     // Create descriptor pool with UPDATE_AFTER_BIND flag
     // Pool needs space for SAMPLED_IMAGE (textures) and SAMPLER (static samplers)
@@ -1532,7 +1526,7 @@ vulkan_render::init_bindless_textures()
 void
 vulkan_render::deinit_bindless_textures()
 {
-    auto vk_device = glob::glob_state().get_render_device()->vk_device();
+    auto vk_device = glob::glob_state().getr_render().device.vk_device();
 
     if (m_bindless_layout != VK_NULL_HANDLE)
     {

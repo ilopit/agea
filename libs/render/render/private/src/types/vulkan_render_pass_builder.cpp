@@ -4,6 +4,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 
 #include <global_state/global_state.h>
 
@@ -84,7 +85,7 @@ render_pass_builder::build()
     KRG_check(m_width, "Should not be 0!");
     KRG_check(m_height, "Should not be 0!");
 
-    auto device = glob::glob_state().getr_render_device().vk_device();
+    auto device = glob::glob_state().getr_render().device.vk_device();
 
     auto rp = std::make_shared<render_pass>();
 
@@ -161,7 +162,7 @@ render_pass_builder::build()
         for (uint32_t i = 0; i < image_count; ++i)
         {
             rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-                glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+                glob::glob_state().getr_render().device.get_vma_allocator_provider(),
                 dimg_info,
                 dimg_allocinfo,
                 0,
@@ -203,7 +204,7 @@ render_pass_builder::build()
         for (uint32_t i = 0; i < image_count; ++i)
         {
             rp->m_depth_images[i] = vk_utils::vulkan_image::create(
-                glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+                glob::glob_state().getr_render().device.get_vma_allocator_provider(),
                 dimg_info,
                 dimg_allocinfo,
                 0,

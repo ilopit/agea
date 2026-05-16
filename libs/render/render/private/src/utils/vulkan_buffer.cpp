@@ -3,6 +3,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 
 #include <global_state/global_state.h>
 
@@ -71,7 +72,7 @@ vulkan_buffer::clear()
 {
     if (m_buffer != VK_NULL_HANDLE)
     {
-        glob::glob_state().getr_render_device().schedule_to_delete(
+        glob::glob_state().getr_render().device.schedule_to_delete(
             [buf = m_buffer, alloc = m_allocation](VkDevice, VmaAllocator va)
             { vmaDestroyBuffer(va, buf, alloc); });
     }
@@ -89,7 +90,7 @@ vulkan_buffer::create(VkBufferCreateInfo bci,
     VkBuffer buffer;
     VmaAllocation allocation;
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     VK_CHECK(vmaCreateBuffer(device.allocator(), &bci, &vaci, &buffer, &allocation, nullptr));
 
@@ -105,7 +106,7 @@ vulkan_buffer::device_address() const
     info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
     info.buffer = m_buffer;
 
-    auto device = glob::glob_state().getr_render_device().vk_device();
+    auto device = glob::glob_state().getr_render().device.vk_device();
 
 #if defined(__ANDROID__)
     // Android's libvulkan.so only exports Vulkan 1.0 symbols. Load the 1.2 core
@@ -129,13 +130,13 @@ vulkan_buffer::begin()
     m_offset = 0;
     m_offsets.clear();
     vmaMapMemory(
-        glob::glob_state().getr_render_device().allocator(), allocation(), (void**)&m_data_begin);
+        glob::glob_state().getr_render().device.allocator(), allocation(), (void**)&m_data_begin);
 }
 
 void
 vulkan_buffer::end()
 {
-    vmaUnmapMemory(glob::glob_state().getr_render_device().allocator(), allocation());
+    vmaUnmapMemory(glob::glob_state().getr_render().device.allocator(), allocation());
     m_data_begin = nullptr;
 }
 
@@ -143,13 +144,13 @@ void
 vulkan_buffer::flush()
 {
     vmaFlushAllocation(
-        glob::glob_state().getr_render_device().allocator(), allocation(), 0, m_offset);
+        glob::glob_state().getr_render().device.allocator(), allocation(), 0, m_offset);
 }
 
 void
 vulkan_buffer::upload_data(uint8_t* src, uint32_t size, bool use_alignment)
 {
-    auto device = glob::glob_state().get_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     m_offsets.push_back(m_offset);
 
@@ -157,7 +158,7 @@ vulkan_buffer::upload_data(uint8_t* src, uint32_t size, bool use_alignment)
     memcpy(data, src, size);
 
     auto new_offset = m_offset + size;
-    m_offset = use_alignment ? device->pad_uniform_buffer_size(new_offset) : new_offset;
+    m_offset = use_alignment ? device.pad_uniform_buffer_size(new_offset) : new_offset;
 }
 
 uint8_t*

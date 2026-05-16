@@ -1,6 +1,7 @@
 #include <animation/animation_system.h>
 
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_data.h>
 
 #include <global_state/global_state.h>
@@ -240,7 +241,7 @@ animation_system::tick(float dt)
         return;
     }
 
-    auto& staging = glob::glob_state().getr_vulkan_render().get_bone_matrices_staging();
+    auto& staging = glob::glob_state().getr_render().renderer.get_bone_matrices_staging();
     staging.clear();
 
     // Identity matrix at index 0 for non-skinned objects
@@ -456,7 +457,7 @@ animation_system::tick(float dt)
             inst.render_data->gpu_data.bone_offset = inst.bone_offset;
             inst.render_data->gpu_data.bone_count = (uint32_t)mesh_bone_count;
 
-            glob::glob_state().getr_vulkan_render().schd_update_object(inst.render_data);
+            glob::glob_state().getr_render().renderer.schd_update_object(inst.render_data);
         }
     }
 }

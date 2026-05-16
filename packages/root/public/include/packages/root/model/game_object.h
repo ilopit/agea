@@ -7,6 +7,7 @@
 #include "packages/root/model/smart_object.h"
 
 #include <core/model_minimal.h>
+#include <core/model_system.h>
 #include <core/id_generator.h>
 #include <global_state/global_state.h>
 
@@ -54,9 +55,10 @@ public:
                     const utils::id& id,
                     const typename T::construct_params& params)
     {
-        auto gid = glob::glob_state().get_id_generator()->generate(id);
+        auto gid = glob::glob_state().getr_model().id_gen.generate(id);
 
-        return spawn_component(parent, T::AR_TYPE_id(), gid, params)->template as<T>();
+        auto* c = spawn_component(parent, T::AR_TYPE_id(), gid, params);
+        return c ? c->template as<T>() : nullptr;
     }
 
     component*

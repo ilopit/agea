@@ -3,6 +3,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 
 #include <global_state/global_state.h>
 #include <utils/kryga_log.h>
@@ -80,7 +81,7 @@ vulkan_image::create(vma_allocator_provider allocator,
     new_image.m_format = ici.format;
     vmaCreateImage(allocator(), &ici, &aci, &new_image.m_image, &new_image.m_allocation, nullptr);
 
-    KRG_VK_NAME(glob::glob_state().getr_render_device().vk_device(), new_image.m_image, debug_name);
+    KRG_VK_NAME(glob::glob_state().getr_render().device.vk_device(), new_image.m_image, debug_name);
 
     return new_image;
 }
@@ -104,7 +105,7 @@ vulkan_image::clear()
         return;
     }
 
-    auto& rd = glob::glob_state().getr_render_device();
+    auto& rd = glob::glob_state().getr_render().device;
 
     if (m_allocator)
     {
@@ -121,7 +122,7 @@ std::uint8_t*
 vulkan_image::map()
 {
     vmaMapMemory(
-        glob::glob_state().getr_render_device().allocator(), m_allocation, (void**)&m_data_begin);
+        glob::glob_state().getr_render().device.allocator(), m_allocation, (void**)&m_data_begin);
 
     return m_data_begin;
 }
@@ -129,7 +130,7 @@ vulkan_image::map()
 void
 vulkan_image::unmap()
 {
-    vmaUnmapMemory(glob::glob_state().getr_render_device().allocator(), m_allocation);
+    vmaUnmapMemory(glob::glob_state().getr_render().device.allocator(), m_allocation);
 }
 
 vulkan_image_view::~vulkan_image_view()
@@ -167,7 +168,7 @@ vulkan_image_view::create(const VkImageViewCreateInfo& iv_ci, std::string_view d
 {
     VkImageView iv = VK_NULL_HANDLE;
 
-    auto vk_device = glob::glob_state().getr_render_device().vk_device();
+    auto vk_device = glob::glob_state().getr_render().device.vk_device();
     vkCreateImageView(vk_device, &iv_ci, nullptr, &iv);
 
     if (!debug_name.empty())
@@ -192,7 +193,7 @@ vulkan_image_view::clear()
 {
     if (m_vk_handle)
     {
-        glob::glob_state().getr_render_device().schedule_to_delete(
+        glob::glob_state().getr_render().device.schedule_to_delete(
             [iv = m_vk_handle](VkDevice vd, VmaAllocator) { vkDestroyImageView(vd, iv, nullptr); });
     }
 }

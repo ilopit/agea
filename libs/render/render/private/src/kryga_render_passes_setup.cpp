@@ -2,6 +2,7 @@
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/vk_descriptors.h"
@@ -36,7 +37,7 @@ namespace render
 void
 vulkan_render::prepare_render_passes()
 {
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     auto swapchain_fmt = device.get_swapchain_format();
 
     // Render-scale: create a reduced-resolution scene target. The main pass will
@@ -99,8 +100,7 @@ vulkan_render::prepare_render_passes()
         }
 
         auto main_pass = builder.build();
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("main"),
-                                                                       std::move(main_pass));
+        glob::glob_state().getr_render().loader.add_render_pass(AID("main"), std::move(main_pass));
     }
 
     VkExtent3D image_extent = {m_width, m_height, 1};
@@ -115,7 +115,7 @@ vulkan_render::prepare_render_passes()
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+            glob::glob_state().getr_render().device.get_vma_allocator_provider(),
             simg_info,
             simg_allocinfo));
 
@@ -135,8 +135,7 @@ vulkan_render::prepare_render_passes()
                 .set_debug_name("ui")
                 .build();
 
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("ui"),
-                                                                       std::move(ui_pass));
+        glob::glob_state().getr_render().loader.add_render_pass(AID("ui"), std::move(ui_pass));
     }
 
     // Composite pass — only needed when render_scale upscale is enabled.
@@ -156,8 +155,8 @@ vulkan_render::prepare_render_passes()
                 .set_debug_name("composite")
                 .build();
 
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("composite"),
-                                                                       std::move(composite_pass));
+        glob::glob_state().getr_render().loader.add_render_pass(AID("composite"),
+                                                                std::move(composite_pass));
     }
 
     // Selection mask — same format as swapchain for pipeline compatibility
@@ -172,7 +171,7 @@ vulkan_render::prepare_render_passes()
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         auto image = std::make_shared<vk_utils::vulkan_image>(vk_utils::vulkan_image::create(
-            glob::glob_state().getr_render_device().get_vma_allocator_provider(),
+            glob::glob_state().getr_render().device.get_vma_allocator_provider(),
             simg_info,
             simg_allocinfo));
 
@@ -191,8 +190,8 @@ vulkan_render::prepare_render_passes()
                 .set_debug_name("selection_mask")
                 .build();
 
-        glob::glob_state().getr_vulkan_render_loader().add_render_pass(AID("selection_mask"),
-                                                                       std::move(mask_pass));
+        glob::glob_state().getr_render().loader.add_render_pass(AID("selection_mask"),
+                                                                std::move(mask_pass));
     }
 }
 
@@ -203,7 +202,7 @@ vulkan_render::prepare_render_passes()
 void
 vulkan_render::prepare_pass_bindings()
 {
-    auto* layout_cache_ptr = glob::glob_state().getr_render_device().descriptor_layout_cache();
+    auto* layout_cache_ptr = glob::glob_state().getr_render().device.descriptor_layout_cache();
     auto& layout_cache = *layout_cache_ptr;
 
     // Main pass bindings
@@ -407,7 +406,7 @@ vulkan_render::init_cluster_cull_compute()
              VK_SHADER_STAGE_COMPUTE_BIT);
 
     m_cluster_cull_pass->finalize_bindings(
-        *glob::glob_state().getr_render_device().descriptor_layout_cache());
+        *glob::glob_state().getr_render().device.descriptor_layout_cache());
 
     // Create compute shader through the pass
     compute_shader_create_info info;
@@ -472,7 +471,7 @@ vulkan_render::init_frustum_cull_compute()
              VK_SHADER_STAGE_COMPUTE_BIT);
 
     m_frustum_cull_pass->finalize_bindings(
-        *glob::glob_state().getr_render_device().descriptor_layout_cache());
+        *glob::glob_state().getr_render().device.descriptor_layout_cache());
 
     // Create compute shader through the pass
     compute_shader_create_info info;
@@ -710,7 +709,7 @@ vulkan_render::setup_instanced_render_graph()
     // Swapchain needs a final layout transition after the last pass
 
     m_render_graph.set_final_layout(AID("swapchain"),
-                                    glob::glob_state().getr_render_device().is_headless()
+                                    glob::glob_state().getr_render().device.is_headless()
                                         ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
                                         : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 

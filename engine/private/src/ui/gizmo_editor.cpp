@@ -1,5 +1,6 @@
 #include "engine/private/ui/gizmo_editor.h"
 #include "engine/editor.h"
+#include "engine/editor_system.h"
 
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/game_object_component.h>
@@ -7,6 +8,7 @@
 #include <global_state/global_state.h>
 #include <native/native_window.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 
 namespace kryga::ui
 {
@@ -14,13 +16,13 @@ namespace kryga::ui
 void
 gizmo_editor::draw()
 {
-    if (glob::glob_state().getr_game_editor().get_mode() == engine::editor_mode::playing)
+    if (glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing)
     {
         return;
     }
 
     // Get camera data and set up ImGuizmo viewport (always, before anything else)
-    auto cam = glob::glob_state().getr_game_editor().get_camera_data();
+    auto cam = glob::glob_state().getr_editor_system().editor.get_camera_data();
 
     // Un-flip Vulkan Y for ImGuizmo (expects OpenGL convention)
     glm::mat4 proj = cam.projection;
@@ -102,17 +104,17 @@ gizmo_editor::draw()
         ImGui::Text("|");
         ImGui::SameLine();
         bool grid_visible =
-            glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid;
+            glob::glob_state().getr_render().renderer.get_render_config().debug.show_grid;
         if (ImGui::Checkbox("Grid", &grid_visible))
         {
-            glob::glob_state().getr_vulkan_render().get_render_config().debug.show_grid =
+            glob::glob_state().getr_render().renderer.get_render_config().debug.show_grid =
                 grid_visible;
         }
 
         ImGui::End();
     }
 
-    auto* game_obj = glob::glob_state().getr_game_editor().get_selected_game_object();
+    auto* game_obj = glob::glob_state().getr_editor_system().editor.get_selected_game_object();
     if (!game_obj)
     {
         return;

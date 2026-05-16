@@ -4,12 +4,14 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_material_data.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 
 #include <core/caches/caches_map.h>
+#include <core/model_system.h>
 #include <core/object_constructor.h>
 #include <core/object_load_context.h>
 #include <core/package.h>
@@ -112,7 +114,7 @@ compute_content_hash(root::material& mat)
 render::mesh_data*
 ensure_sphere_mesh()
 {
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     auto* existing = loader.get_mesh_data(AID("preview_sphere"));
     if (existing)
     {
@@ -137,7 +139,7 @@ ensure_sphere_mesh()
 render::shader_effect_data*
 ensure_shader_effect(root::shader_effect& se_model)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto* rp = renderer.get_render_pass(AID("main"));
     auto* existing = rp->get_shader_effect(se_model.get_id());
     if (existing)
@@ -156,7 +158,7 @@ ensure_shader_effect(root::shader_effect& se_model)
 render::texture_data*
 ensure_texture(root::texture& txt_model)
 {
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     auto* existing = loader.get_texture_data(txt_model.get_id());
     if (existing)
     {
@@ -183,7 +185,7 @@ ensure_texture(root::texture& txt_model)
 render::material_data*
 create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_model)
 {
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     auto* se_model = mat_model.get_shader_effect();
     if (!se_model)
     {
@@ -446,7 +448,7 @@ material_previewer::save_to_fs(const std::string& id_str,
 render::material_data*
 material_previewer::ensure_gpu_material(const utils::id& material_id)
 {
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
 
     auto sit = m_sessions.find(material_id.str());
     if (sit != m_sessions.end() && sit->second.instance)
@@ -479,7 +481,7 @@ material_previewer::ensure_gpu_material(const utils::id& material_id)
         return existing;
     }
 
-    auto* obj = glob::glob_state().getr_class_materials_cache().get_item(material_id);
+    auto* obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
     if (!obj)
     {
         return nullptr;
@@ -505,7 +507,7 @@ material_previewer::render_preview(const utils::id& material_id, uint32_t size)
     }
     else
     {
-        auto* obj = glob::glob_state().getr_class_materials_cache().get_item(material_id);
+        auto* obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
         if (!obj)
         {
             return {};
@@ -540,8 +542,8 @@ material_previewer::render_preview(const utils::id& material_id, uint32_t size)
         return {};
     }
 
-    auto& device = glob::glob_state().getr_render_device();
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& device = glob::glob_state().getr_render().device;
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     auto* main_pass = renderer.get_render_pass(AID("main"));
     if (se->get_owner_render_pass() != main_pass)
@@ -614,7 +616,7 @@ material_previewer::destroy()
     discard_all_edits();
     m_memory_cache.clear();
     save_registry();
-    m_renderer.destroy(glob::glob_state().getr_render_device().vk_device());
+    m_renderer.destroy(glob::glob_state().getr_render().device.vk_device());
 }
 
 root::smart_object*
@@ -628,7 +630,7 @@ material_previewer::begin_edit(const utils::id& material_id)
         return sit->second.instance;
     }
 
-    auto* class_obj = glob::glob_state().getr_class_materials_cache().get_item(material_id);
+    auto* class_obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
     KRG_check(class_obj, "material not found in class cache");
 
     auto* pkg = class_obj->get_package();
@@ -675,7 +677,7 @@ material_previewer::save_edit(const utils::id& material_id)
     auto& session = sit->second;
     auto* instance = session.instance;
 
-    auto* class_obj = glob::glob_state().getr_class_materials_cache().get_item(material_id);
+    auto* class_obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
     KRG_check(class_obj, "class material disappeared during edit");
 
     auto* rt = instance->get_reflection();
@@ -726,7 +728,7 @@ material_previewer::save_edit(const utils::id& material_id)
         }
     }
 
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     loader.destroy_material_data(session.instance_id);
 
     class_mat.mark_render_dirty();
@@ -750,10 +752,10 @@ material_previewer::discard_edit(const utils::id& material_id)
     }
 
     auto& session = sit->second;
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     loader.destroy_material_data(session.instance_id);
 
-    auto* class_obj = glob::glob_state().getr_class_materials_cache().get_item(material_id);
+    auto* class_obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
     if (class_obj)
     {
         auto* pkg = class_obj->get_package();
@@ -770,14 +772,14 @@ material_previewer::discard_edit(const utils::id& material_id)
 void
 material_previewer::discard_all_edits()
 {
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
 
     for (auto& [id_str, session] : m_sessions)
     {
         loader.destroy_material_data(session.instance_id);
 
         auto* class_obj =
-            glob::glob_state().getr_class_materials_cache().get_item(session.class_id);
+            glob::glob_state().getr_model().class_caches.materials.get_item(session.class_id);
         if (class_obj)
         {
             auto* pkg = class_obj->get_package();

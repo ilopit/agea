@@ -1,5 +1,6 @@
 #include "vulkan_render/kryga_render.h"
 
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/types/vulkan_mesh_data.h"
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
@@ -365,7 +366,7 @@ vulkan_render::select_shadowed_lights()
         std::min((uint32_t)candidates.size(), (uint32_t)KGPU_MAX_SHADOWED_LOCAL_LIGHTS);
     m_shadow_config.shadowed_local_count = count;
 
-    auto frame_idx = glob::glob_state().getr_render_device().get_current_frame_index();
+    auto frame_idx = glob::glob_state().getr_render().device.get_current_frame_index();
 
     for (uint32_t i = 0; i < count; ++i)
     {
@@ -458,7 +459,7 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
     ZoneScopedN("Render::UploadShadowData");
 
     // Update CSM bindless indices for the current frame-in-flight
-    auto frame_idx = glob::glob_state().getr_render_device().get_current_frame_index();
+    auto frame_idx = glob::glob_state().getr_render().device.get_current_frame_index();
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
         m_shadow_config.directional.shadow_map_indices[c] =

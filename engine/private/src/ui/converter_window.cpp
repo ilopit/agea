@@ -1,5 +1,6 @@
 #include "engine/private/ui/converter_window.h"
 
+#include <core/model_system.h>
 #include <core/package.h>
 #include <core/package_manager.h>
 #include <global_state/global_state.h>
@@ -102,7 +103,7 @@ rescan_deps(const std::string& output_root, std::vector<std::pair<std::string, b
     ids.insert("root");
     ids.insert("base");
 
-    auto& pm = glob::glob_state().getr_pm();
+    auto& pm = glob::glob_state().getr_model().packages;
     for (const auto& [id, pkg] : pm.get_packages())
     {
         ids.insert(id.str());

@@ -13,7 +13,14 @@
       "Bash(export ANDROID_HOME=*)",
       "Bash(export ANDROID_NDK_HOME=*)",
       "Bash(export JAVA_HOME=*)",
-      "Bash(export PATH=*)"
+      "Bash(export PATH=*)",
+      "Bash(cmake --preset *)",
+      "Bash(tasklist *)",
+      "mcp__kryga-scene__kryga_properties_get",
+      "mcp__kryga-scene__kryga_ping",
+      "mcp__kryga-scene__kryga_scene_list",
+      "mcp__kryga-scene__kryga_level_list",
+      "mcp__kryga-scene__kryga_render_state_objects"
     ]
   },
   "hooks": {

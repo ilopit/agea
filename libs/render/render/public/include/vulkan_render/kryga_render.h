@@ -389,6 +389,28 @@ private:
     draw_objects_instanced(render::frame_state& frame);
 
     void
+    draw_multi_pipeline_objects_queue(render_line_container& r,
+                                      VkCommandBuffer cmd,
+                                      render::frame_state& current_frame);
+
+    void
+    draw_objects_queue(render_line_container& r,
+                       VkCommandBuffer cmd,
+                       render::frame_state& current_frame,
+                       bool outlined);
+
+    void
+    draw_same_pipeline_objects_queue(VkCommandBuffer cmd,
+                                     const pipeline_ctx& pctx,
+                                     const render_line_container& r,
+                                     bool rebind_images = false);
+
+    void
+    draw_object(VkCommandBuffer cmd,
+                const pipeline_ctx& pctx,
+                const render::vulkan_render_data* obj);
+
+    void
     draw_grid(VkCommandBuffer cmd, render::frame_state& current_frame);
 
     // Editor-only overlay: debug bucket (light gizmo billboards via LAYER_EDITOR_ONLY),

@@ -1,6 +1,7 @@
 #include "packages/base/package.base.h"
 
 #include <global_state/global_state.h>
+#include <core/model_system.h>
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_command.h>
 #include <core/object_layer_flags.h>
@@ -506,7 +507,7 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
     // Handle model-side deselection when this light becomes selected
     if (lc_model.get_selected())
     {
-        auto* level = glob::glob_state().get_current_level();
+        auto* level = glob::glob_state().getr_model().current_level;
         if (level)
         {
             const auto& prev_id = level->get_selected_directional_light_id();

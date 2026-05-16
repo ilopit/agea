@@ -2,6 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/types/vulkan_material_data.h"
@@ -36,7 +37,7 @@ ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
     {
         auto old_buffer = std::move(buffer);
 
-        buffer = glob::glob_state().getr_render_device().create_buffer(
+        buffer = glob::glob_state().getr_render().device.create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         ALOG_INFO("Reallocating {0} buffer {1} => {2}",
@@ -119,7 +120,7 @@ vulkan_render::upload_material_data(render::frame_state& frame)
     {
         old_buffer_tb = std::move(frame.buffers.materials);
 
-        frame.buffers.materials = glob::glob_state().getr_render_device().create_buffer(
+        frame.buffers.materials = glob::glob_state().getr_render().device.create_buffer(
             total_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         ALOG_INFO("Reallocating material buffer {0} => {1}",
@@ -198,7 +199,7 @@ vulkan_render::upload_bone_matrices(render::frame_state& frame)
     if (required_size >= frame.buffers.bone_matrices.get_alloc_size())
     {
         auto old_buffer = std::move(frame.buffers.bone_matrices);
-        frame.buffers.bone_matrices = glob::glob_state().getr_render_device().create_buffer(
+        frame.buffers.bone_matrices = glob::glob_state().getr_render().device.create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
         ALOG_INFO("Reallocating bone_matrices buffer {} => {}",
                   old_buffer.get_alloc_size(),
@@ -314,7 +315,7 @@ vulkan_render::upload_probe_data(render::frame_state& frame)
         return;
     }
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     // SSBO is created with sizeof(sh_probe) at init so it's always valid;
     // grow with 2x slack when the payload exceeds capacity.

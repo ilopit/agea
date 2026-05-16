@@ -1,6 +1,7 @@
 #include "core/id_generator.h"
 
 #include "core/caches/caches_map.h"
+#include "core/model_system.h"
 #include "global_state/global_state.h"
 
 #include <packages/root/model/smart_object.h>
@@ -47,8 +48,8 @@ id_generator::generate(const utils::id& obj_id)
         std::string s = std::format("{}#{}", obj_id_raw.c_str(), node.ctr);
         ++node.ctr;
 
-        if (glob::glob_state().get_instance_objects_cache()->has_item(AID(s)) ||
-            glob::glob_state().get_class_objects_cache()->has_item(AID(s)))
+        if (glob::glob_state().getr_model().instance_caches.objects.has_item(AID(s)) ||
+            glob::glob_state().getr_model().class_caches.objects.has_item(AID(s)))
         {
             continue;
         }

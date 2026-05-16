@@ -21,6 +21,7 @@
 #include <vfs/vfs.h>
 #include <vfs/io.h>
 #include <global_state/global_state.h>
+#include <vulkan_render/render_system.h>
 
 #include <shader_system/shader_loader.h>
 
@@ -49,7 +50,7 @@ vulkan_render::upload_instance_slots(render::frame_state& frame)
     if (required_size >= frame.buffers.instance_slots.get_alloc_size())
     {
         auto old_buffer = std::move(frame.buffers.instance_slots);
-        frame.buffers.instance_slots = glob::glob_state().getr_render_device().create_buffer(
+        frame.buffers.instance_slots = glob::glob_state().getr_render().device.create_buffer(
             required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
         ALOG_INFO("Reallocating instance_slots buffer {} => {}",
                   old_buffer.get_alloc_size(),
@@ -216,7 +217,7 @@ vulkan_render::draw_fullscreen_quad(VkCommandBuffer cmd,
                                     shader_effect_data* se,
                                     const void* push_data)
 {
-    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    auto m = glob::glob_state().getr_render().loader.get_mesh_data(AID("plane_mesh"));
     if (!m)
     {
         return;
@@ -506,8 +507,8 @@ vulkan_render::prepare_ui_resources()
     auto f_big =
         io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 33.0f);
 
-    glob::glob_state().getr_vulkan_render_loader().create_font(AID("normal"), f_normal);
-    glob::glob_state().getr_vulkan_render_loader().create_font(AID("big"), f_big);
+    glob::glob_state().getr_render().loader.create_font(AID("normal"), f_normal);
+    glob::glob_state().getr_render().loader.create_font(AID("big"), f_big);
 
     int tex_width = 0, tex_height = 0;
     unsigned char* font_data = nullptr;
@@ -519,11 +520,11 @@ vulkan_render::prepare_ui_resources()
     image_raw_buffer.resize(size);
     memcpy(image_raw_buffer.data(), font_data, size);
 
-    m_ui_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
+    m_ui_txt = glob::glob_state().getr_render().loader.create_texture(
         AID("font"), image_raw_buffer, tex_width, tex_height);
 
-    auto ui_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("ui"));
-    m_ui_target_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
+    auto ui_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("ui"));
+    m_ui_target_txt = glob::glob_state().getr_render().loader.create_texture(
         AID("ui_copy_txt"), ui_pass->get_color_images()[0], ui_pass->get_color_image_views()[0]);
 }
 
@@ -550,7 +551,7 @@ vulkan_render::prepare_ui_pipeline()
                           .add_field(AID("in_color"), kryga::render::gpu_type::g_color, 1)
                           .finalize();
 
-        auto ui_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("ui"));
+        auto ui_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("ui"));
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
@@ -567,7 +568,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_txt;
         samples.front().slot = 0;
 
-        m_ui_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+        m_ui_mat = glob::glob_state().getr_render().loader.create_material(
             AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
     }
     {
@@ -585,7 +586,7 @@ vulkan_render::prepare_ui_pipeline()
         // a different depth format than main. Create the pipeline against the pass
         // that will actually execute it.
         auto host_pass =
-            glob::glob_state().getr_vulkan_render_loader().get_render_pass(get_host_pass_id());
+            glob::glob_state().getr_render().loader.get_render_pass(get_host_pass_id());
 
         shader_effect_create_info se_ci;
         se_ci.vert_buffer = &vert;
@@ -602,7 +603,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_target_txt;
         samples.front().slot = 0;
 
-        m_ui_target_mat = glob::glob_state().getr_vulkan_render_loader().create_material(
+        m_ui_target_mat = glob::glob_state().getr_render().loader.create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 }
@@ -615,7 +616,7 @@ vulkan_render::update_ui(frame_state& fs)
         return;
     }
 
-    auto device = glob::glob_state().get_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     ImDrawData* im_draw_data = ImGui::GetDrawData();
 
     if (!im_draw_data)
@@ -702,8 +703,7 @@ vulkan_render::prepare_scene_upscale_pipeline()
         return;
     }
 
-    auto composite_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("composite"));
+    auto composite_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("composite"));
     KRG_check(composite_pass, "composite pass must exist when render_scale is enabled");
 
     shader_effect_create_info se_ci;
@@ -717,7 +717,7 @@ vulkan_render::prepare_scene_upscale_pipeline()
 
     composite_pass->create_shader_effect(AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
 
-    m_scene_upscale_txt = glob::glob_state().getr_vulkan_render_loader().create_texture(
+    m_scene_upscale_txt = glob::glob_state().getr_render().loader.create_texture(
         AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
 
     std::vector<texture_sampler_data> samples(1);
@@ -725,11 +725,11 @@ vulkan_render::prepare_scene_upscale_pipeline()
     samples.front().slot = 0;
 
     m_scene_upscale_mat =
-        glob::glob_state().getr_vulkan_render_loader().create_material(AID("mat_scene_upscale"),
-                                                                       AID("scene_upscale"),
-                                                                       samples,
-                                                                       *m_scene_upscale_se,
-                                                                       utils::dynobj{});
+        glob::glob_state().getr_render().loader.create_material(AID("mat_scene_upscale"),
+                                                                AID("scene_upscale"),
+                                                                samples,
+                                                                *m_scene_upscale_se,
+                                                                utils::dynobj{});
 
     // Override the default (LINEAR_REPEAT) sampler with NEAREST_CLAMP so the
     // upscale keeps chunky pixel edges instead of bilinear-smoothing them.

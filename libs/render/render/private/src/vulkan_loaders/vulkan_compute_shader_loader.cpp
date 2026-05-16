@@ -1,6 +1,7 @@
 #include "vulkan_render/vulkan_loaders/vulkan_compute_shader_loader.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/shader_reflection_utils.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
@@ -31,7 +32,7 @@ load_compute_shader_module(const kryga::utils::buffer& input,
                            std::shared_ptr<shader_module_data>& sd,
                            std::string_view debug_name = {})
 {
-    auto device = glob::glob_state().get_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     // Input buffer is expected to hold precooked SPIR-V (see tools/cook).
     compiled_shader compiled;
@@ -51,13 +52,13 @@ load_compute_shader_module(const kryga::utils::buffer& input,
                                            .pCode = (uint32_t*)compiled.spirv.data()};
 
     VkShaderModule module;
-    if (vkCreateShaderModule(device->vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
+    if (vkCreateShaderModule(device.vk_device(), &createInfo, nullptr, &module) != VK_SUCCESS)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    KRG_VK_NAME(device->vk_device(), module, debug_name);
+    KRG_VK_NAME(device.vk_device(), module, debug_name);
 
     sd = std::make_shared<shader_module_data>(module,
                                               std::move(compiled.spirv),
@@ -72,7 +73,7 @@ load_compute_shader_module(const kryga::utils::buffer& input,
 bool
 vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data& cs)
 {
-    auto device = glob::glob_state().get_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     // Get descriptor set layouts from reflection (stored in shader_module_data)
     const auto& reflection = cs.m_compute_stage->get_reflection();
@@ -113,10 +114,9 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
         layout_cis[i].pBindings = bindings_storage[i].data();
 
         vkCreateDescriptorSetLayout(
-            device->vk_device(), &layout_cis[i], nullptr, &cs.m_set_layout[i]);
+            device.vk_device(), &layout_cis[i], nullptr, &cs.m_set_layout[i]);
 
-        KRG_VK_NAME_FMT(
-            device->vk_device(), cs.m_set_layout[i], "{}.dsl_{}", cs.get_id().cstr(), i);
+        KRG_VK_NAME_FMT(device.vk_device(), cs.m_set_layout[i], "{}.dsl_{}", cs.get_id().cstr(), i);
     }
 
     // Create pipeline layout
@@ -136,13 +136,12 @@ vulkan_compute_shader_loader::create_compute_pipeline_layout(compute_shader_data
     pipeline_layout_ci.pushConstantRangeCount = (uint32_t)push_constant_ranges.size();
     pipeline_layout_ci.pPushConstantRanges = push_constant_ranges.data();
 
-    vkCreatePipelineLayout(
-        device->vk_device(), &pipeline_layout_ci, nullptr, &cs.m_pipeline_layout);
+    vkCreatePipelineLayout(device.vk_device(), &pipeline_layout_ci, nullptr, &cs.m_pipeline_layout);
 
     if (cs.m_pipeline_layout != VK_NULL_HANDLE)
     {
         KRG_VK_NAME_FMT(
-            device->vk_device(), cs.m_pipeline_layout, "{}.pipeline_layout", cs.get_id().cstr());
+            device.vk_device(), cs.m_pipeline_layout, "{}.pipeline_layout", cs.get_id().cstr());
     }
 
     return cs.m_pipeline_layout != VK_NULL_HANDLE;
@@ -152,7 +151,7 @@ result_code
 vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data,
                                                     const compute_shader_create_info& info)
 {
-    auto device = glob::glob_state().get_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     if (!info.shader_buffer)
     {
@@ -190,15 +189,14 @@ vulkan_compute_shader_loader::create_compute_shader(compute_shader_data& cs_data
     pipeline_ci.layout = cs_data.m_pipeline_layout;
 
     if (vkCreateComputePipelines(
-            device->vk_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &cs_data.m_pipeline) !=
+            device.vk_device(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &cs_data.m_pipeline) !=
         VK_SUCCESS)
     {
         ALOG_LAZY_ERROR;
         return result_code::failed;
     }
 
-    KRG_VK_NAME_FMT(
-        device->vk_device(), cs_data.m_pipeline, "{}.pipeline", cs_data.get_id().cstr());
+    KRG_VK_NAME_FMT(device.vk_device(), cs_data.m_pipeline, "{}.pipeline", cs_data.get_id().cstr());
 
     return result_code::ok;
 }

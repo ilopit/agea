@@ -1,6 +1,7 @@
 #include "engine/private/property_rpc.h"
 
 #include <core/level.h>
+#include <core/model_system.h>
 #include <core/reflection/property.h>
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
@@ -8,6 +9,7 @@
 #include <global_state/global_state.h>
 
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/render_cache.h>
 #include <vulkan_render/types/vulkan_material_data.h>
 
@@ -97,7 +99,7 @@ encode_owner(root::smart_object& obj)
 
     owner["categories"] = cats;
 
-    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
     auto* robj = cache.objects.find_by_id(obj.get_id());
     if (robj && robj->material)
     {
@@ -171,7 +173,7 @@ encode_component_properties(root::component& comp)
 root::smart_object*
 find_owner(const std::string& id_str)
 {
-    auto* lvl = glob::glob_state().get_current_level();
+    auto* lvl = glob::glob_state().getr_model().current_level;
     if (!lvl)
     {
         return nullptr;

@@ -4,6 +4,7 @@
 #include "packages/root/model/components/game_object_component.h"
 
 #include <core/object_constructor.h>
+#include <core/model_system.h>
 #include <core/package.h>
 #include <core/level.h>
 #include <core/object_load_context.h>
@@ -34,7 +35,7 @@ game_object::construct(construct_params& params)
 
     m_root_component = spawn_component<game_object_component>(nullptr, AID("root_component"), gcp);
 
-    return true;
+    return m_root_component != nullptr;
 }
 
 bool
@@ -45,7 +46,7 @@ game_object::construct_default(construct_params& params)
 
     m_root_component = spawn_component<game_object_component>(nullptr, AID("root_component"), gcp);
 
-    return true;
+    return m_root_component != nullptr;
 }
 
 void
@@ -145,7 +146,7 @@ game_object::spawn_component_with_proto(component* parent,
 component*
 game_object::spawn_component_with_proto(component* parent, const utils::id& proto_id)
 {
-    auto id = glob::glob_state().get_id_generator()->generate(m_id);
+    auto id = glob::glob_state().getr_model().id_gen.generate(m_id);
 
     return spawn_component_with_proto(parent, proto_id, id);
 }

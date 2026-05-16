@@ -1,5 +1,6 @@
 #include "vulkan_render/kryga_render.h"
 
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
 #include "vulkan_render/types/vulkan_material_data.h"
@@ -122,7 +123,7 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
         return;
     }
 
-    auto* cube = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("cube_mesh"));
+    auto* cube = glob::glob_state().getr_render().loader.get_mesh_data(AID("cube_mesh"));
     if (!cube || cube->m_vertex_buffer.buffer() == VK_NULL_HANDLE)
     {
         return;

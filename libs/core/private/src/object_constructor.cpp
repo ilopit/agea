@@ -2,6 +2,7 @@
 
 #include "core/package.h"
 #include "core/caches/caches_map.h"
+#include "core/model_system.h"
 #include "core/object_load_context.h"
 #include "core/level.h"
 #include "global_state/global_state.h"
@@ -58,7 +59,7 @@ object_constructor::preload_proto(const utils::id& id)
     }
 
     // Default class object
-    if (auto rt = glob::glob_state().get_rm()->get_type(id))
+    if (auto rt = glob::glob_state().getr_model().reflection.get_type(id))
     {
         return object_constructor::create_default_class_obj_impl(rt);
     }
@@ -112,7 +113,7 @@ object_constructor::alloc_empty_object(const utils::id& type_id,
                                        root::smart_object_flags flags,
                                        root::smart_object* parent_object)
 {
-    auto rt = glob::glob_state().get_rm()->get_type(type_id);
+    auto rt = glob::glob_state().getr_model().reflection.get_type(type_id);
 
     if (!rt)
     {
@@ -201,7 +202,7 @@ object_constructor::load_package_obj(const utils::id& id)
         return obj;
     }
 
-    if (auto rt = glob::glob_state().get_rm()->get_type(id))
+    if (auto rt = glob::glob_state().getr_model().reflection.get_type(id))
     {
         return object_constructor::create_default_class_obj_impl(rt);
     }
@@ -342,7 +343,7 @@ object_constructor::load_obj(const utils::id& id)
             return obj;
         }
 
-        if (auto rt = glob::glob_state().get_rm()->get_type(id))
+        if (auto rt = glob::glob_state().getr_model().reflection.get_type(id))
         {
             return create_default_class_obj_impl(rt);
         }
@@ -593,8 +594,8 @@ object_constructor::object_properties_save(const root::smart_object& obj,
 {
     auto& properties = obj.get_reflection()->m_serialization_properties;
 
-    auto empty_obj =
-        glob::glob_state().get_class_objects_cache()->get_item(obj.get_reflection()->type_name);
+    auto empty_obj = glob::glob_state().getr_model().class_caches.objects.get_item(
+        obj.get_reflection()->type_name);
 
     reflection::property_context__save sc;
     reflection::property_context__compare cc;

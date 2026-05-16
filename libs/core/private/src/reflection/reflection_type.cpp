@@ -1,5 +1,6 @@
 #include "core/reflection/reflection_type.h"
 
+#include "core/model_system.h"
 #include "core/reflection/reflection_type_utils.h"
 #include "global_state/global_state.h"
 #include <utils/kryga_log.h>
@@ -12,12 +13,12 @@ reflection_type::reflection_type(int i, const kryga::utils::id& n)
     : type_id(i)
     , type_name(n)
 {
-    ::kryga::glob::glob_state().get_rm()->add_type(this);
+    ::kryga::glob::glob_state().getr_model().reflection.add_type(this);
 }
 
 reflection_type::~reflection_type()
 {
-    auto& rm = glob::glob_state().getr_rm();
+    auto& rm = glob::glob_state().getr_model().reflection;
 
     rm.unload_type(type_id, type_name);
 }

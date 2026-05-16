@@ -1,6 +1,7 @@
 #include "vulkan_render/bake/lightmap_baker.h"
 
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/vk_descriptors.h>
 #include <vulkan_render/utils/vulkan_initializers.h>
 #include <vulkan_render/utils/vulkan_image.h>
@@ -165,12 +166,7 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         return result;
     }
 
-    auto* device = glob::glob_state().get_render_device();
-    if (!device)
-    {
-        ALOG_ERROR("lightmap_baker: no render device");
-        return result;
-    }
+    auto& device = glob::glob_state().getr_render().device;
 
     // =====================================================================
     // Step 1: Build BVH
@@ -202,10 +198,10 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     // Step 2: Upload GPU resources
     // =====================================================================
     auto buf_bvh_nodes =
-        create_storage_buffer(*device, bvh.nodes.data(), bvh.nodes.size() * sizeof(gpu::bvh_node));
+        create_storage_buffer(device, bvh.nodes.data(), bvh.nodes.size() * sizeof(gpu::bvh_node));
 
     auto buf_triangles = create_storage_buffer(
-        *device, bvh.triangles.data(), bvh.triangles.size() * sizeof(gpu::bake_triangle));
+        device, bvh.triangles.data(), bvh.triangles.size() * sizeof(gpu::bake_triangle));
 
     gpu::bake_config config{};
     config.triangle_count = result.total_triangles;
@@ -230,17 +226,17 @@ lightmap_baker::bake(const bake::bake_settings& settings)
         config.sample_count,
         config.local_light_count);
 
-    auto buf_config = create_uniform_buffer(*device, &config, sizeof(gpu::bake_config));
+    auto buf_config = create_uniform_buffer(device, &config, sizeof(gpu::bake_config));
 
     // =====================================================================
     // Step 3: Create GPU images
     // =====================================================================
-    auto img_gbuf_pos = create_storage_image(*device, W, H, VK_FORMAT_R32G32B32A32_SFLOAT);
-    auto img_gbuf_normal = create_storage_image(*device, W, H, VK_FORMAT_R32G32B32A32_SFLOAT);
-    auto img_lightmap = create_storage_image(*device, W, H, VK_FORMAT_R16G16B16A16_SFLOAT);
-    auto img_lightmap_bounce = create_storage_image(*device, W, H, VK_FORMAT_R16G16B16A16_SFLOAT);
-    auto img_ao = create_storage_image(*device, W, H, VK_FORMAT_R16_SFLOAT);
-    auto img_denoise_tmp = create_storage_image(*device, W, H, VK_FORMAT_R16G16B16A16_SFLOAT);
+    auto img_gbuf_pos = create_storage_image(device, W, H, VK_FORMAT_R32G32B32A32_SFLOAT);
+    auto img_gbuf_normal = create_storage_image(device, W, H, VK_FORMAT_R32G32B32A32_SFLOAT);
+    auto img_lightmap = create_storage_image(device, W, H, VK_FORMAT_R16G16B16A16_SFLOAT);
+    auto img_lightmap_bounce = create_storage_image(device, W, H, VK_FORMAT_R16G16B16A16_SFLOAT);
+    auto img_ao = create_storage_image(device, W, H, VK_FORMAT_R16_SFLOAT);
+    auto img_denoise_tmp = create_storage_image(device, W, H, VK_FORMAT_R16G16B16A16_SFLOAT);
 
     // Create image views for descriptor binding
     auto make_view = [](vk_utils::vulkan_image_sptr& img, VkFormat fmt)
@@ -260,7 +256,7 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     // =====================================================================
     // Step 4: Create descriptor sets for each bake stage
     // =====================================================================
-    auto& layout_cache = *device->descriptor_layout_cache();
+    auto& layout_cache = *device.descriptor_layout_cache();
     vk_utils::descriptor_allocator desc_alloc;
 
     // --- G-buffer rasterize descriptors (set 0) ---
@@ -298,7 +294,7 @@ lightmap_baker::bake(const bake::bake_settings& settings)
               "lightmap_baker: no directional lights provided in bake_settings");
 
     auto buf_dir_light = create_storage_buffer(
-        *device,
+        device,
         settings.directional_lights.data(),
         settings.directional_lights.size() * sizeof(gpu::directional_light_data));
     VkDescriptorBufferInfo light_buf_info{buf_dir_light.buffer(), 0, VK_WHOLE_SIZE};
@@ -307,9 +303,9 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     gpu::universal_light_data dummy_local{};
     auto buf_local_lights =
         settings.local_lights.empty()
-            ? create_storage_buffer(*device, &dummy_local, sizeof(gpu::universal_light_data))
+            ? create_storage_buffer(device, &dummy_local, sizeof(gpu::universal_light_data))
             : create_storage_buffer(
-                  *device,
+                  device,
                   settings.local_lights.data(),
                   settings.local_lights.size() * sizeof(gpu::universal_light_data));
     VkDescriptorBufferInfo local_light_buf_info{buf_local_lights.buffer(), 0, VK_WHOLE_SIZE};
@@ -511,7 +507,7 @@ lightmap_baker::bake(const bake::bake_settings& settings)
     uint32_t wg_y = (H + 7) / 8;
     uint32_t tri_wg = (result.total_triangles + 63) / 64;
 
-    device->immediate_submit(
+    device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
             // Clear all storage images so shaders never read stale memory
@@ -744,9 +740,9 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
         auto readback_img =
-            vk_utils::vulkan_image::create(device->get_vma_allocator_provider(), dst_ci, dst_aci);
+            vk_utils::vulkan_image::create(device.get_vma_allocator_provider(), dst_ci, dst_aci);
 
-        device->immediate_submit(
+        device.immediate_submit(
             [&](VkCommandBuffer cmd)
             {
                 VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
@@ -828,9 +824,9 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
         auto readback_img =
-            vk_utils::vulkan_image::create(device->get_vma_allocator_provider(), dst_ci, dst_aci);
+            vk_utils::vulkan_image::create(device.get_vma_allocator_provider(), dst_ci, dst_aci);
 
-        device->immediate_submit(
+        device.immediate_submit(
             [&](VkCommandBuffer cmd)
             {
                 VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};

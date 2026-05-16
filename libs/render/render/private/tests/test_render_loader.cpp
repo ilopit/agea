@@ -4,6 +4,7 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
@@ -22,20 +23,18 @@ public:
         render::render_device::construct_params rdc;
         rdc.headless = true;
 
-        auto device = glob::glob_state().get_render_device();
-        ASSERT_TRUE(device->construct(rdc));
+        auto& device = glob::glob_state().getr_render().device;
+        ASSERT_TRUE(device.construct(rdc));
 
-        state_mutator__vulkan_render_loader::set(glob::glob_state());
-
-        glob::glob_state().getr_vulkan_render().init(500, 500, render_config{}, true);
+        glob::glob_state().getr_render().renderer.init(500, 500, render_config{}, true);
     }
 
     void
     TearDown()
     {
-        glob::glob_state().get_vulkan_render()->deinit();
-        glob::glob_state().getr_vulkan_render_loader().clear_caches();
-        glob::glob_state().get_render_device()->destruct();
+        glob::glob_state().getr_render().renderer.deinit();
+        glob::glob_state().getr_render().loader.clear_caches();
+        glob::glob_state().getr_render().device.destruct();
     }
 };
 
@@ -53,7 +52,7 @@ TEST_F(render_device_test, load_se)
     auto frag_path = path / "se_error.frag";
     kryga::utils::buffer::load(frag_path, frag);
 
-    auto main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+    auto main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
 
     shader_effect_create_info se_ci;
     se_ci.vert_buffer = &vert;

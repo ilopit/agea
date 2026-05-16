@@ -18,6 +18,7 @@
 #include <native/native_window.h>
 
 #include <global_state/global_state.h>
+#include <vulkan_render/render_system.h>
 
 #include <utils/kryga_log.h>
 
@@ -47,8 +48,8 @@ vulkan_render::draw_main()
 {
     ZoneScopedN("Render::DrawMain");
 
-    auto device = glob::glob_state().get_render_device();
-    KRG_check(!device->is_headless(), "draw_main requires a windowed device, use draw_headless()");
+    auto& device = glob::glob_state().getr_render().device;
+    KRG_check(!device.is_headless(), "draw_main requires a windowed device, use draw_headless()");
 
     auto r = SDL_GetWindowFlags(glob::glob_state().getr_native_window().handle());
 
@@ -57,20 +58,20 @@ vulkan_render::draw_main()
         return;
     }
 
-    device->switch_frame_indeces();
+    device.switch_frame_indeces();
     m_culled_draws = 0;
     m_all_draws = 0;
 
-    auto& current_frame = m_frames[device->get_current_frame_index()];
+    auto& current_frame = m_frames[device.get_current_frame_index()];
 
     {
         ZoneScopedN("Render::WaitForFence");
         VK_CHECK(vkWaitForFences(
-            device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
+            device.vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
     }
-    VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
+    VK_CHECK(vkResetFences(device.vk_device(), 1, &current_frame.frame->m_render_fence));
 
-    device->delete_scheduled_actions();
+    device.delete_scheduled_actions();
 
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
     VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));
@@ -78,8 +79,8 @@ vulkan_render::draw_main()
     // Tolerate VK_SUBOPTIMAL_KHR — see vkQueuePresentKHR below.
     uint32_t swapchain_image_index = 0U;
     {
-        VkResult ar = vkAcquireNextImageKHR(device->vk_device(),
-                                            device->swapchain(),
+        VkResult ar = vkAcquireNextImageKHR(device.vk_device(),
+                                            device.swapchain(),
                                             1000000000,
                                             current_frame.frame->m_present_semaphore,
                                             nullptr,
@@ -117,12 +118,12 @@ vulkan_render::draw_main()
     submit.signalSemaphoreCount = 1;
     submit.pSignalSemaphores = &current_frame.frame->m_render_semaphore;
 
-    VK_CHECK(vkQueueSubmit(
-        device->vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
+    VK_CHECK(
+        vkQueueSubmit(device.vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
 
     // Present
     auto present_info = render::vk_utils::make_present_info();
-    present_info.pSwapchains = &device->swapchain();
+    present_info.pSwapchains = &device.swapchain();
     present_info.swapchainCount = 1;
     present_info.pWaitSemaphores = &current_frame.frame->m_render_semaphore;
     present_info.waitSemaphoreCount = 1;
@@ -131,7 +132,7 @@ vulkan_render::draw_main()
     // VK_SUBOPTIMAL_KHR is expected on Android: we use IDENTITY preTransform
     // while the surface's currentTransform may be rotated. The PE composites
     // the rotation at present time and the image is still displayed correctly.
-    VkResult pr = vkQueuePresentKHR(device->vk_graphics_queue(), &present_info);
+    VkResult pr = vkQueuePresentKHR(device.vk_graphics_queue(), &present_info);
     if (pr != VK_SUCCESS && pr != VK_SUBOPTIMAL_KHR)
     {
         ALOG_ERROR("vkQueuePresentKHR failed: {}", (int)pr);
@@ -142,20 +143,20 @@ vulkan_render::draw_main()
 void
 vulkan_render::draw_headless()
 {
-    auto device = glob::glob_state().get_render_device();
-    KRG_check(device->is_headless(), "draw_headless requires a headless device, use draw_main()");
+    auto& device = glob::glob_state().getr_render().device;
+    KRG_check(device.is_headless(), "draw_headless requires a headless device, use draw_main()");
 
-    device->switch_frame_indeces();
+    device.switch_frame_indeces();
     m_culled_draws = 0;
     m_all_draws = 0;
 
-    auto& current_frame = m_frames[device->get_current_frame_index()];
+    auto& current_frame = m_frames[device.get_current_frame_index()];
 
     VK_CHECK(vkWaitForFences(
-        device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
-    VK_CHECK(vkResetFences(device->vk_device(), 1, &current_frame.frame->m_render_fence));
+        device.vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
+    VK_CHECK(vkResetFences(device.vk_device(), 1, &current_frame.frame->m_render_fence));
 
-    device->delete_scheduled_actions();
+    device.delete_scheduled_actions();
 
     current_frame.frame->m_dynamic_descriptor_allocator->reset_pools();
     VK_CHECK(vkResetCommandBuffer(current_frame.frame->m_main_command_buffer, 0));
@@ -168,17 +169,17 @@ vulkan_render::draw_headless()
     // swapchain_image_index must match the frame index used by render_graph.execute()
     // below (get_current_frame_index()) — bind_image and pass framebuffer selection
     // both index by it, and a mismatch transitions the wrong triple-buffered image.
-    render_frame(cmd, current_frame, device->get_current_frame_index(), m_width, m_height);
+    render_frame(cmd, current_frame, device.get_current_frame_index(), m_width, m_height);
 
     VK_CHECK(vkEndCommandBuffer(cmd));
 
     // Submit without present semaphores and wait synchronously
     auto submit = render::vk_utils::make_submit_info(&cmd);
-    VK_CHECK(vkQueueSubmit(
-        device->vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
+    VK_CHECK(
+        vkQueueSubmit(device.vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
 
     VK_CHECK(vkWaitForFences(
-        device->vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
+        device.vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
 }
 
 void
@@ -253,7 +254,7 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     // Bind per-frame image resources
     // All render targets are cleared each frame, so UNDEFINED initial layout is safe.
     const bool render_scale = m_render_config.render_scale.enabled;
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     auto swapchain_images = device.get_swapchain_images();
     m_render_graph.bind_image(
         AID("swapchain"), *swapchain_images[swapchain_image_index], VK_IMAGE_LAYOUT_UNDEFINED);
@@ -317,7 +318,7 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     }
 
     m_render_graph.execute(
-        cmd, glob::glob_state().getr_render_device().get_current_frame_index(), width, height);
+        cmd, glob::glob_state().getr_render().device.get_current_frame_index(), width, height);
 
     // Verify per-draw BDA addresses were set this frame (if any objects were actually drawn)
     // m_all_draws includes culled objects; only check if at least one object passed culling
@@ -510,7 +511,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
 frame_state&
 vulkan_render::get_current_frame_transfer_data()
 {
-    return m_frames[glob::glob_state().getr_render_device().get_current_frame_index()];
+    return m_frames[glob::glob_state().getr_render().device.get_current_frame_index()];
 }
 
 void
@@ -644,7 +645,7 @@ vulkan_render::update_bindless_descriptors()
         return;
     }
 
-    auto device = glob::glob_state().get_render_device();
+    auto& device = glob::glob_state().getr_render().device;
 
     std::vector<VkDescriptorImageInfo> image_infos;
     std::vector<VkWriteDescriptorSet> writes;
@@ -678,7 +679,7 @@ vulkan_render::update_bindless_descriptors()
     if (!writes.empty())
     {
         vkUpdateDescriptorSets(
-            device->vk_device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+            device.vk_device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
     }
 
     textures_queue.clear();

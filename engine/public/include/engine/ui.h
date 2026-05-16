@@ -117,12 +117,5 @@ public:
     std::string m_imgui_ini_path;  // backing storage for io.IniFilename
 };
 
-template <typename T>
-static T*
-get_window()
-{
-    return (T*)glob::glob_state().get_ui()->m_windows[T::window_title()].get();
-}
-
 }  // namespace ui
 }  // namespace kryga

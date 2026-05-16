@@ -10,6 +10,7 @@
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 #include <vulkan_render/types/vulkan_render_pass_builder.h>
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
@@ -153,29 +154,27 @@ public:
         rdc.width = TEST_WIDTH;
         rdc.height = TEST_HEIGHT;
 
-        auto device = glob::glob_state().get_render_device();
-        ASSERT_TRUE(device->construct(rdc));
-
-        state_mutator__vulkan_render_loader::set(glob::glob_state());
+        auto& device = glob::glob_state().getr_render().device;
+        ASSERT_TRUE(device.construct(rdc));
     }
 
     static void
     TearDownTestSuite()
     {
-        glob::glob_state().get_render_device()->destruct();
+        glob::glob_state().getr_render().device.destruct();
     }
 
     void
     SetUp() override
     {
-        auto device = glob::glob_state().get_render_device();
+        auto& device = glob::glob_state().getr_render().device;
 
         render_config cfg{};
         cfg.debug.show_grid = false;
         cfg.debug.light_wireframe = false;
         cfg.debug.light_icons = false;
 
-        glob::glob_state().getr_vulkan_render().init(TEST_WIDTH, TEST_HEIGHT, cfg, true);
+        glob::glob_state().getr_render().renderer.init(TEST_WIDTH, TEST_HEIGHT, cfg, true);
 
         auto extent = VkExtent3D{TEST_WIDTH, TEST_HEIGHT, 1};
 
@@ -188,7 +187,7 @@ public:
         alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
         m_color_image = std::make_shared<vk_utils::vulkan_image>(
-            vk_utils::vulkan_image::create(device->get_vma_allocator_provider(), img_ci, alloc_ci));
+            vk_utils::vulkan_image::create(device.get_vma_allocator_provider(), img_ci, alloc_ci));
 
         auto iv_ci = vk_utils::make_imageview_create_info(
             VK_FORMAT_R8G8B8A8_UNORM, m_color_image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
@@ -211,8 +210,8 @@ public:
         m_color_image_view.reset();
         m_color_image.reset();
 
-        glob::glob_state().get_vulkan_render()->deinit();
-        glob::glob_state().getr_vulkan_render_loader().clear_caches();
+        glob::glob_state().getr_render().renderer.deinit();
+        glob::glob_state().getr_render().loader.clear_caches();
     }
 
     render_pass_sptr m_test_pass;
@@ -224,7 +223,7 @@ TEST_F(visual_regression_test, clear_color_red)
 {
     m_test_pass->set_clear_color({1.0f, 0.0f, 0.0f, 1.0f});
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
@@ -239,7 +238,7 @@ TEST_F(visual_regression_test, clear_color_blue)
 {
     m_test_pass->set_clear_color({0.0f, 0.0f, 1.0f, 1.0f});
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
@@ -264,16 +263,14 @@ public:
         rdc.width = TEST_WIDTH;
         rdc.height = TEST_HEIGHT;
 
-        auto device = glob::glob_state().get_render_device();
-        ASSERT_TRUE(device->construct(rdc));
-
-        state_mutator__vulkan_render_loader::set(glob::glob_state());
+        auto& device = glob::glob_state().getr_render().device;
+        ASSERT_TRUE(device.construct(rdc));
     }
 
     static void
     TearDownTestSuite()
     {
-        glob::glob_state().get_render_device()->destruct();
+        glob::glob_state().getr_render().device.destruct();
     }
 
     void
@@ -285,17 +282,17 @@ public:
         cfg.debug.light_wireframe = false;
         cfg.debug.light_icons = false;
 
-        auto& renderer = glob::glob_state().getr_vulkan_render();
+        auto& renderer = glob::glob_state().getr_render().renderer;
         renderer.init(TEST_WIDTH, TEST_HEIGHT, cfg, false);
 
-        m_main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+        m_main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
     }
 
     void
     TearDown() override
     {
-        glob::glob_state().get_vulkan_render()->deinit();
-        glob::glob_state().getr_vulkan_render_loader().clear_caches();
+        glob::glob_state().getr_render().renderer.deinit();
+        glob::glob_state().getr_render().loader.clear_caches();
     }
 
     // Render graph puts swapchain in TRANSFER_SRC_OPTIMAL (headless final layout)
@@ -313,11 +310,11 @@ protected:
     void
     reinit_with_config(const render_config& cfg)
     {
-        auto& renderer = glob::glob_state().getr_vulkan_render();
+        auto& renderer = glob::glob_state().getr_render().renderer;
         renderer.deinit();
-        glob::glob_state().getr_vulkan_render_loader().clear_caches();
+        glob::glob_state().getr_render().loader.clear_caches();
         renderer.init(TEST_WIDTH, TEST_HEIGHT, cfg, false);
-        m_main_pass = glob::glob_state().getr_vulkan_render_loader().get_render_pass(AID("main"));
+        m_main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
     }
 
     // Create a cube mesh centered at origin with half-extent = 0.5
@@ -367,7 +364,7 @@ protected:
         };
         // clang-format on
 
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
 
         kryga::utils::buffer vert_buf(verts.size() * sizeof(gpu::vertex_data));
         std::memcpy(vert_buf.data(), verts.data(), vert_buf.size());
@@ -467,7 +464,7 @@ protected:
         std::vector<gpu::uint> indices = {0, 1, 2, 2, 3, 0};
         // clang-format on
 
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
 
         kryga::utils::buffer vert_buf(verts.size() * sizeof(gpu::vertex_data));
         std::memcpy(vert_buf.data(), verts.data(), vert_buf.size());
@@ -488,7 +485,7 @@ protected:
     {
         auto sphere = render::generate_sphere(radius, stacks, slices, color.r, color.g, color.b);
 
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
 
         kryga::utils::buffer vert_buf(sphere.vertices.size() * sizeof(gpu::vertex_data));
         std::memcpy(vert_buf.data(), sphere.vertices.data(), vert_buf.size());
@@ -514,8 +511,8 @@ protected:
                 shader_effect_data* se,
                 bool enable_shadows = false)
     {
-        auto& renderer = glob::glob_state().getr_vulkan_render();
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& renderer = glob::glob_state().getr_render().renderer;
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
 
         // Camera
@@ -691,7 +688,7 @@ protected:
                 p[(y * size + x) * 4 + 3] = 255;
             }
         }
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         return loader.create_texture(id, buf, size, size);
     }
 
@@ -808,8 +805,8 @@ protected:
                           const gpu::directional_light_data& bake_sun,
                           bake::bake_settings bake_cfg)
     {
-        auto& renderer = glob::glob_state().getr_vulkan_render();
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& renderer = glob::glob_state().getr_render().renderer;
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
 
         auto* se_lm = create_lightmapped_shader_effect(AID((test_name + "_se_lm").c_str()));
@@ -1042,7 +1039,7 @@ protected:
 
 TEST_F(visual_pipeline_test, empty_frame)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     gpu::camera_data cam;
     cam.projection = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 256.0f);
@@ -1058,8 +1055,8 @@ TEST_F(visual_pipeline_test, empty_frame)
 
 TEST_F(visual_pipeline_test, lit_cubes)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
 
     // Create shader effect
     auto* se = create_lit_shader_effect(AID("se_lit_test"));
@@ -1153,8 +1150,8 @@ TEST_F(visual_pipeline_test, lit_cubes)
 // =============================================================================
 TEST_F(visual_pipeline_test, directional_light)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
 
     auto* se = create_lit_shader_effect(AID("se_dirlight"));
     ASSERT_TRUE(se);
@@ -1186,8 +1183,8 @@ TEST_F(visual_pipeline_test, directional_light)
 // =============================================================================
 TEST_F(visual_pipeline_test, point_light)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_ptlight"));
@@ -1250,8 +1247,8 @@ TEST_F(visual_pipeline_test, point_light)
 // =============================================================================
 TEST_F(visual_pipeline_test, spot_light)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_spotlight"));
@@ -1303,8 +1300,8 @@ TEST_F(visual_pipeline_test, spot_light)
 // =============================================================================
 TEST_F(visual_pipeline_test, directional_shadows)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_shadow_test"));
@@ -1348,8 +1345,8 @@ TEST_F(visual_pipeline_test, directional_shadows)
 // =============================================================================
 TEST_F(visual_pipeline_test, material_properties)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_materials"));
@@ -1413,8 +1410,8 @@ TEST_F(visual_pipeline_test, material_properties)
 // =============================================================================
 TEST_F(visual_pipeline_test, combined_lights)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_combined"));
@@ -1479,8 +1476,8 @@ TEST_F(visual_pipeline_test, combined_lights)
 // =============================================================================
 TEST_F(visual_pipeline_test, object_transforms)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_transforms"));
@@ -1531,8 +1528,8 @@ TEST_F(visual_pipeline_test, object_transforms)
 // =============================================================================
 TEST_F(visual_pipeline_test, alpha_blending)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se_unlit = create_unlit_shader_effect(AID("se_alpha_unlit"));
@@ -1598,8 +1595,8 @@ TEST_F(visual_pipeline_test, alpha_blending)
 // =============================================================================
 TEST_F(visual_pipeline_test, outline_rendering)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_outline_test"));
@@ -1641,8 +1638,8 @@ TEST_F(visual_pipeline_test, outline_rendering)
 // =============================================================================
 TEST_F(visual_pipeline_test, unlit_shader)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se_lit = create_lit_shader_effect(AID("se_unlit_ref"));
@@ -1712,8 +1709,8 @@ TEST_F(visual_pipeline_test, unlit_shader)
 // =============================================================================
 TEST_F(visual_pipeline_test, directional_light_switching)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_dirswitch"));
@@ -1774,8 +1771,8 @@ TEST_F(visual_pipeline_test, directional_light_switching)
 // =============================================================================
 TEST_F(visual_pipeline_test, complex_scene)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se_lit = create_lit_shader_effect(AID("cs_se_lit"));
@@ -1948,8 +1945,8 @@ TEST_F(visual_pipeline_test, complex_scene)
 // =============================================================================
 TEST_F(visual_pipeline_test, baked_lighting_scene)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     // --- Solid color lightmapped shader effect ---
@@ -2281,8 +2278,8 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
 // =============================================================================
 TEST_F(visual_pipeline_test, shadow_spot_basic)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_spot_shadow"));
@@ -2331,8 +2328,8 @@ TEST_F(visual_pipeline_test, shadow_spot_basic)
 // =============================================================================
 TEST_F(visual_pipeline_test, shadow_csm_cascades)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_csm"));
@@ -2440,8 +2437,8 @@ public:
 
 TEST_P(shadow_pcf_test, looks_correct)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_pcf_test"));
@@ -2509,8 +2506,8 @@ INSTANTIATE_TEST_SUITE_P(All,
 // =============================================================================
 TEST_F(visual_pipeline_test, toggle_shadows_off)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_toggle_sh_off"));
@@ -2551,8 +2548,8 @@ TEST_F(visual_pipeline_test, toggle_shadows_off)
 // =============================================================================
 TEST_F(visual_pipeline_test, toggle_lighting_directional_off)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_tld_off"));
@@ -2612,8 +2609,8 @@ TEST_F(visual_pipeline_test, toggle_lighting_directional_off)
 // =============================================================================
 TEST_F(visual_pipeline_test, toggle_lighting_local_off)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_tll_off"));
@@ -2674,8 +2671,8 @@ TEST_F(visual_pipeline_test, toggle_lighting_local_off)
 // =============================================================================
 TEST_F(visual_pipeline_test, culling_cluster_many_lights)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_cluster_many"));
@@ -2765,8 +2762,8 @@ TEST_F(visual_pipeline_test, culling_cluster_many_lights)
 // =============================================================================
 TEST_F(visual_pipeline_test, camera_orthographic)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_ortho"));
@@ -2830,8 +2827,8 @@ TEST_F(visual_pipeline_test, camera_orthographic)
 // =============================================================================
 TEST_F(visual_pipeline_test, culling_frustum_basic)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_frustum"));
@@ -2899,15 +2896,15 @@ TEST_P(render_scale_test, looks_correct)
     cfg.render_scale.divisor = GetParam();
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     // Read back from whichever pass the renderer reports as the host (writes
     // the final swapchain image). With render_scale this is "composite";
     // without it's "main".
     auto* host_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(renderer.get_host_pass_id());
+        glob::glob_state().getr_render().loader.get_render_pass(renderer.get_host_pass_id());
     ASSERT_TRUE(host_pass) << "Host pass not found";
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_rscale"));
@@ -2962,8 +2959,8 @@ TEST_F(visual_pipeline_test, toggle_grid_on)
     cfg.debug.light_icons = false;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_grid_on"));
@@ -3038,8 +3035,8 @@ TEST_P(shadow_cascade_test, looks_correct)
     cfg.shadows.cascade_count = GetParam();
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_cascade"));
@@ -3112,8 +3109,8 @@ INSTANTIATE_TEST_SUITE_P(All,
 
 TEST_F(visual_pipeline_test, shader_toon)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     kryga::utils::buffer vert_buf, frag_buf;
@@ -3204,8 +3201,8 @@ TEST_F(visual_pipeline_test, material_emissive)
     // unlit shader for the "hot" cube (renders flat color regardless of light)
     // vs the lit shader for the "cold" cube under dim light. The test catches
     // accidental coupling between unlit shader and ambient/light contribution.
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* lit_se = create_lit_shader_effect(AID("se_emi_lit"));
@@ -3270,8 +3267,8 @@ TEST_F(visual_pipeline_test, material_emissive)
 // =============================================================================
 TEST_F(visual_pipeline_test, material_alpha_sorting)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_transparent_shader_effect(AID("se_alpha_sort"));
@@ -3333,8 +3330,8 @@ TEST_F(visual_pipeline_test, material_alpha_sorting)
 // =============================================================================
 TEST_F(visual_pipeline_test, shadow_point_dpsm)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_point_dpsm"));
@@ -3433,8 +3430,8 @@ TEST_F(visual_pipeline_test, shadow_point_dpsm)
 // =============================================================================
 TEST_F(visual_pipeline_test, mesh_instanced_draw)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_inst"));
@@ -3494,8 +3491,8 @@ TEST_F(visual_pipeline_test, mesh_instanced_draw)
 TEST_F(visual_pipeline_test, toggle_grid_off)
 {
     // Default SetUp() already inits with debug.show_grid=false — no reinit needed.
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_grid_off"));
@@ -3549,8 +3546,8 @@ TEST_F(visual_pipeline_test, toggle_grid_off)
 // and per-instance bone_offset/bone_count plumbing on object_data.
 TEST_F(visual_pipeline_test, mesh_skinned_basic)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     // Skinned vert + standard solid-color lit frag (frag never reads
@@ -3681,8 +3678,8 @@ TEST_F(visual_pipeline_test, mesh_skinned_basic)
 
 TEST_F(visual_pipeline_test, material_textured_albedo)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_pbr_lit_shader_effect(AID("se_tex_albedo"));
@@ -3751,8 +3748,8 @@ TEST_F(visual_pipeline_test, material_textured_albedo)
 
 TEST_F(visual_pipeline_test, material_pbr_textured)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_pbr_lit_shader_effect(AID("se_pbr_tex"));
@@ -3841,8 +3838,8 @@ TEST_F(visual_pipeline_test, material_normal_map)
 
 TEST_F(visual_pipeline_test, shader_unlit_textured)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_textured_unlit_shader_effect(AID("se_unlit_tex"));
@@ -3927,8 +3924,8 @@ TEST_F(visual_pipeline_test, shader_unlit_textured)
 // the test runs end-to-end, falls over only on the GPU-side dereference.
 TEST_F(visual_pipeline_test, probe_lighting_basic)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
     auto& vfs = glob::glob_state().getr_vfs();
 
@@ -4405,8 +4402,8 @@ TEST_F(visual_pipeline_test, shader_error_fallback)
     // Trigger se_error by giving the shader effect a deliberately broken
     // fragment shader (empty buffer). create_shader_effect should detect the
     // failure and substitute the magenta fallback.
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     kryga::utils::buffer vert_buf;
@@ -4482,8 +4479,8 @@ TEST_F(visual_pipeline_test, debug_billboards_and_wireframe)
     cfg.debug.editor_mode = true;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_dbg_overlay"));
@@ -4584,12 +4581,12 @@ TEST_F(visual_pipeline_test, toggle_lighting_baked_off)
     // gate before draw. The compact helper enables it; flip just before the
     // last draw cycle. Easiest path: call the helper, then re-render with the
     // gate off and overwrite the comparison name.
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     // Manually set up the same scene; cannot call run_compact_bake_test
     // directly because we need to flip the runtime flag *after* setup but
     // *before* draw_headless. Inline a minimal version here.
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se_lm = create_lightmapped_shader_effect(AID("toff_se"));
@@ -4735,15 +4732,15 @@ TEST_F(visual_pipeline_test, post_depth_outline)
     cfg.outline.enabled = true;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto* host_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(renderer.get_host_pass_id());
+        glob::glob_state().getr_render().loader.get_render_pass(renderer.get_host_pass_id());
     ASSERT_TRUE(host_pass);
 
     auto* se = create_lit_shader_effect(AID("se_outpost_test"));
     setup_scene("outpost", glm::vec3(0, 1.5f, 4), glm::vec3(0, 0, 0), se);
     {
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
         auto* sphere_mesh = create_sphere_mesh(AID("outpost_sphere_mesh"), {1, 1, 1}, 32, 32);
         std::vector<texture_sampler_data> no_tex;
@@ -4781,15 +4778,15 @@ TEST_F(visual_pipeline_test, toggle_outline_off)
     cfg.outline.enabled = false;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto* host_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(renderer.get_host_pass_id());
+        glob::glob_state().getr_render().loader.get_render_pass(renderer.get_host_pass_id());
     ASSERT_TRUE(host_pass);
 
     auto* se = create_lit_shader_effect(AID("se_outline_off"));
     setup_scene("outoff", glm::vec3(0, 1.5f, 4), glm::vec3(0, 0, 0), se);
     {
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
         auto* sphere_mesh = create_sphere_mesh(AID("outoff_sphere_mesh"), {1, 1, 1}, 32, 32);
         std::vector<texture_sampler_data> no_tex;
@@ -4828,15 +4825,15 @@ TEST_F(visual_pipeline_test, preset_low)
     cfg.debug.light_icons = false;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto* host_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(renderer.get_host_pass_id());
+        glob::glob_state().getr_render().loader.get_render_pass(renderer.get_host_pass_id());
     ASSERT_TRUE(host_pass);
 
     auto* se = create_lit_shader_effect(AID("se_preset_low"));
     setup_scene("plow", glm::vec3(2, 2, 5), glm::vec3(0, 0, 0), se);
     {
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
         auto* sphere_mesh = create_sphere_mesh(AID("plow_sphere_mesh"), {1, 1, 1}, 32, 32);
         std::vector<texture_sampler_data> no_tex;
@@ -4873,12 +4870,12 @@ TEST_F(visual_pipeline_test, preset_medium)
     cfg.debug.light_icons = false;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     auto* se = create_lit_shader_effect(AID("se_preset_med"));
     setup_scene("pmed", glm::vec3(2, 2, 5), glm::vec3(0, 0, 0), se, true);
     {
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
         auto* sphere_mesh = create_sphere_mesh(AID("pmed_sphere_mesh"), {1, 1, 1}, 32, 32);
         std::vector<texture_sampler_data> no_tex;
@@ -4916,15 +4913,15 @@ TEST_F(visual_pipeline_test, preset_high)
     cfg.debug.light_icons = false;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto* host_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(renderer.get_host_pass_id());
+        glob::glob_state().getr_render().loader.get_render_pass(renderer.get_host_pass_id());
     ASSERT_TRUE(host_pass);
 
     auto* se = create_lit_shader_effect(AID("se_preset_high"));
     setup_scene("phigh", glm::vec3(2, 2, 5), glm::vec3(0, 0, 0), se, true);
     {
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
         auto* sphere_mesh = create_sphere_mesh(AID("phigh_sphere_mesh"), {1, 1, 1}, 32, 32);
         std::vector<texture_sampler_data> no_tex;
@@ -4962,15 +4959,15 @@ TEST_F(visual_pipeline_test, noop_outline_no_marked)
     cfg.outline.enabled = true;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto* host_pass =
-        glob::glob_state().getr_vulkan_render_loader().get_render_pass(renderer.get_host_pass_id());
+        glob::glob_state().getr_render().loader.get_render_pass(renderer.get_host_pass_id());
     ASSERT_TRUE(host_pass);
 
     auto* se = create_lit_shader_effect(AID("se_noop_outline"));
     setup_scene("noop_o", glm::vec3(0, 1.5f, 4), glm::vec3(0, 0, 0), se);
     {
-        auto& loader = glob::glob_state().getr_vulkan_render_loader();
+        auto& loader = glob::glob_state().getr_render().loader;
         auto& cache = renderer.get_cache();
         auto* sphere_mesh = create_sphere_mesh(AID("noop_o_sphere_mesh"), {1, 1, 1}, 32, 32);
         std::vector<texture_sampler_data> no_tex;
@@ -5007,7 +5004,7 @@ TEST_F(visual_pipeline_test, noop_grid_offscreen)
     cfg.debug.light_icons = false;
     reinit_with_config(cfg);
 
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     // Camera at origin looking straight up — XZ plane (grid) is at infinity
     // behind us, never in frame.

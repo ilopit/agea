@@ -1,6 +1,7 @@
 #include "packages/tbs/model/hex_tile.h"
 
 #include <core/caches/cache_set.h>
+#include <core/model_system.h>
 #include <global_state/global_state.h>
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/material.h>
@@ -31,13 +32,13 @@ hex_tile::construct(construct_params& params)
     if (m_level)
     {
         m_mesh = glob::glob_state()
-                     .get_instance_set()
-                     ->objects.get_item(AID("msh_hexagon3d"))
+                     .getr_model()
+                     .instance_caches.objects.get_item(AID("msh_hexagon3d"))
                      ->as<root::mesh>();
 
         m_material = glob::glob_state()
-                         .get_instance_set()
-                         ->objects.get_item(AID("mt_solid_color_lit"))
+                         .getr_model()
+                         .instance_caches.objects.get_item(AID("mt_solid_color_lit"))
                          ->as<root::material>();
     }
 

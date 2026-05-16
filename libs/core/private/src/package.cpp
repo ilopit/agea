@@ -7,6 +7,7 @@
 
 #include <utils/kryga_log.h>
 
+#include <core/model_system.h>
 #include <serialization/serialization.h>
 #include <global_state/global_state.h>
 #include <vfs/vfs.h>
@@ -36,9 +37,9 @@ void
 package::unregister_in_global_cache()
 {
     container::unregister_in_global_cache(
-        m_instance_local_cs, *glob::glob_state().get_instance_set(), m_id, "instance");
+        m_instance_local_cs, glob::glob_state().getr_model().instance_caches, m_id, "instance");
     container::unregister_in_global_cache(
-        m_proto_local_cs, *glob::glob_state().get_class_set(), m_id, "proto");
+        m_proto_local_cs, glob::glob_state().getr_model().class_caches, m_id, "proto");
 }
 
 void

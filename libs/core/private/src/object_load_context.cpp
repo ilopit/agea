@@ -2,6 +2,7 @@
 
 #include <packages/root/model/smart_object.h>
 
+#include "core/model_system.h"
 #include "core/package.h"
 #include "global_state/global_state.h"
 
@@ -72,12 +73,12 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
     if (obj_ref.get_flags().instance_obj)
     {
         m_instance_local_set->map.add_item(obj_ref);
-        glob::glob_state().get_instance_cache_map()->add_item(obj_ref);
+        glob::glob_state().getr_model().instance_caches.map.add_item(obj_ref);
     }
     else
     {
         m_proto_local_set->map.add_item(obj_ref);
-        glob::glob_state().get_class_cache_map()->add_item(obj_ref);
+        glob::glob_state().getr_model().class_caches.map.add_item(obj_ref);
     }
 
     return true;
@@ -92,7 +93,7 @@ object_load_context::remove_obj(const root::smart_object& obj)
         {
             m_instance_local_set->map.remove_item(obj);
         }
-        glob::glob_state().get_instance_cache_map()->remove_item(obj);
+        glob::glob_state().getr_model().instance_caches.map.remove_item(obj);
     }
     else
     {
@@ -100,7 +101,7 @@ object_load_context::remove_obj(const root::smart_object& obj)
         {
             m_proto_local_set->map.remove_item(obj);
         }
-        glob::glob_state().get_class_cache_map()->remove_item(obj);
+        glob::glob_state().getr_model().class_caches.map.remove_item(obj);
     }
 
     return true;
@@ -113,7 +114,7 @@ object_load_context::find_proto_obj(const utils::id& id)
 
     if (!obj)
     {
-        obj = glob::glob_state().get_class_objects_cache()->get_item(id);
+        obj = glob::glob_state().getr_model().class_caches.objects.get_item(id);
     }
 
     KRG_check(!obj || !obj->get_flags().instance_obj, "Should always be proto!");
@@ -127,7 +128,7 @@ object_load_context::find_obj(const utils::id& id)
 
     if (!obj)
     {
-        obj = glob::glob_state().get_instance_objects_cache()->get_item(id);
+        obj = glob::glob_state().getr_model().instance_caches.objects.get_item(id);
     }
 
     KRG_check(!obj || obj->get_flags().instance_obj, "Should always be instance_obj!");
@@ -149,7 +150,7 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
         }
     }
 
-    obj = glob::glob_state().get_instance_objects_cache()->get_item(id);
+    obj = glob::glob_state().getr_model().instance_caches.objects.get_item(id);
 
     return obj;
 }
@@ -169,7 +170,7 @@ object_load_context::find_proto_obj(const utils::id& id, architype a_type)
         }
     }
 
-    obj = glob::glob_state().get_class_objects_cache()->get_item(id);
+    obj = glob::glob_state().getr_model().class_caches.objects.get_item(id);
 
     return obj;
 }

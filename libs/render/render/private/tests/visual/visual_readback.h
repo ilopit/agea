@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 #include <vulkan_render/utils/vulkan_image.h>
 #include <vulkan_render/utils/vulkan_initializers.h>
@@ -24,7 +25,7 @@ readback_framebuffer(render_pass& pass,
                      uint32_t height,
                      VkImageLayout src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
 {
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     auto frame_idx = device.get_current_frame_index();
     auto color_images = pass.get_color_images();
     auto img_idx = frame_idx % color_images.size();

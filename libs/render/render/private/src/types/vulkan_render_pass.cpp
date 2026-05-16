@@ -3,6 +3,7 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 
 #include <global_state/global_state.h>
@@ -33,7 +34,7 @@ render_pass::~render_pass()
 {
     if (m_vk_render_pass != VK_NULL_HANDLE)
     {
-        glob::glob_state().getr_render_device().schedule_to_delete(
+        glob::glob_state().getr_render().device.schedule_to_delete(
             [rp = m_vk_render_pass, fbs = m_framebuffers](VkDevice vkd, VmaAllocator)
             {
                 vkDestroyRenderPass(vkd, rp, nullptr);
@@ -161,7 +162,7 @@ render_pass::replace_color_targets(
         return false;
     }
 
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     VkDevice vkd = device.vk_device();
 
     // Destroy old framebuffers (KEEP m_vk_render_pass)

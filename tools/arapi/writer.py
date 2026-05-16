@@ -614,7 +614,7 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
         using type       = {prop.owner};
 
         auto property_td = ::kryga::reflection::kryga_type_resolve<decltype(type::m_{prop.name_cut})>();
-        auto prop_rtype  = ::kryga::glob::glob_state().get_rm()->get_type(property_td.type_id);
+        auto prop_rtype  = ::kryga::glob::glob_state().getr_model().reflection.get_type(property_td.type_id);
         if(!prop_rtype)
         {{
             ALOG_WARN("Property doesn't have a type {prop.owner}:{prop.name_cut}");
@@ -765,7 +765,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
             "i",
             [](const char* id) -> {type_obj.get_full_type_name()}*
             {{
-                auto item = ::kryga::glob::glob_state().get_instance_objects_cache()->get_item(AID(id));
+                auto item = ::kryga::glob::glob_state().getr_model().instance_caches.objects.get_item(AID(id));
 
                 if(!item)
                 {{
@@ -777,7 +777,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
             "c",
             [](const char* id) -> {type_obj.get_full_type_name()}*
             {{
-                auto item = ::kryga::glob::glob_state().get_class_objects_cache()->get_item(AID(id));
+                auto item = ::kryga::glob::glob_state().getr_model().class_caches.objects.get_item(AID(id));
 
                 if(!item)
                 {{
@@ -984,7 +984,7 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}int parent_type_id = ::kryga::reflection::type_resolver<{parent_name}>::value;
 {indent}KRG_check(parent_type_id != -1, "Type is not defined!");
 
-{indent}auto parent_rt =  ::kryga::glob::glob_state().get_rm()->get_type(parent_type_id);
+{indent}auto parent_rt =  ::kryga::glob::glob_state().getr_model().reflection.get_type(parent_type_id);
 {indent}KRG_check(parent_rt, "Type is not defined!");
 
 {indent}rt.parent = parent_rt;
@@ -1072,7 +1072,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
         "i",
         [](const char* id) -> {type_obj.get_full_type_name()}*
         {{
-            auto item = ::kryga::glob::glob_state().get_instance_objects_cache()->get_item(AID(id));
+            auto item = ::kryga::glob::glob_state().getr_model().instance_caches.objects.get_item(AID(id));
 
             if(!item)
             {{
@@ -1084,7 +1084,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
         "c",
         [](const char* id) -> {type_obj.get_full_type_name()}*
         {{
-            auto item = ::kryga::glob::glob_state().get_class_objects_cache()->get_item(AID(id));
+            auto item = ::kryga::glob::glob_state().getr_model().class_caches.objects.get_item(AID(id));
 
             if(!item)
             {{
@@ -1229,6 +1229,7 @@ def write_object_model_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include "packages/{fc.module_name}/types_script_importer.ar.h"
 {model_conditional_header}{external_dependencies}
 #include <core/caches/caches_map.h>
+#include <core/model_system.h>
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/lua_api.h>
@@ -1322,8 +1323,8 @@ private:
 KRG_gen__static_schedule(::kryga::gs::state::state_stage::create,
     [](kryga::gs::state& s)
     {{                     
-        s.get_pm()->register_static_package_loader<package>();
-        auto& pkg = s.get_pm()->load_static_package<package>();
+        s.getr_model().packages.register_static_package_loader<package>();
+        auto& pkg = s.getr_model().packages.load_static_package<package>();
 
     }});
 
@@ -1444,6 +1445,7 @@ def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_con
 
 {render_overrides}
 #include <core/caches/caches_map.h>
+#include <core/model_system.h>
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/lua_api.h>
@@ -1533,7 +1535,7 @@ package::package_render_types_builder::build(::kryga::core::package& sp)
 
         file_buffer.append(f"""
 {{
-  auto type_rt =  ::kryga::glob::glob_state().get_rm()->get_type(::kryga::{type_obj.id});
+  auto type_rt =  ::kryga::glob::glob_state().getr_model().reflection.get_type(::kryga::{type_obj.id});
   KRG_check(type_rt, "Type is not defined!");
 """)
         if type_obj.render_cmd_builder:
@@ -1585,6 +1587,7 @@ def write_editor_types_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include "packages/{fc.module_name}/package.{fc.module_name}.h"
 
 {editor_overrides}
+#include <core/model_system.h>
 #include <core/reflection/reflection_type.h>
 #include <global_state/global_state.h>
 #include <glue/type_ids.ar.h>
@@ -1616,7 +1619,7 @@ package::package_editor_types_builder::build(::kryga::core::package& sp)
 
     file_buffer.append(f"""
 {{
-  auto type_rt =  ::kryga::glob::glob_state().get_rm()->get_type(::kryga::{type_obj.id});
+  auto type_rt =  ::kryga::glob::glob_state().getr_model().reflection.get_type(::kryga::{type_obj.id});
   KRG_check(type_rt, "Type is not defined!");
 """)
     if type_obj.json_save_handler:

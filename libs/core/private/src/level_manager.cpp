@@ -1,6 +1,7 @@
 #include "core/level_manager.h"
 
 #include "core/level.h"
+#include "core/model_system.h"
 #include "core/object_load_context.h"
 #include "core/object_constructor.h"
 #include "core/package_manager.h"
@@ -127,7 +128,7 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
                 pkg_str.resize(pkg_str.size() - 5);
             }
             auto id = AID(pkg_str);
-            if (!glob::glob_state().get_pm()->load_package(id))
+            if (!glob::glob_state().getr_model().packages.load_package(id))
             {
                 ALOG_LAZY_ERROR;
                 return nullptr;

@@ -1,9 +1,11 @@
 #include "engine/private/ui/bake_editor.h"
 
 #include <global_state/global_state.h>
+#include <engine/editor_system.h>
 
 #include <core/level.h>
 #include <core/level_manager.h>
+#include <core/model_system.h>
 #include <core/caches/caches_map.h>
 
 #include <packages/root/model/game_object.h>
@@ -19,6 +21,7 @@
 #include <vulkan_render/lightmap_atlas.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
 
 #include <gpu_types/gpu_vertex_types.h>
@@ -62,7 +65,7 @@ bake_scene_info
 bake_editor::collect_scene_info() const
 {
     bake_scene_info info;
-    auto* level = glob::glob_state().get_current_level();
+    auto* level = glob::glob_state().getr_model().current_level;
     info.level_loaded = level != nullptr;
     if (!level)
     {
@@ -101,13 +104,13 @@ bake_editor::collect_scene_info() const
 bool
 bake_editor::submit_bake()
 {
-    auto* level = glob::glob_state().get_current_level();
+    auto* level = glob::glob_state().getr_model().current_level;
     if (!level)
     {
         return false;
     }
 
-    auto& actions = glob::glob_state().getr_ui().m_actions;
+    auto& actions = glob::glob_state().getr_editor_system().ui.m_actions;
     if (actions.is_busy())
     {
         return false;
@@ -308,7 +311,7 @@ bake_editor::submit_bake()
         progress.set_status("Baking (GPU compute)...");
         progress.progress.store(0.1f);
 
-        auto* cur_level = glob::glob_state().get_current_level();
+        auto* cur_level = glob::glob_state().getr_model().current_level;
         KRG_check(cur_level, "No level loaded during bake");
         auto baked_root = cur_level->get_vfs_root() / "baked";
 
@@ -341,7 +344,7 @@ bake_editor::submit_bake()
             utils::buffer lm_buf(lm_data.size());
             std::memcpy(lm_buf.data(), lm_data.data(), lm_data.size());
 
-            auto& loader = glob::glob_state().getr_vulkan_render_loader();
+            auto& loader = glob::glob_state().getr_render().loader;
 
             auto lm_tex_id = AID((cur_level->get_id().str() + "_lightmap").c_str());
 

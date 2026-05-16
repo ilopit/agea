@@ -1,6 +1,7 @@
 #include "vulkan_render/types/vulkan_sampler_data.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 
 #include <global_state/global_state.h>
 
@@ -17,7 +18,7 @@ sampler_data::~sampler_data()
 {
     if (m_sampler)
     {
-        glob::glob_state().getr_render_device().schedule_to_delete(
+        glob::glob_state().getr_render().device.schedule_to_delete(
             [s = m_sampler](VkDevice vkd, VmaAllocator) { vkDestroySampler(vkd, s, nullptr); });
     }
 }

@@ -6,6 +6,7 @@
 #include "engine/profiler.h"
 
 #if KRG_EDITOR
+#include "engine/editor_system.h"
 #include "engine/ui.h"
 #include "engine/editor.h"
 #include "engine/private/ui/bake_editor.h"
@@ -31,6 +32,7 @@
 #include <core/reflection/lua_api.h>
 #include <core/reflection/reflection_type.h>
 #include <core/core_state.h>
+#include <core/model_system.h>
 
 #include <global_state/global_state.h>
 
@@ -61,6 +63,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vk_descriptors.h>
@@ -190,22 +193,13 @@ vulkan_engine::init(const startup_options& options)
 
     auto& gs = glob::glob_state();
     core::state_mutator__lua_api::set(gs);
-    core::state_mutator__caches::set(gs);
-    core::state_mutator__reflection_manager::set(gs);
-    core::state_mutator__package_manager::set(gs);
-
-    gs.schedule_action(gs::state::state_stage::create,
-                       [](gs::state& s)
-                       {
-                           core::state_mutator__level_manager::set(s);
-                           core::state_mutator__id_generator::set(s);
-                       });
+    core::state_mutator__model::set(gs);
 
     gs.run_create();
 
     state_mutator__config::set(gs);
 #if KRG_EDITOR
-    state_mutator__game_editor::set(gs);
+    state_mutator__editor_system::set(gs);
 #endif
     // input_manager is the only subsystem that truly can't run headless —
     // it hooks the OS event pump which tests don't drive. Everything else
@@ -215,12 +209,7 @@ vulkan_engine::init(const startup_options& options)
         state_mutator__input_manager::set(gs);
         glob::set_input_provider(glob::glob_state().get_input_manager());
     }
-    state_mutator__render_device::set(gs);
-    state_mutator__vulkan_render::set(gs);
-    state_mutator__vulkan_render_loader::set(gs);
-#if KRG_EDITOR
-    state_mutator__ui::set(gs);
-#endif
+    state_mutator__render::set(gs);
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
     state_mutator__queues::set(gs);
@@ -229,7 +218,7 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_animation_system().set_render_data_resolver(
         [](const utils::id& id) -> render::vulkan_render_data*
-        { return glob::glob_state().getr_vulkan_render().get_cache().objects.find_by_id(id); });
+        { return glob::glob_state().getr_render().renderer.get_cache().objects.find_by_id(id); });
 
     gs.run_connect();
     init_default_scripting();
@@ -252,12 +241,12 @@ vulkan_engine::init(const startup_options& options)
     {
         // game_editor::init registers input actions — requires input_manager, which
         // headless mode skips
-        glob::glob_state().get_game_editor()->init();
+        glob::glob_state().getr_editor_system().editor.init();
     }
 #endif
 
     gs.schedule_action(gs::state::state_stage::init,
-                       [](kryga::gs::state& s) { s.get_pm()->init(); });
+                       [](kryga::gs::state& s) { s.getr_model().packages.init(); });
     gs.run_init();
 
     render::render_device::construct_params rdc;
@@ -296,15 +285,15 @@ vulkan_engine::init(const startup_options& options)
         rdc.window = window->handle();
     }
 
-    auto device = glob::glob_state().get_render_device();
-    if (!device->construct(rdc))
+    auto& device = glob::glob_state().getr_render().device;
+    if (!device.construct(rdc))
     {
         ALOG_LAZY_ERROR;
         return false;
     }
 
 #if KRG_EDITOR
-    glob::glob_state().getr_ui().init();
+    glob::glob_state().getr_editor_system().ui.init();
 
     if (!m_headless)
     {
@@ -322,7 +311,7 @@ vulkan_engine::init(const startup_options& options)
     // space while the swapchain is only 2280x1080, collapsing everything into
     // the lower-left ~70% of the screen.
     auto actual_size = window->get_size();
-    glob::glob_state().getr_vulkan_render().init(
+    glob::glob_state().getr_render().renderer.init(
         (uint32_t)actual_size.w, (uint32_t)actual_size.h, render_cfg);
 
     init_default_resources();
@@ -384,7 +373,7 @@ vulkan_engine::cleanup()
     // Save session state to rtcache (non-headless only — headless tests don't touch session cfg)
     if (!m_headless)
     {
-        glob::glob_state().getr_vulkan_render().get_render_config().save_to_cache(
+        glob::glob_state().getr_render().renderer.get_render_config().save_to_cache(
             vfs::rid("rtcache://render.acfg"));
 #if KRG_EDITOR
         ui::get_window<ui::bake_editor>()->save_config();
@@ -405,17 +394,17 @@ vulkan_engine::cleanup()
     m_rpc_server->stop();
 #endif
 
-    glob::glob_state().get_render_device()->wait_for_fences();
+    glob::glob_state().getr_render().device.wait_for_fences();
 
 #if KRG_EDITOR
-    glob::glob_state().getr_ui().get_material_previewer().destroy();
+    glob::glob_state().getr_editor_system().ui.get_material_previewer().destroy();
 #endif
 
-    glob::glob_state().get_vulkan_render_loader()->clear_caches();
+    glob::glob_state().getr_render().loader.clear_caches();
 
-    glob::glob_state().getr_vulkan_render().deinit();
+    glob::glob_state().getr_render().renderer.deinit();
 
-    glob::glob_state().get_render_device()->destruct();
+    glob::glob_state().getr_render().device.destruct();
 
     glob::glob_state_reset();
 }
@@ -448,7 +437,7 @@ vulkan_engine::render_thread_func()
         }
 
         glob::glob_state().getr_render_bridge().drain_queue();
-        glob::glob_state().getr_vulkan_render().draw_main();
+        glob::glob_state().getr_render().renderer.draw_main();
 
         {
             std::lock_guard lock(m_render_mutex);
@@ -512,7 +501,7 @@ vulkan_engine::run()
         {
             KRG_make_scope(ui_tick);
             KRG_PROFILE_SCOPE("UI");
-            glob::glob_state().get_ui()->new_frame(frame_time);
+            glob::glob_state().getr_editor_system().ui.new_frame(frame_time);
         }
 #endif
         {
@@ -534,11 +523,11 @@ vulkan_engine::run()
         // Apply config edits the UI made during ui_tick. Topology changes
         // (e.g. render_scale.enabled) call vkDeviceWaitIdle and rebuild GPU
         // resources here, BEFORE the next frame's render starts.
-        glob::glob_state().getr_vulkan_render().apply_pending_render_config();
+        glob::glob_state().getr_render().renderer.apply_pending_render_config();
 
         {
             auto& ctrs = ::kryga::glob::glob_state().getr_engine_counters();
-            auto& vr = glob::glob_state().getr_vulkan_render();
+            auto& vr = glob::glob_state().getr_render().renderer;
 
             ctrs.all_draws.update(vr.get_all_draws());
             ctrs.culled_draws.update(vr.get_culled_draws());
@@ -550,7 +539,7 @@ vulkan_engine::run()
             KRG_PROFILE_SCOPE("ConsumeUpdates");
 
             update_cameras();
-            glob::glob_state().getr_vulkan_render().set_camera(m_camera_data);
+            glob::glob_state().getr_render().renderer.set_camera(m_camera_data);
 
             consume_updated_render();
             consume_updated_transforms();
@@ -595,7 +584,7 @@ vulkan_engine::tick_headless()
     consume_updated_transforms();
 
     glob::glob_state().getr_render_bridge().drain_queue();
-    glob::glob_state().getr_vulkan_render().draw_headless();
+    glob::glob_state().getr_render().renderer.draw_headless();
     glob::glob_state().getr_render_bridge().reset_arena();
 }
 
@@ -656,7 +645,7 @@ vulkan_engine::tick(float dt)
 
     if (m_rpc_server)
     {
-        int mode_now = static_cast<int>(glob::glob_state().get_game_editor()->get_mode());
+        int mode_now = static_cast<int>(glob::glob_state().getr_editor_system().editor.get_mode());
         if (mode_now != m_last_known_mode)
         {
             m_last_known_mode = mode_now;
@@ -668,10 +657,10 @@ vulkan_engine::tick(float dt)
         }
     }
 
-    glob::glob_state().get_game_editor()->on_tick(dt);
-    if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
+    glob::glob_state().getr_editor_system().editor.on_tick(dt);
+    if (glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing)
     {
-        if (auto lvl = glob::glob_state().get_current_level())
+        if (auto lvl = glob::glob_state().getr_model().current_level)
         {
             lvl->tick(dt);
         }
@@ -682,7 +671,7 @@ vulkan_engine::tick(float dt)
     if (m_rpc_server)
     {
         size_t new_count = 0;
-        if (auto lvl = glob::glob_state().get_current_level())
+        if (auto lvl = glob::glob_state().getr_model().current_level)
         {
             new_count = lvl->get_game_objects().get_items().size();
         }
@@ -696,7 +685,7 @@ vulkan_engine::tick(float dt)
     }
 #else
     // Game build — always playing, level always ticks.
-    if (auto lvl = glob::glob_state().get_current_level())
+    if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         lvl->tick(dt);
     }
@@ -711,9 +700,7 @@ vulkan_engine::tick(float dt)
 bool
 vulkan_engine::load_level(const utils::id& level_id)
 {
-    auto lm = glob::glob_state().get_lm();
-    auto cs = glob::glob_state().get_class_set();
-    auto is = glob::glob_state().get_instance_set();
+    auto& lm = glob::glob_state().getr_model().levels;
 
     // Tear down the current level if any.  Destroy commands are enqueued
     // into the SPSC queue (arena-allocated).  Retire the current arena so
@@ -721,24 +708,24 @@ vulkan_engine::load_level(const utils::id& level_id)
     // The render thread calls schedule_to_delete with authoritative
     // m_current_frame_number — no cross-thread read.
 #if KRG_EDITOR
-    glob::glob_state().get_game_editor()->set_selected(utils::id());
+    glob::glob_state().getr_editor_system().editor.set_selected(utils::id());
 #endif
-    if (auto* prev = glob::glob_state().get_current_level())
+    if (auto* prev = glob::glob_state().getr_model().current_level)
     {
         unload_render_resources(*prev);
-        lm->unload_level(*prev);
+        lm.unload_level(*prev);
 
         glob::glob_state().getr_render_bridge().retire_arena();
     }
 
-    auto result = lm->load_level(level_id);
+    auto result = lm.load_level(level_id);
     if (!result)
     {
         ALOG_FATAL("Nothing to do here!");
         return false;
     }
 
-    core::state_mutator__current_level::set(*result, glob::glob_state());
+    glob::glob_state().getr_model().current_level = result;
 
     // Create lightmap texture if level references baked data
     if (result->has_lightmap_ref())
@@ -752,7 +739,7 @@ vulkan_engine::load_level(const utils::id& level_id)
                 utils::buffer lm_buf(lm_data.size());
                 std::memcpy(lm_buf.data(), lm_data.data(), lm_data.size());
 
-                auto& loader = glob::glob_state().getr_vulkan_render_loader();
+                auto& loader = glob::glob_state().getr_render().loader;
                 auto lm_tex_id = AID((result->get_id().str() + "_lightmap").c_str());
                 auto* tex = loader.update_or_create_texture(lm_tex_id,
                                                             lm_buf,
@@ -851,9 +838,9 @@ void
 vulkan_engine::update_cameras()
 {
 #if KRG_EDITOR
-    auto editor = glob::glob_state().get_game_editor();
-    auto* cam = editor->get_active_camera();
-    if (editor->get_mode() == engine::editor_mode::playing && cam)
+    auto& editor = glob::glob_state().getr_editor_system().editor;
+    auto* cam = editor.get_active_camera();
+    if (editor.get_mode() == engine::editor_mode::playing && cam)
     {
         float aspect = glob::glob_state().getr_native_window().aspect_ratio();
         cam->set_aspect_ratio(aspect);
@@ -865,12 +852,12 @@ vulkan_engine::update_cameras()
     }
     else
     {
-        m_camera_data = editor->get_camera_data();
+        m_camera_data = editor.get_camera_data();
     }
 #else
     // Game build — find first active camera in current level.
     base::camera_component* cam = nullptr;
-    if (auto lvl = glob::glob_state().get_current_level())
+    if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         for (auto& [id, obj] : lvl->get_game_objects().get_items())
         {
@@ -922,12 +909,12 @@ vulkan_engine::init_scene()
         load_level(level_id);
 #if KRG_EDITOR
         // Editor-only debug helpers that populate the sandbox scene.
-        glob::glob_state().getr_game_editor().ev_spawn();
-        glob::glob_state().getr_game_editor().ev_lights();
+        glob::glob_state().getr_editor_system().editor.ev_spawn();
+        glob::glob_state().getr_editor_system().editor.ev_lights();
 #endif
     }
 
-    if (auto lvl = glob::glob_state().get_current_level())
+    if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         base::camera_object::construct_params co_prms;
         auto cam_obj = lvl->spawn_object<base::camera_object>(AID("play_camera"), co_prms);
@@ -971,7 +958,7 @@ vulkan_engine::init_default_scripting()
     auto package = lua->state().new_usertype<core::package>("package", sol::no_constructor);
     gs.create_box_with_obj("package", std::move(package));
 
-    auto pm = glob::glob_state().get_pm();
+    auto* pm = &glob::glob_state().getr_model().packages;
     auto lua_pm = lua->state().new_usertype<core::package_manager>(
         "pm",
         sol::no_constructor,

@@ -5,6 +5,7 @@
 #include "core/reflection/reflection_type_utils.h"
 
 #include <global_state/global_state.h>
+#include <core/model_system.h>
 #include "core/object_load_context.h"
 #include "core/caches/cache_set.h"
 #include "core/object_constructor.h"
@@ -151,11 +152,11 @@ game_object_components_copy(::kryga::reflection::property_context__copy& ctx)
         ctx.dst_property->get_blob(*ctx.dst_obj));
 
     dst_col.resize(src_col.size());
-    auto gen = glob::glob_state().get_id_generator();
+    auto& gen = glob::glob_state().getr_model().id_gen;
 
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto result = ctx.ctor->clone_obj(*src_col[i], gen->generate(src_col[i]->get_id()));
+        auto result = ctx.ctor->clone_obj(*src_col[i], gen.generate(src_col[i]->get_id()));
 
         if (!result)
         {
@@ -267,7 +268,7 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
         {
             KRG_check(!c->get_flags().instance_obj, "Only protos are allowed");
 
-            auto gid = glob::glob_state().get_id_generator()->generate(c->get_id());
+            auto gid = glob::glob_state().getr_model().id_gen.generate(c->get_id());
 
             auto result = ctx.ctor->clone_obj(*c, gid);
             if (!result)

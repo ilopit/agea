@@ -1,6 +1,7 @@
 #include "vulkan_render/types/vulkan_shader_effect_data.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 
 #include <global_state/global_state.h>
 
@@ -43,7 +44,7 @@ shader_effect_data::reset()
 
     if (m_pipeline)
     {
-        glob::glob_state().getr_render_device().schedule_to_delete(
+        glob::glob_state().getr_render().device.schedule_to_delete(
             [owns_layout = m_owns_pipeline_layout,
              set_layout = m_set_layout,
              pl = m_pipeline_layout,

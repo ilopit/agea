@@ -7,12 +7,14 @@
 
 #include <native/native_window.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 
 #include <imgui.h>
 #include <ImGuizmo.h>
 
 #include <core/level.h>
 #include <core/level_manager.h>
+#include <core/model_system.h>
 #include <core/queues.h>
 #include <core/package_manager.h>
 
@@ -29,12 +31,6 @@
 
 namespace kryga
 {
-void
-state_mutator__game_editor::set(gs::state& s)
-{
-    auto p = s.create_box<engine::game_editor>("game_editor");
-    s.m_game_editor = p;
-}
 namespace engine
 {
 
@@ -116,7 +112,7 @@ game_editor::ev_mouse_press()
     uint32_t w = glob::glob_state().getr_input_manager().get_mouse_state().x;
     uint32_t h = glob::glob_state().getr_input_manager().get_mouse_state().y;
 
-    auto* robj = glob::glob_state().getr_vulkan_render().object_id_under_coordinate(w, h);
+    auto* robj = glob::glob_state().getr_render().renderer.object_id_under_coordinate(w, h);
     if (!robj)
     {
         set_selected({});
@@ -124,7 +120,7 @@ game_editor::ev_mouse_press()
     }
 
     auto clicked_id = robj->id();
-    auto* lvl = glob::glob_state().get_current_level();
+    auto* lvl = glob::glob_state().getr_model().current_level;
     if (!lvl)
     {
         return;
@@ -145,26 +141,26 @@ game_editor::ev_reload()
         return;
     }
 
-    auto& level = glob::glob_state().getr_current_level();
+    auto& level = *glob::glob_state().getr_model().current_level;
 
     glob::glob_state().getr_queues().get_model().drop_pending();
 
-    glob::glob_state().getr_vulkan_render().clear_upload_queue();
+    glob::glob_state().getr_render().renderer.clear_upload_queue();
 
     auto pids = level.get_package_ids();
 
     glob::glob_state().getr_engine().unload_render_resources(level);
 
-    auto lm = glob::glob_state().get_lm();
-    auto pm = glob::glob_state().get_pm();
+    auto& lm = glob::glob_state().getr_model().levels;
+    auto& pm = glob::glob_state().getr_model().packages;
 
-    lm->unload_level(level);
+    lm.unload_level(level);
 
     for (auto& id : pids)
     {
-        auto p = pm->get_package(id);
+        auto p = pm.get_package(id);
         glob::glob_state().getr_engine().unload_render_resources(*p);
-        pm->unload_package(*p);
+        pm.unload_package(*p);
     }
 
     glob::glob_state().getr_engine().init_scene();
@@ -174,7 +170,8 @@ void
 game_editor::ev_spawn2()
 {
     tbs::hex_grid::construct_params cprms;
-    auto pp = glob::glob_state().getr_current_level().spawn_object<tbs::hex_grid>(AID("gg"), cprms);
+    auto pp = glob::glob_state().getr_model().current_level->spawn_object<tbs::hex_grid>(AID("gg"),
+                                                                                         cprms);
 }
 
 void
@@ -187,7 +184,7 @@ game_editor::ev_spawn()
 
 #if 0
 
-    if (glob::glob_state().getr_current_level().find_game_object(AID("obj_0_0_0")))
+    if (glob::glob_state().getr_model().current_level->find_game_object(AID("obj_0_0_0")))
     {
         return;
     }
@@ -210,8 +207,8 @@ game_editor::ev_spawn()
                 sp.scale = root::vec3{20, 2, 20};
                 auto pp =
                     glob::glob_state()
-                        .getr_current_level()
-                        .spawn_object_as_clone<base::mesh_object>(AID("test_cube"), AID(id), sp);
+                        .getr_model().current_level
+                        ->spawn_object_as_clone<base::mesh_object>(AID("test_cube"), AID(id), sp);
                 auto mc = pp->get_component_at(1)->as<base::mesh_component>();
                 mc->layers().visible = true;
             }
@@ -231,7 +228,7 @@ game_editor::ev_spawn()
                 auto id = std::format("pl_{}_{}_{}", x, y, z);
 
                 prms.pos = root::vec3{x * 45.f, y * 45.f, z * 45.f};
-                auto pp = glob::glob_state().getr_current_level().spawn_object<base::point_light>(
+                auto pp = glob::glob_state().getr_model().current_level->spawn_object<base::point_light>(
                     AID(id), prms);
             }
         }
@@ -247,7 +244,7 @@ game_editor::ev_lights()
         return;
     }
 
-    auto& lvl = glob::glob_state().getr_current_level();
+    auto& lvl = *glob::glob_state().getr_model().current_level;
 
     if (lvl.find_game_object(AID("PL1")))
     {
@@ -385,7 +382,7 @@ game_editor::enter_play_mode()
     m_saved_position = m_camera_data.position;
     m_saved_pitch = m_pitch;
     m_saved_yaw = m_yaw;
-    auto& dbg = glob::glob_state().getr_vulkan_render().get_render_config().debug;
+    auto& dbg = glob::glob_state().getr_render().renderer.get_render_config().debug;
     m_saved_grid_visible = dbg.show_grid;
     m_saved_editor_mode_visuals = dbg.editor_mode;
     // Master gate — disables grid, gizmo billboards, debug wireframes, light
@@ -396,7 +393,7 @@ game_editor::enter_play_mode()
     m_active_camera = nullptr;
     m_input = nullptr;
 
-    if (auto lvl = glob::glob_state().get_current_level())
+    if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         auto& gos = lvl->get_game_objects();
         for (auto& [id, obj] : gos.get_items())
@@ -435,7 +432,7 @@ game_editor::enter_play_mode()
 
     m_mode = editor_mode::playing;
 
-    if (auto lvl2 = glob::glob_state().get_current_level())
+    if (auto lvl2 = glob::glob_state().getr_model().current_level)
     {
         for (auto& [id, obj] : lvl2->get_game_objects().get_items())
         {
@@ -455,7 +452,7 @@ game_editor::exit_play_mode()
         return;
     }
 
-    if (auto lvl = glob::glob_state().get_current_level())
+    if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         for (auto& [id, obj] : lvl->get_game_objects().get_items())
         {
@@ -473,7 +470,7 @@ game_editor::exit_play_mode()
     m_pitch = m_saved_pitch;
     m_yaw = m_saved_yaw;
     m_updated = true;
-    auto& dbg = glob::glob_state().getr_vulkan_render().get_render_config().debug;
+    auto& dbg = glob::glob_state().getr_render().renderer.get_render_config().debug;
     dbg.show_grid = m_saved_grid_visible;
     dbg.editor_mode = m_saved_editor_mode_visuals;
 
@@ -511,9 +508,9 @@ game_editor::get_active_camera() const
 void
 game_editor::set_selected(const utils::id& id)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
+    auto& renderer = glob::glob_state().getr_render().renderer;
     auto& cache = renderer.get_cache();
-    auto* lvl = glob::glob_state().get_current_level();
+    auto* lvl = glob::glob_state().getr_model().current_level;
 
     auto set_outline = [&](const utils::id& sel_id, bool value)
     {
@@ -569,7 +566,7 @@ game_editor::get_selected_game_object() const
         return nullptr;
     }
 
-    auto* lvl = glob::glob_state().get_current_level();
+    auto* lvl = glob::glob_state().getr_model().current_level;
     if (!lvl)
     {
         return nullptr;

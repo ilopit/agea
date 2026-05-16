@@ -23,6 +23,7 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_system.h>
 
 #include <utils/kryga_log.h>
 #include <utils/dynamic_object_builder.h>
@@ -129,7 +130,7 @@ render_bridge::make_se_ci(root::shader_effect& se_model)
     se_ci.is_wire = se_model.m_wire_topology;
     se_ci.alpha =
         se_model.m_enable_alpha_support ? render::alpha_mode::world : render::alpha_mode::none;
-    se_ci.rp = glob::glob_state().getr_vulkan_render().get_render_pass(AID("main"));
+    se_ci.rp = glob::glob_state().getr_render().renderer.get_render_pass(AID("main"));
     se_ci.enable_dynamic_state = false;
     se_ci.ds_mode = render::depth_stencil_mode::none;
 
@@ -190,8 +191,8 @@ render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
 void
 render_bridge::drain_queue()
 {
-    auto& vr = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& vr = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
 
     render_cmd::render_exec_context exec_ctx{vr, loader};
 

@@ -20,6 +20,7 @@
 #include <utils/kryga_log.h>
 
 #include <global_state/global_state.h>
+#include <vulkan_render/render_system.h>
 
 #include <VkBootstrap.h>
 #include <SDL.h>
@@ -31,14 +32,6 @@
 
 namespace kryga
 {
-
-void
-state_mutator__render_device::set(gs::state& s)
-{
-    auto p = s.create_box<render::render_device>("render_device");
-    s.m_render_device = p;
-}
-
 namespace render
 {
 
@@ -604,13 +597,13 @@ render_device::flush_command_buffer(VkCommandBuffer command_buffer,
 vk_device_provider
 render_device::get_vk_device_provider()
 {
-    return []() { return glob::glob_state().get_render_device()->vk_device(); };
+    return []() { return glob::glob_state().getr_render().device.vk_device(); };
 }
 
 vma_allocator_provider
 render_device::get_vma_allocator_provider()
 {
-    return []() { return glob::glob_state().get_render_device()->allocator(); };
+    return []() { return glob::glob_state().getr_render().device.allocator(); };
 }
 
 void

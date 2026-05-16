@@ -4,6 +4,7 @@
 
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/vulkan_render_loader.h"
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/vk_descriptors.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_material_data.h"
@@ -428,7 +429,7 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
         return;
     }
 
-    auto m = glob::glob_state().getr_vulkan_render_loader().get_mesh_data(AID("plane_mesh"));
+    auto m = glob::glob_state().getr_render().loader.get_mesh_data(AID("plane_mesh"));
     if (!m)
     {
         return;
@@ -503,7 +504,7 @@ vulkan_render::draw_ui(frame_state& fs)
     ImGuiIO& io = ImGui::GetIO();
 
     // Viewport and scissor are in swapchain image pixel coords.
-    auto& device = glob::glob_state().getr_render_device();
+    auto& device = glob::glob_state().getr_render().device;
     auto extent = device.swapchain_extent();
     VkViewport viewport{};
     viewport.width = (float)extent.width;

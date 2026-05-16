@@ -3,6 +3,7 @@
 #include <packages/root/model/game_object.h>
 
 #include <core/caches/caches_map.h>
+#include <core/model_system.h>
 #include <core/object_load_context_builder.h>
 #include <core/object_constructor.h>
 #include <core/queues.h>
@@ -195,7 +196,7 @@ level::unregister_objects()
     // no-op (level instances aren't there) and left stale entries in
     // instance cache, asserting on the next load_level().
     container::unregister_in_global_cache(
-        m_instance_local_cs, *glob::glob_state().get_instance_set(), m_id, "instance");
+        m_instance_local_cs, glob::glob_state().getr_model().instance_caches, m_id, "instance");
 }
 
 void

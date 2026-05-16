@@ -162,4 +162,18 @@ state::run_items(state_stage stage)
     node.clear();
 }
 
+void
+state::register_system(system* sys)
+{
+    for (auto dep : sys->system_deps())
+    {
+        bool found = std::any_of(m_systems.begin(),
+                                 m_systems.end(),
+                                 [dep](const system* s) { return s->system_name() == dep; });
+        KRG_check(found, "System dependency not registered yet");
+    }
+    ALOG_INFO("System [{}] registered", sys->system_name());
+    m_systems.push_back(sys);
+}
+
 }  // namespace kryga::gs

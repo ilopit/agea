@@ -2,6 +2,7 @@
 
 #include "engine/kryga_engine.h"
 #include "engine/editor.h"
+#include "engine/editor_system.h"
 #include "engine/ui.h"
 #include "engine/private/property_rpc.h"
 #include "engine/private/ui/bake_editor.h"
@@ -12,6 +13,7 @@
 
 #include <core/level.h>
 #include <core/level_manager.h>
+#include <core/model_system.h>
 #include <core/package.h>
 #include <core/caches/caches_map.h>
 #include <core/reflection/lua_api.h>
@@ -28,6 +30,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/render_config.h>
+#include <vulkan_render/render_system.h>
 
 #include <global_state/global_state.h>
 
@@ -130,8 +133,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
                     else if (ext == "vert" || ext == "frag" || ext == "comp")
                     {
-                        auto sec = glob::glob_state().get_class_shader_effects_cache();
-                        auto ptr = sec->get_item(AID(name));
+                        auto& sec = glob::glob_state().getr_model().class_caches.shader_effects;
+                        auto ptr = sec.get_item(AID(name));
                         if (!ptr)
                         {
                             out = "shader effect not found: " + name;
@@ -153,8 +156,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     else if (ext == "glsl")
                     {
                         // Shared includes changed — mark all shader effects dirty.
-                        auto sec = glob::glob_state().get_class_shader_effects_cache();
-                        for (auto& [id, obj] : sec->get_items())
+                        auto& sec = glob::glob_state().getr_model().class_caches.shader_effects;
+                        for (auto& [id, obj] : sec.get_items())
                         {
                             auto se = obj->as<root::shader_effect>();
                             if (se)
@@ -163,7 +166,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                             }
                         }
                         auto& dep = glob::glob_state().getr_render_bridge().get_dependency();
-                        for (auto& [id, obj] : sec->get_items())
+                        for (auto& [id, obj] : sec.get_items())
                         {
                             auto node = dep.get_node(obj);
                             for (auto o : node.m_children)
@@ -201,7 +204,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto sel = glob::glob_state().get_game_editor()->get_selected();
+                                  auto sel = glob::glob_state().getr_editor_system().editor.get_selected();
                                   r["id"] = sel.valid() ? sel.str() : std::string();
                               });
                           if (!done)
@@ -226,7 +229,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&server, id_str]()
                 {
                     utils::id new_sel = id_str.empty() ? utils::id() : AID(id_str);
-                    glob::glob_state().get_game_editor()->set_selected(new_sel);
+                    glob::glob_state().getr_editor_system().editor.set_selected(new_sel);
                     Json::Value note(Json::objectValue);
                     note["id"] = id_str;
                     server.notify("model.selection.changed", note);
@@ -246,7 +249,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto lvl = glob::glob_state().get_current_level();
+                                  auto lvl = glob::glob_state().getr_model().current_level;
                                   if (!lvl)
                                   {
                                       r["level"] = std::string();
@@ -296,7 +299,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     r["children"] = Json::Value(Json::arrayValue);
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         return;
@@ -370,7 +373,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         local_err = "no level loaded";
@@ -414,7 +417,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         local_err = "no level loaded";
@@ -458,7 +461,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         local_err = "no level loaded";
@@ -470,7 +473,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         local_err = "game_object not found: " + id_str;
                         return;
                     }
-                    auto gen_id = glob::glob_state().get_id_generator()->generate(AID(id_str));
+                    auto gen_id = glob::glob_state().getr_model().id_gen.generate(AID(id_str));
                     core::spawn_parameters sp;
                     sp.position = go->get_position();
                     auto* clone =
@@ -526,7 +529,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto* lvl = glob::glob_state().get_current_level();
+                                  auto* lvl = glob::glob_state().getr_model().current_level;
                                   if (!lvl)
                                   {
                                       local_err = "no level loaded";
@@ -586,7 +589,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         }
                     }
                     r["levels"] = arr;
-                    if (auto* lvl = glob::glob_state().get_current_level())
+                    if (auto* lvl = glob::glob_state().getr_model().current_level)
                     {
                         r["current"] = lvl->get_id().str();
                     }
@@ -632,7 +635,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto mode = glob::glob_state().get_game_editor()->get_mode();
+                                  auto mode = glob::glob_state().getr_editor_system().editor.get_mode();
                                   r["mode"] = (mode == engine::editor_mode::playing)
                                                   ? std::string("play")
                                                   : std::string("edit");
@@ -662,15 +665,15 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           eng.queue_main_action(
                               [m]()
                               {
-                                  auto* ge = glob::glob_state().get_game_editor();
-                                  auto current = ge->get_mode();
+                                  auto& ge = glob::glob_state().getr_editor_system().editor;
+                                  auto current = ge.get_mode();
                                   if (m == "play" && current != engine::editor_mode::playing)
                                   {
-                                      ge->enter_play_mode();
+                                      ge.enter_play_mode();
                                   }
                                   else if (m == "edit" && current == engine::editor_mode::playing)
                                   {
-                                      ge->exit_play_mode();
+                                      ge.exit_play_mode();
                                   }
                               });
                           Json::Value r(Json::objectValue);
@@ -745,7 +748,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto* lvl = glob::glob_state().get_current_level();
+                                  auto* lvl = glob::glob_state().getr_model().current_level;
                                   if (!lvl)
                                   {
                                       local_err = "no level loaded";
@@ -826,7 +829,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         local_err = "no level loaded";
@@ -895,12 +898,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto* rm = glob::glob_state().get_rm();
-                                  if (!rm)
-                                  {
-                                      return;
-                                  }
-                                  for (auto& [name, rt] : rm->get_types_to_name())
+                                  auto& rm = glob::glob_state().getr_model().reflection;
+                                  for (auto& [name, rt] : rm.get_types_to_name())
                                   {
                                       if (rt->arch != core::architype::component)
                                       {
@@ -936,7 +935,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         local_err = "no level loaded";
@@ -990,7 +989,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto* lvl = glob::glob_state().get_current_level();
+                                  auto* lvl = glob::glob_state().getr_model().current_level;
                                   if (!lvl)
                                   {
                                       local_err = "no level loaded";
@@ -1040,7 +1039,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cfg = glob::glob_state().getr_vulkan_render().get_render_config();
+                    auto& cfg = glob::glob_state().getr_render().renderer.get_render_config();
 
                     // Shadows
                     Json::Value sh(Json::objectValue);
@@ -1122,7 +1121,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cfg = glob::glob_state().getr_vulkan_render().get_pending_render_config();
+                    auto& cfg =
+                        glob::glob_state().getr_render().renderer.get_pending_render_config();
 
                     // Shadows
                     if (params.isMember("shadows"))
@@ -1320,7 +1320,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto& cam = glob::glob_state().getr_vulkan_render().get_camera();
+                                  auto& cam =
+                                      glob::glob_state().getr_render().renderer.get_camera();
                                   r["position"] = vec3_json(cam.position);
                                   r["view"] = mat4_json(cam.view);
                                   r["projection"] = mat4_json(cam.projection);
@@ -1349,7 +1350,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+                    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
                     auto* obj = cache.objects.find_by_id(AID(id_str));
                     if (!obj)
                     {
@@ -1445,7 +1446,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& vr = glob::glob_state().getr_vulkan_render();
+                    auto& vr = glob::glob_state().getr_render().renderer;
                     auto& cache = vr.get_cache();
                     r["width"] = vr.get_width();
                     r["height"] = vr.get_height();
@@ -1475,7 +1476,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+                    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
 
                     auto summarize = [](const render::vulkan_render_data& obj) -> Json::Value
                     {
@@ -1569,7 +1570,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto& cache = glob::glob_state().getr_vulkan_render().get_cache();
+                                  auto& cache =
+                                      glob::glob_state().getr_render().renderer.get_cache();
 
                                   // Directional lights
                                   Json::Value dir(Json::arrayValue);
@@ -1631,7 +1633,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto* lvl = glob::glob_state().get_current_level();
+                                  auto* lvl = glob::glob_state().getr_model().current_level;
                                   if (!lvl)
                                   {
                                       local_err = "no level loaded";
@@ -1685,7 +1687,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                               {
                                   Json::Value arr(Json::arrayValue);
                                   for (auto& [id, obj] :
-                                       glob::glob_state().getr_class_materials_cache().get_items())
+                                       glob::glob_state().getr_model().class_caches.materials.get_items())
                                   {
                                       auto* rt = obj->get_reflection();
                                       Json::Value item(Json::objectValue);
@@ -1694,19 +1696,19 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                                       auto* pkg = obj->get_package();
                                       item["package"] = pkg ? pkg->get_id().str() : std::string();
 
-                                      auto& mat = obj->asr<root::material>();
-                                      item["has_preview"] = mat.get_shader_effect() != nullptr;
+                        auto& mat = obj->asr<root::material>();
+                        item["has_preview"] = mat.get_shader_effect() != nullptr;
 
-                                      arr.append(std::move(item));
-                                  }
-                                  result = Json::Value(Json::objectValue);
-                                  result["materials"] = std::move(arr);
-                              });
-                          if (!done)
-                          {
-                              err = "material.list timed out";
-                          }
-                      });
+                        arr.append(std::move(item));
+                    }
+                    result = Json::Value(Json::objectValue);
+                    result["materials"] = std::move(arr);
+                });
+            if (!done)
+            {
+                err = "material.list timed out";
+            }
+        });
 
     server.on_request(
         "model.material.get",
@@ -1723,7 +1725,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 [&]()
                 {
                     auto* mat =
-                        glob::glob_state().getr_class_materials_cache().get_item(AID(id_str));
+                        glob::glob_state().getr_model().class_caches.materials.get_item(AID(id_str));
                     if (!mat)
                     {
                         local_err = "material not found: " + id_str;
@@ -1760,7 +1762,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    b64 = glob::glob_state().getr_ui().get_material_previewer().render_preview(
+                    b64 = glob::glob_state().getr_editor_system().ui.get_material_previewer().render_preview(
                         AID(id_str), size);
                 });
             if (!done)
@@ -1793,7 +1795,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* lvl = glob::glob_state().get_current_level();
+                    auto* lvl = glob::glob_state().getr_model().current_level;
                     if (!lvl)
                     {
                         local_err = "no level loaded";
@@ -1812,7 +1814,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         return;
                     }
                     auto* mat_obj =
-                        glob::glob_state().getr_class_materials_cache().get_item(AID(material_id));
+                        glob::glob_state().getr_model().class_caches.materials.get_item(AID(material_id));
                     if (!mat_obj)
                     {
                         local_err = "material not found: " + material_id;
@@ -1853,7 +1855,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* inst = glob::glob_state().getr_ui().get_material_previewer().begin_edit(
+                    auto* inst = glob::glob_state().getr_editor_system().ui.get_material_previewer().begin_edit(
                         AID(id_str));
                     if (!inst)
                     {
@@ -1895,7 +1897,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* inst = glob::glob_state().getr_ui().get_material_previewer().get_editing(
+                    auto* inst = glob::glob_state().getr_editor_system().ui.get_material_previewer().get_editing(
                         AID(id_str));
                     if (!inst)
                     {
@@ -1904,7 +1906,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
                     local_err = write_property(*inst, field, value, echo_value);
 
-                    glob::glob_state().getr_ui().get_material_previewer().invalidate(AID(id_str));
+                    glob::glob_state().getr_editor_system().ui.get_material_previewer().invalidate(AID(id_str));
                 });
             if (!done)
             {
@@ -1959,7 +1961,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    if (!glob::glob_state().getr_ui().get_material_previewer().save_edit(
+                    if (!glob::glob_state().getr_editor_system().ui.get_material_previewer().save_edit(
                             AID(id_str)))
                     {
                         local_err = "save failed for: " + id_str;
@@ -1992,7 +1994,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    glob::glob_state().getr_ui().get_material_previewer().discard_edit(AID(id_str));
+                    glob::glob_state().getr_editor_system().ui.get_material_previewer().discard_edit(AID(id_str));
                 });
             if (!done)
             {
@@ -2011,7 +2013,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto& actions = glob::glob_state().getr_ui().m_actions;
+                                  auto& actions = glob::glob_state().getr_editor_system().ui.m_actions;
 
                                   result = Json::Value(Json::objectValue);
                                   result["busy"] = actions.is_busy();
@@ -2046,7 +2048,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                       [&eng](const Json::Value&, Json::Value& result, std::string& err)
                       {
                           bool done = eng.wait_main_action(
-                              [&]() { glob::glob_state().getr_ui().m_actions.clear_finished(); });
+                              [&]() { glob::glob_state().getr_editor_system().ui.m_actions.clear_finished(); });
                           if (!done)
                           {
                               err = "actions.clearFinished timed out";
@@ -2410,7 +2412,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     }
 
     // Wire action queue events → RPC notifications
-    glob::glob_state().getr_ui().m_actions.set_event_callback(
+    glob::glob_state().getr_editor_system().ui.m_actions.set_event_callback(
         [&server](const engine::action_event& evt)
         {
             Json::Value params(Json::objectValue);

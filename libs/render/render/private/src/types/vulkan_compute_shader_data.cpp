@@ -1,6 +1,7 @@
 #include "vulkan_render/types/vulkan_compute_shader_data.h"
 
 #include "vulkan_render/vulkan_render_device.h"
+#include "vulkan_render/render_system.h"
 #include "vulkan_render/types/vulkan_shader_data.h"
 
 #include <global_state/global_state.h>
@@ -24,21 +25,22 @@ compute_shader_data::~compute_shader_data()
 void
 compute_shader_data::reset()
 {
-    auto device = glob::glob_state().get_render_device();
-    if (!device)
+    auto* render = glob::glob_state().get_render();
+    if (!render)
     {
         return;
     }
+    auto& device = render->device;
 
     if (m_pipeline != VK_NULL_HANDLE)
     {
-        vkDestroyPipeline(device->vk_device(), m_pipeline, nullptr);
+        vkDestroyPipeline(device.vk_device(), m_pipeline, nullptr);
         m_pipeline = VK_NULL_HANDLE;
     }
 
     if (m_pipeline_layout != VK_NULL_HANDLE)
     {
-        vkDestroyPipelineLayout(device->vk_device(), m_pipeline_layout, nullptr);
+        vkDestroyPipelineLayout(device.vk_device(), m_pipeline_layout, nullptr);
         m_pipeline_layout = VK_NULL_HANDLE;
     }
 
@@ -46,7 +48,7 @@ compute_shader_data::reset()
     {
         if (layout != VK_NULL_HANDLE)
         {
-            vkDestroyDescriptorSetLayout(device->vk_device(), layout, nullptr);
+            vkDestroyDescriptorSetLayout(device.vk_device(), layout, nullptr);
             layout = VK_NULL_HANDLE;
         }
     }

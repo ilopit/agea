@@ -3,6 +3,7 @@
 #include <core/architype.h>
 #include <core/caches/cache_set.h>
 #include <core/core_state.h>
+#include <core/model_system.h>
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/object_constructor.h>
@@ -142,7 +143,6 @@ converter_context::init(const std::filesystem::path& data_root,
     glob::glob_state_reset();
     auto& gs = glob::glob_state();
 
-    core::state_mutator__id_generator::set(gs);
     state_mutator__vfs::set(gs);
 
     auto& vfs = gs.getr_vfs();
@@ -165,20 +165,14 @@ converter_context::init(const std::filesystem::path& data_root,
     }
     vfs.mount("output", std::make_unique<vfs::physical_backend>(abs_output), 0);
 
-    ALOG_INFO("Setting up caches...");
-    core::state_mutator__caches::set(gs);
-    ALOG_INFO("Setting up reflection manager...");
-    core::state_mutator__reflection_manager::set(gs);
+    ALOG_INFO("Setting up model system...");
+    core::state_mutator__model::set(gs);
     ALOG_INFO("Setting up lua_api...");
     core::state_mutator__lua_api::set(gs);
-    ALOG_INFO("Setting up package manager...");
-    core::state_mutator__package_manager::set(gs);
     ALOG_INFO("Setting up queues...");
     state_mutator__queues::set(gs);
 
     ALOG_INFO("Running create stage...");
-    gs.schedule_action(gs::state::state_stage::create,
-                       [](gs::state& s) { core::state_mutator__level_manager::set(s); });
     gs.run_create();
 
     ALOG_INFO("Initializing packages...");
@@ -197,7 +191,7 @@ bool
 converter_context::init_packages()
 {
     auto& gs = glob::glob_state();
-    auto& pm = gs.getr_pm();
+    auto& pm = gs.getr_model().packages;
 
     ALOG_INFO("Loading root package...");
     {
@@ -270,7 +264,7 @@ converter_context::create_package(const utils::id& id)
     auto* ptr = pkg.get();
     m_created_packages.push_back(std::move(pkg));
 
-    glob::glob_state().getr_pm().register_package(*ptr);
+    glob::glob_state().getr_model().packages.register_package(*ptr);
 
     return ptr;
 }
@@ -278,7 +272,7 @@ converter_context::create_package(const utils::id& id)
 core::package*
 converter_context::load_package(const utils::id& id)
 {
-    auto& pm = glob::glob_state().getr_pm();
+    auto& pm = glob::glob_state().getr_model().packages;
 
     ALOG_INFO("[converter] load_package: id=[{}]", id.str());
 

@@ -28,8 +28,7 @@ main(int argc, char** argv)
         std::make_unique<kryga::vfs::physical_backend>(root.parent_path() / "kryga_generated"),
         0);
 
-    kryga::state_mutator__render_device::set(gs);
-    kryga::state_mutator__vulkan_render::set(gs);
+    kryga::state_mutator__render::set(gs);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

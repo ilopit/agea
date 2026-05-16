@@ -10,11 +10,13 @@
 #include "engine/private/ui/bake_editor.h"
 #include "engine/private/ui/converter_window.h"
 #include "engine/editor.h"
+#include "engine/editor_system.h"
 
 #include <native/native_window.h>
 
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_config.h>
+#include <vulkan_render/render_system.h>
 #include <gpu_types/gpu_shadow_types.h>
 #include <gpu_types/gpu_cluster_types.h>
 #include <vfs/vfs.h>
@@ -29,13 +31,6 @@
 
 namespace kryga
 {
-
-void
-state_mutator__ui::set(gs::state& s)
-{
-    auto p = s.create_box<ui::ui>("ui");
-    s.m_ui = p;
-}
 
 namespace ui
 {
@@ -123,7 +118,7 @@ ui::new_frame(float dt)
     ImGuiIO& io = ImGui::GetIO();
     // SDL2 backend resets DisplaySize from SDL_GetWindowSize inside
     // ImGui_ImplSDL2_NewFrame — override before AND after that call.
-    auto& vr = glob::glob_state().getr_vulkan_render();
+    auto& vr = glob::glob_state().getr_render().renderer;
     io.DisplaySize = ImVec2((float)vr.width(), (float)vr.height());
     io.DeltaTime = dt;
 
@@ -137,7 +132,7 @@ ui::new_frame(float dt)
     // viewport
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
-    bool playing = glob::glob_state().getr_game_editor().get_mode() == engine::editor_mode::playing;
+    bool playing = glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing;
 
     if (playing)
     {
@@ -247,7 +242,7 @@ render_config_window::handle()
         return;
     }
 
-    auto& vr = glob::glob_state().getr_vulkan_render();
+    auto& vr = glob::glob_state().getr_render().renderer;
     // Mutate pending — apply_pending_render_config() picks it up between frames.
     auto& cfg = vr.get_pending_render_config();
 
