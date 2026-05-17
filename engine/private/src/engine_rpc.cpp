@@ -204,7 +204,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto sel = glob::glob_state().getr_editor_system().editor.get_selected();
+                                  auto sel =
+                                      glob::glob_state().getr_editor_system().editor.get_selected();
                                   r["id"] = sel.valid() ? sel.str() : std::string();
                               });
                           if (!done)
@@ -628,25 +629,25 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                           result = r;
                       });
 
-    server.on_request("engine.getMode",
-                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
-                      {
-                          Json::Value r(Json::objectValue);
-                          bool done = eng.wait_main_action(
-                              [&]()
-                              {
-                                  auto mode = glob::glob_state().getr_editor_system().editor.get_mode();
-                                  r["mode"] = (mode == engine::editor_mode::playing)
-                                                  ? std::string("play")
-                                                  : std::string("edit");
-                              });
-                          if (!done)
-                          {
-                              err = "engine.getMode timed out";
-                              return;
-                          }
-                          result = r;
-                      });
+    server.on_request(
+        "engine.getMode",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            Json::Value r(Json::objectValue);
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto mode = glob::glob_state().getr_editor_system().editor.get_mode();
+                    r["mode"] = (mode == engine::editor_mode::playing) ? std::string("play")
+                                                                       : std::string("edit");
+                });
+            if (!done)
+            {
+                err = "engine.getMode timed out";
+                return;
+            }
+            result = r;
+        });
 
     server.on_request("engine.setMode",
                       [&eng](const Json::Value& params, Json::Value& result, std::string& err)
@@ -1679,22 +1680,23 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
 
     // ── Materials ─────────────────────────────────────────────────────
 
-    server.on_request("model.material.list",
-                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
-                      {
-                          bool done = eng.wait_main_action(
-                              [&]()
-                              {
-                                  Json::Value arr(Json::arrayValue);
-                                  for (auto& [id, obj] :
-                                       glob::glob_state().getr_model().class_caches.materials.get_items())
-                                  {
-                                      auto* rt = obj->get_reflection();
-                                      Json::Value item(Json::objectValue);
-                                      item["id"] = id.str();
-                                      item["type"] = rt ? rt->type_name.str() : std::string();
-                                      auto* pkg = obj->get_package();
-                                      item["package"] = pkg ? pkg->get_id().str() : std::string();
+    server.on_request(
+        "model.material.list",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    Json::Value arr(Json::arrayValue);
+                    for (auto& [id, obj] :
+                         glob::glob_state().getr_model().class_caches.materials.get_items())
+                    {
+                        auto* rt = obj->get_reflection();
+                        Json::Value item(Json::objectValue);
+                        item["id"] = id.str();
+                        item["type"] = rt ? rt->type_name.str() : std::string();
+                        auto* pkg = obj->get_package();
+                        item["package"] = pkg ? pkg->get_id().str() : std::string();
 
                         auto& mat = obj->asr<root::material>();
                         item["has_preview"] = mat.get_shader_effect() != nullptr;
@@ -1724,8 +1726,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* mat =
-                        glob::glob_state().getr_model().class_caches.materials.get_item(AID(id_str));
+                    auto* mat = glob::glob_state().getr_model().class_caches.materials.get_item(
+                        AID(id_str));
                     if (!mat)
                     {
                         local_err = "material not found: " + id_str;
@@ -1746,38 +1748,39 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             }
         });
 
-    server.on_request(
-        "render.material.preview",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
-            {
-                err = "missing 'id' parameter";
-                return;
-            }
-            std::string id_str = params["id"].asString();
-            uint32_t size = params.get("size", 128).asUInt();
+    server.on_request("render.material.preview",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          uint32_t size = params.get("size", 128).asUInt();
 
-            std::string b64;
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    b64 = glob::glob_state().getr_editor_system().ui.get_material_previewer().render_preview(
-                        AID(id_str), size);
-                });
-            if (!done)
-            {
-                err = "material.preview timed out";
-                return;
-            }
-            if (b64.empty())
-            {
-                err = "material not found or preview failed: " + id_str;
-                return;
-            }
-            result = Json::Value(Json::objectValue);
-            result["image"] = "data:image/png;base64," + b64;
-        });
+                          std::string b64;
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  b64 = glob::glob_state()
+                                            .getr_editor_system()
+                                            .ui.get_material_previewer()
+                                            .render_preview(AID(id_str), size);
+                              });
+                          if (!done)
+                          {
+                              err = "material.preview timed out";
+                              return;
+                          }
+                          if (b64.empty())
+                          {
+                              err = "material not found or preview failed: " + id_str;
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["image"] = "data:image/png;base64," + b64;
+                      });
 
     server.on_request(
         "model.material.assign",
@@ -1813,8 +1816,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         local_err = "not a mesh component: " + owner_id;
                         return;
                     }
-                    auto* mat_obj =
-                        glob::glob_state().getr_model().class_caches.materials.get_item(AID(material_id));
+                    auto* mat_obj = glob::glob_state().getr_model().class_caches.materials.get_item(
+                        AID(material_id));
                     if (!mat_obj)
                     {
                         local_err = "material not found: " + material_id;
@@ -1840,43 +1843,44 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             server.notify("model.material.assigned", note);
         });
 
-    server.on_request(
-        "model.material.edit",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
-            {
-                err = "missing 'id' parameter";
-                return;
-            }
-            std::string id_str = params["id"].asString();
-            std::string local_err;
-            Json::Value props;
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    auto* inst = glob::glob_state().getr_editor_system().ui.get_material_previewer().begin_edit(
-                        AID(id_str));
-                    if (!inst)
-                    {
-                        local_err = "failed to begin edit for: " + id_str;
-                        return;
-                    }
-                    props = encode_owner(*inst);
-                });
-            if (!done)
-            {
-                err = "material.edit timed out";
-                return;
-            }
-            if (!local_err.empty())
-            {
-                err = std::move(local_err);
-                return;
-            }
-            result = Json::Value(Json::objectValue);
-            result["material"] = props;
-        });
+    server.on_request("model.material.edit",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          std::string local_err;
+                          Json::Value props;
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  auto* inst = glob::glob_state()
+                                                   .getr_editor_system()
+                                                   .ui.get_material_previewer()
+                                                   .begin_edit(AID(id_str));
+                                  if (!inst)
+                                  {
+                                      local_err = "failed to begin edit for: " + id_str;
+                                      return;
+                                  }
+                                  props = encode_owner(*inst);
+                              });
+                          if (!done)
+                          {
+                              err = "material.edit timed out";
+                              return;
+                          }
+                          if (!local_err.empty())
+                          {
+                              err = std::move(local_err);
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["material"] = props;
+                      });
 
     server.on_request(
         "model.material.setField",
@@ -1897,8 +1901,10 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* inst = glob::glob_state().getr_editor_system().ui.get_material_previewer().get_editing(
-                        AID(id_str));
+                    auto* inst = glob::glob_state()
+                                     .getr_editor_system()
+                                     .ui.get_material_previewer()
+                                     .get_editing(AID(id_str));
                     if (!inst)
                     {
                         local_err = "no active edit session for: " + id_str;
@@ -1906,7 +1912,8 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
                     local_err = write_property(*inst, field, value, echo_value);
 
-                    glob::glob_state().getr_editor_system().ui.get_material_previewer().invalidate(AID(id_str));
+                    glob::glob_state().getr_editor_system().ui.get_material_previewer().invalidate(
+                        AID(id_str));
                 });
             if (!done)
             {
@@ -1922,141 +1929,146 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             result["value"] = echo_value;
         });
 
-    server.on_request("model.texture.list",
-                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
-                      {
-                          bool done = eng.wait_main_action(
-                              [&]()
-                              {
-                                  Json::Value arr(Json::arrayValue);
-                                  for (auto& [id, obj] :
-                                       glob::glob_state().getr_class_textures_cache().get_items())
-                                  {
-                                      Json::Value item(Json::objectValue);
-                                      item["id"] = id.str();
-                                      auto* pkg = obj->get_package();
-                                      item["package"] = pkg ? pkg->get_id().str() : std::string();
-                                      arr.append(std::move(item));
-                                  }
-                                  result = Json::Value(Json::objectValue);
-                                  result["textures"] = std::move(arr);
-                              });
-                          if (!done)
-                          {
-                              err = "texture.list timed out";
-                          }
-                      });
-
     server.on_request(
-        "model.material.save",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+        "model.texture.list",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
         {
-            if (!params.isObject() || !params.isMember("id"))
-            {
-                err = "missing 'id' parameter";
-                return;
-            }
-            std::string id_str = params["id"].asString();
-            std::string local_err;
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    if (!glob::glob_state().getr_editor_system().ui.get_material_previewer().save_edit(
-                            AID(id_str)))
+                    Json::Value arr(Json::arrayValue);
+                    for (auto& [id, obj] :
+                         glob::glob_state().getr_model().class_caches.textures.get_items())
                     {
-                        local_err = "save failed for: " + id_str;
+                        Json::Value item(Json::objectValue);
+                        item["id"] = id.str();
+                        auto* pkg = obj->get_package();
+                        item["package"] = pkg ? pkg->get_id().str() : std::string();
+                        arr.append(std::move(item));
                     }
+                    result = Json::Value(Json::objectValue);
+                    result["textures"] = std::move(arr);
                 });
             if (!done)
             {
-                err = "material.save timed out";
-                return;
+                err = "texture.list timed out";
             }
-            if (!local_err.empty())
-            {
-                err = std::move(local_err);
-                return;
-            }
-            result = Json::Value(Json::objectValue);
-            result["ok"] = true;
         });
 
-    server.on_request(
-        "model.material.discard",
-        [&eng](const Json::Value& params, Json::Value& result, std::string& err)
-        {
-            if (!params.isObject() || !params.isMember("id"))
-            {
-                err = "missing 'id' parameter";
-                return;
-            }
-            std::string id_str = params["id"].asString();
-            bool done = eng.wait_main_action(
-                [&]()
-                {
-                    glob::glob_state().getr_editor_system().ui.get_material_previewer().discard_edit(AID(id_str));
-                });
-            if (!done)
-            {
-                err = "material.discard timed out";
-                return;
-            }
-            result = Json::Value(Json::objectValue);
-            result["ok"] = true;
-        });
-
-    // ── Action queue ─────────────────────────────────────────────────────
-
-    server.on_request("actions.getStatus",
-                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
+    server.on_request("model.material.save",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
                       {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          std::string local_err;
                           bool done = eng.wait_main_action(
                               [&]()
                               {
-                                  auto& actions = glob::glob_state().getr_editor_system().ui.m_actions;
-
-                                  result = Json::Value(Json::objectValue);
-                                  result["busy"] = actions.is_busy();
-                                  result["current_name"] = actions.current_name();
-                                  result["progress"] = actions.current_progress()->progress.load();
-                                  result["status"] = actions.current_progress()->get_status();
-                                  result["queued_count"] =
-                                      static_cast<Json::UInt>(actions.queued_count());
-
-                                  Json::Value fin(Json::arrayValue);
-                                  for (auto& r : actions.finished())
+                                  if (!glob::glob_state()
+                                           .getr_editor_system()
+                                           .ui.get_material_previewer()
+                                           .save_edit(AID(id_str)))
                                   {
-                                      Json::Value item(Json::objectValue);
-                                      item["name"] = r.name;
-                                      item["success"] = r.success;
-                                      if (!r.error.empty())
-                                      {
-                                          item["error"] = r.error;
-                                      }
-                                      item["duration_ms"] = r.duration_ms;
-                                      fin.append(std::move(item));
+                                      local_err = "save failed for: " + id_str;
                                   }
-                                  result["finished"] = std::move(fin);
                               });
                           if (!done)
                           {
-                              err = "actions.getStatus timed out";
+                              err = "material.save timed out";
+                              return;
                           }
-                      });
-
-    server.on_request("actions.clearFinished",
-                      [&eng](const Json::Value&, Json::Value& result, std::string& err)
-                      {
-                          bool done = eng.wait_main_action(
-                              [&]() { glob::glob_state().getr_editor_system().ui.m_actions.clear_finished(); });
-                          if (!done)
+                          if (!local_err.empty())
                           {
-                              err = "actions.clearFinished timed out";
+                              err = std::move(local_err);
                               return;
                           }
                           result = Json::Value(Json::objectValue);
                           result["ok"] = true;
                       });
+
+    server.on_request("model.material.discard",
+                      [&eng](const Json::Value& params, Json::Value& result, std::string& err)
+                      {
+                          if (!params.isObject() || !params.isMember("id"))
+                          {
+                              err = "missing 'id' parameter";
+                              return;
+                          }
+                          std::string id_str = params["id"].asString();
+                          bool done = eng.wait_main_action(
+                              [&]()
+                              {
+                                  glob::glob_state()
+                                      .getr_editor_system()
+                                      .ui.get_material_previewer()
+                                      .discard_edit(AID(id_str));
+                              });
+                          if (!done)
+                          {
+                              err = "material.discard timed out";
+                              return;
+                          }
+                          result = Json::Value(Json::objectValue);
+                          result["ok"] = true;
+                      });
+
+    // ── Action queue ─────────────────────────────────────────────────────
+
+    server.on_request(
+        "actions.getStatus",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            bool done = eng.wait_main_action(
+                [&]()
+                {
+                    auto& actions = glob::glob_state().getr_editor_system().ui.m_actions;
+
+                    result = Json::Value(Json::objectValue);
+                    result["busy"] = actions.is_busy();
+                    result["current_name"] = actions.current_name();
+                    result["progress"] = actions.current_progress()->progress.load();
+                    result["status"] = actions.current_progress()->get_status();
+                    result["queued_count"] = static_cast<Json::UInt>(actions.queued_count());
+
+                    Json::Value fin(Json::arrayValue);
+                    for (auto& r : actions.finished())
+                    {
+                        Json::Value item(Json::objectValue);
+                        item["name"] = r.name;
+                        item["success"] = r.success;
+                        if (!r.error.empty())
+                        {
+                            item["error"] = r.error;
+                        }
+                        item["duration_ms"] = r.duration_ms;
+                        fin.append(std::move(item));
+                    }
+                    result["finished"] = std::move(fin);
+                });
+            if (!done)
+            {
+                err = "actions.getStatus timed out";
+            }
+        });
+
+    server.on_request(
+        "actions.clearFinished",
+        [&eng](const Json::Value&, Json::Value& result, std::string& err)
+        {
+            bool done = eng.wait_main_action(
+                [&]() { glob::glob_state().getr_editor_system().ui.m_actions.clear_finished(); });
+            if (!done)
+            {
+                err = "actions.clearFinished timed out";
+                return;
+            }
+            result = Json::Value(Json::objectValue);
+            result["ok"] = true;
+        });
 
     // ── Bake editor ────────────────────────────────────────────────────
 

@@ -2,6 +2,8 @@
 
 #include <animation/animation_instance.h>
 
+#include <global_state/system.h>
+
 #include <glm_unofficial/glm.h>
 
 #include <ozz/animation/runtime/skeleton.h>
@@ -28,10 +30,24 @@ class vulkan_render_data;
 namespace animation
 {
 
-class animation_system
+class animation_system : public gs::system
 {
 public:
     using render_data_resolver = std::function<render::vulkan_render_data*(const utils::id&)>;
+
+    std::string_view
+    system_name() const override
+    {
+        return "animation";
+    }
+    std::span<const std::string_view>
+    system_deps() const override
+    {
+        static constexpr std::string_view d[] = {"render"};
+        return d;
+    }
+    void
+    on_connect(gs::state&) override;
 
     animation_system();
     ~animation_system();

@@ -15,8 +15,22 @@ namespace kryga::core
 class model_system : public gs::system
 {
 public:
-    std::string_view system_name() const override { return "model"; }
-    std::span<const std::string_view> system_deps() const override { return {}; }
+    std::string_view
+    system_name() const override
+    {
+        return "model";
+    }
+    std::span<const std::string_view>
+    system_deps() const override
+    {
+        return {};
+    }
+
+    void
+    on_init(gs::state&) override
+    {
+        packages.init();
+    }
 
     cache_set class_caches;
     cache_set instance_caches;

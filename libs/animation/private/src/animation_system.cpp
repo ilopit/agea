@@ -28,10 +28,19 @@ state_mutator__animation_system::set(gs::state& s)
 {
     auto p = s.create_box<animation::animation_system>("animation_system");
     s.m_animation_system = p;
+    s.register_system(p);
 }
 
 namespace animation
 {
+
+void
+animation_system::on_connect(gs::state&)
+{
+    set_render_data_resolver(
+        [](const utils::id& id) -> render::vulkan_render_data*
+        { return glob::glob_state().getr_render().renderer.get_cache().objects.find_by_id(id); });
+}
 
 namespace
 {

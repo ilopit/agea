@@ -7,6 +7,7 @@
 #include <packages/root/model/assets/texture.h>
 #include <packages/root/model/assets/sampler.h>
 
+#include <core/model_system.h>
 #include <core/caches/caches_map.h>
 #include <core/reflection/reflection_type_utils.h>
 
@@ -380,11 +381,11 @@ texture_slot__json_save(reflection::type_context__json_save& ctx)
 static root::smart_object*
 find_texture(const utils::id& id)
 {
-    auto& gs = glob::glob_state();
-    auto* obj = gs.getr_class_textures_cache().get_item(id);
+    auto& model = glob::glob_state().getr_model();
+    auto* obj = model.class_caches.textures.get_item(id);
     if (!obj)
     {
-        obj = gs.getr_instance_textures_cache().get_item(id);
+        obj = model.instance_caches.textures.get_item(id);
     }
     return obj;
 }
@@ -392,11 +393,11 @@ find_texture(const utils::id& id)
 static root::smart_object*
 find_sampler(const utils::id& id)
 {
-    auto& gs = glob::glob_state();
-    auto* obj = gs.getr_class_samplers_cache().get_item(id);
+    auto& model = glob::glob_state().getr_model();
+    auto* obj = model.class_caches.samplers.get_item(id);
     if (!obj)
     {
-        obj = gs.getr_instance_samplers_cache().get_item(id);
+        obj = model.instance_caches.samplers.get_item(id);
     }
     return obj;
 }

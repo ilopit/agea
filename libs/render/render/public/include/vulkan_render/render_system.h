@@ -12,11 +12,15 @@ namespace kryga::render
 class render_system : public gs::system
 {
 public:
-    std::string_view system_name() const override { return "render"; }
-    std::span<const std::string_view> system_deps() const override
+    std::string_view
+    system_name() const override
     {
-        static constexpr std::string_view d[] = {"model"};
-        return d;
+        return "render";
+    }
+    std::span<const std::string_view>
+    system_deps() const override
+    {
+        return {};
     }
 
     render_device device;

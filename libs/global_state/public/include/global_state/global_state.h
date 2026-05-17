@@ -27,70 +27,75 @@
 namespace kryga
 {
 
+// Systems
 namespace core
 {
 class model_system;
-class queues;
-
-struct state_mutator__model;
-struct state_mutator__lua_api;
-
-};  // namespace core
-
-namespace reflection
-{
-class lua_api;
-
-}  // namespace reflection
-
-class vulkan_engine;
-
-namespace vfs
-{
-class virtual_file_system;
-}  // namespace vfs
-class render_bridge;
-class native_window;
-struct engine_counters;
-
+}
 namespace render
 {
 class render_system;
-}  // namespace render
-
+}
 namespace animation
 {
 class animation_system;
-}  // namespace animation
-
+}
 namespace engine
 {
-class game_editor;
-class input_manager;
 class editor_system;
-}  // namespace engine
-
-namespace ui
+}
+namespace vfs
 {
-class ui;
+class virtual_file_system;
 }
 
+// Services
+namespace core
+{
+class queues;
+}
+namespace engine
+{
+class input_manager;
+}
+namespace reflection
+{
+class lua_api;
+}
+class render_bridge;
+struct engine_counters;
+
+// Singletons
+class vulkan_engine;
+class native_window;
 namespace editor
 {
 class config;
 }
 
-struct state_mutator__vfs;
-struct state_mutator__engine;
-struct state_mutator__editor_system;
-struct state_mutator__input_manager;
-struct state_mutator__config;
+// Mutator forward declarations
+namespace core
+{
+struct state_mutator__model;
+struct state_mutator__lua_api;
+}  // namespace core
+
+// Systems
 struct state_mutator__render;
-struct state_mutator__native_window;
-struct state_mutator__engine_counters;
-struct state_mutator__queues;
-struct state_mutator__render_bridge;
 struct state_mutator__animation_system;
+struct state_mutator__editor_system;
+struct state_mutator__vfs;
+
+// Services
+struct state_mutator__queues;
+struct state_mutator__input_manager;
+struct state_mutator__render_bridge;
+struct state_mutator__engine_counters;
+
+// Singletons
+struct state_mutator__engine;
+struct state_mutator__native_window;
+struct state_mutator__config;
 
 namespace gs
 {
@@ -129,20 +134,24 @@ using scheduled_action = std::function<void(state& s)>;
 
 class state
 {
+    // Systems
     friend class core::state_mutator__model;
-    friend class core::state_mutator__lua_api;
+    friend class ::kryga::state_mutator__render;
+    friend class ::kryga::state_mutator__animation_system;
+    friend class ::kryga::state_mutator__editor_system;
     friend class ::kryga::state_mutator__vfs;
 
-    friend class ::kryga::state_mutator__engine;
-    friend class ::kryga::state_mutator__editor_system;
-    friend class ::kryga::state_mutator__input_manager;
-    friend class ::kryga::state_mutator__config;
-    friend class ::kryga::state_mutator__render;
-    friend class ::kryga::state_mutator__native_window;
-    friend class ::kryga::state_mutator__engine_counters;
+    // Services
     friend class ::kryga::state_mutator__queues;
+    friend class ::kryga::state_mutator__input_manager;
+    friend class core::state_mutator__lua_api;
     friend class ::kryga::state_mutator__render_bridge;
-    friend class ::kryga::state_mutator__animation_system;
+    friend class ::kryga::state_mutator__engine_counters;
+
+    // Singletons
+    friend class ::kryga::state_mutator__engine;
+    friend class ::kryga::state_mutator__native_window;
+    friend class ::kryga::state_mutator__config;
 
 public:
     enum class state_stage
@@ -177,47 +186,27 @@ public:
     void
     run_init();
 
-    core::model_system*
-    get_model() const
-    {
-        return m_model;
-    }
-
-    core::model_system&
-    getr_model() const
-    {
-        KRG_check(m_model, "Instance should be alive!");
-        return *m_model;
-    }
-
-    render::render_system*
-    get_render() const
-    {
-        return m_render;
-    }
-
-    render::render_system&
-    getr_render() const
-    {
-        KRG_check(m_render, "Instance should be alive!");
-        return *m_render;
-    }
-
-    KRG_gen_getter(lua, reflection::lua_api);
+    // Systems
+    KRG_gen_getter(model, core::model_system);
+    KRG_gen_getter(render, render::render_system);
+    KRG_gen_getter(animation_system, animation::animation_system);
+    KRG_gen_getter(editor_system, engine::editor_system);
     KRG_gen_getter(vfs, vfs::virtual_file_system);
 
-    KRG_gen_getter(engine, vulkan_engine);
-    KRG_gen_getter(editor_system, engine::editor_system);
-    KRG_gen_getter(input_manager, engine::input_manager);
-    KRG_gen_getter(config, editor::config);
-    KRG_gen_getter(native_window, native_window);
-    KRG_gen_getter(engine_counters, engine_counters);
+    // Services
     KRG_gen_getter(queues, core::queues);
+    KRG_gen_getter(input_manager, engine::input_manager);
+    KRG_gen_getter(lua, reflection::lua_api);
     KRG_gen_getter(render_bridge, render_bridge);
+    KRG_gen_getter(engine_counters, engine_counters);
 
-    KRG_gen_getter(animation_system, animation::animation_system);
+    // Singletons
+    KRG_gen_getter(engine, vulkan_engine);
+    KRG_gen_getter(native_window, native_window);
+    KRG_gen_getter(config, editor::config);
 
-    void register_system(system* sys);
+    void
+    register_system(system* sys);
 
     template <typename T>
     T*
@@ -256,26 +245,24 @@ private:
 
     // clang-format off
 
-    // Model system (caches, managers, reflection)
+    // Systems
     core::model_system*             m_model = nullptr;
-
-    // Render system (device, renderer, loader)
     render::render_system*          m_render = nullptr;
-
-    // Subsystems
-    reflection::lua_api*            m_lua = nullptr;
+    animation::animation_system*    m_animation_system = nullptr;
+    engine::editor_system*          m_editor_system = nullptr;
     vfs::virtual_file_system*       m_vfs = nullptr;
 
-    // Engine singletons
-    vulkan_engine*                  m_engine = nullptr;
-    engine::editor_system*          m_editor_system = nullptr;
-    engine::input_manager*          m_input_manager = nullptr;
-    editor::config*                 m_config = nullptr;
-    native_window*                  m_native_window = nullptr;
-    engine_counters*                m_engine_counters = nullptr;
+    // Services
     core::queues*                   m_queues = nullptr;
+    engine::input_manager*          m_input_manager = nullptr;
+    reflection::lua_api*            m_lua = nullptr;
     render_bridge*                  m_render_bridge = nullptr;
-    animation::animation_system*    m_animation_system = nullptr;
+    engine_counters*                m_engine_counters = nullptr;
+
+    // Singletons
+    vulkan_engine*                  m_engine = nullptr;
+    native_window*                  m_native_window = nullptr;
+    editor::config*                 m_config = nullptr;
 
     // clang-format on
 
@@ -290,19 +277,29 @@ private:
 
 }  // namespace gs
 
-// Full definitions for engine/render/native/bridge mutators
-// (forward-declared above for friend access)
+// Systems
 
-struct state_mutator__engine
+struct state_mutator__render
 {
     static void
-    set(vulkan_engine* e, gs::state& s)
-    {
-        s.m_engine = e;
-    }
+    set(gs::state& s);
+};
+
+struct state_mutator__animation_system
+{
+    static void
+    set(gs::state& s);
 };
 
 struct state_mutator__editor_system
+{
+    static void
+    set(gs::state& s);
+};
+
+// Services
+
+struct state_mutator__queues
 {
     static void
     set(gs::state& s);
@@ -314,19 +311,7 @@ struct state_mutator__input_manager
     set(gs::state& s);
 };
 
-struct state_mutator__config
-{
-    static void
-    set(gs::state& s);
-};
-
-struct state_mutator__render
-{
-    static void
-    set(gs::state& s);
-};
-
-struct state_mutator__native_window
+struct state_mutator__render_bridge
 {
     static void
     set(gs::state& s);
@@ -338,19 +323,24 @@ struct state_mutator__engine_counters
     set(gs::state& s);
 };
 
-struct state_mutator__queues
+// Singletons
+
+struct state_mutator__engine
+{
+    static void
+    set(vulkan_engine* e, gs::state& s)
+    {
+        s.m_engine = e;
+    }
+};
+
+struct state_mutator__native_window
 {
     static void
     set(gs::state& s);
 };
 
-struct state_mutator__render_bridge
-{
-    static void
-    set(gs::state& s);
-};
-
-struct state_mutator__animation_system
+struct state_mutator__config
 {
     static void
     set(gs::state& s);

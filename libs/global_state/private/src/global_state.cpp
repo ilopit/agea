@@ -135,6 +135,10 @@ state::run_connect()
 {
     KRG_check(m_stage == state_stage::connect, "Expected proper state!");
     run_items(m_stage);
+    for (auto* sys : m_systems)
+    {
+        sys->on_connect(*this);
+    }
     m_stage = state_stage::init;
 }
 
@@ -143,6 +147,10 @@ state::run_init()
 {
     KRG_check(m_stage == state_stage::init, "Expected proper state!");
     run_items(m_stage);
+    for (auto* sys : m_systems)
+    {
+        sys->on_init(*this);
+    }
     m_stage = state_stage::ready;
 }
 
