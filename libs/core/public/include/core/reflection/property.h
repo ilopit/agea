@@ -17,6 +17,12 @@ namespace reflection
 
 struct reflection_type;
 
+enum class instantiate_mode : uint8_t
+{
+    instantiate,
+    share,
+};
+
 class property
 {
 public:
@@ -100,6 +106,7 @@ public:
     bool serializable                                               = false;
     bool has_default                                                = false;
     bool render_subobject                                           = false;
+    instantiate_mode inst_mode                                      = instantiate_mode::instantiate;
 
     reflection_type* rtype = nullptr;
 

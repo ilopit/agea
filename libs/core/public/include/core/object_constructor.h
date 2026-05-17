@@ -28,13 +28,15 @@ static inline const auto ks_class_default = root::smart_object_flags{.instance_o
                                                                      .derived_obj = false,
                                                                      .runtime_obj = true,
                                                                      .mirror_obj = false,
-                                                                     .default_obj = true};
+                                                                     .default_obj = true,
+                                                                     .readonly = true};
 
 static inline const auto ks_class_derived = root::smart_object_flags{.instance_obj = false,
                                                                      .derived_obj = true,
                                                                      .runtime_obj = false,
                                                                      .mirror_obj = false,
-                                                                     .default_obj = false};
+                                                                     .default_obj = false,
+                                                                     .readonly = true};
 
 static inline const auto ks_instance_derived = root::smart_object_flags{.instance_obj = true,
                                                                         .derived_obj = true,
@@ -89,7 +91,8 @@ public:
     std::expected<root::smart_object*, result_code>
     construct_obj(const utils::id& type_id,
                   const utils::id& id,
-                  const root::smart_object::construct_params& params);
+                  const root::smart_object::construct_params& params,
+                  bool is_proto = false);
 
     // Static utilities (no OLC context needed)
 

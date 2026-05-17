@@ -28,10 +28,8 @@ public:
     void
     add_item(const root::smart_object& obj)
     {
-        auto& item = m_items[obj.get_id()];
-
-        KRG_check(item == nullptr, "Should not re-assign!");
-        item = (root::smart_object*)&obj;
+        auto [it, inserted] = m_items.emplace(obj.get_id(), (root::smart_object*)&obj);
+        KRG_check(inserted, "Duplicate ID in cache!");
     }
 
     void

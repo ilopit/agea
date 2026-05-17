@@ -481,7 +481,7 @@ material_previewer::ensure_gpu_material(const utils::id& material_id)
         return existing;
     }
 
-    auto* obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
+    auto* obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
     if (!obj)
     {
         return nullptr;
@@ -507,7 +507,7 @@ material_previewer::render_preview(const utils::id& material_id, uint32_t size)
     }
     else
     {
-        auto* obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
+        auto* obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
         if (!obj)
         {
             return {};
@@ -630,7 +630,7 @@ material_previewer::begin_edit(const utils::id& material_id)
         return sit->second.instance;
     }
 
-    auto* class_obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
+    auto* class_obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
     KRG_check(class_obj, "material not found in class cache");
 
     auto* pkg = class_obj->get_package();
@@ -677,7 +677,7 @@ material_previewer::save_edit(const utils::id& material_id)
     auto& session = sit->second;
     auto* instance = session.instance;
 
-    auto* class_obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
+    auto* class_obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
     KRG_check(class_obj, "class material disappeared during edit");
 
     auto* rt = instance->get_reflection();
@@ -735,7 +735,7 @@ material_previewer::save_edit(const utils::id& material_id)
     auto& olc = pkg->get_load_context();
     core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
 
-    model.instance_caches.materials.call_on_items(
+    model.caches.materials.call_on_items(
         [&](root::material* inst_mat)
         {
             if (inst_mat->get_class_obj() != class_obj)
@@ -765,7 +765,7 @@ material_previewer::save_edit(const utils::id& material_id)
                 if (src_ts.txt)
                 {
                     auto* inst_txt =
-                        model.instance_caches.textures.get_item(src_ts.txt->get_id());
+                        model.caches.textures.get_item(src_ts.txt->get_id());
                     if (!inst_txt)
                     {
                         auto r = ctor.instantiate_obj(*src_ts.txt, src_ts.txt->get_id());
@@ -784,7 +784,7 @@ material_previewer::save_edit(const utils::id& material_id)
                 if (src_ts.smp)
                 {
                     auto* inst_smp =
-                        model.instance_caches.samplers.get_item(src_ts.smp->get_id());
+                        model.caches.samplers.get_item(src_ts.smp->get_id());
                     if (inst_smp)
                     {
                         dst_ts.smp = inst_smp;
@@ -822,7 +822,7 @@ material_previewer::discard_edit(const utils::id& material_id)
     auto& loader = glob::glob_state().getr_render().loader;
     loader.destroy_material_data(session.instance_id);
 
-    auto* class_obj = glob::glob_state().getr_model().class_caches.materials.get_item(material_id);
+    auto* class_obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
     if (class_obj)
     {
         auto* pkg = class_obj->get_package();
@@ -846,7 +846,7 @@ material_previewer::discard_all_edits()
         loader.destroy_material_data(session.instance_id);
 
         auto* class_obj =
-            glob::glob_state().getr_model().class_caches.materials.get_item(session.class_id);
+            glob::glob_state().getr_model().caches.materials.get_item(session.class_id);
         if (class_obj)
         {
             auto* pkg = class_obj->get_package();

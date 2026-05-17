@@ -209,11 +209,6 @@ public:
     void
     unregister_in_global_cache();
 
-    cache_set&
-    get_proto_local_cs()
-    {
-        return m_proto_local_cs;
-    }
 
     friend class package_types_builder;
 
@@ -338,7 +333,6 @@ private:
     package_type m_type = package_type::pt_nan;
     vfs::backend* m_backend = nullptr;
 
-    cache_set m_proto_local_cs;
 
     std::unique_ptr<package_types_builder> m_type_builder;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;

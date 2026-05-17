@@ -18,3 +18,5 @@ include/packages/root/model/assets/mesh.h
 include/packages/root/model/assets/texture.h
 include/packages/root/model/assets/sampler.h
 include/packages/root/model/assets/shader_effect.h
+include/packages/root/model/test/test_root_component.h
+include/packages/root/model/test/test_root_object.h

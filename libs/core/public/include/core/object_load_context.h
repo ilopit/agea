@@ -47,7 +47,7 @@ public:
     // clang-format off
     object_load_context& set_vfs_mount (const vfs::rid& v)       { m_vfs_root = v; return *this; }
 
-    cache_set*              get_instance_local_set() const  { return m_instance_local_set; }
+    cache_set*              get_local_set() const            { return m_local_set; }
     package*                get_package() const             { return m_package; }
     const vfs::rid&         get_vfs_root() const            { return m_vfs_root; }
     level*                  get_level() const               { return m_level; }
@@ -82,8 +82,7 @@ public:
 private:
     vfs::rid m_vfs_root;
 
-    cache_set* m_proto_local_set = nullptr;
-    cache_set* m_instance_local_set = nullptr;
+    cache_set* m_local_set = nullptr;
 
     package* m_package = nullptr;
     level* m_level = nullptr;

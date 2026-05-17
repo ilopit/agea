@@ -53,7 +53,8 @@ protected:
                     "check=not_same",
                     "invalidates=render",
                     "access=all",
-                    "default=true");
+                    "default=true",
+                    "instantiate=share");
     ::kryga::root::material* m_material = nullptr;
 
     KRG_ar_property("category=Assets",
@@ -61,7 +62,8 @@ protected:
                     "check=not_same",
                     "invalidates=render",
                     "access=all",
-                    "default=true");
+                    "default=true",
+                    "instantiate=share");
     ::kryga::root::mesh* m_mesh = nullptr;
 
     float m_base_bounding_radius = 0.0f;

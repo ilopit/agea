@@ -56,7 +56,7 @@ container::unregister_in_global_cache(cache_set& local,
 void
 container::unload()
 {
-    m_instance_local_cs.clear();
+    m_local_cs.clear();
     m_objects.clear();
 }
 
@@ -64,6 +64,12 @@ void
 container::set_occ(std::unique_ptr<object_load_context> occ)
 {
     m_occ = std::move(occ);
+}
+
+void
+container::set_occ_v2(std::unique_ptr<object_load_context_v2> occ)
+{
+    m_occ_v2 = std::move(occ);
 }
 
 }  // namespace core

@@ -664,6 +664,9 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
   if prop.property_instantiate_handler != EMPTY_STRING:
     file_buffer.append(f"        p->instantiate_handler  = {prop.property_instantiate_handler};\n")
 
+  if prop.instantiate_mode != EMPTY_STRING:
+    file_buffer.append(f"        p->inst_mode  = ::kryga::reflection::instantiate_mode::{prop.instantiate_mode};\n")
+
   if prop.access in SHOULD_HAVE_SETTER:
     file_buffer.append(f"""        p->json_set = [](::kryga::reflection::property_context__json_set& ctx) -> ::kryga::result_code {{
             if (!ctx.p->rtype || !ctx.p->rtype->json_load) return ::kryga::result_code::failed;
@@ -765,7 +768,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
             "i",
             [](const char* id) -> {type_obj.get_full_type_name()}*
             {{
-                auto item = ::kryga::glob::glob_state().getr_model().instance_caches.objects.get_item(AID(id));
+                auto item = ::kryga::glob::glob_state().getr_model().caches.objects.get_item(AID(id));
 
                 if(!item)
                 {{
@@ -777,7 +780,7 @@ def write_lua_class_type(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.fi
             "c",
             [](const char* id) -> {type_obj.get_full_type_name()}*
             {{
-                auto item = ::kryga::glob::glob_state().getr_model().class_caches.objects.get_item(AID(id));
+                auto item = ::kryga::glob::glob_state().getr_model().caches.objects.get_item(AID(id));
 
                 if(!item)
                 {{
@@ -1072,7 +1075,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
         "i",
         [](const char* id) -> {type_obj.get_full_type_name()}*
         {{
-            auto item = ::kryga::glob::glob_state().getr_model().instance_caches.objects.get_item(AID(id));
+            auto item = ::kryga::glob::glob_state().getr_model().caches.objects.get_item(AID(id));
 
             if(!item)
             {{
@@ -1084,7 +1087,7 @@ package::package_types_builder::lua_bind_{type_obj.name}()
         "c",
         [](const char* id) -> {type_obj.get_full_type_name()}*
         {{
-            auto item = ::kryga::glob::glob_state().getr_model().class_caches.objects.get_item(AID(id));
+            auto item = ::kryga::glob::glob_state().getr_model().caches.objects.get_item(AID(id));
 
             if(!item)
             {{

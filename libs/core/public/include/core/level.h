@@ -88,7 +88,7 @@ public:
     game_objects_cache&
     get_game_objects()
     {
-        return m_instance_local_cs.game_objects;
+        return m_local_cs.game_objects;
     }
 
     const std::vector<utils::id>&

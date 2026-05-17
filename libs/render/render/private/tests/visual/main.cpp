@@ -4,6 +4,7 @@
 #include <vulkan_render/kryga_render.h>
 
 #include <global_state/global_state.h>
+#include <core/core_state.h>
 #include <vfs/vfs.h>
 #include <vfs/vfs_state.h>
 #include <vfs/physical_backend.h>
@@ -56,6 +57,7 @@ main(int argc, char** argv)
         "generated",
         std::make_unique<kryga::vfs::physical_backend>(root.parent_path() / "kryga_generated"),
         0);
+    kryga::core::state_mutator__model::set(gs);
     kryga::state_mutator__render::set(gs);
 
     testing::InitGoogleTest(&argc, argv);

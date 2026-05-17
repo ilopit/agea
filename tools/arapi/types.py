@@ -27,6 +27,7 @@ class kryga_property:
     self.property_load_derive_handler = ""
     self.property_copy_handler = ""
     self.property_instantiate_handler = ""
+    self.instantiate_mode = ""
     self.gpu_data = ""
     self.gpu_texture_slot = -1  # -1 means not a texture slot, >= 0 is slot index
     self.copyable = "yes"

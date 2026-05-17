@@ -72,8 +72,9 @@ game_object::spawn_component(component* parent,
 
     auto& occ = m_package ? m_package->get_load_context() : m_level->get_load_context();
     auto mode = m_level ? core::object_load_type::instance_obj : core::object_load_type::class_obj;
+    bool is_proto = !get_flags().instance_obj;
     core::object_constructor ctor(&occ, mode);
-    auto result = ctor.construct_obj(type_id, id, params);
+    auto result = ctor.construct_obj(type_id, id, params, is_proto);
 
     if (!result)
     {

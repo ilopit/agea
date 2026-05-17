@@ -182,9 +182,12 @@ game_object_components_instantiate(reflection::property_context__instantiate& ct
 
     dst_col.resize(src_col.size());
 
+    auto& id_gen = glob::glob_state().getr_model().id_gen;
+
     for (int i = 0; i < src_col.size(); ++i)
     {
-        auto result = ctx.ctor->instantiate_obj(*src_col[i], src_col[i]->get_id());
+        auto inst_id = id_gen.generate(src_col[i]->get_id());
+        auto result = ctx.ctor->instantiate_obj(*src_col[i], inst_id);
 
         if (!result)
         {
@@ -276,7 +279,9 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
                 return result_code::fallback;
             }
 
-            dst_components.push_back(result.value()->as<root::component>());
+            auto comp = result.value()->as<root::component>();
+            comp->set_order_parent_idx(c->get_order_idx(), c->get_parent_idx());
+            dst_components.push_back(comp);
         }
     }
 

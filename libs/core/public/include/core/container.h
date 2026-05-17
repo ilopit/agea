@@ -7,6 +7,7 @@
 #include "core/caches/line_cache.h"
 
 #include "core/object_constructor.h"
+#include "core/object_load_context_v2.h"
 
 #include <utils/id.h>
 #include <utils/path.h>
@@ -100,13 +101,19 @@ public:
     cache_set&
     get_local_cache()
     {
-        return m_instance_local_cs;
+        return m_local_cs;
     }
 
     object_load_context&
     get_load_context() const
     {
         return *m_occ.get();
+    }
+
+    object_load_context_v2&
+    get_load_context_v2()
+    {
+        return *m_occ_v2.get();
     }
 
     static void
@@ -118,8 +125,8 @@ public:
     void
     unload();
 
-    const line_cache<std::shared_ptr<root::smart_object>>
-    get_objects() const
+    line_cache<std::shared_ptr<root::smart_object>>&
+    get_objects()
     {
         return m_objects;
     }
@@ -127,15 +134,19 @@ public:
     void
     set_occ(std::unique_ptr<object_load_context> occ);
 
+    void
+    set_occ_v2(std::unique_ptr<object_load_context_v2> occ);
+
 protected:
     utils::id m_id;
     vfs::rid m_vfs_root;
     utils::path m_save_root_path;
 
-    cache_set m_instance_local_cs;
+    cache_set m_local_cs;
 
     line_cache<std::shared_ptr<root::smart_object>> m_objects;
     std::unique_ptr<object_load_context> m_occ;
+    std::unique_ptr<object_load_context_v2> m_occ_v2;
 };
 
 }  // namespace core

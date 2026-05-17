@@ -32,7 +32,8 @@ protected:
     KRG_ar_property("category=Properties",
                     "access=cpp_only",
                     "invalidates=render",
-                    "serializable=true");
+                    "serializable=true",
+                    "instantiate=share");
     shader_effect* m_shader_effect = nullptr;
 };
 

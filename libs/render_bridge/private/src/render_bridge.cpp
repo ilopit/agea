@@ -219,7 +219,7 @@ render_bridge::reset_arena()
 kryga::result_code
 render_bridge::render_cmd_build(root::smart_object& obj, bool sub_objects)
 {
-    KRG_check(obj.get_flags().instance_obj, "");
+    KRG_check(!obj.get_flags().default_obj, "CDOs must not be render-built");
 
     if (obj.get_state() == root::smart_object_state::render_ready)
     {
@@ -248,7 +248,7 @@ render_bridge::render_cmd_build(root::smart_object& obj, bool sub_objects)
 kryga::result_code
 render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 {
-    KRG_check(obj.get_flags().instance_obj, "");
+    KRG_check(!obj.get_flags().default_obj, "CDOs must not be render-destroyed");
 
     if (obj.get_state() == root::smart_object_state::constructed)
     {

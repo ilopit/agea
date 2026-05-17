@@ -35,7 +35,8 @@ protected:
                     "serializable=true",
                     "invalidates=render",
                     "access=all",
-                    "gpu_texture_slot=0");
+                    "gpu_texture_slot=0",
+                    "instantiate=share");
     ::kryga::root::texture_slot m_simple_texture;
 
     // GPU data properties — needed for argen to generate simple_texture_material__gpu

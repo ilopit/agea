@@ -32,8 +32,7 @@ public:
         packages.init();
     }
 
-    cache_set class_caches;
-    cache_set instance_caches;
+    cache_set caches;
 
     level_manager levels;
     package_manager packages;

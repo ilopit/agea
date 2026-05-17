@@ -111,6 +111,12 @@ smart_obj__instantiate(reflection::type_context__copy& ctx)
 
     KRG_check(!dst_subobj, "dst_subobj");
 
+    if (src_subobj->get_flags().readonly)
+    {
+        dst_subobj = src_subobj;
+        return result_code::ok;
+    }
+
     auto result = ctx.ctor->instantiate_obj(*src_subobj, src_subobj->get_id());
     if (!result)
     {
@@ -255,7 +261,7 @@ texture_slot__instantiate(reflection::type_context__copy& ctx)
 
     dst = src;
 
-    if (src.txt)
+    if (src.txt && !src.txt->get_flags().readonly)
     {
         root::smart_object* obj = ctx.ctor->get_olc()->find_obj(src.txt->get_id());
         if (!obj)

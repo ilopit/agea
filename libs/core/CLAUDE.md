@@ -12,7 +12,7 @@ Central runtime system: object construction, reflection, asset loading, containe
 - VFS paths: enforced `"data://"` mount with `"packages/*.apkg"` and `"levels/*.alvl"` patterns
 
 ## Caching
-Two-tier: global shared caches + per-container local `cache_set`. Maps assets by ID with typed specializations (objects, components, meshes, textures, materials, shader_effects, samplers). Use `unregister_in_global_cache` to remove.
+Unified: single global `cache_set caches` in `model_system` + per-container local `cache_set m_local_cs`. Maps assets by ID with typed specializations (objects, components, meshes, textures, materials, shader_effects, samplers). Class objects and instances live in the same cache; the `instance_obj` flag distinguishes them. Class objects have `readonly=true`. Use `unregister_in_global_cache` to remove.
 
 ## Reflection system
 Located in `core/reflection/`. Type introspection via `type_resolver`, `reflection_type` registry, property handlers, function bindings. Operations pass context objects (`save_context`, `load_context`, `copy_context`, `compare_context`) enabling side-effect-free handlers.

@@ -33,12 +33,12 @@ hex_tile::construct(construct_params& params)
     {
         m_mesh = glob::glob_state()
                      .getr_model()
-                     .instance_caches.objects.get_item(AID("msh_hexagon3d"))
+                     .caches.objects.get_item(AID("msh_hexagon3d"))
                      ->as<root::mesh>();
 
         m_material = glob::glob_state()
                          .getr_model()
-                         .instance_caches.objects.get_item(AID("mt_solid_color_lit"))
+                         .caches.objects.get_item(AID("mt_solid_color_lit"))
                          ->as<root::material>();
     }
 

@@ -69,7 +69,7 @@ parent_of(const vfs::rid& r)
 void
 log_package_contents(core::package& pkg, const char* tag)
 {
-    auto& cs = pkg.get_proto_local_cs();
+    auto& cs = pkg.get_local_cache();
     ALOG_INFO(
         "[converter] package [{}] contents ({}): {} meshes, {} textures, {} materials, {} "
         "shader_effects",
@@ -492,7 +492,7 @@ converter_context::create_mesh(core::package& pkg, const utils::id& id, const pa
                          data.indices.size() * sizeof(uint32_t));
 
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(root::mesh::AR_TYPE_id(), id, params);
+    auto result = ctor.construct_obj(root::mesh::AR_TYPE_id(), id, params, true);
 
     if (!result)
     {
@@ -513,7 +513,7 @@ converter_context::create_texture(core::package& pkg,
     root::texture::construct_params params;
 
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(root::texture::AR_TYPE_id(), id, params);
+    auto result = ctor.construct_obj(root::texture::AR_TYPE_id(), id, params, true);
 
     if (!result)
     {
@@ -564,7 +564,7 @@ converter_context::create_material(core::package& pkg,
     base::pbr_material::construct_params params;
 
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(base::pbr_material::AR_TYPE_id(), id, params);
+    auto result = ctor.construct_obj(base::pbr_material::AR_TYPE_id(), id, params, true);
 
     if (!result)
     {

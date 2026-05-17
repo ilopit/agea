@@ -12,8 +12,7 @@ class object_load_context_builder
 {
 public:
     // clang-format off
-    object_load_context_builder& set_proto_local_set    (cache_set* v)                              { m_proto_local_set = v; return *this; }
-    object_load_context_builder& set_instance_local_set (cache_set* v)                              { m_instance_local_set = v; return *this; }
+    object_load_context_builder& set_local_set         (cache_set* v)                              { m_local_set = v; return *this; }
     object_load_context_builder& set_level              (level* v)                                  { m_level = v; return *this; }
     object_load_context_builder& set_ownable_cache      (line_cache<root::smart_object_ptr>* v)     { m_ownable_cache = v; return *this; }
     object_load_context_builder& set_package            (package* v)                                { m_package = v; return *this; }
@@ -25,8 +24,7 @@ public:
     {
         auto ctx = std::make_unique<object_load_context>();
 
-        ctx->m_proto_local_set = m_proto_local_set;
-        ctx->m_instance_local_set = m_instance_local_set;
+        ctx->m_local_set = m_local_set;
         ctx->m_level = m_level;
         ctx->m_package = m_package;
         ctx->m_ownable_cache_ptr = m_ownable_cache;
@@ -39,8 +37,7 @@ public:
     }
 
 private:
-    cache_set* m_proto_local_set = nullptr;
-    cache_set* m_instance_local_set = nullptr;
+    cache_set* m_local_set = nullptr;
     level* m_level = nullptr;
     line_cache<root::smart_object_ptr>* m_ownable_cache = nullptr;
     package* m_package = nullptr;

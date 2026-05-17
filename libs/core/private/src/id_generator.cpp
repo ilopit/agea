@@ -48,8 +48,7 @@ id_generator::generate(const utils::id& obj_id)
         std::string s = std::format("{}#{}", obj_id_raw.c_str(), node.ctr);
         ++node.ctr;
 
-        if (glob::glob_state().getr_model().instance_caches.objects.has_item(AID(s)) ||
-            glob::glob_state().getr_model().class_caches.objects.has_item(AID(s)))
+        if (glob::glob_state().getr_model().caches.objects.has_item(AID(s)))
         {
             continue;
         }

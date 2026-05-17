@@ -10,6 +10,7 @@ kryga_gather_sources(ROOT_COMPONENTS_SRC "components" "${ROOT_MODEL_PREFIX}/comp
 kryga_gather_sources(ROOT_CORE_TYPES_SRC "core_types" "${ROOT_MODEL_PREFIX}/core_types/*.h" "private/src/model/core_types/*.cpp")
 kryga_gather_sources(ROOT_EXT_SRC "ext" "${ROOT_MODEL_PREFIX}/ext/*.h" "private/src/model/ext/*.cpp")
 kryga_gather_sources(ROOT_OVERRIDES_SRC "overrides" "${ROOT_MODEL_PREFIX}/overrides/*.h" "private/src/model/overrides/*.cpp")
+kryga_gather_sources(ROOT_TEST_TYPES_SRC "test_types" "${ROOT_MODEL_PREFIX}/test/*.h" "private/src/model/test/*.cpp")
 kryga_gather_sources(ROOT_MODEL_SRC "root" "${ROOT_MODEL_PREFIX}/*.h" "private/src/model/*.cpp")
 kryga_gather_sources(ROOT_MODEL_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/kryga_generated/packages/root/private/model/*.cpp")
 
@@ -19,6 +20,7 @@ add_library(packages.root.model STATIC
    ${ROOT_CORE_TYPES_SRC}
    ${ROOT_EXT_SRC}
    ${ROOT_OVERRIDES_SRC}
+   ${ROOT_TEST_TYPES_SRC}
    ${ROOT_MODEL_SRC}
    ${ROOT_MODEL_GENERATED_SRC}
 )

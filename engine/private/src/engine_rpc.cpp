@@ -157,7 +157,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     }
                     else if (ext == "vert" || ext == "frag" || ext == "comp")
                     {
-                        auto& sec = glob::glob_state().getr_model().class_caches.shader_effects;
+                        auto& sec = glob::glob_state().getr_model().caches.shader_effects;
                         auto ptr = sec.get_item(AID(name));
                         if (!ptr)
                         {
@@ -180,7 +180,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                     else if (ext == "glsl")
                     {
                         // Shared includes changed — mark all shader effects dirty.
-                        auto& sec = glob::glob_state().getr_model().class_caches.shader_effects;
+                        auto& sec = glob::glob_state().getr_model().caches.shader_effects;
                         for (auto& [id, obj] : sec.get_items())
                         {
                             auto se = obj->as<root::shader_effect>();
@@ -1713,7 +1713,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 {
                     Json::Value arr(Json::arrayValue);
                     for (auto& [id, obj] :
-                         glob::glob_state().getr_model().class_caches.materials.get_items())
+                         glob::glob_state().getr_model().caches.materials.get_items())
                     {
                         auto* rt = obj->get_reflection();
                         Json::Value item(Json::objectValue);
@@ -1750,7 +1750,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
             bool done = eng.wait_main_action(
                 [&]()
                 {
-                    auto* mat = glob::glob_state().getr_model().class_caches.materials.get_item(
+                    auto* mat = glob::glob_state().getr_model().caches.materials.get_item(
                         AID(id_str));
                     if (!mat)
                     {
@@ -1840,7 +1840,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                         local_err = "not a mesh component: " + owner_id;
                         return;
                     }
-                    auto* mat_obj = glob::glob_state().getr_model().class_caches.materials.get_item(
+                    auto* mat_obj = glob::glob_state().getr_model().caches.materials.get_item(
                         AID(material_id));
                     if (!mat_obj)
                     {
@@ -1962,7 +1962,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
                 {
                     Json::Value arr(Json::arrayValue);
                     for (auto& [id, obj] :
-                         glob::glob_state().getr_model().class_caches.textures.get_items())
+                         glob::glob_state().getr_model().caches.textures.get_items())
                     {
                         Json::Value item(Json::objectValue);
                         item["id"] = id.str();

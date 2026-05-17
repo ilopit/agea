@@ -56,6 +56,7 @@ PROP_KEY_PROPERTY_LOAD_DERIVE_HANDLER = "property_load_derive_handler"
 PROP_KEY_PROPERTY_COMPARE_HANDLER = "property_compare_handler"
 PROP_KEY_PROPERTY_COPY_HANDLER = "property_copy_handler"
 PROP_KEY_PROPERTY_INSTANTIATE_HANDLER = "property_instantiate_handler"
+PROP_KEY_INSTANTIATE_MODE = "instantiate"
 
 # Type config keys
 TYPE_KEY_COPY_HANDLER = "copy_handler"
@@ -432,6 +433,10 @@ def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: 
       prop.property_copy_handler = value
     elif key == PROP_KEY_PROPERTY_INSTANTIATE_HANDLER:
       prop.property_instantiate_handler = value
+    elif key == PROP_KEY_INSTANTIATE_MODE:
+      if value not in ("share", "instantiate"):
+        raise ValueError(f"Invalid instantiate mode '{value}' on property '{prop.name}'. Must be share or instantiate.")
+      prop.instantiate_mode = value
     elif key == PROP_KEY_ACCESS:
       if value not in VALID_ACCESS_VALUES:
         raise InvalidPropertyError(

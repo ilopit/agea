@@ -63,6 +63,7 @@ struct type_context__alloc;
 namespace core
 {
 class object_constructor;
+class object_constructor_v2;
 class package;
 class level;
 
@@ -103,6 +104,7 @@ struct smart_object_flags
     bool runtime_obj : 1 = false;
     bool mirror_obj : 1 = false;
     bool default_obj : 1 = false;
+    bool readonly : 1 = false;
 };
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
@@ -129,6 +131,7 @@ public:
     KRG_gen_meta_api;
 
     friend class core::object_constructor;
+    friend class core::object_constructor_v2;
 
     template <typename T>
     bool

@@ -382,25 +382,13 @@ texture_slot__json_save(reflection::type_context__json_save& ctx)
 static root::smart_object*
 find_texture(const utils::id& id)
 {
-    auto& model = glob::glob_state().getr_model();
-    auto* obj = model.class_caches.textures.get_item(id);
-    if (!obj)
-    {
-        obj = model.instance_caches.textures.get_item(id);
-    }
-    return obj;
+    return glob::glob_state().getr_model().caches.textures.get_item(id);
 }
 
 static root::smart_object*
 find_sampler(const utils::id& id)
 {
-    auto& model = glob::glob_state().getr_model();
-    auto* obj = model.class_caches.samplers.get_item(id);
-    if (!obj)
-    {
-        obj = model.instance_caches.samplers.get_item(id);
-    }
-    return obj;
+    return glob::glob_state().getr_model().caches.samplers.get_item(id);
 }
 
 kryga::result_code

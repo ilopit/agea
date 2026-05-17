@@ -3,6 +3,7 @@
 #include "core/caches/caches_map.h"
 
 #include "core/object_load_context_builder.h"
+#include "core/object_load_context_v2_builder.h"
 #include "core/object_constructor.h"
 
 #include <utils/kryga_log.h>
@@ -37,9 +38,7 @@ void
 package::unregister_in_global_cache()
 {
     container::unregister_in_global_cache(
-        m_instance_local_cs, glob::glob_state().getr_model().instance_caches, m_id, "instance");
-    container::unregister_in_global_cache(
-        m_proto_local_cs, glob::glob_state().getr_model().class_caches, m_id, "proto");
+        m_local_cs, glob::glob_state().getr_model().caches, m_id, "all");
 }
 
 void
@@ -59,8 +58,6 @@ package::unload()
 
     container::unload();
 
-    m_proto_local_cs.clear();
-
     m_state = package_state::unloaded;
 }
 
@@ -69,9 +66,13 @@ package::init()
 {
     m_occ = object_load_context_builder()
                 .set_package(this)
-                .set_proto_local_set(&m_proto_local_cs)
+                .set_local_set(&m_local_cs)
                 .set_ownable_cache(&m_objects)
-                .set_instance_local_set(&m_instance_local_cs)
+                .build();
+    m_occ_v2 = object_load_context_v2_builder()
+                .set_package(this)
+                .set_local_set(&m_local_cs)
+                .set_ownable_cache(&m_objects)
                 .build();
 
     auto vfs_root = vfs_paths::package_root(m_id);
@@ -131,9 +132,13 @@ package::init_for_conversion()
 {
     m_occ = object_load_context_builder()
                 .set_package(this)
-                .set_proto_local_set(&m_proto_local_cs)
+                .set_local_set(&m_local_cs)
                 .set_ownable_cache(&m_objects)
-                .set_instance_local_set(&m_instance_local_cs)
+                .build();
+    m_occ_v2 = object_load_context_v2_builder()
+                .set_package(this)
+                .set_local_set(&m_local_cs)
+                .set_ownable_cache(&m_objects)
                 .build();
 }
 
@@ -237,11 +242,7 @@ package::load_dynamic_part()
         [&](std::string_view name, const vfs::rid&) -> bool
         {
             auto id = AID(std::string(name));
-            auto obj = ctor.load_package_obj(id);
-            if (obj)
-            {
-                ctor.instantiate_obj(*obj.value(), id);
-            }
+            (void)ctor.load_package_obj(id);
             return true;
         },
         m_backend);

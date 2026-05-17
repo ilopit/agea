@@ -300,6 +300,8 @@ object_constructor::load_level_obj(const utils::id& id)
 std::expected<root::smart_object*, result_code>
 object_constructor::instantiate_obj(root::smart_object& proto, const utils::id& new_id)
 {
+    KRG_check(!proto.get_flags().instance_obj, "Cannot instantiate from an instance object");
+
     if (auto obj = m_olc->find_obj(new_id))
     {
         return obj;
@@ -358,17 +360,23 @@ object_constructor::load_obj(const utils::id& id)
 
         if (auto proto = m_olc->find_proto_obj(id))
         {
+            if (proto->get_flags().readonly)
+            {
+                return proto;
+            }
             return instantiate_obj(*proto, id);
         }
 
-        // For instance mode: preload as class first, then instantiate
         object_constructor class_ctor(m_olc, object_load_type::class_obj);
         auto proto_result = class_ctor.preload_proto(id);
         if (proto_result)
         {
+            if (proto_result.value()->get_flags().readonly)
+            {
+                return proto_result.value();
+            }
             return instantiate_obj(*proto_result.value(), proto_result.value()->get_id());
         }
-        // If preload failed (e.g. no package), fall through to file loading
     }
 
     vfs::rid rid;
@@ -437,19 +445,22 @@ object_constructor::clone_obj(root::smart_object& src, const utils::id& new_id)
 std::expected<root::smart_object*, result_code>
 object_constructor::construct_obj(const utils::id& type_id,
                                   const utils::id& id,
-                                  const root::smart_object::construct_params& params)
+                                  const root::smart_object::construct_params& params,
+                                  bool is_proto)
 {
-    // Always derive from the type's CDO. This guarantees get_class_obj() is set,
-    // which object_save_internal / game_object_components_save rely on to emit a
-    // valid `class_id:`. Runtime spawns (level::spawn_object, game_object::spawn_component)
-    // then round-trip through save cleanly.
     auto proto_result = preload_proto(type_id);
     if (!proto_result)
     {
         return proto_result;
     }
 
-    auto flags = m_mode == object_load_type::instance_obj ? ks_instance_derived : ks_class_derived;
+    if (is_proto)
+    {
+        KRG_check(!proto_result.value()->get_flags().instance_obj,
+                  "Proto object must be constructed from proto objects");
+    }
+
+    auto flags = is_proto ? ks_class_derived : ks_instance_derived;
     auto alloc_result = alloc_empty_object(type_id, id, flags, proto_result.value());
     if (!alloc_result)
     {
@@ -505,29 +516,30 @@ object_constructor::instantiate_object_properties(root::smart_object& from, root
 
     for (auto& p : properties)
     {
-        if (p->instantiate_handler)
+        result_code result = result_code::ok;
+
+        switch (p->inst_mode)
+        {
+        case reflection::instantiate_mode::share:
+        {
+            auto src = p->get_blob(from);
+            auto dst = p->get_blob(to);
+            std::memcpy(dst, src, sizeof(void*));
+            break;
+        }
+        case reflection::instantiate_mode::instantiate:
         {
             ictx.dst_property = p.get();
             ictx.src_property = p.get();
-
-            auto result = p->instantiate_handler(ictx);
-            if (result != result_code::ok)
-            {
-                ALOG_LAZY_ERROR;
-                return result;
-            }
+            result = p->instantiate_handler(ictx);
+            break;
         }
-        else
-        {
-            cctx.dst_property = p.get();
-            cctx.src_property = p.get();
+        }
 
-            auto result = p->copy_handler(cctx);
-            if (result != result_code::ok)
-            {
-                ALOG_LAZY_ERROR;
-                return result;
-            }
+        if (result != result_code::ok)
+        {
+            ALOG_LAZY_ERROR;
+            return result;
         }
     }
 
@@ -594,7 +606,7 @@ object_constructor::object_properties_save(const root::smart_object& obj,
 {
     auto& properties = obj.get_reflection()->m_serialization_properties;
 
-    auto empty_obj = glob::glob_state().getr_model().class_caches.objects.get_item(
+    auto empty_obj = glob::glob_state().getr_model().caches.objects.get_item(
         obj.get_reflection()->type_name);
 
     reflection::property_context__save sc;

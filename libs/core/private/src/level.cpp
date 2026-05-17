@@ -5,6 +5,7 @@
 #include <core/caches/caches_map.h>
 #include <core/model_system.h>
 #include <core/object_load_context_builder.h>
+#include <core/object_load_context_v2_builder.h>
 #include <core/object_constructor.h>
 #include <core/queues.h>
 #include <global_state/global_state.h>
@@ -19,7 +20,12 @@ level::level(const utils::id& id)
     : container(id)
 {
     m_occ = object_load_context_builder()
-                .set_instance_local_set(&m_instance_local_cs)
+                .set_local_set(&m_local_cs)
+                .set_ownable_cache(&m_objects)
+                .set_level(this)
+                .build();
+    m_occ_v2 = object_load_context_v2_builder()
+                .set_local_set(&m_local_cs)
                 .set_ownable_cache(&m_objects)
                 .set_level(this)
                 .build();
@@ -32,13 +38,13 @@ level::~level()
 root::game_object*
 level::find_game_object(const utils::id& id)
 {
-    return m_instance_local_cs.game_objects.get_item(id);
+    return m_local_cs.game_objects.get_item(id);
 }
 
 root::component*
 level::find_component(const utils::id& id)
 {
-    return m_instance_local_cs.components.get_item(id);
+    return m_local_cs.components.get_item(id);
 }
 
 root::smart_object*
@@ -157,7 +163,7 @@ level::spawn_object_impl(const utils::id& proto_id,
                          const root::smart_object::construct_params& p)
 {
     object_constructor ctor(m_occ.get(), object_load_type::instance_obj);
-    auto result = ctor.construct_obj(proto_id, object_id, p);
+    auto result = ctor.construct_obj(proto_id, object_id, p, false);
     if (!result)
     {
         return nullptr;
@@ -191,12 +197,8 @@ level::tick(float dt)
 void
 level::unregister_objects()
 {
-    // Level holds instance objects, not class objects — removal must target
-    // the global instance cache. Previously passed class_set, which is a
-    // no-op (level instances aren't there) and left stale entries in
-    // instance cache, asserting on the next load_level().
     container::unregister_in_global_cache(
-        m_instance_local_cs, glob::glob_state().getr_model().instance_caches, m_id, "instance");
+        m_local_cs, glob::glob_state().getr_model().caches, m_id, "level");
 }
 
 void

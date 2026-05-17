@@ -30,14 +30,16 @@ public:
                     "serializable=true",
                     "invalidates=render",
                     "access=all",
-                    "gpu_texture_slot=0");
+                    "gpu_texture_slot=0",
+                    "instantiate=share");
     ::kryga::root::texture_slot m_diffuse_txt;
 
     KRG_ar_property("category=Properties",
                     "serializable=true",
                     "invalidates=render",
                     "access=all",
-                    "gpu_texture_slot=1");
+                    "gpu_texture_slot=1",
+                    "instantiate=share");
     ::kryga::root::texture_slot m_specular_txt;
 
     KRG_ar_property("category=Properties",

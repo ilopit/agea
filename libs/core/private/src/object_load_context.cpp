@@ -17,8 +17,7 @@ namespace core
 {
 
 object_load_context::object_load_context()
-    : m_proto_local_set()
-    , m_instance_local_set()
+    : m_local_set()
     , m_ownable_cache_ptr(nullptr)
 {
     ALOG_TRACE("Created");
@@ -70,16 +69,11 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 
     m_ownable_cache_ptr->emplace_back(std::move(obj));
 
-    if (obj_ref.get_flags().instance_obj)
+    if (m_local_set)
     {
-        m_instance_local_set->map.add_item(obj_ref);
-        glob::glob_state().getr_model().instance_caches.map.add_item(obj_ref);
+        m_local_set->map.add_item(obj_ref);
     }
-    else
-    {
-        m_proto_local_set->map.add_item(obj_ref);
-        glob::glob_state().getr_model().class_caches.map.add_item(obj_ref);
-    }
+    glob::glob_state().getr_model().caches.map.add_item(obj_ref);
 
     return true;
 }
@@ -87,22 +81,11 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 bool
 object_load_context::remove_obj(const root::smart_object& obj)
 {
-    if (obj.get_flags().instance_obj)
+    if (m_local_set)
     {
-        if (m_instance_local_set)
-        {
-            m_instance_local_set->map.remove_item(obj);
-        }
-        glob::glob_state().getr_model().instance_caches.map.remove_item(obj);
+        m_local_set->map.remove_item(obj);
     }
-    else
-    {
-        if (m_proto_local_set)
-        {
-            m_proto_local_set->map.remove_item(obj);
-        }
-        glob::glob_state().getr_model().class_caches.map.remove_item(obj);
-    }
+    glob::glob_state().getr_model().caches.map.remove_item(obj);
 
     return true;
 }
@@ -110,28 +93,34 @@ object_load_context::remove_obj(const root::smart_object& obj)
 root::smart_object*
 object_load_context::find_proto_obj(const utils::id& id)
 {
-    auto obj = m_proto_local_set ? m_proto_local_set->objects.get_item(id) : nullptr;
+    auto obj = m_local_set ? m_local_set->objects.get_item(id) : nullptr;
 
     if (!obj)
     {
-        obj = glob::glob_state().getr_model().class_caches.objects.get_item(id);
+        obj = glob::glob_state().getr_model().caches.objects.get_item(id);
     }
 
-    KRG_check(!obj || !obj->get_flags().instance_obj, "Should always be proto!");
+    if (obj && obj->get_flags().instance_obj)
+    {
+        return nullptr;
+    }
     return obj;
 }
 
 root::smart_object*
 object_load_context::find_obj(const utils::id& id)
 {
-    auto obj = m_instance_local_set ? m_instance_local_set->objects.get_item(id) : nullptr;
+    auto obj = m_local_set ? m_local_set->objects.get_item(id) : nullptr;
 
     if (!obj)
     {
-        obj = glob::glob_state().getr_model().instance_caches.objects.get_item(id);
+        obj = glob::glob_state().getr_model().caches.objects.get_item(id);
     }
 
-    KRG_check(!obj || obj->get_flags().instance_obj, "Should always be instance_obj!");
+    if (obj && !obj->get_flags().instance_obj)
+    {
+        return nullptr;
+    }
     return obj;
 }
 
@@ -139,19 +128,22 @@ root::smart_object*
 object_load_context::find_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
-    auto c = m_instance_local_set ? m_instance_local_set->map.get_cache(a_type) : nullptr;
+    auto c = m_local_set ? m_local_set->map.get_cache(a_type) : nullptr;
 
     if (c)
     {
         obj = c->get_item(id);
-        if (obj)
-        {
-            return obj;
-        }
     }
 
-    obj = glob::glob_state().getr_model().instance_caches.objects.get_item(id);
+    if (!obj)
+    {
+        obj = glob::glob_state().getr_model().caches.objects.get_item(id);
+    }
 
+    if (obj && !obj->get_flags().instance_obj)
+    {
+        return nullptr;
+    }
     return obj;
 }
 
@@ -159,19 +151,22 @@ root::smart_object*
 object_load_context::find_proto_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
-    auto c = m_proto_local_set ? m_proto_local_set->map.get_cache(a_type) : nullptr;
+    auto c = m_local_set ? m_local_set->map.get_cache(a_type) : nullptr;
 
     if (c)
     {
         obj = c->get_item(id);
-        if (obj)
-        {
-            return obj;
-        }
     }
 
-    obj = glob::glob_state().getr_model().class_caches.objects.get_item(id);
+    if (!obj)
+    {
+        obj = glob::glob_state().getr_model().caches.objects.get_item(id);
+    }
 
+    if (obj && obj->get_flags().instance_obj)
+    {
+        return nullptr;
+    }
     return obj;
 }
 
