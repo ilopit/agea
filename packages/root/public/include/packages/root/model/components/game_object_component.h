@@ -148,9 +148,9 @@ protected:
                     "access=all",
                     "serializable=true",
                     "default=true",
-                    "property_ser_handler=::kryga::root::property_layer_mask__save",
+                    "property_save_handler=::kryga::root::property_layer_mask__save",
                     "property_compare_handler=::kryga::root::property_layer_mask__compare",
-                    "property_load_derive_handler=::kryga::root::property_layer_mask__load");
+                    "property_load_handler=::kryga::root::property_layer_mask__load");
     ::kryga::core::object_layer_flags m_layers =
         ::kryga::core::object_layer_flags::default_static();
 

@@ -94,11 +94,6 @@ private:
     std::expected<root::smart_object*, result_code>
     object_load_internal(serialization::container& c);
 
-    result_code
-    load_derive_object_properties(root::smart_object& from,
-                                  root::smart_object& to,
-                                  const serialization::container& c);
-
     std::expected<root::smart_object*, result_code>
     preload_proto(const utils::id& id);
 
@@ -110,6 +105,11 @@ private:
                        const utils::id& id,
                        root::smart_object_flags flags,
                        root::smart_object* parent_object);
+
+    result_code
+    load_derive_object_properties(root::smart_object& from,
+                                  root::smart_object& to,
+                                  const serialization::container& c);
 
     result_code
     clone_object_properties(root::smart_object& from, root::smart_object& to);

@@ -72,12 +72,12 @@ class TestExtractTypeConfig(unittest.TestCase):
         type_obj = arapi.types.kryga_type(arapi.types.kryga_type_kind.CLASS)
         tokens = [
             'copy_handler=my_copy',
-            'serialize_handler=my_serialize',
+            'save_handler=my_serialize',
             'compare_handler=my_compare'
         ]
         arapi.parser.extract_type_config(type_obj, tokens, self.context)
         self.assertEqual(type_obj.copy_handler, 'my_copy')
-        self.assertEqual(type_obj.serialize_handler, 'my_serialize')
+        self.assertEqual(type_obj.save_handler, 'my_serialize')
         self.assertEqual(type_obj.compare_handler, 'my_compare')
 
     def test_render_cmd_builder(self):
@@ -377,30 +377,30 @@ class TestParseFile(unittest.TestCase):
         with open(test_file, 'w') as f:
             f.write('KRG_ar_class()\n')
             f.write('class TestClass {\n')
-            f.write('  KRG_ar_property("property_ser_handler=ser", "property_compare_handler=cmp", "property_copy_handler=cpy", "property_instantiate_handler=inst", "property_load_derive_handler=load")\n')
+            f.write('  KRG_ar_property("property_save_handler=ser", "property_compare_handler=cmp", "property_copy_handler=cpy", "property_instantiate_handler=inst", "property_load_handler=load")\n')
             f.write('  int m_value;\n')
             f.write('};\n')
-        
+
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         prop = self.context.types[0].properties[0]
-        self.assertEqual(prop.property_ser_handler, "ser")
+        self.assertEqual(prop.property_save_handler, "ser")
         self.assertEqual(prop.property_compare_handler, "cmp")
         self.assertEqual(prop.property_copy_handler, "cpy")
         self.assertEqual(prop.property_instantiate_handler, "inst")
-        self.assertEqual(prop.property_load_derive_handler, "load")
+        self.assertEqual(prop.property_load_handler, "load")
 
     def test_parse_class_with_config(self):
         self.context.model_has_types_overrides = True
         test_file = os.path.join(self.temp_dir, "test.h")
         with open(test_file, 'w') as f:
-            f.write('KRG_ar_class(copy_handler=my_copy, serialize_handler=my_serialize)\n')
+            f.write('KRG_ar_class(copy_handler=my_copy, save_handler=my_serialize)\n')
             f.write('class TestClass {\n')
             f.write('};\n')
 
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         type_obj = self.context.types[0]
         self.assertEqual(type_obj.copy_handler, "my_copy")
-        self.assertEqual(type_obj.serialize_handler, "my_serialize")
+        self.assertEqual(type_obj.save_handler, "my_serialize")
 
     def test_parse_property_invalid_access(self):
         test_file = os.path.join(self.temp_dir, "test.h")
@@ -468,6 +468,31 @@ class TestParseFile(unittest.TestCase):
         
         arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
         self.assertEqual(len(self.context.types), 0)
+
+    def test_unknown_type_metadata_rejected(self):
+        self.context.model_has_types_overrides = True
+        test_file = os.path.join(self.temp_dir, "test.h")
+        with open(test_file, 'w') as f:
+            f.write('KRG_ar_class(bogus_key=some_value)\n')
+            f.write('class TestClass {\n')
+            f.write('};\n')
+
+        with self.assertRaises(arapi.parser.ParserError) as ctx:
+            arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
+        self.assertIn("bogus_key", str(ctx.exception))
+
+    def test_unknown_property_metadata_rejected(self):
+        test_file = os.path.join(self.temp_dir, "test.h")
+        with open(test_file, 'w') as f:
+            f.write('KRG_ar_class()\n')
+            f.write('class TestClass {\n')
+            f.write('  KRG_ar_property("bogus_prop_key=value")\n')
+            f.write('  int m_field;\n')
+            f.write('};\n')
+
+        with self.assertRaises(arapi.parser.InvalidPropertyError) as ctx:
+            arapi.parser.parse_file(test_file, "include/test.h", "test_module", self.context)
+        self.assertIn("bogus_prop_key", str(ctx.exception))
 
     def test_multiple_classes_raises_error(self):
         test_file = os.path.join(self.temp_dir, "test.h")

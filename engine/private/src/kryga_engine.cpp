@@ -335,13 +335,6 @@ vulkan_engine::init(const startup_options& options)
             std::filesystem::create_directories(p.parent_path(), ec);
             disco_path = std::move(p);
         }
-        else if (auto layout = kryga::paths::resolve(); layout && !layout->source_root.empty())
-        {
-            auto p = layout->source_root / "tmp" / "editor_rpc.json";
-            std::error_code ec;
-            std::filesystem::create_directories(p.parent_path(), ec);
-            disco_path = std::move(p);
-        }
         else
         {
             disco_path = glob::glob_state().getr_vfs().real_path(vfs::rid("tmp://editor_rpc.json"));

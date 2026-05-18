@@ -51,8 +51,8 @@ PROP_KEY_REF = "ref"
 PROP_KEY_INVALIDATES = "invalidates"
 PROP_KEY_CHECK = "check"
 PROP_KEY_HINT = "hint"
-PROP_KEY_PROPERTY_SER_HANDLER = "property_ser_handler"
-PROP_KEY_PROPERTY_LOAD_DERIVE_HANDLER = "property_load_derive_handler"
+PROP_KEY_PROPERTY_SAVE_HANDLER = "property_save_handler"
+PROP_KEY_PROPERTY_LOAD_HANDLER = "property_load_handler"
 PROP_KEY_PROPERTY_COMPARE_HANDLER = "property_compare_handler"
 PROP_KEY_PROPERTY_COPY_HANDLER = "property_copy_handler"
 PROP_KEY_PROPERTY_INSTANTIATE_HANDLER = "property_instantiate_handler"
@@ -62,9 +62,8 @@ PROP_KEY_INSTANTIATE_MODE = "instantiate"
 TYPE_KEY_COPY_HANDLER = "copy_handler"
 TYPE_KEY_INSTANTIATE_HANDLER = "instantiate_handler"
 TYPE_KEY_COMPARE_HANDLER = "compare_handler"
-TYPE_KEY_SERIALIZE_HANDLER = "serialize_handler"
-TYPE_KEY_DESERIALIZE_HANDLER = "deserialize_handler"
-TYPE_KEY_LOAD_DERIVE_HANDLER = "load_derive_handler"
+TYPE_KEY_SAVE_HANDLER = "save_handler"
+TYPE_KEY_LOAD_HANDLER = "load_handler"
 TYPE_KEY_ARCHITYPE = "architype"
 TYPE_KEY_BUILT_IN = "built_in"
 TYPE_KEY_RENDER_CMD_BUILDER = "render_cmd_builder"
@@ -177,9 +176,8 @@ _MODEL_TYPE_ATTR_MAP = {
     TYPE_KEY_COPY_HANDLER: 'copy_handler',
     TYPE_KEY_INSTANTIATE_HANDLER: 'instantiate_handler',
     TYPE_KEY_COMPARE_HANDLER: 'compare_handler',
-    TYPE_KEY_SERIALIZE_HANDLER: 'serialize_handler',
-    TYPE_KEY_DESERIALIZE_HANDLER: 'deserialize_handler',
-    TYPE_KEY_LOAD_DERIVE_HANDLER: 'load_derive_handler',
+    TYPE_KEY_SAVE_HANDLER: 'save_handler',
+    TYPE_KEY_LOAD_HANDLER: 'load_handler',
     TYPE_KEY_ARCHITYPE: 'architype',
     TYPE_KEY_JSON_SAVE_HANDLER: 'json_save_handler',
     TYPE_KEY_JSON_LOAD_HANDLER: 'json_load_handler',
@@ -210,19 +208,28 @@ def extract_type_config(type_obj: arapi.types.kryga_type, tokens: List[str],
     key = arapi.utils.extstrip(pairs[0])
     value = arapi.utils.extstrip(pairs[1])
 
+    matched = False
+
     # Model type overrides
     if context.model_has_types_overrides and key in _MODEL_TYPE_ATTR_MAP:
       setattr(type_obj, _MODEL_TYPE_ATTR_MAP[key], value)
+      matched = True
 
     # External type configuration
     if type_obj.kind == arapi.types.kryga_type_kind.EXTERNAL:
       if key == TYPE_KEY_BUILT_IN:
         type_obj.built_in = True
+        matched = True
 
     # Render type overrides
     if context.render_has_types_overrides and type_obj.kind == arapi.types.kryga_type_kind.CLASS:
       if key in _RENDER_TYPE_ATTR_MAP:
         setattr(type_obj, _RENDER_TYPE_ATTR_MAP[key], value)
+        matched = True
+
+    if not matched:
+      raise ParserError(
+          f"Unknown type metadata key '{key}' on type '{type_obj.name}'")
 
 
 def _extract_class_name_from_line(line: str, line_number: int) -> Tuple[str, Optional[str]]:
@@ -421,10 +428,10 @@ def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: 
       if value not in VALID_BOOL_VALUES:
         raise InvalidPropertyError(f"serializable must be 'true' or 'false', got '{value}'")
       prop.serializable = value
-    elif key == PROP_KEY_PROPERTY_SER_HANDLER:
-      prop.property_ser_handler = value
-    elif key == PROP_KEY_PROPERTY_LOAD_DERIVE_HANDLER:
-      prop.property_load_derive_handler = value
+    elif key == PROP_KEY_PROPERTY_SAVE_HANDLER:
+      prop.property_save_handler = value
+    elif key == PROP_KEY_PROPERTY_LOAD_HANDLER:
+      prop.property_load_handler = value
     elif key == PROP_KEY_PROPERTY_COMPARE_HANDLER:
       prop.property_compare_handler = value
     elif key == PROP_KEY_PROPERTY_COPY_HANDLER:

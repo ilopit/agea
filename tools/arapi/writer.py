@@ -649,11 +649,11 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
   if prop.invalidates_render:
     file_buffer.append(f"        p->render_subobject  = std::is_base_of_v<::kryga::root::smart_object, typename std::remove_pointer_t<{prop.type}>>;\n")
 
-  if prop.property_ser_handler != EMPTY_STRING:
-    file_buffer.append(f"        p->save_handler  = {prop.property_ser_handler};\n")
+  if prop.property_save_handler != EMPTY_STRING:
+    file_buffer.append(f"        p->save_handler  = {prop.property_save_handler};\n")
 
-  if prop.property_load_derive_handler != EMPTY_STRING:
-    file_buffer.append(f"        p->load_handler  = {prop.property_load_derive_handler};\n")
+  if prop.property_load_handler != EMPTY_STRING:
+    file_buffer.append(f"        p->load_handler  = {prop.property_load_handler};\n")
 
   if prop.property_compare_handler != EMPTY_STRING:
     file_buffer.append(f"        p->compare_handler  = {prop.property_compare_handler};\n")
@@ -999,11 +999,11 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
   if type_obj.copy_handler:
     file_buffer.append(f"{indent}rt.copy                   = {type_obj.copy_handler};\n")
 
-  if type_obj.serialize_handler:
-    file_buffer.append(f"{indent}rt.save                   = {type_obj.serialize_handler};\n")
+  if type_obj.save_handler:
+    file_buffer.append(f"{indent}rt.save                   = {type_obj.save_handler};\n")
 
-  if type_obj.load_derive_handler:
-    file_buffer.append(f"{indent}rt.load                   = {type_obj.load_derive_handler};\n")
+  if type_obj.load_handler:
+    file_buffer.append(f"{indent}rt.load                   = {type_obj.load_handler};\n")
 
   if type_obj.instantiate_handler:
     file_buffer.append(f"{indent}rt.instantiate            = {type_obj.instantiate_handler};\n")

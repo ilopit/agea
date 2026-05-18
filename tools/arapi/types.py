@@ -22,9 +22,9 @@ class kryga_property:
     self.invalidates_transform = False
     self.check_not_same = False
     self.serializable = "false"
-    self.property_ser_handler = ""
+    self.property_save_handler = ""
     self.property_compare_handler = ""
-    self.property_load_derive_handler = ""
+    self.property_load_handler = ""
     self.property_copy_handler = ""
     self.property_instantiate_handler = ""
     self.instantiate_mode = ""
@@ -58,9 +58,8 @@ class kryga_type:
 
     self.compare_handler = ""
     self.copy_handler = ""
-    self.deserialize_handler = ""
-    self.load_derive_handler = ""
-    self.serialize_handler = ""
+    self.load_handler = ""
+    self.save_handler = ""
     self.instantiate_handler = ""
     self.render_cmd_builder = ""
     self.render_cmd_destroyer = ""

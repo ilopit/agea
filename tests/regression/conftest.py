@@ -6,11 +6,11 @@ Use --level to override the default test level.
 Use --engine-config to select build config (Debug/Release).
 
 Supports pytest-xdist: each worker gets its own engine instance with a
-unique discovery file (tmp/editor_rpc_gw0.json, etc.).
+unique discovery file (build/project_Debug/tmp/editor_rpc_gw0.json, etc.).
 """
 from pathlib import Path
 import pytest
-from .rpc_client import EngineProcess, EngineRPC, PROJECT_ROOT, DEFAULT_DISCOVERY
+from .rpc_client import EngineProcess, EngineRPC, PROJECT_ROOT, _default_discovery
 
 SIMPLE_TEST_LEVEL = "simple_test"
 
@@ -30,11 +30,12 @@ _engine_process: EngineProcess | None = None
 _file_snapshot: dict[Path, bytes] = {}
 
 
-def _worker_discovery_path(worker_id: str) -> Path:
+def _worker_discovery_path(worker_id: str, config: str = "Debug") -> Path:
     """Per-worker discovery file. 'master' (no xdist) uses the default path."""
+    base = _default_discovery(config)
     if worker_id == "master":
-        return DEFAULT_DISCOVERY
-    return PROJECT_ROOT / "tmp" / f"editor_rpc_{worker_id}.json"
+        return base
+    return base.parent / f"editor_rpc_{worker_id}.json"
 
 
 def _snapshot_files(level: str) -> dict[Path, bytes]:
@@ -82,7 +83,7 @@ def engine(request):
     no_auto = request.config.getoption("--no-auto-start")
 
     worker_id = getattr(request.config, "workerinput", {}).get("workerid", "master")
-    disco_path = _worker_discovery_path(worker_id)
+    disco_path = _worker_discovery_path(worker_id, config)
 
     _file_snapshot = _snapshot_files(level)
 

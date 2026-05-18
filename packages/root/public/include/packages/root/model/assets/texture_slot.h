@@ -11,9 +11,8 @@ class sampler;
 KRG_ar_struct(copy_handler                  = texture_slot__copy,
               instantiate_handler            = texture_slot__instantiate,
               compare_handler                = texture_slot__compare,
-              serialize_handler              = texture_slot__save,
-              load_derive_handler            = texture_slot__load,
-              deserialize_handler            = texture_slot__deserialize,
+              save_handler                   = texture_slot__save,
+              load_handler                   = texture_slot__load,
               json_save_handler              = texture_slot__json_save,
               json_load_handler              = texture_slot__json_load);
 struct texture_slot

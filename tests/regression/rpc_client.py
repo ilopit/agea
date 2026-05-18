@@ -18,7 +18,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 UINT32_MAX = 0xFFFFFFFF
 
-DEFAULT_DISCOVERY = PROJECT_ROOT / "tmp" / "editor_rpc.json"
+def _default_discovery(config: str = "Debug") -> Path:
+    return PROJECT_ROOT / "build" / f"project_{config}" / "tmp" / "editor_rpc.json"
+
+DEFAULT_DISCOVERY = _default_discovery()
 
 
 class EngineProcess:
