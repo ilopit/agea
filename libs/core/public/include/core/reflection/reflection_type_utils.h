@@ -72,15 +72,6 @@ cpp_default__save(type_context__save& ctx)
 
 template <typename T>
 result_code
-cpp_default__to_string(type_context__to_string& ctx)
-{
-    auto& t = reflection::utils::as_type<T>(ctx.obj);
-    *ctx.result = std::format("{}", t);
-    return result_code::ok;
-}
-
-template <typename T>
-result_code
 cpp_default__load(type_context__load& ctx)
 {
     reflection::utils::extract_field<T>(ctx.obj, *ctx.jc);

@@ -144,16 +144,6 @@ property::default_load(property_context__load& ctx)
     return result_code::ok;
 }
 
-kryga::result_code
-property::default_to_string(property_context__to_string& ctx)
-{
-    auto from =
-        ::kryga::reflection::reduce_ptr(ctx.prop->get_blob(*ctx.obj), ctx.prop->type.is_ptr);
-
-    type_context__to_string type_ctx{nullptr, from, &ctx.result};
-    return ctx.prop->rtype->to_string(type_ctx);
-}
-
 kryga::blob_ptr
 property::get_blob(root::smart_object& obj)
 {

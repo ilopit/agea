@@ -65,7 +65,6 @@ TYPE_KEY_COMPARE_HANDLER = "compare_handler"
 TYPE_KEY_SERIALIZE_HANDLER = "serialize_handler"
 TYPE_KEY_DESERIALIZE_HANDLER = "deserialize_handler"
 TYPE_KEY_LOAD_DERIVE_HANDLER = "load_derive_handler"
-TYPE_KEY_TO_STRING_HANDLER = "to_string_handler"
 TYPE_KEY_ARCHITYPE = "architype"
 TYPE_KEY_BUILT_IN = "built_in"
 TYPE_KEY_RENDER_CMD_BUILDER = "render_cmd_builder"
@@ -181,7 +180,6 @@ _MODEL_TYPE_ATTR_MAP = {
     TYPE_KEY_SERIALIZE_HANDLER: 'serialize_handler',
     TYPE_KEY_DESERIALIZE_HANDLER: 'deserialize_handler',
     TYPE_KEY_LOAD_DERIVE_HANDLER: 'load_derive_handler',
-    TYPE_KEY_TO_STRING_HANDLER: 'to_string_handler',
     TYPE_KEY_ARCHITYPE: 'architype',
     TYPE_KEY_JSON_SAVE_HANDLER: 'json_save_handler',
     TYPE_KEY_JSON_LOAD_HANDLER: 'json_load_handler',

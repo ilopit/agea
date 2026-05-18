@@ -75,13 +75,6 @@ struct property_context__load
     const serialization::container* sc = nullptr;
 };
 
-struct property_context__to_string
-{
-    property* prop = nullptr;
-    root::smart_object* obj = nullptr;
-    std::string result;
-};
-
 struct property_context__json_get
 {
     property* p = nullptr;
@@ -103,7 +96,6 @@ using property_handler__compare         = result_code(*)(property_context__compa
 using property_handler__copy            = result_code(*)(property_context__copy&);
 using property_handler__instantiate     = result_code(*)(property_context__instantiate&);
 using property_handler__load            = result_code(*)(property_context__load&);
-using property_handler__to_string       = result_code(*)(property_context__to_string&);
 using property_handler__json_get        = result_code(*)(property_context__json_get&);
 using property_handler__json_set        = result_code(*)(property_context__json_set&);
 

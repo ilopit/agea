@@ -1005,9 +1005,6 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
   if type_obj.load_derive_handler:
     file_buffer.append(f"{indent}rt.load                   = {type_obj.load_derive_handler};\n")
 
-  if type_obj.to_string_handler:
-    file_buffer.append(f"{indent}rt.to_string              = {type_obj.to_string_handler};\n")
-
   if type_obj.instantiate_handler:
     file_buffer.append(f"{indent}rt.instantiate            = {type_obj.instantiate_handler};\n")
 

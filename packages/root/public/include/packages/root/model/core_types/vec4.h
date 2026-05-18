@@ -11,7 +11,6 @@ namespace root
 // clang-format off
 KRG_ar_struct(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::kryga::root::vec4>,
                compare_handler     = ::kryga::reflection::utils::cpp_default__compare<::kryga::root::vec4>,
-               to_string_handler   = ::kryga::root::vec4__to_string,
                json_save_handler   = ::kryga::root::vec4__json_save,
                json_load_handler   = ::kryga::root::vec4__json_load);
 struct vec4 : ::glm::vec4

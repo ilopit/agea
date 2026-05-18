@@ -57,39 +57,6 @@ load_smart_object(blob_ptr ptr,
     return result_code::ok;
 }
 
-result_code
-color__save(reflection::type_context__save& ctx)
-{
-    auto& field = reflection::utils::as_type<::kryga::root::color>(ctx.obj);
-    KRG_unused(field);
-
-    return result_code::ok;
-}
-
-result_code
-color__load(reflection::type_context__load& ctx)
-{
-    auto str_color = ctx.jc->as<std::string>();
-
-    if (str_color.empty())
-    {
-        ALOG_LAZY_ERROR;
-        return result_code::failed;
-    }
-
-    uint8_t rgba[4] = {0, 0, 0, 255};
-
-    kryga::string_utils::convert_hex_string_to_bytes(8, str_color.data(), rgba);
-
-    auto& field = reflection::utils::as_type<::kryga::root::color>(ctx.obj);
-
-    field.m_data.r = rgba[0] ? (rgba[0] / 255.f) : 0.f;
-    field.m_data.g = rgba[1] ? (rgba[1] / 255.f) : 0.f;
-    field.m_data.b = rgba[2] ? (rgba[2] / 255.f) : 0.f;
-    field.m_data.a = rgba[3] ? (rgba[3] / 255.f) : 0.f;
-
-    return result_code::ok;
-}
 
 result_code
 smart_obj__copy(reflection::type_context__copy& ctx)
@@ -140,16 +107,6 @@ kryga::result_code
 smart_obj__load(reflection::type_context__load& ctx)
 {
     return load_smart_object(ctx.obj, *ctx.jc, *ctx.ctor, core::architype::smart_object);
-}
-
-kryga::result_code
-smart_obj__to_string(reflection::type_context__to_string& ctx)
-{
-    auto field = reflection::utils::as_type<::kryga::root::smart_object*>(ctx.obj);
-
-    *ctx.result = field ? field->get_id().str() : "empty";
-
-    return result_code::ok;
 }
 
 kryga::result_code
@@ -390,16 +347,6 @@ buffer__copy(reflection::type_context__copy& ctx)
     return result_code::ok;
 }
 
-kryga::result_code
-buffer__to_string(reflection::type_context__to_string& ctx)
-{
-    auto& field = reflection::utils::as_type<::kryga::utils::buffer>(ctx.obj);
-
-    *ctx.result = field.get_file().str();
-
-    return result_code::ok;
-}
-
 //
 // // ========  ID  ====================================
 kryga::result_code
@@ -413,25 +360,6 @@ kryga::result_code
 id__load(reflection::type_context__load& ctx)
 {
     kryga::reflection::utils::as_type<kryga::utils::id>(ctx.obj) = AID(ctx.jc->as<std::string>());
-    return kryga::result_code::ok;
-}
-
-kryga::result_code
-id__to_string(reflection::type_context__to_string& ctx)
-{
-    *ctx.result = kryga::reflection::utils::as_type<kryga::utils::id>(ctx.obj).str();
-    return kryga::result_code::ok;
-}
-
-// ========  VEC2  ====================================
-
-kryga::result_code
-vec2__to_string(reflection::type_context__to_string& ctx)
-{
-    auto& field = kryga::reflection::utils::as_type<::kryga::root::vec2>(ctx.obj);
-
-    *ctx.result = std::format("{} {}", field.x, field.y);
-
     return kryga::result_code::ok;
 }
 
@@ -456,28 +384,6 @@ vec3__load(reflection::type_context__load& ctx)
     field.x = (*ctx.jc)["x"].as<float>();
     field.y = (*ctx.jc)["y"].as<float>();
     field.z = (*ctx.jc)["z"].as<float>();
-
-    return kryga::result_code::ok;
-}
-
-kryga::result_code
-vec3__to_string(reflection::type_context__to_string& ctx)
-{
-    auto& field = kryga::reflection::utils::as_type<::kryga::root::vec3>(ctx.obj);
-
-    *ctx.result = std::format("{} {} {}", field.x, field.y, field.z);
-
-    return kryga::result_code::ok;
-}
-
-// ========  VEC4  ====================================
-
-kryga::result_code
-vec4__to_string(reflection::type_context__to_string& ctx)
-{
-    auto& field = kryga::reflection::utils::as_type<::kryga::root::vec4>(ctx.obj);
-
-    *ctx.result = std::format("{} {} {} {}", field.x, field.y, field.z, field.w);
 
     return kryga::result_code::ok;
 }

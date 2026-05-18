@@ -61,7 +61,6 @@ class kryga_type:
     self.deserialize_handler = ""
     self.load_derive_handler = ""
     self.serialize_handler = ""
-    self.to_string_handler = ""
     self.instantiate_handler = ""
     self.render_cmd_builder = ""
     self.render_cmd_destroyer = ""

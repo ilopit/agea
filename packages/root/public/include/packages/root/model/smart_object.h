@@ -113,8 +113,7 @@ KRG_ar_class(architype                      = smart_object,
               instantiate_handler            = smart_obj__instantiate,
               compare_handler                = smart_obj__compare,
               serialize_handler              = smart_obj__save,
-              load_derive_handler            = smart_obj__load,
-              to_string_handler              = smart_obj__to_string);
+              load_derive_handler            = smart_obj__load);
 class smart_object
 // clang-format on
 {

@@ -2,8 +2,7 @@
 
 // Reflection-driven JSON encoding/decoding for the editor RPC. Walks
 // reflection_type::m_editor_properties and converts known primitive types
-// (bool/i*/u*/f*/string/id/vec*) to JSON. Unknown types fall back to
-// to_string_handler with readonly=true.
+// (bool/i*/u*/f*/string/id/vec*) to JSON.
 
 #include <json/json.h>
 

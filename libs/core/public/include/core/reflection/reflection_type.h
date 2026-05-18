@@ -65,13 +65,6 @@ struct type_context__compare
     blob_ptr right_obj = nullptr;
 };
 
-struct type_context__to_string
-{
-    root::smart_object* owner_obj = nullptr;
-    blob_ptr obj = nullptr;
-    std::string* result = nullptr;
-};
-
 struct type_context__render_cmd_build
 {
     render_bridge* rb = nullptr;
@@ -106,7 +99,6 @@ using type_handler__load = result_code (*)(type_context__load&);
 using type_handler__copy = result_code (*)(type_context__copy&);
 using type_handler__instantiate = result_code (*)(type_context__copy&);
 using type_handler__compare = result_code (*)(type_context__compare&);
-using type_handler__to_string = result_code (*)(type_context__to_string&);
 using type_handler__render_cmd_builder = result_code (*)(type_context__render_cmd_build&);
 using type_handler__render_cmd_destroyer = result_code (*)(type_context__render_cmd_build&);
 using type_handler__gpu_pack = void (*)(const void* src, void* dst);
@@ -169,7 +161,6 @@ struct reflection_type
     type_handler__copy                          copy = nullptr;
     type_handler__instantiate                   instantiate = nullptr;
     type_handler__compare                       compare = nullptr;
-    type_handler__to_string                     to_string = nullptr;
 
     // Editor RPC wire format. Optional — if either is null the RPC layer
     // logs and skips the field. Defaults registered for primitives + vec*
