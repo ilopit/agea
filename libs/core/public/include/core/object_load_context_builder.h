@@ -1,23 +1,31 @@
 #pragma once
 
 #include "core/object_load_context.h"
-
-#include <memory>
+#include "core/container.h"
 
 namespace kryga
 {
 namespace core
 {
+
 class object_load_context_builder
 {
 public:
     // clang-format off
-    object_load_context_builder& set_local_set         (cache_set* v)                              { m_local_set = v; return *this; }
-    object_load_context_builder& set_level              (level* v)                                  { m_level = v; return *this; }
-    object_load_context_builder& set_ownable_cache      (line_cache<root::smart_object_ptr>* v)     { m_ownable_cache = v; return *this; }
-    object_load_context_builder& set_package            (package* v)                                { m_package = v; return *this; }
-    object_load_context_builder& set_vfs_mount          (const vfs::rid& v)                         { m_vfs_root = v; return *this; }
+    object_load_context_builder& set_local_set     (cache_set* v)                               { m_local_set = v; return *this; }
+    object_load_context_builder& set_level          (level* v)                                  { m_level = v; return *this; }
+    object_load_context_builder& set_ownable_cache  (line_cache<root::smart_object_ptr>* v)     { m_ownable_cache = v; return *this; }
+    object_load_context_builder& set_package        (package* v)                                { m_package = v; return *this; }
+    object_load_context_builder& set_vfs_mount      (const vfs::rid& v)                         { m_vfs_root = v; return *this; }
     // clang-format on
+
+    object_load_context_builder&
+    set_from_container(container& c)
+    {
+        m_local_set = &c.get_local_cache();
+        m_ownable_cache = &c.get_objects();
+        return *this;
+    }
 
     std::unique_ptr<object_load_context>
     build()
@@ -43,5 +51,6 @@ private:
     package* m_package = nullptr;
     vfs::rid m_vfs_root;
 };
+
 }  // namespace core
 }  // namespace kryga

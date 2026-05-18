@@ -1,4 +1,4 @@
 ---
-type_id: mesh_object
+proto_id: mesh_object
 id: flight_helmet
 class_obj: true

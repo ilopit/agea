@@ -1,4 +1,4 @@
-type_id: shader_effect
+proto_id: shader_effect
 id: se_simple_texture
 vert: class/shader_effects/se_simple_texture.vert
 is_vert_binary: false

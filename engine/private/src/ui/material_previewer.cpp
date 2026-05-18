@@ -714,26 +714,18 @@ material_previewer::save_edit(const utils::id& material_id)
 
     auto& class_mat = class_obj->asr<root::material>();
 
-    auto& vfs = glob::glob_state().getr_vfs();
     auto* pkg = class_obj->get_package();
     KRG_check(pkg, "class material has no package");
 
-    auto found = vfs.find_object(pkg->get_vfs_root(), material_id.str());
-    if (found)
-    {
-        auto phys = vfs.real_path(*found);
-        if (phys)
-        {
-            core::object_constructor::object_save(*class_obj, utils::path(phys->string()));
-        }
-    }
+    core::object_constructor ctor(&pkg->get_load_context());
+    ctor.save_obj(*class_obj);
 
     auto& loader = glob::glob_state().getr_render().loader;
     loader.destroy_material_data(session.instance_id);
 
     auto& model = glob::glob_state().getr_model();
-    auto& olc = pkg->get_load_context();
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
+    core::object_constructor inst_ctor(&pkg->get_load_context(),
+                                       core::object_load_type::instance_obj);
 
     model.caches.materials.call_on_items(
         [&](root::material* inst_mat)
@@ -756,19 +748,17 @@ material_previewer::save_edit(const utils::id& material_id)
                 {
                     continue;
                 }
-                auto& src_ts =
-                    *reinterpret_cast<const root::texture_slot*>(src_blob + p->offset);
+                auto& src_ts = *reinterpret_cast<const root::texture_slot*>(src_blob + p->offset);
                 auto& dst_ts = *reinterpret_cast<root::texture_slot*>(dst_blob + p->offset);
 
                 dst_ts.slot = src_ts.slot;
 
                 if (src_ts.txt)
                 {
-                    auto* inst_txt =
-                        model.caches.textures.get_item(src_ts.txt->get_id());
+                    auto* inst_txt = model.caches.textures.get_item(src_ts.txt->get_id());
                     if (!inst_txt)
                     {
-                        auto r = ctor.instantiate_obj(*src_ts.txt, src_ts.txt->get_id());
+                        auto r = inst_ctor.instantiate_obj(*src_ts.txt, src_ts.txt->get_id());
                         if (r)
                         {
                             inst_txt = r.value()->as<root::texture>();
@@ -783,8 +773,7 @@ material_previewer::save_edit(const utils::id& material_id)
 
                 if (src_ts.smp)
                 {
-                    auto* inst_smp =
-                        model.caches.samplers.get_item(src_ts.smp->get_id());
+                    auto* inst_smp = model.caches.samplers.get_item(src_ts.smp->get_id());
                     if (inst_smp)
                     {
                         dst_ts.smp = inst_smp;

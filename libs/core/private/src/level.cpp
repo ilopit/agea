@@ -5,7 +5,6 @@
 #include <core/caches/caches_map.h>
 #include <core/model_system.h>
 #include <core/object_load_context_builder.h>
-#include <core/object_load_context_v2_builder.h>
 #include <core/object_constructor.h>
 #include <core/queues.h>
 #include <global_state/global_state.h>
@@ -20,11 +19,6 @@ level::level(const utils::id& id)
     : container(id)
 {
     m_occ = object_load_context_builder()
-                .set_local_set(&m_local_cs)
-                .set_ownable_cache(&m_objects)
-                .set_level(this)
-                .build();
-    m_occ_v2 = object_load_context_v2_builder()
                 .set_local_set(&m_local_cs)
                 .set_ownable_cache(&m_objects)
                 .set_level(this)
@@ -66,7 +60,7 @@ level::spawn_object_impl(const utils::id& proto_id,
                          const utils::id& object_id,
                          const spawn_parameters& prms)
 {
-    auto proto_obj = m_occ->find_proto_obj(proto_id);
+    auto proto_obj = m_occ->find_obj(proto_id);
 
     if (!proto_obj)
     {

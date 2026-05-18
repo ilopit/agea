@@ -1,4 +1,4 @@
-type_id: solid_color_material 
+proto_id: solid_color_material 
 id: mt_solid_color_2
 shader_effect: se_solid_color
 ambient:

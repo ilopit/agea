@@ -3,6 +3,7 @@
 #include <serialization/serialization_fwds.h>
 
 #include "core/object_load_type.h"
+#include "core/construction_utils.h"
 #include "core/model_minimal.h"
 #include "core/model_fwds.h"
 
@@ -19,36 +20,21 @@ namespace kryga
 namespace reflection
 {
 class property;
-}
+}  // namespace reflection
 
 namespace core
 {
 
-static inline const auto ks_class_default = root::smart_object_flags{.instance_obj = false,
-                                                                     .derived_obj = false,
-                                                                     .runtime_obj = true,
-                                                                     .mirror_obj = false,
-                                                                     .default_obj = true,
-                                                                     .readonly = true};
+class object_load_context;
 
-static inline const auto ks_class_derived = root::smart_object_flags{.instance_obj = false,
-                                                                     .derived_obj = true,
-                                                                     .runtime_obj = false,
-                                                                     .mirror_obj = false,
-                                                                     .default_obj = false,
-                                                                     .readonly = true};
-
-static inline const auto ks_instance_derived = root::smart_object_flags{.instance_obj = true,
-                                                                        .derived_obj = true,
-                                                                        .runtime_obj = false,
-                                                                        .mirror_obj = false,
-                                                                        .default_obj = false};
+struct name_of
+{
+    utils::id pattern;
+};
 
 class object_constructor
 {
 public:
-    // Public API
-
     object_constructor(object_load_context* olc,
                        object_load_type mode = object_load_type::class_obj)
         : m_olc(olc)
@@ -68,23 +54,24 @@ public:
         return m_mode;
     }
 
-    std::expected<root::smart_object*, result_code>
-    load_package_obj(const utils::id& id);
+    // --- Loading ---
 
-    std::expected<root::smart_object*, result_code>
-    load_level_obj(const utils::id& id);
-
-    // Context-aware load — dispatches based on construction type stack
     std::expected<root::smart_object*, result_code>
     load_obj(const utils::id& id);
 
     std::expected<root::smart_object*, result_code>
-    load_obj(serialization::container& c);
+    load_sub_object(serialization::container& c);
+
+    // --- Saving ---
+
+    result_code
+    save_obj(const root::smart_object& obj);
+
+    // --- Instantiation ---
 
     std::expected<root::smart_object*, result_code>
     instantiate_obj(root::smart_object& proto, const utils::id& new_id);
 
-    // Uses construction type from stack to determine flags
     std::expected<root::smart_object*, result_code>
     clone_obj(root::smart_object& src, const utils::id& new_id);
 
@@ -92,40 +79,18 @@ public:
     construct_obj(const utils::id& type_id,
                   const utils::id& id,
                   const root::smart_object::construct_params& params,
-                  bool is_proto = false);
+                  bool is_proto);
 
-    // Static utilities (no OLC context needed)
+    std::expected<root::smart_object*, result_code>
+    construct_obj(const utils::id& type_id,
+                  name_of name,
+                  const root::smart_object::construct_params& params,
+                  bool is_proto);
 
-    static result_code
-    diff_object_properties(const root::smart_object& left,
-                           const root::smart_object& right,
-                           std::vector<reflection::property*>& diff);
-
-    static result_code
-    object_save(const root::smart_object& obj, const utils::path& object_path);
-
-    static result_code
-    object_properties_save(const root::smart_object& obj, serialization::container& jc);
-
-    template <typename T>
-    static std::shared_ptr<T>
-    alloc_empty_object(const utils::id& id = T::AR_TYPE_id())
-    {
-        return T::AR_TYPE_create_empty_obj(id);
-    }
-
-    template <typename T>
-    static result_code
-    destroy_default_class_obj_impl(object_load_context& occ)
-    {
-        destroy_default_class_obj_impl(T::AR_TYPE_reflection().type_name, occ);
-        return result_code::ok;
-    }
-
-private:
     std::expected<root::smart_object*, result_code>
     create_default_class_obj_impl(reflection::reflection_type* rt);
 
+private:
     std::expected<root::smart_object*, result_code>
     object_load_internal(serialization::container& c);
 
@@ -151,15 +116,6 @@ private:
 
     result_code
     instantiate_object_properties(root::smart_object& from, root::smart_object& to);
-
-    static result_code
-    destroy_default_class_obj_impl(const utils::id& id, object_load_context& olc);
-
-    static result_code
-    object_save_full(serialization::container& sc, const root::smart_object& obj);
-
-    static result_code
-    object_save_internal(serialization::container& sc, const root::smart_object& obj);
 
     object_load_context* m_olc = nullptr;
     object_load_type m_mode = object_load_type::class_obj;

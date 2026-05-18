@@ -1236,7 +1236,7 @@ def write_object_model_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/lua_api.h>
-#include <core/object_constructor.h>
+#include <core/construction_utils.h>
 #include <core/package_manager.h>
 #include <core/package.h>
 
@@ -1452,7 +1452,7 @@ def write_render_types_reflection(package_ar_file: str, fc: arapi.types.file_con
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/reflection_type_utils.h>
 #include <core/reflection/lua_api.h>
-#include <core/object_constructor.h>
+#include <core/construction_utils.h>
 #include <core/package_manager.h>
 #include <core/package.h>
 #include <glue/type_ids.ar.h>

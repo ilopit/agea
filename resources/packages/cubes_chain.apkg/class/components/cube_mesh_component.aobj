@@ -1,4 +1,4 @@
-type_id: mesh_component
+proto_id: mesh_component
 id: cube_mesh_component
 material: mt_red
 mesh: cube_mesh

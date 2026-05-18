@@ -1,4 +1,4 @@
-type_id: shader_effect
+proto_id: shader_effect
 id: se_uioverlay
 vert: class/shader_effects/ui/se_uioverlay.vert
 is_vert_binary: false

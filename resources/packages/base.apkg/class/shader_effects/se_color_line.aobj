@@ -1,4 +1,4 @@
-type_id: shader_effect
+proto_id: shader_effect
 id: se_color_line
 vert: class/shader_effects/se_color_line.vert
 is_vert_binary: false

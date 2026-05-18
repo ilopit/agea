@@ -10,7 +10,7 @@ namespace kryga::root
 result_code
 load_smart_object(blob_ptr ptr,
                   const serialization::container& jc,
-                  core::object_load_context& occ,
+                  core::object_constructor& ctor,
                   core::architype a_type);
 
 result_code color__save(reflection::type_context__save& ctx);

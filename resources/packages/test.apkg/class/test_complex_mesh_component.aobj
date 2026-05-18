@@ -1,4 +1,4 @@
-type_id: mesh_component
+proto_id: mesh_component
 id: test_complex_mesh_component
 material: test_material
 mesh: test_mesh

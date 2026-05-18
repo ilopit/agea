@@ -1,4 +1,4 @@
-type_id: directional_light_component
+proto_id: directional_light_component
 id: directional_light_component
 ambient:
   x: 0.8

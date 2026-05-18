@@ -1,11 +1,11 @@
-type_id: mesh_object
+proto_id: mesh_object
 id: ground_plane
 layout: [-1, 0]
 components:
   - id: ground_plane_root_component
-    type_id: game_object_component
+    proto_id: game_object_component
   - id: ground_plane_mesh
-    type_id: mesh_component
+    proto_id: mesh_component
     material: mt_toon
     mesh: cube_mesh
     position:

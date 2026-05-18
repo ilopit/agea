@@ -18,9 +18,13 @@ reflection_type::reflection_type(int i, const kryga::utils::id& n)
 
 reflection_type::~reflection_type()
 {
-    auto& rm = glob::glob_state().getr_model().reflection;
+    auto* model = glob::glob_state().get_model();
+    if (!model)
+    {
+        return;
+    }
 
-    rm.unload_type(type_id, type_name);
+    model->reflection.unload_type(type_id, type_name);
 }
 
 void

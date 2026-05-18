@@ -1,7 +1,5 @@
 #include "core/container.h"
 
-#include "core/object_load_context.h"
-
 namespace kryga
 {
 namespace core
@@ -64,12 +62,6 @@ void
 container::set_occ(std::unique_ptr<object_load_context> occ)
 {
     m_occ = std::move(occ);
-}
-
-void
-container::set_occ_v2(std::unique_ptr<object_load_context_v2> occ)
-{
-    m_occ_v2 = std::move(occ);
 }
 
 }  // namespace core

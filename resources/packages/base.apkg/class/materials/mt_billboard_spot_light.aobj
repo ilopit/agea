@@ -1,4 +1,4 @@
-type_id: simple_texture_material
+proto_id: simple_texture_material
 id: mt_billboard_spot_light
 shader_effect: se_texture_billboard
 simple_texture:

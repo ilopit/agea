@@ -69,7 +69,9 @@ public:
     KRG_ar_property("category=Test", "serializable=true", "instantiate=share");
     smart_object* m_obj_share = nullptr;
 
-    // Accessor for the test component (first subcomponent after root).
+    test_root_component*
+    add_test_component(component* parent, const utils::id& name);
+
     test_root_component*
     get_test_component();
 };

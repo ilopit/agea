@@ -1,4 +1,4 @@
-type_id: mesh_component
+proto_id: mesh_component
 id: flight_helmet_Lenses_low
 material: LensesMat
 mesh: Lenses_low_mesh

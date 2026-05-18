@@ -180,8 +180,8 @@ public:
 
     // Build OLC without mounting a VFS backend. Use when the package will be
     // populated from in-memory construction (e.g. asset conversion) and written
-    // to disk via object_constructor::object_save, rather than loaded from an
-    // existing .apkg directory. State is left unloaded; caller may set as needed.
+    // to disk via save_obj, rather than loaded from an existing .apkg directory.
+    // State is left unloaded; caller may set as needed.
     void
     init_for_conversion();
 
@@ -209,14 +209,13 @@ public:
     void
     unregister_in_global_cache();
 
-
     friend class package_types_builder;
 
     template <typename T>
     result_code
     destroy_default_class_obj()
     {
-        return object_constructor::destroy_default_class_obj_impl<T>(*m_occ);
+        return core::destroy_default_class_obj<T>(*m_occ);
     }
 
     template <typename T>
@@ -332,7 +331,6 @@ private:
     package_state m_state = package_state::unloaded;
     package_type m_type = package_type::pt_nan;
     vfs::backend* m_backend = nullptr;
-
 
     std::unique_ptr<package_types_builder> m_type_builder;
     std::unique_ptr<package_types_custom_loader> m_types_custom_loader;

@@ -34,10 +34,10 @@ public:
 
     cache_set caches;
 
+    reflection::reflection_type_registry reflection;
+    id_generator id_gen;
     level_manager levels;
     package_manager packages;
-    id_generator id_gen;
-    reflection::reflection_type_registry reflection;
 
     level* current_level = nullptr;
 };

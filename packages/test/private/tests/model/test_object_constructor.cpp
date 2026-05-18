@@ -120,7 +120,7 @@ TEST_F(test_object_constructor, load_simple_class_object)
     setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("test_obj"));
+    auto result = ctor.load_obj(AID("test_obj"));
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -135,8 +135,8 @@ TEST_F(test_object_constructor, load_returns_cached_on_second_call)
     setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
-    auto result1 = ctor.load_package_obj(AID("test_obj"));
-    auto result2 = ctor.load_package_obj(AID("test_obj"));
+    auto result1 = ctor.load_obj(AID("test_obj"));
+    auto result2 = ctor.load_obj(AID("test_obj"));
 
     ASSERT_TRUE(result1.has_value());
     ASSERT_TRUE(result2.has_value());
@@ -149,7 +149,7 @@ TEST_F(test_object_constructor, load_nonexistent_object_fails)
     setup_test_level_path(lc);
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("nonexistent_object"));
+    auto result = ctor.load_obj(AID("nonexistent_object"));
 
     ASSERT_FALSE(result.has_value());
     ASSERT_EQ(result.error(), result_code::path_not_found);
@@ -161,7 +161,7 @@ TEST_F(test_object_constructor, load_invalid_path_fails)
     setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("does_not_exist"));
+    auto result = ctor.load_obj(AID("does_not_exist"));
 
     ASSERT_FALSE(result.has_value());
 }
@@ -171,7 +171,7 @@ TEST_F(test_object_constructor, load_default_class_object_by_type_id)
     auto& lc = test::package::instance().get_load_context();
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("game_object"));
+    auto result = ctor.load_obj(AID("game_object"));
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
@@ -184,8 +184,8 @@ TEST_F(test_object_constructor, load_default_class_returns_cached)
     auto& lc = test::package::instance().get_load_context();
 
     core::object_constructor ctor(&lc);
-    auto result1 = ctor.load_package_obj(AID("game_object"));
-    auto result2 = ctor.load_package_obj(AID("game_object"));
+    auto result1 = ctor.load_obj(AID("game_object"));
+    auto result2 = ctor.load_obj(AID("game_object"));
 
     ASSERT_TRUE(result1.has_value());
     ASSERT_TRUE(result2.has_value());
@@ -198,7 +198,7 @@ TEST_F(test_object_constructor, load_complex_object_with_dependencies)
     setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("test_complex_mesh_object"));
+    auto result = ctor.load_obj(AID("test_complex_mesh_object"));
 
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
@@ -227,7 +227,7 @@ TEST_F(test_object_constructor, load_produces_class_flags)
     setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("test_obj"));
+    auto result = ctor.load_obj(AID("test_obj"));
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
@@ -243,7 +243,7 @@ TEST_F(test_object_constructor, load_sets_package)
     setup_test_backend(lc);
 
     core::object_constructor ctor(&lc);
-    auto result = ctor.load_package_obj(AID("test_obj"));
+    auto result = ctor.load_obj(AID("test_obj"));
 
     ASSERT_TRUE(result.has_value());
     ASSERT_EQ(result.value()->get_package(), lc.get_package());

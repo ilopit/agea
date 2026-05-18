@@ -1,5 +1,5 @@
 ---
-type_id: mesh
+proto_id: mesh
 id: cube_mesh
 vertices: class/meshes/cube_mesh.avrt
 indices: class/meshes/cube_mesh.aind

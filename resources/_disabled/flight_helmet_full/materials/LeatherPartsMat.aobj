@@ -1,4 +1,4 @@
-type_id: simple_texture_material
+proto_id: simple_texture_material
 id: LeatherPartsMat
 shader_effect: se_simple_texture_lit
 simple_texture:

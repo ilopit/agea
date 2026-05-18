@@ -95,6 +95,11 @@ public:
     std::optional<rid>
     find_object(const rid& scope, std::string_view name) const;
 
+    // Register a saved object in the backend's file index so subsequent
+    // find_object calls can resolve it without remounting.
+    bool
+    register_object(const rid& scope, std::string_view name, std::string_view relative_path);
+
     // Iterate indexed objects for a specific backend, or merge all at scope.
     using object_visitor = std::function<bool(std::string_view name, const rid& path)>;
     void

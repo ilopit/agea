@@ -3,7 +3,6 @@
 #include "core/caches/caches_map.h"
 
 #include "core/object_load_context_builder.h"
-#include "core/object_load_context_v2_builder.h"
 #include "core/object_constructor.h"
 
 #include <utils/kryga_log.h>
@@ -69,11 +68,6 @@ package::init()
                 .set_local_set(&m_local_cs)
                 .set_ownable_cache(&m_objects)
                 .build();
-    m_occ_v2 = object_load_context_v2_builder()
-                .set_package(this)
-                .set_local_set(&m_local_cs)
-                .set_ownable_cache(&m_objects)
-                .build();
 
     auto vfs_root = vfs_paths::package_root(m_id);
     KRG_check(vfs_paths::is_valid_package_root(vfs_root), "Package must be under data://packages/");
@@ -131,11 +125,6 @@ void
 package::init_for_conversion()
 {
     m_occ = object_load_context_builder()
-                .set_package(this)
-                .set_local_set(&m_local_cs)
-                .set_ownable_cache(&m_objects)
-                .build();
-    m_occ_v2 = object_load_context_v2_builder()
                 .set_package(this)
                 .set_local_set(&m_local_cs)
                 .set_ownable_cache(&m_objects)
@@ -242,7 +231,7 @@ package::load_dynamic_part()
         [&](std::string_view name, const vfs::rid&) -> bool
         {
             auto id = AID(std::string(name));
-            (void)ctor.load_package_obj(id);
+            (void)ctor.load_obj(id);
             return true;
         },
         m_backend);
@@ -304,9 +293,9 @@ package::create_default_types_objects()
     for (auto& [id, rt] : m_rts)
     {
         if (rt->type_class == reflection::reflection_type::reflection_type_class::kryga_class &&
-            !m_occ->find_proto_obj(id))
+            !m_occ->find_obj(id))
         {
-            auto result = ctor.load_package_obj(id);
+            auto result = ctor.load_obj(id);
             if (!result)
             {
                 ALOG_ERROR("Failed to create default type object for {}", id.str());

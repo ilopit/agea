@@ -60,7 +60,7 @@ game_object_components_prototype(::kryga::reflection::property_context__prototyp
     {
         auto item = items[i];
 
-        auto result = ctx.ctor->load_obj(item);
+        auto result = ctx.ctor->load_sub_object(item);
 
         if (!result || !result.value() ||
             result.value()->get_architype_id() != core::architype::component)
@@ -101,14 +101,14 @@ game_object_components_save(::kryga::reflection::property_context__save& dc)
         component_container["id"] = id;
 
         auto pid = obj_component->get_class_obj()->get_id().str();
-        component_container["type_id"] = pid;
+        component_container["proto_id"] = pid;
 
         reflection::property_context__save internal_sc{
             nullptr, obj_component, &component_container};
         std::vector<reflection::property*> diff;
 
-        if (auto rc = core::object_constructor::diff_object_properties(
-                *obj_component->get_class_obj(), *obj_component, diff);
+        if (auto rc =
+                core::diff_object_properties(*obj_component->get_class_obj(), *obj_component, diff);
             rc != result_code::ok)
         {
             return rc;
@@ -244,14 +244,28 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
         {
             auto item = components[i];
 
-            auto result = ctx.ctor->load_obj(item);
+            if (item["id"].IsDefined())
+            {
+                auto comp_id = AID(item["id"].as<std::string>());
+                if (glob::glob_state().getr_model().caches.objects.get_item(comp_id))
+                {
+                    ALOG_ERROR(
+                        "Component [{}] already exists at index [{}] — "
+                        "inline component conflicts with cached object",
+                        item["id"].as<std::string>(),
+                        i);
+                    return result_code::failed;
+                }
+            }
+
+            auto result = ctx.ctor->load_sub_object(item);
 
             if (!result || !result.value() ||
                 result.value()->get_architype_id() != core::architype::component)
             {
                 auto comp_id = item["id"].IsDefined() ? item["id"].as<std::string>() : "unknown";
                 auto comp_class =
-                    item["type_id"].IsDefined() ? item["type_id"].as<std::string>() : "unknown";
+                    item["proto_id"].IsDefined() ? item["proto_id"].as<std::string>() : "unknown";
                 ALOG_ERROR(
                     "Failed to load component [{}] (class [{}]) at index [{}] for object [{}]",
                     comp_id,
@@ -262,6 +276,18 @@ game_object_components__load(::kryga::reflection::property_context__load& ctx)
             }
 
             dst_components[i] = result.value()->as<root::component>();
+
+            auto* comp_class = dst_components[i]->get_class_obj();
+            if (comp_class && comp_class->get_flags().instance_obj)
+            {
+                auto comp_id = item["id"].IsDefined() ? item["id"].as<std::string>() : "unknown";
+                ALOG_ERROR("Component [{}] type_id references instance [{}] at index [{}]",
+                           comp_id,
+                           comp_class->get_id().cstr(),
+                           i);
+                return result_code::failed;
+            }
+
             dst_components[i]->set_order_parent_idx(i, layout[i].as<int>());
         }
     }

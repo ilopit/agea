@@ -19,7 +19,7 @@ struct test_game_object_structure : base_test
     auto
     aeo(const utils::id& id)
     {
-        return core::object_constructor::alloc_empty_object<T>(id);
+        return core::alloc_empty_object<T>(id);
     }
 };
 

@@ -420,6 +420,29 @@ virtual_file_system::find_object(const rid& scope, std::string_view name) const
     return std::nullopt;
 }
 
+bool
+virtual_file_system::register_object(const rid& scope,
+                                     std::string_view name,
+                                     std::string_view relative_path)
+{
+    for (auto& e : m_mounts)
+    {
+        if (e.mount_point != scope.mount_point())
+        {
+            continue;
+        }
+
+        if (!scope.relative().empty() && e.scope != scope.relative())
+        {
+            continue;
+        }
+
+        return e.be->m_index.add(name, relative_path);
+    }
+
+    return false;
+}
+
 void
 virtual_file_system::enumerate_objects(const rid& scope,
                                        const object_visitor& visitor,

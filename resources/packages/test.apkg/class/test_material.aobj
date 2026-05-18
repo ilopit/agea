@@ -1,4 +1,4 @@
-type_id: simple_texture_material
+proto_id: simple_texture_material
 id: test_material
 shader_effect: shader_effect
 simple_texture:

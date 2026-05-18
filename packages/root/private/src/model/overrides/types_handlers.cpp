@@ -11,8 +11,9 @@
 
 #include <core/reflection/property_utils.h>
 #include <core/caches/cache_set.h>
-#include <core/object_load_context.h>
 #include <core/object_constructor.h>
+#include <core/model_system.h>
+#include <core/id_generator.h>
 #include <core/package.h>
 #include <core/reflection/reflection_type_utils.h>
 
@@ -111,13 +112,9 @@ smart_obj__instantiate(reflection::type_context__copy& ctx)
 
     KRG_check(!dst_subobj, "dst_subobj");
 
-    if (src_subobj->get_flags().readonly)
-    {
-        dst_subobj = src_subobj;
-        return result_code::ok;
-    }
-
-    auto result = ctx.ctor->instantiate_obj(*src_subobj, src_subobj->get_id());
+    auto& id_gen = glob::glob_state().getr_model().id_gen;
+    auto new_id = id_gen.generate(src_subobj->get_id());
+    auto result = ctx.ctor->instantiate_obj(*src_subobj, new_id);
     if (!result)
     {
         return result.error();

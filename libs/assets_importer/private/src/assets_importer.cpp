@@ -9,7 +9,8 @@
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/texture.h>
 
-#include <core/object_constructor.h>
+#include <core/construction_utils.h>
+#include <core/reflection/reflection_type.h>
 #include <core/package.h>
 
 #include <serialization/serialization.h>
@@ -73,7 +74,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
     indices.set_file(dst_folder_path / APATH("class/meshes") / ind_ext);
 
     auto full_obj_path = dst_folder_path / APATH("class/meshes") / obj_ext;
-    auto obj = core::object_constructor::alloc_empty_object<root::mesh>();
+    auto obj = core::alloc_empty_object<root::mesh>();
 
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
@@ -85,7 +86,17 @@ convert_3do_to_amsh(const utils::path& obj_path,
     mesh->set_indices_buffer(indices);
     mesh->set_vertices_buffer(vertices);
 
-    if (core::object_constructor::object_save(*mesh, full_obj_path) != result_code::ok)
+    serialization::container sc;
+    sc["proto_id"] = mesh->get_type_id().str();
+    sc["id"] = mesh->get_id().str();
+    auto& properties = mesh->get_reflection()->m_serialization_properties;
+    reflection::property_context__save ctx{nullptr, mesh, &sc};
+    for (auto& prop : properties)
+    {
+        ctx.p = prop.get();
+        prop->save_handler(ctx);
+    }
+    if (!serialization::write_container(full_obj_path, sc))
     {
         ALOG_LAZY_ERROR;
         return false;
@@ -114,7 +125,7 @@ convert_image_to_atxt(const utils::path& obj_path,
 
     auto full_obj_path = dst_folder_path / APATH("class/textures") / obj_ext;
 
-    auto obj = core::object_constructor::alloc_empty_object<root::texture>();
+    auto obj = core::alloc_empty_object<root::texture>();
     std::filesystem::create_directories(full_obj_path.parent().fs());
 
     core::package p(AID("dummy"));
@@ -126,7 +137,17 @@ convert_image_to_atxt(const utils::path& obj_path,
     txt->set_width(w);
     txt->set_height(h);
 
-    if (core::object_constructor::object_save(*txt, full_obj_path) != result_code::ok)
+    serialization::container sc;
+    sc["proto_id"] = txt->get_type_id().str();
+    sc["id"] = txt->get_id().str();
+    auto& properties = txt->get_reflection()->m_serialization_properties;
+    reflection::property_context__save ctx{nullptr, txt, &sc};
+    for (auto& prop : properties)
+    {
+        ctx.p = prop.get();
+        prop->save_handler(ctx);
+    }
+    if (!serialization::write_container(full_obj_path, sc))
     {
         ALOG_LAZY_ERROR;
         return false;

@@ -223,7 +223,7 @@ gather_shader_jobs(const options& opts)
 bool
 is_shader_effect_aobj(const YAML::Node& doc)
 {
-    auto t = doc["type_id"];
+    auto t = doc["proto_id"];
     return t && t.IsScalar() && t.as<std::string>() == "shader_effect";
 }
 

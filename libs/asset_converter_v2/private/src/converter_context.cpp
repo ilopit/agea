@@ -370,9 +370,9 @@ converter_context::save_package(core::package& pkg, const vfs::rid& output_path)
         }
 
         std::string rel_path = subdir + "/" + obj.get_id().str() + ".aobj";
-        auto obj_path = pkg_dir / rel_path;
 
-        auto result = core::object_constructor::object_save(obj, obj_path);
+        core::object_constructor ctor(&pkg.get_load_context());
+        auto result = ctor.save_obj(obj);
         if (result != result_code::ok)
         {
             ALOG_ERROR("Failed to save object: {}", obj.get_id().str());
@@ -459,9 +459,9 @@ converter_context::save_level(core::level& lvl, const vfs::rid& output_path)
             continue;
         }
         std::string rel_path = "game_objects/" + id.str() + ".aobj";
-        auto obj_path = lvl_dir / rel_path;
 
-        auto result = core::object_constructor::object_save(*obj, obj_path);
+        core::object_constructor ctor(&lvl.get_load_context());
+        auto result = ctor.save_obj(*obj);
         if (result != result_code::ok)
         {
             ALOG_ERROR("Failed to save game object: {}", id.str());
@@ -595,7 +595,7 @@ converter_context::create_material(core::package& pkg,
         mat->m_specular_txt = slot;
     }
 
-    auto* shader_effect = olc.find_proto_obj(AID(data.shader_effect));
+    auto* shader_effect = olc.find_obj(AID(data.shader_effect));
     if (shader_effect)
     {
         mat->set_shader_effect(shader_effect->as<root::shader_effect>());
@@ -665,7 +665,7 @@ converter_context::create_package_assets(core::package& pkg,
     {
         std::string tex_id = make_texture_id(opts, tex_data.name);
 
-        if (opts.deduplicate_textures && olc.find_proto_obj(AID(tex_id)))
+        if (opts.deduplicate_textures && olc.find_obj(AID(tex_id)))
         {
             ALOG_INFO("[converter]   tex skip (dedup): name=[{}] id=[{}]", tex_data.name, tex_id);
             ++tex_skipped;
@@ -693,7 +693,7 @@ converter_context::create_package_assets(core::package& pkg,
     {
         std::string mat_id = make_material_id(opts, mat_data.name);
 
-        if (opts.deduplicate_materials && olc.find_proto_obj(AID(mat_id)))
+        if (opts.deduplicate_materials && olc.find_obj(AID(mat_id)))
         {
             ALOG_INFO("[converter]   mat skip (dedup): name=[{}] id=[{}]", mat_data.name, mat_id);
             ++mat_skipped;
@@ -706,7 +706,7 @@ converter_context::create_package_assets(core::package& pkg,
         if (!mat_data.diffuse_texture.empty())
         {
             std::string tex_id = make_texture_id(opts, mat_data.diffuse_texture);
-            auto* proto = olc.find_proto_obj(AID(tex_id));
+            auto* proto = olc.find_obj(AID(tex_id));
             if (proto)
             {
                 diffuse_tex = proto->as<root::texture>();
@@ -721,7 +721,7 @@ converter_context::create_package_assets(core::package& pkg,
         if (!mat_data.specular_texture.empty())
         {
             std::string tex_id = make_texture_id(opts, mat_data.specular_texture);
-            auto* proto = olc.find_proto_obj(AID(tex_id));
+            auto* proto = olc.find_obj(AID(tex_id));
             if (proto)
             {
                 specular_tex = proto->as<root::texture>();
@@ -798,7 +798,7 @@ lookup_node_mesh(core::package& pkg,
     }
     const auto& md = scene.meshes[node.mesh_index];
     std::string mesh_id = opts.prefix.empty() ? md.name : opts.prefix + md.name;
-    auto* proto = pkg.get_load_context().find_proto_obj(utils::id::make_id(mesh_id));
+    auto* proto = pkg.get_load_context().find_obj(utils::id::make_id(mesh_id));
     return proto ? proto->as<root::mesh>() : nullptr;
 }
 
@@ -818,7 +818,7 @@ lookup_node_material(core::package& pkg,
     {
         mat_id = "mt_" + mat_id;
     }
-    auto* proto = pkg.get_load_context().find_proto_obj(utils::id::make_id(mat_id));
+    auto* proto = pkg.get_load_context().find_obj(utils::id::make_id(mat_id));
     return proto ? proto->as<root::material>() : nullptr;
 }
 
@@ -1029,7 +1029,7 @@ converter_context::place_scene_root(core::level& lvl,
     }
 
     auto& olc = lvl.get_load_context();
-    auto* cdo = olc.find_proto_obj(cdo_id);
+    auto* cdo = olc.find_obj(cdo_id);
     if (!cdo)
     {
         ALOG_ERROR("CDO not found for scene root [{}]: {}", root_node.name, cdo_id.str());

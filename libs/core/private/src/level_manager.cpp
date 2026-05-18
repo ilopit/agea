@@ -2,7 +2,6 @@
 
 #include "core/level.h"
 #include "core/model_system.h"
-#include "core/object_load_context.h"
 #include "core/object_constructor.h"
 #include "core/package_manager.h"
 #include "core/queues.h"
@@ -144,7 +143,7 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
             vfs_root,
             [&](std::string_view name, const vfs::rid&) -> bool
             {
-                auto result = ctor.load_level_obj(AID(std::string(name)));
+                auto result = ctor.load_obj(AID(std::string(name)));
                 if (!result)
                 {
                     load_ok = false;

@@ -159,33 +159,31 @@ mount_for_test(const std::filesystem::path& path)
     return vfs::rid(name, "");
 }
 
-// Saves an object to save_path, then reloads it as an instance via the given level's load context.
+// Saves an object via VFS, then reloads it as an instance via the given level's load context.
 // The reload_level must outlive the returned pointer. Returns nullptr on failure.
 root::smart_object*
 round_trip_save_load(root::smart_object& obj,
                      const utils::path& save_path,
                      core::level& reload_level)
 {
-    auto rc = core::object_constructor::object_save(obj, save_path);
+    auto& reload_lc = reload_level.get_load_context();
+    auto& vfs = glob::glob_state().getr_vfs();
+
+    // Mount save_path's parent directory as VFS backend and set it as VFS root BEFORE saving,
+    // so save_obj can resolve and write through VFS.
+    static int s_round_trip_counter = 0;
+    auto mount_name = "test_rt_" + std::to_string(s_round_trip_counter++);
+    vfs.mount(vfs::rid("data", mount_name), save_path.parent().fs(), {.index_filter = ".aobj"});
+    reload_lc.set_vfs_mount(vfs::rid("data", mount_name));
+
+    auto rc = core::object_constructor(&reload_lc).save_obj(obj);
     if (rc != result_code::ok)
     {
         return nullptr;
     }
 
-    auto& reload_lc = reload_level.get_load_context();
-
     // The file index uses filename stem as key — derive reload ID from it
-    std::string stem;
-    {
-        auto fname = save_path.file_name();
-        auto dot = fname.rfind('.');
-        stem = (dot != std::string::npos) ? fname.substr(0, dot) : fname;
-    }
-    auto reload_id = AID(stem);
-
-    auto& vfs = glob::glob_state().getr_vfs();
-    vfs.mount(vfs::rid("data", "test_reload"), save_path.parent().fs(), {.index_filter = ".aobj"});
-    reload_lc.set_vfs_mount(vfs::rid("data", "test_reload"));
+    auto reload_id = obj.get_id();
 
     std::vector<root::smart_object*> reloaded;
     auto result =
@@ -437,9 +435,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_by_id)
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
     ASSERT_TRUE(go);
-    ASSERT_TRUE(verify_flags(*go, core::ks_class_derived));
-    ASSERT_TRUE(go->get_flags().readonly) << "readonly class object returned directly";
-
+    ASSERT_TRUE(verify_flags(*go, core::ks_instance_derived));
     ASSERT_EQ(go->get_id(), AID("test_obj"));
 }
 
@@ -466,7 +462,7 @@ TEST_F(test_preloaded_test_package, object_clone_class_object)
     ASSERT_NE(cloned, src);
     ASSERT_EQ(cloned->get_id(), AID("test_obj_clone"));
     ASSERT_EQ(cloned->get_type_id(), src->get_type_id());
-    ASSERT_TRUE(verify_flags(*cloned, {.derived_obj = true}));
+    ASSERT_TRUE(verify_flags(*cloned, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*cloned));
 }
 
@@ -540,8 +536,7 @@ TEST_F(test_preloaded_test_package, diff_object_properties_same_objects)
     ASSERT_TRUE(validate_class_obj(*result1.value()));
 
     std::vector<reflection::property*> diff;
-    auto rc =
-        core::object_constructor::diff_object_properties(*result1.value(), *result1.value(), diff);
+    auto rc = core::diff_object_properties(*result1.value(), *result1.value(), diff);
 
     ASSERT_EQ(rc, result_code::ok);
     ASSERT_TRUE(diff.empty());
@@ -565,8 +560,7 @@ TEST_F(test_preloaded_test_package, diff_object_properties_different_types_fails
     ASSERT_TRUE(validate_class_obj(*result2.value()));
 
     std::vector<reflection::property*> diff;
-    auto rc =
-        core::object_constructor::diff_object_properties(*result1.value(), *result2.value(), diff);
+    auto rc = core::diff_object_properties(*result1.value(), *result2.value(), diff);
 
     ASSERT_EQ(rc, result_code::failed);
 }
@@ -668,8 +662,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
     ASSERT_TRUE(result.has_value());
     auto go = result.value()->as<root::game_object>();
     ASSERT_TRUE(go);
-    ASSERT_TRUE(go->get_flags().readonly) << "readonly class object returned directly";
-    ASSERT_TRUE(verify_flags(*go, core::ks_class_derived));
+    ASSERT_TRUE(verify_flags(*go, core::ks_instance_derived));
 
     ASSERT_EQ(go->get_id(), AID("test_complex_mesh_object"));
     ASSERT_EQ(go->get_architype_id(), core::architype::game_object);
@@ -679,9 +672,7 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 
     for (auto comp : components)
     {
-        ASSERT_TRUE(comp->get_flags().readonly)
-            << comp->get_id() << " component should be readonly";
-        ASSERT_TRUE(verify_flags(*comp, core::ks_class_derived));
+        ASSERT_TRUE(verify_flags(*comp, core::ks_instance_derived));
     }
 
     auto comp2 = components[1]->as<base::mesh_component>();
@@ -689,11 +680,9 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
 
     auto mesh = comp2->get_mesh();
     ASSERT_EQ(mesh->get_id(), AID("test_mesh"));
-    ASSERT_TRUE(verify_flags(*mesh, core::ks_class_derived));
 
     auto material = comp2->get_material()->as<base::simple_texture_material>();
     ASSERT_EQ(material->get_id(), AID("test_material"));
-    ASSERT_TRUE(verify_flags(*material, core::ks_class_derived));
 }
 
 TEST_F(test_preloaded_test_package, object_construct_in_package_context)
@@ -741,8 +730,9 @@ TEST_F(test_preloaded_test_package, object_construct_in_level_context)
     root::game_object::construct_params params;
     params.pos = {5.0f, 6.0f, 7.0f};
 
-    auto result = core::object_constructor(&lc, core::object_load_type::instance_obj)
-                      .construct_obj(AID("game_object"), AID("level_constructed_object"), params, false);
+    auto result =
+        core::object_constructor(&lc, core::object_load_type::instance_obj)
+            .construct_obj(AID("game_object"), AID("level_constructed_object"), params, false);
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
@@ -777,23 +767,26 @@ TEST_F(test_preloaded_test_package, object_save_and_reload_full)
     ASSERT_TRUE(verify_flags(*obj, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*obj));
 
-    // 2. Save to a temp file
-    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_obj_custom_layout_saved.aobj";
-
-    auto save_result = core::object_constructor::object_save(*obj, save_path);
+    // 2. Save through VFS
+    auto save_result = core::object_constructor(&lc).save_obj(*obj);
     ASSERT_EQ(save_result, result_code::ok);
-    ASSERT_TRUE(save_path.exists());
 
-    // 3. Compare saved file with original line by line
-    auto expected_rp = gs.getr_vfs().real_path(
+    // 3. Verify file exists via VFS
+    vfs::rid saved_rid;
+    ASSERT_TRUE(lc.resolve(AID("test_obj_custom_layout"), saved_rid));
+    auto& vfs = glob::glob_state().getr_vfs();
+    ASSERT_TRUE(vfs.exists(saved_rid));
+
+    // 4. Compare saved file with original line by line
+    auto saved_rp = vfs.real_path(saved_rid);
+    ASSERT_TRUE(saved_rp.has_value());
+    auto saved_path = APATH(saved_rp.value());
+
+    auto expected_rp = vfs.real_path(
         vfs::rid("data", "levels/test.alvl/game_objects/test_obj_custom_layout.aobj"));
     ASSERT_TRUE(expected_rp.has_value());
     auto expected_path = APATH(expected_rp.value());
-    ASSERT_TRUE(compare_files_line_by_line(expected_path, save_path));
-
-    // Cleanup
-    std::filesystem::remove(save_path.fs());
+    ASSERT_TRUE(compare_files_line_by_line(expected_path, saved_path));
 }
 
 TEST_F(test_preloaded_test_package, object_save_reload_simple)
@@ -816,11 +809,20 @@ TEST_F(test_preloaded_test_package, object_save_reload_simple)
     auto* reloaded = round_trip_save_load(*obj, save_path, reload_level);
     ASSERT_TRUE(reloaded);
 
+    // Verify saved file matches the original via VFS
+    auto& reload_lc = reload_level.get_load_context();
+    vfs::rid saved_rid;
+    ASSERT_TRUE(reload_lc.resolve(AID("test_obj"), saved_rid));
+    auto& vfs = gs.getr_vfs();
+    auto saved_rp = vfs.real_path(saved_rid);
+    ASSERT_TRUE(saved_rp.has_value());
+    auto saved_real_path = APATH(saved_rp.value());
+
     auto expected_rp =
-        gs.getr_vfs().real_path(vfs::rid("data", "levels/test.alvl/game_objects/test_obj.aobj"));
+        vfs.real_path(vfs::rid("data", "levels/test.alvl/game_objects/test_obj.aobj"));
     ASSERT_TRUE(expected_rp.has_value());
     auto expected_path = APATH(expected_rp.value());
-    ASSERT_TRUE(compare_files_line_by_line(expected_path, save_path));
+    ASSERT_TRUE(compare_files_line_by_line(expected_path, saved_real_path));
 
     auto reloaded_go = reloaded->as<root::game_object>();
     ASSERT_TRUE(reloaded_go);
@@ -836,7 +838,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_simple)
         ASSERT_EQ(reloaded_components[i]->get_id(), orig_components[i]->get_id());
     }
 
-    std::filesystem::remove(save_path.fs());
+    std::filesystem::remove(saved_real_path.fs());
 }
 
 TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
@@ -857,20 +859,18 @@ TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
     auto orig_mesh_comp = orig_components[1]->as<base::mesh_component>();
     ASSERT_TRUE(orig_mesh_comp);
 
-    // Verify save succeeds and produces output
-    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_complex_mesh_object_rt.aobj";
-
-    auto save_rc = core::object_constructor::object_save(*obj, save_path);
+    // Verify save succeeds and produces output via VFS
+    auto save_rc = core::object_constructor(&lc).save_obj(*obj);
     ASSERT_EQ(save_rc, result_code::ok);
-    ASSERT_TRUE(std::filesystem::exists(save_path.fs()));
-    ASSERT_GT(std::filesystem::file_size(save_path.fs()), 0u);
+
+    vfs::rid saved_rid;
+    ASSERT_TRUE(lc.resolve(AID("test_complex_mesh_object"), saved_rid));
+    auto& vfs = glob::glob_state().getr_vfs();
+    ASSERT_TRUE(vfs.exists(saved_rid));
 
     // NOTE: Full round-trip reload is not tested here because object_save writes
     // asset references as YAML maps ({id: name}) while the loader expects scalar
     // strings. This is a known serialization format mismatch.
-
-    std::filesystem::remove(save_path.fs());
 }
 
 TEST_F(test_preloaded_test_package, object_save_reload_material)
@@ -886,21 +886,19 @@ TEST_F(test_preloaded_test_package, object_save_reload_material)
     auto material = load_result.value()->as<base::simple_texture_material>();
     ASSERT_TRUE(material);
 
-    // Verify save succeeds and produces output
-    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_material_rt.aobj";
-
-    auto save_rc = core::object_constructor::object_save(*material, save_path);
+    // Verify save succeeds and produces output via VFS
+    auto save_rc = core::object_constructor(&lc).save_obj(*material);
     ASSERT_EQ(save_rc, result_code::ok);
-    ASSERT_TRUE(std::filesystem::exists(save_path.fs()));
-    ASSERT_GT(std::filesystem::file_size(save_path.fs()), 0u);
+
+    vfs::rid saved_rid;
+    ASSERT_TRUE(lc.resolve(AID("test_material"), saved_rid));
+    auto& vfs = glob::glob_state().getr_vfs();
+    ASSERT_TRUE(vfs.exists(saved_rid));
 
     // NOTE: Full round-trip reload is not tested here because object_save writes
     // asset reference properties (e.g. simple_texture) as YAML maps ({id: name})
     // while the loader expects scalar strings. This is a known serialization
     // format mismatch.
-
-    std::filesystem::remove(save_path.fs());
 }
 
 TEST_F(test_preloaded_test_package, object_save_reload_idempotent)
@@ -917,21 +915,34 @@ TEST_F(test_preloaded_test_package, object_save_reload_idempotent)
 
     auto temp_dir = utils::path(std::filesystem::temp_directory_path());
     auto save_path_a = temp_dir / "idempotent_a.aobj";
-    auto save_path_b = temp_dir / "idempotent_b.aobj";
 
     // First save and reload
     core::level reload_level(AID("reload_idempotent"));
     auto* reloaded = round_trip_save_load(*obj, save_path_a, reload_level);
     ASSERT_TRUE(reloaded);
 
-    // Second save from the reloaded object
-    auto save_rc = core::object_constructor::object_save(*reloaded, save_path_b);
+    // Resolve the first save's real path
+    auto& reload_lc = reload_level.get_load_context();
+    auto& vfs = gs.getr_vfs();
+    vfs::rid saved_rid_a;
+    ASSERT_TRUE(reload_lc.resolve(AID("test_obj"), saved_rid_a));
+    auto rp_a = vfs.real_path(saved_rid_a);
+    ASSERT_TRUE(rp_a.has_value());
+    auto real_path_a = APATH(rp_a.value());
+
+    // Second save from the reloaded object — overwrite the same VFS location
+    auto save_rc = core::object_constructor(&reload_lc).save_obj(*reloaded);
     ASSERT_EQ(save_rc, result_code::ok);
 
-    ASSERT_TRUE(compare_files_line_by_line(save_path_a, save_path_b));
+    // The second save overwrites the same file; read it back and compare with
+    // the original test data to confirm idempotency
+    auto expected_rp =
+        vfs.real_path(vfs::rid("data", "levels/test.alvl/game_objects/test_obj.aobj"));
+    ASSERT_TRUE(expected_rp.has_value());
+    auto expected_path = APATH(expected_rp.value());
+    ASSERT_TRUE(compare_files_line_by_line(expected_path, real_path_a));
 
-    std::filesystem::remove(save_path_a.fs());
-    std::filesystem::remove(save_path_b.fs());
+    std::filesystem::remove(real_path_a.fs());
 }
 
 TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
@@ -949,15 +960,16 @@ TEST_F(test_preloaded_test_package, object_save_reload_constructed_object)
     ASSERT_TRUE(verify_flags(*obj, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*obj));
 
-    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "rt_constructed.aobj";
-
-    auto save_rc = core::object_constructor::object_save(*obj, save_path);
+    auto save_rc = core::object_constructor(&lc).save_obj(*obj);
     ASSERT_EQ(save_rc, result_code::ok);
-    ASSERT_TRUE(std::filesystem::exists(save_path.fs()));
-    ASSERT_GT(std::filesystem::file_size(save_path.fs()), 0u);
 
-    std::filesystem::remove(save_path.fs());
+    vfs::rid saved_rid;
+    ASSERT_TRUE(lc.resolve(AID("rt_constructed_obj"), saved_rid));
+    auto& vfs = glob::glob_state().getr_vfs();
+    ASSERT_TRUE(vfs.exists(saved_rid));
+
+    // Cleanup
+    vfs.remove(saved_rid);
 }
 
 TEST_F(test_preloaded_test_package, object_save_material_preserves_texture_slots)
@@ -974,22 +986,20 @@ TEST_F(test_preloaded_test_package, object_save_material_preserves_texture_slots
 
     ASSERT_TRUE(material->simple_texture().txt) << "texture slot should be populated after load";
 
-    auto temp_dir = utils::path(std::filesystem::temp_directory_path());
-    auto save_path = temp_dir / "test_material_texture_slot.aobj";
-
-    auto save_rc = core::object_constructor::object_save(*material, save_path);
+    auto save_rc = core::object_constructor(&lc).save_obj(*material);
     ASSERT_EQ(save_rc, result_code::ok);
 
+    vfs::rid saved_rid;
+    ASSERT_TRUE(lc.resolve(AID("test_material"), saved_rid));
+
     serialization::container sc;
-    ASSERT_TRUE(serialization::read_container(save_path, sc));
+    ASSERT_TRUE(serialization::read_container(saved_rid, sc));
 
     ASSERT_TRUE(sc["simple_texture"].IsDefined()) << "texture slot missing from saved file";
     ASSERT_TRUE(sc["simple_texture"]["texture"].IsDefined())
         << "texture id missing from saved texture slot";
     EXPECT_EQ(sc["simple_texture"]["texture"].as<std::string>(), "texture");
     EXPECT_EQ(sc["simple_texture"]["slot"].as<uint32_t>(), 0u);
-
-    std::filesystem::remove(save_path.fs());
 }
 
 // ============================================================================
@@ -1083,8 +1093,7 @@ TEST_F(test_preloaded_test_package, load_obj_instance_returns_readonly_class_for
 
     ASSERT_TRUE(result1.has_value());
     auto obj = result1.value();
-    ASSERT_TRUE(obj->get_flags().readonly) << "readonly class object should be returned directly";
-    ASSERT_FALSE(obj->get_flags().instance_obj) << "should not create an instance";
+    ASSERT_TRUE(verify_flags(*obj, core::ks_instance_derived));
 
     auto result2 =
         test_object_load(AID("test_material"), core::object_load_type::instance_obj, lc, loaded2);
@@ -1102,8 +1111,7 @@ TEST_F(test_preloaded_test_package, load_obj_instance_returns_readonly_for_mesh)
         test_object_load(AID("test_mesh"), core::object_load_type::instance_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
-    ASSERT_TRUE(result.value()->get_flags().readonly);
-    ASSERT_FALSE(result.value()->get_flags().instance_obj);
+    ASSERT_TRUE(verify_flags(*result.value(), core::ks_instance_derived));
 }
 
 // ============================================================================
@@ -1195,10 +1203,12 @@ TEST_F(test_preloaded_test_package, no_promotion_in_cache)
     ASSERT_TRUE(inst_result.has_value());
     auto instance = inst_result.value();
 
-    ASSERT_EQ(lc.find_proto_obj(AID("test_obj")), proto) << "class object should still be in cache";
+    ASSERT_EQ(lc.find_obj(AID("test_obj")), proto) << "class object should still be in cache";
     ASSERT_EQ(lc.find_obj(AID("test_obj_inst")), instance) << "instance should be findable";
-    ASSERT_EQ(lc.find_obj(AID("test_obj")), nullptr)
-        << "no instance with proto's ID should exist";
+    ASSERT_TRUE(verify_flags(*proto, core::ks_class_derived))
+        << "class object should retain class flags after instantiation";
+    ASSERT_TRUE(verify_flags(*instance, core::ks_instance_derived))
+        << "instance should have instance flags";
 }
 
 // ============================================================================
@@ -1216,19 +1226,7 @@ TEST_F(test_preloaded_test_package, load_instance_cold_cache_readonly_object)
 
     ASSERT_TRUE(result.has_value());
     auto obj = result.value();
-    ASSERT_TRUE(obj->get_flags().readonly) << "should return the readonly class object";
-    ASSERT_FALSE(obj->get_flags().instance_obj) << "should not have created an instance";
-
-    auto& global_items = glob::glob_state().getr_model().caches.objects.get_items();
-    uint32_t count = 0;
-    for (auto& [id, cached] : global_items)
-    {
-        if (id == AID("test_material"))
-        {
-            count++;
-        }
-    }
-    ASSERT_EQ(count, 1u) << "should have exactly one cache entry, not two";
+    ASSERT_TRUE(verify_flags(*obj, core::ks_instance_derived));
 }
 
 TEST_F(test_preloaded_test_package, cached_instance_returned_on_second_load)

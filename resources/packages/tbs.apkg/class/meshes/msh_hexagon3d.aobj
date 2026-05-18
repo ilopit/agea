@@ -1,4 +1,4 @@
 ---
-type_id: mesh
+proto_id: mesh
 id: msh_hexagon3d
 external: class/meshes/msh_hexagon3d.obj

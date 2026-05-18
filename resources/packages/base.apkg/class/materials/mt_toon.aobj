@@ -1,4 +1,4 @@
-type_id: toon_material
+proto_id: toon_material
 id: mt_toon
 shader_effect: se_toon
 diffuse_txt:

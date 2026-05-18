@@ -1,4 +1,4 @@
-type_id: texture
+proto_id: texture
 id: txt_container_spec
 base_color: class/textures/txt_container_spec.png
 width: 500

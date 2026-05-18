@@ -17,16 +17,11 @@ namespace core
 {
 
 object_load_context::object_load_context()
-    : m_local_set()
-    , m_ownable_cache_ptr(nullptr)
+    : m_ownable_cache_ptr(nullptr)
 {
-    ALOG_TRACE("Created");
 }
 
-object_load_context::~object_load_context()
-{
-    ALOG_TRACE("Destructed");
-}
+object_load_context::~object_load_context() = default;
 
 bool
 object_load_context::resolve(const utils::id& id, vfs::rid& out) const
@@ -62,17 +57,15 @@ object_load_context::resolve(const utils::path& relative, vfs::rid& out) const
 bool
 object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 {
-    KRG_check(m_ownable_cache_ptr, "Should exists!");
-    KRG_check(obj, "Should exists!");
+    KRG_check(m_ownable_cache_ptr, "Ownable cache must be set!");
+    KRG_check(m_local_set, "Local set must be set!");
+    KRG_check(obj, "Object must exist!");
 
     auto& obj_ref = *obj.get();
 
     m_ownable_cache_ptr->emplace_back(std::move(obj));
 
-    if (m_local_set)
-    {
-        m_local_set->map.add_item(obj_ref);
-    }
+    m_local_set->map.add_item(obj_ref);
     glob::glob_state().getr_model().caches.map.add_item(obj_ref);
 
     return true;
@@ -91,36 +84,15 @@ object_load_context::remove_obj(const root::smart_object& obj)
 }
 
 root::smart_object*
-object_load_context::find_proto_obj(const utils::id& id)
-{
-    auto obj = m_local_set ? m_local_set->objects.get_item(id) : nullptr;
-
-    if (!obj)
-    {
-        obj = glob::glob_state().getr_model().caches.objects.get_item(id);
-    }
-
-    if (obj && obj->get_flags().instance_obj)
-    {
-        return nullptr;
-    }
-    return obj;
-}
-
-root::smart_object*
 object_load_context::find_obj(const utils::id& id)
 {
-    auto obj = m_local_set ? m_local_set->objects.get_item(id) : nullptr;
+    auto* obj = m_local_set ? m_local_set->objects.get_item(id) : nullptr;
 
     if (!obj)
     {
         obj = glob::glob_state().getr_model().caches.objects.get_item(id);
     }
 
-    if (obj && !obj->get_flags().instance_obj)
-    {
-        return nullptr;
-    }
     return obj;
 }
 
@@ -128,11 +100,14 @@ root::smart_object*
 object_load_context::find_obj(const utils::id& id, architype a_type)
 {
     root::smart_object* obj = nullptr;
-    auto c = m_local_set ? m_local_set->map.get_cache(a_type) : nullptr;
 
-    if (c)
+    if (m_local_set)
     {
-        obj = c->get_item(id);
+        auto* c = m_local_set->map.get_cache(a_type);
+        if (c)
+        {
+            obj = c->get_item(id);
+        }
     }
 
     if (!obj)
@@ -140,33 +115,6 @@ object_load_context::find_obj(const utils::id& id, architype a_type)
         obj = glob::glob_state().getr_model().caches.objects.get_item(id);
     }
 
-    if (obj && !obj->get_flags().instance_obj)
-    {
-        return nullptr;
-    }
-    return obj;
-}
-
-root::smart_object*
-object_load_context::find_proto_obj(const utils::id& id, architype a_type)
-{
-    root::smart_object* obj = nullptr;
-    auto c = m_local_set ? m_local_set->map.get_cache(a_type) : nullptr;
-
-    if (c)
-    {
-        obj = c->get_item(id);
-    }
-
-    if (!obj)
-    {
-        obj = glob::glob_state().getr_model().caches.objects.get_item(id);
-    }
-
-    if (obj && obj->get_flags().instance_obj)
-    {
-        return nullptr;
-    }
     return obj;
 }
 

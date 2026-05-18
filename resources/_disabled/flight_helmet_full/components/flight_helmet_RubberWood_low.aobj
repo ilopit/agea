@@ -1,4 +1,4 @@
-type_id: mesh_component
+proto_id: mesh_component
 id: flight_helmet_RubberWood_low
 material: RubberWoodMat
 mesh: RubberWood_low_mesh

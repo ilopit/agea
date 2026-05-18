@@ -1,4 +1,4 @@
-type_id: shader_effect
+proto_id: shader_effect
 id: se_solid_color_lit_alpha
 vert: class/shader_effects/lit/se_lit.vert
 is_vert_binary: false

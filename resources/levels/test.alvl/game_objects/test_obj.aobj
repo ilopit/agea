@@ -1,6 +1,6 @@
-type_id: game_object
+proto_id: game_object
 id: test_obj
 layout: [-1]
 components:
   - id: test_component
-    type_id: game_object_component
+    proto_id: game_object_component

@@ -1,11 +1,11 @@
-type_id: point_light
+proto_id: point_light
 id: point_light_1
 layout: [-1, 0, 0]
 components:
   - id: point_light_1_root
-    type_id: game_object_component
+    proto_id: game_object_component
   - id: point_light_1_bulb
-    type_id: mesh_component
+    proto_id: mesh_component
     material: mt_billboard_bulb
     mesh: plane_mesh
     layers:
@@ -20,7 +20,7 @@ components:
       y: 3
       z: 2
   - id: point_light_1_lc
-    type_id: point_light_component
+    proto_id: point_light_component
     ambient:
       x: 0.05
       y: 0.05

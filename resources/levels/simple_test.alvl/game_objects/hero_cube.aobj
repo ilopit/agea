@@ -1,11 +1,11 @@
-type_id: mesh_object
+proto_id: mesh_object
 id: hero_cube
 layout: [-1, 0]
 components:
   - id: hero_cube_root
-    type_id: game_object_component
+    proto_id: game_object_component
   - id: hero_cube_mesh
-    type_id: mesh_component
+    proto_id: mesh_component
     material: mt_toon
     mesh: cube_mesh
     position:

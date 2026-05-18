@@ -1,5 +1,5 @@
 ---
-type_id: mesh
+proto_id: mesh
 id: GlassPlastic_low_mesh
 index_size: 4
 vertex_format: PNCV_F32

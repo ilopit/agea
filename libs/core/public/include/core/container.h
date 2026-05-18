@@ -7,7 +7,7 @@
 #include "core/caches/line_cache.h"
 
 #include "core/object_constructor.h"
-#include "core/object_load_context_v2.h"
+#include "core/object_load_context.h"
 
 #include <utils/id.h>
 #include <utils/path.h>
@@ -17,8 +17,6 @@ namespace kryga
 {
 namespace core
 {
-
-class object_load_context;
 
 // Canonical VFS path builders — enforce that packages/levels live under data://
 namespace vfs_paths
@@ -110,12 +108,6 @@ public:
         return *m_occ.get();
     }
 
-    object_load_context_v2&
-    get_load_context_v2()
-    {
-        return *m_occ_v2.get();
-    }
-
     static void
     unregister_in_global_cache(cache_set& local,
                                cache_set& global,
@@ -134,9 +126,6 @@ public:
     void
     set_occ(std::unique_ptr<object_load_context> occ);
 
-    void
-    set_occ_v2(std::unique_ptr<object_load_context_v2> occ);
-
 protected:
     utils::id m_id;
     vfs::rid m_vfs_root;
@@ -146,7 +135,6 @@ protected:
 
     line_cache<std::shared_ptr<root::smart_object>> m_objects;
     std::unique_ptr<object_load_context> m_occ;
-    std::unique_ptr<object_load_context_v2> m_occ_v2;
 };
 
 }  // namespace core

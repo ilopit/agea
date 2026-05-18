@@ -63,7 +63,6 @@ struct type_context__alloc;
 namespace core
 {
 class object_constructor;
-class object_constructor_v2;
 class package;
 class level;
 
@@ -131,7 +130,6 @@ public:
     KRG_gen_meta_api;
 
     friend class core::object_constructor;
-    friend class core::object_constructor_v2;
 
     template <typename T>
     bool

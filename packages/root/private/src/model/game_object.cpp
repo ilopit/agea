@@ -7,7 +7,6 @@
 #include <core/model_system.h>
 #include <core/package.h>
 #include <core/level.h>
-#include <core/object_load_context.h>
 
 namespace kryga
 {
@@ -100,7 +99,7 @@ game_object::spawn_component_with_proto(component* parent,
     auto mode = m_level ? core::object_load_type::instance_obj : core::object_load_type::class_obj;
     core::object_constructor ctor(&occ, mode);
 
-    auto proto_obj = occ.find_proto_obj(proto_id);
+    auto proto_obj = occ.find_obj(proto_id);
 
     if (!proto_obj)
     {

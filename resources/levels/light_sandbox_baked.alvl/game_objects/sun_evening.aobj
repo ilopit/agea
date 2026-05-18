@@ -1,11 +1,11 @@
-type_id: directional_light
+proto_id: directional_light
 id: sun_evening
 layout: [-1, 0]
 components:
   - id: sun_evening_root
-    type_id: game_object_component
+    proto_id: game_object_component
   - id: sun_evening_lc
-    type_id: directional_light_component
+    proto_id: directional_light_component
     ambient:
       x: 0.1
       y: 0.08

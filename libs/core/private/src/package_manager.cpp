@@ -1,7 +1,6 @@
 #include "core/package_manager.h"
 
 #include "core/object_constructor.h"
-#include "core/object_load_context.h"
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
 #include "core/package.h"
@@ -198,7 +197,7 @@ package_manager::load_package(const utils::id& id)
             new_package->get_vfs_root(),
             [&](std::string_view name, const vfs::rid&) -> bool
             {
-                auto result = ctor.load_package_obj(AID(std::string(name)));
+                auto result = ctor.load_obj(AID(std::string(name)));
                 if (!result)
                 {
                     load_ok = false;
@@ -270,6 +269,7 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
     std::map<std::string, std::string> class_paths;
 
     auto& vfs = glob::glob_state().getr_vfs();
+    object_constructor ctor(&p.get_load_context());
     for (auto& i : p.m_objects)
     {
         auto obj_id = i->get_id();
@@ -279,20 +279,11 @@ package_manager::save_package(const utils::id& id, const utils::path& root_folde
             ALOG_LAZY_ERROR;
             return false;
         }
-        auto relative = std::string(found->relative());
 
-        auto full_obj_path = full_path / relative;
+        auto rc = ctor.save_obj(*i);
+        class_paths[obj_id.str()] = std::string(found->relative());
 
-        auto parent = full_obj_path.parent();
-        if (!parent.empty())
-        {
-            std::filesystem::create_directories(parent.fs());
-        }
-
-        auto result = object_constructor::object_save(*i, full_obj_path);
-        class_paths[obj_id.str()] = relative;
-
-        if (result != result_code::ok)
+        if (rc != result_code::ok)
         {
             ALOG_LAZY_ERROR;
             return false;

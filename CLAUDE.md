@@ -81,8 +81,7 @@ Full design docs in `docs/plans/`, known issues in `docs/issues/`.
 ### Subsystem priorities (Doc 04)
 - **P0 (build):** audio (miniaudio), player-facing UI (custom minimal), save system, touch+gestures, app state machine, event bus, Android build pipeline
 - **Keep as-is:** Vulkan core, baked lighting, shadows, clustered lights, glTF import, ImGui editor, scene/package system, `.apkg`+VFS, reflection
-- **Defer:** dynamic resolution scaling, post-processing, cloud save, hot-reload, analytics/ads/IAP SDKs
-- **Cut:** `packages/tbs` (hex grid), DPSM, GPU particles
+- **Defer:** dynamic resolution scaling, post-processing, cloud save, hot-reload, analytics/ads/IAP SDKsles
 
 ### Known issues & tech debt
 Tracked in `docs/issues/` per subsystem: meshes, shadows, validation, editor UI state, package organization.
