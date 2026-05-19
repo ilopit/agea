@@ -4,7 +4,7 @@ from . import assertions
 
 
 def _get_render_object_ids(engine):
-    objs = engine.call("render.state.objects")
+    objs = engine.call("render.object.list")
     return {o["id"] for o in objs.get("objects", [])}
 
 
@@ -42,7 +42,7 @@ class TestLevelRoundtrip:
         assert ids_before == ids_after
 
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
     def test_unsaved_object_does_not_persist(self, engine):

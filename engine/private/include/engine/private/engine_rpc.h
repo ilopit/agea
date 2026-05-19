@@ -1,8 +1,9 @@
 #pragma once
 
 // All RPC method registrations for the editor build. Lives in its own TU
-// to keep kryga_engine.cpp focused on lifecycle/frame work; every handler
-// here takes its state through the passed-in engine + server references.
+// to keep kryga_engine.cpp focused on lifecycle/frame work; handlers
+// obtain the engine via glob::glob_state().getr_engine() and the RPC
+// server via eng.get_rpc_server() when needed.
 //
 // All state-touching handlers route through engine's main-thread action
 // queue (queue_main_action / wait_main_action) — single-thread ownership

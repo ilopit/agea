@@ -130,6 +130,12 @@ public:
     {
         m_shutdown_requested.store(true, std::memory_order_relaxed);
     }
+
+    rpc::rpc_server&
+    get_rpc_server()
+    {
+        return *m_rpc_server;
+    }
 #endif
 
 private:

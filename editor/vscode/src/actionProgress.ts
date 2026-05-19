@@ -21,13 +21,13 @@ export class ActionProgressProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
 
   constructor(private readonly client: RpcClient) {
-    client.onNotification("action.started", (p: any) => {
+    client.onNotification("tools.action.started", (p: any) => {
       this.post({ type: "started", name: p.name });
     });
-    client.onNotification("action.progress", (p: any) => {
+    client.onNotification("tools.action.progress", (p: any) => {
       this.post({ type: "progress", name: p.name, progress: p.progress, status: p.status });
     });
-    client.onNotification("action.completed", (p: any) => {
+    client.onNotification("tools.action.completed", (p: any) => {
       this.post({ type: "completed", name: p.name, success: p.success, error: p.error, duration_ms: p.duration_ms });
     });
   }
@@ -42,7 +42,7 @@ export class ActionProgressProvider implements vscode.WebviewViewProvider {
         this.fetchStatus();
       } else if (msg?.type === "clearFinished") {
         try {
-          await this.client.request("actions.clearFinished");
+          await this.client.request("tools.actions.clearFinished");
           this.fetchStatus();
         } catch {
           // ignore
@@ -53,7 +53,7 @@ export class ActionProgressProvider implements vscode.WebviewViewProvider {
 
   private async fetchStatus(): Promise<void> {
     try {
-      const status = await this.client.request<ActionStatus>("actions.getStatus");
+      const status = await this.client.request<ActionStatus>("tools.actions.getStatus");
       this.post({ type: "fullStatus", ...status });
     } catch {
       // ignore — engine might not be connected

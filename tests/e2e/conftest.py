@@ -8,6 +8,7 @@ Use --engine-config to select build config (Debug/Release).
 Supports pytest-xdist: each worker gets its own engine instance with a
 unique discovery file (build/project_Debug/tmp/editor_rpc_gw0.json, etc.).
 """
+import time
 from pathlib import Path
 import pytest
 from .rpc_client import EngineProcess, EngineRPC, PROJECT_ROOT, _default_discovery
@@ -72,6 +73,12 @@ def pytest_addoption(parser):
         default=False,
         help="Skip auto-starting the engine (fail if not already running)",
     )
+    parser.addoption(
+        "--slow",
+        type=float,
+        default=0,
+        help="Pause N seconds between tests for visual inspection (default: 0, try 5)",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -131,9 +138,34 @@ def engine(request):
         _engine_process = None
 
 
+TEST_CAMERA = {"position": [0.0, 8.0, 15.0], "pitch": -25.0, "yaw": 0.0}
+
+
+@pytest.fixture
+def slow(request, engine):
+    delay = request.config.getoption("--slow")
+    def _pause(label=""):
+        if delay > 0:
+            engine.wait_frame()
+            msg = f"  [slow] {label} — " if label else "  [slow] "
+            print(f"\n{msg}waiting {delay}s")
+            time.sleep(delay)
+    return _pause
+
+
 @pytest.fixture(autouse=True)
 def load_test_level(engine, request):
     level = request.config.getoption("--level")
+    slow = request.config.getoption("--slow")
     root = engine.load_level_and_wait(level, settle_time=1.0, timeout=15.0)
+    engine.call("editor.camera.set", TEST_CAMERA)
+    engine.wait_frame()
+    if slow > 0:
+        print(f"\n  [slow] setup ready — waiting {slow}s")
+        time.sleep(slow)
     yield root
+    if slow > 0:
+        engine.wait_frame()
+        print(f"\n  [slow] test done — waiting {slow}s")
+        time.sleep(slow)
     _restore_files(_file_snapshot)

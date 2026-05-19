@@ -212,6 +212,11 @@ write_property(root::smart_object& owner,
                const Json::Value& value,
                Json::Value& out_value)
 {
+    if (owner.get_flags().readonly)
+    {
+        return "object is readonly";
+    }
+
     auto* rt = owner.get_reflection();
     if (!rt)
     {

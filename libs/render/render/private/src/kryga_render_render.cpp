@@ -301,23 +301,24 @@ vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
     KRG_check(obj_data, "Should be always valid");
     m_object_bvh_dirty = true;
 
-    if (obj_data->outlined)
+    if (obj_data->layer_flags & render::LAYER_VISIBLE)
     {
-        // KRG_check(obj_data->queue_id != "transparent", "Not supported!");
-
-        m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
-    }
-    else if ((obj_data->layer_flags & render::LAYER_EDITOR_ONLY))
-    {
-        m_debug_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
-    }
-    else if (obj_data->queue_id == "transparent")
-    {
-        m_transparent_render_object_queue.emplace_back(obj_data);
-    }
-    else
-    {
-        m_default_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+        if (obj_data->outlined)
+        {
+            m_outline_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+        }
+        else if ((obj_data->layer_flags & render::LAYER_EDITOR_ONLY))
+        {
+            m_debug_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+        }
+        else if (obj_data->queue_id == "transparent")
+        {
+            m_transparent_render_object_queue.emplace_back(obj_data);
+        }
+        else
+        {
+            m_default_render_object_queue[obj_data->queue_id].emplace_back(obj_data);
+        }
     }
 
     for (auto& q : m_frames)

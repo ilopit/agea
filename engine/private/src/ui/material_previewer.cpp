@@ -683,32 +683,36 @@ material_previewer::save_edit(const utils::id& material_id)
     auto* rt = instance->get_reflection();
     KRG_check(rt, "edited instance has no reflection");
 
-    for (auto& cat_pair : rt->m_editor_properties)
     {
-        if (cat_pair.first == "Meta")
-        {
-            continue;
-        }
-        for (auto& p : cat_pair.second)
-        {
-            if (!p->serializable || !p->rtype || !p->rtype->json_load)
-            {
-                continue;
-            }
-            if (p->type.is_collection || p->type.is_ptr)
-            {
-                continue;
-            }
+        KRG_CONSTRUCTION_TRANSACTION(*class_obj);
 
-            Json::Value val;
-            kryga::reflection::property_context__json_get get_ctx{p.get(), instance, &val};
-            if (p->json_get(get_ctx) != result_code::ok)
+        for (auto& cat_pair : rt->m_editor_properties)
+        {
+            if (cat_pair.first == "Meta")
             {
                 continue;
             }
+            for (auto& p : cat_pair.second)
+            {
+                if (!p->serializable || !p->rtype || !p->rtype->json_load)
+                {
+                    continue;
+                }
+                if (p->type.is_collection || p->type.is_ptr)
+                {
+                    continue;
+                }
 
-            kryga::reflection::property_context__json_set set_ctx{p.get(), class_obj, &val};
-            p->json_set(set_ctx);
+                Json::Value val;
+                kryga::reflection::property_context__json_get get_ctx{p.get(), instance, &val};
+                if (p->json_get(get_ctx) != result_code::ok)
+                {
+                    continue;
+                }
+
+                kryga::reflection::property_context__json_set set_ctx{p.get(), class_obj, &val};
+                p->json_set(set_ctx);
+            }
         }
     }
 

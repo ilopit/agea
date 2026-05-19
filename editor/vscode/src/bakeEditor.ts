@@ -25,14 +25,14 @@ export function openBakeEditor(client: RpcClient): void {
         break;
       case "setConfig":
         try {
-          await client.request("bake.setConfig", msg.patch);
+          await client.request("tools.bake.setConfig", msg.patch);
         } catch (e) {
           vscode.window.showErrorMessage(`Kryga: bake.setConfig failed — ${e}`);
         }
         break;
       case "applyPreset":
         try {
-          await client.request("bake.applyPreset", { preset: msg.preset });
+          await client.request("tools.bake.applyPreset", { preset: msg.preset });
           refresh(client);
         } catch (e) {
           vscode.window.showErrorMessage(`Kryga: bake.applyPreset failed — ${e}`);
@@ -40,7 +40,7 @@ export function openBakeEditor(client: RpcClient): void {
         break;
       case "bake":
         try {
-          await client.request("bake.start");
+          await client.request("tools.bake.start");
         } catch (e) {
           vscode.window.showErrorMessage(`Kryga: bake.start failed — ${e}`);
         }
@@ -51,10 +51,10 @@ export function openBakeEditor(client: RpcClient): void {
     }
   });
 
-  client.onNotification("action.started", () => {
+  client.onNotification("tools.action.started", () => {
     currentPanel?.webview.postMessage({ type: "busyChanged", busy: true });
   });
-  client.onNotification("action.completed", () => {
+  client.onNotification("tools.action.completed", () => {
     currentPanel?.webview.postMessage({ type: "busyChanged", busy: false });
     refresh(client);
   });
@@ -67,8 +67,8 @@ export function openBakeEditor(client: RpcClient): void {
 async function refresh(client: RpcClient): Promise<void> {
   try {
     const [config, scene] = await Promise.all([
-      client.request("bake.getConfig"),
-      client.request("bake.getSceneInfo"),
+      client.request("tools.bake.getConfig"),
+      client.request("tools.bake.getSceneInfo"),
     ]);
     currentPanel?.webview.postMessage({ type: "load", config, scene });
   } catch (e) {

@@ -52,6 +52,9 @@ public:
     get_camera_data();
 
     void
+    set_camera(glm::vec3 position, float pitch, float yaw);
+
+    void
     update_camera();
 
     void

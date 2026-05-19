@@ -1,7 +1,7 @@
 """Material edit/save regression — the 'pink bug'.
 
 The pink bug: model.material.save causes objects to fall back to se_error (pink shader).
-Detectable via render.state.object:
+Detectable via render.object.data:
   - material.id becomes "se_error"
   - texture_indices become all 0xFFFFFFFF
 
@@ -36,7 +36,7 @@ class TestMaterialSaveRegression:
 
     def _check_all_objects_valid(self, engine):
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
     def test_material_edit_does_not_break_rendering(self, engine):

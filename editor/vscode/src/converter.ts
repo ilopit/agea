@@ -46,7 +46,7 @@ export function openConverter(client: RpcClient): void {
       case "refreshDeps": {
         try {
           const result = await client.request<{ deps: Array<{ id: string; checked: boolean }> }>(
-            "converter.listDeps",
+            "tools.converter.listDeps",
             { output_root: msg.output_root },
           );
           currentPanel?.webview.postMessage({ type: "loadDeps", deps: result.deps });
@@ -57,7 +57,7 @@ export function openConverter(client: RpcClient): void {
       }
       case "convert": {
         try {
-          await client.request("converter.start", msg.params);
+          await client.request("tools.converter.start", msg.params);
           currentPanel?.webview.postMessage({ type: "running" });
         } catch (e) {
           currentPanel?.webview.postMessage({ type: "convError", message: String(e) });
@@ -67,7 +67,7 @@ export function openConverter(client: RpcClient): void {
     }
   });
 
-  client.onNotification("converter.completed", (p: any) => {
+  client.onNotification("tools.converter.completed", (p: any) => {
     currentPanel?.webview.postMessage({
       type: "completed",
       success: p.success,

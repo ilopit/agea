@@ -373,19 +373,19 @@ TOOL_RPC_MAP = {
         "type_id": p["type_id"],
         **({"name": p["name"]} if "name" in p else {})
     }),
-    "kryga_visibility_set": ("render.visibility.set", lambda p: {
+    "kryga_visibility_set": ("model.visibility.set", lambda p: {
         "id": p["id"], "visible": p["visible"]
     }),
     "kryga_level_list": ("model.level.list", lambda p: {}),
     "kryga_level_load": ("model.level.load", lambda p: {"id": p["id"]}),
     "kryga_level_save": ("model.level.save", lambda p: {}),
-    "kryga_render_state_camera": ("render.state.camera", lambda p: {}),
-    "kryga_render_state_object": ("render.state.object", lambda p: {"id": p["id"]}),
-    "kryga_render_state_objects": ("render.state.objects", lambda p: {
+    "kryga_render_state_camera": ("render.camera.data", lambda p: {}),
+    "kryga_render_state_object": ("render.object.data", lambda p: {"id": p["id"]}),
+    "kryga_render_state_objects": ("render.object.list", lambda p: {
         k: p[k] for k in ("ids", "offset", "limit") if k in p
     }),
-    "kryga_render_state_stats": ("render.state.stats", lambda p: {}),
-    "kryga_render_state_lights": ("render.state.lights", lambda p: {}),
+    "kryga_render_state_stats": ("render.stats", lambda p: {}),
+    "kryga_render_state_lights": ("render.lights.data", lambda p: {}),
     "kryga_render_config_get": ("render.config.get", lambda p: {}),
     "kryga_render_config_set": ("render.config.set", lambda p: {
         k: p[k] for k in ("shadows", "lighting", "clusters", "debug", "render_scale", "outline") if k in p

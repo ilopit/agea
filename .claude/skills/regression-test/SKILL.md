@@ -5,7 +5,7 @@ argument-hint: "<description of what to test>"
 allowed-tools: Read, Edit, Write, Grep, Glob, Bash, Agent
 ---
 
-Write a Python regression test in `tests/regression/` that exercises the engine via JSON-RPC and verifies both model-layer and render-layer state.
+Write a Python regression test in `tests/e2e/` that exercises the engine via JSON-RPC and verifies both model-layer and render-layer state.
 
 ## Architecture: Two-Layer Verification
 
@@ -19,7 +19,7 @@ Testing only the model is insufficient — it doesn't catch render_bridge propag
 ## Test file structure
 
 ```
-tests/regression/
+tests/e2e/
   conftest.py          # Shared fixtures (engine session, level loading, file snapshots)
   rpc_client.py        # EngineRPC + EngineProcess (TCP JSON-RPC 2.0 client)
   assertions.py        # Reusable assertion helpers
@@ -43,8 +43,10 @@ All RPCs are registered in `engine/private/src/engine_rpc.cpp` — grep for `ser
 - **`render.state.*`** — read-only GPU state: per-object (mesh, material, texture_indices, gpu_data), lights, camera, stats
 - **`render.visibility.*`** — visibility overrides
 - **`engine.*`** — engine mode (editor/play), shutdown
-- **`bake.*`** — lightmap baking config and execution
-- **`actions.*`** — async action status tracking
+- **`tools.bake.*`** — lightmap baking config and execution
+- **`tools.actions.*`** — async action status tracking
+- **`tools.converter.*`** — asset converter
+- **`editor.material.preview`** — material preview rendering
 - **`ping`** — engine health check
 
 ## Writing a test — step by step
@@ -147,11 +149,11 @@ NEVER use `time.sleep()` — use `engine.wait_frame()` for deterministic synchro
 
 ## Assertion helpers
 
-Reusable assertions live in `tests/regression/assertions.py` — read it before writing a test. Import as `from . import assertions`.
+Reusable assertions live in `tests/e2e/assertions.py` — read it before writing a test. Import as `from . import assertions`.
 
 ## Test level
 
-The default level and expected objects are defined in `tests/regression/conftest.py`. Read it before writing a test to know what's available. Available textures live in `resources/packages/base.apkg/class/textures/`.
+The default level and expected objects are defined in `tests/e2e/conftest.py`. Read it before writing a test to know what's available. Available textures live in `resources/packages/base.apkg/class/textures/`.
 
 ## Shared fixtures (from `conftest.py`)
 
@@ -162,16 +164,16 @@ The default level and expected objects are defined in `tests/regression/conftest
 
 ```bash
 # All regression tests
-python -m pytest tests/regression/ -v
+python -m pytest tests/e2e/ -v
 
 # Single file
-python -m pytest tests/regression/test_texture_swap.py -v
+python -m pytest tests/e2e/test_texture_swap.py -v
 
 # Single test
-python -m pytest tests/regression/test_texture_swap.py::TestTextureSwap::test_texture_swap_updates_model_and_render -v
+python -m pytest tests/e2e/test_texture_swap.py::TestTextureSwap::test_texture_swap_updates_model_and_render -v
 
 # Against already-running engine (skip auto-start)
-python -m pytest tests/regression/ -v --no-auto-start
+python -m pytest tests/e2e/ -v --no-auto-start
 ```
 
 ## What to verify in every test

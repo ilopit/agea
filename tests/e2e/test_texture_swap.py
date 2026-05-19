@@ -24,14 +24,14 @@ def _get_texture_slots(engine, mat_id=MATERIAL_ID):
 
 
 def _get_render_texture_indices(engine, obj_id=RENDER_OBJECT):
-    ro = engine.call("render.state.object", {"id": obj_id})
+    ro = engine.call("render.object.data", {"id": obj_id})
     assertions.assert_not_pink_bug(ro, obj_id)
     return ro["material"]["texture_indices"]
 
 
 class TestTextureSwap:
 
-    def test_texture_swap_updates_model_and_render(self, engine):
+    def test_texture_swap_updates_model_and_render(self, engine, slow):
         """Full pipeline: change diffuse texture, verify model + render update."""
         # --- baseline ---
         original_slots = _get_texture_slots(engine)
@@ -57,6 +57,7 @@ class TestTextureSwap:
         })
         engine.call("model.material.save", {"id": MATERIAL_ID})
         engine.wait_frame()
+        slow("texture swapped to ALT")
 
         # --- model: verify T2 ---
         swapped_slots = _get_texture_slots(engine)
@@ -74,6 +75,7 @@ class TestTextureSwap:
         })
         engine.call("model.material.save", {"id": MATERIAL_ID})
         engine.wait_frame()
+        slow("texture restored")
 
         # --- verify restoration ---
         restored_slots = _get_texture_slots(engine)
@@ -86,7 +88,7 @@ class TestTextureSwap:
             f"Render indices not restored: {restored_indices} vs {original_indices}"
         )
 
-    def test_texture_swap_discard_leaves_render_unchanged(self, engine):
+    def test_texture_swap_discard_leaves_render_unchanged(self, engine, slow):
         """Edit + setField + discard must not change render texture_indices."""
         original_indices = _get_render_texture_indices(engine)
 
@@ -94,15 +96,18 @@ class TestTextureSwap:
         engine.call("model.material.setField", {
             "id": MATERIAL_ID, "field": TEXTURE_FIELD, "value": ALT_TEXTURE,
         })
+        slow("texture set before discard")
+
         engine.call("model.material.discard", {"id": MATERIAL_ID})
         engine.wait_frame()
+        slow("after discard")
 
         discarded_indices = _get_render_texture_indices(engine)
         assert discarded_indices == original_indices, (
             f"Discard changed render indices: {original_indices} → {discarded_indices}"
         )
 
-    def test_texture_swap_all_objects_stay_valid(self, engine):
+    def test_texture_swap_all_objects_stay_valid(self, engine, slow):
         """Swapping texture on mt_toon must not cause pink bug on any object."""
         original_slots = _get_texture_slots(engine)
         original_texture = original_slots[TEXTURE_FIELD]
@@ -113,9 +118,10 @@ class TestTextureSwap:
         })
         engine.call("model.material.save", {"id": MATERIAL_ID})
         engine.wait_frame()
+        slow("texture swapped — checking all objects")
 
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
         # restore
@@ -125,3 +131,4 @@ class TestTextureSwap:
         })
         engine.call("model.material.save", {"id": MATERIAL_ID})
         engine.wait_frame()
+        slow("texture restored")

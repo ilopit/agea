@@ -6,7 +6,7 @@ NEW_OBJECT = "test_crud_object"
 
 
 def _get_render_object_ids(engine):
-    objs = engine.call("render.state.objects")
+    objs = engine.call("render.object.list")
     return {o["id"] for o in objs.get("objects", [])}
 
 
@@ -82,7 +82,7 @@ class TestSceneCRUD:
         assert clone_id not in obj_ids
 
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
     def test_crud_does_not_corrupt_materials(self, engine):
@@ -90,5 +90,5 @@ class TestSceneCRUD:
         engine.call("model.scene.delete", {"id": NEW_OBJECT})
 
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)

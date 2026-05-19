@@ -359,6 +359,15 @@ game_editor::update_camera()
     m_updated = false;
 }
 
+void
+game_editor::set_camera(glm::vec3 position, float pitch, float yaw)
+{
+    m_camera_data.position = position;
+    m_pitch = glm::clamp(pitch, -85.f, 85.f);
+    m_yaw = yaw;
+    m_updated = true;
+}
+
 gpu::camera_data
 game_editor::get_camera_data()
 {

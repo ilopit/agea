@@ -14,25 +14,25 @@ class TestSceneIntegrity:
 
     def test_render_objects_have_correct_meshes(self, engine):
         for comp_id, expected in EXPECTED_RENDER_OBJECTS.items():
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_mesh_matches(ro, expected["mesh"], comp_id)
 
     def test_render_objects_have_correct_materials(self, engine):
         for comp_id, expected in EXPECTED_RENDER_OBJECTS.items():
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_material_id_matches(ro, expected["material"], comp_id)
 
     def test_no_pink_bug_on_clean_load(self, engine):
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
     def test_render_stats_object_count(self, engine):
-        stats = engine.call("render.state.stats")
+        stats = engine.call("render.stats")
         assert stats["object_count"] >= 2
 
     def test_directional_light_present(self, engine):
-        lights = engine.call("render.state.lights")
+        lights = engine.call("render.lights.data")
         dir_lights = lights.get("directional", [])
         light_ids = [dl["id"] for dl in dir_lights]
         assert "sun_lc" in light_ids, f"Sun light not found. Lights: {light_ids}"

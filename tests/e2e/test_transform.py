@@ -13,7 +13,7 @@ class TestTransform:
             xform["position"], [0.0, 1.0, 0.0], label="hero_cube initial"
         )
 
-        ro = engine.call("render.state.object", {"id": OBJECT_ID})
+        ro = engine.call("render.object.data", {"id": OBJECT_ID})
         assertions.assert_position_close(
             ro["gpu_data"]["obj_pos"], [0.0, 1.0, 0.0],
             tolerance=0.05, label="hero_cube render initial",
@@ -29,7 +29,7 @@ class TestTransform:
             xform["position"], new_pos, label="model after move",
         )
 
-        ro = engine.call("render.state.object", {"id": OBJECT_ID})
+        ro = engine.call("render.object.data", {"id": OBJECT_ID})
         assertions.assert_position_close(
             ro["gpu_data"]["obj_pos"], new_pos,
             tolerance=0.05, label="render after move",
@@ -47,7 +47,7 @@ class TestTransform:
                 f"Model scale[{i}]: {xform['scale'][i]} != {new_scale[i]}"
             )
 
-        ro = engine.call("render.state.object", {"id": OBJECT_ID})
+        ro = engine.call("render.object.data", {"id": OBJECT_ID})
         model_mat = ro["gpu_data"]["model"]
         for i in range(3):
             diag = model_mat[i * 4 + i]
@@ -62,5 +62,5 @@ class TestTransform:
         engine.wait_frame()
 
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)

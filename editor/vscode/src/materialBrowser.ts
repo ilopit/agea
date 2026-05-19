@@ -52,7 +52,7 @@ export function openMaterialBrowser(
     } else if (msg.type === "requestPreview") {
       try {
         const res = await client.request<{ image: string }>(
-          "render.material.preview",
+          "editor.material.preview",
           { id: msg.material_id, size: msg.size || 128 },
         );
         panel?.webview.postMessage({
