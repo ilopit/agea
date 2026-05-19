@@ -158,6 +158,7 @@ public:
     void
     set_root_component(game_object_component* root)
     {
+        KRG_check(!get_flags().readonly, "set_root_component: writing to readonly object");
         m_root_component = root;
     }
 

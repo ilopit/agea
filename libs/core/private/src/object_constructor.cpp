@@ -83,18 +83,22 @@ object_constructor::instantiate_obj(root::smart_object& proto, const utils::id& 
     }
     auto obj = alloc_result.value();
 
-    auto rc = instantiate_object_properties(proto, *obj);
-    if (rc != result_code::ok)
     {
-        return std::unexpected(rc);
-    }
+        KRG_CONSTRUCTION_TRANSACTION(*obj);
 
-    obj->set_state(root::smart_object_state::loaded);
+        auto rc = instantiate_object_properties(proto, *obj);
+        if (rc != result_code::ok)
+        {
+            return std::unexpected(rc);
+        }
 
-    if (!obj->post_load())
-    {
-        ALOG_ERROR("post_load failed for [{}]", obj->get_id().cstr());
-        return std::unexpected(result_code::failed);
+        obj->set_state(root::smart_object_state::loaded);
+
+        if (!obj->post_load())
+        {
+            ALOG_ERROR("post_load failed for [{}]", obj->get_id().cstr());
+            return std::unexpected(result_code::failed);
+        }
     }
 
     return obj;
@@ -117,18 +121,22 @@ object_constructor::clone_obj(root::smart_object& src, const utils::id& new_id)
     }
     auto obj = alloc_result.value();
 
-    auto rc = clone_object_properties(src, *obj);
-    if (rc != result_code::ok)
     {
-        return std::unexpected(rc);
-    }
+        KRG_CONSTRUCTION_TRANSACTION(*obj);
 
-    obj->set_state(root::smart_object_state::loaded);
+        auto rc = clone_object_properties(src, *obj);
+        if (rc != result_code::ok)
+        {
+            return std::unexpected(rc);
+        }
 
-    if (!obj->post_load())
-    {
-        ALOG_ERROR("post_load failed for [{}]", obj->get_id().cstr());
-        return std::unexpected(result_code::failed);
+        obj->set_state(root::smart_object_state::loaded);
+
+        if (!obj->post_load())
+        {
+            ALOG_ERROR("post_load failed for [{}]", obj->get_id().cstr());
+            return std::unexpected(result_code::failed);
+        }
     }
 
     return obj;
@@ -160,14 +168,18 @@ object_constructor::construct_obj(const utils::id& type_id,
     }
     auto obj = alloc_result.value();
 
-    if (!obj->META_construct(params))
     {
-        return std::unexpected(result_code::failed);
-    }
+        KRG_CONSTRUCTION_TRANSACTION(*obj);
 
-    if (!obj->post_construct())
-    {
-        return std::unexpected(result_code::failed);
+        if (!obj->META_construct(params))
+        {
+            return std::unexpected(result_code::failed);
+        }
+
+        if (!obj->post_construct())
+        {
+            return std::unexpected(result_code::failed);
+        }
     }
 
     m_olc->reset_loaded_objects();
@@ -258,15 +270,19 @@ object_constructor::create_default_class_obj_impl(reflection::reflection_type* r
     empty->set_package(m_olc->get_package());
     m_olc->add_obj(empty);
 
-    auto p = rt->cparams_alloc();
-    if (!empty->META_default_construct(*p))
     {
-        return std::unexpected(result_code::failed);
-    }
+        KRG_CONSTRUCTION_TRANSACTION(*empty);
 
-    if (!empty->post_construct())
-    {
-        return std::unexpected(result_code::failed);
+        auto p = rt->cparams_alloc();
+        if (!empty->META_default_construct(*p))
+        {
+            return std::unexpected(result_code::failed);
+        }
+
+        if (!empty->post_construct())
+        {
+            return std::unexpected(result_code::failed);
+        }
     }
 
     return empty.get();
@@ -352,18 +368,22 @@ object_constructor::object_load_derive(root::smart_object& prototype_obj,
     }
     auto obj = alloc_result.value();
 
-    auto rc = load_derive_object_properties(prototype_obj, *obj, sc);
-    if (rc != result_code::ok)
     {
-        return std::unexpected(rc);
-    }
+        KRG_CONSTRUCTION_TRANSACTION(*obj);
 
-    obj->set_state(root::smart_object_state::loaded);
+        auto rc = load_derive_object_properties(prototype_obj, *obj, sc);
+        if (rc != result_code::ok)
+        {
+            return std::unexpected(rc);
+        }
 
-    if (!obj->post_load())
-    {
-        ALOG_ERROR("post_load failed for [{}]", obj->get_id().cstr());
-        return std::unexpected(result_code::failed);
+        obj->set_state(root::smart_object_state::loaded);
+
+        if (!obj->post_load())
+        {
+            ALOG_ERROR("post_load failed for [{}]", obj->get_id().cstr());
+            return std::unexpected(result_code::failed);
+        }
     }
 
     return obj;

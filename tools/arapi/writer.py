@@ -584,6 +584,7 @@ def write_property_access_methods(fc: arapi.types.file_context,
     fc.properies_access_methods += f"""void
 {prop.owner}::set_{prop.name_cut}({prop.type} v)
 {{
+    KRG_check(!get_flags().readonly, "set_{prop.name_cut}: writing to readonly object");
 """
     if prop.check_not_same:
       fc.properies_access_methods += f"    if(m_{prop.name_cut} == v) {{ return; }}\n"

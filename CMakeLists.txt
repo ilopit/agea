@@ -54,6 +54,8 @@ else()
     set(_krg_build_editor_target ON)
 endif()
 
+add_compile_definitions(KRG_ENFORCE_READONLY)
+
 option(KRG_BUILD_EDITOR_TARGET  "Build the kryga_editor executable (desktop only)"                    ${_krg_build_editor_target})
 
 # On Android, NDK r26d ships Vulkan 1.3.x headers but vk-bootstrap v1.4.x

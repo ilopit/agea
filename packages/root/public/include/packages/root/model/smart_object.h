@@ -331,5 +331,28 @@ cast_ref(From* ref)
     return (To*)ref;
 }
 
+struct construction_transaction
+{
+    smart_object& obj;
+    bool was_readonly;
+
+    construction_transaction(smart_object& o)
+        : obj(o)
+        , was_readonly(o.get_flags().readonly)
+    {
+        obj.get_flags().readonly = false;
+    }
+
+    ~construction_transaction()
+    {
+        obj.get_flags().readonly = was_readonly;
+    }
+
+    construction_transaction(const construction_transaction&) = delete;
+    construction_transaction& operator=(const construction_transaction&) = delete;
+};
+
+#define KRG_CONSTRUCTION_TRANSACTION(obj) ::kryga::root::construction_transaction _txn{obj}
+
 }  // namespace root
 }  // namespace kryga

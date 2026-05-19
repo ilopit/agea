@@ -5,6 +5,11 @@
 #include "core/reflection/property_utils.h"
 #include "core/reflection/type_description.h"
 
+#ifdef KRG_ENFORCE_READONLY
+#include <packages/root/model/smart_object.h>
+#include <utils/check.h>
+#endif
+
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -23,17 +28,64 @@ enum class instantiate_mode : uint8_t
     share,
 };
 
+#ifdef KRG_ENFORCE_READONLY
+
+template <typename Fn>
+struct guarded_handler
+{
+    Fn fn = nullptr;
+
+    guarded_handler() = default;
+    guarded_handler(Fn f)
+        : fn(f)
+    {
+    }
+    guarded_handler&
+    operator=(Fn f)
+    {
+        fn = f;
+        return *this;
+    }
+
+    template <typename Ctx>
+    result_code
+    operator()(Ctx& ctx) const
+    {
+        root::smart_object* target;
+        if constexpr (requires { ctx.dst_obj; })
+            target = ctx.dst_obj;
+        else
+            target = ctx.obj;
+        KRG_check(!target->get_flags().readonly, "writing to readonly object");
+        return fn(ctx);
+    }
+};
+
+using property_handler__copy_guarded        = guarded_handler<property_handler__copy>;
+using property_handler__instantiate_guarded = guarded_handler<property_handler__instantiate>;
+using property_handler__load_guarded        = guarded_handler<property_handler__load>;
+using property_handler__json_set_guarded    = guarded_handler<property_handler__json_set>;
+
+#else
+
+using property_handler__copy_guarded        = property_handler__copy;
+using property_handler__instantiate_guarded = property_handler__instantiate;
+using property_handler__load_guarded        = property_handler__load;
+using property_handler__json_set_guarded    = property_handler__json_set;
+
+#endif
+
 class property
 {
 public:
     // clang-format off
-    property_handler__save           save_handler            = default_save;
-    property_handler__compare        compare_handler         = default_compare;
-    property_handler__copy           copy_handler            = default_copy;
-    property_handler__instantiate    instantiate_handler     = default_instantiate;
-    property_handler__load           load_handler            = default_load;
-    property_handler__json_get       json_get                = default_json_get;
-    property_handler__json_set       json_set                = default_json_set;
+    property_handler__save               save_handler        = default_save;
+    property_handler__compare            compare_handler     = default_compare;
+    property_handler__copy_guarded       copy_handler        = default_copy;
+    property_handler__instantiate_guarded instantiate_handler = default_instantiate;
+    property_handler__load_guarded       load_handler        = default_load;
+    property_handler__json_get           json_get            = default_json_get;
+    property_handler__json_set_guarded   json_set            = default_json_set;
 
     // clang-format on
 
