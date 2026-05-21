@@ -271,6 +271,18 @@ class EngineRPC:
             f"{method} queued but engine did not respond within {poll_timeout}s"
         )
 
+    def invoke(self, obj_id: str, function: str, args: Optional[list] = None) -> Any:
+        """Invoke a reflected function on an object. Returns the result value."""
+        params = {"id": obj_id, "function": function}
+        if args is not None:
+            params["args"] = args
+        result = self.call("model.object.invoke", params)
+        return result.get("value") if isinstance(result, dict) else result
+
+    def get_type_meta(self, type_name: str) -> dict:
+        """Get full type metadata including properties and functions."""
+        return self.call("model.type.meta", {"type": type_name})
+
     def load_level_and_wait(
         self, level_id: str, settle_time: float = 1.0, timeout: float = 10.0
     ) -> dict:

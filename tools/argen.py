@@ -141,7 +141,7 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
   # Write GPU structs for types with gpu_data properties
   arapi.writer.write_all_gpu_structs(context)
 
-  # Write Python RPC schema
+  # Write Python RPC proxy classes (used by e2e tests)
   arapi.writer.write_python_schema(context, output_dir)
 
 

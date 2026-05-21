@@ -52,6 +52,7 @@ class kryga_type:
     self.properties: list[kryga_property] = []
     self.functions = []
     self.ctros = []
+    self.construct_params: list[kryga_cparam] = []
 
     self.parent_name = ""
     self.parent_type: kryga_type = None
@@ -153,10 +154,31 @@ class file_context:
     self.types = ordered_types
 
 
+class kryga_cparam:
+
+  def __init__(self, type_name: str = "", name: str = "", is_pointer: bool = False, is_optional: bool = False):
+    self.type_name = type_name
+    self.name = name
+    self.is_pointer = is_pointer
+    self.is_optional = is_optional
+
+
+class kryga_function_param:
+
+  def __init__(self, type_name: str = "", name: str = ""):
+    self.type_name = type_name
+    self.name = name
+
+
 class kryga_function:
 
   def __init__(self):
     self.name = ""
+    self.category = ""
+    self.mcp_hint = ""
+    self.return_type = ""
+    self.params: list[kryga_function_param] = []
+    self.is_const = False
 
 
 class kryga_ctor:

@@ -210,6 +210,19 @@ TOOLS = [
         }
     ),
     Tool(
+        name="kryga_model_invoke",
+        description="Invoke a reflected function on an object. Use kryga_model_get_type_meta to discover available functions and their signatures. Functions marked invocable=true can be called.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "Object ID (game object or component)"},
+                "function": {"type": "string", "description": "Function name from type_meta functions list"},
+                "args": {"description": "Array of arguments (positional, matching the function signature). Omit for no-arg functions."},
+            },
+            "required": ["id", "function"]
+        }
+    ),
+    Tool(
         name="kryga_model_set_property",
         description="Set a single property value on an object or component by field name. Use kryga_model_get_all first to discover available field names and types.",
         inputSchema={
@@ -229,7 +242,7 @@ TOOLS = [
     ),
     Tool(
         name="kryga_model_component_add",
-        description="Add a component to a game object. By default parents to the root component; pass parent_id to nest under a specific component.",
+        description="Add a component to a game object. Pass properties to set construct params (position/mesh/material/etc). By default parents to root component; pass parent_id to nest.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -237,6 +250,7 @@ TOOLS = [
                 "type_id": {"type": "string", "description": "Component type ID (from component.listTypes)"},
                 "name": {"type": "string", "description": "Optional name for the component (defaults to type_id)"},
                 "parent_id": {"type": "string", "description": "Optional parent component ID — nest under this component instead of root"},
+                "properties": {"type": "object", "description": "Construct params: position/rotation/scale [x y z] for spatial components; mesh_handle/material_handle as asset IDs for mesh_component"},
             },
             "required": ["object_id", "type_id"]
         }
@@ -368,6 +382,10 @@ TOOL_RPC_MAP = {
     "kryga_model_get_all": ("model.object.property.get", lambda p: {"id": p["id"]}),
     "kryga_model_get_property": ("model.object.property.get_one", lambda p: {"id": p["id"], "name": p["name"]}),
     "kryga_model_get_type_meta": ("model.type.meta", lambda p: {"type": p["type"]}),
+    "kryga_model_invoke": ("model.object.invoke", lambda p: {
+        "id": p["id"], "function": p["function"],
+        **({"args": _coerce_value(p["args"])} if "args" in p else {}),
+    }),
     "kryga_model_set_property": ("model.object.property.set", lambda p: {
         "owner_id": p["owner_id"], "name": p["name"],
         "value": _coerce_value(p["value"]),
@@ -378,6 +396,7 @@ TOOL_RPC_MAP = {
         "type_id": p["type_id"],
         **({"name": p["name"]} if "name" in p else {}),
         **({"parent_id": p["parent_id"]} if "parent_id" in p else {}),
+        **({"properties": _coerce_value(p["properties"])} if "properties" in p else {}),
     }),
     "kryga_model_list_levels": ("model.level.list", lambda p: {}),
     "kryga_model_level_load": ("model.level.load", lambda p: {"id": p["id"]}),

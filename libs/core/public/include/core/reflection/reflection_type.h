@@ -112,6 +112,8 @@ using type_handler__gpu_texture_collect = uint32_t (*)(const void* src, gpu_text
 
 using type_handler__alloc = std::shared_ptr<root::smart_object> (*)(type_context__alloc&);
 using type_handler__cparams_alloc = std::unique_ptr<::kryga::root::base_construct_params> (*)();
+using type_handler__cparams_json_load = result_code (*)(::kryga::root::base_construct_params*,
+                                                        const Json::Value&);
 using type_handler__json_save = result_code (*)(type_context__json_save&);
 using type_handler__json_load = result_code (*)(type_context__json_load&);
 
@@ -137,6 +139,9 @@ struct reflection_type
     std::string
     as_string() const;
 
+    function*
+    find_function(const std::string& name) const;
+
     int type_id = -1;
     kryga::utils::id module_id;
     kryga::utils::id type_name;
@@ -155,6 +160,7 @@ struct reflection_type
     // clang-format off
     type_handler__alloc                         alloc = nullptr;
     type_handler__cparams_alloc                 cparams_alloc = nullptr;
+    type_handler__cparams_json_load             cparams_json_load = nullptr;
 
     type_handler__save                          save = nullptr;
     type_handler__load                          load = nullptr;

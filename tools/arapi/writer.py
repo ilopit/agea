@@ -291,6 +291,12 @@ def _write_python_base(py_dir: str) -> None:
   buf.append('            "owner_id": self._id, "name": name, "value": value,\n')
   buf.append("        })\n")
   buf.append("        self._engine.wait_frame()\n\n")
+  buf.append("    def _invoke(self, function, args=None):\n")
+  buf.append('        params = {"id": self._id, "function": function}\n')
+  buf.append("        if args is not None:\n")
+  buf.append('            params["args"] = args\n')
+  buf.append('        result = self._engine.call("model.object.invoke", params)\n')
+  buf.append('        return result.get("value") if isinstance(result, dict) else result\n\n')
   buf.append("    def set_visible(self, visible):\n")
   buf.append("        flags = self._get('layers') or 0\n")
   buf.append("        if visible:\n")
@@ -303,167 +309,18 @@ def _write_python_base(py_dir: str) -> None:
   buf.write_if_changed()
 
 
-def _mcp_schema_to_json_schema(mcp_schema: str) -> str:
-  """Convert mcp_schema annotation to JSON Schema fragment."""
-  if not mcp_schema:
-    return ""
-  if mcp_schema in ("string", "number", "integer", "boolean"):
-    return f'"type": "{mcp_schema}"'
-  if mcp_schema.startswith("array:"):
-    parts = mcp_schema.split(":")
-    item_type = parts[1] if len(parts) > 1 else "number"
-    length = parts[2] if len(parts) > 2 else None
-    s = f'"type": "array", "items": {{"type": "{item_type}"}}'
-    if length:
-      s += f', "minItems": {length}, "maxItems": {length}'
-    return s
-  return ""
-
-
-
-
-def _load_type_schema_registry(py_dir: str) -> Dict[str, Tuple[str, str]]:
-  """Load the accumulated type→(schema, hint) registry."""
-  path = os.path.join(py_dir, "_type_schemas.json")
-  if os.path.exists(path):
-    import json
-    with open(path, "r") as f:
-      return json.load(f)
-  return {}
-
-
-def _save_type_schema_registry(py_dir: str, registry: Dict) -> None:
-  """Save the accumulated type→(schema, hint) registry."""
-  import json
-  path = os.path.join(py_dir, "_type_schemas.json")
-  with open(path, "w") as f:
-    json.dump(registry, f, indent=2)
-
-
-def _lookup_type_in_registry(type_name: str, registry) -> Optional[Tuple[str, str]]:
-  """Look up a type in the schema registry, trying full name, stripped, and short name."""
-  short_name = type_name.split('::')[-1]
-  for key in (type_name, type_name.lstrip(':'), short_name):
-    if key in registry:
-      return registry[key]
-  return None
-
-
-def _mcp_schema_for_prop(prop, registry) -> str:
-  """Get JSON Schema for a property from the global type registry."""
-  if prop.type.endswith('*'):
-    base = prop.type[:-1].rstrip()
-    entry = _lookup_type_in_registry(base, registry)
-    if entry:
-      return _mcp_schema_to_json_schema(entry[0])
-    return '"type": "string"'
-  entry = _lookup_type_in_registry(prop.type, registry)
-  if entry:
-    return _mcp_schema_to_json_schema(entry[0])
-  return ""
-
-
-def _mcp_hint_for_prop(prop, registry) -> str:
-  """Get mcp_hint for a property. Priority: property override → type registry → auto."""
-  if prop.mcp_hint:
-    return prop.mcp_hint
-  if prop.type.endswith('*'):
-    base = prop.type[:-1].rstrip()
-    entry = _lookup_type_in_registry(base, registry)
-    if entry and entry[1]:
-      return entry[1]
-    short = base.split('::')[-1]
-    return f"{short} ID from scene"
-  entry = _lookup_type_in_registry(prop.type, registry)
-  if entry:
-    return entry[1]
-  return ""
-
-
-def _write_mcp_tools(py_dir: str, context) -> None:
-  """Generate MCP tool definitions from reflected types."""
-  module_name = context.module_name
-  all_types = context.types
-
-  registry = _load_type_schema_registry(py_dir)
-  for t in all_types:
-    if t.mcp_schema or t.mcp_hint:
-      registry[t.get_full_type_name()] = [t.mcp_schema, t.mcp_hint]
-      registry[t.name] = [t.mcp_schema, t.mcp_hint]
-  _save_type_schema_registry(py_dir, registry)
-  output_path = os.path.join(py_dir, f"{module_name}_mcp.py")
-  buf = arapi.utils.FileBuffer(output_path)
-  buf.append('"""Auto-generated MCP tool definitions from reflected types."""\n\n')
-
-  tool_entries = []
-
-  for type_obj in all_types:
-    if type_obj.kind != arapi.types.kryga_type_kind.CLASS:
-      continue
-
-    writable = [p for p in type_obj.properties if p.access in SHOULD_HAVE_SETTER]
-    readable = [p for p in type_obj.properties if p.access in (ACCESS_ALL, ACCESS_READ_ONLY)]
-    if not readable:
-      continue
-
-    name = type_obj.name
-
-    # get tool
-    tool_entries.append({
-        "name": f"kryga_{name}_get",
-        "desc": f"Get properties of a {name}",
-        "props": readable,
-        "writable": [],
-    })
-
-    # set tool
-    if writable:
-      tool_entries.append({
-          "name": f"kryga_{name}_set",
-          "desc": f"Set properties on a {name}. Only provided fields are changed.",
-          "props": writable,
-          "writable": writable,
-      })
-
-  buf.append("GENERATED_TOOLS = [\n")
-  for entry in tool_entries:
-    buf.append(f"    {{\n")
-    buf.append(f'        "name": "{entry["name"]}",\n')
-    buf.append(f'        "description": "{entry["desc"]}",\n')
-    buf.append(f'        "inputSchema": {{\n')
-    buf.append(f'            "type": "object",\n')
-    buf.append(f'            "properties": {{\n')
-    buf.append(f'                "id": {{"type": "string", "description": "Object or component ID"}},\n')
-    for prop in entry["props"]:
-      schema = _mcp_schema_for_prop(prop, registry)
-      hint = _mcp_hint_for_prop(prop, registry)
-      schema_str = f"{schema}, " if schema else ""
-      desc = f"{prop.name_cut} — {hint}" if hint else prop.name_cut
-      buf.append(f'                "{prop.name_cut}": {{{schema_str}"description": "{desc}"}},\n')
-    buf.append(f'            }},\n')
-    buf.append(f'            "required": ["id"],\n')
-    buf.append(f'        }},\n')
-    is_setter = len(entry["writable"]) > 0
-    buf.append(f'        "is_setter": {is_setter},\n')
-    buf.append(f"    }},\n")
-  buf.append("]\n")
-
-  buf.write_if_changed()
-
-
 def write_python_schema(context: arapi.types.file_context, output_dir: str) -> None:
-  """Generate Python RPC schema for a package's reflected types."""
+  """Generate Python RPC proxy classes for a package's reflected types."""
   py_dir = os.path.join(output_dir, "python")
   if not os.path.exists(py_dir):
     os.makedirs(py_dir)
 
   _write_python_base(py_dir)
-  _write_mcp_tools(py_dir, context)
 
   output_path = os.path.join(py_dir, f"{context.module_name}.py")
   buf = arapi.utils.FileBuffer(output_path)
 
-  buf.append(f'"""Auto-generated RPC schema for package {context.module_name}."""\n')
+  buf.append(f'"""Auto-generated RPC proxy for package {context.module_name}."""\n')
   buf.append("from _base import kryga_object\n\n")
 
   for type_obj in context.types:
@@ -471,7 +328,8 @@ def write_python_schema(context: arapi.types.file_context, output_dir: str) -> N
       continue
 
     props = [p for p in type_obj.properties if p.access in (ACCESS_ALL, ACCESS_READ_ONLY)]
-    if not props:
+    funcs = type_obj.functions
+    if not props and not funcs:
       continue
 
     class_name = type_obj.name
@@ -487,7 +345,20 @@ def write_python_schema(context: arapi.types.file_context, output_dir: str) -> N
         buf.append(f"    def set_{prop.name_cut}(self, value):\n")
         buf.append(f'        self._set("{prop.name_cut}", value)\n\n')
 
+    for func in funcs:
+      if func.params:
+        params_str = ", ".join(p.name or f"arg{i}" for i, p in enumerate(func.params))
+        args_list = ", ".join(p.name or f"arg{i}" for i, p in enumerate(func.params))
+        buf.append(f"    def {func.name}(self, {params_str}):\n")
+        buf.append(f'        return self._invoke("{func.name}", [{args_list}])\n\n')
+      else:
+        buf.append(f"    def {func.name}(self):\n")
+        buf.append(f'        return self._invoke("{func.name}")\n\n')
+
   buf.write_if_changed()
+
+
+
 
 
 def type_has_gpu_data(type_obj: arapi.types.kryga_type,
@@ -892,7 +763,17 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
     file_buffer.append(f"        p->inst_mode  = ::kryga::reflection::instantiate_mode::{prop.instantiate_mode};\n")
 
   if prop.access in SHOULD_HAVE_SETTER:
-    file_buffer.append(f"""        p->json_set = [](::kryga::reflection::property_context__json_set& ctx) -> ::kryga::result_code {{
+    if prop.type.rstrip().endswith('*'):
+      file_buffer.append(f"""        p->json_set = [](::kryga::reflection::property_context__json_set& ctx) -> ::kryga::result_code {{
+            if (!ctx.jc->isString()) return ::kryga::result_code::failed;
+            auto* obj = ::kryga::glob::glob_state().getr_model().caches.objects.get_item(AID(ctx.jc->asString()));
+            if (!obj) return ::kryga::result_code::failed;
+            static_cast<type&>(*ctx.obj).set_{prop.name_cut}(static_cast<std::remove_pointer_t<{prop.type}>*>(obj));
+            return ::kryga::result_code::ok;
+        }};
+""")
+    else:
+      file_buffer.append(f"""        p->json_set = [](::kryga::reflection::property_context__json_set& ctx) -> ::kryga::result_code {{
             if (!ctx.p->rtype || !ctx.p->rtype->json_load) return ::kryga::result_code::failed;
             {prop.type} tmp{{}};
             ::kryga::reflection::type_context__json_load load_ctx{{}};
@@ -1210,7 +1091,12 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
     file_buffer.append(f"""
 {indent}rt.alloc         = {type_obj.name}::AR_TYPE_create_empty_gen_obj;
 {indent}rt.cparams_alloc = {type_obj.name}::AR_TYPE_create_gen_default_cparams;
-""")
+"""
+    )
+
+    if type_obj.construct_params:
+      loader = _cparams_loader_name(type_obj.name)
+      file_buffer.append(f"{indent}rt.cparams_json_load = {loader};\n")
 
   if type_obj.architype:
     file_buffer.append(f"{indent}rt.arch         = core::architype::{type_obj.architype};\n")
@@ -1229,6 +1115,8 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}    rt.mcp_schema = parent_rt->mcp_schema;
 {indent}if (rt.mcp_hint.empty() && !parent_rt->mcp_hint.empty())
 {indent}    rt.mcp_hint = parent_rt->mcp_hint;
+{indent}for (auto& pf : parent_rt->m_functions)
+{indent}    rt.m_functions.push_back(pf);
 """)
 
   if type_obj.compare_handler:
@@ -1285,7 +1173,191 @@ package::package_types_builder::register_properties_{type_obj.name}()
     write_property_access_methods(fc, prop)
     _write_property_reflection(file_buffer, fc, prop, type_obj.name)
 
+  for func in type_obj.functions:
+    _write_function_reflection(file_buffer, fc, func, type_obj)
+
   file_buffer.append("}\n")
+
+
+def _write_function_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
+                               func: arapi.types.kryga_function, type_obj: arapi.types.kryga_type) -> None:
+  """Write function reflection registration — just metadata + pointer to named invoke function."""
+  full_type = type_obj.get_full_type_name()
+
+  file_buffer.append(f"""
+    {{
+        auto f = std::make_shared<::kryga::reflection::function>();
+        f->name = "{func.name}";
+""")
+
+  if func.category:
+    file_buffer.append(f'        f->category = "{func.category}";\n')
+  if func.mcp_hint:
+    file_buffer.append(f'        f->mcp_hint = "{func.mcp_hint}";\n')
+
+  file_buffer.append(f"""
+        {{
+            using owner_type = {full_type};
+""")
+
+  if func.return_type and func.return_type != "void":
+    file_buffer.append(f"""            using ret_type = std::decay_t<decltype(std::declval<owner_type>().{func.name}())>;
+            auto ret_td = ::kryga::reflection::kryga_type_resolve<ret_type>();
+            f->return_type = ::kryga::glob::glob_state().getr_model().reflection.get_type(ret_td.type_id);
+""")
+
+  for i, p in enumerate(func.params):
+    file_buffer.append(f"""            {{
+                auto td = ::kryga::reflection::kryga_type_resolve<std::decay_t<{p.type_name}>>();
+                auto* arg_rt = ::kryga::glob::glob_state().getr_model().reflection.get_type(td.type_id);
+                f->arg_types.push_back(arg_rt);
+            }}
+""")
+
+  file_buffer.append("        }\n")
+
+  if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
+    invoke_name = _function_invoke_name(type_obj.name, func.name)
+    file_buffer.append(f"        f->invoke = {invoke_name};\n")
+
+  file_buffer.append(f"        {fc.module_name}_{type_obj.name}_rt->m_functions.push_back(f);\n")
+  file_buffer.append("    }\n")
+
+
+def _function_invoke_name(type_name: str, func_name: str) -> str:
+  return f"{type_name}__{func_name}__invoke"
+
+
+def _write_function_invoke_definitions(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
+                                       type_obj: arapi.types.kryga_type) -> None:
+  """Write named static invoke functions for all reflected functions on a class type."""
+  if type_obj.kind != arapi.types.kryga_type_kind.CLASS:
+    return
+
+  full_type = type_obj.get_full_type_name()
+
+  for func in type_obj.functions:
+    invoke_name = _function_invoke_name(type_obj.name, func.name)
+
+    file_buffer.append(f"""
+static ::kryga::result_code
+{invoke_name}(::kryga::reflection::function_invoke_context& ctx)
+{{
+    auto* typed = static_cast<{full_type}*>(ctx.obj);
+""")
+
+    # Deserialize args
+    arg_vars = []
+    for i, p in enumerate(func.params):
+      var = f"arg{i}"
+      arg_vars.append(var)
+      file_buffer.append(f"""    std::decay_t<{p.type_name}> {var}{{}};
+    {{
+        auto td = ::kryga::reflection::kryga_type_resolve<std::decay_t<{p.type_name}>>();
+        auto* rt = ::kryga::glob::glob_state().getr_model().reflection.get_type(td.type_id);
+        if (!rt || !rt->json_load) return ::kryga::result_code::failed;
+        ::kryga::reflection::type_context__json_load load_ctx{{}};
+        load_ctx.obj = reinterpret_cast<::kryga::blob_ptr>(&{var});
+        load_ctx.jc = &(*ctx.args)[{i}];
+        if (rt->json_load(load_ctx) != ::kryga::result_code::ok)
+            return ::kryga::result_code::failed;
+    }}
+""")
+
+    call_args = ", ".join(arg_vars)
+
+    if not func.return_type or func.return_type == "void":
+      file_buffer.append(f"""    typed->{func.name}({call_args});
+    *ctx.result = Json::Value(Json::nullValue);
+    return ::kryga::result_code::ok;
+}}
+""")
+    else:
+      file_buffer.append(f"""    auto ret = typed->{func.name}({call_args});
+    using ret_type = std::decay_t<decltype(ret)>;
+    auto ret_td = ::kryga::reflection::kryga_type_resolve<ret_type>();
+    auto* ret_rt = ::kryga::glob::glob_state().getr_model().reflection.get_type(ret_td.type_id);
+    if (!ret_rt || !ret_rt->json_save) return ::kryga::result_code::failed;
+    ::kryga::reflection::type_context__json_save save_ctx{{}};
+    save_ctx.obj = reinterpret_cast<::kryga::blob_ptr>(&ret);
+    save_ctx.jc = ctx.result;
+    return ret_rt->json_save(save_ctx);
+}}
+""")
+
+
+def _cparams_loader_name(type_name: str) -> str:
+  return f"{type_name}__cparams_json_load"
+
+
+def _write_cparams_json_load_definition(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
+                                        type_obj: arapi.types.kryga_type) -> None:
+  """Generate a named static cparams_json_load function for a class type."""
+  if type_obj.kind != arapi.types.kryga_type_kind.CLASS:
+    return
+
+  if not type_obj.construct_params:
+    return
+
+  full_type = type_obj.get_full_type_name()
+  loader_name = _cparams_loader_name(type_obj.name)
+
+  has_parent = type_obj.parent_type is not None or len(type_obj.parent_name) > 0
+  parent_name = ""
+  if has_parent:
+    parent_name = type_obj.parent_name if type_obj.parent_name else type_obj.parent_type.name
+
+  file_buffer.append(f"""
+static ::kryga::result_code
+{loader_name}(::kryga::root::base_construct_params* bp, const Json::Value& j)
+{{
+    auto* p = static_cast<{full_type}::construct_params*>(bp);
+    auto& model = ::kryga::glob::glob_state().getr_model();
+""")
+
+  if has_parent:
+    file_buffer.append(f"""    {{
+        auto parent_td = ::kryga::reflection::kryga_type_resolve<{parent_name}>();
+        auto* parent_rt = model.reflection.get_type(parent_td.type_id);
+        if (parent_rt && parent_rt->cparams_json_load)
+            parent_rt->cparams_json_load(bp, j);
+    }}
+""")
+
+  for cp in type_obj.construct_params:
+    field = cp.name
+    if not cp.is_pointer:
+      # Value type (possibly optional): use kryga_type_resolve + json_load
+      resolve_type = cp.type_name
+      file_buffer.append(f"""    if (j.isMember("{field}"))
+    {{
+        using field_type = std::decay_t<{resolve_type}>;
+        auto td = ::kryga::reflection::kryga_type_resolve<field_type>();
+        auto* rt = model.reflection.get_type(td.type_id);
+        if (rt && rt->json_load)
+        {{
+            field_type tmp{{}};
+            ::kryga::reflection::type_context__json_load ctx{{}};
+            ctx.obj = reinterpret_cast<::kryga::blob_ptr>(&tmp);
+            ctx.jc = &j["{field}"];
+            if (rt->json_load(ctx) == ::kryga::result_code::ok)
+                p->{field} = tmp;
+        }}
+    }}
+""")
+    else:
+      # Pointer type: resolve string ID via global object cache
+      file_buffer.append(f"""    if (j.isMember("{field}"))
+    {{
+        auto* obj = model.caches.objects.get_item(AID(j["{field}"].asString()));
+        if (obj)
+            p->{field} = static_cast<std::remove_pointer_t<decltype(p->{field})>*>(obj);
+    }}
+""")
+
+  file_buffer.append("""    return ::kryga::result_code::ok;
+}
+""")
 
 
 def _write_lua_binding_function(file_buffer: arapi.utils.FileBuffer, fc: arapi.types.file_context,
@@ -1540,11 +1612,20 @@ private:
   file_buffer.append("\n\n")
   file_buffer.append(reflection_methods)
 
+  # Construct params json_load definitions (before Phase 1 which references them)
+  for type_obj in fc.types:
+    _write_cparams_json_load_definition(file_buffer, fc, type_obj)
+
   # Write per-type static functions for 3-phase build
 
   # Phase 1: Write register_type_* functions
   for type_obj in fc.types:
     _write_type_registration_function(file_buffer, fc, type_obj)
+
+  # Function invoke definitions (must precede register_properties which references them)
+  for type_obj in fc.types:
+    if type_obj.functions:
+      _write_function_invoke_definitions(file_buffer, fc, type_obj)
 
   # Phase 2: Write register_properties_* member functions
   for type_obj in fc.types:

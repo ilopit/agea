@@ -241,7 +241,7 @@ write_property(root::smart_object& owner,
     {
         return "field not found: " + field_name;
     }
-    if (!prop->rtype || !prop->rtype->json_load)
+    if (!prop->rtype)
     {
         return "field is not editable: " + field_name;
     }

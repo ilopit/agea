@@ -18,7 +18,9 @@ namespace root
 class component;
 
 KRG_ar_class("architype=game_object",
-              mcp_hint             = "Scene entity that owns components — a container whose behavior lives in its child components");
+             mcp_hint =
+                 "Scene entity that owns components — a container whose behavior lives in its "
+                 "child components");
 class game_object : public smart_object
 {
     KRG_gen_meta__game_object();
@@ -95,61 +97,67 @@ public:
         return m_components[idx];
     }
 
-    KRG_ar_function("category=world");
+    KRG_ar_function("category=world", mcp_hint = 'Returns rotation as quaternion [x y z w]');
     glm::quat
     get_rotation_quat() const
     {
         return m_root_component->get_rotation();
     }
 
-    KRG_ar_function("category=world");
+    KRG_ar_function("category=world", mcp_hint = 'Returns local forward direction as unit [x y z]');
     vec3
     get_forward_vector() const
     {
         return m_root_component->get_forward_vector();
     }
 
-    KRG_ar_function("category=world");
+    KRG_ar_function("category=world", mcp_hint = 'Returns local up direction as unit [x y z]');
     vec3
     get_up_vector() const
     {
         return m_root_component->get_up_vector();
     }
 
-    KRG_ar_function("category=world");
+    KRG_ar_function("category=world", mcp_hint = 'Returns local right direction as unit [x y z]');
     vec3
     get_right_vector() const
     {
         return m_root_component->get_right_vector();
     }
 
+    KRG_ar_function("category=world", mcp_hint = 'Returns world position [x y z]');
     vec3
     get_position() const
     {
         return m_root_component->get_position();
     }
 
+    KRG_ar_function("category=world", mcp_hint = 'Sets world position [x y z]');
     void
     set_position(vec3 v)
     {
         m_root_component->set_position(v);
     }
 
+    KRG_ar_function("category=world", mcp_hint = 'Returns euler rotation in degrees [x y z]');
     vec3
     get_rotation() const
     {
         return m_root_component->get_rotation();
     }
 
+    KRG_ar_function("category=world", mcp_hint = 'Sets euler rotation in degrees [x y z]');
     void
     set_rotation(vec3 v);
 
+    KRG_ar_function("category=world", mcp_hint = 'Returns scale [x y z]');
     vec3
     get_scale() const
     {
         return m_root_component->get_scale();
     }
 
+    KRG_ar_function("category=world", mcp_hint = 'Sets scale [x y z]');
     void
     set_scale(vec3 v)
     {
@@ -196,6 +204,8 @@ public:
     void
     update_root();
 
+    KRG_ar_function("category=world",
+                    mcp_hint = 'Adds relative offset [x y z] to current position');
     void
     move(const vec3& v);
 

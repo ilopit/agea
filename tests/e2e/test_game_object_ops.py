@@ -143,7 +143,6 @@ class TestGameObjectVisibility:
 
 class TestMeshComponentSwap:
 
-    @pytest.mark.xfail(reason="needs dedicated RPC — pointer properties not settable via properties.set")
     def test_swap_mesh_updates_render(self, engine, slow):
         mc = mesh_component(engine, MESH_COMPONENT)
         ro_before = mc.get_render_data()

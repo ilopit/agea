@@ -140,4 +140,17 @@ reflection_type::as_string() const
     return result;
 }
 
+function*
+reflection_type::find_function(const std::string& name) const
+{
+    for (auto& f : m_functions)
+    {
+        if (f->name == name)
+        {
+            return f.get();
+        }
+    }
+    return nullptr;
+}
+
 }  // namespace kryga::reflection

@@ -39,6 +39,8 @@ All RPCs are registered in `engine/private/src/engine_rpc.cpp` — grep for `ser
 - **`model.level.*`** — level load/save (load is async — use `engine.load_level_and_wait()`)
 - **`model.properties.*`** — generic property get for any reflected object
 - **`model.component.*`** — component type listing, add/remove components
+- **`model.object.invoke`** — call reflected functions (get_position / set_position / move / etc.)
+- **`model.type.meta`** — type metadata: properties, functions, schemas, hints
 - **`model.selection.*`** — editor selection state
 - **`render.state.*`** — read-only GPU state: per-object (mesh, material, texture_indices, gpu_data), lights, camera, stats
 - **`render.visibility.*`** — visibility overrides
@@ -159,6 +161,26 @@ The default level and expected objects are defined in `tests/e2e/conftest.py`. R
 
 - `engine` (session-scoped) — `EngineRPC` instance, auto-starts editor if needed
 - `load_test_level` (autouse) — reloads `simple_test` before each test file, restores modified files after
+
+## EngineRPC convenience methods
+
+Beyond `engine.call(method, params)`:
+
+- `engine.invoke(obj_id, function, args=None)` — call a reflected function, returns the value directly
+- `engine.get_type_meta(type_name)` — get type metadata (properties, functions, schemas)
+- `engine.wait_frame(count=1)` — block until render propagation completes
+- `engine.load_level_and_wait(level_id)` — load level and poll until ready
+
+```python
+# Invoke example
+pos = engine.invoke("cube_a", "get_position")        # → [0, 0, 0]
+engine.invoke("cube_a", "set_position", [[5, 3, 1]]) # args is a list of positional params
+engine.invoke("cube_a", "move", [[1, 0, 0]])          # relative move
+
+# Type introspection
+meta = engine.get_type_meta("game_object")
+funcs = meta["functions"]  # [{name, category, hint, return_type, invocable, args}, ...]
+```
 
 ## Running tests
 

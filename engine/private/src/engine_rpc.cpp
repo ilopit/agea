@@ -359,7 +359,8 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
             }
             else
             {
-                local_err = "unknown source: " + source + " (use: level, packages, all, package:<id>)";
+                local_err =
+                    "unknown source: " + source + " (use: level, packages, all, package:<id>)";
                 return;
             }
             r["items"] = std::move(items);
@@ -783,9 +784,7 @@ rpc_type_meta(const Json::Value& params, Json::Value& result, std::string& err)
 
                     prop["serializable"] = p->serializable;
 
-                    bool readonly = p->type.is_collection ||
-                                    !p->rtype ||
-                                    !p->rtype->json_load ||
+                    bool readonly = p->type.is_collection || !p->rtype || !p->rtype->json_load ||
                                     !p->serializable;
                     prop["readonly"] = readonly;
 
@@ -807,10 +806,119 @@ rpc_type_meta(const Json::Value& params, Json::Value& result, std::string& err)
                 }
             }
             r["properties"] = std::move(props);
+
+            if (!rt->m_functions.empty())
+            {
+                Json::Value funcs(Json::arrayValue);
+                for (auto& fn : rt->m_functions)
+                {
+                    Json::Value f(Json::objectValue);
+                    f["name"] = fn->name;
+                    if (!fn->category.empty())
+                    {
+                        f["category"] = fn->category;
+                    }
+                    if (!fn->mcp_hint.empty())
+                    {
+                        f["hint"] = fn->mcp_hint;
+                    }
+                    if (fn->return_type)
+                    {
+                        f["return_type"] = fn->return_type->type_name.str();
+                    }
+                    f["invocable"] = fn->invoke != nullptr;
+
+                    if (!fn->arg_types.empty())
+                    {
+                        Json::Value args(Json::arrayValue);
+                        for (auto* arg_rt : fn->arg_types)
+                        {
+                            args.append(arg_rt ? arg_rt->type_name.str() : std::string("unknown"));
+                        }
+                        f["args"] = std::move(args);
+                    }
+
+                    funcs.append(std::move(f));
+                }
+                r["functions"] = std::move(funcs);
+            }
         });
     if (!done)
     {
         err = "type.meta timed out";
+        return;
+    }
+    if (!local_err.empty())
+    {
+        err = std::move(local_err);
+        return;
+    }
+    result = r;
+}
+
+void
+rpc_object_invoke(const Json::Value& params, Json::Value& result, std::string& err)
+{
+    auto& eng = glob::glob_state().getr_engine();
+    if (!params.isObject() || !params.isMember("id") || !params.isMember("function"))
+    {
+        err = "missing 'id' and/or 'function' parameter";
+        return;
+    }
+    std::string id_str = params["id"].asString();
+    std::string func_name = params["function"].asString();
+    const Json::Value& args =
+        params.isMember("args") ? params["args"] : Json::Value(Json::nullValue);
+
+    Json::Value r(Json::objectValue);
+    std::string local_err;
+    bool done = eng.wait_main_action(
+        [&]()
+        {
+            auto* owner = engine_private::find_owner(id_str);
+            if (!owner)
+            {
+                local_err = "object not found: " + id_str;
+                return;
+            }
+
+            auto* rt = owner->get_reflection();
+            if (!rt)
+            {
+                local_err = "object has no reflection";
+                return;
+            }
+
+            auto* fn = rt->find_function(func_name);
+            if (!fn)
+            {
+                local_err = "function not found: " + func_name;
+                return;
+            }
+            if (!fn->invoke)
+            {
+                local_err = "function not invocable: " + func_name;
+                return;
+            }
+
+            Json::Value ret_val;
+            reflection::function_invoke_context ctx{};
+            ctx.obj = owner;
+            ctx.args = &args;
+            ctx.result = &ret_val;
+
+            auto rc = fn->invoke(ctx);
+            if (rc != result_code::ok)
+            {
+                local_err = "invoke failed for: " + func_name;
+                return;
+            }
+
+            r["value"] = std::move(ret_val);
+        });
+    if (!done)
+    {
+        err = "invoke timed out";
         return;
     }
     if (!local_err.empty())
@@ -902,9 +1010,13 @@ rpc_property_get_one(const Json::Value& params, Json::Value& result, std::string
                     {
                         auto tn = prop->rtype->type_name.str();
                         if (tn == "material" && robj->material)
+                        {
                             r["value"] = robj->material->get_id().str();
+                        }
                         else if (tn == "mesh" && robj->mesh)
+                        {
                             r["value"] = robj->mesh->get_id().str();
+                        }
                     }
                 }
             }
@@ -1400,8 +1512,29 @@ rpc_component_add(const Json::Value& params, Json::Value& result, std::string& e
                 local_err = "game_object has no root component";
                 return;
             }
-            root::component::construct_params cp;
-            auto* comp = go->spawn_component(parent, AID(type_id), AID(comp_name), cp);
+            auto& model = glob::glob_state().getr_model();
+            auto* target_rt = model.reflection.get_type(AID(type_id));
+
+            std::unique_ptr<root::base_construct_params> cp_ptr;
+            if (target_rt && target_rt->cparams_alloc)
+            {
+                cp_ptr = target_rt->cparams_alloc();
+            }
+            else
+            {
+                cp_ptr = std::make_unique<root::component::construct_params>();
+            }
+
+            if (params.isMember("properties") && target_rt && target_rt->cparams_json_load)
+            {
+                target_rt->cparams_json_load(cp_ptr.get(), params["properties"]);
+            }
+
+            auto* comp =
+                go->spawn_component(parent,
+                                    AID(type_id),
+                                    AID(comp_name),
+                                    static_cast<root::component::construct_params&>(*cp_ptr));
             if (!comp)
             {
                 local_err = "failed to spawn component";
@@ -2089,10 +2222,7 @@ rpc_editor_camera_set(const Json::Value& params, Json::Value& result, std::strin
     float yaw = params.get("yaw", 0.f).asFloat();
 
     bool done = eng.wait_main_action(
-        [&]()
-        {
-            glob::glob_state().getr_editor_system().editor.set_camera(position, pitch, yaw);
-        });
+        [&]() { glob::glob_state().getr_editor_system().editor.set_camera(position, pitch, yaw); });
     if (!done)
     {
         err = "editor.camera.set timed out";
@@ -2762,76 +2892,76 @@ void
 register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
 {
     // Engine
-    server.on_request("ping",                       rpc_ping);
-    server.on_request("engine.waitFrame",            rpc_engine_wait_frame);
-    server.on_request("engine.getMode",              rpc_engine_get_mode);
-    server.on_request("engine.setMode",              rpc_engine_set_mode);
-    server.on_request("engine.shutdown",             rpc_engine_shutdown);
-    server.on_request("sync.reload",                 rpc_sync_reload);
+    server.on_request("ping", rpc_ping);
+    server.on_request("engine.waitFrame", rpc_engine_wait_frame);
+    server.on_request("engine.getMode", rpc_engine_get_mode);
+    server.on_request("engine.setMode", rpc_engine_set_mode);
+    server.on_request("engine.shutdown", rpc_engine_shutdown);
+    server.on_request("sync.reload", rpc_sync_reload);
 
     // Scene
-    server.on_request("model.list",                  rpc_model_list);
-    server.on_request("model.scene.getRoot",         rpc_scene_get_root);
-    server.on_request("model.scene.getChildren",     rpc_scene_get_children);
-    server.on_request("model.scene.create",          rpc_scene_create);
-    server.on_request("model.scene.delete",          rpc_scene_delete);
-    server.on_request("model.scene.duplicate",       rpc_scene_duplicate);
-    server.on_request("model.scene.rename",          rpc_scene_rename);
-    server.on_request("model.selection.get",         rpc_selection_get);
-    server.on_request("model.selection.set",         rpc_selection_set);
+    server.on_request("model.list", rpc_model_list);
+    server.on_request("model.scene.getRoot", rpc_scene_get_root);
+    server.on_request("model.scene.getChildren", rpc_scene_get_children);
+    server.on_request("model.scene.create", rpc_scene_create);
+    server.on_request("model.scene.delete", rpc_scene_delete);
+    server.on_request("model.scene.duplicate", rpc_scene_duplicate);
+    server.on_request("model.scene.rename", rpc_scene_rename);
+    server.on_request("model.selection.get", rpc_selection_get);
+    server.on_request("model.selection.set", rpc_selection_set);
 
     // Properties & transform
-    server.on_request("model.object.property.get",        rpc_properties_get);
-    server.on_request("model.object.property.get_one",   rpc_property_get_one);
-    server.on_request("model.object.property.set",        rpc_properties_set);
-    server.on_request("model.type.meta",                  rpc_type_meta);
-    server.on_request("model.game_object.transform.get",         rpc_transform_get);
-    server.on_request("model.game_object.transform.set",         rpc_transform_set);
-
+    server.on_request("model.object.property.get", rpc_properties_get);
+    server.on_request("model.object.property.get_one", rpc_property_get_one);
+    server.on_request("model.object.property.set", rpc_properties_set);
+    server.on_request("model.type.meta", rpc_type_meta);
+    server.on_request("model.object.invoke", rpc_object_invoke);
+    server.on_request("model.game_object.transform.get", rpc_transform_get);
+    server.on_request("model.game_object.transform.set", rpc_transform_set);
 
     // Components
-    server.on_request("model.component.listTypes",   rpc_component_list_types);
-    server.on_request("model.component.add",         rpc_component_add);
+    server.on_request("model.component.listTypes", rpc_component_list_types);
+    server.on_request("model.component.add", rpc_component_add);
 
     // Levels
-    server.on_request("model.level.list",            rpc_level_list);
-    server.on_request("model.level.load",            rpc_level_load);
-    server.on_request("model.level.save",            rpc_level_save);
+    server.on_request("model.level.list", rpc_level_list);
+    server.on_request("model.level.load", rpc_level_load);
+    server.on_request("model.level.save", rpc_level_save);
 
     // Materials & textures
-    server.on_request("model.material.list",         rpc_material_list);
-    server.on_request("model.material.get",          rpc_material_get);
-    server.on_request("model.material.edit",         rpc_material_edit);
-    server.on_request("model.material.setField",     rpc_material_set_field);
-    server.on_request("model.material.save",         rpc_material_save);
-    server.on_request("model.material.discard",      rpc_material_discard);
-    server.on_request("model.material.assign",       rpc_material_assign);
-    server.on_request("model.texture.list",          rpc_texture_list);
+    server.on_request("model.material.list", rpc_material_list);
+    server.on_request("model.material.get", rpc_material_get);
+    server.on_request("model.material.edit", rpc_material_edit);
+    server.on_request("model.material.setField", rpc_material_set_field);
+    server.on_request("model.material.save", rpc_material_save);
+    server.on_request("model.material.discard", rpc_material_discard);
+    server.on_request("model.material.assign", rpc_material_assign);
+    server.on_request("model.texture.list", rpc_texture_list);
 
     // Editor
-    server.on_request("editor.camera.set",           rpc_editor_camera_set);
-    server.on_request("editor.material.preview",     rpc_material_preview);
+    server.on_request("editor.camera.set", rpc_editor_camera_set);
+    server.on_request("editor.material.preview", rpc_material_preview);
 
     // Render state & config
-    server.on_request("render.config.get",           rpc_render_config_get);
-    server.on_request("render.config.set",           rpc_render_config_set);
-    server.on_request("render.camera.data",           rpc_render_state_camera);
-    server.on_request("render.object.data",          rpc_render_state_object);
-    server.on_request("render.object.list",          rpc_render_state_objects);
-    server.on_request("render.stats",                rpc_render_state_stats);
-    server.on_request("render.lights.data",          rpc_render_state_lights);
+    server.on_request("render.config.get", rpc_render_config_get);
+    server.on_request("render.config.set", rpc_render_config_set);
+    server.on_request("render.camera.data", rpc_render_state_camera);
+    server.on_request("render.object.data", rpc_render_state_object);
+    server.on_request("render.object.list", rpc_render_state_objects);
+    server.on_request("render.stats", rpc_render_state_stats);
+    server.on_request("render.lights.data", rpc_render_state_lights);
 
     // Tools
-    server.on_request("tools.actions.getStatus",     rpc_actions_get_status);
+    server.on_request("tools.actions.getStatus", rpc_actions_get_status);
     server.on_request("tools.actions.clearFinished", rpc_actions_clear_finished);
-    server.on_request("tools.bake.getConfig",        rpc_bake_get_config);
-    server.on_request("tools.bake.setConfig",        rpc_bake_set_config);
-    server.on_request("tools.bake.applyPreset",      rpc_bake_apply_preset);
-    server.on_request("tools.bake.getSceneInfo",     rpc_bake_get_scene_info);
-    server.on_request("tools.bake.start",            rpc_bake_start);
-    server.on_request("tools.converter.start",       rpc_converter_start);
-    server.on_request("tools.converter.getStatus",   rpc_converter_get_status);
-    server.on_request("tools.converter.listDeps",    rpc_converter_list_deps);
+    server.on_request("tools.bake.getConfig", rpc_bake_get_config);
+    server.on_request("tools.bake.setConfig", rpc_bake_set_config);
+    server.on_request("tools.bake.applyPreset", rpc_bake_apply_preset);
+    server.on_request("tools.bake.getSceneInfo", rpc_bake_get_scene_info);
+    server.on_request("tools.bake.start", rpc_bake_start);
+    server.on_request("tools.converter.start", rpc_converter_start);
+    server.on_request("tools.converter.getStatus", rpc_converter_get_status);
+    server.on_request("tools.converter.listDeps", rpc_converter_list_deps);
 
     // Wire converter completion → RPC notification
     {

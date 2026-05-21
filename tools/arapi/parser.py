@@ -36,6 +36,7 @@ MACRO_FUNCTION = "KRG_ar_function"
 MACRO_PROPERTY = "KRG_ar_property"
 MACRO_CTOR = "KRG_ar_ctor"
 MACRO_EXTERNAL_TYPE = "KRG_ar_external_type("
+MACRO_CONSTRUCT_PARAMS = "KRG_gen_construct_params"
 MACRO_PACKAGE = "KRG_ar_package"
 
 # Property metadata keys
@@ -361,55 +362,165 @@ def _parse_struct(lines: List[str], index: int, lines_count: int, module_name: s
   return index, struct_type
 
 
+def _parse_construct_params(lines: List[str], index: int,
+                            lines_count: int) -> Tuple[int, List[arapi.types.kryga_cparam]]:
+  """Parse KRG_gen_construct_params { field; field; ... }; block."""
+  result = []
+  line = lines[index].strip()
+
+  # Empty: KRG_gen_construct_params{};
+  if "{}" in line or "{ }" in line:
+    return index, result
+
+  # Find opening brace
+  while index < lines_count and "{" not in lines[index]:
+    index += 1
+
+  index += 1  # skip the line with {
+
+  # Parse fields until closing brace
+  while index < lines_count:
+    line = lines[index].strip()
+    if line.startswith("}"):
+      break
+
+    # Skip empty lines and comments
+    if not line or line.startswith("//"):
+      index += 1
+      continue
+
+    # Remove trailing ; and default value
+    field = line.rstrip(";").strip()
+    if "=" in field:
+      field = field[:field.index("=")].strip()
+
+    tokens = field.split()
+    if len(tokens) < 2:
+      index += 1
+      continue
+
+    name = tokens[-1]
+    type_str = " ".join(tokens[:-1])
+
+    is_pointer = name.endswith("*") or type_str.endswith("*")
+    if name.endswith("*"):
+      name = name[:-1]
+    type_str = type_str.rstrip("*").rstrip()
+
+    is_optional = type_str.startswith("std::optional<")
+    if is_optional:
+      type_str = type_str[len("std::optional<"):-1].strip()
+
+    result.append(arapi.types.kryga_cparam(type_str, name, is_pointer, is_optional))
+    index += 1
+
+  return index, result
+
+
+def _parse_function_metadata(func: arapi.types.kryga_function, metadata_tokens: List[str]) -> None:
+  """Parse and apply function metadata tokens."""
+  for token in metadata_tokens:
+    token = token.strip()
+    if token.startswith('"') and token.endswith('"'):
+      token = token[1:-1]
+
+    pairs = token.split("=", 1)
+    if len(pairs) != 2:
+      continue
+
+    key = arapi.utils.extstrip(pairs[0])
+    if key == PROP_KEY_MCP_HINT:
+      value = pairs[1].strip().strip('"').strip("'")
+    else:
+      value = arapi.utils.extstrip(pairs[1])
+
+    if key == PROP_KEY_CATEGORY:
+      func.category = value
+    elif key == PROP_KEY_MCP_HINT:
+      func.mcp_hint = value
+
+
 def _parse_function(lines: List[str], index: int,
                     lines_count: int) -> Tuple[int, arapi.types.kryga_function]:
-  """Parse an KRG_ar_function declaration.
-    
+  """Parse a KRG_ar_function declaration including metadata and C++ signature.
+
     Args:
         lines: List of source lines
         index: Current line index (pointing to line with KRG_ar_function)
         lines_count: Total number of lines
-        
+
     Returns:
         Tuple of (new_index, kryga_function object)
     """
   function = arapi.types.kryga_function()
-  function_header = ""
-  function_body = ""
+  macro_text = ""
 
-  # Start with current line (contains KRG_ar_function)
-  function_header += lines[index] + " "
-
-  # Find closing parenthesis of function header (matching original logic)
+  macro_text += lines[index] + " "
   while index <= lines_count - 1 and lines[index].find(")") == -1:
     index += 1
     if index < lines_count:
-      function_header += lines[index].strip() + " "
+      macro_text += lines[index].strip() + " "
 
-  # Move past the line with closing paren
+  # Extract metadata from macro args: KRG_ar_function("category=world", ...)
+  macro_text = macro_text.strip()
+  paren_start = macro_text.find("(")
+  paren_end = macro_text.rfind(")")
+  if paren_start != -1 and paren_end != -1:
+    metadata_str = macro_text[paren_start + 1:paren_end].strip()
+    if metadata_str:
+      metadata_tokens = metadata_str.split(",")
+      _parse_function_metadata(function, metadata_tokens)
+
   index += 1
-
   if index >= lines_count:
-    raise ParserError(f"Unexpected end of file after KRG_ar_function header at line {index + 1}")
+    raise ParserError(f"Unexpected end of file after KRG_ar_function at line {index + 1}")
 
-  # Start function body with current line
-  function_body += lines[index] + " "
-
-  # Find closing parenthesis of function body (matching original logic)
+  # Collect lines until we find the function signature's closing ')'
+  signature = ""
+  signature += lines[index] + " "
   while index <= lines_count - 1 and lines[index].find(")") == -1:
     index += 1
     if index < lines_count:
-      function_body += lines[index].strip() + " "
+      signature += lines[index].strip() + " "
 
-  # Extract function name
-  function_body = function_body.strip().replace("\n", " ")
-  tokens = function_body.split(" ")
+  signature = signature.strip().replace("\n", " ")
 
-  try:
-    function_token = next(token for token in tokens if token.find("(") != -1)
-    function.name = function_token[:function_token.find("(")]
-  except StopIteration:
-    raise ParserError(f"Could not extract function name at line {index + 1}: {function_body}")
+  # Parse: [return_type] name(params) [const] { ... }
+  paren_open = signature.find("(")
+  paren_close = signature.find(")", paren_open) if paren_open != -1 else -1
+
+  if paren_open == -1:
+    raise ParserError(f"Could not find '(' in function signature at line {index + 1}: {signature}")
+
+  before_paren = signature[:paren_open].strip()
+  tokens = before_paren.split()
+  if len(tokens) >= 2:
+    function.return_type = " ".join(tokens[:-1])
+    function.name = tokens[-1]
+  elif len(tokens) == 1:
+    function.name = tokens[0]
+  else:
+    raise ParserError(f"Could not extract function name at line {index + 1}: {signature}")
+
+  # Parse params
+  if paren_close != -1:
+    params_str = signature[paren_open + 1:paren_close].strip()
+    after_close = signature[paren_close + 1:].strip()
+    function.is_const = "const" in after_close
+
+    if params_str and params_str != "void":
+      for param_str in params_str.split(","):
+        param_str = param_str.strip()
+        if not param_str:
+          continue
+        param_tokens = param_str.split()
+        if len(param_tokens) >= 2:
+          p_type = " ".join(param_tokens[:-1])
+          p_name = param_tokens[-1]
+        else:
+          p_type = param_tokens[0]
+          p_name = ""
+        function.params.append(arapi.types.kryga_function_param(p_type, p_name))
 
   return index, function
 
@@ -893,6 +1004,14 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
       if state.current_struct:
         state.current_struct.functions.append(function)
 
+      i += 1
+      continue
+
+    # Handle construct_params block
+    if line.startswith(MACRO_CONSTRUCT_PARAMS):
+      if state.current_class:
+        i, cparams = _parse_construct_params(lines, i, lines_count)
+        state.current_class.construct_params = cparams
       i += 1
       continue
 
