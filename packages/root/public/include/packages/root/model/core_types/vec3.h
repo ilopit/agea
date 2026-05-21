@@ -13,7 +13,9 @@ KRG_ar_struct(copy_handler        = ::kryga::reflection::utils::cpp_default__cop
                save_handler       = ::kryga::root::vec3__save,
                load_handler       = ::kryga::root::vec3__load,
                json_save_handler  = ::kryga::root::vec3__json_save,
-               json_load_handler  = ::kryga::root::vec3__json_load);
+               json_load_handler  = ::kryga::root::vec3__json_load,
+               mcp_schema         = "array:number:3",
+               mcp_hint           = "3D vector [x y z]");
 struct vec3 : ::glm::vec3
 // clang-format on
 {

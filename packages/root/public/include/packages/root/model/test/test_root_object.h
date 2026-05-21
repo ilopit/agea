@@ -33,7 +33,8 @@
 namespace kryga::root
 {
 
-KRG_ar_class("architype=game_object");
+KRG_ar_class("architype=game_object",
+              mcp_hint             = "Test game_object with POD and object-pointer properties for instantiation/serialization testing");
 class test_root_object : public game_object
 {
     KRG_gen_meta__test_root_object();
@@ -51,22 +52,20 @@ public:
 
     // -- POD: instantiate (default) --
     // Value deep-copied on instantiate. Instance gets independent copy.
-    KRG_ar_property("category=Test", "serializable=true");
+    KRG_ar_property("category=Test", "serializable=true",
+                    "mcp_hint=test float — deep-copied on instantiate");
     float m_pod_instantiate = 0.0f;
 
-    // -- POD: share --
-    // Raw memcpy on instantiate. For PODs same effect as copy.
-    KRG_ar_property("category=Test", "serializable=true", "instantiate=share");
+    KRG_ar_property("category=Test", "serializable=true", "instantiate=share",
+                    "mcp_hint=test float — shared on instantiate");
     float m_pod_share = 0.0f;
 
-    // -- smart_object*: instantiate (default) --
-    // smart_obj__instantiate: readonly → shares pointer, mutable → new instance.
-    KRG_ar_property("category=Test", "serializable=true");
+    KRG_ar_property("category=Test", "serializable=true",
+                    "mcp_hint=test object ref — deep-copied on instantiate");
     smart_object* m_obj_instantiate = nullptr;
 
-    // -- smart_object*: share --
-    // Always shares the pointer. No instantiation regardless of readonly flag.
-    KRG_ar_property("category=Test", "serializable=true", "instantiate=share");
+    KRG_ar_property("category=Test", "serializable=true", "instantiate=share",
+                    "mcp_hint=test object ref — always shared");
     smart_object* m_obj_share = nullptr;
 
     test_root_component*

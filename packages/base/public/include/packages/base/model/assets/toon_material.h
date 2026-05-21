@@ -10,7 +10,7 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Cel-shaded material — discrete shading bands with configurable band count and specular strength");
 class toon_material : public ::kryga::root::material
 {
     KRG_gen_meta__toon_material();
@@ -38,7 +38,8 @@ protected:
                     "invalidates=render",
                     "access=all",
                     "gpu_texture_slot=0",
-                    "instantiate=share");
+                    "instantiate=share",
+                    "mcp_hint=diffuse texture slot — set texture ID to change the toon color map");
     ::kryga::root::texture_slot m_diffuse_txt;
 
     KRG_ar_property("category=Properties",
@@ -46,7 +47,8 @@ protected:
                     "invalidates=render",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=number of discrete shading bands — 2-8 typical for toon look");
     float m_band_count = 4.0f;
 
     KRG_ar_property("category=Properties",
@@ -54,7 +56,8 @@ protected:
                     "invalidates=render",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=specular highlight intensity multiplier [0-1]");
     float m_specular_strength = 1.0f;
 
     KRG_ar_property("category=Properties",
@@ -62,7 +65,8 @@ protected:
                     "invalidates=render",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=shininess exponent — higher = tighter highlights [1-256]");
     float m_shininess = 32.0f;
 };
 

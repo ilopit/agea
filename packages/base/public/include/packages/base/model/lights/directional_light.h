@@ -11,8 +11,9 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(render_cmd_builder = directional_light_component__cmd_builder,
-             render_cmd_destroyer = directional_light_component__cmd_destroyer);
+KRG_ar_class(render_cmd_builder    = directional_light_component__cmd_builder,
+             render_cmd_destroyer = directional_light_component__cmd_destroyer,
+             mcp_hint             = "Sun-like light that illuminates the entire scene from a direction — no position falloff");
 class directional_light : public ::kryga::root::game_object
 {
     KRG_gen_meta__directional_light();

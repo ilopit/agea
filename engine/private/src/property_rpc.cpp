@@ -12,6 +12,7 @@
 #include <vulkan_render/render_system.h>
 #include <vulkan_render/render_cache.h>
 #include <vulkan_render/types/vulkan_material_data.h>
+#include <vulkan_render/types/vulkan_mesh_data.h>
 
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/game_object.h>
@@ -67,10 +68,10 @@ encode_owner(root::smart_object& obj)
             // widgets later if needed.
             field["kind"] = p->rtype->type_name.str();
 
-            if (p->type.is_collection || p->type.is_ptr)
+            if (p->type.is_collection)
             {
                 field["readonly"] = true;
-                field["value"] = std::string("(collection/ptr)");
+                field["value"] = std::string("(collection)");
                 fields.append(field);
                 continue;
             }
@@ -89,6 +90,19 @@ encode_owner(root::smart_object& obj)
             {
                 field["readonly"] = true;
                 field["value"] = std::string();
+            }
+
+            if (field["value"].isString() && field["value"].asString().empty() && p->rtype)
+            {
+                auto& rcache = glob::glob_state().getr_render().renderer.get_cache();
+                if (auto* robj = rcache.objects.find_by_id(obj.get_id()))
+                {
+                    auto tn = p->rtype->type_name.str();
+                    if (tn == "material" && robj->material)
+                        field["value"] = robj->material->get_id().str();
+                    else if (tn == "mesh" && robj->mesh)
+                        field["value"] = robj->mesh->get_id().str();
+                }
             }
             fields.append(field);
         }
@@ -170,27 +184,26 @@ encode_component_properties(root::component& comp)
     return res;
 }
 
+Json::Value
+encode_smart_object_properties(root::smart_object& obj)
+{
+    Json::Value res(Json::objectValue);
+    res["id"] = obj.get_id().str();
+    res["selected"] = obj.get_id().str();
+
+    Json::Value owners(Json::arrayValue);
+    owners.append(encode_owner(obj));
+    res["owners"] = owners;
+    return res;
+}
+
 root::smart_object*
 find_owner(const std::string& id_str)
 {
-    auto* lvl = glob::glob_state().getr_model().current_level;
-    if (!lvl)
-    {
-        return nullptr;
-    }
-    auto id = AID(id_str);
-    if (auto* go = lvl->find_game_object(id))
-    {
-        return go;
-    }
-    if (auto* c = lvl->find_component(id))
-    {
-        return c;
-    }
-    return nullptr;
+    return glob::glob_state().getr_model().caches.objects.get_item(AID(id_str));
 }
 
-static reflection::property*
+reflection::property*
 find_editor_property(const reflection::reflection_type& rt, const std::string& name)
 {
     for (auto& [cat_name, props] : rt.m_editor_properties)

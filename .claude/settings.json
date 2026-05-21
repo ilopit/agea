@@ -16,11 +16,10 @@
       "Bash(export PATH=*)",
       "Bash(cmake --preset *)",
       "Bash(tasklist *)",
-      "mcp__kryga-scene__kryga_properties_get",
       "mcp__kryga-scene__kryga_ping",
-      "mcp__kryga-scene__kryga_scene_list",
-      "mcp__kryga-scene__kryga_level_list",
-      "mcp__kryga-scene__kryga_render_state_objects"
+      "mcp__kryga-scene__kryga_model_list",
+      "mcp__kryga-scene__kryga_model_list_levels",
+      "mcp__kryga-scene__kryga_render_objects"
     ]
   },
   "hooks": {

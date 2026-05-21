@@ -8,10 +8,13 @@ Use --engine-config to select build config (Debug/Release).
 Supports pytest-xdist: each worker gets its own engine instance with a
 unique discovery file (build/project_Debug/tmp/editor_rpc_gw0.json, etc.).
 """
+import sys
 import time
 from pathlib import Path
 import pytest
 from .rpc_client import EngineProcess, EngineRPC, PROJECT_ROOT, _default_discovery
+
+sys.path.insert(0, str(PROJECT_ROOT / "build" / "kryga_generated" / "python"))
 
 SIMPLE_TEST_LEVEL = "simple_test"
 

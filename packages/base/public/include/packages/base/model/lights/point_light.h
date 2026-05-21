@@ -11,8 +11,9 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(render_cmd_builder = point_light_component__cmd_builder,
-             render_cmd_destroyer = point_light_component__cmd_destroyer);
+KRG_ar_class(render_cmd_builder    = point_light_component__cmd_builder,
+             render_cmd_destroyer = point_light_component__cmd_destroyer,
+             mcp_hint             = "Omnidirectional light that radiates from a point with distance falloff");
 class point_light : public ::kryga::root::game_object
 {
     KRG_gen_meta__point_light();

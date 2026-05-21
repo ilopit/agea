@@ -11,7 +11,7 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Flat-colored material — ambient/diffuse/specular colors and shininess without textures");
 class solid_color_material : public ::kryga::root::material
 {
     KRG_gen_meta__solid_color_material();
@@ -28,28 +28,32 @@ protected:
                     "check=not_same",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=ambient color RGB [0-1]");
     ::kryga::root::vec3 m_ambient = {.2f, .2f, .2f};
 
     KRG_ar_property("category=Properties",
                     "serializable=true",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=base surface color RGB [0-1]");
     ::kryga::root::vec3 m_diffuse = {.2f, .2f, .2f};
 
     KRG_ar_property("category=Properties",
                     "serializable=true",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=specular highlight color RGB [0-1]");
     ::kryga::root::vec3 m_specular = 0.5f;
 
     KRG_ar_property("category=Properties",
                     "serializable=true",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=shininess exponent — higher = tighter highlights [1-256]");
     float m_shininess = 32.0f;
 };
 

@@ -13,7 +13,9 @@ class shader_effect;
 // clang-format off
 KRG_ar_class("architype=material",
               render_cmd_builder   = material__cmd_builder,
-              render_cmd_destroyer = material__cmd_destroyer);
+              render_cmd_destroyer = material__cmd_destroyer,
+              mcp_schema           = "string:asset_id",
+              mcp_hint             = "Controls surface appearance — references a shader and provides color/texture parameters to it");
 class material : public asset
 // clang-format on
 {

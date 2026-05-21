@@ -8,7 +8,7 @@ OBJECT_ID = "hero_cube_mesh"
 class TestTransform:
 
     def test_read_initial_position(self, engine):
-        xform = engine.call("model.transform.get", {"id": OBJECT_ID})
+        xform = engine.call("model.game_object.transform.get", {"id": OBJECT_ID})
         assertions.assert_position_close(
             xform["position"], [0.0, 1.0, 0.0], label="hero_cube initial"
         )
@@ -21,10 +21,10 @@ class TestTransform:
 
     def test_move_updates_model_and_render(self, engine):
         new_pos = [5.0, 3.0, -2.0]
-        engine.call("model.transform.set", {"id": OBJECT_ID, "position": new_pos})
+        engine.call("model.game_object.transform.set", {"id": OBJECT_ID, "position": new_pos})
         engine.wait_frame()
 
-        xform = engine.call("model.transform.get", {"id": OBJECT_ID})
+        xform = engine.call("model.game_object.transform.get", {"id": OBJECT_ID})
         assertions.assert_position_close(
             xform["position"], new_pos, label="model after move",
         )
@@ -38,10 +38,10 @@ class TestTransform:
 
     def test_scale_updates_model_and_render(self, engine):
         new_scale = [3.0, 3.0, 3.0]
-        engine.call("model.transform.set", {"id": OBJECT_ID, "scale": new_scale})
+        engine.call("model.game_object.transform.set", {"id": OBJECT_ID, "scale": new_scale})
         engine.wait_frame()
 
-        xform = engine.call("model.transform.get", {"id": OBJECT_ID})
+        xform = engine.call("model.game_object.transform.get", {"id": OBJECT_ID})
         for i in range(3):
             assert abs(xform["scale"][i] - new_scale[i]) < 0.01, (
                 f"Model scale[{i}]: {xform['scale'][i]} != {new_scale[i]}"
@@ -57,7 +57,7 @@ class TestTransform:
 
     def test_move_does_not_corrupt_other_objects(self, engine):
         engine.call(
-            "model.transform.set", {"id": OBJECT_ID, "position": [10.0, 0.0, 0.0]}
+            "model.game_object.transform.set", {"id": OBJECT_ID, "position": [10.0, 0.0, 0.0]}
         )
         engine.wait_frame()
 

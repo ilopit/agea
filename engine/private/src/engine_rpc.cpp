@@ -272,6 +272,111 @@ rpc_selection_set(const Json::Value& params, Json::Value& result, std::string& e
     result = Json::Value(Json::objectValue);
 }
 
+static Json::Value
+encode_object_entry(root::smart_object* obj, const utils::id& id)
+{
+    Json::Value node(Json::objectValue);
+    node["id"] = id.str();
+    if (obj->get_reflection())
+    {
+        node["type_name"] = obj->get_reflection()->type_name.str();
+    }
+    node["readonly"] = obj->get_flags().readonly;
+    node["instance"] = obj->get_flags().instance_obj;
+    return node;
+}
+
+void
+rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
+{
+    auto& eng = glob::glob_state().getr_engine();
+    std::string source = "level";
+    if (params.isObject() && params.isMember("source"))
+    {
+        source = params["source"].asString();
+    }
+    Json::Value r(Json::objectValue);
+    std::string local_err;
+    bool done = eng.wait_main_action(
+        [&]()
+        {
+            auto& model = glob::glob_state().getr_model();
+            r["source"] = source;
+            Json::Value items(Json::arrayValue);
+
+            if (source == "level")
+            {
+                auto* lvl = model.current_level;
+                if (!lvl)
+                {
+                    local_err = "no level loaded";
+                    return;
+                }
+                r["level"] = lvl->get_id().str();
+                for (const auto& [id, obj] : lvl->get_game_objects().get_items())
+                {
+                    auto node = encode_object_entry(obj, id);
+                    auto* go = obj->as<root::game_object>();
+                    node["has_children"] = go && !go->get_subcomponents().empty();
+                    items.append(std::move(node));
+                }
+            }
+            else if (source == "packages")
+            {
+                for (auto& [pkg_id, pkg] : model.packages.get_packages())
+                {
+                    Json::Value pkg_node(Json::objectValue);
+                    pkg_node["id"] = pkg_id.str();
+                    Json::Value objs(Json::arrayValue);
+                    for (const auto& [id, obj] : pkg->get_local_cache().objects.get_items())
+                    {
+                        objs.append(encode_object_entry(obj, id));
+                    }
+                    pkg_node["objects"] = std::move(objs);
+                    items.append(std::move(pkg_node));
+                }
+            }
+            else if (source == "all")
+            {
+                for (const auto& [id, obj] : model.caches.objects.get_items())
+                {
+                    items.append(encode_object_entry(obj, id));
+                }
+            }
+            else if (source.rfind("package:", 0) == 0)
+            {
+                auto pkg_id_str = source.substr(8);
+                auto* pkg = model.packages.get_package(AID(pkg_id_str));
+                if (!pkg)
+                {
+                    local_err = "package not found: " + pkg_id_str;
+                    return;
+                }
+                for (const auto& [id, obj] : pkg->get_local_cache().objects.get_items())
+                {
+                    items.append(encode_object_entry(obj, id));
+                }
+            }
+            else
+            {
+                local_err = "unknown source: " + source + " (use: level, packages, all, package:<id>)";
+                return;
+            }
+            r["items"] = std::move(items);
+        });
+    if (!done)
+    {
+        err = "model.list timed out";
+        return;
+    }
+    if (!local_err.empty())
+    {
+        err = std::move(local_err);
+        return;
+    }
+    result = r;
+}
+
 void
 rpc_scene_get_root(const Json::Value& /*params*/, Json::Value& result, std::string& err)
 {
@@ -562,31 +667,278 @@ rpc_properties_get(const Json::Value& params, Json::Value& result, std::string& 
     bool done = eng.wait_main_action(
         [&]()
         {
-            auto* lvl = glob::glob_state().getr_model().current_level;
-            if (!lvl)
-            {
-                local_err = "no level loaded";
-                return;
-            }
-            auto* obj = lvl->find_object(AID(id_str));
+            auto& model = glob::glob_state().getr_model();
+            auto* obj = model.caches.objects.get_item(AID(id_str));
             if (!obj)
             {
                 local_err = "object not found: " + id_str;
                 return;
             }
+            std::string origin;
+            if (model.current_level && model.current_level->find_object(AID(id_str)))
+            {
+                origin = "level";
+            }
+            else
+            {
+                for (auto& [pkg_id, pkg] : model.packages.get_packages())
+                {
+                    if (pkg->get_local_cache().objects.get_item(AID(id_str)))
+                    {
+                        origin = "package:" + pkg_id.str();
+                        break;
+                    }
+                }
+            }
             if (auto* go = obj->as<root::game_object>())
             {
                 r = engine_private::encode_game_object_properties(*go);
             }
+            else if (auto* comp = obj->as<root::component>())
+            {
+                r = engine_private::encode_component_properties(*comp);
+            }
             else
             {
-                r = engine_private::encode_component_properties(
-                    *static_cast<root::component*>(obj));
+                r = engine_private::encode_smart_object_properties(*obj);
             }
+            r["origin"] = origin;
         });
     if (!done)
     {
         err = "properties.get timed out";
+        return;
+    }
+    if (!local_err.empty())
+    {
+        err = std::move(local_err);
+        return;
+    }
+    result = r;
+}
+
+void
+rpc_type_meta(const Json::Value& params, Json::Value& result, std::string& err)
+{
+    auto& eng = glob::glob_state().getr_engine();
+    if (!params.isObject() || !params.isMember("type"))
+    {
+        err = "missing 'type' parameter";
+        return;
+    }
+    std::string type_name = params["type"].asString();
+    Json::Value r(Json::objectValue);
+    std::string local_err;
+    bool done = eng.wait_main_action(
+        [&]()
+        {
+            auto& rm = glob::glob_state().getr_model().reflection;
+            auto* rt = rm.get_type(AID(type_name));
+            if (!rt)
+            {
+                local_err = "type not found: " + type_name;
+                return;
+            }
+
+            r["type"] = rt->type_name.str();
+            r["module"] = rt->module_id.str();
+            if (!rt->source_file.empty())
+            {
+                r["source"] = rt->source_file;
+            }
+            if (!rt->mcp_schema.empty())
+            {
+                r["schema"] = rt->mcp_schema;
+            }
+            if (!rt->mcp_hint.empty())
+            {
+                r["hint"] = rt->mcp_hint;
+            }
+            if (rt->parent)
+            {
+                r["parent"] = rt->parent->type_name.str();
+            }
+
+            Json::Value props(Json::arrayValue);
+            for (const auto& [cat_name, cat_props] : rt->m_editor_properties)
+            {
+                if (cat_name == "Meta")
+                {
+                    continue;
+                }
+                for (auto& p : cat_props)
+                {
+                    Json::Value prop(Json::objectValue);
+                    prop["name"] = p->name;
+                    prop["category"] = cat_name;
+
+                    if (p->rtype && !p->rtype->mcp_schema.empty())
+                    {
+                        prop["schema"] = p->rtype->mcp_schema;
+                    }
+                    else if (p->rtype)
+                    {
+                        prop["kind"] = p->rtype->type_name.str();
+                    }
+
+                    prop["serializable"] = p->serializable;
+
+                    bool readonly = p->type.is_collection ||
+                                    !p->rtype ||
+                                    !p->rtype->json_load ||
+                                    !p->serializable;
+                    prop["readonly"] = readonly;
+
+                    if (p->mcp_hint.size())
+                    {
+                        prop["hint"] = p->mcp_hint;
+                    }
+                    else if (p->rtype && p->rtype->mcp_hint.size())
+                    {
+                        prop["hint"] = p->rtype->mcp_hint;
+                    }
+
+                    if (p->has_default)
+                    {
+                        prop["has_default"] = true;
+                    }
+
+                    props.append(std::move(prop));
+                }
+            }
+            r["properties"] = std::move(props);
+        });
+    if (!done)
+    {
+        err = "type.meta timed out";
+        return;
+    }
+    if (!local_err.empty())
+    {
+        err = std::move(local_err);
+        return;
+    }
+    result = r;
+}
+
+void
+rpc_property_get_one(const Json::Value& params, Json::Value& result, std::string& err)
+{
+    auto& eng = glob::glob_state().getr_engine();
+    if (!params.isObject() || !params.isMember("id") || !params.isMember("name"))
+    {
+        err = "missing 'id' or 'name' parameter";
+        return;
+    }
+    std::string id_str = params["id"].asString();
+    std::string field_name = params["name"].asString();
+    Json::Value r(Json::objectValue);
+    std::string local_err;
+    bool done = eng.wait_main_action(
+        [&]()
+        {
+            auto* obj = engine_private::find_owner(id_str);
+            if (!obj)
+            {
+                local_err = "object not found: " + id_str;
+                return;
+            }
+            auto* rt = obj->get_reflection();
+            if (!rt)
+            {
+                local_err = "object has no reflection";
+                return;
+            }
+            auto* prop = engine_private::find_editor_property(*rt, field_name);
+            if (!prop)
+            {
+                local_err = "field not found: " + field_name;
+                return;
+            }
+
+            r["name"] = prop->name;
+            if (prop->rtype && !prop->rtype->mcp_schema.empty())
+            {
+                r["schema"] = prop->rtype->mcp_schema;
+            }
+            else if (prop->rtype)
+            {
+                r["kind"] = prop->rtype->type_name.str();
+            }
+
+            bool readonly = false;
+            if (prop->type.is_collection)
+            {
+                readonly = true;
+                r["value"] = std::string("(collection)");
+            }
+            else if (!prop->rtype)
+            {
+                readonly = true;
+                r["value"] = Json::nullValue;
+            }
+            else
+            {
+                Json::Value val;
+                reflection::property_context__json_get get_ctx{prop, obj, &val};
+                if (prop->json_get(get_ctx) == result_code::ok)
+                {
+                    r["value"] = val;
+                    if (!prop->rtype->json_load || !prop->serializable)
+                    {
+                        readonly = true;
+                    }
+                }
+                else
+                {
+                    readonly = true;
+                    r["value"] = Json::nullValue;
+                }
+
+                if (r["value"].isString() && r["value"].asString().empty() && prop->rtype)
+                {
+                    auto& rcache = glob::glob_state().getr_render().renderer.get_cache();
+                    if (auto* robj = rcache.objects.find_by_id(obj->get_id()))
+                    {
+                        auto tn = prop->rtype->type_name.str();
+                        if (tn == "material" && robj->material)
+                            r["value"] = robj->material->get_id().str();
+                        else if (tn == "mesh" && robj->mesh)
+                            r["value"] = robj->mesh->get_id().str();
+                    }
+                }
+            }
+
+            if (readonly || obj->get_flags().readonly)
+            {
+                r["readonly"] = true;
+            }
+
+            bool schema_needs_hint = true;
+            if (prop->rtype && !prop->rtype->mcp_schema.empty())
+            {
+                auto& s = prop->rtype->mcp_schema;
+                if (s == "number" || s == "boolean" || s.rfind("array:", 0) == 0)
+                {
+                    schema_needs_hint = false;
+                }
+            }
+
+            if (schema_needs_hint)
+            {
+                if (prop->mcp_hint.size())
+                {
+                    r["hint"] = prop->mcp_hint;
+                }
+                else if (prop->rtype && prop->rtype->mcp_hint.size())
+                {
+                    r["hint"] = prop->rtype->mcp_hint;
+                }
+            }
+        });
+    if (!done)
+    {
+        err = "property.get_one timed out";
         return;
     }
     if (!local_err.empty())
@@ -611,30 +963,39 @@ rpc_properties_set(const Json::Value& params, Json::Value& result, std::string& 
     std::string owner_id = params["owner_id"].asString();
     std::string name = params["name"].asString();
     Json::Value value = params["value"];
-    eng.queue_main_action(
-        [&server, owner_id, name, value]()
+    std::string local_err;
+    Json::Value canonical;
+    bool done = eng.wait_main_action(
+        [&]()
         {
             auto* owner = engine_private::find_owner(owner_id);
             if (!owner)
             {
-                ALOG_WARN("properties.set: owner not found: {}", owner_id);
+                local_err = "owner not found: " + owner_id;
                 return;
             }
-            Json::Value canonical;
-            std::string set_err = engine_private::write_property(*owner, name, value, canonical);
-            if (!set_err.empty())
+            local_err = engine_private::write_property(*owner, name, value, canonical);
+            if (local_err.empty())
             {
-                ALOG_WARN("properties.set: {}", set_err);
-                return;
+                Json::Value note(Json::objectValue);
+                note["owner_id"] = owner_id;
+                note["name"] = name;
+                note["value"] = canonical;
+                server.notify("model.object.property.changed", note);
             }
-            Json::Value note(Json::objectValue);
-            note["owner_id"] = owner_id;
-            note["name"] = name;
-            note["value"] = canonical;
-            server.notify("model.properties.changed", note);
         });
+    if (!done)
+    {
+        err = "property.set timed out";
+        return;
+    }
+    if (!local_err.empty())
+    {
+        err = std::move(local_err);
+        return;
+    }
     Json::Value r(Json::objectValue);
-    r["queued"] = true;
+    r["value"] = canonical;
     result = r;
 }
 
@@ -1002,6 +1363,7 @@ rpc_component_add(const Json::Value& params, Json::Value& result, std::string& e
     std::string object_id = params["object_id"].asString();
     std::string type_id = params["type_id"].asString();
     std::string comp_name = params.get("name", type_id).asString();
+    std::string parent_id = params.get("parent_id", "").asString();
     std::string local_err;
     std::string new_id;
     bool done = eng.wait_main_action(
@@ -1019,7 +1381,20 @@ rpc_component_add(const Json::Value& params, Json::Value& result, std::string& e
                 local_err = "game_object not found: " + object_id;
                 return;
             }
-            auto* parent = go->get_root_component();
+            root::component* parent = nullptr;
+            if (!parent_id.empty())
+            {
+                parent = lvl->find_component(AID(parent_id));
+                if (!parent)
+                {
+                    local_err = "parent component not found: " + parent_id;
+                    return;
+                }
+            }
+            else
+            {
+                parent = go->get_root_component();
+            }
             if (!parent)
             {
                 local_err = "game_object has no root component";
@@ -1627,65 +2002,6 @@ rpc_render_state_lights(const Json::Value& /*params*/, Json::Value& result, std:
         return;
     }
     result = r;
-}
-
-void
-rpc_visibility_set(const Json::Value& params, Json::Value& result, std::string& err)
-{
-    auto& eng = glob::glob_state().getr_engine();
-    if (!params.isObject() || !params.isMember("id"))
-    {
-        err = "missing 'id' parameter";
-        return;
-    }
-    std::string id_str = params["id"].asString();
-    bool visible = params.get("visible", true).asBool();
-    std::string local_err;
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            auto* lvl = glob::glob_state().getr_model().current_level;
-            if (!lvl)
-            {
-                local_err = "no level loaded";
-                return;
-            }
-            auto* obj = lvl->find_object(AID(id_str));
-            if (!obj)
-            {
-                local_err = "object not found: " + id_str;
-                return;
-            }
-
-            root::game_object_component* goc = nullptr;
-            if (auto* go = obj->as<root::game_object>())
-            {
-                goc = go->get_root_component();
-            }
-            else if (auto* comp = obj->as<root::component>())
-            {
-                goc = dynamic_cast<root::game_object_component*>(comp);
-            }
-
-            if (!goc)
-            {
-                local_err = "object has no layer flags";
-                return;
-            }
-            goc->set_layer_flag(render::LAYER_VISIBLE, visible);
-            goc->mark_render_dirty();
-        });
-    if (!done)
-    {
-        err = "visibility.set timed out";
-        return;
-    }
-    if (!local_err.empty())
-    {
-        err = std::move(local_err);
-        return;
-    }
-    result = Json::Value(Json::objectValue);
 }
 
 void
@@ -2454,6 +2770,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     server.on_request("sync.reload",                 rpc_sync_reload);
 
     // Scene
+    server.on_request("model.list",                  rpc_model_list);
     server.on_request("model.scene.getRoot",         rpc_scene_get_root);
     server.on_request("model.scene.getChildren",     rpc_scene_get_children);
     server.on_request("model.scene.create",          rpc_scene_create);
@@ -2464,11 +2781,13 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     server.on_request("model.selection.set",         rpc_selection_set);
 
     // Properties & transform
-    server.on_request("model.properties.get",        rpc_properties_get);
-    server.on_request("model.properties.set",        rpc_properties_set);
-    server.on_request("model.transform.get",         rpc_transform_get);
-    server.on_request("model.transform.set",         rpc_transform_set);
-    server.on_request("model.visibility.set",        rpc_visibility_set);
+    server.on_request("model.object.property.get",        rpc_properties_get);
+    server.on_request("model.object.property.get_one",   rpc_property_get_one);
+    server.on_request("model.object.property.set",        rpc_properties_set);
+    server.on_request("model.type.meta",                  rpc_type_meta);
+    server.on_request("model.game_object.transform.get",         rpc_transform_get);
+    server.on_request("model.game_object.transform.set",         rpc_transform_set);
+
 
     // Components
     server.on_request("model.component.listTypes",   rpc_component_list_types);

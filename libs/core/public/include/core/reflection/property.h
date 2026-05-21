@@ -160,6 +160,7 @@ public:
 
     std::string gpu_data;
     int32_t gpu_texture_slot                                       = -1;
+    std::string mcp_hint;
     // clang-format on
 };
 

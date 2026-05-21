@@ -23,7 +23,8 @@
 namespace kryga::root
 {
 
-KRG_ar_class("architype=component");
+KRG_ar_class("architype=component",
+              mcp_hint             = "Test component with POD and object-pointer properties for instantiation/serialization testing");
 class test_root_component : public component
 {
     KRG_gen_meta__test_root_component();
@@ -39,29 +40,20 @@ public:
     bool
     construct_default(construct_params& params);
 
-    // -- POD: instantiate (default) --
-    // On instantiate: deep-copied via value copy chain.
-    // Instance gets its own copy of the value.
-    KRG_ar_property("category=Test", "serializable=true");
+    KRG_ar_property("category=Test", "serializable=true",
+                    "mcp_hint=test float — deep-copied on instantiate");
     float m_pod_instantiate = 0.0f;
 
-    // -- POD: share --
-    // On instantiate: raw memcpy of sizeof(void*) bytes.
-    // For PODs this is effectively the same as copy, but tests the share path.
-    KRG_ar_property("category=Test", "serializable=true", "instantiate=share");
+    KRG_ar_property("category=Test", "serializable=true", "instantiate=share",
+                    "mcp_hint=test float — shared on instantiate");
     float m_pod_share = 0.0f;
 
-    // -- smart_object*: instantiate (default) --
-    // On instantiate: goes through smart_obj__instantiate.
-    // If source is readonly → shared (smart_obj__instantiate checks readonly).
-    // If source is mutable → creates a new instance object.
-    KRG_ar_property("category=Test", "serializable=true");
+    KRG_ar_property("category=Test", "serializable=true",
+                    "mcp_hint=test object ref — deep-copied on instantiate");
     smart_object* m_obj_instantiate = nullptr;
 
-    // -- smart_object*: share --
-    // On instantiate: pointer memcpy, always shares regardless of readonly flag.
-    // Instance and proto point to the exact same object.
-    KRG_ar_property("category=Test", "serializable=true", "instantiate=share");
+    KRG_ar_property("category=Test", "serializable=true", "instantiate=share",
+                    "mcp_hint=test object ref — always shared");
     smart_object* m_obj_share = nullptr;
 };
 

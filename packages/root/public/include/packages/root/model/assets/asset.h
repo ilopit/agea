@@ -8,7 +8,7 @@ namespace kryga
 {
 namespace root
 {
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Shared resource loaded from a package — materials / meshes / textures / samplers / shaders");
 class asset : public smart_object
 {
     KRG_gen_meta__asset();

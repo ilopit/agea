@@ -17,7 +17,8 @@ namespace root
 {
 class component;
 
-KRG_ar_class("architype=game_object");
+KRG_ar_class("architype=game_object",
+              mcp_hint             = "Scene entity that owns components — a container whose behavior lives in its child components");
 class game_object : public smart_object
 {
     KRG_gen_meta__game_object();

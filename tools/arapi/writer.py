@@ -267,6 +267,229 @@ def write_all_gpu_structs(context: arapi.types.file_context) -> None:
     write_gpu_struct(type_obj, context)
 
 
+def _write_python_base(py_dir: str) -> None:
+  """Generate the base class for all RPC object proxies."""
+  output_path = os.path.join(py_dir, "_base.py")
+  buf = arapi.utils.FileBuffer(output_path)
+  buf.append('"""Base class for auto-generated RPC object proxies."""\n\n\n')
+  buf.append("class kryga_object:\n\n")
+  buf.append("    def __init__(self, engine, obj_id):\n")
+  buf.append("        self._engine = engine\n")
+  buf.append("        self._id = obj_id\n\n")
+  buf.append("    def _get(self, name):\n")
+  buf.append('        props = self._engine.call("model.object.property.get", {"id": self._id})\n')
+  buf.append('        for owner in props.get("owners", []):\n')
+  buf.append('            if owner["id"] != self._id:\n')
+  buf.append('                continue\n')
+  buf.append('            for cat in owner.get("categories", []):\n')
+  buf.append('                for f in cat.get("fields", []):\n')
+  buf.append('                    if f["name"] == name:\n')
+  buf.append('                        return f.get("value")\n')
+  buf.append("        return None\n\n")
+  buf.append("    def _set(self, name, value):\n")
+  buf.append('        self._engine.call("model.object.property.set", {\n')
+  buf.append('            "owner_id": self._id, "name": name, "value": value,\n')
+  buf.append("        })\n")
+  buf.append("        self._engine.wait_frame()\n\n")
+  buf.append("    def set_visible(self, visible):\n")
+  buf.append("        flags = self._get('layers') or 0\n")
+  buf.append("        if visible:\n")
+  buf.append("            flags |= 1\n")
+  buf.append("        else:\n")
+  buf.append("            flags &= ~1\n")
+  buf.append("        self._set('layers', flags)\n\n")
+  buf.append("    def get_render_data(self):\n")
+  buf.append('        return self._engine.call("render.object.data", {"id": self._id})\n')
+  buf.write_if_changed()
+
+
+def _mcp_schema_to_json_schema(mcp_schema: str) -> str:
+  """Convert mcp_schema annotation to JSON Schema fragment."""
+  if not mcp_schema:
+    return ""
+  if mcp_schema in ("string", "number", "integer", "boolean"):
+    return f'"type": "{mcp_schema}"'
+  if mcp_schema.startswith("array:"):
+    parts = mcp_schema.split(":")
+    item_type = parts[1] if len(parts) > 1 else "number"
+    length = parts[2] if len(parts) > 2 else None
+    s = f'"type": "array", "items": {{"type": "{item_type}"}}'
+    if length:
+      s += f', "minItems": {length}, "maxItems": {length}'
+    return s
+  return ""
+
+
+
+
+def _load_type_schema_registry(py_dir: str) -> Dict[str, Tuple[str, str]]:
+  """Load the accumulated type→(schema, hint) registry."""
+  path = os.path.join(py_dir, "_type_schemas.json")
+  if os.path.exists(path):
+    import json
+    with open(path, "r") as f:
+      return json.load(f)
+  return {}
+
+
+def _save_type_schema_registry(py_dir: str, registry: Dict) -> None:
+  """Save the accumulated type→(schema, hint) registry."""
+  import json
+  path = os.path.join(py_dir, "_type_schemas.json")
+  with open(path, "w") as f:
+    json.dump(registry, f, indent=2)
+
+
+def _lookup_type_in_registry(type_name: str, registry) -> Optional[Tuple[str, str]]:
+  """Look up a type in the schema registry, trying full name, stripped, and short name."""
+  short_name = type_name.split('::')[-1]
+  for key in (type_name, type_name.lstrip(':'), short_name):
+    if key in registry:
+      return registry[key]
+  return None
+
+
+def _mcp_schema_for_prop(prop, registry) -> str:
+  """Get JSON Schema for a property from the global type registry."""
+  if prop.type.endswith('*'):
+    base = prop.type[:-1].rstrip()
+    entry = _lookup_type_in_registry(base, registry)
+    if entry:
+      return _mcp_schema_to_json_schema(entry[0])
+    return '"type": "string"'
+  entry = _lookup_type_in_registry(prop.type, registry)
+  if entry:
+    return _mcp_schema_to_json_schema(entry[0])
+  return ""
+
+
+def _mcp_hint_for_prop(prop, registry) -> str:
+  """Get mcp_hint for a property. Priority: property override → type registry → auto."""
+  if prop.mcp_hint:
+    return prop.mcp_hint
+  if prop.type.endswith('*'):
+    base = prop.type[:-1].rstrip()
+    entry = _lookup_type_in_registry(base, registry)
+    if entry and entry[1]:
+      return entry[1]
+    short = base.split('::')[-1]
+    return f"{short} ID from scene"
+  entry = _lookup_type_in_registry(prop.type, registry)
+  if entry:
+    return entry[1]
+  return ""
+
+
+def _write_mcp_tools(py_dir: str, context) -> None:
+  """Generate MCP tool definitions from reflected types."""
+  module_name = context.module_name
+  all_types = context.types
+
+  registry = _load_type_schema_registry(py_dir)
+  for t in all_types:
+    if t.mcp_schema or t.mcp_hint:
+      registry[t.get_full_type_name()] = [t.mcp_schema, t.mcp_hint]
+      registry[t.name] = [t.mcp_schema, t.mcp_hint]
+  _save_type_schema_registry(py_dir, registry)
+  output_path = os.path.join(py_dir, f"{module_name}_mcp.py")
+  buf = arapi.utils.FileBuffer(output_path)
+  buf.append('"""Auto-generated MCP tool definitions from reflected types."""\n\n')
+
+  tool_entries = []
+
+  for type_obj in all_types:
+    if type_obj.kind != arapi.types.kryga_type_kind.CLASS:
+      continue
+
+    writable = [p for p in type_obj.properties if p.access in SHOULD_HAVE_SETTER]
+    readable = [p for p in type_obj.properties if p.access in (ACCESS_ALL, ACCESS_READ_ONLY)]
+    if not readable:
+      continue
+
+    name = type_obj.name
+
+    # get tool
+    tool_entries.append({
+        "name": f"kryga_{name}_get",
+        "desc": f"Get properties of a {name}",
+        "props": readable,
+        "writable": [],
+    })
+
+    # set tool
+    if writable:
+      tool_entries.append({
+          "name": f"kryga_{name}_set",
+          "desc": f"Set properties on a {name}. Only provided fields are changed.",
+          "props": writable,
+          "writable": writable,
+      })
+
+  buf.append("GENERATED_TOOLS = [\n")
+  for entry in tool_entries:
+    buf.append(f"    {{\n")
+    buf.append(f'        "name": "{entry["name"]}",\n')
+    buf.append(f'        "description": "{entry["desc"]}",\n')
+    buf.append(f'        "inputSchema": {{\n')
+    buf.append(f'            "type": "object",\n')
+    buf.append(f'            "properties": {{\n')
+    buf.append(f'                "id": {{"type": "string", "description": "Object or component ID"}},\n')
+    for prop in entry["props"]:
+      schema = _mcp_schema_for_prop(prop, registry)
+      hint = _mcp_hint_for_prop(prop, registry)
+      schema_str = f"{schema}, " if schema else ""
+      desc = f"{prop.name_cut} — {hint}" if hint else prop.name_cut
+      buf.append(f'                "{prop.name_cut}": {{{schema_str}"description": "{desc}"}},\n')
+    buf.append(f'            }},\n')
+    buf.append(f'            "required": ["id"],\n')
+    buf.append(f'        }},\n')
+    is_setter = len(entry["writable"]) > 0
+    buf.append(f'        "is_setter": {is_setter},\n')
+    buf.append(f"    }},\n")
+  buf.append("]\n")
+
+  buf.write_if_changed()
+
+
+def write_python_schema(context: arapi.types.file_context, output_dir: str) -> None:
+  """Generate Python RPC schema for a package's reflected types."""
+  py_dir = os.path.join(output_dir, "python")
+  if not os.path.exists(py_dir):
+    os.makedirs(py_dir)
+
+  _write_python_base(py_dir)
+  _write_mcp_tools(py_dir, context)
+
+  output_path = os.path.join(py_dir, f"{context.module_name}.py")
+  buf = arapi.utils.FileBuffer(output_path)
+
+  buf.append(f'"""Auto-generated RPC schema for package {context.module_name}."""\n')
+  buf.append("from _base import kryga_object\n\n")
+
+  for type_obj in context.types:
+    if type_obj.kind != arapi.types.kryga_type_kind.CLASS:
+      continue
+
+    props = [p for p in type_obj.properties if p.access in (ACCESS_ALL, ACCESS_READ_ONLY)]
+    if not props:
+      continue
+
+    class_name = type_obj.name
+
+    buf.append(f"\nclass {class_name}(kryga_object):\n")
+    buf.append(f'    TYPE_NAME = "{class_name}"\n\n')
+
+    for prop in props:
+      buf.append(f"    def get_{prop.name_cut}(self):\n")
+      buf.append(f'        return self._get("{prop.name_cut}")\n\n')
+
+      if prop.access in SHOULD_HAVE_SETTER:
+        buf.append(f"    def set_{prop.name_cut}(self, value):\n")
+        buf.append(f'        self._set("{prop.name_cut}", value)\n\n')
+
+  buf.write_if_changed()
+
+
 def type_has_gpu_data(type_obj: arapi.types.kryga_type,
                       context: arapi.types.file_context) -> bool:
   """Check if a type has GPU data fields (including inherited).
@@ -683,6 +906,9 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
         }};
 """)
 
+  if prop.mcp_hint:
+    file_buffer.append(f'        p->mcp_hint  = "{prop.mcp_hint}";\n')
+
   file_buffer.append("    }\n")
 
 
@@ -971,6 +1197,13 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}rt.size          = sizeof({type_obj.get_full_type_name()});
 """)
 
+  if type_obj.mcp_schema:
+    file_buffer.append(f'{indent}rt.mcp_schema    = "{type_obj.mcp_schema}";\n')
+  if type_obj.mcp_hint:
+    file_buffer.append(f'{indent}rt.mcp_hint      = "{type_obj.mcp_hint}";\n')
+  if type_obj.source_file:
+    file_buffer.append(f'{indent}rt.source_file   = "{type_obj.source_file}";\n')
+
   # lua_storage already contains the sol::usertype fields, no need to allocate
 
   if type_obj.kind == arapi.types.kryga_type_kind.CLASS:
@@ -992,6 +1225,10 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}KRG_check(parent_rt, "Type is not defined!");
 
 {indent}rt.parent = parent_rt;
+{indent}if (rt.mcp_schema.empty() && !parent_rt->mcp_schema.empty())
+{indent}    rt.mcp_schema = parent_rt->mcp_schema;
+{indent}if (rt.mcp_hint.empty() && !parent_rt->mcp_hint.empty())
+{indent}    rt.mcp_hint = parent_rt->mcp_hint;
 """)
 
   if type_obj.compare_handler:

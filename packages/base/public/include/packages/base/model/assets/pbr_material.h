@@ -10,7 +10,7 @@ namespace kryga
 {
 namespace base
 {
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Physically-based material — diffuse/specular textures and ambient/diffuse/specular color multipliers");
 class pbr_material : public ::kryga::root::material
 {
     KRG_gen_meta__pbr_material();
@@ -31,7 +31,8 @@ public:
                     "invalidates=render",
                     "access=all",
                     "gpu_texture_slot=0",
-                    "instantiate=share");
+                    "instantiate=share",
+                    "mcp_hint=diffuse/albedo texture slot — set texture ID to change surface color map");
     ::kryga::root::texture_slot m_diffuse_txt;
 
     KRG_ar_property("category=Properties",
@@ -39,7 +40,8 @@ public:
                     "invalidates=render",
                     "access=all",
                     "gpu_texture_slot=1",
-                    "instantiate=share");
+                    "instantiate=share",
+                    "mcp_hint=specular/gloss texture slot — controls shininess map");
     ::kryga::root::texture_slot m_specular_txt;
 
     KRG_ar_property("category=Properties",
@@ -48,21 +50,24 @@ public:
                     "check=not_same",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=ambient color multiplier RGB [0-1]");
     ::kryga::root::vec3 m_ambient = {.2f, .2f, .2f};
 
     KRG_ar_property("category=Properties",
                     "serializable=true",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=diffuse color multiplier RGB [0-1] — multiplied with diffuse texture");
     ::kryga::root::vec3 m_diffuse = {.2f, .2f, .2f};
 
     KRG_ar_property("category=Properties",
                     "serializable=true",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=specular color RGB [0-1] — controls highlight intensity");
     ::kryga::root::vec3 m_specular = 0.5f;
 
     KRG_ar_property("category=Properties",

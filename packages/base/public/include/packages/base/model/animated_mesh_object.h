@@ -9,7 +9,7 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Animated scene object — owns an animated_mesh_component with skeletal animation playback");
 class animated_mesh_object : public ::kryga::root::game_object
 {
 public:

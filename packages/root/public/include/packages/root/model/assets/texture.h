@@ -12,8 +12,10 @@ namespace root
 {
 
 KRG_ar_class("architype=texture",
-             render_cmd_builder = texture__cmd_builder,
-             render_cmd_destroyer = texture__cmd_destroyer);
+             render_cmd_builder   = texture__cmd_builder,
+             render_cmd_destroyer = texture__cmd_destroyer,
+             mcp_schema           = "string:asset_id",
+             mcp_hint             = "Image data uploaded to GPU — used by materials for surface color and normals");
 class texture : public asset
 {
     KRG_gen_meta__texture();
@@ -30,13 +32,16 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=meta", "access=all", "serializable=true");
+    KRG_ar_property("category=meta", "access=all", "serializable=true",
+                    "mcp_hint=raw pixel data — read-only at runtime");
     utils::buffer m_base_color;
 
-    KRG_ar_property("category=meta", "access=all", "serializable=true");
+    KRG_ar_property("category=meta", "access=all", "serializable=true",
+                    "mcp_hint=texture width in pixels");
     uint32_t m_width;
 
-    KRG_ar_property("category=meta", "access=all", "serializable=true");
+    KRG_ar_property("category=meta", "access=all", "serializable=true",
+                    "mcp_hint=texture height in pixels");
     uint32_t m_height;
 };
 

@@ -35,7 +35,7 @@ class EngineRPC:
         self._next_id = 1
 
     def _discovery_path(self) -> Path:
-        return PROJECT_ROOT / "tmp" / "editor_rpc.json"
+        return PROJECT_ROOT / "build" / "project_Debug" / "tmp" / "editor_rpc.json"
 
     def _ensure_connected(self) -> None:
         if self._sock is not None:
@@ -122,12 +122,18 @@ TOOLS = [
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
     Tool(
-        name="kryga_scene_list",
-        description="List all game objects in the current level (scene tree root)",
-        inputSchema={"type": "object", "properties": {}, "required": []}
+        name="kryga_model_list",
+        description="List objects. Source modes: 'level' (default) — game objects in current level; 'packages' — all packages with their objects; 'package:<id>' — objects in a specific package; 'all' — every object in the global cache.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "source": {"type": "string", "description": "level (default), packages, package:<id>, or all"},
+            },
+            "required": []
+        }
     ),
     Tool(
-        name="kryga_scene_children",
+        name="kryga_model_game_object_children",
         description="Get children of a game object (its components) or a component (its child components)",
         inputSchema={
             "type": "object",
@@ -136,7 +142,7 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_scene_create",
+        name="kryga_model_level_create",
         description="Create a new empty game object in the scene",
         inputSchema={
             "type": "object",
@@ -145,25 +151,25 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_scene_delete",
-        description="Delete a game object from the scene",
+        name="kryga_model_level_delete",
+        description="Delete a game object or component from the scene",
         inputSchema={
             "type": "object",
-            "properties": {"id": {"type": "string", "description": "Game object ID to delete"}},
+            "properties": {"id": {"type": "string", "description": "Game object or component ID to delete"}},
             "required": ["id"]
         }
     ),
     Tool(
-        name="kryga_scene_duplicate",
-        description="Duplicate a game object (creates a clone with a generated ID)",
+        name="kryga_model_level_clone",
+        description="Clone a game object or component (creates a copy with a generated ID)",
         inputSchema={
             "type": "object",
-            "properties": {"id": {"type": "string", "description": "Game object ID to duplicate"}},
+            "properties": {"id": {"type": "string", "description": "Game object or component ID to clone"}},
             "required": ["id"]
         }
     ),
     Tool(
-        name="kryga_select",
+        name="kryga_editor_select",
         description="Select an object or component (outlines it in viewport)",
         inputSchema={
             "type": "object",
@@ -172,87 +178,76 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_transform_get",
-        description="Get position, rotation, and scale of an object or component",
+        name="kryga_model_get_all",
+        description="Get all properties of an object, component, or asset. Returns owners with categories and fields (name, value, type, readonly). Use this to discover what fields exist and their current values.",
         inputSchema={
             "type": "object",
-            "properties": {"id": {"type": "string", "description": "Object or component ID"}},
+            "properties": {"id": {"type": "string", "description": "Object, component, or asset ID"}},
             "required": ["id"]
         }
     ),
     Tool(
-        name="kryga_transform_set",
-        description="Set position, rotation, and/or scale. Only provided fields are changed.",
+        name="kryga_model_get_property",
+        description="Get a single property value with type metadata. Returns: name, value, kind (type), category, readonly, serializable. Lighter than kryga_model_get_all when you know the field name.",
         inputSchema={
             "type": "object",
             "properties": {
-                "id": {"type": "string", "description": "Object or component ID"},
-                "position": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3, "description": "[x, y, z]"},
-                "rotation": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3, "description": "[pitch, yaw, roll] in degrees"},
-                "scale": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3, "description": "[sx, sy, sz]"},
+                "id": {"type": "string", "description": "Owner (object/component/asset) ID"},
+                "name": {"type": "string", "description": "Property field name (from kryga_model_get_all)"},
             },
-            "required": ["id"]
+            "required": ["id", "name"]
         }
     ),
     Tool(
-        name="kryga_properties_get",
-        description="Get all reflected properties of a game object or component (full inspector payload)",
-        inputSchema={
-            "type": "object",
-            "properties": {"id": {"type": "string", "description": "Object or component ID"}},
-            "required": ["id"]
-        }
-    ),
-    Tool(
-        name="kryga_properties_set",
-        description="Set a property value on an object or component by field name",
+        name="kryga_model_get_type_meta",
+        description="Get full type metadata: parent type, all properties with names, types, hints, readonly/serializable flags. Call once per type to learn what fields exist — the type_name comes from kryga_model_list or kryga_model_get_all responses.",
         inputSchema={
             "type": "object",
             "properties": {
-                "owner_id": {"type": "string", "description": "Owner (game object or component) ID"},
-                "name": {"type": "string", "description": "Property field name"},
+                "type": {"type": "string", "description": "Type name (e.g. mesh_component, pbr_material, game_object_component)"},
+            },
+            "required": ["type"]
+        }
+    ),
+    Tool(
+        name="kryga_model_set_property",
+        description="Set a single property value on an object or component by field name. Use kryga_model_get_all first to discover available field names and types.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "owner_id": {"type": "string", "description": "Owner (game object or component) ID — use the owner id from kryga_model_get_all response"},
+                "name": {"type": "string", "description": "Property field name from kryga_model_get_all"},
                 "value": {"description": "New value (type must match: number, bool, string, array for vec)"},
             },
             "required": ["owner_id", "name", "value"]
         }
     ),
     Tool(
-        name="kryga_component_list_types",
+        name="kryga_model_list_component_types",
         description="List all available component types that can be added to game objects",
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
     Tool(
-        name="kryga_component_add",
-        description="Add a component to a game object",
+        name="kryga_model_component_add",
+        description="Add a component to a game object. By default parents to the root component; pass parent_id to nest under a specific component.",
         inputSchema={
             "type": "object",
             "properties": {
                 "object_id": {"type": "string", "description": "Game object ID to add component to"},
                 "type_id": {"type": "string", "description": "Component type ID (from component.listTypes)"},
                 "name": {"type": "string", "description": "Optional name for the component (defaults to type_id)"},
+                "parent_id": {"type": "string", "description": "Optional parent component ID — nest under this component instead of root"},
             },
             "required": ["object_id", "type_id"]
         }
     ),
     Tool(
-        name="kryga_visibility_set",
-        description="Show or hide an object/component in the viewport",
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "id": {"type": "string", "description": "Object or component ID"},
-                "visible": {"type": "boolean", "description": "true to show, false to hide"},
-            },
-            "required": ["id", "visible"]
-        }
-    ),
-    Tool(
-        name="kryga_level_list",
+        name="kryga_model_list_levels",
         description="List available levels",
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
     Tool(
-        name="kryga_level_load",
+        name="kryga_model_level_load",
         description="Load a level by ID",
         inputSchema={
             "type": "object",
@@ -261,12 +256,12 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_level_save",
+        name="kryga_model_level_save",
         description="Save the current level to disk",
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
     Tool(
-        name="kryga_engine_mode",
+        name="kryga_editor_mode",
         description="Get or set the engine mode (edit/play)",
         inputSchema={
             "type": "object",
@@ -277,13 +272,13 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_render_state_camera",
+        name="kryga_render_camera",
         description="Get current camera state: position, view matrix, projection matrix",
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
     Tool(
-        name="kryga_render_state_object",
-        description="Get render-side state for an object: GPU data (transform, bounding sphere, material_id), mesh info, material info, layer flags, queue_id",
+        name="kryga_render_object",
+        description="Read-only render-side state for an object: GPU data (transform, bounding sphere, material_id), mesh info, material info, layer flags, queue_id. This is a snapshot of what the GPU sees — to modify, use the model-layer tools.",
         inputSchema={
             "type": "object",
             "properties": {"id": {"type": "string", "description": "Object or component ID"}},
@@ -291,7 +286,7 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_render_state_objects",
+        name="kryga_render_objects",
         description="List render objects. Modes: (1) pass 'ids' array for specific objects, (2) pass 'offset'+'limit' for pagination, (3) no params for all. Returns summary per object: id, position, bounding sphere, material, mesh, queue, layers.",
         inputSchema={
             "type": "object",
@@ -304,12 +299,12 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_render_state_stats",
+        name="kryga_render_stats",
         description="Get render statistics: draw counts, culled draws, viewport dimensions, object/light/texture counts",
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
     Tool(
-        name="kryga_render_state_lights",
+        name="kryga_render_lights",
         description="Get all lights in the render cache: directional (direction, ambient, diffuse, specular) and universal/point/spot (position, radius, etc.)",
         inputSchema={"type": "object", "properties": {}, "required": []}
     ),
@@ -335,7 +330,7 @@ TOOLS = [
         }
     ),
     Tool(
-        name="kryga_batch_duplicate",
+        name="kryga_model_batch_clone",
         description="Duplicate a game object multiple times, optionally placing each clone at a given position. Returns list of created IDs.",
         inputSchema={
             "type": "object",
@@ -349,48 +344,57 @@ TOOLS = [
     ),
 ]
 
+def _coerce_value(v):
+    """MCP passes untyped params as strings — parse JSON arrays/numbers."""
+    if not isinstance(v, str):
+        return v
+    try:
+        return json.loads(v)
+    except (json.JSONDecodeError, ValueError):
+        return v
+
+
 # Map tool names to RPC methods and param transforms
 TOOL_RPC_MAP = {
     "kryga_ping": ("ping", lambda p: {}),
-    "kryga_scene_list": ("model.scene.getRoot", lambda p: {}),
-    "kryga_scene_children": ("model.scene.getChildren", lambda p: {"id": p["id"]}),
-    "kryga_scene_create": ("model.scene.create", lambda p: {"name": p["name"]}),
-    "kryga_scene_delete": ("model.scene.delete", lambda p: {"id": p["id"]}),
-    "kryga_scene_duplicate": ("model.scene.duplicate", lambda p: {"id": p["id"]}),
-    "kryga_select": ("model.selection.set", lambda p: {"id": p["id"]}),
-    "kryga_transform_get": ("model.transform.get", lambda p: {"id": p["id"]}),
-    "kryga_transform_set": ("model.transform.set", lambda p: {
-        "id": p["id"],
-        **{k: p[k] for k in ("position", "rotation", "scale") if k in p}
+    "kryga_model_list": ("model.list", lambda p: {
+        k: p[k] for k in ("source",) if k in p
     }),
-    "kryga_properties_get": ("model.properties.get", lambda p: {"id": p["id"]}),
-    "kryga_properties_set": ("model.properties.set", lambda p: {
-        "owner_id": p["owner_id"], "name": p["name"], "value": p["value"]
+    "kryga_model_game_object_children": ("model.scene.getChildren", lambda p: {"id": p["id"]}),
+    "kryga_model_level_create": ("model.scene.create", lambda p: {"name": p["name"]}),
+    "kryga_model_level_delete": ("model.scene.delete", lambda p: {"id": p["id"]}),
+    "kryga_model_level_clone": ("model.scene.duplicate", lambda p: {"id": p["id"]}),
+    "kryga_editor_select": ("model.selection.set", lambda p: {"id": p["id"]}),
+    "kryga_model_get_all": ("model.object.property.get", lambda p: {"id": p["id"]}),
+    "kryga_model_get_property": ("model.object.property.get_one", lambda p: {"id": p["id"], "name": p["name"]}),
+    "kryga_model_get_type_meta": ("model.type.meta", lambda p: {"type": p["type"]}),
+    "kryga_model_set_property": ("model.object.property.set", lambda p: {
+        "owner_id": p["owner_id"], "name": p["name"],
+        "value": _coerce_value(p["value"]),
     }),
-    "kryga_component_list_types": ("model.component.listTypes", lambda p: {}),
-    "kryga_component_add": ("model.component.add", lambda p: {
+    "kryga_model_list_component_types": ("model.component.listTypes", lambda p: {}),
+    "kryga_model_component_add": ("model.component.add", lambda p: {
         "object_id": p["object_id"],
         "type_id": p["type_id"],
-        **({"name": p["name"]} if "name" in p else {})
+        **({"name": p["name"]} if "name" in p else {}),
+        **({"parent_id": p["parent_id"]} if "parent_id" in p else {}),
     }),
-    "kryga_visibility_set": ("model.visibility.set", lambda p: {
-        "id": p["id"], "visible": p["visible"]
-    }),
-    "kryga_level_list": ("model.level.list", lambda p: {}),
-    "kryga_level_load": ("model.level.load", lambda p: {"id": p["id"]}),
-    "kryga_level_save": ("model.level.save", lambda p: {}),
-    "kryga_render_state_camera": ("render.camera.data", lambda p: {}),
-    "kryga_render_state_object": ("render.object.data", lambda p: {"id": p["id"]}),
-    "kryga_render_state_objects": ("render.object.list", lambda p: {
+    "kryga_model_list_levels": ("model.level.list", lambda p: {}),
+    "kryga_model_level_load": ("model.level.load", lambda p: {"id": p["id"]}),
+    "kryga_model_level_save": ("model.level.save", lambda p: {}),
+    "kryga_render_camera": ("render.camera.data", lambda p: {}),
+    "kryga_render_object": ("render.object.data", lambda p: {"id": p["id"]}),
+    "kryga_render_objects": ("render.object.list", lambda p: {
         k: p[k] for k in ("ids", "offset", "limit") if k in p
     }),
-    "kryga_render_state_stats": ("render.stats", lambda p: {}),
-    "kryga_render_state_lights": ("render.lights.data", lambda p: {}),
+    "kryga_render_stats": ("render.stats", lambda p: {}),
+    "kryga_render_lights": ("render.lights.data", lambda p: {}),
     "kryga_render_config_get": ("render.config.get", lambda p: {}),
     "kryga_render_config_set": ("render.config.set", lambda p: {
         k: p[k] for k in ("shadows", "lighting", "clusters", "debug", "render_scale", "outline") if k in p
     }),
 }
+
 
 
 @server.list_tools()
@@ -401,7 +405,7 @@ async def list_tools():
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     # Special case: engine mode (get vs set)
-    if name == "kryga_engine_mode":
+    if name == "kryga_editor_mode":
         try:
             if "mode" in arguments:
                 result = engine.call("engine.setMode", {"mode": arguments["mode"]})
@@ -412,7 +416,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=f"Error: {e}")]
 
     # Special case: batch duplicate
-    if name == "kryga_batch_duplicate":
+    if name == "kryga_model_batch_clone":
         try:
             src_id = arguments["id"]
             count = arguments["count"]
@@ -425,7 +429,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     created.append({"index": i, "error": "duplicate returned no id", "raw": dup})
                     continue
                 if i < len(positions):
-                    engine.call("model.transform.set", {"id": new_id, "position": positions[i]})
+                    engine.call("model.object.property.set", {"owner_id": new_id, "name": "position", "value": positions[i]})
                     created.append({"id": new_id, "position": positions[i]})
                 else:
                     created.append({"id": new_id})

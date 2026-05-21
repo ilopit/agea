@@ -10,7 +10,7 @@ namespace base
 {
 class component;
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Renderable scene object — owns a mesh_component that holds geometry and material references");
 class mesh_object : public ::kryga::root::game_object
 {
 public:

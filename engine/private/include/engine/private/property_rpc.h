@@ -10,6 +10,12 @@
 
 namespace kryga
 {
+namespace reflection
+{
+struct property;
+struct reflection_type;
+}  // namespace reflection
+
 namespace root
 {
 class smart_object;
@@ -45,6 +51,14 @@ encode_game_object_properties(root::game_object& go);
 // Build the inspector payload for a single component.
 Json::Value
 encode_component_properties(root::component& comp);
+
+// Build the inspector payload for a plain smart_object (asset).
+Json::Value
+encode_smart_object_properties(root::smart_object& obj);
+
+// Find a reflected property by field name in the editor property map.
+reflection::property*
+find_editor_property(const reflection::reflection_type& rt, const std::string& name);
 
 // Locate an inspectable owner (game_object or component) by id in the
 // current level. Returns null if not found.

@@ -11,7 +11,7 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Single-texture material — maps one texture onto the surface with basic lighting");
 class simple_texture_material : public ::kryga::root::material
 {
     KRG_gen_meta__simple_texture_material();
@@ -36,7 +36,8 @@ protected:
                     "invalidates=render",
                     "access=all",
                     "gpu_texture_slot=0",
-                    "instantiate=share");
+                    "instantiate=share",
+                    "mcp_hint=the single texture applied to the surface — set texture ID to change");
     ::kryga::root::texture_slot m_simple_texture;
 
     // GPU data properties — needed for argen to generate simple_texture_material__gpu

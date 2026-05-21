@@ -9,7 +9,7 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Transparent solid color material — inherits solid_color_material colors and adds opacity control");
 class solid_color_alpha_material : public solid_color_material
 {
     KRG_gen_meta__solid_color_alpha_material();
@@ -24,7 +24,8 @@ protected:
                     "serializable=true",
                     "access=all",
                     "gpu_data=MaterialData",
-                    "default=true");
+                    "default=true",
+                    "mcp_hint=transparency 0.0=fully transparent 1.0=fully opaque");
     float m_opacity = 1.0f;
 };
 

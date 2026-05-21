@@ -11,7 +11,7 @@ namespace kryga
 namespace test
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Test mesh_object — used in automated tests for mesh rendering validation");
 class test_mesh_object : public ::kryga::base::mesh_object
 {
     KRG_gen_meta__test_mesh_object();

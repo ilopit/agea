@@ -9,7 +9,7 @@ namespace kryga
 namespace test
 {
 
-KRG_ar_class();
+KRG_ar_class(mcp_hint = "Test mesh_component — used in automated tests for mesh rendering validation");
 class test_mesh_component : public ::kryga::base::mesh_component
 {
     KRG_gen_meta__test_mesh_component();

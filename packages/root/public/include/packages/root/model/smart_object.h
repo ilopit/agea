@@ -113,7 +113,9 @@ KRG_ar_class(architype            = smart_object,
               instantiate_handler = smart_obj__instantiate,
               compare_handler     = smart_obj__compare,
               save_handler        = smart_obj__save,
-              load_handler        = smart_obj__load);
+              load_handler        = smart_obj__load,
+              mcp_schema          = "string:object_id",
+              mcp_hint            = "Root base class for all engine objects — game objects / components / assets all inherit from this");
 class smart_object
 // clang-format on
 {

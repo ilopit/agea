@@ -57,6 +57,7 @@ PROP_KEY_PROPERTY_COMPARE_HANDLER = "property_compare_handler"
 PROP_KEY_PROPERTY_COPY_HANDLER = "property_copy_handler"
 PROP_KEY_PROPERTY_INSTANTIATE_HANDLER = "property_instantiate_handler"
 PROP_KEY_INSTANTIATE_MODE = "instantiate"
+PROP_KEY_MCP_HINT = "mcp_hint"
 
 # Type config keys
 TYPE_KEY_COPY_HANDLER = "copy_handler"
@@ -70,6 +71,8 @@ TYPE_KEY_RENDER_CMD_BUILDER = "render_cmd_builder"
 TYPE_KEY_RENDER_CMD_DESTROYER = "render_cmd_destroyer"
 TYPE_KEY_JSON_SAVE_HANDLER = "json_save_handler"
 TYPE_KEY_JSON_LOAD_HANDLER = "json_load_handler"
+TYPE_KEY_MCP_SCHEMA = "mcp_schema"
+TYPE_KEY_MCP_HINT = "mcp_hint"
 
 # Package config keys
 PKG_KEY_MODEL_TYPES_OVERRIDES = "model.has_types_overrides"
@@ -183,6 +186,12 @@ _MODEL_TYPE_ATTR_MAP = {
     TYPE_KEY_JSON_LOAD_HANDLER: 'json_load_handler',
 }
 
+# MCP metadata — accepted on any type regardless of package overrides
+_MCP_ATTR_MAP = {
+    TYPE_KEY_MCP_SCHEMA: 'mcp_schema',
+    TYPE_KEY_MCP_HINT: 'mcp_hint',
+}
+
 # Mapping from type config keys to attribute names for render overrides
 _RENDER_TYPE_ATTR_MAP = {
     TYPE_KEY_RENDER_CMD_BUILDER: 'render_cmd_builder',
@@ -206,9 +215,17 @@ def extract_type_config(type_obj: arapi.types.kryga_type, tokens: List[str],
       continue
 
     key = arapi.utils.extstrip(pairs[0])
-    value = arapi.utils.extstrip(pairs[1])
+    if key == TYPE_KEY_MCP_HINT:
+      value = pairs[1].strip().strip('"')
+    else:
+      value = arapi.utils.extstrip(pairs[1])
 
     matched = False
+
+    # MCP metadata — always accepted
+    if key in _MCP_ATTR_MAP:
+      setattr(type_obj, _MCP_ATTR_MAP[key], value)
+      matched = True
 
     # Model type overrides
     if context.model_has_types_overrides and key in _MODEL_TYPE_ATTR_MAP:
@@ -270,6 +287,8 @@ def _build_full_type_name(module_name: str, type_name: str, root_namespace: Opti
     """
   prefix = ''
   if root_namespace:
+    if root_namespace.endswith('::' + module_name) or root_namespace == module_name:
+      return f'{root_namespace}::{type_name}'
     prefix = f'{root_namespace}::'
 
   return f'{prefix}{module_name}::{type_name}'
@@ -419,7 +438,10 @@ def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: 
           f"Invalid property metadata format: '{token}'. Expected 'key=value'.")
 
     key = arapi.utils.extstrip(pairs[0])
-    value = arapi.utils.extstrip(pairs[1])
+    if key == PROP_KEY_MCP_HINT:
+      value = pairs[1].strip().strip('"')
+    else:
+      value = arapi.utils.extstrip(pairs[1])
 
     # Map keys to property attributes
     if key == PROP_KEY_CATEGORY:
@@ -476,6 +498,8 @@ def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: 
       _parse_check(prop, value)
     elif key == PROP_KEY_HINT:
       _parse_hint(prop, value)
+    elif key == PROP_KEY_MCP_HINT:
+      prop.mcp_hint = value
     else:
       raise InvalidPropertyError(f"Unsupported property key: '{key}'")
 
@@ -842,6 +866,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
             f"Nested class declaration not allowed at line {i + 1}. "
             f"Already parsing '{state.current_class.name}'")
       i, state.current_class = _parse_class(lines, i, lines_count, module_name, context)
+      state.current_class.source_file = state.original_file_rel_path
       i += 1
       continue
 
@@ -852,6 +877,7 @@ def parse_file(original_file_full_path: str, original_file_rel_path: str, module
             f"Nested struct declaration not allowed at line {i + 1}. "
             f"Already parsing '{state.current_struct.name}'")
       i, state.current_struct = _parse_struct(lines, i, lines_count, module_name, context)
+      state.current_struct.source_file = state.original_file_rel_path
       i += 1
       continue
 

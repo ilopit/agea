@@ -11,8 +11,9 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(render_cmd_builder = spot_light_component__cmd_builder,
-             render_cmd_destroyer = spot_light_component__cmd_destroyer);
+KRG_ar_class(render_cmd_builder    = spot_light_component__cmd_builder,
+             render_cmd_destroyer = spot_light_component__cmd_destroyer,
+             mcp_hint             = "Cone-shaped light with direction / distance falloff and inner/outer cone angles");
 class spot_light : public ::kryga::root::game_object
 {
     KRG_gen_meta__spot_light();

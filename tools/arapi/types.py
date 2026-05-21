@@ -34,6 +34,7 @@ class kryga_property:
     self.updatable = "yes"
     self.ref = "false"
     self.has_default = "false"
+    self.mcp_hint = ""
 
 
 class kryga_type:
@@ -65,6 +66,9 @@ class kryga_type:
     self.render_cmd_destroyer = ""
     self.json_save_handler = ""
     self.json_load_handler = ""
+    self.mcp_schema = ""
+    self.mcp_hint = ""
+    self.source_file = ""
 
     self.ordered = False
 
@@ -83,10 +87,12 @@ class file_context:
 
     self.full_module_name = ''
 
-    if module_namespace:
+    if module_namespace and (module_namespace.endswith('::' + module_name) or module_namespace == module_name):
+      self.full_module_name = module_namespace
+    elif module_namespace:
       self.full_module_name = module_namespace + '::' + module_name
     else:
-      self.full_module_name = module_namespace
+      self.full_module_name = module_name
 
     self.includes = set()
     self.custom_types = list()

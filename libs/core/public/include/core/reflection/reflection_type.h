@@ -180,6 +180,10 @@ struct reflection_type
 
     // clang-format on
 
+    std::string mcp_schema;
+    std::string mcp_hint;
+    std::string source_file;
+
     bool initialized = false;
 };
 

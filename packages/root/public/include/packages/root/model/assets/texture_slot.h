@@ -14,7 +14,9 @@ KRG_ar_struct(copy_handler                  = texture_slot__copy,
               save_handler                   = texture_slot__save,
               load_handler                   = texture_slot__load,
               json_save_handler              = texture_slot__json_save,
-              json_load_handler              = texture_slot__json_load);
+              json_load_handler              = texture_slot__json_load,
+              mcp_schema                     = "string:asset_id",
+              mcp_hint                       = "Texture + sampler pair bound to a material slot — set the texture ID to change the image");
 struct texture_slot
 {
     uint32_t slot = 0;

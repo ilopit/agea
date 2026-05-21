@@ -9,8 +9,9 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(render_cmd_builder = point_light_component__cmd_builder,
-             render_cmd_destroyer = point_light_component__cmd_destroyer);
+KRG_ar_class(render_cmd_builder    = point_light_component__cmd_builder,
+             render_cmd_destroyer = point_light_component__cmd_destroyer,
+             mcp_hint             = "Point light parameters — ambient/diffuse/specular colors and influence radius");
 class point_light_component : public ::kryga::root::game_object_component
 {
     KRG_gen_meta__point_light_component();
@@ -22,16 +23,20 @@ public:
     KRG_gen_meta_api;
 
 protected:
-    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
+    KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
+                    "mcp_hint=ambient light color RGB [0-1]");
     ::kryga::root::vec3 m_ambient = glm::vec3{1.0f};
 
-    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
+    KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
+                    "mcp_hint=diffuse light color RGB [0-1]");
     ::kryga::root::vec3 m_diffuse = glm::vec3{1.0f};
 
-    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
+    KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
+                    "mcp_hint=specular highlight color RGB [0-1]");
     ::kryga::root::vec3 m_specular = glm::vec3{1.0f};
 
-    KRG_ar_property("category=Light Properties", "access=all", "serializable=true");
+    KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
+                    "mcp_hint=how far the light reaches in world units");
     float m_radius = 50.0f;
 };
 
