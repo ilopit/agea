@@ -174,6 +174,7 @@ private:
     // Track editor/play mode transitions so external tooling sees changes
     // even when triggered via the engine's own UI (F5/Esc).
     int m_last_known_mode = -1;
+    utils::id m_last_known_selection;
 
     // Backing storage + drain helper for the public queue_main_action /
     // wait_main_action above.

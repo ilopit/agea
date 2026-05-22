@@ -664,6 +664,15 @@ vulkan_engine::tick(float dt)
                                : std::string("edit");
             m_rpc_server->notify("engine.mode.changed", note);
         }
+
+        auto sel_now = glob::glob_state().getr_editor_system().editor.get_selected();
+        if (sel_now != m_last_known_selection)
+        {
+            m_last_known_selection = sel_now;
+            Json::Value note(Json::objectValue);
+            note["id"] = sel_now.valid() ? sel_now.str() : std::string();
+            m_rpc_server->notify("model.selection.changed", note);
+        }
     }
 
     glob::glob_state().getr_editor_system().editor.on_tick(dt);

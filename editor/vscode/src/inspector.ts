@@ -78,6 +78,10 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
     this.refreshFor(id);
   }
 
+  focusComponent(componentId: string): void {
+    this.post({ type: "focusComponent", id: componentId });
+  }
+
   reconcile(change: PropertyChanged): void {
     this.post({ type: "reconcile", change });
   }
@@ -306,6 +310,11 @@ export class InspectorProvider implements vscode.WebviewViewProvider {
         currentPayload = m.payload;
         selectedOwner = m.payload.selected || null;
         render(currentPayload);
+      } else if (m.type === 'focusComponent') {
+        if (currentPayload) {
+          selectedOwner = m.id;
+          render(currentPayload);
+        }
       } else if (m.type === 'reconcile') {
         if (!currentPayload) return;
         for (const owner of currentPayload.owners) {

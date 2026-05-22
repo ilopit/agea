@@ -25,6 +25,7 @@ let output: vscode.OutputChannel | undefined;
 let statusItem: vscode.StatusBarItem | undefined;
 let modeItem: vscode.StatusBarItem | undefined;
 let currentMode: "edit" | "play" = "edit";
+let currentSelectionId: string | undefined;
 let engineTerminal: vscode.Terminal | undefined;
 
 function findProjectRoot(): string | undefined {
@@ -165,9 +166,23 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  client.onNotification("model.selection.changed", (p: SelectionChangedParams) => {
-    output?.appendLine(`[selection] ${p.id || "(none)"}`);
-    inspectorProvider.setSelection(p.id || undefined);
+  client.onNotification("model.selection.changed", async (p: SelectionChangedParams) => {
+    const newId = p.id || undefined;
+    if (newId === currentSelectionId) return;
+    output?.appendLine(`[selection] ${newId || "(none)"}`);
+    currentSelectionId = newId;
+    inspectorProvider.setSelection(newId);
+    if (newId) {
+      let node = sceneProvider.getNode(newId);
+      if (!node) {
+        sceneProvider.refresh();
+        await new Promise((r) => setTimeout(r, 100));
+        node = sceneProvider.getNode(newId);
+      }
+      if (node) {
+        sceneTree.reveal(node, { select: true, focus: false }).then(undefined, () => {});
+      }
+    }
   });
 
   client.onNotification("model.object.property.changed", (p: any) => {
@@ -181,9 +196,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // --- Scene Tree ---
   const sceneProvider = new SceneTreeProvider(client);
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("kryga.scene", sceneProvider),
-  );
+  const sceneTree = vscode.window.createTreeView("kryga.scene", {
+    treeDataProvider: sceneProvider,
+  });
+  context.subscriptions.push(sceneTree);
 
   client.onNotification("model.scene.changed", () => sceneProvider.refresh());
   client.onState(async (state) => {
@@ -241,9 +257,14 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("kryga.scene.select", async (id: string) => {
+    vscode.commands.registerCommand("kryga.scene.select", async (id: string, kind?: string) => {
       try {
-        await client?.request("model.selection.set", { id });
+        const goId = sceneProvider.getGameObjectId(id);
+        const focusComponent = (kind === "component") ? id : undefined;
+        await client?.request("model.selection.set", { id: goId });
+        if (focusComponent) {
+          inspectorProvider.focusComponent(focusComponent);
+        }
       } catch (e) {
         vscode.window.showErrorMessage(`Kryga: model.selection.set failed: ${e}`);
       }
