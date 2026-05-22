@@ -299,6 +299,7 @@ void
 vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
 {
     KRG_check(obj_data, "Should be always valid");
+    KRG_check(!obj_data->is_pending_release(), "Adding a dead object");
     m_object_bvh_dirty = true;
 
     if (obj_data->layer_flags & render::LAYER_VISIBLE)
@@ -331,6 +332,7 @@ void
 vulkan_render::schd_update_object(render::vulkan_render_data* obj_data)
 {
     KRG_check(obj_data, "Should be always valid");
+    KRG_check(!obj_data->is_pending_release(), "Updating a dead object");
 
     for (auto& q : m_frames)
     {

@@ -295,7 +295,7 @@ def _write_python_base(py_dir: str) -> None:
   buf.append('        params = {"id": self._id, "function": function}\n')
   buf.append("        if args is not None:\n")
   buf.append('            params["args"] = args\n')
-  buf.append('        result = self._engine.call("model.object.invoke", params)\n')
+  buf.append('        result = self._engine.call("model.object.function.invoke", params)\n')
   buf.append('        return result.get("value") if isinstance(result, dict) else result\n\n')
   buf.append("    def set_visible(self, visible):\n")
   buf.append("        flags = self._get('layers') or 0\n")

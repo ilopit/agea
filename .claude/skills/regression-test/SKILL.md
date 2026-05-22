@@ -12,9 +12,26 @@ Write a Python regression test in `tests/e2e/` that exercises the engine via JSO
 Every regression test must verify **both** layers:
 
 1. **Model layer** — the authoritative state (`model.*` RPCs). This is what gets saved to disk.
-2. **Render layer** — the GPU-facing projection (`render.state.*` RPCs). This is what the player sees.
+2. **Render layer** — the GPU-facing projection (`render.*` RPCs). This is what the player sees.
 
 Testing only the model is insufficient — it doesn't catch render_bridge propagation bugs. Testing only render is insufficient — it doesn't catch serialization/persistence bugs.
+
+## Prefer generated Python proxies over raw RPC calls
+
+Use the generated proxy classes from `build/kryga_generated/python/` (auto-added to `sys.path` by conftest). They provide type names in test code, making it clear which engine type is under test, and they're generated from the same reflection data the engine uses — so they stay in sync.
+
+```python
+# GOOD — proxy makes the type and operation explicit
+from base import mesh_component
+mc = mesh_component(engine, "hero_cube_mesh")
+mc.set_mesh("plane_mesh")
+ro = mc.get_render_data()
+
+# OK for one-off calls or RPCs without a proxy
+engine.call("render.object.data", {"id": "hero_cube_mesh"})
+```
+
+Fall back to `engine.call()` only for RPCs that have no generated proxy (render queries, editor commands, material edit sessions). Use `property_helpers.py` utilities for common patterns that aren't covered by proxies.
 
 ## Test file structure
 
@@ -23,6 +40,7 @@ tests/e2e/
   conftest.py          # Shared fixtures (engine session, level loading, file snapshots)
   rpc_client.py        # EngineRPC + EngineProcess (TCP JSON-RPC 2.0 client)
   assertions.py        # Reusable assertion helpers
+  property_helpers.py  # Shared utilities for property round-trips and object creation
   test_<feature>.py    # One file per feature/subsystem
 ```
 
@@ -32,23 +50,26 @@ All RPCs are registered in `engine/private/src/engine_rpc.cpp` — grep for `ser
 
 ### RPC categories
 
-- **`model.scene.*`** — scene graph CRUD: getRoot, create, delete, duplicate
-- **`model.transform.*`** — get/set position, rotation, scale on scene objects
-- **`model.material.*`** — material inspection and edit sessions (edit → setField → save/discard), material assignment to mesh components
-- **`model.texture.*`** — texture inventory (list)
-- **`model.level.*`** — level load/save (load is async — use `engine.load_level_and_wait()`)
-- **`model.properties.*`** — generic property get for any reflected object
-- **`model.component.*`** — component type listing, add/remove components
-- **`model.object.invoke`** — call reflected functions (get_position / set_position / move / etc.)
+- **`model.list`** — list all model objects
+- **`model.scene.*`** — scene graph CRUD: getRoot, getChildren, create, delete, duplicate, rename
+- **`model.object.property.get`** — generic property get for any reflected object (returns owners/categories/fields)
+- **`model.object.property.get_one`** — get a single property value
+- **`model.object.property.set`** — set a property by owner_id + name + value
+- **`model.object.function.invoke`** — call reflected functions (get_position / set_position / move / etc.)
 - **`model.type.meta`** — type metadata: properties, functions, schemas, hints
-- **`model.selection.*`** — editor selection state
-- **`render.state.*`** — read-only GPU state: per-object (mesh, material, texture_indices, gpu_data), lights, camera, stats
-- **`render.visibility.*`** — visibility overrides
+- **`model.component.*`** — listTypes, add
+- **`model.material.*`** — list, get, edit, setField, save, discard, assign
+- **`model.texture.*`** — list
+- **`model.level.*`** — list, load, save
+- **`model.selection.*`** — get, set
+- **`render.object.data`** — per-object GPU state (mesh, material, texture_indices, gpu_data)
+- **`render.object.list`** — all render objects
+- **`render.camera.data`** — camera matrices and position
+- **`render.stats`** — object count, light count, texture count
+- **`render.lights.data`** — light state
+- **`render.config.get`** / **`render.config.set`** — render configuration (shadows, render_scale, etc.)
 - **`engine.*`** — engine mode (editor/play), shutdown
-- **`tools.bake.*`** — lightmap baking config and execution
-- **`tools.actions.*`** — async action status tracking
-- **`tools.converter.*`** — asset converter
-- **`editor.material.preview`** — material preview rendering
+- **`editor.camera.set`** — set editor camera position/pitch/yaw
 - **`ping`** — engine health check
 
 ## Writing a test — step by step
@@ -70,19 +91,31 @@ MATERIAL_ID = "mt_toon"
 RENDER_OBJECT = "hero_cube_mesh"
 ```
 
-### 3. Write helper functions for reading state
+### 3. Use property_helpers.py and write file-local helpers
 
-Extract model-layer and render-layer reads into small functions. These get reused across tests in the file.
+`tests/e2e/property_helpers.py` provides common utilities — use them instead of reimplementing:
 
 ```python
-def _get_material_fields(engine, mat_id=MATERIAL_ID):
-    r = engine.call("model.material.get", {"id": mat_id})
-    cats = r["material"]["categories"]
-    props_cat = next(c for c in cats if c["name"] == "Properties")
-    return {f["name"]: f["value"] for f in props_cat["fields"] if "value" in f}
+from .property_helpers import (
+    get_property, set_property, assert_property_roundtrip,  # object properties
+    get_material_fields, get_texture_slots, assert_material_field_roundtrip,  # materials
+    create_test_object, add_component, cleanup_object,  # dynamic objects
+)
+```
 
+Key helpers:
+- `get_property(engine, obj_id, name)` — reads a property from model.object.property.get, searches all owners
+- `set_property(engine, obj_id, name, value)` — calls model.object.property.set + wait_frame
+- `assert_property_roundtrip(engine, obj_id, name, value, tol=None)` — set + get + assert
+- `get_material_fields(engine, mat_id)` — returns {name: value} dict for material properties
+- `get_texture_slots(engine, mat_id)` — returns {slot_name: texture_id} for texture fields
+- `assert_material_field_roundtrip(engine, mat_id, field, value, save=True)` — edit + set + verify + restore
+
+For render-layer reads or domain-specific helpers, add file-local functions:
+
+```python
 def _get_render_texture_indices(engine, obj_id=RENDER_OBJECT):
-    ro = engine.call("render.state.object", {"id": obj_id})
+    ro = engine.call("render.object.data", {"id": obj_id})
     assertions.assert_not_pink_bug(ro, obj_id)
     return ro["material"]["texture_indices"]
 ```
@@ -90,32 +123,35 @@ def _get_render_texture_indices(engine, obj_id=RENDER_OBJECT):
 ### 4. Use a test class grouping related tests
 
 ```python
-class TestFeatureName:
+from base import mesh_component
 
-    def test_action_updates_model_and_render(self, engine):
+class TestMeshSwap:
+
+    def test_swap_mesh_updates_render(self, engine):
+        mc = mesh_component(engine, HERO_MESH)
+
         # 1. Read baseline from BOTH layers
-        model_before = _get_model_state(engine)
-        render_before = _get_render_state(engine)
+        original_mesh = mc.get_mesh()
+        ro_before = mc.get_render_data()
 
-        # 2. Perform the action via model RPC
-        engine.call("model.something.do", {"id": TARGET_ID, ...})
-        engine.wait_frame()  # render_bridge propagation
+        # 2. Perform the action via proxy
+        mc.set_mesh(ALT_MESH)
+        engine.wait_frame()
 
         # 3. Verify model updated
-        model_after = _get_model_state(engine)
-        assert model_after["field"] == expected_value
+        assert mc.get_mesh() == ALT_MESH
 
         # 4. Verify render updated
-        render_after = _get_render_state(engine)
-        assert render_after != render_before  # or check specific fields
+        ro_after = mc.get_render_data()
+        assert ro_after["mesh"]["id"] == ALT_MESH
 
         # 5. Verify no corruption (pink bug check on all objects)
         for comp_id in EXPECTED_RENDER_OBJECTS:
-            ro = engine.call("render.state.object", {"id": comp_id})
+            ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
         # 6. Restore original state
-        engine.call("model.something.undo", {"id": TARGET_ID, ...})
+        mc.set_mesh(original_mesh)
         engine.wait_frame()
 ```
 
@@ -144,7 +180,7 @@ Call `engine.wait_frame()` after any mutation that needs to propagate to the ren
 ```python
 engine.call("model.material.save", {"id": MAT_ID})
 engine.wait_frame()
-# render.state.object now reflects the save
+# render.object.data now reflects the save
 ```
 
 NEVER use `time.sleep()` — use `engine.wait_frame()` for deterministic synchronization.
@@ -202,8 +238,8 @@ python -m pytest tests/e2e/ -v --no-auto-start
 
 Ask these questions about the behavior under test. Each "yes" adds assertions to your test — not necessarily separate test methods.
 
-1. **Does the action change model state?** → Read model state before and after, assert the expected field changed.
-2. **Does the model change propagate to render?** → Read `render.state.object` before and after, assert the relevant render field (texture_indices, obj_pos, material.id, etc.) changed.
+1. **Does the action change model state?** → Use `get_property()` before and after, assert the expected field changed.
+2. **Does the model change propagate to render?** → Read `render.object.data` before and after, assert the relevant render field (texture_indices, gpu_data.obj_pos, material.id, etc.) changed.
 3. **Is the change reversible?** → If the feature has an undo/discard path, verify it reverts both model and render to the exact original state.
 4. **Can it corrupt unrelated objects?** → After the action, `assert_not_pink_bug` on all `EXPECTED_RENDER_OBJECTS`.
 5. **Does it survive persistence?** → If the change is saved to disk, do a `model.level.save` + `engine.load_level_and_wait()` cycle and verify state is still correct.
@@ -212,10 +248,11 @@ Questions 1+2 apply to almost every test. Questions 3–5 depend on the feature 
 
 ## Checklist before submitting
 
+- [ ] Generated Python proxies used where available (fall back to `engine.call()` for RPCs without a proxy)
 - [ ] Both model and render layers verified
 - [ ] State restored at end of each test
 - [ ] Constants defined at module level, not inline
-- [ ] Helper functions for repeated model/render reads
+- [ ] `property_helpers.py` utilities used where applicable
 - [ ] `engine.wait_frame()` after async mutations
 - [ ] Test class named `Test<Feature>`
 - [ ] File named `test_<feature>.py`

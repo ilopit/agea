@@ -382,7 +382,7 @@ TOOL_RPC_MAP = {
     "kryga_model_get_all": ("model.object.property.get", lambda p: {"id": p["id"]}),
     "kryga_model_get_property": ("model.object.property.get_one", lambda p: {"id": p["id"], "name": p["name"]}),
     "kryga_model_get_type_meta": ("model.type.meta", lambda p: {"type": p["type"]}),
-    "kryga_model_invoke": ("model.object.invoke", lambda p: {
+    "kryga_model_invoke": ("model.object.function.invoke", lambda p: {
         "id": p["id"], "function": p["function"],
         **({"args": _coerce_value(p["args"])} if "args" in p else {}),
     }),

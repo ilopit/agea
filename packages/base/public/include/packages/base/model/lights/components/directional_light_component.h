@@ -25,19 +25,19 @@ public:
 
 protected:
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=ambient light color RGB [0-1]");
+                    "invalidates=render", "mcp_hint=ambient light color RGB [0-1]");
     ::kryga::root::vec3 m_ambient = glm::vec3{0.8f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=diffuse light color RGB [0-1]");
+                    "invalidates=render", "mcp_hint=diffuse light color RGB [0-1]");
     ::kryga::root::vec3 m_diffuse = glm::vec3{0.1f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=specular highlight color RGB [0-1]");
+                    "invalidates=render", "mcp_hint=specular highlight color RGB [0-1]");
     ::kryga::root::vec3 m_specular = glm::vec3{0.1f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=light direction vector [normalized]");
+                    "invalidates=render", "mcp_hint=light direction vector [normalized]");
     ::kryga::root::vec3 m_direction = glm::vec3{1.0f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",

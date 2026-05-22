@@ -587,6 +587,10 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     }
 
     auto se_model = mat_model.get_shader_effect();
+    if (!se_model)
+    {
+        return result_code::failed;
+    }
     ctx.rb->render_cmd_build(*se_model, ctx.flag);
 
     if (!mat_model.get_render_built())

@@ -24,31 +24,31 @@ public:
 
 protected:
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=ambient light color RGB [0-1]");
+                    "invalidates=render", "mcp_hint=ambient light color RGB [0-1]");
     ::kryga::root::vec3 m_ambient = glm::vec3{1.0f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=diffuse light color RGB [0-1]");
+                    "invalidates=render", "mcp_hint=diffuse light color RGB [0-1]");
     ::kryga::root::vec3 m_diffuse = glm::vec3{1.0f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=spot light aim direction [normalized]");
+                    "invalidates=render", "mcp_hint=spot light aim direction [normalized]");
     ::kryga::root::vec3 m_direction = glm::vec3{1.0f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=specular highlight color RGB [0-1]");
+                    "invalidates=render", "mcp_hint=specular highlight color RGB [0-1]");
     ::kryga::root::vec3 m_specular = glm::vec3{1.0f};
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=how far the light reaches in world units");
+                    "invalidates=render", "mcp_hint=how far the light reaches in world units");
     float m_radius = 50.0f;
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=inner cone angle in degrees — full brightness inside this");
+                    "invalidates=render", "mcp_hint=inner cone angle in degrees — full brightness inside this");
     float m_cut_off = 17.0f;
 
     KRG_ar_property("category=Light Properties", "access=all", "serializable=true",
-                    "mcp_hint=outer cone angle in degrees — light fades between cut_off and this");
+                    "invalidates=render", "mcp_hint=outer cone angle in degrees — light fades between cut_off and this");
     float m_outer_cut_off = 18.f;
 };
 

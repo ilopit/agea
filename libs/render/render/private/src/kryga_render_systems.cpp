@@ -355,6 +355,10 @@ vulkan_render::upload_gpu_object_data(gpu::object_data* object_SSBO)
 
     for (auto obj : to_update)
     {
+        if (obj->is_pending_release())
+        {
+            continue;
+        }
         object_SSBO[obj->slot()] = obj->gpu_data;
     }
 }

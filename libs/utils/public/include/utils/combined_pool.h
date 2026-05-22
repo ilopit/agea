@@ -101,6 +101,28 @@ public:
         m_free_slots.push_back(slot_id);
     }
 
+    void
+    unmap(T* obj)
+    {
+        auto itr = m_mapping.find(obj->id());
+
+        if (itr == m_mapping.end())
+        {
+            ALOG_ERROR("[{0}] not found in pool (unmap)", obj->id().cstr());
+            return;
+        }
+        --m_active_size;
+        m_mapping.erase(itr);
+    }
+
+    void
+    release_slot(T* obj)
+    {
+        auto slot_id = obj->slot();
+        obj->~T();
+        m_free_slots.push_back(slot_id);
+    }
+
     template <typename Fn>
     void
     for_each(Fn&& fn) const

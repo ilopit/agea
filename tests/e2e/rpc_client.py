@@ -276,7 +276,7 @@ class EngineRPC:
         params = {"id": obj_id, "function": function}
         if args is not None:
             params["args"] = args
-        result = self.call("model.object.invoke", params)
+        result = self.call("model.object.function.invoke", params)
         return result.get("value") if isinstance(result, dict) else result
 
     def get_type_meta(self, type_name: str) -> dict:

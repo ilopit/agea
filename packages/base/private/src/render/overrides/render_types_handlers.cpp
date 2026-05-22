@@ -64,6 +64,7 @@
 #include <vulkan_render/types/vulkan_shader_data.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
+#include <vulkan_render/render_system.h>
 #include <vulkan_render/kryga_render.h>
 
 #include <animation/gltf_animation_loader.h>
@@ -215,7 +216,13 @@ struct destroy_object_cmd : render_cmd::render_command_base
         if (object_data)
         {
             ctx.vr.schd_remove_object(object_data);
-            ctx.vr.get_cache().objects.release(object_data);
+            object_data->mark_pending_release();
+            ctx.vr.get_cache().objects.unmap(object_data);
+
+            auto& device = glob::glob_state().getr_render().device;
+            auto* pool = &ctx.vr.get_cache().objects;
+            device.schedule_to_delete([pool, object_data](VkDevice, VmaAllocator)
+                                      { pool->release_slot(object_data); });
         }
     }
 };

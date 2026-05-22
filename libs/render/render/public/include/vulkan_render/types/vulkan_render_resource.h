@@ -40,9 +40,22 @@ public:
         return m_idx;
     }
 
+    bool
+    is_pending_release() const
+    {
+        return m_pending_release;
+    }
+
+    void
+    mark_pending_release()
+    {
+        m_pending_release = true;
+    }
+
 protected:
     utils::id m_id;
     gpu_data_index_type m_idx;
+    bool m_pending_release = false;
 };
 
 template <typename gpu_data_type>
