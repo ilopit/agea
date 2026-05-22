@@ -1201,7 +1201,8 @@ def _write_function_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
 """)
 
   if func.return_type and func.return_type != "void":
-    file_buffer.append(f"""            using ret_type = std::decay_t<decltype(std::declval<owner_type>().{func.name}())>;
+    declval_args = ", ".join(f"std::declval<{p.type_name}>()" for p in func.params)
+    file_buffer.append(f"""            using ret_type = std::decay_t<decltype(std::declval<owner_type>().{func.name}({declval_args}))>;
             auto ret_td = ::kryga::reflection::kryga_type_resolve<ret_type>();
             f->return_type = ::kryga::glob::glob_state().getr_model().reflection.get_type(ret_td.type_id);
 """)

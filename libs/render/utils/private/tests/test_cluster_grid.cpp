@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "render_utils/cluster_grid.h"
+#include <render/utils/cluster_grid.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <gpu_types/gpu_generic_constants.h>

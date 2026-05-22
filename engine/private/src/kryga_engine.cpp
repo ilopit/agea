@@ -707,12 +707,11 @@ vulkan_engine::tick(float dt)
 
     if (auto* phys = glob::glob_state().get_physics_system())
     {
-        // Physics only advances in play mode. In editor mode chunks would drift
-        // on their own which is confusing while authoring.
-        if (glob::glob_state().get_game_editor()->get_mode() == engine::editor_mode::playing)
-        {
-            phys->tick(dt);
-        }
+#if KRG_EDITOR
+        if (glob::glob_state().getr_editor_system().editor.get_mode() != engine::editor_mode::playing)
+            return;
+#endif
+        phys->tick(dt);
     }
 }
 
@@ -969,7 +968,7 @@ vulkan_engine::rebuild_physics_static_world()
         return;
     }
 
-    auto* level = glob::glob_state().get_current_level();
+    auto* level = glob::glob_state().getr_model().current_level;
     if (!level)
     {
         // No level — keep whatever fallback (ground plane) is in place.

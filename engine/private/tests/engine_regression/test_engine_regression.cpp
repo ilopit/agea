@@ -1,4 +1,4 @@
-#include <vulkan_render/utils/readback.h>
+#include "visual_readback.h"
 
 #include <gtest/gtest.h>
 
@@ -244,7 +244,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
         auto* main_pass = renderer.get_render_pass(AID("main"));
         ASSERT_TRUE(main_pass);
 
-        auto pixels = render::readback_framebuffer(
+        auto pixels = render::test::readback_framebuffer(
             *main_pass, TEST_WIDTH, TEST_HEIGHT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
         auto ref_path = get_reference_path("engine_converts_box_textured");

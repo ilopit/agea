@@ -23,6 +23,15 @@ namespace reflection
 
 struct reflection_type;
 
+struct function_invoke_context
+{
+    root::smart_object* obj = nullptr;
+    const Json::Value* args = nullptr;
+    Json::Value* result = nullptr;
+};
+
+using function_invoke_handler = result_code (*)(function_invoke_context&);
+
 class function
 {
 public:

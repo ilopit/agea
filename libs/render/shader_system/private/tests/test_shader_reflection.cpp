@@ -519,7 +519,7 @@ void main() {
     ASSERT_FALSE(result.has_value()) << "Should reject push constant without instance name";
 }
 
-TEST_F(shader_compiler_test, reflection_rejects_unnamed_ubo)
+TEST_F(shader_compiler_test, reflection_unnamed_ubo_uses_type_name)
 {
     const char* vert_source = R"(
 #version 450
@@ -539,10 +539,13 @@ void main() {
     auto buf = create_shader_buffer(vert_source, "unnamed_ubo.vert");
     auto result = shader_compiler::compile_shader(buf);
 
-    ASSERT_FALSE(result.has_value()) << "Should reject UBO without instance name";
+    ASSERT_TRUE(result.has_value()) << "UBO without instance name should fall back to type name";
+    auto& cs = result.value();
+    ASSERT_FALSE(cs.reflection.descriptors.empty());
+    EXPECT_EQ(cs.reflection.descriptors[0].bindings[0].name, AID("CameraData"));
 }
 
-TEST_F(shader_compiler_test, reflection_rejects_unnamed_ssbo)
+TEST_F(shader_compiler_test, reflection_unnamed_ssbo_uses_type_name)
 {
     const char* vert_source = R"(
 #version 450
@@ -566,7 +569,10 @@ void main() {
     auto buf = create_shader_buffer(vert_source, "unnamed_ssbo.vert");
     auto result = shader_compiler::compile_shader(buf);
 
-    ASSERT_FALSE(result.has_value()) << "Should reject SSBO without instance name";
+    ASSERT_TRUE(result.has_value()) << "SSBO without instance name should fall back to type name";
+    auto& cs = result.value();
+    ASSERT_FALSE(cs.reflection.descriptors.empty());
+    EXPECT_EQ(cs.reflection.descriptors[0].bindings[0].name, AID("ObjectBuffer"));
 }
 
 // ============================================================================

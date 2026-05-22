@@ -4995,8 +4995,8 @@ TEST_F(visual_pipeline_test, noop_outline_no_marked)
 
 TEST_F(visual_pipeline_test, voronoi_fractured_cube)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_frac"));
@@ -5100,8 +5100,8 @@ TEST_F(visual_pipeline_test, voronoi_fractured_cube)
 
 TEST_F(visual_pipeline_test, voronoi_fractured_convex)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_frac_cx"));
@@ -5204,8 +5204,8 @@ TEST_F(visual_pipeline_test, voronoi_fractured_convex)
 
 TEST_F(visual_pipeline_test, voronoi_presets)
 {
-    auto& renderer = glob::glob_state().getr_vulkan_render();
-    auto& loader = glob::glob_state().getr_vulkan_render_loader();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
     auto& cache = renderer.get_cache();
 
     auto* se = create_lit_shader_effect(AID("se_vp"));

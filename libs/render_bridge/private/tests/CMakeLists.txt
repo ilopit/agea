@@ -2,6 +2,11 @@ file(GLOB TEST_SOURCES
     "*.h"
     "*.cpp"
 )
+
+if(NOT TEST_SOURCES)
+    return()
+endif()
+
 source_group("test_sources" FILES ${TEST_SOURCES})
 
 add_executable (render_bridge_tests
