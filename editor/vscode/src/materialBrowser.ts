@@ -35,11 +35,15 @@ export function openMaterialBrowser(
     if (msg.type === "ready" || msg.type === "refresh") {
       try {
         const res = await client.request<{
-          materials: { id: string; type: string }[];
-        }>("model.material.list", {});
+          items: { id: string; type_name?: string }[];
+        }>("model.list", { source: "all", kind: "material" });
+        const materials = (res.items ?? []).map((m) => ({
+          id: m.id,
+          type: m.type_name ?? "material",
+        }));
         panel?.webview.postMessage({
           type: "materials",
-          materials: res.materials,
+          materials,
           owner_id: msg.owner_id,
           current_material: msg.current_material,
         });
@@ -66,9 +70,10 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "assign") {
       try {
-        await client.request("model.material.assign", {
+        await client.request("model.object.property.set", {
           owner_id: msg.owner_id,
-          material_id: msg.material_id,
+          name: "material",
+          value: msg.material_id,
         });
         panel?.webview.postMessage({
           type: "assigned",
@@ -79,13 +84,14 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "editMaterial") {
       try {
-        const res = await client.request<{ material: unknown }>(
-          "model.material.edit",
+        const res = await client.request<{ edit_id: string; material: unknown }>(
+          "editor.material.edit",
           { id: msg.material_id },
         );
         panel?.webview.postMessage({
           type: "editResult",
           material_id: msg.material_id,
+          edit_id: res.edit_id,
           material: res.material,
         });
       } catch (e) {
@@ -94,8 +100,8 @@ export function openMaterialBrowser(
     } else if (msg.type === "editField") {
       try {
         const res = await client.request<{ value: unknown }>(
-          "model.material.setField",
-          { id: msg.material_id, field: msg.field, value: msg.value },
+          "model.object.property.set",
+          { owner_id: msg.material_id, name: msg.field, value: msg.value },
         );
         panel?.webview.postMessage({
           type: "fieldUpdated",
@@ -108,7 +114,7 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "saveEdit") {
       try {
-        await client.request("model.material.save", { id: msg.material_id });
+        await client.request("editor.material.save", { id: msg.material_id });
         panel?.webview.postMessage({
           type: "editSaved",
           material_id: msg.material_id,
@@ -118,7 +124,7 @@ export function openMaterialBrowser(
       }
     } else if (msg.type === "discardEdit") {
       try {
-        await client.request("model.material.discard", { id: msg.material_id });
+        await client.request("editor.material.discard", { id: msg.material_id });
         panel?.webview.postMessage({
           type: "editDiscarded",
           material_id: msg.material_id,
@@ -432,6 +438,7 @@ function html(): string {
     let ownerId = '';
     let currentMaterial = '';
     let editingId = null;
+    let editingEditId = null;
     let editingData = null;
     let previewDebounce = null;
 
@@ -481,13 +488,14 @@ function html(): string {
         if (card) card.classList.add('active');
       } else if (m.type === 'editResult') {
         editingId = m.material_id;
+        editingEditId = m.edit_id || m.material_id;
         editingData = m.material;
         renderEditor(m.material_id, m.material);
         vscode.postMessage({ type: 'requestPreview', material_id: m.material_id, size: 256, target: 'editor' });
       } else if (m.type === 'fieldUpdated') {
-        if (m.material_id === editingId) {
+        if (m.material_id === editingEditId || m.material_id === editingId) {
           updateFieldValue(m.field, m.value);
-          schedulePreviewRefresh(m.material_id);
+          schedulePreviewRefresh(editingId);
         }
       } else if (m.type === 'editSaved' || m.type === 'editDiscarded') {
         closeEditor();
@@ -650,6 +658,7 @@ function html(): string {
 
     function closeEditor() {
       editingId = null;
+      editingEditId = null;
       editingData = null;
       editorRoot.innerHTML = '';
     }
@@ -772,7 +781,7 @@ function html(): string {
     }
 
     function sendField(matId, name, value) {
-      vscode.postMessage({ type: 'editField', material_id: matId, field: name, value });
+      vscode.postMessage({ type: 'editField', material_id: editingEditId || matId, field: name, value });
     }
 
     function updateFieldValue(name, value) {

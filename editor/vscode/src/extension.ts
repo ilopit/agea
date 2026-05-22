@@ -77,11 +77,19 @@ function updateModeItem(): void {
   }
 }
 
+function findDiscoveryFile(root: string): string | undefined {
+  for (const cfg of ["Debug", "Release"]) {
+    const p = path.join(root, "build", `project_${cfg}`, "tmp", "editor_rpc.json");
+    if (fs.existsSync(p)) return p;
+  }
+  return undefined;
+}
+
 function detectRunningEngine(root: string): number | undefined {
   try {
-    const info = JSON.parse(
-      fs.readFileSync(path.join(root, "tmp", "editor_rpc.json"), "utf8"),
-    ) as { pid: number };
+    const dp = findDiscoveryFile(root);
+    if (!dp) return undefined;
+    const info = JSON.parse(fs.readFileSync(dp, "utf8")) as { pid: number };
     if (typeof info.pid !== "number") return undefined;
     process.kill(info.pid, 0);
     return info.pid;
@@ -126,8 +134,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(modeItem);
   updateModeItem();
 
-  const discoveryPath = path.join(root, "tmp", "editor_rpc.json");
-  client = new RpcClient(discoveryPath);
+  const discoveryPath = findDiscoveryFile(root)
+    ?? path.join(root, "build", "project_Debug", "tmp", "editor_rpc.json");
+  client = new RpcClient(root, discoveryPath);
   context.subscriptions.push({ dispose: () => client?.dispose() });
 
   client.onState((state) => updateStatus(state));
@@ -161,7 +170,7 @@ export function activate(context: vscode.ExtensionContext): void {
     inspectorProvider.setSelection(p.id || undefined);
   });
 
-  client.onNotification("model.properties.changed", (p: any) => {
+  client.onNotification("model.object.property.changed", (p: any) => {
     inspectorProvider.reconcile(p);
   });
 
@@ -334,7 +343,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("kryga.disconnect", () => {
       client?.dispose();
-      client = new RpcClient(discoveryPath);
+      client = new RpcClient(root, discoveryPath);
       client.onState((state) => updateStatus(state));
       updateStatus(client.getState());
     }),

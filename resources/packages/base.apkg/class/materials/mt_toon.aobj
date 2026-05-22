@@ -1,10 +1,7 @@
 proto_id: toon_material
 id: mt_toon
-shader_effect: se_toon
 diffuse_txt:
-    texture: txt_grey
-    slot: 0
-    sampler: default
+  texture: txt_grey
+  slot: 0
 band_count: 3
-specular_strength: 1
-shininess: 32
+shader_effect: se_toon

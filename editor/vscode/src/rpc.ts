@@ -28,12 +28,22 @@ export type ConnectionState = "disconnected" | "connecting" | "connected";
 export class RpcClient {
   private connection: MessageConnection | null = null;
   private socket: net.Socket | null = null;
-  private watcher: fs.FSWatcher | null = null;
+  private watchers: fs.FSWatcher[] = [];
   private state: ConnectionState = "disconnected";
   private readonly _onState = new vscode.EventEmitter<ConnectionState>();
   readonly onState = this._onState.event;
+  private readonly discoveryPaths: string[];
 
-  constructor(private readonly discoveryPath: string) {}
+  constructor(projectRoot: string, hint?: string) {
+    const candidates: string[] = [];
+    for (const cfg of ["Debug", "Release"]) {
+      candidates.push(path.join(projectRoot, "build", `project_${cfg}`, "tmp", "editor_rpc.json"));
+    }
+    if (hint && !candidates.includes(hint)) {
+      candidates.unshift(hint);
+    }
+    this.discoveryPaths = candidates;
+  }
 
   start(): void {
     this.tryConnectFromDiscovery();
@@ -41,8 +51,8 @@ export class RpcClient {
   }
 
   dispose(): void {
-    this.watcher?.close();
-    this.watcher = null;
+    for (const w of this.watchers) w.close();
+    this.watchers = [];
     this.disconnect();
     this._onState.dispose();
   }
@@ -89,22 +99,25 @@ export class RpcClient {
   }
 
   private watchDiscovery(): void {
-    const dir = path.dirname(this.discoveryPath);
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-    } catch {
-      // ignore — fs.watch will surface the real error
-    }
-    try {
-      this.watcher = fs.watch(dir, (event, filename) => {
-        if (filename && path.resolve(dir, filename) === this.discoveryPath) {
-          if (this.state === "disconnected") {
-            this.tryConnectFromDiscovery();
+    const dirs = new Set(this.discoveryPaths.map((p) => path.dirname(p)));
+    for (const dir of dirs) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch {
+        continue;
+      }
+      try {
+        const w = fs.watch(dir, (event, filename) => {
+          if (filename && filename === "editor_rpc.json") {
+            if (this.state === "disconnected") {
+              this.tryConnectFromDiscovery();
+            }
           }
-        }
-      });
-    } catch (e) {
-      console.error("kryga: fs.watch failed", e);
+        });
+        this.watchers.push(w);
+      } catch (e) {
+        console.error("kryga: fs.watch failed for", dir, e);
+      }
     }
   }
 
@@ -112,18 +125,19 @@ export class RpcClient {
     if (this.state !== "disconnected") {
       return;
     }
-    let info: DiscoveryFile;
-    try {
-      const raw = fs.readFileSync(this.discoveryPath, "utf8");
-      info = JSON.parse(raw);
-    } catch {
-      // No discovery file yet — wait.
-      return;
+    for (const dp of this.discoveryPaths) {
+      try {
+        const raw = fs.readFileSync(dp, "utf8");
+        const info: DiscoveryFile = JSON.parse(raw);
+        if (typeof info.port !== "number" || info.port <= 0) {
+          continue;
+        }
+        this.connect(info.port);
+        return;
+      } catch {
+        continue;
+      }
     }
-    if (typeof info.port !== "number" || info.port <= 0) {
-      return;
-    }
-    this.connect(info.port);
   }
 
   private connect(port: number): void {
