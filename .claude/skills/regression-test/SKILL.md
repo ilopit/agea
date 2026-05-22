@@ -50,18 +50,21 @@ All RPCs are registered in `engine/private/src/engine_rpc.cpp` — grep for `ser
 
 ### RPC categories
 
-- **`model.list`** — list all model objects
+- **`model.list`** — list model objects. Params: `source` (level/packages/all/package:<id>), `kind` (material/texture/mesh/sampler/shader_effect/game_object/component)
 - **`model.scene.*`** — scene graph CRUD: getRoot, getChildren, create, delete, duplicate, rename
-- **`model.object.property.get`** — generic property get for any reflected object (returns owners/categories/fields)
+- **`model.object.property.get`** — generic property get for any reflected object (returns owners/categories/fields). Works on materials, textures, and all smart_objects.
 - **`model.object.property.get_one`** — get a single property value
-- **`model.object.property.set`** — set a property by owner_id + name + value
+- **`model.object.property.set`** — set a property by owner_id + name + value. For material assignment: `set("hero_cube_mesh", "material", "mt_toon")`
 - **`model.object.function.invoke`** — call reflected functions (get_position / set_position / move / etc.)
 - **`model.type.meta`** — type metadata: properties, functions, schemas, hints
 - **`model.component.*`** — listTypes, add
-- **`model.material.*`** — list, get, edit, setField, save, discard, assign
-- **`model.texture.*`** — list
 - **`model.level.*`** — list, load, save
 - **`model.selection.*`** — get, set
+- **`editor.material.edit`** — start material edit session, returns `{edit_id, material}`. Use `model.object.property.set` on `edit_id` to modify fields.
+- **`editor.material.save`** — commit edit session changes to disk
+- **`editor.material.discard`** — revert edit session, release temp object
+- **`editor.material.preview`** — render material preview sphere as base64 PNG
+- **`editor.camera.set`** — set editor camera position/pitch/yaw
 - **`render.object.data`** — per-object GPU state (mesh, material, texture_indices, gpu_data)
 - **`render.object.list`** — all render objects
 - **`render.camera.data`** — camera matrices and position
@@ -69,7 +72,6 @@ All RPCs are registered in `engine/private/src/engine_rpc.cpp` — grep for `ser
 - **`render.lights.data`** — light state
 - **`render.config.get`** / **`render.config.set`** — render configuration (shadows, render_scale, etc.)
 - **`engine.*`** — engine mode (editor/play), shutdown
-- **`editor.camera.set`** — set editor camera position/pitch/yaw
 - **`ping`** — engine health check
 
 ## Writing a test — step by step
@@ -99,6 +101,7 @@ RENDER_OBJECT = "hero_cube_mesh"
 from .property_helpers import (
     get_property, set_property, assert_property_roundtrip,  # object properties
     get_material_fields, get_texture_slots, assert_material_field_roundtrip,  # materials
+    material_begin_edit, material_set_field, material_save, material_discard,  # material edit session
     create_test_object, add_component, cleanup_object,  # dynamic objects
 )
 ```
@@ -107,8 +110,11 @@ Key helpers:
 - `get_property(engine, obj_id, name)` — reads a property from model.object.property.get, searches all owners
 - `set_property(engine, obj_id, name, value)` — calls model.object.property.set + wait_frame
 - `assert_property_roundtrip(engine, obj_id, name, value, tol=None)` — set + get + assert
-- `get_material_fields(engine, mat_id)` — returns {name: value} dict for material properties
+- `get_material_fields(engine, mat_id)` — returns {name: value} dict for material properties via model.object.property.get
 - `get_texture_slots(engine, mat_id)` — returns {slot_name: texture_id} for texture fields
+- `material_begin_edit(engine, mat_id)` — starts editor.material.edit session, returns edit_id
+- `material_set_field(engine, edit_id, field, value)` — sets a field on the edit instance via model.object.property.set
+- `material_save(engine, mat_id)` / `material_discard(engine, mat_id)` — commit or revert
 - `assert_material_field_roundtrip(engine, mat_id, field, value, save=True)` — edit + set + verify + restore
 
 For render-layer reads or domain-specific helpers, add file-local functions:
@@ -162,10 +168,9 @@ Tests run in sequence within a session against a live engine. Every test must re
 For material edits, the restore pattern is:
 ```python
 # restore
-engine.call("model.material.edit", {"id": MAT_ID})
-engine.call("model.material.setField", {"id": MAT_ID, "field": FIELD, "value": original_value})
-engine.call("model.material.save", {"id": MAT_ID})
-engine.wait_frame()
+edit_id = material_begin_edit(engine, MAT_ID)
+material_set_field(engine, edit_id, FIELD, original_value)
+material_save(engine, MAT_ID)
 ```
 
 For created objects:
@@ -178,8 +183,7 @@ engine.call("model.scene.delete", {"id": created_obj_id})
 Call `engine.wait_frame()` after any mutation that needs to propagate to the render layer. This blocks until the engine completes a full frame cycle (including `consume_updated_render`), guaranteeing the render cache reflects the mutation. No sleep needed after read-only calls.
 
 ```python
-engine.call("model.material.save", {"id": MAT_ID})
-engine.wait_frame()
+material_save(engine, MAT_ID)  # calls editor.material.save + wait_frame
 # render.object.data now reflects the save
 ```
 

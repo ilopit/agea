@@ -43,7 +43,6 @@
 #include <packages/root/model/assets/sampler.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/component.h>
-#include <packages/base/model/components/mesh_component.h>
 
 #include <vfs/vfs.h>
 
@@ -272,6 +271,22 @@ rpc_selection_set(const Json::Value& params, Json::Value& result, std::string& e
     result = Json::Value(Json::objectValue);
 }
 
+static core::architype
+parse_kind(const std::string& kind_str)
+{
+    for (uint8_t i = static_cast<uint8_t>(core::architype::first);
+         i <= static_cast<uint8_t>(core::architype::last);
+         ++i)
+    {
+        auto a = static_cast<core::architype>(i);
+        if (core::to_string(a) == kind_str)
+        {
+            return a;
+        }
+    }
+    return core::architype::unknown;
+}
+
 static Json::Value
 encode_object_entry(root::smart_object* obj, const utils::id& id)
 {
@@ -283,6 +298,10 @@ encode_object_entry(root::smart_object* obj, const utils::id& id)
     }
     node["readonly"] = obj->get_flags().readonly;
     node["instance"] = obj->get_flags().instance_obj;
+    if (auto* pkg = obj->get_package())
+    {
+        node["package"] = pkg->get_id().str();
+    }
     return node;
 }
 
@@ -295,6 +314,16 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
     {
         source = params["source"].asString();
     }
+    core::architype kind_filter = core::architype::unknown;
+    if (params.isObject() && params.isMember("kind"))
+    {
+        kind_filter = parse_kind(params["kind"].asString());
+        if (kind_filter == core::architype::unknown)
+        {
+            err = "unknown kind: " + params["kind"].asString();
+            return;
+        }
+    }
     Json::Value r(Json::objectValue);
     std::string local_err;
     bool done = eng.wait_main_action(
@@ -302,7 +331,17 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
         {
             auto& model = glob::glob_state().getr_model();
             r["source"] = source;
+            if (kind_filter != core::architype::unknown)
+            {
+                r["kind"] = std::string(core::to_string(kind_filter));
+            }
             Json::Value items(Json::arrayValue);
+
+            auto should_include = [&](root::smart_object* obj)
+            {
+                return kind_filter == core::architype::unknown ||
+                       obj->get_architype_id() == kind_filter;
+            };
 
             if (source == "level")
             {
@@ -315,6 +354,7 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                 r["level"] = lvl->get_id().str();
                 for (const auto& [id, obj] : lvl->get_game_objects().get_items())
                 {
+                    if (!should_include(obj)) { continue; }
                     auto node = encode_object_entry(obj, id);
                     auto* go = obj->as<root::game_object>();
                     node["has_children"] = go && !go->get_subcomponents().empty();
@@ -330,6 +370,7 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                     Json::Value objs(Json::arrayValue);
                     for (const auto& [id, obj] : pkg->get_local_cache().objects.get_items())
                     {
+                        if (!should_include(obj)) { continue; }
                         objs.append(encode_object_entry(obj, id));
                     }
                     pkg_node["objects"] = std::move(objs);
@@ -340,6 +381,7 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
             {
                 for (const auto& [id, obj] : model.caches.objects.get_items())
                 {
+                    if (!should_include(obj)) { continue; }
                     items.append(encode_object_entry(obj, id));
                 }
             }
@@ -354,6 +396,7 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                 }
                 for (const auto& [id, obj] : pkg->get_local_cache().objects.get_items())
                 {
+                    if (!should_include(obj)) { continue; }
                     items.append(encode_object_entry(obj, id));
                 }
             }
@@ -1985,72 +2028,6 @@ rpc_render_state_lights(const Json::Value& /*params*/, Json::Value& result, std:
 }
 
 void
-rpc_material_list(const Json::Value& /*params*/, Json::Value& result, std::string& err)
-{
-    auto& eng = glob::glob_state().getr_engine();
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            Json::Value arr(Json::arrayValue);
-            for (auto& [id, obj] : glob::glob_state().getr_model().caches.materials.get_items())
-            {
-                auto* rt = obj->get_reflection();
-                Json::Value item(Json::objectValue);
-                item["id"] = id.str();
-                item["type"] = rt ? rt->type_name.str() : std::string();
-                auto* pkg = obj->get_package();
-                item["package"] = pkg ? pkg->get_id().str() : std::string();
-
-                auto& mat = obj->asr<root::material>();
-                item["has_preview"] = mat.get_shader_effect() != nullptr;
-
-                arr.append(std::move(item));
-            }
-            result = Json::Value(Json::objectValue);
-            result["materials"] = std::move(arr);
-        });
-    if (!done)
-    {
-        err = "material.list timed out";
-    }
-}
-
-void
-rpc_material_get(const Json::Value& params, Json::Value& result, std::string& err)
-{
-    auto& eng = glob::glob_state().getr_engine();
-    if (!params.isObject() || !params.isMember("id"))
-    {
-        err = "missing 'id' parameter";
-        return;
-    }
-    std::string id_str = params["id"].asString();
-    std::string local_err;
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            auto* mat = glob::glob_state().getr_model().caches.materials.get_item(AID(id_str));
-            if (!mat)
-            {
-                local_err = "material not found: " + id_str;
-                return;
-            }
-            result = Json::Value(Json::objectValue);
-            result["material"] = encode_owner(*mat);
-        });
-    if (!done)
-    {
-        err = "material.get timed out";
-        return;
-    }
-    if (!local_err.empty())
-    {
-        err = std::move(local_err);
-        return;
-    }
-}
-
-void
 rpc_editor_camera_set(const Json::Value& params, Json::Value& result, std::string& err)
 {
     auto& eng = glob::glob_state().getr_engine();
@@ -2114,67 +2091,6 @@ rpc_material_preview(const Json::Value& params, Json::Value& result, std::string
 }
 
 void
-rpc_material_assign(const Json::Value& params, Json::Value& result, std::string& err)
-{
-    auto& eng = glob::glob_state().getr_engine();
-    auto& server = eng.get_rpc_server();
-    if (!params.isObject() || !params.isMember("owner_id") || !params.isMember("material_id"))
-    {
-        err = "missing 'owner_id' or 'material_id' parameter";
-        return;
-    }
-    std::string owner_id = params["owner_id"].asString();
-    std::string material_id = params["material_id"].asString();
-    std::string local_err;
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            auto* lvl = glob::glob_state().getr_model().current_level;
-            if (!lvl)
-            {
-                local_err = "no level loaded";
-                return;
-            }
-            auto* comp = lvl->find_component(AID(owner_id));
-            if (!comp)
-            {
-                local_err = "component not found: " + owner_id;
-                return;
-            }
-            auto* mesh_comp = comp->as<base::mesh_component>();
-            if (!mesh_comp)
-            {
-                local_err = "not a mesh component: " + owner_id;
-                return;
-            }
-            auto* mat_obj =
-                glob::glob_state().getr_model().caches.materials.get_item(AID(material_id));
-            if (!mat_obj)
-            {
-                local_err = "material not found: " + material_id;
-                return;
-            }
-            mesh_comp->set_material(mat_obj->as<root::material>());
-        });
-    if (!done)
-    {
-        err = "model.material.assign timed out";
-        return;
-    }
-    if (!local_err.empty())
-    {
-        err = std::move(local_err);
-        return;
-    }
-    result = Json::Value(Json::objectValue);
-    result["ok"] = true;
-    Json::Value note(Json::objectValue);
-    note["owner_id"] = owner_id;
-    note["material_id"] = material_id;
-    server.notify("model.material.assigned", note);
-}
-
-void
 rpc_material_edit(const Json::Value& params, Json::Value& result, std::string& err)
 {
     auto& eng = glob::glob_state().getr_engine();
@@ -2185,6 +2101,7 @@ rpc_material_edit(const Json::Value& params, Json::Value& result, std::string& e
     }
     std::string id_str = params["id"].asString();
     std::string local_err;
+    std::string edit_id_str;
     Json::Value props;
     bool done = eng.wait_main_action(
         [&]()
@@ -2197,11 +2114,12 @@ rpc_material_edit(const Json::Value& params, Json::Value& result, std::string& e
                 local_err = "failed to begin edit for: " + id_str;
                 return;
             }
+            edit_id_str = inst->get_id().str();
             props = encode_owner(*inst);
         });
     if (!done)
     {
-        err = "material.edit timed out";
+        err = "editor.material.edit timed out";
         return;
     }
     if (!local_err.empty())
@@ -2210,78 +2128,8 @@ rpc_material_edit(const Json::Value& params, Json::Value& result, std::string& e
         return;
     }
     result = Json::Value(Json::objectValue);
+    result["edit_id"] = edit_id_str;
     result["material"] = props;
-}
-
-void
-rpc_material_set_field(const Json::Value& params, Json::Value& result, std::string& err)
-{
-    auto& eng = glob::glob_state().getr_engine();
-    if (!params.isObject() || !params.isMember("id") || !params.isMember("field") ||
-        !params.isMember("value"))
-    {
-        err = "missing 'id', 'field', or 'value' parameter";
-        return;
-    }
-    std::string id_str = params["id"].asString();
-    std::string field = params["field"].asString();
-    Json::Value value = params["value"];
-
-    std::string local_err;
-    Json::Value echo_value;
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            auto* inst =
-                glob::glob_state().getr_editor_system().ui.get_material_previewer().get_editing(
-                    AID(id_str));
-            if (!inst)
-            {
-                local_err = "no active edit session for: " + id_str;
-                return;
-            }
-            local_err = write_property(*inst, field, value, echo_value);
-
-            glob::glob_state().getr_editor_system().ui.get_material_previewer().invalidate(
-                AID(id_str));
-        });
-    if (!done)
-    {
-        err = "material.setField timed out";
-        return;
-    }
-    if (!local_err.empty())
-    {
-        err = std::move(local_err);
-        return;
-    }
-    result = Json::Value(Json::objectValue);
-    result["value"] = echo_value;
-}
-
-void
-rpc_texture_list(const Json::Value& /*params*/, Json::Value& result, std::string& err)
-{
-    auto& eng = glob::glob_state().getr_engine();
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            Json::Value arr(Json::arrayValue);
-            for (auto& [id, obj] : glob::glob_state().getr_model().caches.textures.get_items())
-            {
-                Json::Value item(Json::objectValue);
-                item["id"] = id.str();
-                auto* pkg = obj->get_package();
-                item["package"] = pkg ? pkg->get_id().str() : std::string();
-                arr.append(std::move(item));
-            }
-            result = Json::Value(Json::objectValue);
-            result["textures"] = std::move(arr);
-        });
-    if (!done)
-    {
-        err = "texture.list timed out";
-    }
 }
 
 void
@@ -2306,7 +2154,7 @@ rpc_material_save(const Json::Value& params, Json::Value& result, std::string& e
         });
     if (!done)
     {
-        err = "material.save timed out";
+        err = "editor.material.save timed out";
         return;
     }
     if (!local_err.empty())
@@ -2336,7 +2184,7 @@ rpc_material_discard(const Json::Value& params, Json::Value& result, std::string
         });
     if (!done)
     {
-        err = "material.discard timed out";
+        err = "editor.material.discard timed out";
         return;
     }
     result = Json::Value(Json::objectValue);
@@ -2772,18 +2620,11 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     server.on_request("model.level.load", rpc_level_load);
     server.on_request("model.level.save", rpc_level_save);
 
-    // Materials & textures
-    server.on_request("model.material.list", rpc_material_list);
-    server.on_request("model.material.get", rpc_material_get);
-    server.on_request("model.material.edit", rpc_material_edit);
-    server.on_request("model.material.setField", rpc_material_set_field);
-    server.on_request("model.material.save", rpc_material_save);
-    server.on_request("model.material.discard", rpc_material_discard);
-    server.on_request("model.material.assign", rpc_material_assign);
-    server.on_request("model.texture.list", rpc_texture_list);
-
     // Editor
     server.on_request("editor.camera.set", rpc_editor_camera_set);
+    server.on_request("editor.material.edit", rpc_material_edit);
+    server.on_request("editor.material.save", rpc_material_save);
+    server.on_request("editor.material.discard", rpc_material_discard);
     server.on_request("editor.material.preview", rpc_material_preview);
 
     // Render state & config

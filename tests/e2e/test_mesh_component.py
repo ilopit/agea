@@ -77,8 +77,8 @@ class TestMaterialProperty:
     """Swap the material asset reference on hero_cube's mesh_component.
     Verify the render cache picks up the new material ID.
 
-    NOTE: model.material.assign crashes the engine (known bug), so we test
-    via the property proxy (model.object.property.set) instead.
+    Uses the property proxy (model.object.property.set) which goes through
+    the generated set_material() setter with mark_render_dirty().
     """
 
     def test_set_material_updates_render(self, engine, slow):

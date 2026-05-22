@@ -36,7 +36,6 @@ struct edit_session
     utils::id class_id;
     utils::id instance_id;
     root::smart_object* instance = nullptr;
-    bool dirty = true;
 };
 
 class material_previewer

@@ -456,23 +456,10 @@ material_previewer::ensure_gpu_material(const utils::id& material_id)
         auto& session = sit->second;
         auto& inst_mat = session.instance->asr<root::material>();
 
-        if (session.dirty)
-        {
-            loader.destroy_material_data(session.instance_id);
-            auto* mat = create_gpu_material_from_model(session.instance_id, inst_mat);
-            session.dirty = false;
-            return mat;
-        }
-
-        auto* existing = loader.get_material_data(session.instance_id);
-        if (existing)
-        {
-            return existing;
-        }
-
-        auto* mat = create_gpu_material_from_model(session.instance_id, inst_mat);
-        session.dirty = false;
-        return mat;
+        // Always rebuild — properties may be modified via generic property.set
+        // without going through material_previewer::invalidate().
+        loader.destroy_material_data(session.instance_id);
+        return create_gpu_material_from_model(session.instance_id, inst_mat);
     }
 
     auto* existing = loader.get_material_data(material_id);
@@ -599,15 +586,7 @@ material_previewer::clear_cache()
 void
 material_previewer::invalidate(const utils::id& material_id)
 {
-    auto id_str = material_id.str();
-
-    auto sit = m_sessions.find(id_str);
-    if (sit != m_sessions.end())
-    {
-        sit->second.dirty = true;
-    }
-
-    m_memory_cache.erase(id_str);
+    m_memory_cache.erase(material_id.str());
 }
 
 void
@@ -647,7 +626,6 @@ material_previewer::begin_edit(const utils::id& material_id)
     session.class_id = material_id;
     session.instance_id = edit_id;
     session.instance = result.value();
-    session.dirty = true;
 
     m_sessions[id_str] = session;
     return session.instance;

@@ -63,9 +63,9 @@ def cleanup_object(engine, obj_id):
 
 
 def get_material_fields(engine, mat_id):
-    r = engine.call("model.material.get", {"id": mat_id})
-    cats = r["material"]["categories"]
-    props_cat = next(c for c in cats if c["name"] == "Properties")
+    r = engine.call("model.object.property.get", {"id": mat_id})
+    owner = next(o for o in r["owners"] if o["id"] == mat_id)
+    props_cat = next(c for c in owner["categories"] if c["name"] == "Properties")
     return {f["name"]: f["value"] for f in props_cat["fields"] if "value" in f}
 
 
@@ -78,15 +78,34 @@ def get_texture_slots(engine, mat_id):
     }
 
 
+def material_begin_edit(engine, mat_id):
+    """Begin a material edit session, return the edit_id for property.set calls."""
+    r = engine.call("editor.material.edit", {"id": mat_id})
+    return r["edit_id"]
+
+
+def material_set_field(engine, edit_id, field, value):
+    """Set a field on an active material edit session via property.set on the edit instance."""
+    engine.call("model.object.property.set", {
+        "owner_id": edit_id, "name": field, "value": value,
+    })
+
+
+def material_save(engine, mat_id):
+    engine.call("editor.material.save", {"id": mat_id})
+    engine.wait_frame()
+
+
+def material_discard(engine, mat_id):
+    engine.call("editor.material.discard", {"id": mat_id})
+
+
 def assert_material_field_roundtrip(engine, mat_id, field, value, save=True):
     original = get_material_fields(engine, mat_id).get(field)
-    engine.call("model.material.edit", {"id": mat_id})
-    engine.call("model.material.setField", {
-        "id": mat_id, "field": field, "value": value,
-    })
+    edit_id = material_begin_edit(engine, mat_id)
+    material_set_field(engine, edit_id, field, value)
     if save:
-        engine.call("model.material.save", {"id": mat_id})
-        engine.wait_frame()
+        material_save(engine, mat_id)
         fields = get_material_fields(engine, mat_id)
         if isinstance(value, (list, tuple)):
             for i, (a, e) in enumerate(zip(fields[field], value)):
@@ -101,11 +120,8 @@ def assert_material_field_roundtrip(engine, mat_id, field, value, save=True):
             assert fields[field] == value, (
                 f"{field} on {mat_id}: got {fields[field]}, expected {value}"
             )
-        engine.call("model.material.edit", {"id": mat_id})
-        engine.call("model.material.setField", {
-            "id": mat_id, "field": field, "value": original,
-        })
-        engine.call("model.material.save", {"id": mat_id})
-        engine.wait_frame()
+        edit_id = material_begin_edit(engine, mat_id)
+        material_set_field(engine, edit_id, field, original)
+        material_save(engine, mat_id)
     else:
-        engine.call("model.material.discard", {"id": mat_id})
+        material_discard(engine, mat_id)
