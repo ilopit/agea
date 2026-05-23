@@ -57,7 +57,7 @@ v1 ships in English only. First localization wave: **Japanese, German, French.**
 
 Driven by the engine min-spec (Vulkan 1.2 + BDA):
 
-- Android 11+.
+- Android 10+ (API 29+).
 - Adreno 640+ or Mali-G77+.
 - 3+ GB RAM.
 - Roughly: Snapdragon 855+ / Exynos 990+ class devices.

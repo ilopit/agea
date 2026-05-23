@@ -6,15 +6,15 @@ Ballpark timelines assume solo, part-time pace. Numbers in weeks. Treat as relat
 
 ## Milestones overview
 
-| # | Name | Weeks | Depends on |
-|---|------|-------|-----------|
-| M0 | Engine foundation for this game | ~4 | nothing |
-| M1 | Playable desktop prototype | ~4 | M0 |
-| M2 | Android build works | ~4 | M1 + Doc 05 |
-| M3 | Vertical slice on Android | ~4 | M2 |
-| M4 | Content & polish | ~6 | M3 |
-| M5 | Shipping infrastructure | ~4 | M4 |
-| M6 | Soft launch | rolling | M5 |
+| # | Name | Weeks | Depends on | Status (2026-05) |
+|---|------|-------|-----------|------------------|
+| M0 | Engine foundation for this game | ~4 | nothing | ~70% — core plumbing works; audio, save, state machine missing |
+| M1 | Playable desktop prototype | ~4 | M0 | 0% — no puzzle code |
+| M2 | Android build works | ~4 | M1 + Doc 05 | ~60% — build pipeline works; gestures, lifecycle pending |
+| M3 | Vertical slice on Android | ~4 | M2 | 0% |
+| M4 | Content & polish | ~6 | M3 | 0% |
+| M5 | Shipping infrastructure | ~4 | M4 | 0% |
+| M6 | Soft launch | rolling | M5 | 0% |
 
 Total before soft launch: ~6 months part-time. Halve if full-time. Expect slippage of 30–50% — budget for it.
 

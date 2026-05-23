@@ -2,7 +2,7 @@
 
 Living design docs for the kryga engine + first shipped game.
 
-Created: 2026-04-20
+Created: 2026-04-20 · Last reviewed: 2026-05-23
 
 ## Structure
 

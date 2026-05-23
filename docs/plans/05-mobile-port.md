@@ -8,7 +8,7 @@ Full plan for bringing kryga and the first game onto Android. Policy, execution 
 
 - **Android.** First and only shipped platform for v1.
 - Minimum spec driven by engine requirements:
-  - Android 11+ (API 30+).
+  - Android 10+ (API 29+).
   - Vulkan 1.2.
   - Buffer Device Address support (Adreno 640+ / Mali-G77+).
   - 3+ GB RAM.
@@ -20,19 +20,24 @@ Full plan for bringing kryga and the first game onto Android. Policy, execution 
 - **ChromeOS / Android tablets.** Landscape layout not a v1 priority. If it happens, it happens — do not block on tablet polish.
 - **Cloud streaming platforms** (GeForce Now, xCloud): not applicable; single-player offline puzzle.
 
-## Platform integration status (from audit)
+## Platform integration status (updated 2026-05)
 
-All currently at 1 (absent):
+| Area | Status | Notes |
+|------|--------|-------|
+| Build system (NDK + Gradle) | 3 — working | `cmake/android.toolchain.cmake`, `android/` Gradle project, APK builds |
+| VFS APK backend | 3 — working | `android_asset_backend.cpp`, read-only AAssetManager |
+| Entry point + Activity | 3 — working | `KrygaActivity.java` + JNI bridge in `main.cpp` |
+| Single-touch input | 2 — basic | SDL touch→mouse synthesis; no gesture layer |
+| Vulkan surface recreation | 1 — absent | SDL abstracts initial creation; suspend/resume not handled |
+| Orientation change handling | 1 — absent | Locked to landscape in manifest |
+| Multi-touch + gestures | 1 — absent | Two-finger orbit, pinch zoom not implemented |
+| Safe area / notch handling | 1 — absent | |
+| Back button / navigation gestures | 1 — absent | |
+| Audio ducking | 1 — absent | Requires audio subsystem first |
+| Battery / thermal awareness | 1 — absent | |
+| Lifecycle save/restore | 1 — absent | No onPause/onResume state preservation |
 
-- Vulkan surface recreation on suspend/resume.
-- Orientation change handling.
-- Multi-touch + gestures.
-- Safe area / notch handling.
-- Back button / navigation gestures.
-- Audio ducking.
-- Battery / thermal awareness.
-
-Collectively: the engine is a desktop demo today. Getting it to a shippable Android state is the single largest block of work. Scheduling in Doc 06.
+Build and basic rendering work. Platform integration for a shippable game is still the largest block. Scheduling in Doc 06.
 
 ## Vulkan compatibility
 
@@ -91,47 +96,36 @@ These are the items this specific game requires that deserve explicit callouts b
 
 ## Execution phases
 
-### Phase 0 — Feasibility & requirements
+### Phase 0 — Feasibility & requirements ✓ done
 
-- Validate Vulkan capabilities on target devices (command above).
-- Confirm BDA availability on intended reference device.
-- Confirm memory budget with VMA on target device.
-- Lock device-floor decision (default: option 1 above).
+- ~~Validate Vulkan capabilities on target devices (command above).~~
+- ~~Confirm BDA availability on intended reference device.~~
+- ~~Confirm memory budget with VMA on target device.~~
+- ~~Lock device-floor decision (default: option 1 above).~~
 
-### Phase 1 — Build system (~1–2 weeks)
+### Phase 1 — Build system (~1–2 weeks) — ~90% done
 
-- **Android NDK toolchain**: `cmake/android.toolchain.cmake`. Target `arm64-v8a` only.
-- **Gradle project**: `android/` with `build.gradle.kts`, JNI bridge, APK packaging.
-- **Cross-compile thirdparty**:
-  - SDL2 from source (not prebuilt Windows binary path).
-  - Most header-only libs need no changes.
-  - Boost: strip to header-only subset, or replace Beast if possible.
-- **Asset packaging strategy** (pick one, default Option A for small APK):
-  - **Option A:** Assets in APK `assets/` folder → VFS mount from `AAssetManager`.
-  - **Option B:** Download assets on first launch → VFS mount from internal storage.
+- ~~**Android NDK toolchain**: `cmake/android.toolchain.cmake`. Target `arm64-v8a` only.~~ Done. Also added x86_64 for emulator.
+- ~~**Gradle project**: `android/` with `build.gradle.kts`, JNI bridge, APK packaging.~~ Done.
+- ~~**Cross-compile thirdparty**~~: Done. SDL2 from source, header-only libs unchanged.
+- ~~**Asset packaging strategy**~~: Option A chosen — APK `assets/` folder via `AAssetManager`.
 
-### Phase 2 — Platform layer (~2–3 weeks)
+### Phase 2 — Platform layer (~2–3 weeks) — ~30% done
 
-- **Android entry point**: `libs/native/private/src/native_window.cpp` (conditional `__ANDROID__` path). JNI callbacks: `onCreate`, `onResume`, `onPause`, `onDestroy`. Surface lifecycle management — can recreate without destroying `VkDevice`.
-- **Windowing route**: per decision above. SDL2 default; `SDL_main` handles Activity lifecycle, rotation, keyboard.
-- **VFS Android backend**: `libs/vfs/private/src/android_asset_backend.cpp`. Read from APK via `AAssetManager`. Write to internal storage for cache / generated content.
-- **Input mapping**:
-  - Touch → gesture layer (tap, long-press, two-finger orbit, pinch zoom).
-  - Desktop mouse + keyboard continues to work unchanged via the same abstraction.
+- ~~**Android entry point**~~: Done. `engine/private/src/app/main.cpp` with JNI `AAssetManager` bridge, `KrygaActivity.java`.
+- ~~**Windowing route**~~: SDL2 chosen. SDL_main handles Activity lifecycle.
+- ~~**VFS Android backend**~~: Done. `libs/vfs/private/src/android_asset_backend.cpp` — read-only `AAssetManager` backend.
+- **Input mapping**: Partial. Single-finger tap→mouse synthesis via SDL hints. Multi-finger gestures (orbit, pinch, long-press) not yet implemented.
+- **Lifecycle management**: Not done. No explicit onPause/onResume save/restore, no "no GPU work while backgrounded" enforcement.
 
-### Phase 3 — Vulkan adaptation (~1–2 weeks)
+### Phase 3 — Vulkan adaptation (~1–2 weeks) — ~10% done
 
-- **Surface creation**: add `VK_KHR_android_surface` path in `vulkan_render_device.cpp`. Already abstracted via SDL if using SDL2.
-- **Extension negotiation**: runtime capability check for BDA / `shaderInt64`. SSBO fallback path behind a feature flag (deferred to post-v1 unless needed).
-- **Swapchain adjustments**:
-  - `VK_PRESENT_MODE_FIFO_KHR` (vsync, battery-friendly).
-  - Handle pre-rotation to avoid compositor overhead.
-  - Dynamic resolution for thermal throttling (see Phase 4).
-- **Memory budget**:
-  - VMA budget tracking for mobile constraints.
-  - Texture streaming priority adjustments.
+- **Surface creation**: Not done. SDL2 abstracts `VK_KHR_android_surface` but explicit surface-loss handling on suspend/resume not implemented.
+- **Extension negotiation**: BDA shader changes done (uvec2 via `GL_EXT_buffer_reference_uvec2`). Runtime capability check not explicitly coded.
+- **Swapchain adjustments**: Not done (pre-rotation, dynamic resolution).
+- **Memory budget**: Not done (VMA budget tracking for mobile).
 
-### Phase 4 — Mobile optimizations (ongoing)
+### Phase 4 — Mobile optimizations (ongoing) — not started
 
 - **Render quality settings**: resolution scaling, reduced shadow resolution, simplified lighting (fewer probes, smaller lightmaps). Most of these are knobs, not rewrites.
 - **Battery / thermal**:

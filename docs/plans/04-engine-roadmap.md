@@ -48,10 +48,10 @@ Ordered by dependency, not calendar.
 - Android: write to internal app storage, not external.
 - Cloud save deferred.
 
-### Touch input + gestures
+### Touch input + gestures — partial
 
-- Add a touch path in `input_manager.cpp`. SDL2 provides `SDL_FINGER*` events on Android if SDL2 route is chosen.
-- Minimum gestures: tap, long-press, two-finger drag (orbit), pinch (zoom).
+- ~~Add a touch path in `input_manager.cpp`.~~ Done — SDL2 `SDL_FINGER*` events handled, single-finger tap/drag mapped to mouse semantics via SDL hints.
+- Remaining: long-press, two-finger drag (orbit), pinch (zoom) gesture layer.
 - Abstract so desktop mouse/keyboard still drives the same actions — keep dev workflow unchanged.
 
 ### Application / scene state management
@@ -79,16 +79,17 @@ Ordered by dependency, not calendar.
 - Outputs: solution, uniqueness flag, deduction trace (for hint generation and difficulty scoring).
 - Critical correctness component. Write tests against hand-solved small puzzles.
 
-### Android build pipeline
+### Android build pipeline — partial
 
-- Execute the mobile port plan (Doc 05).
-- AAB output, signed, installable on a real phone.
+- Execute the mobile port plan (Doc 05). Phase 0 done, Phase 1 ~90% done, Phase 2 ~30% done (see Doc 05 for details).
+- APK builds work. AAB signing pipeline not yet set up.
+- Remaining: lifecycle management, gesture input, Vulkan surface handling, AAB CI.
 
 ## Build — P1 (needed for a polished v1 or soft launch)
 
 | Area | Current | Target | Notes |
 |------|---------|--------|-------|
-| Particle system | 1 | 2–3 | Only needed for "solved" flourish. Simple CPU-driven emitter acceptable. |
+| Particle system | 1 | 2–3 | Only needed for "solved" flourish. Simple CPU-driven emitter acceptable. *Note: libs/vfx with CPU emitter + ImGui editor exists on a feature branch but not merged to main. Needs render pipeline integration.* |
 | ASTC texture pipeline | 1 | 3 | Big impact on APK size. Bake step in asset pipeline. |
 | Crash reporting | 1 | 3 | Sentry (self-hosted possible) or Firebase Crashlytics. Sentry lean for privacy / portability. |
 | Localization infra | 1 | 3 | String table + fallback to key. Integrate into UI system at build, not bolt-on after. |

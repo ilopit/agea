@@ -60,18 +60,12 @@ Each has a latest-sensible-decision deadline. Decide by then or commit to defaul
 
 ### Technical
 
-6. **Audio library: miniaudio vs. OpenAL Soft vs. FMOD/Wwise.**
-   - Default: miniaudio.
-   - Decide by: M0 start.
-7. **UI library: custom minimal vs. RmlUi.**
-   - Default: custom minimal, 2-week timebox, fall back to RmlUi.
-   - Decide by: M0 week 2 checkpoint.
+6. **~~Audio library: miniaudio vs. OpenAL Soft vs. FMOD/Wwise.~~** — decided: **miniaudio** (confirmed in CLAUDE.md, not yet integrated).
+7. **~~UI library: custom minimal vs. RmlUi.~~** — decided: **custom minimal** (timebox not yet started).
 8. **Crash reporting backend: Sentry vs. Firebase Crashlytics.**
    - Default: Sentry (privacy, no Firebase pull-in).
    - Decide by: M5 start.
-9. **Android windowing: SDL2 vs. GameActivity + native window.**
-   - Default: SDL2 (already used).
-   - Decide by: M2 start.
+9. **~~Android windowing: SDL2 vs. GameActivity + native window.~~** — decided: **SDL2** (implemented, `KrygaActivity.java` extends `SDLActivity`).
 10. **Asset delivery: APK assets vs. Play Asset Delivery.**
     - Default: APK assets while total size < 100 MB.
     - Decide by: M5.
