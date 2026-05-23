@@ -1128,6 +1128,8 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         voronoi_fracture::fracture_params fparams{};
         fparams.seed = asset->get_fracture_seed();
         fparams.cell_count = asset->get_cell_count();
+        fparams.fill = voronoi_fracture::fill_mode::convex;
+        fparams.roughness = 0.15f;
 
         auto fresult = voronoi_fracture::fracture_mesh(vbuf.as(),
                                                        static_cast<uint32_t>(vbuf.size()),
@@ -1189,6 +1191,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         cmd->transform = dmc.get_transform_matrix();
         cmd->normal_matrix = dmc.get_normal_matrix();
         cmd->position = glm::vec3(dmc.get_world_position());
+        cmd->bounding_sphere_center = cmd->position;
         cmd->bounding_radius = scaled_radius;
         cmd->bone_count = 0;
         cmd->queue_id = new_rqid;
@@ -1245,6 +1248,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             cmd->transform = xf;
             cmd->normal_matrix = glm::transpose(glm::inverse(xf));
             cmd->position = glm::vec3(xf[3]);
+            cmd->bounding_sphere_center = cmd->position;
             cmd->bounding_radius = chunk_radius;
             cmd->bone_count = 0;
             cmd->queue_id = new_rqid;
@@ -1275,6 +1279,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             cmd->transform = xf;
             cmd->normal_matrix = glm::transpose(glm::inverse(xf));
             cmd->position = glm::vec3(xf[3]);
+            cmd->bounding_sphere_center = cmd->position;
             cmd->bounding_radius = chunk_radius;
             ctx.rb->enqueue_cmd(cmd);
         }

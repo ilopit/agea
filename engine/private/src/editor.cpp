@@ -26,6 +26,9 @@
 #include <packages/base/model/lights/point_light.h>
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/spot_light.h>
+#include <packages/base/model/destructible_mesh_object.h>
+#include <packages/base/model/components/destructible_mesh_component.h>
+#include <packages/base/model/assets/destructible_mesh_asset.h>
 #include <packages/tbs/model/hex_grid.h>
 #include <gpu_types/gpu_generic_constants.h>
 
@@ -60,6 +63,9 @@ game_editor::init()
 
     glob::glob_state().get_input_manager()->register_fixed_action(
         AID("mouse_pressed"), true, this, &game_editor::ev_mouse_press);
+
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("shatter_demo"), true, this, &game_editor::ev_shatter_demo);
 
     glob::glob_state().get_input_manager()->register_fixed_action(
         AID("toggle_play"), true, this, &game_editor::ev_toggle_play);
@@ -270,6 +276,57 @@ game_editor::ev_lights()
     }
 }
 
+void
+game_editor::ev_shatter_demo()
+{
+    auto* lvl = glob::glob_state().getr_model().current_level;
+    if (!lvl)
+    {
+        return;
+    }
+
+    auto& caches = glob::glob_state().getr_model().caches;
+    auto* obj = caches.objects.get_item(AID("test_destructible"));
+    auto* asset = obj ? obj->as<base::destructible_mesh_asset>() : nullptr;
+    if (!asset)
+    {
+        ALOG_WARN("shatter_demo: test_destructible asset not found");
+        return;
+    }
+
+    static int s_counter = 0;
+    auto obj_id = AID(std::format("shatter_demo_{}", s_counter++));
+
+    base::destructible_mesh_object::construct_params go_params;
+    auto& cam = glob::glob_state().getr_render().renderer.get_camera();
+    glm::vec3 cam_pos = cam.position;
+    glm::vec3 cam_fwd = -glm::vec3(cam.view[0][2], cam.view[1][2], cam.view[2][2]);
+    glm::vec3 spawn_pos = cam_pos + glm::normalize(cam_fwd) * 8.0f;
+    go_params.pos = root::vec3{spawn_pos.x, spawn_pos.y, spawn_pos.z};
+
+    auto* go = lvl->spawn_object<base::destructible_mesh_object>(obj_id, go_params);
+    if (!go)
+    {
+        return;
+    }
+
+    go->get_root_component()->set_scale({3.0f, 3.0f, 3.0f});
+
+    base::destructible_mesh_component::construct_params dmc_params;
+    dmc_params.asset_handle = asset;
+
+    auto* dmc = go->spawn_component<base::destructible_mesh_component>(
+        go->get_root_component(),
+        AID(obj_id.str() + "_dmc"),
+        dmc_params);
+
+    if (dmc && m_mode == editor_mode::playing)
+    {
+        m_pending_shatter = dmc;
+        m_pending_shatter_frames = 0;
+    }
+}
+
 glm::mat4
 game_editor::get_rotation_matrix()
 {
@@ -282,6 +339,13 @@ game_editor::get_rotation_matrix()
 void
 game_editor::on_tick(float dt)
 {
+    if (m_pending_shatter && ++m_pending_shatter_frames > 2)
+    {
+        m_pending_shatter->shatter();
+        m_pending_shatter = nullptr;
+        m_pending_shatter_frames = 0;
+    }
+
     if (m_mode == editor_mode::playing && m_input)
     {
         //         base::pawn_movement_input input;

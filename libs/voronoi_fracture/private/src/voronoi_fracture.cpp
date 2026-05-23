@@ -84,30 +84,69 @@ nearest_seed(const glm::vec3& p, const std::vector<glm::vec3>& seeds)
 
 // ── Roughness helpers ───────────────────────────────────────────────────────
 
-float
-position_hash(const glm::vec3& p, uint32_t seed)
+uint32_t
+lattice_hash(int32_t x, int32_t y, int32_t z, uint32_t seed)
 {
-    uint32_t bx, by, bz;
-    std::memcpy(&bx, &p.x, 4);
-    std::memcpy(&by, &p.y, 4);
-    std::memcpy(&bz, &p.z, 4);
-    uint32_t h = seed ^ (bx * 2654435761u) ^ (by * 2246822519u) ^ (bz * 3266489917u);
+    uint32_t h = seed;
+    h ^= uint32_t(x) * 2654435761u;
+    h ^= uint32_t(y) * 2246822519u;
+    h ^= uint32_t(z) * 3266489917u;
     h = (h ^ (h >> 16)) * 0x45d9f3bu;
     h = h ^ (h >> 16);
-    return float(h & 0xFFFFu) / 32768.0f - 1.0f;
+    return h;
 }
 
 float
-fbm_hash(const glm::vec3& p, uint32_t seed)
+lattice_value(int32_t x, int32_t y, int32_t z, uint32_t seed)
+{
+    return float(lattice_hash(x, y, z, seed) & 0xFFFFu) / 32768.0f - 1.0f;
+}
+
+float
+smooth_step(float t)
+{
+    return t * t * (3.0f - 2.0f * t);
+}
+
+float
+value_noise(const glm::vec3& p, uint32_t seed)
+{
+    int32_t ix = int32_t(std::floor(p.x));
+    int32_t iy = int32_t(std::floor(p.y));
+    int32_t iz = int32_t(std::floor(p.z));
+    float fx = smooth_step(p.x - float(ix));
+    float fy = smooth_step(p.y - float(iy));
+    float fz = smooth_step(p.z - float(iz));
+
+    float c000 = lattice_value(ix, iy, iz, seed);
+    float c100 = lattice_value(ix + 1, iy, iz, seed);
+    float c010 = lattice_value(ix, iy + 1, iz, seed);
+    float c110 = lattice_value(ix + 1, iy + 1, iz, seed);
+    float c001 = lattice_value(ix, iy, iz + 1, seed);
+    float c101 = lattice_value(ix + 1, iy, iz + 1, seed);
+    float c011 = lattice_value(ix, iy + 1, iz + 1, seed);
+    float c111 = lattice_value(ix + 1, iy + 1, iz + 1, seed);
+
+    float x00 = glm::mix(c000, c100, fx);
+    float x10 = glm::mix(c010, c110, fx);
+    float x01 = glm::mix(c001, c101, fx);
+    float x11 = glm::mix(c011, c111, fx);
+    float y0 = glm::mix(x00, x10, fy);
+    float y1 = glm::mix(x01, x11, fy);
+    return glm::mix(y0, y1, fz);
+}
+
+float
+fbm_noise(const glm::vec3& p, uint32_t seed)
 {
     float v = 0.0f;
     float amp = 1.0f;
     float freq = 1.0f;
     for (int i = 0; i < 3; ++i)
     {
-        v += amp * position_hash(p * freq, seed + uint32_t(i) * 7919u);
+        v += amp * value_noise(p * freq, seed + uint32_t(i) * 7919u);
         amp *= 0.5f;
-        freq *= 2.17f;
+        freq *= 2.0f;
     }
     return v / 1.75f;
 }
@@ -308,15 +347,21 @@ manifold_to_chunk(const manifold::MeshGL& mesh,
             float fnl = glm::length(face_n);
             face_n = fnl > 1e-8f ? face_n / fnl : glm::vec3(0, 1, 0);
 
+            float edge_len = glm::max(glm::length(p[1] - p[0]),
+                                      glm::max(glm::length(p[2] - p[1]),
+                                               glm::length(p[0] - p[2])));
+            float noise_scale = 4.0f / glm::max(edge_len, 1e-4f);
+
             std::vector<sub_tri> subs;
-            subdivide_triangle({p[0], p[1], p[2]}, 3, subs);
+            subdivide_triangle({p[0], p[1], p[2]}, 2, subs);
 
             for (auto& st : subs)
             {
                 glm::vec3 pts[3] = {st.a, st.b, st.c};
                 for (auto& pt : pts)
                 {
-                    pt += face_n * roughness * fbm_hash(pt, roughness_seed);
+                    pt += face_n * roughness * edge_len *
+                          fbm_noise(pt * noise_scale, roughness_seed);
                 }
                 emit_flat_triangle(pts, ck, box);
             }

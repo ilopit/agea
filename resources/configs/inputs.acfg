@@ -28,6 +28,9 @@ actions:
       - trigger: t
   - id: lights
     events:
+      - trigger: "y"
+  - id: shatter_demo
+    events:
       - trigger: g
   - id: mouse_pressed
     events:

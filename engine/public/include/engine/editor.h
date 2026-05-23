@@ -16,6 +16,7 @@ namespace base
 {
 class camera_component;
 class input_component;
+class destructible_mesh_component;
 }  // namespace base
 
 namespace engine
@@ -84,6 +85,9 @@ public:
     void
     ev_lights();
 
+    void
+    ev_shatter_demo();
+
     editor_mode
     get_mode() const;
 
@@ -130,6 +134,8 @@ private:
 
     base::camera_component* m_active_camera = nullptr;
     base::input_component* m_input = nullptr;
+    base::destructible_mesh_component* m_pending_shatter = nullptr;
+    int m_pending_shatter_frames = 0;
 
     // Selection state. RPC handlers route through the engine's main-thread
     // action queue, so this is single-thread-owned — no mutex needed.

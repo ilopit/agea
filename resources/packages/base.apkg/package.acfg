@@ -32,6 +32,7 @@ class_obj_mapping:
 
   - cube_mesh: class/meshes/cube_mesh.aobj
   - plane_mesh: class/meshes/plane_mesh.aobj
+  - test_destructible: class/meshes/test_destructible.aobj
 
   - bulb_component: class/components/bulb_component.aobj
   - root_component: class/components/root_component.aobj
