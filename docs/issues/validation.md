@@ -44,23 +44,18 @@ Fires on vendor-specific anti-patterns (NV, AMD, ARM, IMG). Overlaps partially w
 
 **Why deferred**: Mutually exclusive with GPU-AV in older SDKs. Requires shaders compiled with `GL_EXT_debug_printf` and the extension declared in GLSL. Worth adding with a dedicated debug shader-include helper, not scattered one-offs.
 
-## 2. Object naming at creation sites [done for core + loader paths]
+## 2. Object naming at creation sites [mostly done]
 
-Named today:
-- Device, graphics queue, swapchain images/views
-- Per-frame buffers in `kryga_render_init.cpp` (`frame_N.objects`, `frame_N.materials`, ...)
-- Per-frame command pools, command buffers, fences, semaphores, and upload context fence/pool
-- Render passes, depth images — via `render_pass_builder::set_debug_name(...)`
-- Shader effects — vertex/fragment `VkShaderModule`, per-set `VkDescriptorSetLayout`, `VkPipelineLayout`, main + stencil `VkPipeline`, all prefixed with the effect id
-- Compute shaders — same pattern, prefixed with the compute shader id
-- Bindless pool / layout / set, static samplers (`sampler.linear_repeat`, ...)
+All core and loader-path objects are named. Coverage is good enough that unnamed items are low-value or ephemeral.
 
-**Still unnamed** (lower value, mostly short-lived or cached-shared):
-- Per-frame descriptor sets allocated via `descriptor_allocator::allocate`. These reset every frame; naming them individually is noise.
-- Cached `VkDescriptorSetLayout`s from `descriptor_layout_cache`. Shared across many consumers — one name wouldn't describe the shape.
-- Framebuffers inside `render_pass_builder` (not currently surfaced in validation output).
-- `bake/lightmap_baker.cpp` intermediate buffers/images (transient per-bake).
-- UI vertex/index buffers in `kryga_render_render.cpp` (use `vulkan_buffer::create` directly; the API now accepts a name — they just don't pass one).
+**Named**: device, graphics queue, swapchain images/views, per-frame buffers/command pools/command buffers/fences/semaphores, upload context fence/pool, render passes, depth images, shader effects (modules/layouts/pipelines), compute shaders, bindless pool/layout/set, static samplers.
+
+**Still unnamed** (low value — ephemeral, shared, or rarely surfaced in validation):
+- Per-frame descriptor sets from `descriptor_allocator::allocate` (reset every frame)
+- Cached `VkDescriptorSetLayout`s from `descriptor_layout_cache` (shared, one name wouldn't describe the shape)
+- Framebuffers inside `render_pass_builder`
+- `bake/lightmap_baker.cpp` intermediate buffers/images (transient per-bake)
+- UI vertex/index buffers in `kryga_render_render.cpp` (API accepts a name, just not passed)
 
 ## 3. `VK_EXT_layer_settings` / `vk_layer_settings.txt` [not used]
 
@@ -79,9 +74,3 @@ Allows runtime layer config (enable printf, mute specific VUIDs, switch message 
 Keyed on `(messageIdNumber << 32) ^ fnv1a(pMessage[:192])`. A VUID hit with *different* object handles but an identical message prefix (common: generic VUIDs that format the same way) will only log once per run.
 
 **Mitigation**: call `vk_utils::debug_reset_dedupe()` at scene boundaries or frame `N` milestones. Currently never called.
-
-## 6. Validation is always-on in all builds [intentional for now]
-
-No `NDEBUG`/Release guard around `request_validation_layers(true)`. Validation layer adds measurable CPU overhead (~5-15%) even without extras.
-
-**Decision**: leave on until mobile/Android branch lands, then gate behind `-r` release builds.
