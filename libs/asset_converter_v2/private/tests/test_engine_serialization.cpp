@@ -2,6 +2,7 @@
 
 #include <asset_converter/converter_context.h>
 #include <asset_converter/gltf_parser.h>
+#include <project_paths/project_paths.h>
 
 #include <gpu_types/gpu_vertex_types.h>
 #include <utils/id.h>
@@ -26,22 +27,34 @@ make_vertex_bytes(const std::vector<kryga::gpu::vertex_data>& verts)
     return bytes;
 }
 
-// Tests run from build/project_<Config>/bin. Resources (engine data) live at
-// build/project_<Config>/ — synced from /resources at build time. glTF
-// fixtures live at build/test_assets/converter/.
 fs::path
 get_test_assets_dir()
 {
-    auto build_dir = fs::current_path().parent_path().parent_path();
-    auto p = build_dir / "test_assets" / "converter";
-    return fs::exists(p) ? p : fs::path{};
+    auto layout = kryga::paths::resolve();
+    if (layout && !layout->source_root.empty())
+    {
+        auto p = layout->source_root / "build" / "test_assets" / "converter";
+        if (fs::exists(p))
+        {
+            return p;
+        }
+    }
+    return {};
 }
 
 fs::path
 get_data_root()
 {
-    auto project_dir = fs::current_path().parent_path();
-    return fs::exists(project_dir / "packages" / "root.apkg") ? project_dir : fs::path{};
+    auto layout = kryga::paths::resolve();
+    if (layout && !layout->source_root.empty())
+    {
+        auto resources = layout->source_root / "resources";
+        if (fs::exists(resources / "packages" / "root.apkg"))
+        {
+            return resources;
+        }
+    }
+    return {};
 }
 
 }  // namespace
@@ -220,7 +233,7 @@ TEST_F(EngineSerializationTest, WritesValidObjectFiles)
     ASSERT_TRUE(fs::exists(mesh_file)) << "Mesh file should exist";
 
     std::string mesh_content = read_file(mesh_file);
-    EXPECT_NE(mesh_content.find("class_id: mesh"), std::string::npos);
+    EXPECT_NE(mesh_content.find("proto_id: mesh"), std::string::npos);
     EXPECT_NE(mesh_content.find("id: test_cube"), std::string::npos);
     EXPECT_NE(mesh_content.find("vertices:"), std::string::npos);
     EXPECT_NE(mesh_content.find("indices:"), std::string::npos);
@@ -231,7 +244,7 @@ TEST_F(EngineSerializationTest, WritesValidObjectFiles)
     ASSERT_TRUE(fs::exists(tex_file)) << "Texture file should exist";
 
     std::string tex_content = read_file(tex_file);
-    EXPECT_NE(tex_content.find("class_id: texture"), std::string::npos);
+    EXPECT_NE(tex_content.find("proto_id: texture"), std::string::npos);
     EXPECT_NE(tex_content.find("width: 2"), std::string::npos);
     EXPECT_NE(tex_content.find("height: 2"), std::string::npos);
     EXPECT_NE(tex_content.find("base_color:"), std::string::npos);

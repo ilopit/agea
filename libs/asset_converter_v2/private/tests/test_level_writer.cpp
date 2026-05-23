@@ -100,7 +100,7 @@ TEST_F(LevelWriterTest, WritesGameObject)
     EXPECT_TRUE(fs::exists(go_path));
 
     std::string content = read_file(go_path);
-    EXPECT_NE(content.find("class_id: mesh_object"), std::string::npos);
+    EXPECT_NE(content.find("proto_id: mesh_object"), std::string::npos);
     EXPECT_NE(content.find("id: cube_node"), std::string::npos);
     // Mesh reference is serialized within the component
     EXPECT_NE(content.find("cube"), std::string::npos) << "Should reference cube mesh";
@@ -140,7 +140,7 @@ TEST_F(LevelWriterTest, SkipsNonRenderableNodes)
     ASSERT_TRUE(convert_scene_with_level(m_scene, "test_lvl"));
 
     fs::path lvl = level_dir("test_lvl");
-    // Only the renderable child should have a game object
-    EXPECT_TRUE(fs::exists(lvl / "game_objects" / "cube_node.aobj"));
-    EXPECT_FALSE(fs::exists(lvl / "game_objects" / "empty_parent.aobj"));
+    // empty_parent is the root → game_object; cube_node is a child → component inside it
+    EXPECT_TRUE(fs::exists(lvl / "game_objects" / "empty_parent.aobj"));
+    EXPECT_FALSE(fs::exists(lvl / "game_objects" / "cube_node.aobj"));
 }

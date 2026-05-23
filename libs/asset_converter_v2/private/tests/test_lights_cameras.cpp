@@ -73,7 +73,7 @@ TEST_F(LightCameraWriterTest, WritesPointLight)
     ASSERT_TRUE(fs::exists(go));
 
     std::string content = read_file(go);
-    EXPECT_NE(content.find("class_id: point_light"), std::string::npos);
+    EXPECT_NE(content.find("proto_id: point_light"), std::string::npos);
     // Engine serialization format - light properties are serialized by reflection
     EXPECT_FALSE(content.empty()) << "Light game object file should not be empty";
 }
@@ -106,7 +106,7 @@ TEST_F(LightCameraWriterTest, WritesDirectionalLight)
     ASSERT_TRUE(fs::exists(go));
 
     std::string content = read_file(go);
-    EXPECT_NE(content.find("class_id: directional_light"), std::string::npos);
+    EXPECT_NE(content.find("proto_id: directional_light"), std::string::npos);
     EXPECT_FALSE(content.empty()) << "Light game object file should not be empty";
 }
 
@@ -141,7 +141,7 @@ TEST_F(LightCameraWriterTest, WritesSpotLight)
     ASSERT_TRUE(fs::exists(go));
 
     std::string content = read_file(go);
-    EXPECT_NE(content.find("class_id: spot_light"), std::string::npos);
+    EXPECT_NE(content.find("proto_id: spot_light"), std::string::npos);
     EXPECT_FALSE(content.empty()) << "Light game object file should not be empty";
 }
 
@@ -174,7 +174,7 @@ TEST_F(LightCameraWriterTest, WritesCamera)
     ASSERT_TRUE(fs::exists(go));
 
     std::string content = read_file(go);
-    EXPECT_NE(content.find("class_id: camera_object"), std::string::npos);
+    EXPECT_NE(content.find("proto_id: camera_object"), std::string::npos);
     EXPECT_FALSE(content.empty()) << "Camera game object file should not be empty";
 }
 

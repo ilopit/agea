@@ -4,6 +4,7 @@
 
 #include <asset_converter/converter_context.h>
 #include <asset_converter/gltf_parser.h>
+#include <project_paths/project_paths.h>
 
 #include <utils/id.h>
 #include <vfs/rid.h>
@@ -24,22 +25,34 @@ protected:
     converter_context m_ctx;
     bool m_ctx_initialized = false;
 
-    // Tests run from build/project_<Config>/bin. Engine resources (packages,
-    // shaders, configs) live at build/project_<Config>/ — synced from /resources
-    // at build time. glTF fixtures live at build/test_assets/converter/.
     static fs::path
     find_data_root()
     {
-        auto project_dir = fs::current_path().parent_path();
-        return fs::exists(project_dir / "packages" / "root.apkg") ? project_dir : fs::path{};
+        auto layout = kryga::paths::resolve();
+        if (layout && !layout->source_root.empty())
+        {
+            auto resources = layout->source_root / "resources";
+            if (fs::exists(resources / "packages" / "root.apkg"))
+            {
+                return resources;
+            }
+        }
+        return {};
     }
 
     static fs::path
     find_test_assets()
     {
-        auto build_dir = fs::current_path().parent_path().parent_path();
-        auto p = build_dir / "test_assets" / "converter";
-        return fs::exists(p) ? p : fs::path{};
+        auto layout = kryga::paths::resolve();
+        if (layout && !layout->source_root.empty())
+        {
+            auto p = layout->source_root / "build" / "test_assets" / "converter";
+            if (fs::exists(p))
+            {
+                return p;
+            }
+        }
+        return {};
     }
 
     void

@@ -12,6 +12,7 @@ target_link_libraries(asset_converter_tests
     gtest
     gmock
     kryga::asset_converter
+    kryga::project_paths
 )
 
 kryga_finalize_executable(asset_converter_tests)

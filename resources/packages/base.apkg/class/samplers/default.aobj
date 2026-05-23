@@ -1,0 +1,6 @@
+proto_id: sampler
+id: default
+min_filter: 1
+mag_filter: 1
+address_u: 0
+address_v: 0

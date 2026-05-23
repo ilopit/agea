@@ -105,7 +105,7 @@ TEST_F(PackageWriterTest, WritesMeshAobj)
 
     std::string content =
         read_file(package_dir("test_pkg") / "class" / "meshes" / "test_cube.aobj");
-    EXPECT_NE(content.find("class_id: mesh"), std::string::npos);
+    EXPECT_NE(content.find("proto_id: mesh"), std::string::npos);
     EXPECT_NE(content.find("id: test_cube"), std::string::npos);
     EXPECT_NE(content.find("vertices:"), std::string::npos);
     EXPECT_NE(content.find("indices:"), std::string::npos);

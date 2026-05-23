@@ -165,10 +165,10 @@ converter_context::init(const std::filesystem::path& data_root,
     }
     vfs.mount("output", std::make_unique<vfs::physical_backend>(abs_output), 0);
 
-    ALOG_INFO("Setting up model system...");
-    core::state_mutator__model::set(gs);
     ALOG_INFO("Setting up lua_api...");
     core::state_mutator__lua_api::set(gs);
+    ALOG_INFO("Setting up model system...");
+    core::state_mutator__model::set(gs);
     ALOG_INFO("Setting up queues...");
     state_mutator__queues::set(gs);
 
@@ -317,6 +317,9 @@ converter_context::save_package(core::package& pkg, const vfs::rid& output_path)
     }
     auto pkg_dir = utils::path(pkg_real.value());
 
+    pkg.set_vfs_root(pkg_rid);
+    vfs.mount(pkg_rid, pkg_real.value(), {});
+
     // Assets with buffer properties (mesh vertices/indices, texture pixel data)
     // serialize the buffer's file path as the property value. For objects built
     // in memory, that path is empty — buffer__save() in types_handlers.cpp then
@@ -370,6 +373,8 @@ converter_context::save_package(core::package& pkg, const vfs::rid& output_path)
         }
 
         std::string rel_path = subdir + "/" + obj.get_id().str() + ".aobj";
+
+        vfs.register_object(pkg_rid, obj.get_id().str(), rel_path);
 
         core::object_constructor ctor(&pkg.get_load_context());
         auto result = ctor.save_obj(obj);
@@ -444,6 +449,9 @@ converter_context::save_level(core::level& lvl, const vfs::rid& output_path)
     }
     auto lvl_dir = utils::path(lvl_real.value());
 
+    lvl.set_vfs_root(lvl_rid);
+    vfs.mount(lvl_rid, lvl_real.value(), {});
+
     // Save game objects first so we can record their paths in root.cfg.
     serialization::container cfg;
     for (const auto& pkg_id : lvl.get_package_ids())
@@ -459,6 +467,8 @@ converter_context::save_level(core::level& lvl, const vfs::rid& output_path)
             continue;
         }
         std::string rel_path = "game_objects/" + id.str() + ".aobj";
+
+        vfs.register_object(lvl_rid, id.str(), rel_path);
 
         core::object_constructor ctor(&lvl.get_load_context());
         auto result = ctor.save_obj(*obj);
@@ -492,7 +502,7 @@ converter_context::create_mesh(core::package& pkg, const utils::id& id, const pa
                          data.indices.size() * sizeof(uint32_t));
 
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(root::mesh::AR_TYPE_id(), id, params, true);
+    auto result = ctor.construct_obj(root::mesh::AR_TYPE_id(), id, params, false);
 
     if (!result)
     {
@@ -513,7 +523,7 @@ converter_context::create_texture(core::package& pkg,
     root::texture::construct_params params;
 
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(root::texture::AR_TYPE_id(), id, params, true);
+    auto result = ctor.construct_obj(root::texture::AR_TYPE_id(), id, params, false);
 
     if (!result)
     {
@@ -564,7 +574,7 @@ converter_context::create_material(core::package& pkg,
     base::pbr_material::construct_params params;
 
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(base::pbr_material::AR_TYPE_id(), id, params, true);
+    auto result = ctor.construct_obj(base::pbr_material::AR_TYPE_id(), id, params, false);
 
     if (!result)
     {
