@@ -2,6 +2,7 @@
 # Build script for kryga host build — thin wrapper around CMake presets.
 # Usage: ./tools/build.sh [options] [target]
 #   -a, --all        Build all targets (default: kryga_editor)
+#   -c, --configure  Force reconfigure (cmake --preset host)
 #   -v, --verbose    Show full build output
 #   -r, --release    Build Release configuration (default: Debug)
 #   -j, --jobs N     Parallel jobs (default: cmake auto)
@@ -19,15 +20,17 @@ CONFIG="Debug"
 JOBS=""
 TARGET="kryga_editor"
 ALL=0
+CONFIGURE=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -a|--all)     ALL=1; TARGET=""; shift ;;
-        -v|--verbose) VERBOSE=1; shift ;;
-        -r|--release) CONFIG="Release"; shift ;;
-        -j|--jobs)    JOBS="$2"; shift 2 ;;
+        -a|--all)       ALL=1; TARGET=""; shift ;;
+        -c|--configure) CONFIGURE=1; shift ;;
+        -v|--verbose)   VERBOSE=1; shift ;;
+        -r|--release)   CONFIG="Release"; shift ;;
+        -j|--jobs)      JOBS="$2"; shift 2 ;;
         -h|--help)
-            head -9 "$0" | tail -8
+            head -10 "$0" | tail -9
             exit 0
             ;;
         -*) echo "Unknown option: $1"; exit 1 ;;
@@ -35,10 +38,26 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Configure on first run. The `host` preset pins generator/arch; after that,
-# the build dir is reusable across configs (VS multi-config).
-if [[ ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
-    echo "build/ not configured — running configure preset 'host'..."
+# Configure on first run or when -c is passed.
+if [[ $CONFIGURE -eq 1 || ! -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+    # On Windows, verify symlink privilege before running cmake.
+    if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+        mkdir -p "$BUILD_DIR"
+        _test_link="$BUILD_DIR/_symlink_test"
+        rm -f "$_test_link" 2>/dev/null
+        if ! cmake -E create_symlink "$ROOT_DIR/CMakeLists.txt" "$_test_link" 2>/dev/null \
+           || [[ ! -e "$_test_link" ]]; then
+            rm -f "$_test_link" 2>/dev/null
+            echo ""
+            echo "FATAL: cannot create symlinks — missing privileges."
+            echo "Enable Developer Mode: Settings → System → For Developers → Developer Mode"
+            echo "Then re-run: tools/build.sh -c"
+            exit 1
+        fi
+        rm -f "$_test_link" 2>/dev/null
+    fi
+
+    echo "Running configure preset 'host'..."
     cmake --preset host
 fi
 
