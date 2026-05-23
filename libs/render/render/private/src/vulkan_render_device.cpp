@@ -355,6 +355,9 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         constexpr VkPresentModeKHR k_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
 #endif
 
+#if KRG_EDITOR
+        swapchain_builder.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+#endif
         vkb::Swapchain vkb_swapchain = swapchain_builder.set_desired_present_mode(k_present_mode)
                                            .set_desired_extent(buffer_w, buffer_h)
                                            .set_desired_format(format)
