@@ -102,30 +102,30 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=assets",
-        "serializable=true",
-        "default=true",
-        "mcp_hint=vertex buffer binary — read-only at runtime"
+        category     = "assets",
+        serializable = true,
+        default      = true,
+        mcp_hint     = "vertex buffer binary — read-only at runtime"
     );
     utils::buffer m_vertices = {};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=assets",
-        "serializable=true",
-        "default=true",
-        "mcp_hint=index buffer binary — read-only at runtime"
+        category     = "assets",
+        serializable = true,
+        default      = true,
+        mcp_hint     = "index buffer binary — read-only at runtime"
     );
     utils::buffer m_indices = {};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=assets",
-        "serializable=true",
-        "default=true",
-        "mcp_hint=additional mesh data like UV2 — read-only at runtime"
+        category     = "assets",
+        serializable = true,
+        default      = true,
+        mcp_hint     = "additional mesh data like UV2 — read-only at runtime"
     );
     utils::buffer m_external = {};
     // clang-format on

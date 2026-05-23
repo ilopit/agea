@@ -36,11 +36,11 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "access=cpp_only",
-        "invalidates=render",
-        "serializable=true",
-        "instantiate=share"
+        category     = "Properties",
+        access       = cpp_only,
+        invalidates  = render,
+        serializable = true,
+        instantiate  = share
     );
     shader_effect* m_shader_effect = nullptr;
     // clang-format on

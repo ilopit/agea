@@ -1155,14 +1155,11 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
             auto vb =
                 std::make_shared<utils::buffer>(ch.vertices.size() * sizeof(gpu::vertex_data));
-            std::memcpy(vb->data(),
-                        ch.vertices.data(),
-                        ch.vertices.size() * sizeof(gpu::vertex_data));
+            std::memcpy(
+                vb->data(), ch.vertices.data(), ch.vertices.size() * sizeof(gpu::vertex_data));
 
             auto ib = std::make_shared<utils::buffer>(ch.indices.size() * sizeof(gpu::uint));
-            std::memcpy(ib->data(),
-                        ch.indices.data(),
-                        ch.indices.size() * sizeof(gpu::uint));
+            std::memcpy(ib->data(), ch.indices.data(), ch.indices.size() * sizeof(gpu::uint));
 
             auto* cmd = ctx.rb->alloc_cmd<create_chunk_mesh_cmd>();
             cmd->id = chunk_mesh_id;
@@ -1178,8 +1175,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         if (ps)
         {
             auto& dp = ps->destructibles();
-            auto handle =
-                dp.register_destructible(chunk_shapes, asset->get_damage_threshold());
+            auto handle = dp.register_destructible(chunk_shapes, asset->get_damage_threshold());
             dp.set_lifetime(handle, asset->get_lifetime());
             dp.set_explosion_strength(handle, asset->get_explosion_strength());
             dp.set_world_transform(handle, dmc.get_transform_matrix());
@@ -1234,8 +1230,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             dmc.get_chunk_render_ids().push_back(chunk_render_id);
 
             const auto& cs = dmc.get_chunk_shapes()[i];
-            float chunk_radius =
-                0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
+            float chunk_radius = 0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
 
             glm::mat4 xf(1.0f);
             if (ps)
@@ -1273,8 +1268,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             }
 
             const auto& cs = dmc.get_chunk_shapes()[i];
-            float chunk_radius =
-                0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
+            float chunk_radius = 0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
 
             auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
             cmd->id = dmc.get_chunk_render_ids()[i];
@@ -1386,8 +1380,7 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
     dmc.set_render_built(false);
 
     // Unregister from physics (no-op if expiry already tore it down).
-    if (auto* ps = glob::glob_state().get_physics_system();
-        ps && dmc.get_physics_handle().valid())
+    if (auto* ps = glob::glob_state().get_physics_system(); ps && dmc.get_physics_handle().valid())
     {
         ps->destructibles().unregister_destructible(dmc.get_physics_handle());
         dmc.set_physics_handle({});

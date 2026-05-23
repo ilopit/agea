@@ -128,10 +128,10 @@ private:
 
     // clang-format off
     KRG_ar_property(
-        "category=Camera",
-        "serializable=true",
-        "default=true",
-        "mcp_hint=whether this camera is the active viewport camera"
+        category     = "Camera",
+        serializable = true,
+        default      = true,
+        mcp_hint     = "whether this camera is the active viewport camera"
     );
     bool m_is_active_camera = false;
     // clang-format on

@@ -247,9 +247,13 @@ public:
     core::architype
     get_architype_id() const;
 
-    KRG_ar_function("category=reflection");
+    // clang-format off
+    KRG_ar_function(
+        category = "reflection"
+    );
     const reflection::reflection_type*
     get_reflection() const
+    // clang-format on
     {
         return m_rt;
     }
@@ -278,8 +282,14 @@ protected:
 
     const reflection::reflection_type* m_rt = nullptr;
 
-    KRG_ar_property("category=Meta", "access=read_only", "copyable=no");
+    // clang-format off
+    KRG_ar_property(
+        category = "Meta",
+        access   = read_only,
+        copyable = no
+    );
     utils::id m_id;
+    // clang-format on
 
     const smart_object* m_proto_obj = nullptr;
     core::package* m_package = nullptr;
@@ -354,10 +364,15 @@ struct construction_transaction
     }
 
     construction_transaction(const construction_transaction&) = delete;
-    construction_transaction& operator=(const construction_transaction&) = delete;
+    construction_transaction&
+    operator=(const construction_transaction&) = delete;
 };
 
-#define KRG_CONSTRUCTION_TRANSACTION(obj) ::kryga::root::construction_transaction _txn{obj}
+#define KRG_CONSTRUCTION_TRANSACTION(obj)        \
+    ::kryga::root::construction_transaction _txn \
+    {                                            \
+        obj                                      \
+    }
 
 }  // namespace root
 }  // namespace kryga

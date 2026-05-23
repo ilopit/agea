@@ -40,52 +40,52 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "gpu_texture_slot=0",
-        "instantiate=share",
-        "mcp_hint=diffuse texture slot — set texture ID to change the toon color map"
+        category         = "Properties",
+        serializable     = true,
+        invalidates      = render,
+        access           = all,
+        gpu_texture_slot = 0,
+        instantiate      = share,
+        mcp_hint         = "diffuse texture slot — set texture ID to change the toon color map"
     );
     ::kryga::root::texture_slot m_diffuse_txt;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=number of discrete shading bands — 2-8 typical for toon look"
+        category     = "Properties",
+        serializable = true,
+        invalidates  = render,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "number of discrete shading bands — 2-8 typical for toon look"
     );
     float m_band_count = 4.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=specular highlight intensity multiplier [0-1]"
+        category     = "Properties",
+        serializable = true,
+        invalidates  = render,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "specular highlight intensity multiplier [0-1]"
     );
     float m_specular_strength = 1.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=shininess exponent — higher = tighter highlights [1-256]"
+        category     = "Properties",
+        serializable = true,
+        invalidates  = render,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "shininess exponent — higher = tighter highlights [1-256]"
     );
     float m_shininess = 32.0f;
     // clang-format on

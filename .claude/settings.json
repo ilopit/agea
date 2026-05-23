@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" =~ \\.(h|cpp)$ ]] && [[ ! \"$FILE\" =~ ^build/ ]]; then CLANG_FORMAT=\"/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe\"; if [ -x \"$CLANG_FORMAT\" ]; then \"$CLANG_FORMAT\" -i \"$FILE\"; fi; fi'"
+            "command": "bash -c 'FILE=\"$TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" =~ \\.h$ ]] && [[ ! \"$FILE\" =~ ^build/ ]]; then python tools/format_ar.py \"$FILE\" 2>/dev/null; CLANG_FORMAT=\"/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe\"; if [ -x \"$CLANG_FORMAT\" ]; then \"$CLANG_FORMAT\" -i \"$FILE\"; fi; elif [[ \"$FILE\" =~ \\.cpp$ ]] && [[ ! \"$FILE\" =~ ^build/ ]]; then CLANG_FORMAT=\"/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe\"; if [ -x \"$CLANG_FORMAT\" ]; then \"$CLANG_FORMAT\" -i \"$FILE\"; fi; fi'"
           }
         ]
       }

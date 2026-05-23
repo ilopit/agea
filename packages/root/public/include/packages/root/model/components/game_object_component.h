@@ -149,24 +149,24 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Action",
-        "serializable=true",
-        "default=true",
-        "mcp_hint=whether this component receives per-frame tick updates"
+        category     = "Action",
+        serializable = true,
+        default      = true,
+        mcp_hint     = "whether this component receives per-frame tick updates"
     );
     bool m_tickable = false;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Rendering",
-        "access=all",
-        "serializable=true",
-        "default=true",
-        "invalidates=render",
-        "property_save_handler=::kryga::root::property_layer_mask__save",
-        "property_compare_handler=::kryga::root::property_layer_mask__compare",
-        "property_load_handler=::kryga::root::property_layer_mask__load"
+        category                 = "Rendering",
+        access                   = all,
+        serializable             = true,
+        default                  = true,
+        invalidates              = render,
+        property_save_handler    = ::kryga::root::property_layer_mask__save,
+        property_compare_handler = ::kryga::root::property_layer_mask__compare,
+        property_load_handler    = ::kryga::root::property_layer_mask__load
     );
     ::kryga::core::object_layer_flags m_layers =
         ::kryga::core::object_layer_flags::default_static();
@@ -174,36 +174,36 @@ protected:
 
     // clang-format off
     KRG_ar_property(
-        "category=Transform",
-        "access=all",
-        "check=not_same",
-        "invalidates=transform",
-        "serializable=true",
-        "default=true"
+        category     = "Transform",
+        access       = all,
+        check        = not_same,
+        invalidates  = transform,
+        serializable = true,
+        default      = true
     );
     vec3 m_position = {0.f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Transform",
-        "access=all",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=transform",
-        "default=true"
+        category     = "Transform",
+        access       = all,
+        serializable = true,
+        check        = not_same,
+        invalidates  = transform,
+        default      = true
     );
     vec3 m_rotation = {0.f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Transform",
-        "access=all",
-        "check=not_same",
-        "invalidates=transform",
-        "serializable=true",
-        "default=true"
+        category     = "Transform",
+        access       = all,
+        check        = not_same,
+        invalidates  = transform,
+        serializable = true,
+        default      = true
     );
     vec3 m_scale = {1.f};
     // clang-format on

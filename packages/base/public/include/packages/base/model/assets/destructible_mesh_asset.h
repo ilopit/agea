@@ -41,81 +41,81 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=assets",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true"
+        category     = "assets",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true
     );
     ::kryga::root::mesh* m_source_mesh = nullptr;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=assets",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true"
+        category     = "assets",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true
     );
     ::kryga::root::material* m_material = nullptr;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=fracture",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true"
+        category     = "fracture",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true
     );
     uint32_t m_cell_count = 8;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=fracture",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true"
+        category     = "fracture",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true
     );
     uint32_t m_fracture_seed = 0;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=fracture",
-        "serializable=true",
-        "check=not_same",
-        "access=all",
-        "default=true"
+        category     = "fracture",
+        serializable = true,
+        check        = not_same,
+        access       = all,
+        default      = true
     );
     float m_damage_threshold = 100.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=fracture",
-        "serializable=true",
-        "check=not_same",
-        "access=all",
-        "default=true"
+        category     = "fracture",
+        serializable = true,
+        check        = not_same,
+        access       = all,
+        default      = true
     );
     float m_lifetime = 3.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=fracture",
-        "serializable=true",
-        "check=not_same",
-        "access=all",
-        "default=true"
+        category     = "fracture",
+        serializable = true,
+        check        = not_same,
+        access       = all,
+        default      = true
     );
     float m_explosion_strength = 8.0f;
     // clang-format on

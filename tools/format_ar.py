@@ -34,6 +34,8 @@ TYPE_MACROS = ["KRG_ar_class", "KRG_ar_struct"]
 MEMBER_MACROS = ["KRG_ar_property", "KRG_ar_function"]
 ALL_MACROS = TYPE_MACROS + MEMBER_MACROS
 
+QUOTED_VALUE_KEYS = {"category", "mcp_hint", "hint"}
+
 
 def main():
     check_only = "--check" in sys.argv
@@ -90,6 +92,14 @@ def _find_close_paren(lines, start):
 
 def _leading_indent(line):
     return line[: len(line) - len(line.lstrip())]
+
+
+def _is_decl_end(stripped, macro):
+    if macro in TYPE_MACROS:
+        return stripped.startswith("class ") or stripped.startswith("struct ")
+    if macro == "KRG_ar_function":
+        return ")" in stripped
+    return ";" in stripped
 
 
 # ── Argument parsing ─────────────────────────────────────────────
@@ -152,6 +162,21 @@ def _classify(raw):
     return (None, raw)
 
 
+def _expand_kv_string(key, val):
+    """Convert a positional "key=value" string into a (key, value) pair."""
+    if key is not None:
+        return (key, val)
+    if not (val.startswith('"') and "=" in val):
+        return (key, val)
+    content = val[1:-1]
+    k, _, v = content.partition("=")
+    k = k.strip()
+    v = v.strip()
+    if k in QUOTED_VALUE_KEYS:
+        return (k, f'"{v}"')
+    return (k, v)
+
+
 # ── String wrapping ──────────────────────────────────────────────
 
 
@@ -194,6 +219,9 @@ def _format_macro(macro, raw_args, outer_indent=""):
 
     parsed = [_classify(a) for a in raw_args]
 
+    if macro in MEMBER_MACROS:
+        parsed = [_expand_kv_string(k, v) for k, v in parsed]
+
     single = (
         outer_indent
         + macro
@@ -201,7 +229,7 @@ def _format_macro(macro, raw_args, outer_indent=""):
         + ", ".join((f"{k} = {v}" if k else v) for k, v in parsed)
         + ");"
     )
-    if len(single) <= COLUMN_LIMIT:
+    if len(single) <= COLUMN_LIMIT and macro not in MEMBER_MACROS:
         return single, False
 
     max_key = max((len(k) for k, _ in parsed if k), default=0)
@@ -284,7 +312,7 @@ def _process_file(path, check_only):
                     continue
                 decl_lines.append(lines[scan])
                 scan += 1
-                if ";" in s or s.startswith("class ") or s.startswith("struct "):
+                if _is_decl_end(s, macro):
                     break
 
             if decl_lines:

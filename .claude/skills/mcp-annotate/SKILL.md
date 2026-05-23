@@ -12,8 +12,7 @@ allowed-tools: Read, Edit, Glob, Grep
 - **No commas** inside `mcp_hint` — the tokenizer splits on `,` before parsing key=value
 - **No parentheses** inside `mcp_hint` — `)` terminates the macro
 - Use `/` or `;` instead of commas, `[]` or `:` instead of `()`
-- Hints on properties use double quotes: `mcp_hint="text"`
-- Hints on functions use single quotes: `mcp_hint = 'text'`
+- All hints use double quotes: `mcp_hint = "text"`
 
 ## mcp_schema
 
@@ -49,12 +48,22 @@ The three-tier MCP system uses schema to decide when to include hints in respons
 ### Example
 
 ```cpp
-KRG_ar_class("architype=game_object",
-              mcp_schema          = "string:object_id",
-              mcp_hint             = "Scene entity that owns components");
+// clang-format off
+KRG_ar_class(
+    "architype=game_object",
+    mcp_schema = "string:object_id",
+    mcp_hint   = "Scene entity that owns components"
+);
+class game_object : public smart_object
+// clang-format on
 
-KRG_ar_struct(mcp_schema          = "array:number",
-              mcp_hint            = "3D vector [x y z]");
+// clang-format off
+KRG_ar_struct(
+    mcp_schema = "array:number",
+    mcp_hint   = "3D vector [x y z]"
+);
+struct vec3 : ::glm::vec3
+// clang-format on
 ```
 
 ## mcp_hint — on types, properties, and functions
@@ -66,7 +75,12 @@ Short description helping an AI model understand purpose and usage. Not a docstr
 One sentence: what it is + what makes it distinct from siblings.
 
 ```cpp
-KRG_ar_class(mcp_hint = "Component with spatial transform: position / rotation / scale and visibility layer flags");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Component with spatial transform: position / rotation / scale and visibility layer flags"
+);
+class game_object_component : public component
+// clang-format on
 ```
 
 ### Property hints
@@ -74,10 +88,15 @@ KRG_ar_class(mcp_hint = "Component with spatial transform: position / rotation /
 What the value controls and any non-obvious constraints. Skip hints for self-explanatory properties (e.g., `name` on a named object).
 
 ```cpp
-KRG_ar_property("category=Rendering",
-                "serializable=true",
-                "access=all",
-                mcp_hint="Diffuse color multiplier [r g b] in linear space");
+// clang-format off
+KRG_ar_property(
+    category     = "Rendering",
+    serializable = true,
+    access       = all,
+    mcp_hint     = "Diffuse color multiplier [r g b] in linear space"
+);
+::kryga::root::vec3 m_diffuse = glm::vec3{1.0f};
+// clang-format on
 ```
 
 ### Function hints
@@ -98,14 +117,23 @@ Array/vector components use `[component component ...]` with spaces — never co
 Use semantic names that match the context — `[r g b]` for colors, `[x y z]` for spatial.
 
 ```cpp
-KRG_ar_function("category=world",
-                 mcp_hint = 'Returns world position [x y z]');
+// clang-format off
+KRG_ar_function(
+    category = "world",
+    mcp_hint = "Returns world position [x y z]"
+);
+vec3
+get_position() const
+// clang-format on
 
-KRG_ar_function("category=world",
-                 mcp_hint = 'Sets euler rotation in degrees [x y z]');
-
-KRG_ar_function("category=world",
-                 mcp_hint = 'Adds relative offset [x y z] to current position');
+// clang-format off
+KRG_ar_function(
+    category = "world",
+    mcp_hint = "Adds relative offset [x y z] to current position"
+);
+void
+move(const vec3& v);
+// clang-format on
 ```
 
 ## What gets exposed via MCP

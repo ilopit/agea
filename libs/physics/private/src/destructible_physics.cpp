@@ -53,7 +53,7 @@ struct entry
 
     // Runtime state.
     bool broken = false;
-    float age_since_break = 0.0f;  // seconds
+    float age_since_break = 0.0f;           // seconds
     std::vector<JPH::BodyID> chunk_bodies;  // empty until break
 };
 

@@ -56,46 +56,70 @@ struct vec3 : ::glm::vec3
     }
 
     // x
-    KRG_ar_function("category=world");
+    // clang-format off
+    KRG_ar_function(
+        category = "world"
+    );
     void
     set_x(float v)
+    // clang-format on
     {
         x = v;
     }
 
-    KRG_ar_function("category=world");
+    // clang-format off
+    KRG_ar_function(
+        category = "world"
+    );
     float
     get_x() const
+    // clang-format on
     {
         return x;
     }
 
     // y
-    KRG_ar_function("category=world");
+    // clang-format off
+    KRG_ar_function(
+        category = "world"
+    );
     void
     set_y(float v)
+    // clang-format on
     {
         y = v;
     }
 
-    KRG_ar_function("category=world");
+    // clang-format off
+    KRG_ar_function(
+        category = "world"
+    );
     float
     get_y() const
+    // clang-format on
     {
         return y;
     }
 
     // z
-    KRG_ar_function("category=world");
+    // clang-format off
+    KRG_ar_function(
+        category = "world"
+    );
     void
     set_z(float v)
+    // clang-format on
     {
         z = v;
     }
 
-    KRG_ar_function("category=world");
+    // clang-format off
+    KRG_ar_function(
+        category = "world"
+    );
     float
     get_z() const
+    // clang-format on
     {
         return z;
     }

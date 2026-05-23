@@ -100,69 +100,119 @@ public:
         return m_components[idx];
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns rotation as quaternion [x y z w]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns rotation as quaternion [x y z w]"
+    );
     glm::quat
     get_rotation_quat() const
+    // clang-format on
     {
         return m_root_component->get_rotation();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns local forward direction as unit [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns local forward direction as unit [x y z]"
+    );
     vec3
     get_forward_vector() const
+    // clang-format on
     {
         return m_root_component->get_forward_vector();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns local up direction as unit [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns local up direction as unit [x y z]"
+    );
     vec3
     get_up_vector() const
+    // clang-format on
     {
         return m_root_component->get_up_vector();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns local right direction as unit [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns local right direction as unit [x y z]"
+    );
     vec3
     get_right_vector() const
+    // clang-format on
     {
         return m_root_component->get_right_vector();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns world position [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns world position [x y z]"
+    );
     vec3
     get_position() const
+    // clang-format on
     {
         return m_root_component->get_position();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Sets world position [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Sets world position [x y z]"
+    );
     void
     set_position(vec3 v)
+    // clang-format on
     {
         m_root_component->set_position(v);
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns euler rotation in degrees [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns euler rotation in degrees [x y z]"
+    );
     vec3
     get_rotation() const
+    // clang-format on
     {
         return m_root_component->get_rotation();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Sets euler rotation in degrees [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Sets euler rotation in degrees [x y z]"
+    );
     void
     set_rotation(vec3 v);
+    // clang-format on
 
-    KRG_ar_function("category=world", mcp_hint = 'Returns scale [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Returns scale [x y z]"
+    );
     vec3
     get_scale() const
+    // clang-format on
     {
         return m_root_component->get_scale();
     }
 
-    KRG_ar_function("category=world", mcp_hint = 'Sets scale [x y z]');
+    // clang-format off
+    KRG_ar_function(
+        category = "world",
+        mcp_hint = "Sets scale [x y z]"
+    );
     void
     set_scale(vec3 v)
+    // clang-format on
     {
         m_root_component->set_scale(v);
     }
@@ -209,8 +259,8 @@ public:
 
     // clang-format off
     KRG_ar_function(
-        "category=world",
-        mcp_hint = 'Adds relative offset [x y z] to current position'
+        category = "world",
+        mcp_hint = "Adds relative offset [x y z] to current position"
     );
     void
     move(const vec3& v);
@@ -233,13 +283,13 @@ protected:
 
     // clang-format off
     KRG_ar_property(
-        "category=Meta",
-        "serializable=true",
-        "property_save_handler=game_object_components_save",
-        "property_compare_handler=game_object_components_compare",
-        "property_copy_handler=game_object_components_copy",
-        "property_instantiate_handler=game_object_components_instantiate",
-        "property_load_handler=game_object_components__load"
+        category                     = "Meta",
+        serializable                 = true,
+        property_save_handler        = game_object_components_save,
+        property_compare_handler     = game_object_components_compare,
+        property_copy_handler        = game_object_components_copy,
+        property_instantiate_handler = game_object_components_instantiate,
+        property_load_handler        = game_object_components__load
     );
     std::vector<component*> m_components;
     // clang-format on

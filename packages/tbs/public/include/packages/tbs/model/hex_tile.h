@@ -66,27 +66,27 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Hex",
-        "serializable=true",
-        "mcp_hint=hex grid axial Q coordinate [column]"
+        category     = "Hex",
+        serializable = true,
+        mcp_hint     = "hex grid axial Q coordinate [column]"
     );
     int32_t m_hex_q = 0;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Hex",
-        "serializable=true",
-        "mcp_hint=hex grid axial R coordinate [row]"
+        category     = "Hex",
+        serializable = true,
+        mcp_hint     = "hex grid axial R coordinate [row]"
     );
     int32_t m_hex_r = 0;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Hex",
-        "serializable=true",
-        "mcp_hint=radius of the hex tile in world units"
+        category     = "Hex",
+        serializable = true,
+        mcp_hint     = "radius of the hex tile in world units"
     );
     float m_hex_size = 1.0f;
     // clang-format on

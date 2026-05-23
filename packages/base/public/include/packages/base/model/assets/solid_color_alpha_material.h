@@ -27,12 +27,12 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=transparency 0.0=fully transparent 1.0=fully opaque"
+        category     = "Properties",
+        serializable = true,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "transparency 0.0=fully transparent 1.0=fully opaque"
     );
     float m_opacity = 1.0f;
     // clang-format on

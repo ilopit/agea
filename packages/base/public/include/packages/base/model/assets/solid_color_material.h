@@ -29,50 +29,50 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "invalidates=render",
-        "check=not_same",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=ambient color RGB [0-1]"
+        category     = "Properties",
+        serializable = true,
+        invalidates  = render,
+        check        = not_same,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "ambient color RGB [0-1]"
     );
     ::kryga::root::vec3 m_ambient = {.2f, .2f, .2f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=base surface color RGB [0-1]"
+        category     = "Properties",
+        serializable = true,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "base surface color RGB [0-1]"
     );
     ::kryga::root::vec3 m_diffuse = {.2f, .2f, .2f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=specular highlight color RGB [0-1]"
+        category     = "Properties",
+        serializable = true,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "specular highlight color RGB [0-1]"
     );
     ::kryga::root::vec3 m_specular = 0.5f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "access=all",
-        "gpu_data=MaterialData",
-        "default=true",
-        "mcp_hint=shininess exponent — higher = tighter highlights [1-256]"
+        category     = "Properties",
+        serializable = true,
+        access       = all,
+        gpu_data     = MaterialData,
+        default      = true,
+        mcp_hint     = "shininess exponent — higher = tighter highlights [1-256]"
     );
     float m_shininess = 32.0f;
     // clang-format on

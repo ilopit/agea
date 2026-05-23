@@ -84,66 +84,67 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Assets",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "mcp_hint=embedded glTF model binary — read-only at runtime"
+        category     = "Assets",
+        serializable = true,
+        invalidates  = render,
+        access       = all,
+        mcp_hint     = "embedded glTF model binary — read-only at runtime"
     );
     utils::buffer m_gltf;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Assets",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "default=true",
-        "mcp_hint=surface appearance: colors / textures / shading — inspect/edit via kryga_model_get_all with the material ID"
+        category     = "Assets",
+        serializable = true,
+        invalidates  = render,
+        access       = all,
+        default      = true,
+        mcp_hint     = "surface appearance: colors / textures / shading — inspect/edit via "
+                       "kryga_model_get_all with the material ID"
     );
     ::kryga::root::material* m_material = nullptr;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Animation",
-        "serializable=true",
-        "access=all",
-        "mcp_hint=name of the animation clip to play from the glTF"
+        category     = "Animation",
+        serializable = true,
+        access       = all,
+        mcp_hint     = "name of the animation clip to play from the glTF"
     );
     utils::id m_clip_name;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Animation",
-        "serializable=true",
-        "access=all",
-        "default=true",
-        "mcp_hint=animation speed multiplier: 1.0 = normal / 0.5 = half speed"
+        category     = "Animation",
+        serializable = true,
+        access       = all,
+        default      = true,
+        mcp_hint     = "animation speed multiplier: 1.0 = normal / 0.5 = half speed"
     );
     float m_playback_speed = 1.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Animation",
-        "serializable=true",
-        "access=all",
-        "default=true",
-        "mcp_hint=whether the animation restarts when it reaches the end"
+        category     = "Animation",
+        serializable = true,
+        access       = all,
+        default      = true,
+        mcp_hint     = "whether the animation restarts when it reaches the end"
     );
     bool m_looping = true;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Animation",
-        "serializable=true",
-        "access=all",
-        "default=true",
-        "mcp_hint=whether the animation is currently playing"
+        category     = "Animation",
+        serializable = true,
+        access       = all,
+        default      = true,
+        mcp_hint     = "whether the animation is currently playing"
     );
     bool m_playing = true;
     // clang-format on

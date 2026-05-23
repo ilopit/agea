@@ -34,27 +34,74 @@ public:
     void
     mark_render_dirty();
 
-    KRG_ar_property("category=Properties", "serializable=true", "access=no");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Properties",
+        serializable = true,
+        access       = no
+    );
     utils::buffer m_vert;
+    // clang-format on
 
-    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Properties",
+        serializable = true,
+        access       = no,
+        default      = true
+    );
     bool m_is_vert_binary = false;
+    // clang-format on
 
-    KRG_ar_property("category=Properties", "serializable=true", "access=no");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Properties",
+        serializable = true,
+        access       = no
+    );
     utils::buffer m_frag;
+    // clang-format on
 
-    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Properties",
+        serializable = true,
+        access       = no,
+        default      = true
+    );
     bool m_is_frag_binary = false;
+    // clang-format on
 
-    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Properties",
+        serializable = true,
+        access       = no,
+        default      = true
+    );
     bool m_wire_topology = false;
+    // clang-format on
 
-    KRG_ar_property("category=Properties", "serializable=true", "access=no", "default=true");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Properties",
+        serializable = true,
+        access       = no,
+        default      = true
+    );
     bool m_enable_alpha_support = false;
+    // clang-format on
 
     // Shader specialization constants — each maps to a constant_id in the shader
-    KRG_ar_property("category=Specialization", "serializable=true", "access=no", "default=false");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Specialization",
+        serializable = true,
+        access       = no,
+        default      = false
+    );
     bool m_enable_lightmap = false;
+    // clang-format on
 };
 
 }  // namespace root

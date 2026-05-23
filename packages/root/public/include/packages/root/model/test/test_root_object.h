@@ -59,38 +59,38 @@ public:
     // Value deep-copied on instantiate. Instance gets independent copy.
     // clang-format off
     KRG_ar_property(
-        "category=Test",
-        "serializable=true",
-        "mcp_hint=test float — deep-copied on instantiate"
+        category     = "Test",
+        serializable = true,
+        mcp_hint     = "test float — deep-copied on instantiate"
     );
     float m_pod_instantiate = 0.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Test",
-        "serializable=true",
-        "instantiate=share",
-        "mcp_hint=test float — shared on instantiate"
+        category     = "Test",
+        serializable = true,
+        instantiate  = share,
+        mcp_hint     = "test float — shared on instantiate"
     );
     float m_pod_share = 0.0f;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Test",
-        "serializable=true",
-        "mcp_hint=test object ref — deep-copied on instantiate"
+        category     = "Test",
+        serializable = true,
+        mcp_hint     = "test object ref — deep-copied on instantiate"
     );
     smart_object* m_obj_instantiate = nullptr;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Test",
-        "serializable=true",
-        "instantiate=share",
-        "mcp_hint=test object ref — always shared"
+        category     = "Test",
+        serializable = true,
+        instantiate  = share,
+        mcp_hint     = "test object ref — always shared"
     );
     smart_object* m_obj_share = nullptr;
     // clang-format on

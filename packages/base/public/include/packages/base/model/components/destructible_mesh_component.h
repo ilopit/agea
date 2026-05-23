@@ -65,16 +65,24 @@ public:
     // Gameplay entry: force this destructible into the broken state.
     // Returns true iff this call caused the transition; subsequent calls
     // on an already-broken object return false.
-    KRG_ar_function("category=gameplay");
+    // clang-format off
+    KRG_ar_function(
+        category = "gameplay"
+    );
     bool
     shatter();
+    // clang-format on
 
     // Gameplay entry: apply damage. Returns true iff this call caused the
     // break. Use shatter() for "instant break" and apply_damage() for
     // accumulation against the asset's damage threshold.
-    KRG_ar_function("category=gameplay");
+    // clang-format off
+    KRG_ar_function(
+        category = "gameplay"
+    );
     bool
     apply_damage(float amount);
+    // clang-format on
 
     float
     get_base_bounding_radius() const
@@ -167,12 +175,12 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Assets",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true"
+        category     = "Assets",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true
     );
     destructible_mesh_asset* m_asset = nullptr;
     // clang-format on

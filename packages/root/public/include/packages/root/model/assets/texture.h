@@ -39,30 +39,30 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=meta",
-        "access=all",
-        "serializable=true",
-        "mcp_hint=raw pixel data — read-only at runtime"
+        category     = "meta",
+        access       = all,
+        serializable = true,
+        mcp_hint     = "raw pixel data — read-only at runtime"
     );
     utils::buffer m_base_color;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=meta",
-        "access=all",
-        "serializable=true",
-        "mcp_hint=texture width in pixels"
+        category     = "meta",
+        access       = all,
+        serializable = true,
+        mcp_hint     = "texture width in pixels"
     );
     uint32_t m_width;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=meta",
-        "access=all",
-        "serializable=true",
-        "mcp_hint=texture height in pixels"
+        category     = "meta",
+        access       = all,
+        serializable = true,
+        mcp_hint     = "texture height in pixels"
     );
     uint32_t m_height;
     // clang-format on

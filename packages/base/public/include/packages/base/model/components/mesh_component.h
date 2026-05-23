@@ -54,28 +54,29 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Assets",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true",
-        "instantiate=share",
-        "mcp_hint=surface appearance: colors / textures / shading — inspect/edit via kryga_model_get_all with the material ID"
+        category     = "Assets",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true,
+        instantiate  = share,
+        mcp_hint     = "surface appearance: colors / textures / shading — inspect/edit via "
+                       "kryga_model_get_all with the material ID"
     );
     ::kryga::root::material* m_material = nullptr;
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Assets",
-        "serializable=true",
-        "check=not_same",
-        "invalidates=render",
-        "access=all",
-        "default=true",
-        "instantiate=share",
-        "mcp_hint=geometry data: vertices / triangles — swap by setting a different mesh ID"
+        category     = "Assets",
+        serializable = true,
+        check        = not_same,
+        invalidates  = render,
+        access       = all,
+        default      = true,
+        instantiate  = share,
+        mcp_hint     = "geometry data: vertices / triangles — swap by setting a different mesh ID"
     );
     ::kryga::root::mesh* m_mesh = nullptr;
     // clang-format on

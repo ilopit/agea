@@ -53,25 +53,29 @@ struct guarded_handler
     {
         root::smart_object* target;
         if constexpr (requires { ctx.dst_obj; })
+        {
             target = ctx.dst_obj;
+        }
         else
+        {
             target = ctx.obj;
+        }
         KRG_check(!target->get_flags().readonly, "writing to readonly object");
         return fn(ctx);
     }
 };
 
-using property_handler__copy_guarded        = guarded_handler<property_handler__copy>;
+using property_handler__copy_guarded = guarded_handler<property_handler__copy>;
 using property_handler__instantiate_guarded = guarded_handler<property_handler__instantiate>;
-using property_handler__load_guarded        = guarded_handler<property_handler__load>;
-using property_handler__json_set_guarded    = guarded_handler<property_handler__json_set>;
+using property_handler__load_guarded = guarded_handler<property_handler__load>;
+using property_handler__json_set_guarded = guarded_handler<property_handler__json_set>;
 
 #else
 
-using property_handler__copy_guarded        = property_handler__copy;
+using property_handler__copy_guarded = property_handler__copy;
 using property_handler__instantiate_guarded = property_handler__instantiate;
-using property_handler__load_guarded        = property_handler__load;
-using property_handler__json_set_guarded    = property_handler__json_set;
+using property_handler__load_guarded = property_handler__load;
+using property_handler__json_set_guarded = property_handler__json_set;
 
 #endif
 

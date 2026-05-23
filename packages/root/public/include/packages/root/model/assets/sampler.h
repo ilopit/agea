@@ -65,24 +65,48 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=Filter", "access=all", "serializable=true");
+    // clang-format off
+    KRG_ar_property(
+        category     = "Filter",
+        access       = all,
+        serializable = true
+    );
     sampler_filter m_min_filter = sampler_filter::linear;
-
-    KRG_ar_property("category=Filter", "access=all", "serializable=true");
-    sampler_filter m_mag_filter = sampler_filter::linear;
-
-    KRG_ar_property("category=Address", "access=all", "serializable=true");
-    sampler_address m_address_u = sampler_address::repeat;
-
-    KRG_ar_property("category=Address", "access=all", "serializable=true");
-    sampler_address m_address_v = sampler_address::repeat;
+    // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Quality",
-        "access=all",
-        "serializable=true",
-        "mcp_hint=enable anisotropic filtering for sharper textures at oblique angles"
+        category     = "Filter",
+        access       = all,
+        serializable = true
+    );
+    sampler_filter m_mag_filter = sampler_filter::linear;
+    // clang-format on
+
+    // clang-format off
+    KRG_ar_property(
+        category     = "Address",
+        access       = all,
+        serializable = true
+    );
+    sampler_address m_address_u = sampler_address::repeat;
+    // clang-format on
+
+    // clang-format off
+    KRG_ar_property(
+        category     = "Address",
+        access       = all,
+        serializable = true
+    );
+    sampler_address m_address_v = sampler_address::repeat;
+    // clang-format on
+
+    // clang-format off
+    KRG_ar_property(
+        category     = "Quality",
+        access       = all,
+        serializable = true,
+        mcp_hint     = "enable anisotropic filtering for sharper textures at oblique angles"
     );
     bool m_anisotropy = false;
     // clang-format on

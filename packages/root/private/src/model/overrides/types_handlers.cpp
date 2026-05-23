@@ -57,7 +57,6 @@ load_smart_object(blob_ptr ptr,
     return result_code::ok;
 }
 
-
 result_code
 smart_obj__copy(reflection::type_context__copy& ctx)
 {

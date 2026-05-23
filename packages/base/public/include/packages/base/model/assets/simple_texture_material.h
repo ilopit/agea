@@ -37,13 +37,13 @@ public:
 protected:
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=true",
-        "invalidates=render",
-        "access=all",
-        "gpu_texture_slot=0",
-        "instantiate=share",
-        "mcp_hint=the single texture applied to the surface — set texture ID to change"
+        category         = "Properties",
+        serializable     = true,
+        invalidates      = render,
+        access           = all,
+        gpu_texture_slot = 0,
+        instantiate      = share,
+        mcp_hint         = "the single texture applied to the surface — set texture ID to change"
     );
     ::kryga::root::texture_slot m_simple_texture;
     // clang-format on
@@ -52,40 +52,40 @@ protected:
     // with texture_indices/sampler_indices arrays. Values are unused for texture-only materials.
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=false",
-        "gpu_data=MaterialData",
-        "default=true"
+        category     = "Properties",
+        serializable = false,
+        gpu_data     = MaterialData,
+        default      = true
     );
     ::kryga::root::vec3 m_ambient = {0.2f, 0.2f, 0.2f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=false",
-        "gpu_data=MaterialData",
-        "default=true"
+        category     = "Properties",
+        serializable = false,
+        gpu_data     = MaterialData,
+        default      = true
     );
     ::kryga::root::vec3 m_diffuse = {1.0f, 1.0f, 1.0f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=false",
-        "gpu_data=MaterialData",
-        "default=true"
+        category     = "Properties",
+        serializable = false,
+        gpu_data     = MaterialData,
+        default      = true
     );
     ::kryga::root::vec3 m_specular = {0.0f, 0.0f, 0.0f};
     // clang-format on
 
     // clang-format off
     KRG_ar_property(
-        "category=Properties",
-        "serializable=false",
-        "gpu_data=MaterialData",
-        "default=true"
+        category     = "Properties",
+        serializable = false,
+        gpu_data     = MaterialData,
+        default      = true
     );
     float m_shininess = 1.0f;
     // clang-format on
