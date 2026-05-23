@@ -46,7 +46,7 @@ render_device::construct(construct_params& params)
 
     if (params.headless && (params.width < 128 || params.height < 128))
     {
-        ALOG_ERROR("headless render_device requires non-zero width/height (got {}x{})",
+        ALOG_ERROR("headless render_device requires width/height >= 128 (got {}x{})",
                    params.width,
                    params.height);
         return false;
