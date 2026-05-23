@@ -7,6 +7,7 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <glm_unofficial/glm.h>
@@ -210,27 +211,49 @@ spawn_chunk_bodies(entry& e, JPH::PhysicsSystem& world, const glm::vec3& impulse
         glm::vec4 seed_world4 = e.world_transform * glm::vec4(ck.seed_point, 1.0f);
         glm::vec3 seed_world(seed_world4);
 
-        glm::vec3 half_extent_local = 0.5f * (ck.aabb_max - ck.aabb_min);
-        // Guard against degenerate AABBs (single-vertex chunks, etc.).
-        half_extent_local = glm::max(half_extent_local, glm::vec3(0.01f));
-
-        // Approximate scale pulled from the world transform.
         glm::vec3 world_scale(glm::length(glm::vec3(e.world_transform[0])),
                               glm::length(glm::vec3(e.world_transform[1])),
                               glm::length(glm::vec3(e.world_transform[2])));
-        glm::vec3 half_extent_world = half_extent_local * world_scale;
-        half_extent_world = glm::max(half_extent_world, glm::vec3(0.01f));
 
-        JPH::BoxShapeSettings box_settings(to_jph(half_extent_world));
-        box_settings.SetEmbedded();
-        auto sr = box_settings.Create();
-        if (sr.HasError())
+        JPH::Array<JPH::Vec3> hull_pts;
+        hull_pts.reserve(ck.hull_points.size());
+        for (const auto& p : ck.hull_points)
         {
-            e.chunk_bodies.push_back({});
-            continue;
+            hull_pts.push_back(JPH::Vec3(p.x * world_scale.x,
+                                         p.y * world_scale.y,
+                                         p.z * world_scale.z));
         }
 
-        JPH::BodyCreationSettings bcs(sr.Get(),
+        JPH::ShapeRefC shape;
+        if (hull_pts.size() >= 4)
+        {
+            JPH::ConvexHullShapeSettings hull_settings(hull_pts.data(),
+                                                       int(hull_pts.size()));
+            auto sr = hull_settings.Create();
+            if (sr.HasError())
+            {
+                e.chunk_bodies.push_back({});
+                continue;
+            }
+            shape = sr.Get();
+        }
+        else
+        {
+            glm::vec3 half_extent_local = 0.5f * (ck.aabb_max - ck.aabb_min);
+            half_extent_local = glm::max(half_extent_local, glm::vec3(0.01f));
+            glm::vec3 half_extent_world = half_extent_local * world_scale;
+            half_extent_world = glm::max(half_extent_world, glm::vec3(0.01f));
+            JPH::BoxShapeSettings box_settings(to_jph(half_extent_world));
+            auto sr = box_settings.Create();
+            if (sr.HasError())
+            {
+                e.chunk_bodies.push_back({});
+                continue;
+            }
+            shape = sr.Get();
+        }
+
+        JPH::BodyCreationSettings bcs(shape,
                                       JPH::RVec3(seed_world.x, seed_world.y, seed_world.z),
                                       JPH::Quat::sIdentity(),
                                       JPH::EMotionType::Dynamic,

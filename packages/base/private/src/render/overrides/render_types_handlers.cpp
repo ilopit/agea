@@ -1169,8 +1169,11 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     float base_radius = source_mesh->get_bounding_radius();
     dmc.set_base_bounding_radius(base_radius);
 
-    auto scale = dmc.get_scale();
-    float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+    auto xform = dmc.get_transform_matrix();
+    glm::vec3 scale(glm::length(glm::vec3(xform[0])),
+                    glm::length(glm::vec3(xform[1])),
+                    glm::length(glm::vec3(xform[2])));
+    float max_scale = glm::max(glm::max(scale.x, scale.y), scale.z);
     float scaled_radius = base_radius * max_scale;
 
     auto new_rqid = render_bridge::make_qid_from_model(*material, *source_mesh);
@@ -1213,7 +1216,12 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             cs.aabb_min = ch.aabb_min;
             cs.aabb_max = ch.aabb_max;
             cs.seed_point = ch.seed_point;
-            chunk_shapes.push_back(cs);
+            cs.hull_points.reserve(ch.vertices.size());
+            for (const auto& v : ch.vertices)
+            {
+                cs.hull_points.push_back(v.position);
+            }
+            chunk_shapes.push_back(std::move(cs));
 
             utils::id chunk_mesh_id = chunk_mesh_id_for(dmc.get_id(), i);
             dmc.get_chunk_mesh_ids().push_back(chunk_mesh_id);
@@ -1287,6 +1295,8 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             ctx.rb->enqueue_cmd(cmd);
         }
 
+        glm::mat4 scale_mat = glm::scale(glm::mat4(1.0f), scale);
+
         dmc.get_chunk_render_ids().clear();
         dmc.get_chunk_render_ids().reserve(dmc.get_chunk_shapes().size());
 
@@ -1296,13 +1306,15 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             dmc.get_chunk_render_ids().push_back(chunk_render_id);
 
             const auto& cs = dmc.get_chunk_shapes()[i];
-            float chunk_radius = 0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
+            glm::vec3 far_corner = glm::max(glm::abs(cs.aabb_min), glm::abs(cs.aabb_max));
+            float chunk_radius = glm::length(far_corner) * max_scale;
 
             glm::mat4 xf(1.0f);
             if (ps)
             {
                 xf = ps->destructibles().get_chunk_transform(dmc.get_physics_handle(), i);
             }
+            xf = xf * scale_mat;
 
             auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
             cmd->id = chunk_render_id;
@@ -1326,6 +1338,8 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     // Broken steady — forward chunk transforms from physics.
     if (broken && dmc.get_chunks_rendering() && !expired)
     {
+        glm::mat4 scale_mat = glm::scale(glm::mat4(1.0f), scale);
+
         for (uint32_t i = 0; i < dmc.get_chunk_render_ids().size(); ++i)
         {
             glm::mat4 xf(1.0f);
@@ -1333,9 +1347,11 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             {
                 xf = ps->destructibles().get_chunk_transform(dmc.get_physics_handle(), i);
             }
+            xf = xf * scale_mat;
 
             const auto& cs = dmc.get_chunk_shapes()[i];
-            float chunk_radius = 0.5f * glm::length(cs.aabb_max - cs.aabb_min) * max_scale;
+            glm::vec3 far_corner = glm::max(glm::abs(cs.aabb_min), glm::abs(cs.aabb_max));
+            float chunk_radius = glm::length(far_corner) * max_scale;
 
             auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
             cmd->id = dmc.get_chunk_render_ids()[i];

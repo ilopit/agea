@@ -3,6 +3,7 @@
 #include <glm_unofficial/glm.h>
 
 #include <cstdint>
+#include <vector>
 
 namespace kryga
 {
@@ -14,6 +15,7 @@ struct chunk_shape
     glm::vec3 aabb_min{0.0f};
     glm::vec3 aabb_max{0.0f};
     glm::vec3 seed_point{0.0f};
+    std::vector<glm::vec3> hull_points;
 };
 
 struct impact
