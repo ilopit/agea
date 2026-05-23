@@ -176,6 +176,23 @@ level::spawn_object_impl(const utils::id& proto_id,
 }
 
 void
+level::destroy_game_object(root::game_object& go)
+{
+    for (auto* comp : go.get_renderable_components())
+    {
+        glob::glob_state().getr_queues().get_model().destroy_render.emplace_back(comp);
+    }
+
+    auto it = m_tickable_objects.find(&go);
+    if (it != m_tickable_objects.end())
+    {
+        m_tickable_objects.swap_and_remove(it);
+    }
+
+    m_local_cs.game_objects.remove_item(go);
+}
+
+void
 level::tick(float dt)
 {
     for (auto o : m_tickable_objects)

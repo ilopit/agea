@@ -16,9 +16,12 @@ class material;
 namespace base
 {
 // clang-format off
-KRG_ar_class(render_cmd_builder   = mesh_component__cmd_builder,
-              render_cmd_destroyer = mesh_component__cmd_destroyer,
-              mcp_hint             = "Renders 3D geometry — holds references to a mesh asset and a material asset. Inherits transform from game_object_component");
+KRG_ar_class(
+    render_cmd_builder   = mesh_component__cmd_builder,
+    render_cmd_destroyer = mesh_component__cmd_destroyer,
+    mcp_hint             = "Renders 3D geometry — holds references to a mesh asset and a material "
+                           "asset. Inherits transform from game_object_component"
+);
 class mesh_component : public ::kryga::root::game_object_component
 // clang-format on
 {
@@ -49,25 +52,33 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=Assets",
-                    "serializable=true",
-                    "check=not_same",
-                    "invalidates=render",
-                    "access=all",
-                    "default=true",
-                    "instantiate=share",
-                    "mcp_hint=surface appearance: colors / textures / shading — inspect/edit via kryga_model_get_all with the material ID");
+    // clang-format off
+    KRG_ar_property(
+        "category=Assets",
+        "serializable=true",
+        "check=not_same",
+        "invalidates=render",
+        "access=all",
+        "default=true",
+        "instantiate=share",
+        "mcp_hint=surface appearance: colors / textures / shading — inspect/edit via kryga_model_get_all with the material ID"
+    );
     ::kryga::root::material* m_material = nullptr;
+    // clang-format on
 
-    KRG_ar_property("category=Assets",
-                    "serializable=true",
-                    "check=not_same",
-                    "invalidates=render",
-                    "access=all",
-                    "default=true",
-                    "instantiate=share",
-                    "mcp_hint=geometry data: vertices / triangles — swap by setting a different mesh ID");
+    // clang-format off
+    KRG_ar_property(
+        "category=Assets",
+        "serializable=true",
+        "check=not_same",
+        "invalidates=render",
+        "access=all",
+        "default=true",
+        "instantiate=share",
+        "mcp_hint=geometry data: vertices / triangles — swap by setting a different mesh ID"
+    );
     ::kryga::root::mesh* m_mesh = nullptr;
+    // clang-format on
 
     float m_base_bounding_radius = 0.0f;
 };

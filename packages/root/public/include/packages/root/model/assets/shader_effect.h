@@ -12,12 +12,17 @@ namespace root
 {
 class texture;
 
-KRG_ar_class("architype=shader_effect",
-             render_cmd_builder   = shader_effect__cmd_builder,
-             render_cmd_destroyer = shader_effect__cmd_destroyer,
-             mcp_schema           = "string:asset_id",
-             mcp_hint             = "GPU shader program: vertex + fragment — defines the rendering pipeline for a material");
+// clang-format off
+KRG_ar_class(
+    "architype=shader_effect",
+    render_cmd_builder   = shader_effect__cmd_builder,
+    render_cmd_destroyer = shader_effect__cmd_destroyer,
+    mcp_schema           = "string:asset_id",
+    mcp_hint             = "GPU shader program: vertex + fragment — defines the rendering pipeline "
+                           "for a material"
+);
 class shader_effect : public asset
+// clang-format on
 {
     KRG_gen_meta__shader_effect();
 

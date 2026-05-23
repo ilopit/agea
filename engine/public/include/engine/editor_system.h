@@ -11,8 +11,13 @@ namespace kryga::engine
 class editor_system : public gs::system
 {
 public:
-    std::string_view system_name() const override { return "editor"; }
-    std::span<const std::string_view> system_deps() const override
+    std::string_view
+    system_name() const override
+    {
+        return "editor";
+    }
+    std::span<const std::string_view>
+    system_deps() const override
     {
         static constexpr std::string_view d[] = {"render", "model"};
         return d;

@@ -28,12 +28,14 @@ public:
     {
         line_cache<root::game_object_component*> dirty_transforms;
         line_cache<root::smart_object*> dirty_render;
+        line_cache<root::smart_object*> destroy_render;
 
         void
         drop_pending()
         {
             dirty_transforms.clear();
             dirty_render.clear();
+            destroy_render.clear();
         }
     };
 

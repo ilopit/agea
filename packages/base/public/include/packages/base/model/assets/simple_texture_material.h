@@ -11,8 +11,12 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(mcp_hint = "Single-texture material — maps one texture onto the surface with basic lighting");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Single-texture material — maps one texture onto the surface with basic lighting"
+);
 class simple_texture_material : public ::kryga::root::material
+// clang-format on
 {
     KRG_gen_meta__simple_texture_material();
 
@@ -31,40 +35,60 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=Properties",
-                    "serializable=true",
-                    "invalidates=render",
-                    "access=all",
-                    "gpu_texture_slot=0",
-                    "instantiate=share",
-                    "mcp_hint=the single texture applied to the surface — set texture ID to change");
+    // clang-format off
+    KRG_ar_property(
+        "category=Properties",
+        "serializable=true",
+        "invalidates=render",
+        "access=all",
+        "gpu_texture_slot=0",
+        "instantiate=share",
+        "mcp_hint=the single texture applied to the surface — set texture ID to change"
+    );
     ::kryga::root::texture_slot m_simple_texture;
+    // clang-format on
 
     // GPU data properties — needed for argen to generate simple_texture_material__gpu
     // with texture_indices/sampler_indices arrays. Values are unused for texture-only materials.
-    KRG_ar_property("category=Properties",
-                    "serializable=false",
-                    "gpu_data=MaterialData",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Properties",
+        "serializable=false",
+        "gpu_data=MaterialData",
+        "default=true"
+    );
     ::kryga::root::vec3 m_ambient = {0.2f, 0.2f, 0.2f};
+    // clang-format on
 
-    KRG_ar_property("category=Properties",
-                    "serializable=false",
-                    "gpu_data=MaterialData",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Properties",
+        "serializable=false",
+        "gpu_data=MaterialData",
+        "default=true"
+    );
     ::kryga::root::vec3 m_diffuse = {1.0f, 1.0f, 1.0f};
+    // clang-format on
 
-    KRG_ar_property("category=Properties",
-                    "serializable=false",
-                    "gpu_data=MaterialData",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Properties",
+        "serializable=false",
+        "gpu_data=MaterialData",
+        "default=true"
+    );
     ::kryga::root::vec3 m_specular = {0.0f, 0.0f, 0.0f};
+    // clang-format on
 
-    KRG_ar_property("category=Properties",
-                    "serializable=false",
-                    "gpu_data=MaterialData",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Properties",
+        "serializable=false",
+        "gpu_data=MaterialData",
+        "default=true"
+    );
     float m_shininess = 1.0f;
+    // clang-format on
 };
 
 }  // namespace base

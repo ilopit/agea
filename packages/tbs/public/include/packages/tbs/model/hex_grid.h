@@ -39,8 +39,13 @@ struct hex_tile_entry
 };
 
 // Grid container that spawns and manages hex tiles
-KRG_ar_class(mcp_hint = "Hex grid container — spawns and manages hex_tile components in an axial coordinate system");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Hex grid container — spawns and manages hex_tile components in an axial coordinate "
+               "system"
+);
 class hex_grid : public ::kryga::root::game_object
+// clang-format on
 {
     KRG_gen_meta__hex_grid();
 

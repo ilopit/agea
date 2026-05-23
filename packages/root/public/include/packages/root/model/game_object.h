@@ -17,11 +17,14 @@ namespace root
 {
 class component;
 
-KRG_ar_class("architype=game_object",
-             mcp_hint =
-                 "Scene entity that owns components — a container whose behavior lives in its "
-                 "child components");
+// clang-format off
+KRG_ar_class(
+    "architype=game_object",
+    mcp_hint = "Scene entity that owns components — a container whose behavior lives in its child "
+               "components"
+);
 class game_object : public smart_object
+// clang-format on
 {
     KRG_gen_meta__game_object();
 
@@ -204,10 +207,14 @@ public:
     void
     update_root();
 
-    KRG_ar_function("category=world",
-                    mcp_hint = 'Adds relative offset [x y z] to current position');
+    // clang-format off
+    KRG_ar_function(
+        "category=world",
+        mcp_hint = 'Adds relative offset [x y z] to current position'
+    );
     void
     move(const vec3& v);
+    // clang-format on
 
     const std::vector<component*>&
     get_subcomponents()
@@ -224,14 +231,18 @@ protected:
     void
     fill_renderable_components();
 
-    KRG_ar_property("category=Meta",
-                    "serializable=true",
-                    "property_save_handler=game_object_components_save",
-                    "property_compare_handler=game_object_components_compare",
-                    "property_copy_handler=game_object_components_copy",
-                    "property_instantiate_handler=game_object_components_instantiate",
-                    "property_load_handler=game_object_components__load");
+    // clang-format off
+    KRG_ar_property(
+        "category=Meta",
+        "serializable=true",
+        "property_save_handler=game_object_components_save",
+        "property_compare_handler=game_object_components_compare",
+        "property_copy_handler=game_object_components_copy",
+        "property_instantiate_handler=game_object_components_instantiate",
+        "property_load_handler=game_object_components__load"
+    );
     std::vector<component*> m_components;
+    // clang-format on
 
     std::vector<game_object_component*> m_renderable_components;
 

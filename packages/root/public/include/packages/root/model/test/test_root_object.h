@@ -33,9 +33,14 @@
 namespace kryga::root
 {
 
-KRG_ar_class("architype=game_object",
-              mcp_hint             = "Test game_object with POD and object-pointer properties for instantiation/serialization testing");
+// clang-format off
+KRG_ar_class(
+    "architype=game_object",
+    mcp_hint = "Test game_object with POD and object-pointer properties for "
+               "instantiation/serialization testing"
+);
 class test_root_object : public game_object
+// clang-format on
 {
     KRG_gen_meta__test_root_object();
 
@@ -52,21 +57,43 @@ public:
 
     // -- POD: instantiate (default) --
     // Value deep-copied on instantiate. Instance gets independent copy.
-    KRG_ar_property("category=Test", "serializable=true",
-                    "mcp_hint=test float — deep-copied on instantiate");
+    // clang-format off
+    KRG_ar_property(
+        "category=Test",
+        "serializable=true",
+        "mcp_hint=test float — deep-copied on instantiate"
+    );
     float m_pod_instantiate = 0.0f;
+    // clang-format on
 
-    KRG_ar_property("category=Test", "serializable=true", "instantiate=share",
-                    "mcp_hint=test float — shared on instantiate");
+    // clang-format off
+    KRG_ar_property(
+        "category=Test",
+        "serializable=true",
+        "instantiate=share",
+        "mcp_hint=test float — shared on instantiate"
+    );
     float m_pod_share = 0.0f;
+    // clang-format on
 
-    KRG_ar_property("category=Test", "serializable=true",
-                    "mcp_hint=test object ref — deep-copied on instantiate");
+    // clang-format off
+    KRG_ar_property(
+        "category=Test",
+        "serializable=true",
+        "mcp_hint=test object ref — deep-copied on instantiate"
+    );
     smart_object* m_obj_instantiate = nullptr;
+    // clang-format on
 
-    KRG_ar_property("category=Test", "serializable=true", "instantiate=share",
-                    "mcp_hint=test object ref — always shared");
+    // clang-format off
+    KRG_ar_property(
+        "category=Test",
+        "serializable=true",
+        "instantiate=share",
+        "mcp_hint=test object ref — always shared"
+    );
     smart_object* m_obj_share = nullptr;
+    // clang-format on
 
     test_root_component*
     add_test_component(component* parent, const utils::id& name);

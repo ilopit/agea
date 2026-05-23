@@ -10,8 +10,13 @@ namespace kryga
 namespace base
 {
 
-KRG_ar_class(mcp_hint = "Processes user input: keyboard / mouse / touch — no spatial transform. Attaches to game_object");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Processes user input: keyboard / mouse / touch — no spatial transform. Attaches to "
+               "game_object"
+);
 class input_component : public root::component
+// clang-format on
 {
     KRG_gen_meta__input_component();
 

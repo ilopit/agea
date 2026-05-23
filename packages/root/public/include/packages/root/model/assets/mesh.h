@@ -15,11 +15,14 @@ namespace kryga
 namespace root
 {
 // clang-format off
-KRG_ar_class("architype=mesh",
-              render_cmd_builder   = mesh__cmd_builder,
-              render_cmd_destroyer = mesh__cmd_destroyer,
-              mcp_schema           = "string:asset_id",
-              mcp_hint             = "3D geometry data — vertex positions / normals / UVs and triangle indices");
+KRG_ar_class(
+    "architype=mesh",
+    render_cmd_builder   = mesh__cmd_builder,
+    render_cmd_destroyer = mesh__cmd_destroyer,
+    mcp_schema           = "string:asset_id",
+    mcp_hint             = "3D geometry data — vertex positions / normals / UVs and triangle "
+                           "indices"
+);
 class mesh : public asset
 // clang-format on
 {
@@ -97,17 +100,35 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=assets", "serializable=true", "default=true",
-                    "mcp_hint=vertex buffer binary — read-only at runtime");
+    // clang-format off
+    KRG_ar_property(
+        "category=assets",
+        "serializable=true",
+        "default=true",
+        "mcp_hint=vertex buffer binary — read-only at runtime"
+    );
     utils::buffer m_vertices = {};
+    // clang-format on
 
-    KRG_ar_property("category=assets", "serializable=true", "default=true",
-                    "mcp_hint=index buffer binary — read-only at runtime");
+    // clang-format off
+    KRG_ar_property(
+        "category=assets",
+        "serializable=true",
+        "default=true",
+        "mcp_hint=index buffer binary — read-only at runtime"
+    );
     utils::buffer m_indices = {};
+    // clang-format on
 
-    KRG_ar_property("category=assets", "serializable=true", "default=true",
-                    "mcp_hint=additional mesh data like UV2 — read-only at runtime");
+    // clang-format off
+    KRG_ar_property(
+        "category=assets",
+        "serializable=true",
+        "default=true",
+        "mcp_hint=additional mesh data like UV2 — read-only at runtime"
+    );
     utils::buffer m_external = {};
+    // clang-format on
 
     float m_bounding_radius = 0.0f;
     ::kryga::root::vec3 m_local_centroid = {};

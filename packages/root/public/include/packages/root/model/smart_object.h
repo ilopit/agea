@@ -108,14 +108,17 @@ struct smart_object_flags
 
 using smart_object_ptr = std::shared_ptr<smart_object>;
 // clang-format off
-KRG_ar_class(architype            = smart_object,
-              copy_handler        = smart_obj__copy,
-              instantiate_handler = smart_obj__instantiate,
-              compare_handler     = smart_obj__compare,
-              save_handler        = smart_obj__save,
-              load_handler        = smart_obj__load,
-              mcp_schema          = "string:object_id",
-              mcp_hint            = "Root base class for all engine objects — game objects / components / assets all inherit from this");
+KRG_ar_class(
+    architype           = smart_object,
+    copy_handler        = smart_obj__copy,
+    instantiate_handler = smart_obj__instantiate,
+    compare_handler     = smart_obj__compare,
+    save_handler        = smart_obj__save,
+    load_handler        = smart_obj__load,
+    mcp_schema          = "string:object_id",
+    mcp_hint            = "Root base class for all engine objects — game objects / components / "
+                          "assets all inherit from this"
+);
 class smart_object
 // clang-format on
 {

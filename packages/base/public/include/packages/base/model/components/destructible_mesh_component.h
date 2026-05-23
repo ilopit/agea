@@ -35,8 +35,10 @@ class destructible_mesh_asset;
 //     chunk render objects + their mesh resources, unregisters from
 //     physics, and flips m_disposed so subsequent builds are no-ops.
 // clang-format off
-KRG_ar_class(render_cmd_builder   = destructible_mesh_component__cmd_builder,
-              render_cmd_destroyer = destructible_mesh_component__cmd_destroyer);
+KRG_ar_class(
+    render_cmd_builder   = destructible_mesh_component__cmd_builder,
+    render_cmd_destroyer = destructible_mesh_component__cmd_destroyer
+);
 class destructible_mesh_component : public ::kryga::root::game_object_component
 // clang-format on
 {
@@ -163,13 +165,17 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=Assets",
-                    "serializable=true",
-                    "check=not_same",
-                    "invalidates=render",
-                    "access=all",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Assets",
+        "serializable=true",
+        "check=not_same",
+        "invalidates=render",
+        "access=all",
+        "default=true"
+    );
     destructible_mesh_asset* m_asset = nullptr;
+    // clang-format on
 
     float m_base_bounding_radius = 0.0f;
     bool m_is_broken = false;

@@ -11,12 +11,17 @@ namespace kryga
 namespace root
 {
 
-KRG_ar_class("architype=texture",
-             render_cmd_builder   = texture__cmd_builder,
-             render_cmd_destroyer = texture__cmd_destroyer,
-             mcp_schema           = "string:asset_id",
-             mcp_hint             = "Image data uploaded to GPU — used by materials for surface color and normals");
+// clang-format off
+KRG_ar_class(
+    "architype=texture",
+    render_cmd_builder   = texture__cmd_builder,
+    render_cmd_destroyer = texture__cmd_destroyer,
+    mcp_schema           = "string:asset_id",
+    mcp_hint             = "Image data uploaded to GPU — used by materials for surface color and "
+                           "normals"
+);
 class texture : public asset
+// clang-format on
 {
     KRG_gen_meta__texture();
 
@@ -32,17 +37,35 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=meta", "access=all", "serializable=true",
-                    "mcp_hint=raw pixel data — read-only at runtime");
+    // clang-format off
+    KRG_ar_property(
+        "category=meta",
+        "access=all",
+        "serializable=true",
+        "mcp_hint=raw pixel data — read-only at runtime"
+    );
     utils::buffer m_base_color;
+    // clang-format on
 
-    KRG_ar_property("category=meta", "access=all", "serializable=true",
-                    "mcp_hint=texture width in pixels");
+    // clang-format off
+    KRG_ar_property(
+        "category=meta",
+        "access=all",
+        "serializable=true",
+        "mcp_hint=texture width in pixels"
+    );
     uint32_t m_width;
+    // clang-format on
 
-    KRG_ar_property("category=meta", "access=all", "serializable=true",
-                    "mcp_hint=texture height in pixels");
+    // clang-format off
+    KRG_ar_property(
+        "category=meta",
+        "access=all",
+        "serializable=true",
+        "mcp_hint=texture height in pixels"
+    );
     uint32_t m_height;
+    // clang-format on
 };
 
 }  // namespace root

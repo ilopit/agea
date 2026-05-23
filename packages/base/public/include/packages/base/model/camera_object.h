@@ -12,8 +12,13 @@ namespace base
 class camera_component;
 class input_component;
 
-KRG_ar_class(mcp_hint = "Camera in the scene — owns a camera_component that controls projection and can be set as the active viewport");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Camera in the scene — owns a camera_component that controls projection and can be "
+               "set as the active viewport"
+);
 class camera_object : public ::kryga::root::game_object
+// clang-format on
 {
 public:
     KRG_gen_class_meta(camera_object, game_object);

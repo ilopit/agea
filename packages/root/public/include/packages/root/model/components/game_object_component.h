@@ -21,10 +21,15 @@ const extern vec3 DEF_FORWARD;
 const extern vec3 DEF_UP;
 const extern vec3 DEF_RIGHT;
 
-KRG_ar_class(render_cmd_builder    = game_object_component__cmd_builder,
-             render_cmd_destroyer = game_object_component__cmd_destroyer,
-             mcp_hint             = "Component with spatial transform: position / rotation / scale and visibility layer flags — base for all renderable components");
+// clang-format off
+KRG_ar_class(
+    render_cmd_builder   = game_object_component__cmd_builder,
+    render_cmd_destroyer = game_object_component__cmd_destroyer,
+    mcp_hint             = "Component with spatial transform: position / rotation / scale and "
+                           "visibility layer flags — base for all renderable components"
+);
 class game_object_component : public component
+// clang-format on
 {
     KRG_gen_meta__game_object_component();
 
@@ -142,44 +147,66 @@ public:
     }
 
 protected:
-    KRG_ar_property("category=Action", "serializable=true", "default=true",
-                    "mcp_hint=whether this component receives per-frame tick updates");
+    // clang-format off
+    KRG_ar_property(
+        "category=Action",
+        "serializable=true",
+        "default=true",
+        "mcp_hint=whether this component receives per-frame tick updates"
+    );
     bool m_tickable = false;
+    // clang-format on
 
-    KRG_ar_property("category=Rendering",
-                    "access=all",
-                    "serializable=true",
-                    "default=true",
-                    "invalidates=render",
-                    "property_save_handler=::kryga::root::property_layer_mask__save",
-                    "property_compare_handler=::kryga::root::property_layer_mask__compare",
-                    "property_load_handler=::kryga::root::property_layer_mask__load");
+    // clang-format off
+    KRG_ar_property(
+        "category=Rendering",
+        "access=all",
+        "serializable=true",
+        "default=true",
+        "invalidates=render",
+        "property_save_handler=::kryga::root::property_layer_mask__save",
+        "property_compare_handler=::kryga::root::property_layer_mask__compare",
+        "property_load_handler=::kryga::root::property_layer_mask__load"
+    );
     ::kryga::core::object_layer_flags m_layers =
         ::kryga::core::object_layer_flags::default_static();
+    // clang-format on
 
-    KRG_ar_property("category=Transform",
-                    "access=all",
-                    "check=not_same",
-                    "invalidates=transform",
-                    "serializable=true",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Transform",
+        "access=all",
+        "check=not_same",
+        "invalidates=transform",
+        "serializable=true",
+        "default=true"
+    );
     vec3 m_position = {0.f};
+    // clang-format on
 
-    KRG_ar_property("category=Transform",
-                    "access=all",
-                    "serializable=true",
-                    "check=not_same",
-                    "invalidates=transform",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Transform",
+        "access=all",
+        "serializable=true",
+        "check=not_same",
+        "invalidates=transform",
+        "default=true"
+    );
     vec3 m_rotation = {0.f};
+    // clang-format on
 
-    KRG_ar_property("category=Transform",
-                    "access=all",
-                    "check=not_same",
-                    "invalidates=transform",
-                    "serializable=true",
-                    "default=true");
+    // clang-format off
+    KRG_ar_property(
+        "category=Transform",
+        "access=all",
+        "check=not_same",
+        "invalidates=transform",
+        "serializable=true",
+        "default=true"
+    );
     vec3 m_scale = {1.f};
+    // clang-format on
 
     glm::mat4 m_transform_matrix;
     glm::mat4 m_normal_matrix;

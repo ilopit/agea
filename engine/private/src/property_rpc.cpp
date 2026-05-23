@@ -99,9 +99,13 @@ encode_owner(root::smart_object& obj)
                 {
                     auto tn = p->rtype->type_name.str();
                     if (tn == "material" && robj->material)
+                    {
                         field["value"] = robj->material->get_id().str();
+                    }
                     else if (tn == "mesh" && robj->mesh)
+                    {
                         field["value"] = robj->mesh->get_id().str();
+                    }
                 }
             }
             fields.append(field);

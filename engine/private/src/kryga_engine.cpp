@@ -717,8 +717,11 @@ vulkan_engine::tick(float dt)
     if (auto* phys = glob::glob_state().get_physics_system())
     {
 #if KRG_EDITOR
-        if (glob::glob_state().getr_editor_system().editor.get_mode() != engine::editor_mode::playing)
+        if (glob::glob_state().getr_editor_system().editor.get_mode() !=
+            engine::editor_mode::playing)
+        {
             return;
+        }
 #endif
         phys->tick(dt);
     }
@@ -1078,19 +1081,25 @@ vulkan_engine::init_default_scripting()
 void
 vulkan_engine::consume_updated_render()
 {
-    auto& items = glob::glob_state().getr_queues().get_model().dirty_render;
+    auto& mq = glob::glob_state().getr_queues().get_model();
+    auto& rb = glob::glob_state().getr_render_bridge();
+
+    for (auto& i : mq.destroy_render)
+    {
+        rb.render_cmd_destroy(*i, true);
+    }
+    mq.destroy_render.clear();
 
     // TODO: when both a dependency (e.g. shader_effect) and its dependent (e.g. material) are dirty
     // in the same frame, render_cmd_build on the dependent will rebuild the dependency via
     // traversal, then the dependency's own queue entry triggers a redundant rebuild. Consider a
     // per-frame "already processed" flag to skip entries that were already rebuilt during
     // dependency traversal.
-    for (auto& i : items)
+    for (auto& i : mq.dirty_render)
     {
-        glob::glob_state().getr_render_bridge().render_cmd_build(*i, true);
+        rb.render_cmd_build(*i, true);
     }
-
-    items.clear();
+    mq.dirty_render.clear();
 }
 
 }  // namespace kryga

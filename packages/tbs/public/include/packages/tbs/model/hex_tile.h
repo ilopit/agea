@@ -14,8 +14,13 @@ namespace tbs
 
 // Represents a single hex tile in the game world
 // Position is derived from hex coordinates
-KRG_ar_class(mcp_hint = "Single hex tile — mesh_component whose world position is derived from axial Q/R coordinates and tile size");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Single hex tile — mesh_component whose world position is derived from axial Q/R "
+               "coordinates and tile size"
+);
 class hex_tile : public ::kryga::base::mesh_component
+// clang-format on
 {
     KRG_gen_meta__hex_tile();
 
@@ -59,17 +64,32 @@ public:
     update_world_position();
 
 protected:
-    KRG_ar_property("category=Hex", "serializable=true",
-                    "mcp_hint=hex grid axial Q coordinate [column]");
+    // clang-format off
+    KRG_ar_property(
+        "category=Hex",
+        "serializable=true",
+        "mcp_hint=hex grid axial Q coordinate [column]"
+    );
     int32_t m_hex_q = 0;
+    // clang-format on
 
-    KRG_ar_property("category=Hex", "serializable=true",
-                    "mcp_hint=hex grid axial R coordinate [row]");
+    // clang-format off
+    KRG_ar_property(
+        "category=Hex",
+        "serializable=true",
+        "mcp_hint=hex grid axial R coordinate [row]"
+    );
     int32_t m_hex_r = 0;
+    // clang-format on
 
-    KRG_ar_property("category=Hex", "serializable=true",
-                    "mcp_hint=radius of the hex tile in world units");
+    // clang-format off
+    KRG_ar_property(
+        "category=Hex",
+        "serializable=true",
+        "mcp_hint=radius of the hex tile in world units"
+    );
     float m_hex_size = 1.0f;
+    // clang-format on
 };
 
 }  // namespace tbs

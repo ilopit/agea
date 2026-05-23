@@ -354,7 +354,10 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                 r["level"] = lvl->get_id().str();
                 for (const auto& [id, obj] : lvl->get_game_objects().get_items())
                 {
-                    if (!should_include(obj)) { continue; }
+                    if (!should_include(obj))
+                    {
+                        continue;
+                    }
                     auto node = encode_object_entry(obj, id);
                     auto* go = obj->as<root::game_object>();
                     node["has_children"] = go && !go->get_subcomponents().empty();
@@ -370,7 +373,10 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                     Json::Value objs(Json::arrayValue);
                     for (const auto& [id, obj] : pkg->get_local_cache().objects.get_items())
                     {
-                        if (!should_include(obj)) { continue; }
+                        if (!should_include(obj))
+                        {
+                            continue;
+                        }
                         objs.append(encode_object_entry(obj, id));
                     }
                     pkg_node["objects"] = std::move(objs);
@@ -381,7 +387,10 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
             {
                 for (const auto& [id, obj] : model.caches.objects.get_items())
                 {
-                    if (!should_include(obj)) { continue; }
+                    if (!should_include(obj))
+                    {
+                        continue;
+                    }
                     items.append(encode_object_entry(obj, id));
                 }
             }
@@ -396,7 +405,10 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                 }
                 for (const auto& [id, obj] : pkg->get_local_cache().objects.get_items())
                 {
-                    if (!should_include(obj)) { continue; }
+                    if (!should_include(obj))
+                    {
+                        continue;
+                    }
                     items.append(encode_object_entry(obj, id));
                 }
             }
@@ -611,8 +623,7 @@ rpc_scene_delete(const Json::Value& params, Json::Value& result, std::string& er
                 local_err = "game_object not found: " + id_str;
                 return;
             }
-            auto& cache = lvl->get_game_objects();
-            cache.remove_item(*go);
+            lvl->destroy_game_object(*go);
             server.notify("model.scene.changed", Json::Value(Json::objectValue));
         });
     if (!done)

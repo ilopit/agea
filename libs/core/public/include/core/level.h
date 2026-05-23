@@ -83,6 +83,9 @@ public:
     }
 
     void
+    destroy_game_object(root::game_object& go);
+
+    void
     tick(float dt);
 
     game_objects_cache&

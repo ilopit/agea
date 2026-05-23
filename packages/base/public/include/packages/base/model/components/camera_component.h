@@ -8,8 +8,13 @@ namespace kryga
 {
 namespace base
 {
-KRG_ar_class(mcp_hint = "Camera projection and viewport control — FOV / near/far planes / aspect ratio / active camera flag");
+// clang-format off
+KRG_ar_class(
+    mcp_hint = "Camera projection and viewport control — FOV / near/far planes / aspect ratio / "
+               "active camera flag"
+);
 class camera_component : public ::kryga::root::game_object_component
+// clang-format on
 {
     KRG_gen_meta__camera_component();
 
@@ -121,9 +126,15 @@ private:
     float m_aspect_ratio = 16.0f / 9.0f;
     glm::mat4 m_scale;
 
-    KRG_ar_property("category=Camera", "serializable=true", "default=true",
-                    "mcp_hint=whether this camera is the active viewport camera");
+    // clang-format off
+    KRG_ar_property(
+        "category=Camera",
+        "serializable=true",
+        "default=true",
+        "mcp_hint=whether this camera is the active viewport camera"
+    );
     bool m_is_active_camera = false;
+    // clang-format on
 
     // Internal state
 private:

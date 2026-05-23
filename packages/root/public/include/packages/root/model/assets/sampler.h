@@ -33,11 +33,14 @@ enum class sampler_address : uint8_t
 };
 
 // clang-format off
-KRG_ar_class("architype=sampler",
-              render_cmd_builder   = sampler__cmd_builder,
-              render_cmd_destroyer = sampler__cmd_destroyer,
-              mcp_schema           = "string:asset_id",
-              mcp_hint             = "Texture sampling configuration — controls filtering [nearest/linear] and UV wrapping [repeat/clamp]");
+KRG_ar_class(
+    "architype=sampler",
+    render_cmd_builder   = sampler__cmd_builder,
+    render_cmd_destroyer = sampler__cmd_destroyer,
+    mcp_schema           = "string:asset_id",
+    mcp_hint             = "Texture sampling configuration — controls filtering [nearest/linear] "
+                           "and UV wrapping [repeat/clamp]"
+);
 class sampler : public asset
 // clang-format on
 {
@@ -74,9 +77,15 @@ protected:
     KRG_ar_property("category=Address", "access=all", "serializable=true");
     sampler_address m_address_v = sampler_address::repeat;
 
-    KRG_ar_property("category=Quality", "access=all", "serializable=true",
-                    "mcp_hint=enable anisotropic filtering for sharper textures at oblique angles");
+    // clang-format off
+    KRG_ar_property(
+        "category=Quality",
+        "access=all",
+        "serializable=true",
+        "mcp_hint=enable anisotropic filtering for sharper textures at oblique angles"
+    );
     bool m_anisotropy = false;
+    // clang-format on
 
     render::sampler_data* m_sampler_data = nullptr;
 };

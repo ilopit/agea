@@ -11,11 +11,14 @@ namespace root
 class shader_effect;
 
 // clang-format off
-KRG_ar_class("architype=material",
-              render_cmd_builder   = material__cmd_builder,
-              render_cmd_destroyer = material__cmd_destroyer,
-              mcp_schema           = "string:asset_id",
-              mcp_hint             = "Controls surface appearance — references a shader and provides color/texture parameters to it");
+KRG_ar_class(
+    "architype=material",
+    render_cmd_builder   = material__cmd_builder,
+    render_cmd_destroyer = material__cmd_destroyer,
+    mcp_schema           = "string:asset_id",
+    mcp_hint             = "Controls surface appearance — references a shader and provides "
+                           "color/texture parameters to it"
+);
 class material : public asset
 // clang-format on
 {
@@ -31,12 +34,16 @@ public:
     construct(this_class::construct_params& p);
 
 protected:
-    KRG_ar_property("category=Properties",
-                    "access=cpp_only",
-                    "invalidates=render",
-                    "serializable=true",
-                    "instantiate=share");
+    // clang-format off
+    KRG_ar_property(
+        "category=Properties",
+        "access=cpp_only",
+        "invalidates=render",
+        "serializable=true",
+        "instantiate=share"
+    );
     shader_effect* m_shader_effect = nullptr;
+    // clang-format on
 };
 
 }  // namespace root

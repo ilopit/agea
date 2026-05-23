@@ -132,7 +132,8 @@ ui::new_frame(float dt)
     // viewport
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 
-    bool playing = glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing;
+    bool playing =
+        glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing;
 
     if (playing)
     {

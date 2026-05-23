@@ -87,9 +87,14 @@ class game_object;
 const inline uint32_t NO_parent = UINT32_MAX;
 const inline uint32_t NO_index = UINT32_MAX;
 
-KRG_ar_class("architype=component",
-              mcp_hint             = "Base building block attached to a game_object — holds data and behavior without spatial transform");
+// clang-format off
+KRG_ar_class(
+    "architype=component",
+    mcp_hint = "Base building block attached to a game_object — holds data and behavior without "
+               "spatial transform"
+);
 class component : public smart_object
+// clang-format on
 {
     KRG_gen_meta__component();
 
