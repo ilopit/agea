@@ -22,6 +22,8 @@ public:
     {
         render::render_device::construct_params rdc;
         rdc.headless = true;
+        rdc.width = 128;
+        rdc.height = 128;
 
         auto& device = glob::glob_state().getr_render().device;
         ASSERT_TRUE(device.construct(rdc));
@@ -46,10 +48,15 @@ TEST_F(render_device_test, load_se)
         vfs::rid("data://packages/base.apkg/class/shader_effects/error"));
     auto path = APATH(path_rp.value());
 
-    auto vert_path = path / "se_error.vert";
-    kryga::utils::buffer::load(vert_path, vert);
+    auto vert_path = path / "se_error.vert.spv";
+    auto frag_path = path / "se_error.frag.spv";
 
-    auto frag_path = path / "se_error.frag";
+    if (!vert_path.exists() || !frag_path.exists())
+    {
+        GTEST_SKIP() << "Cooked SPIR-V shaders not found — run tools/cook first";
+    }
+
+    kryga::utils::buffer::load(vert_path, vert);
     kryga::utils::buffer::load(frag_path, frag);
 
     auto main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
