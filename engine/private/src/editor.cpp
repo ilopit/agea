@@ -69,7 +69,8 @@ game_editor::init()
         AID("shatter_demo"), true, this, &game_editor::ev_shatter_demo);
 
     glob::glob_state().get_input_manager()->register_fixed_action(
-        AID("screenshot_select"), true,
+        AID("screenshot_select"),
+        true,
         &glob::glob_state().getr_editor_system().screenshot,
         &screenshot_capture::toggle_selection);
 
@@ -112,6 +113,11 @@ void
 game_editor::ev_mouse_press()
 {
     if (m_mode == editor_mode::playing)
+    {
+        return;
+    }
+
+    if (glob::glob_state().getr_editor_system().screenshot.is_selecting())
     {
         return;
     }

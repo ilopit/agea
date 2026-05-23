@@ -16,17 +16,29 @@ struct screenshot_region
     uint32_t x = 0, y = 0, w = 0, h = 0;
 };
 
+struct screenshot_result
+{
+    std::string image_base64;
+    screenshot_region region;
+};
+
 class screenshot_capture
 {
 public:
-    std::string
-    capture_to_file(uint32_t crop_x = 0,
-                    uint32_t crop_y = 0,
-                    uint32_t crop_w = 0,
-                    uint32_t crop_h = 0);
+    screenshot_result
+    capture(const screenshot_region& region);
 
-    std::string
-    capture_selection();
+    const screenshot_result&
+    get_last() const
+    {
+        return m_last;
+    }
+
+    bool
+    has_last() const
+    {
+        return !m_last.image_base64.empty();
+    }
 
     void
     toggle_selection();
@@ -40,13 +52,20 @@ public:
         return m_selecting;
     }
 
-    const screenshot_region&
-    get_region() const
-    {
-        return m_region;
-    }
-
 private:
+    struct readback_result
+    {
+        const uint8_t* data = nullptr;
+        uint32_t w = 0, h = 0;
+        int stride = 0;
+    };
+
+    readback_result
+    readback_and_crop(const screenshot_region& region);
+
+    std::string
+    encode_png(const readback_result& rb);
+
     void
     ensure_staging(uint32_t w, uint32_t h);
 
@@ -61,7 +80,8 @@ private:
     bool m_dragging = false;
     glm::vec2 m_drag_start{0.0f};
     glm::vec2 m_drag_end{0.0f};
-    screenshot_region m_region{};
+
+    screenshot_result m_last{};
 };
 
 }  // namespace kryga::engine

@@ -19,7 +19,7 @@ from typing import Any
 # MCP SDK
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, ImageContent
 
 # ---------------------------------------------------------------------------
 # Engine RPC client (persistent connection)
@@ -344,6 +344,21 @@ TOOLS = [
         }
     ),
     Tool(
+        name="kryga_screenshot",
+        description="Capture the engine viewport as a PNG image. Two modes: get_last=true returns the last user-captured screenshot (H-key selection); otherwise pass x/y/width/height for a specific region (omit all for full viewport).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "get_last": {"type": "boolean", "description": "Return last H-key captured screenshot"},
+                "x": {"type": "integer", "description": "Crop region left"},
+                "y": {"type": "integer", "description": "Crop region top"},
+                "width": {"type": "integer", "description": "Crop region width"},
+                "height": {"type": "integer", "description": "Crop region height"},
+            },
+            "required": []
+        }
+    ),
+    Tool(
         name="kryga_model_batch_clone",
         description="Duplicate a game object multiple times, optionally placing each clone at a given position. Returns list of created IDs.",
         inputSchema={
@@ -455,6 +470,20 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps({"created": len(created), "objects": created}, indent=2))]
         except Exception as e:
             return [TextContent(type="text", text=f"Error after {len(created)} duplicates: {e}")]
+
+    if name == "kryga_screenshot":
+        try:
+            params = {k: arguments[k] for k in ("get_last", "x", "y", "width", "height") if k in arguments}
+            result = engine.call("render.screenshot", params)
+            data_uri = result["image"]
+            b64_data = data_uri.split(",", 1)[1]
+            region_info = f"region: x={result['x']} y={result['y']} w={result['width']} h={result['height']}"
+            return [
+                ImageContent(type="image", data=b64_data, mimeType="image/png"),
+                TextContent(type="text", text=region_info),
+            ]
+        except Exception as e:
+            return [TextContent(type="text", text=f"Error: {e}")]
 
     if name not in TOOL_RPC_MAP:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]

@@ -302,14 +302,17 @@ class EngineRPC:
             f"model.level.load('{level_id}') did not complete within {timeout}s"
         )
 
-    def screenshot(self, use_selection: bool = False,
+    def screenshot(self, get_last: bool = False,
                    x: int = 0, y: int = 0,
-                   width: int = 0, height: int = 0) -> str:
-        """Capture viewport screenshot. Returns the absolute path to the saved PNG."""
+                   width: int = 0, height: int = 0) -> dict:
+        """Capture viewport screenshot.
+        get_last=True: return last H-key user capture (no new readback).
+        x/y/width/height: capture specific region.
+        Omit all: full viewport.
+        Returns dict with image (base64 URI), x, y, width, height."""
         params = {}
-        if use_selection:
-            params["use_selection"] = True
+        if get_last:
+            params["get_last"] = True
         elif x or y or width or height:
-            params = {"x": x, "y": y, "width": width, "height": height}
-        result = self.call("render.screenshot", params)
-        return result["path"]
+            params.update({"x": x, "y": y, "width": width, "height": height})
+        return self.call("render.screenshot", params)

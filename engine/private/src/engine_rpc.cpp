@@ -2042,33 +2042,39 @@ void
 rpc_render_screenshot(const Json::Value& params, Json::Value& result, std::string& err)
 {
     auto& eng = glob::glob_state().getr_engine();
-    std::string out_path;
+    engine::screenshot_result sr;
     std::string local_err;
 
-    bool use_selection = false;
-    uint32_t crop_x = 0, crop_y = 0, crop_w = 0, crop_h = 0;
-    if (params.isObject())
-    {
-        use_selection = params.get("use_selection", false).asBool();
-        if (!use_selection)
-        {
-            crop_x = params.get("x", 0).asUInt();
-            crop_y = params.get("y", 0).asUInt();
-            crop_w = params.get("width", 0).asUInt();
-            crop_h = params.get("height", 0).asUInt();
-        }
-    }
+    bool get_last = params.isObject() && params.get("get_last", false).asBool();
 
     bool done = eng.wait_main_action(
         [&]()
         {
             auto& sc = glob::glob_state().getr_editor_system().screenshot;
-            out_path = use_selection
-                           ? sc.capture_selection()
-                           : sc.capture_to_file(crop_x, crop_y, crop_w, crop_h);
-            if (out_path.empty())
+            if (get_last)
             {
-                local_err = "screenshot capture failed";
+                if (!sc.has_last())
+                {
+                    local_err = "no user screenshot captured yet (press H to select)";
+                    return;
+                }
+                sr = sc.get_last();
+            }
+            else
+            {
+                engine::screenshot_region region{};
+                if (params.isObject())
+                {
+                    region.x = params.get("x", 0).asUInt();
+                    region.y = params.get("y", 0).asUInt();
+                    region.w = params.get("width", 0).asUInt();
+                    region.h = params.get("height", 0).asUInt();
+                }
+                sr = sc.capture(region);
+                if (sr.image_base64.empty())
+                {
+                    local_err = "screenshot capture failed";
+                }
             }
         });
 
@@ -2084,7 +2090,11 @@ rpc_render_screenshot(const Json::Value& params, Json::Value& result, std::strin
     }
 
     result = Json::Value(Json::objectValue);
-    result["path"] = out_path;
+    result["image"] = sr.image_base64;
+    result["x"] = sr.region.x;
+    result["y"] = sr.region.y;
+    result["width"] = sr.region.w;
+    result["height"] = sr.region.h;
 }
 
 void
