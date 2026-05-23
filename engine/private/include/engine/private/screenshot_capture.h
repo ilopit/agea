@@ -1,0 +1,67 @@
+#pragma once
+
+#include <vulkan_render/utils/vulkan_image.h>
+
+#include <glm/glm.hpp>
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace kryga::engine
+{
+
+struct screenshot_region
+{
+    uint32_t x = 0, y = 0, w = 0, h = 0;
+};
+
+class screenshot_capture
+{
+public:
+    std::string
+    capture_to_file(uint32_t crop_x = 0,
+                    uint32_t crop_y = 0,
+                    uint32_t crop_w = 0,
+                    uint32_t crop_h = 0);
+
+    std::string
+    capture_selection();
+
+    void
+    toggle_selection();
+
+    void
+    draw_overlay();
+
+    bool
+    is_selecting() const
+    {
+        return m_selecting;
+    }
+
+    const screenshot_region&
+    get_region() const
+    {
+        return m_region;
+    }
+
+private:
+    void
+    ensure_staging(uint32_t w, uint32_t h);
+
+    render::vk_utils::vulkan_image m_staging;
+    uint32_t m_staging_w = 0;
+    uint32_t m_staging_h = 0;
+
+    std::vector<uint8_t> m_pixels;
+    std::vector<uint8_t> m_cropped;
+
+    bool m_selecting = false;
+    bool m_dragging = false;
+    glm::vec2 m_drag_start{0.0f};
+    glm::vec2 m_drag_end{0.0f};
+    screenshot_region m_region{};
+};
+
+}  // namespace kryga::engine

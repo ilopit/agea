@@ -1,7 +1,6 @@
 #pragma once
 
 #include <engine/action_queue.h>
-
 #include <global_state/global_state.h>
 
 #include <memory>

@@ -34,9 +34,6 @@ public:
     void
     init();
 
-    // Selection state. Currently a single object id; multi-select can extend
-    // this later. Main-thread only — RPC handlers reach this through the
-    // engine's main-thread action queue.
     void
     set_selected(const utils::id& id);
 

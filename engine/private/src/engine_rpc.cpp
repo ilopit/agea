@@ -2039,6 +2039,55 @@ rpc_render_state_lights(const Json::Value& /*params*/, Json::Value& result, std:
 }
 
 void
+rpc_render_screenshot(const Json::Value& params, Json::Value& result, std::string& err)
+{
+    auto& eng = glob::glob_state().getr_engine();
+    std::string out_path;
+    std::string local_err;
+
+    bool use_selection = false;
+    uint32_t crop_x = 0, crop_y = 0, crop_w = 0, crop_h = 0;
+    if (params.isObject())
+    {
+        use_selection = params.get("use_selection", false).asBool();
+        if (!use_selection)
+        {
+            crop_x = params.get("x", 0).asUInt();
+            crop_y = params.get("y", 0).asUInt();
+            crop_w = params.get("width", 0).asUInt();
+            crop_h = params.get("height", 0).asUInt();
+        }
+    }
+
+    bool done = eng.wait_main_action(
+        [&]()
+        {
+            auto& sc = glob::glob_state().getr_editor_system().screenshot;
+            out_path = use_selection
+                           ? sc.capture_selection()
+                           : sc.capture_to_file(crop_x, crop_y, crop_w, crop_h);
+            if (out_path.empty())
+            {
+                local_err = "screenshot capture failed";
+            }
+        });
+
+    if (!done)
+    {
+        err = "render.screenshot timed out";
+        return;
+    }
+    if (!local_err.empty())
+    {
+        err = std::move(local_err);
+        return;
+    }
+
+    result = Json::Value(Json::objectValue);
+    result["path"] = out_path;
+}
+
+void
 rpc_editor_camera_set(const Json::Value& params, Json::Value& result, std::string& err)
 {
     auto& eng = glob::glob_state().getr_engine();
@@ -2646,6 +2695,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     server.on_request("render.object.list", rpc_render_state_objects);
     server.on_request("render.stats", rpc_render_state_stats);
     server.on_request("render.lights.data", rpc_render_state_lights);
+    server.on_request("render.screenshot", rpc_render_screenshot);
 
     // Tools
     server.on_request("tools.actions.getStatus", rpc_actions_get_status);

@@ -167,6 +167,8 @@ ui::new_frame(float dt)
 
     m_gizmo_editor->draw();
 
+    glob::glob_state().getr_editor_system().screenshot.draw_overlay();
+
     ImGui::Render();
 }
 

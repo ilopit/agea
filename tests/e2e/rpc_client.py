@@ -301,3 +301,15 @@ class EngineRPC:
         raise TimeoutError(
             f"model.level.load('{level_id}') did not complete within {timeout}s"
         )
+
+    def screenshot(self, use_selection: bool = False,
+                   x: int = 0, y: int = 0,
+                   width: int = 0, height: int = 0) -> str:
+        """Capture viewport screenshot. Returns the absolute path to the saved PNG."""
+        params = {}
+        if use_selection:
+            params["use_selection"] = True
+        elif x or y or width or height:
+            params = {"x": x, "y": y, "width": width, "height": height}
+        result = self.call("render.screenshot", params)
+        return result["path"]

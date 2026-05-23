@@ -2,6 +2,7 @@
 
 #include "engine/input_manager.h"
 #include "engine/kryga_engine.h"
+#include "engine/editor_system.h"
 
 #include <global_state/global_state.h>
 
@@ -66,6 +67,11 @@ game_editor::init()
 
     glob::glob_state().get_input_manager()->register_fixed_action(
         AID("shatter_demo"), true, this, &game_editor::ev_shatter_demo);
+
+    glob::glob_state().get_input_manager()->register_fixed_action(
+        AID("screenshot_select"), true,
+        &glob::glob_state().getr_editor_system().screenshot,
+        &screenshot_capture::toggle_selection);
 
     glob::glob_state().get_input_manager()->register_fixed_action(
         AID("toggle_play"), true, this, &game_editor::ev_toggle_play);
@@ -316,9 +322,7 @@ game_editor::ev_shatter_demo()
     dmc_params.asset_handle = asset;
 
     auto* dmc = go->spawn_component<base::destructible_mesh_component>(
-        go->get_root_component(),
-        AID(obj_id.str() + "_dmc"),
-        dmc_params);
+        go->get_root_component(), AID(obj_id.str() + "_dmc"), dmc_params);
 
     if (dmc && m_mode == editor_mode::playing)
     {

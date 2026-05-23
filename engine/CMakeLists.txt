@@ -47,6 +47,8 @@ set(ENGINE_EDITOR_SRC
     "private/src/ui/converter_window.cpp"
     "private/src/ui/gizmo_editor.cpp"
     "private/src/ui/material_previewer.cpp"
+    "private/include/engine/private/screenshot_capture.h"
+    "private/src/screenshot_capture.cpp"
 )
 
 file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/kryga_generated/engine/*.cpp")

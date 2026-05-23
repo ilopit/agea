@@ -38,6 +38,9 @@ actions:
   - id: toggle_play
     events:
       - trigger: f5
+  - id: screenshot_select
+    events:
+      - trigger: h
   - id: escape
     events:
       - trigger: escape

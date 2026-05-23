@@ -2,6 +2,7 @@
 
 #include <engine/editor.h>
 #include <engine/ui.h>
+#include <engine/private/screenshot_capture.h>
 
 #include <global_state/global_state.h>
 
@@ -25,6 +26,7 @@ public:
 
     game_editor editor;
     ui::ui ui;
+    screenshot_capture screenshot;
 };
 
 }  // namespace kryga::engine
