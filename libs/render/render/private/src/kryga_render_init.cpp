@@ -213,9 +213,9 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
 
     prepare_system_resources();
 
-#if KRG_EDITOR
-    // Editor build: set up ImGui font atlas and UI pipeline. Skipped when
-    // headless (no window) or when no ImGui context exists yet.
+#if KRG_HAS_IMGUI
+    // Set up ImGui font atlas and UI pipeline. Skipped when headless (no
+    // window) or when no ImGui context exists yet.
     if (!device.is_headless() && ImGui::GetCurrentContext())
     {
         prepare_ui_resources();

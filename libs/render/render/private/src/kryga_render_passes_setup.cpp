@@ -632,7 +632,7 @@ vulkan_render::setup_instanced_render_graph()
     // early-returns. Other reads of "ui_target" still work because the
     // import is unconditional (line above) — the resource exists, just
     // never has anything written to it in the game flavor.
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
     m_render_graph.add_graphics_pass(AID("ui"),
                                      {m_render_graph.write(AID("ui_target"))},
                                      get_render_pass(AID("ui")),

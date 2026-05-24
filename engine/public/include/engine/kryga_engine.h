@@ -26,6 +26,10 @@ union SDL_Event;
 namespace kryga
 {
 class native_window;
+namespace ui
+{
+struct editor_console;
+}
 #if KRG_EDITOR
 namespace rpc
 {
@@ -161,6 +165,10 @@ private:
     gpu::camera_data m_camera_data;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
+
+#if KRG_HAS_IMGUI
+    std::unique_ptr<ui::editor_console> m_console;
+#endif
 
 #if KRG_EDITOR
     std::unique_ptr<rpc::rpc_server> m_rpc_server;

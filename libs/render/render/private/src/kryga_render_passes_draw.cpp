@@ -476,10 +476,10 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
 }
 
 // ============================================================================
-// Draw Functions - ImGui (editor only)
+// Draw Functions - ImGui
 // ============================================================================
 
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
 void
 vulkan_render::draw_ui(frame_state& fs)
 {
@@ -583,7 +583,7 @@ vulkan_render::draw_ui(frame_state& fs)
         vertex_offset += cmd_list->VtxBuffer.Size;
     }
 }
-#endif  // KRG_EDITOR
+#endif  // KRG_HAS_IMGUI
 
 }  // namespace render
 }  // namespace kryga

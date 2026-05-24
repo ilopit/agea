@@ -108,7 +108,10 @@ render_config::validate()
 
     // Shadows — pcf mode
     auto pcf_val = static_cast<uint32_t>(shadows.pcf);
-    clamp_warn(pcf_val, (uint32_t)KGPU_PCF_MIN, (uint32_t)KGPU_PCF_MAX, "shadows.pcf");
+    clamp_warn(pcf_val,
+               static_cast<uint32_t>(pcf_mode::min),
+               static_cast<uint32_t>(pcf_mode::max),
+               "shadows.pcf");
     shadows.pcf = static_cast<pcf_mode>(pcf_val);
 
     clamp_warn(shadows.bias, KGPU_SHADOW_BIAS_MIN, KGPU_SHADOW_BIAS_MAX, "shadows.bias");

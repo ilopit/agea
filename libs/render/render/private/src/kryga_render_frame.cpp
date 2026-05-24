@@ -100,7 +100,7 @@ vulkan_render::draw_main()
     auto width = (uint32_t)glob::glob_state().get_native_window()->get_size().w;
     auto height = (uint32_t)glob::glob_state().get_native_window()->get_size().h;
 
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
     update_ui(current_frame);
 #endif
 
@@ -517,7 +517,7 @@ vulkan_render::get_current_frame_transfer_data()
 void
 vulkan_render::resize(uint32_t width, uint32_t height)
 {
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
     if (!ImGui::GetCurrentContext())
     {
         return;

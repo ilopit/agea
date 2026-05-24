@@ -1,5 +1,9 @@
 #include "engine/input_manager.h"
 
+#if KRG_HAS_IMGUI
+#include "engine/console.h"
+#endif
+
 #include <global_state/global_state.h>
 #include <serialization/serialization.h>
 #include <native/native_window.h>
@@ -10,7 +14,7 @@
 
 #include <kryga_port/imgui.h>
 
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
 #include <backends/imgui_impl_sdl2.h>
 #include <backends/imgui_impl_vulkan.h>
 #endif
@@ -259,7 +263,35 @@ input_manager::input_tick(float dur_seconds)
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0)
     {
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
+        // Backtick toggles drop-down console — eat the event entirely
+        if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKQUOTE)
+        {
+            auto* console = ui::editor_console::instance();
+            if (console)
+            {
+                console->toggle();
+            }
+            continue;
+        }
+
+        // While console is open, block all input except SDL_QUIT
+        auto* console = ui::editor_console::instance();
+        if (console && console->is_open())
+        {
+            if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)
+            {
+                console->toggle();
+                continue;
+            }
+            ImGui_ImplSDL2_ProcessEvent(&e);
+            if (e.type == SDL_QUIT)
+            {
+                return false;
+            }
+            continue;
+        }
+
         ImGui_ImplSDL2_ProcessEvent(&e);
 #endif
         if (e.type == SDL_QUIT)
@@ -267,7 +299,7 @@ input_manager::input_tick(float dur_seconds)
             return false;
         }
 
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
         ImGuiIO& io = ImGui::GetIO();
         if (!io.WantCaptureKeyboard)
         {

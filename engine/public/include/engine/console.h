@@ -1,10 +1,12 @@
 #pragma once
 
-#include "engine/ui.h"
-
-#include <core/model_minimal.h>
-
 #include <imgui.h>
+
+#include <array>
+#include <functional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace kryga
 {
@@ -54,13 +56,28 @@ public:
     tree_container m_child;
 };
 
-struct editor_console : public window
+struct editor_console
 {
     editor_console();
     ~editor_console();
 
+    static editor_console*
+    instance()
+    {
+        return s_instance;
+    }
+
     static const char*
     window_title();
+
+    void
+    toggle();
+
+    bool
+    is_open() const
+    {
+        return m_show;
+    }
 
     void
     clear_log();
@@ -82,6 +99,9 @@ struct editor_console : public window
 
     void
     exec_command(const std::string& command_line);
+
+    void
+    exec_config(const std::string& line);
 
     static void
     handle_cmd_clear(editor_console& e, const command_context& ctx);
@@ -111,9 +131,13 @@ private:
     int m_history_pos;  // -1: new line, 0..History.Size-1 browsing history.
 
     ImGuiTextFilter m_filter;
+    bool m_show = false;
     bool m_auto_scroll;
     bool m_scroll_to_bottom;
+    bool m_focus_input = false;
     size_t m_lua_buffer_offset = 0;
+
+    static editor_console* s_instance;
 };
 }  // namespace ui
 }  // namespace kryga

@@ -39,9 +39,6 @@ ui::ui()
     : m_gizmo_editor(std::make_unique<gizmo_editor>())
     , m_material_previewer(std::make_unique<material_previewer>())
 {
-    m_windows[editor_console::window_title()] = std::make_unique<editor_console>();
-    m_windows[editor_console::window_title()]->m_show = true;
-
     m_windows[performance_counters_window::window_title()] =
         std::make_unique<performance_counters_window>();
     m_windows[performance_counters_window::window_title()]->m_show = true;
@@ -163,6 +160,12 @@ ui::new_frame(float dt)
         }
     }
 
+    // Console overlay renders on top in all modes
+    if (auto* console = editor_console::instance())
+    {
+        console->handle();
+    }
+
     ImGuizmo::BeginFrame();
 
     m_gizmo_editor->draw();
@@ -281,10 +284,18 @@ render_config_window::handle()
         ImGui::Checkbox("Shadows Enabled", &cfg.shadows.enabled);
 
         // PCF Mode
-        const char* pcf_names[] = {
-            "3x3 (9 taps)", "5x5 (25 taps)", "7x7 (49 taps)", "Poisson 16", "Poisson 32"};
+        static const char* pcf_labels[render::pcf_mode_count];
+        static bool pcf_labels_init = [&]
+        {
+            for (int i = 0; i < render::pcf_mode_count; ++i)
+            {
+                pcf_labels[i] = render::pcf_mode_entries[i].label;
+            }
+            return true;
+        }();
+        (void)pcf_labels_init;
         int pcf = static_cast<int>(cfg.shadows.pcf);
-        if (ImGui::Combo("PCF Mode", &pcf, pcf_names, IM_ARRAYSIZE(pcf_names)))
+        if (ImGui::Combo("PCF Mode", &pcf, pcf_labels, render::pcf_mode_count))
         {
             cfg.shadows.pcf = static_cast<render::pcf_mode>(pcf);
         }

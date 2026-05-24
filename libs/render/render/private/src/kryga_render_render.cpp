@@ -477,11 +477,10 @@ vulkan_render::update_transparent_objects_queue()
 }
 
 // ============================================================================
-// ImGui-using methods — bodies compiled out in game builds. Call sites are
-// also guarded with #if KRG_EDITOR (init.cpp / frame.cpp / passes.cpp), so
-// linker never resolves these symbols in kryga_game.
+// ImGui-using methods — compiled in when KRG_HAS_IMGUI is set (both editor
+// and non-shipping game builds). Call sites are similarly guarded.
 // ============================================================================
-#if KRG_EDITOR
+#if KRG_HAS_IMGUI
 void
 vulkan_render::prepare_ui_resources()
 {
@@ -681,7 +680,7 @@ vulkan_render::update_ui(frame_state& fs)
     fs.ui.vertex_buffer.flush();
     fs.ui.index_buffer.flush();
 }
-#endif  // KRG_EDITOR
+#endif  // KRG_HAS_IMGUI
 
 // ============================================================================
 // Scene upscale pipeline — runs in BOTH editor and game when render_scale is on.

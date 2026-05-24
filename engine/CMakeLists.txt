@@ -16,28 +16,27 @@
 set(ENGINE_GAME_SRC
     "public/include/engine/action_queue.h"
     "public/include/engine/config.h"
+    "public/include/engine/console.h"
     "public/include/engine/engine_counters.h"
     "public/include/engine/input_manager.h"
     "public/include/engine/kryga_engine.h"
     "public/include/engine/profiler.h"
     "private/src/action_queue.cpp"
     "private/src/config.cpp"
+    "private/src/console.cpp"
     "private/src/engine_counters.cpp"
     "private/src/input_manager.cpp"
     "private/src/kryga_engine.cpp"
     "private/src/profiler.cpp"
 )
 
-# TUs that pull in ImGui / editor singletons / Boost.Beast — excluded from
-# the game lib.
+# TUs that pull in editor singletons / Boost.Beast — excluded from the game lib.
 set(ENGINE_EDITOR_SRC
-    "public/include/engine/console.h"
     "public/include/engine/editor.h"
     "public/include/engine/editor_system.h"
     "public/include/engine/ui.h"
     "private/include/engine/private/engine_rpc.h"
     "private/include/engine/private/property_rpc.h"
-    "private/src/console.cpp"
     "private/src/editor.cpp"
     "private/src/editor_system.cpp"
     "private/src/engine_rpc.cpp"
@@ -54,7 +53,7 @@ set(ENGINE_EDITOR_SRC
 file(GLOB ENGINE_GENERATED_SRC "${CMAKE_BINARY_DIR}/kryga_generated/engine/*.cpp")
 
 # ----------------------------------------------------------------------------
-# engine (game flavor) — KRG_GAME=1
+# engine (game flavor) — KRG_BUILD_TEST
 # ----------------------------------------------------------------------------
 add_library(engine STATIC
     ${ENGINE_GAME_SRC}
@@ -62,7 +61,7 @@ add_library(engine STATIC
 )
 
 target_compile_definitions(engine PUBLIC
-    KRG_GAME=1
+    KRG_BUILD_TEST=1
 )
 
 target_link_libraries(engine PUBLIC
@@ -97,7 +96,7 @@ target_include_directories(engine
 kryga_finalize_library(engine)
 
 # ----------------------------------------------------------------------------
-# engine_editor (editor flavor) — KRG_EDITOR=1, full TU set
+# engine_editor (editor flavor) — KRG_BUILD_DEV
 # ----------------------------------------------------------------------------
 if(KRG_BUILD_EDITOR_TARGET)
     add_library(engine_editor STATIC
@@ -107,7 +106,7 @@ if(KRG_BUILD_EDITOR_TARGET)
     )
 
     target_compile_definitions(engine_editor PUBLIC
-        KRG_EDITOR=1
+        KRG_BUILD_DEV=1
     )
 
     target_link_libraries(engine_editor PUBLIC

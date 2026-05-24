@@ -4,6 +4,11 @@
 
 #include "core/reflection/lua_api.h"
 #include "global_state/global_state.h"
+#include <vulkan_render/render_system.h>
+#include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_config.h>
+#include <vulkan_render/render_enums.h>
+#include <vfs/rid.h>
 #include <sol2_unofficial/sol.h>
 
 #include <cctype>
@@ -20,6 +25,302 @@ namespace
 {
 const std::string LOG_FILE = "editor_console.items.log";
 const std::string HISTORY_FILE = "editor_console.history.log";
+}  // namespace
+
+namespace
+{
+
+using rcfg = render::render_config;
+
+std::string
+trim(const std::string& s)
+{
+    auto a = s.find_first_not_of(' ');
+    if (a == std::string::npos)
+    {
+        return "";
+    }
+    auto b = s.find_last_not_of(' ');
+    return s.substr(a, b - a + 1);
+}
+
+// --- generic field accessors via member pointer ---
+
+template <typename T>
+std::string
+fmt_val(const T& v);
+
+template <>
+std::string
+fmt_val(const bool& v)
+{
+    return v ? "on" : "off";
+}
+template <>
+std::string
+fmt_val(const uint32_t& v)
+{
+    return std::format("{}", v);
+}
+template <>
+std::string
+fmt_val(const float& v)
+{
+    return std::format("{}", v);
+}
+template <>
+std::string
+fmt_val(const render::pcf_mode& v)
+{
+    return render::to_string(v);
+}
+
+template <typename T>
+bool
+parse_val(const std::string& s, T& out);
+
+template <>
+bool
+parse_val(const std::string& s, bool& out)
+{
+    if (s == "true" || s == "1" || s == "on")
+    {
+        out = true;
+        return true;
+    }
+    if (s == "false" || s == "0" || s == "off")
+    {
+        out = false;
+        return true;
+    }
+    return false;
+}
+
+template <>
+bool
+parse_val(const std::string& s, uint32_t& out)
+{
+    try
+    {
+        out = static_cast<uint32_t>(std::stoul(s));
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+template <>
+bool
+parse_val(const std::string& s, float& out)
+{
+    try
+    {
+        out = std::stof(s);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+template <>
+bool
+parse_val(const std::string& s, render::pcf_mode& out)
+{
+    return render::from_string(s, out);
+}
+
+// --- config variable table ---
+
+using config_getter = std::string (*)(const rcfg&);
+using config_setter = bool (*)(rcfg&, const std::string&);
+
+struct config_var
+{
+    const char* key;
+    config_getter get;
+    config_setter set;
+};
+
+template <auto MemberOuter, auto MemberInner>
+config_var
+make_var(const char* key)
+{
+    return {
+        key,
+        [](const rcfg& c) -> std::string { return fmt_val((c.*MemberOuter).*MemberInner); },
+        [](rcfg& c, const std::string& s) -> bool
+        { return parse_val(s, (c.*MemberOuter).*MemberInner); },
+    };
+}
+
+// clang-format off
+const config_var config_vars[] = {
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::enabled>("shadows.enabled"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::pcf>("shadows.pcf"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::bias>("shadows.bias"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::normal_bias>("shadows.normal_bias"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::cascade_count>("shadows.cascade_count"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::distance>("shadows.distance"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::map_size>("shadows.map_size"),
+
+    make_var<&rcfg::clusters, &rcfg::cluster_cfg::tile_size>("clusters.tile_size"),
+    make_var<&rcfg::clusters, &rcfg::cluster_cfg::depth_slices>("clusters.depth_slices"),
+    make_var<&rcfg::clusters, &rcfg::cluster_cfg::max_lights_per_cluster>("clusters.max_lights_per_cluster"),
+
+    make_var<&rcfg::lighting, &rcfg::lighting_cfg::directional_enabled>("lighting.directional_enabled"),
+    make_var<&rcfg::lighting, &rcfg::lighting_cfg::local_enabled>("lighting.local_enabled"),
+    make_var<&rcfg::lighting, &rcfg::lighting_cfg::baked_enabled>("lighting.baked_enabled"),
+
+    make_var<&rcfg::debug, &rcfg::debug_cfg::editor_mode>("debug.editor_mode"),
+    make_var<&rcfg::debug, &rcfg::debug_cfg::show_grid>("debug.show_grid"),
+    make_var<&rcfg::debug, &rcfg::debug_cfg::light_wireframe>("debug.light_wireframe"),
+    make_var<&rcfg::debug, &rcfg::debug_cfg::light_icons>("debug.light_icons"),
+    make_var<&rcfg::debug, &rcfg::debug_cfg::frustum_culling>("debug.frustum_culling"),
+
+    make_var<&rcfg::render_scale, &rcfg::render_scale_cfg::enabled>("render_scale.enabled"),
+    make_var<&rcfg::render_scale, &rcfg::render_scale_cfg::divisor>("render_scale.divisor"),
+
+    make_var<&rcfg::outline, &rcfg::outline_cfg::enabled>("outline.enabled"),
+    make_var<&rcfg::outline, &rcfg::outline_cfg::depth_threshold>("outline.depth_threshold"),
+    make_var<&rcfg::outline, &rcfg::outline_cfg::normal_threshold>("outline.normal_threshold"),
+};
+// clang-format on
+
+constexpr int config_var_count = sizeof(config_vars) / sizeof(config_vars[0]);
+
+// --- tab completion ---
+
+void
+config_completions(const std::string& prefix, std::vector<std::string>& candidates)
+{
+    auto try_add = [&](const std::string& full_path)
+    {
+        if (!full_path.starts_with(prefix) || full_path.size() <= prefix.size())
+        {
+            return;
+        }
+        auto dot = full_path.find('.', prefix.size());
+        auto candidate = dot != std::string::npos ? full_path.substr(0, dot) : full_path;
+        for (auto& c : candidates)
+        {
+            if (c == candidate)
+            {
+                return;
+            }
+        }
+        candidates.push_back(candidate);
+    };
+
+    for (auto& v : config_vars)
+    {
+        try_add(std::string("config.render.") + v.key);
+    }
+    try_add("config.render.save");
+    try_add("config.render.reset");
+}
+
+// --- get / set by key ---
+
+std::string
+config_get_value(const rcfg& cfg, const std::string& key)
+{
+    for (auto& v : config_vars)
+    {
+        if (key == v.key)
+        {
+            return v.get(cfg);
+        }
+    }
+    return {};
+}
+
+bool
+config_set_value(rcfg& cfg, const std::string& key, const std::string& value)
+{
+    for (auto& v : config_vars)
+    {
+        if (key == v.key)
+        {
+            return v.set(cfg, value);
+        }
+    }
+    return false;
+}
+
+// --- section print / reset ---
+
+void
+config_print_section(editor_console& e, const rcfg& cfg, const std::string& section)
+{
+    const std::string prefix = section.empty() ? "" : section + ".";
+    bool any = false;
+    std::string last_section;
+
+    for (auto& v : config_vars)
+    {
+        std::string_view k = v.key;
+        if (!k.starts_with(prefix))
+        {
+            continue;
+        }
+
+        auto dot = k.find('.');
+        auto sec = dot != std::string_view::npos ? k.substr(0, dot) : k;
+
+        if (section.empty() && sec != last_section)
+        {
+            e.add_log("[%.*s]", (int)sec.size(), sec.data());
+            last_section = sec;
+        }
+
+        e.add_log("  %-36s = %s", v.key, v.get(cfg).c_str());
+        any = true;
+    }
+
+    if (!any)
+    {
+        e.add_log("[error] unknown config path: %s", section.c_str());
+    }
+}
+
+void
+config_reset_section(editor_console& e, rcfg& cfg, const std::string& section)
+{
+    const rcfg defaults;
+    const std::string prefix = section.empty() ? "" : section + ".";
+    bool any = false;
+
+    for (auto& v : config_vars)
+    {
+        std::string_view k = v.key;
+        if (!k.starts_with(prefix))
+        {
+            continue;
+        }
+        v.set(cfg, v.get(defaults));
+        any = true;
+    }
+
+    if (!any)
+    {
+        e.add_log("[error] unknown section: %s", section.c_str());
+        return;
+    }
+
+    if (section.empty())
+    {
+        e.add_log("config.render reset to defaults");
+    }
+    else
+    {
+        e.add_log("config.render.%s reset to defaults", section.c_str());
+    }
+}
+
 }  // namespace
 
 static void
@@ -133,91 +434,39 @@ editor_console::add_log(const char* fmt, ...) IM_FMTARGS(2)
 void
 editor_console::handle()
 {
-    ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
-
-    if (!handle_begin())
+    if (!m_show)
     {
         return;
     }
 
-    // As a specific feature guaranteed by the library, after calling Begin() the last Item
-    // represent the title bar. So e.g. IsItemHovered() will return true when hovering the title
-    // bar. Here we create a context menu only available from the title bar.
-    if (ImGui::BeginPopupContextItem())
-    {
-        if (ImGui::MenuItem("Close Console"))
-        {
-            m_show = false;
-        }
+    ImGuiIO& io = ImGui::GetIO();
+    const float console_height = io.DisplaySize.y * 0.28f;
 
-        ImGui::EndPopup();
-    }
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, console_height));
 
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+                             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings;
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.0f, 0.0f, 0.0f, 0.65f));
+
+    ImGui::Begin("##console_overlay", nullptr, flags);
+
+    // Filter bar
+    m_filter.Draw("Filter", 180);
     ImGui::Separator();
 
-    // Options menu
-    if (ImGui::BeginPopup("Options"))
-    {
-        ImGui::Checkbox("Auto-scroll", &m_auto_scroll);
-        ImGui::EndPopup();
-    }
-
-    // Options, Filter
-    if (ImGui::Button("Options"))
-    {
-        ImGui::OpenPopup("Options");
-    }
-
-    ImGui::SameLine();
-    m_filter.Draw("Filter (\"incl,-excl\") (\"error\")", 180);
-    ImGui::Separator();
-
-    // Reserve enough left-over height for 1 separator + 1 input text
-    const float footer_height_to_reserve =
+    // Scrolling log region — reserve space for separator + input line
+    const float footer_height =
         ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 
-    ImGui::BeginChild("ScrollingRegion",
-                      ImVec2(0, -footer_height_to_reserve),
-                      false,
-                      ImGuiWindowFlags_HorizontalScrollbar);
-    if (ImGui::BeginPopupContextWindow())
-    {
-        if (ImGui::Selectable("Clear"))
-        {
-            clear_log();
-        }
+    ImGui::BeginChild(
+        "##console_scroll", ImVec2(0, -footer_height), false, ImGuiWindowFlags_HorizontalScrollbar);
 
-        ImGui::EndPopup();
-    }
-
-    // Display every line as a separate entry so we can change their color or add custom
-    // widgets. If you only want raw text you can use ImGui::TextUnformatted(log.begin(),
-    // log.end()); NB- if you have thousands of entries this approach may be too inefficient and
-    // may require user-side clipping to only process visible items. The clipper will
-    // automatically measure the height of your first item and then "seek" to display only items
-    // in the visible area. To use the clipper we can replace your standard loop:
-    //      for (int i = 0; i < Items.Size; i++)
-    //   With:
-    //      ImGuiListClipper clipper;
-    //      clipper.Begin(Items.Size);
-    //      while (clipper.Step())
-    //         for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
-    // - That your items are evenly spaced (same height)
-    // - That you have cheap random access to your elements (you can access them given their
-    // index,
-    //   without processing all the ones before)
-    // You cannot this code as-is if a filter is active because it breaks the 'cheap
-    // random-access' property. We would need random-access on the post-filtered list. A typical
-    // application wanting coarse clipping and filtering may want to pre-compute an array of
-    // indices or offsets of items that passed the filtering test, recomputing this array when
-    // user changes the filter, and appending newly elements as they are inserted. This is left
-    // as a task to the user until we can manage to improve this example code! If your items are
-    // of variable height:
-    // - Split them into same height items would be simpler and facilitate random-seeking into
-    // your list.
-    // - Consider using manual call to IsRectVisible() and skipping extraneous decoration from
-    // your items.
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));  // Tighten spacing
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
 
     for (auto& item : m_items)
     {
@@ -226,8 +475,6 @@ editor_console::handle()
             continue;
         }
 
-        // Normally you would store more information in your item than just a string.
-        // (e.g. make Items[] an array of structure, store color/type etc.)
         ImVec4 color;
         bool has_color = false;
         if (strstr(item.c_str(), "[error]"))
@@ -261,13 +508,15 @@ editor_console::handle()
     ImGui::EndChild();
     ImGui::Separator();
 
-    // Command-line
-    bool reclaim_focus = false;
+    // Command input
+    bool reclaim_focus = m_focus_input;
+    m_focus_input = false;
+
     ImGuiInputTextFlags input_text_flags = ImGuiInputTextFlags_EnterReturnsTrue |
                                            ImGuiInputTextFlags_CallbackCompletion |
                                            ImGuiInputTextFlags_CallbackHistory;
 
-    if (ImGui::InputText("Input",
+    if (ImGui::InputText("##console_input",
                          m_buf.data(),
                          m_buf.size(),
                          input_text_flags,
@@ -285,14 +534,16 @@ editor_console::handle()
         reclaim_focus = true;
     }
 
-    // Auto-focus on window apparition
     ImGui::SetItemDefaultFocus();
-    if (reclaim_focus)
-    {
-        ImGui::SetKeyboardFocusHere(-1);  // Auto focus previous widget
-    }
+    ImGui::SetKeyboardFocusHere(-1);
 
-    handle_end();
+    ImGui::End();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar(2);
+
+    // Block all input while console is open
+    io.WantCaptureKeyboard = true;
+    io.WantCaptureMouse = true;
 }
 
 void
@@ -311,7 +562,12 @@ editor_console::exec_command(const std::string& command_line)
             break;
         }
     }
-    if (command_line.front() == '-')
+    if (command_line.starts_with("config"))
+    {
+        exec_config(command_line);
+        m_history.push_back(command_line);
+    }
+    else if (command_line.front() == '-')
     {
         string_utils::split(command_line, " ", m_context.tokens);
 
@@ -368,9 +624,6 @@ editor_console::text_edit_callback(ImGuiInputTextCallbackData* data)
     {
     case ImGuiInputTextFlags_CallbackCompletion:
     {
-        // Example of TEXT COMPLETION
-
-        // Locate beginning of current word
         const char* word_end = data->Buf + data->CursorPos;
         const char* word_start = data->Buf;
         while (word_start > data->Buf)
@@ -380,55 +633,64 @@ editor_console::text_edit_callback(ImGuiInputTextCallbackData* data)
             {
                 break;
             }
-
             word_start--;
         }
 
-        // Build a list of candidates
-        std::string cmd(word_start, word_end);
-        m_context.reset();
-        string_utils::split(cmd, " ", m_context.tokens);
-
+        std::string word(word_start, word_end);
         std::vector<std::string> candidates;
-        auto depth = m_commands.hints(m_context.tokens, candidates);
 
-        if (candidates.empty())
+        if (word.starts_with("config") || word.starts_with("conf") || word.starts_with("con"))
         {
-            if (depth == 0)
+            // Config path completion
+            std::string prefix = word;
+            // Ensure trailing dot for intermediate completions
+            config_completions(prefix, candidates);
+            // Also try with trailing dot if no results and word matches a node exactly
+            if (candidates.empty())
             {
-                add_log("No match for \"%.*s\"!\n", (int)(word_end - word_start), word_start);
+                config_completions(prefix + ".", candidates);
             }
-        }
-        else if (candidates.size() == 1)
-        {
-            // Single match. Delete the beginning of the word and replace it entirely so we've
-            // got nice casing.
-            data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
-            data->InsertChars(data->CursorPos, candidates[0].c_str());
-            // data->InsertChars(data->CursorPos, " ");
         }
         else
         {
-            // Multiple matches. Complete as much as we can..
-            // So inputing "C"+Tab will complete to "CL" then display "CLEAR" and "CLASSIFY" as
-            // matches.
-            int match_len = (int)(word_end - word_start);
+            // Command tree completion
+            m_context.reset();
+            string_utils::split(word, " ", m_context.tokens);
+            m_commands.hints(m_context.tokens, candidates);
+        }
+
+        if (candidates.empty())
+        {
+            add_log("No match for \"%s\"\n", word.c_str());
+        }
+        else if (candidates.size() == 1)
+        {
+            data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
+            data->InsertChars(data->CursorPos, candidates[0].c_str());
+        }
+        else
+        {
+            int match_len = (int)word.size();
             for (;;)
             {
                 int c = 0;
-                bool all_candidates_matches = true;
-                for (int i = 0; i < candidates.size() && all_candidates_matches; i++)
+                bool all_match = true;
+                for (size_t i = 0; i < candidates.size() && all_match; i++)
                 {
-                    if (i == 0)
+                    if ((int)candidates[i].size() <= match_len)
                     {
-                        c = toupper(candidates[i][match_len]);
+                        all_match = false;
                     }
-                    else if (c == 0 || c != toupper(candidates[i][match_len]))
+                    else if (i == 0)
                     {
-                        all_candidates_matches = false;
+                        c = candidates[i][match_len];
+                    }
+                    else if (c != candidates[i][match_len])
+                    {
+                        all_match = false;
                     }
                 }
-                if (!all_candidates_matches)
+                if (!all_match)
                 {
                     break;
                 }
@@ -442,11 +704,10 @@ editor_console::text_edit_callback(ImGuiInputTextCallbackData* data)
                     data->CursorPos, candidates[0].c_str(), candidates[0].c_str() + match_len);
             }
 
-            // List matches
             add_log("Possible matches:\n");
-            for (int i = 0; i < candidates.size(); i++)
+            for (auto& c : candidates)
             {
-                add_log("- %s\n", candidates[i].c_str());
+                add_log("- %s", c.c_str());
             }
         }
 
@@ -555,10 +816,12 @@ editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
     }
 }
 
+editor_console* editor_console::s_instance = nullptr;
+
 editor_console::editor_console()
-    : window(window_title())
-    , m_history_pos(-1)
+    : m_history_pos(-1)
 {
+    s_instance = this;
     m_buf.fill('\0');
 
     m_commands.add({"--help"}, handle_cmd_help);
@@ -578,7 +841,18 @@ editor_console::editor_console()
 
 editor_console::~editor_console()
 {
+    s_instance = nullptr;
     save_to_file();
+}
+
+void
+editor_console::toggle()
+{
+    m_show = !m_show;
+    if (m_show)
+    {
+        m_focus_input = true;
+    }
 }
 
 const char*
@@ -684,6 +958,93 @@ commands_tree::hints(const std::vector<std::string>& path, std::vector<std::stri
     }
 
     return depth;
+}
+
+void
+editor_console::exec_config(const std::string& line)
+{
+    auto eq = line.find('=');
+    if (eq != std::string::npos)
+    {
+        auto path = trim(line.substr(0, eq));
+        auto value = trim(line.substr(eq + 1));
+
+        if (!path.starts_with("config.render.") || path.size() <= 14)
+        {
+            add_log("[error] unknown config path: %s", path.c_str());
+            return;
+        }
+        auto key = path.substr(14);
+
+        auto& cfg = glob::glob_state().getr_render().renderer.get_pending_render_config();
+        if (!config_set_value(cfg, key, value))
+        {
+            add_log("[error] invalid: %s = %s", key.c_str(), value.c_str());
+            return;
+        }
+        cfg.validate();
+
+        auto actual = config_get_value(cfg, key);
+        add_log("  %-36s = %s", key.c_str(), actual.c_str());
+        return;
+    }
+
+    auto path = trim(line);
+
+    if (path == "config" || path == "config.render")
+    {
+        auto& cfg = glob::glob_state().getr_render().renderer.get_render_config();
+        config_print_section(*this, cfg, "");
+        return;
+    }
+
+    if (!path.starts_with("config.render."))
+    {
+        add_log("[error] unknown config path: %s", path.c_str());
+        return;
+    }
+
+    auto rest = path.substr(14);
+
+    if (rest == "save")
+    {
+        auto& cfg = glob::glob_state().getr_render().renderer.get_render_config();
+        if (cfg.save_to_cache(vfs::rid("rtcache://render.acfg")))
+        {
+            add_log("config saved to rtcache://render.acfg");
+        }
+        else
+        {
+            add_log("[error] failed to save config");
+        }
+        return;
+    }
+
+    if (rest == "reset")
+    {
+        auto& cfg = glob::glob_state().getr_render().renderer.get_pending_render_config();
+        config_reset_section(*this, cfg, "");
+        return;
+    }
+
+    if (rest.ends_with(".reset"))
+    {
+        auto section = rest.substr(0, rest.size() - 6);
+        auto& cfg = glob::glob_state().getr_render().renderer.get_pending_render_config();
+        config_reset_section(*this, cfg, section);
+        return;
+    }
+
+    auto& cfg = glob::glob_state().getr_render().renderer.get_render_config();
+    auto val = config_get_value(cfg, rest);
+    if (!val.empty())
+    {
+        add_log("  %-36s = %s", rest.c_str(), val.c_str());
+    }
+    else
+    {
+        config_print_section(*this, cfg, rest);
+    }
 }
 
 }  // namespace ui

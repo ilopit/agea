@@ -1474,9 +1474,7 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             sh["enabled"] = cfg.shadows.enabled;
             sh["pcf"] = static_cast<int>(cfg.shadows.pcf);
 
-            const char* pcf_names[] = {"pcf_3x3", "pcf_5x5", "pcf_7x7", "poisson16", "poisson32"};
-            int pcf_idx = static_cast<int>(cfg.shadows.pcf);
-            sh["pcf_name"] = (pcf_idx >= 0 && pcf_idx < 5) ? pcf_names[pcf_idx] : "unknown";
+            sh["pcf_name"] = render::to_string(cfg.shadows.pcf);
 
             sh["bias"] = cfg.shadows.bias;
             sh["normal_bias"] = cfg.shadows.normal_bias;
@@ -1563,30 +1561,14 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                     auto& v = s["pcf"];
                     if (v.isString())
                     {
-                        std::string name = v.asString();
-                        if (name == "pcf_3x3")
+                        render::pcf_mode mode;
+                        if (render::from_string(v.asString(), mode))
                         {
-                            cfg.shadows.pcf = render::pcf_mode::pcf_3x3;
-                        }
-                        else if (name == "pcf_5x5")
-                        {
-                            cfg.shadows.pcf = render::pcf_mode::pcf_5x5;
-                        }
-                        else if (name == "pcf_7x7")
-                        {
-                            cfg.shadows.pcf = render::pcf_mode::pcf_7x7;
-                        }
-                        else if (name == "poisson16")
-                        {
-                            cfg.shadows.pcf = render::pcf_mode::poisson16;
-                        }
-                        else if (name == "poisson32")
-                        {
-                            cfg.shadows.pcf = render::pcf_mode::poisson32;
+                            cfg.shadows.pcf = mode;
                         }
                         else
                         {
-                            local_err = "unknown pcf mode: " + name;
+                            local_err = "unknown pcf mode: " + v.asString();
                             return;
                         }
                     }

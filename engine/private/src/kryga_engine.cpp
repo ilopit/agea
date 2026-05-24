@@ -5,6 +5,11 @@
 #include "engine/engine_counters.h"
 #include "engine/profiler.h"
 
+#if KRG_HAS_IMGUI
+#include "engine/console.h"
+#include <backends/imgui_impl_sdl2.h>
+#endif
+
 #if KRG_EDITOR
 #include "engine/editor_system.h"
 #include "engine/ui.h"
@@ -306,10 +311,21 @@ vulkan_engine::init(const startup_options& options)
 
     if (!m_headless)
     {
-        // Load bake config (with rtcache fallback for session state) — editor-only
-        // feature, skip in headless
         ui::get_window<ui::bake_editor>()->init(vfs::rid("data://configs/bake.acfg"),
                                                 vfs::rid("rtcache://bake.acfg"));
+    }
+#elif KRG_HAS_IMGUI
+    if (!m_headless)
+    {
+        ImGui::CreateContext();
+        ImGui_ImplSDL2_InitForVulkan(window->handle());
+    }
+#endif
+
+#if KRG_HAS_IMGUI
+    if (!m_headless)
+    {
+        m_console = std::make_unique<ui::editor_console>();
     }
 #endif
 
@@ -400,8 +416,18 @@ vulkan_engine::cleanup()
 
     glob::glob_state().getr_render().device.wait_for_fences();
 
+#if KRG_HAS_IMGUI
+    m_console.reset();
+#endif
+
 #if KRG_EDITOR
     glob::glob_state().getr_editor_system().ui.get_material_previewer().destroy();
+#elif KRG_HAS_IMGUI
+    if (ImGui::GetCurrentContext())
+    {
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+    }
 #endif
 
     glob::glob_state().getr_render().loader.clear_caches();
@@ -511,6 +537,24 @@ vulkan_engine::run()
             KRG_make_scope(ui_tick);
             KRG_PROFILE_SCOPE("UI");
             glob::glob_state().getr_editor_system().ui.new_frame(frame_time);
+        }
+#elif KRG_HAS_IMGUI
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            auto& vr = glob::glob_state().getr_render().renderer;
+            io.DisplaySize = ImVec2((float)vr.width(), (float)vr.height());
+            io.DeltaTime = frame_time;
+
+            ImGui_ImplSDL2_NewFrame();
+            io.DisplaySize = ImVec2((float)vr.width(), (float)vr.height());
+            io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+            ImGui::NewFrame();
+            if (m_console)
+            {
+                m_console->handle();
+            }
+            ImGui::Render();
         }
 #endif
         {

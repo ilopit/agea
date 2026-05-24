@@ -39,10 +39,10 @@ If tests fail, report which tests and pixel diff % — do NOT update references.
 ## Phase 3: E2E regression (pytest, parallel via xdist)
 
 ```bash
-python -m pytest tests/e2e/ -v -x -n auto
+python -m pytest tests/e2e/ -v -x -n 4
 ```
 
-- `-n auto` runs tests in parallel across workers (each gets its own engine instance)
+- `-n 4` runs tests across 4 parallel workers (each spawns its own engine instance)
 - `-x` stops on first failure
 - If `pytest-xdist` is not installed, fall back to serial: `python -m pytest tests/e2e/ -v -x`
 

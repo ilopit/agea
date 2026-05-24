@@ -78,26 +78,29 @@ endif()
 add_library(kryga::vulkan_render ALIAS vulkan_render)
 
 # ----------------------------------------------------------------------------
-# vulkan_render_impl_game — STATIC, KRG_GAME=1
+# vulkan_render_impl_game — STATIC, KRG_BUILD_TEST
 # ----------------------------------------------------------------------------
-# No ImGui linkage. ImGui-touching code is guarded with #if KRG_EDITOR; in
-# this flavor the relevant method bodies are empty and the linker drops
-# imgui_unofficial entirely.
+# Non-shipping game build: links ImGui for the drop-down console.
+# build_tier.h derives KRG_HAS_IMGUI, KRG_HAS_EDITOR, etc. from the tier.
 add_library(vulkan_render_impl_game STATIC ${KRG_VULKAN_RENDER_SRC})
-target_compile_definitions(vulkan_render_impl_game PUBLIC KRG_GAME=1)
-target_link_libraries(vulkan_render_impl_game PUBLIC kryga::vulkan_render)
+target_compile_definitions(vulkan_render_impl_game PUBLIC KRG_BUILD_TEST=1)
+target_link_libraries(vulkan_render_impl_game PUBLIC
+    kryga::vulkan_render
+    kryga::imgui_unofficial
+)
 target_precompile_headers(vulkan_render_impl_game PRIVATE
     "$<$<COMPILE_LANGUAGE:CXX>:<vulkan/vulkan.h$<ANGLE-R>>"
+    "$<$<COMPILE_LANGUAGE:CXX>:<imgui.h$<ANGLE-R>>"
 )
 kryga_ide_path(vulkan_render_impl_game)
 add_library(kryga::vulkan_render_impl_game ALIAS vulkan_render_impl_game)
 
 # ----------------------------------------------------------------------------
-# vulkan_render_impl_editor — STATIC, KRG_EDITOR=1
+# vulkan_render_impl_editor — STATIC, KRG_BUILD_DEV
 # ----------------------------------------------------------------------------
 # Full ImGui integration: font atlas, UI pipeline, ImGui pass, draw_ui.
 add_library(vulkan_render_impl_editor STATIC ${KRG_VULKAN_RENDER_SRC})
-target_compile_definitions(vulkan_render_impl_editor PUBLIC KRG_EDITOR=1)
+target_compile_definitions(vulkan_render_impl_editor PUBLIC KRG_BUILD_DEV=1)
 target_link_libraries(vulkan_render_impl_editor PUBLIC
     kryga::vulkan_render
     kryga::imgui_unofficial

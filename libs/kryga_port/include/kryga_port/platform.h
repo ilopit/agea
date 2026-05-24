@@ -1,5 +1,7 @@
 #pragma once
 
+#include <kryga_port/build_tier.h>
+
 // Platform identification — single source of truth for which OS/form-factor we
 // target. Code should branch on KRG_DESKTOP / KRG_MOBILE (form factor) and on
 // KRG_PLATFORM_* (specific OS), not on raw __ANDROID__/_WIN32/etc.
