@@ -28,6 +28,7 @@ namespace kryga
 namespace root
 {
 class smart_object;
+class game_object_component;
 class sampler;
 }  // namespace root
 
@@ -77,6 +78,9 @@ public:
 
     kryga::result_code
     render_cmd_destroy(root::smart_object& obj, bool sub_objects);
+
+    kryga::result_code
+    render_cmd_transform(root::game_object_component& source);
 
     collected_gpu_data
     collect_gpu_data(root::smart_object& so);

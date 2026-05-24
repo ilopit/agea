@@ -19,6 +19,7 @@ namespace base
 KRG_ar_class(
     render_cmd_builder   = mesh_component__cmd_builder,
     render_cmd_destroyer = mesh_component__cmd_destroyer,
+    render_cmd_transform = mesh_component__cmd_transform,
     mcp_hint             = "Renders 3D geometry — holds references to a mesh asset and a material "
                            "asset. Inherits transform from game_object_component"
 );

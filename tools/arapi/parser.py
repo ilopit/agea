@@ -70,6 +70,7 @@ TYPE_KEY_ARCHITYPE = "architype"
 TYPE_KEY_BUILT_IN = "built_in"
 TYPE_KEY_RENDER_CMD_BUILDER = "render_cmd_builder"
 TYPE_KEY_RENDER_CMD_DESTROYER = "render_cmd_destroyer"
+TYPE_KEY_RENDER_CMD_TRANSFORM = "render_cmd_transform"
 TYPE_KEY_JSON_SAVE_HANDLER = "json_save_handler"
 TYPE_KEY_JSON_LOAD_HANDLER = "json_load_handler"
 TYPE_KEY_MCP_SCHEMA = "mcp_schema"
@@ -197,6 +198,7 @@ _MCP_ATTR_MAP = {
 _RENDER_TYPE_ATTR_MAP = {
     TYPE_KEY_RENDER_CMD_BUILDER: 'render_cmd_builder',
     TYPE_KEY_RENDER_CMD_DESTROYER: 'render_cmd_destroyer',
+    TYPE_KEY_RENDER_CMD_TRANSFORM: 'render_cmd_transform',
 }
 
 

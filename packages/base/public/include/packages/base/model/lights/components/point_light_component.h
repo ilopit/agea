@@ -13,6 +13,7 @@ namespace base
 KRG_ar_class(
     render_cmd_builder   = point_light_component__cmd_builder,
     render_cmd_destroyer = point_light_component__cmd_destroyer,
+    render_cmd_transform = point_light_component__cmd_transform,
     mcp_hint             = "Point light parameters — ambient/diffuse/specular colors and influence "
                            "radius"
 );

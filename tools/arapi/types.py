@@ -65,6 +65,7 @@ class kryga_type:
     self.instantiate_handler = ""
     self.render_cmd_builder = ""
     self.render_cmd_destroyer = ""
+    self.render_cmd_transform = ""
     self.json_save_handler = ""
     self.json_load_handler = ""
     self.mcp_schema = ""

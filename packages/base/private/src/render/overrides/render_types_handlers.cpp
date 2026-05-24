@@ -542,6 +542,30 @@ mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
     return result_code::ok;
 }
 
+result_code
+mesh_component__cmd_transform(reflection::type_context__render_cmd_build& ctx)
+{
+    auto& m = ctx.obj->asr<base::mesh_component>();
+
+    auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
+    cmd->id = m.get_id();
+    cmd->transform = m.get_transform_matrix();
+    cmd->normal_matrix = m.get_normal_matrix();
+    cmd->position = glm::vec3(m.get_world_position());
+
+    auto scale = m.get_scale();
+    float max_s = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+    cmd->bounding_radius = m.get_base_bounding_radius() * max_s;
+
+    const auto& lc = m.get_mesh()->get_local_centroid();
+    glm::vec4 wc = m.get_transform_matrix() * glm::vec4(lc.x, lc.y, lc.z, 1.0f);
+    cmd->bounding_sphere_center = glm::vec3(wc);
+
+    ctx.rb->enqueue_cmd(cmd);
+
+    return result_code::ok;
+}
+
 /*===============================*/
 
 result_code
@@ -684,6 +708,27 @@ spot_light_component__cmd_destroyer(reflection::type_context__render_cmd_build& 
     return result_code::ok;
 }
 
+result_code
+spot_light_component__cmd_transform(reflection::type_context__render_cmd_build& ctx)
+{
+    auto& lc = ctx.obj->asr<base::spot_light_component>();
+
+    auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
+    cmd->id = lc.get_id();
+    cmd->kind = light_kind::spot;
+    cmd->position = lc.get_world_position();
+    cmd->ambient = lc.get_ambient();
+    cmd->diffuse = lc.get_diffuse();
+    cmd->specular = lc.get_specular();
+    cmd->radius = lc.get_radius();
+    cmd->direction = lc.get_direction();
+    cmd->cut_off = glm::cos(glm::radians(lc.get_cut_off()));
+    cmd->outer_cut_off = glm::cos(glm::radians(lc.get_outer_cut_off()));
+    ctx.rb->enqueue_cmd(cmd);
+
+    return result_code::ok;
+}
+
 /*===============================*/
 
 result_code
@@ -735,6 +780,24 @@ point_light_component__cmd_destroyer(reflection::type_context__render_cmd_build&
         plc_model.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
+
+    return result_code::ok;
+}
+
+result_code
+point_light_component__cmd_transform(reflection::type_context__render_cmd_build& ctx)
+{
+    auto& lc = ctx.obj->asr<base::point_light_component>();
+
+    auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
+    cmd->id = lc.get_id();
+    cmd->kind = light_kind::point;
+    cmd->position = lc.get_world_position();
+    cmd->ambient = lc.get_ambient();
+    cmd->diffuse = lc.get_diffuse();
+    cmd->specular = lc.get_specular();
+    cmd->radius = lc.get_radius();
+    ctx.rb->enqueue_cmd(cmd);
 
     return result_code::ok;
 }

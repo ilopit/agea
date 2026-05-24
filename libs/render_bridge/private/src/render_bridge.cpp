@@ -6,6 +6,8 @@
 #include <core/reflection/reflection_type.h>
 
 #include <packages/root/model/smart_object.h>
+#include <packages/root/model/components/game_object_component.h>
+#include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/sampler.h>
@@ -272,6 +274,26 @@ render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
     obj.set_state(root::smart_object_state::constructed);
 
     return rc;
+}
+
+kryga::result_code
+render_bridge::render_cmd_transform(root::game_object_component& source)
+{
+    auto r = source.get_owner()->get_components(source.get_order_idx());
+
+    for (auto& obj : r)
+    {
+        auto handler = obj.get_reflection()->render_cmd_transform;
+        if (!handler)
+        {
+            continue;
+        }
+
+        reflection::type_context__render_cmd_build ctx{this, &obj};
+        handler(ctx);
+    }
+
+    return result_code::ok;
 }
 
 uint8_t

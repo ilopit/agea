@@ -13,6 +13,7 @@ namespace base
 KRG_ar_class(
     render_cmd_builder   = spot_light_component__cmd_builder,
     render_cmd_destroyer = spot_light_component__cmd_destroyer,
+    render_cmd_transform = spot_light_component__cmd_transform,
     mcp_hint             = "Spot light parameters — colors / direction / radius and inner/outer "
                            "cone angles in degrees"
 );

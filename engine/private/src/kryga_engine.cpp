@@ -829,35 +829,7 @@ vulkan_engine::consume_updated_transforms()
 
     for (auto& i : items)
     {
-        auto r = i->get_owner()->get_components(i->get_order_idx());
-
-        for (auto& obj : r)
-        {
-            if (auto m = obj.as<base::mesh_component>())
-            {
-                if (m->get_render_built())
-                {
-                    auto* cmd = rb.alloc_cmd<update_transform_cmd>();
-                    cmd->id = m->get_id();
-                    cmd->transform = m->get_transform_matrix();
-                    cmd->normal_matrix = m->get_normal_matrix();
-                    cmd->position = glm::vec3(m->get_world_position());
-
-                    auto scale = m->get_scale();
-                    float max_s =
-                        glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-                    cmd->bounding_radius = m->get_base_bounding_radius() * max_s;
-
-                    const auto& lc = m->get_mesh()->get_local_centroid();
-                    glm::vec4 wc = m->get_transform_matrix() * glm::vec4(lc.x, lc.y, lc.z, 1.0f);
-                    cmd->bounding_sphere_center = glm::vec3(wc);
-
-                    rb.enqueue_cmd(cmd);
-                }
-                m->set_dirty_transform(false);
-            }
-        }
-
+        rb.render_cmd_transform(*i);
         i->set_dirty_transform(false);
     }
 

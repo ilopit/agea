@@ -101,6 +101,7 @@ using type_handler__instantiate = result_code (*)(type_context__copy&);
 using type_handler__compare = result_code (*)(type_context__compare&);
 using type_handler__render_cmd_builder = result_code (*)(type_context__render_cmd_build&);
 using type_handler__render_cmd_destroyer = result_code (*)(type_context__render_cmd_build&);
+using type_handler__render_cmd_transform = result_code (*)(type_context__render_cmd_build&);
 using type_handler__gpu_pack = void (*)(const void* src, void* dst);
 
 struct gpu_texture_slot_ref
@@ -177,6 +178,7 @@ struct reflection_type
 
     type_handler__render_cmd_builder            render_cmd_builder = nullptr;
     type_handler__render_cmd_destroyer          render_cmd_destroyer = nullptr;
+    type_handler__render_cmd_transform          render_cmd_transform = nullptr;
 
     type_handler__gpu_pack                      gpu_pack = nullptr;
     size_t                                      gpu_data_size = 0;
