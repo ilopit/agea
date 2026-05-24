@@ -44,6 +44,7 @@ shader_loader::load(const vfs::rid& spv_rid)
 {
     kryga::utils::buffer out;
 
+#ifdef NDEBUG
     if (vfs::load_buffer(spv_rid, out))
     {
         return out;
@@ -54,6 +55,9 @@ shader_loader::load(const vfs::rid& spv_rid)
     {
         return out;
     }
+#else
+    auto cache_rid = cache_rid_for(spv_rid);
+#endif
 
     std::string source_rel;
     if (!strip_spv_suffix(spv_rid.relative(), source_rel))

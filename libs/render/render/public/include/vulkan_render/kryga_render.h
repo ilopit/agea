@@ -721,6 +721,8 @@ private:
     uint32_t m_applied_shadow_map_size = 0;
     shader_effect_data* m_debug_wire_se = nullptr;
     material_data* m_debug_wire_mat = nullptr;
+    mesh_data* m_debug_sphere_mesh = nullptr;
+    mesh_data* m_debug_cone_mesh = nullptr;
     uint32_t m_debug_light_draw_count = 0;
     uint32_t m_debug_light_instance_base = 0;
     render_pass_sptr m_shadow_passes[KGPU_CSM_CASCADE_COUNT];

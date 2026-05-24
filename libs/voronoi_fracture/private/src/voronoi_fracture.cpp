@@ -298,11 +298,18 @@ find_original_id(const manifold::MeshGL& mesh, uint32_t tri)
 }
 
 void
-emit_flat_triangle(const glm::vec3 p[3], chunk& ck, aabb& box)
+emit_flat_triangle(const glm::vec3 p[3], const glm::vec3& chunk_center, chunk& ck, aabb& box)
 {
     glm::vec3 fn = glm::cross(p[1] - p[0], p[2] - p[0]);
     float fl = glm::length(fn);
     fn = fl > 1e-8f ? fn / fl : glm::vec3(0, 1, 0);
+
+    glm::vec3 face_mid = (p[0] + p[1] + p[2]) / 3.0f;
+    bool flip = glm::dot(fn, face_mid - chunk_center) < 0.0f;
+    if (flip)
+    {
+        fn = -fn;
+    }
 
     uint32_t base = uint32_t(ck.vertices.size());
     for (int k = 0; k < 3; ++k)
@@ -312,8 +319,20 @@ emit_flat_triangle(const glm::vec3 p[3], chunk& ck, aabb& box)
         v.normal = fn;
         v.color = glm::vec3(1.0f);
         ck.vertices.push_back(v);
-        ck.indices.push_back(base + k);
         box.expand(p[k]);
+    }
+
+    if (flip)
+    {
+        ck.indices.push_back(base);
+        ck.indices.push_back(base + 2);
+        ck.indices.push_back(base + 1);
+    }
+    else
+    {
+        ck.indices.push_back(base);
+        ck.indices.push_back(base + 1);
+        ck.indices.push_back(base + 2);
     }
 }
 
@@ -339,7 +358,7 @@ manifold_to_chunk(const manifold::MeshGL& mesh,
                     mesh.vertProperties[vi * 3 + 2]};
         }
 
-        emit_flat_triangle(p, ck, box);
+        emit_flat_triangle(p, chunk_center, ck, box);
     }
 }
 

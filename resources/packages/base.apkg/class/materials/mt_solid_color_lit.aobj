@@ -9,3 +9,8 @@ diffuse:
   x: 0.7
   y: 0.7
   z: 0.7
+specular:
+  x: 0.05
+  y: 0.05
+  z: 0.05
+shininess: 4.0

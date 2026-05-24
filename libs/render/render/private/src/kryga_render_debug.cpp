@@ -77,15 +77,45 @@ vulkan_render::prepare_debug_light_data(render::frame_state& current_frame)
         }
 
         uint32_t slot = debug_base_slot + debug_idx;
-        float vis_radius = 0.3f;
+        float radius = light->gpu_data.radius;
+        bool is_spot = light->gpu_data.cut_off > 0.0f;
 
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), light->gpu_data.position) *
-                          glm::scale(glm::mat4(1.0f), glm::vec3(vis_radius));
+        glm::mat4 model;
+        if (is_spot)
+        {
+            // Cone: apex at light position, opens along light direction.
+            // Unit cone opens along -Y, so rotate -Y to match light direction.
+            glm::vec3 dir = glm::normalize(light->gpu_data.direction);
+            float cone_angle = std::acos(light->gpu_data.outer_cut_off);
+            float base_r = std::tan(cone_angle) * radius;
+
+            glm::vec3 from(0.0f, -1.0f, 0.0f);
+            glm::vec3 axis = glm::cross(from, dir);
+            float axis_len = glm::length(axis);
+            glm::mat4 rot(1.0f);
+            if (axis_len > 1e-6f)
+            {
+                float angle = std::acos(glm::clamp(glm::dot(from, dir), -1.0f, 1.0f));
+                rot = glm::rotate(glm::mat4(1.0f), angle, glm::normalize(axis));
+            }
+            else if (glm::dot(from, dir) < 0.0f)
+            {
+                rot = glm::rotate(glm::mat4(1.0f), glm::pi<float>(), glm::vec3(1.0f, 0.0f, 0.0f));
+            }
+
+            model = glm::translate(glm::mat4(1.0f), light->gpu_data.position) * rot *
+                    glm::scale(glm::mat4(1.0f), glm::vec3(base_r, radius, base_r));
+        }
+        else
+        {
+            model = glm::translate(glm::mat4(1.0f), light->gpu_data.position) *
+                    glm::scale(glm::mat4(1.0f), glm::vec3(radius));
+        }
 
         obj_data[slot].model = model;
         obj_data[slot].normal = glm::transpose(glm::inverse(model));
         obj_data[slot].obj_pos = light->gpu_data.position;
-        obj_data[slot].bounding_radius = vis_radius;
+        obj_data[slot].bounding_radius = radius;
         obj_data[slot].material_id = m_debug_wire_mat->gpu_idx();
         obj_data[slot].bone_offset = 0;
         obj_data[slot].bone_count = 0;
@@ -123,8 +153,7 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
         return;
     }
 
-    auto* cube = glob::glob_state().getr_render().loader.get_mesh_data(AID("cube_mesh"));
-    if (!cube || cube->m_vertex_buffer.buffer() == VK_NULL_HANDLE)
+    if (!m_debug_sphere_mesh || !m_debug_cone_mesh)
     {
         return;
     }
@@ -133,7 +162,6 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
     auto* se = m_debug_wire_se;
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
-    // Sets 0/1 removed — accessed via BDA pointer table in push constants
     auto pipeline_layout = se->m_pipeline_layout;
 
     if (m_bindless_set != VK_NULL_HANDLE)
@@ -148,9 +176,6 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
                                 nullptr);
     }
 
-    bind_mesh(cmd, cube);
-
-    // Draw each light as a wireframe cube — data already uploaded in prepare_debug_light_data
     gpu::push_constants_main pc = m_obj_config;
     pc.material_id = m_debug_wire_mat->gpu_idx();
     pc.use_clustered_lighting = 0;
@@ -161,9 +186,22 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
         pc.sampler_indices[t] = KGPU_SAMPLER_LINEAR_REPEAT;
     }
 
-    for (uint32_t i = 0; i < m_debug_light_draw_count; ++i)
+    // Draw each light with the appropriate mesh (sphere for point, cone for spot)
+    uint32_t draw_idx = 0;
+    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
-        pc.instance_base = m_debug_light_instance_base + i;
+        auto* light = m_cache.universal_lights.at(i);
+        if (!light || !light->is_valid())
+        {
+            continue;
+        }
+
+        bool is_spot = light->gpu_data.cut_off > 0.0f;
+        auto* mesh = is_spot ? m_debug_cone_mesh : m_debug_sphere_mesh;
+
+        bind_mesh(cmd, mesh);
+
+        pc.instance_base = m_debug_light_instance_base + draw_idx;
 
         vkCmdPushConstants(cmd,
                            se->m_pipeline_layout,
@@ -172,14 +210,16 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
                            sizeof(gpu::push_constants_main),
                            &pc);
 
-        if (cube->has_indices())
+        if (mesh->has_indices())
         {
-            vkCmdDrawIndexed(cmd, cube->indices_size(), 1, 0, 0, 0);
+            vkCmdDrawIndexed(cmd, mesh->indices_size(), 1, 0, 0, 0);
         }
         else
         {
-            vkCmdDraw(cmd, cube->vertices_size(), 1, 0, 0);
+            vkCmdDraw(cmd, mesh->vertices_size(), 1, 0, 0);
         }
+
+        ++draw_idx;
     }
 }
 

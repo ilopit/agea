@@ -36,6 +36,10 @@ struct shader_effect_create_info
     // overwrites the depth buffer and breaks subsequent depth-tested draws.
     bool depth_write = true;
     VkCullModeFlags cull_mode = VK_CULL_MODE_NONE;
+    bool depth_bias_enable = false;
+    float depth_bias_constant = 0.0f;
+    float depth_bias_slope = 0.0f;
+    float depth_bias_clamp = 0.0f;
     depth_stencil_mode ds_mode = depth_stencil_mode::none;
 
     uint32_t width = 0;

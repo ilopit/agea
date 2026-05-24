@@ -18,6 +18,5 @@ layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
 
 void main()
 {
-    uint _mi = get_material_id();
-    out_color = vec4(dyn_material_buffer.objects[_mi].diffuse, 1.0);
+    out_color = vec4(in_color, 1.0);
 }

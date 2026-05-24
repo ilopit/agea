@@ -11,6 +11,8 @@
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
 
+#include <render/utils/mesh_primitives.h>
+
 #include <gpu_types/gpu_generic_constants.h>
 #include <gpu_types/gpu_vertex_types.h>
 #include <gpu_types/gpu_frustum_types.h>
@@ -1111,6 +1113,27 @@ vulkan_render::prepare_system_resources()
         m_debug_wire_mat = glob::glob_state().getr_render().loader.create_material(
             AID("mat_debug_wire"), AID("debug_wire"), sd, *m_debug_wire_se, utils::dynobj{});
     }
+
+    // Create low-poly sphere mesh for debug point light radius
+    {
+        auto sphere = render::generate_sphere(1.0f, 12, 16, 1.0f, 1.0f, 0.0f);
+        kryga::utils::buffer vb(sphere.vertices.size() * sizeof(gpu::vertex_data));
+        std::memcpy(vb.data(), sphere.vertices.data(), vb.size());
+        kryga::utils::buffer ib(sphere.indices.size() * sizeof(gpu::uint));
+        std::memcpy(ib.data(), sphere.indices.data(), ib.size());
+        m_debug_sphere_mesh = glob::glob_state().getr_render().loader.create_mesh(
+            AID("debug_sphere_mesh"), vb.make_view<gpu::vertex_data>(), ib.make_view<gpu::uint>());
+    }
+    // Create cone mesh for debug spot light volume
+    {
+        auto cone = render::generate_cone(24, 1.0f, 1.0f, 0.0f);
+        kryga::utils::buffer vb(cone.vertices.size() * sizeof(gpu::vertex_data));
+        std::memcpy(vb.data(), cone.vertices.data(), vb.size());
+        kryga::utils::buffer ib(cone.indices.size() * sizeof(gpu::uint));
+        std::memcpy(ib.data(), cone.indices.data(), ib.size());
+        m_debug_cone_mesh = glob::glob_state().getr_render().loader.create_mesh(
+            AID("debug_cone_mesh"), vb.make_view<gpu::vertex_data>(), ib.make_view<gpu::uint>());
+    }
 }
 
 void
@@ -1193,6 +1216,10 @@ vulkan_render::init_shadow_resources()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::none;
         se_ci.cull_mode = VK_CULL_MODE_FRONT_BIT;  // Front-face culling reduces peter-panning
+        se_ci.depth_bias_enable = true;
+        se_ci.depth_bias_constant = 2.0f;
+        se_ci.depth_bias_slope = 3.0f;
+        se_ci.depth_bias_clamp = 0.0f;
         se_ci.height = m_render_config.shadows.map_size;
         se_ci.width = m_render_config.shadows.map_size;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
@@ -1222,6 +1249,10 @@ vulkan_render::init_shadow_resources()
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::none;
         se_ci.cull_mode = VK_CULL_MODE_NONE;  // Can't cull in paraboloid space
+        se_ci.depth_bias_enable = true;
+        se_ci.depth_bias_constant = 2.0f;
+        se_ci.depth_bias_slope = 3.0f;
+        se_ci.depth_bias_clamp = 0.0f;
         se_ci.height = m_render_config.shadows.map_size;
         se_ci.width = m_render_config.shadows.map_size;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;

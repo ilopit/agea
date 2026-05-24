@@ -211,7 +211,9 @@ float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize)
 // Debug: set to 1 to visualize cascade indices as colors
 #define SHADOW_DEBUG_CASCADE_VIS 0
 
-// Sample shadow for a specific cascade
+// Sample shadow for a specific cascade.
+// Hardware depth bias (constant + slope) is applied during shadow map rendering,
+// so no manual depth bias is needed here.
 float sampleCascadeShadow(uint cascade, vec3 biasedPos)
 {
     mat4 lightVP = dyn_shadow_data.shadow.directional.cascades[cascade].view_proj;
@@ -227,9 +229,6 @@ float sampleCascadeShadow(uint cascade, vec3 biasedPos)
         return 1.0;
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
-
-    float bias = dyn_shadow_data.shadow.directional.shadow_bias;
-    currentDepth -= bias;
 
     float texelSize = dyn_shadow_data.shadow.directional.texel_size;
     return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize);
@@ -262,7 +261,7 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
     float shadow = sampleCascadeShadow(cascade, biasedPos);
 
     // Blend with next cascade near the split boundary to hide the resolution seam.
-    // Blend zone is the last 10% of each cascade's depth range.
+    // Blend zone is the last 25% of each cascade's depth range.
     if (cascade < cascadeCount - 1u)
     {
         float splitDepth = dyn_shadow_data.shadow.directional.cascades[cascade].split_depth;
@@ -270,7 +269,7 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
             ? dyn_shadow_data.shadow.directional.cascades[cascade - 1u].split_depth
             : 0.1;
         float cascadeRange = splitDepth - prevSplit;
-        float blendZone = cascadeRange * 0.1;
+        float blendZone = cascadeRange * 0.25;
         float distToEdge = splitDepth - viewDepth;
 
         if (distToEdge < blendZone && blendZone > 0.0)
@@ -301,9 +300,6 @@ float calcSpotShadow(uint shadowIdx, vec3 worldPos)
         return 1.0;
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
-
-    float bias = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.x;
-    currentDepth -= bias;
 
     float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z;
     return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize);
@@ -342,9 +338,6 @@ float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
         return 1.0;
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
-
-    float bias = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.x;
-    currentDepth -= bias;
 
     float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z;
     return sampleShadowPCF(texIdx, uv, currentDepth, texelSize);

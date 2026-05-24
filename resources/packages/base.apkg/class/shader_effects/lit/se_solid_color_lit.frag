@@ -194,9 +194,8 @@ vec3 CalcPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
         return vec3(0);
     }
 
-    // Inverse-square falloff with steeper curve
     float d_ratio2 = d_ratio * d_ratio;
-    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+    float falloff = 1.0 / (1.0 + d_ratio2);
 
     // UE4-style window function to smoothly fade to zero at radius
     float d_ratio4 = d_ratio2 * d_ratio2;
@@ -237,9 +236,8 @@ vec3 CalcSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
         return vec3(0);
     }
 
-    // Inverse-square falloff with steeper curve
     float d_ratio2 = d_ratio * d_ratio;
-    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+    float falloff = 1.0 / (1.0 + d_ratio2);
 
     // UE4-style window function to smoothly fade to zero at radius
     float d_ratio4 = d_ratio2 * d_ratio2;

@@ -1,3 +1,7 @@
-proto_id: solid_color_material 
+proto_id: solid_color_material
 id: mt_wire
 shader_effect: se_color_line
+diffuse:
+  x: 1.0
+  y: 1.0
+  z: 0.0

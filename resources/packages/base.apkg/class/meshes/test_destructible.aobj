@@ -5,5 +5,5 @@ material: mt_solid_color_lit
 cell_count: 20
 fracture_seed: 42
 damage_threshold: 50.0
-lifetime: 600.0
+lifetime: 99999.0
 explosion_strength: 5.0

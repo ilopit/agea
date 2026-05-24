@@ -286,6 +286,13 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
     pb.m_rasterizer_ci = vk_utils::make_rasterization_state_create_info(
         info.is_wire ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL, info.cull_mode);
+    if (info.depth_bias_enable)
+    {
+        pb.m_rasterizer_ci.depthBiasEnable = VK_TRUE;
+        pb.m_rasterizer_ci.depthBiasConstantFactor = info.depth_bias_constant;
+        pb.m_rasterizer_ci.depthBiasSlopeFactor = info.depth_bias_slope;
+        pb.m_rasterizer_ci.depthBiasClamp = info.depth_bias_clamp;
+    }
 
     pb.m_multisampling_ci = vk_utils::make_multisampling_state_create_info();
 

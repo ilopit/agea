@@ -69,5 +69,45 @@ generate_sphere(float radius, uint32_t stacks, uint32_t slices, float r, float g
     return mesh;
 }
 
+primitive_mesh
+generate_cone(uint32_t slices, float r, float g, float b)
+{
+    primitive_mesh mesh;
+    // Apex + ring of base vertices
+    mesh.vertices.reserve(slices + 2);
+    mesh.indices.reserve(slices * 3);
+
+    // Vertex 0: apex at origin
+    gpu::vertex_data apex{};
+    apex.position = {0, 0, 0};
+    apex.normal = {0, 1, 0};
+    apex.color = {r, g, b};
+    mesh.vertices.push_back(apex);
+
+    // Ring at y = -1, radius = 1
+    for (uint32_t i = 0; i <= slices; ++i)
+    {
+        float theta = float(i) / float(slices) * 2.0f * PI;
+        float ct = std::cos(theta);
+        float st = std::sin(theta);
+
+        gpu::vertex_data v{};
+        v.position = {ct, -1.0f, st};
+        v.normal = {ct, 0.0f, st};
+        v.color = {r, g, b};
+        mesh.vertices.push_back(v);
+    }
+
+    // Triangles from apex to each base edge
+    for (uint32_t i = 0; i < slices; ++i)
+    {
+        mesh.indices.push_back(0);
+        mesh.indices.push_back(i + 1);
+        mesh.indices.push_back(i + 2);
+    }
+
+    return mesh;
+}
+
 }  // namespace render
 }  // namespace kryga

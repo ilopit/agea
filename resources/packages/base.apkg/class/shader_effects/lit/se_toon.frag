@@ -72,7 +72,7 @@ vec3 toonPointLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 
     if (d_ratio >= 1.0) return vec3(0);
 
     float d_ratio2 = d_ratio * d_ratio;
-    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+    float falloff = 1.0 / (1.0 + d_ratio2);
     float d_ratio4 = d_ratio2 * d_ratio2;
     float window = clamp(1.0 - d_ratio4, 0.0, 1.0);
     window = window * window;
@@ -99,7 +99,7 @@ vec3 toonSpotLight(universal_light_data light, vec3 normal, vec3 fragPos, vec3 v
     if (d_ratio >= 1.0) return vec3(0);
 
     float d_ratio2 = d_ratio * d_ratio;
-    float falloff = 1.0 / (1.0 + 25.0 * d_ratio2);
+    float falloff = 1.0 / (1.0 + d_ratio2);
     float d_ratio4 = d_ratio2 * d_ratio2;
     float window = clamp(1.0 - d_ratio4, 0.0, 1.0);
     window = window * window;

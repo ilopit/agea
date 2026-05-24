@@ -5098,6 +5098,245 @@ TEST_F(visual_pipeline_test, voronoi_fractured_cube)
     compare("voronoi_fractured_cube", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
 }
 
+// =============================================================================
+// Chunk normals under point light — verify cut faces are correctly lit
+// =============================================================================
+TEST_F(visual_pipeline_test, chunk_normals_point_light)
+{
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto& loader = glob::glob_state().getr_render().loader;
+    auto& cache = renderer.get_cache();
+
+    auto* se = create_lit_shader_effect(AID("se_cnpl"));
+    ASSERT_TRUE(se);
+
+    // Camera looking slightly down at the chunks
+    auto scene = setup_scene("cnpl", {3, 3, 5}, {0, 0, 0}, se);
+
+    // White point light directly above — strong diffuse
+    auto* pl = cache.universal_lights.alloc(AID("cnpl_pl"), light_type::point);
+    pl->gpu_data.position = {0.0f, 4.0f, 0.0f};
+    pl->gpu_data.ambient = {0.05f, 0.05f, 0.05f};
+    pl->gpu_data.diffuse = {1.0f, 1.0f, 1.0f};
+    pl->gpu_data.specular = {0.3f, 0.3f, 0.3f};
+    pl->gpu_data.radius = 20.0f;
+    pl->gpu_data.type = KGPU_light_type_point;
+    pl->gpu_data.cut_off = -1.0f;
+    pl->gpu_data.outer_cut_off = -1.0f;
+    renderer.schd_add_light(pl);
+
+    // Fracture a unit cube (vertices + indices identical to create_cube_mesh)
+    // clang-format off
+    std::vector<gpu::vertex_data> cube_v = {
+        {{-0.5f,-0.5f, 0.5f},{0,0, 1},{1,1,1},{0,0}},
+        {{ 0.5f,-0.5f, 0.5f},{0,0, 1},{1,1,1},{1,0}},
+        {{ 0.5f, 0.5f, 0.5f},{0,0, 1},{1,1,1},{1,1}},
+        {{-0.5f, 0.5f, 0.5f},{0,0, 1},{1,1,1},{0,1}},
+        {{ 0.5f,-0.5f,-0.5f},{0,0,-1},{1,1,1},{0,0}},
+        {{-0.5f,-0.5f,-0.5f},{0,0,-1},{1,1,1},{1,0}},
+        {{-0.5f, 0.5f,-0.5f},{0,0,-1},{1,1,1},{1,1}},
+        {{ 0.5f, 0.5f,-0.5f},{0,0,-1},{1,1,1},{0,1}},
+        {{-0.5f, 0.5f, 0.5f},{0,1,0},{1,1,1},{0,0}},
+        {{ 0.5f, 0.5f, 0.5f},{0,1,0},{1,1,1},{1,0}},
+        {{ 0.5f, 0.5f,-0.5f},{0,1,0},{1,1,1},{1,1}},
+        {{-0.5f, 0.5f,-0.5f},{0,1,0},{1,1,1},{0,1}},
+        {{-0.5f,-0.5f,-0.5f},{0,-1,0},{1,1,1},{0,0}},
+        {{ 0.5f,-0.5f,-0.5f},{0,-1,0},{1,1,1},{1,0}},
+        {{ 0.5f,-0.5f, 0.5f},{0,-1,0},{1,1,1},{1,1}},
+        {{-0.5f,-0.5f, 0.5f},{0,-1,0},{1,1,1},{0,1}},
+        {{ 0.5f,-0.5f, 0.5f},{1,0,0},{1,1,1},{0,0}},
+        {{ 0.5f,-0.5f,-0.5f},{1,0,0},{1,1,1},{1,0}},
+        {{ 0.5f, 0.5f,-0.5f},{1,0,0},{1,1,1},{1,1}},
+        {{ 0.5f, 0.5f, 0.5f},{1,0,0},{1,1,1},{0,1}},
+        {{-0.5f,-0.5f,-0.5f},{-1,0,0},{1,1,1},{0,0}},
+        {{-0.5f,-0.5f, 0.5f},{-1,0,0},{1,1,1},{1,0}},
+        {{-0.5f, 0.5f, 0.5f},{-1,0,0},{1,1,1},{1,1}},
+        {{-0.5f, 0.5f,-0.5f},{-1,0,0},{1,1,1},{0,1}},
+    };
+    std::vector<gpu::uint> cube_i = {
+         0, 1, 2,  2, 3, 0,
+         4, 5, 6,  6, 7, 4,
+         8, 9,10, 10,11, 8,
+        12,13,14, 14,15,12,
+        16,17,18, 18,19,16,
+        20,21,22, 22,23,20,
+    };
+    // clang-format on
+
+    voronoi_fracture::fracture_params fp;
+    fp.seed = 42;
+    fp.cell_count = 6;
+    fp.fill = voronoi_fracture::fill_mode::convex;
+    fp.roughness = 0.0f;
+    auto result = voronoi_fracture::fracture_mesh(
+        cube_v.data(), (uint32_t)cube_v.size(), cube_i.data(), (uint32_t)cube_i.size(), fp);
+    ASSERT_FALSE(result.chunks.empty());
+
+    // Diagnostic: check normals for each chunk.
+    // Positions are already relative to seed_point (origin), so use origin as center.
+    uint32_t total_tris = 0;
+    uint32_t inward_tris = 0;
+    for (uint32_t ci = 0; ci < result.chunks.size(); ++ci)
+    {
+        auto& ck = result.chunks[ci];
+        glm::vec3 center{0.0f};
+
+        for (uint32_t t = 0; t + 2 < ck.indices.size(); t += 3)
+        {
+            auto& v0 = ck.vertices[ck.indices[t]];
+            glm::vec3 mid =
+                (ck.vertices[ck.indices[t]].position + ck.vertices[ck.indices[t + 1]].position +
+                 ck.vertices[ck.indices[t + 2]].position) /
+                3.0f;
+            bool faces_outward = glm::dot(v0.normal, mid - center) >= 0.0f;
+            ++total_tris;
+            if (!faces_outward)
+            {
+                ++inward_tris;
+            }
+        }
+    }
+    float inward_pct = total_tris > 0 ? 100.0f * inward_tris / total_tris : 0.0f;
+    printf("\n[chunk_normals] total triangles: %u, inward-facing: %u (%.1f%%)\n",
+           total_tris,
+           inward_tris,
+           inward_pct);
+
+    // Verify vertex_data layout matches GPU expectations
+    printf(
+        "[chunk_normals] sizeof(vertex_data)=%zu  "
+        "offset: pos=%zu normal=%zu color=%zu uv=%zu uv2=%zu\n",
+        sizeof(gpu::vertex_data),
+        offsetof(gpu::vertex_data, position),
+        offsetof(gpu::vertex_data, normal),
+        offsetof(gpu::vertex_data, color),
+        offsetof(gpu::vertex_data, uv),
+        offsetof(gpu::vertex_data, uv2));
+
+    // Print first chunk's first few triangle normals + raw bytes at normal offset
+    if (!result.chunks.empty())
+    {
+        auto& ck = result.chunks[0];
+        uint32_t n = std::min(uint32_t(ck.indices.size() / 3), 4u);
+        for (uint32_t t = 0; t < n; ++t)
+        {
+            auto& v = ck.vertices[ck.indices[t * 3]];
+            auto* raw = reinterpret_cast<const float*>(&v);
+            printf(
+                "[chunk_normals] tri %u: normal=(%.3f,%.3f,%.3f)  "
+                "raw floats[0..7]=(%.3f,%.3f,%.3f, %.3f,%.3f,%.3f, %.3f,%.3f)\n",
+                t,
+                v.normal[0],
+                v.normal[1],
+                v.normal[2],
+                raw[0],
+                raw[1],
+                raw[2],
+                raw[3],
+                raw[4],
+                raw[5],
+                raw[6],
+                raw[7]);
+        }
+    }
+
+    // All normals of a convex chunk must face outward from centroid
+    EXPECT_EQ(inward_tris, 0u) << inward_tris << "/" << total_tris
+                               << " triangles have inward normals";
+
+    // Verify each chunk has unique, non-degenerate triangles
+    if (!result.chunks.empty())
+    {
+        auto& ck = result.chunks[0];
+        printf("[chunk_normals] chunk 0: %zu verts, %zu indices\n",
+               ck.vertices.size(),
+               ck.indices.size());
+        // Print vertex 0 raw bytes
+        auto* raw = reinterpret_cast<const uint8_t*>(&ck.vertices[0]);
+        printf("[chunk_normals] vertex 0 hex (52 bytes):");
+        for (int b = 0; b < 52; ++b)
+        {
+            printf(" %02x", raw[b]);
+        }
+        printf("\n");
+    }
+
+    // Place each chunk separated on a floor, under the point light.
+    // Also add a control quad with known upward normal to verify the pipeline.
+    std::vector<texture_sampler_data> no_tex;
+    auto grey_gpu = make_solid_color_gpu_data(
+        {0.15f, 0.15f, 0.15f}, {0.7f, 0.7f, 0.7f}, {0.3f, 0.3f, 0.3f}, 32.0f);
+
+    {
+        // Control: a simple quad built with the same buffer→create_mesh path as chunks
+        std::vector<gpu::vertex_data> ctrl_v = {
+            {{-0.4f, 0, 0.4f}, {0, 1, 0}, {1, 1, 1}, {0, 0}},
+            {{0.4f, 0, 0.4f}, {0, 1, 0}, {1, 1, 1}, {1, 0}},
+            {{0.4f, 0, -0.4f}, {0, 1, 0}, {1, 1, 1}, {1, 1}},
+            {{-0.4f, 0, -0.4f}, {0, 1, 0}, {1, 1, 1}, {0, 1}},
+        };
+        std::vector<gpu::uint> ctrl_i = {0, 1, 2, 2, 3, 0};
+
+        kryga::utils::buffer cvb(ctrl_v.size() * sizeof(gpu::vertex_data));
+        std::memcpy(cvb.data(), ctrl_v.data(), cvb.size());
+        kryga::utils::buffer cib(ctrl_i.size() * sizeof(gpu::uint));
+        std::memcpy(cib.data(), ctrl_i.data(), cib.size());
+
+        auto* ctrl_mat = loader.create_material(
+            AID("cnpl_ctrl_m"), AID("solid_color_material"), no_tex, *se, grey_gpu);
+        renderer.schd_add_material(ctrl_mat);
+
+        auto* ctrl_mesh = loader.create_mesh(
+            AID("cnpl_ctrl_mesh"), cvb.make_view<gpu::vertex_data>(), cib.make_view<gpu::uint>());
+
+        glm::vec3 ctrl_pos{0.0f, 0.0f, 2.0f};
+        auto ctrl_model = glm::translate(glm::mat4(1.0f), ctrl_pos);
+        auto* ctrl_obj = cache.objects.alloc(AID("cnpl_ctrl"));
+        loader.update_object(*ctrl_obj,
+                             *ctrl_mat,
+                             *ctrl_mesh,
+                             ctrl_model,
+                             glm::transpose(glm::inverse(ctrl_model)),
+                             ctrl_pos);
+        renderer.schd_add_object(ctrl_obj);
+    }
+
+    for (uint32_t i = 0; i < result.chunks.size(); ++i)
+    {
+        auto& ck = result.chunks[i];
+        if (ck.indices.empty())
+        {
+            continue;
+        }
+
+        auto tag = std::to_string(i);
+        auto* mat = loader.create_material(
+            AID(("cnpl_m_" + tag).c_str()), AID("solid_color_material"), no_tex, *se, grey_gpu);
+        renderer.schd_add_material(mat);
+
+        kryga::utils::buffer vb(ck.vertices.size() * sizeof(gpu::vertex_data));
+        std::memcpy(vb.data(), ck.vertices.data(), vb.size());
+        kryga::utils::buffer ib(ck.indices.size() * sizeof(gpu::uint));
+        std::memcpy(ib.data(), ck.indices.data(), ib.size());
+
+        auto* mesh = loader.create_mesh(AID(("cnpl_mesh_" + tag).c_str()),
+                                        vb.make_view<gpu::vertex_data>(),
+                                        ib.make_view<gpu::uint>());
+
+        // Spread chunks in a row
+        float x_offset = (float(i) - float(result.chunks.size()) / 2.0f) * 1.5f;
+        glm::vec3 pos{x_offset, 0.5f, 0.0f};
+        auto model = glm::translate(glm::mat4(1.0f), pos);
+
+        auto* obj = cache.objects.alloc(AID(("cnpl_o_" + tag).c_str()));
+        loader.update_object(*obj, *mat, *mesh, model, glm::transpose(glm::inverse(model)), pos);
+        renderer.schd_add_object(obj);
+    }
+
+    renderer.draw_headless();
+    compare("chunk_normals_point_light", *m_main_pass, TEST_WIDTH, TEST_HEIGHT);
+}
+
 TEST_F(visual_pipeline_test, voronoi_fractured_convex)
 {
     auto& renderer = glob::glob_state().getr_render().renderer;
