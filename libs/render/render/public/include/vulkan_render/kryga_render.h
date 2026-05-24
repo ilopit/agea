@@ -592,11 +592,15 @@ private:
     void
     compute_shadow_matrices();
     void
+    draw_shadow_atlas(VkCommandBuffer cmd);
+    void
     draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx);
     void
     draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, bool back_face);
     void
     select_shadowed_lights();
+    void
+    compute_shadow_atlas_layout();
 
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
@@ -718,18 +722,26 @@ private:
 
     // Snapshots of last-applied config (to detect runtime changes)
     render_config::cluster_cfg m_applied_clusters;
-    uint32_t m_applied_shadow_map_size = 0;
+    uint32_t m_applied_shadow_atlas_size = 0;
+    uint32_t m_applied_shadow_csm_tile_size = 0;
+    uint32_t m_applied_shadow_local_tile_size = 0;
     shader_effect_data* m_debug_wire_se = nullptr;
     material_data* m_debug_wire_mat = nullptr;
     mesh_data* m_debug_sphere_mesh = nullptr;
     mesh_data* m_debug_cone_mesh = nullptr;
     uint32_t m_debug_light_draw_count = 0;
     uint32_t m_debug_light_instance_base = 0;
-    render_pass_sptr m_shadow_passes[KGPU_CSM_CASCADE_COUNT];
-    render_pass_sptr m_shadow_local_passes[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];  // *2 for DPSM
-    uint32_t m_shadow_map_bindless_indices[KGPU_CSM_CASCADE_COUNT][FRAMES_IN_FLIGHT] = {};
-    uint32_t m_shadow_local_bindless_indices[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2][FRAMES_IN_FLIGHT] =
-        {};
+    render_pass_sptr m_shadow_atlas_pass;
+    uint32_t m_shadow_atlas_bindless_indices[FRAMES_IN_FLIGHT] = {};
+
+    struct shadow_atlas_tile
+    {
+        uint32_t x, y, size;
+        glm::vec2 uv_offset, uv_scale;
+    };
+    shadow_atlas_tile m_csm_tiles[KGPU_CSM_CASCADE_COUNT];
+    shadow_atlas_tile m_local_tiles[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];
+
     shader_effect_data* m_shadow_se = nullptr;
     shader_effect_data* m_shadow_dpsm_se = nullptr;
 

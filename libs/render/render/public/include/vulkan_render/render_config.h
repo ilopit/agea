@@ -21,7 +21,9 @@ struct render_config
         float normal_bias = 0.03f;
         uint32_t cascade_count = 4;
         float distance = 200.0f;
-        uint32_t map_size = 2048;
+        uint32_t atlas_size = KGPU_SHADOW_ATLAS_SIZE;
+        uint32_t csm_tile_size = KGPU_SHADOW_CSM_TILE_SIZE;
+        uint32_t local_tile_size = KGPU_SHADOW_LOCAL_TILE_SIZE;
         bool enabled = true;
     } shadows;
 

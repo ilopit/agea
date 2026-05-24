@@ -316,38 +316,19 @@ vulkan_render::prepare_pass_bindings()
 void
 vulkan_render::init_shadow_passes()
 {
-    // Create 4 depth-only render passes for CSM cascades (triple-buffered)
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
-    {
-        m_shadow_passes[c] =
-            render_pass_builder()
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_depth_only(true)
-                .set_image_count(FRAMES_IN_FLIGHT)
-                .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
-                .set_enable_stencil(false)
-                .set_debug_name("shadow_csm_" + std::to_string(c))
-                .build();
+    compute_shadow_atlas_layout();
 
-        m_shadow_passes[c]->set_name(AID("shadow_csm_" + std::to_string(c)));
-    }
+    m_shadow_atlas_pass =
+        render_pass_builder()
+            .set_depth_format(VK_FORMAT_D32_SFLOAT)
+            .set_depth_only(true)
+            .set_image_count(FRAMES_IN_FLIGHT)
+            .set_width_depth(m_render_config.shadows.atlas_size, m_render_config.shadows.atlas_size)
+            .set_enable_stencil(false)
+            .set_debug_name("shadow_atlas")
+            .build();
 
-    // Create local light shadow passes (spot + point DPSM), triple-buffered
-    // Each local light needs up to 2 passes (point lights need front+back)
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
-    {
-        m_shadow_local_passes[i] =
-            render_pass_builder()
-                .set_depth_format(VK_FORMAT_D32_SFLOAT)
-                .set_depth_only(true)
-                .set_image_count(FRAMES_IN_FLIGHT)
-                .set_width_depth(m_render_config.shadows.map_size, m_render_config.shadows.map_size)
-                .set_enable_stencil(false)
-                .set_debug_name("shadow_local_" + std::to_string(i))
-                .build();
-
-        m_shadow_local_passes[i]->set_name(AID("shadow_local_" + std::to_string(i)));
-    }
+    m_shadow_atlas_pass->set_name(AID("shadow_atlas"));
 }
 
 // ============================================================================
@@ -546,50 +527,16 @@ vulkan_render::setup_instanced_render_graph()
         m_render_graph.import_resource(AID("scene_lowres_target"), rg_resource_type::image);
     }
 
-    // Shadow passes (CSM cascades)
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
-    {
-        auto pass_name = AID("shadow_csm_" + std::to_string(c));
-        m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(pass_name,
-                                         {m_render_graph.write(pass_name),
-                                          m_render_graph.read(AID("dyn_object_buffer")),
-                                          m_render_graph.read(AID("dyn_instance_slots"))},
-                                         m_shadow_passes[c].get(),
-                                         VkClearColorValue{},
-                                         [this, c](VkCommandBuffer cmd)
-                                         { draw_shadow_pass(cmd, c); });
-    }
-
-    // Local light shadow passes: front hemisphere (spot + point front)
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
-    {
-        auto pass_name = AID("shadow_local_" + std::to_string(i));
-        m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(pass_name,
-                                         {m_render_graph.write(pass_name),
-                                          m_render_graph.read(AID("dyn_object_buffer")),
-                                          m_render_graph.read(AID("dyn_instance_slots"))},
-                                         m_shadow_local_passes[i * 2].get(),
-                                         VkClearColorValue{},
-                                         [this, i](VkCommandBuffer cmd)
-                                         { draw_shadow_local_pass(cmd, i, false); });
-    }
-
-    // Local light shadow passes: back hemisphere (point lights DPSM only)
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
-    {
-        auto pass_name = AID("shadow_local_back_" + std::to_string(i));
-        m_render_graph.import_resource(pass_name, rg_resource_type::image);
-        m_render_graph.add_graphics_pass(pass_name,
-                                         {m_render_graph.write(pass_name),
-                                          m_render_graph.read(AID("dyn_object_buffer")),
-                                          m_render_graph.read(AID("dyn_instance_slots"))},
-                                         m_shadow_local_passes[i * 2 + 1].get(),
-                                         VkClearColorValue{},
-                                         [this, i](VkCommandBuffer cmd)
-                                         { draw_shadow_local_pass(cmd, i, true); });
-    }
+    // Shadow atlas — single depth-only pass for all CSM cascades + local light shadows
+    m_render_graph.import_resource(AID("shadow_atlas"), rg_resource_type::image);
+    m_render_graph.add_graphics_pass(AID("shadow_atlas"),
+                                     {m_render_graph.write(AID("shadow_atlas")),
+                                      m_render_graph.read(AID("dyn_object_buffer")),
+                                      m_render_graph.read(AID("dyn_instance_slots"))},
+                                     m_shadow_atlas_pass.get(),
+                                     VkClearColorValue{},
+                                     [this](VkCommandBuffer cmd)
+                                     { draw_shadow_atlas(cmd); });
 
     // Compute pass: GPU frustum culling (runs before cluster culling)
     // Frustum culling is required for instanced mode - dispatch_frustum_cull_impl asserts if not
@@ -672,17 +619,8 @@ vulkan_render::setup_instanced_render_graph()
             main_resources.push_back(m_render_graph.read(AID("ui_target")));
         }
 
-        // Shadow map dependencies (ordering only — actual sampling is via bindless)
-        for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
-        {
-            main_resources.push_back(m_render_graph.read(AID("shadow_csm_" + std::to_string(c))));
-        }
-        for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
-        {
-            main_resources.push_back(m_render_graph.read(AID("shadow_local_" + std::to_string(i))));
-            main_resources.push_back(
-                m_render_graph.read(AID("shadow_local_back_" + std::to_string(i))));
-        }
+        // Shadow atlas dependency (ordering only — actual sampling is via bindless)
+        main_resources.push_back(m_render_graph.read(AID("shadow_atlas")));
 
         m_render_graph.add_graphics_pass(AID("main"),
                                          std::move(main_resources),

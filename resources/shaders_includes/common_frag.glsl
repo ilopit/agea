@@ -172,7 +172,7 @@ const vec2 poissonDisk32[32] = vec2[32](
 float sampleShadowPoisson16(uint texIdx, vec2 uv, float compareDepth, float texelSize)
 {
     float shadow = 0.0;
-    float spread = texelSize * 3.0;  // spread across 3 texels
+    float spread = texelSize * 3.0;
     for (int i = 0; i < 16; i++)
     {
         shadow += sampleShadow1(texIdx, uv + poissonDisk16[i] * spread, compareDepth);
@@ -183,7 +183,7 @@ float sampleShadowPoisson16(uint texIdx, vec2 uv, float compareDepth, float texe
 float sampleShadowPoisson32(uint texIdx, vec2 uv, float compareDepth, float texelSize)
 {
     float shadow = 0.0;
-    float spread = texelSize * 4.0;  // spread across 4 texels
+    float spread = texelSize * 4.0;
     for (int i = 0; i < 32; i++)
     {
         shadow += sampleShadow1(texIdx, uv + poissonDisk32[i] * spread, compareDepth);
@@ -211,13 +211,13 @@ float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize)
 // Debug: set to 1 to visualize cascade indices as colors
 #define SHADOW_DEBUG_CASCADE_VIS 0
 
-// Sample shadow for a specific cascade.
-// Hardware depth bias (constant + slope) is applied during shadow map rendering,
-// so no manual depth bias is needed here.
+// Sample shadow for a specific cascade from the atlas.
 float sampleCascadeShadow(uint cascade, vec3 biasedPos)
 {
     mat4 lightVP = dyn_shadow_data.shadow.directional.cascades[cascade].view_proj;
-    uint texIdx = dyn_shadow_data.shadow.directional.shadow_map_indices[cascade];
+    uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
+    vec2 uv_offset = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_offset;
+    vec2 uv_scale = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_scale;
 
     vec4 lightSpacePos = lightVP * vec4(biasedPos, 1.0);
     vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
@@ -230,7 +230,10 @@ float sampleCascadeShadow(uint cascade, vec3 biasedPos)
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
 
-    float texelSize = dyn_shadow_data.shadow.directional.texel_size;
+    // Remap to atlas coordinates
+    shadowUV = shadowUV * uv_scale + uv_offset;
+
+    float texelSize = dyn_shadow_data.shadow.directional.texel_size * uv_scale.x;
     return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize);
 }
 
@@ -284,11 +287,13 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
     return mix(1.0, shadow, fadeFactor);
 }
 
-// Calculate spot light shadow factor
+// Calculate spot light shadow factor (atlas)
 float calcSpotShadow(uint shadowIdx, vec3 worldPos)
 {
     mat4 lightVP = dyn_shadow_data.shadow.local_shadows[shadowIdx].view_proj;
-    uint texIdx = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_info.x;
+    uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
+    vec2 uv_offset = dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_offset_front;
+    vec2 uv_scale = dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_scale_front;
 
     vec4 lightSpacePos = lightVP * vec4(worldPos, 1.0);
     vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
@@ -301,11 +306,13 @@ float calcSpotShadow(uint shadowIdx, vec3 worldPos)
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
 
-    float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z;
+    shadowUV = shadowUV * uv_scale + uv_offset;
+
+    float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z * uv_scale.x;
     return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize);
 }
 
-// Calculate point light shadow factor using dual-paraboloid mapping
+// Calculate point light shadow factor using dual-paraboloid mapping (atlas)
 float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
 {
     vec3 lightToFrag = worldPos - lightPos;
@@ -314,11 +321,15 @@ float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
     // Transform to light space
     vec3 L = (lightView * vec4(lightToFrag, 0.0)).xyz;
 
-    // Select hemisphere
+    // Select hemisphere — atlas UV from front or back tile
     bool frontFace = L.z >= 0.0;
-    uint texIdx = frontFace
-        ? dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_info.x
-        : dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_info.y;
+    uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
+    vec2 uv_offset = frontFace
+        ? dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_offset_front
+        : dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_offset_back;
+    vec2 uv_scale = frontFace
+        ? dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_scale_front
+        : dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_scale_back;
 
     // Flip for back hemisphere
     if (!frontFace)
@@ -339,7 +350,10 @@ float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
 
-    float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z;
+    // Remap to atlas coordinates
+    uv = uv * uv_scale + uv_offset;
+
+    float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z * uv_scale.x;
     return sampleShadowPCF(texIdx, uv, currentDepth, texelSize);
 }
 

@@ -23,6 +23,123 @@ namespace render
 {
 
 // ============================================================================
+// Shadow Atlas Layout
+// ============================================================================
+
+void
+vulkan_render::compute_shadow_atlas_layout()
+{
+    const uint32_t atlas_sz = m_render_config.shadows.atlas_size;
+    const uint32_t csm_sz = m_render_config.shadows.csm_tile_size;
+    const uint32_t local_sz = m_render_config.shadows.local_tile_size;
+    const float inv_atlas = 1.0f / float(atlas_sz);
+
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        auto& t = m_csm_tiles[c];
+        t.x = c * csm_sz;
+        t.y = 0;
+        t.size = csm_sz;
+        t.uv_offset = glm::vec2(float(t.x) * inv_atlas, float(t.y) * inv_atlas);
+        t.uv_scale = glm::vec2(float(csm_sz) * inv_atlas);
+    }
+
+    const uint32_t cols = atlas_sz / local_sz;
+    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
+    {
+        auto& t = m_local_tiles[i];
+        uint32_t col = i % cols;
+        uint32_t row = i / cols;
+        t.x = col * local_sz;
+        t.y = csm_sz + row * local_sz;
+        t.size = local_sz;
+        t.uv_offset = glm::vec2(float(t.x) * inv_atlas, float(t.y) * inv_atlas);
+        t.uv_scale = glm::vec2(float(local_sz) * inv_atlas);
+    }
+}
+
+// ============================================================================
+// Shadow Atlas Drawing
+// ============================================================================
+
+void
+vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
+{
+    if (!m_render_config.shadows.enabled || !m_shadow_se || m_draw_batches.empty())
+        return;
+
+    // CSM cascades
+    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    {
+        auto& tile = m_csm_tiles[c];
+
+        VkViewport vp{};
+        vp.x = static_cast<float>(tile.x);
+        vp.y = static_cast<float>(tile.y);
+        vp.width = static_cast<float>(tile.size);
+        vp.height = static_cast<float>(tile.size);
+        vp.minDepth = 0.0f;
+        vp.maxDepth = 1.0f;
+        vkCmdSetViewport(cmd, 0, 1, &vp);
+
+        VkRect2D sc{};
+        sc.offset = {static_cast<int32_t>(tile.x), static_cast<int32_t>(tile.y)};
+        sc.extent = {tile.size, tile.size};
+        vkCmdSetScissor(cmd, 0, 1, &sc);
+
+        draw_shadow_pass(cmd, c);
+    }
+
+    // Local light shadows
+    for (uint32_t i = 0; i < m_shadow_config.shadowed_local_count; ++i)
+    {
+        bool is_point =
+            m_shadow_config.local_shadows[i].shadow_info.z == KGPU_light_type_point;
+
+        // Front hemisphere
+        {
+            auto& tile = m_local_tiles[i * 2];
+            VkViewport vp{};
+            vp.x = static_cast<float>(tile.x);
+            vp.y = static_cast<float>(tile.y);
+            vp.width = static_cast<float>(tile.size);
+            vp.height = static_cast<float>(tile.size);
+            vp.minDepth = 0.0f;
+            vp.maxDepth = 1.0f;
+            vkCmdSetViewport(cmd, 0, 1, &vp);
+
+            VkRect2D sc{};
+            sc.offset = {static_cast<int32_t>(tile.x), static_cast<int32_t>(tile.y)};
+            sc.extent = {tile.size, tile.size};
+            vkCmdSetScissor(cmd, 0, 1, &sc);
+
+            draw_shadow_local_pass(cmd, i, false);
+        }
+
+        // Back hemisphere (point lights only)
+        if (is_point)
+        {
+            auto& tile = m_local_tiles[i * 2 + 1];
+            VkViewport vp{};
+            vp.x = static_cast<float>(tile.x);
+            vp.y = static_cast<float>(tile.y);
+            vp.width = static_cast<float>(tile.size);
+            vp.height = static_cast<float>(tile.size);
+            vp.minDepth = 0.0f;
+            vp.maxDepth = 1.0f;
+            vkCmdSetViewport(cmd, 0, 1, &vp);
+
+            VkRect2D sc{};
+            sc.offset = {static_cast<int32_t>(tile.x), static_cast<int32_t>(tile.y)};
+            sc.extent = {tile.size, tile.size};
+            vkCmdSetScissor(cmd, 0, 1, &sc);
+
+            draw_shadow_local_pass(cmd, i, true);
+        }
+    }
+}
+
+// ============================================================================
 // Cascade Split Computation (PSSM)
 // ============================================================================
 
@@ -129,7 +246,7 @@ vulkan_render::compute_shadow_matrices()
 
         // Texel snapping on the final VP
         glm::mat4 shadow_vp = light_proj * light_view;
-        float half_sm = (float)m_render_config.shadows.map_size * 0.5f;
+        float half_sm = (float)m_render_config.shadows.csm_tile_size * 0.5f;
         glm::vec4 origin = shadow_vp * glm::vec4(0, 0, 0, 1);
         float sx = std::round(origin.x * half_sm) - origin.x * half_sm;
         float sy = std::round(origin.y * half_sm) - origin.y * half_sm;
@@ -347,11 +464,6 @@ vulkan_render::select_shadowed_lights()
         }
 
         float dist = glm::length(light->gpu_data.position - m_camera_data.position);
-        if (dist > light->gpu_data.radius * 3.0f)
-        {
-            continue;  // Too far to matter
-        }
-
         float contribution = light->gpu_data.radius / std::max(dist, 0.1f);
         candidates.push_back({light->slot(), contribution});
     }
@@ -366,27 +478,29 @@ vulkan_render::select_shadowed_lights()
         std::min((uint32_t)candidates.size(), (uint32_t)KGPU_MAX_SHADOWED_LOCAL_LIGHTS);
     m_shadow_config.shadowed_local_count = count;
 
-    auto frame_idx = glob::glob_state().getr_render().device.get_current_frame_index();
-
     for (uint32_t i = 0; i < count; ++i)
     {
         auto* light = m_cache.universal_lights.at(candidates[i].light_slot);
 
         auto& shadow = m_shadow_config.local_shadows[i];
-        shadow.shadow_info.z = light->gpu_data.type;  // light_type
+        shadow.shadow_info.z = light->gpu_data.type;
         float s_near = 0.1f;
         float s_far = light->gpu_data.radius;
         shadow.shadow_params =
-            glm::vec4(0.005f,                                                       // bias
-                      0.02f,                                                        // normal_bias
-                      1.0f / static_cast<float>(m_render_config.shadows.map_size),  // texel_size
-                      s_near                                                        // near_plane
-            );
+            glm::vec4(0.005f,
+                      0.02f,
+                      1.0f / static_cast<float>(m_render_config.shadows.local_tile_size),
+                      s_near);
         shadow.far_plane = s_far;
+
+        // Atlas UV for front and back tiles
+        shadow.atlas_offset_front = m_local_tiles[i * 2].uv_offset;
+        shadow.atlas_scale_front = m_local_tiles[i * 2].uv_scale;
+        shadow.atlas_offset_back = m_local_tiles[i * 2 + 1].uv_offset;
+        shadow.atlas_scale_back = m_local_tiles[i * 2 + 1].uv_scale;
 
         if (light->gpu_data.type == KGPU_light_type_spot)
         {
-            // Spot light: perspective projection
             float fov = 2.0f * std::acos(light->gpu_data.outer_cut_off);
             glm::mat4 proj = glm::perspective(fov, 1.0f, s_near, s_far);
             glm::mat4 view =
@@ -405,22 +519,16 @@ vulkan_render::select_shadowed_lights()
 
             shadow.view_proj = proj * view;
             shadow.view_proj_back = glm::mat4(0.0f);
-            shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2][frame_idx];
-            shadow.shadow_info.y = 0xFFFFFFFFu;
         }
         else
         {
-            // Point light: dual-paraboloid
             glm::vec3 front_dir(0.0f, 0.0f, 1.0f);
             glm::mat4 view = glm::lookAt(
                 light->gpu_data.position, light->gpu_data.position + front_dir, glm::vec3(0, 1, 0));
             shadow.view_proj = view;
             shadow.view_proj_back = view;
-            shadow.shadow_info.x = m_shadow_local_bindless_indices[i * 2][frame_idx];
-            shadow.shadow_info.y = m_shadow_local_bindless_indices[i * 2 + 1][frame_idx];
         }
 
-        // Set shadow_index on the light
         light->gpu_data.shadow_index = i;
     }
 
@@ -458,12 +566,15 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
 {
     ZoneScopedN("Render::UploadShadowData");
 
-    // Update CSM bindless indices for the current frame-in-flight
+    // Update atlas bindless index for the current frame-in-flight
     auto frame_idx = glob::glob_state().getr_render().device.get_current_frame_index();
+    m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_indices[frame_idx];
+
+    // Set per-cascade atlas UV data
     for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
     {
-        m_shadow_config.directional.shadow_map_indices[c] =
-            m_shadow_map_bindless_indices[c][frame_idx];
+        m_shadow_config.directional.cascades[c].atlas_offset = m_csm_tiles[c].uv_offset;
+        m_shadow_config.directional.cascades[c].atlas_scale = m_csm_tiles[c].uv_scale;
     }
 
     // Compute shadow matrices for this frame

@@ -265,7 +265,9 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
 
     // Snapshot initial config for runtime change detection
     m_applied_clusters = m_render_config.clusters;
-    m_applied_shadow_map_size = m_render_config.shadows.map_size;
+    m_applied_shadow_atlas_size = m_render_config.shadows.atlas_size;
+    m_applied_shadow_csm_tile_size = m_render_config.shadows.csm_tile_size;
+    m_applied_shadow_local_tile_size = m_render_config.shadows.local_tile_size;
 
     // Setup and compile render graph — compile() validates all passes:
     // binding table resources + BDA push constant fields (bda_X → dyn_X).
@@ -297,22 +299,28 @@ vulkan_render::apply_config_changes()
                   c.max_lights_per_cluster);
     }
 
-    // Shadow map resolution — requires recreating shadow passes + shader effects
-    if (m_render_config.shadows.map_size != m_applied_shadow_map_size)
+    // Shadow atlas config — requires recreating atlas + shader effects
+    if (m_render_config.shadows.atlas_size != m_applied_shadow_atlas_size ||
+        m_render_config.shadows.csm_tile_size != m_applied_shadow_csm_tile_size ||
+        m_render_config.shadows.local_tile_size != m_applied_shadow_local_tile_size)
     {
-        ALOG_INFO("Shadow map resolution changed: {} -> {}",
-                  m_applied_shadow_map_size,
-                  m_render_config.shadows.map_size);
+        ALOG_INFO("Shadow atlas config changed: atlas {}→{}, csm {}→{}, local {}→{}",
+                  m_applied_shadow_atlas_size,
+                  m_render_config.shadows.atlas_size,
+                  m_applied_shadow_csm_tile_size,
+                  m_render_config.shadows.csm_tile_size,
+                  m_applied_shadow_local_tile_size,
+                  m_render_config.shadows.local_tile_size);
 
         glob::glob_state().getr_render().device.wait_for_fences();
 
-        // Recreate shadow passes (new image dimensions) and resources (shader effects + bindless)
         init_shadow_passes();
         init_shadow_resources();
 
-        m_applied_shadow_map_size = m_render_config.shadows.map_size;
+        m_applied_shadow_atlas_size = m_render_config.shadows.atlas_size;
+        m_applied_shadow_csm_tile_size = m_render_config.shadows.csm_tile_size;
+        m_applied_shadow_local_tile_size = m_render_config.shadows.local_tile_size;
 
-        // Render graph references shadow passes — must rebuild
         m_render_graph.reset();
         setup_render_graph();
     }
@@ -806,17 +814,10 @@ vulkan_render::deinit()
     m_scene_lowres_views.clear();
     m_scene_lowres_images.clear();
 
-    // Clear shadow passes
+    // Clear shadow atlas
     m_shadow_se = nullptr;
     m_shadow_dpsm_se = nullptr;
-    for (auto& sp : m_shadow_passes)
-    {
-        sp.reset();
-    }
-    for (auto& sp : m_shadow_local_passes)
-    {
-        sp.reset();
-    }
+    m_shadow_atlas_pass.reset();
 
     // Clear compute passes before device is destroyed
     // (they hold compute shaders with VkShaderModule)
@@ -1141,68 +1142,31 @@ vulkan_render::init_shadow_resources()
 {
     ZoneScopedN("Render::InitShadowResources");
 
-    // Register CSM depth image views in bindless texture array
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    // Register atlas depth image views in bindless texture array (one per frame-in-flight)
+    auto& device = glob::glob_state().getr_render().device;
+    for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
     {
-        auto& device = glob::glob_state().getr_render().device;
-        for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
-        {
-            auto depth_view = m_shadow_passes[c]->get_depth_image_view(f);
+        auto depth_view = m_shadow_atlas_pass->get_depth_image_view(f);
+        uint32_t bindless_idx = KGPU_max_bindless_textures - 1 - f;
 
-            uint32_t bindless_idx = KGPU_max_bindless_textures - 1 - (c * FRAMES_IN_FLIGHT + f);
+        VkDescriptorImageInfo image_info = {};
+        image_info.imageView = depth_view;
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-            VkDescriptorImageInfo image_info = {};
-            image_info.imageView = depth_view;
-            image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        VkWriteDescriptorSet write = {};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = m_bindless_set;
+        write.dstBinding = 1;
+        write.dstArrayElement = bindless_idx;
+        write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        write.pImageInfo = &image_info;
 
-            VkWriteDescriptorSet write = {};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = m_bindless_set;
-            write.dstBinding = 1;  // bindless_textures binding
-            write.dstArrayElement = bindless_idx;
-            write.descriptorCount = 1;
-            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            write.pImageInfo = &image_info;
-
-            vkUpdateDescriptorSets(device.vk_device(), 1, &write, 0, nullptr);
-
-            m_shadow_map_bindless_indices[c][f] = bindless_idx;
-        }
-        m_shadow_config.directional.shadow_map_indices[c] = m_shadow_map_bindless_indices[c][0];
+        vkUpdateDescriptorSets(device.vk_device(), 1, &write, 0, nullptr);
+        m_shadow_atlas_bindless_indices[f] = bindless_idx;
     }
 
-    // Register local light depth views in bindless array
-    constexpr uint32_t csm_bindless_count = KGPU_CSM_CASCADE_COUNT * FRAMES_IN_FLIGHT;
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
-    {
-        auto vk_dev = glob::glob_state().getr_render().device.vk_device();
-        for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
-        {
-            auto local_depth_view = m_shadow_local_passes[i]->get_depth_image_view(f);
-            uint32_t local_bindless_idx =
-                KGPU_max_bindless_textures - 1 - csm_bindless_count - (i * FRAMES_IN_FLIGHT + f);
-
-            VkDescriptorImageInfo local_image_info = {};
-            local_image_info.imageView = local_depth_view;
-            local_image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            VkWriteDescriptorSet local_write = {};
-            local_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            local_write.dstSet = m_bindless_set;
-            local_write.dstBinding = 1;
-            local_write.dstArrayElement = local_bindless_idx;
-            local_write.descriptorCount = 1;
-            local_write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            local_write.pImageInfo = &local_image_info;
-
-            vkUpdateDescriptorSets(vk_dev, 1, &local_write, 0, nullptr);
-
-            m_shadow_local_bindless_indices[i][f] = local_bindless_idx;
-        }
-    }
-
-    // Create shadow vertex shader effect on the first shadow pass.
-    // With BDA, no shared pipeline layout needed — shadow shaders build their own.
+    // Create shadow shader effects on the atlas pass
     vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
 
     auto vert_r = render::shader_loader::load(se_base / "shadow/se_shadow.vert.spv");
@@ -1211,21 +1175,22 @@ vulkan_render::init_shadow_resources()
         auto& vert = *vert_r;
         shader_effect_create_info se_ci = {};
         se_ci.vert_buffer = &vert;
-        se_ci.frag_buffer = nullptr;  // No fragment shader for depth-only
+        se_ci.frag_buffer = nullptr;
         se_ci.is_wire = false;
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::none;
-        se_ci.cull_mode = VK_CULL_MODE_FRONT_BIT;  // Front-face culling reduces peter-panning
+        se_ci.cull_mode = VK_CULL_MODE_FRONT_BIT;
         se_ci.depth_bias_enable = true;
         se_ci.depth_bias_constant = 2.0f;
         se_ci.depth_bias_slope = 3.0f;
         se_ci.depth_bias_clamp = 0.0f;
-        se_ci.height = m_render_config.shadows.map_size;
-        se_ci.width = m_render_config.shadows.map_size;
+        se_ci.height = m_render_config.shadows.atlas_size;
+        se_ci.width = m_render_config.shadows.atlas_size;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
 
         m_shadow_se = nullptr;
-        auto rc = m_shadow_passes[0]->create_shader_effect(AID("se_shadow"), se_ci, m_shadow_se);
+        auto rc =
+            m_shadow_atlas_pass->create_shader_effect(AID("se_shadow"), se_ci, m_shadow_se);
         if (rc != result_code::ok)
         {
             ALOG_WARN("Failed to create shadow shader effect - shadows disabled");
@@ -1237,7 +1202,6 @@ vulkan_render::init_shadow_resources()
         ALOG_WARN("Failed to load se_shadow.vert - shadows disabled");
     }
 
-    // Create DPSM vertex shader for point lights
     auto dpsm_vert_r = render::shader_loader::load(se_base / "shadow/se_shadow_dpsm.vert.spv");
     if (dpsm_vert_r)
     {
@@ -1248,17 +1212,17 @@ vulkan_render::init_shadow_resources()
         se_ci.is_wire = false;
         se_ci.enable_dynamic_state = false;
         se_ci.alpha = alpha_mode::none;
-        se_ci.cull_mode = VK_CULL_MODE_NONE;  // Can't cull in paraboloid space
+        se_ci.cull_mode = VK_CULL_MODE_NONE;
         se_ci.depth_bias_enable = true;
         se_ci.depth_bias_constant = 2.0f;
         se_ci.depth_bias_slope = 3.0f;
         se_ci.depth_bias_clamp = 0.0f;
-        se_ci.height = m_render_config.shadows.map_size;
-        se_ci.width = m_render_config.shadows.map_size;
+        se_ci.height = m_render_config.shadows.atlas_size;
+        se_ci.width = m_render_config.shadows.atlas_size;
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
 
         m_shadow_dpsm_se = nullptr;
-        auto rc = m_shadow_passes[0]->create_shader_effect(
+        auto rc = m_shadow_atlas_pass->create_shader_effect(
             AID("se_shadow_dpsm"), se_ci, m_shadow_dpsm_se);
         if (rc != result_code::ok)
         {
@@ -1267,20 +1231,17 @@ vulkan_render::init_shadow_resources()
         }
     }
 
-    // Initialize shadow config from render_config
     KRG_check(m_shadow_se, "Shadow shader effect must be loaded");
     m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
     m_shadow_config.directional.shadow_bias = m_render_config.shadows.bias;
     m_shadow_config.directional.normal_bias = m_render_config.shadows.normal_bias;
     m_shadow_config.directional.texel_size =
-        1.0f / static_cast<float>(m_render_config.shadows.map_size);
+        1.0f / static_cast<float>(m_render_config.shadows.csm_tile_size);
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.shadowed_local_count = 0;
+    m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_indices[0];
 
-    // Transition all shadow depth images from UNDEFINED to SHADER_READ_ONLY_OPTIMAL.
-    // This ensures unused shadow maps (inactive lights) are in a valid layout for sampling.
-    // Active shadow maps will be transitioned by the render graph as needed.
-    auto& device = glob::glob_state().getr_render().device;
+    // Transition atlas depth images to SHADER_READ_ONLY_OPTIMAL
     device.immediate_submit(
         [&](VkCommandBuffer cmd)
         {
@@ -1298,51 +1259,30 @@ vulkan_render::init_shadow_resources()
             barrier.subresourceRange.baseArrayLayer = 0;
             barrier.subresourceRange.layerCount = 1;
 
-            // CSM cascades
-            for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+            auto& depth_images = m_shadow_atlas_pass->get_depth_images();
+            for (auto& img : depth_images)
             {
-                auto& depth_images = m_shadow_passes[c]->get_depth_images();
-                for (auto& img : depth_images)
-                {
-                    barrier.image = img.image();
-                    vkCmdPipelineBarrier(cmd,
-                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                         0,
-                                         0,
-                                         nullptr,
-                                         0,
-                                         nullptr,
-                                         1,
-                                         &barrier);
-                }
-            }
-
-            // Local light shadow passes
-            for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
-            {
-                auto& depth_images = m_shadow_local_passes[i]->get_depth_images();
-                for (auto& img : depth_images)
-                {
-                    barrier.image = img.image();
-                    vkCmdPipelineBarrier(cmd,
-                                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                         0,
-                                         0,
-                                         nullptr,
-                                         0,
-                                         nullptr,
-                                         1,
-                                         &barrier);
-                }
+                barrier.image = img.image();
+                vkCmdPipelineBarrier(cmd,
+                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                     0,
+                                     0,
+                                     nullptr,
+                                     0,
+                                     nullptr,
+                                     1,
+                                     &barrier);
             }
         });
 
-    ALOG_INFO("Shadow resources initialized: {} CSM cascades, {}x{} resolution, {} frames buffered",
-              KGPU_CSM_CASCADE_COUNT,
-              m_render_config.shadows.map_size,
-              m_render_config.shadows.map_size,
+    ALOG_INFO("Shadow atlas initialized: {}x{}, CSM tiles {}x{}, local tiles {}x{}, {} frames",
+              m_render_config.shadows.atlas_size,
+              m_render_config.shadows.atlas_size,
+              m_render_config.shadows.csm_tile_size,
+              m_render_config.shadows.csm_tile_size,
+              m_render_config.shadows.local_tile_size,
+              m_render_config.shadows.local_tile_size,
               FRAMES_IN_FLIGHT);
 }
 

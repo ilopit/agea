@@ -11,8 +11,8 @@
 #define KGPU_CSM_CASCADE_COUNT_MAX KGPU_CSM_CASCADE_COUNT
 #define KGPU_MAX_SHADOWED_LOCAL_LIGHTS 8
 #define KGPU_SHADOW_MAP_SIZE 2048
-#define KGPU_SHADOW_MAP_SIZE_MIN 256
-#define KGPU_SHADOW_MAP_SIZE_MAX 8192
+#define KGPU_SHADOW_MAP_SIZE_MIN 64
+#define KGPU_SHADOW_MAP_SIZE_MAX 16384
 #define KGPU_SHADOW_INDEX_NONE 0xFFFFFFFFu
 
 #define KGPU_SHADOW_BIAS_MIN 0.0f
@@ -28,6 +28,9 @@ struct shadow_cascade_data
 {
     mat4 view_proj;
     float split_depth;
+    float _pad0;
+    vec2 atlas_offset;
+    vec2 atlas_scale;
 };
 
 #define KGPU_PCF_3X3 0
@@ -41,7 +44,6 @@ struct shadow_cascade_data
 struct directional_shadow_data
 {
     shadow_cascade_data cascades[KGPU_CSM_CASCADE_COUNT];
-    uvec4 shadow_map_indices;  // packed 4 cascade indices into uvec4
     uint cascade_count;
     float shadow_bias;
     float normal_bias;
@@ -53,10 +55,14 @@ struct local_light_shadow_data
 {
     mat4 view_proj;
     mat4 view_proj_back;
-    uvec4 shadow_info;   // x=shadow_map_index, y=shadow_map_index_back, z=light_type,
-                         // w=unused
+    uvec4 shadow_info;   // x=unused, y=unused, z=light_type, w=unused
     vec4 shadow_params;  // x=bias, y=normal_bias, z=texel_size, w=near_plane
     float far_plane;
+    float _pad0;
+    vec2 atlas_offset_front;
+    vec2 atlas_scale_front;
+    vec2 atlas_offset_back;
+    vec2 atlas_scale_back;
 };
 
 struct shadow_config_data
@@ -64,6 +70,7 @@ struct shadow_config_data
     directional_shadow_data directional;
     local_light_shadow_data local_shadows[KGPU_MAX_SHADOWED_LOCAL_LIGHTS];
     uint shadowed_local_count;
+    uint atlas_bindless_index;
 };
 
 GPU_END_NAMESPACE

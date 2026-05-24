@@ -47,14 +47,26 @@ The calculation also doesn't account for the camera position offset relative to 
 
 `kryga_render_shadows.cpp:630-632` — Point light view direction is hardcoded to `(0,0,1)`. DPSM quality depends on the view orientation relative to the camera. If most visible geometry is along a different axis, shadow quality will be poor where it matters. The view should orient toward the camera or toward the most relevant geometry.
 
-## 9. No shadow map atlas [low-medium, scalability]
+## 9. Shadow atlas — no tile padding [low-medium]
 
-Each shadow pass has its own 2048x2048 depth texture. That's `4 + 16 = 20` textures x 2048^2 x 4 bytes = **320 MB** of depth memory allocated, even when most local light passes are empty. A shadow atlas would consolidate into one or two large textures, reducing memory and descriptor usage.
+Shadow atlas tiles have no padding between them. Bilinear filtering and PCF taps near tile edges can read a neighboring tile's depth data. In practice the impact is minimal (UV bounds check rejects most edge fragments, atlas clear fills unused space with depth=1.0), but at small tile sizes (64-128) the bleed covers a larger fraction of the tile. Fix: inset the UV remap by 2-4 texels so the PCF kernel stays inside each tile.
 
-## 10. Cascade blending doubles shadow sampling cost [low]
+## 10. Shadow atlas — PCF not resolution-independent [medium]
 
-`common_frag.glsl:310-315` — In the blend zone (last 10% of each cascade), two cascades are sampled. With Poisson32, that's 64 texture taps in the blend zone.
+PCF spread is `texelSize * N` (3 for Poisson16, 4 for Poisson32). At higher tile resolutions, texels are smaller so the spread covers less world space — shadows get sharper but the Poisson/grid pattern becomes visible as a checkerboard. Attempted fixes and results:
 
-## 11. No guard on spot light `outer_cut_off` acos [low]
+- **Per-pixel Poisson rotation (screen-space IGN)**: Broke cascade blend — different screen-space noise per cascade created visible waves at transitions.
+- **Per-pixel rotation (world-space IGN)**: Still produced waves + other artifacts. World-space hash didn't produce clean variation.
+- **Per-pixel grid rotation**: Same cascade boundary issues as Poisson rotation.
+- **Resolution-independent spread** (`uv_scale.x / 2048.0`): Concept sound but tangled with rotation artifacts, not evaluated in isolation.
+- **Wider cascade blend zone** (25%→50%): Darkened the scene — more area sampling the coarser next cascade.
+
+Proper fix requires either temporal accumulation (TAA), PCSS (blocker-distance penumbra), or hardware `sampler2DShadow` for PCF.
+
+## 11. Cascade blending doubles shadow sampling cost [low]
+
+`calcDirectionalShadow` — In the blend zone (last 25% of each cascade), two cascades are sampled. With Poisson32, that's 64 texture taps in the blend zone.
+
+## 12. No guard on spot light `outer_cut_off` acos [low]
 
 `kryga_render_shadows.cpp:606` — `float fov = 2.0f * std::acos(light->gpu_data.outer_cut_off)`. If `outer_cut_off` exceeds valid acos range [-1, 1] due to a data error, NaN propagates through the entire shadow matrix. No guard.

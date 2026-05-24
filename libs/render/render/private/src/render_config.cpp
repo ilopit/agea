@@ -125,32 +125,46 @@ render_config::validate()
                "shadows.cascade_count");
     clamp_warn(
         shadows.distance, KGPU_SHADOW_DISTANCE_MIN, KGPU_SHADOW_DISTANCE_MAX, "shadows.distance");
-    clamp_warn(shadows.map_size,
-               (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN,
-               (uint32_t)KGPU_SHADOW_MAP_SIZE_MAX,
-               "shadows.map_size");
-
-    // Round to nearest power of two
-    if (shadows.map_size & (shadows.map_size - 1))
+    // Round a value to the nearest power of two within [lo, hi]
+    auto round_pow2 = [](uint32_t& value, uint32_t lo, uint32_t hi, const char* name)
     {
-        uint32_t original = shadows.map_size;
-        uint32_t v = shadows.map_size;
-        v--;
-        v |= v >> 1;
-        v |= v >> 2;
-        v |= v >> 4;
-        v |= v >> 8;
-        v |= v >> 16;
-        v++;
-        // Pick the closer power of two
-        uint32_t lower = v >> 1;
-        shadows.map_size = (v - original <= original - lower) ? v : lower;
-        shadows.map_size = std::clamp(shadows.map_size,
-                                      (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN,
-                                      (uint32_t)KGPU_SHADOW_MAP_SIZE_MAX);
-        ALOG_WARN("render_config: 'shadows.map_size' value {} is not a power of two, rounded to {}",
-                  original,
-                  shadows.map_size);
+        value = std::clamp(value, lo, hi);
+        if (value & (value - 1))
+        {
+            uint32_t original = value;
+            uint32_t v = value;
+            v--;
+            v |= v >> 1;
+            v |= v >> 2;
+            v |= v >> 4;
+            v |= v >> 8;
+            v |= v >> 16;
+            v++;
+            uint32_t lower = v >> 1;
+            value = (v - original <= original - lower) ? v : lower;
+            value = std::clamp(value, lo, hi);
+            ALOG_WARN("render_config: '{}' value {} is not a power of two, rounded to {}",
+                      name,
+                      original,
+                      value);
+        }
+    };
+
+    round_pow2(shadows.atlas_size, 1024u, 16384u, "shadows.atlas_size");
+    round_pow2(shadows.csm_tile_size,
+               (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN,
+               shadows.atlas_size,
+               "shadows.csm_tile_size");
+    round_pow2(shadows.local_tile_size,
+               (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN,
+               shadows.atlas_size,
+               "shadows.local_tile_size");
+
+    // CSM row must fit: 4 cascades side by side
+    if (shadows.csm_tile_size * KGPU_CSM_CASCADE_COUNT > shadows.atlas_size)
+    {
+        shadows.csm_tile_size = shadows.atlas_size / KGPU_CSM_CASCADE_COUNT;
+        ALOG_WARN("render_config: csm_tile_size reduced to {} to fit atlas", shadows.csm_tile_size);
     }
 
     // Clusters
@@ -198,7 +212,16 @@ render_config::load(const vfs::rid& rid)
         extract_field(shadows_node, "normal_bias", shadows.normal_bias);
         extract_field(shadows_node, "cascade_count", shadows.cascade_count);
         extract_field(shadows_node, "distance", shadows.distance);
-        extract_field(shadows_node, "map_size", shadows.map_size);
+        extract_field(shadows_node, "atlas_size", shadows.atlas_size);
+        extract_field(shadows_node, "csm_tile_size", shadows.csm_tile_size);
+        extract_field(shadows_node, "local_tile_size", shadows.local_tile_size);
+
+        // Backward compat: old configs had map_size instead of per-tile sizes
+        if (!shadows_node["csm_tile_size"] && shadows_node["map_size"])
+        {
+            shadows.csm_tile_size = shadows_node["map_size"].as<uint32_t>();
+            shadows.local_tile_size = shadows.csm_tile_size / 2;
+        }
     }
 
     if (auto clusters_node = container["clusters"]; clusters_node && clusters_node.IsMap())
@@ -259,7 +282,9 @@ render_config::save(const utils::path& path) const
     shadows_node["normal_bias"] = shadows.normal_bias;
     shadows_node["cascade_count"] = shadows.cascade_count;
     shadows_node["distance"] = shadows.distance;
-    shadows_node["map_size"] = shadows.map_size;
+    shadows_node["atlas_size"] = shadows.atlas_size;
+    shadows_node["csm_tile_size"] = shadows.csm_tile_size;
+    shadows_node["local_tile_size"] = shadows.local_tile_size;
     root["shadows"] = shadows_node;
 
     YAML::Node clusters_node;
@@ -324,7 +349,15 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
                 extract_field(s, "normal_bias", shadows.normal_bias);
                 extract_field(s, "cascade_count", shadows.cascade_count);
                 extract_field(s, "distance", shadows.distance);
-                extract_field(s, "map_size", shadows.map_size);
+                extract_field(s, "atlas_size", shadows.atlas_size);
+                extract_field(s, "csm_tile_size", shadows.csm_tile_size);
+                extract_field(s, "local_tile_size", shadows.local_tile_size);
+
+                if (!s["csm_tile_size"] && s["map_size"])
+                {
+                    shadows.csm_tile_size = s["map_size"].as<uint32_t>();
+                    shadows.local_tile_size = shadows.csm_tile_size / 2;
+                }
             }
 
             if (auto c = container["clusters"]; c && c.IsMap())
@@ -386,7 +419,9 @@ render_config::save_to_cache(const vfs::rid& cache) const
     shadows_node["normal_bias"] = shadows.normal_bias;
     shadows_node["cascade_count"] = shadows.cascade_count;
     shadows_node["distance"] = shadows.distance;
-    shadows_node["map_size"] = shadows.map_size;
+    shadows_node["atlas_size"] = shadows.atlas_size;
+    shadows_node["csm_tile_size"] = shadows.csm_tile_size;
+    shadows_node["local_tile_size"] = shadows.local_tile_size;
     root["shadows"] = shadows_node;
 
     YAML::Node clusters_node;

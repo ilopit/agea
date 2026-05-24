@@ -274,46 +274,15 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_render_graph.bind_image(
         AID("selection_mask_target"), *mask_images[0], VK_IMAGE_LAYOUT_UNDEFINED);
 
-    // Shadow maps start in SHADER_READ_ONLY_OPTIMAL from init_shadow_resources().
-    // Use swapchain_image_index to select correct depth image (triple-buffered).
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    // Shadow atlas — single depth image per frame-in-flight
+    if (m_shadow_atlas_pass)
     {
-        if (m_shadow_passes[c])
+        auto& depth_images = m_shadow_atlas_pass->get_depth_images();
+        if (!depth_images.empty())
         {
-            auto& depth_images = m_shadow_passes[c]->get_depth_images();
-            if (!depth_images.empty())
-            {
-                uint32_t idx = swapchain_image_index % depth_images.size();
-                m_render_graph.bind_image(AID("shadow_csm_" + std::to_string(c)),
-                                          depth_images[idx],
-                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            }
-        }
-    }
-
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS; ++i)
-    {
-        if (m_shadow_local_passes[i * 2])
-        {
-            auto& front = m_shadow_local_passes[i * 2]->get_depth_images();
-            if (!front.empty())
-            {
-                uint32_t idx = swapchain_image_index % front.size();
-                m_render_graph.bind_image(AID("shadow_local_" + std::to_string(i)),
-                                          front[idx],
-                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            }
-        }
-        if (m_shadow_local_passes[i * 2 + 1])
-        {
-            auto& back = m_shadow_local_passes[i * 2 + 1]->get_depth_images();
-            if (!back.empty())
-            {
-                uint32_t idx = swapchain_image_index % back.size();
-                m_render_graph.bind_image(AID("shadow_local_back_" + std::to_string(i)),
-                                          back[idx],
-                                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            }
+            uint32_t idx = swapchain_image_index % depth_images.size();
+            m_render_graph.bind_image(
+                AID("shadow_atlas"), depth_images[idx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }
     }
 
@@ -466,7 +435,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
     m_shadow_config.directional.texel_size =
-        1.0f / static_cast<float>(m_render_config.shadows.map_size);
+        1.0f / static_cast<float>(m_render_config.shadows.csm_tile_size);
     upload_shadow_data(current_frame);
 
     // Fill BDA addresses directly in per-pass push constants

@@ -1480,7 +1480,9 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             sh["normal_bias"] = cfg.shadows.normal_bias;
             sh["cascade_count"] = cfg.shadows.cascade_count;
             sh["distance"] = cfg.shadows.distance;
-            sh["map_size"] = cfg.shadows.map_size;
+            sh["atlas_size"] = cfg.shadows.atlas_size;
+            sh["csm_tile_size"] = cfg.shadows.csm_tile_size;
+            sh["local_tile_size"] = cfg.shadows.local_tile_size;
             r["shadows"] = sh;
 
             // Clusters
@@ -1593,9 +1595,17 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 {
                     cfg.shadows.distance = s["distance"].asFloat();
                 }
-                if (s.isMember("map_size"))
+                if (s.isMember("atlas_size"))
                 {
-                    cfg.shadows.map_size = s["map_size"].asUInt();
+                    cfg.shadows.atlas_size = s["atlas_size"].asUInt();
+                }
+                if (s.isMember("csm_tile_size"))
+                {
+                    cfg.shadows.csm_tile_size = s["csm_tile_size"].asUInt();
+                }
+                if (s.isMember("local_tile_size"))
+                {
+                    cfg.shadows.local_tile_size = s["local_tile_size"].asUInt();
                 }
             }
 

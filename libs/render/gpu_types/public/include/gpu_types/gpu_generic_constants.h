@@ -25,6 +25,11 @@
 #define KGPU_znear 0.1
 #define KGPU_zfar 2000
 
+// Shadow atlas
+#define KGPU_SHADOW_ATLAS_SIZE 4096
+#define KGPU_SHADOW_CSM_TILE_SIZE 1024
+#define KGPU_SHADOW_LOCAL_TILE_SIZE 512
+
 // Bindless textures
 #define KGPU_max_bindless_textures 4096
 

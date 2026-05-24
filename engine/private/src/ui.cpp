@@ -411,33 +411,71 @@ render_config_window::handle()
 
         ImGui::Spacing();
 
-        // Shadow map resolution
-        const int sm_sizes[] = {256, 512, 1024, 2048, 4096, 8192};
-        const char* sm_labels[] = {"256", "512", "1024", "2048", "4096", "8192"};
-        int sm_current = 0;
-        for (int i = 0; i < IM_ARRAYSIZE(sm_sizes); ++i)
+        // Shadow atlas configuration
+        const int atlas_sizes[] = {1024, 2048, 4096, 8192, 16384};
+        const char* atlas_labels[] = {"1024", "2048", "4096", "8192", "16384"};
+        int atlas_current = 2;
+        for (int i = 0; i < IM_ARRAYSIZE(atlas_sizes); ++i)
         {
-            if (static_cast<int>(cfg.shadows.map_size) == sm_sizes[i])
+            if (static_cast<int>(cfg.shadows.atlas_size) == atlas_sizes[i])
             {
-                sm_current = i;
+                atlas_current = i;
                 break;
             }
         }
-        if (ImGui::Combo("Shadow Map Size", &sm_current, sm_labels, IM_ARRAYSIZE(sm_labels)))
+        if (ImGui::Combo("Atlas Size", &atlas_current, atlas_labels, IM_ARRAYSIZE(atlas_labels)))
         {
-            cfg.shadows.map_size = static_cast<uint32_t>(sm_sizes[sm_current]);
+            cfg.shadows.atlas_size = static_cast<uint32_t>(atlas_sizes[atlas_current]);
         }
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip(
-                "Resolution of each shadow map (NxN).\n\n"
-                "Higher: sharper shadows, more VRAM.\n"
-                "Lower: softer/blockier shadows, less VRAM.\n\n"
-                "Changes trigger shadow pass rebuild.");
+            ImGui::SetTooltip("Shadow atlas texture size (NxN).\nAll shadow maps are packed into this atlas.");
         }
-        if (reset_button("D##smsize", "Reset to default: 2048"))
+
+        const int tile_sizes[] = {64, 128, 256, 512, 1024, 2048, 4096};
+        const char* tile_labels[] = {"64", "128", "256", "512", "1024", "2048", "4096"};
+
+        int csm_current = 4;
+        for (int i = 0; i < IM_ARRAYSIZE(tile_sizes); ++i)
         {
-            cfg.shadows.map_size = defaults.shadows.map_size;
+            if (static_cast<int>(cfg.shadows.csm_tile_size) == tile_sizes[i])
+            {
+                csm_current = i;
+                break;
+            }
+        }
+        if (ImGui::Combo("CSM Tile Size", &csm_current, tile_labels, IM_ARRAYSIZE(tile_labels)))
+        {
+            cfg.shadows.csm_tile_size = static_cast<uint32_t>(tile_sizes[csm_current]);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Resolution of each CSM cascade tile.\nHigher = sharper directional shadows.\nMust fit: 4 x tile <= atlas.");
+        }
+
+        int local_current = 3;
+        for (int i = 0; i < IM_ARRAYSIZE(tile_sizes); ++i)
+        {
+            if (static_cast<int>(cfg.shadows.local_tile_size) == tile_sizes[i])
+            {
+                local_current = i;
+                break;
+            }
+        }
+        if (ImGui::Combo("Local Tile Size", &local_current, tile_labels, IM_ARRAYSIZE(tile_labels)))
+        {
+            cfg.shadows.local_tile_size = static_cast<uint32_t>(tile_sizes[local_current]);
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("Resolution of each point/spot light shadow tile.\nHigher = sharper local shadows.");
+        }
+
+        if (reset_button("D##smsize", "Reset to defaults"))
+        {
+            cfg.shadows.atlas_size = defaults.shadows.atlas_size;
+            cfg.shadows.csm_tile_size = defaults.shadows.csm_tile_size;
+            cfg.shadows.local_tile_size = defaults.shadows.local_tile_size;
         }
 
         ImGui::Spacing();
@@ -452,8 +490,9 @@ render_config_window::handle()
             ImGui::SetTooltip("Reset all shadow settings to defaults");
         }
 
+        uint32_t atlas_mb = (cfg.shadows.atlas_size / 1024) * (cfg.shadows.atlas_size / 1024) * 4 * 3;
         ImGui::SameLine();
-        ImGui::TextDisabled("| %dx%d shadow maps", cfg.shadows.map_size, cfg.shadows.map_size);
+        ImGui::TextDisabled("| atlas %dx%d (%u MB)", cfg.shadows.atlas_size, cfg.shadows.atlas_size, atlas_mb);
     }
 
     // =========================================================================
