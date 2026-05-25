@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <filesystem>
+#include <span>
 
 namespace kryga
 {
@@ -158,14 +159,20 @@ make_var(const char* key)
 }
 
 // clang-format off
-const config_var config_vars[] = {
+const config_var config_vars_arr[] = {
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::enabled>("shadows.enabled"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::pcf>("shadows.pcf"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::bias>("shadows.bias"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::normal_bias>("shadows.normal_bias"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::pcf_world_radius>("shadows.pcf_world_radius"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::hardware_pcf>("shadows.hardware_pcf"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::depth_16bit>("shadows.depth_16bit"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::cascade_count>("shadows.cascade_count"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::distance>("shadows.distance"),
-    make_var<&rcfg::shadows, &rcfg::shadow_cfg::map_size>("shadows.map_size"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::atlas_size>("shadows.atlas_size"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::csm_tile_size>("shadows.csm_tile_size"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::local_tile_size>("shadows.local_tile_size"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::max_local_lights>("shadows.max_local_lights"),
 
     make_var<&rcfg::clusters, &rcfg::cluster_cfg::tile_size>("clusters.tile_size"),
     make_var<&rcfg::clusters, &rcfg::cluster_cfg::depth_slices>("clusters.depth_slices"),
@@ -190,7 +197,7 @@ const config_var config_vars[] = {
 };
 // clang-format on
 
-constexpr int config_var_count = sizeof(config_vars) / sizeof(config_vars[0]);
+const std::span<const config_var> config_vars{config_vars_arr};
 
 // --- tab completion ---
 
