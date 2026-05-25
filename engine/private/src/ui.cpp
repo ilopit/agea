@@ -368,7 +368,9 @@ render_config_window::handle()
             cfg.shadows.pcf_world_radius = defaults.shadows.pcf_world_radius;
         }
 
-        ImGui::Checkbox("HW PCF", &cfg.shadows.hardware_pcf);
+        ImGui::Checkbox("HW PCF (CSM)", &cfg.shadows.hardware_pcf);
+        ImGui::SameLine();
+        ImGui::Checkbox("HW PCF (Local)", &cfg.shadows.hardware_pcf_local);
 
         ImGui::Spacing();
 

@@ -74,6 +74,7 @@ struct shadow_config_data
     local_light_shadow_data local_shadows[KGPU_MAX_SHADOWED_LOCAL_LIGHTS];
     uint shadowed_local_count;
     uint atlas_bindless_index;
+    uint hardware_pcf_local;
 };
 
 GPU_END_NAMESPACE

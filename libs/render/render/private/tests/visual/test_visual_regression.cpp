@@ -282,6 +282,10 @@ public:
         cfg.debug.show_grid = false;
         cfg.debug.light_wireframe = false;
         cfg.debug.light_icons = false;
+        cfg.shadows.hardware_pcf = false;
+        cfg.shadows.hardware_pcf_local = false;
+        cfg.shadows.pcf_world_radius = 0.01f;
+        cfg.shadows.pcf = pcf_mode::poisson16;
 
         auto& renderer = glob::glob_state().getr_render().renderer;
         renderer.init(TEST_WIDTH, TEST_HEIGHT, cfg, false);

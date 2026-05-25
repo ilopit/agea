@@ -435,6 +435,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.directional.pcf_world_radius = m_render_config.shadows.pcf_world_radius;
     m_shadow_config.directional.hardware_pcf = m_render_config.shadows.hardware_pcf ? 1u : 0u;
+    m_shadow_config.hardware_pcf_local = m_render_config.shadows.hardware_pcf_local ? 1u : 0u;
     m_shadow_config.directional.cascade_count = m_render_config.shadows.cascade_count;
     m_shadow_config.directional.texel_size =
         1.0f / static_cast<float>(m_render_config.shadows.csm_tile_size);

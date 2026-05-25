@@ -269,6 +269,7 @@ render_config::load(const vfs::rid& rid)
         extract_field(shadows_node, "normal_bias", shadows.normal_bias);
         extract_field(shadows_node, "pcf_world_radius", shadows.pcf_world_radius);
         extract_field(shadows_node, "hardware_pcf", shadows.hardware_pcf);
+        extract_field(shadows_node, "hardware_pcf_local", shadows.hardware_pcf_local);
         extract_field(shadows_node, "depth_16bit", shadows.depth_16bit);
         extract_field(shadows_node, "cascade_count", shadows.cascade_count);
         extract_field(shadows_node, "distance", shadows.distance);
@@ -343,6 +344,7 @@ render_config::save(const utils::path& path) const
     shadows_node["normal_bias"] = shadows.normal_bias;
     shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
     shadows_node["hardware_pcf"] = shadows.hardware_pcf;
+    shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
     shadows_node["depth_16bit"] = shadows.depth_16bit;
     shadows_node["cascade_count"] = shadows.cascade_count;
     shadows_node["distance"] = shadows.distance;
@@ -487,6 +489,7 @@ render_config::save_to_cache(const vfs::rid& cache) const
     shadows_node["normal_bias"] = shadows.normal_bias;
     shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
     shadows_node["hardware_pcf"] = shadows.hardware_pcf;
+    shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
     shadows_node["depth_16bit"] = shadows.depth_16bit;
     shadows_node["cascade_count"] = shadows.cascade_count;
     shadows_node["distance"] = shadows.distance;
