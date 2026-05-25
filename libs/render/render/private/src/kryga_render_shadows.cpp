@@ -45,7 +45,8 @@ vulkan_render::compute_shadow_atlas_layout()
     }
 
     const uint32_t cols = atlas_sz / local_sz;
-    for (uint32_t i = 0; i < KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2; ++i)
+    const uint32_t local_tile_count = m_render_config.shadows.max_local_lights * 2;
+    for (uint32_t i = 0; i < local_tile_count; ++i)
     {
         auto& t = m_local_tiles[i];
         uint32_t col = i % cols;
@@ -478,7 +479,7 @@ vulkan_render::select_shadowed_lights()
 
     // Take top N lights
     uint32_t count =
-        std::min((uint32_t)candidates.size(), (uint32_t)KGPU_MAX_SHADOWED_LOCAL_LIGHTS);
+        std::min((uint32_t)candidates.size(), m_render_config.shadows.max_local_lights);
     m_shadow_config.shadowed_local_count = count;
 
     for (uint32_t i = 0; i < count; ++i)

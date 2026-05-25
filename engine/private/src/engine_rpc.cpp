@@ -1486,6 +1486,7 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             sh["atlas_size"] = cfg.shadows.atlas_size;
             sh["csm_tile_size"] = cfg.shadows.csm_tile_size;
             sh["local_tile_size"] = cfg.shadows.local_tile_size;
+            sh["max_local_lights"] = cfg.shadows.max_local_lights;
             r["shadows"] = sh;
 
             // Clusters
@@ -1621,6 +1622,10 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 if (s.isMember("local_tile_size"))
                 {
                     cfg.shadows.local_tile_size = s["local_tile_size"].asUInt();
+                }
+                if (s.isMember("max_local_lights"))
+                {
+                    cfg.shadows.max_local_lights = s["max_local_lights"].asUInt();
                 }
             }
 

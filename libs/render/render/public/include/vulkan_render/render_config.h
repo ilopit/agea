@@ -27,7 +27,12 @@ struct render_config
         uint32_t atlas_size = KGPU_SHADOW_ATLAS_SIZE;
         uint32_t csm_tile_size = KGPU_SHADOW_CSM_TILE_SIZE;
         uint32_t local_tile_size = KGPU_SHADOW_LOCAL_TILE_SIZE;
+        uint32_t max_local_lights = KGPU_MAX_SHADOWED_LOCAL_LIGHTS;
         bool enabled = true;
+
+        uint32_t max_cascades() const;
+        uint32_t max_csm_tile() const;
+        uint32_t max_local_tile() const;
     } shadows;
 
     struct cluster_cfg

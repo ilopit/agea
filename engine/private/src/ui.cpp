@@ -372,17 +372,7 @@ render_config_window::handle()
 
         ImGui::Spacing();
 
-        // Cascade count — limited horizontally by atlas width, and vertically
-        // by leaving room for local light tiles below the CSM row.
-        uint32_t local_cols = cfg.shadows.atlas_size / cfg.shadows.local_tile_size;
-        uint32_t local_rows = (KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2 + local_cols - 1) / local_cols;
-        uint32_t local_height = local_rows * cfg.shadows.local_tile_size;
-        uint32_t max_csm_height = (cfg.shadows.atlas_size > local_height)
-            ? cfg.shadows.atlas_size - local_height : cfg.shadows.local_tile_size;
-        int max_by_width = static_cast<int>(cfg.shadows.atlas_size / cfg.shadows.csm_tile_size);
-        int max_by_height = static_cast<int>(max_csm_height / cfg.shadows.csm_tile_size);
-        int max_cascades = std::min(max_by_width, max_by_height);
-        max_cascades = std::clamp(max_cascades, KGPU_CSM_CASCADE_COUNT_MIN, KGPU_CSM_CASCADE_COUNT_MAX);
+        int max_cascades = static_cast<int>(cfg.shadows.max_cascades());
         if (static_cast<int>(cfg.shadows.cascade_count) > max_cascades)
             cfg.shadows.cascade_count = static_cast<uint32_t>(max_cascades);
         int cascade_count = static_cast<int>(cfg.shadows.cascade_count);
@@ -462,9 +452,10 @@ render_config_window::handle()
         const int tile_sizes[] = {64, 128, 256, 512, 1024, 2048, 4096};
         const char* tile_labels[] = {"64", "128", "256", "512", "1024", "2048", "4096"};
         const int tile_count = IM_ARRAYSIZE(tile_sizes);
-        uint32_t atlas = cfg.shadows.atlas_size;
+        uint32_t csm_limit = cfg.shadows.max_csm_tile();
+        uint32_t local_limit = cfg.shadows.max_local_tile();
 
-        // CSM Tile Size — disabled if tile > atlas
+        // CSM Tile Size
         {
             int csm_current = 4;
             for (int i = 0; i < tile_count; ++i)
@@ -476,7 +467,7 @@ render_config_window::handle()
                 for (int i = 0; i < tile_count; ++i)
                 {
                     uint32_t t = static_cast<uint32_t>(tile_sizes[i]);
-                    bool too_large = t > atlas / 2;
+                    bool too_large = t > csm_limit;
                     if (too_large) ImGui::BeginDisabled();
                     if (ImGui::Selectable(tile_labels[i], i == csm_current))
                         cfg.shadows.csm_tile_size = t;
@@ -486,7 +477,7 @@ render_config_window::handle()
             }
         }
 
-        // Local Tile Size — disabled if tile > atlas
+        // Local Tile Size
         {
             int local_current = 3;
             for (int i = 0; i < tile_count; ++i)
@@ -495,16 +486,24 @@ render_config_window::handle()
 
             if (ImGui::BeginCombo("Local Tile Size", tile_labels[local_current]))
             {
-                uint32_t local_space = atlas - cfg.shadows.csm_tile_size;
                 for (int i = 0; i < tile_count; ++i)
                 {
-                    bool too_large = static_cast<uint32_t>(tile_sizes[i]) > local_space;
+                    bool too_large = static_cast<uint32_t>(tile_sizes[i]) > local_limit;
                     if (too_large) ImGui::BeginDisabled();
                     if (ImGui::Selectable(tile_labels[i], i == local_current))
                         cfg.shadows.local_tile_size = static_cast<uint32_t>(tile_sizes[i]);
                     if (too_large) ImGui::EndDisabled();
                 }
                 ImGui::EndCombo();
+            }
+        }
+
+        {
+            int local_lights = static_cast<int>(cfg.shadows.max_local_lights);
+            if (ImGui::SliderInt(
+                    "Shadow Lights", &local_lights, 0, KGPU_MAX_SHADOWED_LOCAL_LIGHTS))
+            {
+                cfg.shadows.max_local_lights = static_cast<uint32_t>(local_lights);
             }
         }
 

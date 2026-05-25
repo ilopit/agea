@@ -129,8 +129,8 @@ float sampleShadow1(uint texIdx, vec2 uv, float compareDepth)
     return (compareDepth > d) ? 0.0 : 1.0;
 }
 
-// NxN grid PCF
-float sampleShadowGrid(uint texIdx, vec2 uv, float compareDepth, float texelSize, int halfSize)
+// NxN grid PCF — samples clamped to tile rect to prevent atlas bleeding
+float sampleShadowGrid(uint texIdx, vec2 uv, float compareDepth, float texelSize, int halfSize, vec2 uvMin, vec2 uvMax)
 {
     float shadow = 0.0;
     float count = 0.0;
@@ -139,7 +139,7 @@ float sampleShadowGrid(uint texIdx, vec2 uv, float compareDepth, float texelSize
         for (int y = -halfSize; y <= halfSize; y++)
         {
             vec2 offset = vec2(float(x), float(y)) * texelSize;
-            shadow += sampleShadow1(texIdx, uv + offset, compareDepth);
+            shadow += sampleShadow1(texIdx, clamp(uv + offset, uvMin, uvMax), compareDepth);
             count += 1.0;
         }
     }
@@ -178,29 +178,29 @@ const vec2 poissonDisk32[32] = vec2[32](
     vec2( 0.929550,  0.0423060), vec2( 0.978530, -0.3601700)
 );
 
-float sampleShadowPoisson16(uint texIdx, vec2 uv, float compareDepth, float texelSize)
+float sampleShadowPoisson16(uint texIdx, vec2 uv, float compareDepth, float texelSize, vec2 uvMin, vec2 uvMax)
 {
     float shadow = 0.0;
     float spread = texelSize * 3.0;
     for (int i = 0; i < 16; i++)
     {
-        shadow += sampleShadow1(texIdx, uv + poissonDisk16[i] * spread, compareDepth);
+        shadow += sampleShadow1(texIdx, clamp(uv + poissonDisk16[i] * spread, uvMin, uvMax), compareDepth);
     }
     return shadow / 16.0;
 }
 
-float sampleShadowPoisson32(uint texIdx, vec2 uv, float compareDepth, float texelSize)
+float sampleShadowPoisson32(uint texIdx, vec2 uv, float compareDepth, float texelSize, vec2 uvMin, vec2 uvMax)
 {
     float shadow = 0.0;
     float spread = texelSize * 4.0;
     for (int i = 0; i < 32; i++)
     {
-        shadow += sampleShadow1(texIdx, uv + poissonDisk32[i] * spread, compareDepth);
+        shadow += sampleShadow1(texIdx, clamp(uv + poissonDisk32[i] * spread, uvMin, uvMax), compareDepth);
     }
     return shadow / 32.0;
 }
 
-float sampleShadowPoisson64(uint texIdx, vec2 uv, float compareDepth, float texelSize)
+float sampleShadowPoisson64(uint texIdx, vec2 uv, float compareDepth, float texelSize, vec2 uvMin, vec2 uvMax)
 {
     float shadow = 0.0;
     float spread = texelSize * 4.0;
@@ -209,30 +209,30 @@ float sampleShadowPoisson64(uint texIdx, vec2 uv, float compareDepth, float texe
     for (int i = 0; i < 32; i++)
     {
         vec2 p = poissonDisk32[i];
-        shadow += sampleShadow1(texIdx, uv + p * spread, compareDepth);
+        shadow += sampleShadow1(texIdx, clamp(uv + p * spread, uvMin, uvMax), compareDepth);
         vec2 q = vec2(p.x * innerC - p.y * innerS, p.x * innerS + p.y * innerC);
-        shadow += sampleShadow1(texIdx, uv + q * spread * 0.5, compareDepth);
+        shadow += sampleShadow1(texIdx, clamp(uv + q * spread * 0.5, uvMin, uvMax), compareDepth);
     }
     return shadow / 64.0;
 }
 
 // Unified PCF dispatch — reads pcf_mode from shadow SSBO
-float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize)
+float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize, vec2 uvMin, vec2 uvMax)
 {
     uint mode = dyn_shadow_data.shadow.directional.pcf_mode;
 
     if (mode == KGPU_PCF_5X5)
-        return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 2);
+        return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 2, uvMin, uvMax);
     else if (mode == KGPU_PCF_7X7)
-        return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 3);
+        return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 3, uvMin, uvMax);
     else if (mode == KGPU_PCF_POISSON16)
-        return sampleShadowPoisson16(texIdx, uv, compareDepth, texelSize);
+        return sampleShadowPoisson16(texIdx, uv, compareDepth, texelSize, uvMin, uvMax);
     else if (mode == KGPU_PCF_POISSON32)
-        return sampleShadowPoisson32(texIdx, uv, compareDepth, texelSize);
+        return sampleShadowPoisson32(texIdx, uv, compareDepth, texelSize, uvMin, uvMax);
     else if (mode == KGPU_PCF_POISSON64)
-        return sampleShadowPoisson64(texIdx, uv, compareDepth, texelSize);
+        return sampleShadowPoisson64(texIdx, uv, compareDepth, texelSize, uvMin, uvMax);
     else // KGPU_PCF_3X3 or default
-        return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 1);
+        return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 1, uvMin, uvMax);
 }
 
 // Debug: set to 1 to visualize cascade indices as colors
@@ -319,6 +319,11 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
 
     vec2 centerAtlasUV = centerUV * uv_scale + uv_offset;
 
+    // Tile bounds with half-texel inset to prevent bilinear bleed at edges
+    float halfTexel = dyn_shadow_data.shadow.directional.texel_size * 0.5;
+    vec2 tileMin = uv_offset + halfTexel;
+    vec2 tileMax = uv_offset + uv_scale - halfTexel;
+
     // World-space radius → atlas UV spread (camera-independent)
     float texelSize = dyn_shadow_data.shadow.directional.texel_size * uv_scale.x;
     float texelWorldSize = dyn_shadow_data.shadow.directional.cascades[cascade].texel_world_size;
@@ -328,18 +333,20 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
     uint mode = dyn_shadow_data.shadow.directional.pcf_mode;
     float shadow;
 
+    // Grid modes: step = uvSpread / halfSize so total coverage = ±uvSpread (same as Poisson).
+    // Poisson modes: spread multiplier already normalizes disk points to ±uvSpread.
     if (mode == KGPU_PCF_POISSON64)
-        shadow = sampleShadowPoisson64(texIdx, centerAtlasUV, centerDepth, uvSpread / 4.0);
+        shadow = sampleShadowPoisson64(texIdx, centerAtlasUV, centerDepth, uvSpread / 4.0, tileMin, tileMax);
     else if (mode == KGPU_PCF_POISSON32)
-        shadow = sampleShadowPoisson32(texIdx, centerAtlasUV, centerDepth, uvSpread / 4.0);
+        shadow = sampleShadowPoisson32(texIdx, centerAtlasUV, centerDepth, uvSpread / 4.0, tileMin, tileMax);
     else if (mode == KGPU_PCF_POISSON16)
-        shadow = sampleShadowPoisson16(texIdx, centerAtlasUV, centerDepth, uvSpread / 3.0);
+        shadow = sampleShadowPoisson16(texIdx, centerAtlasUV, centerDepth, uvSpread / 3.0, tileMin, tileMax);
     else if (mode == KGPU_PCF_7X7)
-        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 3);
+        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread / 3.0, 3, tileMin, tileMax);
     else if (mode == KGPU_PCF_5X5)
-        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 2);
+        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread / 2.0, 2, tileMin, tileMax);
     else
-        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 1);
+        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 1, tileMin, tileMax);
 
     return mix(1.0, shadow, fadeFactor);
 }
@@ -366,7 +373,10 @@ float calcSpotShadow(uint shadowIdx, vec3 worldPos)
     shadowUV = shadowUV * uv_scale + uv_offset;
 
     float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z * uv_scale.x;
-    return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize);
+    float ht = texelSize * 0.5;
+    vec2 spotMin = uv_offset + ht;
+    vec2 spotMax = uv_offset + uv_scale - ht;
+    return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize, spotMin, spotMax);
 }
 
 // Calculate point light shadow factor using dual-paraboloid mapping (atlas)
@@ -411,7 +421,10 @@ float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
     uv = uv * uv_scale + uv_offset;
 
     float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z * uv_scale.x;
-    return sampleShadowPCF(texIdx, uv, currentDepth, texelSize);
+    float ht = texelSize * 0.5;
+    vec2 ptMin = uv_offset + ht;
+    vec2 ptMax = uv_offset + uv_scale - ht;
+    return sampleShadowPCF(texIdx, uv, currentDepth, texelSize, ptMin, ptMax);
 }
 
 // Get shadow factor for a local light based on its shadow_index
