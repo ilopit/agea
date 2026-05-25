@@ -70,3 +70,13 @@ Proper fix requires either temporal accumulation (TAA), PCSS (blocker-distance p
 ## 12. No guard on spot light `outer_cut_off` acos [low]
 
 `kryga_render_shadows.cpp:606` — `float fov = 2.0f * std::acos(light->gpu_data.outer_cut_off)`. If `outer_cut_off` exceeds valid acos range [-1, 1] due to a data error, NaN propagates through the entire shadow matrix. No guard.
+
+## 13. No screen-space shadow buffer [medium-high]
+
+PCF runs per-fragment in the lighting shader, coupling shadow quality to shadow map resolution and PCF tap count. All major engines (UE, Frostbite, Unity) decouple this by rendering shadow values to a screen-space buffer first, then applying a depth-aware bilateral blur as a post-filter.
+
+**Benefits**: cascade-independent softness, eliminates all PCF pattern artifacts, fixed blur cost regardless of tap count, can run at half resolution for 4x perf gain.
+
+**Implementation**: New half-res RT (R8), render hard shadows (1-4 taps) per pixel, bilateral Gaussian blur pass (depth-aware to preserve contact shadows), sample blurred shadow in the lighting shader instead of calling PCF.
+
+**Alternative**: Temporal accumulation (TAA) with per-pixel Poisson rotation. Per-frame noise averages out over time. Requires TAA infrastructure which doesn't exist yet.

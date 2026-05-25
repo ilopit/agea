@@ -110,9 +110,18 @@ uint selectCascade(float viewDepth)
     return dyn_shadow_data.shadow.directional.cascade_count - 1u;
 }
 
-// Single shadow map tap
+// Single shadow map tap. When hardware_pcf is enabled, uses comparison sampler
+// for bilinear-interpolated [0,1] from the 2x2 texel footprint. Otherwise
+// falls back to manual depth comparison (hard 0/1 per tap).
 float sampleShadow1(uint texIdx, vec2 uv, float compareDepth)
 {
+    if (dyn_shadow_data.shadow.directional.hardware_pcf != 0u)
+    {
+        return texture(
+            sampler2DShadow(bindless_textures[nonuniformEXT(texIdx)],
+                            static_samplers[KGPU_SAMPLER_SHADOW_CMP]),
+            vec3(uv, compareDepth));
+    }
     float d = texture(
         sampler2D(bindless_textures[nonuniformEXT(texIdx)],
                   static_samplers[KGPU_SAMPLER_LINEAR_CLAMP_BORDER]),
@@ -191,6 +200,22 @@ float sampleShadowPoisson32(uint texIdx, vec2 uv, float compareDepth, float texe
     return shadow / 32.0;
 }
 
+float sampleShadowPoisson64(uint texIdx, vec2 uv, float compareDepth, float texelSize)
+{
+    float shadow = 0.0;
+    float spread = texelSize * 4.0;
+    float innerC = 0.73900891f;
+    float innerS = 0.67360556f;
+    for (int i = 0; i < 32; i++)
+    {
+        vec2 p = poissonDisk32[i];
+        shadow += sampleShadow1(texIdx, uv + p * spread, compareDepth);
+        vec2 q = vec2(p.x * innerC - p.y * innerS, p.x * innerS + p.y * innerC);
+        shadow += sampleShadow1(texIdx, uv + q * spread * 0.5, compareDepth);
+    }
+    return shadow / 64.0;
+}
+
 // Unified PCF dispatch — reads pcf_mode from shadow SSBO
 float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize)
 {
@@ -204,6 +229,8 @@ float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize)
         return sampleShadowPoisson16(texIdx, uv, compareDepth, texelSize);
     else if (mode == KGPU_PCF_POISSON32)
         return sampleShadowPoisson32(texIdx, uv, compareDepth, texelSize);
+    else if (mode == KGPU_PCF_POISSON64)
+        return sampleShadowPoisson64(texIdx, uv, compareDepth, texelSize);
     else // KGPU_PCF_3X3 or default
         return sampleShadowGrid(texIdx, uv, compareDepth, texelSize, 1);
 }
@@ -234,21 +261,11 @@ float sampleCascadeSingle(uint cascade, vec3 worldPos)
     return sampleShadow1(texIdx, shadowUV, currentDepth);
 }
 
-// Screen-space PCF for directional shadows. Each PCF sample gets its own
-// world-space position (via dFdx/dFdy offsets) and independently selects its
-// cascade. This eliminates cascade transition artifacts — near boundaries,
-// samples naturally land in different cascades without explicit blending.
-//
-// Fast path: when all samples fall in the same cascade, project center once
-// and use precomputed UV/depth derivatives (no per-sample matrix multiply).
-// Slow path: near cascade boundaries, per-sample projection + cascade selection.
+// CSM shadow with UV-space PCF. All offsets are in shadow map atlas UV —
+// camera-independent, world-space radius controlled. The cascade is selected
+// once per pixel; PCF samples stay within the same cascade tile.
 float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
 {
-    vec3 dpdx = dFdx(worldPos);
-    vec3 dpdy = dFdy(worldPos);
-    float dvdx = dFdx(viewDepth);
-    float dvdy = dFdy(viewDepth);
-
     uint cascadeCount = dyn_shadow_data.shadow.directional.cascade_count;
     if (cascadeCount == 0u)
         return 1.0;
@@ -266,137 +283,63 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
     vec3 biasedPos = worldPos + normal * normalBias;
 
     uint cascade = selectCascade(viewDepth);
+
+    // Dithered cascade transition: near cascade boundaries, randomly select
+    // the next cascade per pixel to avoid a hard seam.
+    if (cascade < cascadeCount - 1u)
+    {
+        float splitDepth = dyn_shadow_data.shadow.directional.cascades[cascade].split_depth;
+        float prevSplit = (cascade > 0u)
+            ? dyn_shadow_data.shadow.directional.cascades[cascade - 1u].split_depth : 0.1;
+        float cascadeRange = splitDepth - prevSplit;
+        float blendZone = cascadeRange * 0.25;
+        float distToEdge = splitDepth - viewDepth;
+
+        if (distToEdge < blendZone && blendZone > 0.0)
+        {
+            float t = distToEdge / blendZone;
+            float noise = fract(52.9829189 * fract(0.06711056 * gl_FragCoord.x + 0.00583715 * gl_FragCoord.y));
+            if (noise > t)
+                cascade += 1u;
+        }
+    }
+
+    mat4 lightVP = dyn_shadow_data.shadow.directional.cascades[cascade].view_proj;
+    uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
+    vec2 uv_offset = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_offset;
+    vec2 uv_scale = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_scale;
+
+    vec3 pc = (lightVP * vec4(biasedPos, 1.0)).xyz;
+    vec2 centerUV = pc.xy * 0.5 + 0.5;
+    float centerDepth = pc.z;
+
+    if (centerUV.x < 0.0 || centerUV.x > 1.0 || centerUV.y < 0.0 || centerUV.y > 1.0
+        || centerDepth > 1.0 || centerDepth < 0.0)
+        return 1.0;
+
+    vec2 centerAtlasUV = centerUV * uv_scale + uv_offset;
+
+    // World-space radius → atlas UV spread (camera-independent)
+    float texelSize = dyn_shadow_data.shadow.directional.texel_size * uv_scale.x;
+    float texelWorldSize = dyn_shadow_data.shadow.directional.cascades[cascade].texel_world_size;
+    float worldRadius = dyn_shadow_data.shadow.directional.pcf_world_radius;
+    float uvSpread = worldRadius / max(texelWorldSize, 1e-8) * texelSize;
+
     uint mode = dyn_shadow_data.shadow.directional.pcf_mode;
+    float shadow;
 
-    float spread;
-    if (mode == KGPU_PCF_POISSON32) spread = 3.0;
-    else if (mode == KGPU_PCF_POISSON16) spread = 2.5;
-    else if (mode == KGPU_PCF_7X7) spread = 3.0;
-    else if (mode == KGPU_PCF_5X5) spread = 2.0;
-    else spread = 1.0;
-
-    // Check if all PCF samples stay within the same cascade
-    float maxDepthOffset = spread * (abs(dvdx) + abs(dvdy));
-    float cascadeNear = (cascade > 0u)
-        ? dyn_shadow_data.shadow.directional.cascades[cascade - 1u].split_depth : 0.0;
-    float cascadeFar = dyn_shadow_data.shadow.directional.cascades[cascade].split_depth;
-    bool sameCascade = (viewDepth - maxDepthOffset >= cascadeNear)
-                    && (viewDepth + maxDepthOffset <= cascadeFar);
-
-    float shadow = 0.0;
-
-    if (sameCascade)
-    {
-        // Fast path: single projection + precomputed UV/depth derivatives.
-        // For ortho cascades (w=1), the projection is linear so derivatives
-        // are exact — no per-sample matrix multiply needed.
-        mat4 lightVP = dyn_shadow_data.shadow.directional.cascades[cascade].view_proj;
-        uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
-        vec2 uv_offset = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_offset;
-        vec2 uv_scale = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_scale;
-
-        vec3 pc = (lightVP * vec4(biasedPos, 1.0)).xyz;
-        vec2 centerUV = pc.xy * 0.5 + 0.5;
-        float centerDepth = pc.z;
-
-        if (centerUV.x < 0.0 || centerUV.x > 1.0 || centerUV.y < 0.0 || centerUV.y > 1.0
-            || centerDepth > 1.0 || centerDepth < 0.0)
-            return mix(1.0, 1.0, fadeFactor);
-
-        vec2 centerAtlasUV = centerUV * uv_scale + uv_offset;
-
-        vec3 lsDx = (lightVP * vec4(dpdx, 0.0)).xyz;
-        vec3 lsDy = (lightVP * vec4(dpdy, 0.0)).xyz;
-        vec2 uvDx = lsDx.xy * 0.5 * uv_scale;
-        vec2 uvDy = lsDy.xy * 0.5 * uv_scale;
-        float depthDx = lsDx.z;
-        float depthDy = lsDy.z;
-
-        if (mode == KGPU_PCF_POISSON32)
-        {
-            for (int i = 0; i < 32; i++)
-            {
-                vec2 d = poissonDisk32[i] * spread;
-                shadow += sampleShadow1(texIdx,
-                    centerAtlasUV + uvDx * d.x + uvDy * d.y,
-                    centerDepth + depthDx * d.x + depthDy * d.y);
-            }
-            shadow /= 32.0;
-        }
-        else if (mode == KGPU_PCF_POISSON16)
-        {
-            for (int i = 0; i < 16; i++)
-            {
-                vec2 d = poissonDisk16[i] * spread;
-                shadow += sampleShadow1(texIdx,
-                    centerAtlasUV + uvDx * d.x + uvDy * d.y,
-                    centerDepth + depthDx * d.x + depthDy * d.y);
-            }
-            shadow /= 16.0;
-        }
-        else
-        {
-            int halfSize = 1;
-            if (mode == KGPU_PCF_5X5) halfSize = 2;
-            else if (mode == KGPU_PCF_7X7) halfSize = 3;
-            float count = 0.0;
-            for (int x = -halfSize; x <= halfSize; x++)
-            {
-                for (int y = -halfSize; y <= halfSize; y++)
-                {
-                    shadow += sampleShadow1(texIdx,
-                        centerAtlasUV + uvDx * float(x) + uvDy * float(y),
-                        centerDepth + depthDx * float(x) + depthDy * float(y));
-                    count += 1.0;
-                }
-            }
-            shadow /= count;
-        }
-    }
+    if (mode == KGPU_PCF_POISSON64)
+        shadow = sampleShadowPoisson64(texIdx, centerAtlasUV, centerDepth, uvSpread / 4.0);
+    else if (mode == KGPU_PCF_POISSON32)
+        shadow = sampleShadowPoisson32(texIdx, centerAtlasUV, centerDepth, uvSpread / 4.0);
+    else if (mode == KGPU_PCF_POISSON16)
+        shadow = sampleShadowPoisson16(texIdx, centerAtlasUV, centerDepth, uvSpread / 3.0);
+    else if (mode == KGPU_PCF_7X7)
+        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 3);
+    else if (mode == KGPU_PCF_5X5)
+        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 2);
     else
-    {
-        // Slow path: near cascade boundary — per-sample projection + cascade selection
-        if (mode == KGPU_PCF_POISSON32)
-        {
-            for (int i = 0; i < 32; i++)
-            {
-                vec2 d = poissonDisk32[i] * spread;
-                vec3 sp = biasedPos + dpdx * d.x + dpdy * d.y;
-                float sd = viewDepth + dvdx * d.x + dvdy * d.y;
-                shadow += sampleCascadeSingle(selectCascade(max(sd, 0.0)), sp);
-            }
-            shadow /= 32.0;
-        }
-        else if (mode == KGPU_PCF_POISSON16)
-        {
-            for (int i = 0; i < 16; i++)
-            {
-                vec2 d = poissonDisk16[i] * spread;
-                vec3 sp = biasedPos + dpdx * d.x + dpdy * d.y;
-                float sd = viewDepth + dvdx * d.x + dvdy * d.y;
-                shadow += sampleCascadeSingle(selectCascade(max(sd, 0.0)), sp);
-            }
-            shadow /= 16.0;
-        }
-        else
-        {
-            int halfSize = 1;
-            if (mode == KGPU_PCF_5X5) halfSize = 2;
-            else if (mode == KGPU_PCF_7X7) halfSize = 3;
-            float count = 0.0;
-            for (int x = -halfSize; x <= halfSize; x++)
-            {
-                for (int y = -halfSize; y <= halfSize; y++)
-                {
-                    vec3 sp = biasedPos + dpdx * float(x) + dpdy * float(y);
-                    float sd = viewDepth + dvdx * float(x) + dvdy * float(y);
-                    shadow += sampleCascadeSingle(selectCascade(max(sd, 0.0)), sp);
-                    count += 1.0;
-                }
-            }
-            shadow /= count;
-        }
-    }
+        shadow = sampleShadowGrid(texIdx, centerAtlasUV, centerDepth, uvSpread, 1);
 
     return mix(1.0, shadow, fadeFactor);
 }

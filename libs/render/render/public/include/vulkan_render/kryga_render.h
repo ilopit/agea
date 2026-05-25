@@ -674,8 +674,8 @@ private:
     VkDescriptorSet m_objects_set = VK_NULL_HANDLE;
     VkDescriptorSet m_global_set = VK_NULL_HANDLE;
 
-    // Static samplers (7 sampler variants for runtime selection)
-    VkSampler m_static_samplers[7] = {};  // KGPU_SAMPLER_COUNT
+    // Static samplers (8 sampler variants for runtime selection)
+    VkSampler m_static_samplers[KGPU_SAMPLER_COUNT] = {};
 
     // Bindless textures
     VkDescriptorPool m_bindless_pool = VK_NULL_HANDLE;
@@ -725,6 +725,7 @@ private:
     uint32_t m_applied_shadow_atlas_size = 0;
     uint32_t m_applied_shadow_csm_tile_size = 0;
     uint32_t m_applied_shadow_local_tile_size = 0;
+    bool m_applied_shadow_depth_16bit = false;
     shader_effect_data* m_debug_wire_se = nullptr;
     material_data* m_debug_wire_mat = nullptr;
     mesh_data* m_debug_sphere_mesh = nullptr;

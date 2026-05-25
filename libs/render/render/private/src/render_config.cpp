@@ -30,6 +30,7 @@ const std::unordered_map<std::string, pcf_mode> pcf_mode_from_string = {
     {"7x7", pcf_mode::pcf_7x7},
     {"poisson16", pcf_mode::poisson16},
     {"poisson32", pcf_mode::poisson32},
+    {"poisson64", pcf_mode::poisson64},
 };
 
 const std::unordered_map<pcf_mode, std::string> pcf_mode_to_string = {
@@ -38,6 +39,7 @@ const std::unordered_map<pcf_mode, std::string> pcf_mode_to_string = {
     {pcf_mode::pcf_7x7, "7x7"},
     {pcf_mode::poisson16, "poisson16"},
     {pcf_mode::poisson32, "poisson32"},
+    {pcf_mode::poisson64, "poisson64"},
 };
 
 // ============================================================================
@@ -210,6 +212,9 @@ render_config::load(const vfs::rid& rid)
         extract_field(shadows_node, "pcf", shadows.pcf);
         extract_field(shadows_node, "bias", shadows.bias);
         extract_field(shadows_node, "normal_bias", shadows.normal_bias);
+        extract_field(shadows_node, "pcf_world_radius", shadows.pcf_world_radius);
+        extract_field(shadows_node, "hardware_pcf", shadows.hardware_pcf);
+        extract_field(shadows_node, "depth_16bit", shadows.depth_16bit);
         extract_field(shadows_node, "cascade_count", shadows.cascade_count);
         extract_field(shadows_node, "distance", shadows.distance);
         extract_field(shadows_node, "atlas_size", shadows.atlas_size);
@@ -280,6 +285,9 @@ render_config::save(const utils::path& path) const
     shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
     shadows_node["bias"] = shadows.bias;
     shadows_node["normal_bias"] = shadows.normal_bias;
+    shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
+    shadows_node["hardware_pcf"] = shadows.hardware_pcf;
+    shadows_node["depth_16bit"] = shadows.depth_16bit;
     shadows_node["cascade_count"] = shadows.cascade_count;
     shadows_node["distance"] = shadows.distance;
     shadows_node["atlas_size"] = shadows.atlas_size;
@@ -347,6 +355,9 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
                 extract_field(s, "pcf", shadows.pcf);
                 extract_field(s, "bias", shadows.bias);
                 extract_field(s, "normal_bias", shadows.normal_bias);
+                extract_field(s, "pcf_world_radius", shadows.pcf_world_radius);
+                extract_field(s, "hardware_pcf", shadows.hardware_pcf);
+                extract_field(s, "depth_16bit", shadows.depth_16bit);
                 extract_field(s, "cascade_count", shadows.cascade_count);
                 extract_field(s, "distance", shadows.distance);
                 extract_field(s, "atlas_size", shadows.atlas_size);
@@ -417,6 +428,9 @@ render_config::save_to_cache(const vfs::rid& cache) const
     shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
     shadows_node["bias"] = shadows.bias;
     shadows_node["normal_bias"] = shadows.normal_bias;
+    shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
+    shadows_node["hardware_pcf"] = shadows.hardware_pcf;
+    shadows_node["depth_16bit"] = shadows.depth_16bit;
     shadows_node["cascade_count"] = shadows.cascade_count;
     shadows_node["distance"] = shadows.distance;
     shadows_node["atlas_size"] = shadows.atlas_size;

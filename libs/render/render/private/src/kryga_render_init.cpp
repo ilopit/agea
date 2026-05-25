@@ -268,6 +268,7 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     m_applied_shadow_atlas_size = m_render_config.shadows.atlas_size;
     m_applied_shadow_csm_tile_size = m_render_config.shadows.csm_tile_size;
     m_applied_shadow_local_tile_size = m_render_config.shadows.local_tile_size;
+    m_applied_shadow_depth_16bit = m_render_config.shadows.depth_16bit;
 
     // Setup and compile render graph — compile() validates all passes:
     // binding table resources + BDA push constant fields (bda_X → dyn_X).
@@ -302,7 +303,8 @@ vulkan_render::apply_config_changes()
     // Shadow atlas config — requires recreating atlas + shader effects
     if (m_render_config.shadows.atlas_size != m_applied_shadow_atlas_size ||
         m_render_config.shadows.csm_tile_size != m_applied_shadow_csm_tile_size ||
-        m_render_config.shadows.local_tile_size != m_applied_shadow_local_tile_size)
+        m_render_config.shadows.local_tile_size != m_applied_shadow_local_tile_size ||
+        m_render_config.shadows.depth_16bit != m_applied_shadow_depth_16bit)
     {
         ALOG_INFO("Shadow atlas config changed: atlas {}→{}, csm {}→{}, local {}→{}",
                   m_applied_shadow_atlas_size,
@@ -320,6 +322,7 @@ vulkan_render::apply_config_changes()
         m_applied_shadow_atlas_size = m_render_config.shadows.atlas_size;
         m_applied_shadow_csm_tile_size = m_render_config.shadows.csm_tile_size;
         m_applied_shadow_local_tile_size = m_render_config.shadows.local_tile_size;
+        m_applied_shadow_depth_16bit = m_render_config.shadows.depth_16bit;
 
         m_render_graph.reset();
         setup_render_graph();
@@ -1238,6 +1241,8 @@ vulkan_render::init_shadow_resources()
     m_shadow_config.directional.texel_size =
         1.0f / static_cast<float>(m_render_config.shadows.csm_tile_size);
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
+    m_shadow_config.directional.pcf_world_radius = m_render_config.shadows.pcf_world_radius;
+    m_shadow_config.directional.hardware_pcf = m_render_config.shadows.hardware_pcf ? 1u : 0u;
     m_shadow_config.shadowed_local_count = 0;
     m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_indices[0];
 
@@ -1370,13 +1375,33 @@ vulkan_render::init_static_samplers()
                        VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
                        false);
 
+    // KGPU_SAMPLER_SHADOW_CMP (7) - Shadow map comparison sampler
+    // Hardware PCF: depth test + bilinear interpolation in one tap.
+    {
+        VkSamplerCreateInfo ci{};
+        ci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        ci.magFilter = VK_FILTER_LINEAR;
+        ci.minFilter = VK_FILTER_LINEAR;
+        ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        ci.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        ci.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        ci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        ci.compareEnable = VK_TRUE;
+        ci.compareOp = VK_COMPARE_OP_LESS;
+        ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+        ci.minLod = 0.0f;
+        ci.maxLod = VK_LOD_CLAMP_NONE;
+        VK_CHECK(vkCreateSampler(vk_device, &ci, nullptr, &m_static_samplers[KGPU_SAMPLER_SHADOW_CMP]));
+    }
+
     static const char* sampler_names[KGPU_SAMPLER_COUNT] = {"sampler.linear_repeat",
                                                             "sampler.linear_clamp",
                                                             "sampler.linear_mirror",
                                                             "sampler.nearest_repeat",
                                                             "sampler.nearest_clamp",
                                                             "sampler.linear_clamp_border",
-                                                            "sampler.aniso_repeat"};
+                                                            "sampler.aniso_repeat",
+                                                            "sampler.shadow_cmp"};
     for (int i = 0; i < KGPU_SAMPLER_COUNT; ++i)
     {
         if (m_static_samplers[i] != VK_NULL_HANDLE)

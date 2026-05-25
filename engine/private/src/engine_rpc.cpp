@@ -1478,6 +1478,9 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
 
             sh["bias"] = cfg.shadows.bias;
             sh["normal_bias"] = cfg.shadows.normal_bias;
+            sh["pcf_world_radius"] = cfg.shadows.pcf_world_radius;
+            sh["hardware_pcf"] = cfg.shadows.hardware_pcf;
+            sh["depth_16bit"] = cfg.shadows.depth_16bit;
             sh["cascade_count"] = cfg.shadows.cascade_count;
             sh["distance"] = cfg.shadows.distance;
             sh["atlas_size"] = cfg.shadows.atlas_size;
@@ -1586,6 +1589,18 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 if (s.isMember("normal_bias"))
                 {
                     cfg.shadows.normal_bias = s["normal_bias"].asFloat();
+                }
+                if (s.isMember("pcf_world_radius"))
+                {
+                    cfg.shadows.pcf_world_radius = s["pcf_world_radius"].asFloat();
+                }
+                if (s.isMember("hardware_pcf"))
+                {
+                    cfg.shadows.hardware_pcf = s["hardware_pcf"].asBool();
+                }
+                if (s.isMember("depth_16bit"))
+                {
+                    cfg.shadows.depth_16bit = s["depth_16bit"].asBool();
                 }
                 if (s.isMember("cascade_count"))
                 {

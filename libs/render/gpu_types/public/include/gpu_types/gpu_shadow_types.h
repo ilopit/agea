@@ -38,8 +38,9 @@ struct shadow_cascade_data
 #define KGPU_PCF_7X7 2
 #define KGPU_PCF_POISSON16 3
 #define KGPU_PCF_POISSON32 4
+#define KGPU_PCF_POISSON64 5
 #define KGPU_PCF_MIN KGPU_PCF_3X3
-#define KGPU_PCF_MAX KGPU_PCF_POISSON32
+#define KGPU_PCF_MAX KGPU_PCF_POISSON64
 
 struct directional_shadow_data
 {
@@ -49,6 +50,8 @@ struct directional_shadow_data
     float normal_bias;
     float texel_size;
     uint pcf_mode;
+    float pcf_world_radius;
+    uint hardware_pcf;
 };
 
 struct local_light_shadow_data

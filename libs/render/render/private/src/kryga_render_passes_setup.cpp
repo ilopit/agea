@@ -318,9 +318,11 @@ vulkan_render::init_shadow_passes()
 {
     compute_shadow_atlas_layout();
 
+    auto shadow_depth_fmt = m_render_config.shadows.depth_16bit
+        ? VK_FORMAT_D16_UNORM : VK_FORMAT_D32_SFLOAT;
     m_shadow_atlas_pass =
         render_pass_builder()
-            .set_depth_format(VK_FORMAT_D32_SFLOAT)
+            .set_depth_format(shadow_depth_fmt)
             .set_depth_only(true)
             .set_image_count(FRAMES_IN_FLIGHT)
             .set_width_depth(m_render_config.shadows.atlas_size, m_render_config.shadows.atlas_size)

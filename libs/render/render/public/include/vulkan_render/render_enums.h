@@ -17,6 +17,7 @@ enum class pcf_mode : uint32_t
     pcf_7x7 = KGPU_PCF_7X7,
     poisson16 = KGPU_PCF_POISSON16,
     poisson32 = KGPU_PCF_POISSON32,
+    poisson64 = KGPU_PCF_POISSON64,
 
     min = KGPU_PCF_MIN,
     max = KGPU_PCF_MAX,
@@ -35,6 +36,7 @@ inline constexpr pcf_mode_info pcf_mode_entries[] = {
     {pcf_mode::pcf_7x7, "pcf_7x7", "7x7 (49 taps)"},
     {pcf_mode::poisson16, "poisson16", "Poisson 16"},
     {pcf_mode::poisson32, "poisson32", "Poisson 32"},
+    {pcf_mode::poisson64, "poisson64", "Poisson 64"},
 };
 
 inline constexpr int pcf_mode_count = sizeof(pcf_mode_entries) / sizeof(pcf_mode_entries[0]);

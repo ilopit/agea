@@ -46,6 +46,7 @@
 #define KGPU_SAMPLER_NEAREST_CLAMP 4        // UI, fonts
 #define KGPU_SAMPLER_LINEAR_CLAMP_BORDER 5  // Shadow maps
 #define KGPU_SAMPLER_ANISO_REPEAT 6         // High-quality surfaces
-#define KGPU_SAMPLER_COUNT 7
+#define KGPU_SAMPLER_SHADOW_CMP 7           // Shadow depth comparison (sampler2DShadow)
+#define KGPU_SAMPLER_COUNT 8
 
 #endif

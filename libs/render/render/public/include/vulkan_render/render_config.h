@@ -19,6 +19,9 @@ struct render_config
         pcf_mode pcf = pcf_mode::poisson16;
         float bias = 0.005f;
         float normal_bias = 0.03f;
+        float pcf_world_radius = 0.03f;
+        bool hardware_pcf = true;
+        bool depth_16bit = false;
         uint32_t cascade_count = 4;
         float distance = 200.0f;
         uint32_t atlas_size = KGPU_SHADOW_ATLAS_SIZE;

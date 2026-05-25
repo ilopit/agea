@@ -69,7 +69,7 @@ vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
         return;
 
     // CSM cascades
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    for (uint32_t c = 0; c < m_render_config.shadows.cascade_count; ++c)
     {
         auto& tile = m_csm_tiles[c];
 
@@ -146,9 +146,10 @@ vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
 void
 vulkan_render::compute_cascade_splits(float near, float far, float lambda)
 {
-    for (uint32_t i = 0; i < KGPU_CSM_CASCADE_COUNT; ++i)
+    uint32_t count = m_render_config.shadows.cascade_count;
+    for (uint32_t i = 0; i < count; ++i)
     {
-        float p = static_cast<float>(i + 1) / static_cast<float>(KGPU_CSM_CASCADE_COUNT);
+        float p = static_cast<float>(i + 1) / static_cast<float>(count);
 
         // Logarithmic split
         float log_split = near * std::pow(far / near, p);
@@ -213,7 +214,7 @@ vulkan_render::compute_shadow_matrices()
 
     float last_split = near_clip;
 
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    for (uint32_t c = 0; c < m_render_config.shadows.cascade_count; ++c)
     {
         float split_far = m_shadow_config.directional.cascades[c].split_depth;
         float split_near = last_split;
@@ -573,7 +574,7 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
     m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_indices[frame_idx];
 
     // Set per-cascade atlas UV data
-    for (uint32_t c = 0; c < KGPU_CSM_CASCADE_COUNT; ++c)
+    for (uint32_t c = 0; c < m_render_config.shadows.cascade_count; ++c)
     {
         m_shadow_config.directional.cascades[c].atlas_offset = m_csm_tiles[c].uv_offset;
         m_shadow_config.directional.cascades[c].atlas_scale = m_csm_tiles[c].uv_scale;
