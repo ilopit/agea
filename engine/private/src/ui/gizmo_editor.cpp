@@ -111,6 +111,15 @@ gizmo_editor::draw()
                 grid_visible;
         }
 
+        ImGui::SameLine();
+        ImGui::Text("|");
+        ImGui::SameLine();
+
+        auto& editor = glob::glob_state().getr_editor_system().editor;
+        const char* speed_labels[] = {"x0.125", "x0.25", "x0.5", "x1", "x2", "x4"};
+        ImGui::SetNextItemWidth(105);
+        ImGui::Combo("##cam_speed", &editor.m_camera_speed_power, speed_labels, 6);
+
         ImGui::End();
     }
 

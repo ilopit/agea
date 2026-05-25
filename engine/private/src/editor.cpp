@@ -409,7 +409,8 @@ game_editor::update_camera()
     forward = cam_rot * glm::vec4(forward, 0.f);
     right = cam_rot * glm::vec4(right, 0.f);
 
-    m_velocity = m_forward_delta * forward + m_left_delta * right;
+    float speed = get_camera_speed_multiplier();
+    m_velocity = (m_forward_delta * forward + m_left_delta * right) * speed;
     m_camera_data.position += m_velocity;
 
     m_forward_delta = 0.f;

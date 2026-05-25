@@ -117,6 +117,18 @@ private:
     float m_left_delta = 0.f;
     float m_look_up_delta = 0.f;
     float m_look_left_delta = 0.f;
+
+public:
+    int m_camera_speed_power = 3;
+
+    float
+    get_camera_speed_multiplier() const
+    {
+        constexpr float lut[] = {0.125f, 0.25f, 0.5f, 1.0f, 2.0f, 4.0f};
+        return lut[m_camera_speed_power];
+    }
+
+private:
     float m_cached_aspect_ratio = 0.f;
     gpu::camera_data m_camera_data;
 
