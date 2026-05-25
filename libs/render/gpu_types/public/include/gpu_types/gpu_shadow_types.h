@@ -28,7 +28,7 @@ struct shadow_cascade_data
 {
     mat4 view_proj;
     float split_depth;
-    float _pad0;
+    float texel_world_size;
     vec2 atlas_offset;
     vec2 atlas_scale;
 };

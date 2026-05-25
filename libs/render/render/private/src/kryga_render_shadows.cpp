@@ -254,6 +254,8 @@ vulkan_render::compute_shadow_matrices()
         light_proj[3][1] += sy / half_sm;
 
         m_shadow_config.directional.cascades[c].view_proj = light_proj * light_view;
+        m_shadow_config.directional.cascades[c].texel_world_size =
+            (2.0f * radius) / static_cast<float>(m_render_config.shadows.csm_tile_size);
     }
 }
 

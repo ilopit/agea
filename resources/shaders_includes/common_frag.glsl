@@ -211,15 +211,15 @@ float sampleShadowPCF(uint texIdx, vec2 uv, float compareDepth, float texelSize)
 // Debug: set to 1 to visualize cascade indices as colors
 #define SHADOW_DEBUG_CASCADE_VIS 0
 
-// Sample shadow for a specific cascade from the atlas.
-float sampleCascadeShadow(uint cascade, vec3 biasedPos)
+// Single shadow tap for a cascade — project worldPos, compare depth, no PCF.
+float sampleCascadeSingle(uint cascade, vec3 worldPos)
 {
     mat4 lightVP = dyn_shadow_data.shadow.directional.cascades[cascade].view_proj;
     uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
     vec2 uv_offset = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_offset;
     vec2 uv_scale = dyn_shadow_data.shadow.directional.cascades[cascade].atlas_scale;
 
-    vec4 lightSpacePos = lightVP * vec4(biasedPos, 1.0);
+    vec4 lightSpacePos = lightVP * vec4(worldPos, 1.0);
     vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
 
     vec2 shadowUV = projCoords.xy * 0.5 + 0.5;
@@ -230,60 +230,88 @@ float sampleCascadeShadow(uint cascade, vec3 biasedPos)
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
 
-    // Remap to atlas coordinates
     shadowUV = shadowUV * uv_scale + uv_offset;
-
-    float texelSize = dyn_shadow_data.shadow.directional.texel_size * uv_scale.x;
-    return sampleShadowPCF(texIdx, shadowUV, currentDepth, texelSize);
+    return sampleShadow1(texIdx, shadowUV, currentDepth);
 }
 
-// Calculate directional shadow factor using CSM with cascade blending
+// Screen-space PCF for directional shadows. Each PCF sample gets its own
+// world-space position (via dFdx/dFdy offsets) and independently selects its
+// cascade. This eliminates cascade transition artifacts — near boundaries,
+// samples naturally land in different cascades without explicit blending.
 float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
 {
+    // Compute derivatives before non-uniform branches (required by spec)
+    vec3 dpdx = dFdx(worldPos);
+    vec3 dpdy = dFdy(worldPos);
+    float dvdx = dFdx(viewDepth);
+    float dvdy = dFdy(viewDepth);
+
     uint cascadeCount = dyn_shadow_data.shadow.directional.cascade_count;
     if (cascadeCount == 0u)
         return 1.0;
 
-    // Beyond the last cascade's split depth — no shadow
     float maxShadowDist = dyn_shadow_data.shadow.directional.cascades[cascadeCount - 1u].split_depth;
     if (viewDepth > maxShadowDist)
         return 1.0;
 
-    // Fade out shadows near the distance limit (last 10% of range)
     float fadeStart = maxShadowDist * 0.9;
     float fadeFactor = 1.0;
     if (viewDepth > fadeStart)
         fadeFactor = 1.0 - (viewDepth - fadeStart) / (maxShadowDist - fadeStart);
 
-    uint cascade = selectCascade(viewDepth);
-
-    // Normal bias: offset world position along surface normal
     float normalBias = dyn_shadow_data.shadow.directional.normal_bias;
     vec3 biasedPos = worldPos + normal * normalBias;
 
-    float shadow = sampleCascadeShadow(cascade, biasedPos);
+    uint mode = dyn_shadow_data.shadow.directional.pcf_mode;
+    float shadow = 0.0;
 
-    // Blend with next cascade near the split boundary to hide the resolution seam.
-    // Blend zone is the last 25% of each cascade's depth range.
-    if (cascade < cascadeCount - 1u)
+    if (mode == KGPU_PCF_POISSON32)
     {
-        float splitDepth = dyn_shadow_data.shadow.directional.cascades[cascade].split_depth;
-        float prevSplit = (cascade > 0u)
-            ? dyn_shadow_data.shadow.directional.cascades[cascade - 1u].split_depth
-            : 0.1;
-        float cascadeRange = splitDepth - prevSplit;
-        float blendZone = cascadeRange * 0.25;
-        float distToEdge = splitDepth - viewDepth;
-
-        if (distToEdge < blendZone && blendZone > 0.0)
+        float spread = 3.0;
+        for (int i = 0; i < 32; i++)
         {
-            float nextShadow = sampleCascadeShadow(cascade + 1u, biasedPos);
-            float t = distToEdge / blendZone;  // 1.0 at blend start, 0.0 at split boundary
-            shadow = mix(nextShadow, shadow, t);
+            vec2 d = poissonDisk32[i] * spread;
+            vec3 sp = biasedPos + dpdx * d.x + dpdy * d.y;
+            float sd = viewDepth + dvdx * d.x + dvdy * d.y;
+            uint c = selectCascade(max(sd, 0.0));
+            shadow += sampleCascadeSingle(c, sp);
         }
+        shadow /= 32.0;
+    }
+    else if (mode == KGPU_PCF_POISSON16)
+    {
+        float spread = 2.5;
+        for (int i = 0; i < 16; i++)
+        {
+            vec2 d = poissonDisk16[i] * spread;
+            vec3 sp = biasedPos + dpdx * d.x + dpdy * d.y;
+            float sd = viewDepth + dvdx * d.x + dvdy * d.y;
+            uint c = selectCascade(max(sd, 0.0));
+            shadow += sampleCascadeSingle(c, sp);
+        }
+        shadow /= 16.0;
+    }
+    else
+    {
+        int halfSize = 1;
+        if (mode == KGPU_PCF_5X5) halfSize = 2;
+        else if (mode == KGPU_PCF_7X7) halfSize = 3;
+
+        float count = 0.0;
+        for (int x = -halfSize; x <= halfSize; x++)
+        {
+            for (int y = -halfSize; y <= halfSize; y++)
+            {
+                vec3 sp = biasedPos + dpdx * float(x) + dpdy * float(y);
+                float sd = viewDepth + dvdx * float(x) + dvdy * float(y);
+                uint c = selectCascade(max(sd, 0.0));
+                shadow += sampleCascadeSingle(c, sp);
+                count += 1.0;
+            }
+        }
+        shadow /= count;
     }
 
-    // Fade to 1.0 (lit) near the shadow distance limit
     return mix(1.0, shadow, fadeFactor);
 }
 
