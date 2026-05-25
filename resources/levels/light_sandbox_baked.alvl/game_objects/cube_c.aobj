@@ -6,7 +6,7 @@ components:
     proto_id: game_object_component
   - id: cube_c_mesh
     proto_id: mesh_component
-    material: mt_toon
+    material: mt_solid_color_lit
     mesh: cube_mesh
     position:
       x: 0
