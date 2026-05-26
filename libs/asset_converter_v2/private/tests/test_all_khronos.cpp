@@ -68,6 +68,7 @@ vertex_data_ptr(const std::vector<uint8_t>& bytes)
 class KhronosGlbTest : public ::testing::TestWithParam<std::string>
 {
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(KhronosGlbTest);
 
 TEST_P(KhronosGlbTest, ParsesWithoutCrash)
 {
@@ -194,6 +195,7 @@ class KhronosEnginePipelineTest : public EngineTestFixture,
                                   public ::testing::WithParamInterface<std::string>
 {
 };
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(KhronosEnginePipelineTest);
 
 TEST_P(KhronosEnginePipelineTest, FullPipelineDoesNotCrash)
 {

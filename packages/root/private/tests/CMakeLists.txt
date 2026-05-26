@@ -24,6 +24,7 @@ target_link_libraries(packages.root.render.tests
     kryga::core
     kryga::packages.root.model
     kryga::packages.root.render
+    kryga::vulkan_render_impl_editor
     gtest
     testing
 )
