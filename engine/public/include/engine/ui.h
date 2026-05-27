@@ -69,6 +69,10 @@ public:
     double culled_draws_avg = 0.0;
     double all_draws_avg = 0.0;
     double objects_avg = 0.0;
+    double vram_used_mb = 0.0;
+    double vram_total_mb = 0.0;
+    double host_used_mb = 0.0;
+    uint32_t vma_alloc_count = 0;
     int lock = 0;
 };
 

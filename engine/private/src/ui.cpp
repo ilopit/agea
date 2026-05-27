@@ -217,6 +217,14 @@ performance_counters_window::handle()
         culled_draws_avg = glob::glob_state().getr_engine_counters().culled_draws.avg;
         all_draws_avg = glob::glob_state().getr_engine_counters().all_draws.avg;
         objects_avg = glob::glob_state().getr_engine_counters().objects.avg;
+
+        auto mem = glob::glob_state().getr_render().device.get_memory_stats();
+        auto mb = [](uint64_t b) { return static_cast<double>(b) / (1024.0 * 1024.0); };
+        vram_used_mb = mb(mem.device_used);
+        vram_total_mb = mb(mem.device_total);
+        host_used_mb = mb(mem.host_used);
+        vma_alloc_count = mem.allocation_count;
+
         lock = 24;
     }
 
@@ -235,6 +243,10 @@ performance_counters_window::handle()
     ImGui::Text("Draws   : %3.3lf", all_draws_avg);
     ImGui::Text("Cull %  : %3.3lf",
                 all_draws_avg > 0 ? culled_draws_avg / all_draws_avg * 100 : 0.0);
+    ImGui::Separator();
+    ImGui::Text("VRAM    : %.1f / %.0f MB", vram_used_mb, vram_total_mb);
+    ImGui::Text("Host mem: %.1f MB", host_used_mb);
+    ImGui::Text("Allocs  : %u", vma_alloc_count);
     ImGui::Separator();
 
     --lock;
