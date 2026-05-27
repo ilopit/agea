@@ -44,6 +44,10 @@ namespace physics
 {
 class physics_system;
 }
+namespace game
+{
+class game_system_manager;
+}
 namespace engine
 {
 class editor_system;
@@ -88,6 +92,7 @@ struct state_mutator__lua_api;
 struct state_mutator__render;
 struct state_mutator__animation_system;
 struct state_mutator__physics_system;
+struct state_mutator__game_system_manager;
 struct state_mutator__editor_system;
 struct state_mutator__vfs;
 
@@ -153,6 +158,7 @@ class state
     friend class ::kryga::state_mutator__render_bridge;
     friend class ::kryga::state_mutator__engine_counters;
     friend class ::kryga::state_mutator__physics_system;
+    friend class ::kryga::state_mutator__game_system_manager;
 
     // Singletons
     friend class ::kryga::state_mutator__engine;
@@ -215,6 +221,7 @@ public:
     register_system(system* sys);
 
     KRG_gen_getter(physics_system, physics::physics_system);
+    KRG_gen_getter(game_system_manager, game::game_system_manager);
 
     template <typename T>
     T*
@@ -267,6 +274,7 @@ private:
     render_bridge*                  m_render_bridge = nullptr;
     engine_counters*                m_engine_counters = nullptr;
     physics::physics_system*        m_physics_system = nullptr;
+    game::game_system_manager*      m_game_system_manager = nullptr;
 
     // Singletons
     vulkan_engine*                  m_engine = nullptr;
@@ -356,6 +364,12 @@ struct state_mutator__config
 };
 
 struct state_mutator__physics_system
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__game_system_manager
 {
     static void
     set(gs::state& s);

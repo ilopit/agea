@@ -31,9 +31,14 @@ camera_component::update_view()
     }
 
     glm::vec3 pos = owner_obj->get_position();
-    glm::vec3 rot = owner_obj->get_rotation();
 
-    // Build rotation matrix from pitch (x) and yaw (y) stored in degrees
+    if (m_mode == camera_mode::look_at)
+    {
+        m_view = glm::lookAt(pos, m_look_at_target, m_look_at_up);
+        return;
+    }
+
+    glm::vec3 rot = owner_obj->get_rotation();
     glm::mat4 yaw_rot = glm::rotate(glm::mat4{1}, glm::radians(rot.y), {0, 1, 0});
     glm::mat4 cam_rot = glm::rotate(yaw_rot, glm::radians(rot.x), {1, 0, 0});
 
@@ -61,6 +66,20 @@ camera_component::on_tick(float dt)
 {
     update_view();
     update_perspective();
+}
+
+void
+camera_component::set_look_at(const glm::vec3& target, const glm::vec3& up)
+{
+    m_mode = camera_mode::look_at;
+    m_look_at_target = target;
+    m_look_at_up = up;
+}
+
+void
+camera_component::set_free()
+{
+    m_mode = camera_mode::free;
 }
 
 bool

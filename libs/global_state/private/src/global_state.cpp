@@ -173,14 +173,14 @@ state::run_items(state_stage stage)
 void
 state::register_system(system* sys)
 {
-    for (auto dep : sys->system_deps())
+    for (auto dep : sys->deps())
     {
         bool found = std::any_of(m_systems.begin(),
                                  m_systems.end(),
-                                 [dep](const system* s) { return s->system_name() == dep; });
+                                 [dep](const system* s) { return s->name() == dep; });
         KRG_check(found, "System dependency not registered yet");
     }
-    ALOG_INFO("System [{}] registered", sys->system_name());
+    ALOG_INFO("System [{}] registered", sys->name());
     m_systems.push_back(sys);
 }
 

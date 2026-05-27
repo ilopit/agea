@@ -15,7 +15,7 @@ class game_object;
 namespace base
 {
 class camera_component;
-class input_component;
+class player;
 class destructible_mesh_component;
 }  // namespace base
 
@@ -142,7 +142,7 @@ private:
     bool m_saved_editor_mode_visuals = true;
 
     base::camera_component* m_active_camera = nullptr;
-    base::input_component* m_input = nullptr;
+    base::player* m_player = nullptr;
     base::destructible_mesh_component* m_pending_shatter = nullptr;
     int m_pending_shatter_frames = 0;
 

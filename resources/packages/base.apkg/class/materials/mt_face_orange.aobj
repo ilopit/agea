@@ -1,0 +1,11 @@
+proto_id: solid_color_material
+id: mt_face_orange
+shader_effect: se_solid_color
+diffuse:
+  x: 0.95
+  y: 0.5
+  z: 0.1
+ambient:
+  x: 0.19
+  y: 0.1
+  z: 0.020000000000000004

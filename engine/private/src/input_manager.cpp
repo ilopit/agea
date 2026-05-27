@@ -39,6 +39,7 @@ constexpr float k_mouse_sensitivity = 500.f;
 const std::unordered_map<std::string, input_event_id> mapping{
     {"mouse_move_x", input_event_id::mouse_move_x},
     {"mouse_move_y", input_event_id::mouse_move_y},
+    {"mouse_move_wheel", input_event_id::mouse_move_wheel},
 
     {"mouse_button_left", input_event_id::mouse_left},
     {"mouse_button_middle", input_event_id::mouse_wheel},

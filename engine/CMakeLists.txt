@@ -76,6 +76,7 @@ target_link_libraries(engine PUBLIC
     kryga::kryga_port
     kryga::project_paths
     kryga::physics
+    kryga::game
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 
@@ -122,6 +123,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::asset_converter
         kryga::project_paths
         kryga::physics
+        kryga::game
         kryga::rpc
 
         kryga::imguizmo_unofficial

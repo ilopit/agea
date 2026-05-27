@@ -36,12 +36,12 @@ public:
     using render_data_resolver = std::function<render::vulkan_render_data*(const utils::id&)>;
 
     std::string_view
-    system_name() const override
+    name() const override
     {
         return "animation";
     }
     std::span<const std::string_view>
-    system_deps() const override
+    deps() const override
     {
         static constexpr std::string_view d[] = {"render"};
         return d;

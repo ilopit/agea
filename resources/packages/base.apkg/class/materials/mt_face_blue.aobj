@@ -1,0 +1,11 @@
+proto_id: solid_color_material
+id: mt_face_blue
+shader_effect: se_solid_color
+diffuse:
+  x: 0.2
+  y: 0.3
+  z: 0.9
+ambient:
+  x: 0.04000000000000001
+  y: 0.06
+  z: 0.18000000000000002

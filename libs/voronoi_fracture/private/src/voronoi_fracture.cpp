@@ -358,7 +358,36 @@ manifold_to_chunk(const manifold::MeshGL& mesh,
                     mesh.vertProperties[vi * 3 + 2]};
         }
 
-        emit_flat_triangle(p, chunk_center, ck, box);
+        bool cap = find_original_id(mesh, t) != input_original_id;
+
+        if (cap && roughness > 0.0f)
+        {
+            glm::vec3 face_n = glm::cross(p[1] - p[0], p[2] - p[0]);
+            float fnl = glm::length(face_n);
+            face_n = fnl > 1e-8f ? face_n / fnl : glm::vec3(0, 1, 0);
+
+            float edge_len = glm::max(glm::length(p[1] - p[0]),
+                                      glm::max(glm::length(p[2] - p[1]), glm::length(p[0] - p[2])));
+            float noise_scale = 4.0f / glm::max(edge_len, 1e-4f);
+
+            std::vector<sub_tri> subs;
+            subdivide_triangle({p[0], p[1], p[2]}, 2, subs);
+
+            for (auto& st : subs)
+            {
+                glm::vec3 pts[3] = {st.a, st.b, st.c};
+                for (auto& pt : pts)
+                {
+                    pt +=
+                        face_n * roughness * edge_len * fbm_noise(pt * noise_scale, roughness_seed);
+                }
+                emit_flat_triangle(pts, chunk_center, ck, box);
+            }
+        }
+        else
+        {
+            emit_flat_triangle(p, chunk_center, ck, box);
+        }
     }
 }
 

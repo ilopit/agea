@@ -1,0 +1,774 @@
+proto_id: mesh_object
+id: cubes_root
+layout: [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+components:
+  - id: cubes_root_root
+    proto_id: game_object_component
+  - id: cube_0_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_1_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_2_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_3_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_4_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_5_mesh
+    proto_id: mesh_component
+    material: mt_face_red
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_6_mesh
+    proto_id: mesh_component
+    material: mt_face_red
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_7_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: -0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_8_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_9_mesh
+    proto_id: mesh_component
+    material: mt_face_red
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_10_mesh
+    proto_id: mesh_component
+    material: mt_face_red
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_11_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_12_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_13_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_14_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_15_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -1.5
+      y: 1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_16_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_17_mesh
+    proto_id: mesh_component
+    material: mt_face_yellow
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_18_mesh
+    proto_id: mesh_component
+    material: mt_face_yellow
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_19_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_20_mesh
+    proto_id: mesh_component
+    material: mt_face_blue
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_21_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_22_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_23_mesh
+    proto_id: mesh_component
+    material: mt_face_green
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: -0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_24_mesh
+    proto_id: mesh_component
+    material: mt_face_blue
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_25_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_26_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_27_mesh
+    proto_id: mesh_component
+    material: mt_face_green
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_28_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_29_mesh
+    proto_id: mesh_component
+    material: mt_face_white
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_30_mesh
+    proto_id: mesh_component
+    material: mt_face_white
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_31_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: -0.5
+      y: 1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_32_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_33_mesh
+    proto_id: mesh_component
+    material: mt_face_yellow
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_34_mesh
+    proto_id: mesh_component
+    material: mt_face_yellow
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_35_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_36_mesh
+    proto_id: mesh_component
+    material: mt_face_blue
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_37_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_38_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_39_mesh
+    proto_id: mesh_component
+    material: mt_face_green
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: -0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_40_mesh
+    proto_id: mesh_component
+    material: mt_face_blue
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_41_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_42_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_43_mesh
+    proto_id: mesh_component
+    material: mt_face_green
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_44_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_45_mesh
+    proto_id: mesh_component
+    material: mt_face_white
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_46_mesh
+    proto_id: mesh_component
+    material: mt_face_white
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_47_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 0.5
+      y: 1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_48_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_49_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_50_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_51_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_52_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_53_mesh
+    proto_id: mesh_component
+    material: mt_face_orange
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_54_mesh
+    proto_id: mesh_component
+    material: mt_face_orange
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_55_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: -0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_56_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 0.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_57_mesh
+    proto_id: mesh_component
+    material: mt_face_orange
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 0.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_58_mesh
+    proto_id: mesh_component
+    material: mt_face_orange
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 0.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_59_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 0.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_60_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 1.5
+      z: -1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_61_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 1.5
+      z: -0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_62_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 1.5
+      z: 0.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45
+  - id: cube_63_mesh
+    proto_id: mesh_component
+    material: mt_toon
+    mesh: cube_mesh
+    position:
+      x: 1.5
+      y: 1.5
+      z: 1.5
+    scale:
+      x: 0.45
+      y: 0.45
+      z: 0.45

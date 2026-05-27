@@ -1,0 +1,11 @@
+proto_id: solid_color_material
+id: mt_face_yellow
+shader_effect: se_solid_color
+diffuse:
+  x: 0.9
+  y: 0.85
+  z: 0.2
+ambient:
+  x: 0.18000000000000002
+  y: 0.17
+  z: 0.04000000000000001

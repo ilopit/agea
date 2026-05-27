@@ -31,7 +31,13 @@
 #include <packages/base/model/components/destructible_mesh_component.h>
 #include <packages/base/model/assets/destructible_mesh_asset.h>
 #include <packages/tbs/model/hex_grid.h>
+#include <packages/base/model/components/camera_component.h>
+
 #include <gpu_types/gpu_generic_constants.h>
+
+#include <packages/base/model/player.h>
+
+#include <game/game_system_manager.h>
 
 namespace kryga
 {
@@ -356,28 +362,8 @@ game_editor::on_tick(float dt)
         m_pending_shatter_frames = 0;
     }
 
-    if (m_mode == editor_mode::playing && m_input)
+    if (m_mode == editor_mode::playing)
     {
-        //         base::pawn_movement_input input;
-        //         input.forward = m_forward_delta;
-        //         input.strafe = m_left_delta;
-        //         input.look_pitch = m_look_up_delta;
-        //         input.look_yaw = m_look_left_delta;
-        //         input.mouse_right_held =
-        //             glob::glob_state().get_input_manager()->get_input_state(kryga::core::mouse_right);
-        //         m_input->apply_input(input);
-        //
-        //         m_forward_delta = 0.f;
-        //         m_left_delta = 0.f;
-        //         m_look_up_delta = 0.f;
-        //         m_look_left_delta = 0.f;
-        //         m_updated = false;
-        //
-        //         if (m_active_camera)
-        //         {
-        //             float aspect = glob::glob_state().getr_native_window().aspect_ratio();
-        //             m_active_camera->set_aspect_ratio(aspect);
-        //         }
     }
     else
     {
@@ -475,42 +461,23 @@ game_editor::enter_play_mode()
     dbg.editor_mode = false;
 
     m_active_camera = nullptr;
-    m_input = nullptr;
+    m_player = nullptr;
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
-        auto& gos = lvl->get_game_objects();
-        for (auto& [id, obj] : gos.get_items())
+        base::player::construct_params pp;
+        m_player = lvl->spawn_object<base::player>(AID("player_0"), pp);
+        if (m_player)
         {
-            auto go = obj->as<root::game_object>();
-            if (!go)
-            {
-                continue;
-            }
+            m_player->set_position(root::vec3{
+                m_camera_data.position.x, m_camera_data.position.y, m_camera_data.position.z});
 
-            for (auto c : go->get_renderable_components())
-            {
-                if (auto cam = c->as<base::camera_component>())
-                {
-                    if (cam->is_active_camera())
-                    {
-                        m_active_camera = cam;
-                        break;
-                    }
-                }
-            }
-            if (m_active_camera)
-            {
-                for (auto c : go->get_renderable_components())
-                {
-                    if (auto ic = c->as<base::input_component>())
-                    {
-                        m_input = ic;
-                        break;
-                    }
-                }
-                break;
-            }
+            m_active_camera = m_player->get_camera();
+            m_active_camera->set_active_camera(true);
+            m_active_camera->set_perspective(60.f,
+                                             glob::glob_state().getr_native_window().aspect_ratio(),
+                                             (float)KGPU_znear,
+                                             (float)KGPU_zfar);
         }
     }
 
@@ -526,6 +493,8 @@ game_editor::enter_play_mode()
             }
         }
     }
+
+    glob::glob_state().getr_game_system_manager().on_begin_play();
 }
 
 void
@@ -535,6 +504,8 @@ game_editor::exit_play_mode()
     {
         return;
     }
+
+    glob::glob_state().getr_game_system_manager().on_end_play();
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
@@ -547,8 +518,15 @@ game_editor::exit_play_mode()
         }
     }
 
+    if (m_player)
+    {
+        if (auto lvl = glob::glob_state().getr_model().current_level)
+        {
+            lvl->destroy_game_object(*m_player);
+        }
+        m_player = nullptr;
+    }
     m_active_camera = nullptr;
-    m_input = nullptr;
 
     m_camera_data.position = m_saved_position;
     m_pitch = m_saved_pitch;

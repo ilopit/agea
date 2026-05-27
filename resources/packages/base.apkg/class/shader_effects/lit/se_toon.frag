@@ -23,9 +23,12 @@ layout(buffer_reference, scalar) readonly buffer BdaMaterialBuffer {
 float quantize_band(float v, float bands)
 {
     float scaled = clamp(v, 0.0, 1.0) * bands;
+    float fw = fwidth(scaled) * 0.5;
     float stepped = floor(scaled);
     float frac = scaled - stepped;
-    float edge = smoothstep(0.92, 1.0, frac);
+    float lo = max(0.5 - fw, 0.01);
+    float hi = min(0.5 + fw, 0.99);
+    float edge = smoothstep(lo, hi, frac);
     return (stepped + edge) / bands;
 }
 
@@ -137,7 +140,6 @@ void main()
     float viewDepth = -viewPos.z;
 
     float dirShadow = calcDirectionalShadow(in_world_pos, norm, viewDepth);
-    // Snap shadow to two bands — either lit or not, no soft falloff.
     dirShadow = step(0.5, dirShadow);
 
     vec3 result = vec3(0);

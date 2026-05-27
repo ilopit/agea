@@ -1,0 +1,40 @@
+proto_id: directional_light
+id: sun
+layout: [-1, 0, 0]
+components:
+  - id: sun_root
+    proto_id: game_object_component
+  - id: sun_icon
+    proto_id: mesh_component
+    material: mt_billboard_directional_light
+    mesh: plane_mesh
+    layers:
+      visible: true
+      editor_only: true
+      cast_shadows: false
+      receive_light: false
+      contribute_gi: false
+      static_object: false
+    position:
+      x: 0
+      y: 10
+      z: 0
+  - id: sun_lc
+    proto_id: directional_light_component
+    ambient:
+      x: 0.15
+      y: 0.15
+      z: 0.15
+    diffuse:
+      x: 0.9
+      y: 0.9
+      z: 0.85
+    specular:
+      x: 0.6
+      y: 0.6
+      z: 0.6
+    direction:
+      x: -0.5
+      y: -0.7
+      z: -0.3
+    selected: true

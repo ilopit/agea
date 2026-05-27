@@ -48,6 +48,7 @@
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/base/model/camera_object.h>
+#include <packages/base/model/player.h>
 
 #include <packages/base/model/lights/directional_light.h>
 #include <packages/base/model/lights/point_light.h>
@@ -79,6 +80,8 @@
 #include <animation/animation_system.h>
 
 #include <physics/physics_system.h>
+
+#include <game/game_system_manager.h>
 
 #include <packages/base/model/components/destructible_mesh_component.h>
 
@@ -225,6 +228,7 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
+    state_mutator__game_system_manager::set(gs);
 #if KRG_EDITOR
     state_mutator__editor_system::set(gs);
 #endif
@@ -720,8 +724,14 @@ vulkan_engine::tick(float dt)
     }
 
     glob::glob_state().getr_editor_system().editor.on_tick(dt);
-    if (glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing)
+
+    const bool playing =
+        glob::glob_state().getr_editor_system().editor.get_mode() == engine::editor_mode::playing;
+
+    if (playing)
     {
+        glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::pre_physics, dt);
+
         if (auto lvl = glob::glob_state().getr_model().current_level)
         {
             lvl->tick(dt);
@@ -746,7 +756,8 @@ vulkan_engine::tick(float dt)
         }
     }
 #else
-    // Game build — always playing, level always ticks.
+    glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::pre_physics, dt);
+
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         lvl->tick(dt);
@@ -758,17 +769,20 @@ vulkan_engine::tick(float dt)
         anim->tick(dt);
     }
 
+#if KRG_EDITOR
+    if (!playing)
+    {
+        return;
+    }
+#endif
+
     if (auto* phys = glob::glob_state().get_physics_system())
     {
-#if KRG_EDITOR
-        if (glob::glob_state().getr_editor_system().editor.get_mode() !=
-            engine::editor_mode::playing)
-        {
-            return;
-        }
-#endif
         phys->tick(dt);
     }
+
+    glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::post_physics, dt);
+    glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::late_update, dt);
 }
 
 bool
@@ -948,8 +962,7 @@ vulkan_engine::init_default_resources()
 void
 vulkan_engine::init_scene()
 {
-    auto level_id =
-        m_initial_level.empty() ? AID("light_sandbox_baked") : AID(m_initial_level.c_str());
+    auto level_id = m_initial_level.empty() ? AID("cubes") : AID(m_initial_level.c_str());
     if (level_id.valid())
     {
         load_level(level_id);
@@ -960,22 +973,21 @@ vulkan_engine::init_scene()
 #endif
     }
 
+#if !KRG_EDITOR
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
-        base::camera_object::construct_params co_prms;
-        auto cam_obj = lvl->spawn_object<base::camera_object>(AID("play_camera"), co_prms);
-        if (cam_obj)
+        base::player::construct_params player_prms;
+        auto player_obj = lvl->spawn_object<base::player>(AID("player_0"), player_prms);
+        if (player_obj)
         {
-            cam_obj->get_camera_component()->set_active_camera(true);
-            cam_obj->get_camera_component()->set_perspective(
+            player_obj->get_camera()->set_active_camera(true);
+            player_obj->get_camera()->set_perspective(
                 60.f,
                 glob::glob_state().getr_native_window().aspect_ratio(),
                 (float)KGPU_znear,
                 (float)KGPU_zfar);
         }
 
-#if !KRG_EDITOR
-        // Game build is always "playing" — fire begin_play on level objects.
         for (auto& [id, obj] : lvl->get_game_objects().get_items())
         {
             if (auto go = obj->as<root::game_object>())
@@ -983,8 +995,9 @@ vulkan_engine::init_scene()
                 go->begin_play();
             }
         }
-#endif
+        glob::glob_state().getr_game_system_manager().on_begin_play();
     }
+#endif
 }
 
 void

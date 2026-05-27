@@ -16,12 +16,12 @@ class model_system : public gs::system
 {
 public:
     std::string_view
-    system_name() const override
+    name() const override
     {
         return "model";
     }
     std::span<const std::string_view>
-    system_deps() const override
+    deps() const override
     {
         return {};
     }

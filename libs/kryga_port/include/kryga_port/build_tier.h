@@ -29,11 +29,11 @@
 // --- Derived feature flags ----------------------------------------------------
 // Guard code with these, not with the tier defines.
 
-#define KRG_HAS_IMGUI    (KRG_BUILD_DEV || KRG_BUILD_TEST)
-#define KRG_HAS_EDITOR   KRG_BUILD_DEV
-#define KRG_HAS_RPC      KRG_BUILD_DEV
+#define KRG_HAS_IMGUI (KRG_BUILD_DEV || KRG_BUILD_TEST)
+#define KRG_HAS_EDITOR KRG_BUILD_DEV
+#define KRG_HAS_RPC KRG_BUILD_DEV
 #define KRG_HAS_PROFILER (KRG_BUILD_DEV || KRG_BUILD_TEST)
-#define KRG_HAS_CONSOLE  KRG_HAS_IMGUI
+#define KRG_HAS_CONSOLE KRG_HAS_IMGUI
 
 // --- Legacy compat ------------------------------------------------------------
 // Existing code checks #if KRG_EDITOR. Keep it working during migration.

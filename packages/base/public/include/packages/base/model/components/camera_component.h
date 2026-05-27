@@ -8,6 +8,13 @@ namespace kryga
 {
 namespace base
 {
+
+enum class camera_mode
+{
+    free,
+    look_at,
+};
+
 // clang-format off
 KRG_ar_class(
     mcp_hint = "Camera projection and viewport control — FOV / near/far planes / aspect ratio / "
@@ -114,7 +121,16 @@ public:
     void
     update_perspective();
 
+    void
+    set_look_at(const glm::vec3& target, const glm::vec3& up = glm::vec3(0.f, 1.f, 0.f));
+
+    void
+    set_free();
+
 private:
+    camera_mode m_mode = camera_mode::free;
+    glm::vec3 m_look_at_target{0.f};
+    glm::vec3 m_look_at_up{0.f, 1.f, 0.f};
     // Updateble part
     float m_rotation_speed = 1.0f;
     float m_movement_speed = 0.01f;
