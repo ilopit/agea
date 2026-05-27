@@ -274,15 +274,13 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
     m_render_graph.bind_image(
         AID("selection_mask_target"), *mask_images[0], VK_IMAGE_LAYOUT_UNDEFINED);
 
-    // Shadow atlas — single depth image per frame-in-flight
     if (m_shadow_atlas_pass)
     {
         auto& depth_images = m_shadow_atlas_pass->get_depth_images();
         if (!depth_images.empty())
         {
-            uint32_t idx = swapchain_image_index % depth_images.size();
             m_render_graph.bind_image(
-                AID("shadow_atlas"), depth_images[idx], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+                AID("shadow_atlas"), depth_images[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }
     }
 

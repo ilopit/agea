@@ -26,6 +26,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -43,6 +44,7 @@ bool
 render_device::construct(construct_params& params)
 {
     m_headless = params.headless;
+    m_frames_in_flight = std::clamp(params.frames_in_flight, 1u, 4u);
 
     if (params.headless && (params.width < 128 || params.height < 128))
     {
@@ -404,8 +406,8 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         simg_allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         simg_allocinfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        m_swapchain_images.resize(FRAMES_IN_FLIGHT);
-        m_swapchain_image_views.resize(FRAMES_IN_FLIGHT);
+        m_swapchain_images.resize(m_frames_in_flight);
+        m_swapchain_image_views.resize(m_frames_in_flight);
         for (auto i = 0; i < m_swapchain_images.size(); ++i)
         {
             // allocate and create the image
@@ -621,7 +623,7 @@ render_device::wait_for_fences()
 void
 render_device::schedule_to_delete(delayed_deleter d)
 {
-    m_delayed_delete_queue.push({m_current_frame_number + FRAMES_IN_FLIGHT, std::move(d)});
+    m_delayed_delete_queue.push({m_current_frame_number + m_frames_in_flight, std::move(d)});
 }
 
 void
@@ -652,6 +654,54 @@ render_device::flush_deferred_deletions()
         m_delayed_delete_queue.pop();
         del(m_vk_device, m_allocator);
     }
+}
+
+render_device::memory_stats
+render_device::get_memory_stats() const
+{
+    memory_stats stats{};
+    if (!m_allocator)
+        return stats;
+
+    VmaTotalStatistics vma_stats{};
+    vmaCalculateStatistics(m_allocator, &vma_stats);
+
+    stats.allocation_count = vma_stats.total.statistics.allocationCount;
+
+    VkPhysicalDeviceMemoryProperties mem_props{};
+    vkGetPhysicalDeviceMemoryProperties(m_vk_gpu, &mem_props);
+
+    for (uint32_t i = 0; i < mem_props.memoryHeapCount; ++i)
+    {
+        auto& heap = mem_props.memoryHeaps[i];
+        auto used = vma_stats.memoryHeap[i].statistics.allocationBytes;
+
+        if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        {
+            stats.device_total += heap.size;
+            stats.device_used += used;
+        }
+        else
+        {
+            stats.host_total += heap.size;
+            stats.host_used += used;
+        }
+    }
+    return stats;
+}
+
+void
+render_device::log_memory_stats() const
+{
+    auto s = get_memory_stats();
+    auto mb = [](uint64_t b) { return static_cast<double>(b) / (1024.0 * 1024.0); };
+
+    ALOG_INFO("VMA memory: device {:.1f}/{:.1f} MB, host {:.1f}/{:.1f} MB, {} allocations",
+              mb(s.device_used),
+              mb(s.device_total),
+              mb(s.host_used),
+              mb(s.host_total),
+              s.allocation_count);
 }
 
 void

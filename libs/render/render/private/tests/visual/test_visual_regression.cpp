@@ -284,6 +284,7 @@ public:
         cfg.debug.light_icons = false;
         cfg.shadows.hardware_pcf = false;
         cfg.shadows.hardware_pcf_local = false;
+        cfg.shadows.depth_16bit = false;
         cfg.shadows.pcf_world_radius = 0.01f;
         cfg.shadows.pcf = pcf_mode::poisson16;
 
@@ -3037,6 +3038,7 @@ TEST_P(shadow_cascade_test, looks_correct)
     cfg.debug.show_grid = false;
     cfg.debug.light_wireframe = false;
     cfg.debug.light_icons = false;
+    cfg.shadows.depth_16bit = false;
     cfg.shadows.cascade_count = GetParam();
     reinit_with_config(cfg);
 
@@ -4482,6 +4484,7 @@ TEST_F(visual_pipeline_test, debug_billboards_and_wireframe)
     cfg.debug.light_wireframe = true;
     cfg.debug.light_icons = true;
     cfg.debug.editor_mode = true;
+    cfg.shadows.depth_16bit = false;
     reinit_with_config(cfg);
 
     auto& renderer = glob::glob_state().getr_render().renderer;

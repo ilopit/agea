@@ -733,7 +733,7 @@ private:
     uint32_t m_debug_light_draw_count = 0;
     uint32_t m_debug_light_instance_base = 0;
     render_pass_sptr m_shadow_atlas_pass;
-    uint32_t m_shadow_atlas_bindless_indices[FRAMES_IN_FLIGHT] = {};
+    uint32_t m_shadow_atlas_bindless_index = 0;
 
     struct shadow_atlas_tile
     {

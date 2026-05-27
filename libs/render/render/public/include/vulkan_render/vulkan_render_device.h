@@ -16,7 +16,7 @@
 
 struct SDL_Window;
 
-constexpr uint64_t FRAMES_IN_FLIGHT = 3ULL;
+constexpr uint64_t FRAMES_IN_FLIGHT_DEFAULT = 3ULL;
 
 namespace kryga
 {
@@ -60,6 +60,7 @@ public:
         // Windowed mode reads the size from `window`.
         uint32_t width = 0;
         uint32_t height = 0;
+        uint32_t frames_in_flight = static_cast<uint32_t>(FRAMES_IN_FLIGHT_DEFAULT);
     };
 
     bool
@@ -159,6 +160,12 @@ public:
         return m_frames.size();
     }
 
+    uint32_t
+    frames_in_flight() const
+    {
+        return m_frames_in_flight;
+    }
+
     void
     switch_frame_indeces()
     {
@@ -234,6 +241,21 @@ public:
         return m_swapchain_image_views;
     }
 
+    struct memory_stats
+    {
+        uint64_t device_total = 0;
+        uint64_t device_used = 0;
+        uint64_t host_total = 0;
+        uint64_t host_used = 0;
+        uint32_t allocation_count = 0;
+    };
+
+    memory_stats
+    get_memory_stats() const;
+
+    void
+    log_memory_stats() const;
+
     using delayed_deleter = std::function<void(VkDevice vkd, VmaAllocator va)>;
 
     void
@@ -302,6 +324,7 @@ public:
     VkFormat m_depth_format;
 
     bool m_headless = false;
+    uint32_t m_frames_in_flight = static_cast<uint32_t>(FRAMES_IN_FLIGHT_DEFAULT);
 
     uint64_t m_current_frame_number = UINT64_MAX;
     uint64_t m_current_frame_index = 0ULL;

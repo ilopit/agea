@@ -50,7 +50,25 @@ const uint32_t OBJECTS_BUFFER_SIZE = 16 * 1024;
 const uint32_t UNIVERSAL_LIGHTS_BUFFER_SIZE = 1024;
 const uint32_t DIRECT_LIGHTS_BUFFER_SIZE = 512;
 
-const uint32_t DYNAMIC_BUFFER_SIZE = 1024;
+const uint32_t CAMERA_UBO_SIZE = 4 * 1024;
+
+uint32_t
+compute_cluster_counts_size(uint32_t screen_w, uint32_t screen_h, const render_config::cluster_cfg& cfg)
+{
+    uint32_t tiles_x = (screen_w + cfg.tile_size - 1) / cfg.tile_size;
+    uint32_t tiles_y = (screen_h + cfg.tile_size - 1) / cfg.tile_size;
+    uint32_t total = tiles_x * tiles_y * cfg.depth_slices;
+    return total * sizeof(uint32_t);
+}
+
+uint32_t
+compute_cluster_indices_size(uint32_t screen_w, uint32_t screen_h, const render_config::cluster_cfg& cfg)
+{
+    uint32_t tiles_x = (screen_w + cfg.tile_size - 1) / cfg.tile_size;
+    uint32_t tiles_y = (screen_h + cfg.tile_size - 1) / cfg.tile_size;
+    uint32_t total = tiles_x * tiles_y * cfg.depth_slices;
+    return total * cfg.max_lights_per_cluster * sizeof(uint32_t);
+}
 
 }  // namespace
 
@@ -121,30 +139,29 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
                                  KRG_VK_FMT_NAME("frame_{}.directional_lights", i));
 
         m_frames[i].buffers.dynamic_data =
-            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+            device.create_buffer(CAMERA_UBO_SIZE,
                                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU,
                                  0,
                                  KRG_VK_FMT_NAME("frame_{}.dynamic_data", i));
 
-        // Cluster buffers - used by both CPU upload and GPU compute
-        // CPU_TO_GPU allows CPU writes for fallback, GPU can read/write via SSBO
+        // Cluster buffers — sized to actual grid dimensions, auto-grow on config change.
         m_frames[i].buffers.cluster_counts =
-            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+            device.create_buffer(compute_cluster_counts_size(m_scene_lowres_width, m_scene_lowres_height, config.clusters),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU,
                                  0,
                                  KRG_VK_FMT_NAME("frame_{}.cluster_counts", i));
 
         m_frames[i].buffers.cluster_indices =
-            device.create_buffer(DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+            device.create_buffer(compute_cluster_indices_size(m_scene_lowres_width, m_scene_lowres_height, config.clusters),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                  VMA_MEMORY_USAGE_CPU_TO_GPU,
                                  0,
                                  KRG_VK_FMT_NAME("frame_{}.cluster_indices", i));
 
         m_frames[i].buffers.cluster_config = device.create_buffer(
-            DYNAMIC_BUFFER_SIZE * DYNAMIC_BUFFER_SIZE * 24,
+            sizeof(gpu::cluster_grid_data),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU,
             0,
@@ -273,6 +290,8 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     // Setup and compile render graph — compile() validates all passes:
     // binding table resources + BDA push constant fields (bda_X → dyn_X).
     setup_render_graph();
+
+    device.log_memory_stats();
 }
 
 void
@@ -1145,12 +1164,11 @@ vulkan_render::init_shadow_resources()
 {
     ZoneScopedN("Render::InitShadowResources");
 
-    // Register atlas depth image views in bindless texture array (one per frame-in-flight)
+    // Register the single atlas depth image view in the bindless texture array.
     auto& device = glob::glob_state().getr_render().device;
-    for (uint32_t f = 0; f < FRAMES_IN_FLIGHT; ++f)
     {
-        auto depth_view = m_shadow_atlas_pass->get_depth_image_view(f);
-        uint32_t bindless_idx = KGPU_max_bindless_textures - 1 - f;
+        auto depth_view = m_shadow_atlas_pass->get_depth_image_view(0);
+        uint32_t bindless_idx = KGPU_max_bindless_textures - 1;
 
         VkDescriptorImageInfo image_info = {};
         image_info.imageView = depth_view;
@@ -1166,7 +1184,7 @@ vulkan_render::init_shadow_resources()
         write.pImageInfo = &image_info;
 
         vkUpdateDescriptorSets(device.vk_device(), 1, &write, 0, nullptr);
-        m_shadow_atlas_bindless_indices[f] = bindless_idx;
+        m_shadow_atlas_bindless_index = bindless_idx;
     }
 
     // Create shadow shader effects on the atlas pass
@@ -1244,7 +1262,7 @@ vulkan_render::init_shadow_resources()
     m_shadow_config.directional.pcf_world_radius = m_render_config.shadows.pcf_world_radius;
     m_shadow_config.directional.hardware_pcf = m_render_config.shadows.hardware_pcf ? 1u : 0u;
     m_shadow_config.shadowed_local_count = 0;
-    m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_indices[0];
+    m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_index;
 
     // Transition atlas depth images to SHADER_READ_ONLY_OPTIMAL
     device.immediate_submit(
@@ -1288,7 +1306,7 @@ vulkan_render::init_shadow_resources()
               m_render_config.shadows.csm_tile_size,
               m_render_config.shadows.local_tile_size,
               m_render_config.shadows.local_tile_size,
-              FRAMES_IN_FLIGHT);
+              1);
 }
 
 render_cache&

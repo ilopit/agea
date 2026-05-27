@@ -29,7 +29,8 @@ namespace
 void*
 ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
                                size_t required_size,
-                               const char* name)
+                               const char* name,
+                               VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
 {
     KRG_check(required_size, "Should never happen");
 
@@ -38,7 +39,7 @@ ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
         auto old_buffer = std::move(buffer);
 
         buffer = glob::glob_state().getr_render().device.create_buffer(
-            required_size * 2, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+            required_size * 2, usage, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         ALOG_INFO("Reallocating {0} buffer {1} => {2}",
                   name,
@@ -469,8 +470,8 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         const auto& counts = m_cluster_grid.get_cluster_light_counts();
         const size_t size = counts.size() * sizeof(uint32_t);
 
-        frame.buffers.cluster_counts.begin();
-        auto* data = frame.buffers.cluster_counts.allocate_data((uint32_t)size);
+        auto* data = ensure_buffer_capacity_and_map(
+            frame.buffers.cluster_counts, size, "cluster_counts");
         memcpy(data, counts.data(), size);
         frame.buffers.cluster_counts.end();
     }
@@ -480,15 +481,14 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         const auto& indices = m_cluster_grid.get_cluster_light_indices();
         const size_t size = indices.size() * sizeof(uint32_t);
 
-        frame.buffers.cluster_indices.begin();
-        auto* data = frame.buffers.cluster_indices.allocate_data((uint32_t)size);
+        auto* data = ensure_buffer_capacity_and_map(
+            frame.buffers.cluster_indices, size, "cluster_indices");
         memcpy(data, indices.data(), size);
         frame.buffers.cluster_indices.end();
     }
 
     // Upload cluster config
     {
-        // Update config from current camera/grid state
         m_cluster_config.tiles_x = config.tiles_x;
         m_cluster_config.tiles_y = config.tiles_y;
         m_cluster_config.depth_slices = config.depth_slices;
@@ -500,8 +500,11 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         m_cluster_config.screen_width = config.screen_width;
         m_cluster_config.screen_height = config.screen_height;
 
-        frame.buffers.cluster_config.begin();
-        auto* data = frame.buffers.cluster_config.allocate_data(sizeof(gpu::cluster_grid_data));
+        auto* data = ensure_buffer_capacity_and_map(
+            frame.buffers.cluster_config,
+            sizeof(gpu::cluster_grid_data),
+            "cluster_config",
+            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
         memcpy(data, &m_cluster_config, sizeof(gpu::cluster_grid_data));
         frame.buffers.cluster_config.end();
     }

@@ -570,9 +570,7 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
 {
     ZoneScopedN("Render::UploadShadowData");
 
-    // Update atlas bindless index for the current frame-in-flight
-    auto frame_idx = glob::glob_state().getr_render().device.get_current_frame_index();
-    m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_indices[frame_idx];
+    m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_index;
 
     // Set per-cascade atlas UV data
     for (uint32_t c = 0; c < m_render_config.shadows.cascade_count; ++c)

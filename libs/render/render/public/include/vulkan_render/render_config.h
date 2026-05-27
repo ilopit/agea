@@ -22,7 +22,7 @@ struct render_config
         float pcf_world_radius = 0.03f;
         bool hardware_pcf = true;
         bool hardware_pcf_local = false;
-        bool depth_16bit = false;
+        bool depth_16bit = true;
         uint32_t cascade_count = 4;
         float distance = 200.0f;
         uint32_t atlas_size = KGPU_SHADOW_ATLAS_SIZE;
