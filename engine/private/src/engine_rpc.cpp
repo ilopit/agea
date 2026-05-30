@@ -1531,6 +1531,10 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             ol["depth_threshold"] = cfg.outline.depth_threshold;
             ol["normal_threshold"] = cfg.outline.normal_threshold;
             r["outline"] = ol;
+
+            r["frames_in_flight"] = cfg.frames_in_flight;
+            r["present_mode"] = static_cast<int>(cfg.present);
+            r["present_mode_name"] = render::to_string(cfg.present);
         });
     if (!done)
     {
@@ -1735,6 +1739,32 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 }
             }
 
+            if (params.isMember("frames_in_flight"))
+            {
+                cfg.frames_in_flight = params["frames_in_flight"].asUInt();
+            }
+
+            if (params.isMember("present_mode"))
+            {
+                auto& v = params["present_mode"];
+                if (v.isString())
+                {
+                    render::present_mode mode;
+                    if (render::from_string(v.asString(), mode))
+                    {
+                        cfg.present = mode;
+                    }
+                    else
+                    {
+                        local_err = "unknown present_mode '" + v.asString() + "'";
+                    }
+                }
+                else
+                {
+                    cfg.present = static_cast<render::present_mode>(v.asInt());
+                }
+            }
+
             cfg.validate();
         });
     if (!done)
@@ -1897,13 +1927,22 @@ rpc_render_state_stats(const Json::Value& /*params*/, Json::Value& result, std::
                 static_cast<Json::UInt64>(cache.universal_lights.get_actual_size());
             r["texture_count"] = static_cast<Json::UInt64>(cache.textures.get_actual_size());
 
-            auto mem = glob::glob_state().getr_render().device.get_memory_stats();
+            auto& device = glob::glob_state().getr_render().device;
+
+            auto mem = device.get_memory_stats();
             Json::Value mem_json(Json::objectValue);
             mem_json["device_used_mb"] = static_cast<double>(mem.device_used) / (1024.0 * 1024.0);
             mem_json["device_total_mb"] = static_cast<double>(mem.device_total) / (1024.0 * 1024.0);
             mem_json["host_used_mb"] = static_cast<double>(mem.host_used) / (1024.0 * 1024.0);
             mem_json["allocation_count"] = mem.allocation_count;
             r["memory"] = mem_json;
+
+            // Render->display latency (EWMA, ms) from VK_KHR_present_wait — same
+            // value shown in the perf overlay. Read-only state query. 0 / not
+            // meaningful when present_wait is unsupported.
+            r["present_wait_supported"] = device.present_wait_supported();
+            r["present_latency_ms"] = device.present_latency_ms();
+            r["present_mode"] = render::to_string(device.current_present_mode());
         });
     if (!done)
     {

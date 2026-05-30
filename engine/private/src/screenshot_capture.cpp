@@ -82,8 +82,10 @@ screenshot_capture::readback_and_crop(const screenshot_region& region)
     ensure_staging(w, h);
 
     auto color_images = pass->get_color_images();
-    auto frame_idx = device.get_current_frame_index();
-    auto img_idx = frame_idx % color_images.size();
+    // Sample the image that was actually presented (acquired index), not
+    // frame_slot % count — those diverge under MAILBOX, which would read a
+    // stale/unrendered image.
+    auto img_idx = device.last_presented_image_index() % color_images.size();
     auto src_image = color_images[img_idx]->image();
     VkImage dst_vk = m_staging.image();
 
@@ -213,6 +215,19 @@ screenshot_capture::capture(const screenshot_region& region)
     sr.image_base64 = encode_png(rb);
     sr.region = {region.x, region.y, rb.w, rb.h};
     return sr;
+}
+
+void
+screenshot_capture::release()
+{
+    // Move-assigning a default image clears the old one (vmaDestroyImage via
+    // its stored allocator). Safe to call when nothing was ever captured —
+    // m_staging is then already empty.
+    m_staging = render::vk_utils::vulkan_image{};
+    m_staging_w = 0;
+    m_staging_h = 0;
+    m_pixels.clear();
+    m_cropped.clear();
 }
 
 void

@@ -27,6 +27,7 @@
 #include <SDL_vulkan.h>
 
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -36,6 +37,31 @@ namespace kryga
 namespace render
 {
 
+namespace
+{
+VkPresentModeKHR
+to_vk_present_mode(present_mode m)
+{
+    switch (m)
+    {
+    case present_mode::mailbox:
+        return VK_PRESENT_MODE_MAILBOX_KHR;
+    case present_mode::immediate:
+        return VK_PRESENT_MODE_IMMEDIATE_KHR;
+    default:
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+}
+
+uint64_t
+ns_now()
+{
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                     std::chrono::steady_clock::now().time_since_epoch())
+                                     .count());
+}
+}  // namespace
+
 render_device::render_device() = default;
 
 render_device::~render_device() = default;
@@ -44,7 +70,8 @@ bool
 render_device::construct(construct_params& params)
 {
     m_headless = params.headless;
-    m_frames_in_flight = std::clamp(params.frames_in_flight, 1u, 4u);
+    m_frames_in_flight = std::clamp(params.frames_in_flight, 1u, FRAMES_IN_FLIGHT_MAX);
+    m_present_mode = params.present;
 
     if (params.headless && (params.width < 128 || params.height < 128))
     {
@@ -63,7 +90,24 @@ render_device::construct(construct_params& params)
 
     init_vulkan(params.window, params.headless);
 
+    // The surface now exists: reconcile the requested (config) present mode +
+    // image count against what it supports, falling back if they aren't
+    // applicable. Headless has no surface and presents nothing — it keeps the
+    // params count as-is. init_swapchain then builds with these resolved values.
+    if (!m_headless)
+    {
+        resolve_present_config(params.present, m_frames_in_flight);
+    }
+
     init_swapchain(params.headless, width, height);
+
+    // Engine-wide invariant: frames_in_flight == swapchain IMAGE count (what the
+    // driver actually granted — it may exceed the requested minimum), NOT
+    // frame_data count. m_frames is sized to FRAMES_IN_FLIGHT_MAX so it can back
+    // any runtime count. Adopt the image count so the frame-slot modulo
+    // (switch_frame_indeces) matches the present rotation. Runtime changes go
+    // through recreate_swapchain, which preserves this.
+    m_frames_in_flight = static_cast<uint32_t>(m_swapchain_images.size());
 
     init_commands();
 
@@ -230,6 +274,43 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     vkb::PhysicalDevice physicalDevice = pd_ret.value();
     // create the final vulkan device
 
+    // Optional: VK_KHR_present_wait (+ present_id) for render->display latency.
+    // Must run BEFORE the DeviceBuilder below copies physicalDevice's enable-list
+    // + feature chain. enable_extension_if_present enables the EXTENSION;
+    // enable_extension_features_if_present queries the feature bit AND chains the
+    // (internally-copied) feature struct — it does NOT enable the extension, so
+    // both are required.
+    if (!headless)
+    {
+        const bool ext_id =
+            physicalDevice.enable_extension_if_present(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+        const bool ext_wait =
+            physicalDevice.enable_extension_if_present(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+
+        bool feat_id = false;
+        bool feat_wait = false;
+        if (ext_id && ext_wait)
+        {
+            VkPhysicalDevicePresentIdFeaturesKHR pid{};
+            pid.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+            pid.presentId = VK_TRUE;
+            VkPhysicalDevicePresentWaitFeaturesKHR pwait{};
+            pwait.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+            pwait.presentWait = VK_TRUE;
+
+            feat_id = physicalDevice.enable_extension_features_if_present(pid);
+            feat_wait = physicalDevice.enable_extension_features_if_present(pwait);
+        }
+
+        m_present_wait_supported = ext_id && ext_wait && feat_id && feat_wait;
+        ALOG_INFO("present_wait detect: ext_id={} ext_wait={} feat_id={} feat_wait={} -> {}",
+                  ext_id,
+                  ext_wait,
+                  feat_id,
+                  feat_wait,
+                  m_present_wait_supported ? "enabled" : "disabled");
+    }
+
     vkb::DeviceBuilder deviceBuilder{physicalDevice};
 
     // Enable descriptor indexing features for bindless textures
@@ -265,6 +346,19 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     m_vk_device = vkbDevice.device;
     m_vk_gpu = physicalDevice.physical_device;
 
+    // Resolve vkWaitForPresentKHR — not exported by the loader .lib, so it must
+    // come through vkGetDeviceProcAddr. Disable latency stats if it's missing.
+    if (m_present_wait_supported)
+    {
+        m_vk_wait_for_present = reinterpret_cast<PFN_vkWaitForPresentKHR>(
+            vkGetDeviceProcAddr(m_vk_device, "vkWaitForPresentKHR"));
+        if (!m_vk_wait_for_present)
+        {
+            ALOG_WARN("vkGetDeviceProcAddr(vkWaitForPresentKHR) failed; latency stats disabled");
+            m_present_wait_supported = false;
+        }
+    }
+
     // use vkbootstrap to get a Graphics queue
     m_graphics_queue = vkbDevice.get_queue(vkb::QueueType::graphics).value();
 
@@ -288,6 +382,9 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     vmaCreateAllocator(&allocatorInfo, &m_allocator);
 
     vkGetPhysicalDeviceProperties(m_vk_gpu, &m_gpu_properties);
+    ALOG_INFO("Selected GPU: '{}' (present_wait {})",
+              m_gpu_properties.deviceName,
+              m_present_wait_supported ? "enabled" : "disabled");
 
     KRG_VK_NAME(m_vk_device, m_vk_device, "kryga.device");
     KRG_VK_NAME(m_vk_device, m_graphics_queue, "kryga.graphics_queue");
@@ -347,23 +444,23 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
 
         VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
 
-        // Present mode: desktop prefers MAILBOX for low-latency uncapped
-        // framerate. Mobile uses FIFO (vsync) to reduce power draw and thermal
-        // load — chasing max FPS on a phone produces a hot handset and drained
-        // battery without a perceivable benefit.
-#if defined(__ANDROID__)
-        constexpr VkPresentModeKHR k_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-#else
-        constexpr VkPresentModeKHR k_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
-#endif
+        // Explicit present mode chosen by the engine (from render_config,
+        // platform default otherwise). MAILBOX = low-latency uncapped framerate;
+        // FIFO = vsync, lower power/thermal — the sane mobile default.
+        const VkPresentModeKHR k_present_mode = to_vk_present_mode(m_present_mode);
 
 #if KRG_EDITOR
         swapchain_builder.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 #endif
+        // Request the resolved image count (== frames_in_flight). Without this
+        // vkb defaults to caps.minImageCount + 1, which ignores the configured
+        // count. The driver may still grant more (minImageCount is a minimum);
+        // construct reads back the actual.
         vkb::Swapchain vkb_swapchain = swapchain_builder.set_desired_present_mode(k_present_mode)
                                            .set_desired_extent(buffer_w, buffer_h)
                                            .set_desired_format(format)
                                            .set_pre_transform_flags(pre_transform)
+                                           .set_desired_min_image_count(m_frames_in_flight)
                                            .build()
                                            .value();
         // vkb may clamp the requested extent to caps min/max/current —
@@ -426,7 +523,12 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         }
     }
 
-    m_frames.resize(m_swapchain_images.size());
+    // Size frame_data to the MAX in-flight count, NOT the current swapchain
+    // image count. The swapchain image count (== frames_in_flight) varies at
+    // runtime in [1, FRAMES_IN_FLIGHT_MAX]; frame_data must already exist for the
+    // highest slot the count can reach, or growing the swapchain indexes past the
+    // end of m_frames. Headless keeps a fixed count but the spare slots are inert.
+    m_frames.resize(FRAMES_IN_FLIGHT_MAX);
 
     return true;
 }
@@ -451,6 +553,256 @@ render_device::deinit_swapchain()
     }
 
     return true;
+}
+
+uint32_t
+render_device::recreate_swapchain(
+    uint32_t desired_count,
+    present_mode mode,
+    const std::function<void(const std::vector<vk_utils::vulkan_image_sptr>&,
+                             const std::vector<vk_utils::vulkan_image_view_sptr>&)>&
+        rebuild_framebuffers)
+{
+    KRG_check(!m_headless, "recreate_swapchain is windowed-only");
+
+    vkDeviceWaitIdle(m_vk_device);
+
+    VkSurfaceCapabilitiesKHR caps{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_vk_gpu, m_surface, &caps);
+
+    VkSurfaceTransformFlagBitsKHR pre_transform =
+        (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+            ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR
+            : caps.currentTransform;
+
+    // Present mode is explicit now (the caller's choice), NOT derived from the
+    // image count. MAILBOX is non-blocking only with >=3 images, so when it's
+    // requested with fewer, bump the image count up to 3. The actual count is
+    // read back below and becomes frames_in_flight, so the invariant holds.
+    if (mode == present_mode::mailbox && desired_count < 3)
+    {
+        ALOG_INFO("MAILBOX requested with {} images; forcing image count to 3", desired_count);
+        desired_count = 3;
+    }
+    const VkPresentModeKHR vk_present_mode = to_vk_present_mode(mode);
+    m_present_mode = mode;
+
+    // Never request more images than we have frame_data backing — frame slots
+    // and swapchain images stay 1:1 (the invariant), and frame_data is fixed at
+    // FRAMES_IN_FLIGHT_MAX. m_frames.size() == FRAMES_IN_FLIGHT_MAX.
+    desired_count = std::min(desired_count, static_cast<uint32_t>(m_frames.size()));
+
+    VkSurfaceFormatKHR format{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+
+    vkb::SwapchainBuilder swapchain_builder{m_vk_gpu, m_vk_device, m_surface};
+    swapchain_builder.set_desired_present_mode(vk_present_mode)
+        .set_desired_extent(m_swapchain_extent.width, m_swapchain_extent.height)
+        .set_desired_format(format)
+        .set_pre_transform_flags(pre_transform)
+        .set_desired_min_image_count(desired_count)
+        .set_old_swapchain(m_swapchain);
+#if KRG_EDITOR
+    swapchain_builder.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+#endif
+
+    auto build_ret = swapchain_builder.build();
+    KRG_check(build_ret, "swapchain rebuild failed");
+    vkb::Swapchain vkb_swapchain = build_ret.value();
+
+    // Wrap the NEW images/views as locals — the current members stay valid so
+    // existing framebuffers keep working until rebuild_framebuffers swaps them.
+    std::vector<vk_utils::vulkan_image_sptr> new_images;
+    std::vector<vk_utils::vulkan_image_view_sptr> new_views;
+
+    auto images = vkb_swapchain.get_images().value();
+    for (size_t idx = 0; idx < images.size(); ++idx)
+    {
+        new_images.push_back(std::make_shared<vk_utils::vulkan_image>(
+            vk_utils::vulkan_image::create(images[idx], vkb_swapchain.image_format)));
+    }
+    auto views = vkb_swapchain.get_image_views().value();
+    for (size_t idx = 0; idx < views.size(); ++idx)
+    {
+        new_views.push_back(vk_utils::vulkan_image_view::create_shared(std::move(views[idx])));
+    }
+
+    // Rebuild pass framebuffers against the NEW views while the OLD ones still
+    // exist. This destroys the old framebuffers (releasing their references to
+    // the old views), making it safe to drop the old views/swapchain below.
+    rebuild_framebuffers(new_images, new_views);
+
+    // Commit: destroy the old swapchain, adopt the new targets. Reassigning the
+    // view sptr vector destroys the old VkImageViews — now unreferenced. The old
+    // image wrappers are non-owning (the destroyed swapchain owned the VkImages).
+    VkSwapchainKHR old_swapchain = m_swapchain;
+    m_swapchain = vkb_swapchain.swapchain;
+    m_swapchain_image_format = vkb_swapchain.image_format;
+    m_swapchain_extent = vkb_swapchain.extent;
+    m_swapchain_images = std::move(new_images);
+    m_swapchain_image_views = std::move(new_views);
+
+    if (old_swapchain != VK_NULL_HANDLE)
+    {
+        vkDestroySwapchainKHR(m_vk_device, old_swapchain, nullptr);
+    }
+
+    uint32_t actual = static_cast<uint32_t>(m_swapchain_images.size());
+    // A surface whose minImageCount exceeds our frame_data backing would index
+    // past m_frames on the next draw. Fail loudly rather than corrupt memory.
+    if (actual > m_frames.size())
+    {
+        ALOG_ERROR("swapchain granted {} images but only {} frame_data slots exist (max {})",
+                   actual,
+                   m_frames.size(),
+                   FRAMES_IN_FLIGHT_MAX);
+    }
+    KRG_check(actual <= m_frames.size(), "swapchain image count exceeds frame_data slots");
+    m_frames_in_flight = actual;
+
+    // Rebuild per-image present sync to the new image count. Device is idle
+    // (waited at the top), so destroying the old semaphores is safe.
+    for (auto sem : m_image_render_semaphores)
+    {
+        vkDestroySemaphore(m_vk_device, sem, nullptr);
+    }
+    m_image_render_semaphores.clear();
+    VkSemaphoreCreateInfo sem_ci = vk_utils::make_semaphore_create_info();
+    m_image_render_semaphores.resize(actual);
+    for (uint32_t i = 0; i < actual; ++i)
+    {
+        VK_CHECK(vkCreateSemaphore(m_vk_device, &sem_ci, nullptr, &m_image_render_semaphores[i]));
+        KRG_VK_NAME_FMT(m_vk_device, m_image_render_semaphores[i], "image_{}.render_sem", i);
+    }
+    m_images_in_flight.assign(actual, VK_NULL_HANDLE);
+
+    // Present ids are scoped to a swapchain; the old ids are meaningless against
+    // the new one. Restart the counter and drop in-flight latency samples.
+    m_present_pending.clear();
+    m_present_id = 0;
+
+    ALOG_INFO("recreate_swapchain: desired {} -> {} images (present_mode {})",
+              desired_count,
+              actual,
+              to_string(mode));
+    return actual;
+}
+
+render_device::image_count_range
+render_device::present_mode_image_range(present_mode mode) const
+{
+    KRG_check(!m_headless, "present_mode_image_range is windowed-only");
+
+    VkSurfaceCapabilitiesKHR caps{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_vk_gpu, m_surface, &caps);
+
+    uint32_t lo = std::max(caps.minImageCount, 1u);
+    // Mailbox is non-blocking only with >=3 images (1 shown + 1 queued + 1 drawn).
+    if (mode == present_mode::mailbox)
+    {
+        lo = std::max(lo, 3u);
+    }
+
+    // maxImageCount == 0 means "no driver limit"; either way cap to the frame_data
+    // backing so the UI can't request a count we have no frame slots for.
+    uint32_t hi = (caps.maxImageCount == 0) ? FRAMES_IN_FLIGHT_MAX
+                                            : std::min(caps.maxImageCount, FRAMES_IN_FLIGHT_MAX);
+    hi = std::max(hi, lo);
+    return {lo, hi};
+}
+
+bool
+render_device::is_present_mode_supported(present_mode mode) const
+{
+    KRG_check(!m_headless, "is_present_mode_supported is windowed-only");
+
+    uint32_t count = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_vk_gpu, m_surface, &count, nullptr);
+    std::vector<VkPresentModeKHR> modes(count);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(m_vk_gpu, m_surface, &count, modes.data());
+
+    const VkPresentModeKHR want = to_vk_present_mode(mode);
+    for (auto m : modes)
+    {
+        if (m == want)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+render_device::resolve_present_config(present_mode requested_mode, uint32_t requested_count)
+{
+    present_mode mode = requested_mode;
+    if (!is_present_mode_supported(mode))
+    {
+        // Prefer mailbox (lowest latency); fall back to fifo, which the spec
+        // guarantees every surface supports.
+        present_mode fallback = is_present_mode_supported(present_mode::mailbox)
+                                    ? present_mode::mailbox
+                                    : present_mode::fifo;
+        ALOG_WARN("present mode '{}' not supported by surface; falling back to '{}'",
+                  to_string(mode),
+                  to_string(fallback));
+        mode = fallback;
+    }
+    m_present_mode = mode;
+
+    const image_count_range range = present_mode_image_range(mode);
+    const uint32_t count = std::clamp(requested_count, range.min, range.max);
+    if (count != requested_count)
+    {
+        ALOG_WARN("frames_in_flight {} out of range [{}, {}] for present '{}'; using {}",
+                  requested_count,
+                  range.min,
+                  range.max,
+                  to_string(mode),
+                  count);
+    }
+    m_frames_in_flight = count;
+}
+
+const uint64_t*
+render_device::begin_present_timing()
+{
+    if (!m_present_wait_supported)
+    {
+        return nullptr;
+    }
+    m_current_present_id = ++m_present_id;
+    m_present_pending.push_back({m_current_present_id, ns_now()});
+    // Safety cap — the deque should never hold more than a few frames in flight.
+    while (m_present_pending.size() > 64)
+    {
+        m_present_pending.pop_front();
+    }
+    return &m_current_present_id;
+}
+
+void
+render_device::poll_present_timing()
+{
+    if (!m_present_wait_supported)
+    {
+        return;
+    }
+    const uint64_t now = ns_now();
+    while (!m_present_pending.empty())
+    {
+        const present_stamp& front = m_present_pending.front();
+        // timeout 0 -> non-blocking check. Present ids complete in submission
+        // order, so once the oldest isn't displayed yet, none after it are.
+        VkResult r = m_vk_wait_for_present(m_vk_device, m_swapchain, front.id, 0);
+        if (r != VK_SUCCESS)
+        {
+            break;
+        }
+        const float ms = static_cast<float>(now - front.submit_ns) * 1e-6f;
+        m_present_latency_ms =
+            (m_present_latency_ms <= 0.0f) ? ms : 0.9f * m_present_latency_ms + 0.1f * ms;
+        m_present_pending.pop_front();
+    }
 }
 
 bool
@@ -526,6 +878,17 @@ render_device::init_sync_structures()
         KRG_VK_NAME_FMT(m_vk_device, frame.m_render_semaphore, "frame_{}.render_sem", i);
     }
 
+    // Per-image present sync (windowed only — headless has no swapchain images
+    // and presents nothing).
+    m_image_render_semaphores.resize(m_swapchain_images.size());
+    for (size_t i = 0; i < m_image_render_semaphores.size(); ++i)
+    {
+        VK_CHECK(vkCreateSemaphore(
+            m_vk_device, &semaphoreCreateInfo, nullptr, &m_image_render_semaphores[i]));
+        KRG_VK_NAME_FMT(m_vk_device, m_image_render_semaphores[i], "image_{}.render_sem", i);
+    }
+    m_images_in_flight.assign(m_swapchain_images.size(), VK_NULL_HANDLE);
+
     VkFenceCreateInfo uploadFenceCreateInfo = vk_utils::make_fence_create_info();
 
     VK_CHECK(vkCreateFence(
@@ -545,6 +908,13 @@ render_device::deinit_sync_structures()
         vkDestroySemaphore(m_vk_device, f.m_present_semaphore, nullptr);
         vkDestroySemaphore(m_vk_device, f.m_render_semaphore, nullptr);
     }
+
+    for (auto sem : m_image_render_semaphores)
+    {
+        vkDestroySemaphore(m_vk_device, sem, nullptr);
+    }
+    m_image_render_semaphores.clear();
+    m_images_in_flight.clear();  // non-owning
     return true;
 }
 
@@ -661,7 +1031,9 @@ render_device::get_memory_stats() const
 {
     memory_stats stats{};
     if (!m_allocator)
+    {
         return stats;
+    }
 
     VmaTotalStatistics vma_stats{};
     vmaCalculateStatistics(m_allocator, &vma_stats);

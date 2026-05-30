@@ -31,9 +31,12 @@ struct render_config
         uint32_t max_local_lights = KGPU_MAX_SHADOWED_LOCAL_LIGHTS;
         bool enabled = true;
 
-        uint32_t max_cascades() const;
-        uint32_t max_csm_tile() const;
-        uint32_t max_local_tile() const;
+        uint32_t
+        max_cascades() const;
+        uint32_t
+        max_csm_tile() const;
+        uint32_t
+        max_local_tile() const;
     } shadows;
 
     struct cluster_cfg
@@ -82,6 +85,22 @@ struct render_config
         float depth_threshold = 0.08f;
         float normal_threshold = 0.35f;
     } outline;
+
+    // How many frames the CPU runs ahead of the GPU. The renderer recreates the
+    // swapchain to hold this many images (keeping frames_in_flight == image
+    // count), clamped to the surface's supported range. Lower = less GPU memory
+    // (fewer swapchain images + fewer per-frame buffer sets).
+    uint32_t frames_in_flight = 3;
+
+    // Explicit vsync choice, independent of frames_in_flight. mailbox requires
+    // >=3 images, so picking it with frames_in_flight < 3 forces the image count
+    // (and thus frames_in_flight) up to 3. Platform default: mailbox on desktop
+    // for low latency, fifo on mobile to cut power/thermal load.
+#if defined(__ANDROID__)
+    present_mode present = present_mode::fifo;
+#else
+    present_mode present = present_mode::mailbox;
+#endif
 
     // Clamp all fields to valid ranges
     void

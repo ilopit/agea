@@ -53,7 +53,9 @@ const uint32_t DIRECT_LIGHTS_BUFFER_SIZE = 512;
 const uint32_t CAMERA_UBO_SIZE = 4 * 1024;
 
 uint32_t
-compute_cluster_counts_size(uint32_t screen_w, uint32_t screen_h, const render_config::cluster_cfg& cfg)
+compute_cluster_counts_size(uint32_t screen_w,
+                            uint32_t screen_h,
+                            const render_config::cluster_cfg& cfg)
 {
     uint32_t tiles_x = (screen_w + cfg.tile_size - 1) / cfg.tile_size;
     uint32_t tiles_y = (screen_h + cfg.tile_size - 1) / cfg.tile_size;
@@ -62,7 +64,9 @@ compute_cluster_counts_size(uint32_t screen_w, uint32_t screen_h, const render_c
 }
 
 uint32_t
-compute_cluster_indices_size(uint32_t screen_w, uint32_t screen_h, const render_config::cluster_cfg& cfg)
+compute_cluster_indices_size(uint32_t screen_w,
+                             uint32_t screen_h,
+                             const render_config::cluster_cfg& cfg)
 {
     uint32_t tiles_x = (screen_w + cfg.tile_size - 1) / cfg.tile_size;
     uint32_t tiles_y = (screen_h + cfg.tile_size - 1) / cfg.tile_size;
@@ -78,6 +82,158 @@ vulkan_render::vulkan_render()
 
 vulkan_render::~vulkan_render()
 {
+}
+
+void
+vulkan_render::create_frame_buffers(size_t i)
+{
+    auto& device = glob::glob_state().getr_render().device;
+    const auto& clusters = m_render_config.clusters;
+
+    m_frames[i].buffers.objects = device.create_buffer(OBJECTS_BUFFER_SIZE,
+                                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                       VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                                       0,
+                                                       KRG_VK_FMT_NAME("frame_{}.objects", i));
+
+    m_frames[i].buffers.materials = device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE,
+                                                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                         VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                                         0,
+                                                         KRG_VK_FMT_NAME("frame_{}.materials", i));
+
+    m_frames[i].buffers.universal_lights =
+        device.create_buffer(UNIVERSAL_LIGHTS_BUFFER_SIZE,
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.universal_lights", i));
+
+    m_frames[i].buffers.directional_lights =
+        device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE,
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.directional_lights", i));
+
+    m_frames[i].buffers.dynamic_data =
+        device.create_buffer(CAMERA_UBO_SIZE,
+                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.dynamic_data", i));
+
+    // Cluster buffers — sized to actual grid dimensions, auto-grow on config change.
+    m_frames[i].buffers.cluster_counts = device.create_buffer(
+        compute_cluster_counts_size(m_scene_lowres_width, m_scene_lowres_height, clusters),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU,
+        0,
+        KRG_VK_FMT_NAME("frame_{}.cluster_counts", i));
+
+    m_frames[i].buffers.cluster_indices = device.create_buffer(
+        compute_cluster_indices_size(m_scene_lowres_width, m_scene_lowres_height, clusters),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU,
+        0,
+        KRG_VK_FMT_NAME("frame_{}.cluster_indices", i));
+
+    m_frames[i].buffers.cluster_config = device.create_buffer(
+        sizeof(gpu::cluster_grid_data),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU,
+        0,
+        KRG_VK_FMT_NAME("frame_{}.cluster_config", i));
+
+    // Instance slots buffer for instanced drawing
+    m_frames[i].buffers.instance_slots =
+        device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.instance_slots", i));
+
+    // Bone matrices SSBO for skeletal animation (initial 64KB)
+    m_frames[i].buffers.bone_matrices =
+        device.create_buffer(64 * 1024,
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.bone_matrices", i));
+
+    // GPU frustum culling buffers
+    m_frames[i].buffers.frustum_data =
+        device.create_buffer(sizeof(gpu::frustum_data),
+                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.frustum_data", i));
+
+    m_frames[i].buffers.visible_indices =
+        device.create_buffer(OBJECTS_BUFFER_SIZE * sizeof(uint32_t),
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_GPU_ONLY,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.visible_indices", i));
+
+    m_frames[i].buffers.cull_output = device.create_buffer(
+        sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        0,
+        KRG_VK_FMT_NAME("frame_{}.cull_output", i));
+
+    // Shadow data SSBO
+    m_frames[i].buffers.shadow_data =
+        device.create_buffer(sizeof(gpu::shadow_config_data),
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.shadow_data", i));
+
+    // Light probe SSBOs (initial: 1 dummy probe + grid config)
+    m_frames[i].buffers.probe_data =
+        device.create_buffer(sizeof(gpu::sh_probe),
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.probe_data", i));
+
+    m_frames[i].buffers.probe_grid =
+        device.create_buffer(sizeof(gpu::probe_grid_config),
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             0,
+                             KRG_VK_FMT_NAME("frame_{}.probe_grid", i));
+}
+
+void
+vulkan_render::seed_frame_slot_from(uint32_t dst, uint32_t src)
+{
+    auto& s = m_frames[src];
+    auto& d = m_frames[dst];
+
+    // Clone the persistent SSBO bytes — the scene state `src` has already
+    // applied. All four are STORAGE + CPU_TO_GPU, so a host memcpy clone works.
+    // Transient buffers (camera, clusters, culling, shadows, bones, instances,
+    // UI) are rewritten every frame before use and need no seeding. Probes use
+    // their own bulk-replace counter, re-armed in reconfigure_swapchain.
+    constexpr VkBufferUsageFlags storage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    d.buffers.objects.clone_contents_from(s.buffers.objects, storage);
+    d.buffers.universal_lights.clone_contents_from(s.buffers.universal_lights, storage);
+    d.buffers.directional_lights.clone_contents_from(s.buffers.directional_lights, storage);
+    d.buffers.materials.clone_contents_from(s.buffers.materials, storage);
+
+    // Copy `src`'s still-pending scheduled updates. Combined with the cloned
+    // bytes above the new slot now holds the full scene: cloned bytes = updates
+    // `src` already applied; copied queues = updates `src` hasn't applied yet
+    // either. `dst` drains them on its next prepare_draw_resources. This also
+    // carries the materials_queue_set sizing onto the fresh slot. No per-cache
+    // enumeration here, so adding a new renderable type can't silently break
+    // the rebuild — it only needs its buffer added to the clone list above and
+    // its queue rides along in this struct copy.
+    d.uploads = s.uploads;
 }
 
 void
@@ -110,125 +266,27 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     for (size_t i = 0; i < m_frames.size(); ++i)
     {
         m_frames[i].frame = &device.frame(i);
-
-        m_frames[i].buffers.objects = device.create_buffer(OBJECTS_BUFFER_SIZE,
-                                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                           VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                                           0,
-                                                           KRG_VK_FMT_NAME("frame_{}.objects", i));
-
-        m_frames[i].buffers.materials =
-            device.create_buffer(INITIAL_MATERIAL_RANGE_SIZE,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.materials", i));
-
-        m_frames[i].buffers.universal_lights =
-            device.create_buffer(UNIVERSAL_LIGHTS_BUFFER_SIZE,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.universal_lights", i));
-
-        m_frames[i].buffers.directional_lights =
-            device.create_buffer(DIRECT_LIGHTS_BUFFER_SIZE,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.directional_lights", i));
-
-        m_frames[i].buffers.dynamic_data =
-            device.create_buffer(CAMERA_UBO_SIZE,
-                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.dynamic_data", i));
-
-        // Cluster buffers — sized to actual grid dimensions, auto-grow on config change.
-        m_frames[i].buffers.cluster_counts =
-            device.create_buffer(compute_cluster_counts_size(m_scene_lowres_width, m_scene_lowres_height, config.clusters),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.cluster_counts", i));
-
-        m_frames[i].buffers.cluster_indices =
-            device.create_buffer(compute_cluster_indices_size(m_scene_lowres_width, m_scene_lowres_height, config.clusters),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.cluster_indices", i));
-
-        m_frames[i].buffers.cluster_config = device.create_buffer(
-            sizeof(gpu::cluster_grid_data),
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU,
-            0,
-            KRG_VK_FMT_NAME("frame_{}.cluster_config", i));
-
-        // Instance slots buffer for instanced drawing
-        m_frames[i].buffers.instance_slots =
-            device.create_buffer(KGPU_initial_instance_slots_size * sizeof(uint32_t),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.instance_slots", i));
-
-        // Bone matrices SSBO for skeletal animation (initial 64KB)
-        m_frames[i].buffers.bone_matrices =
-            device.create_buffer(64 * 1024,
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.bone_matrices", i));
-
-        // GPU frustum culling buffers
-        m_frames[i].buffers.frustum_data =
-            device.create_buffer(sizeof(gpu::frustum_data),
-                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.frustum_data", i));
-
-        m_frames[i].buffers.visible_indices =
-            device.create_buffer(OBJECTS_BUFFER_SIZE * sizeof(uint32_t),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_GPU_ONLY,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.visible_indices", i));
-
-        m_frames[i].buffers.cull_output = device.create_buffer(
-            sizeof(gpu::cull_output_data) + 64,  // Extra space for alignment
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
-                VK_BUFFER_USAGE_TRANSFER_DST_BIT,  // For vkCmdFillBuffer
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            0,
-            KRG_VK_FMT_NAME("frame_{}.cull_output", i));
-
-        // Shadow data SSBO
-        m_frames[i].buffers.shadow_data =
-            device.create_buffer(sizeof(gpu::shadow_config_data),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.shadow_data", i));
-
-        // Light probe SSBOs (initial: 1 dummy probe + grid config)
-        m_frames[i].buffers.probe_data =
-            device.create_buffer(sizeof(gpu::sh_probe),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.probe_data", i));
-
-        m_frames[i].buffers.probe_grid =
-            device.create_buffer(sizeof(gpu::probe_grid_config),
-                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                 VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                 0,
-                                 KRG_VK_FMT_NAME("frame_{}.probe_grid", i));
     }
+
+    // Allocate per-frame GPU buffers only for the live in-flight slots. The
+    // engine keeps frames_in_flight == swapchain image count, so slots
+    // [frames_in_flight, frame_size) are never cycled and stay empty until the
+    // count is raised (reconfigure_swapchain recreates the swapchain and grows
+    // these on demand).
+    for (uint32_t i = 0; i < device.frames_in_flight(); ++i)
+    {
+        create_frame_buffers(i);
+    }
+    m_allocated_frame_slots = device.frames_in_flight();
+
+    // Sync the config's frames_in_flight + present mode to what the device
+    // actually adopted at init (it was constructed with these from render_config,
+    // but the driver may have granted a different image count), so the UI
+    // reflects reality.
+    m_render_config.frames_in_flight = device.frames_in_flight();
+    m_pending_render_config.frames_in_flight = device.frames_in_flight();
+    m_render_config.present = device.current_present_mode();
+    m_pending_render_config.present = device.current_present_mode();
 
     prepare_system_resources();
 
@@ -802,11 +860,124 @@ vulkan_render::apply_pending_render_config()
         reconfigure_render_scale_live(m_pending_render_config.render_scale.divisor);
     }
 
+    // frames_in_flight and present mode are both swapchain-recreate triggers;
+    // fold them into a single recreate so toggling both in one apply rebuilds
+    // the swapchain once, not twice.
+    const bool fif_changed =
+        m_pending_render_config.frames_in_flight != m_render_config.frames_in_flight;
+    const bool present_changed = m_pending_render_config.present != m_render_config.present;
+    if (fif_changed || present_changed)
+    {
+        reconfigure_swapchain(m_pending_render_config.frames_in_flight,
+                              m_pending_render_config.present);
+        // reconfigure clamps the count to the actual swapchain image count (and
+        // may bump it — mailbox needs >=3); mirror the results into pending so
+        // the catch-all copy below doesn't reintroduce a mismatch (which would
+        // re-trigger the reconfigure every frame).
+        m_pending_render_config.frames_in_flight = m_render_config.frames_in_flight;
+        m_pending_render_config.present = m_render_config.present;
+    }
+
     // Catch-all: copy any remaining data-only fields (debug toggles, colors,
     // thresholds, etc.) from pending to active. Reconfigure functions above
     // already wrote the topology-affecting fields, so this is a no-op for
     // those.
     m_render_config = m_pending_render_config;
+}
+
+void
+vulkan_render::reconfigure_swapchain(uint32_t count, present_mode mode)
+{
+    auto& device = glob::glob_state().getr_render().device;
+    auto& loader = glob::glob_state().getr_render().loader;
+
+    const uint32_t old_count = device.frames_in_flight();
+    if (count == old_count && mode == device.current_present_mode())
+    {
+        m_render_config.frames_in_flight = old_count;
+        m_render_config.present = mode;
+        return;
+    }
+
+    const bool render_scale = m_render_config.render_scale.enabled;
+
+    // Recreate the swapchain with `count` images. The device keeps the invariant
+    // frames_in_flight == swapchain image count, so we never end up with more
+    // images than CPU frame slots (the condition that produced garbage/red
+    // present frames). The callback rebuilds the framebuffers of whichever pass
+    // owns the swapchain as its color target — main when render_scale is off,
+    // composite when on — keeping each pass's VkRenderPass identity (so all
+    // shader effects compiled against it survive).
+    const uint32_t new_count = device.recreate_swapchain(
+        count,
+        mode,
+        [&](const std::vector<vk_utils::vulkan_image_sptr>& imgs,
+            const std::vector<vk_utils::vulkan_image_view_sptr>& views)
+        {
+            if (render_scale)
+            {
+                auto* composite = loader.get_render_pass(AID("composite"));
+                KRG_check(composite, "composite pass missing while render_scale enabled");
+                composite->replace_color_targets(
+                    imgs, views, m_width, m_height, false, true, "composite");
+            }
+            else
+            {
+                auto* main_pass = loader.get_render_pass(AID("main"));
+                KRG_check(main_pass, "main pass missing");
+                // sampled_depth=true / enable_stencil=true mirrors the main
+                // pass's original swapchain-target configuration.
+                main_pass->replace_color_targets(
+                    imgs, views, m_width, m_height, true, true, "main");
+            }
+        });
+
+    // Surviving slots [0, min(old,new)) keep their valid buffers untouched —
+    // recreate_swapchain only rebuilt the swapchain-image framebuffers, not the
+    // per-frame SSBOs we own here. We only touch the slots that actually change:
+    // grow seeds the new ones from a survivor, shrink frees the dropped ones, a
+    // pure present-mode switch (new == old) touches none. recreate_swapchain
+    // already idled the device, so freeing/cloning buffers here is safe.
+    KRG_check(old_count >= 1, "reconfigure_swapchain with no existing frame slot");
+
+    if (new_count > old_count)
+    {
+        // Grow: create each new slot's buffers, then seed it from slot 0 (always
+        // live). Cloning a survivor + replaying its pending queue reconstructs
+        // the full scene without re-deriving from the model caches — so a new
+        // renderable type can't silently miss the rebuild.
+        for (uint32_t i = old_count; i < new_count; ++i)
+        {
+            create_frame_buffers(i);
+            seed_frame_slot_from(i, 0);
+        }
+    }
+    else if (new_count < old_count)
+    {
+        // Shrink: release the dropped slots' buffers to reclaim memory. No
+        // re-seed needed — survivors are already correct.
+        for (uint32_t i = new_count; i < old_count; ++i)
+        {
+            m_frames[i].buffers = frame_buffers{};
+            m_frames[i].uploads.clear_all();
+            m_frames[i].ui = ui_frame_state{};
+        }
+    }
+    m_allocated_frame_slots = new_count;
+
+    // Probes are a bulk replace gated by their own counter; re-arm it so every
+    // live slot (including any just grown) re-uploads the current payload over
+    // the next new_count frames. The upload is idempotent, so re-hitting already
+    // correct survivors is harmless.
+    m_probes_pending_uploads = new_count;
+
+    m_render_config.frames_in_flight = new_count;
+    m_render_config.present = device.current_present_mode();
+
+    ALOG_INFO("swapchain reconfigured: {} -> {} images, present {}",
+              old_count,
+              new_count,
+              to_string(m_render_config.present));
 }
 
 void
@@ -1210,8 +1381,7 @@ vulkan_render::init_shadow_resources()
         se_ci.depth_compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
 
         m_shadow_se = nullptr;
-        auto rc =
-            m_shadow_atlas_pass->create_shader_effect(AID("se_shadow"), se_ci, m_shadow_se);
+        auto rc = m_shadow_atlas_pass->create_shader_effect(AID("se_shadow"), se_ci, m_shadow_se);
         if (rc != result_code::ok)
         {
             ALOG_WARN("Failed to create shadow shader effect - shadows disabled");
@@ -1409,7 +1579,8 @@ vulkan_render::init_static_samplers()
         ci.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         ci.minLod = 0.0f;
         ci.maxLod = VK_LOD_CLAMP_NONE;
-        VK_CHECK(vkCreateSampler(vk_device, &ci, nullptr, &m_static_samplers[KGPU_SAMPLER_SHADOW_CMP]));
+        VK_CHECK(
+            vkCreateSampler(vk_device, &ci, nullptr, &m_static_samplers[KGPU_SAMPLER_SHADOW_CMP]));
     }
 
     static const char* sampler_names[KGPU_SAMPLER_COUNT] = {"sampler.linear_repeat",

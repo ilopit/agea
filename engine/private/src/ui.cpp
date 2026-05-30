@@ -29,6 +29,8 @@
 
 #include <ImGuizmo.h>
 
+#include <algorithm>
+
 namespace kryga
 {
 
@@ -232,6 +234,17 @@ performance_counters_window::handle()
     ImGui::Text("Frame   : %3.3lf", frame_avg);
     ImGui::Text("FPS     : %3.3lf", fps);
     ImGui::Text("Input   : %3.3lf", input_avg);
+    {
+        auto& dev = glob::glob_state().getr_render().device;
+        if (dev.present_wait_supported())
+        {
+            ImGui::Text("Display : %3.3f ms", dev.present_latency_ms());
+        }
+        else
+        {
+            ImGui::TextDisabled("Display : n/a (no present_wait)");
+        }
+    }
     ImGui::Separator();
     ImGui::Text("Tick    : %3.3lf", tick_avg);
     ImGui::Text("UI tick : %3.3lf", ui_tick_avg);
@@ -698,6 +711,67 @@ render_config_window::handle()
             ImGui::SetTooltip(
                 "Scene is rendered at window_size / divisor, then nearest-upscaled.\n"
                 "1 = native resolution. Higher = chunkier pixels.");
+        }
+    }
+
+    // =========================================================================
+    // Frames in Flight
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Frames in Flight"))
+    {
+        auto& device = glob::glob_state().getr_render().device;
+
+        // Present mode first — it determines the valid frame-count range below.
+        static const char* present_labels[render::present_mode_count];
+        for (int i = 0; i < render::present_mode_count; ++i)
+        {
+            present_labels[i] = render::present_mode_entries[i].label;
+        }
+        int present = static_cast<int>(cfg.present);
+        if (ImGui::Combo("Present Mode", &present, present_labels, render::present_mode_count))
+        {
+            auto picked = static_cast<render::present_mode>(present);
+            // Ignore modes the surface doesn't support — the combo selection
+            // reverts next frame because cfg.present is left unchanged.
+            if (device.is_present_mode_supported(picked))
+            {
+                cfg.present = picked;
+                // Switching modes snaps Frames to the new mode's lowest valid
+                // count, so we never sit on a value it can't honor.
+                cfg.frames_in_flight = device.present_mode_image_range(picked).min;
+            }
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "FIFO = vsync-capped (low power). Mailbox = low-latency uncapped\n"
+                "framerate, but needs >=3 images. Switching modes snaps Frames to\n"
+                "the new mode's minimum.");
+        }
+
+        // Frame count, bounded to the device's allowed range for the current
+        // mode. Committed only on release: each commit is a full swapchain
+        // rebuild, so dragging must NOT apply per intermediate value. While the
+        // slider is held, fif_edit floats free; otherwise it tracks the config.
+        auto range = device.present_mode_image_range(cfg.present);
+        static int fif_edit = (int)cfg.frames_in_flight;
+        static bool fif_dragging = false;
+        if (!fif_dragging)
+        {
+            fif_edit = std::clamp((int)cfg.frames_in_flight, (int)range.min, (int)range.max);
+        }
+        ImGui::SliderInt("Frames##fif", &fif_edit, (int)range.min, (int)range.max);
+        fif_dragging = ImGui::IsItemActive();
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            cfg.frames_in_flight = (uint32_t)fif_edit;  // commit -> single rebuild
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "How many frames the CPU runs ahead of the GPU. Range is what the\n"
+                "device allows for the selected present mode. Applies on release\n"
+                "(one swapchain rebuild). Lower = less GPU memory.");
         }
     }
 

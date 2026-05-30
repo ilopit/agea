@@ -204,6 +204,15 @@ public:
     bool
     reconfigure_render_scale_enabled(bool enabled);
 
+    // Recreate the swapchain at runtime with `count` images and present `mode`.
+    // Both frames_in_flight and present mode route through here since each is a
+    // swapchain-recreate trigger; the engine keeps frames_in_flight == swapchain
+    // image count, so this rebuilds the swapchain-backed pass framebuffers and
+    // frees/creates the per-frame GPU buffer sets to match — reclaiming memory
+    // when the count is lowered. mailbox forces count up to 3.
+    void
+    reconfigure_swapchain(uint32_t count, present_mode mode);
+
     void
     set_camera(gpu::camera_data d);
 
@@ -577,6 +586,22 @@ private:
     void
     setup_render_graph();
 
+    // Allocate the full per-frame GPU buffer set for frame slot i. Called by
+    // init for each live slot and by reconfigure_swapchain when the in-flight
+    // count grows.
+    void
+    create_frame_buffers(size_t i);
+
+    // Seed a freshly created frame slot (`dst`) from an existing live slot
+    // (`src`) instead of re-deriving from the model caches. Clones the
+    // persistent SSBO bytes (the scene state `src` has already applied) and
+    // copies `src`'s still-pending upload queues. Together they reconstruct the
+    // full scene: cloned bytes + queued deltas = everything. Used by
+    // reconfigure_swapchain when the in-flight count grows. Transient per-frame
+    // buffers are rewritten every frame, so they don't need seeding.
+    void
+    seed_frame_slot_from(uint32_t dst, uint32_t src);
+
     void
     setup_instanced_render_graph();
 
@@ -622,6 +647,12 @@ private:
     buffer_layout<material_data*> m_materials_layout;
 
     std::vector<frame_state> m_frames;
+
+    // Number of frame slots whose GPU buffers are currently allocated. m_frames
+    // is sized to the (max) device frame count; only [0, m_allocated_frame_slots)
+    // hold live buffers — the rest are freed to reclaim memory when
+    // frames_in_flight is lowered (see reconfigure_swapchain).
+    uint32_t m_allocated_frame_slots = 0;
 
     // UI
     shader_effect_data* m_ui_se = nullptr;

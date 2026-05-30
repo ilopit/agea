@@ -31,6 +31,14 @@ public:
     void
     clear();
 
+    // Byte-for-byte copy of `src`'s allocation into this buffer. Grows this
+    // buffer (reallocating with `usage` + CPU_TO_GPU) when it is smaller than
+    // src, then memcpy's src's full allocation. Both must be host-mappable.
+    // Only the bytes are copied — the transient CPU write cursor (offset/offsets)
+    // is left reset, since callers re-establish it on their next begin()/upload.
+    void
+    clone_contents_from(vulkan_buffer& src, VkBufferUsageFlags usage);
+
     VkBuffer&
     buffer()
     {

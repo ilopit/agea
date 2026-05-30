@@ -46,6 +46,13 @@ public:
     void
     draw_overlay();
 
+    // Free the cached GPU staging image. Must be called during engine shutdown
+    // BEFORE the render device destroys its VMA allocator — otherwise the
+    // lazily-created staging allocation outlives the allocator and trips VMA's
+    // "allocations not freed" assertion (only after a screenshot was captured).
+    void
+    release();
+
     bool
     is_selecting() const
     {

@@ -69,7 +69,6 @@ vulkan_render::draw_main()
         VK_CHECK(vkWaitForFences(
             device.vk_device(), 1, &current_frame.frame->m_render_fence, true, 1000000000));
     }
-    VK_CHECK(vkResetFences(device.vk_device(), 1, &current_frame.frame->m_render_fence));
 
     device.delete_scheduled_actions();
 
@@ -92,6 +91,21 @@ vulkan_render::draw_main()
         }
     }
 
+    // The acquired image may still be owned by a different frame slot's in-flight
+    // work when the presentation engine hands back an index != frame slot. Wait
+    // on that frame's fence before reusing the image, then claim it. Reset our
+    // own fence only after this wait (a same-slot match is already signalled, so
+    // it's a no-op rather than a deadlock).
+    {
+        VkFence& img_fence = device.image_in_flight_fence(swapchain_image_index);
+        if (img_fence != VK_NULL_HANDLE)
+        {
+            VK_CHECK(vkWaitForFences(device.vk_device(), 1, &img_fence, true, 1000000000));
+        }
+        img_fence = current_frame.frame->m_render_fence;
+    }
+    VK_CHECK(vkResetFences(device.vk_device(), 1, &current_frame.frame->m_render_fence));
+
     auto cmd = current_frame.frame->m_main_command_buffer;
     auto cmd_begin_info =
         vk_utils::make_command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -106,9 +120,17 @@ vulkan_render::draw_main()
 
     render_frame(cmd, current_frame, swapchain_image_index, width, height);
 
+    // Record which image this frame renders/presents so out-of-band readers
+    // (screenshot capture) sample the on-screen image rather than frame_slot.
+    device.set_last_presented_image_index(swapchain_image_index);
+
     VK_CHECK(vkEndCommandBuffer(cmd));
 
-    // Submit with present semaphores
+    // Submit. Signal the per-IMAGE render semaphore (keyed by acquired image,
+    // not frame slot) so the present wait below is correct even when the
+    // presentation engine returns an image index != frame slot.
+    VkSemaphore render_sem = device.image_render_semaphore(swapchain_image_index);
+
     auto submit = render::vk_utils::make_submit_info(&cmd);
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
@@ -116,7 +138,7 @@ vulkan_render::draw_main()
     submit.waitSemaphoreCount = 1;
     submit.pWaitSemaphores = &current_frame.frame->m_present_semaphore;
     submit.signalSemaphoreCount = 1;
-    submit.pSignalSemaphores = &current_frame.frame->m_render_semaphore;
+    submit.pSignalSemaphores = &render_sem;
 
     VK_CHECK(
         vkQueueSubmit(device.vk_graphics_queue(), 1, &submit, current_frame.frame->m_render_fence));
@@ -125,9 +147,20 @@ vulkan_render::draw_main()
     auto present_info = render::vk_utils::make_present_info();
     present_info.pSwapchains = &device.swapchain();
     present_info.swapchainCount = 1;
-    present_info.pWaitSemaphores = &current_frame.frame->m_render_semaphore;
+    present_info.pWaitSemaphores = &render_sem;
     present_info.waitSemaphoreCount = 1;
     present_info.pImageIndices = &swapchain_image_index;
+
+    // Tag this present for VK_KHR_present_wait latency tracking. begin_present_timing
+    // returns nullptr (and we present without an id) when the extension is off.
+    VkPresentIdKHR present_id_info{};
+    present_id_info.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
+    if (const uint64_t* pid = device.begin_present_timing())
+    {
+        present_id_info.swapchainCount = 1;
+        present_id_info.pPresentIds = pid;
+        present_info.pNext = &present_id_info;
+    }
 
     // VK_SUBOPTIMAL_KHR is expected on Android: we use IDENTITY preTransform
     // while the surface's currentTransform may be rotated. The PE composites
@@ -138,6 +171,9 @@ vulkan_render::draw_main()
         ALOG_ERROR("vkQueuePresentKHR failed: {}", (int)pr);
         KRG_never("vkQueuePresentKHR failed");
     }
+
+    // Non-blocking: harvest any presents that have hit the screen since last frame.
+    device.poll_present_timing();
 }
 
 void
@@ -284,8 +320,13 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
         }
     }
 
-    m_render_graph.execute(
-        cmd, glob::glob_state().getr_render().device.get_current_frame_index(), width, height);
+    // Drive framebuffer selection by the ACQUIRED swapchain image index, not the
+    // CPU frame slot. With the invariant frames_in_flight == image count these
+    // usually coincide, but the presentation engine isn't required to hand back
+    // image==slot, so using the acquired index keeps the rendered framebuffer
+    // and the presented image in lockstep. draw_headless passes its frame slot
+    // here (no acquired-image domain), which is correct for headless.
+    m_render_graph.execute(cmd, swapchain_image_index, width, height);
 
     // Verify per-draw BDA addresses were set this frame (if any objects were actually drawn)
     // m_all_draws includes culled objects; only check if at least one object passed culling

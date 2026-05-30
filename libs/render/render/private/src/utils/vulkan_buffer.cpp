@@ -82,6 +82,29 @@ vulkan_buffer::clear()
     m_alloc_size = 0;
 }
 
+void
+vulkan_buffer::clone_contents_from(vulkan_buffer& src, VkBufferUsageFlags usage)
+{
+    if (src.m_buffer == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    if (m_alloc_size < src.m_alloc_size)
+    {
+        *this = glob::glob_state().getr_render().device.create_buffer(
+            src.m_alloc_size, usage, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    }
+
+    src.begin();
+    begin();
+
+    memcpy(m_data_begin, src.m_data_begin, src.m_alloc_size);
+
+    end();
+    src.end();
+}
+
 vulkan_buffer
 vulkan_buffer::create(VkBufferCreateInfo bci,
                       VmaAllocationCreateInfo vaci,

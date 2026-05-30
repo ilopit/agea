@@ -62,5 +62,58 @@ from_string(std::string_view s, pcf_mode& out)
     return false;
 }
 
+// Swapchain present mode. Decoupled from frames_in_flight: this is an explicit
+// vsync choice, not a side-effect of the image count.
+//   fifo      — vsync-capped, low power, works with >=2 images (mobile default).
+//   mailbox   — low-latency uncapped framerate, REQUIRES >=3 images. Selecting it
+//               with frames_in_flight < 3 forces the image count up to 3.
+//   immediate — uncapped, no vsync: TEARS. Lowest possible latency when rendering
+//               faster than refresh. Not guaranteed by the spec; falls back if the
+//               surface doesn't report it.
+// Values are contiguous from 0 so they double as indices into the table below.
+enum class present_mode : uint32_t
+{
+    fifo = 0,
+    mailbox = 1,
+    immediate = 2,
+};
+
+struct present_mode_info
+{
+    present_mode value;
+    const char* name;
+    const char* label;
+};
+
+inline constexpr present_mode_info present_mode_entries[] = {
+    {present_mode::fifo, "fifo", "FIFO (vsync)"},
+    {present_mode::mailbox, "mailbox", "Mailbox (low-latency)"},
+    {present_mode::immediate, "immediate", "Immediate (no vsync, tears)"},
+};
+
+inline constexpr int present_mode_count =
+    sizeof(present_mode_entries) / sizeof(present_mode_entries[0]);
+
+inline const char*
+to_string(present_mode m)
+{
+    auto idx = static_cast<uint32_t>(m);
+    return idx < present_mode_count ? present_mode_entries[idx].name : "unknown";
+}
+
+inline bool
+from_string(std::string_view s, present_mode& out)
+{
+    for (auto& e : present_mode_entries)
+    {
+        if (s == e.name)
+        {
+            out = e.value;
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace render
 }  // namespace kryga

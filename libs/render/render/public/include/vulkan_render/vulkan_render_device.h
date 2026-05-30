@@ -1,5 +1,6 @@
 #pragma once
 
+#include "vulkan_render/render_enums.h"
 #include "vulkan_render/types/vulkan_generic.h"
 #include "vulkan_render/types/vulkan_render_types_fwds.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
@@ -12,11 +13,17 @@
 #include <vector>
 #include <memory>
 #include <queue>
+#include <deque>
 #include <string_view>
 
 struct SDL_Window;
 
 constexpr uint64_t FRAMES_IN_FLIGHT_DEFAULT = 3ULL;
+// Upper bound for runtime frames_in_flight. The per-frame frame_data array
+// (command buffers, fences, semaphores) is sized to this at init so the
+// swapchain image count can grow up to here without reallocating frame_data —
+// matches the render_config [1,4] clamp and the UI slider range.
+constexpr uint32_t FRAMES_IN_FLIGHT_MAX = 4U;
 
 namespace kryga
 {
@@ -61,6 +68,13 @@ public:
         uint32_t width = 0;
         uint32_t height = 0;
         uint32_t frames_in_flight = static_cast<uint32_t>(FRAMES_IN_FLIGHT_DEFAULT);
+        // Explicit swapchain present mode adopted at startup. Defaults to the
+        // platform choice; the engine overrides it from render_config.
+#if defined(__ANDROID__)
+        present_mode present = present_mode::fifo;
+#else
+        present_mode present = present_mode::mailbox;
+#endif
     };
 
     bool
@@ -166,12 +180,89 @@ public:
         return m_frames_in_flight;
     }
 
+    // Present mode the swapchain was last built with (the requested mode, not a
+    // driver fallback). Set at construct from construct_params and on each
+    // recreate_swapchain.
+    present_mode
+    current_present_mode() const
+    {
+        return m_present_mode;
+    }
+
+    struct image_count_range
+    {
+        uint32_t min = 1;
+        uint32_t max = 1;
+    };
+
+    // Valid swapchain image count range for `mode` on the current surface, read
+    // from the driver. min = surface minImageCount (raised to 3 for mailbox, its
+    // non-blocking floor); max = surface maxImageCount (0 = unbounded) clamped to
+    // FRAMES_IN_FLIGHT_MAX (our frame_data backing). Windowed only.
+    image_count_range
+    present_mode_image_range(present_mode mode) const;
+
+    // Whether the surface supports `mode`. FIFO is guaranteed by spec; mailbox /
+    // immediate are optional. Windowed only.
+    bool
+    is_present_mode_supported(present_mode mode) const;
+
+    // --- Render→display latency (VK_KHR_present_wait) -----------------------
+    // Measures submit→displayed time per present. Only active when the device
+    // enabled VK_KHR_present_wait + present_id at creation (windowed + driver
+    // support); otherwise these are inert and present_latency_ms() stays 0.
+
+    bool
+    present_wait_supported() const
+    {
+        return m_present_wait_supported;
+    }
+
+    // Stamp this frame's present and return the id to chain via VkPresentIdKHR,
+    // or nullptr when unsupported (caller then presents without an id). The
+    // returned pointer stays valid until the next call.
+    const uint64_t*
+    begin_present_timing();
+
+    // Non-blocking poll of completed presents; updates the latency EMA. Call once
+    // per presented frame, right after vkQueuePresentKHR.
+    void
+    poll_present_timing();
+
+    // Exponential moving average of submit→displayed latency in milliseconds.
+    // 0 when unsupported or before the first sample.
+    float
+    present_latency_ms() const
+    {
+        return m_present_latency_ms;
+    }
+
     void
     switch_frame_indeces()
     {
         ++m_current_frame_number;
-        m_current_frame_index = m_current_frame_number % m_frames.size();
+        // Cycle over the in-flight count. The renderer keeps the invariant
+        // frames_in_flight == swapchain image count (see recreate_swapchain), so
+        // this also equals m_swapchain_images.size().
+        m_current_frame_index = m_current_frame_number % m_frames_in_flight;
     }
+
+    // Rebuild the swapchain so it holds `desired_count` images (clamped to the
+    // surface's supported range), then set frames_in_flight to the actual image
+    // count — preserving the engine-wide invariant frames_in_flight == image
+    // count. Windowed devices only. `rebuild_framebuffers` is invoked with the
+    // NEW images/views while both old and new exist, so callers can rebuild any
+    // render-pass framebuffers that wrap swapchain images (main/composite)
+    // before the old swapchain is destroyed. Returns the actual image count.
+    // `mode` is the explicit present mode to build with; mailbox is bumped to
+    // >=3 images by the driver, which this preserves via the invariant.
+    uint32_t
+    recreate_swapchain(
+        uint32_t desired_count,
+        present_mode mode,
+        const std::function<void(const std::vector<vk_utils::vulkan_image_sptr>&,
+                                 const std::vector<vk_utils::vulkan_image_view_sptr>&)>&
+            rebuild_framebuffers);
 
     frame_data&
     get_current_frame()
@@ -189,6 +280,42 @@ public:
     get_current_frame_number() const
     {
         return m_current_frame_number;
+    }
+
+    // Swapchain image index that draw_main last acquired/presented. Used by
+    // out-of-band readers (screenshot capture) to sample the image that is
+    // actually on screen — which is the acquired index, NOT frame_slot % count
+    // (they diverge under MAILBOX when the presentation engine hands back an
+    // image index unequal to the frame slot).
+    uint32_t
+    last_presented_image_index() const
+    {
+        return m_last_presented_image_index;
+    }
+
+    void
+    set_last_presented_image_index(uint32_t idx)
+    {
+        m_last_presented_image_index = idx;
+    }
+
+    // Render-finished semaphore for a specific ACQUIRED swapchain image (not the
+    // frame slot). Signalled by that frame's submit, waited on by present. Keyed
+    // by image so the present wait stays correct even when the presentation
+    // engine returns an image index != frame slot (MAILBOX).
+    VkSemaphore
+    image_render_semaphore(uint32_t image_index)
+    {
+        return m_image_render_semaphores[image_index];
+    }
+
+    // Fence of the frame that last rendered into this image (or VK_NULL_HANDLE).
+    // draw_main waits on it after acquiring, before reusing the image, so a new
+    // frame never renders into an image a prior frame still owns.
+    VkFence&
+    image_in_flight_fence(uint32_t image_index)
+    {
+        return m_images_in_flight[image_index];
     }
 
     VkSwapchainKHR&
@@ -281,6 +408,15 @@ public:
     bool
     deinit_swapchain();
 
+    // Reconcile the requested (config) present mode + image count against what
+    // the surface actually supports, falling back when they aren't applicable:
+    // requested mode -> mailbox (lowest latency) -> fifo (guaranteed by spec).
+    // The count is clamped into the chosen mode's valid range. Windowed only;
+    // sets m_present_mode and m_frames_in_flight. Call after the surface exists,
+    // before init_swapchain.
+    void
+    resolve_present_config(present_mode requested_mode, uint32_t requested_count);
+
     bool
     init_commands();
     bool
@@ -318,6 +454,12 @@ public:
     std::vector<vk_utils::vulkan_image_sptr> m_swapchain_images;
     std::vector<vk_utils::vulkan_image_view_sptr> m_swapchain_image_views;
 
+    // Per-swapchain-image present synchronization. Sized to the swapchain image
+    // count and rebuilt on recreate_swapchain. Render semaphores are owned;
+    // the in-flight fences are non-owning copies of frame-slot fences.
+    std::vector<VkSemaphore> m_image_render_semaphores;
+    std::vector<VkFence> m_images_in_flight;
+
     std::vector<frame_data> m_frames;
 
     // the format for the depth image
@@ -325,9 +467,26 @@ public:
 
     bool m_headless = false;
     uint32_t m_frames_in_flight = static_cast<uint32_t>(FRAMES_IN_FLIGHT_DEFAULT);
+    present_mode m_present_mode = present_mode::mailbox;
+
+    // VK_KHR_present_wait latency tracking (see begin/poll_present_timing).
+    // vkWaitForPresentKHR isn't exported by the loader .lib (newer extension), so
+    // it's resolved via vkGetDeviceProcAddr when the extension is enabled.
+    bool m_present_wait_supported = false;
+    PFN_vkWaitForPresentKHR m_vk_wait_for_present = nullptr;
+    uint64_t m_present_id = 0;          // per-swapchain, strictly increasing
+    uint64_t m_current_present_id = 0;  // storage chained into VkPresentIdKHR
+    struct present_stamp
+    {
+        uint64_t id;
+        uint64_t submit_ns;
+    };
+    std::deque<present_stamp> m_present_pending;
+    float m_present_latency_ms = 0.0f;
 
     uint64_t m_current_frame_number = UINT64_MAX;
     uint64_t m_current_frame_index = 0ULL;
+    uint32_t m_last_presented_image_index = 0U;
 
     struct delayed_delete_action
     {

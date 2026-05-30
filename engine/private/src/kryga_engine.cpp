@@ -268,6 +268,11 @@ vulkan_engine::init(const startup_options& options)
     gs.run_init();
 
     render::render_device::construct_params rdc;
+    // Build the swapchain from the saved config (present mode + frame count) so a
+    // saved preference is honored at startup. The device reconciles these against
+    // the surface's real capabilities and falls back if they aren't applicable.
+    rdc.present = render_cfg.present;
+    rdc.frames_in_flight = render_cfg.frames_in_flight;
     uint32_t render_w = 1600 * 2;
     uint32_t render_h = 900 * 2;
 
@@ -426,6 +431,10 @@ vulkan_engine::cleanup()
 
 #if KRG_EDITOR
     glob::glob_state().getr_editor_system().ui.get_material_previewer().destroy();
+    // Free the screenshot staging image before device.destruct() tears down the
+    // VMA allocator (otherwise its lazily-created allocation outlives the
+    // allocator -> VMA assertion, but only once a screenshot has been taken).
+    glob::glob_state().getr_editor_system().screenshot.release();
 #elif KRG_HAS_IMGUI
     if (ImGui::GetCurrentContext())
     {
@@ -536,6 +545,20 @@ vulkan_engine::run()
 
             glob::glob_state().get_input_manager()->fire_input_event();
         }
+
+        // Wait for the previous frame's render to finish BEFORE building the next
+        // ImGui frame. ImGui's draw data is single-buffered and shared across the
+        // main/render threads; the render thread reads it in update_ui (after a
+        // vsync stall on vkAcquireNextImageKHR in FIFO). If we called NewFrame()
+        // before this wait, the next frame's ImGui::NewFrame() could overwrite the
+        // draw data the render thread is still consuming -> UI flicker/vanish in
+        // FIFO (MAILBOX hid it because acquire doesn't stall, so the read always
+        // won the race). First iteration is a no-op (m_render_done starts true).
+        {
+            std::unique_lock lock(m_render_mutex);
+            m_main_cv.wait(lock, [this] { return m_render_done; });
+        }
+
 #if KRG_EDITOR
         {
             KRG_make_scope(ui_tick);
@@ -566,15 +589,8 @@ vulkan_engine::run()
             KRG_PROFILE_SCOPE("Tick");
             tick(frame_time);
         }
-        // Wait for previous frame's render to finish before touching render state.
-        // First iteration is a no-op (m_render_done starts true).
-        {
-            std::unique_lock lock(m_render_mutex);
-            m_main_cv.wait(lock, [this] { return m_render_done; });
-        }
-
-        // Render thread is done — all commands executed and destructed.
-        // Safe to reclaim arena memory for next frame.
+        // Render thread is done (waited above, before ui_tick) — all commands
+        // executed and destructed. Safe to reclaim arena memory for next frame.
         glob::glob_state().getr_render_bridge().reset_arena();
 
         // Apply config edits the UI made during ui_tick. Topology changes

@@ -42,6 +42,18 @@ const std::unordered_map<pcf_mode, std::string> pcf_mode_to_string = {
     {pcf_mode::poisson64, "poisson64"},
 };
 
+const std::unordered_map<std::string, present_mode> present_mode_from_str = {
+    {"fifo", present_mode::fifo},
+    {"mailbox", present_mode::mailbox},
+    {"immediate", present_mode::immediate},
+};
+
+const std::unordered_map<present_mode, std::string> present_mode_to_str = {
+    {present_mode::fifo, "fifo"},
+    {present_mode::mailbox, "mailbox"},
+    {present_mode::immediate, "immediate"},
+};
+
 // ============================================================================
 // Extract helpers
 // ============================================================================
@@ -86,6 +98,25 @@ extract_field(const YAML::Node& node, const char* key, bool& field)
         return;
     }
     field = v.as<bool>();
+}
+
+void
+extract_field(const YAML::Node& node, const char* key, present_mode& field)
+{
+    auto v = node[key];
+    if (!v || !v.IsScalar())
+    {
+        return;
+    }
+    auto it = present_mode_from_str.find(v.as<std::string>());
+    if (it != present_mode_from_str.end())
+    {
+        field = it->second;
+    }
+    else
+    {
+        ALOG_WARN("Unknown present mode '{}', keeping default", v.as<std::string>());
+    }
 }
 
 }  // namespace
@@ -245,6 +276,20 @@ render_config::validate()
     // so a malformed config doesn't produce a solid-color screen.
     clamp_warn(outline.depth_threshold, 0.0f, 10.0f, "outline.depth_threshold");
     clamp_warn(outline.normal_threshold, 0.0f, 1.0f, "outline.normal_threshold");
+
+    // frames_in_flight: coarse clamp (no swapchain known at config time); the
+    // device clamps again to the surface's supported image count when applying.
+    clamp_warn(frames_in_flight, 1u, 4u, "frames_in_flight");
+
+    // present_mode: RPC can hand us an arbitrary int; pin to a known value so
+    // present_mode_to_str.at() (in save) never throws on a stray enum.
+    if (present != present_mode::fifo && present != present_mode::mailbox &&
+        present != present_mode::immediate)
+    {
+        ALOG_WARN("render_config: unknown present_mode {}, defaulting to fifo",
+                  static_cast<uint32_t>(present));
+        present = present_mode::fifo;
+    }
 }
 
 // ============================================================================
@@ -322,6 +367,9 @@ render_config::load(const vfs::rid& rid)
         extract_field(ol_node, "normal_threshold", outline.normal_threshold);
     }
 
+    extract_field(container, "frames_in_flight", frames_in_flight);
+    extract_field(container, "present_mode", present);
+
     validate();
 
     ALOG_INFO("Loaded render config from '{}'", rid.str());
@@ -384,6 +432,9 @@ render_config::save(const utils::path& path) const
     ol_node["depth_threshold"] = outline.depth_threshold;
     ol_node["normal_threshold"] = outline.normal_threshold;
     root["outline"] = ol_node;
+
+    root["frames_in_flight"] = frames_in_flight;
+    root["present_mode"] = present_mode_to_str.at(present);
 
     if (!serialization::write_container(path, root))
     {
@@ -466,6 +517,9 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
                 extract_field(ol, "normal_threshold", outline.normal_threshold);
             }
 
+            extract_field(container, "frames_in_flight", frames_in_flight);
+            extract_field(container, "present_mode", present);
+
             validate();
             return true;
         }
@@ -529,6 +583,9 @@ render_config::save_to_cache(const vfs::rid& cache) const
     ol_node["depth_threshold"] = outline.depth_threshold;
     ol_node["normal_threshold"] = outline.normal_threshold;
     root["outline"] = ol_node;
+
+    root["frames_in_flight"] = frames_in_flight;
+    root["present_mode"] = present_mode_to_str.at(present);
 
     return serialization::write_container(cache, root);
 }
