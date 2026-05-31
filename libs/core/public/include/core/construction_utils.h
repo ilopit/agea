@@ -46,6 +46,15 @@ diff_object_properties(const root::smart_object& left,
                        const root::smart_object& right,
                        std::vector<reflection::property*>& diff);
 
+// Play-mode state snapshot: call live->holder to capture, holder->live to
+// restore. Walks the FULL property set (incl. non-serializable runtime/editor
+// props) running each property's snapshot_handler. Sub-object/collection props
+// are skipped by the handler (structure is owned by level rollback phase-1), so
+// this allocates/registers nothing and needs no load context. See
+// docs/plans/play-mode-state-snapshot.md.
+result_code
+snapshot_object_properties(root::smart_object& from, root::smart_object& to);
+
 template <typename T>
 std::shared_ptr<T>
 alloc_empty_object(const utils::id& id = T::AR_TYPE_id())

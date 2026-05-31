@@ -14,6 +14,7 @@ Not design scope — the design docs live in [`../plans/`](../plans/). Items her
 | [`editor-ux.md`](editor-ux.md) | Editor / ImGui | Full editor UX audit: broken features, workflow gaps, camera, interaction, visual |
 | [`package-organization.md`](package-organization.md) | Core / packages | Split asset packages from module/type packages |
 | [`reflection.md`](reflection.md) | Core / reflection | Transient object flag, serializable vs editable gap |
+| [`object-lifecycle.md`](object-lifecycle.md) | Core / object cache | Class objects (CDOs) leak into the level's instance set; rollback sweeps them |
 | [`game-systems.md`](game-systems.md) | Game systems | Finalize game_system / game_session design, component boundary |
 
 ## Conventions

@@ -31,6 +31,7 @@ public:
         line_cache<root::game_object_component*> dirty_transforms;
         line_cache<root::smart_object*> dirty_render;
         line_cache<root::smart_object*> destroy_render;
+        std::vector<std::shared_ptr<root::smart_object>> deferred_release;
 
         void
         drop_pending()
@@ -38,6 +39,7 @@ public:
             dirty_transforms.clear();
             dirty_render.clear();
             destroy_render.clear();
+            deferred_release.clear();
         }
     };
 

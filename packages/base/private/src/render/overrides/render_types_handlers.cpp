@@ -90,7 +90,12 @@ namespace kryga
 bool
 is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 {
-    return obj.get_package() == sub_obj.get_package() || obj.get_level() == sub_obj.get_level();
+    // Require a NON-null shared owner. A runtime-grafted component (package=null,
+    // level=L) merely references shared CDO assets (package=null, level=null);
+    // matching on null==null would treat the shared asset as owned and recurse a
+    // render-destroy into it — which asserts (CDOs must not be render-destroyed).
+    return (obj.get_package() && obj.get_package() == sub_obj.get_package()) ||
+           (obj.get_level() && obj.get_level() == sub_obj.get_level());
 }
 
 // ============================================================================

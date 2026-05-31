@@ -97,6 +97,23 @@ class TestLevelCRUD:
             ro = engine.call("render.object.data", {"id": comp_id})
             assertions.assert_not_pink_bug(ro, comp_id)
 
+    def test_delete_then_recreate_same_id(self, engine):
+        """Delete→recreate with same ID must not crash (global cache cleanup)."""
+        engine.call("model.scene.create", {"name": NEW_OBJECT})
+        engine.wait_frame()
+        engine.call("model.scene.delete", {"id": NEW_OBJECT})
+        engine.wait_frame()
+
+        engine.call("model.scene.create", {"name": NEW_OBJECT})
+        engine.wait_frame()
+
+        root = engine.call("model.scene.getRoot")
+        obj_ids = {c["id"] for c in root["children"]}
+        assert NEW_OBJECT in obj_ids
+
+        engine.call("model.scene.delete", {"id": NEW_OBJECT})
+        engine.wait_frame()
+
 
 # ---------------------------------------------------------------------------
 # Integrity

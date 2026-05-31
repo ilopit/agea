@@ -260,7 +260,17 @@ render_bridge::render_cmd_build(root::smart_object& obj, bool sub_objects)
 kryga::result_code
 render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 {
-    KRG_check(!obj.get_flags().default_obj, "CDOs must not be render-destroyed");
+    // Class-default objects (CDOs) are shared, readonly templates referenced by
+    // instances — never render-built. A type's CDO can be loaded on first use
+    // mid-play and swept into a level rollback, and a runtime component's
+    // recursive destroy can also reach a CDO it merely references. Skip rather
+    // than assert: there are no render resources to free, and tearing into shared
+    // state would corrupt surviving objects. (Package-owned shared assets are
+    // kept out of the recursion by is_same_source in the per-type destroyers.)
+    if (obj.get_flags().default_obj)
+    {
+        return result_code::ok;
+    }
 
     if (obj.get_state() == root::smart_object_state::constructed)
     {

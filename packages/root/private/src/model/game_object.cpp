@@ -63,6 +63,24 @@ game_object::attach(component* c)
     c->set_owner(this);
 }
 
+void
+game_object::detach(component* c)
+{
+    // Mirror of the spawn_component add path (add_child + recreate): unlink the
+    // subtree from the parent's children, then rebuild the flat component list,
+    // order/parent indices and renderable list from the surviving tree. Drops
+    // c AND its whole subtree, since the rebuild DFS no longer reaches them.
+    auto* parent = c->get_parent();
+    KRG_check(parent, "detach: component has no parent");
+
+    std::erase(parent->m_children, c);
+    c->m_parent = nullptr;
+    c->set_owner(nullptr);
+
+    m_renderable_components.clear();
+    recreate_structure_from_layout();
+}
+
 component*
 game_object::spawn_component(component* parent,
                              const utils::id& type_id,

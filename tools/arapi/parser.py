@@ -56,6 +56,7 @@ PROP_KEY_PROPERTY_SAVE_HANDLER = "property_save_handler"
 PROP_KEY_PROPERTY_LOAD_HANDLER = "property_load_handler"
 PROP_KEY_PROPERTY_COMPARE_HANDLER = "property_compare_handler"
 PROP_KEY_PROPERTY_COPY_HANDLER = "property_copy_handler"
+PROP_KEY_PROPERTY_SNAPSHOT_HANDLER = "property_snapshot_handler"
 PROP_KEY_PROPERTY_INSTANTIATE_HANDLER = "property_instantiate_handler"
 PROP_KEY_INSTANTIATE_MODE = "instantiate"
 PROP_KEY_MCP_HINT = "mcp_hint"
@@ -571,6 +572,8 @@ def _parse_property_metadata(prop: arapi.types.kryga_property, metadata_tokens: 
       prop.property_compare_handler = value
     elif key == PROP_KEY_PROPERTY_COPY_HANDLER:
       prop.property_copy_handler = value
+    elif key == PROP_KEY_PROPERTY_SNAPSHOT_HANDLER:
+      prop.property_snapshot_handler = value
     elif key == PROP_KEY_PROPERTY_INSTANTIATE_HANDLER:
       prop.property_instantiate_handler = value
     elif key == PROP_KEY_INSTANTIATE_MODE:

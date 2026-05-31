@@ -26,6 +26,7 @@ class kryga_property:
     self.property_compare_handler = ""
     self.property_load_handler = ""
     self.property_copy_handler = ""
+    self.property_snapshot_handler = ""
     self.property_instantiate_handler = ""
     self.instantiate_mode = ""
     self.gpu_data = ""

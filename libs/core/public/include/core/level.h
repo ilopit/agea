@@ -21,6 +21,7 @@ class backend;
 #include <vector>
 #include <string>
 #include <optional>
+#include <unordered_map>
 
 namespace kryga
 {
@@ -86,6 +87,12 @@ public:
     destroy_game_object(root::game_object& go);
 
     void
+    snapshot();
+
+    void
+    rollback();
+
+    void
     tick(float dt);
 
     game_objects_cache&
@@ -142,6 +149,12 @@ private:
     vfs::backend* m_backend = nullptr;
 
     line_cache<root::game_object*> m_tickable_objects;
+    size_t m_snapshot_object_count = 0;
+
+    // Pre-play property snapshot: a bare, unregistered holder per survivor (keyed
+    // by the live object) holding its pre-play property values. rollback() phase 2
+    // copies them back in place. See docs/plans/play-mode-state-snapshot.md.
+    std::unordered_map<root::smart_object*, std::shared_ptr<root::smart_object>> m_snapshot;
 
     std::vector<utils::id> m_package_ids;
 

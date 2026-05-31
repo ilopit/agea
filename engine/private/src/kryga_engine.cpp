@@ -1220,6 +1220,7 @@ vulkan_engine::consume_updated_render()
         rb.render_cmd_destroy(*i, true);
     }
     mq.destroy_render.clear();
+    mq.deferred_release.clear();
 
     // TODO: when both a dependency (e.g. shader_effect) and its dependent (e.g. material) are dirty
     // in the same frame, render_cmd_build on the dependent will rebuild the dependency via

@@ -3,6 +3,8 @@
 #include <core/reflection/reflection_type.h>
 #include <core/reflection/property_utils.h>
 
+#include <utils/kryga_log.h>
+
 namespace kryga
 {
 namespace core
@@ -36,6 +38,33 @@ diff_object_properties(const root::smart_object& left,
         if (!same)
         {
             diff.push_back(p.get());
+        }
+    }
+
+    return result_code::ok;
+}
+
+result_code
+snapshot_object_properties(root::smart_object& from, root::smart_object& to)
+{
+    // Snapshot the FULL property set, not just the serializable subset: play mode
+    // can mutate non-serializable runtime/editor properties too, and a true reset
+    // must restore those. Sub-object/collection props are skipped by the handler.
+    auto& properties = from.get_reflection()->m_properties;
+
+    // ctor = nullptr: the snapshot path never allocates a sub-object (those props
+    // are skipped), so no object_constructor is required.
+    reflection::property_context__copy cctx{nullptr, nullptr, &from, &to, nullptr};
+
+    for (auto& p : properties)
+    {
+        cctx.src_property = p.get();
+        cctx.dst_property = p.get();
+
+        if (auto rc = p->snapshot_handler(cctx); rc != result_code::ok)
+        {
+            ALOG_LAZY_ERROR;
+            return rc;
         }
     }
 

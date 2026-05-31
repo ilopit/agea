@@ -468,6 +468,8 @@ game_editor::enter_play_mode()
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
+        lvl->snapshot();
+
         base::player::construct_params pp;
         m_player = lvl->spawn_object<base::player>(AID("player_0"), pp);
         if (m_player)
@@ -521,14 +523,11 @@ game_editor::exit_play_mode()
         }
     }
 
-    if (m_player)
+    if (auto lvl = glob::glob_state().getr_model().current_level)
     {
-        if (auto lvl = glob::glob_state().getr_model().current_level)
-        {
-            lvl->destroy_game_object(*m_player);
-        }
-        m_player = nullptr;
+        lvl->rollback();
     }
+    m_player = nullptr;
     m_active_camera = nullptr;
 
     m_camera_data.position = m_saved_position;

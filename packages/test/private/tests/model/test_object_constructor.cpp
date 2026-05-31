@@ -1,5 +1,6 @@
 
 #include "core/object_constructor.h"
+#include "core/construction_utils.h"
 
 #include <core/package_manager.h>
 #include <core/level.h>
@@ -22,6 +23,8 @@
 #include "packages/test/package.test.h"
 
 #include <packages/root/model/game_object.h>
+#include <packages/root/model/components/game_object_component.h>
+#include <packages/root/model/core_types/vec3.h>
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/material.h>
 #include <packages/base/model/components/mesh_component.h>
@@ -236,6 +239,55 @@ TEST_F(test_object_constructor, load_produces_class_flags)
     ASSERT_FALSE(flags.instance_obj);
     ASSERT_TRUE(flags.derived_obj);
     ASSERT_FALSE(flags.runtime_obj);
+}
+
+// Stage 0 of the play-mode state snapshot (docs/plans/play-mode-state-snapshot.md):
+// the snapshot_handler family must round-trip a value property through a bare,
+// unregistered holder — capture (live->holder), mutate, restore (holder->live).
+TEST_F(test_object_constructor, snapshot_restores_value_property)
+{
+    auto& lc = test::package::instance().get_load_context();
+    setup_test_backend(lc);
+
+    // Instance mode — survivors restored by play-mode rollback are level
+    // instances (writable), not readonly class-derived objects.
+    core::object_constructor ctor(&lc, core::object_load_type::instance_obj);
+    auto result = ctor.load_obj(AID("test_complex_mesh_object"));
+    ASSERT_TRUE(result.has_value());
+
+    auto go = result.value()->as<root::game_object>();
+    ASSERT_TRUE(go);
+    ASSERT_FALSE(go->get_flags().readonly);
+
+    // The transform lives on the component, not the game_object — exactly what
+    // the per-object snapshot loop captures for a survivor.
+    auto* comp = go->get_root_component();
+    ASSERT_TRUE(comp);
+
+    const auto original = comp->get_position();
+
+    // Bare holder of the same concrete type: allocated directly, never added to
+    // any cache/occ, so no id collision with the live object.
+    auto* rt = glob::glob_state().getr_model().reflection.get_type(comp->get_type_id());
+    ASSERT_TRUE(rt);
+    auto holder_id = AID("snapshot_holder");
+    reflection::type_context__alloc actx{&holder_id};
+    auto holder = rt->alloc(actx);
+    ASSERT_TRUE(holder);
+
+    // Capture: live -> holder.
+    ASSERT_EQ(core::snapshot_object_properties(*comp, *holder), result_code::ok);
+
+    // Mutate the live value (as a play-mode edit would).
+    comp->set_position(root::vec3(original.x + 5.f, original.y, original.z));
+    ASSERT_NE(comp->get_position().x, original.x);
+
+    // Restore: holder -> live, in place.
+    ASSERT_EQ(core::snapshot_object_properties(*holder, *comp), result_code::ok);
+
+    EXPECT_FLOAT_EQ(comp->get_position().x, original.x);
+    EXPECT_FLOAT_EQ(comp->get_position().y, original.y);
+    EXPECT_FLOAT_EQ(comp->get_position().z, original.z);
 }
 
 TEST_F(test_object_constructor, load_sets_package)

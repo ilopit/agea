@@ -173,6 +173,28 @@ game_object_components_copy(::kryga::reflection::property_context__copy& ctx)
 }
 
 result_code
+game_object_components_snapshot(::kryga::reflection::property_context__copy& ctx)
+{
+    // Play-mode snapshot/restore of the component layout. Unlike copy/instantiate,
+    // this is IDENTITY-PRESERVING: it does NOT clone the components — it just
+    // records (and on restore re-applies) the ordered vector of the SAME component
+    // pointers, so each component lands back at its proper position. Component
+    // *values* are snapshotted per-component (each is its own level object); this
+    // handler only remembers which components belong and in what order.
+    KRG_check(ctx.src_property == ctx.dst_property, "Should be SAME properties!");
+    KRG_check(ctx.src_obj != ctx.dst_obj, "Should not be SAME objects!");
+
+    auto& src_col = reflection::utils::as_type<std::vector<root::component*>>(
+        ctx.src_property->get_blob(*ctx.src_obj));
+    auto& dst_col = reflection::utils::as_type<std::vector<root::component*>>(
+        ctx.dst_property->get_blob(*ctx.dst_obj));
+
+    dst_col = src_col;
+
+    return result_code::ok;
+}
+
+result_code
 game_object_components_instantiate(reflection::property_context__instantiate& ctx)
 {
     auto& src_col = reflection::utils::as_type<std::vector<root::component*>>(

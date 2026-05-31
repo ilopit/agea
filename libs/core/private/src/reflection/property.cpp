@@ -15,6 +15,7 @@
 
 #include <cinttypes>
 #include <array>
+#include <cstring>
 
 namespace kryga
 {
@@ -75,6 +76,52 @@ property::default_copy(property_context__copy& cxt)
 
     type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
     return cxt.dst_property->rtype->copy(type_ctx);
+}
+
+result_code
+property::default_snapshot(property_context__copy& cxt)
+{
+    auto* p = cxt.src_property;
+
+    KRG_check(p == cxt.dst_property, "Should be SAME properties!");
+    KRG_check(cxt.src_obj != cxt.dst_obj, "Should not be SAME objects!");
+
+    // Owned sub-objects are not value state: cloning one would allocate+register
+    // and collide in the global cache. Their lifetime/structure is handled
+    // elsewhere (a collection like m_components has its own snapshot_handler that
+    // records the layout identity-preservingly; a stray sub-object subtree is
+    // owned by level rollback phase-1). Skip them. Collections are NOT handled
+    // here: by convention every collection property carries a custom handler
+    // (default_copy itself asserts on collections), so a collection never reaches
+    // this default — and its element rtype is a smart_object anyway, caught below.
+    if (p->inst_mode == instantiate_mode::instantiate && p->rtype
+        && p->rtype->arch == core::architype::smart_object)
+    {
+        return result_code::ok;
+    }
+
+    if (p->type.is_ptr)
+    {
+        // share-by-pointer: shallow-copy the reference. The pointee is a shared
+        // asset/object that outlives play; we only record which one it was.
+        std::memcpy(p->get_blob(*cxt.dst_obj), p->get_blob(*cxt.src_obj), sizeof(void*));
+        return result_code::ok;
+    }
+
+    // Snapshot covers the full property set (incl. non-serializable ones); a value
+    // type with no copy handler (e.g. a gpu_data layout marker) simply has no
+    // mechanism to be copied — skip it rather than assert. It is then not part of
+    // the play-mode reset, which is acceptable for such non-runtime state.
+    if (!p->rtype || !p->rtype->copy)
+    {
+        return result_code::ok;
+    }
+
+    auto from = p->get_blob(*cxt.src_obj);
+    auto to = p->get_blob(*cxt.dst_obj);
+
+    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
+    return p->rtype->copy(type_ctx);
 }
 
 result_code

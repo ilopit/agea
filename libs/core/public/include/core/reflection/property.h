@@ -66,6 +66,7 @@ struct guarded_handler
 };
 
 using property_handler__copy_guarded = guarded_handler<property_handler__copy>;
+using property_handler__snapshot_guarded = guarded_handler<property_handler__snapshot>;
 using property_handler__instantiate_guarded = guarded_handler<property_handler__instantiate>;
 using property_handler__load_guarded = guarded_handler<property_handler__load>;
 using property_handler__json_set_guarded = guarded_handler<property_handler__json_set>;
@@ -73,6 +74,7 @@ using property_handler__json_set_guarded = guarded_handler<property_handler__jso
 #else
 
 using property_handler__copy_guarded = property_handler__copy;
+using property_handler__snapshot_guarded = property_handler__snapshot;
 using property_handler__instantiate_guarded = property_handler__instantiate;
 using property_handler__load_guarded = property_handler__load;
 using property_handler__json_set_guarded = property_handler__json_set;
@@ -86,6 +88,7 @@ public:
     property_handler__save               save_handler        = default_save;
     property_handler__compare            compare_handler     = default_compare;
     property_handler__copy_guarded       copy_handler        = default_copy;
+    property_handler__snapshot_guarded   snapshot_handler    = default_snapshot;
     property_handler__instantiate_guarded instantiate_handler = default_instantiate;
     property_handler__load_guarded       load_handler        = default_load;
     property_handler__json_get           json_get            = default_json_get;
@@ -105,6 +108,14 @@ private:
 
     static result_code
     default_copy(property_context__copy& context);
+
+    // Snapshot a property value into a holder (and back, when src/dst are
+    // swapped). Value/share props copy via rtype->copy; sub-object/collection
+    // props are skipped (their lifetime is owned by level rollback phase-1, so
+    // snapshot never clones/registers a sub-object). See
+    // docs/plans/play-mode-state-snapshot.md.
+    static result_code
+    default_snapshot(property_context__copy& context);
 
     static result_code
     default_instantiate(property_context__instantiate& context);

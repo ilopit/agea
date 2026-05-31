@@ -104,6 +104,24 @@ public:
         return m_items.front();
     }
 
+    T&
+    back()
+    {
+        return m_items.back();
+    }
+
+    void
+    pop_back()
+    {
+        m_items.pop_back();
+    }
+
+    size_t
+    size() const
+    {
+        return m_items.size();
+    }
+
     void
     clear()
     {

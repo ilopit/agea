@@ -756,6 +756,9 @@ def _write_property_reflection(file_buffer: arapi.utils.FileBuffer, fc: arapi.ty
     if prop.property_copy_handler != EMPTY_STRING:
       file_buffer.append(f"        p->copy_handler  = {prop.property_copy_handler};\n")
 
+  if prop.property_snapshot_handler != EMPTY_STRING:
+    file_buffer.append(f"        p->snapshot_handler  = {prop.property_snapshot_handler};\n")
+
   if prop.property_instantiate_handler != EMPTY_STRING:
     file_buffer.append(f"        p->instantiate_handler  = {prop.property_instantiate_handler};\n")
 

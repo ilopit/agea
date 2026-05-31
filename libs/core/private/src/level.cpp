@@ -1,11 +1,15 @@
 #include "core/level.h"
 
+#include <unordered_set>
+
 #include <packages/root/model/game_object.h>
 
 #include <core/caches/caches_map.h>
 #include <core/model_system.h>
 #include <core/object_load_context_builder.h>
 #include <core/object_constructor.h>
+#include <core/construction_utils.h>
+#include <core/reflection/reflection_type.h>
 #include <core/queues.h>
 #include <global_state/global_state.h>
 
@@ -189,7 +193,178 @@ level::destroy_game_object(root::game_object& go)
         m_tickable_objects.swap_and_remove(it);
     }
 
-    m_local_cs.game_objects.remove_item(go);
+    for (auto* comp : go.get_subcomponents())
+    {
+        m_occ->remove_obj(*comp);
+    }
+    m_occ->remove_obj(go);
+
+    auto obj_it = m_objects.find_if([&go](const std::shared_ptr<root::smart_object>& o)
+                                    { return o.get() == &go; });
+    if (obj_it != m_objects.end())
+    {
+        m_objects.swap_and_remove(obj_it);
+    }
+}
+
+void
+level::snapshot()
+{
+    m_snapshot_object_count = m_objects.size();
+
+    // Capture pre-play property values for every per-play (non-readonly) object —
+    // game_objects AND their components, since both are entries in m_objects. The
+    // holder is a bare instance of the same type, allocated directly (never added
+    // to a cache/occ) so it can't collide with the live object's id.
+    m_snapshot.clear();
+
+    for (auto& obj : m_objects)
+    {
+        // Class-default/shared objects are not per-play state, and restoring into
+        // a readonly object would assert. Skip them.
+        if (obj->get_flags().readonly)
+        {
+            continue;
+        }
+
+        auto id = obj->get_id();
+        reflection::type_context__alloc alloc_ctx{&id};
+        auto holder = obj->get_reflection()->alloc(alloc_ctx);
+
+        snapshot_object_properties(*obj, *holder);
+        m_snapshot[obj.get()] = std::move(holder);
+    }
+}
+
+void
+level::rollback()
+{
+    auto& q = glob::glob_state().getr_queues().get_model();
+    auto& deferred = q.deferred_release;
+
+    // Everything created since the snapshot — the exact set we are about to free.
+    std::unordered_set<root::smart_object*> rolledback;
+    for (size_t i = m_snapshot_object_count; i < m_objects.size(); ++i)
+    {
+        rolledback.insert(m_objects[i].get());
+    }
+
+    // Scrub the pending main-thread queues of anything we're about to free. The
+    // drain runs destroy_render first and releases deferred_release, then walks
+    // dirty_render / dirty_transforms — so a stale entry there would build or
+    // transform an already-freed object (use-after-free, and re-creates GPU
+    // resources for a dead object). Same thread as the drain, so this is safe.
+    auto scrub = [&](auto& cache)
+    {
+        for (size_t i = 0; i < cache.size();)
+        {
+            if (rolledback.contains(cache[i]))
+            {
+                cache.swap_and_remove(cache.begin() + i);
+            }
+            else
+            {
+                ++i;
+            }
+        }
+    };
+    scrub(q.dirty_render);
+    scrub(q.dirty_transforms);
+
+    // Destroy in reverse creation order (LIFO). m_objects is append-only, so a
+    // dependent (created later) is always released before its dependency, which
+    // avoids freeing a parent/owner while a later child still points at it.
+    for (size_t i = m_objects.size(); i-- > m_snapshot_object_count;)
+    {
+        auto& obj = m_objects[i];
+
+        // Skip shared class/package objects (readonly). Two kinds can fall in the
+        // rollback range: a type's CDO loaded on first use during play, and the
+        // CDO's own class-derived sub-objects (e.g. a default game_object's
+        // root_component — default_obj=false but readonly=true). Neither is
+        // per-play instance state: they hold no instance render resources, must
+        // never be render-destroyed (render_bridge asserts !default_obj, and
+        // tearing into a shared component would corrupt survivors that reference
+        // it), and have no per-play parent to detach. Keying on readonly (not
+        // default_obj) closes the gap where a class-derived child slipped through.
+        // Symmetric with snapshot(), which skips readonly objects too.
+        if (auto* comp = obj->as<root::component>(); comp && !comp->get_flags().readonly)
+        {
+            // Only game_object_components carry GPU render data.
+            if (auto* goc = comp->as<root::game_object_component>())
+            {
+                q.destroy_render.emplace_back(goc);
+            }
+
+            // Orphan case: a subtree grafted at runtime onto a component that
+            // survives the rollback. Detach only the subtree root (the one node
+            // whose parent survives) — recreate_structure_from_layout then drops
+            // its whole subtree from the surviving parent in a single rebuild, so
+            // inner nodes (parent also rolled back) need no handling. Components
+            // of a fully rolled-back object have a rolled-back parent too and are
+            // freed wholesale.
+            auto* parent = comp->get_parent();
+            if (parent && !rolledback.contains(parent))
+            {
+                comp->get_owner()->detach(comp);
+            }
+        }
+
+        if (auto go = obj->as<root::game_object>())
+        {
+            auto it = m_tickable_objects.find(go);
+            if (it != m_tickable_objects.end())
+            {
+                m_tickable_objects.swap_and_remove(it);
+            }
+        }
+
+        m_occ->remove_obj(*obj);
+        // deferred_release keeps the shared_ptr alive so the raw pointers queued
+        // into destroy_render stay valid until the render thread drains them.
+        deferred.emplace_back(std::move(obj));
+        m_objects.pop_back();  // i is always the last element on the way down
+    }
+
+    // Phase 2 — restore surviving objects to their pre-play property values.
+    // Phase 1 has removed spawned objects and structurally un-grafted any runtime
+    // subtrees, so each survivor now matches its snapshot's structure; copy the
+    // captured values back in place (object identity preserved — no realloc).
+    for (auto& obj : m_objects)
+    {
+        auto it = m_snapshot.find(obj.get());
+        if (it == m_snapshot.end())
+        {
+            continue;  // readonly/CDO: never snapshotted, nothing to restore
+        }
+        snapshot_object_properties(*it->second, *obj);  // holder -> live
+    }
+
+    // Re-sync the GPU for restored survivors: recompute each game_object's
+    // transform hierarchy from the restored values and mark its renderables
+    // transform-dirty so the render thread picks up the reset matrices. Render
+    // resources are kept (no destroy/rebuild) — identity and buffers survive.
+    // Note: a render-only property changed during play is restored in the model
+    // but not force-re-uploaded (mark_render_dirty no-ops on a constructed
+    // object); see docs/plans/play-mode-state-snapshot.md.
+    for (auto& obj : m_objects)
+    {
+        if (!m_snapshot.contains(obj.get()))
+        {
+            continue;
+        }
+        if (auto* go = obj->as<root::game_object>())
+        {
+            go->update_position();
+            for (auto* goc : go->get_renderable_components())
+            {
+                goc->mark_transform_dirty();
+            }
+        }
+    }
+
+    m_snapshot.clear();
+    m_snapshot_object_count = 0;
 }
 
 void

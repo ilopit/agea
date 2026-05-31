@@ -55,6 +55,14 @@ public:
     void
     attach(component* c);
 
+    // Removes a single component from this object's component lists. Plain
+    // erase only — the parent_idx/order_idx layout is NOT rebuilt here (the
+    // m_components structure rework will own that). Used by level rollback to
+    // unlink a runtime-attached component from a surviving parent so the parent
+    // never holds a dangling pointer after the component is freed.
+    void
+    detach(component* c);
+
     template <typename T>
     T*
     spawn_component(component* parent,
@@ -288,6 +296,7 @@ protected:
         property_save_handler        = game_object_components_save,
         property_compare_handler     = game_object_components_compare,
         property_copy_handler        = game_object_components_copy,
+        property_snapshot_handler    = game_object_components_snapshot,
         property_instantiate_handler = game_object_components_instantiate,
         property_load_handler        = game_object_components__load
     );

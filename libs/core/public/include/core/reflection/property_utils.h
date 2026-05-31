@@ -94,6 +94,7 @@ struct property_context__json_set
 using property_handler__save            = result_code(*)(property_context__save&);
 using property_handler__compare         = result_code(*)(property_context__compare&);
 using property_handler__copy            = result_code(*)(property_context__copy&);
+using property_handler__snapshot        = result_code(*)(property_context__copy&);
 using property_handler__instantiate     = result_code(*)(property_context__instantiate&);
 using property_handler__load            = result_code(*)(property_context__load&);
 using property_handler__json_get        = result_code(*)(property_context__json_get&);

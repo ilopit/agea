@@ -63,6 +63,12 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
 
     auto& obj_ref = *obj.get();
 
+    // TODO(object-lifecycle): class objects (default_obj/readonly CDOs) go into
+    // the container's ownable cache here just like instances. When a CDO is first
+    // loaded mid-play via the level's context it lands in the level's m_objects
+    // and level::rollback() sweeps it (forcing default_obj skips in rollback and
+    // render_cmd_destroy). Route class objects to the shared/global domain only.
+    // See docs/issues/object-lifecycle.md.
     m_ownable_cache_ptr->emplace_back(std::move(obj));
 
     m_local_set->map.add_item(obj_ref);
