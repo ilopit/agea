@@ -17,9 +17,26 @@
       "Bash(cmake --preset *)",
       "Bash(tasklist *)",
       "mcp__kryga-scene__*"
+    ],
+    "deny": [
+      "Bash(git commit)",
+      "Bash(git commit:*)",
+      "PowerShell(git commit)",
+      "PowerShell(git commit:*)"
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'python .claude/hooks/block_git_commit.py'"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
