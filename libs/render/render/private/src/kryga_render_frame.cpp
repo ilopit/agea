@@ -34,7 +34,23 @@ namespace render
 void
 vulkan_render::set_camera(gpu::camera_data c)
 {
-    // Mark clusters dirty if view changed (light-cluster assignment is in view space)
+    // Publish for the render thread; it latches in apply_pending_camera() at
+    // draw start. Double-buffered so this (main thread) can't overwrite the
+    // camera the render thread is currently using.
+    const int back = 1 - m_camera_published.load(std::memory_order_relaxed);
+    m_camera_pending[back] = c;
+    m_camera_published.store(back, std::memory_order_release);
+}
+
+void
+vulkan_render::apply_pending_camera()
+{
+    const gpu::camera_data& c = m_camera_pending[m_camera_published.load(std::memory_order_acquire)];
+
+    // Mark clusters dirty if view changed (light-cluster assignment is in view
+    // space). Compared against the previous frame's camera, still in
+    // m_camera_data here. Done on the render thread, where m_clusters_dirty is
+    // consumed by the cluster rebuild.
     if (m_camera_data.view != c.view)
     {
         m_clusters_dirty = true;
@@ -66,6 +82,10 @@ vulkan_render::draw_main()
     device.switch_frame_indeces();
     m_culled_draws = 0;
     m_all_draws = 0;
+
+    // Latch the main-thread-published camera; m_camera_data/m_frustum are
+    // render-owned for the rest of this frame.
+    apply_pending_camera();
 
     auto& current_frame = m_frames[device.get_current_frame_index()];
 
@@ -190,6 +210,10 @@ vulkan_render::draw_headless()
     device.switch_frame_indeces();
     m_culled_draws = 0;
     m_all_draws = 0;
+
+    // Latch the main-thread-published camera; m_camera_data/m_frustum are
+    // render-owned for the rest of this frame.
+    apply_pending_camera();
 
     auto& current_frame = m_frames[device.get_current_frame_index()];
 

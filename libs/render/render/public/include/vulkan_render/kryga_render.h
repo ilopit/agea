@@ -245,10 +245,13 @@ public:
     void
     set_camera(gpu::camera_data d);
 
+    // Returns the most recently published camera (what set_camera last received),
+    // not the render thread's working copy — so a main-thread query reflects the
+    // latest set value even before the render thread has latched it.
     const gpu::camera_data&
     get_camera() const
     {
-        return m_camera_data;
+        return m_camera_pending[m_camera_published.load(std::memory_order_acquire)];
     }
 
     // Snapshot the current ImGui frame's draw data into a back buffer and
@@ -616,6 +619,12 @@ private:
     update_ui(frame_state& cmd);
     void
     draw_ui(frame_state& cmd);
+
+    // Latch the main-thread-published camera into m_camera_data + m_frustum on
+    // the render thread. Called at the start of draw_main/draw_headless so the
+    // camera and frustum are render-thread-owned for the frame.
+    void
+    apply_pending_camera();
     void
     resize(uint32_t width, uint32_t height);
 
@@ -666,7 +675,17 @@ private:
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
+    // Render thread's working camera + frustum, written ONLY by
+    // apply_pending_camera() at draw start (render-owned). All render passes
+    // read these.
     gpu::camera_data m_camera_data;
+
+    // Camera published by set_camera() (main thread) and latched into
+    // m_camera_data by apply_pending_camera() (render thread). Double-buffered
+    // so the main thread building the next frame can't overwrite the camera the
+    // render thread is using for the current one.
+    gpu::camera_data m_camera_pending[2];
+    std::atomic<int> m_camera_published{0};
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
