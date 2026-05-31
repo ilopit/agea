@@ -129,6 +129,18 @@ public:
     wait_main_action(std::function<void()> a,
                      std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
 
+    // Block (on the caller's thread, e.g. an RPC I/O thread) until the render
+    // thread has finished drawing `count` more frames than were in flight at the
+    // call. Because the streaming pipeline lets the main thread build the next
+    // frame while the render thread is still drawing the current one, simply
+    // round-tripping a main action no longer guarantees a model mutation has
+    // propagated to the render cache — the command only executes when the render
+    // thread drains that frame. RPC waitFrame uses this so a following render.*
+    // query observes the mutation. Returns false on timeout.
+    bool
+    wait_frames_rendered(int count,
+                         std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
+
     void
     request_shutdown()
     {
@@ -156,6 +168,14 @@ private:
 
     void
     render_thread_func();
+
+    // Select the per-frame double-buffer slot (frame parity) for the frame about
+    // to be built, across BOTH producers of slot-indexed state: the renderer
+    // (camera + UI snapshot) and the command queues/arena. They live in separate
+    // subsystems but must always name the same slot — this is the single point
+    // that keeps them in sync.
+    void
+    select_frame_slot(uint32_t slot);
 
     float m_run_for_seconds = 0.f;  // 0 = unlimited
     std::string m_initial_level;
@@ -192,13 +212,22 @@ private:
     drain_main_actions();
 #endif
 
-    // Render thread synchronization (lock-step)
+    // Render thread synchronization (streaming, depth-1 pipeline).
+    // m_frames_submitted: frames the main thread has fully enqueued into the
+    //   frame's parity slot queue. Bumped by main under m_render_mutex.
+    // m_frames_completed: frames the render thread has drawn. Bumped by render
+    //   under m_render_mutex.
+    // Invariant: m_frames_submitted - m_frames_completed <= 1 — main builds
+    // frame N (into arena/camera/UI slot N&1) while render draws N-1 (slot
+    // (N-1)&1). m_render_cv wakes the render thread when a frame is available;
+    // m_main_cv wakes the main thread when a frame completes (gate) or, with
+    // has_pending_render_config, when the pipeline has fully drained to idle.
     std::thread m_render_thread;
     std::mutex m_render_mutex;
     std::condition_variable m_render_cv;
     std::condition_variable m_main_cv;
-    bool m_render_work_ready = false;
-    bool m_render_done = true;
+    uint64_t m_frames_submitted = 0;
+    uint64_t m_frames_completed = 0;
     bool m_render_shutdown = false;
 };
 

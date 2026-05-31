@@ -245,18 +245,39 @@ public:
     void
     set_camera(gpu::camera_data d);
 
-    // Returns the most recently published camera (what set_camera last received),
-    // not the render thread's working copy — so a main-thread query reflects the
+    // Returns the camera the main thread last wrote for the frame it is
+    // building (its current input slot), so a main-thread query reflects the
     // latest set value even before the render thread has latched it.
     const gpu::camera_data&
     get_camera() const
     {
-        return m_camera_pending[m_camera_published.load(std::memory_order_acquire)];
+        return m_camera_pending[m_main_build_slot];
     }
 
-    // Snapshot the current ImGui frame's draw data into a back buffer and
-    // publish it for the render thread. Called on the MAIN thread right after
-    // ImGui::Render(), before the next NewFrame(). No-op without an ImGui
+    // Main thread: select the per-frame double-buffer slot (frame parity) that
+    // subsequent set_camera() / capture_ui_snapshot() calls write into. Set once
+    // per frame (via vulkan_engine::select_frame_slot). Pairs with
+    // set_render_draw_slot, the render thread's read-side selector. With the
+    // depth-1 pipeline gate the two never name the same slot at once.
+    void
+    set_build_slot(uint32_t slot)
+    {
+        m_main_build_slot = slot & 1u;
+    }
+
+    // Render thread: select the slot draw_main()/apply_pending_camera()/
+    // update_ui()/draw_ui() read this frame. The render loop stamps it (= the
+    // frame's parity slot) before draw_main. Left at 0 for synchronous
+    // (test/headless) draws that don't go through the streaming loop.
+    void
+    set_render_draw_slot(uint32_t slot)
+    {
+        m_render_draw_slot = slot & 1u;
+    }
+
+    // Snapshot the current ImGui frame's draw data into the main thread's
+    // current input slot for the render thread. Called on the MAIN thread right
+    // after ImGui::Render(), before the next NewFrame(). No-op without an ImGui
     // context. Decouples the render thread from the live ImGui draw data.
     void
     capture_ui_snapshot();
@@ -295,6 +316,11 @@ public:
 
     void schd_remove_object(render::vulkan_render_data* obj_data);
     void schd_remove_material(render::material_data* mat_data);
+    // Drop a light from every frame's pending upload queue. MUST be called when
+    // a light's render data is released, else the per-frame queues keep a
+    // dangling pointer that upload_gpu_*_light_data dereferences next draw.
+    void schd_remove_light(render::vulkan_directional_light_data* ld);
+    void schd_remove_light(render::vulkan_universal_light_data* ld);
     // clang-format on
 
     void
@@ -370,11 +396,16 @@ public:
     }
 
     // Pending config — UI/tools mutate this freely. Picked up by
-    // apply_pending_render_config() once per frame at a safe point
-    // (between render-done and next-frame-begin).
+    // apply_pending_render_config() at a safe point. The non-const accessor is
+    // the mutation entry point, so it raises the dirty flag that
+    // has_pending_render_config() reports; the engine drains the render pipeline
+    // to idle before applying (apply writes m_render_config, which the render
+    // thread reads). Read-only callers must use the const overload to avoid a
+    // spurious pipeline stall.
     render_config&
     get_pending_render_config()
     {
+        m_render_config_dirty = true;
         return m_pending_render_config;
     }
 
@@ -384,12 +415,41 @@ public:
         return m_pending_render_config;
     }
 
+    // True when get_pending_render_config() handed out a mutable ref since the
+    // last apply. Main-thread-only flag (config is mutated and applied on the
+    // main thread; the render thread only reads m_render_config).
+    bool
+    has_pending_render_config() const
+    {
+        return m_render_config_dirty;
+    }
+
     // Diff pending vs active and apply changes. Topology fields trigger the
     // appropriate reconfigure_*; other fields are simple value copies. Must
     // be called outside any rendering work — vkDeviceWaitIdle is invoked
-    // when topology changes are needed.
+    // when topology changes are needed, and it writes m_render_config which the
+    // render thread reads, so the caller must ensure the render thread is idle.
     void
     apply_pending_render_config();
+
+    // Render-thread-published per-frame stats, mirrored into atomics at the end
+    // of draw_main so the main thread can sample them for the ImGui overlay
+    // without racing the render thread's working counters / object cache.
+    uint32_t
+    stat_all_draws() const
+    {
+        return m_published_all_draws.load(std::memory_order_relaxed);
+    }
+    uint32_t
+    stat_culled_draws() const
+    {
+        return m_published_culled_draws.load(std::memory_order_relaxed);
+    }
+    uint32_t
+    stat_objects() const
+    {
+        return m_published_objects.load(std::memory_order_relaxed);
+    }
 
     float
     get_cascade_split_depth(uint32_t cascade_idx) const
@@ -675,17 +735,32 @@ private:
     uint32_t m_all_draws = 0;
     uint32_t m_culled_draws = 0;
 
+    // Render-thread → main-thread published copies of the above plus the render
+    // object count, stored at the end of draw_main (see stat_*()). Atomic
+    // because the main thread reads them concurrently with the next frame's draw.
+    std::atomic<uint32_t> m_published_all_draws{0};
+    std::atomic<uint32_t> m_published_culled_draws{0};
+    std::atomic<uint32_t> m_published_objects{0};
+
     // Render thread's working camera + frustum, written ONLY by
     // apply_pending_camera() at draw start (render-owned). All render passes
     // read these.
     gpu::camera_data m_camera_data;
 
-    // Camera published by set_camera() (main thread) and latched into
-    // m_camera_data by apply_pending_camera() (render thread). Double-buffered
-    // so the main thread building the next frame can't overwrite the camera the
-    // render thread is using for the current one.
+    // Camera written by set_camera() (main thread, into m_camera_pending[
+    // m_main_build_slot]) and latched into m_camera_data by apply_pending_camera()
+    // (render thread, from m_camera_pending[m_render_draw_slot]). Double-buffered
+    // by frame parity so the main thread building frame F+1 writes a different
+    // slot than the render thread reads for frame F.
     gpu::camera_data m_camera_pending[2];
-    std::atomic<int> m_camera_published{0};
+
+    // Frame-parity slot selectors for the camera/UI double buffers. m_main_build_slot
+    // is written only by the main thread (begin_frame_inputs); m_render_draw_slot
+    // only by the render thread (set_render_draw_slot, stamped by the render loop).
+    // The pipeline gate guarantees they never name the same slot concurrently, so
+    // no atomics are needed — the m_render_mutex handoff supplies happens-before.
+    uint32_t m_main_build_slot = 0;
+    uint32_t m_render_draw_slot = 0;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
@@ -703,12 +778,11 @@ private:
 
     std::vector<frame_state> m_frames;
 
-    // Double-buffered ImGui draw-data snapshots. Main thread fills the back
-    // buffer in capture_ui_snapshot() and publishes its index; the render
-    // thread reads m_ui_snapshots[m_ui_snapshot_published]. Two buffers are
-    // enough because the main thread runs at most one frame ahead of render.
+    // Double-buffered ImGui draw-data snapshots, indexed by frame parity. Main
+    // thread fills m_ui_snapshots[m_main_build_slot] in capture_ui_snapshot();
+    // the render thread reads m_ui_snapshots[m_render_draw_slot]. Two buffers
+    // are enough because the main thread runs at most one frame ahead.
     ui_draw_snapshot m_ui_snapshots[2];
-    std::atomic<int> m_ui_snapshot_published{0};
 
     // Number of frame slots whose GPU buffers are currently allocated. m_frames
     // is sized to the (max) device frame count; only [0, m_allocated_frame_slots)
@@ -725,10 +799,15 @@ private:
     material_data* m_ui_mat = nullptr;
     material_data* m_ui_target_mat = nullptr;
 
+    // Mirrors the PushConstants block in se_uioverlay.vert/.frag. scale/translate
+    // are consumed by the vertex stage; tex_index/sampler_index by the fragment
+    // stage to sample the font from the global bindless set.
     struct ui_push_constants
     {
         glm::vec2 scale;
         glm::vec2 translate;
+        uint32_t tex_index = 0;
+        uint32_t sampler_index = 0;
     };
     ui_push_constants m_ui_push_constants;
 
@@ -812,6 +891,10 @@ private:
     // Render config (loaded from render.acfg)
     render_config m_render_config;
     render_config m_pending_render_config;
+    // Raised when get_pending_render_config() hands out a mutable ref; cleared
+    // by apply_pending_render_config(). Gates the pipeline-drain-before-apply in
+    // the engine loop. Main-thread-only (see has_pending_render_config()).
+    bool m_render_config_dirty = false;
 
     // Snapshots of last-applied config (to detect runtime changes)
     render_config::cluster_cfg m_applied_clusters;

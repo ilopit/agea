@@ -1030,6 +1030,7 @@ render_device::wait_for_fences()
 void
 render_device::schedule_to_delete(delayed_deleter d)
 {
+    std::lock_guard lock(m_delete_mutex);
     m_delayed_delete_queue.push({m_current_frame_number + m_frames_in_flight, std::move(d)});
 }
 
@@ -1043,11 +1044,24 @@ void
 render_device::delete_scheduled_actions()
 {
     auto current_frame = get_current_frame_number();
-    while (!m_delayed_delete_queue.empty() &&
-           m_delayed_delete_queue.top().frame_idx <= current_frame)
+
+    // Pop ready actions under the lock, but run each deleter OUTSIDE it: a
+    // deleter may itself call schedule_to_delete (which re-locks), and holding
+    // the lock across GPU destruction would needlessly stall the main thread's
+    // enqueues.
+    for (;;)
     {
-        auto del = m_delayed_delete_queue.top().del;
-        m_delayed_delete_queue.pop();
+        delayed_deleter del;
+        {
+            std::lock_guard lock(m_delete_mutex);
+            if (m_delayed_delete_queue.empty() ||
+                m_delayed_delete_queue.top().frame_idx > current_frame)
+            {
+                break;
+            }
+            del = m_delayed_delete_queue.top().del;
+            m_delayed_delete_queue.pop();
+        }
         del(m_vk_device, m_allocator);
     }
 }
@@ -1055,10 +1069,18 @@ render_device::delete_scheduled_actions()
 void
 render_device::flush_deferred_deletions()
 {
-    while (!m_delayed_delete_queue.empty())
+    for (;;)
     {
-        auto del = m_delayed_delete_queue.top().del;
-        m_delayed_delete_queue.pop();
+        delayed_deleter del;
+        {
+            std::lock_guard lock(m_delete_mutex);
+            if (m_delayed_delete_queue.empty())
+            {
+                break;
+            }
+            del = m_delayed_delete_queue.top().del;
+            m_delayed_delete_queue.pop();
+        }
         del(m_vk_device, m_allocator);
     }
 }

@@ -181,7 +181,7 @@ render_bridge::is_kryga_mesh(const utils::path& p)
 void*
 render_bridge::alloc_cmd_raw(size_t size, size_t align)
 {
-    return glob::glob_state().getr_queues().get_render().arena.alloc_raw(size, align);
+    return glob::glob_state().getr_queues().get_render().alloc_raw(size, align);
 }
 
 void
@@ -191,14 +191,18 @@ render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
 }
 
 void
-render_bridge::drain_queue()
+render_bridge::drain_frame(uint32_t slot)
 {
     auto& vr = glob::glob_state().getr_render().renderer;
     auto& loader = glob::glob_state().getr_render().loader;
 
     render_cmd::render_exec_context exec_ctx{vr, loader};
 
-    glob::glob_state().getr_queues().get_render().command_queue.drain(
+    // Drain this slot's queue to empty. All of the frame's commands were pushed
+    // (and made visible via the submitted-counter mutex handoff) before the
+    // render thread was released, and the producer is on the other slot, so
+    // "empty" reliably means "whole frame consumed".
+    glob::glob_state().getr_queues().get_render().command_queue(slot).drain(
         [&exec_ctx](render_cmd::render_command_base*&& cmd)
         {
             cmd->execute(exec_ctx);
@@ -207,9 +211,15 @@ render_bridge::drain_queue()
 }
 
 void
-render_bridge::retire_arena()
+render_bridge::set_active_slot(uint32_t slot)
 {
-    glob::glob_state().getr_queues().get_render().retire_arena();
+    glob::glob_state().getr_queues().get_render().set_active_slot(slot);
+}
+
+void
+render_bridge::reset_slot(uint32_t slot)
+{
+    glob::glob_state().getr_queues().get_render().reset_slot(slot);
 }
 
 void
@@ -357,6 +367,20 @@ update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
     object_data->gpu_data.bounding_radius = bounding_radius;
 
     ctx.vr.schd_update_object(object_data);
+}
+
+void
+set_outline_cmd::execute(render_cmd::render_exec_context& ctx)
+{
+    auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+    if (!object_data)
+    {
+        // Object already destroyed (e.g. selection cleared during level unload).
+        return;
+    }
+
+    object_data->outlined = outlined;
+    ctx.vr.schd_update_object_queue(object_data);
 }
 
 }  // namespace kryga

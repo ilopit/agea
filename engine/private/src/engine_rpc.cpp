@@ -116,13 +116,21 @@ rpc_engine_wait_frame(const Json::Value& params, Json::Value& result, std::strin
     {
         count = 60;
     }
-    for (int i = 0; i < count; ++i)
+    // Flush any queued main actions (so their render commands are enqueued for
+    // the frame currently building), then block until the render thread has
+    // actually drawn `count` frames. With the streaming pipeline the main thread
+    // runs ahead of the render thread, so a main-action round-trip alone no
+    // longer guarantees the mutation reached the render cache — wait on real
+    // render completion.
+    if (!eng.wait_main_action([]() {}))
     {
-        if (!eng.wait_main_action([]() {}))
-        {
-            err = "waitFrame timed out";
-            return;
-        }
+        err = "waitFrame timed out";
+        return;
+    }
+    if (!eng.wait_frames_rendered(count))
+    {
+        err = "waitFrame timed out";
+        return;
     }
     result = Json::Value(Json::objectValue);
     result["ok"] = true;

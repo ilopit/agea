@@ -34,18 +34,17 @@ namespace render
 void
 vulkan_render::set_camera(gpu::camera_data c)
 {
-    // Publish for the render thread; it latches in apply_pending_camera() at
-    // draw start. Double-buffered so this (main thread) can't overwrite the
-    // camera the render thread is currently using.
-    const int back = 1 - m_camera_published.load(std::memory_order_relaxed);
-    m_camera_pending[back] = c;
-    m_camera_published.store(back, std::memory_order_release);
+    // Write into the main thread's current input slot; the render thread latches
+    // it in apply_pending_camera() at draw start, reading the matching slot. The
+    // depth-1 pipeline gate keeps the render thread off this slot, so a plain
+    // write is safe (no atomic). Synchronous (test) callers leave the slot at 0.
+    m_camera_pending[m_main_build_slot] = c;
 }
 
 void
 vulkan_render::apply_pending_camera()
 {
-    const gpu::camera_data& c = m_camera_pending[m_camera_published.load(std::memory_order_acquire)];
+    const gpu::camera_data& c = m_camera_pending[m_render_draw_slot];
 
     // Mark clusters dirty if view changed (light-cluster assignment is in view
     // space). Compared against the previous frame's camera, still in
@@ -199,6 +198,14 @@ vulkan_render::draw_main()
 
     // Non-blocking: harvest any presents that have hit the screen since last frame.
     device.poll_present_timing();
+
+    // Publish this frame's stats for the main thread's ImGui overlay. Done here
+    // (render thread, owns the counters + object cache) rather than read from
+    // the main thread, which now builds the next frame concurrently.
+    m_published_all_draws.store(m_all_draws, std::memory_order_relaxed);
+    m_published_culled_draws.store(m_culled_draws, std::memory_order_relaxed);
+    m_published_objects.store(static_cast<uint32_t>(get_cache().objects.get_actual_size()),
+                              std::memory_order_relaxed);
 }
 
 void

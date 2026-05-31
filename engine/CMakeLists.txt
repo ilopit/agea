@@ -24,6 +24,7 @@ set(ENGINE_GAME_SRC
     "private/src/action_queue.cpp"
     "private/src/config.cpp"
     "private/src/console.cpp"
+    "private/src/crash_handler.cpp"
     "private/src/engine_counters.cpp"
     "private/src/input_manager.cpp"
     "private/src/kryga_engine.cpp"

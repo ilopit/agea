@@ -12,6 +12,7 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <deque>
 #include <string_view>
@@ -516,6 +517,14 @@ public:
                         std::vector<delayed_delete_action>,
                         delayed_delete_action_compare>
         m_delayed_delete_queue;
+
+    // Guards m_delayed_delete_queue. The streaming render loop lets the main
+    // thread enqueue deferred deletions (level reload, material/texture
+    // teardown, render-config rebuilds) while the render thread is draining its
+    // own queue and running delete_scheduled_actions — without this they race
+    // and corrupt the heap. Deleters run OUTSIDE the lock (see the .cpp) so an
+    // unlucky deleter that schedules more work can't self-deadlock.
+    std::mutex m_delete_mutex;
 };
 
 }  // namespace render

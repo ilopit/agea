@@ -10,6 +10,9 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_system.h>
 
+#include <render_bridge/render_bridge.h>
+#include <render_bridge/render_commands_common.h>
+
 #include <imgui.h>
 #include <ImGuizmo.h>
 
@@ -570,10 +573,13 @@ game_editor::get_active_camera() const
 void
 game_editor::set_selected(const utils::id& id)
 {
-    auto& renderer = glob::glob_state().getr_render().renderer;
-    auto& cache = renderer.get_cache();
     auto* lvl = glob::glob_state().getr_model().current_level;
 
+    // Toggle the outline flag via a render command, NOT by touching the render
+    // cache/queues here: those are render-thread-owned and iterated during draw,
+    // so a direct mutation from this (main) thread races the render thread under
+    // the decoupled pipeline. The command resolves the id and re-buckets the
+    // object on the render thread (see set_outline_cmd).
     auto set_outline = [&](const utils::id& sel_id, bool value)
     {
         if (!sel_id.valid() || !lvl)
@@ -586,26 +592,25 @@ game_editor::set_selected(const utils::id& id)
             return;
         }
 
+        auto& rb = glob::glob_state().getr_render_bridge();
+        auto enqueue_outline = [&](const utils::id& comp_id)
+        {
+            auto* cmd = rb.alloc_cmd<set_outline_cmd>();
+            cmd->id = comp_id;
+            cmd->outlined = value;
+            rb.enqueue_cmd(cmd);
+        };
+
         if (auto* go = obj->as<root::game_object>())
         {
             for (auto* comp : go->get_subcomponents())
             {
-                auto* rd = cache.objects.find_by_id(comp->get_id());
-                if (rd)
-                {
-                    rd->outlined = value;
-                    renderer.schd_update_object_queue(rd);
-                }
+                enqueue_outline(comp->get_id());
             }
         }
         else
         {
-            auto* rd = cache.objects.find_by_id(sel_id);
-            if (rd)
-            {
-                rd->outlined = value;
-                renderer.schd_update_object_queue(rd);
-            }
+            enqueue_outline(sel_id);
         }
     };
 

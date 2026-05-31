@@ -596,8 +596,6 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
 {
     KRG_check(!get_material_data(id), "Shouldn't exist");
 
-    auto& device = glob::glob_state().getr_render().device;
-
     auto mat_data = std::make_shared<material_data>(id, type_id);
 
     // Note: Layout validation removed - compile-time generated GPU structs
@@ -621,32 +619,11 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
         }
     }
 
-    // Legacy per-material descriptor set (kept for backwards compatibility)
-    auto sampler = get_sampler_data(AID("default"));
-    if (!samples.empty())
-    {
-        std::vector<VkDescriptorImageInfo> image_buffer_info(samples.size());
-
-        for (int i = 0; i < samples.size(); ++i)
-        {
-            image_buffer_info[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            image_buffer_info[i].sampler = sampler->m_sampler;
-            image_buffer_info[i].imageView = samples[i].texture->image_view->vk();
-        }
-
-        // TODO: Optimize - this can be removed once all shaders use bindless
-        VkDescriptorSet txt_ds = VK_NULL_HANDLE;
-        vk_utils::descriptor_builder::begin(device.descriptor_layout_cache(),
-                                            device.descriptor_allocator())
-            .bind_image(0,
-                        (uint32_t)image_buffer_info.size(),
-                        image_buffer_info.data(),
-                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                        VK_SHADER_STAGE_FRAGMENT_BIT)
-            .build(txt_ds);
-
-        mat_data->set_textures_ds(txt_ds);
-    }
+    // All shaders sample textures through the global bindless set (set 2) by
+    // index — there is no per-material descriptor set. (The old legacy set was
+    // created here and bound at set 0/3; it's gone now that the UI shaders are
+    // bindless too, which also removes the create-on-main descriptor allocation
+    // and its leak.)
 
     mat_data->set_gpu_data(gpu_params);
 
@@ -715,7 +692,7 @@ vulkan_render_loader::destroy_material_data(const kryga::utils::id& id)
     auto itr = m_materials_cache.find(id);
     if (itr != m_materials_cache.end())
     {
-        // shedule_to_deltete_t(std::move(itr->second));
+        // No per-material descriptor set to free — textures are bindless.
         m_materials_cache.erase(itr);
     }
 }

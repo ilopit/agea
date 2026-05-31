@@ -22,4 +22,16 @@ struct update_transform_cmd : render_cmd::render_command_base
     execute(render_cmd::render_exec_context& ctx) override;
 };
 
+// Set an object's outline flag and re-bucket it between the default and outline
+// render queues. Runs on the render thread (those queues are render-owned and
+// iterated during draw) — editor selection must NOT touch them directly.
+struct set_outline_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    bool outlined = false;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override;
+};
+
 }  // namespace kryga

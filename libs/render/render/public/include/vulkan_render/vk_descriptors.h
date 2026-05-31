@@ -12,6 +12,10 @@ namespace render
 {
 namespace vk_utils
 {
+// Pool-recycling descriptor allocator: reset_pools() recycles all sets wholesale
+// each frame. Used per-frame on the render thread only — no individual freeing,
+// no cross-thread access (materials now sample bindless, so there are no
+// long-lived per-material sets to free).
 class descriptor_allocator
 {
 public:

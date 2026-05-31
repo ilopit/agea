@@ -883,6 +883,11 @@ vulkan_render::apply_pending_render_config()
     // already wrote the topology-affecting fields, so this is a no-op for
     // those.
     m_render_config = m_pending_render_config;
+
+    // Consumed: the engine drained the render pipeline to idle before this call
+    // (has_pending_render_config gates that), so clear the flag now that active
+    // == pending again.
+    m_render_config_dirty = false;
 }
 
 void

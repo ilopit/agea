@@ -262,6 +262,36 @@ vulkan_render::schd_update_light(render::vulkan_universal_light_data* ld)
 }
 
 void
+vulkan_render::schd_remove_light(render::vulkan_directional_light_data* ld)
+{
+    // Remove ALL occurrences from every frame's queue (a light can be queued
+    // more than once before a frame drains). Mirrors schd_add/update_light,
+    // which enqueue into every frame.
+    for (auto& q : m_frames)
+    {
+        auto& queue = q.uploads.directional_light_queue;
+        for (auto itr = queue.find(ld); itr != queue.end(); itr = queue.find(ld))
+        {
+            queue.swap_and_remove(itr);
+        }
+    }
+}
+
+void
+vulkan_render::schd_remove_light(render::vulkan_universal_light_data* ld)
+{
+    m_clusters_dirty = true;
+    for (auto& q : m_frames)
+    {
+        auto& queue = q.uploads.universal_light_queue;
+        for (auto itr = queue.find(ld); itr != queue.end(); itr = queue.find(ld))
+        {
+            queue.swap_and_remove(itr);
+        }
+    }
+}
+
+void
 vulkan_render::set_selected_directional_light(const utils::id& id)
 {
     m_selected_directional_light_id = id;
@@ -470,8 +500,8 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         const auto& counts = m_cluster_grid.get_cluster_light_counts();
         const size_t size = counts.size() * sizeof(uint32_t);
 
-        auto* data = ensure_buffer_capacity_and_map(
-            frame.buffers.cluster_counts, size, "cluster_counts");
+        auto* data =
+            ensure_buffer_capacity_and_map(frame.buffers.cluster_counts, size, "cluster_counts");
         memcpy(data, counts.data(), size);
         frame.buffers.cluster_counts.end();
     }
@@ -481,8 +511,8 @@ vulkan_render::upload_cluster_data(render::frame_state& frame)
         const auto& indices = m_cluster_grid.get_cluster_light_indices();
         const size_t size = indices.size() * sizeof(uint32_t);
 
-        auto* data = ensure_buffer_capacity_and_map(
-            frame.buffers.cluster_indices, size, "cluster_indices");
+        auto* data =
+            ensure_buffer_capacity_and_map(frame.buffers.cluster_indices, size, "cluster_indices");
         memcpy(data, indices.data(), size);
         frame.buffers.cluster_indices.end();
     }

@@ -114,16 +114,26 @@ public:
     void
     enqueue_cmd(render_cmd::render_command_base* cmd);
 
-    // Drain the command queue (called from render thread)
+    // Execute (and destruct) every command in frame-parity `slot`'s queue, then
+    // return. Each slot holds exactly one frame's commands (the producer is on
+    // the other slot), so draining to empty consumes precisely one frame; the
+    // caller then issues the draw. Used by both the streaming render loop
+    // (slot = frame parity) and the headless tick (slot 0).
     void
-    drain_queue();
+    drain_frame(uint32_t slot);
 
-    // Retire the active arena so its memory survives until the render thread
-    // has drained all commands allocated from it (called from main thread).
+    // Select the active producer slot (arena + queue) for the frame about to be
+    // built (main thread). See queues::render::set_active_slot.
     void
-    retire_arena();
+    set_active_slot(uint32_t slot);
 
-    // Reset the arena (called from main thread after render done)
+    // Rewind a slot's arena (called from the render thread after it finishes
+    // drawing the frame that used that slot). See queues::render::reset_slot.
+    void
+    reset_slot(uint32_t slot);
+
+    // Reset the active arena (single-threaded / headless after a synchronous
+    // drain).
     void
     reset_arena();
 

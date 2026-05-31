@@ -386,6 +386,10 @@ struct destroy_light_cmd : render_cmd::render_command_base
             auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
             if (rh)
             {
+                // Drop from the pending upload queues BEFORE releasing the slot,
+                // else the per-frame queues keep a dangling pointer that the
+                // render thread dereferences next draw (out-of-bounds SSBO write).
+                ctx.vr.schd_remove_light(rh);
                 ctx.vr.get_cache().directional_lights.release(rh);
             }
         }
@@ -394,6 +398,7 @@ struct destroy_light_cmd : render_cmd::render_command_base
             auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
             if (rh)
             {
+                ctx.vr.schd_remove_light(rh);
                 ctx.vr.get_cache().universal_lights.release(rh);
             }
         }

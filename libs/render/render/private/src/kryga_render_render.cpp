@@ -264,29 +264,16 @@ vulkan_render::bind_material(VkCommandBuffer cmd,
         m_bda_material_bound = true;
     }
 
-    // Bind texture set - either bindless global set or per-material set
-    if (m_bindless_set != VK_NULL_HANDLE)
-    {
-        vkCmdBindDescriptorSets(cmd,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                ctx.pipeline_layout,
-                                KGPU_textures_descriptor_sets,
-                                1,
-                                &m_bindless_set,
-                                0,
-                                nullptr);
-    }
-    else if (cur_material->has_textures())
-    {
-        vkCmdBindDescriptorSets(cmd,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                ctx.pipeline_layout,
-                                KGPU_textures_descriptor_sets,
-                                1,
-                                &cur_material->get_textures_ds(),
-                                0,
-                                nullptr);
-    }
+    // Bind the global bindless texture set (mandatory — Vulkan 1.2 + bindless).
+    KRG_check(m_bindless_set != VK_NULL_HANDLE, "bindless set must exist");
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            ctx.pipeline_layout,
+                            KGPU_textures_descriptor_sets,
+                            1,
+                            &m_bindless_set,
+                            0,
+                            nullptr);
 }
 
 void
@@ -620,9 +607,10 @@ vulkan_render::capture_ui_snapshot()
 
     ImDrawData* dd = ImGui::GetDrawData();
 
-    // Write the back buffer (the one not currently published), then publish it.
-    const int back = 1 - m_ui_snapshot_published.load(std::memory_order_relaxed);
-    ui_draw_snapshot& s = m_ui_snapshots[back];
+    // Write into the main thread's current input slot (frame parity); the render
+    // thread reads the matching slot via m_render_draw_slot. The pipeline gate
+    // keeps the render thread off this slot, so no publish/atomic is needed.
+    ui_draw_snapshot& s = m_ui_snapshots[m_main_build_slot];
 
     s.cmds.clear();
     s.vtx.clear();
@@ -633,9 +621,8 @@ vulkan_render::capture_ui_snapshot()
 
     if (!dd || dd->CmdListsCount == 0 || dd->TotalVtxCount == 0 || dd->TotalIdxCount == 0)
     {
-        // Publish an empty (invalid) snapshot so the render thread draws no UI
-        // this frame rather than reusing a stale one.
-        m_ui_snapshot_published.store(back, std::memory_order_release);
+        // Leave this slot invalid so the render thread draws no UI this frame
+        // rather than reusing a stale snapshot.
         return;
     }
 
@@ -682,16 +669,14 @@ vulkan_render::capture_ui_snapshot()
     s.total_vtx = static_cast<uint32_t>(dd->TotalVtxCount);
     s.total_idx = static_cast<uint32_t>(dd->TotalIdxCount);
     s.valid = true;
-    m_ui_snapshot_published.store(back, std::memory_order_release);
 }
 
 void
 vulkan_render::update_ui(frame_state& fs)
 {
-    // Read the published snapshot, NOT the live ImGui draw data — the main
+    // Read this frame's snapshot slot, NOT the live ImGui draw data — the main
     // thread may already be building the next frame into ImGui's single buffer.
-    const ui_draw_snapshot& s =
-        m_ui_snapshots[m_ui_snapshot_published.load(std::memory_order_acquire)];
+    const ui_draw_snapshot& s = m_ui_snapshots[m_render_draw_slot];
 
     if (!s.valid || s.total_vtx == 0 || s.total_idx == 0)
     {

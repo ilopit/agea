@@ -442,29 +442,16 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
     vkCmdBindPipeline(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_target_mat->get_shader_effect()->m_pipeline);
 
-    // Rebind bindless textures with UI's compatible pipeline layout
-    if (m_bindless_set != VK_NULL_HANDLE)
-    {
-        vkCmdBindDescriptorSets(cmd,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pipeline_layout,
-                                KGPU_textures_descriptor_sets,
-                                1,
-                                &m_bindless_set,
-                                0,
-                                nullptr);
-    }
-    else if (m_ui_target_mat->has_textures())
-    {
-        vkCmdBindDescriptorSets(cmd,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                pipeline_layout,
-                                KGPU_textures_descriptor_sets,
-                                1,
-                                &m_ui_target_mat->get_textures_ds(),
-                                0,
-                                nullptr);
-    }
+    // Rebind the global bindless set with UI's compatible pipeline layout.
+    KRG_check(m_bindless_set != VK_NULL_HANDLE, "bindless set must exist");
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline_layout,
+                            KGPU_textures_descriptor_sets,
+                            1,
+                            &m_bindless_set,
+                            0,
+                            nullptr);
 
     bind_mesh(cmd, m);
 
@@ -483,11 +470,10 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
 void
 vulkan_render::draw_ui(frame_state& fs)
 {
-    // Read the published snapshot, NOT the live ImGui draw data (the main thread
-    // may be mid-NewFrame on ImGui's single buffer). update_ui filled the GPU
-    // buffers from this same snapshot.
-    const ui_draw_snapshot& s =
-        m_ui_snapshots[m_ui_snapshot_published.load(std::memory_order_acquire)];
+    // Read this frame's snapshot slot, NOT the live ImGui draw data (the main
+    // thread may be mid-NewFrame on ImGui's single buffer). update_ui filled the
+    // GPU buffers from this same slot.
+    const ui_draw_snapshot& s = m_ui_snapshots[m_render_draw_slot];
 
     if (!s.valid || s.cmds.empty() || s.total_vtx == 0 || s.total_idx == 0)
     {
@@ -520,21 +506,25 @@ vulkan_render::draw_ui(frame_state& fs)
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_se->m_pipeline);
 
+    // Bind the global bindless set; the font is sampled by index (no per-material
+    // descriptor set). Mirrors the bindless main/UI-copy draws.
     vkCmdBindDescriptorSets(cmd,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
                             m_ui_se->m_pipeline_layout,
-                            0,
+                            KGPU_textures_descriptor_sets,
                             1,
-                            &m_ui_mat->get_textures_ds(),
+                            &m_bindless_set,
                             0,
                             nullptr);
 
     m_ui_push_constants.scale = glm::vec2(2.0f / s.display_size[0], 2.0f / s.display_size[1]);
     m_ui_push_constants.translate = glm::vec2(-1.0f);
+    m_ui_push_constants.tex_index = m_ui_txt->get_bindless_index();
+    m_ui_push_constants.sampler_index = KGPU_SAMPLER_LINEAR_CLAMP;
 
     vkCmdPushConstants(cmd,
                        m_ui_se->m_pipeline_layout,
-                       VK_SHADER_STAGE_VERTEX_BIT,
+                       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                        0,
                        sizeof(ui_push_constants),
                        &m_ui_push_constants);

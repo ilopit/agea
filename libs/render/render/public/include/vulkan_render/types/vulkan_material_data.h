@@ -65,9 +65,6 @@ public:
         m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     }
 
-    bool
-    has_textures();
-
     void
     set_gpu_data(const kryga::utils::dynobj& gpu_data)
     {
@@ -78,18 +75,6 @@ public:
     get_gpu_data() const
     {
         return m_gpu_data;
-    }
-
-    const VkDescriptorSet&
-    get_textures_ds() const
-    {
-        return m_samplers_set;
-    }
-
-    void
-    set_textures_ds(VkDescriptorSet v)
-    {
-        m_samplers_set = v;
     }
 
     shader_effect_data*
@@ -181,7 +166,6 @@ private:
 
     kryga::utils::dynobj m_gpu_data;
 
-    VkDescriptorSet m_samplers_set = VK_NULL_HANDLE;
     shader_effect_data* m_effect = nullptr;
     std::vector<texture_sampler_data> m_texture_samples;
     std::vector<uint32_t> m_bindless_texture_indices;

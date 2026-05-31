@@ -96,10 +96,12 @@ descriptor_allocator::allocate(VkDescriptorSet* set, VkDescriptorSetLayout layou
 
     if (is_reallocate_needed)
     {
-        // allocate a new pool and retry
+        // allocate a new pool and retry. Must repoint at the fresh pool —
+        // retrying the same full pool would fail again and hit KRG_never.
         m_current_pool = grab_pool();
         m_used_pools.push_back(m_current_pool);
 
+        descriptor_ai.descriptorPool = m_current_pool;
         alloc_result = vkAllocateDescriptorSets(device, &descriptor_ai, set);
 
         // if it still fails then we have big issues

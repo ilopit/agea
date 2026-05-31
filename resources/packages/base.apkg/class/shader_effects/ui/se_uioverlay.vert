@@ -13,14 +13,18 @@ out gl_PerVertex
     vec4 gl_Position;
 };
 
+// Must match se_uioverlay.frag byte-for-byte (shared push-constant range across
+// the vertex + fragment stages). The vertex stage uses only scale/translate.
 layout (push_constant) uniform PushConstants {
     vec2 scale;
     vec2 translate;
-} pushConstants;
+    uint tex_index;
+    uint sampler_index;
+} pc;
 
-void main() 
+void main()
 {
     out_UV = in_UV;
     out_color = in_color;
-    gl_Position = vec4(in_pos * pushConstants.scale + pushConstants.translate, 0.0, 1.0);
+    gl_Position = vec4(in_pos * pc.scale + pc.translate, 0.0, 1.0);
 }

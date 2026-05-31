@@ -3,11 +3,14 @@
 Translation layer between model objects (smart_object hierarchy) and Vulkan render data.
 
 ## Command system
-Per-frame arena allocation eliminates dynamic alloc overhead:
-1. `alloc_cmd<T>()` — allocate command from arena
-2. `enqueue_cmd()` — queue for render thread
-3. `drain_queue()` — execute all queued commands
-4. Arena reset after rendering
+Per-frame arena allocation eliminates dynamic alloc overhead. Commands and
+arenas are double-buffered by frame parity (slot = frame & 1): the main thread
+produces frame F into slot (F&1) while the render thread consumes the other
+slot, so they never touch the same queue at once.
+1. `alloc_cmd<T>()` — allocate command from the active slot's arena
+2. `enqueue_cmd()` — push onto the active slot's queue
+3. `drain_frame(slot)` — render thread executes that slot's whole queue, then draws
+4. `reset_slot(slot)` — rewind the arena after the frame is drawn
 
 ## GPU data pipeline
 - `collect_gpu_data()` — packs model data into GPU structs via reflection-based serialization

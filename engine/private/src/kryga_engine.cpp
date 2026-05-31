@@ -106,6 +106,10 @@
 namespace kryga
 {
 
+// Defined in crash_handler.cpp — installs an unhandled-exception minidump writer.
+void
+install_crash_handler();
+
 // ============================================================================
 // Startup Options
 // ============================================================================
@@ -194,6 +198,10 @@ vulkan_engine::~vulkan_engine()
 bool
 vulkan_engine::init(const startup_options& options)
 {
+    // Write a minidump on any unhandled crash (catches timing races a debugger
+    // would perturb away). No-op on non-Windows.
+    install_crash_handler();
+
     ALOG_INFO("Initialization started ...");
 
     m_run_for_seconds = options.run_for_seconds;
@@ -468,42 +476,82 @@ vulkan_engine::cleanup()
     glob::glob_state_reset();
 }
 
-// TODO: Streaming command execution optimization.
-// Currently this is a batch model: render thread sleeps until main enqueues ALL
-// commands, then drains everything at once. The SPSC queue and arena support
-// concurrent push/pop, so render could drain incrementally while main is still
-// enqueueing. To implement:
-//   1. Render thread spins on try_pop() instead of CV wait (with yield backoff).
-//   2. Main enqueues a draw_fence_cmd as the last command per frame.
-//   3. draw_fence_cmd::execute() calls draw_main() + signals m_main_cv.
-//   4. Remove m_render_work_ready — render is always running.
-//   5. Arena is safe: it only grows forward during a frame, render reads earlier offsets.
-// Trade-off: burns CPU when idle (spinning) vs current zero-cost CV sleep.
-// Consider hybrid: spin N iterations, then fall back to CV wait.
+// Streaming render thread: draws one frame per loop iteration. The main thread
+// builds the next frame's commands (into the other parity slot) concurrently —
+// so the threads overlap (main builds N while this draws N-1) instead of
+// ping-ponging through a barrier.
 void
 vulkan_engine::render_thread_func()
 {
-    while (true)
+    auto& bridge = glob::glob_state().getr_render_bridge();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+
+    for (;;)
     {
+        // Wait for a submitted-but-undrawn frame (or shutdown once idle).
         {
             std::unique_lock lock(m_render_mutex);
-            m_render_cv.wait(lock, [this] { return m_render_work_ready || m_render_shutdown; });
-            if (m_render_shutdown)
+            m_render_cv.wait(
+                lock,
+                [this] { return m_frames_submitted > m_frames_completed || m_render_shutdown; });
+            if (m_render_shutdown && m_frames_submitted == m_frames_completed)
             {
                 break;
             }
-            m_render_work_ready = false;
         }
 
-        glob::glob_state().getr_render_bridge().drain_queue();
-        glob::glob_state().getr_render().renderer.draw_main();
+        // This frame used arena/queue/camera/UI parity slot (completed & 1).
+        const uint32_t slot = static_cast<uint32_t>(m_frames_completed & 1ull);
+
+        // Execute this slot's build/destroy/transform commands, then draw. The
+        // slot drives the camera/UI snapshot reads inside draw_main, keeping
+        // them in lock-step with the frame the main thread produced.
+        bridge.drain_frame(slot);
+        renderer.set_render_draw_slot(slot);
+        renderer.draw_main();
+
+        // Frame drawn — its queue is drained empty and every command destructed,
+        // so rewind the arena slot for reuse. Safe: the main thread is building
+        // into the other slot, and its pipeline gate won't let it touch this
+        // slot until we publish completion below.
+        bridge.reset_slot(slot);
 
         {
             std::lock_guard lock(m_render_mutex);
-            m_render_done = true;
+            ++m_frames_completed;
         }
-        m_main_cv.notify_one();
+        // notify_all, not notify_one: besides the main thread's pipeline gate,
+        // RPC threads may be parked in wait_frames_rendered on this same cv.
+        m_main_cv.notify_all();
     }
+}
+
+void
+vulkan_engine::select_frame_slot(uint32_t slot)
+{
+    // Both producers of slot-indexed per-frame state, set together so they can't
+    // drift: the renderer (camera + UI snapshot double buffers) and the command
+    // queues/arena. The render thread reads the same parity slot when it draws.
+    glob::glob_state().getr_render().renderer.set_build_slot(slot);
+    glob::glob_state().getr_render_bridge().set_active_slot(slot);
+}
+
+bool
+vulkan_engine::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
+{
+    // count < 1 is a caller bug (the static_cast<uint64_t> below would wrap a
+    // negative into a huge target and silently block for the full timeout). The
+    // sole caller, rpc waitFrame, already clamps untrusted input to [1,60].
+    KRG_check(count >= 1, "wait_frames_rendered: count must be >= 1");
+
+    std::unique_lock lock(m_render_mutex);
+    // Frames in flight now; wait until the render thread has completed `count`
+    // beyond them. The mutation we want to observe rides the frame currently
+    // building (or one already submitted), so a completed count past the current
+    // submission point guarantees its commands have been drained into the cache.
+    const uint64_t target = m_frames_submitted + static_cast<uint64_t>(count);
+    return m_main_cv.wait_for(
+        lock, timeout, [this, target] { return m_frames_completed >= target; });
 }
 
 void
@@ -557,18 +605,27 @@ vulkan_engine::run()
             glob::glob_state().get_input_manager()->fire_input_event();
         }
 
-        // Wait for the previous frame's render to finish BEFORE building the next
-        // ImGui frame. ImGui's draw data is single-buffered and shared across the
-        // main/render threads; the render thread reads it in update_ui (after a
-        // vsync stall on vkAcquireNextImageKHR in FIFO). If we called NewFrame()
-        // before this wait, the next frame's ImGui::NewFrame() could overwrite the
-        // draw data the render thread is still consuming -> UI flicker/vanish in
-        // FIFO (MAILBOX hid it because acquire doesn't stall, so the read always
-        // won the race). First iteration is a no-op (m_render_done starts true).
+        // Pipeline gate: don't start building frame `frame_id` until the render
+        // thread has freed the arena/camera/UI slot it will reuse. We cap so the
+        // main thread is at most one frame ahead — it may build frame N while
+        // render draws N-1, but not race into N-2's still-in-use slot. The vsync
+        // / present-pacing stall the render thread takes each frame is exactly
+        // the window this lets the main thread fill (the whole point of the
+        // decouple). First iterations don't wait (nothing in flight yet). With
+        // the slot retired (render's reset_slot) this also fixes the old
+        // single-buffered-ImGui race: the render thread reads its own slot, not
+        // the buffer the next NewFrame() is about to stomp.
+        const uint64_t frame_id = m_frames_submitted;
+        const uint32_t slot = static_cast<uint32_t>(frame_id & 1ull);
         {
             std::unique_lock lock(m_render_mutex);
-            m_main_cv.wait(lock, [this] { return m_render_done; });
+            m_main_cv.wait(lock, [this] { return m_frames_submitted - m_frames_completed <= 1; });
         }
+
+        // Route this frame's camera/UI snapshot writes and its command arena +
+        // queue into `slot`. The render thread reads the same parity slot when it
+        // draws this frame.
+        select_frame_slot(slot);
 
 #if KRG_EDITOR
         {
@@ -596,32 +653,41 @@ vulkan_engine::run()
         }
 #endif
 #if KRG_HAS_IMGUI
-        // Snapshot the just-built ImGui frame into a render-owned double buffer.
-        // The render thread reads the snapshot, not ImGui's single live buffer,
-        // so the next NewFrame() can't stomp draw data mid-render.
+        // Snapshot the just-built ImGui frame into this frame's render-owned slot.
         glob::glob_state().getr_render().renderer.capture_ui_snapshot();
 #endif
+
+        // Apply config edits the UI just made. apply_pending_render_config does
+        // vkDeviceWaitIdle + swapchain/GPU-resource rebuilds and overwrites
+        // m_render_config, which the render thread reads every frame — so it must
+        // run with the render thread fully idle. Drain the whole pipeline first.
+        // Config changes are rare (user toggles a setting), so the one-frame
+        // stall is acceptable. When nothing is pending this is skipped entirely
+        // (no write to m_render_config), keeping the common path fully decoupled.
+        if (glob::glob_state().getr_render().renderer.has_pending_render_config())
+        {
+            {
+                std::unique_lock lock(m_render_mutex);
+                m_main_cv.wait(lock, [this] { return m_frames_completed == m_frames_submitted; });
+            }
+            glob::glob_state().getr_render().renderer.apply_pending_render_config();
+        }
+
         {
             KRG_make_scope(tick);
             KRG_PROFILE_SCOPE("Tick");
             tick(frame_time);
         }
-        // Render thread is done (waited above, before ui_tick) — all commands
-        // executed and destructed. Safe to reclaim arena memory for next frame.
-        glob::glob_state().getr_render_bridge().reset_arena();
-
-        // Apply config edits the UI made during ui_tick. Topology changes
-        // (e.g. render_scale.enabled) call vkDeviceWaitIdle and rebuild GPU
-        // resources here, BEFORE the next frame's render starts.
-        glob::glob_state().getr_render().renderer.apply_pending_render_config();
 
         {
             auto& ctrs = ::kryga::glob::glob_state().getr_engine_counters();
             auto& vr = glob::glob_state().getr_render().renderer;
 
-            ctrs.all_draws.update(vr.get_all_draws());
-            ctrs.culled_draws.update(vr.get_culled_draws());
-            ctrs.objects.update(vr.get_cache().objects.get_actual_size());
+            // Render-thread-published stats — sampled via atomics so reading them
+            // doesn't race the concurrent draw's counters / object cache.
+            ctrs.all_draws.update(vr.stat_all_draws());
+            ctrs.culled_draws.update(vr.stat_culled_draws());
+            ctrs.objects.update(vr.stat_objects());
         }
 
         {
@@ -635,11 +701,12 @@ vulkan_engine::run()
             consume_updated_transforms();
         }
 
-        // Signal render thread to draw this frame
+        // Publish the frame: its commands are all in slot's queue; the render
+        // thread drains that slot and draws. (No terminal command — one queue
+        // per frame parity means draining to empty is the frame boundary.)
         {
             std::lock_guard lock(m_render_mutex);
-            m_render_work_ready = true;
-            m_render_done = false;
+            ++m_frames_submitted;
         }
         m_render_cv.notify_one();
 
@@ -657,10 +724,10 @@ vulkan_engine::run()
         KRG_PROFILE_FRAME_MARK();
     }
 
-    // Wait for any in-flight render to finish, then shutdown render thread
+    // Drain any in-flight frames, then shut the render thread down.
     {
         std::unique_lock lock(m_render_mutex);
-        m_main_cv.wait(lock, [this] { return m_render_done; });
+        m_main_cv.wait(lock, [this] { return m_frames_completed == m_frames_submitted; });
         m_render_shutdown = true;
     }
     m_render_cv.notify_one();
@@ -673,7 +740,9 @@ vulkan_engine::tick_headless()
     consume_updated_render();
     consume_updated_transforms();
 
-    glob::glob_state().getr_render_bridge().drain_queue();
+    // Headless is single-threaded and never switches parity, so everything is
+    // enqueued into and drained from slot 0.
+    glob::glob_state().getr_render_bridge().drain_frame(0);
     glob::glob_state().getr_render().renderer.draw_headless();
     glob::glob_state().getr_render_bridge().reset_arena();
 }
@@ -823,9 +892,11 @@ vulkan_engine::load_level(const utils::id& level_id)
 {
     auto& lm = glob::glob_state().getr_model().levels;
 
-    // Tear down the current level if any.  Destroy commands are enqueued
-    // into the SPSC queue (arena-allocated).  Retire the current arena so
-    // its memory survives until the render thread drains the commands.
+    // Tear down the current level if any.  Destroy commands are enqueued into
+    // the SPSC queue (arena-allocated) and ride the current frame's active
+    // arena slot; the render thread drains them as part of the next frame and
+    // rewinds that slot only after drawing it (reset_slot), so the commands'
+    // memory survives until executed — no explicit arena retirement needed.
     // The render thread calls schedule_to_delete with authoritative
     // m_current_frame_number — no cross-thread read.
 #if KRG_EDITOR
@@ -835,8 +906,6 @@ vulkan_engine::load_level(const utils::id& level_id)
     {
         unload_render_resources(*prev);
         lm.unload_level(*prev);
-
-        glob::glob_state().getr_render_bridge().retire_arena();
     }
 
     auto result = lm.load_level(level_id);
