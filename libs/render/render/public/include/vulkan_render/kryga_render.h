@@ -568,13 +568,6 @@ private:
     void upload_probe_data(render::frame_state& frame);
     // clang-format on
 
-    // Clustered lighting methods
-    void
-    build_light_clusters();
-
-    void
-    upload_cluster_data(render::frame_state& frame);
-
     // Instance drawing methods
     void
     prepare_instance_data(render::frame_state& frame);
