@@ -198,3 +198,37 @@ class TestPlayModeAttachedComponent:
         finally:
             go.set_position(original)
             engine.wait_frame()
+
+
+class TestPlayModeDestroyedSurvivor:
+    """A PRE-EXISTING object DESTROYED during play is recreated on exit (phase 3):
+    rollback promotes its snapshot holders, preserving ALL ids (game_object AND
+    components), and restores its pre-play property values."""
+
+    def test_destroyed_survivor_recreated_on_exit(self, engine):
+        go = game_object(engine, HERO)
+        original = go.get_position()
+        render_before = _render_pos(engine, HERO_MESH)
+
+        engine.call_queued("engine.setMode", {"mode": "play"})
+        engine.wait_frame(3)
+
+        # Destroy the survivor (and its components) mid-play.
+        engine.call("model.scene.delete", {"id": HERO})
+        engine.wait_frame(3)
+        with pytest.raises(RuntimeError):
+            game_object(engine, HERO).get_position()  # gone from the model
+
+        # Exit — the destroyed survivor must come back with the SAME ids.
+        engine.call_queued("engine.setMode", {"mode": "edit"})
+        engine.wait_frame(3)
+
+        restored = game_object(engine, HERO).get_position()
+        assertions.assert_position_close(
+            restored, original, tolerance=0.01,
+            label="hero_cube model recreated after destroy+rollback")
+        # The component id survives too: hero_cube_mesh renders again at its
+        # pre-play position (proves promotion preserved per-component identity).
+        assertions.assert_position_close(
+            _render_pos(engine, HERO_MESH), render_before, tolerance=0.05,
+            label="hero_cube_mesh render recreated after destroy+rollback")

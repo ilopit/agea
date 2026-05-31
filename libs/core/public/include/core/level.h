@@ -22,6 +22,7 @@ class backend;
 #include <string>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace kryga
 {
@@ -149,12 +150,22 @@ private:
     vfs::backend* m_backend = nullptr;
 
     line_cache<root::game_object*> m_tickable_objects;
-    size_t m_snapshot_object_count = 0;
 
-    // Pre-play property snapshot: a bare, unregistered holder per survivor (keyed
-    // by the live object) holding its pre-play property values. rollback() phase 2
-    // copies them back in place. See docs/plans/play-mode-state-snapshot.md.
-    std::unordered_map<root::smart_object*, std::shared_ptr<root::smart_object>> m_snapshot;
+    // Pre-play property snapshot, keyed by object id (NOT pointer: a survivor can
+    // be destroyed mid-play and its address reused by a later spawn — id is stable
+    // and ABA-safe). m_snapshot holds a bare, unregistered holder per non-readonly
+    // object with its pre-play property values; m_snapshot_all_ids is every object
+    // present at snapshot (incl. readonly) so rollback can tell spawned-during-play
+    // (free) from present-at-snapshot (keep). See docs/plans/play-mode-state-snapshot.md.
+    std::unordered_map<utils::id, std::shared_ptr<root::smart_object>> m_snapshot;
+    std::unordered_set<utils::id> m_snapshot_all_ids;
+
+    // Editor play-mode only. A survivor destroyed during play is held here with
+    // its destruction PENDING the session outcome — the whole object graph is kept
+    // alive (just unregistered + un-rendered) rather than freed, so rollback() can
+    // re-add it and reset it like any survivor, identity and all ids preserved.
+    // (Game builds never enter play mode, so this stays empty there.)
+    std::vector<std::shared_ptr<root::smart_object>> m_pending_destroy;
 
     std::vector<utils::id> m_package_ids;
 
