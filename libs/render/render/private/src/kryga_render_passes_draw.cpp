@@ -483,15 +483,13 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
 void
 vulkan_render::draw_ui(frame_state& fs)
 {
-    if (!ImGui::GetCurrentContext())
-    {
-        return;
-    }
+    // Read the published snapshot, NOT the live ImGui draw data (the main thread
+    // may be mid-NewFrame on ImGui's single buffer). update_ui filled the GPU
+    // buffers from this same snapshot.
+    const ui_draw_snapshot& s =
+        m_ui_snapshots[m_ui_snapshot_published.load(std::memory_order_acquire)];
 
-    auto im_draw_data = ImGui::GetDrawData();
-
-    if ((!im_draw_data) || (im_draw_data->CmdListsCount == 0) ||
-        (im_draw_data->TotalVtxCount == 0) || (im_draw_data->TotalIdxCount == 0))
+    if (!s.valid || s.cmds.empty() || s.total_vtx == 0 || s.total_idx == 0)
     {
         return;
     }
@@ -500,8 +498,6 @@ vulkan_render::draw_ui(frame_state& fs)
     {
         return;
     }
-
-    ImGuiIO& io = ImGui::GetIO();
 
     // Viewport and scissor are in swapchain image pixel coords.
     auto& device = glob::glob_state().getr_render().device;
@@ -533,7 +529,7 @@ vulkan_render::draw_ui(frame_state& fs)
                             0,
                             nullptr);
 
-    m_ui_push_constants.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
+    m_ui_push_constants.scale = glm::vec2(2.0f / s.display_size[0], 2.0f / s.display_size[1]);
     m_ui_push_constants.translate = glm::vec2(-1.0f);
 
     vkCmdPushConstants(cmd,
@@ -558,29 +554,16 @@ vulkan_render::draw_ui(frame_state& fs)
     vkCmdBindVertexBuffers(cmd, 0, 1, &fs.ui.vertex_buffer.buffer(), offsets);
     vkCmdBindIndexBuffer(cmd, fs.ui.index_buffer.buffer(), 0, VK_INDEX_TYPE_UINT16);
 
-    int32_t vertex_offset = 0;
-    int32_t index_offset = 0;
-    for (int32_t i = 0; i < im_draw_data->CmdListsCount; i++)
+    for (const ui_draw_cmd& dc : s.cmds)
     {
-        const ImDrawList* cmd_list = im_draw_data->CmdLists[i];
-        for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++)
-        {
-            const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[j];
-            VkRect2D scissorRect;
-            scissorRect.offset.x = std::max((int32_t)(pcmd->ClipRect.x), 0);
-            scissorRect.offset.y = std::max((int32_t)(pcmd->ClipRect.y), 0);
-            scissorRect.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
-            scissorRect.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
-            vkCmdSetScissor(fs.frame->m_main_command_buffer, 0, 1, &scissorRect);
-            vkCmdDrawIndexed(fs.frame->m_main_command_buffer,
-                             pcmd->ElemCount,
-                             1,
-                             index_offset,
-                             vertex_offset,
-                             0);
-            index_offset += pcmd->ElemCount;
-        }
-        vertex_offset += cmd_list->VtxBuffer.Size;
+        VkRect2D scissorRect;
+        scissorRect.offset.x = std::max((int32_t)dc.clip[0], 0);
+        scissorRect.offset.y = std::max((int32_t)dc.clip[1], 0);
+        scissorRect.extent.width = (uint32_t)(dc.clip[2] - dc.clip[0]);
+        scissorRect.extent.height = (uint32_t)(dc.clip[3] - dc.clip[1]);
+        vkCmdSetScissor(fs.frame->m_main_command_buffer, 0, 1, &scissorRect);
+        vkCmdDrawIndexed(
+            fs.frame->m_main_command_buffer, dc.elem_count, 1, dc.idx_offset, dc.vtx_offset, 0);
     }
 }
 #endif  // KRG_HAS_IMGUI

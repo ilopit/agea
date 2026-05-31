@@ -24,6 +24,7 @@
 #include <utils/line_container.h>
 #include <utils/id_allocator.h>
 
+#include <atomic>
 #include <vector>
 
 namespace kryga
@@ -156,6 +157,34 @@ struct ui_frame_state
     int32_t index_count = 0;
 };
 
+// One ImGui draw command flattened for the render thread. Plain data so the
+// public header stays free of <imgui.h>. Offsets are precomputed to match how
+// update_ui concatenates per-cmd-list vertices/indices into a single buffer.
+struct ui_draw_cmd
+{
+    float clip[4] = {0.f, 0.f, 0.f, 0.f};  // x0, y0, x1, y1 in framebuffer pixels
+    uint32_t elem_count = 0;
+    uint32_t idx_offset = 0;  // running first-index across all commands
+    int32_t vtx_offset = 0;   // base vertex of this command's cmd-list
+};
+
+// Owned, double-buffered snapshot of one ImGui frame's draw data. The main
+// thread fills a back buffer in capture_ui_snapshot() and publishes it; the
+// render thread reads the published one. This decouples rendering from the
+// live (single-buffered) ImGui draw data, so the main thread's next
+// ImGui::NewFrame() can never stomp data the render thread is mid-read — the
+// race the "wait before ui_tick" ordering currently works around.
+struct ui_draw_snapshot
+{
+    bool valid = false;
+    float display_size[2] = {0.f, 0.f};
+    uint32_t total_vtx = 0;
+    uint32_t total_idx = 0;
+    std::vector<uint8_t> vtx;  // concatenated ImDrawVert bytes
+    std::vector<uint8_t> idx;  // concatenated ImDrawIdx bytes
+    std::vector<ui_draw_cmd> cmds;
+};
+
 struct frame_state
 {
     frame_buffers buffers;
@@ -221,6 +250,13 @@ public:
     {
         return m_camera_data;
     }
+
+    // Snapshot the current ImGui frame's draw data into a back buffer and
+    // publish it for the render thread. Called on the MAIN thread right after
+    // ImGui::Render(), before the next NewFrame(). No-op without an ImGui
+    // context. Decouples the render thread from the live ImGui draw data.
+    void
+    capture_ui_snapshot();
 
     uint32_t
     width() const
@@ -647,6 +683,13 @@ private:
     buffer_layout<material_data*> m_materials_layout;
 
     std::vector<frame_state> m_frames;
+
+    // Double-buffered ImGui draw-data snapshots. Main thread fills the back
+    // buffer in capture_ui_snapshot() and publishes its index; the render
+    // thread reads m_ui_snapshots[m_ui_snapshot_published]. Two buffers are
+    // enough because the main thread runs at most one frame ahead of render.
+    ui_draw_snapshot m_ui_snapshots[2];
+    std::atomic<int> m_ui_snapshot_published{0};
 
     // Number of frame slots whose GPU buffers are currently allocated. m_frames
     // is sized to the (max) device frame count; only [0, m_allocated_frame_slots)

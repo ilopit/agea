@@ -611,29 +611,95 @@ vulkan_render::prepare_ui_pipeline()
 }
 
 void
-vulkan_render::update_ui(frame_state& fs)
+vulkan_render::capture_ui_snapshot()
 {
     if (!ImGui::GetCurrentContext())
     {
         return;
     }
 
-    auto& device = glob::glob_state().getr_render().device;
-    ImDrawData* im_draw_data = ImGui::GetDrawData();
+    ImDrawData* dd = ImGui::GetDrawData();
 
-    if (!im_draw_data)
+    // Write the back buffer (the one not currently published), then publish it.
+    const int back = 1 - m_ui_snapshot_published.load(std::memory_order_relaxed);
+    ui_draw_snapshot& s = m_ui_snapshots[back];
+
+    s.cmds.clear();
+    s.vtx.clear();
+    s.idx.clear();
+    s.total_vtx = 0;
+    s.total_idx = 0;
+    s.valid = false;
+
+    if (!dd || dd->CmdListsCount == 0 || dd->TotalVtxCount == 0 || dd->TotalIdxCount == 0)
     {
+        // Publish an empty (invalid) snapshot so the render thread draws no UI
+        // this frame rather than reusing a stale one.
+        m_ui_snapshot_published.store(back, std::memory_order_release);
         return;
-    };
+    }
 
-    // Note: Alignment is done inside buffer creation
-    VkDeviceSize vertex_buffer_size = im_draw_data->TotalVtxCount * sizeof(ImDrawVert);
-    VkDeviceSize index_buffer_size = im_draw_data->TotalIdxCount * sizeof(ImDrawIdx);
+    const ImGuiIO& io = ImGui::GetIO();
+    s.display_size[0] = io.DisplaySize.x;
+    s.display_size[1] = io.DisplaySize.y;
 
-    if ((vertex_buffer_size == 0) || (index_buffer_size == 0))
+    s.vtx.resize(static_cast<size_t>(dd->TotalVtxCount) * sizeof(ImDrawVert));
+    s.idx.resize(static_cast<size_t>(dd->TotalIdxCount) * sizeof(ImDrawIdx));
+
+    auto* vtx_dst = reinterpret_cast<ImDrawVert*>(s.vtx.data());
+    auto* idx_dst = reinterpret_cast<ImDrawIdx*>(s.idx.data());
+
+    // Offsets mirror update_ui/draw_ui's old logic exactly: vertices/indices are
+    // concatenated per cmd-list into one buffer; idx_offset runs across all
+    // commands by ElemCount, vtx_offset is the per-cmd-list base.
+    int32_t vtx_base = 0;
+    uint32_t idx_run = 0;
+    for (int n = 0; n < dd->CmdListsCount; ++n)
+    {
+        const ImDrawList* cl = dd->CmdLists[n];
+        memcpy(vtx_dst, cl->VtxBuffer.Data, cl->VtxBuffer.Size * sizeof(ImDrawVert));
+        memcpy(idx_dst, cl->IdxBuffer.Data, cl->IdxBuffer.Size * sizeof(ImDrawIdx));
+        vtx_dst += cl->VtxBuffer.Size;
+        idx_dst += cl->IdxBuffer.Size;
+
+        for (int c = 0; c < cl->CmdBuffer.Size; ++c)
+        {
+            const ImDrawCmd& pcmd = cl->CmdBuffer[c];
+            ui_draw_cmd dc;
+            dc.clip[0] = pcmd.ClipRect.x;
+            dc.clip[1] = pcmd.ClipRect.y;
+            dc.clip[2] = pcmd.ClipRect.z;
+            dc.clip[3] = pcmd.ClipRect.w;
+            dc.elem_count = pcmd.ElemCount;
+            dc.idx_offset = idx_run;
+            dc.vtx_offset = vtx_base;
+            s.cmds.push_back(dc);
+            idx_run += pcmd.ElemCount;
+        }
+        vtx_base += cl->VtxBuffer.Size;
+    }
+
+    s.total_vtx = static_cast<uint32_t>(dd->TotalVtxCount);
+    s.total_idx = static_cast<uint32_t>(dd->TotalIdxCount);
+    s.valid = true;
+    m_ui_snapshot_published.store(back, std::memory_order_release);
+}
+
+void
+vulkan_render::update_ui(frame_state& fs)
+{
+    // Read the published snapshot, NOT the live ImGui draw data — the main
+    // thread may already be building the next frame into ImGui's single buffer.
+    const ui_draw_snapshot& s =
+        m_ui_snapshots[m_ui_snapshot_published.load(std::memory_order_acquire)];
+
+    if (!s.valid || s.total_vtx == 0 || s.total_idx == 0)
     {
         return;
     }
+
+    const VkDeviceSize vertex_buffer_size = s.vtx.size();
+    const VkDeviceSize index_buffer_size = s.idx.size();
 
     // Regrow buffers when needed (with 2x headroom to avoid per-frame reallocation)
     if (vertex_buffer_size > fs.ui.vertex_buffer.get_alloc_size() ||
@@ -655,24 +721,16 @@ vulkan_render::update_ui(frame_state& fs)
         fs.ui.index_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_ci);
     }
 
-    fs.ui.vertex_count = im_draw_data->TotalVtxCount;
-    fs.ui.index_count = im_draw_data->TotalIdxCount;
+    fs.ui.vertex_count = static_cast<int32_t>(s.total_vtx);
+    fs.ui.index_count = static_cast<int32_t>(s.total_idx);
 
-    // Upload data
     fs.ui.vertex_buffer.begin();
     fs.ui.index_buffer.begin();
 
-    auto vtx_dst = (ImDrawVert*)fs.ui.vertex_buffer.allocate_data((uint32_t)vertex_buffer_size);
-    auto idx_dst = (ImDrawIdx*)fs.ui.index_buffer.allocate_data((uint32_t)index_buffer_size);
-
-    for (int n = 0; n < im_draw_data->CmdListsCount; n++)
-    {
-        const ImDrawList* cmd_list = im_draw_data->CmdLists[n];
-        memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-        memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
-        vtx_dst += cmd_list->VtxBuffer.Size;
-        idx_dst += cmd_list->IdxBuffer.Size;
-    }
+    auto* vtx_dst = fs.ui.vertex_buffer.allocate_data((uint32_t)vertex_buffer_size);
+    auto* idx_dst = fs.ui.index_buffer.allocate_data((uint32_t)index_buffer_size);
+    memcpy(vtx_dst, s.vtx.data(), vertex_buffer_size);
+    memcpy(idx_dst, s.idx.data(), index_buffer_size);
 
     fs.ui.vertex_buffer.end();
     fs.ui.index_buffer.end();

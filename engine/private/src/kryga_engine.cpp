@@ -595,6 +595,12 @@ vulkan_engine::run()
             ImGui::Render();
         }
 #endif
+#if KRG_HAS_IMGUI
+        // Snapshot the just-built ImGui frame into a render-owned double buffer.
+        // The render thread reads the snapshot, not ImGui's single live buffer,
+        // so the next NewFrame() can't stomp draw data mid-render.
+        glob::glob_state().getr_render().renderer.capture_ui_snapshot();
+#endif
         {
             KRG_make_scope(tick);
             KRG_PROFILE_SCOPE("Tick");
