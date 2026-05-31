@@ -58,6 +58,11 @@ vulkan_render::draw_main()
         return;
     }
 
+    // Present-wait pacing: bound the CPU's lead over the display before we touch
+    // any per-frame resource, collapsing the FIFO render-ahead queue (the
+    // dominant present latency). No-op when disabled / present_wait unsupported.
+    device.wait_present_pacing(m_render_config.present_pace_frames);
+
     device.switch_frame_indeces();
     m_culled_draws = 0;
     m_all_draws = 0;

@@ -229,6 +229,15 @@ public:
     void
     poll_present_timing();
 
+    // Present-wait pacing. Blocks until all but `pace_frames` of the submitted
+    // presents have been displayed, bounding how far the CPU runs ahead of the
+    // scanout (kills the FIFO render-ahead queue — the dominant present latency).
+    // No-op when pace_frames == 0 or VK_KHR_present_wait is unsupported. Call
+    // once per frame BEFORE acquiring the next swapchain image. Best-effort: a
+    // finite timeout keeps the render thread from hanging if the display stalls.
+    void
+    wait_present_pacing(uint32_t pace_frames);
+
     // Exponential moving average of submit→displayed latency in milliseconds.
     // 0 when unsupported or before the first sample.
     float

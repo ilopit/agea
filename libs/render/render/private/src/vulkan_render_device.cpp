@@ -805,6 +805,43 @@ render_device::poll_present_timing()
     }
 }
 
+void
+render_device::wait_present_pacing(uint32_t pace_frames)
+{
+    if (!m_present_wait_supported || pace_frames == 0)
+    {
+        return;
+    }
+    // FIFO only. Pacing exists to bound the FIFO render-ahead queue; mailbox
+    // already drops queued frames and immediate never waits, so there is no
+    // queue to collapse. Calling vkWaitForPresentKHR under those modes is at
+    // best a no-op and at worst a driver-dependent throttle of their (already
+    // low-latency) cadence — so leave them completely untouched.
+    if (m_present_mode != present_mode::fifo)
+    {
+        return;
+    }
+    // m_present_id is the id of the LAST submitted present; the frame about to be
+    // drawn will be m_present_id+1. To keep at most `pace_frames` presents
+    // undisplayed once it is submitted, wait until id (next - pace_frames) ==
+    // m_present_id + 1 - pace_frames has been displayed. Skip until enough
+    // history exists (also covers the post-recreate reset where m_present_id==0).
+    if (m_present_id < pace_frames)
+    {
+        return;
+    }
+    const uint64_t wait_id = m_present_id + 1 - pace_frames;
+    if (wait_id == 0)
+    {
+        return;
+    }
+    // Finite timeout (100 ms >> a few frame intervals): pacing is best-effort, so
+    // a stalled display (minimized window, mode switch) must not hang the render
+    // thread. vkWaitForPresentKHR also completes early if a later present already
+    // displayed, so this never over-blocks under mailbox/immediate.
+    m_vk_wait_for_present(m_vk_device, m_swapchain, wait_id, 100'000'000ull);
+}
+
 bool
 render_device::init_commands()
 {

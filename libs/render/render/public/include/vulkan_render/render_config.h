@@ -102,6 +102,23 @@ struct render_config
     present_mode present = present_mode::mailbox;
 #endif
 
+    // Present-wait pacing: bound how many frames the CPU may run ahead of the
+    // display. Before each frame the render thread blocks on vkWaitForPresentKHR
+    // until all but this many presents have been displayed, collapsing the FIFO
+    // render-ahead queue that is the dominant present latency (latency drops from
+    // ~(frames_in_flight+1) frame_times toward ~(present_pace_frames+1)). 0 = off
+    // (legacy unthrottled behavior); 1 = tightest latency, least CPU/GPU overlap;
+    // 2 = one frame of overlap (safer for heavy scenes). No-op when the driver
+    // lacks VK_KHR_present_wait, and applied ONLY under FIFO — mailbox/immediate
+    // have no render-ahead queue to bound and are left untouched (see
+    // render_device::wait_present_pacing).
+    // Default 2: ~35% lower FIFO latency while keeping a full frame of CPU/GPU
+    // overlap so a heavy frame can't drop the cadence to 30fps; set 1 for the
+    // tightest (one-frame) latency on light scenes. Clamped to <= frames_in_flight
+    // by validate() (frames_in_flight has priority): pacing deeper than the buffer
+    // can hold is a no-op, so the buffer depth is the ceiling.
+    uint32_t present_pace_frames = 2;
+
     // Clamp all fields to valid ranges
     void
     validate();

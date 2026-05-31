@@ -1535,6 +1535,7 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             r["frames_in_flight"] = cfg.frames_in_flight;
             r["present_mode"] = static_cast<int>(cfg.present);
             r["present_mode_name"] = render::to_string(cfg.present);
+            r["present_pace_frames"] = cfg.present_pace_frames;
         });
     if (!done)
     {
@@ -1763,6 +1764,11 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 {
                     cfg.present = static_cast<render::present_mode>(v.asInt());
                 }
+            }
+
+            if (params.isMember("present_pace_frames"))
+            {
+                cfg.present_pace_frames = params["present_pace_frames"].asUInt();
             }
 
             cfg.validate();

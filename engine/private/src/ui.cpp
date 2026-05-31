@@ -739,6 +739,8 @@ render_config_window::handle()
                 // Switching modes snaps Frames to the new mode's lowest valid
                 // count, so we never sit on a value it can't honor.
                 cfg.frames_in_flight = device.present_mode_image_range(picked).min;
+                // Pace lives inside the frames budget — keep it within the new ceiling.
+                cfg.present_pace_frames = std::min(cfg.present_pace_frames, cfg.frames_in_flight);
             }
         }
         if (ImGui::IsItemHovered())
@@ -765,6 +767,8 @@ render_config_window::handle()
         if (ImGui::IsItemDeactivatedAfterEdit())
         {
             cfg.frames_in_flight = (uint32_t)fif_edit;  // commit -> single rebuild
+            // frames_in_flight has priority: a lower buffer caps pacing too.
+            cfg.present_pace_frames = std::min(cfg.present_pace_frames, cfg.frames_in_flight);
         }
         if (ImGui::IsItemHovered())
         {
@@ -772,6 +776,35 @@ render_config_window::handle()
                 "How many frames the CPU runs ahead of the GPU. Range is what the\n"
                 "device allows for the selected present mode. Applies on release\n"
                 "(one swapchain rebuild). Lower = less GPU memory.");
+        }
+
+        // Present-wait pacing. Data-only (no swapchain rebuild), so commit live
+        // as the slider moves. Only meaningful under FIFO — mailbox/immediate
+        // have no render-ahead queue to bound — so grey it out otherwise.
+        const bool pacing_applies = (cfg.present == render::present_mode::fifo);
+        if (!pacing_applies)
+        {
+            ImGui::BeginDisabled();
+        }
+        // Max is the frames-in-flight ceiling: pacing beyond the buffer depth is
+        // a no-op, so the slider can't express it. 0 = off.
+        int pace = (int)cfg.present_pace_frames;
+        if (ImGui::SliderInt("Present Pacing##pace", &pace, 0, (int)cfg.frames_in_flight))
+        {
+            cfg.present_pace_frames = (uint32_t)pace;
+        }
+        if (!pacing_applies)
+        {
+            ImGui::EndDisabled();
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip(
+                "Bounds how many frames the CPU runs ahead of the display\n"
+                "(VK_KHR_present_wait), collapsing the FIFO present queue that is\n"
+                "the dominant present latency. 0 = off; 1 = lowest latency (least\n"
+                "CPU/GPU overlap, can drop heavy frames); 2 = one frame overlap\n"
+                "(default, safe). FIFO only — mailbox/immediate ignore it.");
         }
     }
 

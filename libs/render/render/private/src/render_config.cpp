@@ -290,6 +290,13 @@ render_config::validate()
                   static_cast<uint32_t>(present));
         present = present_mode::fifo;
     }
+
+    // present_pace_frames lives INSIDE the frames_in_flight budget: pacing to
+    // more frames than the queue can ever hold is a no-op (acquire blocks first).
+    // frames_in_flight has priority — clamp pace DOWN to it rather than raising
+    // the buffer. Clamped after frames_in_flight above, so the ceiling is final.
+    // 0 = off.
+    clamp_warn(present_pace_frames, 0u, frames_in_flight, "present_pace_frames");
 }
 
 // ============================================================================
@@ -369,6 +376,7 @@ render_config::load(const vfs::rid& rid)
 
     extract_field(container, "frames_in_flight", frames_in_flight);
     extract_field(container, "present_mode", present);
+    extract_field(container, "present_pace_frames", present_pace_frames);
 
     validate();
 
@@ -435,6 +443,7 @@ render_config::save(const utils::path& path) const
 
     root["frames_in_flight"] = frames_in_flight;
     root["present_mode"] = present_mode_to_str.at(present);
+    root["present_pace_frames"] = present_pace_frames;
 
     if (!serialization::write_container(path, root))
     {
@@ -519,6 +528,7 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
 
             extract_field(container, "frames_in_flight", frames_in_flight);
             extract_field(container, "present_mode", present);
+            extract_field(container, "present_pace_frames", present_pace_frames);
 
             validate();
             return true;
@@ -586,6 +596,7 @@ render_config::save_to_cache(const vfs::rid& cache) const
 
     root["frames_in_flight"] = frames_in_flight;
     root["present_mode"] = present_mode_to_str.at(present);
+    root["present_pace_frames"] = present_pace_frames;
 
     return serialization::write_container(cache, root);
 }
