@@ -101,6 +101,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <cstdlib>
 
 namespace kryga
 {
@@ -288,6 +289,16 @@ vulkan_engine::init(const startup_options& options)
     rwc.w = render_w;
     rwc.h = render_h;
     rwc.hidden = m_headless;
+    // Opt-in desktop fullscreen for present-latency testing (windowed FIFO pays
+    // DWM composition latency; fullscreen takes the independent/hardware flip
+    // path). KRYGA_FULLSCREEN=1 borderless desktop, =2 exclusive.
+    if (!m_headless)
+    {
+        if (const char* fs = std::getenv("KRYGA_FULLSCREEN"))
+        {
+            rwc.fullscreen = std::atoi(fs);
+        }
+    }
     auto window = glob::glob_state().get_native_window();
     if (!window->construct(rwc))
     {

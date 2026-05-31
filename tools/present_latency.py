@@ -76,6 +76,56 @@ def pick(headers, *needles):
     return None
 
 
+def collect(csv_path):
+    """Parse a PresentMon CSV into a stats dict (no printing). Returns None on
+    empty CSV. Keys: frame/disp/gpu/api -> stats dict (or None), modes -> {name: count}."""
+    with open(csv_path, newline="") as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        return None
+
+    headers = rows[0].keys()
+    frame_col = pick(headers, "msbetweenpresents") or pick(headers, "frametime")
+    disp_col = (pick(headers, "msuntildisplayed")
+                or pick(headers, "until", "displayed")
+                or pick(headers, "displaylatency"))
+    mode_col = pick(headers, "presentmode")
+    gpu_col = pick(headers, "gpulatency") or pick(headers, "msgpuactive") \
+        or pick(headers, "msuntilrendercomplete")
+    api_col = pick(headers, "msinpresentapi") or pick(headers, "inpresentapi")
+
+    def stats(col):
+        if not col:
+            return None
+        vals = []
+        for r in rows:
+            try:
+                v = float(r[col])
+            except (TypeError, ValueError):
+                continue
+            if v > 0:
+                vals.append(v)
+        if not vals:
+            return None
+        vals.sort()
+        p = lambda q: vals[min(len(vals) - 1, int(q * len(vals)))]
+        return {
+            "n": len(vals), "avg": statistics.fmean(vals), "med": statistics.median(vals),
+            "p95": p(0.95), "p99": p(0.99), "max": vals[-1],
+        }
+
+    modes = {}
+    if mode_col:
+        for r in rows:
+            modes[r[mode_col]] = modes.get(r[mode_col], 0) + 1
+
+    return {
+        "rows": len(rows),
+        "frame": stats(frame_col), "disp": stats(disp_col),
+        "gpu": stats(gpu_col), "api": stats(api_col), "modes": modes,
+    }
+
+
 def summarize(csv_path):
     with open(csv_path, newline="") as f:
         rows = list(csv.DictReader(f))
@@ -89,6 +139,15 @@ def summarize(csv_path):
     disp_col = (pick(headers, "msuntildisplayed")
                 or pick(headers, "until", "displayed")
                 or pick(headers, "displaylatency"))
+    # Diagnostic columns: which present path the OS used, and the GPU/CPU split.
+    # PresentMode == "Composed: Flip" means windowed DWM composition (extra
+    # flip-queue latency that vkWaitForPresent can't see); "Hardware: Independent
+    # Flip" means DWM handed off to the scanout hardware (low latency). This is
+    # THE column that separates our render-ahead queue from compositor latency.
+    mode_col = pick(headers, "presentmode")
+    gpu_col = pick(headers, "gpulatency") or pick(headers, "msgpuactive") \
+        or pick(headers, "msuntilrendercomplete")
+    api_col = pick(headers, "msinpresentapi") or pick(headers, "inpresentapi")
 
     def stats(col):
         if not col:
@@ -121,8 +180,23 @@ def summarize(csv_path):
     print(f"\nPresentMon summary ({len(rows)} presents)  [ms]")
     line("Frame time", fs)
     line("Display latency", stats(disp_col))
+    line("GPU latency", stats(gpu_col))
+    line("In present API", stats(api_col))
     if fs:
         print(f"  {'FPS (from avg)':<16}: {1000.0 / fs['avg']:.1f}")
+
+    # PresentMode distribution — the diagnostic. If this says "Composed: Flip"
+    # the frames go through DWM and the deep display latency is the compositor
+    # flip queue, not anything vkQueuePresentKHR pacing alone can fix.
+    if mode_col:
+        counts = {}
+        for r in rows:
+            counts[r[mode_col]] = counts.get(r[mode_col], 0) + 1
+        print(f"  {'PresentMode':<16}: ", end="")
+        print(", ".join(f"{k} ({v})" for k, v in
+                         sorted(counts.items(), key=lambda kv: -kv[1])))
+    else:
+        print(f"  {'PresentMode':<16}: column not found in CSV")
     print()
     return 0
 

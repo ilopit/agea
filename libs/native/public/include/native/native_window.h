@@ -23,6 +23,10 @@ public:
         // appears on screen, doesn't steal focus. Used by headless tests so the
         // ImGui SDL backend still has a valid SDL_Window* without a visible UI.
         bool hidden = false;
+        // 0 = windowed, 1 = borderless desktop fullscreen (SDL_WINDOW_FULLSCREEN_DESKTOP,
+        // lets DWM promote to independent flip), 2 = exclusive fullscreen
+        // (SDL_WINDOW_FULLSCREEN, hardware legacy flip — lowest latency).
+        int fullscreen = 0;
     };
 
     bool

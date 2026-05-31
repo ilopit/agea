@@ -48,6 +48,19 @@ native_window::construct(construct_params& c)
     // On Android the window is fullscreen — dimensions are dictated by the
     // surface provided by the Activity, not the construct_params values.
     flags |= SDL_WINDOW_FULLSCREEN;
+#else
+    // Desktop fullscreen for present-latency experiments. Borderless desktop
+    // (1) lets the Windows compositor promote to independent flip; exclusive
+    // (2) takes the hardware flip path (lowest latency). Swapchain extent is
+    // read from SDL after creation, so any desktop resolution is handled.
+    if (c.fullscreen == 1)
+    {
+        flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    }
+    else if (c.fullscreen == 2)
+    {
+        flags |= SDL_WINDOW_FULLSCREEN;
+    }
 #endif
 
     m_window = SDL_CreateWindow("KRYGA v0.1",
