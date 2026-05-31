@@ -74,6 +74,10 @@ game_object::detach(component* c)
     KRG_check(parent, "detach: component has no parent");
 
     std::erase(parent->m_children, c);
+    if (auto* pgoc = parent->as<game_object_component>())
+    {
+        pgoc->detach_render_child(c);
+    }
     c->m_parent = nullptr;
     c->set_owner(nullptr);
 

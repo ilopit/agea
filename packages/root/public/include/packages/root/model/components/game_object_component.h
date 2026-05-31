@@ -109,6 +109,20 @@ public:
         return *this;
     }
 
+    // Inverse of add_child for the render-children projection. m_render_children
+    // is only appended by add_child, but detach/recreate rebuilds the model tree
+    // (m_components) without it — so a detached child would linger here and the
+    // render-build recursion (get_render_children) would walk freed memory. Drop
+    // just c: its own subtree is freed wholesale and never traversed from here.
+    void
+    detach_render_child(component* c)
+    {
+        if (auto goc = c->as<game_object_component>())
+        {
+            std::erase(m_render_children, goc);
+        }
+    }
+
     bool
     has_dirty_transform() const
     {

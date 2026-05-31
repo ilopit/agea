@@ -340,13 +340,16 @@ level::rollback()
         snapshot_object_properties(*it->second, *obj);  // holder -> live
     }
 
-    // Re-sync the GPU for restored survivors: recompute each game_object's
-    // transform hierarchy from the restored values and mark its renderables
-    // transform-dirty so the render thread picks up the reset matrices. Render
-    // resources are kept (no destroy/rebuild) — identity and buffers survive.
-    // Note: a render-only property changed during play is restored in the model
-    // but not force-re-uploaded (mark_render_dirty no-ops on a constructed
-    // object); see docs/plans/play-mode-state-snapshot.md.
+    // Re-sync the GPU for restored survivors. update_position recomputes each
+    // game_object's transform hierarchy from the restored model values; the
+    // renderable components are then marked render-dirty so the render thread
+    // runs a full render_cmd_build, re-collecting BOTH the transform and any
+    // restored render-only properties (material, visibility, mesh, ...). A
+    // transform-only re-sync would miss those non-transform props. render_cmd_build
+    // re-collects gpu data into the existing cache slots — no buffer/identity
+    // teardown — so the toggle-latency win (no destroy/rebuild of survivors) is
+    // kept. mark_render_dirty queues because a survivor is render_ready (not
+    // constructed); the dirty_render drain then rebuilds it.
     for (auto& obj : m_objects)
     {
         if (!m_snapshot.contains(obj.get()))
@@ -358,7 +361,7 @@ level::rollback()
             go->update_position();
             for (auto* goc : go->get_renderable_components())
             {
-                goc->mark_transform_dirty();
+                goc->mark_render_dirty();
             }
         }
     }
