@@ -264,6 +264,15 @@ input_manager::input_tick(float dur_seconds)
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0)
     {
+        // The engine shuts down on SDL_QUIT. Log it: a *spurious* SDL_QUIT during
+        // a fullscreen swapchain reconfigure (the focus churn a fullscreen-desktop
+        // window emits when the Vulkan swapchain is recreated) made a graceful
+        // shutdown look like a hard crash for two debugging sessions — no
+        // exception, no dump, the engine just exited. Never let it be silent.
+        if (e.type == SDL_QUIT)
+        {
+            ALOG_WARN("input: SDL_QUIT received -> engine shutdown");
+        }
 #if KRG_HAS_IMGUI
         // Backtick toggles drop-down console — eat the event entirely
         if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_BACKQUOTE)
