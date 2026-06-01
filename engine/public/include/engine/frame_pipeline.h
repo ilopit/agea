@@ -11,27 +11,28 @@ namespace kryga
 
 // Coordinates the depth-1 streaming pipeline between the main (producer) thread
 // and the render (consumer) thread. Owns the render thread, the two condition
-// variables, the submitted/completed frame counters — and the per-frame parity
-// slot routing those counters imply.
+// variables, the submitted/completed frame counters — and the per-frame "frame
+// slot" routing those counters imply.
 //
-// The slot (frame_id & 1) is one logical value the pipeline is the authority
-// for; the renderer and command queues each cache their own copy because the
-// slot is ambient context deep in their call trees. begin_frame() routes the
-// producer copies (build slot); the render loop stamps the consumer copy (draw
+// A frame slot (frame_id & 1) is the frame-parity index into the depth-1 double
+// buffers; it's one logical value the pipeline is the authority for. The renderer
+// and command queue each cache their own copy because the frame slot is ambient
+// context deep in their call trees. begin_frame() routes the producer copies (the
+// build frame slot); the render loop stamps the consumer copy (the draw frame
 // slot) and drives the frame. Subsystems are reached through glob_state, the
 // codebase-wide access pattern — so this owns the whole frame lifecycle without
 // the engine acting as a middleman.
 //
 // Invariant: submitted - completed <= 1. The main thread builds frame N into
-// parity slot N&1 while the render thread draws frame N-1 from slot (N-1)&1.
+// frame slot N&1 while the render thread draws frame N-1 from frame slot (N-1)&1.
 // The vsync / present-pacing stall the render thread takes each frame is exactly
 // the window this lets the main thread fill — the point of the decouple.
 //
 // Per-frame stages:
-//   main:   begin_frame()  -> gate until the slot is free, route producer slots
-//           ... engine builds the frame into that slot ...
+//   main:   begin_frame()  -> gate until the frame slot is free, route producers
+//           ... engine builds the frame into that frame slot ...
 //           submit_frame() -> publish to the render thread, wake it
-//   render: (internal) wait for work -> drain + draw + reset slot -> complete
+//   render: (internal) wait for work -> drain + draw + reset frame slot -> complete
 class frame_pipeline
 {
 public:
@@ -54,9 +55,9 @@ public:
 
     // --- Main-thread per-frame stages ---
 
-    // Block until the next frame's parity slot is free (depth-1 gate), route the
-    // producer slots (renderer build slot + command queue/arena) to it, and
-    // return the slot. The engine then builds the frame before submit_frame().
+    // Block until the next frame slot is free (depth-1 gate), route the producers
+    // (renderer build frame slot + command queue/arena) to it, and return the frame
+    // slot. The engine then builds the frame before submit_frame().
     uint32_t
     begin_frame();
 
@@ -80,18 +81,19 @@ public:
 
     // --- Consumer side ---
 
-    // Execute (and destruct) every command in frame-parity `slot`'s queue. Each
-    // slot holds exactly one frame's commands (the producer is on the other
+    // Execute (and destruct) every command in `frame_slot`'s queue. Each frame
+    // slot holds exactly one frame's commands (the producer is on the other frame
     // slot), so draining to empty consumes precisely one frame; the caller then
     // issues the draw. Pulls the renderer/loader/queue from glob_state, holds no
     // pipeline state — hence static, callable by both the streaming render loop
-    // (slot = frame parity) and the single-threaded headless tick (slot 0) which
-    // bypasses the pipeline entirely.
+    // (frame_slot = frame parity) and the single-threaded headless tick (frame slot
+    // 0) which bypasses the pipeline entirely.
     //
-    // The slot *lifecycle* (set_active_slot / reset_slot / reset_arena) belongs
-    // to the queue owner (render::input_queue); this only consumes a slot.
+    // The frame-slot lifecycle (set_build_frame_slot / reset_frame_slot /
+    // reset_arena) belongs to the queue owner (render::input_queue); this only
+    // consumes a frame slot.
     static void
-    drain_frame(uint32_t slot);
+    drain_frame(uint32_t frame_slot);
 
 private:
     void

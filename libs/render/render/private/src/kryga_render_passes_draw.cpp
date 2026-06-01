@@ -473,7 +473,7 @@ vulkan_render::draw_ui(frame_state& fs)
     // Read this frame's snapshot slot, NOT the live ImGui draw data (the main
     // thread may be mid-NewFrame on ImGui's single buffer). update_ui filled the
     // GPU buffers from this same slot.
-    const ui_draw_snapshot& s = m_ui_snapshots[m_render_draw_slot];
+    const ui_draw_snapshot& s = m_ui_snapshots[m_draw_frame_slot];
 
     if (!s.valid || s.cmds.empty() || s.total_vtx == 0 || s.total_idx == 0)
     {

@@ -38,13 +38,13 @@ vulkan_render::set_camera(gpu::camera_data c)
     // it in apply_pending_camera() at draw start, reading the matching slot. The
     // depth-1 pipeline gate keeps the render thread off this slot, so a plain
     // write is safe (no atomic). Synchronous (test) callers leave the slot at 0.
-    m_camera_pending[m_main_build_slot] = c;
+    m_camera_pending[m_build_frame_slot] = c;
 }
 
 void
 vulkan_render::apply_pending_camera()
 {
-    const gpu::camera_data& c = m_camera_pending[m_render_draw_slot];
+    const gpu::camera_data& c = m_camera_pending[m_draw_frame_slot];
 
     // Mark clusters dirty if view changed (light-cluster assignment is in view
     // space). Compared against the previous frame's camera, still in

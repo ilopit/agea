@@ -608,9 +608,9 @@ vulkan_render::capture_ui_snapshot()
     ImDrawData* dd = ImGui::GetDrawData();
 
     // Write into the main thread's current input slot (frame parity); the render
-    // thread reads the matching slot via m_render_draw_slot. The pipeline gate
+    // thread reads the matching slot via m_draw_frame_slot. The pipeline gate
     // keeps the render thread off this slot, so no publish/atomic is needed.
-    ui_draw_snapshot& s = m_ui_snapshots[m_main_build_slot];
+    ui_draw_snapshot& s = m_ui_snapshots[m_build_frame_slot];
 
     s.cmds.clear();
     s.vtx.clear();
@@ -676,7 +676,7 @@ vulkan_render::update_ui(frame_state& fs)
 {
     // Read this frame's snapshot slot, NOT the live ImGui draw data — the main
     // thread may already be building the next frame into ImGui's single buffer.
-    const ui_draw_snapshot& s = m_ui_snapshots[m_render_draw_slot];
+    const ui_draw_snapshot& s = m_ui_snapshots[m_draw_frame_slot];
 
     if (!s.valid || s.total_vtx == 0 || s.total_idx == 0)
     {

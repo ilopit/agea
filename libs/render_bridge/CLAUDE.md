@@ -16,8 +16,8 @@ queue, then draw) is NOT here: it's the render-thread consumer side and lives on
 `frame_pipeline` (engine). The queue itself is `render::input_queue`
 (vulkan_render/input_queue.h), a **member of render_system** reached via
 `getr_render().input_queue` — NOT part of `core::queues` (which now holds only
-model-side dirty tracking). The slot *lifecycle* (`set_active_slot` / `reset_slot` /
-`reset_arena`) lives on `render::input_queue`, driven by the frame owner
+model-side dirty tracking). The frame-slot lifecycle (`set_build_frame_slot` /
+`reset_frame_slot` / `reset_arena`) lives on `render::input_queue`, driven by the frame owner
 (`frame_pipeline` in the streaming loop, the headless tick otherwise). render_bridge
 holds no slot state; it only builds commands into the active slot.
 

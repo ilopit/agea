@@ -251,28 +251,28 @@ public:
     const gpu::camera_data&
     get_camera() const
     {
-        return m_camera_pending[m_main_build_slot];
+        return m_camera_pending[m_build_frame_slot];
     }
 
-    // Main thread: select the per-frame double-buffer slot (frame parity) that
-    // subsequent set_camera() / capture_ui_snapshot() calls write into. Set once
-    // per frame (via vulkan_engine::select_frame_slot). Pairs with
-    // set_render_draw_slot, the render thread's read-side selector. With the
-    // depth-1 pipeline gate the two never name the same slot at once.
+    // Main thread: select the per-frame double-buffer frame slot (frame parity)
+    // that subsequent set_camera() / capture_ui_snapshot() calls write into. Set
+    // once per frame (via the pipeline's begin_frame). Pairs with
+    // set_draw_frame_slot, the render thread's read-side selector. With the
+    // depth-1 pipeline gate the two never name the same frame slot at once.
     void
-    set_build_slot(uint32_t slot)
+    set_build_frame_slot(uint32_t frame_slot)
     {
-        m_main_build_slot = slot & 1u;
+        m_build_frame_slot = frame_slot & 1u;
     }
 
-    // Render thread: select the slot draw_main()/apply_pending_camera()/
+    // Render thread: select the frame slot draw_main()/apply_pending_camera()/
     // update_ui()/draw_ui() read this frame. The render loop stamps it (= the
-    // frame's parity slot) before draw_main. Left at 0 for synchronous
+    // frame's parity) before draw_main. Left at 0 for synchronous
     // (test/headless) draws that don't go through the streaming loop.
     void
-    set_render_draw_slot(uint32_t slot)
+    set_draw_frame_slot(uint32_t frame_slot)
     {
-        m_render_draw_slot = slot & 1u;
+        m_draw_frame_slot = frame_slot & 1u;
     }
 
     // Snapshot the current ImGui frame's draw data into the main thread's
@@ -741,19 +741,19 @@ private:
     gpu::camera_data m_camera_data;
 
     // Camera written by set_camera() (main thread, into m_camera_pending[
-    // m_main_build_slot]) and latched into m_camera_data by apply_pending_camera()
-    // (render thread, from m_camera_pending[m_render_draw_slot]). Double-buffered
+    // m_build_frame_slot]) and latched into m_camera_data by apply_pending_camera()
+    // (render thread, from m_camera_pending[m_draw_frame_slot]). Double-buffered
     // by frame parity so the main thread building frame F+1 writes a different
     // slot than the render thread reads for frame F.
     gpu::camera_data m_camera_pending[2];
 
-    // Frame-parity slot selectors for the camera/UI double buffers. m_main_build_slot
-    // is written only by the main thread (begin_frame_inputs); m_render_draw_slot
-    // only by the render thread (set_render_draw_slot, stamped by the render loop).
+    // Frame-parity slot selectors for the camera/UI double buffers. m_build_frame_slot
+    // is written only by the main thread (begin_frame_inputs); m_draw_frame_slot
+    // only by the render thread (set_draw_frame_slot, stamped by the render loop).
     // The pipeline gate guarantees they never name the same slot concurrently, so
     // no atomics are needed — the m_render_mutex handoff supplies happens-before.
-    uint32_t m_main_build_slot = 0;
-    uint32_t m_render_draw_slot = 0;
+    uint32_t m_build_frame_slot = 0;
+    uint32_t m_draw_frame_slot = 0;
 
     glm::vec3 m_last_camera_position = glm::vec3{0.f};
 
@@ -772,8 +772,8 @@ private:
     std::vector<frame_state> m_frames;
 
     // Double-buffered ImGui draw-data snapshots, indexed by frame parity. Main
-    // thread fills m_ui_snapshots[m_main_build_slot] in capture_ui_snapshot();
-    // the render thread reads m_ui_snapshots[m_render_draw_slot]. Two buffers
+    // thread fills m_ui_snapshots[m_build_frame_slot] in capture_ui_snapshot();
+    // the render thread reads m_ui_snapshots[m_draw_frame_slot]. Two buffers
     // are enough because the main thread runs at most one frame ahead.
     ui_draw_snapshot m_ui_snapshots[2];
 

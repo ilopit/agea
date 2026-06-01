@@ -45,23 +45,23 @@ frame_pipeline::stop()
 uint32_t
 frame_pipeline::begin_frame()
 {
-    uint32_t slot;
+    uint32_t frame_slot;
     {
         std::unique_lock lock(m_mutex);
-        // Depth-1 gate: don't reuse a slot the render thread hasn't freed. The
-        // main thread is the sole writer of m_submitted, so the slot computed
-        // here stays valid until submit_frame bumps it.
+        // Depth-1 gate: don't reuse a frame slot the render thread hasn't freed.
+        // The main thread is the sole writer of m_submitted, so the frame slot
+        // computed here stays valid until submit_frame bumps it.
         m_main_cv.wait(lock, [this] { return m_submitted - m_completed <= 1; });
-        slot = static_cast<uint32_t>(m_submitted & 1ull);
+        frame_slot = static_cast<uint32_t>(m_submitted & 1ull);
     }
 
-    // Route the producer slots outside the lock — both name the same parity, set
-    // together so they can't drift: the renderer (camera + UI snapshot double
-    // buffers) and the command queue/arena. The render thread reads the matching
-    // parity when it draws this frame.
-    glob::glob_state().getr_render().renderer.set_build_slot(slot);
-    glob::glob_state().getr_render().input_queue.set_active_slot(slot);
-    return slot;
+    // Route the build (producer) frame slot outside the lock — both subsystems name
+    // the same parity, set together so they can't drift: the renderer (camera + UI
+    // snapshot double buffers) and the command queue/arena. The render thread reads
+    // the matching frame slot when it draws this frame.
+    glob::glob_state().getr_render().renderer.set_build_frame_slot(frame_slot);
+    glob::glob_state().getr_render().input_queue.set_build_frame_slot(frame_slot);
+    return frame_slot;
 }
 
 void
@@ -98,18 +98,18 @@ frame_pipeline::wait_frames_rendered(int count, std::chrono::milliseconds timeou
 }
 
 void
-frame_pipeline::drain_frame(uint32_t slot)
+frame_pipeline::drain_frame(uint32_t frame_slot)
 {
     auto& vr = glob::glob_state().getr_render().renderer;
     auto& loader = glob::glob_state().getr_render().loader;
 
     render_cmd::render_exec_context exec_ctx{vr, loader};
 
-    // Drain this slot's queue to empty. All of the frame's commands were pushed
-    // (and made visible via the submitted-counter mutex handoff) before the
-    // render thread was released, and the producer is on the other slot, so
+    // Drain this frame slot's queue to empty. All of the frame's commands were
+    // pushed (and made visible via the submitted-counter mutex handoff) before the
+    // render thread was released, and the producer is on the other frame slot, so
     // "empty" reliably means "whole frame consumed".
-    glob::glob_state().getr_render().input_queue.command_queue(slot).drain(
+    glob::glob_state().getr_render().input_queue.command_queue(frame_slot).drain(
         [&exec_ctx](render_cmd::render_command_base*&& cmd)
         {
             cmd->execute(exec_ctx);
@@ -135,20 +135,20 @@ frame_pipeline::render_loop()
             }
         }
 
-        // This frame used parity slot (completed & 1). Execute its build/destroy/
-        // transform commands, then draw — the slot drives the camera/UI snapshot
-        // reads inside draw_main, keeping them in lock-step with the frame the
-        // main thread produced.
-        const uint32_t slot = static_cast<uint32_t>(m_completed & 1ull);
-        drain_frame(slot);
-        renderer.set_render_draw_slot(slot);
+        // This frame used frame slot (completed & 1). Execute its build/destroy/
+        // transform commands, then draw — the frame slot drives the camera/UI
+        // snapshot reads inside draw_main, keeping them in lock-step with the frame
+        // the main thread produced.
+        const uint32_t frame_slot = static_cast<uint32_t>(m_completed & 1ull);
+        drain_frame(frame_slot);
+        renderer.set_draw_frame_slot(frame_slot);
         renderer.draw_main();
 
-        // Frame drawn — its queue is drained empty and every command destructed,
-        // so rewind the arena slot for reuse. Safe: the main thread is building
-        // into the other slot, and the pipeline gate won't let it touch this slot
-        // until the completion below is published.
-        queues.reset_slot(slot);
+        // Frame drawn — its queue is drained empty and every command destructed, so
+        // rewind the arena for reuse. Safe: the main thread is building into the
+        // other frame slot, and the pipeline gate won't let it touch this one until
+        // the completion below is published.
+        queues.reset_frame_slot(frame_slot);
 
         {
             std::lock_guard lock(m_mutex);

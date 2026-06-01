@@ -801,9 +801,9 @@ vulkan_engine::load_level(const utils::id& level_id)
     auto& lm = glob::glob_state().getr_model().levels;
 
     // Tear down the current level if any.  Destroy commands are enqueued into
-    // the SPSC queue (arena-allocated) and ride the current frame's active
-    // arena slot; the render thread drains them as part of the next frame and
-    // rewinds that slot only after drawing it (reset_slot), so the commands'
+    // the SPSC queue (arena-allocated) and ride the current frame's build
+    // frame slot; the render thread drains them as part of the next frame and
+    // rewinds that frame slot only after drawing it (reset_frame_slot), so the commands'
     // memory survives until executed — no explicit arena retirement needed.
     // The render thread calls schedule_to_delete with authoritative
     // m_current_frame_number — no cross-thread read.
