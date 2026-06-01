@@ -956,7 +956,17 @@ vulkan_engine::unload_render_resources(core::level& l)
 
     for (auto& t : cs.objects.get_items())
     {
-        glob::glob_state().getr_render_bridge().render_cmd_destroy(*t.second, true);
+        auto& obj = *t.second;
+
+        // Mirror container::unload(instance): a package object (readonly CDO) may
+        // have leaked into the level cache via the load context. Its render data is
+        // shared and not ours to free here — skip it and keep iterating.
+        if (!obj.get_flags().instance_obj)
+        {
+            continue;
+        }
+
+        glob::glob_state().getr_render_bridge().render_cmd_destroy(obj, true);
     }
 
     return true;
@@ -969,7 +979,13 @@ vulkan_engine::unload_render_resources(core::package& l)
 
     for (auto& t : cs.objects.get_items())
     {
-        glob::glob_state().getr_render_bridge().render_cmd_destroy(*t.second, true);
+        auto& obj = *t.second;
+
+        // Mirror container::unload(package): a package must hold only package objects.
+        KRG_check(!obj.get_flags().instance_obj,
+                  "instance object found in package during render unload");
+
+        glob::glob_state().getr_render_bridge().render_cmd_destroy(obj, true);
     }
 
     return true;

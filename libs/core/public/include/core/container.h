@@ -114,8 +114,10 @@ public:
                                const utils::id& id,
                                const char* extra);
 
+    // is_package: package teardown asserts no instance object is owned; level
+    // teardown skips any leaked package object instead of freeing it.
     void
-    unload();
+    unload(bool is_package);
 
     line_cache<std::shared_ptr<root::smart_object>>&
     get_objects()

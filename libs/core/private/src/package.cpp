@@ -55,7 +55,7 @@ package::unload()
     destroy_render_types();
     destroy_types();
 
-    container::unload();
+    container::unload(/*is_package=*/true);
 
     m_state = package_state::unloaded;
 }

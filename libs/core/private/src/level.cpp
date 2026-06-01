@@ -182,6 +182,8 @@ level::spawn_object_impl(const utils::id& proto_id,
 void
 level::destroy_game_object(root::game_object& go)
 {
+    KRG_check(go.get_flags().instance_obj, "");
+
     for (auto* comp : go.get_renderable_components())
     {
         glob::glob_state().getr_queues().get_model().destroy_render.emplace_back(comp);
@@ -200,6 +202,13 @@ level::destroy_game_object(root::game_object& go)
     std::unordered_set<root::smart_object*> to_drop;
     for (auto* comp : go.get_subcomponents())
     {
+        // A package object (readonly CDO) referenced into the subtree is shared and
+        // not ours to free — skip it (mirrors container::unload). Leaving it
+        // registered and owned keeps the cache/ownership consistent.
+        if (!comp->get_flags().instance_obj)
+        {
+            continue;
+        }
         m_occ->remove_obj(*comp);
         to_drop.insert(comp);
     }
@@ -453,7 +462,7 @@ level::unregister_objects()
 void
 level::unload()
 {
-    container::unload();
+    container::unload(/*is_package=*/false);
 
     m_tickable_objects.clear();
     m_package_ids.clear();

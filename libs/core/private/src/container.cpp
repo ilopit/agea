@@ -1,5 +1,9 @@
 #include "core/container.h"
 
+#include <packages/root/model/smart_object.h>
+
+#include <utils/check.h>
+
 namespace kryga
 {
 namespace core
@@ -52,10 +56,32 @@ container::unregister_in_global_cache(cache_set& local,
 }
 
 void
-container::unload()
+container::unload(bool is_package)
 {
     m_local_cs.clear();
-    m_objects.clear();
+
+    // Drop owned objects, but enforce the container's domain invariant. Reverse
+    // iteration so swap_and_remove keeps the unvisited prefix valid.
+    for (size_t i = m_objects.size(); i-- > 0;)
+    {
+        const bool instance_obj = m_objects[i]->get_flags().instance_obj;
+
+        if (is_package)
+        {
+            // Package teardown: a package must hold only package objects.
+            KRG_check(!instance_obj, "instance object found in package during unload");
+        }
+        else if (!instance_obj)
+        {
+            // Level teardown: a package object (readonly CDO) may have leaked in
+            // when first loaded mid-play via the level's load context (see
+            // docs/issues/object-lifecycle.md). It is not ours to free — leave it
+            // owned and keep iterating the rest.
+            continue;
+        }
+
+        m_objects.swap_and_remove(m_objects.begin() + i);
+    }
 }
 
 void
