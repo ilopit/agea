@@ -78,6 +78,12 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
     return true;
 }
 
+bool
+is_kryga_texture(const utils::path& p)
+{
+    return p.has_extension(".atbc");
+}
+
 }  // namespace texture_importer
 
 }  // namespace asset_importer

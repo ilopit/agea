@@ -3,25 +3,12 @@
 #include "render_bridge/render_dependency.h"
 #include "render_bridge/render_command.h"
 
-#include <packages/root/model/assets/shader_effect.h>
-
-#include <utils/path.h>
 #include <utils/id.h>
-#include <utils/dynamic_object.h>
-
-#include <unordered_map>
 #include <utils/check.h>
 
-#include <vulkan_render/vulkan_render_loader_create_infos.h>
-
 #include <core/model_minimal.h>
-#include <core/reflection/reflection_type.h>
-
-#include <gpu_types/gpu_generic_constants.h>
 
 #include <new>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace kryga
 {
@@ -29,50 +16,15 @@ namespace root
 {
 class smart_object;
 class game_object_component;
-class sampler;
 }  // namespace root
 
-struct collected_gpu_data
-{
-    utils::dynobj gpu_data;
-    reflection::gpu_texture_slot_ref texture_slots[KGPU_MAX_TEXTURE_SLOTS];
-    uint32_t texture_slot_count = 0;
-};
-
-namespace render
-{
-class material_data;
-class mesh_data;
-struct vertex_input_description;
-}  // namespace render
-
-struct access_template
-{
-    std::shared_ptr<utils::dynobj_layout> layout;
-    std::vector<uint32_t> offset_in_object;
-};
-
+// render_bridge owns the stateful render-command lifecycle: it builds/destroys/
+// transforms render commands from model objects and tracks their dependencies.
+// Stateless model→render translation (create-infos, queue ids, GPU packing,
+// sampler mapping) lives in render_translate.h, not here.
 class render_bridge
 {
 public:
-    static render::shader_effect_create_info
-    make_se_ci(root::shader_effect& se_model);
-
-    static std::string
-    make_qid(render::material_data& mt_data, render::mesh_data& m_data);
-
-    static std::string
-    make_qid_from_model(root::smart_object& mat_model, root::smart_object& mesh_model);
-
-    static bool
-    is_kryga_texture(const utils::path& p);
-
-    static bool
-    is_kryga_mesh(const utils::path& p);
-
-    static uint8_t
-    map_sampler_to_static_index(const root::sampler& smp);
-
     kryga::result_code
     render_cmd_build(root::smart_object& obj, bool sub_objects);
 
@@ -81,19 +33,6 @@ public:
 
     kryga::result_code
     render_cmd_transform(root::game_object_component& source);
-
-    collected_gpu_data
-    collect_gpu_data(root::smart_object& so);
-
-    // Collect all bool properties in "Specialization" category as {name → value} pairs
-    static std::unordered_map<std::string, uint32_t>
-    collect_spec_constants(root::smart_object& so);
-
-    static void
-    set_material_texture_bindings(utils::dynobj& gpu_data,
-                                  const uint32_t* texture_indices,
-                                  const uint32_t* sampler_indices,
-                                  uint32_t slot_count);
 
     render_object_dependency_graph&
     get_dependency()
@@ -114,32 +53,7 @@ public:
     void
     enqueue_cmd(render_cmd::render_command_base* cmd);
 
-    // Execute (and destruct) every command in frame-parity `slot`'s queue, then
-    // return. Each slot holds exactly one frame's commands (the producer is on
-    // the other slot), so draining to empty consumes precisely one frame; the
-    // caller then issues the draw. Used by both the streaming render loop
-    // (slot = frame parity) and the headless tick (slot 0).
-    void
-    drain_frame(uint32_t slot);
-
-    // Select the active producer slot (arena + queue) for the frame about to be
-    // built (main thread). See queues::render::set_active_slot.
-    void
-    set_active_slot(uint32_t slot);
-
-    // Rewind a slot's arena (called from the render thread after it finishes
-    // drawing the frame that used that slot). See queues::render::reset_slot.
-    void
-    reset_slot(uint32_t slot);
-
-    // Reset the active arena (single-threaded / headless after a synchronous
-    // drain).
-    void
-    reset_arena();
-
 private:
-    std::unordered_map<utils::id, access_template> m_gpu_data_collection_templates;
-
     render_object_dependency_graph m_dependency_graph;
 };
 

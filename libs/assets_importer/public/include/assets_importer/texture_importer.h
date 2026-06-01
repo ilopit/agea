@@ -28,6 +28,11 @@ extract_texture_from_buffer(utils::buffer& image_buffer,
                             uint32_t& w,
                             uint32_t& h);
 
+// True if the path points at an already-cooked kryga texture (.atbc) — i.e. in
+// engine format, no decode/import needed.
+bool
+is_kryga_texture(const utils::path& p);
+
 }  // namespace texture_importer
 }  // namespace asset_importer
 }  // namespace kryga

@@ -4,6 +4,8 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_config.h>
 
+#include <engine/frame_pipeline.h>
+
 #include <utils/id.h>
 #include <utils/line_container.h>
 
@@ -166,17 +168,6 @@ private:
     void
     rebuild_physics_static_world();
 
-    void
-    render_thread_func();
-
-    // Select the per-frame double-buffer slot (frame parity) for the frame about
-    // to be built, across BOTH producers of slot-indexed state: the renderer
-    // (camera + UI snapshot) and the command queues/arena. They live in separate
-    // subsystems but must always name the same slot — this is the single point
-    // that keeps them in sync.
-    void
-    select_frame_slot(uint32_t slot);
-
     float m_run_for_seconds = 0.f;  // 0 = unlimited
     std::string m_initial_level;
     std::string m_discovery_path;
@@ -212,23 +203,15 @@ private:
     drain_main_actions();
 #endif
 
-    // Render thread synchronization (streaming, depth-1 pipeline).
-    // m_frames_submitted: frames the main thread has fully enqueued into the
-    //   frame's parity slot queue. Bumped by main under m_render_mutex.
-    // m_frames_completed: frames the render thread has drawn. Bumped by render
-    //   under m_render_mutex.
-    // Invariant: m_frames_submitted - m_frames_completed <= 1 — main builds
-    // frame N (into arena/camera/UI slot N&1) while render draws N-1 (slot
-    // (N-1)&1). m_render_cv wakes the render thread when a frame is available;
-    // m_main_cv wakes the main thread when a frame completes (gate) or, with
-    // has_pending_render_config, when the pipeline has fully drained to idle.
-    std::thread m_render_thread;
-    std::mutex m_render_mutex;
-    std::condition_variable m_render_cv;
-    std::condition_variable m_main_cv;
-    uint64_t m_frames_submitted = 0;
-    uint64_t m_frames_completed = 0;
-    bool m_render_shutdown = false;
+    // Owns the streaming render thread, the main/render handoff, and the
+    // per-frame slot routing (depth-1 pipeline). run() drives it via
+    // begin_frame/submit_frame; everything else lives inside it. Headless ticks
+    // single-threaded through tick_headless(), bypassing the pipeline.
+    //
+    // Declared last so its dtor runs first: stop() there joins the render thread
+    // before any other engine member is destroyed, so the render thread can't
+    // touch a half-torn-down subsystem. This ordering is load-bearing.
+    frame_pipeline m_pipeline;
 };
 
 }  // namespace kryga

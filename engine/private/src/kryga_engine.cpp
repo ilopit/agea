@@ -28,6 +28,7 @@
 #endif
 
 #include <core/caches/caches_map.h>
+#include <core/queues.h>
 #include <core/id_generator.h>
 #include <core/level.h>
 #include <core/level_manager.h>
@@ -476,83 +477,15 @@ vulkan_engine::cleanup()
     glob::glob_state_reset();
 }
 
-// Streaming render thread: draws one frame per loop iteration. The main thread
-// builds the next frame's commands (into the other parity slot) concurrently —
-// so the threads overlap (main builds N while this draws N-1) instead of
-// ping-ponging through a barrier.
-void
-vulkan_engine::render_thread_func()
-{
-    auto& bridge = glob::glob_state().getr_render_bridge();
-    auto& renderer = glob::glob_state().getr_render().renderer;
-
-    for (;;)
-    {
-        // Wait for a submitted-but-undrawn frame (or shutdown once idle).
-        {
-            std::unique_lock lock(m_render_mutex);
-            m_render_cv.wait(
-                lock,
-                [this] { return m_frames_submitted > m_frames_completed || m_render_shutdown; });
-            if (m_render_shutdown && m_frames_submitted == m_frames_completed)
-            {
-                break;
-            }
-        }
-
-        // This frame used arena/queue/camera/UI parity slot (completed & 1).
-        const uint32_t slot = static_cast<uint32_t>(m_frames_completed & 1ull);
-
-        // Execute this slot's build/destroy/transform commands, then draw. The
-        // slot drives the camera/UI snapshot reads inside draw_main, keeping
-        // them in lock-step with the frame the main thread produced.
-        bridge.drain_frame(slot);
-        renderer.set_render_draw_slot(slot);
-        renderer.draw_main();
-
-        // Frame drawn — its queue is drained empty and every command destructed,
-        // so rewind the arena slot for reuse. Safe: the main thread is building
-        // into the other slot, and its pipeline gate won't let it touch this
-        // slot until we publish completion below.
-        bridge.reset_slot(slot);
-
-        {
-            std::lock_guard lock(m_render_mutex);
-            ++m_frames_completed;
-        }
-        // notify_all, not notify_one: besides the main thread's pipeline gate,
-        // RPC threads may be parked in wait_frames_rendered on this same cv.
-        m_main_cv.notify_all();
-    }
-}
-
-void
-vulkan_engine::select_frame_slot(uint32_t slot)
-{
-    // Both producers of slot-indexed per-frame state, set together so they can't
-    // drift: the renderer (camera + UI snapshot double buffers) and the command
-    // queues/arena. The render thread reads the same parity slot when it draws.
-    glob::glob_state().getr_render().renderer.set_build_slot(slot);
-    glob::glob_state().getr_render_bridge().set_active_slot(slot);
-}
-
+#if KRG_EDITOR
 bool
 vulkan_engine::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
 {
-    // count < 1 is a caller bug (the static_cast<uint64_t> below would wrap a
-    // negative into a huge target and silently block for the full timeout). The
-    // sole caller, rpc waitFrame, already clamps untrusted input to [1,60].
-    KRG_check(count >= 1, "wait_frames_rendered: count must be >= 1");
-
-    std::unique_lock lock(m_render_mutex);
-    // Frames in flight now; wait until the render thread has completed `count`
-    // beyond them. The mutation we want to observe rides the frame currently
-    // building (or one already submitted), so a completed count past the current
-    // submission point guarantees its commands have been drained into the cache.
-    const uint64_t target = m_frames_submitted + static_cast<uint64_t>(count);
-    return m_main_cv.wait_for(
-        lock, timeout, [this, target] { return m_frames_completed >= target; });
+    // Thin delegate: the streaming handoff lives in frame_pipeline. The sole
+    // caller, rpc waitFrame, already clamps untrusted input to [1,60].
+    return m_pipeline.wait_frames_rendered(count, timeout);
 }
+#endif
 
 void
 vulkan_engine::run()
@@ -569,7 +502,9 @@ vulkan_engine::run()
 
     float total_elapsed = 0.f;
 
-    m_render_thread = std::thread(&vulkan_engine::render_thread_func, this);
+    // Spawn the render thread. It calls back into select_frame_slot (main thread,
+    // inside begin_frame) and draw_frame (render thread) as it runs.
+    m_pipeline.start();
 
     // main loop
     for (;;)
@@ -605,27 +540,13 @@ vulkan_engine::run()
             glob::glob_state().get_input_manager()->fire_input_event();
         }
 
-        // Pipeline gate: don't start building frame `frame_id` until the render
-        // thread has freed the arena/camera/UI slot it will reuse. We cap so the
-        // main thread is at most one frame ahead — it may build frame N while
-        // render draws N-1, but not race into N-2's still-in-use slot. The vsync
+        // Pipeline gate + slot routing: block until the render thread has freed
+        // the slot this frame will reuse (depth-1 — main builds frame N while
+        // render draws N-1, never racing N-2's still-in-use slot), then route
+        // this frame's camera/UI/command state into that parity slot. The vsync
         // / present-pacing stall the render thread takes each frame is exactly
-        // the window this lets the main thread fill (the whole point of the
-        // decouple). First iterations don't wait (nothing in flight yet). With
-        // the slot retired (render's reset_slot) this also fixes the old
-        // single-buffered-ImGui race: the render thread reads its own slot, not
-        // the buffer the next NewFrame() is about to stomp.
-        const uint64_t frame_id = m_frames_submitted;
-        const uint32_t slot = static_cast<uint32_t>(frame_id & 1ull);
-        {
-            std::unique_lock lock(m_render_mutex);
-            m_main_cv.wait(lock, [this] { return m_frames_submitted - m_frames_completed <= 1; });
-        }
-
-        // Route this frame's camera/UI snapshot writes and its command arena +
-        // queue into `slot`. The render thread reads the same parity slot when it
-        // draws this frame.
-        select_frame_slot(slot);
+        // the window this lets the main thread fill (the point of the decouple).
+        m_pipeline.begin_frame();
 
 #if KRG_EDITOR
         {
@@ -666,10 +587,7 @@ vulkan_engine::run()
         // (no write to m_render_config), keeping the common path fully decoupled.
         if (glob::glob_state().getr_render().renderer.has_pending_render_config())
         {
-            {
-                std::unique_lock lock(m_render_mutex);
-                m_main_cv.wait(lock, [this] { return m_frames_completed == m_frames_submitted; });
-            }
+            m_pipeline.wait_idle();
             glob::glob_state().getr_render().renderer.apply_pending_render_config();
         }
 
@@ -701,14 +619,10 @@ vulkan_engine::run()
             consume_updated_transforms();
         }
 
-        // Publish the frame: its commands are all in slot's queue; the render
-        // thread drains that slot and draws. (No terminal command — one queue
-        // per frame parity means draining to empty is the frame boundary.)
-        {
-            std::lock_guard lock(m_render_mutex);
-            ++m_frames_submitted;
-        }
-        m_render_cv.notify_one();
+        // Publish the frame: its commands are all in the slot's queue; the render
+        // thread drains that slot and draws. (No terminal command — one queue per
+        // frame parity means draining to empty is the frame boundary.)
+        m_pipeline.submit_frame();
 
         auto frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);
 
@@ -724,14 +638,8 @@ vulkan_engine::run()
         KRG_PROFILE_FRAME_MARK();
     }
 
-    // Drain any in-flight frames, then shut the render thread down.
-    {
-        std::unique_lock lock(m_render_mutex);
-        m_main_cv.wait(lock, [this] { return m_frames_completed == m_frames_submitted; });
-        m_render_shutdown = true;
-    }
-    m_render_cv.notify_one();
-    m_render_thread.join();
+    // Drain any in-flight frames and join the render thread.
+    m_pipeline.stop();
 }
 void
 vulkan_engine::tick_headless()
@@ -742,9 +650,9 @@ vulkan_engine::tick_headless()
 
     // Headless is single-threaded and never switches parity, so everything is
     // enqueued into and drained from slot 0.
-    glob::glob_state().getr_render_bridge().drain_frame(0);
+    frame_pipeline::drain_frame(0);
     glob::glob_state().getr_render().renderer.draw_headless();
-    glob::glob_state().getr_render_bridge().reset_arena();
+    glob::glob_state().getr_render().input_queue.reset_arena();
 }
 
 #if KRG_EDITOR

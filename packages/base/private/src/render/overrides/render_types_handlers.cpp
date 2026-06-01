@@ -3,6 +3,7 @@
 #include <global_state/global_state.h>
 #include <core/model_system.h>
 #include <render_bridge/render_bridge.h>
+#include <render_bridge/render_translate.h>
 #include <render_bridge/render_command.h>
 #include <core/object_layer_flags.h>
 #include <render_bridge/render_commands_common.h>
@@ -447,7 +448,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
                               glm::vec4(local_centroid.x, local_centroid.y, local_centroid.z, 1.0f);
     glm::vec3 world_sphere_center{world_center4.x, world_center4.y, world_center4.z};
 
-    auto new_rqid = render_bridge::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
+    auto new_rqid = render_translate::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
 
     // Lookup lightmap data from level manifest (if baked)
     glm::vec2 lm_scale{1.0f, 1.0f};
@@ -1186,7 +1187,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     float max_scale = glm::max(glm::max(scale.x, scale.y), scale.z);
     float scaled_radius = base_radius * max_scale;
 
-    auto new_rqid = render_bridge::make_qid_from_model(*material, *source_mesh);
+    auto new_rqid = render_translate::make_qid_from_model(*material, *source_mesh);
 
     auto* ps = glob::glob_state().get_physics_system();
 

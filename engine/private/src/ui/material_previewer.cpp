@@ -20,6 +20,7 @@
 #include <core/reflection/reflection_type.h>
 
 #include <render_bridge/render_bridge.h>
+#include <render_bridge/render_translate.h>
 #include <render/utils/mesh_primitives.h>
 
 #include <vfs/vfs.h>
@@ -147,8 +148,8 @@ ensure_shader_effect(root::shader_effect& se_model)
         return existing;
     }
 
-    auto se_ci = render_bridge::make_se_ci(se_model);
-    se_ci.spec_constants = render_bridge::collect_spec_constants(se_model);
+    auto se_ci = render_translate::make_se_ci(se_model);
+    se_ci.spec_constants = render_translate::collect_spec_constants(se_model);
 
     render::shader_effect_data* se_data = nullptr;
     rp->create_shader_effect(se_model.get_id(), se_ci, se_data);
@@ -169,7 +170,7 @@ ensure_texture(root::texture& txt_model)
     auto w = txt_model.get_width();
     auto h = txt_model.get_height();
 
-    if (render_bridge::is_kryga_texture(bc.get_file()))
+    if (asset_importer::texture_importer::is_kryga_texture(bc.get_file()))
     {
         return loader.create_texture(txt_model.get_id(), bc, w, h);
     }
@@ -198,7 +199,7 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
         return nullptr;
     }
 
-    auto collected = glob::glob_state().getr_render_bridge().collect_gpu_data(mat_model);
+    auto collected = render_translate::collect_gpu_data(mat_model);
 
     std::vector<render::texture_sampler_data> samples;
     uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
@@ -231,11 +232,11 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
         }
         if (ts.smp && slot < KGPU_MAX_TEXTURE_SLOTS)
         {
-            gpu_sampler_indices[slot] = render_bridge::map_sampler_to_static_index(*ts.smp);
+            gpu_sampler_indices[slot] = render_translate::map_sampler_to_static_index(*ts.smp);
         }
     }
 
-    render_bridge::set_material_texture_bindings(
+    render_translate::set_material_texture_bindings(
         collected.gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
     auto* mat_data = loader.create_material(
@@ -250,7 +251,7 @@ create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_mode
             if (ts.smp && slot < KGPU_MAX_TEXTURE_SLOTS)
             {
                 mat_data->set_bindless_sampler_index(
-                    slot, render_bridge::map_sampler_to_static_index(*ts.smp));
+                    slot, render_translate::map_sampler_to_static_index(*ts.smp));
             }
         }
     }
