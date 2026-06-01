@@ -1,4 +1,5 @@
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/render_thread.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -44,6 +45,7 @@ vulkan_render::set_camera(gpu::camera_data c)
 void
 vulkan_render::apply_pending_camera()
 {
+    KRG_check_render_thread();
     const gpu::camera_data& c = m_camera_pending[m_draw_frame_slot];
 
     // Mark clusters dirty if view changed (light-cluster assignment is in view
@@ -61,6 +63,7 @@ vulkan_render::apply_pending_camera()
 void
 vulkan_render::draw_main()
 {
+    KRG_check_render_thread();
     ZoneScopedN("Render::DrawMain");
 
     auto& device = glob::glob_state().getr_render().device;
@@ -211,6 +214,7 @@ vulkan_render::draw_main()
 void
 vulkan_render::draw_headless()
 {
+    KRG_check_render_thread();
     auto& device = glob::glob_state().getr_render().device;
     KRG_check(device.is_headless(), "draw_headless requires a headless device, use draw_main()");
 
@@ -261,6 +265,7 @@ vulkan_render::render_frame(VkCommandBuffer cmd,
                             uint32_t width,
                             uint32_t height)
 {
+    KRG_check_render_thread();
     prepare_draw_resources(current_frame);
 
     m_current_frame = &current_frame;
@@ -397,7 +402,7 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Upload bone matrices for skeletal animation
     upload_bone_matrices(current_frame);
 
-    // Upload light probes if a schd_set_probes is pending for this frame.
+    // Upload light probes if a stage_set_probes is pending for this frame.
     upload_probe_data(current_frame);
 
     if (current_frame.uploads.has_objects())
@@ -677,8 +682,9 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 }
 
 void
-vulkan_render::schd_update_texture(texture_data* tex)
+vulkan_render::stage_update_texture(texture_data* tex)
 {
+    KRG_check_render_thread();
     m_global_textures_queue.emplace_back(tex);
 }
 

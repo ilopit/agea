@@ -400,7 +400,7 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
 
     // Mark texture dirty for bindless descriptor update
-    glob::glob_state().getr_render().renderer.schd_update_texture(td);
+    glob::glob_state().getr_render().renderer.stage_update_texture(td);
 
     m_textures_cache[texture_id] = td;
 
@@ -444,7 +444,7 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
 
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
 
-    glob::glob_state().getr_render().renderer.schd_update_texture(td);
+    glob::glob_state().getr_render().renderer.stage_update_texture(td);
 
     m_textures_cache[texture_id] = td;
 
@@ -488,7 +488,7 @@ vulkan_render_loader::update_or_create_texture(const kryga::utils::id& texture_i
     existing->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
 
     // Re-register in bindless set with the new image view (same slot)
-    glob::glob_state().getr_render().renderer.schd_update_texture(existing);
+    glob::glob_state().getr_render().renderer.stage_update_texture(existing);
 
     return existing;
 }
@@ -514,7 +514,7 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     td->image_view = view;
 
     // Mark texture dirty for bindless descriptor update
-    glob::glob_state().getr_render().renderer.schd_update_texture(td);
+    glob::glob_state().getr_render().renderer.stage_update_texture(td);
 
     m_textures_cache[texture_id] = td;
 

@@ -301,26 +301,26 @@ public:
     draw_headless();
 
     // clang-format off
-    void schd_add_object(render::vulkan_render_data* obj_data);
-    void schd_add_material(render::material_data* mat_data);
-    void schd_add_light(render::vulkan_directional_light_data* ld);
-    void schd_add_light(render::vulkan_universal_light_data* ld);
+    void stage_add_object(render::vulkan_render_data* obj_data);
+    void stage_add_material(render::material_data* mat_data);
+    void stage_add_light(render::vulkan_directional_light_data* ld);
+    void stage_add_light(render::vulkan_universal_light_data* ld);
 
-    void schd_update_object(render::vulkan_render_data* obj_data);
-    void schd_update_object_queue(render::vulkan_render_data* obj_data);
-    void schd_update_material(render::material_data* mat_data);
-    void schd_update_light(render::vulkan_directional_light_data* ld);
-    void schd_update_light(render::vulkan_universal_light_data* ld);
-    void schd_update_texture(render::texture_data* tex);
+    void stage_update_object(render::vulkan_render_data* obj_data);
+    void stage_update_object_queue(render::vulkan_render_data* obj_data);
+    void stage_update_material(render::material_data* mat_data);
+    void stage_update_light(render::vulkan_directional_light_data* ld);
+    void stage_update_light(render::vulkan_universal_light_data* ld);
+    void stage_update_texture(render::texture_data* tex);
     void flush_pending_texture_updates(); // main thread only; for immediate-submit paths
 
-    void schd_remove_object(render::vulkan_render_data* obj_data);
-    void schd_remove_material(render::material_data* mat_data);
+    void stage_remove_object(render::vulkan_render_data* obj_data);
+    void stage_remove_material(render::material_data* mat_data);
     // Drop a light from every frame's pending upload queue. MUST be called when
     // a light's render data is released, else the per-frame queues keep a
     // dangling pointer that upload_gpu_*_light_data dereferences next draw.
-    void schd_remove_light(render::vulkan_directional_light_data* ld);
-    void schd_remove_light(render::vulkan_universal_light_data* ld);
+    void stage_remove_light(render::vulkan_directional_light_data* ld);
+    void stage_remove_light(render::vulkan_universal_light_data* ld);
     // clang-format on
 
     void
@@ -336,13 +336,13 @@ public:
     }
 
     // Replace the current set of light probes (SH L2 coefficients indexed by
-    // gpu::object_data::probe_index). Buffered like other schd_* APIs: the
+    // gpu::object_data::probe_index). Buffered like other stage_* APIs: the
     // payload is stashed on the cache and applied to each frame's SSBO at
     // its next prepare_draw_resources, so callers don't need to know the
     // current frame index and don't risk writing to a frame that's still
     // in-flight on the GPU.
     void
-    schd_set_probes(std::vector<gpu::sh_probe> probes, const gpu::probe_grid_config& grid_config);
+    stage_set_probes(std::vector<gpu::sh_probe> probes, const gpu::probe_grid_config& grid_config);
 
     void
     clear_upload_queue();
@@ -926,7 +926,7 @@ private:
     // Bone matrix staging for skeletal animation
     std::vector<glm::mat4> m_bone_matrices_staging;
 
-    // Light probes — bulk replacement (no per-element queue). schd_set_probes
+    // Light probes — bulk replacement (no per-element queue). stage_set_probes
     // updates the cache and seeds m_probes_pending_uploads with FRAMES_IN_FLIGHT
     // so each frame's SSBO picks up the new payload at its next prepare pass.
     std::vector<gpu::sh_probe> m_probes;

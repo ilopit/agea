@@ -1,4 +1,5 @@
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/render_thread.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -39,6 +40,7 @@ namespace render
 void
 vulkan_render::upload_instance_slots(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     if (m_instance_slots_staging.empty())
     {
         return;
@@ -283,8 +285,9 @@ vulkan_render::push_config(VkCommandBuffer cmd, VkPipelineLayout pipeline_layout
 }
 
 void
-vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
+vulkan_render::stage_add_object(render::vulkan_render_data* obj_data)
 {
+    KRG_check_render_thread();
     KRG_check(obj_data, "Should be always valid");
     KRG_check(!obj_data->is_pending_release(), "Adding a dead object");
     m_object_bvh_dirty = true;
@@ -316,8 +319,9 @@ vulkan_render::schd_add_object(render::vulkan_render_data* obj_data)
 }
 
 void
-vulkan_render::schd_update_object(render::vulkan_render_data* obj_data)
+vulkan_render::stage_update_object(render::vulkan_render_data* obj_data)
 {
+    KRG_check_render_thread();
     KRG_check(obj_data, "Should be always valid");
     KRG_check(!obj_data->is_pending_release(), "Updating a dead object");
 
@@ -328,15 +332,17 @@ vulkan_render::schd_update_object(render::vulkan_render_data* obj_data)
 }
 
 void
-vulkan_render::schd_update_object_queue(render::vulkan_render_data* obj_data)
+vulkan_render::stage_update_object_queue(render::vulkan_render_data* obj_data)
 {
-    schd_remove_object(obj_data);
-    schd_add_object(obj_data);
+    KRG_check_render_thread();
+    stage_remove_object(obj_data);
+    stage_add_object(obj_data);
 }
 
 void
-vulkan_render::schd_remove_object(render::vulkan_render_data* obj_data)
+vulkan_render::stage_remove_object(render::vulkan_render_data* obj_data)
 {
+    KRG_check_render_thread();
     KRG_check(obj_data, "Should be always valid");
     m_object_bvh_dirty = true;
 
@@ -406,8 +412,9 @@ vulkan_render::schd_remove_object(render::vulkan_render_data* obj_data)
 }
 
 void
-vulkan_render::schd_add_material(render::material_data* mat_data)
+vulkan_render::stage_add_material(render::material_data* mat_data)
 {
+    KRG_check_render_thread();
     auto& mat_id = mat_data->get_type_id();
 
     auto segment = m_materials_layout.find(mat_id);
@@ -437,8 +444,9 @@ vulkan_render::schd_add_material(render::material_data* mat_data)
 }
 
 void
-vulkan_render::schd_remove_material(render::material_data* mat_data)
+vulkan_render::stage_remove_material(render::material_data* mat_data)
 {
+    KRG_check_render_thread();
     auto& mat_id = mat_data->get_type_id();
     auto segment = m_materials_layout.find(mat_id);
 
@@ -674,6 +682,7 @@ vulkan_render::capture_ui_snapshot()
 void
 vulkan_render::update_ui(frame_state& fs)
 {
+    KRG_check_render_thread();
     // Read this frame's snapshot slot, NOT the live ImGui draw data — the main
     // thread may already be building the next frame into ImGui's single buffer.
     const ui_draw_snapshot& s = m_ui_snapshots[m_draw_frame_slot];

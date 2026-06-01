@@ -1,4 +1,5 @@
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/render_thread.h"
 
 #include "vulkan_render/render_system.h"
 #include "vulkan_render/vulkan_render_device.h"
@@ -568,6 +569,7 @@ vulkan_render::select_shadowed_lights()
 void
 vulkan_render::upload_shadow_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     ZoneScopedN("Render::UploadShadowData");
 
     m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_index;

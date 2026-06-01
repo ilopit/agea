@@ -1,4 +1,5 @@
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/render_thread.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -70,6 +71,7 @@ ensure_buffer_capacity_and_map(vk_utils::vulkan_buffer& buffer,
 void
 vulkan_render::upload_obj_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     const auto total_size = m_cache.objects.get_size() * sizeof(gpu::object_data);
 
     auto* data = (gpu::object_data*)ensure_buffer_capacity_and_map(
@@ -83,6 +85,7 @@ vulkan_render::upload_obj_data(render::frame_state& frame)
 void
 vulkan_render::upload_universal_light_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     const auto total_size = m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
 
     auto* data = (gpu::universal_light_data*)ensure_buffer_capacity_and_map(
@@ -96,6 +99,7 @@ vulkan_render::upload_universal_light_data(render::frame_state& frame)
 void
 vulkan_render::upload_directional_light_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     const auto total_size =
         m_cache.directional_lights.get_size() * sizeof(gpu::directional_light_data);
 
@@ -111,6 +115,7 @@ vulkan_render::upload_directional_light_data(render::frame_state& frame)
 void
 vulkan_render::upload_material_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     auto total_size = m_materials_layout.calc_new_size();
 
     bool reallocated = false;
@@ -188,6 +193,7 @@ vulkan_render::upload_material_data(render::frame_state& frame)
 void
 vulkan_render::upload_bone_matrices(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     // Always upload at least one identity matrix so the SSBO is valid
     if (m_bone_matrices_staging.empty())
     {
@@ -214,8 +220,9 @@ vulkan_render::upload_bone_matrices(render::frame_state& frame)
 }
 
 void
-vulkan_render::schd_update_material(render::material_data* md)
+vulkan_render::stage_update_material(render::material_data* md)
 {
+    KRG_check_render_thread();
     for (auto& q : m_frames)
     {
         q.uploads.materials_queue_set[md->gpu_type_idx()].emplace_back(md);
@@ -224,8 +231,9 @@ vulkan_render::schd_update_material(render::material_data* md)
 }
 
 void
-vulkan_render::schd_add_light(render::vulkan_directional_light_data* ld)
+vulkan_render::stage_add_light(render::vulkan_directional_light_data* ld)
 {
+    KRG_check_render_thread();
     for (auto& q : m_frames)
     {
         q.uploads.directional_light_queue.emplace_back(ld);
@@ -233,8 +241,9 @@ vulkan_render::schd_add_light(render::vulkan_directional_light_data* ld)
 }
 
 void
-vulkan_render::schd_add_light(render::vulkan_universal_light_data* ld)
+vulkan_render::stage_add_light(render::vulkan_universal_light_data* ld)
 {
+    KRG_check_render_thread();
     m_clusters_dirty = true;
     for (auto& q : m_frames)
     {
@@ -243,8 +252,9 @@ vulkan_render::schd_add_light(render::vulkan_universal_light_data* ld)
 }
 
 void
-vulkan_render::schd_update_light(render::vulkan_directional_light_data* ld)
+vulkan_render::stage_update_light(render::vulkan_directional_light_data* ld)
 {
+    KRG_check_render_thread();
     for (auto& q : m_frames)
     {
         q.uploads.directional_light_queue.emplace_back(ld);
@@ -252,8 +262,9 @@ vulkan_render::schd_update_light(render::vulkan_directional_light_data* ld)
 }
 
 void
-vulkan_render::schd_update_light(render::vulkan_universal_light_data* ld)
+vulkan_render::stage_update_light(render::vulkan_universal_light_data* ld)
 {
+    KRG_check_render_thread();
     m_clusters_dirty = true;
     for (auto& q : m_frames)
     {
@@ -262,10 +273,11 @@ vulkan_render::schd_update_light(render::vulkan_universal_light_data* ld)
 }
 
 void
-vulkan_render::schd_remove_light(render::vulkan_directional_light_data* ld)
+vulkan_render::stage_remove_light(render::vulkan_directional_light_data* ld)
 {
+    KRG_check_render_thread();
     // Remove ALL occurrences from every frame's queue (a light can be queued
-    // more than once before a frame drains). Mirrors schd_add/update_light,
+    // more than once before a frame drains). Mirrors stage_add/update_light,
     // which enqueue into every frame.
     for (auto& q : m_frames)
     {
@@ -278,8 +290,9 @@ vulkan_render::schd_remove_light(render::vulkan_directional_light_data* ld)
 }
 
 void
-vulkan_render::schd_remove_light(render::vulkan_universal_light_data* ld)
+vulkan_render::stage_remove_light(render::vulkan_universal_light_data* ld)
 {
+    KRG_check_render_thread();
     m_clusters_dirty = true;
     for (auto& q : m_frames)
     {
@@ -326,13 +339,14 @@ vulkan_render::clear_upload_queue()
 }
 
 void
-vulkan_render::schd_set_probes(std::vector<gpu::sh_probe> probes,
+vulkan_render::stage_set_probes(std::vector<gpu::sh_probe> probes,
                                const gpu::probe_grid_config& grid_config)
 {
+    KRG_check_render_thread();
     m_probes = std::move(probes);
     m_probe_grid_config = grid_config;
     // Seed at FRAMES_IN_FLIGHT so each frame's SSBO gets the new payload at
-    // its next prepare_draw_resources. A second schd_set_probes call before
+    // its next prepare_draw_resources. A second stage_set_probes call before
     // all frames have caught up just resets the counter, ensuring the latest
     // data lands in every frame.
     m_probes_pending_uploads = static_cast<uint32_t>(m_frames.size());
@@ -341,6 +355,7 @@ vulkan_render::schd_set_probes(std::vector<gpu::sh_probe> probes,
 void
 vulkan_render::upload_probe_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     if (m_probes_pending_uploads == 0)
     {
         return;
@@ -377,6 +392,7 @@ vulkan_render::upload_probe_data(render::frame_state& frame)
 void
 vulkan_render::upload_gpu_object_data(gpu::object_data* object_SSBO)
 {
+    KRG_check_render_thread();
     auto& to_update = get_current_frame_transfer_data().uploads.objects_queue;
 
     if (to_update.empty())
@@ -397,6 +413,7 @@ vulkan_render::upload_gpu_object_data(gpu::object_data* object_SSBO)
 void
 vulkan_render::upload_gpu_universal_light_data(gpu::universal_light_data* object_SSBO)
 {
+    KRG_check_render_thread();
     auto& to_update = get_current_frame_transfer_data().uploads.universal_light_queue;
 
     if (to_update.empty())
@@ -414,6 +431,7 @@ vulkan_render::upload_gpu_universal_light_data(gpu::universal_light_data* object
 void
 vulkan_render::upload_gpu_directional_light_data(gpu::directional_light_data* object_SSBO)
 {
+    KRG_check_render_thread();
     auto& to_update = get_current_frame_transfer_data().uploads.directional_light_queue;
 
     if (to_update.empty())
@@ -430,6 +448,7 @@ vulkan_render::upload_gpu_directional_light_data(gpu::directional_light_data* ob
 void
 vulkan_render::upload_gpu_materials_data(uint8_t* ssbo_data, materials_update_queue& mats_to_update)
 {
+    KRG_check_render_thread();
     if (mats_to_update.empty())
     {
         return;
@@ -494,6 +513,7 @@ vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
 void
 vulkan_render::upload_frustum_data(render::frame_state& frame)
 {
+    KRG_check_render_thread();
     ZoneScopedN("Render::UploadFrustumData");
 
     // Convert frustum planes to GPU format (vec4: normal.xyz, distance)

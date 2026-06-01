@@ -4,7 +4,11 @@
 #include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_data.h>
 
+#include <render_bridge/render_command.h>  // render_command_base / render_exec_context
+
 #include <global_state/global_state.h>
+
+#include <vector>
 
 #include <ozz/animation/runtime/blending_job.h>
 #include <ozz/animation/runtime/local_to_model_job.h>
@@ -242,6 +246,40 @@ animation_system::clear_ik(const utils::id& instance_id)
     }
 }
 
+namespace
+{
+struct bone_instance_update
+{
+    render::vulkan_render_data* rd;
+    uint32_t offset;
+    uint32_t count;
+};
+
+// Produced on the main thread by animation_system::tick, executed on the render
+// thread: adopts this frame's bone matrices and re-stages the animated objects.
+// All render-state mutation (bone staging + stage_update_object) happens here, on
+// the render thread — animation only computes data and hands it off via input_queue.
+struct apply_bones_cmd : render_cmd::render_command_base
+{
+    std::vector<glm::mat4> matrices;
+    std::vector<bone_instance_update> updates;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        ctx.vr.get_bone_matrices_staging() = std::move(matrices);
+        for (auto& u : updates)
+        {
+            u.rd->bone_offset = u.offset;
+            u.rd->bone_count = u.count;
+            u.rd->gpu_data.bone_offset = u.offset;
+            u.rd->gpu_data.bone_count = u.count;
+            ctx.vr.stage_update_object(u.rd);
+        }
+    }
+};
+}  // namespace
+
 void
 animation_system::tick(float dt)
 {
@@ -250,11 +288,14 @@ animation_system::tick(float dt)
         return;
     }
 
-    auto& staging = glob::glob_state().getr_render().renderer.get_bone_matrices_staging();
-    staging.clear();
+    // Build this frame's bone data into local buffers (main thread owns these),
+    // then hand off to the render thread below — no render state is touched here.
+    std::vector<glm::mat4> staging;
 
     // Identity matrix at index 0 for non-skinned objects
     staging.push_back(glm::mat4(1.0f));
+
+    std::vector<bone_instance_update> updates;
 
     for (auto& [id, inst] : m_instances)
     {
@@ -461,14 +502,19 @@ animation_system::tick(float dt)
 
         if (inst.render_data)
         {
-            inst.render_data->bone_offset = inst.bone_offset;
-            inst.render_data->bone_count = (uint32_t)mesh_bone_count;
-            inst.render_data->gpu_data.bone_offset = inst.bone_offset;
-            inst.render_data->gpu_data.bone_count = (uint32_t)mesh_bone_count;
-
-            glob::glob_state().getr_render().renderer.schd_update_object(inst.render_data);
+            // Record the render-side update; applied on the render thread below.
+            updates.push_back({inst.render_data, inst.bone_offset, (uint32_t)mesh_bone_count});
         }
     }
+
+    // Hand the frame's bone data to the render thread. alloc/enqueue target the
+    // build frame slot's arena/queue (set in begin_frame) — the thread-safe
+    // producer path. The render thread drains and applies it before drawing.
+    auto& iq = glob::glob_state().getr_render().input_queue;
+    auto* cmd = iq.alloc_cmd<apply_bones_cmd>();
+    cmd->matrices = std::move(staging);
+    cmd->updates = std::move(updates);
+    iq.enqueue(cmd);
 }
 
 const ozz::animation::Skeleton*

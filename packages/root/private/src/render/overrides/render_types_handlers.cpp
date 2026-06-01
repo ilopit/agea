@@ -266,7 +266,7 @@ struct create_material_cmd : render_cmd::render_command_base
 
             if (!gpu_data.empty())
             {
-                ctx.vr.schd_add_material(mat_data);
+                ctx.vr.stage_add_material(mat_data);
             }
         }
     }
@@ -351,7 +351,7 @@ struct update_material_cmd : render_cmd::render_command_base
 
         if (!gpu_data.empty())
         {
-            ctx.vr.schd_update_material(mat_data);
+            ctx.vr.stage_update_material(mat_data);
         }
     }
 };
@@ -366,7 +366,7 @@ struct destroy_material_cmd : render_cmd::render_command_base
         auto* mat_data = ctx.loader.get_material_data(id);
         if (mat_data)
         {
-            ctx.vr.schd_remove_material(mat_data);
+            ctx.vr.stage_remove_material(mat_data);
             ctx.loader.destroy_material_data(id);
         }
     }

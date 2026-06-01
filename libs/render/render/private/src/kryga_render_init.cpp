@@ -508,7 +508,7 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
             dtex->image = std::move(img_sptr);
             dtex->image_view = std::move(depth_view);
             m_scene_depth_bindless_idx = dtex->get_bindless_index();
-            schd_update_texture(dtex);
+            stage_update_texture(dtex);
         }
     }
 
@@ -693,7 +693,7 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
             dtex->image_view = std::move(depth_view);
             dtex->format = texture_format::unknown;
             m_scene_depth_bindless_idx = dtex->get_bindless_index();
-            schd_update_texture(dtex);
+            stage_update_texture(dtex);
         }
     }
 
@@ -1216,7 +1216,7 @@ vulkan_render::prepare_system_resources()
                 tex->image_view = vk_utils::vulkan_image_view::create_shared(view_ci);
                 tex->format = texture_format::rgba8;
                 m_selection_mask_bindless_idx = tex->get_bindless_index();
-                schd_update_texture(tex);
+                stage_update_texture(tex);
             }
         }
     }
@@ -1248,7 +1248,7 @@ vulkan_render::prepare_system_resources()
                 dtex->image_view = std::move(depth_view);
                 dtex->format = texture_format::unknown;
                 m_scene_depth_bindless_idx = dtex->get_bindless_index();
-                schd_update_texture(dtex);
+                stage_update_texture(dtex);
             }
         }
     }

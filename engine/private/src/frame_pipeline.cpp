@@ -4,6 +4,7 @@
 
 #include <vulkan_render/render_system.h>  // render_system: getr_render() returns this; holds .renderer
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_thread.h>  // render-state ownership handoff
 #include <render_bridge/render_command.h>  // render_exec_context: drain_frame executes commands against it
 
 #include <utils/check.h>
@@ -109,17 +110,25 @@ frame_pipeline::drain_frame(uint32_t frame_slot)
     // pushed (and made visible via the submitted-counter mutex handoff) before the
     // render thread was released, and the producer is on the other frame slot, so
     // "empty" reliably means "whole frame consumed".
-    glob::glob_state().getr_render().input_queue.command_queue(frame_slot).drain(
-        [&exec_ctx](render_cmd::render_command_base*&& cmd)
-        {
-            cmd->execute(exec_ctx);
-            cmd->~render_command_base();
-        });
+    glob::glob_state()
+        .getr_render()
+        .input_queue.command_queue(frame_slot)
+        .drain(
+            [&exec_ctx](render_cmd::render_command_base*&& cmd)
+            {
+                cmd->execute(exec_ctx);
+                cmd->~render_command_base();
+            });
 }
 
 void
 frame_pipeline::render_loop()
 {
+    // The render thread grants itself render-state access for the lifetime of the
+    // loop. Main handed off in vulkan_engine before starting us, so from here only
+    // this thread may mutate render state.
+    render::set_render_access(true);
+
     auto& renderer = glob::glob_state().getr_render().renderer;
     auto& queues = glob::glob_state().getr_render().input_queue;
 

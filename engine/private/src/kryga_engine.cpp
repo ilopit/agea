@@ -71,6 +71,7 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/render_system.h>
+#include <vulkan_render/render_thread.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
 #include <vulkan_render/vk_descriptors.h>
@@ -202,6 +203,11 @@ vulkan_engine::init(const startup_options& options)
     // Write a minidump on any unhandled crash (catches timing races a debugger
     // would perturb away). No-op on non-Windows.
     install_crash_handler();
+
+    // Main thread grants itself render-state access for single-threaded setup
+    // (renderer.init stages default textures, etc.). It hands this off before the
+    // streaming loop starts (see run()) and reclaims it after the loop ends.
+    render::set_render_access(true);
 
     ALOG_INFO("Initialization started ...");
 
@@ -502,6 +508,11 @@ vulkan_engine::run()
 
     float total_elapsed = 0.f;
 
+    // Hand off render-state access to the render thread for the streaming phase:
+    // main drops it here, the render thread grants itself in render_loop. From now
+    // until stop(), any main-thread render mutation trips the assert.
+    render::set_render_access(false);
+
     // Spawn the render thread. It calls back into select_frame_slot (main thread,
     // inside begin_frame) and draw_frame (render thread) as it runs.
     m_pipeline.start();
@@ -640,6 +651,9 @@ vulkan_engine::run()
 
     // Drain any in-flight frames and join the render thread.
     m_pipeline.stop();
+
+    // Render thread gone — main reclaims access for single-threaded teardown.
+    render::set_render_access(true);
 }
 void
 vulkan_engine::tick_headless()

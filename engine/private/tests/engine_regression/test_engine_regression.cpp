@@ -236,7 +236,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
         sun->gpu_data.ambient = {0.3f, 0.3f, 0.3f};
         sun->gpu_data.diffuse = {1.0f, 1.0f, 1.0f};
         sun->gpu_data.specular = {0.5f, 0.5f, 0.5f};
-        renderer.schd_add_light(sun);
+        renderer.stage_add_light(sun);
         renderer.set_selected_directional_light(AID("test_sun"));
 
         warmup(engine, 6);

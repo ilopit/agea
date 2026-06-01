@@ -5,6 +5,7 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_system.h>
+#include <vulkan_render/render_thread.h>
 
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
@@ -20,6 +21,9 @@ public:
     void
     SetUp()
     {
+        // Single-threaded test — grant this thread render-state access explicitly.
+        render::set_render_access(true);
+
         render::render_device::construct_params rdc;
         rdc.headless = true;
         rdc.width = 128;

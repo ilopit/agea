@@ -1,4 +1,5 @@
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/render_thread.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -470,6 +471,7 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
 void
 vulkan_render::draw_ui(frame_state& fs)
 {
+    KRG_check_render_thread();
     // Read this frame's snapshot slot, NOT the live ImGui draw data (the main
     // thread may be mid-NewFrame on ImGui's single buffer). update_ui filled the
     // GPU buffers from this same slot.

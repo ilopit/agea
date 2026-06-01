@@ -142,7 +142,7 @@ update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
     object_data->gpu_data.bounding_sphere_center = bounding_sphere_center;
     object_data->gpu_data.bounding_radius = bounding_radius;
 
-    ctx.vr.schd_update_object(object_data);
+    ctx.vr.stage_update_object(object_data);
 }
 
 void
@@ -156,7 +156,7 @@ set_outline_cmd::execute(render_cmd::render_exec_context& ctx)
     }
 
     object_data->outlined = outlined;
-    ctx.vr.schd_update_object_queue(object_data);
+    ctx.vr.stage_update_object_queue(object_data);
 }
 
 }  // namespace kryga

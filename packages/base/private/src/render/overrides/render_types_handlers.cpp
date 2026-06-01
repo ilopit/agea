@@ -150,7 +150,7 @@ struct create_object_cmd : render_cmd::render_command_base
         object_data->queue_id = std::move(queue_id);
         object_data->layer_flags = layer_flags.bits;
 
-        ctx.vr.schd_add_object(object_data);
+        ctx.vr.stage_add_object(object_data);
     }
 };
 
@@ -199,14 +199,14 @@ struct update_object_cmd : render_cmd::render_command_base
         auto new_rqid = std::move(queue_id);
         if (new_rqid != object_data->queue_id || layer_flags.bits != object_data->layer_flags)
         {
-            ctx.vr.schd_remove_object(object_data);
+            ctx.vr.stage_remove_object(object_data);
             object_data->queue_id = std::move(new_rqid);
             object_data->layer_flags = layer_flags.bits;
-            ctx.vr.schd_add_object(object_data);
+            ctx.vr.stage_add_object(object_data);
         }
         else
         {
-            ctx.vr.schd_update_object(object_data);
+            ctx.vr.stage_update_object(object_data);
         }
     }
 };
@@ -221,7 +221,7 @@ struct destroy_object_cmd : render_cmd::render_command_base
         auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
         if (object_data)
         {
-            ctx.vr.schd_remove_object(object_data);
+            ctx.vr.stage_remove_object(object_data);
             object_data->mark_pending_release();
             ctx.vr.get_cache().objects.unmap(object_data);
 
@@ -297,7 +297,7 @@ struct create_light_cmd : render_cmd::render_command_base
             rh->gpu_data.diffuse = diffuse;
             rh->gpu_data.specular = specular;
             rh->gpu_data.direction = direction;
-            ctx.vr.schd_add_light(rh);
+            ctx.vr.stage_add_light(rh);
         }
         else
         {
@@ -312,7 +312,7 @@ struct create_light_cmd : render_cmd::render_command_base
             rh->gpu_data.direction = direction;
             rh->gpu_data.cut_off = cut_off;
             rh->gpu_data.outer_cut_off = outer_cut_off;
-            ctx.vr.schd_add_light(rh);
+            ctx.vr.stage_add_light(rh);
         }
     }
 };
@@ -345,7 +345,7 @@ struct update_light_cmd : render_cmd::render_command_base
             rh->gpu_data.diffuse = diffuse;
             rh->gpu_data.specular = specular;
             rh->gpu_data.direction = direction;
-            ctx.vr.schd_update_light(rh);
+            ctx.vr.stage_update_light(rh);
         }
         else
         {
@@ -363,7 +363,7 @@ struct update_light_cmd : render_cmd::render_command_base
             rh->gpu_data.direction = direction;
             rh->gpu_data.cut_off = cut_off;
             rh->gpu_data.outer_cut_off = outer_cut_off;
-            ctx.vr.schd_update_light(rh);
+            ctx.vr.stage_update_light(rh);
         }
     }
 };
@@ -395,7 +395,7 @@ struct destroy_light_cmd : render_cmd::render_command_base
                 // Drop from the pending upload queues BEFORE releasing the slot,
                 // else the per-frame queues keep a dangling pointer that the
                 // render thread dereferences next draw (out-of-bounds SSBO write).
-                ctx.vr.schd_remove_light(rh);
+                ctx.vr.stage_remove_light(rh);
                 ctx.vr.get_cache().directional_lights.release(rh);
             }
         }
@@ -404,7 +404,7 @@ struct destroy_light_cmd : render_cmd::render_command_base
             auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
             if (rh)
             {
-                ctx.vr.schd_remove_light(rh);
+                ctx.vr.stage_remove_light(rh);
                 ctx.vr.get_cache().universal_lights.release(rh);
             }
         }
