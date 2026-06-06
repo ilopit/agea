@@ -65,16 +65,153 @@ vulkan_render::upload_instance_slots(render::frame_state& frame)
     frame.buffers.instance_slots.end();
 }
 
+namespace
+{
+// Per-pass shadow cull volume. One value type covers all three pass kinds
+// (cascade/spot share a frustum; point splits into front/back hemispheres) so
+// build_culled_shadow_batches needs no template and the call sites need no
+// lambdas. Construct via the from_frustum/point factories.
+struct shadow_cull_volume
+{
+    enum class kind
+    {
+        frustum,      // cascade ortho box or spot perspective frustum
+        point_front,  // point light, front paraboloid hemisphere
+        point_back    // point light, back paraboloid hemisphere
+    };
+
+    kind which = kind::frustum;
+    frustum frust;                          // kind::frustum
+    glm::vec3 position{0.0f};               // kind::point_*
+    glm::vec3 front_dir{0.0f, 0.0f, 1.0f};  // kind::point_*
+    float light_radius = 0.0f;              // kind::point_* (light reach)
+
+    bool
+    is_visible(const glm::vec3& center, float radius) const
+    {
+        if (which == kind::frustum)
+        {
+            return frust.is_sphere_visible(center, radius);
+        }
+        // Point hemisphere: reject outside the light sphere, then split by the
+        // sign of the projection onto front_dir (front keeps >= -reach, back <= reach).
+        const float reach = light_radius + radius;
+        if (glm::distance(center, position) > reach)
+        {
+            return false;
+        }
+        const float d = glm::dot(center - position, front_dir);
+        return which == kind::point_back ? (d <= reach) : (d >= -reach);
+    }
+
+    static shadow_cull_volume
+    from_frustum(const glm::mat4& view_proj)
+    {
+        shadow_cull_volume v;
+        v.which = kind::frustum;
+        v.frust.extract_planes(view_proj);
+        return v;
+    }
+
+    static shadow_cull_volume
+    point(const glm::vec3& position, const glm::vec3& front_dir, float light_radius, bool back_face)
+    {
+        shadow_cull_volume v;
+        v.which = back_face ? kind::point_back : kind::point_front;
+        v.position = position;
+        v.front_dir = front_dir;
+        v.light_radius = light_radius;
+        return v;
+    }
+};
+
+// Build shadow-caster batches for one queue, keeping only objects whose bounding
+// sphere passes `cull` (the per-pass light volume). Mirrors the mesh-grouping of
+// build_batches_for_queue_into but: shadow casters only, no stats/outline, and it
+// appends visible slots compactly so each pass gets its own contiguous ranges.
+void
+build_culled_shadow_batches(render_line_container& r,
+                            std::vector<uint32_t>& staging,
+                            std::vector<draw_batch>& out_batches,
+                            const shadow_cull_volume& cull)
+{
+    if (r.empty())
+    {
+        return;
+    }
+
+    mesh_data* cur_mesh = nullptr;
+    uint32_t batch_start = (uint32_t)staging.size();
+
+    auto flush = [&]()
+    {
+        uint32_t instance_count = (uint32_t)staging.size() - batch_start;
+        if (cur_mesh && instance_count > 0)
+        {
+            out_batches.push_back({.mesh = cur_mesh,
+                                   .material = r.front()->material,
+                                   .instance_count = instance_count,
+                                   .first_instance_offset = batch_start,
+                                   .outlined = false,
+                                   .cast_shadows = true});
+        }
+        batch_start = (uint32_t)staging.size();
+    };
+
+    for (auto& obj : r)
+    {
+        if (!(obj->layer_flags & render::LAYER_CAST_SHADOWS))
+        {
+            continue;
+        }
+        if (!cull.is_visible(obj->gpu_data.bounding_sphere_center, obj->gpu_data.bounding_radius))
+        {
+            continue;
+        }
+
+        if (cur_mesh && cur_mesh != obj->mesh)
+        {
+            flush();
+        }
+        cur_mesh = obj->mesh;
+        staging.push_back(obj->slot());
+    }
+    flush();
+}
+
+// Build one shadow pass's batches from the default + outline caster queues,
+// appending visible slots into the shared staging buffer. Replaces the former
+// `build_all` lambda. `out` is cleared first (per-pass persistent batch list).
+void
+build_shadow_pass_batches(std::unordered_map<std::string, render_line_container>& default_queue,
+                          std::unordered_map<std::string, render_line_container>& outline_queue,
+                          std::vector<uint32_t>& staging,
+                          std::vector<draw_batch>& out,
+                          const shadow_cull_volume& cull)
+{
+    out.clear();
+    for (auto& [queue_id, container] : default_queue)
+    {
+        build_culled_shadow_batches(container, staging, out, cull);
+    }
+    for (auto& [queue_id, container] : outline_queue)
+    {
+        build_culled_shadow_batches(container, staging, out, cull);
+    }
+}
+}  // namespace
+
 void
 vulkan_render::build_batches_for_queue(render_line_container& r, bool outlined)
 {
-    build_batches_for_queue_into(r, outlined, m_draw_batches);
+    build_batches_for_queue_into(r, outlined, m_draw_batches, true);
 }
 
 void
 vulkan_render::build_batches_for_queue_into(render_line_container& r,
                                             bool outlined,
-                                            std::vector<draw_batch>& out_batches)
+                                            std::vector<draw_batch>& out_batches,
+                                            bool apply_frustum_cull)
 {
     if (r.empty())
     {
@@ -87,15 +224,20 @@ vulkan_render::build_batches_for_queue_into(render_line_container& r,
 
     for (auto& obj : r)
     {
-        ++m_all_draws;
-
-        // Frustum culling - happens here now, not in draw
-        if (m_render_config.debug.frustum_culling &&
-            !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center,
-                                         obj->gpu_data.bounding_radius))
+        // Stats and camera-frustum culling only apply to the camera-visible pass.
+        // Shadow caster batches (apply_frustum_cull == false) must NOT be culled
+        // against the camera, or off-screen casters drop out of the shadow atlas.
+        if (apply_frustum_cull)
         {
-            ++m_culled_draws;
-            continue;
+            ++m_all_draws;
+
+            if (m_render_config.debug.frustum_culling &&
+                !m_frustum.is_sphere_visible(obj->gpu_data.bounding_sphere_center,
+                                             obj->gpu_data.bounding_radius))
+            {
+                ++m_culled_draws;
+                continue;
+            }
         }
 
         // Mesh change = finalize previous batch
@@ -159,7 +301,59 @@ vulkan_render::prepare_instance_data(render::frame_state& frame)
     // Build batches for debug queue (separate list — skipped by shadows)
     for (auto& [queue_id, container] : m_debug_render_object_queue)
     {
-        build_batches_for_queue_into(container, false, m_debug_draw_batches);
+        build_batches_for_queue_into(container, false, m_debug_draw_batches, true);
+    }
+
+    // Shadow caster batches — culled per pass against each light's volume, NOT the
+    // camera frustum, so off-screen casters still render into the shadow atlas (#1)
+    // while casters outside a given light's reach are skipped (#7). Each pass
+    // appends its own compact slot range into the shared staging buffer.
+    // Requires compute_shadow_matrices()/select_shadowed_lights() to have run first
+    // (called before prepare_instance_data in prepare_draw_resources).
+    if (m_render_config.shadows.enabled)
+    {
+        // CSM cascades: cull against each cascade's ortho frustum.
+        for (uint32_t c = 0; c < m_render_config.shadows.cascade_count; ++c)
+        {
+            build_shadow_pass_batches(m_default_render_object_queue,
+                                      m_outline_render_object_queue,
+                                      m_instance_slots_staging,
+                                      m_cascade_shadow_batches[c],
+                                      shadow_cull_volume::from_frustum(
+                                          m_shadow_config.directional.cascades[c].view_proj));
+        }
+
+        // Local lights: spots cull against their perspective frustum; points use a
+        // sphere test split by hemisphere (front/back paraboloid tiles).
+        for (uint32_t i = 0; i < m_shadow_config.shadowed_local_count; ++i)
+        {
+            const auto& cull = m_local_shadow_cull[i];
+
+            if (cull.type == KGPU_light_type_point)
+            {
+                build_shadow_pass_batches(
+                    m_default_render_object_queue,
+                    m_outline_render_object_queue,
+                    m_instance_slots_staging,
+                    m_local_shadow_batches[i * 2],
+                    shadow_cull_volume::point(cull.position, cull.front_dir, cull.radius, false));
+                build_shadow_pass_batches(
+                    m_default_render_object_queue,
+                    m_outline_render_object_queue,
+                    m_instance_slots_staging,
+                    m_local_shadow_batches[i * 2 + 1],
+                    shadow_cull_volume::point(cull.position, cull.front_dir, cull.radius, true));
+            }
+            else
+            {
+                build_shadow_pass_batches(
+                    m_default_render_object_queue,
+                    m_outline_render_object_queue,
+                    m_instance_slots_staging,
+                    m_local_shadow_batches[i * 2],
+                    shadow_cull_volume::from_frustum(m_shadow_config.local_shadows[i].view_proj));
+            }
+        }
     }
 
     // Upload all instance slots

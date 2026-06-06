@@ -67,8 +67,11 @@ vulkan_render::compute_shadow_atlas_layout()
 void
 vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
 {
-    if (!m_render_config.shadows.enabled || !m_shadow_se || m_draw_batches.empty())
+    if (!m_render_config.shadows.enabled)
+    {
         return;
+    }
+    KRG_check(m_shadow_se, "shadow shader effect must exist when shadows are enabled");
 
     // CSM cascades
     for (uint32_t c = 0; c < m_render_config.shadows.cascade_count; ++c)
@@ -95,8 +98,7 @@ vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
     // Local light shadows
     for (uint32_t i = 0; i < m_shadow_config.shadowed_local_count; ++i)
     {
-        bool is_point =
-            m_shadow_config.local_shadows[i].shadow_info.z == KGPU_light_type_point;
+        bool is_point = m_shadow_config.local_shadows[i].shadow_info.z == KGPU_light_type_point;
 
         // Front hemisphere
         {
@@ -271,16 +273,21 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
 {
     ZoneScopedN("Render::DrawShadowPass");
 
-    if (!m_render_config.shadows.enabled || !m_shadow_se || m_draw_batches.empty())
+    if (!m_render_config.shadows.enabled)
+    {
+        return;
+    }
+    KRG_check(m_shadow_se, "shadow shader effect must exist when shadows are enabled");
+
+    // Per-cascade culled caster list (#7) — nothing visible to this cascade, skip.
+    const auto& batches = m_cascade_shadow_batches[cascade_idx];
+    if (batches.empty())
     {
         return;
     }
 
     auto* se = m_shadow_se;
-    if (se->m_failed_load)
-    {
-        return;
-    }
+    KRG_check(!se->m_failed_load, "shadow shader effect failed to load");
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
 
@@ -291,7 +298,7 @@ vulkan_render::draw_shadow_pass(VkCommandBuffer cmd, uint32_t cascade_idx)
     pc.use_clustered_lighting = 0;  // 0 = CSM cascade mode
 
     // Draw shadow-casting opaque batches into shadow map
-    for (const auto& batch : m_draw_batches)
+    for (const auto& batch : batches)
     {
         if (!batch.mesh || !batch.cast_shadows)
         {
@@ -366,7 +373,9 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
         return;
     }
 
-    if (m_draw_batches.empty())
+    // Per-light culled caster list (#7): index = light*2 + hemisphere.
+    const auto& batches = m_local_shadow_batches[shadow_idx * 2 + (back_face ? 1 : 0)];
+    if (batches.empty())
     {
         return;
     }
@@ -395,7 +404,7 @@ vulkan_render::draw_shadow_local_pass(VkCommandBuffer cmd, uint32_t shadow_idx, 
         pc.use_clustered_lighting = 1u;
     }
 
-    for (const auto& batch : m_draw_batches)
+    for (const auto& batch : batches)
     {
         if (!batch.mesh || !batch.cast_shadows)
         {
@@ -534,6 +543,16 @@ vulkan_render::select_shadowed_lights()
             shadow.view_proj_back = view;
         }
 
+        // Stash CPU-side cull data consumed by prepare_instance_data (#7). front_dir
+        // for points matches the hardcoded (0,0,1) used to build the point view above.
+        auto& cull = m_local_shadow_cull[i];
+        cull.position = light->gpu_data.position;
+        cull.radius = s_far;
+        cull.type = light->gpu_data.type;
+        cull.front_dir = (light->gpu_data.type == KGPU_light_type_point)
+                             ? glm::vec3(0.0f, 0.0f, 1.0f)
+                             : glm::normalize(light->gpu_data.direction);
+
         light->gpu_data.shadow_index = i;
     }
 
@@ -581,11 +600,9 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
         m_shadow_config.directional.cascades[c].atlas_scale = m_csm_tiles[c].uv_scale;
     }
 
-    // Compute shadow matrices for this frame
-    compute_shadow_matrices();
-
-    // Select which local lights get shadows (modifies gpu_data.shadow_index on lights)
-    select_shadowed_lights();
+    // compute_shadow_matrices() and select_shadowed_lights() now run earlier, in
+    // prepare_draw_resources before prepare_instance_data, so the cascade/local
+    // frustums exist when shadow caster batches are culled per pass (#7).
 
     // Re-upload universal light data so shadow_index is in the SSBO
     if (m_cache.universal_lights.get_size() > 0)

@@ -490,7 +490,7 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     // now points at a freed view. Update the existing texture_data in-place
     // (init_scene_depth created it directly via cache.textures.alloc, so we
     // can't use loader.destroy_texture_data here).
-    if (m_render_config.render_scale.enabled && !main_pass->get_depth_images().empty())
+    if (!main_pass->get_depth_images().empty())
     {
         auto& cache = get_cache();
         auto* dtex = cache.textures.find_by_id(AID("scene_depth_texture"));
@@ -668,12 +668,14 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         }
     }
 
-    // Register / refresh scene_depth_texture bindless slot whenever render_scale
-    // is on — main pass's depth image was recreated by replace_color_targets
-    // and is sampled by composite (depth_outline + grid occlusion). Allocate
-    // the texture entry on first transition (when initial config had
-    // render_scale off, the init-path alloc was skipped).
-    if (m_render_config.render_scale.enabled && !main_pass->get_depth_images().empty())
+    // Register / refresh scene_depth_texture bindless slot in BOTH directions.
+    // replace_color_targets (sampled_depth=true) recreated main's depth image
+    // above and freed the old one (its image/view were reset at the top of this
+    // function). If we only refreshed when enabling, the OFF transition would
+    // leave the bindless slot pointing at the freed image view — a dangling
+    // descriptor in a bound set, which can fault the GPU. main always has a
+    // sampleable depth image here, so repoint the slot regardless of state.
+    if (!main_pass->get_depth_images().empty())
     {
         auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture"));
         if (!dtex)

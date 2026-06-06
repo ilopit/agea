@@ -24,6 +24,7 @@
 #include <utils/line_container.h>
 #include <utils/id_allocator.h>
 
+#include <array>
 #include <atomic>
 #include <vector>
 
@@ -578,7 +579,8 @@ private:
     void
     build_batches_for_queue_into(render_line_container& r,
                                  bool outlined,
-                                 std::vector<draw_batch>& out_batches);
+                                 std::vector<draw_batch>& out_batches,
+                                 bool apply_frustum_cull);
 
     void
     upload_instance_slots(render::frame_state& frame);
@@ -922,6 +924,22 @@ private:
     std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots
     std::vector<draw_batch> m_draw_batches;          // Pre-computed batches for frame
     std::vector<draw_batch> m_debug_draw_batches;    // Debug object batches (unlit, no shadows)
+    // Per-pass shadow caster batches, culled against each light's volume (#7).
+    // Each pass appends only its visible slots into m_instance_slots_staging, so
+    // its batches index compact, contiguous ranges for instanced draws.
+    std::array<std::vector<draw_batch>, KGPU_CSM_CASCADE_COUNT> m_cascade_shadow_batches;
+    std::array<std::vector<draw_batch>, KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2> m_local_shadow_batches;
+
+    // CPU-side cull data for local lights, filled by select_shadowed_lights and
+    // consumed by prepare_instance_data (sphere + hemisphere test for points).
+    struct local_shadow_cull_info
+    {
+        glm::vec3 position{0.0f};
+        float radius = 0.0f;
+        glm::vec3 front_dir{0.0f, 0.0f, 1.0f};
+        uint32_t type = 0;
+    };
+    std::array<local_shadow_cull_info, KGPU_MAX_SHADOWED_LOCAL_LIGHTS> m_local_shadow_cull;
 
     // Bone matrix staging for skeletal animation
     std::vector<glm::mat4> m_bone_matrices_staging;

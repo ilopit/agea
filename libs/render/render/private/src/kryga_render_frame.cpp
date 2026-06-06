@@ -395,6 +395,15 @@ vulkan_render::prepare_draw_resources(render::frame_state& current_frame)
     // Update bindless texture descriptors for any newly registered textures
     update_bindless_descriptors();
 
+    // Shadow matrices + local-light selection must run BEFORE prepare_instance_data:
+    // shadow caster batches are now culled per cascade/light frustum (#7), so those
+    // frustums have to exist first. The heavier GPU uploads stay in upload_shadow_data.
+    if (m_render_config.shadows.enabled)
+    {
+        compute_shadow_matrices();
+        select_shadowed_lights();
+    }
+
     // Build instance data (batches for instanced path, identity buffer for legacy path)
     // Both paths need the instance_slots buffer populated for shaders to work
     prepare_instance_data(current_frame);
