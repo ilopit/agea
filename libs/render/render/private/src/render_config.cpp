@@ -495,152 +495,118 @@ render_config::save(const utils::path& path) const
 // Cache support (via VFS)
 // ============================================================================
 
-bool
-render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
+void
+render_config::bind(const vfs::rid& base, const vfs::rid& cache)
 {
-    auto& vfs = glob::glob_state().getr_vfs();
-    if (vfs.exists(cache))
-    {
-        ALOG_INFO("Found cached render config at '{}'", cache.str());
-        serialization::container container;
-        if (serialization::read_container(cache, container))
-        {
-            if (auto s = container["shadows"]; s && s.IsMap())
-            {
-                extract_field(s, "pcf", shadows.pcf);
-                extract_field(s, "bias", shadows.bias);
-                extract_field(s, "normal_bias", shadows.normal_bias);
-                extract_field(s, "local_bias", shadows.local_bias);
-                extract_field(s, "local_normal_bias", shadows.local_normal_bias);
-                extract_field(s, "pcf_world_radius", shadows.pcf_world_radius);
-                extract_field(s, "hardware_pcf", shadows.hardware_pcf);
-                extract_field(s, "depth_16bit", shadows.depth_16bit);
-                extract_field(s, "cascade_count", shadows.cascade_count);
-                extract_field(s, "cascade_split_lambda", shadows.cascade_split_lambda);
-                extract_field(s, "distance", shadows.distance);
-                extract_field(s, "atlas_size", shadows.atlas_size);
-                extract_field(s, "csm_tile_size", shadows.csm_tile_size);
-                extract_field(s, "local_tile_size", shadows.local_tile_size);
-
-                if (!s["csm_tile_size"] && s["map_size"])
-                {
-                    shadows.csm_tile_size = s["map_size"].as<uint32_t>();
-                    shadows.local_tile_size = shadows.csm_tile_size / 2;
-                }
-            }
-
-            if (auto c = container["clusters"]; c && c.IsMap())
-            {
-                extract_field(c, "tile_size", clusters.tile_size);
-                extract_field(c, "depth_slices", clusters.depth_slices);
-                extract_field(c, "max_lights_per_cluster", clusters.max_lights_per_cluster);
-            }
-
-            if (auto l = container["lighting"]; l && l.IsMap())
-            {
-                extract_field(l, "directional", lighting.directional_enabled);
-                extract_field(l, "local", lighting.local_enabled);
-                extract_field(l, "baked", lighting.baked_enabled);
-            }
-
-            if (auto d = container["debug"]; d && d.IsMap())
-            {
-                extract_field(d, "editor_mode", debug.editor_mode);
-                extract_field(d, "show_grid", debug.show_grid);
-                extract_field(d, "light_wireframe", debug.light_wireframe);
-                extract_field(d, "light_icons", debug.light_icons);
-                extract_field(d, "frustum_culling", debug.frustum_culling);
-            }
-
-            if (auto rs = container["render_scale"]; rs && rs.IsMap())
-            {
-                extract_field(rs, "enabled", render_scale.enabled);
-                extract_field(rs, "divisor", render_scale.divisor);
-            }
-
-            if (auto ol = container["outline"]; ol && ol.IsMap())
-            {
-                extract_field(ol, "enabled", outline.enabled);
-                extract_field(ol, "depth_threshold", outline.depth_threshold);
-                extract_field(ol, "normal_threshold", outline.normal_threshold);
-            }
-
-            extract_field(container, "frames_in_flight", frames_in_flight);
-            extract_field(container, "present_mode", present);
-            extract_field(container, "present_pace_frames", present_pace_frames);
-
-            validate();
-            return true;
-        }
-    }
-
-    // Fall back to base config (read via VFS so APK-asset backends work)
-    return load(base);
+    m_base_rid = base;
+    m_cache_rid = cache;
 }
 
 bool
-render_config::save_to_cache(const vfs::rid& cache) const
+render_config::load()
 {
-    glob::glob_state().getr_vfs().create_directories(vfs::rid(cache.mount_point(), ""));
+    // Base layer: committed defaults (read via VFS so APK-asset backends work).
+    load(m_base_rid);
+
+    // Session layer: overlay the local delta when present. load() is a per-key
+    // overlay, so missing delta keys keep their base value.
+    auto& vfs = glob::glob_state().getr_vfs();
+    if (vfs.exists(m_cache_rid))
+    {
+        ALOG_INFO("Overlaying render config delta from '{}'", m_cache_rid.str());
+        load(m_cache_rid);
+    }
+
+    validate();
+    return true;
+}
+
+bool
+render_config::save() const
+{
+    if (m_cache_rid.empty())
+    {
+        return false;
+    }
+
+    // Diff against a freshly-loaded base; persist only what the session changed.
+    render_config base_cfg;
+    base_cfg.load(m_base_rid);
+
+    glob::glob_state().getr_vfs().create_directories(vfs::rid(m_cache_rid.mount_point(), ""));
 
     YAML::Node root;
 
+// Emit `key` into `node` only when the session value differs from base.
+#define DELTA(node, key, expr) \
+    if ((expr) != (base_cfg.expr)) node[key] = (expr)
+
     YAML::Node shadows_node;
-    shadows_node["enabled"] = shadows.enabled;
-    shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
-    shadows_node["bias"] = shadows.bias;
-    shadows_node["normal_bias"] = shadows.normal_bias;
-    shadows_node["local_bias"] = shadows.local_bias;
-    shadows_node["local_normal_bias"] = shadows.local_normal_bias;
-    shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
-    shadows_node["hardware_pcf"] = shadows.hardware_pcf;
-    shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
-    shadows_node["depth_16bit"] = shadows.depth_16bit;
-    shadows_node["cascade_count"] = shadows.cascade_count;
-    shadows_node["cascade_split_lambda"] = shadows.cascade_split_lambda;
-    shadows_node["distance"] = shadows.distance;
-    shadows_node["atlas_size"] = shadows.atlas_size;
-    shadows_node["csm_tile_size"] = shadows.csm_tile_size;
-    shadows_node["local_tile_size"] = shadows.local_tile_size;
-    shadows_node["max_local_lights"] = shadows.max_local_lights;
-    root["shadows"] = shadows_node;
+    DELTA(shadows_node, "enabled", shadows.enabled);
+    if (shadows.pcf != base_cfg.shadows.pcf)
+        shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
+    DELTA(shadows_node, "bias", shadows.bias);
+    DELTA(shadows_node, "normal_bias", shadows.normal_bias);
+    DELTA(shadows_node, "local_bias", shadows.local_bias);
+    DELTA(shadows_node, "local_normal_bias", shadows.local_normal_bias);
+    DELTA(shadows_node, "pcf_world_radius", shadows.pcf_world_radius);
+    DELTA(shadows_node, "hardware_pcf", shadows.hardware_pcf);
+    DELTA(shadows_node, "hardware_pcf_local", shadows.hardware_pcf_local);
+    DELTA(shadows_node, "depth_16bit", shadows.depth_16bit);
+    DELTA(shadows_node, "cascade_count", shadows.cascade_count);
+    DELTA(shadows_node, "cascade_split_lambda", shadows.cascade_split_lambda);
+    DELTA(shadows_node, "distance", shadows.distance);
+    DELTA(shadows_node, "atlas_size", shadows.atlas_size);
+    DELTA(shadows_node, "csm_tile_size", shadows.csm_tile_size);
+    DELTA(shadows_node, "local_tile_size", shadows.local_tile_size);
+    DELTA(shadows_node, "max_local_lights", shadows.max_local_lights);
+    if (shadows_node.size() > 0)
+        root["shadows"] = shadows_node;
 
     YAML::Node clusters_node;
-    clusters_node["tile_size"] = clusters.tile_size;
-    clusters_node["depth_slices"] = clusters.depth_slices;
-    clusters_node["max_lights_per_cluster"] = clusters.max_lights_per_cluster;
-    root["clusters"] = clusters_node;
+    DELTA(clusters_node, "tile_size", clusters.tile_size);
+    DELTA(clusters_node, "depth_slices", clusters.depth_slices);
+    DELTA(clusters_node, "max_lights_per_cluster", clusters.max_lights_per_cluster);
+    if (clusters_node.size() > 0)
+        root["clusters"] = clusters_node;
 
     YAML::Node lighting_node;
-    lighting_node["directional"] = lighting.directional_enabled;
-    lighting_node["local"] = lighting.local_enabled;
-    lighting_node["baked"] = lighting.baked_enabled;
-    root["lighting"] = lighting_node;
+    DELTA(lighting_node, "directional", lighting.directional_enabled);
+    DELTA(lighting_node, "local", lighting.local_enabled);
+    DELTA(lighting_node, "baked", lighting.baked_enabled);
+    if (lighting_node.size() > 0)
+        root["lighting"] = lighting_node;
 
     YAML::Node debug_node;
-    debug_node["editor_mode"] = debug.editor_mode;
-    debug_node["show_grid"] = debug.show_grid;
-    debug_node["light_wireframe"] = debug.light_wireframe;
-    debug_node["light_icons"] = debug.light_icons;
-    debug_node["frustum_culling"] = debug.frustum_culling;
-    root["debug"] = debug_node;
+    DELTA(debug_node, "editor_mode", debug.editor_mode);
+    DELTA(debug_node, "show_grid", debug.show_grid);
+    DELTA(debug_node, "light_wireframe", debug.light_wireframe);
+    DELTA(debug_node, "light_icons", debug.light_icons);
+    DELTA(debug_node, "frustum_culling", debug.frustum_culling);
+    if (debug_node.size() > 0)
+        root["debug"] = debug_node;
 
     YAML::Node rs_node;
-    rs_node["enabled"] = render_scale.enabled;
-    rs_node["divisor"] = render_scale.divisor;
-    root["render_scale"] = rs_node;
+    DELTA(rs_node, "enabled", render_scale.enabled);
+    DELTA(rs_node, "divisor", render_scale.divisor);
+    if (rs_node.size() > 0)
+        root["render_scale"] = rs_node;
 
     YAML::Node ol_node;
-    ol_node["enabled"] = outline.enabled;
-    ol_node["depth_threshold"] = outline.depth_threshold;
-    ol_node["normal_threshold"] = outline.normal_threshold;
-    root["outline"] = ol_node;
+    DELTA(ol_node, "enabled", outline.enabled);
+    DELTA(ol_node, "depth_threshold", outline.depth_threshold);
+    DELTA(ol_node, "normal_threshold", outline.normal_threshold);
+    if (ol_node.size() > 0)
+        root["outline"] = ol_node;
 
-    root["frames_in_flight"] = frames_in_flight;
-    root["present_mode"] = present_mode_to_str.at(present);
-    root["present_pace_frames"] = present_pace_frames;
+    DELTA(root, "frames_in_flight", frames_in_flight);
+    if (present != base_cfg.present)
+        root["present_mode"] = present_mode_to_str.at(present);
+    DELTA(root, "present_pace_frames", present_pace_frames);
 
-    return serialization::write_container(cache, root);
+#undef DELTA
+
+    return serialization::write_container(m_cache_rid, root);
 }
 
 }  // namespace render

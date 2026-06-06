@@ -1021,7 +1021,7 @@ editor_console::exec_config(const std::string& line)
     if (rest == "save")
     {
         auto& cfg = glob::glob_state().getr_render().renderer.get_render_config();
-        if (cfg.save_to_cache(vfs::rid("rtcache://render.acfg")))
+        if (cfg.save())
         {
             add_log("config saved to rtcache://render.acfg");
         }

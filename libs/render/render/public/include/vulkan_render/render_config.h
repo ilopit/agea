@@ -128,19 +128,31 @@ struct render_config
     void
     validate();
 
+    // Overlay: apply only the keys present in `rid` onto the current values.
     bool
     load(const vfs::rid& rid);
 
+    // Write the full config to a filesystem path (used to promote session → base).
     bool
     save(const utils::path& path) const;
 
-    // Load from cache VFS path if it exists, otherwise load base config
-    bool
-    load_with_cache(const vfs::rid& base, const vfs::rid& cache);
+    // Bind the committed base + local session-delta locations. Set once; load()
+    // and save() operate on these. The rids ride along when the config is copied
+    // (e.g. into the renderer), so save() works wherever the config ends up.
+    void
+    bind(const vfs::rid& base, const vfs::rid& cache);
 
-    // Save current state to cache VFS path
+    // Layered load: committed base, then overlay the local session delta if present.
     bool
-    save_to_cache(const vfs::rid& cache) const;
+    load();
+
+    // Persist the session delta: write to the bound cache only the keys differing
+    // from the committed base. No-op if unbound.
+    bool
+    save() const;
+
+    vfs::rid m_base_rid;
+    vfs::rid m_cache_rid;
 };
 
 }  // namespace render

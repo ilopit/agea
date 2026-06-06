@@ -14,18 +14,28 @@ namespace editor
 class config
 {
 public:
+    // Bind the committed base + local session-delta locations. Set once; load()
+    // and save() operate on these so callers don't repeat the rid pair.
+    void
+    bind(const vfs::rid& base, const vfs::rid& cache);
+
+    // Overlay: apply only the keys present in `config` onto the current values
+    // (missing keys keep their current/default value).
     void
     load(const vfs::rid& config);
 
-    // Runtime overlay (mirrors render_config): read the writable rtcache copy if
-    // present (session state — e.g. last opened level), else fall back to the
-    // committed base config. The cache is local and never committed.
+    // Layered load: committed base, then overlay the local session delta if it
+    // exists. Runtime always works with the resulting (session) value.
     bool
-    load_with_cache(const vfs::rid& base, const vfs::rid& cache);
+    load();
 
-    // Persist the current config to the rtcache copy.
+    // Persist the session delta: write to the bound cache only the keys whose
+    // current (session) value differs from the committed base. No-op if unbound.
     bool
-    save_to_cache(const vfs::rid& cache) const;
+    save() const;
+
+    vfs::rid m_base_rid;
+    vfs::rid m_cache_rid;
 
     bool force_recompile_shaders = false;
     uint32_t fps_lock = 30;

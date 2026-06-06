@@ -55,7 +55,6 @@ public:
 
 private:
     render::bake::bake_config m_config;
-    vfs::rid m_cache_rid;
 };
 
 }  // namespace ui

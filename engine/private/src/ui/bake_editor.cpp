@@ -44,17 +44,14 @@ namespace ui
 void
 bake_editor::init(const vfs::rid& base, const vfs::rid& cache)
 {
-    m_cache_rid = cache;
-    m_config.load_with_cache(base, cache);
+    m_config.bind(base, cache);
+    m_config.load();
 }
 
 void
 bake_editor::save_config()
 {
-    if (!m_cache_rid.empty())
-    {
-        m_config.save_to_cache(m_cache_rid);
-    }
+    m_config.save();
 }
 
 void

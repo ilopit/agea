@@ -52,11 +52,21 @@ struct bake_config
     bool
     save(const utils::path& path) const;
 
-    bool
-    load_with_cache(const vfs::rid& base, const vfs::rid& cache);
+    // Bind the committed base + local session-delta locations. Set once; load()
+    // and save() operate on these.
+    void
+    bind(const vfs::rid& base, const vfs::rid& cache);
 
+    // Layered load: committed base, then overlay the local session delta if present.
     bool
-    save_to_cache(const vfs::rid& cache) const;
+    load();
+
+    // Persist only the keys whose session value differs from base. No-op if unbound.
+    bool
+    save() const;
+
+    vfs::rid m_base_rid;
+    vfs::rid m_cache_rid;
 };
 
 // Per-bake runtime settings — extends config with scene data and output paths

@@ -63,39 +63,66 @@ config::load(const vfs::rid& config_rid)
     apply_fields(container, *this);
 }
 
-bool
-config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
+void
+config::bind(const vfs::rid& base, const vfs::rid& cache)
 {
-    auto& vfs = glob::glob_state().getr_vfs();
-    if (vfs.exists(cache))
-    {
-        serialization::container container;
-        if (serialization::read_container(cache, container))
-        {
-            ALOG_INFO("Found cached engine config at '{}'", cache.str());
-            apply_fields(container, *this);
-            return true;
-        }
-    }
+    m_base_rid = base;
+    m_cache_rid = cache;
+}
 
-    // No session cache — fall back to the committed base config.
-    load(base);
+bool
+config::load()
+{
+    // Base layer: committed defaults.
+    load(m_base_rid);
+
+    // Session layer: overlay the local delta when present.
+    auto& vfs = glob::glob_state().getr_vfs();
+    if (vfs.exists(m_cache_rid))
+    {
+        ALOG_INFO("Overlaying engine config delta from '{}'", m_cache_rid.str());
+        load(m_cache_rid);
+    }
     return true;
 }
 
 bool
-config::save_to_cache(const vfs::rid& cache) const
+config::save() const
 {
-    glob::glob_state().getr_vfs().create_directories(vfs::rid(cache.mount_point(), ""));
+    if (m_cache_rid.empty())
+    {
+        return false;
+    }
+
+    // Diff against a freshly-loaded base; persist only what the session changed.
+    config base_cfg;
+    base_cfg.load(m_base_rid);
+
+    glob::glob_state().getr_vfs().create_directories(vfs::rid(m_cache_rid.mount_point(), ""));
 
     YAML::Node root;
-    root[KRG_stringify(force_recompile_shaders)] = force_recompile_shaders;
-    root[KRG_stringify(fps_lock)] = fps_lock;
-    root[KRG_stringify(level)] = level.str();
-    root[KRG_stringify(window_h)] = window_h;
-    root[KRG_stringify(window_w)] = window_w;
+    if (force_recompile_shaders != base_cfg.force_recompile_shaders)
+    {
+        root[KRG_stringify(force_recompile_shaders)] = force_recompile_shaders;
+    }
+    if (fps_lock != base_cfg.fps_lock)
+    {
+        root[KRG_stringify(fps_lock)] = fps_lock;
+    }
+    if (level != base_cfg.level)
+    {
+        root[KRG_stringify(level)] = level.str();
+    }
+    if (window_h != base_cfg.window_h)
+    {
+        root[KRG_stringify(window_h)] = window_h;
+    }
+    if (window_w != base_cfg.window_w)
+    {
+        root[KRG_stringify(window_w)] = window_w;
+    }
 
-    return serialization::write_container(cache, root);
+    return serialization::write_container(m_cache_rid, root);
 }
 
 }  // namespace editor

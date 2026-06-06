@@ -320,8 +320,9 @@ vulkan_engine::init(const startup_options& options)
     // Runtime overlay: the rtcache copy (session state, e.g. last opened level)
     // wins when present; otherwise the committed base config. Keeps the committed
     // default clean while letting the running editor remember its level.
-    glob::glob_state().get_config()->load_with_cache(vfs::rid("data://configs/kryga.acfg"),
-                                                     vfs::rid("rtcache://kryga.acfg"));
+    auto* engine_cfg = glob::glob_state().get_config();
+    engine_cfg->bind(vfs::rid("data://configs/kryga.acfg"), vfs::rid("rtcache://kryga.acfg"));
+    engine_cfg->load();
 
     // Startup level precedence: an explicit CLI -l wins; otherwise fall back to the
     // config's `level` field; if neither is set, init_scene uses its built-in default.
@@ -338,8 +339,8 @@ vulkan_engine::init(const startup_options& options)
 
     // Load render config (with rtcache fallback for session state)
     render::render_config render_cfg;
-    render_cfg.load_with_cache(vfs::rid("data://configs/render.acfg"),
-                               vfs::rid("rtcache://render.acfg"));
+    render_cfg.bind(vfs::rid("data://configs/render.acfg"), vfs::rid("rtcache://render.acfg"));
+    render_cfg.load();
 
 #if KRG_EDITOR
     if (!m_headless)
@@ -497,9 +498,8 @@ vulkan_engine::cleanup()
     // Save session state to rtcache (non-headless only — headless tests don't touch session cfg)
     if (!m_headless)
     {
-        glob::glob_state().getr_render().renderer.get_render_config().save_to_cache(
-            vfs::rid("rtcache://render.acfg"));
-        glob::glob_state().get_config()->save_to_cache(vfs::rid("rtcache://kryga.acfg"));
+        glob::glob_state().getr_render().renderer.get_render_config().save();
+        glob::glob_state().get_config()->save();
 #if KRG_EDITOR
         ui::get_window<ui::bake_editor>()->save_config();
 #endif

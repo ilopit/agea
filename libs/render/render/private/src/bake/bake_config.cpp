@@ -171,58 +171,83 @@ bake_config::save(const utils::path& path) const
     return true;
 }
 
-bool
-bake_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
+void
+bake_config::bind(const vfs::rid& base, const vfs::rid& cache)
 {
-    auto& vfs = glob::glob_state().getr_vfs();
-    if (vfs.exists(cache))
-    {
-        auto rp = vfs.real_path(cache);
-        if (rp.has_value() && load(APATH(rp.value())))
-        {
-            return true;
-        }
-    }
-
-    auto rp = vfs.real_path(base);
-    if (rp.has_value())
-    {
-        return load(APATH(rp.value()));
-    }
-    return false;
+    m_base_rid = base;
+    m_cache_rid = cache;
 }
 
 bool
-bake_config::save_to_cache(const vfs::rid& cache) const
+bake_config::load()
 {
-    glob::glob_state().getr_vfs().create_directories(vfs::rid(cache.mount_point(), ""));
+    auto& vfs = glob::glob_state().getr_vfs();
 
-    YAML::Node root;
-    root["resolution"] = resolution;
-    root["samples_per_texel"] = samples_per_texel;
-    root["bounce_count"] = bounce_count;
-    root["denoise_iterations"] = denoise_iterations;
-    root["ao_radius"] = ao_radius;
-    root["ao_intensity"] = ao_intensity;
-    root["bake_direct"] = bake_direct;
-    root["bake_indirect"] = bake_indirect;
-    root["bake_ao"] = bake_ao;
-    root["save_png"] = save_png;
-    root["texels_per_unit"] = texels_per_unit;
-    root["min_tile"] = min_tile;
-    root["max_tile"] = max_tile;
-    root["shadow_bias"] = shadow_bias;
-    root["shadow_samples"] = shadow_samples;
-    root["shadow_spread"] = shadow_spread;
-    root["dilate_iterations"] = dilate_iterations;
-
-    if (!serialization::write_container(cache, root))
+    // Base layer: committed defaults.
+    if (auto bp = vfs.real_path(m_base_rid); bp.has_value())
     {
-        ALOG_ERROR("Failed to save bake config to '{}'", cache.str());
+        load(APATH(bp.value()));
+    }
+
+    // Session layer: overlay the local delta when present. load() is a per-key
+    // overlay, so missing delta keys keep their base value.
+    if (vfs.exists(m_cache_rid))
+    {
+        if (auto cp = vfs.real_path(m_cache_rid); cp.has_value())
+        {
+            load(APATH(cp.value()));
+        }
+    }
+    return true;
+}
+
+bool
+bake_config::save() const
+{
+    if (m_cache_rid.empty())
+    {
         return false;
     }
 
-    ALOG_INFO("Saved bake config to '{}'", cache.str());
+    // Diff against a freshly-loaded base; persist only what the session changed.
+    bake_config base_cfg;
+    auto& vfs = glob::glob_state().getr_vfs();
+    if (auto bp = vfs.real_path(m_base_rid); bp.has_value())
+    {
+        base_cfg.load(APATH(bp.value()));
+    }
+
+    vfs.create_directories(vfs::rid(m_cache_rid.mount_point(), ""));
+
+    YAML::Node root;
+#define DELTA(key, field) \
+    if ((field) != (base_cfg.field)) root[key] = (field)
+    DELTA("resolution", resolution);
+    DELTA("samples_per_texel", samples_per_texel);
+    DELTA("bounce_count", bounce_count);
+    DELTA("denoise_iterations", denoise_iterations);
+    DELTA("ao_radius", ao_radius);
+    DELTA("ao_intensity", ao_intensity);
+    DELTA("bake_direct", bake_direct);
+    DELTA("bake_indirect", bake_indirect);
+    DELTA("bake_ao", bake_ao);
+    DELTA("save_png", save_png);
+    DELTA("texels_per_unit", texels_per_unit);
+    DELTA("min_tile", min_tile);
+    DELTA("max_tile", max_tile);
+    DELTA("shadow_bias", shadow_bias);
+    DELTA("shadow_samples", shadow_samples);
+    DELTA("shadow_spread", shadow_spread);
+    DELTA("dilate_iterations", dilate_iterations);
+#undef DELTA
+
+    if (!serialization::write_container(m_cache_rid, root))
+    {
+        ALOG_ERROR("Failed to save bake config to '{}'", m_cache_rid.str());
+        return false;
+    }
+
+    ALOG_INFO("Saved bake config delta to '{}'", m_cache_rid.str());
     return true;
 }
 
