@@ -1,16 +1,21 @@
 shadows:
   enabled: true
-  pcf: poisson64
-  bias: 0.001
-  normal_bias: 0.08
-  pcf_world_radius: 0.173
+  pcf: poisson32
+  bias: 0
+  normal_bias: 0.03
+  local_bias: 0.005
+  local_normal_bias: 0.02
+  pcf_world_radius: 0.03
   hardware_pcf: true
+  hardware_pcf_local: false
   depth_16bit: true
-  cascade_count: 3
+  cascade_count: 4
+  cascade_split_lambda: 0.73
   distance: 200
-  atlas_size: 4096
-  csm_tile_size: 1024
-  local_tile_size: 512
+  atlas_size: 8192
+  csm_tile_size: 2048
+  local_tile_size: 1024
+  max_local_lights: 8
 clusters:
   tile_size: 128
   depth_slices: 12
@@ -20,15 +25,18 @@ lighting:
   local: false
   baked: false
 debug:
-  editor_mode: false
-  show_grid: true
-  light_wireframe: true
+  editor_mode: true
+  show_grid: false
+  light_wireframe: false
   light_icons: true
   frustum_culling: true
 render_scale:
   enabled: false
   divisor: 9
 outline:
-  enabled: false
+  enabled: true
   depth_threshold: 0.08
   normal_threshold: 0.35
+frames_in_flight: 2
+present_mode: immediate
+present_pace_frames: 2

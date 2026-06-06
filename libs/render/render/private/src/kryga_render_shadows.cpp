@@ -196,6 +196,10 @@ vulkan_render::compute_shadow_matrices()
 
     compute_cascade_splits(near_clip, shadow_far, m_render_config.shadows.cascade_split_lambda);
 
+    // Light travel direction, consumed by the fragment shader for the world-space depth
+    // bias (shadows.bias in meters, uniform across cascades).
+    m_shadow_config.directional.light_dir = glm::vec4(light_dir, 0.0f);
+
     glm::vec3 up(0.0f, 1.0f, 0.0f);
     if (std::abs(glm::dot(light_dir, up)) > 0.99f)
     {

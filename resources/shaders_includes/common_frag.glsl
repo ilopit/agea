@@ -278,8 +278,13 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
     if (viewDepth > fadeStart)
         fadeFactor = 1.0 - (viewDepth - fadeStart) / (maxShadowDist - fadeStart);
 
+    // Normal bias (along surface normal) + world-space depth bias (along the light
+    // direction, toward the light). shadow_bias is in METERS, so a single value yields the
+    // same world-space offset in every cascade — no peter-pan jump at cascade transitions.
     float normalBias = dyn_shadow_data.shadow.directional.normal_bias;
-    vec3 biasedPos = worldPos + normal * normalBias;
+    float depthBias = dyn_shadow_data.shadow.directional.shadow_bias;
+    vec3 biasedPos = worldPos + normal * normalBias
+                     - dyn_shadow_data.shadow.directional.light_dir.xyz * depthBias;
 
     uint cascade = selectCascade(viewDepth);
 
@@ -316,11 +321,7 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
         || centerDepth > 1.0 || centerDepth < 0.0)
         return 1.0;
 
-    // Depth-compare bias (shadows.bias). Applied on top of the receiver's normal
-    // bias and the pipeline's hardware slope bias — pulls the compare toward lit
-    // to kill residual self-shadow acne. sampleShadow1 shadows when compare > stored.
-    centerDepth -= dyn_shadow_data.shadow.directional.shadow_bias;
-
+    // (Depth bias already applied in world space via biasedPos above — see top of fn.)
     vec2 centerAtlasUV = centerUV * uv_scale + uv_offset;
 
     // Tile bounds with half-texel inset to prevent bilinear bleed at edges

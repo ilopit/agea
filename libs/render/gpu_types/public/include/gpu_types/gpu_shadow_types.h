@@ -52,6 +52,10 @@ struct directional_shadow_data
     uint pcf_mode;
     float pcf_world_radius;
     uint hardware_pcf;
+    // xyz = directional light travel direction (world space). Used to apply the depth
+    // bias as a world-space offset (shadow_bias is in METERS), so the bias is uniform
+    // across cascades instead of scaling with each cascade's ortho depth range.
+    vec4 light_dir;
 };
 
 struct local_light_shadow_data
