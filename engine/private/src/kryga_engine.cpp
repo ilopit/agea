@@ -64,6 +64,8 @@
 #include <core/queues.h>
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_commands_common.h>
+#include <render_bridge/render_command.h>
+#include <render_bridge/render_translate.h>
 
 #include <vfs/vfs.h>
 
@@ -104,6 +106,9 @@
 #include <chrono>
 #include <thread>
 #include <cstdlib>
+#include <cstring>
+#include <unordered_map>
+#include <vector>
 
 namespace kryga
 {
@@ -111,6 +116,59 @@ namespace kryga
 // Defined in crash_handler.cpp — installs an unhandled-exception minidump writer.
 void
 install_crash_handler();
+
+namespace
+{
+// Produced on the main thread by load_level, executed on the render thread:
+// creates/updates the level's lightmap atlas (allocating its bindless index) and
+// registers the per-object UV bindings in the loader's per-level registry. The
+// model never learns the index — object build commands resolve it from the
+// registry at their own execute time. This replaces the old park-the-render-
+// thread upload: the texture creation now rides the normal command pipeline like
+// every other render-state mutation, in FIFO order ahead of the level's object
+// builds (same frame slot), so no stall and no main-thread render touch.
+struct create_lightmap_cmd : render_cmd::render_command_base
+{
+    utils::id level_id;
+    utils::id tex_id;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    std::vector<uint8_t> pixels;
+    std::unordered_map<utils::id, render::lightmap_uv> entries;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        utils::buffer buf(pixels.size());
+        std::memcpy(buf.data(), pixels.data(), pixels.size());
+
+        auto* tex = ctx.loader.update_or_create_texture(tex_id,
+                                                        buf,
+                                                        width,
+                                                        height,
+                                                        VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                        render::texture_format::rgba16f);
+        if (tex)
+        {
+            ctx.loader.set_lightmap(level_id, tex->get_bindless_index(), std::move(entries));
+        }
+    }
+};
+
+// Retire a level's lightmap registry entry when it unloads (render thread). The
+// GPU texture itself stays in the loader cache, reused in place on reload (same
+// tex_id) — matching the prior behaviour.
+struct destroy_lightmap_cmd : render_cmd::render_command_base
+{
+    utils::id level_id;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        ctx.loader.remove_lightmap(level_id);
+    }
+};
+}  // namespace
 
 // ============================================================================
 // Startup Options
@@ -259,7 +317,18 @@ vulkan_engine::init(const startup_options& options)
     gs.run_connect();
     init_default_scripting();
 
-    glob::glob_state().get_config()->load(vfs::rid("data://configs/kryga.acfg"));
+    // Runtime overlay: the rtcache copy (session state, e.g. last opened level)
+    // wins when present; otherwise the committed base config. Keeps the committed
+    // default clean while letting the running editor remember its level.
+    glob::glob_state().get_config()->load_with_cache(vfs::rid("data://configs/kryga.acfg"),
+                                                     vfs::rid("rtcache://kryga.acfg"));
+
+    // Startup level precedence: an explicit CLI -l wins; otherwise fall back to the
+    // config's `level` field; if neither is set, init_scene uses its built-in default.
+    if (m_initial_level.empty() && glob::glob_state().get_config()->level.valid())
+    {
+        m_initial_level = glob::glob_state().get_config()->level.str();
+    }
 
     if (!m_headless)
     {
@@ -430,6 +499,7 @@ vulkan_engine::cleanup()
     {
         glob::glob_state().getr_render().renderer.get_render_config().save_to_cache(
             vfs::rid("rtcache://render.acfg"));
+        glob::glob_state().get_config()->save_to_cache(vfs::rid("rtcache://kryga.acfg"));
 #if KRG_EDITOR
         ui::get_window<ui::bake_editor>()->save_config();
 #endif
@@ -827,6 +897,11 @@ vulkan_engine::load_level(const utils::id& level_id)
     if (auto* prev = glob::glob_state().getr_model().current_level)
     {
         unload_render_resources(*prev);
+        // Retire the prev level's lightmap binding on the render thread, ahead of
+        // the new level's commands in this same frame slot's FIFO queue.
+        auto* cmd = glob::glob_state().getr_render().input_queue.alloc_cmd<destroy_lightmap_cmd>();
+        cmd->level_id = prev->get_id();
+        glob::glob_state().getr_render().input_queue.enqueue(cmd);
         lm.unload_level(*prev);
     }
 
@@ -839,31 +914,34 @@ vulkan_engine::load_level(const utils::id& level_id)
 
     glob::glob_state().getr_model().current_level = result;
 
-    // Create lightmap texture if level references baked data
+    // Remember the current level as session state — persisted to rtcache on
+    // shutdown so the editor reopens it next launch (committed default untouched).
+    glob::glob_state().get_config()->level = level_id;
+
+    // Create the lightmap atlas if the level references baked data. The texture
+    // creation + bindless allocation are render-state ops, so they ride the render
+    // command pipeline (create_lightmap_cmd) rather than running on the main thread:
+    // load the manifest + raw atlas bytes here (pure model/disk work), flatten the
+    // per-object UVs, and enqueue. The command executes on the render thread, in
+    // FIFO order ahead of this level's object builds (enqueued later this frame in
+    // consume_updated_render), which resolve the binding from the loader registry.
     if (result->has_lightmap_ref())
     {
-        auto manifest = std::make_unique<core::lightmap_manifest>();
-        if (manifest->load(result->get_lightmap_manifest_rid()))
+        core::lightmap_manifest manifest;
+        if (manifest.load(result->get_lightmap_manifest_rid()))
         {
             std::vector<uint8_t> lm_data;
             if (vfs::load_file(result->get_lightmap_bin_rid(), lm_data) && !lm_data.empty())
             {
-                utils::buffer lm_buf(lm_data.size());
-                std::memcpy(lm_buf.data(), lm_data.data(), lm_data.size());
-
-                auto& loader = glob::glob_state().getr_render().loader;
-                auto lm_tex_id = AID((result->get_id().str() + "_lightmap").c_str());
-                auto* tex = loader.update_or_create_texture(lm_tex_id,
-                                                            lm_buf,
-                                                            manifest->atlas_width,
-                                                            manifest->atlas_height,
-                                                            VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                            render::texture_format::rgba16f);
-
-                if (tex)
-                {
-                    result->set_lightmap(tex->get_bindless_index(), std::move(manifest));
-                }
+                auto& iq = glob::glob_state().getr_render().input_queue;
+                auto* cmd = iq.alloc_cmd<create_lightmap_cmd>();
+                cmd->level_id = result->get_id();
+                cmd->tex_id = AID((result->get_id().str() + "_lightmap").c_str());
+                cmd->width = manifest.atlas_width;
+                cmd->height = manifest.atlas_height;
+                cmd->pixels = std::move(lm_data);
+                cmd->entries = render_translate::flatten_lightmap_manifest(manifest);
+                iq.enqueue(cmd);
             }
         }
     }

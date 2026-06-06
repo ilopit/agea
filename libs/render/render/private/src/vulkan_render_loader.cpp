@@ -6,6 +6,7 @@
 #include "vulkan_render/vk_pipeline_builder.h"
 #include "vulkan_render/vulkan_loaders/vulkan_shader_loader.h"
 #include "vulkan_render/kryga_render.h"
+#include "vulkan_render/render_thread.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 
 #include "vulkan_render/types/vulkan_mesh_data.h"
@@ -532,6 +533,22 @@ vulkan_render_loader::destroy_texture_data(const kryga::utils::id& id)
         cache.textures.release(itr->second);
         m_textures_cache.erase(itr);
     }
+}
+
+void
+vulkan_render_loader::set_lightmap(const kryga::utils::id& level_id,
+                                   uint32_t bindless_index,
+                                   std::unordered_map<kryga::utils::id, lightmap_uv> entries)
+{
+    KRG_check_render_thread();
+    m_lightmaps[level_id] = lightmap_binding{bindless_index, std::move(entries)};
+}
+
+void
+vulkan_render_loader::remove_lightmap(const kryga::utils::id& level_id)
+{
+    KRG_check_render_thread();
+    m_lightmaps.erase(level_id);
 }
 
 bool

@@ -12,6 +12,9 @@
 #include <utils/dynamic_object.h>
 
 #include <vulkan_render/vulkan_render_loader_create_infos.h>  // render::shader_effect_create_info
+#include <vulkan_render/vulkan_render_loader.h>               // render::lightmap_uv
+
+#include <utils/id.h>
 
 #include <cstdint>
 #include <string>
@@ -19,6 +22,11 @@
 
 namespace kryga
 {
+namespace core
+{
+struct lightmap_manifest;
+}  // namespace core
+
 namespace root
 {
 class smart_object;
@@ -66,6 +74,13 @@ set_material_texture_bindings(utils::dynobj& gpu_data,
                               const uint32_t* texture_indices,
                               const uint32_t* sampler_indices,
                               uint32_t slot_count);
+
+// Flatten a level's lightmap manifest into the render-side per-object UV map
+// (component id → scale/offset). Drops the baking-only region_* fields — the
+// renderer only needs the UV transform. Used to populate the loader's per-level
+// lightmap registry on level load.
+std::unordered_map<utils::id, render::lightmap_uv>
+flatten_lightmap_manifest(const core::lightmap_manifest& manifest);
 
 }  // namespace render_translate
 }  // namespace kryga

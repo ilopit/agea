@@ -23,6 +23,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
+#include <render_bridge/render_translate.h>
 
 #include <gpu_types/gpu_vertex_types.h>
 #include <gpu_types/gpu_light_types.h>
@@ -359,9 +360,14 @@ bake_editor::submit_bake()
             {
                 cur_level->set_lightmap_refs(baked_root / "lightmap.bin",
                                              baked_root / "lightmap_manifest.cfg");
-                cur_level->set_lightmap(
-                    tex->get_bindless_index(),
-                    std::make_unique<core::lightmap_manifest>(std::move(manifest)));
+                // Lightmap binding is render-owned: register the atlas index +
+                // per-object UVs in the loader's per-level registry (the model no
+                // longer caches them). NOTE: bake runs on the action worker thread,
+                // so this still touches render state off the render thread — the
+                // known deferred editor-only violation, unchanged by this refactor.
+                loader.set_lightmap(cur_level->get_id(),
+                                    tex->get_bindless_index(),
+                                    render_translate::flatten_lightmap_manifest(manifest));
 
                 for (auto& [oid, obj_ptr] : cur_level->get_game_objects().get_items())
                 {

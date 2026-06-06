@@ -2,6 +2,7 @@
 
 #include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
+#include <core/lightmap_manifest.h>
 
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/assets/shader_effect.h>
@@ -185,6 +186,18 @@ map_sampler_to_static_index(const root::sampler& smp)
     }
 
     return KGPU_SAMPLER_LINEAR_REPEAT;
+}
+
+std::unordered_map<utils::id, render::lightmap_uv>
+flatten_lightmap_manifest(const core::lightmap_manifest& manifest)
+{
+    std::unordered_map<utils::id, render::lightmap_uv> out;
+    out.reserve(manifest.objects.size());
+    for (const auto& [oid, entry] : manifest.objects)
+    {
+        out[oid] = render::lightmap_uv{entry.lightmap_scale, entry.lightmap_offset};
+    }
+    return out;
 }
 
 }  // namespace render_translate

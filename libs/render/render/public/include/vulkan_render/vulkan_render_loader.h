@@ -32,6 +32,24 @@ namespace render
 {
 class render_device;
 
+// Per-level lightmap binding, owned render-side. The model level holds only the
+// source rids; the bindless atlas index (produced by the render thread on level
+// load) and the per-object UV transform live here so the model never caches a
+// render handle. Flattened from core::lightmap_manifest at build time — only
+// scale/offset + the index are needed at draw time, which keeps the render lib
+// free of a core dependency (no core::lightmap_manifest in render headers).
+struct lightmap_uv
+{
+    glm::vec2 scale{1.0f, 1.0f};
+    glm::vec2 offset{0.0f, 0.0f};
+};
+
+struct lightmap_binding
+{
+    uint32_t bindless_index = 0xFFFFFFFFu;
+    std::unordered_map<kryga::utils::id, lightmap_uv> entries;  // object/component id → UV
+};
+
 class vulkan_render_loader
 {
 public:
@@ -96,6 +114,25 @@ public:
 
     void
     destroy_texture_data(const kryga::utils::id& id);
+
+    /*************************/
+    // Per-level lightmap registry (render-thread owned). create_lightmap_cmd
+    // writes on level load; object build commands read it at execute time to
+    // resolve each instance's lightmap UV + atlas index. Keyed by level id.
+    void
+    set_lightmap(const kryga::utils::id& level_id,
+                 uint32_t bindless_index,
+                 std::unordered_map<kryga::utils::id, lightmap_uv> entries);
+
+    const lightmap_binding*
+    get_lightmap(const kryga::utils::id& level_id) const
+    {
+        auto itr = m_lightmaps.find(level_id);
+        return itr != m_lightmaps.end() ? &itr->second : nullptr;
+    }
+
+    void
+    remove_lightmap(const kryga::utils::id& level_id);
 
     /*************************/
 
@@ -220,6 +257,8 @@ private:
     std::unordered_map<kryga::utils::id, gpu_data_index_type> m_materials_index;
 
     std::unordered_map<kryga::utils::id, ImFont*> m_fonts_cache;
+
+    std::unordered_map<kryga::utils::id, lightmap_binding> m_lightmaps;
 };
 
 }  // namespace render

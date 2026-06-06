@@ -171,11 +171,12 @@ private:
 
     utils::id m_selected_directional_light_id;
 
-    // Baked lighting — paths read from root.cfg, texture created on load by engine
+    // Baked lighting — paths read from root.cfg. The runtime lightmap binding
+    // (atlas bindless index + per-object UVs) is owned render-side in the loader's
+    // per-level registry, NOT cached here: the texture is created on the render
+    // thread on load, so the model holds only the source rids.
     vfs::rid m_lightmap_bin_rid;  // empty = no lightmap
     vfs::rid m_lightmap_manifest_rid;
-    uint32_t m_lightmap_bindless_index = 0xFFFFFFFFu;
-    std::unique_ptr<lightmap_manifest> m_lightmap_manifest;
 
 public:
     void
@@ -212,28 +213,6 @@ public:
         m_lightmap_bin_rid = bin;
         m_lightmap_manifest_rid = manifest;
     }
-
-    // Runtime lightmap state (set by engine after texture creation)
-    bool
-    has_lightmap() const
-    {
-        return m_lightmap_bindless_index != 0xFFFFFFFFu;
-    }
-    uint32_t
-    get_lightmap_bindless_index() const
-    {
-        return m_lightmap_bindless_index;
-    }
-    const lightmap_manifest*
-    get_lightmap_manifest() const
-    {
-        return m_lightmap_manifest.get();
-    }
-
-    void
-    set_lightmap(uint32_t bindless_index, std::unique_ptr<lightmap_manifest> manifest);
-    void
-    clear_lightmap();
 };
 
 }  // namespace core

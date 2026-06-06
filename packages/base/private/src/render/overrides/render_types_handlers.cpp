@@ -103,6 +103,39 @@ is_same_source(root::smart_object& obj, root::smart_object& sub_obj)
 // Render commands — objects
 // ============================================================================
 
+namespace
+{
+struct resolved_lightmap
+{
+    glm::vec2 scale{1.0f, 1.0f};
+    glm::vec2 offset{0.0f, 0.0f};
+    uint32_t index = 0xFFFFFFFFu;
+};
+
+// Render-thread resolution of an instance's lightmap binding from the loader's
+// per-level registry. Empty level_id (or a level/object without a baked entry)
+// yields the unlit defaults. Runs at command execute, after create_lightmap_cmd
+// has populated the registry for this level (same frame slot, earlier in FIFO).
+resolved_lightmap
+resolve_lightmap(render_cmd::render_exec_context& ctx,
+                 const utils::id& level_id,
+                 const utils::id& object_id)
+{
+    resolved_lightmap out;
+    if (const auto* binding = ctx.loader.get_lightmap(level_id))
+    {
+        auto itr = binding->entries.find(object_id);
+        if (itr != binding->entries.end())
+        {
+            out.scale = itr->second.scale;
+            out.offset = itr->second.offset;
+            out.index = binding->bindless_index;
+        }
+    }
+    return out;
+}
+}  // namespace
+
 struct create_object_cmd : render_cmd::render_command_base
 {
     utils::id id;
@@ -115,9 +148,10 @@ struct create_object_cmd : render_cmd::render_command_base
     float bounding_radius = 0.0f;
     uint32_t bone_count = 0;
     std::string queue_id;
-    glm::vec2 lightmap_scale{1.0f, 1.0f};
-    glm::vec2 lightmap_offset{0.0f, 0.0f};
-    uint32_t lightmap_texture_index = 0xFFFFFFFFu;
+    // Lightmap binding is resolved on the render thread at execute time from the
+    // loader's per-level registry (populated by create_lightmap_cmd), not baked in
+    // on the main thread — empty = not lightmapped (skinned/destructible objects).
+    utils::id lightmap_level_id;
     core::object_layer_flags layer_flags;
 
     void
@@ -141,11 +175,12 @@ struct create_object_cmd : render_cmd::render_command_base
             return;
         }
 
+        auto lm = resolve_lightmap(ctx, lightmap_level_id, id);
         object_data->gpu_data.bounding_radius = bounding_radius;
         object_data->gpu_data.bounding_sphere_center = bounding_sphere_center;
-        object_data->gpu_data.lightmap_scale = lightmap_scale;
-        object_data->gpu_data.lightmap_offset = lightmap_offset;
-        object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
+        object_data->gpu_data.lightmap_scale = lm.scale;
+        object_data->gpu_data.lightmap_offset = lm.offset;
+        object_data->gpu_data.lightmap_texture_index = lm.index;
         object_data->bone_count = bone_count;
         object_data->queue_id = std::move(queue_id);
         object_data->layer_flags = layer_flags.bits;
@@ -165,9 +200,7 @@ struct update_object_cmd : render_cmd::render_command_base
     glm::vec3 bounding_sphere_center{0.0f};
     float bounding_radius = 0.0f;
     std::string queue_id;
-    glm::vec2 lightmap_scale{1.0f, 1.0f};
-    glm::vec2 lightmap_offset{0.0f, 0.0f};
-    uint32_t lightmap_texture_index = 0xFFFFFFFFu;
+    utils::id lightmap_level_id;
     core::object_layer_flags layer_flags;
 
     void
@@ -190,11 +223,12 @@ struct update_object_cmd : render_cmd::render_command_base
         ctx.loader.update_object(
             *object_data, *mat_data, *mesh_data, transform, normal_matrix, position);
 
+        auto lm = resolve_lightmap(ctx, lightmap_level_id, id);
         object_data->gpu_data.bounding_radius = bounding_radius;
         object_data->gpu_data.bounding_sphere_center = bounding_sphere_center;
-        object_data->gpu_data.lightmap_scale = lightmap_scale;
-        object_data->gpu_data.lightmap_offset = lightmap_offset;
-        object_data->gpu_data.lightmap_texture_index = lightmap_texture_index;
+        object_data->gpu_data.lightmap_scale = lm.scale;
+        object_data->gpu_data.lightmap_offset = lm.offset;
+        object_data->gpu_data.lightmap_texture_index = lm.index;
 
         auto new_rqid = std::move(queue_id);
         if (new_rqid != object_data->queue_id || layer_flags.bits != object_data->layer_flags)
@@ -450,28 +484,10 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     auto new_rqid = render_translate::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
 
-    // Lookup lightmap data from level manifest (if baked)
-    glm::vec2 lm_scale{1.0f, 1.0f};
-    glm::vec2 lm_offset{0.0f, 0.0f};
-    uint32_t lm_tex_idx = 0xFFFFFFFFu;
-
-    if (auto* level = moc.get_level())
-    {
-        if (level->has_lightmap())
-        {
-            auto* manifest = level->get_lightmap_manifest();
-            if (manifest)
-            {
-                auto* entry = manifest->find_entry(moc.get_id());
-                if (entry)
-                {
-                    lm_scale = entry->lightmap_scale;
-                    lm_offset = entry->lightmap_offset;
-                    lm_tex_idx = level->get_lightmap_bindless_index();
-                }
-            }
-        }
-    }
+    // Lightmap binding is resolved on the render thread at execute time from the
+    // loader's per-level registry — here we only forward which level this instance
+    // belongs to (empty id if none). See create_lightmap_cmd / resolve_lightmap.
+    utils::id lm_level_id = moc.get_level() ? moc.get_level()->get_id() : utils::id();
 
     if (!moc.get_render_built())
     {
@@ -486,9 +502,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->bounding_radius = scaled_radius;
         cmd->bone_count = 0;
         cmd->queue_id = new_rqid;
-        cmd->lightmap_scale = lm_scale;
-        cmd->lightmap_offset = lm_offset;
-        cmd->lightmap_texture_index = lm_tex_idx;
+        cmd->lightmap_level_id = lm_level_id;
         cmd->layer_flags = moc.get_layers();
 
         moc.set_render_built(true);
@@ -506,9 +520,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         cmd->bounding_sphere_center = world_sphere_center;
         cmd->bounding_radius = scaled_radius;
         cmd->queue_id = new_rqid;
-        cmd->lightmap_scale = lm_scale;
-        cmd->lightmap_offset = lm_offset;
-        cmd->lightmap_texture_index = lm_tex_idx;
+        cmd->lightmap_level_id = lm_level_id;
         cmd->layer_flags = moc.get_layers();
 
         ctx.rb->enqueue_cmd(cmd);
