@@ -1486,6 +1486,8 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
 
             sh["bias"] = cfg.shadows.bias;
             sh["normal_bias"] = cfg.shadows.normal_bias;
+            sh["local_bias"] = cfg.shadows.local_bias;
+            sh["local_normal_bias"] = cfg.shadows.local_normal_bias;
             sh["pcf_world_radius"] = cfg.shadows.pcf_world_radius;
             sh["hardware_pcf"] = cfg.shadows.hardware_pcf;
             sh["hardware_pcf_local"] = cfg.shadows.hardware_pcf_local;
@@ -1604,6 +1606,14 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 if (s.isMember("normal_bias"))
                 {
                     cfg.shadows.normal_bias = s["normal_bias"].asFloat();
+                }
+                if (s.isMember("local_bias"))
+                {
+                    cfg.shadows.local_bias = s["local_bias"].asFloat();
+                }
+                if (s.isMember("local_normal_bias"))
+                {
+                    cfg.shadows.local_normal_bias = s["local_normal_bias"].asFloat();
                 }
                 if (s.isMember("pcf_world_radius"))
                 {

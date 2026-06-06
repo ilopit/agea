@@ -17,8 +17,10 @@ struct render_config
     struct shadow_cfg
     {
         pcf_mode pcf = pcf_mode::poisson16;
-        float bias = 0.005f;
-        float normal_bias = 0.03f;
+        float bias = 0.005f;         // directional (CSM)
+        float normal_bias = 0.03f;   // directional (CSM)
+        float local_bias = 0.005f;        // spot/point
+        float local_normal_bias = 0.02f;  // spot/point
         float pcf_world_radius = 0.03f;
         bool hardware_pcf = true;
         bool hardware_pcf_local = false;

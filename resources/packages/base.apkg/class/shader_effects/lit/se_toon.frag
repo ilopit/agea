@@ -161,7 +161,7 @@ void main()
         {
             uint lightSlot = dyn_cluster_light_indices.objects[baseIdx + i].index;
             universal_light_data light = dyn_gpu_universal_light_data.objects[lightSlot];
-            float localShadow = getLocalLightShadow(light, in_world_pos);
+            float localShadow = getLocalLightShadow(light, in_world_pos, norm);
             localShadow = step(0.5, localShadow);
 
             if (light.type == KGPU_light_type_point)

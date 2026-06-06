@@ -316,6 +316,11 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
         || centerDepth > 1.0 || centerDepth < 0.0)
         return 1.0;
 
+    // Depth-compare bias (shadows.bias). Applied on top of the receiver's normal
+    // bias and the pipeline's hardware slope bias — pulls the compare toward lit
+    // to kill residual self-shadow acne. sampleShadow1 shadows when compare > stored.
+    centerDepth -= dyn_shadow_data.shadow.directional.shadow_bias;
+
     vec2 centerAtlasUV = centerUV * uv_scale + uv_offset;
 
     // Tile bounds with half-texel inset to prevent bilinear bleed at edges
@@ -352,12 +357,17 @@ float calcDirectionalShadow(vec3 worldPos, vec3 normal, float viewDepth)
 }
 
 // Calculate spot light shadow factor (atlas)
-float calcSpotShadow(uint shadowIdx, vec3 worldPos)
+float calcSpotShadow(uint shadowIdx, vec3 worldPos, vec3 normal)
 {
     mat4 lightVP = dyn_shadow_data.shadow.local_shadows[shadowIdx].view_proj;
     uint texIdx = dyn_shadow_data.shadow.atlas_bindless_index;
     vec2 uv_offset = dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_offset_front;
     vec2 uv_scale = dyn_shadow_data.shadow.local_shadows[shadowIdx].atlas_scale_front;
+
+    // shadow_params: x = depth bias, y = normal bias (shadows.bias / normal_bias).
+    float depthBias = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.x;
+    float normalBias = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.y;
+    worldPos += normal * normalBias;
 
     vec4 lightSpacePos = lightVP * vec4(worldPos, 1.0);
     vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
@@ -370,6 +380,7 @@ float calcSpotShadow(uint shadowIdx, vec3 worldPos)
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
 
+    currentDepth -= depthBias;
     shadowUV = shadowUV * uv_scale + uv_offset;
 
     float texelSize = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.z * uv_scale.x;
@@ -380,9 +391,13 @@ float calcSpotShadow(uint shadowIdx, vec3 worldPos)
 }
 
 // Calculate point light shadow factor using dual-paraboloid mapping (atlas)
-float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
+float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos, vec3 normal)
 {
-    vec3 lightToFrag = worldPos - lightPos;
+    // shadow_params: x = depth bias, y = normal bias (shadows.bias / normal_bias).
+    float depthBias = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.x;
+    float normalBias = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_params.y;
+
+    vec3 lightToFrag = (worldPos + normal * normalBias) - lightPos;
     mat4 lightView = dyn_shadow_data.shadow.local_shadows[shadowIdx].view_proj;
 
     // Transform to light space
@@ -417,6 +432,8 @@ float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
     if (currentDepth > 1.0 || currentDepth < 0.0)
         return 1.0;
 
+    currentDepth -= depthBias;
+
     // Remap to atlas coordinates
     uv = uv * uv_scale + uv_offset;
 
@@ -428,7 +445,7 @@ float calcPointShadow(uint shadowIdx, vec3 worldPos, vec3 lightPos)
 }
 
 // Get shadow factor for a local light based on its shadow_index
-float getLocalLightShadow(universal_light_data light, vec3 worldPos)
+float getLocalLightShadow(universal_light_data light, vec3 worldPos, vec3 normal)
 {
     if (light.shadow_index == KGPU_SHADOW_INDEX_NONE)
         return 1.0;
@@ -439,7 +456,7 @@ float getLocalLightShadow(universal_light_data light, vec3 worldPos)
 
     uint lightType = dyn_shadow_data.shadow.local_shadows[shadowIdx].shadow_info.z;
     if (lightType == KGPU_light_type_spot)
-        return calcSpotShadow(shadowIdx, worldPos);
+        return calcSpotShadow(shadowIdx, worldPos, normal);
     else
-        return calcPointShadow(shadowIdx, worldPos, light.position);
+        return calcPointShadow(shadowIdx, worldPos, light.position, normal);
 }

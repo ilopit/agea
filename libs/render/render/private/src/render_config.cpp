@@ -194,6 +194,12 @@ render_config::validate()
                KGPU_SHADOW_NORMAL_BIAS_MIN,
                KGPU_SHADOW_NORMAL_BIAS_MAX,
                "shadows.normal_bias");
+    clamp_warn(
+        shadows.local_bias, KGPU_SHADOW_BIAS_MIN, KGPU_SHADOW_BIAS_MAX, "shadows.local_bias");
+    clamp_warn(shadows.local_normal_bias,
+               KGPU_SHADOW_NORMAL_BIAS_MIN,
+               KGPU_SHADOW_NORMAL_BIAS_MAX,
+               "shadows.local_normal_bias");
     clamp_warn(shadows.cascade_count,
                (uint32_t)KGPU_CSM_CASCADE_COUNT_MIN,
                (uint32_t)KGPU_CSM_CASCADE_COUNT_MAX,
@@ -319,6 +325,8 @@ render_config::load(const vfs::rid& rid)
         extract_field(shadows_node, "pcf", shadows.pcf);
         extract_field(shadows_node, "bias", shadows.bias);
         extract_field(shadows_node, "normal_bias", shadows.normal_bias);
+        extract_field(shadows_node, "local_bias", shadows.local_bias);
+        extract_field(shadows_node, "local_normal_bias", shadows.local_normal_bias);
         extract_field(shadows_node, "pcf_world_radius", shadows.pcf_world_radius);
         extract_field(shadows_node, "hardware_pcf", shadows.hardware_pcf);
         extract_field(shadows_node, "hardware_pcf_local", shadows.hardware_pcf_local);
@@ -398,6 +406,8 @@ render_config::save(const utils::path& path) const
     shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
     shadows_node["bias"] = shadows.bias;
     shadows_node["normal_bias"] = shadows.normal_bias;
+    shadows_node["local_bias"] = shadows.local_bias;
+    shadows_node["local_normal_bias"] = shadows.local_normal_bias;
     shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
     shadows_node["hardware_pcf"] = shadows.hardware_pcf;
     shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
@@ -474,6 +484,8 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
                 extract_field(s, "pcf", shadows.pcf);
                 extract_field(s, "bias", shadows.bias);
                 extract_field(s, "normal_bias", shadows.normal_bias);
+                extract_field(s, "local_bias", shadows.local_bias);
+                extract_field(s, "local_normal_bias", shadows.local_normal_bias);
                 extract_field(s, "pcf_world_radius", shadows.pcf_world_radius);
                 extract_field(s, "hardware_pcf", shadows.hardware_pcf);
                 extract_field(s, "depth_16bit", shadows.depth_16bit);
@@ -551,6 +563,8 @@ render_config::save_to_cache(const vfs::rid& cache) const
     shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
     shadows_node["bias"] = shadows.bias;
     shadows_node["normal_bias"] = shadows.normal_bias;
+    shadows_node["local_bias"] = shadows.local_bias;
+    shadows_node["local_normal_bias"] = shadows.local_normal_bias;
     shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
     shadows_node["hardware_pcf"] = shadows.hardware_pcf;
     shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;

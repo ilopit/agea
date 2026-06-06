@@ -336,8 +336,8 @@ render_config_window::handle()
             cfg.shadows.pcf = defaults.shadows.pcf;
         }
 
-        // Bias
-        if (ImGui::DragFloat("Shadow Bias",
+        // Directional bias
+        if (ImGui::DragFloat("Dir Shadow Bias",
                              &cfg.shadows.bias,
                              0.0001f,
                              KGPU_SHADOW_BIAS_MIN,
@@ -358,8 +358,8 @@ render_config_window::handle()
             cfg.shadows.bias = defaults.shadows.bias;
         }
 
-        // Normal Bias
-        if (ImGui::DragFloat("Normal Bias",
+        // Directional Normal Bias
+        if (ImGui::DragFloat("Dir Normal Bias",
                              &cfg.shadows.normal_bias,
                              0.001f,
                              KGPU_SHADOW_NORMAL_BIAS_MIN,
@@ -378,6 +378,52 @@ render_config_window::handle()
         if (reset_button("D##nbias", "Reset to default: 0.030"))
         {
             cfg.shadows.normal_bias = defaults.shadows.normal_bias;
+        }
+
+        // Local (spot/point) bias
+        if (ImGui::DragFloat("Local Shadow Bias",
+                             &cfg.shadows.local_bias,
+                             0.0001f,
+                             KGPU_SHADOW_BIAS_MIN,
+                             KGPU_SHADOW_BIAS_MAX,
+                             "%.4f"))
+        {
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Constant depth offset for spot/point shadows (independent of the\n"
+                "directional bias above).\n\n"
+                "Too low: moire/stripe patterns on lit surfaces.\n"
+                "Too high: shadows detach from caster base (peter-panning).\n"
+                "Ctrl+click to type exact value.");
+        }
+        if (reset_button("D##lbias", "Reset to default: 0.0050"))
+        {
+            cfg.shadows.local_bias = defaults.shadows.local_bias;
+        }
+
+        // Local (spot/point) normal bias
+        if (ImGui::DragFloat("Local Normal Bias",
+                             &cfg.shadows.local_normal_bias,
+                             0.001f,
+                             KGPU_SHADOW_NORMAL_BIAS_MIN,
+                             KGPU_SHADOW_NORMAL_BIAS_MAX,
+                             "%.3f"))
+        {
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Offsets spot/point shadow lookup along the surface normal\n"
+                "(independent of the directional normal bias above).\n\n"
+                "Helps eliminate acne on surfaces at grazing angles to the light.\n"
+                "Too high: thin shadow gaps appear at object edges.\n"
+                "Ctrl+click to type exact value.");
+        }
+        if (reset_button("D##lnbias", "Reset to default: 0.020"))
+        {
+            cfg.shadows.local_normal_bias = defaults.shadows.local_normal_bias;
         }
 
         if (ImGui::DragFloat("PCF Radius",

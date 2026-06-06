@@ -164,6 +164,8 @@ const config_var config_vars_arr[] = {
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::pcf>("shadows.pcf"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::bias>("shadows.bias"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::normal_bias>("shadows.normal_bias"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::local_bias>("shadows.local_bias"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::local_normal_bias>("shadows.local_normal_bias"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::pcf_world_radius>("shadows.pcf_world_radius"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::hardware_pcf>("shadows.hardware_pcf"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::hardware_pcf_local>("shadows.hardware_pcf_local"),

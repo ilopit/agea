@@ -500,9 +500,12 @@ vulkan_render::select_shadowed_lights()
         shadow.shadow_info.z = light->gpu_data.type;
         float s_near = 0.1f;
         float s_far = light->gpu_data.radius;
+        // x = depth bias, y = normal bias — sampled by calcSpotShadow/calcPointShadow.
+        // Driven by the dedicated shadows.local_bias / shadows.local_normal_bias knobs,
+        // independent of the directional shadows.bias / shadows.normal_bias.
         shadow.shadow_params =
-            glm::vec4(0.005f,
-                      0.02f,
+            glm::vec4(m_render_config.shadows.local_bias,
+                      m_render_config.shadows.local_normal_bias,
                       1.0f / static_cast<float>(m_render_config.shadows.local_tile_size),
                       s_near);
         shadow.far_plane = s_far;
