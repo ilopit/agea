@@ -941,6 +941,15 @@ private:
     };
     std::array<local_shadow_cull_info, KGPU_MAX_SHADOWED_LOCAL_LIGHTS> m_local_shadow_cull;
 
+    // Reusable scratch for select_shadowed_lights ranking (avoids a per-frame heap
+    // alloc/free). Cleared (capacity retained) at the start of each selection pass.
+    struct shadow_candidate
+    {
+        uint32_t light_slot;
+        float contribution;
+    };
+    std::vector<shadow_candidate> m_shadow_candidates;
+
     // Bone matrix staging for skeletal animation
     std::vector<glm::mat4> m_bone_matrices_staging;
 

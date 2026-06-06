@@ -159,17 +159,31 @@ render_config::shadow_cfg::max_csm_tile() const
 uint32_t
 render_config::shadow_cfg::max_local_tile() const
 {
-    uint32_t remaining = (atlas_size > csm_tile_size) ? atlas_size - csm_tile_size : 0;
-    if (remaining == 0)
+    const uint32_t local_tile_count = max_local_lights * 2;  // front+back hemisphere per light
+    if (local_tile_count == 0 || atlas_size <= csm_tile_size)
     {
         return KGPU_SHADOW_MAP_SIZE_MIN;
     }
-    uint32_t p = 1;
-    while (p * 2 <= remaining)
+    // Local tiles are laid out in a grid below the CSM row (see
+    // compute_shadow_atlas_layout): cols = atlas/size, rows = ceil(count/cols), and the
+    // grid bottom sits at csm_tile + rows*size. Return the largest power-of-two tile size
+    // whose FULL grid fits in the atlas — the previous version only checked that a single
+    // row fit the vertical remainder, so larger sizes (fewer cols => more rows) overflowed.
+    uint32_t best = 0;
+    for (uint32_t s = KGPU_SHADOW_MAP_SIZE_MIN; s <= atlas_size; s *= 2)
     {
-        p *= 2;
+        uint32_t cols = atlas_size / s;
+        if (cols == 0)
+        {
+            break;
+        }
+        uint32_t rows = (local_tile_count + cols - 1) / cols;  // ceil
+        if (csm_tile_size + rows * s <= atlas_size)
+        {
+            best = s;
+        }
     }
-    return std::max(p, (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN);
+    return std::max(best, (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN);
 }
 
 // ============================================================================

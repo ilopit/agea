@@ -482,13 +482,10 @@ vulkan_render::select_shadowed_lights()
 
     m_shadow_config.shadowed_local_count = 0;
 
-    // Collect candidate lights with their screen-space contribution
-    struct shadow_candidate
-    {
-        uint32_t light_slot;
-        float contribution;
-    };
-    std::vector<shadow_candidate> candidates;
+    // Collect candidate lights with their screen-space contribution. Reuses a member
+    // buffer (capacity retained across frames) instead of allocating each frame.
+    auto& candidates = m_shadow_candidates;
+    candidates.clear();
 
     for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
     {
@@ -508,10 +505,22 @@ vulkan_render::select_shadowed_lights()
               candidates.end(),
               [](const auto& a, const auto& b) { return a.contribution > b.contribution; });
 
-    // Take top N lights
+    // Take top N lights by contribution
     uint32_t count =
         std::min((uint32_t)candidates.size(), m_render_config.shadows.max_local_lights);
     m_shadow_config.shadowed_local_count = count;
+
+    // Stable slot assignment: within the selected set, order by a stable key (light slot
+    // id) instead of by contribution. A light then keeps the same atlas slot — hence the
+    // same shadow_index — frame to frame as long as it stays in the set, so a moving camera
+    // (which reorders contributions) no longer reshuffles shadow_index. shadow_index lives
+    // in universal_light_data, so reshuffling it used to force a full light-buffer re-upload
+    // every frame; now only set-membership changes do (see assignment_changed below).
+    std::sort(candidates.begin(),
+              candidates.begin() + count,
+              [](const auto& a, const auto& b) { return a.light_slot < b.light_slot; });
+
+    bool assignment_changed = false;
 
     for (uint32_t i = 0; i < count; ++i)
     {
@@ -577,7 +586,11 @@ vulkan_render::select_shadowed_lights()
                              ? glm::vec3(0.0f, 0.0f, 1.0f)
                              : glm::normalize(light->gpu_data.direction);
 
-        light->gpu_data.shadow_index = i;
+        if (light->gpu_data.shadow_index != i)
+        {
+            light->gpu_data.shadow_index = i;
+            assignment_changed = true;
+        }
     }
 
     // Clear shadow_index on lights that didn't make the cut
@@ -598,9 +611,39 @@ vulkan_render::select_shadowed_lights()
                 break;
             }
         }
-        if (!found)
+        if (!found && light->gpu_data.shadow_index != KGPU_SHADOW_INDEX_NONE)
         {
             light->gpu_data.shadow_index = KGPU_SHADOW_INDEX_NONE;
+            assignment_changed = true;
+        }
+    }
+
+    // Only when a light's shadow slot actually changed do we re-upload the light buffer —
+    // mark it dirty for every frame in flight so shadow_index reaches each frame's copy.
+    // Does NOT set m_clusters_dirty: light positions/data are unchanged. This replaces the
+    // old unconditional full re-upload in upload_shadow_data (review #9). If the queue is
+    // already non-empty (a real light change this frame), the full upload covers us anyway.
+    if (assignment_changed)
+    {
+        vulkan_universal_light_data* marker = nullptr;
+        for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+        {
+            auto* l = m_cache.universal_lights.at(i);
+            if (l->is_valid())
+            {
+                marker = l;
+                break;
+            }
+        }
+        if (marker)
+        {
+            for (auto& q : m_frames)
+            {
+                if (q.uploads.universal_light_queue.empty())
+                {
+                    q.uploads.universal_light_queue.emplace_back(marker);
+                }
+            }
         }
     }
 }
@@ -628,24 +671,10 @@ vulkan_render::upload_shadow_data(render::frame_state& frame)
     // prepare_draw_resources before prepare_instance_data, so the cascade/local
     // frustums exist when shadow caster batches are culled per pass (#7).
 
-    // Re-upload universal light data so shadow_index is in the SSBO
-    if (m_cache.universal_lights.get_size() > 0)
-    {
-        const auto total_size =
-            m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
-        if (total_size <= frame.buffers.universal_lights.get_alloc_size())
-        {
-            frame.buffers.universal_lights.begin();
-            auto* dst = reinterpret_cast<gpu::universal_light_data*>(
-                frame.buffers.universal_lights.allocate_data(static_cast<uint32_t>(total_size)));
-            for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
-            {
-                auto* light = m_cache.universal_lights.at(i);
-                dst[i] = light->gpu_data;
-            }
-            frame.buffers.universal_lights.end();
-        }
-    }
+    // (#9) The universal-light buffer is no longer re-uploaded here every frame. shadow_index
+    // is propagated via the normal dirty-upload path: select_shadowed_lights marks lights
+    // dirty only when the shadowed set changes, and upload_universal_light_data refreshes the
+    // buffer. For static / camera-only-moving scenes this is now zero per-frame light uploads.
 
     // Upload shadow config to GPU
     frame.buffers.shadow_data.begin();
