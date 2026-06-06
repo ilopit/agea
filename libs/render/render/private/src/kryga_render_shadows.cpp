@@ -194,22 +194,26 @@ vulkan_render::compute_shadow_matrices()
     float far_clip = KGPU_zfar;
     float shadow_far = std::min(far_clip, m_render_config.shadows.distance);
 
-    compute_cascade_splits(near_clip, shadow_far, 0.5f);
+    compute_cascade_splits(near_clip, shadow_far, m_render_config.shadows.cascade_split_lambda);
 
-    // Single light view shared by all cascades.
-    // Center on camera position projected onto the ground (Y=0) so shadows follow the player.
     glm::vec3 up(0.0f, 1.0f, 0.0f);
     if (std::abs(glm::dot(light_dir, up)) > 0.99f)
     {
         up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
-    // Fixed shadow center at origin. The largest cascade covers ~242 units from center
-    // (484m total), which is more than enough for typical scenes.
-    // A camera-following approach requires shadow map scrolling to avoid re-render artifacts.
-    glm::vec3 shadow_center(0.0f);
-    glm::vec3 eye = shadow_center - light_dir * 500.0f;
-    glm::mat4 light_view = glm::lookAt(eye, shadow_center, up);
+    // Camera-following CSM: each cascade is centered on its own view-frustum slice so
+    // shadows track the viewer anywhere in the world (the old code pinned every cascade
+    // to the origin, so shadows vanished past ~242m and near cascades drifted off the
+    // camera). camera looks down -Z, so inv_view[2] is the camera's +Z in world.
+    glm::vec3 cam_pos = m_camera_data.position;
+    glm::mat4 inv_view = glm::inverse(m_camera_data.view);
+    glm::vec3 cam_fwd = -glm::normalize(glm::vec3(inv_view[2]));
+
+    // Distance from cascade center to eye along the light direction. Generous (and
+    // constant per frame) so casters behind the slice along the light axis still make it
+    // into the depth map; kept at the previous value to preserve caster capture.
+    const float pullback = 500.0f;
 
     // Extract FOV and aspect from the camera projection matrix
     // For perspective with GLM_FORCE_DEPTH_ZERO_TO_ONE: proj[1][1] = 1/tan(fov/2)
@@ -235,13 +239,20 @@ vulkan_render::compute_shadow_matrices()
             radius = 1.0f;
         }
 
-        // Tight Z range: eye is 500 units behind shadow_center along light direction.
-        // Scene objects are within ~radius units of shadow_center.
-        // In view space, objects are at z ≈ -(500 ± radius).
-        // ortho near/far measure distance along -Z from eye.
-        float z_eye_dist = 500.0f;
-        float ortho_near = z_eye_dist - radius - 50.0f;
-        float ortho_far = z_eye_dist + radius + 50.0f;
+        // Cascade center = slice axial midpoint along the camera forward axis. The radius
+        // above is the distance from this midpoint to a far corner, which also bounds the
+        // (smaller) near corners, so midpoint + radius is a valid enclosing sphere.
+        float center_dist = (split_near + split_far) * 0.5f;
+        glm::vec3 center = cam_pos + cam_fwd * center_dist;
+
+        // Per-cascade light view centered on the moving slice center.
+        glm::vec3 eye = center - light_dir * pullback;
+        glm::mat4 light_view = glm::lookAt(eye, center, up);
+
+        // Z range measures distance along -Z from eye; objects are within ~radius of
+        // center, i.e. at z ≈ -(pullback ± radius).
+        float ortho_near = pullback - radius - 50.0f;
+        float ortho_far = pullback + radius + 50.0f;
         if (ortho_near < 0.1f)
         {
             ortho_near = 0.1f;
@@ -249,12 +260,18 @@ vulkan_render::compute_shadow_matrices()
 
         glm::mat4 light_proj = glm::ortho(-radius, radius, -radius, radius, ortho_near, ortho_far);
 
-        // Texel snapping on the final VP
+        // Texel snap against a FIXED world reference (the origin), NOT `center`.
+        // light_view = lookAt(eye, center) puts `center` at light-space (0,0) every frame,
+        // so snapping the center is a no-op (round(0)=0) and the grid crawls => jitter.
+        // Projecting a fixed world point and quantizing the box translation so it lands on
+        // a texel boundary locks the texel grid to world space (texel size is constant
+        // frame-to-frame because radius is camera-rotation independent), so the grid only
+        // ever shifts in whole-texel steps as the box moves => no shimmer.
         glm::mat4 shadow_vp = light_proj * light_view;
         float half_sm = (float)m_render_config.shadows.csm_tile_size * 0.5f;
-        glm::vec4 origin = shadow_vp * glm::vec4(0, 0, 0, 1);
-        float sx = std::round(origin.x * half_sm) - origin.x * half_sm;
-        float sy = std::round(origin.y * half_sm) - origin.y * half_sm;
+        glm::vec4 ref_ndc = shadow_vp * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        float sx = std::round(ref_ndc.x * half_sm) - ref_ndc.x * half_sm;
+        float sy = std::round(ref_ndc.y * half_sm) - ref_ndc.y * half_sm;
         light_proj[3][0] += sx / half_sm;
         light_proj[3][1] += sy / half_sm;
 

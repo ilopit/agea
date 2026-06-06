@@ -26,6 +26,9 @@ struct render_config
         bool hardware_pcf_local = false;
         bool depth_16bit = true;
         uint32_t cascade_count = 4;
+        // CSM split distribution: 0 = uniform (even-distance splits), 1 = logarithmic
+        // (tight near cascades / crisp near-camera shadows). Blend in between.
+        float cascade_split_lambda = 0.5f;
         float distance = 200.0f;
         uint32_t atlas_size = KGPU_SHADOW_ATLAS_SIZE;
         uint32_t csm_tile_size = KGPU_SHADOW_CSM_TILE_SIZE;

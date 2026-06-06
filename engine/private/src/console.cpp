@@ -171,6 +171,8 @@ const config_var config_vars_arr[] = {
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::hardware_pcf_local>("shadows.hardware_pcf_local"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::depth_16bit>("shadows.depth_16bit"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::cascade_count>("shadows.cascade_count"),
+    make_var<&rcfg::shadows, &rcfg::shadow_cfg::cascade_split_lambda>(
+        "shadows.cascade_split_lambda"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::distance>("shadows.distance"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::atlas_size>("shadows.atlas_size"),
     make_var<&rcfg::shadows, &rcfg::shadow_cfg::csm_tile_size>("shadows.csm_tile_size"),

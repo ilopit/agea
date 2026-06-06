@@ -426,12 +426,8 @@ render_config_window::handle()
             cfg.shadows.local_normal_bias = defaults.shadows.local_normal_bias;
         }
 
-        if (ImGui::DragFloat("PCF Radius",
-                             &cfg.shadows.pcf_world_radius,
-                             0.001f,
-                             0.001f,
-                             1.0f,
-                             "%.3f"))
+        if (ImGui::DragFloat(
+                "PCF Radius", &cfg.shadows.pcf_world_radius, 0.001f, 0.001f, 1.0f, "%.3f"))
         {
         }
         if (reset_button("D##pcfrad", "Reset to default: 0.030"))
@@ -447,10 +443,11 @@ render_config_window::handle()
 
         int max_cascades = static_cast<int>(cfg.shadows.max_cascades());
         if (static_cast<int>(cfg.shadows.cascade_count) > max_cascades)
+        {
             cfg.shadows.cascade_count = static_cast<uint32_t>(max_cascades);
+        }
         int cascade_count = static_cast<int>(cfg.shadows.cascade_count);
-        if (ImGui::SliderInt(
-                "Cascades", &cascade_count, KGPU_CSM_CASCADE_COUNT_MIN, max_cascades))
+        if (ImGui::SliderInt("Cascades", &cascade_count, KGPU_CSM_CASCADE_COUNT_MIN, max_cascades))
         {
             cfg.shadows.cascade_count = static_cast<uint32_t>(cascade_count);
         }
@@ -465,6 +462,25 @@ render_config_window::handle()
         if (reset_button("D##cascades", "Reset to default: 4"))
         {
             cfg.shadows.cascade_count = defaults.shadows.cascade_count;
+        }
+
+        // Cascade split distribution (uniform <-> logarithmic)
+        if (ImGui::DragFloat(
+                "Split Lambda", &cfg.shadows.cascade_split_lambda, 0.01f, 0.0f, 1.0f, "%.2f"))
+        {
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "How CSM cascade splits are distributed.\n\n"
+                "0.0: uniform (even-distance splits) — wastes near-camera resolution.\n"
+                "1.0: logarithmic — tight near cascades, crisp near-camera shadows.\n"
+                "Raise this if near shadows look blocky/low-res.\n"
+                "Ctrl+click to type exact value.");
+        }
+        if (reset_button("D##splitlambda", "Reset to default: 0.50"))
+        {
+            cfg.shadows.cascade_split_lambda = defaults.shadows.cascade_split_lambda;
         }
 
         // Shadow distance
@@ -519,7 +535,8 @@ render_config_window::handle()
         }
         if (ImGui::IsItemHovered())
         {
-            ImGui::SetTooltip("Shadow atlas texture size (NxN).\nAll shadow maps are packed into this atlas.");
+            ImGui::SetTooltip(
+                "Shadow atlas texture size (NxN).\nAll shadow maps are packed into this atlas.");
         }
 
         const int tile_sizes[] = {64, 128, 256, 512, 1024, 2048, 4096};
@@ -532,8 +549,13 @@ render_config_window::handle()
         {
             int csm_current = 4;
             for (int i = 0; i < tile_count; ++i)
+            {
                 if (static_cast<int>(cfg.shadows.csm_tile_size) == tile_sizes[i])
-                { csm_current = i; break; }
+                {
+                    csm_current = i;
+                    break;
+                }
+            }
 
             if (ImGui::BeginCombo("CSM Tile Size", tile_labels[csm_current]))
             {
@@ -541,10 +563,18 @@ render_config_window::handle()
                 {
                     uint32_t t = static_cast<uint32_t>(tile_sizes[i]);
                     bool too_large = t > csm_limit;
-                    if (too_large) ImGui::BeginDisabled();
+                    if (too_large)
+                    {
+                        ImGui::BeginDisabled();
+                    }
                     if (ImGui::Selectable(tile_labels[i], i == csm_current))
+                    {
                         cfg.shadows.csm_tile_size = t;
-                    if (too_large) ImGui::EndDisabled();
+                    }
+                    if (too_large)
+                    {
+                        ImGui::EndDisabled();
+                    }
                 }
                 ImGui::EndCombo();
             }
@@ -554,18 +584,31 @@ render_config_window::handle()
         {
             int local_current = 3;
             for (int i = 0; i < tile_count; ++i)
+            {
                 if (static_cast<int>(cfg.shadows.local_tile_size) == tile_sizes[i])
-                { local_current = i; break; }
+                {
+                    local_current = i;
+                    break;
+                }
+            }
 
             if (ImGui::BeginCombo("Local Tile Size", tile_labels[local_current]))
             {
                 for (int i = 0; i < tile_count; ++i)
                 {
                     bool too_large = static_cast<uint32_t>(tile_sizes[i]) > local_limit;
-                    if (too_large) ImGui::BeginDisabled();
+                    if (too_large)
+                    {
+                        ImGui::BeginDisabled();
+                    }
                     if (ImGui::Selectable(tile_labels[i], i == local_current))
+                    {
                         cfg.shadows.local_tile_size = static_cast<uint32_t>(tile_sizes[i]);
-                    if (too_large) ImGui::EndDisabled();
+                    }
+                    if (too_large)
+                    {
+                        ImGui::EndDisabled();
+                    }
                 }
                 ImGui::EndCombo();
             }
@@ -573,8 +616,7 @@ render_config_window::handle()
 
         {
             int local_lights = static_cast<int>(cfg.shadows.max_local_lights);
-            if (ImGui::SliderInt(
-                    "Shadow Lights", &local_lights, 0, KGPU_MAX_SHADOWED_LOCAL_LIGHTS))
+            if (ImGui::SliderInt("Shadow Lights", &local_lights, 0, KGPU_MAX_SHADOWED_LOCAL_LIGHTS))
             {
                 cfg.shadows.max_local_lights = static_cast<uint32_t>(local_lights);
             }
@@ -602,9 +644,11 @@ render_config_window::handle()
             ImGui::SetTooltip("Reset all shadow settings to defaults");
         }
 
-        uint32_t atlas_mb = (cfg.shadows.atlas_size / 1024) * (cfg.shadows.atlas_size / 1024) * 4 * 3;
+        uint32_t atlas_mb =
+            (cfg.shadows.atlas_size / 1024) * (cfg.shadows.atlas_size / 1024) * 4 * 3;
         ImGui::SameLine();
-        ImGui::TextDisabled("| atlas %dx%d (%u MB)", cfg.shadows.atlas_size, cfg.shadows.atlas_size, atlas_mb);
+        ImGui::TextDisabled(
+            "| atlas %dx%d (%u MB)", cfg.shadows.atlas_size, cfg.shadows.atlas_size, atlas_mb);
     }
 
     // =========================================================================

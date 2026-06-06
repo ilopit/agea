@@ -1493,6 +1493,7 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             sh["hardware_pcf_local"] = cfg.shadows.hardware_pcf_local;
             sh["depth_16bit"] = cfg.shadows.depth_16bit;
             sh["cascade_count"] = cfg.shadows.cascade_count;
+            sh["cascade_split_lambda"] = cfg.shadows.cascade_split_lambda;
             sh["distance"] = cfg.shadows.distance;
             sh["atlas_size"] = cfg.shadows.atlas_size;
             sh["csm_tile_size"] = cfg.shadows.csm_tile_size;
@@ -1634,6 +1635,10 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 if (s.isMember("cascade_count"))
                 {
                     cfg.shadows.cascade_count = s["cascade_count"].asUInt();
+                }
+                if (s.isMember("cascade_split_lambda"))
+                {
+                    cfg.shadows.cascade_split_lambda = s["cascade_split_lambda"].asFloat();
                 }
                 if (s.isMember("distance"))
                 {

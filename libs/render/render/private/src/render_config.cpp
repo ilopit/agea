@@ -129,25 +129,30 @@ uint32_t
 render_config::shadow_cfg::max_cascades() const
 {
     if (csm_tile_size == 0)
+    {
         return KGPU_CSM_CASCADE_COUNT_MIN;
+    }
     uint32_t by_width = atlas_size / csm_tile_size;
-    return std::clamp(by_width,
-                      (uint32_t)KGPU_CSM_CASCADE_COUNT_MIN,
-                      (uint32_t)KGPU_CSM_CASCADE_COUNT_MAX);
+    return std::clamp(
+        by_width, (uint32_t)KGPU_CSM_CASCADE_COUNT_MIN, (uint32_t)KGPU_CSM_CASCADE_COUNT_MAX);
 }
 
 uint32_t
 render_config::shadow_cfg::max_csm_tile() const
 {
     if (cascade_count == 0)
+    {
         return KGPU_SHADOW_MAP_SIZE_MIN;
+    }
     uint32_t max_by_width = atlas_size / std::max(cascade_count, 1u);
     uint32_t max_by_height = atlas_size - KGPU_SHADOW_MAP_SIZE_MIN;
     uint32_t limit = std::min(max_by_width, max_by_height);
     // Round down to power of two
     uint32_t p = 1;
     while (p * 2 <= limit)
+    {
         p *= 2;
+    }
     return std::max(p, (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN);
 }
 
@@ -156,10 +161,14 @@ render_config::shadow_cfg::max_local_tile() const
 {
     uint32_t remaining = (atlas_size > csm_tile_size) ? atlas_size - csm_tile_size : 0;
     if (remaining == 0)
+    {
         return KGPU_SHADOW_MAP_SIZE_MIN;
+    }
     uint32_t p = 1;
     while (p * 2 <= remaining)
+    {
         p *= 2;
+    }
     return std::max(p, (uint32_t)KGPU_SHADOW_MAP_SIZE_MIN);
 }
 
@@ -204,6 +213,7 @@ render_config::validate()
                (uint32_t)KGPU_CSM_CASCADE_COUNT_MIN,
                (uint32_t)KGPU_CSM_CASCADE_COUNT_MAX,
                "shadows.cascade_count");
+    clamp_warn(shadows.cascade_split_lambda, 0.0f, 1.0f, "shadows.cascade_split_lambda");
     clamp_warn(
         shadows.distance, KGPU_SHADOW_DISTANCE_MIN, KGPU_SHADOW_DISTANCE_MAX, "shadows.distance");
     // Round a value to the nearest power of two within [lo, hi]
@@ -249,14 +259,14 @@ render_config::validate()
     // Priority: atlas > csm_tile > cascade_count > local_tile.
     // Shrink CSM tile first to preserve cascade count; only drop cascades
     // if CSM tile hits the minimum and still doesn't fit.
-    while (shadows.csm_tile_size > shadows.max_csm_tile()
-           && shadows.csm_tile_size > KGPU_SHADOW_MAP_SIZE_MIN)
+    while (shadows.csm_tile_size > shadows.max_csm_tile() &&
+           shadows.csm_tile_size > KGPU_SHADOW_MAP_SIZE_MIN)
     {
         shadows.csm_tile_size /= 2;
     }
     clamp_warn(shadows.cascade_count, 1u, shadows.max_cascades(), "shadows.cascade_count");
-    while (shadows.local_tile_size > shadows.max_local_tile()
-           && shadows.local_tile_size > KGPU_SHADOW_MAP_SIZE_MIN)
+    while (shadows.local_tile_size > shadows.max_local_tile() &&
+           shadows.local_tile_size > KGPU_SHADOW_MAP_SIZE_MIN)
     {
         shadows.local_tile_size /= 2;
     }
@@ -332,6 +342,7 @@ render_config::load(const vfs::rid& rid)
         extract_field(shadows_node, "hardware_pcf_local", shadows.hardware_pcf_local);
         extract_field(shadows_node, "depth_16bit", shadows.depth_16bit);
         extract_field(shadows_node, "cascade_count", shadows.cascade_count);
+        extract_field(shadows_node, "cascade_split_lambda", shadows.cascade_split_lambda);
         extract_field(shadows_node, "distance", shadows.distance);
         extract_field(shadows_node, "atlas_size", shadows.atlas_size);
         extract_field(shadows_node, "csm_tile_size", shadows.csm_tile_size);
@@ -413,6 +424,7 @@ render_config::save(const utils::path& path) const
     shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
     shadows_node["depth_16bit"] = shadows.depth_16bit;
     shadows_node["cascade_count"] = shadows.cascade_count;
+    shadows_node["cascade_split_lambda"] = shadows.cascade_split_lambda;
     shadows_node["distance"] = shadows.distance;
     shadows_node["atlas_size"] = shadows.atlas_size;
     shadows_node["csm_tile_size"] = shadows.csm_tile_size;
@@ -490,6 +502,7 @@ render_config::load_with_cache(const vfs::rid& base, const vfs::rid& cache)
                 extract_field(s, "hardware_pcf", shadows.hardware_pcf);
                 extract_field(s, "depth_16bit", shadows.depth_16bit);
                 extract_field(s, "cascade_count", shadows.cascade_count);
+                extract_field(s, "cascade_split_lambda", shadows.cascade_split_lambda);
                 extract_field(s, "distance", shadows.distance);
                 extract_field(s, "atlas_size", shadows.atlas_size);
                 extract_field(s, "csm_tile_size", shadows.csm_tile_size);
@@ -570,6 +583,7 @@ render_config::save_to_cache(const vfs::rid& cache) const
     shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
     shadows_node["depth_16bit"] = shadows.depth_16bit;
     shadows_node["cascade_count"] = shadows.cascade_count;
+    shadows_node["cascade_split_lambda"] = shadows.cascade_split_lambda;
     shadows_node["distance"] = shadows.distance;
     shadows_node["atlas_size"] = shadows.atlas_size;
     shadows_node["csm_tile_size"] = shadows.csm_tile_size;
