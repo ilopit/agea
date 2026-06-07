@@ -4,6 +4,8 @@
 
 #include "packages/root/model/components/game_object_component.h"
 
+#include <physics/physics_types.h>
+
 namespace kryga
 {
 namespace root
@@ -60,6 +62,17 @@ public:
     set_local_centroid(const glm::vec3& c)
     {
         m_local_centroid = c;
+    }
+
+    const physics::static_body_handle&
+    get_physics_handle() const
+    {
+        return m_physics_handle;
+    }
+    void
+    set_physics_handle(physics::static_body_handle h)
+    {
+        m_physics_handle = h;
     }
 
 protected:
@@ -201,6 +214,7 @@ protected:
 
     float m_base_bounding_radius = 0.0f;
     glm::vec3 m_local_centroid = {0.0f, 0.0f, 0.0f};
+    physics::static_body_handle m_physics_handle{};
 };
 
 }  // namespace base

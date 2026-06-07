@@ -2,6 +2,8 @@
 
 #include <glm_unofficial/glm.h>
 
+#include <physics/physics_types.h>
+
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -58,6 +60,18 @@ public:
 
     void
     clear_static_world();
+
+    // Register an independent static triangle-mesh collider (vertices in world
+    // space). Additive — does NOT touch the build_static_world body, so multiple
+    // colliders (terrain chunks, props) can coexist. Returns an invalid handle
+    // on failure (degenerate mesh / uninitialised world).
+    static_body_handle
+    register_static_mesh(const static_world_mesh& mesh);
+
+    // Remove a collider previously returned by register_static_mesh. No-op on an
+    // invalid/unknown handle.
+    void
+    unregister_static_mesh(static_body_handle h);
 
     // Advance the simulation by dt seconds.
     void

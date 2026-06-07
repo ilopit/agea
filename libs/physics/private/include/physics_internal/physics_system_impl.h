@@ -15,6 +15,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <memory>
+#include <unordered_map>
 
 namespace kryga
 {
@@ -32,6 +33,11 @@ struct physics_system::impl
     jolt_layers::object_layer_pair_filter_impl obj_vs_obj;
 
     JPH::BodyID static_world_body;  // invalid == none
+
+    // Independently-registered static colliders (terrain, etc.), keyed by the
+    // value of the static_body_handle handed back to the caller.
+    std::unordered_map<uint64_t, JPH::BodyID> static_bodies;
+    uint64_t next_static_body_id = 1;
 };
 
 }  // namespace physics

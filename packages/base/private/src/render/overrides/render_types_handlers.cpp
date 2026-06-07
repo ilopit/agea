@@ -1486,6 +1486,27 @@ terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         tc.set_local_centroid(centroid);
         tc.set_base_bounding_radius(std::sqrt(max_d2));
 
+        // Register a static triangle-mesh collider (world space) with physics so
+        // dynamic bodies collide with the terrain. Baked once at first build —
+        // moving the terrain afterwards won't move the collider (static v1).
+        // Must run before the vertex buffer is moved into the render command.
+        if (auto* ps = glob::glob_state().get_physics_system())
+        {
+            physics::static_world_mesh coll;
+            const glm::mat4 xf = tc.get_transform_matrix();
+            coll.vertices.reserve(vcount);
+            for (uint32_t v = 0; v < vcount; ++v)
+            {
+                coll.vertices.push_back(glm::vec3(xf * glm::vec4(vv.at(v).position, 1.0f)));
+            }
+            coll.indices.reserve(icount);
+            for (uint32_t i = 0; i < icount; ++i)
+            {
+                coll.indices.push_back(iv.at(i));
+            }
+            tc.set_physics_handle(ps->register_static_mesh(coll));
+        }
+
         auto* mcmd = ctx.rb->alloc_cmd<create_terrain_mesh_cmd>();
         mcmd->id = mesh_id;
         mcmd->vertices = std::move(vbuf);
@@ -1564,6 +1585,15 @@ terrain_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx
         ctx.rb->enqueue_cmd(mcmd);
 
         tc.set_render_built(false);
+    }
+
+    if (tc.get_physics_handle().valid())
+    {
+        if (auto* ps = glob::glob_state().get_physics_system())
+        {
+            ps->unregister_static_mesh(tc.get_physics_handle());
+        }
+        tc.set_physics_handle({});
     }
 
     auto rc = root::game_object_component__cmd_destroyer(ctx);

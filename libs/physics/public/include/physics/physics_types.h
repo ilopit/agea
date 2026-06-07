@@ -36,5 +36,18 @@ struct destructible_handle
     }
 };
 
+// Handle to an independently-registered static triangle-mesh collider
+// (e.g. terrain). Additive: distinct from the single build_static_world body.
+struct static_body_handle
+{
+    uint64_t value = 0;
+
+    bool
+    valid() const
+    {
+        return value != 0;
+    }
+};
+
 }  // namespace physics
 }  // namespace kryga

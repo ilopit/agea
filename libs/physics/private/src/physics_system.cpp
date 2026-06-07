@@ -3,6 +3,8 @@
 
 #include <global_state/global_state.h>
 
+#include <utils/kryga_log.h>
+
 #include "physics_internal/physics_system_impl.h"
 
 #include <Jolt/Jolt.h>
@@ -88,6 +90,17 @@ physics_system::shutdown()
         m_impl->static_world_body = {};
     }
 
+    if (m_impl->world)
+    {
+        auto& bi = m_impl->world->GetBodyInterface();
+        for (auto& [id, body] : m_impl->static_bodies)
+        {
+            bi.RemoveBody(body);
+            bi.DestroyBody(body);
+        }
+    }
+    m_impl->static_bodies.clear();
+
     m_impl->world.reset();
     m_impl->job_system.reset();
     m_impl->temp_allocator.reset();
@@ -122,16 +135,13 @@ physics_system::clear_static_world()
     m_impl->static_world_body = {};
 }
 
-void
-physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
+namespace
 {
-    if (!m_impl->world)
-    {
-        return;
-    }
-
-    clear_static_world();
-
+// Concatenate the meshes into a single Jolt MeshShape. Returns an error result
+// (HasError()) if no usable triangles were supplied.
+JPH::ShapeSettings::ShapeResult
+build_mesh_shape(const std::vector<static_world_mesh>& meshes)
+{
     JPH::VertexList all_verts;
     JPH::IndexedTriangleList all_tris;
 
@@ -163,13 +173,26 @@ physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
 
     if (all_tris.empty())
     {
-        return;
+        return JPH::ShapeSettings::ShapeResult();  // empty -> HasError()
     }
 
     JPH::MeshShapeSettings mesh_settings(std::move(all_verts), std::move(all_tris));
     mesh_settings.SetEmbedded();
+    return mesh_settings.Create();
+}
+}  // namespace
 
-    auto shape_result = mesh_settings.Create();
+void
+physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
+{
+    if (!m_impl->world)
+    {
+        return;
+    }
+
+    clear_static_world();
+
+    auto shape_result = build_mesh_shape(meshes);
     if (shape_result.HasError())
     {
         return;
@@ -185,6 +208,64 @@ physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
     m_impl->static_world_body = bi.CreateAndAddBody(bcs, JPH::EActivation::DontActivate);
 
     m_impl->world->OptimizeBroadPhase();
+}
+
+static_body_handle
+physics_system::register_static_mesh(const static_world_mesh& mesh)
+{
+    if (!m_impl->world)
+    {
+        return {};
+    }
+
+    auto shape_result = build_mesh_shape({mesh});
+    if (shape_result.HasError())
+    {
+        ALOG_WARN("register_static_mesh: degenerate mesh ({} verts, {} indices) — no collider",
+                  mesh.vertices.size(),
+                  mesh.indices.size());
+        return {};
+    }
+
+    JPH::BodyCreationSettings bcs(shape_result.Get(),
+                                  JPH::RVec3::sZero(),
+                                  JPH::Quat::sIdentity(),
+                                  JPH::EMotionType::Static,
+                                  jolt_layers::NON_MOVING);
+
+    auto& bi = m_impl->world->GetBodyInterface();
+    JPH::BodyID body = bi.CreateAndAddBody(bcs, JPH::EActivation::DontActivate);
+    if (body.IsInvalid())
+    {
+        return {};
+    }
+
+    m_impl->world->OptimizeBroadPhase();
+
+    uint64_t id = m_impl->next_static_body_id++;
+    m_impl->static_bodies.emplace(id, body);
+    ALOG_INFO("register_static_mesh: collider #{} added ({} tris)", id, mesh.indices.size() / 3);
+    return static_body_handle{id};
+}
+
+void
+physics_system::unregister_static_mesh(static_body_handle h)
+{
+    if (!m_impl->world || !h.valid())
+    {
+        return;
+    }
+
+    auto it = m_impl->static_bodies.find(h.value);
+    if (it == m_impl->static_bodies.end())
+    {
+        return;
+    }
+
+    auto& bi = m_impl->world->GetBodyInterface();
+    bi.RemoveBody(it->second);
+    bi.DestroyBody(it->second);
+    m_impl->static_bodies.erase(it);
 }
 
 void
