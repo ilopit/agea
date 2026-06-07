@@ -39,8 +39,15 @@ struct shadow_cascade_data
 #define KGPU_PCF_POISSON16 3
 #define KGPU_PCF_POISSON32 4
 #define KGPU_PCF_POISSON64 5
+// PCSS (Percentage-Closer Soft Shadows) — directional only. A fully separate
+// code path with its own bias (pcss_* fields below); selecting it never affects
+// the fixed-radius PCF modes above.
+#define KGPU_PCF_PCSS 6
 #define KGPU_PCF_MIN KGPU_PCF_3X3
-#define KGPU_PCF_MAX KGPU_PCF_POISSON64
+#define KGPU_PCF_MAX KGPU_PCF_PCSS
+
+#define KGPU_PCSS_LIGHT_SIZE_MIN 0.0f
+#define KGPU_PCSS_LIGHT_SIZE_MAX 5.0f
 
 struct directional_shadow_data
 {
@@ -56,6 +63,14 @@ struct directional_shadow_data
     // bias as a world-space offset (shadow_bias is in METERS), so the bias is uniform
     // across cascades instead of scaling with each cascade's ortho depth range.
     vec4 light_dir;
+    // --- PCSS-only state (used only when pcf_mode == KGPU_PCF_PCSS) ---
+    // Kept fully separate from shadow_bias / normal_bias above so tuning the soft
+    // path can never re-introduce acne in the fixed-radius PCF modes. Appended as
+    // 4 floats after the vec4 (16-byte boundary): identical packing in C++ & std430.
+    float pcss_light_size;    // penumbra scale, world units (light angular size)
+    float pcss_bias;          // PCSS depth bias (meters), independent of shadow_bias
+    float pcss_normal_bias;   // PCSS normal bias, independent of normal_bias
+    float _pad_pcss;
 };
 
 struct local_light_shadow_data

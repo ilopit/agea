@@ -18,6 +18,7 @@ enum class pcf_mode : uint32_t
     poisson16 = KGPU_PCF_POISSON16,
     poisson32 = KGPU_PCF_POISSON32,
     poisson64 = KGPU_PCF_POISSON64,
+    pcss = KGPU_PCF_PCSS,
 
     min = KGPU_PCF_MIN,
     max = KGPU_PCF_MAX,
@@ -37,6 +38,7 @@ inline constexpr pcf_mode_info pcf_mode_entries[] = {
     {pcf_mode::poisson16, "poisson16", "Poisson 16"},
     {pcf_mode::poisson32, "poisson32", "Poisson 32"},
     {pcf_mode::poisson64, "poisson64", "Poisson 64"},
+    {pcf_mode::pcss, "pcss", "PCSS (soft)"},
 };
 
 inline constexpr int pcf_mode_count = sizeof(pcf_mode_entries) / sizeof(pcf_mode_entries[0]);

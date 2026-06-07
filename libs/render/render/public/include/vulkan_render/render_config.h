@@ -22,6 +22,11 @@ struct render_config
         float local_bias = 0.005f;        // spot/point
         float local_normal_bias = 0.02f;  // spot/point
         float pcf_world_radius = 0.03f;
+        // PCSS (pcf == pcf_mode::pcss) — kept separate from the bias fields above
+        // so the soft path can be tuned without touching the PCF modes.
+        float pcss_light_size = 0.5f;    // penumbra scale (world units)
+        float pcss_bias = 0.005f;        // PCSS depth bias (independent of `bias`)
+        float pcss_normal_bias = 0.03f;  // PCSS normal bias (independent of `normal_bias`)
         bool hardware_pcf = true;
         bool hardware_pcf_local = false;
         bool depth_16bit = true;

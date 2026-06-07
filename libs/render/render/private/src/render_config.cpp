@@ -31,6 +31,7 @@ const std::unordered_map<std::string, pcf_mode> pcf_mode_from_string = {
     {"poisson16", pcf_mode::poisson16},
     {"poisson32", pcf_mode::poisson32},
     {"poisson64", pcf_mode::poisson64},
+    {"pcss", pcf_mode::pcss},
 };
 
 const std::unordered_map<pcf_mode, std::string> pcf_mode_to_string = {
@@ -40,6 +41,7 @@ const std::unordered_map<pcf_mode, std::string> pcf_mode_to_string = {
     {pcf_mode::poisson16, "poisson16"},
     {pcf_mode::poisson32, "poisson32"},
     {pcf_mode::poisson64, "poisson64"},
+    {pcf_mode::pcss, "pcss"},
 };
 
 const std::unordered_map<std::string, present_mode> present_mode_from_str = {
@@ -223,6 +225,15 @@ render_config::validate()
                KGPU_SHADOW_NORMAL_BIAS_MIN,
                KGPU_SHADOW_NORMAL_BIAS_MAX,
                "shadows.local_normal_bias");
+    clamp_warn(shadows.pcss_light_size,
+               KGPU_PCSS_LIGHT_SIZE_MIN,
+               KGPU_PCSS_LIGHT_SIZE_MAX,
+               "shadows.pcss_light_size");
+    clamp_warn(shadows.pcss_bias, KGPU_SHADOW_BIAS_MIN, KGPU_SHADOW_BIAS_MAX, "shadows.pcss_bias");
+    clamp_warn(shadows.pcss_normal_bias,
+               KGPU_SHADOW_NORMAL_BIAS_MIN,
+               KGPU_SHADOW_NORMAL_BIAS_MAX,
+               "shadows.pcss_normal_bias");
     clamp_warn(shadows.cascade_count,
                (uint32_t)KGPU_CSM_CASCADE_COUNT_MIN,
                (uint32_t)KGPU_CSM_CASCADE_COUNT_MAX,
@@ -352,6 +363,9 @@ render_config::load(const vfs::rid& rid)
         extract_field(shadows_node, "local_bias", shadows.local_bias);
         extract_field(shadows_node, "local_normal_bias", shadows.local_normal_bias);
         extract_field(shadows_node, "pcf_world_radius", shadows.pcf_world_radius);
+        extract_field(shadows_node, "pcss_light_size", shadows.pcss_light_size);
+        extract_field(shadows_node, "pcss_bias", shadows.pcss_bias);
+        extract_field(shadows_node, "pcss_normal_bias", shadows.pcss_normal_bias);
         extract_field(shadows_node, "hardware_pcf", shadows.hardware_pcf);
         extract_field(shadows_node, "hardware_pcf_local", shadows.hardware_pcf_local);
         extract_field(shadows_node, "depth_16bit", shadows.depth_16bit);
@@ -434,6 +448,9 @@ render_config::save(const utils::path& path) const
     shadows_node["local_bias"] = shadows.local_bias;
     shadows_node["local_normal_bias"] = shadows.local_normal_bias;
     shadows_node["pcf_world_radius"] = shadows.pcf_world_radius;
+    shadows_node["pcss_light_size"] = shadows.pcss_light_size;
+    shadows_node["pcss_bias"] = shadows.pcss_bias;
+    shadows_node["pcss_normal_bias"] = shadows.pcss_normal_bias;
     shadows_node["hardware_pcf"] = shadows.hardware_pcf;
     shadows_node["hardware_pcf_local"] = shadows.hardware_pcf_local;
     shadows_node["depth_16bit"] = shadows.depth_16bit;
@@ -550,6 +567,9 @@ render_config::save() const
     DELTA(shadows_node, "local_bias", shadows.local_bias);
     DELTA(shadows_node, "local_normal_bias", shadows.local_normal_bias);
     DELTA(shadows_node, "pcf_world_radius", shadows.pcf_world_radius);
+    DELTA(shadows_node, "pcss_light_size", shadows.pcss_light_size);
+    DELTA(shadows_node, "pcss_bias", shadows.pcss_bias);
+    DELTA(shadows_node, "pcss_normal_bias", shadows.pcss_normal_bias);
     DELTA(shadows_node, "hardware_pcf", shadows.hardware_pcf);
     DELTA(shadows_node, "hardware_pcf_local", shadows.hardware_pcf_local);
     DELTA(shadows_node, "depth_16bit", shadows.depth_16bit);

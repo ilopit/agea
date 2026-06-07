@@ -435,6 +435,58 @@ render_config_window::handle()
             cfg.shadows.pcf_world_radius = defaults.shadows.pcf_world_radius;
         }
 
+        // PCSS controls — only relevant in the dedicated soft-shadow path. These
+        // have their OWN bias, independent of the directional bias above, so the
+        // PCF modes are never affected by tuning here.
+        if (cfg.shadows.pcf == render::pcf_mode::pcss)
+        {
+            ImGui::SeparatorText("PCSS (soft shadows)");
+            if (ImGui::DragFloat("Light Size",
+                                 &cfg.shadows.pcss_light_size,
+                                 0.01f,
+                                 KGPU_PCSS_LIGHT_SIZE_MIN,
+                                 KGPU_PCSS_LIGHT_SIZE_MAX,
+                                 "%.3f"))
+            {
+            }
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::SetTooltip(
+                    "Light angular size (world units). Larger = softer, wider\n"
+                    "penumbra that grows with blocker distance. 0 ~ hard edge.");
+            }
+            if (reset_button("D##pcsssize", "Reset to default: 0.500"))
+            {
+                cfg.shadows.pcss_light_size = defaults.shadows.pcss_light_size;
+            }
+
+            if (ImGui::DragFloat("PCSS Bias",
+                                 &cfg.shadows.pcss_bias,
+                                 0.001f,
+                                 KGPU_SHADOW_BIAS_MIN,
+                                 KGPU_SHADOW_BIAS_MAX,
+                                 "%.3f"))
+            {
+            }
+            if (reset_button("D##pcssbias", "Reset to default: 0.005"))
+            {
+                cfg.shadows.pcss_bias = defaults.shadows.pcss_bias;
+            }
+
+            if (ImGui::DragFloat("PCSS Normal Bias",
+                                 &cfg.shadows.pcss_normal_bias,
+                                 0.001f,
+                                 KGPU_SHADOW_NORMAL_BIAS_MIN,
+                                 KGPU_SHADOW_NORMAL_BIAS_MAX,
+                                 "%.3f"))
+            {
+            }
+            if (reset_button("D##pcssnbias", "Reset to default: 0.030"))
+            {
+                cfg.shadows.pcss_normal_bias = defaults.shadows.pcss_normal_bias;
+            }
+        }
+
         ImGui::Checkbox("HW PCF (CSM)", &cfg.shadows.hardware_pcf);
         ImGui::SameLine();
         ImGui::Checkbox("HW PCF (Local)", &cfg.shadows.hardware_pcf_local);

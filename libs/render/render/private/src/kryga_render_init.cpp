@@ -1437,6 +1437,9 @@ vulkan_render::init_shadow_resources()
         1.0f / static_cast<float>(m_render_config.shadows.csm_tile_size);
     m_shadow_config.directional.pcf_mode = static_cast<uint32_t>(m_render_config.shadows.pcf);
     m_shadow_config.directional.pcf_world_radius = m_render_config.shadows.pcf_world_radius;
+    m_shadow_config.directional.pcss_light_size = m_render_config.shadows.pcss_light_size;
+    m_shadow_config.directional.pcss_bias = m_render_config.shadows.pcss_bias;
+    m_shadow_config.directional.pcss_normal_bias = m_render_config.shadows.pcss_normal_bias;
     m_shadow_config.directional.hardware_pcf = m_render_config.shadows.hardware_pcf ? 1u : 0u;
     m_shadow_config.shadowed_local_count = 0;
     m_shadow_config.atlas_bindless_index = m_shadow_atlas_bindless_index;

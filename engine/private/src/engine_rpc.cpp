@@ -1489,6 +1489,9 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             sh["local_bias"] = cfg.shadows.local_bias;
             sh["local_normal_bias"] = cfg.shadows.local_normal_bias;
             sh["pcf_world_radius"] = cfg.shadows.pcf_world_radius;
+            sh["pcss_light_size"] = cfg.shadows.pcss_light_size;
+            sh["pcss_bias"] = cfg.shadows.pcss_bias;
+            sh["pcss_normal_bias"] = cfg.shadows.pcss_normal_bias;
             sh["hardware_pcf"] = cfg.shadows.hardware_pcf;
             sh["hardware_pcf_local"] = cfg.shadows.hardware_pcf_local;
             sh["depth_16bit"] = cfg.shadows.depth_16bit;
@@ -1619,6 +1622,18 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
                 if (s.isMember("pcf_world_radius"))
                 {
                     cfg.shadows.pcf_world_radius = s["pcf_world_radius"].asFloat();
+                }
+                if (s.isMember("pcss_light_size"))
+                {
+                    cfg.shadows.pcss_light_size = s["pcss_light_size"].asFloat();
+                }
+                if (s.isMember("pcss_bias"))
+                {
+                    cfg.shadows.pcss_bias = s["pcss_bias"].asFloat();
+                }
+                if (s.isMember("pcss_normal_bias"))
+                {
+                    cfg.shadows.pcss_normal_bias = s["pcss_normal_bias"].asFloat();
                 }
                 if (s.isMember("hardware_pcf"))
                 {
