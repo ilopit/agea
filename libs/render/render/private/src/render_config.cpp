@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <filesystem>
 #include <string>
-#include <unordered_map>
 
 namespace kryga
 {
@@ -21,43 +20,10 @@ namespace
 {
 
 // ============================================================================
-// Enum <-> string tables
-// ============================================================================
-
-const std::unordered_map<std::string, pcf_mode> pcf_mode_from_string = {
-    {"3x3", pcf_mode::pcf_3x3},
-    {"5x5", pcf_mode::pcf_5x5},
-    {"7x7", pcf_mode::pcf_7x7},
-    {"poisson16", pcf_mode::poisson16},
-    {"poisson32", pcf_mode::poisson32},
-    {"poisson64", pcf_mode::poisson64},
-    {"pcss", pcf_mode::pcss},
-};
-
-const std::unordered_map<pcf_mode, std::string> pcf_mode_to_string = {
-    {pcf_mode::pcf_3x3, "3x3"},
-    {pcf_mode::pcf_5x5, "5x5"},
-    {pcf_mode::pcf_7x7, "7x7"},
-    {pcf_mode::poisson16, "poisson16"},
-    {pcf_mode::poisson32, "poisson32"},
-    {pcf_mode::poisson64, "poisson64"},
-    {pcf_mode::pcss, "pcss"},
-};
-
-const std::unordered_map<std::string, present_mode> present_mode_from_str = {
-    {"fifo", present_mode::fifo},
-    {"mailbox", present_mode::mailbox},
-    {"immediate", present_mode::immediate},
-};
-
-const std::unordered_map<present_mode, std::string> present_mode_to_str = {
-    {present_mode::fifo, "fifo"},
-    {present_mode::mailbox, "mailbox"},
-    {present_mode::immediate, "immediate"},
-};
-
-// ============================================================================
 // Extract helpers
+//
+// Enum <-> string conversions live on the enum itself (render_enums.h via
+// KRG_declare_enum): to_string / from_string use the stable YAML name.
 // ============================================================================
 
 template <typename T>
@@ -80,14 +46,10 @@ extract_field(const YAML::Node& node, const char* key, pcf_mode& field)
     {
         return;
     }
-    auto it = pcf_mode_from_string.find(v.as<std::string>());
-    if (it != pcf_mode_from_string.end())
+    auto s = v.as<std::string>();
+    if (!from_string(s, field))
     {
-        field = it->second;
-    }
-    else
-    {
-        ALOG_WARN("Unknown pcf mode '{}', keeping default", v.as<std::string>());
+        ALOG_WARN("Unknown pcf mode '{}', keeping default", s);
     }
 }
 
@@ -110,14 +72,10 @@ extract_field(const YAML::Node& node, const char* key, present_mode& field)
     {
         return;
     }
-    auto it = present_mode_from_str.find(v.as<std::string>());
-    if (it != present_mode_from_str.end())
+    auto s = v.as<std::string>();
+    if (!from_string(s, field))
     {
-        field = it->second;
-    }
-    else
-    {
-        ALOG_WARN("Unknown present mode '{}', keeping default", v.as<std::string>());
+        ALOG_WARN("Unknown present mode '{}', keeping default", s);
     }
 }
 
@@ -209,8 +167,8 @@ render_config::validate()
     // Shadows — pcf mode
     auto pcf_val = static_cast<uint32_t>(shadows.pcf);
     clamp_warn(pcf_val,
-               static_cast<uint32_t>(pcf_mode::min),
-               static_cast<uint32_t>(pcf_mode::max),
+               static_cast<uint32_t>(pcf_mode_min),
+               static_cast<uint32_t>(pcf_mode_max),
                "shadows.pcf");
     shadows.pcf = static_cast<pcf_mode>(pcf_val);
 
@@ -323,7 +281,7 @@ render_config::validate()
     clamp_warn(frames_in_flight, 1u, 4u, "frames_in_flight");
 
     // present_mode: RPC can hand us an arbitrary int; pin to a known value so
-    // present_mode_to_str.at() (in save) never throws on a stray enum.
+    // to_string() (in save) never falls through to "unknown" on a stray enum.
     if (present != present_mode::fifo && present != present_mode::mailbox &&
         present != present_mode::immediate)
     {
@@ -442,7 +400,7 @@ render_config::save(const utils::path& path) const
 
     YAML::Node shadows_node;
     shadows_node["enabled"] = shadows.enabled;
-    shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
+    shadows_node["pcf"] = to_string(shadows.pcf);
     shadows_node["bias"] = shadows.bias;
     shadows_node["normal_bias"] = shadows.normal_bias;
     shadows_node["local_bias"] = shadows.local_bias;
@@ -495,7 +453,7 @@ render_config::save(const utils::path& path) const
     root["outline"] = ol_node;
 
     root["frames_in_flight"] = frames_in_flight;
-    root["present_mode"] = present_mode_to_str.at(present);
+    root["present_mode"] = to_string(present);
     root["present_pace_frames"] = present_pace_frames;
 
     if (!serialization::write_container(path, root))
@@ -555,13 +513,16 @@ render_config::save() const
     YAML::Node root;
 
 // Emit `key` into `node` only when the session value differs from base.
-#define DELTA(node, key, expr) \
-    if ((expr) != (base_cfg.expr)) node[key] = (expr)
+#define DELTA(node, key, expr)     \
+    if ((expr) != (base_cfg.expr)) \
+    node[key] = (expr)
 
     YAML::Node shadows_node;
     DELTA(shadows_node, "enabled", shadows.enabled);
     if (shadows.pcf != base_cfg.shadows.pcf)
-        shadows_node["pcf"] = pcf_mode_to_string.at(shadows.pcf);
+    {
+        shadows_node["pcf"] = to_string(shadows.pcf);
+    }
     DELTA(shadows_node, "bias", shadows.bias);
     DELTA(shadows_node, "normal_bias", shadows.normal_bias);
     DELTA(shadows_node, "local_bias", shadows.local_bias);
@@ -581,21 +542,27 @@ render_config::save() const
     DELTA(shadows_node, "local_tile_size", shadows.local_tile_size);
     DELTA(shadows_node, "max_local_lights", shadows.max_local_lights);
     if (shadows_node.size() > 0)
+    {
         root["shadows"] = shadows_node;
+    }
 
     YAML::Node clusters_node;
     DELTA(clusters_node, "tile_size", clusters.tile_size);
     DELTA(clusters_node, "depth_slices", clusters.depth_slices);
     DELTA(clusters_node, "max_lights_per_cluster", clusters.max_lights_per_cluster);
     if (clusters_node.size() > 0)
+    {
         root["clusters"] = clusters_node;
+    }
 
     YAML::Node lighting_node;
     DELTA(lighting_node, "directional", lighting.directional_enabled);
     DELTA(lighting_node, "local", lighting.local_enabled);
     DELTA(lighting_node, "baked", lighting.baked_enabled);
     if (lighting_node.size() > 0)
+    {
         root["lighting"] = lighting_node;
+    }
 
     YAML::Node debug_node;
     DELTA(debug_node, "editor_mode", debug.editor_mode);
@@ -604,24 +571,32 @@ render_config::save() const
     DELTA(debug_node, "light_icons", debug.light_icons);
     DELTA(debug_node, "frustum_culling", debug.frustum_culling);
     if (debug_node.size() > 0)
+    {
         root["debug"] = debug_node;
+    }
 
     YAML::Node rs_node;
     DELTA(rs_node, "enabled", render_scale.enabled);
     DELTA(rs_node, "divisor", render_scale.divisor);
     if (rs_node.size() > 0)
+    {
         root["render_scale"] = rs_node;
+    }
 
     YAML::Node ol_node;
     DELTA(ol_node, "enabled", outline.enabled);
     DELTA(ol_node, "depth_threshold", outline.depth_threshold);
     DELTA(ol_node, "normal_threshold", outline.normal_threshold);
     if (ol_node.size() > 0)
+    {
         root["outline"] = ol_node;
+    }
 
     DELTA(root, "frames_in_flight", frames_in_flight);
     if (present != base_cfg.present)
-        root["present_mode"] = present_mode_to_str.at(present);
+    {
+        root["present_mode"] = to_string(present);
+    }
     DELTA(root, "present_pace_frames", present_pace_frames);
 
 #undef DELTA

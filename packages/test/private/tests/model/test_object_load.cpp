@@ -87,7 +87,7 @@ test_object_instantiate(root::smart_object& src,
 void
 validate_empty_cache(gs::state& gs)
 {
-    for (auto i = core::architype::first; i < core::architype::last;
+    for (auto i = core::architype_first; i < core::architype_last;
          i = (core::architype)((uint8_t)i + 1))
     {
         ASSERT_TRUE(gs.getr_model().caches.map.get_cache(i)->get_items().empty())

@@ -282,17 +282,9 @@ rpc_selection_set(const Json::Value& params, Json::Value& result, std::string& e
 static core::architype
 parse_kind(const std::string& kind_str)
 {
-    for (uint8_t i = static_cast<uint8_t>(core::architype::first);
-         i <= static_cast<uint8_t>(core::architype::last);
-         ++i)
-    {
-        auto a = static_cast<core::architype>(i);
-        if (core::to_string(a) == kind_str)
-        {
-            return a;
-        }
-    }
-    return core::architype::unknown;
+    core::architype a = core::architype::unknown;
+    core::from_string(kind_str, a);  // leaves `a` = unknown on miss
+    return a;
 }
 
 static Json::Value

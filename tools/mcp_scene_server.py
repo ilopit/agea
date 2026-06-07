@@ -333,7 +333,7 @@ TOOLS = [
         inputSchema={
             "type": "object",
             "properties": {
-                "shadows": {"type": "object", "description": "enabled(bool), pcf(string: pcf_3x3/pcf_5x5/pcf_7x7/poisson16/poisson32), bias(float), normal_bias(float), cascade_count(int), distance(float), map_size(int)"},
+                "shadows": {"type": "object", "description": "enabled(bool), pcf(string: 3x3/5x5/7x7/poisson16/poisson32/poisson64/pcss), bias(float), normal_bias(float), cascade_count(int), distance(float), map_size(int)"},
                 "lighting": {"type": "object", "description": "directional_enabled(bool), local_enabled(bool), baked_enabled(bool)"},
                 "clusters": {"type": "object", "description": "tile_size(int), depth_slices(int), max_lights_per_cluster(int)"},
                 "debug": {"type": "object", "description": "editor_mode(bool), show_grid(bool), light_wireframe(bool), light_icons(bool), frustum_culling(bool)"},

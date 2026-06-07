@@ -1,53 +1,36 @@
 #pragma once
 
-#include <cstdint>
+#include <utils/kryga_enum.h>
 
+#include <cstdint>
 #include <string_view>
 
 namespace kryga
 {
 namespace core
 {
-enum class architype : uint8_t
-{
-    unknown = 0xff,
-    first = 0,
-    smart_object = first,
-    game_object = 1,
-    component = 2,
-    mesh = 3,
-    texture = 4,
-    shader_effect = 5,
-    material = 6,
-    sampler = 7,
-    last = sampler
-};
 
-constexpr std::string_view
-to_string(architype a)
-{
-    switch (a)
-    {
-    case kryga::core::architype::smart_object:
-        return std::string_view("smart_object");
-    case kryga::core::architype::game_object:
-        return std::string_view("game_object");
-    case kryga::core::architype::component:
-        return std::string_view("component");
-    case kryga::core::architype::mesh:
-        return std::string_view("mesh");
-    case kryga::core::architype::texture:
-        return std::string_view("texture");
-    case kryga::core::architype::shader_effect:
-        return std::string_view("shader_effect");
-    case kryga::core::architype::material:
-        return std::string_view("material");
-    case kryga::core::architype::sampler:
-        return std::string_view("sampler");
-    default:
-        return std::string_view("unknown");
-    }
-}
+// `unknown` (0xff) is a unique value, so it stays in the table — to_string and
+// from_string handle it like any other. The `first`/`last` iteration bounds are
+// aliases of real entries (would trip the duplicate-value check), so they live
+// as constants beside the enum — see SENTINEL note in kryga_enum.h.
+// clang-format off
+#define KRG_ARCHITYPE_LIST(X)                  \
+    X(smart_object,  0,    "smart_object")     \
+    X(game_object,   1,    "game_object")      \
+    X(component,     2,    "component")         \
+    X(mesh,          3,    "mesh")             \
+    X(texture,       4,    "texture")          \
+    X(shader_effect, 5,    "shader_effect")    \
+    X(material,      6,    "material")         \
+    X(sampler,       7,    "sampler")          \
+    X(unknown,       0xff, "unknown")
+// clang-format on
+
+KRG_declare_enum_simple(architype, uint8_t, KRG_ARCHITYPE_LIST)
+
+inline constexpr architype architype_first = architype::smart_object;
+inline constexpr architype architype_last = architype::sampler;
 
 }  // namespace core
 }  // namespace kryga
