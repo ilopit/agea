@@ -1,0 +1,22 @@
+proto_id: terrain_object
+id: terrain
+layout: [-1, 0]
+components:
+  - id: terrain_root_component
+    proto_id: game_object_component
+  - id: terrain_comp
+    proto_id: terrain_component
+    material: mt_terrain
+    source_mode: 1
+    world_size: 100
+    resolution: 128
+    height_scale: 18
+    seed: 1337
+    octaves: 5
+    frequency: 3
+    lacunarity: 2
+    gain: 0.5
+    position:
+      x: 0
+      y: 0
+      z: 0

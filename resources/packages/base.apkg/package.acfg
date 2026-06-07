@@ -8,6 +8,7 @@ class_obj_mapping:
   - se_solid_color_lit_lightmapped: class/shader_effects/lit/se_solid_color_lit_lightmapped.aobj
   - se_simple_texture_lit_skinned: class/shader_effects/lit/se_simple_texture_lit_skinned.aobj
   - se_toon: class/shader_effects/lit/se_toon.aobj
+  - se_terrain_splat: class/shader_effects/terrain/se_terrain_splat.aobj
 
   - txt_directional_light: class/textures/txt_directional_light.aobj
   - txt_container: class/textures/txt_container.aobj
@@ -16,6 +17,7 @@ class_obj_mapping:
   - txt_red: class/textures/txt_red.aobj
   - txt_grey: class/textures/txt_grey.aobj
   - txt_spot_light: class/textures/txt_spot_light.aobj
+  - txt_terrain_splat: class/textures/txt_terrain_splat.aobj
 
   - mt_red: class/materials/mt_red.aobj
   - mt_solid_color: class/materials/mt_solid_color.aobj
@@ -29,6 +31,7 @@ class_obj_mapping:
   - mt_wire: class/materials/mt_wire.aobj
   - mt_skinned_lit: class/materials/mt_skinned_lit.aobj
   - mt_toon: class/materials/mt_toon.aobj
+  - mt_terrain: class/materials/mt_terrain.aobj
 
   - cube_mesh: class/meshes/cube_mesh.aobj
   - plane_mesh: class/meshes/plane_mesh.aobj

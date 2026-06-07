@@ -4031,7 +4031,7 @@ TEST_F(visual_pipeline_test, probe_lighting_basic)
 #extension GL_EXT_buffer_reference_uvec2 : require
 #extension GL_EXT_nonuniform_qualifier : require
 
-#define KGPU_MAX_TEXTURE_SLOTS 2
+#define KGPU_MAX_TEXTURE_SLOTS 8
 
 struct push_constants_main {
     uint material_id;

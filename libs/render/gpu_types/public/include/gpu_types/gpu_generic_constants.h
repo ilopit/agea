@@ -36,7 +36,20 @@
 // Standard texture slots for bindless indexing
 #define KGPU_TEXTURE_SLOT_ALBEDO 0
 #define KGPU_TEXTURE_SLOT_SPECULAR 1
-#define KGPU_MAX_TEXTURE_SLOTS 2
+
+// Terrain splat material slots: a weight map (slot 0) plus 4 albedo layers
+// blended by its RGBA channels.
+#define KGPU_TEXTURE_SLOT_SPLATMAP 0
+#define KGPU_TEXTURE_SLOT_LAYER0 1
+#define KGPU_TEXTURE_SLOT_LAYER1 2
+#define KGPU_TEXTURE_SLOT_LAYER2 3
+#define KGPU_TEXTURE_SLOT_LAYER3 4
+
+// Max texture slots a single material can bind. Sizes the per-material GPU
+// struct's texture_indices[]/sampler_indices[] arrays and the main push-constant
+// block — keep large enough for the widest material (terrain = 5) with headroom
+// for future per-layer normals.
+#define KGPU_MAX_TEXTURE_SLOTS 8
 
 // Static sampler types for runtime sampler selection
 #define KGPU_SAMPLER_LINEAR_REPEAT 0        // Default for most textures

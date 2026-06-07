@@ -21,7 +21,9 @@
 #include "packages/base/model/components/mesh_component.h"
 #include "packages/base/model/components/animated_mesh_component.h"
 #include "packages/base/model/components/destructible_mesh_component.h"
+#include "packages/base/model/components/terrain_component.h"
 #include "packages/base/model/assets/destructible_mesh_asset.h"
+#include "packages/base/model/assets/terrain_splatmap_material.h"
 #include "packages/root/model/game_object.h"
 
 #include <voronoi_fracture/voronoi_fracture.h>
@@ -84,6 +86,9 @@
 #include <utils/dynamic_object_builder.h>
 
 #include <filesystem>
+#include <cmath>
+#include <limits>
+#include <vector>
 
 namespace kryga
 {
@@ -1200,6 +1205,392 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
 
     rc = root::game_object_component__cmd_destroyer(ctx);
     KRG_return_nok(rc);
+
+    return result_code::ok;
+}
+
+// ============================================================================
+// Command builders — terrain_component
+//
+// Terrain geometry is *derived data*, not a persisted mesh asset: the builder
+// generates a grid mesh from a heightmap (or procedural fbm noise) and uploads
+// it under a synthesized id, then renders it through the regular object path
+// (create_object_cmd) with a terrain_splatmap_material.
+// ============================================================================
+
+namespace
+{
+
+// Upload command for the generated terrain grid. Skips if a mesh with this id is
+// already resident (terrain is regenerated only on the first build).
+struct create_terrain_mesh_cmd : render_cmd::render_command_base
+{
+    utils::id id;
+    std::shared_ptr<utils::buffer> vertices;
+    std::shared_ptr<utils::buffer> indices;
+
+    void
+    execute(render_cmd::render_exec_context& ctx) override
+    {
+        if (ctx.loader.get_mesh_data(id))
+        {
+            return;
+        }
+        auto vbv = vertices->make_view<gpu::vertex_data>();
+        auto ibv = indices->make_view<gpu::uint>();
+        ctx.loader.create_mesh(id, vbv, ibv);
+    }
+};
+
+utils::id
+terrain_mesh_id_for(const utils::id& component_id)
+{
+    return AID(std::string(component_id.cstr()) + "::terrain_mesh");
+}
+
+// Integer hash → [0,1). Deterministic for a given (x, y, seed).
+float
+terrain_hash(int32_t x, int32_t y, uint32_t seed)
+{
+    uint32_t h = seed + 0x9E3779B9u;
+    h ^= static_cast<uint32_t>(x) * 0x85EBCA6Bu;
+    h = (h ^ (h >> 13)) * 0xC2B2AE35u;
+    h ^= static_cast<uint32_t>(y) * 0x27D4EB2Fu;
+    h = (h ^ (h >> 16)) * 0x165667B1u;
+    h ^= h >> 15;
+    return static_cast<float>(h & 0x00FFFFFFu) / static_cast<float>(0x01000000u);
+}
+
+float
+terrain_value_noise(float x, float y, uint32_t seed)
+{
+    float fx = std::floor(x);
+    float fy = std::floor(y);
+    int32_t x0 = static_cast<int32_t>(fx);
+    int32_t y0 = static_cast<int32_t>(fy);
+    float tx = x - fx;
+    float ty = y - fy;
+
+    float v00 = terrain_hash(x0, y0, seed);
+    float v10 = terrain_hash(x0 + 1, y0, seed);
+    float v01 = terrain_hash(x0, y0 + 1, seed);
+    float v11 = terrain_hash(x0 + 1, y0 + 1, seed);
+
+    float ux = tx * tx * (3.0f - 2.0f * tx);
+    float uy = ty * ty * (3.0f - 2.0f * ty);
+
+    float a = glm::mix(v00, v10, ux);
+    float b = glm::mix(v01, v11, ux);
+    return glm::mix(a, b, uy);
+}
+
+// fbm in [0,1]. u,v in [0,1] across the terrain.
+float
+terrain_fbm(float u, float v, const base::terrain_component& tc)
+{
+    float freq = tc.get_frequency();
+    float amp = 1.0f;
+    float sum = 0.0f;
+    float total_amp = 0.0f;
+    uint32_t octaves = glm::clamp<uint32_t>(tc.get_octaves(), 1u, 8u);
+
+    for (uint32_t o = 0; o < octaves; ++o)
+    {
+        sum += amp * terrain_value_noise(u * freq, v * freq, tc.get_seed() + o * 1013u);
+        total_amp += amp;
+        freq *= tc.get_lacunarity();
+        amp *= tc.get_gain();
+    }
+    return (total_amp > 0.0f) ? sum / total_amp : 0.0f;
+}
+
+// Build the normalized [0,1] height field for the terrain into `heights`
+// (row-major, res*res). Returns false on a hard failure.
+bool
+build_height_field(const base::terrain_component& tc, uint32_t res, std::vector<float>& heights)
+{
+    heights.assign(static_cast<size_t>(res) * res, 0.0f);
+
+    if (tc.get_source_mode() == base::terrain_source_heightmap)
+    {
+        auto* tex = tc.get_heightmap();
+        if (!tex)
+        {
+            ALOG_WARN("terrain {}: heightmap source but no texture set — flat terrain",
+                      tc.get_id().str());
+            return true;
+        }
+
+        utils::buffer pixels;
+        uint32_t hw = 0;
+        uint32_t hh = 0;
+        if (!asset_importer::texture_importer::extract_texture_from_buffer(
+                tex->get_mutable_base_color(), pixels, hw, hh) ||
+            hw == 0 || hh == 0)
+        {
+            ALOG_ERROR("terrain {}: failed to decode heightmap", tc.get_id().str());
+            return false;
+        }
+
+        const uint8_t* px = pixels.data();
+        for (uint32_t j = 0; j < res; ++j)
+        {
+            for (uint32_t i = 0; i < res; ++i)
+            {
+                // Bilinear sample of the red channel at this grid uv.
+                float u = (res > 1) ? float(i) / float(res - 1) : 0.0f;
+                float v = (res > 1) ? float(j) / float(res - 1) : 0.0f;
+                float fx = u * float(hw - 1);
+                float fy = v * float(hh - 1);
+                uint32_t x0 = static_cast<uint32_t>(fx);
+                uint32_t y0 = static_cast<uint32_t>(fy);
+                uint32_t x1 = glm::min(x0 + 1, hw - 1);
+                uint32_t y1 = glm::min(y0 + 1, hh - 1);
+                float tx = fx - float(x0);
+                float ty = fy - float(y0);
+
+                auto red = [&](uint32_t x, uint32_t y)
+                { return float(px[(size_t(y) * hw + x) * 4]) / 255.0f; };
+
+                float a = glm::mix(red(x0, y0), red(x1, y0), tx);
+                float b = glm::mix(red(x0, y1), red(x1, y1), tx);
+                heights[size_t(j) * res + i] = glm::mix(a, b, ty);
+            }
+        }
+        return true;
+    }
+
+    // Procedural noise.
+    for (uint32_t j = 0; j < res; ++j)
+    {
+        for (uint32_t i = 0; i < res; ++i)
+        {
+            float u = (res > 1) ? float(i) / float(res - 1) : 0.0f;
+            float v = (res > 1) ? float(j) / float(res - 1) : 0.0f;
+            heights[size_t(j) * res + i] = terrain_fbm(u, v, tc);
+        }
+    }
+    return true;
+}
+
+}  // namespace
+
+result_code
+terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
+{
+    auto rc = root::game_object_component__cmd_builder(ctx);
+    KRG_return_nok(rc);
+
+    auto& tc = ctx.obj->asr<base::terrain_component>();
+
+    auto* material = tc.get_material();
+    if (!material)
+    {
+        return result_code::failed;
+    }
+
+    rc = ctx.rb->render_cmd_build(*material, ctx.flag);
+    KRG_return_nok(rc);
+
+    tc.update_matrix();
+
+    const utils::id mesh_id = terrain_mesh_id_for(tc.get_id());
+
+    // First build: generate + upload the grid, then create the render object.
+    if (!tc.get_render_built())
+    {
+        uint32_t res = glm::clamp<uint32_t>(tc.get_resolution(), 2u, 4096u);
+        float size = tc.get_world_size();
+        float half = size * 0.5f;
+        float h_scale = tc.get_height_scale();
+        float cell = (res > 1) ? size / float(res - 1) : size;
+
+        std::vector<float> heights;
+        if (!build_height_field(tc, res, heights))
+        {
+            return result_code::failed;
+        }
+
+        const uint32_t vcount = res * res;
+        const uint32_t icount = (res - 1) * (res - 1) * 6;
+
+        auto vbuf = std::make_shared<utils::buffer>(size_t(vcount) * sizeof(gpu::vertex_data));
+        auto ibuf = std::make_shared<utils::buffer>(size_t(icount) * sizeof(gpu::uint));
+        auto vv = vbuf->make_view<gpu::vertex_data>();
+        auto iv = ibuf->make_view<gpu::uint>();
+
+        auto height_at = [&](int32_t i, int32_t j) -> float
+        {
+            i = glm::clamp(i, 0, int32_t(res) - 1);
+            j = glm::clamp(j, 0, int32_t(res) - 1);
+            return heights[size_t(j) * res + i] * h_scale;
+        };
+
+        glm::vec3 vmin{std::numeric_limits<float>::max()};
+        glm::vec3 vmax{std::numeric_limits<float>::lowest()};
+
+        for (uint32_t j = 0; j < res; ++j)
+        {
+            for (uint32_t i = 0; i < res; ++i)
+            {
+                float h = heights[size_t(j) * res + i] * h_scale;
+                glm::vec3 pos{-half + float(i) * cell, h, -half + float(j) * cell};
+
+                // Normal from central differences of neighbor heights (+Y up).
+                float hl = height_at(int32_t(i) - 1, int32_t(j));
+                float hr = height_at(int32_t(i) + 1, int32_t(j));
+                float hd = height_at(int32_t(i), int32_t(j) - 1);
+                float hu = height_at(int32_t(i), int32_t(j) + 1);
+                glm::vec3 nrm = glm::normalize(glm::vec3(hl - hr, 2.0f * cell, hd - hu));
+
+                gpu::vertex_data vert{};
+                vert.position = pos;
+                vert.normal = nrm;
+                vert.color = {1.0f, 1.0f, 1.0f};
+                vert.uv = {(res > 1) ? float(i) / float(res - 1) : 0.0f,
+                           (res > 1) ? float(j) / float(res - 1) : 0.0f};
+                vert.uv2 = {0.0f, 0.0f};
+                vv.at(size_t(j) * res + i) = vert;
+
+                vmin = glm::min(vmin, pos);
+                vmax = glm::max(vmax, pos);
+            }
+        }
+
+        uint32_t k = 0;
+        for (uint32_t j = 0; j < res - 1; ++j)
+        {
+            for (uint32_t i = 0; i < res - 1; ++i)
+            {
+                uint32_t v0 = j * res + i;
+                uint32_t v1 = v0 + 1;
+                uint32_t v2 = v0 + res;
+                uint32_t v3 = v2 + 1;
+
+                iv.at(k++) = v0;
+                iv.at(k++) = v2;
+                iv.at(k++) = v1;
+                iv.at(k++) = v1;
+                iv.at(k++) = v2;
+                iv.at(k++) = v3;
+            }
+        }
+
+        glm::vec3 centroid = (vmin + vmax) * 0.5f;
+        float max_d2 = 0.0f;
+        for (uint32_t v = 0; v < vcount; ++v)
+        {
+            glm::vec3 d = vv.at(v).position - centroid;
+            max_d2 = std::max(max_d2, glm::dot(d, d));
+        }
+        tc.set_local_centroid(centroid);
+        tc.set_base_bounding_radius(std::sqrt(max_d2));
+
+        auto* mcmd = ctx.rb->alloc_cmd<create_terrain_mesh_cmd>();
+        mcmd->id = mesh_id;
+        mcmd->vertices = std::move(vbuf);
+        mcmd->indices = std::move(ibuf);
+        ctx.rb->enqueue_cmd(mcmd);
+    }
+
+    auto scale = tc.get_scale();
+    float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+    float scaled_radius = tc.get_base_bounding_radius() * max_scale;
+
+    glm::vec4 world_center4 =
+        tc.get_transform_matrix() * glm::vec4(tc.get_local_centroid(), 1.0f);
+    glm::vec3 world_sphere_center{world_center4.x, world_center4.y, world_center4.z};
+
+    std::string new_rqid = material->get_id().str() + "::" + mesh_id.str();
+
+    if (!tc.get_render_built())
+    {
+        auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
+        cmd->id = tc.get_id();
+        cmd->mesh_id = mesh_id;
+        cmd->material_id = material->get_id();
+        cmd->transform = tc.get_transform_matrix();
+        cmd->normal_matrix = tc.get_normal_matrix();
+        cmd->position = glm::vec3(tc.get_world_position());
+        cmd->bounding_sphere_center = world_sphere_center;
+        cmd->bounding_radius = scaled_radius;
+        cmd->bone_count = 0;
+        cmd->queue_id = new_rqid;
+        cmd->layer_flags = tc.get_layers();
+
+        tc.set_render_built(true);
+        ctx.rb->enqueue_cmd(cmd);
+    }
+    else
+    {
+        auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
+        cmd->id = tc.get_id();
+        cmd->mesh_id = mesh_id;
+        cmd->material_id = material->get_id();
+        cmd->transform = tc.get_transform_matrix();
+        cmd->normal_matrix = tc.get_normal_matrix();
+        cmd->position = glm::vec3(tc.get_world_position());
+        cmd->bounding_sphere_center = world_sphere_center;
+        cmd->bounding_radius = scaled_radius;
+        cmd->queue_id = new_rqid;
+        cmd->layer_flags = tc.get_layers();
+
+        ctx.rb->enqueue_cmd(cmd);
+    }
+
+    return result_code::ok;
+}
+
+result_code
+terrain_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
+{
+    auto& tc = ctx.obj->asr<base::terrain_component>();
+
+    auto* material = tc.get_material();
+    if (material && is_same_source(*ctx.obj, *material))
+    {
+        auto rc = ctx.rb->render_cmd_destroy(*material, ctx.flag);
+        KRG_return_nok(rc);
+    }
+
+    if (tc.get_render_built())
+    {
+        auto* ocmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
+        ocmd->id = tc.get_id();
+        ctx.rb->enqueue_cmd(ocmd);
+
+        auto* mcmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
+        mcmd->id = terrain_mesh_id_for(tc.get_id());
+        ctx.rb->enqueue_cmd(mcmd);
+
+        tc.set_render_built(false);
+    }
+
+    auto rc = root::game_object_component__cmd_destroyer(ctx);
+    KRG_return_nok(rc);
+
+    return result_code::ok;
+}
+
+result_code
+terrain_component__cmd_transform(reflection::type_context__render_cmd_build& ctx)
+{
+    auto& tc = ctx.obj->asr<base::terrain_component>();
+
+    auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
+    cmd->id = tc.get_id();
+    cmd->transform = tc.get_transform_matrix();
+    cmd->normal_matrix = tc.get_normal_matrix();
+    cmd->position = glm::vec3(tc.get_world_position());
+
+    auto scale = tc.get_scale();
+    float max_s = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
+    cmd->bounding_radius = tc.get_base_bounding_radius() * max_s;
+
+    glm::vec4 wc = tc.get_transform_matrix() * glm::vec4(tc.get_local_centroid(), 1.0f);
+    cmd->bounding_sphere_center = glm::vec3(wc);
+
+    ctx.rb->enqueue_cmd(cmd);
 
     return result_code::ok;
 }

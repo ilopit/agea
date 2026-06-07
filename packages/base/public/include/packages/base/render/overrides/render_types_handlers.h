@@ -52,4 +52,11 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 result_code
 destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
+result_code
+terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx);
+result_code
+terrain_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
+result_code
+terrain_component__cmd_transform(reflection::type_context__render_cmd_build& ctx);
+
 }  // namespace kryga

@@ -1,0 +1,23 @@
+proto_id: terrain_splatmap_material
+id: mt_terrain
+shader_effect: se_terrain_splat
+splatmap:
+    texture: txt_terrain_splat
+    slot: 0
+    sampler: default
+layer0_txt:
+    texture: txt_red
+    slot: 1
+    sampler: default
+layer1_txt:
+    texture: txt_grey
+    slot: 2
+    sampler: default
+layer2_txt:
+    texture: txt_container
+    slot: 3
+    sampler: default
+layer3_txt:
+    texture: txt_lamp
+    slot: 4
+    sampler: default

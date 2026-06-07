@@ -1,0 +1,5 @@
+proto_id: texture
+id: txt_terrain_splat
+base_color: class/textures/txt_terrain_splat.png
+width: 64
+height: 64
