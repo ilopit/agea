@@ -592,10 +592,17 @@ game_editor::set_selected(const utils::id& id)
         }
 
         auto& rb = glob::glob_state().getr_render_bridge();
-        auto enqueue_outline = [&](const utils::id& comp_id)
+        auto enqueue_outline = [&](root::smart_object* comp)
         {
+            // Components without a render object (lights, camera, ...) carry a null
+            // handle; set_outline_cmd resolves it to null and no-ops.
+            auto h = comp->get_render_object_handle();
+            if (!h)
+            {
+                return;
+            }
             auto* cmd = rb.alloc_cmd<set_outline_cmd>();
-            cmd->id = comp_id;
+            cmd->obj_handle = h;
             cmd->outlined = value;
             rb.enqueue_cmd(cmd);
         };
@@ -604,12 +611,12 @@ game_editor::set_selected(const utils::id& id)
         {
             for (auto* comp : go->get_subcomponents())
             {
-                enqueue_outline(comp->get_id());
+                enqueue_outline(comp);
             }
         }
         else
         {
-            enqueue_outline(sel_id);
+            enqueue_outline(obj);
         }
     };
 

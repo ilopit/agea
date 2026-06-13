@@ -72,7 +72,7 @@ void
 vulkan_render::upload_obj_data(render::frame_state& frame)
 {
     KRG_check_render_thread();
-    const auto total_size = m_cache.objects.get_size() * sizeof(gpu::object_data);
+    const auto total_size = m_loader->objects_capacity() * sizeof(gpu::object_data);
 
     auto* data = (gpu::object_data*)ensure_buffer_capacity_and_map(
         frame.buffers.objects, total_size, "objects");
@@ -86,7 +86,7 @@ void
 vulkan_render::upload_universal_light_data(render::frame_state& frame)
 {
     KRG_check_render_thread();
-    const auto total_size = m_cache.universal_lights.get_size() * sizeof(gpu::universal_light_data);
+    const auto total_size = m_loader->uni_lights_size() * sizeof(gpu::universal_light_data);
 
     auto* data = (gpu::universal_light_data*)ensure_buffer_capacity_and_map(
         frame.buffers.universal_lights, total_size, "universal lights");
@@ -100,8 +100,7 @@ void
 vulkan_render::upload_directional_light_data(render::frame_state& frame)
 {
     KRG_check_render_thread();
-    const auto total_size =
-        m_cache.directional_lights.get_size() * sizeof(gpu::directional_light_data);
+    const auto total_size = m_loader->dir_lights_size() * sizeof(gpu::directional_light_data);
 
     auto* data = (gpu::directional_light_data*)ensure_buffer_capacity_and_map(
         frame.buffers.directional_lights, total_size, "directional lights");
@@ -305,26 +304,26 @@ vulkan_render::stage_remove_light(render::vulkan_universal_light_data* ld)
 }
 
 void
-vulkan_render::set_selected_directional_light(const utils::id& id)
+vulkan_render::set_selected_directional_light(render::types::directional_light_handle h)
 {
-    m_selected_directional_light_id = id;
+    m_selected_directional_light = h;
 }
 
 uint32_t
 vulkan_render::get_selected_directional_light_slot()
 {
-    if (m_selected_directional_light_id.valid())
+    // The handle index IS the GPU slot. Validate the selected light is still live.
+    if (m_selected_directional_light && m_loader->get_dir_light(m_selected_directional_light))
     {
-        auto* rh = m_cache.directional_lights.find_by_id(m_selected_directional_light_id);
-        if (rh)
-        {
-            return rh->slot();
-        }
+        return m_selected_directional_light.index();
     }
-    // Fallback: use first light if available
-    if (m_cache.directional_lights.get_actual_size() > 0)
+    // Fallback: first live directional light slot.
+    for (uint32_t i = 0; i < static_cast<uint32_t>(m_loader->dir_lights_size()); ++i)
     {
-        return m_cache.directional_lights.at(0)->slot();
+        if (m_loader->dir_light_at(i))
+        {
+            return i;
+        }
     }
     return 0;
 }
@@ -340,7 +339,7 @@ vulkan_render::clear_upload_queue()
 
 void
 vulkan_render::stage_set_probes(std::vector<gpu::sh_probe> probes,
-                               const gpu::probe_grid_config& grid_config)
+                                const gpu::probe_grid_config& grid_config)
 {
     KRG_check_render_thread();
     m_probes = std::move(probes);
@@ -486,7 +485,7 @@ vulkan_render::dispatch_cluster_cull_impl(VkCommandBuffer cmd)
                             nullptr);
 
     // Push light count
-    uint32_t num_lights = m_cache.universal_lights.get_size();
+    uint32_t num_lights = m_loader->uni_lights_size();
     vkCmdPushConstants(cmd,
                        m_cluster_cull_shader->m_pipeline_layout,
                        VK_SHADER_STAGE_COMPUTE_BIT,
@@ -581,8 +580,8 @@ vulkan_render::dispatch_frustum_cull_impl(VkCommandBuffer cmd)
         uint32_t max_visible;
     } pc;
 
-    pc.object_count = static_cast<uint32_t>(m_cache.objects.get_size());
-    pc.max_visible = static_cast<uint32_t>(m_cache.objects.get_size());  // Same capacity
+    pc.object_count = static_cast<uint32_t>(m_loader->objects_capacity());
+    pc.max_visible = static_cast<uint32_t>(m_loader->objects_capacity());  // Same capacity
 
     vkCmdPushConstants(cmd,
                        m_frustum_cull_shader->m_pipeline_layout,

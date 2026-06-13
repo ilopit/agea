@@ -36,16 +36,16 @@ vulkan_render::prepare_debug_light_data(render::frame_state& current_frame)
         return;
     }
 
-    if (m_cache.universal_lights.get_size() == 0)
+    if (m_loader->uni_lights_size() == 0)
     {
         return;
     }
 
     // Count valid lights
     uint32_t light_count = 0;
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    for (uint32_t i = 0; i < m_loader->uni_lights_size(); ++i)
     {
-        auto* light = m_cache.universal_lights.at(i);
+        auto* light = m_loader->uni_light_at(i);
         if (light && light->is_valid())
         {
             ++light_count;
@@ -57,7 +57,7 @@ vulkan_render::prepare_debug_light_data(render::frame_state& current_frame)
     }
 
     // Write debug object_data entries at the end of the objects buffer
-    uint32_t debug_base_slot = m_cache.objects.get_size();
+    uint32_t debug_base_slot = m_loader->objects_capacity();
     uint32_t required_size = (debug_base_slot + light_count) * sizeof(gpu::object_data);
     if (required_size > current_frame.buffers.objects.get_alloc_size())
     {
@@ -68,9 +68,9 @@ vulkan_render::prepare_debug_light_data(render::frame_state& current_frame)
     auto* obj_data = reinterpret_cast<gpu::object_data*>(current_frame.buffers.objects.get_data());
 
     uint32_t debug_idx = 0;
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    for (uint32_t i = 0; i < m_loader->uni_lights_size(); ++i)
     {
-        auto* light = m_cache.universal_lights.at(i);
+        auto* light = m_loader->uni_light_at(i);
         if (!light || !light->is_valid())
         {
             continue;
@@ -188,9 +188,9 @@ vulkan_render::draw_debug_lights(VkCommandBuffer cmd, render::frame_state& curre
 
     // Draw each light with the appropriate mesh (sphere for point, cone for spot)
     uint32_t draw_idx = 0;
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    for (uint32_t i = 0; i < m_loader->uni_lights_size(); ++i)
     {
-        auto* light = m_cache.universal_lights.at(i);
+        auto* light = m_loader->uni_light_at(i);
         if (!light || !light->is_valid())
         {
             continue;

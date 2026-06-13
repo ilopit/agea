@@ -81,6 +81,23 @@ protected:
     );
     bool m_selected = false;
     // clang-format on
+
+public:
+    ::kryga::render::types::directional_light_handle
+    get_render_light_handle() const
+    {
+        return m_render_light_handle;
+    }
+
+    void
+    set_render_light_handle(::kryga::render::types::directional_light_handle h)
+    {
+        m_render_light_handle = h;
+    }
+
+    // Handle-model render slot (runtime, not serialized): the directional-light
+    // pool slot reserved by the builder. Mirrors smart_object::m_render_object_handle.
+    ::kryga::render::types::directional_light_handle m_render_light_handle = {};
 };
 
 }  // namespace base

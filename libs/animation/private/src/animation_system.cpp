@@ -42,8 +42,8 @@ void
 animation_system::on_connect(gs::state&)
 {
     set_render_data_resolver(
-        [](const utils::id& id) -> render::vulkan_render_data*
-        { return glob::glob_state().getr_render().renderer.get_cache().objects.find_by_id(id); });
+        [](render::types::render_object_handle h) -> render::vulkan_render_data*
+        { return glob::glob_state().getr_render().renderer.get_cache().get_object(h); });
 }
 
 namespace
@@ -111,7 +111,7 @@ utils::id
 animation_system::create_instance(const utils::id& instance_id,
                                   const utils::id& skeleton_id,
                                   const utils::id& clip_id,
-                                  render::vulkan_render_data* render_data)
+                                  render::types::render_object_handle render_handle)
 {
     auto skel_it = m_skeletons.find(skeleton_id);
     if (skel_it == m_skeletons.end())
@@ -124,7 +124,7 @@ animation_system::create_instance(const utils::id& instance_id,
 
     instance_data inst;
     inst.skeleton_id = skeleton_id;
-    inst.render_data = render_data;
+    inst.render_handle = render_handle;
     inst.bone_matrices.resize(reg.inverse_bind_matrices.size(), glm::mat4(1.0f));
 
     // Set up single layer for the initial clip
@@ -497,7 +497,7 @@ animation_system::tick(float dt)
         // 7. Update render data (lazy-resolve pointer if needed)
         if (!inst.render_data && m_resolver)
         {
-            inst.render_data = m_resolver(id);
+            inst.render_data = m_resolver(inst.render_handle);
         }
 
         if (inst.render_data)
@@ -557,6 +557,23 @@ animation_system::set_skinned_mesh_created(const utils::id& skel_id)
     {
         it->second.skinned_mesh_created = true;
     }
+}
+
+void
+animation_system::set_skinned_mesh_handle(const utils::id& skel_id, render::types::mesh_handle h)
+{
+    auto it = m_skeletons.find(skel_id);
+    if (it != m_skeletons.end())
+    {
+        it->second.skinned_mesh_handle = h;
+    }
+}
+
+render::types::mesh_handle
+animation_system::get_skinned_mesh_handle(const utils::id& skel_id) const
+{
+    auto it = m_skeletons.find(skel_id);
+    return it != m_skeletons.end() ? it->second.skinned_mesh_handle : render::types::mesh_handle{};
 }
 
 }  // namespace animation

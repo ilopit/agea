@@ -1,5 +1,6 @@
 ---
 fps_lock: 120
-level: ~
+level: light_sandbox_baked
 window_h: 1800
 window_w: 3200
+object_pool_size: 4096

@@ -31,6 +31,7 @@ target_include_directories(vulkan_render INTERFACE
 )
 target_link_libraries(vulkan_render INTERFACE
     kryga::utils
+    kryga::render_types
     kryga::gpu_types
     kryga::native
 

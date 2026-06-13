@@ -95,7 +95,7 @@ Full design docs in `docs/plans/`, known issues in `docs/issues/`.
 Tracked in `docs/issues/` per subsystem: meshes, shadows, validation, editor UI state, package organization.
 
 ## Rules
-- NEVER commit or push without explicit user command. Stage and show the diff, then wait.
+- NEVER commit, push, or `git add` without explicit user command. Leave changes unstaged; report what changed and wait.
 - NEVER use `git merge` — always rebase. Push rebased branches directly with `git push origin HEAD:main`
 - NEVER change dependency versions
 - Do not read `*.ar.cpp` generated files without permission

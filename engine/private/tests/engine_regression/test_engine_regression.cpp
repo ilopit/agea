@@ -19,6 +19,8 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/render_system.h>
+
+#include <render_bridge/render_bridge.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 
 #include <render/utils/image_compare.h>
@@ -230,14 +232,19 @@ TEST(engine_regression, converts_and_renders_box_textured)
         renderer.set_camera(cam);
         renderer.get_render_config().shadows.distance = 0.0f;
 
-        // Box.glb has no lights — add a directional sun so the lit material is visible
-        auto* sun = renderer.get_cache().directional_lights.alloc(AID("test_sun"));
+        // Box.glb has no lights — add a directional sun so the lit material is
+        // visible. Lights are on the handle model: reserve a handle, then
+        // populate by it. The engine's bridge allocator owns the lights lane
+        // (a second local allocator would assert on the lane claim).
+        auto& dir_alloc = glob::glob_state().getr_render_bridge().dir_lights_alloc();
+        auto sun_h = dir_alloc.reserve();
+        auto* sun = renderer.get_cache().populate_dir_light(sun_h, AID("test_sun"));
         sun->gpu_data.direction = {-0.3f, -1.0f, -0.2f};
         sun->gpu_data.ambient = {0.3f, 0.3f, 0.3f};
         sun->gpu_data.diffuse = {1.0f, 1.0f, 1.0f};
         sun->gpu_data.specular = {0.5f, 0.5f, 0.5f};
         renderer.stage_add_light(sun);
-        renderer.set_selected_directional_light(AID("test_sun"));
+        renderer.set_selected_directional_light(sun_h);
 
         warmup(engine, 6);
 

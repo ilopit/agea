@@ -48,6 +48,7 @@ apply_fields(serialization::container& container, config& c)
     extract_field(container, KRG_stringify(level), c.level);
     extract_field(container, KRG_stringify(window_h), c.window_h);
     extract_field(container, KRG_stringify(window_w), c.window_w);
+    extract_field(container, KRG_stringify(object_pool_size), c.object_pool_size);
 }
 }  // namespace
 
@@ -120,6 +121,10 @@ config::save() const
     if (window_w != base_cfg.window_w)
     {
         root[KRG_stringify(window_w)] = window_w;
+    }
+    if (object_pool_size != base_cfg.object_pool_size)
+    {
+        root[KRG_stringify(object_pool_size)] = object_pool_size;
     }
 
     return serialization::write_container(m_cache_rid, root);

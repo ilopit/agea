@@ -42,6 +42,10 @@ public:
     utils::id level;
     uint32_t window_w = 1600;
     uint32_t window_h = 900;
+    // Number of per-instance render-object slots preallocated at startup (handles
+    // + render_cache storage). A floor, not a cap — usage grows past it. Sizes the
+    // object SSBO and cull dispatch, so keep it near the real scene budget.
+    uint32_t object_pool_size = 4096;
 };
 }  // namespace editor
 }  // namespace kryga

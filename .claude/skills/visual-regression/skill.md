@@ -105,9 +105,12 @@ obj->outlined = true;
 ```
 
 ### Lights
+Lights are on the handle model. Use the fixture helpers (`alloc_dir_light` /
+`alloc_uni_light` on `visual_test_base`), NOT `cache.*_lights.alloc(...)` — that id
+API is gone. The helpers reserve a handle from a per-test allocator and populate.
 ```cpp
 // Point light
-auto* pl = cache.universal_lights.alloc(AID("name"), light_type::point);
+auto* pl = alloc_uni_light(cache, AID("name"), light_type::point);
 pl->gpu_data.position = {x, y, z};
 pl->gpu_data.diffuse = {r, g, b};
 pl->gpu_data.radius = 8.0f;
@@ -117,7 +120,7 @@ pl->gpu_data.outer_cut_off = -1.0f;
 renderer.schedule_universal_light_data_gpu_upload(pl);
 
 // Spot light
-auto* sp = cache.universal_lights.alloc(AID("name"), light_type::spot);
+auto* sp = alloc_uni_light(cache, AID("name"), light_type::spot);
 sp->gpu_data.position = {x, y, z};
 sp->gpu_data.direction = glm::normalize(dir);
 sp->gpu_data.type = KGPU_light_type_spot;
@@ -127,7 +130,7 @@ renderer.schedule_universal_light_data_gpu_upload(sp);
 ```
 
 ### ID uniqueness
-All IDs (meshes, materials, objects, lights) MUST be unique across all tests — `combined_pool::alloc` returns nullptr on duplicates. Use a test-specific prefix.
+Use a test-specific prefix for all IDs (meshes, materials, objects, lights) — it keeps logs and failures attributable. Texture ids are debug names only (there is no id→handle map anymore); duplicate ids no longer fail, each `create_texture` just takes a fresh bindless slot. Keep the returned `texture_data*` — that pointer is the only way to reach the texture later.
 
 ### Final render + compare
 ```cpp

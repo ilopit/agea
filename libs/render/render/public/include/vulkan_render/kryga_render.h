@@ -3,11 +3,13 @@
 #include "vulkan_render/types/vulkan_render_data.h"
 #include "vulkan_render/types/vulkan_gpu_types.h"
 #include "vulkan_render/types/vulkan_light_data.h"
+#include "vulkan_render/types/vulkan_material_data.h"
+#include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_compute_shader_data.h"
 #include "vulkan_render/utils/vulkan_buffer.h"
+#include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/utils/segments.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
-#include "vulkan_render/render_cache.h"
 #include "vulkan_render/vulkan_render_graph.h"
 #include "vulkan_render/vulkan_render_device.h"
 #include "vulkan_render/render_enums.h"
@@ -19,13 +21,20 @@
 #include "gpu_types/gpu_shadow_types.h"
 #include "gpu_types/gpu_probe_types.h"
 
+#include <utils/buffer.h>
 #include <utils/check.h>
+#include <utils/dynamic_object.h>
 #include <utils/id.h>
 #include <utils/line_container.h>
 #include <utils/id_allocator.h>
+#include <render_types/render_handle.h>
 
 #include <array>
 #include <atomic>
+#include <chrono>
+#include <functional>
+#include <future>
+#include <mutex>
 #include <vector>
 
 namespace kryga
@@ -325,7 +334,7 @@ public:
     // clang-format on
 
     void
-    set_selected_directional_light(const utils::id& id);
+    set_selected_directional_light(render::types::directional_light_handle h);
 
     uint32_t
     get_selected_directional_light_slot();
@@ -351,8 +360,78 @@ public:
     vulkan_render_data*
     object_id_under_coordinate(uint32_t x, uint32_t y);
 
-    render_cache&
+    // The merged render-resource owner (render_system.loader). render_cache was
+    // absorbed into vulkan_render_loader; this accessor keeps the old name for
+    // object/light/bindless-texture call sites. Bound at init().
+    vulkan_render_loader&
     get_cache();
+
+    // --- System / bindless resource lifecycle ------------------------------
+    // The renderer owns slot identity for render-created resources (system
+    // meshes/materials, bindless textures): reserve/reclaim happen HERE; the
+    // loader only builds + stores at the reserved slot. Mirrors the content
+    // split, where render_bridge owns identity and the loader owns storage.
+    mesh_data*
+    create_mesh(const utils::id& mesh_id,
+                utils::buffer_view<gpu::vertex_data> vertices,
+                utils::buffer_view<gpu::uint> indices);
+    mesh_data*
+    create_skinned_mesh(const utils::id& mesh_id,
+                        utils::buffer_view<gpu::skinned_vertex_data> vertices,
+                        utils::buffer_view<gpu::uint> indices);
+    mesh_data*
+    get_system_mesh_data(render::types::mesh_handle h);
+    bool
+    system_mesh_valid(render::types::mesh_handle h) const;
+    void
+    destroy_system_mesh_data(render::types::mesh_handle h);
+
+    material_data*
+    create_material(const utils::id& id,
+                    const utils::id& type_id,
+                    std::vector<texture_sampler_data>& textures_data,
+                    shader_effect_data& se_data,
+                    const utils::dynobj& params);
+    material_data*
+    get_system_material_data(render::types::material_handle h);
+    bool
+    system_material_valid(render::types::material_handle h) const;
+    void
+    destroy_system_material_data(render::types::material_handle h);
+
+    // Bindless textures: reserve a slot (slot index == bindless index) and hand
+    // back an initialized texture_data; release returns the slot to the pool.
+    texture_data*
+    alloc_texture(const utils::id& id);
+    void
+    release_texture(texture_data* td);
+
+    texture_data*
+    create_texture(const utils::id& texture_id,
+                   const utils::buffer& base_color,
+                   uint32_t w,
+                   uint32_t h);
+    texture_data*
+    create_texture(const utils::id& texture_id,
+                   const utils::buffer& data,
+                   uint32_t w,
+                   uint32_t h,
+                   VkFormat vk_format,
+                   texture_format fmt);
+    texture_data*
+    create_texture(const utils::id& texture_id,
+                   vk_utils::vulkan_image_sptr image,
+                   vk_utils::vulkan_image_view_sptr view);
+
+    // Replace an existing texture's image data in-place — same bindless slot,
+    // safe for in-flight frames.
+    void
+    update_texture(texture_data* td,
+                   const utils::buffer& data,
+                   uint32_t w,
+                   uint32_t h,
+                   VkFormat vk_format,
+                   texture_format fmt);
 
     render_pass*
     get_render_pass(const utils::id& id);
@@ -486,7 +565,64 @@ public:
     void
     apply_config_changes();
 
+    // --- Render-thread task queue (orchestrated by frame_pipeline) ----------
+    // Run a task ON THE RENDER THREAD, at the top of its next frame — render-state
+    // access held, serialized against drain/draw. RPC handlers reading render state
+    // (cache, camera, device stats) use this so they never race the render thread.
+    // Blocks the caller (an RPC I/O thread) until the task has run, or until timeout
+    // (returns false). The queue lives here, on the render-thread subsystem; the
+    // frame pipeline owns the loop and calls drain_render_actions() each turn. The
+    // render-thread mirror of vulkan_engine's main-action queue.
+    bool
+    wait_render_action(std::function<void()> a,
+                       std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
+
+    // [render thread] Run all queued render-thread tasks. Called by the frame
+    // pipeline at the top of each render-loop turn (and on its shutdown wake).
+    void
+    drain_render_actions();
+
+    // Run `a` in a render-state-access context, blocking until done. If the
+    // CALLING thread already holds render access (the render thread inside a
+    // drain, or main during init/headless/single-threaded teardown) the task
+    // runs inline -- this is what makes the call safe at any lifecycle stage
+    // and re-entrant from render actions. Otherwise it rides the render-action
+    // queue (wait_render_action). For WORKER threads only (e.g. the bake
+    // action thread): the queue drains when main submits the next frame, so a
+    // mid-stream MAIN-thread caller would stall until timeout -- that's
+    // asserted against. Main-thread work that needs the render thread goes
+    // through vulkan_engine::post_render_round_trip instead. Returns false on
+    // timeout.
+    bool
+    run_on_render_thread(std::function<void()> a,
+                         std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
+
+    // Fire-and-forget render-context work: runs inline when the caller holds
+    // render access (render thread / headless / teardown), otherwise rides
+    // the render-action queue and executes at the top of a render-loop turn.
+    // For self-contained mutations that need no result (e.g. freeing a system
+    // pool slot by value-captured handle) -- safe from ANY thread, including
+    // main mid-stream, because nothing waits.
+    void
+    post_render_action(std::function<void()> a);
+
+    // Re-stamp every render-thread-owned pool guard (the three system
+    // allocators + all loader storages) to the calling thread at a lifecycle
+    // handoff. init() builds system resources on the init/main thread, which
+    // lazily pins ownership there; the render loop calls this once at start
+    // (paired with render::set_render_access(true)), and main calls it again
+    // after the join for single-threaded teardown. Defined in the .cpp -- it
+    // reaches into the loader, fwd-declared here.
+    void
+    bind_render_pools_to_current_thread();
+
 private:
+    // Enqueue a render-thread task (just stores it; the loop drains at frame top).
+    // Private: the only caller is wait_render_action — no fire-and-forget render
+    // path exists.
+    void
+    queue_render_action(std::function<void()> a);
+
     void
     render_frame(VkCommandBuffer cmd,
                  frame_state& current_frame,
@@ -539,8 +675,11 @@ private:
     void
     draw_debug_lights(VkCommandBuffer cmd, render::frame_state& current_frame);
 
+    // Editor-only (composites the ImGui UI target); compiled out of game builds.
+#if KRG_HAS_IMGUI
     void
     draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame);
+#endif
 
     // Nearest-neighbor upscale of scene_lowres_target to full-res swapchain.
     // Only called from the composite pass when render_config.render_scale.enabled is true.
@@ -737,6 +876,12 @@ private:
     std::atomic<uint32_t> m_published_culled_draws{0};
     std::atomic<uint32_t> m_published_objects{0};
 
+    // Render-thread task queue (RPC introspection). Pushed from an RPC I/O thread
+    // (queue_render_action), drained on the render thread by the frame pipeline
+    // (drain_render_actions) — hence the mutex.
+    std::vector<std::function<void()>> m_render_actions;
+    std::mutex m_render_actions_mutex;
+
     // Render thread's working camera + frustum, written ONLY by
     // apply_pending_camera() at draw start (render-owned). All render passes
     // read these.
@@ -816,6 +961,9 @@ private:
     shader_effect_data* m_outline_post_se = nullptr;
     material_data* m_outline_post_mat = nullptr;
     uint32_t m_selection_mask_bindless_idx = 0xFFFFFFFFu;
+    // Bindless wrapper around the selection-mask pass's color image (allocated
+    // once in prepare_system_resources; image/view refreshed on reconfigure).
+    texture_data* m_selection_mask_txt = nullptr;
 
     // Low-res scene target + composite pass for render_scale mode.
     // Populated only when m_render_config.render_scale.enabled is true.
@@ -832,6 +980,10 @@ private:
     // m_render_config.outline.enabled && m_render_config.render_scale.enabled.
     shader_effect_data* m_depth_outline_se = nullptr;
     uint32_t m_scene_depth_bindless_idx = 0xFFFFFFFFu;
+    // Bindless wrapper around main-pass depth (render_scale paths). Allocated
+    // on first need; image/view swapped in place across reconfigures so the
+    // bindless slot stays stable.
+    texture_data* m_scene_depth_txt = nullptr;
 
     // BDA per-frame tracking — ensures per-draw BDA addresses are set before use
     bool m_bda_material_bound = false;
@@ -855,7 +1007,20 @@ private:
     gpu::push_constants_shadow m_shadow_pc = {};
     gpu::push_constants_grid m_grid_pc = {};
 
-    render_cache m_cache;
+    // Scene/resource storage lives on render_system.loader (formerly a local
+    // render_cache member); bound at init() before any storage access.
+    vulkan_render_loader* m_loader = nullptr;
+
+    // System (render-created) mesh/material allocators; bind to k_system_lane
+    // of the loader's MERGED mesh/material storages at init (render_bridge's
+    // content allocators own k_content_lane of the same storages). The
+    // renderer owns these render-internal pools' identity; the storage stays
+    // with the loader (the allocator holds only a dispatch-token pointer).
+    render::types::mesh_allocator m_system_meshes_alloc;
+    render::types::material_allocator m_system_materials_alloc;
+    // Bindless pool: single-lane storage of texture_data BY VALUE (distinct
+    // from the content texture_data* handle map), so its own allocator alias.
+    render::types::bindless_texture_allocator m_bindless_textures_alloc;
 
     // Clustered lighting
     cluster_grid m_cluster_grid;
@@ -901,6 +1066,9 @@ private:
     material_data* m_debug_wire_mat = nullptr;
     mesh_data* m_debug_sphere_mesh = nullptr;
     mesh_data* m_debug_cone_mesh = nullptr;
+    // Procedural fullscreen quad for post/UI passes. Owned render-side, addressed
+    // directly (no id lookup). Distinct from the content "plane_mesh" asset.
+    mesh_data* m_fullscreen_quad = nullptr;
     uint32_t m_debug_light_draw_count = 0;
     uint32_t m_debug_light_instance_base = 0;
     render_pass_sptr m_shadow_atlas_pass;
@@ -917,8 +1085,8 @@ private:
     shader_effect_data* m_shadow_se = nullptr;
     shader_effect_data* m_shadow_dpsm_se = nullptr;
 
-    // Selected directional light
-    utils::id m_selected_directional_light_id;
+    // Selected directional light (handle; index == GPU slot)
+    render::types::directional_light_handle m_selected_directional_light;
 
     // Instance drawing state
     std::vector<uint32_t> m_instance_slots_staging;  // CPU-side staging for slots

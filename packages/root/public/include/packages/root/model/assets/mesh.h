@@ -6,6 +6,7 @@
 #include "packages/root/model/core_types/vec3.h"
 
 #include "utils/buffer.h"
+#include "render_types/render_handle.h"
 
 #include <vector>
 #include <string>
@@ -99,6 +100,21 @@ public:
         m_local_centroid = c;
     }
 
+    // Runtime render slot (handle model, slice 3). Reserved by the mesh cmd
+    // builder on first render build and stored here so draws reference the mesh
+    // by U64 handle, not by string id. NOT serialized — a slot index is not
+    // stable across runs; it is re-reserved each session from the asset.
+    ::kryga::render::types::mesh_handle
+    render_handle() const
+    {
+        return m_render_handle;
+    }
+    void
+    set_render_handle(::kryga::render::types::mesh_handle h)
+    {
+        m_render_handle = h;
+    }
+
 protected:
     // clang-format off
     KRG_ar_property(
@@ -132,6 +148,7 @@ protected:
 
     float m_bounding_radius = 0.0f;
     ::kryga::root::vec3 m_local_centroid = {};
+    ::kryga::render::types::mesh_handle m_render_handle = {};  // runtime, not serialized
 };
 
 }  // namespace root

@@ -155,9 +155,8 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
             }
 
             // Set push constants for this transparent object
-            m_obj_config.directional_light_id = m_cache.directional_lights.get_size() > 0
-                                                    ? m_cache.directional_lights.at(0)->slot()
-                                                    : 0;
+            auto* dl0 = m_loader->dir_light_at(0);
+            m_obj_config.directional_light_id = dl0 ? dl0->slot() : 0;
             m_obj_config.use_clustered_lighting = 1;
             m_obj_config.material_id = obj->material->gpu_idx();
             m_obj_config.instance_base = transparent_base + transparent_idx;
@@ -178,7 +177,9 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
     {
         draw_debug_overlay(cmd, current_frame);
         draw_outline_post(cmd, current_frame);
+#if KRG_HAS_IMGUI
         draw_ui_overlay(cmd, current_frame);
+#endif
     }
 }
 
@@ -379,7 +380,9 @@ vulkan_render::draw_composite(VkCommandBuffer cmd, render::frame_state& current_
     // Full-res overlays — order: debug visuals, outline edge-detect, UI on top.
     draw_debug_overlay(cmd, current_frame);
     draw_outline_post(cmd, current_frame);
+#if KRG_HAS_IMGUI
     draw_ui_overlay(cmd, current_frame);
+#endif
 }
 
 void
@@ -422,19 +425,23 @@ vulkan_render::draw_depth_outline(VkCommandBuffer cmd, render::frame_state& curr
 // Draw Functions - UI Overlay (shared)
 // ============================================================================
 
+// Editor-only: composites the ImGui UI target onto the swapchain. A game build
+// has no ImGui pass writing ui_target, so this is compiled out entirely.
+#if KRG_HAS_IMGUI
 void
 vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current_frame)
 {
+    // Render-scale-state guard (NOT a build guard): m_ui_target_mat (the UI-copy
+    // material) is only created by reconfigure_render_scale_enabled, so it is
+    // null until render-scale has been toggled — including at editor startup,
+    // where the UI is composited in the main pass instead.
     if (!m_ui_target_mat)
     {
         return;
     }
 
-    auto m = glob::glob_state().getr_render().loader.get_mesh_data(AID("plane_mesh"));
-    if (!m)
-    {
-        return;
-    }
+    KRG_check(m_fullscreen_quad, "fullscreen quad missing — system resources not initialized");
+    auto m = m_fullscreen_quad;
 
     // UI overlay shader has a different (incompatible) pipeline layout for sets 0-1
     // It only uses set 2 (textures) and push constants, so we bind those directly
@@ -462,6 +469,7 @@ vulkan_render::draw_ui_overlay(VkCommandBuffer cmd, render::frame_state& current
 
     draw_mesh(cmd, m);
 }
+#endif  // KRG_HAS_IMGUI
 
 // ============================================================================
 // Draw Functions - ImGui

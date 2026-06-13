@@ -343,28 +343,63 @@ bake_editor::submit_bake()
             std::memcpy(lm_buf.data(), lm_data.data(), lm_data.size());
 
             auto& loader = glob::glob_state().getr_render().loader;
+            auto& renderer = glob::glob_state().getr_render().renderer;
 
             auto lm_tex_id = AID((cur_level->get_id().str() + "_lightmap").c_str());
 
-            auto* tex = loader.update_or_create_texture(lm_tex_id,
-                                                        lm_buf,
-                                                        result.atlas_width,
-                                                        result.atlas_height,
-                                                        VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                        render::texture_format::rgba16f);
+            // The render-state block (lightmap registry lookup, atlas texture
+            // create/update, registry bind) runs in a render-access context:
+            // the bake runs on the action worker thread, and the bindless pool
+            // and loader registry are render-thread-owned mid-stream. Main
+            // keeps pumping frames during the bake, so the action drains
+            // within ~a frame; the wait keeps lm_buf/manifest refs valid.
+            render::texture_data* tex = nullptr;
+            renderer.run_on_render_thread(
+                [&]
+                {
+                    // Re-bake of an already-bound level updates the atlas in place
+                    // (same bindless slot — objects keep their index); first bake
+                    // creates it. The binding owns the texture.
+                    const auto* binding = loader.get_lightmap(cur_level->get_id());
+                    tex = binding ? binding->texture : nullptr;
+                    if (tex)
+                    {
+                        renderer.update_texture(tex,
+                                                lm_buf,
+                                                result.atlas_width,
+                                                result.atlas_height,
+                                                VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                render::texture_format::rgba16f);
+                    }
+                    else
+                    {
+                        tex = renderer.create_texture(lm_tex_id,
+                                                      lm_buf,
+                                                      result.atlas_width,
+                                                      result.atlas_height,
+                                                      VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                      render::texture_format::rgba16f);
+                    }
+
+                    if (tex)
+                    {
+                        // Lightmap binding is render-owned: register the atlas
+                        // index + per-object UVs in the loader's per-level
+                        // registry (the model no longer caches them).
+                        loader.set_lightmap(
+                            cur_level->get_id(),
+                            tex,
+                            render_translate::flatten_lightmap_manifest(manifest));
+                    }
+                });
 
             if (tex)
             {
+                // NOTE: these touch MODEL state from the bake worker (level refs +
+                // the dirty queue) — the remaining known editor-only violation,
+                // unchanged here.
                 cur_level->set_lightmap_refs(baked_root / "lightmap.bin",
                                              baked_root / "lightmap_manifest.cfg");
-                // Lightmap binding is render-owned: register the atlas index +
-                // per-object UVs in the loader's per-level registry (the model no
-                // longer caches them). NOTE: bake runs on the action worker thread,
-                // so this still touches render state off the render thread — the
-                // known deferred editor-only violation, unchanged by this refactor.
-                loader.set_lightmap(cur_level->get_id(),
-                                    tex->get_bindless_index(),
-                                    render_translate::flatten_lightmap_manifest(manifest));
 
                 for (auto& [oid, obj_ptr] : cur_level->get_game_objects().get_items())
                 {

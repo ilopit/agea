@@ -28,6 +28,15 @@ is_debugger_attached();
         }                                                                          \
     } while (0)
 
+// Debug-only assert: active in Debug builds, compiled to nothing (condition NOT
+// evaluated) when NDEBUG is set. Use for hot-path invariants that should hold by
+// construction but are worth catching in development — e.g. handle validation.
+#ifndef NDEBUG
+#define KRG_check_debug(condition, msg) KRG_check(condition, msg)
+#else
+#define KRG_check_debug(condition, msg) ((void)0)
+#endif
+
 #define KRG_never(msg)                                        \
     do                                                        \
     {                                                         \

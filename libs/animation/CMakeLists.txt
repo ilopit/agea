@@ -6,6 +6,7 @@ add_library(animation STATIC
 
 target_link_libraries(animation PUBLIC
     kryga::utils
+    kryga::render_types
     kryga::gpu_types
     kryga::glm_unofficial
     kryga::cgltf

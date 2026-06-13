@@ -12,6 +12,7 @@
 #include <ozz/base/maths/soa_transform.h>
 
 #include <utils/id.h>
+#include <render_types/render_handle.h>
 
 #include <functional>
 #include <memory>
@@ -33,7 +34,8 @@ namespace animation
 class animation_system : public gs::system
 {
 public:
-    using render_data_resolver = std::function<render::vulkan_render_data*(const utils::id&)>;
+    using render_data_resolver =
+        std::function<render::vulkan_render_data*(render::types::render_object_handle)>;
 
     std::string_view
     name() const override
@@ -73,7 +75,7 @@ public:
     create_instance(const utils::id& instance_id,
                     const utils::id& skeleton_id,
                     const utils::id& clip_id,
-                    render::vulkan_render_data* render_data);
+                    render::types::render_object_handle render_handle);
 
     void
     destroy_instance(const utils::id& instance_id);
@@ -108,6 +110,15 @@ public:
     void
     set_skinned_mesh_created(const utils::id& skel_id);
 
+    // Dedup home for the shared skinned-mesh render slot (handle model). The
+    // skinned mesh is created once per skeleton; the handle lives here so every
+    // animated instance sharing the skeleton draws by the same U64 handle.
+    void
+    set_skinned_mesh_handle(const utils::id& skel_id, render::types::mesh_handle h);
+
+    render::types::mesh_handle
+    get_skinned_mesh_handle(const utils::id& skel_id) const;
+
 private:
     struct registered_skeleton
     {
@@ -115,6 +126,7 @@ private:
         std::vector<glm::mat4> inverse_bind_matrices;
         std::vector<int32_t> joint_remaps;
         bool skinned_mesh_created = false;
+        render::types::mesh_handle skinned_mesh_handle;  // shared render slot for this skeleton
     };
 
     struct layer_state
@@ -137,6 +149,10 @@ private:
         std::vector<glm::mat4> bone_matrices;
         uint32_t bone_offset = 0;
 
+        // Render-object slot this instance writes bone state into. The raw pointer
+        // is a lazily-resolved cache of the handle (see tick); the handle is the
+        // stable key that survives the reserved->resident window.
+        render::types::render_object_handle render_handle;
         render::vulkan_render_data* render_data = nullptr;
 
         // IK

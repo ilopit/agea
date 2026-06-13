@@ -142,22 +142,41 @@ struct create_lightmap_cmd : render_cmd::render_command_base
         utils::buffer buf(pixels.size());
         std::memcpy(buf.data(), pixels.data(), pixels.size());
 
-        auto* tex = ctx.loader.update_or_create_texture(tex_id,
-                                                        buf,
-                                                        width,
-                                                        height,
-                                                        VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                        render::texture_format::rgba16f);
+        // The binding owns the atlas texture. Re-bake while loaded: update the
+        // existing texture in place (same bindless slot, objects keep their
+        // index). Fresh load: create it. Texture lifecycle goes through the
+        // renderer (it owns the bindless slot identity).
+        auto& renderer = glob::glob_state().getr_render().renderer;
+        const auto* binding = ctx.loader.get_lightmap(level_id);
+        auto* tex = binding ? binding->texture : nullptr;
         if (tex)
         {
-            ctx.loader.set_lightmap(level_id, tex->get_bindless_index(), std::move(entries));
+            renderer.update_texture(tex,
+                                    buf,
+                                    width,
+                                    height,
+                                    VK_FORMAT_R16G16B16A16_SFLOAT,
+                                    render::texture_format::rgba16f);
+        }
+        else
+        {
+            tex = renderer.create_texture(tex_id,
+                                          buf,
+                                          width,
+                                          height,
+                                          VK_FORMAT_R16G16B16A16_SFLOAT,
+                                          render::texture_format::rgba16f);
+        }
+        if (tex)
+        {
+            ctx.loader.set_lightmap(level_id, tex, std::move(entries));
         }
     }
 };
 
-// Retire a level's lightmap registry entry when it unloads (render thread). The
-// GPU texture itself stays in the loader cache, reused in place on reload (same
-// tex_id) — matching the prior behaviour.
+// Retire a level's lightmap binding when it unloads (render thread). The
+// binding owns the atlas texture, so remove_lightmap also frees its bindless
+// slot; a reload re-uploads the atlas through create_lightmap_cmd.
 struct destroy_lightmap_cmd : render_cmd::render_command_base
 {
     utils::id level_id;
@@ -266,6 +285,9 @@ vulkan_engine::init(const startup_options& options)
     // (renderer.init stages default textures, etc.). It hands this off before the
     // streaming loop starts (see run()) and reclaims it after the loop ends.
     render::set_render_access(true);
+    // Main is also the model/build thread for the whole process — it owns the
+    // content allocator (reserve/free/tick). Granted once and never handed off.
+    render::set_model_access(true);
 
     ALOG_INFO("Initialization started ...");
 
@@ -308,8 +330,8 @@ vulkan_engine::init(const startup_options& options)
 #endif
 
     glob::glob_state().getr_animation_system().set_render_data_resolver(
-        [](const utils::id& id) -> render::vulkan_render_data*
-        { return glob::glob_state().getr_render().renderer.get_cache().objects.find_by_id(id); });
+        [](render::types::render_object_handle h) -> render::vulkan_render_data*
+        { return glob::glob_state().getr_render().renderer.get_cache().get_object(h); });
 
     glob::glob_state().getr_physics_system().init();
     glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
@@ -444,6 +466,13 @@ vulkan_engine::init(const startup_options& options)
     glob::glob_state().getr_render().renderer.init(
         (uint32_t)actual_size.w, (uint32_t)actual_size.h, render_cfg);
 
+    // Bind the model-side allocators to their render-side storages now that the
+    // loader + render cache exist, then preallocate the object slot pool: the
+    // allocator's preallocate grows the bound render storage too, synchronously.
+    auto& rb = glob::glob_state().getr_render_bridge();
+    rb.bind_content_storages();
+    rb.objects_alloc().preallocate(glob::glob_state().get_config()->object_pool_size);
+
     init_default_resources();
 
     if (!m_headless)
@@ -538,6 +567,11 @@ vulkan_engine::cleanup()
         ImGui::DestroyContext();
     }
 #endif
+
+    // Release the content allocators' lane claims before the render system
+    // (and its storages) goes away -- the storage dtor asserts no allocator
+    // is still attached. Single-threaded here, so the direct form is legal.
+    glob::glob_state().getr_render_bridge().detach_content_storages();
 
     glob::glob_state().getr_render().loader.clear_caches();
 
@@ -722,8 +756,11 @@ vulkan_engine::run()
     // Drain any in-flight frames and join the render thread.
     m_pipeline.stop();
 
-    // Render thread gone — main reclaims access for single-threaded teardown.
+    // Render thread gone — main reclaims access for single-threaded teardown,
+    // and ownership of the pool guards with it (deinit frees system meshes/
+    // materials/bindless slots and resets storages from here).
     render::set_render_access(true);
+    glob::glob_state().getr_render().renderer.bind_render_pools_to_current_thread();
 }
 void
 vulkan_engine::tick_headless()

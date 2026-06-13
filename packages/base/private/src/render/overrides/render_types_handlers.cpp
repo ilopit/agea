@@ -138,9 +138,10 @@ resolve_lightmap(render_cmd::render_exec_context& ctx,
 
 struct create_object_cmd : render_cmd::render_command_base
 {
-    utils::id id;
-    utils::id mesh_id;
-    utils::id material_id;
+    utils::id id;  // passenger: lightmap binding key + diagnostics
+    render::types::render_object_handle obj_handle;
+    render::types::mesh_handle mesh;
+    render::types::material_handle material;
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
@@ -157,8 +158,8 @@ struct create_object_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
-        auto* mat_data = ctx.loader.get_material_data(material_id);
+        auto* mesh_data = ctx.loader.get_mesh_data(mesh);
+        auto* mat_data = ctx.loader.get_material_data(material);
 
         if (!mesh_data || !mat_data)
         {
@@ -166,7 +167,7 @@ struct create_object_cmd : render_cmd::render_command_base
             return;
         }
 
-        auto* object_data = ctx.vr.get_cache().objects.alloc(id);
+        auto* object_data = ctx.vr.get_cache().create_object(obj_handle, id);
 
         if (!ctx.loader.update_object(
                 *object_data, *mat_data, *mesh_data, transform, normal_matrix, position))
@@ -191,9 +192,10 @@ struct create_object_cmd : render_cmd::render_command_base
 
 struct update_object_cmd : render_cmd::render_command_base
 {
-    utils::id id;
-    utils::id mesh_id;
-    utils::id material_id;
+    utils::id id;  // passenger: lightmap binding key
+    render::types::render_object_handle obj_handle;
+    render::types::mesh_handle mesh;
+    render::types::material_handle material;
     glm::mat4 transform{1.0f};
     glm::mat4 normal_matrix{1.0f};
     glm::vec3 position{0.0f};
@@ -206,14 +208,14 @@ struct update_object_cmd : render_cmd::render_command_base
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+        auto* object_data = ctx.vr.get_cache().get_object(obj_handle);
         if (!object_data)
         {
             return;
         }
 
-        auto* mesh_data = ctx.loader.get_mesh_data(mesh_id);
-        auto* mat_data = ctx.loader.get_material_data(material_id);
+        auto* mesh_data = ctx.loader.get_mesh_data(mesh);
+        auto* mat_data = ctx.loader.get_material_data(material);
 
         if (!mesh_data || !mat_data)
         {
@@ -247,22 +249,24 @@ struct update_object_cmd : render_cmd::render_command_base
 
 struct destroy_object_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    render::types::render_object_handle obj_handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+        auto* object_data = ctx.vr.get_cache().get_object(obj_handle);
         if (object_data)
         {
             ctx.vr.stage_remove_object(object_data);
             object_data->mark_pending_release();
-            ctx.vr.get_cache().objects.unmap(object_data);
 
-            auto& device = glob::glob_state().getr_render().device;
-            auto* pool = &ctx.vr.get_cache().objects;
-            device.schedule_to_delete([pool, object_data](VkDevice, VmaAllocator)
-                                      { pool->release_slot(object_data); });
+            // Retire the slot: the handle reads stale immediately, but the payload
+            // stays put. In-flight frames still hold raw pointers to it in their
+            // upload queues, and the model-owned allocator's deferred free keeps
+            // this slot index out of circulation until those frames drain — so the
+            // data is only overwritten by a future create_object, never freed out
+            // from under the GPU. No deferred delete needed.
+            ctx.vr.get_cache().retire_object(obj_handle);
         }
     }
 };
@@ -274,6 +278,7 @@ struct destroy_object_cmd : render_cmd::render_command_base
 struct create_chunk_mesh_cmd : render_cmd::render_command_base
 {
     utils::id id;
+    render::types::mesh_handle handle;  // pre-reserved by the builder (handle model)
     std::shared_ptr<utils::buffer> vertices;
     std::shared_ptr<utils::buffer> indices;
 
@@ -282,18 +287,19 @@ struct create_chunk_mesh_cmd : render_cmd::render_command_base
     {
         auto vbv = vertices->make_view<gpu::vertex_data>();
         auto ibv = indices->make_view<gpu::uint>();
-        ctx.loader.create_mesh(id, vbv, ibv);
+        ctx.loader.populate_mesh(handle, id, vbv, ibv);
     }
 };
 
 struct destroy_mesh_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    render::types::mesh_handle handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        ctx.loader.destroy_mesh_data(id);
+        // [render thread] Release the data; the model already free()'d the slot.
+        ctx.loader.reset_mesh_storage(handle);
     }
 };
 
@@ -311,6 +317,8 @@ enum class light_kind : uint8_t
 struct create_light_cmd : render_cmd::render_command_base
 {
     utils::id id;
+    render::types::directional_light_handle dir_handle;  // set when kind==directional
+    render::types::universal_light_handle uni_handle;     // set when kind==point/spot
     light_kind kind = light_kind::point;
     glm::vec3 position{0.0f};
     glm::vec3 ambient{0.0f};
@@ -326,7 +334,7 @@ struct create_light_cmd : render_cmd::render_command_base
     {
         if (kind == light_kind::directional)
         {
-            auto* rh = ctx.vr.get_cache().directional_lights.alloc(id);
+            auto* rh = ctx.vr.get_cache().populate_dir_light(dir_handle, id);
             rh->gpu_data.ambient = ambient;
             rh->gpu_data.diffuse = diffuse;
             rh->gpu_data.specular = specular;
@@ -337,7 +345,7 @@ struct create_light_cmd : render_cmd::render_command_base
         {
             auto lt =
                 (kind == light_kind::spot) ? render::light_type::spot : render::light_type::point;
-            auto* rh = ctx.vr.get_cache().universal_lights.alloc(id, lt);
+            auto* rh = ctx.vr.get_cache().populate_uni_light(uni_handle, id, lt);
             rh->gpu_data.position = position;
             rh->gpu_data.ambient = ambient;
             rh->gpu_data.diffuse = diffuse;
@@ -354,6 +362,8 @@ struct create_light_cmd : render_cmd::render_command_base
 struct update_light_cmd : render_cmd::render_command_base
 {
     utils::id id;
+    render::types::directional_light_handle dir_handle;
+    render::types::universal_light_handle uni_handle;
     light_kind kind = light_kind::point;
     glm::vec3 position{0.0f};
     glm::vec3 ambient{0.0f};
@@ -369,7 +379,7 @@ struct update_light_cmd : render_cmd::render_command_base
     {
         if (kind == light_kind::directional)
         {
-            auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
+            auto* rh = ctx.vr.get_cache().get_dir_light(dir_handle);
             if (!rh)
             {
                 return;
@@ -383,7 +393,7 @@ struct update_light_cmd : render_cmd::render_command_base
         }
         else
         {
-            auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
+            auto* rh = ctx.vr.get_cache().get_uni_light(uni_handle);
             if (!rh)
             {
                 return;
@@ -404,18 +414,19 @@ struct update_light_cmd : render_cmd::render_command_base
 
 struct select_directional_light_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    render::types::directional_light_handle handle;
 
     void
     execute(render_cmd::render_exec_context& ctx) override
     {
-        ctx.vr.set_selected_directional_light(id);
+        ctx.vr.set_selected_directional_light(handle);
     }
 };
 
 struct destroy_light_cmd : render_cmd::render_command_base
 {
-    utils::id id;
+    render::types::directional_light_handle dir_handle;
+    render::types::universal_light_handle uni_handle;
     light_kind kind = light_kind::point;
 
     void
@@ -423,23 +434,23 @@ struct destroy_light_cmd : render_cmd::render_command_base
     {
         if (kind == light_kind::directional)
         {
-            auto* rh = ctx.vr.get_cache().directional_lights.find_by_id(id);
+            auto* rh = ctx.vr.get_cache().get_dir_light(dir_handle);
             if (rh)
             {
                 // Drop from the pending upload queues BEFORE releasing the slot,
                 // else the per-frame queues keep a dangling pointer that the
                 // render thread dereferences next draw (out-of-bounds SSBO write).
                 ctx.vr.stage_remove_light(rh);
-                ctx.vr.get_cache().directional_lights.release(rh);
+                ctx.vr.get_cache().retire_dir_light(dir_handle);
             }
         }
         else
         {
-            auto* rh = ctx.vr.get_cache().universal_lights.find_by_id(id);
+            auto* rh = ctx.vr.get_cache().get_uni_light(uni_handle);
             if (rh)
             {
                 ctx.vr.stage_remove_light(rh);
-                ctx.vr.get_cache().universal_lights.release(rh);
+                ctx.vr.get_cache().retire_uni_light(uni_handle);
             }
         }
     }
@@ -491,10 +502,14 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     if (!moc.get_render_built())
     {
+        auto oh = ctx.rb->objects_alloc().reserve();
+        moc.set_render_object_handle(oh);
+
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
         cmd->id = moc.get_id();
-        cmd->mesh_id = moc.get_mesh()->get_id();
-        cmd->material_id = moc.get_material()->get_id();
+        cmd->obj_handle = oh;
+        cmd->mesh = moc.get_mesh()->render_handle();
+        cmd->material = moc.get_material()->render_handle();
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
         cmd->position = glm::vec3(moc.get_world_position());
@@ -512,8 +527,9 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->id = moc.get_id();
-        cmd->mesh_id = moc.get_mesh()->get_id();
-        cmd->material_id = moc.get_material()->get_id();
+        cmd->obj_handle = moc.get_render_object_handle();
+        cmd->mesh = moc.get_mesh()->render_handle();
+        cmd->material = moc.get_material()->render_handle();
         cmd->transform = moc.get_transform_matrix();
         cmd->normal_matrix = moc.get_normal_matrix();
         cmd->position = glm::vec3(moc.get_world_position());
@@ -554,7 +570,9 @@ mesh_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx)
     if (moc.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-        cmd->id = moc.get_id();
+        cmd->obj_handle = moc.get_render_object_handle();
+        ctx.rb->objects_alloc().free(moc.get_render_object_handle());  // [model thread]
+        moc.set_render_object_handle({});
         moc.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
@@ -571,7 +589,7 @@ mesh_component__cmd_transform(reflection::type_context__render_cmd_build& ctx)
     auto& m = ctx.obj->asr<base::mesh_component>();
 
     auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
-    cmd->id = m.get_id();
+    cmd->obj_handle = m.get_render_object_handle();
     cmd->transform = m.get_transform_matrix();
     cmd->normal_matrix = m.get_normal_matrix();
     cmd->position = glm::vec3(m.get_world_position());
@@ -619,8 +637,12 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
 
     if (!lc_model.get_render_built())
     {
+        auto h = ctx.rb->dir_lights_alloc().reserve();
+        lc_model.set_render_light_handle(h);
+
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->dir_handle = h;
         cmd->kind = light_kind::directional;
         cmd->ambient = lc_model.get_ambient();
         cmd->diffuse = lc_model.get_diffuse();
@@ -634,6 +656,7 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
     {
         auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->dir_handle = lc_model.get_render_light_handle();
         cmd->kind = light_kind::directional;
         cmd->ambient = lc_model.get_ambient();
         cmd->diffuse = lc_model.get_diffuse();
@@ -646,7 +669,7 @@ directional_light_component__cmd_builder(reflection::type_context__render_cmd_bu
     if (lc_model.get_selected())
     {
         auto* cmd = ctx.rb->alloc_cmd<select_directional_light_cmd>();
-        cmd->id = lc_model.get_id();
+        cmd->handle = lc_model.get_render_light_handle();
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -660,10 +683,13 @@ directional_light_component__cmd_destroyer(reflection::type_context__render_cmd_
 
     if (plc_model.get_render_built())
     {
+        auto h = plc_model.get_render_light_handle();
         auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
-        cmd->id = plc_model.get_id();
+        cmd->dir_handle = h;
         cmd->kind = light_kind::directional;
+        ctx.rb->dir_lights_alloc().free(h);  // [model thread] deferred recycle
         plc_model.set_render_built(false);
+        plc_model.set_render_light_handle({});
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -679,8 +705,12 @@ spot_light_component__cmd_builder(reflection::type_context__render_cmd_build& ct
 
     if (!lc_model.get_render_built())
     {
+        auto h = ctx.rb->uni_lights_alloc().reserve();
+        lc_model.set_render_light_handle(h);
+
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->uni_handle = h;
         cmd->kind = light_kind::spot;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -698,6 +728,7 @@ spot_light_component__cmd_builder(reflection::type_context__render_cmd_build& ct
     {
         auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->uni_handle = lc_model.get_render_light_handle();
         cmd->kind = light_kind::spot;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -721,10 +752,13 @@ spot_light_component__cmd_destroyer(reflection::type_context__render_cmd_build& 
 
     if (slc_model.get_render_built())
     {
+        auto h = slc_model.get_render_light_handle();
         auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
-        cmd->id = slc_model.get_id();
+        cmd->uni_handle = h;
         cmd->kind = light_kind::spot;
+        ctx.rb->uni_lights_alloc().free(h);  // [model thread] deferred recycle
         slc_model.set_render_built(false);
+        slc_model.set_render_light_handle({});
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -738,6 +772,7 @@ spot_light_component__cmd_transform(reflection::type_context__render_cmd_build& 
 
     auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
     cmd->id = lc.get_id();
+    cmd->uni_handle = lc.get_render_light_handle();
     cmd->kind = light_kind::spot;
     cmd->position = lc.get_world_position();
     cmd->ambient = lc.get_ambient();
@@ -761,8 +796,12 @@ point_light_component__cmd_builder(reflection::type_context__render_cmd_build& c
 
     if (!lc_model.get_render_built())
     {
+        auto h = ctx.rb->uni_lights_alloc().reserve();
+        lc_model.set_render_light_handle(h);
+
         auto* cmd = ctx.rb->alloc_cmd<create_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->uni_handle = h;
         cmd->kind = light_kind::point;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -777,6 +816,7 @@ point_light_component__cmd_builder(reflection::type_context__render_cmd_build& c
     {
         auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
         cmd->id = lc_model.get_id();
+        cmd->uni_handle = lc_model.get_render_light_handle();
         cmd->kind = light_kind::point;
         cmd->position = lc_model.get_world_position();
         cmd->ambient = lc_model.get_ambient();
@@ -797,10 +837,13 @@ point_light_component__cmd_destroyer(reflection::type_context__render_cmd_build&
 
     if (plc_model.get_render_built())
     {
+        auto h = plc_model.get_render_light_handle();
         auto* cmd = ctx.rb->alloc_cmd<destroy_light_cmd>();
-        cmd->id = plc_model.get_id();
+        cmd->uni_handle = h;
         cmd->kind = light_kind::point;
+        ctx.rb->uni_lights_alloc().free(h);  // [model thread] deferred recycle
         plc_model.set_render_built(false);
+        plc_model.set_render_light_handle({});
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -814,6 +857,7 @@ point_light_component__cmd_transform(reflection::type_context__render_cmd_build&
 
     auto* cmd = ctx.rb->alloc_cmd<update_light_cmd>();
     cmd->id = lc.get_id();
+    cmd->uni_handle = lc.get_render_light_handle();
     cmd->kind = light_kind::point;
     cmd->position = lc.get_world_position();
     cmd->ambient = lc.get_ambient();
@@ -1001,9 +1045,15 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
 
             anim_sys.set_skinned_mesh_created(skeleton_id);
 
+            // Reserve the shared skinned-mesh slot model-side and park it on the
+            // skeleton (the dedup home) so every instance draws by the same handle.
+            auto skinned_handle = ctx.rb->meshes_alloc().reserve();
+            anim_sys.set_skinned_mesh_handle(skeleton_id, skinned_handle);
+
             struct create_skinned_mesh_cmd : render_cmd::render_command_base
             {
                 utils::id id;
+                render::types::mesh_handle handle;
                 std::shared_ptr<utils::buffer> vertices;
                 std::shared_ptr<utils::buffer> indices;
 
@@ -1012,12 +1062,13 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
                 {
                     auto vbv = vertices->make_view<gpu::skinned_vertex_data>();
                     auto ibv = indices->make_view<gpu::uint>();
-                    ctx.loader.create_skinned_mesh(id, vbv, ibv);
+                    ctx.loader.populate_skinned_mesh(handle, id, vbv, ibv);
                 }
             };
 
             auto* cmd = ctx.rb->alloc_cmd<create_skinned_mesh_cmd>();
             cmd->id = mesh_id;
+            cmd->handle = skinned_handle;
             cmd->vertices = std::move(vert_buf);
             cmd->indices = std::move(idx_buf);
 
@@ -1062,10 +1113,14 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
 
     if (!amc.get_render_built())
     {
+        auto oh = ctx.rb->objects_alloc().reserve();
+        amc.set_render_object_handle(oh);
+
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
         cmd->id = amc.get_id();
-        cmd->mesh_id = mesh_id;
-        cmd->material_id = mat_model->get_id();
+        cmd->obj_handle = oh;
+        cmd->mesh = anim_sys.get_skinned_mesh_handle(skeleton_id);
+        cmd->material = mat_model->render_handle();
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
         cmd->position = glm::vec3(amc.get_world_position());
@@ -1081,8 +1136,9 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->id = amc.get_id();
-        cmd->mesh_id = mesh_id;
-        cmd->material_id = mat_model->get_id();
+        cmd->obj_handle = amc.get_render_object_handle();
+        cmd->mesh = anim_sys.get_skinned_mesh_handle(skeleton_id);
+        cmd->material = mat_model->render_handle();
         cmd->transform = amc.get_transform_matrix();
         cmd->normal_matrix = amc.get_normal_matrix();
         cmd->position = glm::vec3(amc.get_world_position());
@@ -1096,7 +1152,8 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
     auto clip_name = amc.get_clip_name();
     if (clip_name.valid() && anim_sys.has_animation(skeleton_id, clip_name))
     {
-        auto inst_id = anim_sys.create_instance(amc.get_id(), skeleton_id, clip_name, nullptr);
+        auto inst_id = anim_sys.create_instance(
+            amc.get_id(), skeleton_id, clip_name, amc.get_render_object_handle());
         amc.set_skeleton_id(skeleton_id);
         amc.set_anim_instance_id(inst_id);
     }
@@ -1126,7 +1183,9 @@ animated_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_buil
     if (amc.get_render_built())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-        cmd->id = amc.get_id();
+        cmd->obj_handle = amc.get_render_object_handle();
+        ctx.rb->objects_alloc().free(amc.get_render_object_handle());  // [model thread]
+        amc.set_render_object_handle({});
         amc.set_render_built(false);
         ctx.rb->enqueue_cmd(cmd);
     }
@@ -1230,6 +1289,8 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         chunk_shapes.reserve(fresult.chunks.size());
         dmc.get_chunk_mesh_ids().clear();
         dmc.get_chunk_mesh_ids().reserve(fresult.chunks.size());
+        dmc.get_chunk_mesh_handles().clear();
+        dmc.get_chunk_mesh_handles().reserve(fresult.chunks.size());
 
         for (uint32_t i = 0; i < fresult.chunks.size(); ++i)
         {
@@ -1248,6 +1309,8 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
             utils::id chunk_mesh_id = chunk_mesh_id_for(dmc.get_id(), i);
             dmc.get_chunk_mesh_ids().push_back(chunk_mesh_id);
+            auto chunk_handle = ctx.rb->meshes_alloc().reserve();
+            dmc.get_chunk_mesh_handles().push_back(chunk_handle);
 
             auto vb =
                 std::make_shared<utils::buffer>(ch.vertices.size() * sizeof(gpu::vertex_data));
@@ -1259,6 +1322,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
             auto* cmd = ctx.rb->alloc_cmd<create_chunk_mesh_cmd>();
             cmd->id = chunk_mesh_id;
+            cmd->handle = chunk_handle;
             cmd->vertices = std::move(vb);
             cmd->indices = std::move(ib);
             ctx.rb->enqueue_cmd(cmd);
@@ -1278,10 +1342,14 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             dmc.set_physics_handle(handle);
         }
 
+        auto src_oh = ctx.rb->objects_alloc().reserve();
+        dmc.set_render_object_handle(src_oh);
+
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
         cmd->id = dmc.get_id();
-        cmd->mesh_id = source_mesh->get_id();
-        cmd->material_id = material->get_id();
+        cmd->obj_handle = src_oh;
+        cmd->mesh = source_mesh->render_handle();
+        cmd->material = material->render_handle();
         cmd->transform = dmc.get_transform_matrix();
         cmd->normal_matrix = dmc.get_normal_matrix();
         cmd->position = glm::vec3(dmc.get_world_position());
@@ -1314,7 +1382,9 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     {
         {
             auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-            cmd->id = dmc.get_id();
+            cmd->obj_handle = dmc.get_render_object_handle();
+            ctx.rb->objects_alloc().free(dmc.get_render_object_handle());  // [model thread]
+            dmc.set_render_object_handle({});
             ctx.rb->enqueue_cmd(cmd);
         }
 
@@ -1322,11 +1392,15 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
         dmc.get_chunk_render_ids().clear();
         dmc.get_chunk_render_ids().reserve(dmc.get_chunk_shapes().size());
+        dmc.get_chunk_render_handles().clear();
+        dmc.get_chunk_render_handles().reserve(dmc.get_chunk_shapes().size());
 
         for (uint32_t i = 0; i < dmc.get_chunk_shapes().size(); ++i)
         {
             utils::id chunk_render_id = chunk_render_id_for(dmc.get_id(), i);
             dmc.get_chunk_render_ids().push_back(chunk_render_id);
+            auto chunk_oh = ctx.rb->objects_alloc().reserve();
+            dmc.get_chunk_render_handles().push_back(chunk_oh);
 
             const auto& cs = dmc.get_chunk_shapes()[i];
             glm::vec3 far_corner = glm::max(glm::abs(cs.aabb_min), glm::abs(cs.aabb_max));
@@ -1341,8 +1415,9 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
             auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
             cmd->id = chunk_render_id;
-            cmd->mesh_id = dmc.get_chunk_mesh_ids()[i];
-            cmd->material_id = material->get_id();
+            cmd->obj_handle = chunk_oh;
+            cmd->mesh = dmc.get_chunk_mesh_handles()[i];
+            cmd->material = material->render_handle();
             cmd->transform = xf;
             cmd->normal_matrix = glm::transpose(glm::inverse(xf));
             cmd->position = glm::vec3(xf[3]);
@@ -1363,7 +1438,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     {
         glm::mat4 scale_mat = glm::scale(glm::mat4(1.0f), scale);
 
-        for (uint32_t i = 0; i < dmc.get_chunk_render_ids().size(); ++i)
+        for (uint32_t i = 0; i < dmc.get_chunk_render_handles().size(); ++i)
         {
             glm::mat4 xf(1.0f);
             if (ps)
@@ -1377,7 +1452,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             float chunk_radius = glm::length(far_corner) * max_scale;
 
             auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
-            cmd->id = dmc.get_chunk_render_ids()[i];
+            cmd->obj_handle = dmc.get_chunk_render_handles()[i];
             cmd->transform = xf;
             cmd->normal_matrix = glm::transpose(glm::inverse(xf));
             cmd->position = glm::vec3(xf[3]);
@@ -1391,16 +1466,18 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     // Expired — tear down chunks + meshes, unregister from physics.
     if (expired && dmc.get_chunks_rendering())
     {
-        for (const auto& chunk_render_id : dmc.get_chunk_render_ids())
+        for (const auto& chunk_render_handle : dmc.get_chunk_render_handles())
         {
             auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-            cmd->id = chunk_render_id;
+            cmd->obj_handle = chunk_render_handle;
+            ctx.rb->objects_alloc().free(chunk_render_handle);  // [model thread]
             ctx.rb->enqueue_cmd(cmd);
         }
-        for (const auto& chunk_mesh_id : dmc.get_chunk_mesh_ids())
+        for (const auto& chunk_mesh_handle : dmc.get_chunk_mesh_handles())
         {
+            ctx.rb->meshes_alloc().free(chunk_mesh_handle);  // [model thread]
             auto* cmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
-            cmd->id = chunk_mesh_id;
+            cmd->handle = chunk_mesh_handle;
             ctx.rb->enqueue_cmd(cmd);
         }
 
@@ -1411,6 +1488,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         }
 
         dmc.get_chunk_render_ids().clear();
+        dmc.get_chunk_render_handles().clear();
         dmc.set_chunks_rendering(false);
         dmc.set_disposed(true);
         return result_code::ok;
@@ -1421,8 +1499,9 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->id = dmc.get_id();
-        cmd->mesh_id = source_mesh->get_id();
-        cmd->material_id = material->get_id();
+        cmd->obj_handle = dmc.get_render_object_handle();
+        cmd->mesh = source_mesh->render_handle();
+        cmd->material = material->render_handle();
         cmd->transform = dmc.get_transform_matrix();
         cmd->normal_matrix = dmc.get_normal_matrix();
         cmd->position = glm::vec3(dmc.get_world_position());
@@ -1461,19 +1540,22 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
     // Destroy any still-live chunk render objects.
     if (dmc.get_chunks_rendering())
     {
-        for (const auto& chunk_render_id : dmc.get_chunk_render_ids())
+        for (const auto& chunk_render_handle : dmc.get_chunk_render_handles())
         {
             auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-            cmd->id = chunk_render_id;
+            cmd->obj_handle = chunk_render_handle;
+            ctx.rb->objects_alloc().free(chunk_render_handle);  // [model thread]
             ctx.rb->enqueue_cmd(cmd);
         }
+        dmc.get_chunk_render_handles().clear();
     }
 
     // Destroy chunk mesh resources uploaded on first build.
-    for (const auto& chunk_mesh_id : dmc.get_chunk_mesh_ids())
+    for (const auto& chunk_mesh_handle : dmc.get_chunk_mesh_handles())
     {
+        ctx.rb->meshes_alloc().free(chunk_mesh_handle);  // [model thread]
         auto* cmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
-        cmd->id = chunk_mesh_id;
+        cmd->handle = chunk_mesh_handle;
         ctx.rb->enqueue_cmd(cmd);
     }
 
@@ -1481,7 +1563,9 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
     if (dmc.get_render_built() && !dmc.get_chunks_rendering() && !dmc.get_disposed())
     {
         auto* cmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-        cmd->id = dmc.get_id();
+        cmd->obj_handle = dmc.get_render_object_handle();
+        ctx.rb->objects_alloc().free(dmc.get_render_object_handle());  // [model thread]
+        dmc.set_render_object_handle({});
         ctx.rb->enqueue_cmd(cmd);
     }
     dmc.set_render_built(false);

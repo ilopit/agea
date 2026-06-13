@@ -207,7 +207,7 @@ vulkan_render::draw_main()
     // the main thread, which now builds the next frame concurrently.
     m_published_all_draws.store(m_all_draws, std::memory_order_relaxed);
     m_published_culled_draws.store(m_culled_draws, std::memory_order_relaxed);
-    m_published_objects.store(static_cast<uint32_t>(get_cache().objects.get_actual_size()),
+    m_published_objects.store(static_cast<uint32_t>(get_cache().objects_active()),
                               std::memory_order_relaxed);
 }
 

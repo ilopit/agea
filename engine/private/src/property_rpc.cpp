@@ -8,12 +8,6 @@
 
 #include <global_state/global_state.h>
 
-#include <vulkan_render/kryga_render.h>
-#include <vulkan_render/render_system.h>
-#include <vulkan_render/render_cache.h>
-#include <vulkan_render/types/vulkan_material_data.h>
-#include <vulkan_render/types/vulkan_mesh_data.h>
-
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/components/component.h>
@@ -40,6 +34,10 @@ encode_owner(root::smart_object& obj)
         owner["categories"] = cats;
         return owner;
     }
+
+    // Captured while iterating the material-typed property below, then surfaced as
+    // the owner summary — model-side, no render-cache lookup.
+    std::string owner_material_id;
 
     for (const auto& [cat_name, props] : rt->m_editor_properties)
     {
@@ -94,19 +92,24 @@ encode_owner(root::smart_object& obj)
 
             if (field["value"].isString() && field["value"].asString().empty() && p->rtype)
             {
-                auto& rcache = glob::glob_state().getr_render().renderer.get_cache();
-                if (auto* robj = rcache.objects.find_by_id(obj.get_id()))
+                // Resolve material/mesh references straight off the model object (the
+                // render cache only mirrors this same pointer). smart_object is the
+                // offset-0 base of every asset, so the member reads back as one.
+                auto tn = p->rtype->type_name.str();
+                if (tn == "material" || tn == "mesh")
                 {
-                    auto tn = p->rtype->type_name.str();
-                    if (tn == "material" && robj->material)
+                    auto blob = p->get_blob(obj);
+                    if (auto* asset = *reinterpret_cast<root::smart_object* const*>(blob))
                     {
-                        field["value"] = robj->material->get_id().str();
-                    }
-                    else if (tn == "mesh" && robj->mesh)
-                    {
-                        field["value"] = robj->mesh->get_id().str();
+                        field["value"] = asset->get_id().str();
                     }
                 }
+            }
+
+            if (p->rtype->type_name.str() == "material" && field["value"].isString() &&
+                !field["value"].asString().empty())
+            {
+                owner_material_id = field["value"].asString();
             }
             fields.append(field);
         }
@@ -117,11 +120,9 @@ encode_owner(root::smart_object& obj)
 
     owner["categories"] = cats;
 
-    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-    auto* robj = cache.objects.find_by_id(obj.get_id());
-    if (robj && robj->material)
+    if (!owner_material_id.empty())
     {
-        owner["material_id"] = robj->material->get_id().str();
+        owner["material_id"] = owner_material_id;
     }
 
     return owner;

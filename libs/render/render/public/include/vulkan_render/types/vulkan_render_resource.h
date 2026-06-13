@@ -16,6 +16,14 @@ namespace render
 class vulkan_render_resource
 {
 public:
+    // Default-constructs to an empty/invalid slot. Needed so resources can live
+    // by value in a slot_storage (the render-object pool), whose growth
+    // pre-constructs slots before they're populated via create_object.
+    vulkan_render_resource()
+        : m_idx(INVALID_GPU_INDEX)
+    {
+    }
+
     vulkan_render_resource(const utils::id& id, gpu_data_index_type idx)
         : m_id(id)
         , m_idx(idx)

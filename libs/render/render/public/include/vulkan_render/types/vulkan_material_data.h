@@ -6,6 +6,7 @@
 
 #include <utils/id.h>
 #include <utils/dynamic_object.h>
+#include <render_types/render_handle.h>
 
 namespace kryga
 {
@@ -24,8 +25,16 @@ struct texture_sampler_data
 class material_data
 {
 public:
+    // Empty slot value — slot_storage pre-constructs slots on growth and
+    // reset() assigns this over the old payload.
+    material_data() = default;
+
     material_data(const ::kryga::utils::id& id, const ::kryga::utils::id& type_id);
     ~material_data();
+
+    material_data(material_data&&) noexcept = default;
+    material_data&
+    operator=(material_data&&) noexcept = default;
 
     const kryga::utils::id&
     get_id() const
@@ -37,6 +46,20 @@ public:
     get_type_id() const
     {
         return m_type_id;
+    }
+
+    // The pool slot this material lives in — set by populate. Lets a holder of
+    // the material_data* recover its handle (e.g. for destroy) without a map.
+    render::types::material_handle
+    render_handle() const
+    {
+        return m_render_handle;
+    }
+
+    void
+    set_render_handle(render::types::material_handle h)
+    {
+        m_render_handle = h;
     }
 
     gpu_data_index_type
@@ -161,6 +184,7 @@ public:
 private:
     ::kryga::utils::id m_id;
     ::kryga::utils::id m_type_id;
+    render::types::material_handle m_render_handle{};
     gpu_data_index_type m_type_index = INVALID_GPU_MATERIAL_DATA_INDEX;
     gpu_data_index_type m_index = INVALID_GPU_MATERIAL_DATA_INDEX;
 

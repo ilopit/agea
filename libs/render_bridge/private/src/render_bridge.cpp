@@ -3,6 +3,8 @@
 
 #include <global_state/global_state.h>
 #include <vulkan_render/render_system.h>
+#include <vulkan_render/render_thread.h>         // KRG_check_model_thread
+#include <vulkan_render/vulkan_render_device.h>  // frames_in_flight()
 #include <core/reflection/reflection_type.h>
 
 #include <packages/root/model/smart_object.h>
@@ -33,6 +35,65 @@ void
 render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
 {
     glob::glob_state().getr_render().input_queue.enqueue(cmd);
+}
+
+// --- Content render-resource allocation (model thread) --------------------
+
+void
+render_bridge::bind_content_storages()
+{
+    KRG_check_model_thread();
+    // Bind each model-side allocator to its render-side storage + lane (bind
+    // claims the lane; the storage pointer is a dispatch token, never called
+    // through in steady state -- growth happens render-side at populate).
+    // Meshes/materials share their storage with the renderer's SYSTEM
+    // allocators, which own k_system_lane; content takes k_content_lane.
+    // Bound via render_system.loader, not renderer.get_cache(): the loader
+    // exists from render_system construction, so this is safe even before
+    // renderer.init() binds its loader pointer.
+    auto& rs = glob::glob_state().getr_render();
+    m_meshes_alloc.bind(rs.loader.meshes_storage(), render::types::k_content_lane);
+    m_materials_alloc.bind(rs.loader.materials_storage(), render::types::k_content_lane);
+    m_textures_alloc.bind(rs.loader.textures_storage(), 0);
+    m_objects_alloc.bind(rs.loader.objects_storage(), 0);
+    m_dir_lights_alloc.bind(rs.loader.dir_lights_storage(), 0);
+    m_uni_lights_alloc.bind(rs.loader.uni_lights_storage(), 0);
+}
+
+void
+render_bridge::detach_content_storages()
+{
+    // [shutdown, single-threaded] Direct detach is the sanctioned same-thread
+    // form: the render loop is gone, so calling the storage is legal here.
+    m_meshes_alloc.detach();
+    m_materials_alloc.detach();
+    m_textures_alloc.detach();
+    m_objects_alloc.detach();
+    m_dir_lights_alloc.detach();
+    m_uni_lights_alloc.detach();
+}
+
+void
+render_bridge::tick_content_allocators()
+{
+    KRG_check_model_thread();
+    // Re-sync the deferral window to the GPU horizon each frame. The render lib
+    // owns frames_in_flight; we pull it here (model thread) rather than have the
+    // render side push it, which would invert the bridge->render dependency.
+    const uint32_t fif = glob::glob_state().getr_render().device.frames_in_flight();
+    m_meshes_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+    m_materials_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+    m_textures_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+    m_objects_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+    m_dir_lights_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+    m_uni_lights_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+
+    m_meshes_alloc.tick();
+    m_materials_alloc.tick();
+    m_textures_alloc.tick();
+    m_objects_alloc.tick();
+    m_dir_lights_alloc.tick();
+    m_uni_lights_alloc.tick();
 }
 
 kryga::result_code
@@ -130,7 +191,7 @@ render_bridge::render_cmd_transform(root::game_object_component& source)
 void
 update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
 {
-    auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+    auto* object_data = ctx.vr.get_cache().get_object(obj_handle);
     if (!object_data)
     {
         return;
@@ -148,10 +209,11 @@ update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
 void
 set_outline_cmd::execute(render_cmd::render_exec_context& ctx)
 {
-    auto* object_data = ctx.vr.get_cache().objects.find_by_id(id);
+    auto* object_data = ctx.vr.get_cache().get_object(obj_handle);
     if (!object_data)
     {
-        // Object already destroyed (e.g. selection cleared during level unload).
+        // Object already destroyed (e.g. selection cleared during level unload),
+        // or the selected component has no render object (null handle).
         return;
     }
 

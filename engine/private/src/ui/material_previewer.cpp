@@ -1,7 +1,10 @@
 #include "engine/private/ui/material_previewer.h"
 
+#include <engine/kryga_engine.h>  // queue_main_action: the render->main hop
+
 #include <global_state/global_state.h>
 #include <vulkan_render/kryga_render.h>
+#include <vulkan_render/render_thread.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/render_system.h>
@@ -110,154 +113,17 @@ compute_content_hash(root::material& mat)
     return ch.hex();
 }
 
-// ── Sphere mesh ─────────────────────────────────────────────────────
+// ── Sphere mesh: see material_previewer::ensure_sphere_mesh (out of the
+//    anonymous namespace — it's a member that owns m_preview_sphere) ─────
 
-render::mesh_data*
-ensure_sphere_mesh()
-{
-    auto& loader = glob::glob_state().getr_render().loader;
-    auto* existing = loader.get_mesh_data(AID("preview_sphere"));
-    if (existing)
-    {
-        return existing;
-    }
+// ── GPU resource helpers (RENDER stage) ─────────────────────────────
 
-    auto sphere = render::generate_sphere(0.85f);
-
-    utils::buffer vert_buf(sphere.vertices.size() * sizeof(gpu::vertex_data));
-    std::memcpy(vert_buf.data(), sphere.vertices.data(), vert_buf.size());
-
-    utils::buffer idx_buf(sphere.indices.size() * sizeof(gpu::uint));
-    std::memcpy(idx_buf.data(), sphere.indices.data(), idx_buf.size());
-
-    return loader.create_mesh(AID("preview_sphere"),
-                              vert_buf.make_view<gpu::vertex_data>(),
-                              idx_buf.make_view<gpu::uint>());
-}
-
-// ── GPU resource helpers ────────────────────────────────────────────
-
-render::shader_effect_data*
-ensure_shader_effect(root::shader_effect& se_model)
-{
-    auto& renderer = glob::glob_state().getr_render().renderer;
-    auto* rp = renderer.get_render_pass(AID("main"));
-    auto* existing = rp->get_shader_effect(se_model.get_id());
-    if (existing)
-    {
-        return existing;
-    }
-
-    auto se_ci = render_translate::make_se_ci(se_model);
-    se_ci.spec_constants = render_translate::collect_spec_constants(se_model);
-
-    render::shader_effect_data* se_data = nullptr;
-    rp->create_shader_effect(se_model.get_id(), se_ci, se_data);
-    return se_data;
-}
-
-render::texture_data*
-ensure_texture(root::texture& txt_model)
-{
-    auto& loader = glob::glob_state().getr_render().loader;
-    auto* existing = loader.get_texture_data(txt_model.get_id());
-    if (existing)
-    {
-        return existing;
-    }
-
-    auto& bc = txt_model.get_mutable_base_color();
-    auto w = txt_model.get_width();
-    auto h = txt_model.get_height();
-
-    if (asset_importer::texture_importer::is_kryga_texture(bc.get_file()))
-    {
-        return loader.create_texture(txt_model.get_id(), bc, w, h);
-    }
-
-    utils::buffer pixels;
-    if (!asset_importer::texture_importer::extract_texture_from_buffer(bc, pixels, w, h))
-    {
-        return nullptr;
-    }
-    return loader.create_texture(txt_model.get_id(), pixels, w, h);
-}
-
-render::material_data*
-create_gpu_material_from_model(const utils::id& gpu_id, root::material& mat_model)
-{
-    auto& loader = glob::glob_state().getr_render().loader;
-    auto* se_model = mat_model.get_shader_effect();
-    if (!se_model)
-    {
-        return nullptr;
-    }
-
-    auto* se_data = ensure_shader_effect(*se_model);
-    if (!se_data || se_data->m_failed_load)
-    {
-        return nullptr;
-    }
-
-    auto collected = render_translate::collect_gpu_data(mat_model);
-
-    std::vector<render::texture_sampler_data> samples;
-    uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
-    uint32_t gpu_sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
-    for (int i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
-    {
-        gpu_texture_indices[i] = UINT32_MAX;
-        gpu_sampler_indices[i] = 0;
-    }
-
-    for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
-    {
-        auto slot = collected.texture_slots[i].slot;
-        auto& ts = *static_cast<const root::texture_slot*>(collected.texture_slots[i].data);
-        if (ts.txt)
-        {
-            auto* td = ensure_texture(*ts.txt);
-            if (td)
-            {
-                render::texture_sampler_data tsd;
-                tsd.texture = td;
-                tsd.slot = slot;
-                samples.push_back(tsd);
-
-                if (slot < KGPU_MAX_TEXTURE_SLOTS)
-                {
-                    gpu_texture_indices[slot] = td->get_bindless_index();
-                }
-            }
-        }
-        if (ts.smp && slot < KGPU_MAX_TEXTURE_SLOTS)
-        {
-            gpu_sampler_indices[slot] = render_translate::map_sampler_to_static_index(*ts.smp);
-        }
-    }
-
-    render_translate::set_material_texture_bindings(
-        collected.gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
-
-    auto* mat_data = loader.create_material(
-        gpu_id, mat_model.get_type_id(), samples, *se_data, collected.gpu_data);
-
-    if (mat_data)
-    {
-        for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
-        {
-            auto slot = collected.texture_slots[i].slot;
-            auto& ts = *static_cast<const root::texture_slot*>(collected.texture_slots[i].data);
-            if (ts.smp && slot < KGPU_MAX_TEXTURE_SLOTS)
-            {
-                mat_data->set_bindless_sampler_index(
-                    slot, render_translate::map_sampler_to_static_index(*ts.smp));
-            }
-        }
-    }
-
-    return mat_data;
-}
+// Preview textures created here, keyed by model asset id. The loader has no
+// by-id index — every owner keeps its texture_data*, and the previewer is the
+// owner of these. Never released (same lifetime the old loader registry gave
+// them); the pool is wiped wholesale at shutdown. Touched only from
+// execute_preview (render stage).
+std::unordered_map<utils::id, render::texture_data*> s_preview_textures;
 
 offscreen_draw_request
 make_preview_request(render::material_data* mat,
@@ -322,6 +188,150 @@ utils::id
 make_edit_id(const utils::id& class_id)
 {
     return AID("__edit_" + class_id.str());
+}
+
+}  // namespace
+
+// ── Preview job: the data crossing the main -> render -> main split ──
+
+// One texture slot's snapshot: upload-ready pixels + binding info. Decoding
+// (stbi) happens at snapshot time so the render stage only uploads.
+struct preview_texture_payload
+{
+    uint32_t slot = 0;
+    bool has_texture = false;
+    utils::id texture_id;
+    utils::buffer pixels;  // RGBA8, upload-ready
+    uint32_t width = 0;
+    uint32_t height = 0;
+    bool has_sampler = false;
+    uint8_t sampler_static_idx = 0;
+};
+
+struct preview_job
+{
+    // Request (set by render_preview before the chain starts).
+    utils::id material_id;
+    std::string id_str;
+    uint32_t size = 128;
+    std::string hash_hex;
+
+    // Snapshot (prepare_preview, main). Self-contained: the shader blobs are
+    // COPIED (make_se_ci aims se_ci's buffer pointers into the model object,
+    // which main may mutate while the render stage runs) and re-pointed.
+    bool snapshot_ok = false;
+    bool is_session = false;
+    utils::id gpu_id;  // session: instance id; class path: the material id
+    render::types::material_handle stale_handle;  // session: destroy before rebuild
+    render::types::material_handle reuse_handle;  // class: reuse if still live
+    utils::id se_id;
+    render::shader_effect_create_info se_ci;
+    utils::buffer vert_copy;
+    utils::buffer frag_copy;
+    utils::id type_id;
+    utils::dynobj gpu_data;
+    std::vector<preview_texture_payload> textures;
+
+    // Results (execute_preview, render thread).
+    render::types::material_handle built_handle;
+    render::offscreen_render_result result;
+
+    // Fulfilled by complete_preview (main); the RPC I/O thread waits on it.
+    std::promise<std::string> promise;
+};
+
+namespace
+{
+
+// [render stage] Texture by id from the preview registry, else create+register
+// from the job's snapshot payload.
+render::texture_data*
+ensure_texture(const preview_texture_payload& p)
+{
+    auto itr = s_preview_textures.find(p.texture_id);
+    if (itr != s_preview_textures.end())
+    {
+        return itr->second;
+    }
+
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    auto* td = renderer.create_texture(p.texture_id, p.pixels, p.width, p.height);
+    if (td)
+    {
+        s_preview_textures[p.texture_id] = td;
+    }
+    return td;
+}
+
+// [render stage] Build the system-pool material from the job's snapshot:
+// shader effect (reuse or create), preview textures, bindless index wiring.
+render::material_data*
+build_gpu_material(preview_job& job)
+{
+    auto& renderer = glob::glob_state().getr_render().renderer;
+
+    auto* rp = renderer.get_render_pass(AID("main"));
+    auto* se_data = rp->get_shader_effect(job.se_id);
+    if (!se_data)
+    {
+        rp->create_shader_effect(job.se_id, job.se_ci, se_data);
+    }
+    if (!se_data || se_data->m_failed_load)
+    {
+        return nullptr;
+    }
+
+    std::vector<render::texture_sampler_data> samples;
+    uint32_t gpu_texture_indices[KGPU_MAX_TEXTURE_SLOTS];
+    uint32_t gpu_sampler_indices[KGPU_MAX_TEXTURE_SLOTS];
+    for (int i = 0; i < KGPU_MAX_TEXTURE_SLOTS; ++i)
+    {
+        gpu_texture_indices[i] = UINT32_MAX;
+        gpu_sampler_indices[i] = 0;
+    }
+
+    for (auto& p : job.textures)
+    {
+        if (p.has_texture)
+        {
+            auto* td = ensure_texture(p);
+            if (td)
+            {
+                render::texture_sampler_data tsd;
+                tsd.texture = td;
+                tsd.slot = p.slot;
+                samples.push_back(tsd);
+
+                if (p.slot < KGPU_MAX_TEXTURE_SLOTS)
+                {
+                    gpu_texture_indices[p.slot] = td->get_bindless_index();
+                }
+            }
+        }
+        if (p.has_sampler && p.slot < KGPU_MAX_TEXTURE_SLOTS)
+        {
+            gpu_sampler_indices[p.slot] = p.sampler_static_idx;
+        }
+    }
+
+    render_translate::set_material_texture_bindings(
+        job.gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
+
+    auto* mat_data =
+        renderer.create_material(job.gpu_id, job.type_id, samples, *se_data, job.gpu_data);
+
+    if (mat_data)
+    {
+        for (auto& p : job.textures)
+        {
+            if (p.has_sampler && p.slot < KGPU_MAX_TEXTURE_SLOTS)
+            {
+                mat_data->set_bindless_sampler_index(p.slot, p.sampler_static_idx);
+            }
+        }
+    }
+
+    return mat_data;
 }
 
 }  // namespace
@@ -444,49 +454,269 @@ material_previewer::save_to_fs(const std::string& id_str,
     save_registry();
 }
 
-// ── GPU material management ────────────────────────────────────────
+// ── Sphere mesh ─────────────────────────────────────────────────────
 
-render::material_data*
-material_previewer::ensure_gpu_material(const utils::id& material_id)
+render::mesh_data*
+material_previewer::ensure_sphere_mesh()
 {
-    auto& loader = glob::glob_state().getr_render().loader;
+    // The sphere is owned by this previewer (m_preview_sphere), freed in
+    // destroy(). Cached across calls; clear_caches() (level reload) reclaims the
+    // slot -> the handle goes stale -> mesh_valid is false -> rebuild.
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    if (renderer.system_mesh_valid(m_preview_sphere))
+    {
+        return renderer.get_system_mesh_data(m_preview_sphere);
+    }
 
-    auto sit = m_sessions.find(material_id.str());
+    auto sphere = render::generate_sphere(0.85f);
+
+    utils::buffer vert_buf(sphere.vertices.size() * sizeof(gpu::vertex_data));
+    std::memcpy(vert_buf.data(), sphere.vertices.data(), vert_buf.size());
+
+    utils::buffer idx_buf(sphere.indices.size() * sizeof(gpu::uint));
+    std::memcpy(idx_buf.data(), sphere.indices.data(), idx_buf.size());
+
+    auto* md = renderer.create_mesh(AID("preview_sphere"),
+                                    vert_buf.make_view<gpu::vertex_data>(),
+                                    idx_buf.make_view<gpu::uint>());
+    m_preview_sphere = md ? md->render_handle() : render::types::mesh_handle{};
+    return md;
+}
+
+// ── The three parts of one preview build ────────────────────────────
+
+// [main] Resolve the model material (edit session or class cache) and snapshot
+// everything the render stage needs. After this returns, main keeps ticking —
+// nothing below may be touched by the later stages.
+void
+material_previewer::prepare_preview(preview_job& job)
+{
+    root::material* mat_model = nullptr;
+
+    auto sit = m_sessions.find(job.id_str);
     if (sit != m_sessions.end() && sit->second.instance)
     {
         auto& session = sit->second;
-        auto& inst_mat = session.instance->asr<root::material>();
+        mat_model = &session.instance->asr<root::material>();
 
-        // Always rebuild — properties may be modified via generic property.set
-        // without going through material_previewer::invalidate().
-        loader.destroy_material_data(session.instance_id);
-        return create_gpu_material_from_model(session.instance_id, inst_mat);
+        // Always rebuild a session preview — properties may be modified via
+        // generic property.set without going through invalidate(). Claim the
+        // old handle for destruction; clearing it on the session means a
+        // discard racing this job destroys nothing (no double-free), and
+        // complete() re-assigns the rebuilt handle if the session survives.
+        job.is_session = true;
+        job.gpu_id = session.instance_id;
+        job.stale_handle = session.gpu_handle;
+        session.gpu_handle = {};
     }
-
-    auto* existing = loader.get_material_data(material_id);
-    if (existing)
+    else
     {
-        return existing;
+        // NOTE: we deliberately do NOT reuse the scene's live CONTENT material.
+        // Content material storage is render-thread-owned; we clone from the
+        // MODEL into our own system-pool material — for materials that's cheap
+        // (bindless, no GPU upload) and the result is identical.
+        auto* obj = glob::glob_state().getr_model().caches.materials.get_item(job.material_id);
+        if (!obj)
+        {
+            return;  // snapshot_ok stays false -> execute no-ops -> empty result
+        }
+        mat_model = &obj->asr<root::material>();
+        job.gpu_id = job.material_id;
+
+        // A preview-only GPU material built earlier; liveness is render-side
+        // state, so the handle is checked (and reused) at execute time.
+        auto cit = m_gpu_materials.find(job.id_str);
+        if (cit != m_gpu_materials.end())
+        {
+            job.reuse_handle = cit->second;
+        }
     }
 
-    auto* obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
-    if (!obj)
+    auto* se_model = mat_model->get_shader_effect();
+    if (!se_model)
     {
-        return nullptr;
+        return;
     }
-    return create_gpu_material_from_model(material_id, obj->asr<root::material>());
+
+    job.se_id = se_model->get_id();
+    job.se_ci = render_translate::make_se_ci(*se_model);
+    job.se_ci.spec_constants = render_translate::collect_spec_constants(*se_model);
+    // make_se_ci aims the blob pointers into the MODEL object; the job outlives
+    // this stage, so own copies and re-point.
+    job.vert_copy = *job.se_ci.vert_buffer;
+    job.frag_copy = *job.se_ci.frag_buffer;
+    job.se_ci.vert_buffer = &job.vert_copy;
+    job.se_ci.frag_buffer = &job.frag_copy;
+
+    job.type_id = mat_model->get_type_id();
+    auto collected = render_translate::collect_gpu_data(*mat_model);
+    job.gpu_data = std::move(collected.gpu_data);
+
+    for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
+    {
+        auto& ts = *static_cast<const root::texture_slot*>(collected.texture_slots[i].data);
+        preview_texture_payload p;
+        p.slot = collected.texture_slots[i].slot;
+        if (ts.txt)
+        {
+            p.texture_id = ts.txt->get_id();
+            auto& bc = ts.txt->get_mutable_base_color();
+            p.width = ts.txt->get_width();
+            p.height = ts.txt->get_height();
+            if (asset_importer::texture_importer::is_kryga_texture(bc.get_file()))
+            {
+                p.pixels = bc;  // cooked == upload-ready
+                p.has_texture = true;
+            }
+            else
+            {
+                p.has_texture = asset_importer::texture_importer::extract_texture_from_buffer(
+                    bc, p.pixels, p.width, p.height);
+            }
+        }
+        if (ts.smp)
+        {
+            p.has_sampler = true;
+            p.sampler_static_idx = render_translate::map_sampler_to_static_index(*ts.smp);
+        }
+        if (p.has_texture || p.has_sampler)
+        {
+            job.textures.push_back(std::move(p));
+        }
+    }
+
+    job.snapshot_ok = true;
+}
+
+// [render thread] Destroy the stale session material, build (or reuse) the
+// preview material, draw the offscreen sphere. Touches ONLY the snapshot and
+// render-stage state (system pools, s_preview_textures, m_renderer,
+// m_preview_sphere).
+void
+material_previewer::execute_preview(preview_job& job)
+{
+    auto& renderer = glob::glob_state().getr_render().renderer;
+
+    if (job.stale_handle)
+    {
+        renderer.destroy_system_material_data(job.stale_handle);
+    }
+
+    render::material_data* mat = nullptr;
+    if (job.reuse_handle && renderer.system_material_valid(job.reuse_handle))
+    {
+        mat = renderer.get_system_material_data(job.reuse_handle);
+        job.built_handle = job.reuse_handle;
+    }
+    else if (job.snapshot_ok)
+    {
+        mat = build_gpu_material(job);
+        if (mat)
+        {
+            job.built_handle = mat->render_handle();
+        }
+    }
+    if (!mat)
+    {
+        return;  // result stays empty -> complete() reports failure
+    }
+
+    auto* se = mat->get_shader_effect();
+    if (!se || se->m_pipeline == VK_NULL_HANDLE || se->m_system)
+    {
+        return;
+    }
+
+    auto* main_pass = renderer.get_render_pass(AID("main"));
+    if (se->get_owner_render_pass() != main_pass)
+    {
+        return;
+    }
+
+    auto& device = glob::glob_state().getr_render().device;
+    m_renderer.init(device, main_pass, job.size);
+
+    auto* sphere = ensure_sphere_mesh();
+    if (!sphere)
+    {
+        return;
+    }
+
+    renderer.flush_pending_texture_updates();
+
+    auto req = make_preview_request(mat, sphere, renderer.get_bindless_set());
+    job.result = m_renderer.render(device, req);
+}
+
+// [main] Re-attach the built handle to the session/registry (or schedule its
+// destruction if the session vanished mid-flight), encode + cache the image,
+// fulfil the waiting promise.
+void
+material_previewer::complete_preview(preview_job& job)
+{
+    auto& renderer = glob::glob_state().getr_render().renderer;
+
+    if (job.is_session)
+    {
+        auto sit = m_sessions.find(job.id_str);
+        if (sit != m_sessions.end() && sit->second.instance)
+        {
+            sit->second.gpu_handle = job.built_handle;
+        }
+        else if (job.built_handle)
+        {
+            // Session discarded while the job was in flight: the rebuilt
+            // material has no owner. Fire-and-forget free (by-value handle).
+            renderer.post_render_action([&renderer, h = job.built_handle]
+                                        { renderer.destroy_system_material_data(h); });
+        }
+    }
+    else if (job.built_handle)
+    {
+        m_gpu_materials[job.id_str] = job.built_handle;
+    }
+
+    std::string b64;
+    if (!job.result.pixels.empty())
+    {
+        std::vector<uint8_t> png_buf;
+        stbi_write_png_to_func(png_write_callback,
+                               &png_buf,
+                               int(job.result.width),
+                               int(job.result.height),
+                               4,
+                               job.result.pixels.data(),
+                               int(job.result.width * 4));
+        if (!png_buf.empty())
+        {
+            b64 = base64_encode(png_buf.data(), png_buf.size());
+            m_memory_cache[job.id_str] = {b64, job.hash_hex};
+            save_to_fs(job.id_str, job.hash_hex, png_buf);
+        }
+    }
+
+    m_inflight.erase(job.id_str);
+    job.promise.set_value(std::move(b64));
 }
 
 // ── Public API ─────────────────────────────────────────────────────
 
-std::string
+std::shared_future<std::string>
 material_previewer::render_preview(const utils::id& material_id, uint32_t size)
 {
+    auto ready = [](std::string v)
+    {
+        std::promise<std::string> p;
+        p.set_value(std::move(v));
+        return p.get_future().share();
+    };
+
     size = std::clamp(size, 32u, 512u);
     auto id_str = material_id.str();
 
     load_registry();
 
+    // Hash against the current model state; cache hits resolve immediately.
     root::material* mat_model = nullptr;
     auto sit = m_sessions.find(id_str);
     if (sit != m_sessions.end() && sit->second.instance)
@@ -498,7 +728,7 @@ material_previewer::render_preview(const utils::id& material_id, uint32_t size)
         auto* obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
         if (!obj)
         {
-            return {};
+            return ready({});
         }
         mat_model = &obj->asr<root::material>();
     }
@@ -508,74 +738,52 @@ material_previewer::render_preview(const utils::id& material_id, uint32_t size)
     auto mc_it = m_memory_cache.find(id_str);
     if (mc_it != m_memory_cache.end() && mc_it->second.content_hash_hex == hash_hex)
     {
-        return mc_it->second.base64_png;
+        return ready(mc_it->second.base64_png);
     }
 
     auto b64 = try_load_from_fs(id_str, hash_hex);
     if (!b64.empty())
     {
         m_memory_cache[id_str] = {b64, hash_hex};
-        return b64;
+        return ready(b64);
     }
 
-    auto* mat = ensure_gpu_material(material_id);
-    if (!mat)
+    // One job per material id at a time: a second request joins the first's
+    // future instead of double-destroying the session's old material.
+    auto fit = m_inflight.find(id_str);
+    if (fit != m_inflight.end())
     {
-        return {};
+        return fit->second;
     }
 
-    auto* se = mat->get_shader_effect();
-    if (!se || se->m_pipeline == VK_NULL_HANDLE || se->m_system)
-    {
-        return {};
-    }
+    auto job = std::make_shared<preview_job>();
+    job->material_id = material_id;
+    job->id_str = id_str;
+    job->size = size;
+    job->hash_hex = hash_hex;
+    auto fut = job->promise.get_future().share();
 
-    auto& device = glob::glob_state().getr_render().device;
+    prepare_preview(*job);  // [main] model -> snapshot; no model access after
+
     auto& renderer = glob::glob_state().getr_render().renderer;
-
-    auto* main_pass = renderer.get_render_pass(AID("main"));
-    if (se->get_owner_render_pass() != main_pass)
+    if (render::on_render_thread())
     {
-        return {};
+        // Single-threaded context (headless / teardown): no queues to cross,
+        // no main-action drain coming — run the remaining parts inline.
+        execute_preview(*job);
+        complete_preview(*job);
+        return fut;
     }
 
-    m_renderer.init(device, main_pass, size);
-
-    auto* sphere = ensure_sphere_mesh();
-    if (!sphere)
-    {
-        return {};
-    }
-
-    renderer.flush_pending_texture_updates();
-
-    auto req = make_preview_request(mat, sphere, renderer.get_bindless_set());
-    auto result = m_renderer.render(device, req);
-    if (result.pixels.empty())
-    {
-        return {};
-    }
-
-    std::vector<uint8_t> png_buf;
-    stbi_write_png_to_func(png_write_callback,
-                           &png_buf,
-                           int(result.width),
-                           int(result.height),
-                           4,
-                           result.pixels.data(),
-                           int(result.width * 4));
-
-    if (png_buf.empty())
-    {
-        return {};
-    }
-
-    b64 = base64_encode(png_buf.data(), png_buf.size());
-
-    m_memory_cache[id_str] = {b64, hash_hex};
-    save_to_fs(id_str, hash_hex, png_buf);
-
-    return b64;
+    m_inflight[id_str] = fut;
+    renderer.post_render_action(
+        [this, job]
+        {
+            execute_preview(*job);
+            glob::glob_state().getr_engine().queue_main_action([this, job]
+                                                               { complete_preview(*job); });
+        });
+    return fut;
 }
 
 void
@@ -594,6 +802,12 @@ void
 material_previewer::destroy()
 {
     discard_all_edits();
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    // Teardown path: the render loop is gone and main holds render access, so
+    // this runs inline (mid-stream destroy() doesn't exist).
+    renderer.post_render_action([&renderer, h = m_preview_sphere]
+                                { renderer.destroy_system_mesh_data(h); });
+    m_preview_sphere = {};
     m_memory_cache.clear();
     save_registry();
     m_renderer.destroy(glob::glob_state().getr_render().device.vk_device());
@@ -703,8 +917,12 @@ material_previewer::save_edit(const utils::id& material_id)
     core::object_constructor ctor(&pkg->get_load_context());
     ctor.save_obj(*class_obj);
 
-    auto& loader = glob::glob_state().getr_render().loader;
-    loader.destroy_material_data(session.instance_id);
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    // System-pool free is render-thread-owned mid-stream; fire-and-forget by
+    // value-captured handle (inline at teardown, queued mid-stream).
+    renderer.post_render_action([&renderer, h = session.gpu_handle]
+                                { renderer.destroy_system_material_data(h); });
+    session.gpu_handle = {};
 
     auto& model = glob::glob_state().getr_model();
     core::object_constructor inst_ctor(&pkg->get_load_context(),
@@ -791,8 +1009,10 @@ material_previewer::discard_edit(const utils::id& material_id)
     }
 
     auto& session = sit->second;
-    auto& loader = glob::glob_state().getr_render().loader;
-    loader.destroy_material_data(session.instance_id);
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    renderer.post_render_action([&renderer, h = session.gpu_handle]
+                                { renderer.destroy_system_material_data(h); });
+    session.gpu_handle = {};
 
     auto* class_obj = glob::glob_state().getr_model().caches.materials.get_item(material_id);
     if (class_obj)
@@ -811,11 +1031,12 @@ material_previewer::discard_edit(const utils::id& material_id)
 void
 material_previewer::discard_all_edits()
 {
-    auto& loader = glob::glob_state().getr_render().loader;
+    auto& renderer = glob::glob_state().getr_render().renderer;
 
     for (auto& [id_str, session] : m_sessions)
     {
-        loader.destroy_material_data(session.instance_id);
+        renderer.post_render_action([&renderer, h = session.gpu_handle]
+                                    { renderer.destroy_system_material_data(h); });
 
         auto* class_obj =
             glob::glob_state().getr_model().caches.materials.get_item(session.class_id);

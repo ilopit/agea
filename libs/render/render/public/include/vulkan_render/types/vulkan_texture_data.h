@@ -3,6 +3,8 @@
 #include "vulkan_render/types/vulkan_render_resource.h"
 #include "vulkan_render/utils/vulkan_image.h"
 
+#include <render_types/render_handle.h>
+
 #include <utils/id.h>
 
 namespace kryga
@@ -17,8 +19,8 @@ enum class texture_format : uint32_t
     r11g11b10f
 };
 
-// Texture data stored in render_cache via combined_pool
-// The slot() from vulkan_render_resource serves as the bindless index
+// Texture data stored by value in the loader's bindless slot_storage.
+// The slot() from vulkan_render_resource serves as the bindless index.
 class texture_data : public vulkan_render_resource
 {
 public:
@@ -29,7 +31,7 @@ public:
     {
     }
 
-    // Bindless index is the slot in the combined_pool
+    // Bindless index is the slot index in the bindless texture storage
     uint32_t
     get_bindless_index() const
     {
@@ -39,6 +41,10 @@ public:
     vk_utils::vulkan_image_sptr image;
     vk_utils::vulkan_image_view_sptr image_view;
     texture_format format = texture_format::unknown;
+    // The bindless-pool handle this texture occupies (set by alloc_texture).
+    // Release goes through it (reclaim needs index + generation), so owners
+    // hold the texture_data* and never need an id lookup.
+    render::types::texture_handle handle;
 };
 
 }  // namespace render

@@ -8,6 +8,8 @@
 
 #include <core/model_minimal.h>
 
+#include <render_types/render_handle.h>
+
 #include <new>
 
 namespace kryga
@@ -53,8 +55,74 @@ public:
     void
     enqueue_cmd(render_cmd::render_command_base* cmd);
 
+    // --- Content render-resource allocators (MODEL THREAD) ----------------
+    // The model owns slot allocation; the render-side loader/cache owns the
+    // matching storage. The allocators are NULLABLE (lane_allocator's unbound
+    // state): they sit unbound until bind_content_storages() claims each one's
+    // storage lane -- minting on an unbound allocator asserts. Callers operate
+    // the allocator directly: `rb->meshes_alloc().reserve()`,
+    // `rb->objects_alloc().free(h)`. Handles flow to the render thread through
+    // the command queue; the loader's storage populates by handle.
+    render::types::mesh_allocator&
+    meshes_alloc()
+    {
+        return m_meshes_alloc;
+    }
+    render::types::material_allocator&
+    materials_alloc()
+    {
+        return m_materials_alloc;
+    }
+    render::types::texture_allocator&
+    textures_alloc()
+    {
+        return m_textures_alloc;
+    }
+    render::types::render_object_allocator&
+    objects_alloc()
+    {
+        return m_objects_alloc;
+    }
+    render::types::directional_light_allocator&
+    dir_lights_alloc()
+    {
+        return m_dir_lights_alloc;
+    }
+    render::types::universal_light_allocator&
+    uni_lights_alloc()
+    {
+        return m_uni_lights_alloc;
+    }
+
+    // [init, model thread] Bind each allocator to its render-side storage +
+    // lane (bind claims the lane). Call once after render_system exists (the
+    // loader storages live on it) and before any reserve/preallocate.
+    // Implemented in the .cpp because it reaches into the render lib (the
+    // loader).
+    void
+    bind_content_storages();
+
+    // [shutdown, single-threaded] Release every lane claim; the allocators
+    // return to the unbound state. Must run BEFORE the render system (and its
+    // storages) is destroyed -- the storage dtor asserts no allocator is
+    // still attached.
+    void
+    detach_content_storages();
+
+    // Mature deferred frees in all content allocators. Call once per frame from the
+    // producer (frame_pipeline::begin_frame). Re-syncs the deferral window to the
+    // device's frames_in_flight so it tracks the GPU-resource delete queue.
+    void
+    tick_content_allocators();
+
 private:
     render_object_dependency_graph m_dependency_graph;
+    render::types::mesh_allocator m_meshes_alloc;
+    render::types::material_allocator m_materials_alloc;
+    render::types::texture_allocator m_textures_alloc;
+    render::types::render_object_allocator m_objects_alloc;
+    render::types::directional_light_allocator m_dir_lights_alloc;
+    render::types::universal_light_allocator m_uni_lights_alloc;
 };
 
 template <typename T, typename... Args>

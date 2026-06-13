@@ -77,6 +77,19 @@ FetchContent_Declare(
   GIT_SHALLOW    TRUE
 )
 
+# Google microbenchmark library (for libs/.../private/benchmarks targets). Turn off
+# its own tests/install so it doesn't pull a second gtest or pollute the install.
+set(BENCHMARK_ENABLE_TESTING      OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_GTEST_TESTS  OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_INSTALL      OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_USE_BUNDLED_GTEST   OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  benchmark
+  GIT_REPOSITORY https://github.com/google/benchmark.git
+  GIT_TAG        v1.9.1
+  GIT_SHALLOW    TRUE
+)
+
 FetchContent_Declare(
   jsoncpp
   GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
@@ -254,7 +267,7 @@ if(ANDROID)
 endif()
 
 FetchContent_MakeAvailable(
-  cli11 glm googletest jsoncpp lua sol2 spdlog
+  cli11 glm googletest benchmark jsoncpp lua sol2 spdlog
   spirv-reflect tinyobjloader vk-bootstrap yaml-cpp
   JoltPhysics voro manifold
 )

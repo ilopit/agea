@@ -26,7 +26,6 @@
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_shader_effect_data.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
-#include <vulkan_render/render_cache.h>
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/render_config.h>
@@ -53,6 +52,7 @@
 #include <json/json.h>
 
 #include <chrono>
+#include <future>
 #include <filesystem>
 #include <string>
 
@@ -1059,17 +1059,19 @@ rpc_property_get_one(const Json::Value& params, Json::Value& result, std::string
 
                 if (r["value"].isString() && r["value"].asString().empty() && prop->rtype)
                 {
-                    auto& rcache = glob::glob_state().getr_render().renderer.get_cache();
-                    if (auto* robj = rcache.objects.find_by_id(obj->get_id()))
+                    // Resolve material/mesh references straight off the model object:
+                    // the property holds a root::material*/root::mesh*, which the render
+                    // cache only mirrors. Reading it here keeps this main-thread handler
+                    // off render-thread storage (no find_object_by_id race). smart_object
+                    // is the offset-0 base of every asset, so the member pointer reads
+                    // back as a smart_object* directly.
+                    auto tn = prop->rtype->type_name.str();
+                    if (tn == "material" || tn == "mesh")
                     {
-                        auto tn = prop->rtype->type_name.str();
-                        if (tn == "material" && robj->material)
+                        auto blob = prop->get_blob(*obj);
+                        if (auto* asset = *reinterpret_cast<root::smart_object* const*>(blob))
                         {
-                            r["value"] = robj->material->get_id().str();
-                        }
-                        else if (tn == "mesh" && robj->mesh)
-                        {
-                            r["value"] = robj->mesh->get_id().str();
+                            r["value"] = asset->get_id().str();
                         }
                     }
                 }
@@ -1462,9 +1464,8 @@ rpc_component_add(const Json::Value& params, Json::Value& result, std::string& e
 void
 rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     Json::Value r(Json::objectValue);
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& cfg = glob::glob_state().getr_render().renderer.get_render_config();
@@ -1554,14 +1555,13 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
 void
 rpc_render_config_set(const Json::Value& params, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     if (!params.isObject())
     {
         err = "params must be an object";
         return;
     }
     std::string local_err;
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& cfg = glob::glob_state().getr_render().renderer.get_pending_render_config();
@@ -1820,9 +1820,8 @@ rpc_render_config_set(const Json::Value& params, Json::Value& result, std::strin
 void
 rpc_render_state_camera(const Json::Value& /*params*/, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     Json::Value r(Json::objectValue);
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& cam = glob::glob_state().getr_render().renderer.get_camera();
@@ -1842,7 +1841,6 @@ rpc_render_state_camera(const Json::Value& /*params*/, Json::Value& result, std:
 void
 rpc_render_state_object(const Json::Value& params, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     if (!params.isObject() || !params.isMember("id"))
     {
         err = "missing 'id' parameter";
@@ -1851,11 +1849,11 @@ rpc_render_state_object(const Json::Value& params, Json::Value& result, std::str
     std::string id_str = params["id"].asString();
     std::string local_err;
     Json::Value r(Json::objectValue);
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-            auto* obj = cache.objects.find_by_id(AID(id_str));
+            auto* obj = cache.find_object_by_id(AID(id_str));
             if (!obj)
             {
                 local_err = "render object not found: " + id_str;
@@ -1945,9 +1943,8 @@ rpc_render_state_object(const Json::Value& params, Json::Value& result, std::str
 void
 rpc_render_state_stats(const Json::Value& /*params*/, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     Json::Value r(Json::objectValue);
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& vr = glob::glob_state().getr_render().renderer;
@@ -1956,12 +1953,10 @@ rpc_render_state_stats(const Json::Value& /*params*/, Json::Value& result, std::
             r["height"] = vr.get_height();
             r["all_draws"] = vr.get_all_draws();
             r["culled_draws"] = vr.get_culled_draws();
-            r["object_count"] = static_cast<Json::UInt64>(cache.objects.get_actual_size());
-            r["directional_light_count"] =
-                static_cast<Json::UInt64>(cache.directional_lights.get_actual_size());
-            r["universal_light_count"] =
-                static_cast<Json::UInt64>(cache.universal_lights.get_actual_size());
-            r["texture_count"] = static_cast<Json::UInt64>(cache.textures.get_actual_size());
+            r["object_count"] = static_cast<Json::UInt64>(cache.objects_active());
+            r["directional_light_count"] = static_cast<Json::UInt64>(cache.dir_lights_active());
+            r["universal_light_count"] = static_cast<Json::UInt64>(cache.uni_lights_active());
+            r["texture_count"] = static_cast<Json::UInt64>(cache.textures_active());
 
             auto& device = glob::glob_state().getr_render().device;
 
@@ -1991,9 +1986,8 @@ rpc_render_state_stats(const Json::Value& /*params*/, Json::Value& result, std::
 void
 rpc_render_state_objects(const Json::Value& params, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     Json::Value r(Json::objectValue);
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& cache = glob::glob_state().getr_render().renderer.get_cache();
@@ -2029,7 +2023,7 @@ rpc_render_state_objects(const Json::Value& params, Json::Value& result, std::st
             {
                 for (const auto& id_val : params["ids"])
                 {
-                    auto* obj = cache.objects.find_by_id(AID(id_val.asString()));
+                    auto* obj = cache.find_object_by_id(AID(id_val.asString()));
                     if (obj)
                     {
                         arr.append(summarize(*obj));
@@ -2055,7 +2049,7 @@ rpc_render_state_objects(const Json::Value& params, Json::Value& result, std::st
 
                 uint32_t idx = 0;
                 uint32_t added = 0;
-                cache.objects.for_each(
+                cache.for_each_object(
                     [&](const render::vulkan_render_data& obj)
                     {
                         if (added >= limit)
@@ -2072,7 +2066,7 @@ rpc_render_state_objects(const Json::Value& params, Json::Value& result, std::st
             }
 
             r["objects"] = arr;
-            r["total"] = static_cast<Json::UInt64>(cache.objects.get_actual_size());
+            r["total"] = static_cast<Json::UInt64>(cache.objects_active());
         });
     if (!done)
     {
@@ -2085,16 +2079,15 @@ rpc_render_state_objects(const Json::Value& params, Json::Value& result, std::st
 void
 rpc_render_state_lights(const Json::Value& /*params*/, Json::Value& result, std::string& err)
 {
-    auto& eng = glob::glob_state().getr_engine();
     Json::Value r(Json::objectValue);
-    bool done = eng.wait_main_action(
+    bool done = glob::glob_state().getr_render().renderer.wait_render_action(
         [&]()
         {
             auto& cache = glob::glob_state().getr_render().renderer.get_cache();
 
             // Directional lights
             Json::Value dir(Json::arrayValue);
-            cache.directional_lights.for_each(
+            cache.for_each_dir_light(
                 [&](const render::vulkan_directional_light_data& dl)
                 {
                     Json::Value l(Json::objectValue);
@@ -2110,7 +2103,7 @@ rpc_render_state_lights(const Json::Value& /*params*/, Json::Value& result, std:
 
             // Universal lights (point + spot)
             Json::Value uni(Json::arrayValue);
-            cache.universal_lights.for_each(
+            cache.for_each_uni_light(
                 [&](const render::vulkan_universal_light_data& ul)
                 {
                     Json::Value l(Json::objectValue);
@@ -2238,11 +2231,15 @@ rpc_material_preview(const Json::Value& params, Json::Value& result, std::string
     std::string id_str = params["id"].asString();
     uint32_t size = params.get("size", 128).asUInt();
 
-    std::string b64;
+    // The main action only STARTS the build (snapshot + post); the result
+    // arrives on the future ~two frames later, when the render thread has
+    // drawn the preview and main has run the completion part. This I/O thread
+    // is the one that waits — main never blocks.
+    std::shared_future<std::string> fut;
     bool done = eng.wait_main_action(
         [&]()
         {
-            b64 =
+            fut =
                 glob::glob_state().getr_editor_system().ui.get_material_previewer().render_preview(
                     AID(id_str), size);
         });
@@ -2251,6 +2248,12 @@ rpc_material_preview(const Json::Value& params, Json::Value& result, std::string
         err = "material.preview timed out";
         return;
     }
+    if (fut.wait_for(std::chrono::seconds(10)) != std::future_status::ready)
+    {
+        err = "material.preview timed out";
+        return;
+    }
+    auto b64 = fut.get();
     if (b64.empty())
     {
         err = "material not found or preview failed: " + id_str;

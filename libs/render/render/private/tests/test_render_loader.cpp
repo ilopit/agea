@@ -21,8 +21,9 @@ public:
     void
     SetUp()
     {
-        // Single-threaded test — grant this thread render-state access explicitly.
+        // Single-threaded test — grant this thread render + model access.
         render::set_render_access(true);
+        render::set_model_access(true);
 
         render::render_device::construct_params rdc;
         rdc.headless = true;

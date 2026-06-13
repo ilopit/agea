@@ -6,6 +6,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_thread.h>  // render-state ownership handoff
 #include <render_bridge/render_command.h>  // render_exec_context: drain_frame executes commands against it
+#include <render_bridge/render_bridge.h>  // tick_content_allocators()
 
 #include <utils/check.h>
 
@@ -62,6 +63,11 @@ frame_pipeline::begin_frame()
     // the matching frame slot when it draws this frame.
     glob::glob_state().getr_render().renderer.set_build_frame_slot(frame_slot);
     glob::glob_state().getr_render().input_queue.set_build_frame_slot(frame_slot);
+
+    // [model thread] Mature deferred content-slot frees. Once per frame here so the
+    // model-owned allocators (which live in render_bridge) recycle indices only
+    // after the GPU has drained the frames that referenced them.
+    glob::glob_state().getr_render_bridge().tick_content_allocators();
     return frame_slot;
 }
 
@@ -132,16 +138,34 @@ frame_pipeline::render_loop()
     auto& renderer = glob::glob_state().getr_render().renderer;
     auto& queues = glob::glob_state().getr_render().input_queue;
 
+    // Same handoff for the pool thread guards: init minted system resources and
+    // populated storages on the main thread; from here the render thread is the
+    // sole system-allocator minter AND the sole storage consumer (populate /
+    // grow_for / reset at command drain).
+    renderer.bind_render_pools_to_current_thread();
+
     for (;;)
     {
-        // Wait for a submitted-but-undrawn frame (or shutdown once idle).
+        // Wait for a submitted-but-undrawn frame or shutdown.
+        bool shutting_down = false;
         {
             std::unique_lock lock(m_mutex);
             m_render_cv.wait(lock, [this] { return m_submitted > m_completed || m_shutdown; });
-            if (m_shutdown && m_submitted == m_completed)
-            {
-                break;
-            }
+            shutting_down = m_shutdown && m_submitted == m_completed;
+        }
+
+        // Render-thread tasks (RPC introspection, editor resource builds) run at
+        // the top of each turn — the mirror of drain_main_actions() at the top of
+        // vulkan_engine::tick. The queue lives on the renderer (render-thread
+        // subsystem); the pipeline only orchestrates when it drains. Render access
+        // held, no concurrent mutator, so tasks read the cache without a lock and
+        // see the last fully drawn frame's state. Drained on the shutdown wake too,
+        // so pending tasks complete.
+        renderer.drain_render_actions();
+
+        if (shutting_down)
+        {
+            break;
         }
 
         // This frame used frame slot (completed & 1). Execute its build/destroy/

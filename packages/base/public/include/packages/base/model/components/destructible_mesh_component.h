@@ -8,6 +8,7 @@
 #include <physics/physics_types.h>
 
 #include <utils/id.h>
+#include <render_types/render_handle.h>
 
 #include <vector>
 
@@ -139,6 +140,14 @@ public:
         return m_chunk_mesh_ids;
     }
 
+    // Handle model: per-chunk render slots (runtime, not serialized). Parallel to
+    // m_chunk_mesh_ids; chunks draw by handle, the id is kept for destroy.
+    std::vector<render::types::mesh_handle>&
+    get_chunk_mesh_handles()
+    {
+        return m_chunk_mesh_handles;
+    }
+
     std::vector<utils::id>&
     get_chunk_render_ids()
     {
@@ -148,6 +157,15 @@ public:
     get_chunk_render_ids() const
     {
         return m_chunk_render_ids;
+    }
+
+    // Handle model: per-chunk render-object slots (runtime, not serialized).
+    // Parallel to m_chunk_render_ids; chunks draw/update/destroy by handle, the
+    // id is kept only as the create_object_cmd passenger (lightmap/diagnostics).
+    std::vector<render::types::render_object_handle>&
+    get_chunk_render_handles()
+    {
+        return m_chunk_render_handles;
     }
 
     bool
@@ -192,7 +210,9 @@ protected:
     physics::destructible_handle m_physics_handle{};
     std::vector<physics::chunk_shape> m_chunk_shapes;
     std::vector<utils::id> m_chunk_mesh_ids;
+    std::vector<render::types::mesh_handle> m_chunk_mesh_handles;  // runtime, not serialized
     std::vector<utils::id> m_chunk_render_ids;
+    std::vector<render::types::render_object_handle> m_chunk_render_handles;  // runtime
 };
 
 }  // namespace base

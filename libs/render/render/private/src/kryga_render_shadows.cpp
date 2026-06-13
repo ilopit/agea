@@ -179,10 +179,10 @@ vulkan_render::compute_shadow_matrices()
 
     // Get directional light direction
     glm::vec3 light_dir(0.0f, -1.0f, 0.0f);
-    if (m_cache.directional_lights.get_actual_size() > 0)
+    if (m_loader->dir_lights_active() > 0)
     {
         auto slot = get_selected_directional_light_slot();
-        auto* dl = m_cache.directional_lights.at(slot);
+        auto* dl = m_loader->dir_light_at(slot);
         if (dl)
         {
             light_dir = glm::normalize(glm::vec3(
@@ -487,10 +487,10 @@ vulkan_render::select_shadowed_lights()
     auto& candidates = m_shadow_candidates;
     candidates.clear();
 
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    for (uint32_t i = 0; i < m_loader->uni_lights_size(); ++i)
     {
-        auto* light = m_cache.universal_lights.at(i);
-        if (!light->is_valid())
+        auto* light = m_loader->uni_light_at(i);
+        if (!light || !light->is_valid())
         {
             continue;
         }
@@ -524,7 +524,7 @@ vulkan_render::select_shadowed_lights()
 
     for (uint32_t i = 0; i < count; ++i)
     {
-        auto* light = m_cache.universal_lights.at(candidates[i].light_slot);
+        auto* light = m_loader->uni_light_at(candidates[i].light_slot);
 
         auto& shadow = m_shadow_config.local_shadows[i];
         shadow.shadow_info.z = light->gpu_data.type;
@@ -594,10 +594,10 @@ vulkan_render::select_shadowed_lights()
     }
 
     // Clear shadow_index on lights that didn't make the cut
-    for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+    for (uint32_t i = 0; i < m_loader->uni_lights_size(); ++i)
     {
-        auto* light = m_cache.universal_lights.at(i);
-        if (!light->is_valid())
+        auto* light = m_loader->uni_light_at(i);
+        if (!light || !light->is_valid())
         {
             continue;
         }
@@ -626,10 +626,10 @@ vulkan_render::select_shadowed_lights()
     if (assignment_changed)
     {
         vulkan_universal_light_data* marker = nullptr;
-        for (uint32_t i = 0; i < m_cache.universal_lights.get_size(); ++i)
+        for (uint32_t i = 0; i < m_loader->uni_lights_size(); ++i)
         {
-            auto* l = m_cache.universal_lights.at(i);
-            if (l->is_valid())
+            auto* l = m_loader->uni_light_at(i);
+            if (l && l->is_valid())
             {
                 marker = l;
                 break;

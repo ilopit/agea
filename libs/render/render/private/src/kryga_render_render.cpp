@@ -413,11 +413,8 @@ vulkan_render::draw_fullscreen_quad(VkCommandBuffer cmd,
                                     shader_effect_data* se,
                                     const void* push_data)
 {
-    auto m = glob::glob_state().getr_render().loader.get_mesh_data(AID("plane_mesh"));
-    if (!m)
-    {
-        return;
-    }
+    KRG_check(m_fullscreen_quad, "fullscreen quad missing — system resources not initialized");
+    auto m = m_fullscreen_quad;
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, se->m_pipeline);
     bind_bindless(cmd, se->m_pipeline_layout);
@@ -693,13 +690,10 @@ vulkan_render::prepare_ui_resources()
         return buf;
     };
 
-    auto f_normal =
-        io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 28.0f);
-    auto f_big =
-        io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 33.0f);
-
-    glob::glob_state().getr_render().loader.create_font(AID("normal"), f_normal);
-    glob::glob_state().getr_render().loader.create_font(AID("big"), f_big);
+    // The atlas owns the ImFont*s; the first added is ImGui's default. (The old
+    // loader font cache was a write-only registry — nothing ever looked fonts up.)
+    io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 28.0f);
+    io.Fonts->AddFontFromMemoryTTF(clone_ttf(), static_cast<int>(font_bytes.size()), 33.0f);
 
     int tex_width = 0, tex_height = 0;
     unsigned char* font_data = nullptr;
@@ -711,11 +705,11 @@ vulkan_render::prepare_ui_resources()
     image_raw_buffer.resize(size);
     memcpy(image_raw_buffer.data(), font_data, size);
 
-    m_ui_txt = glob::glob_state().getr_render().loader.create_texture(
+    m_ui_txt = create_texture(
         AID("font"), image_raw_buffer, tex_width, tex_height);
 
     auto ui_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("ui"));
-    m_ui_target_txt = glob::glob_state().getr_render().loader.create_texture(
+    m_ui_target_txt = create_texture(
         AID("ui_copy_txt"), ui_pass->get_color_images()[0], ui_pass->get_color_image_views()[0]);
 }
 
@@ -759,7 +753,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_txt;
         samples.front().slot = 0;
 
-        m_ui_mat = glob::glob_state().getr_render().loader.create_material(
+        m_ui_mat = create_material(
             AID("mat_ui"), AID("ui"), samples, *m_ui_se, utils::dynobj{});
     }
     {
@@ -794,7 +788,7 @@ vulkan_render::prepare_ui_pipeline()
         samples.front().texture = m_ui_target_txt;
         samples.front().slot = 0;
 
-        m_ui_target_mat = glob::glob_state().getr_render().loader.create_material(
+        m_ui_target_mat = create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 }
@@ -965,7 +959,7 @@ vulkan_render::prepare_scene_upscale_pipeline()
 
     composite_pass->create_shader_effect(AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
 
-    m_scene_upscale_txt = glob::glob_state().getr_render().loader.create_texture(
+    m_scene_upscale_txt = create_texture(
         AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
 
     std::vector<texture_sampler_data> samples(1);
@@ -973,7 +967,7 @@ vulkan_render::prepare_scene_upscale_pipeline()
     samples.front().slot = 0;
 
     m_scene_upscale_mat =
-        glob::glob_state().getr_render().loader.create_material(AID("mat_scene_upscale"),
+        create_material(AID("mat_scene_upscale"),
                                                                 AID("scene_upscale"),
                                                                 samples,
                                                                 *m_scene_upscale_se,

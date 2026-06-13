@@ -5,6 +5,7 @@
 #include "packages/root/model/assets/asset.h"
 
 #include <utils/buffer.h>
+#include <render_types/render_handle.h>
 
 namespace kryga
 {
@@ -34,6 +35,20 @@ public:
     get_mutable_base_color()
     {
         return m_base_color;
+    }
+
+    // Runtime render slot (handle model). Reserved by the texture cmd builder on
+    // first render build; materials resolve their texture slots by this handle.
+    // NOT serialized — re-reserved each session from the asset.
+    ::kryga::render::types::texture_handle
+    render_handle() const
+    {
+        return m_render_handle;
+    }
+    void
+    set_render_handle(::kryga::render::types::texture_handle h)
+    {
+        m_render_handle = h;
     }
 
 protected:
@@ -66,6 +81,8 @@ protected:
     );
     uint32_t m_height;
     // clang-format on
+
+    ::kryga::render::types::texture_handle m_render_handle = {};  // runtime, not serialized
 };
 
 }  // namespace root

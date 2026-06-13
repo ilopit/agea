@@ -8,6 +8,7 @@ target_link_libraries(render_bridge
 
     kryga::packages.root.model
     kryga::utils
+    kryga::render_types
     kryga::vulkan_render
 )
 

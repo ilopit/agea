@@ -32,6 +32,8 @@
 #include <vk_mem_alloc.h>
 #include <stb_unofficial/stb.h>
 
+#include <type_traits>
+
 namespace kryga
 {
 
@@ -40,6 +42,16 @@ namespace render
 
 namespace
 {
+// build_* helpers (defined alongside their populate sites below) construct the
+// GPU-resident data; the content populate path and the system create path share
+// them and only differ in which pool they store the result into.
+material_data
+build_material_data(const kryga::utils::id& id,
+                    const kryga::utils::id& type_id,
+                    std::vector<texture_sampler_data>& samples,
+                    shader_effect_data& se_data,
+                    const kryga::utils::dynobj& gpu_params);
+
 vk_utils::vulkan_image_sptr
 upload_image(int texWidth,
              int texHeight,
@@ -141,18 +153,24 @@ upload_image(int texWidth,
 
 }  // namespace
 
-mesh_data*
-vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
-                                  kryga::utils::buffer_view<gpu::vertex_data> vbv,
-                                  kryga::utils::buffer_view<gpu::uint> ibv)
+namespace
 {
-    KRG_check(!get_mesh_data(mesh_id), "should never happens");
-
+// Build the GPU-resident mesh_data (buffers + bounds). Shared by the content
+// populate path and the system create path — only the destination pool differs.
+// Templated over the vertex type: static and skinned meshes build identically
+// (bounding sphere + staged upload); only the stride and m_is_skinned differ.
+template <typename VertexT>
+mesh_data
+build_mesh_data(const kryga::utils::id& mesh_id,
+                kryga::utils::buffer_view<VertexT> vbv,
+                kryga::utils::buffer_view<gpu::uint> ibv)
+{
     auto& device = glob::glob_state().getr_render().device;
 
-    auto md = std::make_shared<mesh_data>(mesh_id);
-    md->m_indices_size = (uint32_t)ibv.size();
-    md->m_vertices_size = (uint32_t)vbv.size();
+    mesh_data md(mesh_id);
+    md.m_indices_size = (uint32_t)ibv.size();
+    md.m_vertices_size = (uint32_t)vbv.size();
+    md.m_is_skinned = std::is_same_v<VertexT, gpu::skinned_vertex_data>;
 
     // Tight bounding sphere: AABB-midpoint centroid + max distance from
     // centroid. Computing radius from the local origin (the previous
@@ -175,8 +193,8 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
             glm::vec3 d = vbv.at(i).position - centroid;
             max_dist_sq = std::max(max_dist_sq, glm::dot(d, d));
         }
-        md->m_local_centroid = centroid;
-        md->m_bounding_radius = std::sqrt(max_dist_sq);
+        md.m_local_centroid = centroid;
+        md.m_bounding_radius = std::sqrt(max_dist_sq);
     }
 
     const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
@@ -220,7 +238,7 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
     // let the VMA library know that this data should be gpu native
     vma_alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
-    md->m_vertex_buffer = vk_utils::vulkan_buffer::create(vertex_buffer_ci, vma_alloc_ci);
+    md.m_vertex_buffer = vk_utils::vulkan_buffer::create(vertex_buffer_ci, vma_alloc_ci);
     // allocate the buffer
     if (index_buffer_size > 0)
     {
@@ -234,7 +252,7 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
         index_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
         //         // allocate the buffer
-        md->m_index_buffer = vk_utils::vulkan_buffer::create(index_buffer_ci, vma_alloc_ci);
+        md.m_index_buffer = vk_utils::vulkan_buffer::create(index_buffer_ci, vma_alloc_ci);
     }
 
     device.immediate_submit(
@@ -244,189 +262,98 @@ vulkan_render_loader::create_mesh(const kryga::utils::id& mesh_id,
             copy.dstOffset = 0;
             copy.srcOffset = 0;
             copy.size = vertex_buffer_size;
-            vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_vertex_buffer.buffer(), 1, &copy);
+            vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md.m_vertex_buffer.buffer(), 1, &copy);
 
             if (index_buffer_size > 0)
             {
                 copy.dstOffset = 0;
                 copy.srcOffset = vertex_buffer_size;
                 copy.size = index_buffer_size;
-                vkCmdCopyBuffer(
-                    cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1, &copy);
+                vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md.m_index_buffer.buffer(), 1, &copy);
             }
         });
 
-    m_meshes_cache[mesh_id] = md;
+    return md;
+}
+}  // namespace
 
-    return md.get();
+mesh_data*
+vulkan_render_loader::populate_system_mesh(render::types::mesh_handle h,
+                                           const kryga::utils::id& mesh_id,
+                                           kryga::utils::buffer_view<gpu::vertex_data> vbv,
+                                           kryga::utils::buffer_view<gpu::uint> ibv)
+{
+    auto md = build_mesh_data(mesh_id, vbv, ibv);
+    md.set_render_handle(h);
+    // Growth is populate-side now: the handle's lane (system) grows here.
+    m_meshes_storage.grow_for(h);
+    *m_meshes_storage.at(h) = std::move(md);
+    m_meshes_storage.set_generation(h, h.generation());
+    return m_meshes_storage.at(h);
+}
+
+void
+vulkan_render_loader::populate_mesh(render::types::mesh_handle h,
+                                    const kryga::utils::id& mesh_id,
+                                    kryga::utils::buffer_view<gpu::vertex_data> vbv,
+                                    kryga::utils::buffer_view<gpu::uint> ibv)
+{
+    KRG_check_render_thread();
+    auto md = build_mesh_data(mesh_id, vbv, ibv);
+    md.set_render_handle(h);
+    // Growth rides the command: grower == reader == render thread.
+    m_meshes_storage.grow_for(h);
+    *m_meshes_storage.at(h) = std::move(md);
+    m_meshes_storage.set_generation(h, h.generation());
 }
 
 mesh_data*
-vulkan_render_loader::create_skinned_mesh(const kryga::utils::id& mesh_id,
-                                          kryga::utils::buffer_view<gpu::skinned_vertex_data> vbv,
-                                          kryga::utils::buffer_view<gpu::uint> ibv)
+vulkan_render_loader::populate_system_skinned_mesh(
+    render::types::mesh_handle h,
+    const kryga::utils::id& mesh_id,
+    kryga::utils::buffer_view<gpu::skinned_vertex_data> vbv,
+    kryga::utils::buffer_view<gpu::uint> ibv)
 {
-    KRG_check(!get_mesh_data(mesh_id), "should never happens");
-
-    auto& device = glob::glob_state().getr_render().device;
-
-    auto md = std::make_shared<mesh_data>(mesh_id);
-    md->m_indices_size = (uint32_t)ibv.size();
-    md->m_vertices_size = (uint32_t)vbv.size();
-    md->m_is_skinned = true;
-
-    // Tight bounding sphere — see create_mesh() comment.
-    {
-        glm::vec3 vmin{std::numeric_limits<float>::max()};
-        glm::vec3 vmax{std::numeric_limits<float>::lowest()};
-        for (uint32_t i = 0; i < vbv.size(); ++i)
-        {
-            const auto& pos = vbv.at(i).position;
-            vmin = glm::min(vmin, pos);
-            vmax = glm::max(vmax, pos);
-        }
-        glm::vec3 centroid = (vmin + vmax) * 0.5f;
-
-        float max_dist_sq = 0.0f;
-        for (uint32_t i = 0; i < vbv.size(); ++i)
-        {
-            glm::vec3 d = vbv.at(i).position - centroid;
-            max_dist_sq = std::max(max_dist_sq, glm::dot(d, d));
-        }
-        md->m_local_centroid = centroid;
-        md->m_bounding_radius = std::sqrt(max_dist_sq);
-    }
-
-    const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
-    const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
-    const uint32_t buffer_size = vertex_buffer_size + index_buffer_size;
-
-    // Staging buffer
-    VkBufferCreateInfo staging_buffer_ci = {};
-    staging_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    staging_buffer_ci.pNext = nullptr;
-    staging_buffer_ci.size = buffer_size;
-    staging_buffer_ci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-    VmaAllocationCreateInfo vma_alloc_ci = {};
-    vma_alloc_ci.usage = VMA_MEMORY_USAGE_CPU_ONLY;
-
-    auto staging_buffer = vk_utils::vulkan_buffer::create(staging_buffer_ci, vma_alloc_ci);
-
-    staging_buffer.begin();
-    staging_buffer.upload_data(vbv.data(), vertex_buffer_size, false);
-    staging_buffer.upload_data(ibv.data(), index_buffer_size, false);
-    staging_buffer.end();
-
-    // Vertex buffer
-    VkBufferCreateInfo vertex_buffer_ci = {};
-    vertex_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    vertex_buffer_ci.pNext = nullptr;
-    vertex_buffer_ci.size = vertex_buffer_size;
-    vertex_buffer_ci.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-    vma_alloc_ci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    md->m_vertex_buffer = vk_utils::vulkan_buffer::create(vertex_buffer_ci, vma_alloc_ci);
-
-    // Index buffer
-    if (index_buffer_size > 0)
-    {
-        VkBufferCreateInfo index_buffer_ci = {};
-        index_buffer_ci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        index_buffer_ci.pNext = nullptr;
-        index_buffer_ci.size = index_buffer_size;
-        index_buffer_ci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-        md->m_index_buffer = vk_utils::vulkan_buffer::create(index_buffer_ci, vma_alloc_ci);
-    }
-
-    device.immediate_submit(
-        [&](VkCommandBuffer cmd)
-        {
-            VkBufferCopy copy;
-            copy.dstOffset = 0;
-            copy.srcOffset = 0;
-            copy.size = vertex_buffer_size;
-            vkCmdCopyBuffer(cmd, staging_buffer.buffer(), md->m_vertex_buffer.buffer(), 1, &copy);
-
-            if (index_buffer_size > 0)
-            {
-                copy.dstOffset = 0;
-                copy.srcOffset = vertex_buffer_size;
-                copy.size = index_buffer_size;
-                vkCmdCopyBuffer(
-                    cmd, staging_buffer.buffer(), md->m_index_buffer.buffer(), 1, &copy);
-            }
-        });
-
-    m_meshes_cache[mesh_id] = md;
-    return md.get();
+    auto md = build_mesh_data(mesh_id, vbv, ibv);
+    md.set_render_handle(h);
+    // Growth is populate-side now: the handle's lane (system) grows here.
+    m_meshes_storage.grow_for(h);
+    *m_meshes_storage.at(h) = std::move(md);
+    m_meshes_storage.set_generation(h, h.generation());
+    return m_meshes_storage.at(h);
 }
 
-texture_data*
-vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
-                                     const kryga::utils::buffer& base_color,
-                                     uint32_t w,
-                                     uint32_t h)
+void
+vulkan_render_loader::populate_skinned_mesh(render::types::mesh_handle h,
+                                            const kryga::utils::id& mesh_id,
+                                            kryga::utils::buffer_view<gpu::skinned_vertex_data> vbv,
+                                            kryga::utils::buffer_view<gpu::uint> ibv)
 {
-    KRG_check(!get_texture_data(texture_id), "should never happens");
-
-    auto& device = glob::glob_state().getr_render().device;
-    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-
-    // Allocate texture in render cache - slot becomes bindless index
-    auto* td = cache.textures.alloc(texture_id);
-    if (!td)
-    {
-        ALOG_ERROR("Failed to allocate texture in cache");
-        return nullptr;
-    }
-
-    VkFormat image_format = VK_FORMAT_R8G8B8A8_UNORM;
-
-    auto staging_buffer = device.create_buffer(
-        base_color.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-
-    void* data = nullptr;
-    vmaMapMemory(device.allocator(), staging_buffer.allocation(), &data);
-    memcpy(data, base_color.data(), (size_t)base_color.size());
-    vmaUnmapMemory(device.allocator(), staging_buffer.allocation());
-
-    td->image = upload_image(w, h, image_format, staging_buffer);
-
-    VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
-        VK_FORMAT_R8G8B8A8_UNORM, td->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
-    image_info.subresourceRange.levelCount = td->image->get_mip_levels();
-
-    td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
-
-    // Mark texture dirty for bindless descriptor update
-    glob::glob_state().getr_render().renderer.stage_update_texture(td);
-
-    m_textures_cache[texture_id] = td;
-
-    return td;
+    KRG_check_render_thread();
+    auto md = build_mesh_data(mesh_id, vbv, ibv);
+    md.set_render_handle(h);
+    // Growth rides the command: grower == reader == render thread.
+    m_meshes_storage.grow_for(h);
+    *m_meshes_storage.at(h) = std::move(md);
+    m_meshes_storage.set_generation(h, h.generation());
 }
 
-texture_data*
-vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
-                                     const kryga::utils::buffer& data,
-                                     uint32_t w,
-                                     uint32_t h,
-                                     VkFormat vk_format,
-                                     texture_format fmt)
+// [render thread] Upload image data into a texture: staging copy + image +
+// view. Replaces in place — same bindless slot, safe for in-flight frames (old
+// image/view are shared_ptr ref-counted and die when in-flight buffers drain).
+// Descriptor staging is the RENDERER's job (stage_update_texture) — this is
+// pure GPU-data build.
+void
+vulkan_render_loader::fill_texture(texture_data* td,
+                                   const kryga::utils::buffer& data,
+                                   uint32_t w,
+                                   uint32_t h,
+                                   VkFormat vk_format,
+                                   texture_format fmt)
 {
-    KRG_check(!get_texture_data(texture_id), "should never happens");
+    KRG_check(td, "fill_texture on a null texture");
 
     auto& device = glob::glob_state().getr_render().device;
-    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-
-    auto* td = cache.textures.alloc(texture_id);
-    if (!td)
-    {
-        ALOG_ERROR("Failed to allocate texture in cache");
-        return nullptr;
-    }
 
     auto staging_buffer = device.create_buffer(
         data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
@@ -444,111 +371,99 @@ vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
     image_info.subresourceRange.levelCount = td->image->get_mip_levels();
 
     td->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
-
-    glob::glob_state().getr_render().renderer.stage_update_texture(td);
-
-    m_textures_cache[texture_id] = td;
-
-    return td;
 }
 
-texture_data*
-vulkan_render_loader::update_or_create_texture(const kryga::utils::id& texture_id,
-                                               const kryga::utils::buffer& data,
-                                               uint32_t w,
-                                               uint32_t h,
-                                               VkFormat vk_format,
-                                               texture_format fmt)
+// [render thread] Content texture: build into the bindless cache (the renderer
+// reserves its bindless slot) and map the content handle -> texture_data*.
+void
+vulkan_render_loader::populate_texture(render::types::texture_handle h,
+                                       const kryga::utils::id& texture_id,
+                                       const kryga::utils::buffer& base_color,
+                                       uint32_t w,
+                                       uint32_t height)
 {
-    auto* existing = get_texture_data(texture_id);
-    if (!existing)
-    {
-        return create_texture(texture_id, data, w, h, vk_format, fmt);
-    }
-
-    // Replace image data in-place — same bindless slot, safe for in-flight frames.
-    // Old image/view are ref-counted (shared_ptr) and will be destroyed when
-    // all in-flight command buffers finish.
-    auto& device = glob::glob_state().getr_render().device;
-
-    auto staging_buffer = device.create_buffer(
-        data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-
-    void* mapped = nullptr;
-    vmaMapMemory(device.allocator(), staging_buffer.allocation(), &mapped);
-    memcpy(mapped, data.data(), (size_t)data.size());
-    vmaUnmapMemory(device.allocator(), staging_buffer.allocation());
-
-    existing->image = upload_image(w, h, vk_format, staging_buffer);
-    existing->format = fmt;
-
-    VkImageViewCreateInfo image_info = vk_utils::make_imageview_create_info(
-        vk_format, existing->image->image(), VK_IMAGE_ASPECT_COLOR_BIT);
-    image_info.subresourceRange.levelCount = existing->image->get_mip_levels();
-
-    existing->image_view = vk_utils::vulkan_image_view::create_shared(image_info);
-
-    // Re-register in bindless set with the new image view (same slot)
-    glob::glob_state().getr_render().renderer.stage_update_texture(existing);
-
-    return existing;
-}
-
-texture_data*
-vulkan_render_loader::create_texture(const kryga::utils::id& texture_id,
-                                     kryga::render::vk_utils::vulkan_image_sptr image,
-                                     kryga::render::vk_utils::vulkan_image_view_sptr view)
-{
-    KRG_check(!get_texture_data(texture_id), "should never happens");
-
-    auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-
-    // Allocate texture in render cache - slot becomes bindless index
-    auto* td = cache.textures.alloc(texture_id);
-    if (!td)
-    {
-        ALOG_ERROR("Failed to allocate texture in cache");
-        return nullptr;
-    }
-
-    td->image = image;
-    td->image_view = view;
-
-    // Mark texture dirty for bindless descriptor update
-    glob::glob_state().getr_render().renderer.stage_update_texture(td);
-
-    m_textures_cache[texture_id] = td;
-
-    return td;
+    KRG_check_render_thread();
+    auto* td =
+        glob::glob_state().getr_render().renderer.create_texture(texture_id, base_color, w, height);
+    // Growth rides the command: grower == reader == render thread.
+    m_textures_storage.grow_for(h);
+    *m_textures_storage.at(h) = td;
+    m_textures_storage.set_generation(h, h.generation());
 }
 
 void
-vulkan_render_loader::destroy_texture_data(const kryga::utils::id& id)
+vulkan_render_loader::reset_texture_storage(render::types::texture_handle h)
 {
-    auto itr = m_textures_cache.find(id);
-    if (itr != m_textures_cache.end())
+    KRG_check_render_thread();
+    if (!m_textures_storage.valid(h))
     {
-        // Release from cache
-        auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-        cache.textures.release(itr->second);
-        m_textures_cache.erase(itr);
+        return;
     }
+    if (auto* td = *m_textures_storage.at(h))
+    {
+        glob::glob_state().getr_render().renderer.release_texture(td);
+    }
+    m_textures_storage.reset(h);
+}
+
+// --- Bindless textures: storage primitives (slot identity on the renderer) -----
+
+texture_data*
+vulkan_render_loader::init_texture_slot(render::types::texture_handle h, const kryga::utils::id& id)
+{
+    m_textures.grow_for(h);
+    auto* slot = m_textures.at(h);
+    *slot = texture_data(id, h.index());  // bindless slot == h.index()
+    slot->handle = h;
+    m_textures.set_generation(h, h.generation());
+    return slot;
+}
+
+void
+vulkan_render_loader::reset_texture_slot(texture_data* td)
+{
+    auto h = td->handle;
+    KRG_check(m_textures.valid(h), "release of a stale or unallocated texture");
+    *m_textures.at(h) = texture_data{};  // destruct old: release image/view refs now
+    m_textures.set_generation(h, 0);     // mark slot empty
+}
+
+void
+vulkan_render_loader::clear_textures()
+{
+    // Storage only — the renderer clears its bindless allocator in deinit().
+    m_textures.clear();
 }
 
 void
 vulkan_render_loader::set_lightmap(const kryga::utils::id& level_id,
-                                   uint32_t bindless_index,
+                                   texture_data* texture,
                                    std::unordered_map<kryga::utils::id, lightmap_uv> entries)
 {
     KRG_check_render_thread();
-    m_lightmaps[level_id] = lightmap_binding{bindless_index, std::move(entries)};
+    KRG_check(texture, "lightmap binding without an atlas texture");
+    // A re-bake passes the SAME texture (updated in place); a different pointer
+    // here would silently leak the previous atlas's bindless slot.
+    auto itr = m_lightmaps.find(level_id);
+    KRG_check(itr == m_lightmaps.end() || itr->second.texture == texture,
+              "lightmap rebind with a different atlas — release the old one first");
+    m_lightmaps[level_id] =
+        lightmap_binding{texture->get_bindless_index(), texture, std::move(entries)};
 }
 
 void
 vulkan_render_loader::remove_lightmap(const kryga::utils::id& level_id)
 {
     KRG_check_render_thread();
-    m_lightmaps.erase(level_id);
+    auto itr = m_lightmaps.find(level_id);
+    if (itr == m_lightmaps.end())
+    {
+        return;
+    }
+    // The binding owns the atlas: free its bindless slot with the level. A
+    // reload re-uploads the atlas through create_lightmap_cmd (load-time cost).
+    glob::glob_state().getr_render().renderer.release_texture(itr->second.texture);
+    m_lightmaps.erase(itr);
 }
 
 bool
@@ -594,44 +509,47 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
 }
 
 void
-vulkan_render_loader::destroy_mesh_data(const kryga::utils::id& id)
+vulkan_render_loader::reset_mesh_storage(render::types::mesh_handle h)
 {
-    auto itr = m_meshes_cache.find(id);
-    if (itr != m_meshes_cache.end())
+    KRG_check_render_thread();
+    // [render thread] Release the slot's data and invalidate it. The model side
+    // already free()'d the allocator slot; the index is recycled later by tick().
+    // Idempotent: a null/stale handle is a no-op.
+    if (!m_meshes_storage.valid(h))
     {
-        // shedule_to_deltete_t(std::move(itr->second));
-        m_meshes_cache.erase(itr);
+        return;
     }
+    m_meshes_storage.reset(h);
 }
 
-material_data*
-vulkan_render_loader::create_material(const kryga::utils::id& id,
-                                      const kryga::utils::id& type_id,
-                                      std::vector<texture_sampler_data>& samples,
-                                      shader_effect_data& se_data,
-                                      const kryga::utils::dynobj& gpu_params)
+namespace
 {
-    KRG_check(!get_material_data(id), "Shouldn't exist");
-
-    auto mat_data = std::make_shared<material_data>(id, type_id);
+material_data
+build_material_data(const kryga::utils::id& id,
+                    const kryga::utils::id& type_id,
+                    std::vector<texture_sampler_data>& samples,
+                    shader_effect_data& se_data,
+                    const kryga::utils::dynobj& gpu_params)
+{
+    material_data mat_data(id, type_id);
 
     // Note: Layout validation removed - compile-time generated GPU structs
     // are guaranteed to match shader MaterialData layout by construction.
     // The gpu_params is now a raw buffer without dynobj layout metadata.
 
-    mat_data->set_shader_effect(&se_data);
-    mat_data->set_texture_samples(samples);
+    mat_data.set_shader_effect(&se_data);
+    mat_data.set_texture_samples(samples);
 
     // Set bindless texture indices from texture slots
     ALOG_INFO(
-        "create_material: {} has {} texture samples", mat_data->get_id().cstr(), samples.size());
+        "create_material: {} has {} texture samples", mat_data.get_id().cstr(), samples.size());
     for (const auto& sample : samples)
     {
         if (sample.texture)
         {
             // Texture already has bindless index from its slot in render_cache
             uint32_t bindless_idx = sample.texture->get_bindless_index();
-            mat_data->set_bindless_texture_index(sample.slot, bindless_idx);
+            mat_data.set_bindless_texture_index(sample.slot, bindless_idx);
             ALOG_INFO("  Set slot {} to bindless index {}", sample.slot, bindless_idx);
         }
     }
@@ -642,44 +560,44 @@ vulkan_render_loader::create_material(const kryga::utils::id& id,
     // bindless too, which also removes the create-on-main descriptor allocation
     // and its leak.)
 
-    mat_data->set_gpu_data(gpu_params);
+    mat_data.set_gpu_data(gpu_params);
 
-    m_materials_cache[id] = mat_data;
-
-    return mat_data.get();
+    return mat_data;
 }
+}  // namespace
 
-sampler_data*
-vulkan_render_loader::create_sampler(const kryga::utils::id& id, VkBorderColor color)
+material_data*
+vulkan_render_loader::populate_system_material(render::types::material_handle h,
+                                               const kryga::utils::id& id,
+                                               const kryga::utils::id& type_id,
+                                               std::vector<texture_sampler_data>& samples,
+                                               shader_effect_data& se_data,
+                                               const kryga::utils::dynobj& gpu_params)
 {
-    KRG_check(!get_sampler_data(id), "Shouldn't exist");
-
-    auto& device = glob::glob_state().getr_render().device;
-
-    VkSamplerCreateInfo sampler_ci = vk_utils::make_sampler_create_info(VK_FILTER_LINEAR);
-
-    sampler_ci.maxLod = 30.f;
-    sampler_ci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    sampler_ci.borderColor = color;
-
-    auto data = std::make_shared<sampler_data>(id);
-
-    vkCreateSampler(device.vk_device(), &sampler_ci, nullptr, &data->m_sampler);
-
-    m_samplers_cache[id] = data;
-
-    return data.get();
+    auto mat_data = build_material_data(id, type_id, samples, se_data, gpu_params);
+    mat_data.set_render_handle(h);
+    // Growth is populate-side now: the handle's lane (system) grows here.
+    m_materials_storage.grow_for(h);
+    *m_materials_storage.at(h) = std::move(mat_data);
+    m_materials_storage.set_generation(h, h.generation());
+    return m_materials_storage.at(h);
 }
 
 void
-vulkan_render_loader::destroy_sampler_data(const kryga::utils::id& id)
+vulkan_render_loader::populate_material(render::types::material_handle h,
+                                        const kryga::utils::id& id,
+                                        const kryga::utils::id& type_id,
+                                        std::vector<texture_sampler_data>& samples,
+                                        shader_effect_data& se_data,
+                                        const kryga::utils::dynobj& gpu_params)
 {
-    auto itr = m_samplers_cache.find(id);
-    if (itr != m_samplers_cache.end())
-    {
-        // shedule_to_deltete_t(std::move(itr->second));
-        m_samplers_cache.erase(itr);
-    }
+    KRG_check_render_thread();
+    auto mat_data = build_material_data(id, type_id, samples, se_data, gpu_params);
+    mat_data.set_render_handle(h);
+    // Growth rides the command: grower == reader == render thread.
+    m_materials_storage.grow_for(h);
+    *m_materials_storage.at(h) = std::move(mat_data);
+    m_materials_storage.set_generation(h, h.generation());
 }
 
 bool
@@ -704,20 +622,16 @@ vulkan_render_loader::update_material(material_data& mat_data,
 }
 
 void
-vulkan_render_loader::destroy_material_data(const kryga::utils::id& id)
+vulkan_render_loader::reset_material_storage(render::types::material_handle h)
 {
-    auto itr = m_materials_cache.find(id);
-    if (itr != m_materials_cache.end())
+    KRG_check_render_thread();
+    // [render thread] Release the slot's data and invalidate it (textures are
+    // bindless, so there's no descriptor set to free). Idempotent.
+    if (!m_materials_storage.valid(h))
     {
-        // No per-material descriptor set to free — textures are bindless.
-        m_materials_cache.erase(itr);
+        return;
     }
-}
-
-void
-vulkan_render_loader::create_font(const kryga::utils::id& id, ImFont* font)
-{
-    m_fonts_cache[id] = font;
+    m_materials_storage.reset(h);
 }
 
 void
@@ -733,38 +647,30 @@ vulkan_render_loader::destroy_render_pass(const kryga::utils::id& id)
 void
 vulkan_render_loader::clear_caches()
 {
-    ALOG_INFO(
-        "clear_caches: meshes={} textures={} materials={} shaders={} "
-        "samplers={} render_passes={} materials_index={}",
-        m_meshes_cache.size(),
-        m_textures_cache.size(),
-        m_materials_cache.size(),
-        m_shaders_cache.size(),
-        m_samplers_cache.size(),
-        m_render_passes.size(),
-        m_materials_index.size());
+    ALOG_INFO("clear_caches: meshes={} textures={} materials={} render_passes={}",
+              m_meshes_storage.size(),
+              m_textures_storage.size(),
+              m_materials_storage.size(),
+              m_render_passes.size());
 
-    for (auto& [id, td] : m_textures_cache)
-    {
-        // Texture data is owned by render_cache.textures (combined_pool),
-        // which renderer.deinit() clears BEFORE this method runs. The td*
-        // here is dangling — log only the id (string-pooled, safe).
-        ALOG_INFO("  texture id={}", id.cstr());
-    }
     for (auto& [id, rp] : m_render_passes)
     {
         ALOG_INFO("  render_pass id={}", id.cstr());
     }
 
-    m_meshes_cache.clear();
-    m_textures_cache.clear();
-    m_materials_cache.clear();
-    m_shaders_cache.clear();
-    m_samplers_cache.clear();
+    // Storage only: the matching allocators live with their owners (render_bridge
+    // for content — pure CPU bookkeeping cleared by the bridge's lifetime — and
+    // the renderer for system pools, cleared in vulkan_render::deinit). This
+    // method never touches an allocator.
+    m_meshes_storage.clear();  // merged: clears the system AND content lanes
+    m_textures_storage.clear();
+    m_materials_storage.clear();
     m_render_passes.clear();
-    m_materials_index.clear();
+    // Bindings hold texture_data* into the bindless pool — drop them wholesale
+    // here (no per-binding release: clear_textures wipes the pool anyway).
+    m_lightmaps.clear();
+}
 
-}  // namespace render
 }  // namespace render
 
 }  // namespace kryga

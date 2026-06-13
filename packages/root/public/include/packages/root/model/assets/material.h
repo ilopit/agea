@@ -4,6 +4,8 @@
 
 #include "packages/root/model/assets/asset.h"
 
+#include "render_types/render_handle.h"
+
 namespace kryga
 {
 namespace root
@@ -33,7 +35,22 @@ public:
     bool
     construct(this_class::construct_params& p);
 
+    // Runtime render slot (handle model, slice 3). Reserved by the material cmd
+    // builder; draws reference the material by U64 handle. NOT serialized.
+    ::kryga::render::types::material_handle
+    render_handle() const
+    {
+        return m_render_handle;
+    }
+    void
+    set_render_handle(::kryga::render::types::material_handle h)
+    {
+        m_render_handle = h;
+    }
+
 protected:
+    ::kryga::render::types::material_handle m_render_handle = {};  // runtime, not serialized
+
     // clang-format off
     KRG_ar_property(
         category     = "Properties",

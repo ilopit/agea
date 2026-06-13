@@ -10,6 +10,8 @@
 #include <utils/check.h>
 #include <utils/defines_utils.h>
 
+#include <render_types/render_handle.h>
+
 #include <optional>
 #include <string>
 #include <memory>
@@ -302,6 +304,12 @@ protected:
     // Used by builders to decide create vs update. Not serialized.
     bool m_render_built = false;
 
+    // Handle model: the per-instance render-object slot reserved for this object
+    // (handle_allocator, model thread). Null until the builder reserves it on
+    // first create; used to address the render_cache slot for update/destroy/
+    // transform/outline without an id lookup. Runtime only, not serialized.
+    ::kryga::render::types::render_object_handle m_render_object_handle = {};
+
 public:
     bool
     get_render_built() const
@@ -313,6 +321,18 @@ public:
     set_render_built(bool v)
     {
         m_render_built = v;
+    }
+
+    ::kryga::render::types::render_object_handle
+    get_render_object_handle() const
+    {
+        return m_render_object_handle;
+    }
+
+    void
+    set_render_object_handle(::kryga::render::types::render_object_handle h)
+    {
+        m_render_object_handle = h;
     }
 };
 

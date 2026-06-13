@@ -10,6 +10,7 @@
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/utils/vulkan_initializers.h"
 #include "vulkan_render/utils/vulkan_debug.h"
+#include "vulkan_render/render_thread.h"
 
 #include <render/utils/mesh_primitives.h>
 
@@ -244,6 +245,16 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     m_width = extent.width;
     m_height = extent.height;
 
+    // Bind the system mesh/material allocators (owned here) to k_system_lane of
+    // the loader's merged storages before any create_mesh/create_material
+    // (built during init below). bind claims the lane.
+    auto& sys_loader = glob::glob_state().getr_render().loader;
+    m_loader = &sys_loader;  // scene/resource storage (formerly render_cache)
+    m_system_meshes_alloc.bind(sys_loader.system_meshes_storage(), render::types::k_system_lane);
+    m_system_materials_alloc.bind(sys_loader.system_materials_storage(),
+                                  render::types::k_system_lane);
+    m_bindless_textures_alloc.bind(sys_loader.bindless_textures_storage(), 0);
+
     m_render_config = config;
     m_pending_render_config = config;
 
@@ -287,6 +298,9 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     m_pending_render_config.frames_in_flight = device.frames_in_flight();
     m_render_config.present = device.current_present_mode();
     m_pending_render_config.present = device.current_present_mode();
+
+    // Note: the content allocators' deferral window now lives in render_bridge,
+    // which pulls frames_in_flight itself each tick (avoids a render->bridge dep).
 
     prepare_system_resources();
 
@@ -451,10 +465,10 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
 
     // Drop scene_depth_texture's view+wrapper BEFORE replace_color_targets
     // destroys main's old depth image (see toggle path for full rationale).
-    if (auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture")))
+    if (m_scene_depth_txt)
     {
-        dtex->image_view.reset();
-        dtex->image.reset();
+        m_scene_depth_txt->image_view.reset();
+        m_scene_depth_txt->image.reset();
     }
 
     const bool outline_enabled = m_render_config.outline.enabled;
@@ -473,10 +487,10 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     auto& loader = glob::glob_state().getr_render().loader;
     if (m_scene_upscale_txt)
     {
-        loader.destroy_texture_data(AID("scene_lowres_txt"));
+        release_texture(m_scene_upscale_txt);
         m_scene_upscale_txt = nullptr;
     }
-    m_scene_upscale_txt = loader.create_texture(AID("scene_lowres_txt"), new_img, new_view);
+    m_scene_upscale_txt = create_texture(AID("scene_lowres_txt"), new_img, new_view);
     if (m_scene_upscale_mat && m_scene_upscale_txt)
     {
         m_scene_upscale_mat->set_bindless_texture_index(0,
@@ -488,12 +502,10 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
     // (when outline.enabled) and the grid (always — for occlusion). We
     // destroyed+recreated the depth image above, so the previous bindless slot
     // now points at a freed view. Update the existing texture_data in-place
-    // (init_scene_depth created it directly via cache.textures.alloc, so we
-    // can't use loader.destroy_texture_data here).
-    if (!main_pass->get_depth_images().empty())
+    // (same bindless slot).
+    if (m_render_config.render_scale.enabled && !main_pass->get_depth_images().empty())
     {
-        auto& cache = get_cache();
-        auto* dtex = cache.textures.find_by_id(AID("scene_depth_texture"));
+        auto* dtex = m_scene_depth_txt;
         if (dtex)
         {
             auto& depth_img = main_pass->get_depth_images()[0];
@@ -551,7 +563,17 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
 
     // Tear down render-scale-dependent state. m_ui_copy_se's pipeline was
     // compiled against the old host pass and must be dropped regardless of
-    // direction.
+    // direction. Grab each material's handle from its pointer before clearing.
+    auto ui_copy_h =
+        m_ui_target_mat ? m_ui_target_mat->render_handle() : render::types::material_handle{};
+    auto upscale_h = m_scene_upscale_mat ? m_scene_upscale_mat->render_handle()
+                                         : render::types::material_handle{};
+
+    if (m_scene_upscale_txt)
+    {
+        release_texture(m_scene_upscale_txt);
+    }
+
     m_scene_upscale_se = nullptr;
     m_scene_upscale_mat = nullptr;
     m_scene_upscale_txt = nullptr;
@@ -559,17 +581,16 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
     m_ui_copy_se = nullptr;
     m_ui_target_mat = nullptr;
 
-    loader.destroy_material_data(AID("mat_ui_copy"));
-    loader.destroy_material_data(AID("mat_scene_upscale"));
-    loader.destroy_texture_data(AID("scene_lowres_txt"));
+    destroy_system_material_data(ui_copy_h);
+    destroy_system_material_data(upscale_h);
 
     // Drop scene_depth_texture's view+wrapper BEFORE replace_color_targets
     // destroys main's old depth image. Otherwise the view outlives its image
     // and the eventual vkDestroyImageView corrupts validation-layer state.
-    if (auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture")))
+    if (m_scene_depth_txt)
     {
-        dtex->image_view.reset();
-        dtex->image.reset();
+        m_scene_depth_txt->image_view.reset();
+        m_scene_depth_txt->image.reset();
     }
 
     if (m_render_config.render_scale.enabled)
@@ -677,11 +698,11 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
     // sampleable depth image here, so repoint the slot regardless of state.
     if (!main_pass->get_depth_images().empty())
     {
-        auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture"));
-        if (!dtex)
+        if (!m_scene_depth_txt)
         {
-            dtex = m_cache.textures.alloc(AID("scene_depth_texture"));
+            m_scene_depth_txt = alloc_texture(AID("scene_depth_texture"));
         }
+        auto* dtex = m_scene_depth_txt;
         if (dtex)
         {
             auto& depth_img = main_pass->get_depth_images()[0];
@@ -742,7 +763,7 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         samples.front().texture = m_ui_target_txt;
         samples.front().slot = 0;
 
-        m_ui_target_mat = loader.create_material(
+        m_ui_target_mat = create_material(
             AID("mat_ui_copy"), AID("ui_copy"), samples, *m_ui_copy_se, utils::dynobj{});
     }
 
@@ -778,18 +799,18 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
             composite_pass->create_shader_effect(
                 AID("se_scene_upscale"), se_ci, m_scene_upscale_se);
 
-            m_scene_upscale_txt = loader.create_texture(
+            m_scene_upscale_txt = create_texture(
                 AID("scene_lowres_txt"), m_scene_lowres_images[0], m_scene_lowres_views[0]);
 
             std::vector<texture_sampler_data> samples(1);
             samples.front().texture = m_scene_upscale_txt;
             samples.front().slot = 0;
 
-            m_scene_upscale_mat = loader.create_material(AID("mat_scene_upscale"),
-                                                         AID("scene_upscale"),
-                                                         samples,
-                                                         *m_scene_upscale_se,
-                                                         utils::dynobj{});
+            m_scene_upscale_mat = create_material(AID("mat_scene_upscale"),
+                                                  AID("scene_upscale"),
+                                                  samples,
+                                                  *m_scene_upscale_se,
+                                                  utils::dynobj{});
 
             if (m_scene_upscale_mat)
             {
@@ -981,6 +1002,8 @@ vulkan_render::reconfigure_swapchain(uint32_t count, present_mode mode)
     m_render_config.frames_in_flight = new_count;
     m_render_config.present = device.current_present_mode();
 
+    // (content-allocator deferral window now tracked in render_bridge::tick)
+
     ALOG_INFO("swapchain reconfigured: {} -> {} images, present {}",
               old_count,
               new_count,
@@ -997,10 +1020,10 @@ vulkan_render::deinit()
     // destroys main_pass (and with it the underlying depth image). The view
     // is non-owning of the image but the destruction order still matters to
     // the validation layer's image-view tracking.
-    if (auto* dtex = m_cache.textures.find_by_id(AID("scene_depth_texture")))
+    if (m_scene_depth_txt)
     {
-        dtex->image_view.reset();
-        dtex->image.reset();
+        m_scene_depth_txt->image_view.reset();
+        m_scene_depth_txt->image.reset();
     }
 
     // Render-scale / composite resources. Must release before VMA teardown
@@ -1008,6 +1031,8 @@ vulkan_render::deinit()
     m_scene_upscale_se = nullptr;
     m_scene_upscale_mat = nullptr;
     m_scene_upscale_txt = nullptr;
+    m_scene_depth_txt = nullptr;     // pool wiped below by clear_caches
+    m_selection_mask_txt = nullptr;  // pool wiped below by clear_caches
     m_depth_outline_se = nullptr;
     m_ui_target_txt = nullptr;
     m_composite_pass.reset();
@@ -1046,10 +1071,18 @@ vulkan_render::deinit()
     m_materials_layout = {};
 
     // Clear all caches before VMA is destroyed
-    m_cache.objects.clear();
-    m_cache.directional_lights.clear();
-    m_cache.universal_lights.clear();
-    m_cache.textures.clear();
+    m_loader->clear_objects();
+    m_loader->clear_dir_lights();
+    m_loader->clear_uni_lights();
+    m_loader->clear_textures();
+
+    // The renderer owns slot identity for the system + bindless pools — detach
+    // the allocators (releases the lane claims; deinit is single-threaded so
+    // the direct form is the sanctioned one). They return to the unbound
+    // state; a re-init re-binds under a fresh lane epoch.
+    m_system_meshes_alloc.detach();
+    m_system_materials_alloc.detach();
+    m_bindless_textures_alloc.detach();
 
     m_global_textures_queue.clear();
     m_frames.clear();
@@ -1062,12 +1095,6 @@ vulkan_render::deinit()
 void
 vulkan_render::prepare_system_resources()
 {
-    glob::glob_state().getr_render().loader.create_sampler(AID("default"),
-                                                           VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK);
-
-    glob::glob_state().getr_render().loader.create_sampler(AID("font"),
-                                                           VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
-
     // Fullscreen quad used by grid, outline post-process, etc.
     {
         auto vl = gpu_dynobj_builder()
@@ -1102,10 +1129,9 @@ vulkan_render::prepare_system_resources()
         v.at(4) = 3;
         v.at(5) = 1;
 
-        glob::glob_state().getr_render().loader.create_mesh(
-            AID("plane_mesh"),
-            vert_buffer.make_view<gpu::vertex_data>(),
-            index_buffer.make_view<gpu::uint>());
+        m_fullscreen_quad = create_mesh(AID("system_fullscreen_quad"),
+                                        vert_buffer.make_view<gpu::vertex_data>(),
+                                        index_buffer.make_view<gpu::uint>());
     }
 
     kryga::utils::buffer vert, frag;
@@ -1171,8 +1197,7 @@ vulkan_render::prepare_system_resources()
     rc = main_pass->create_shader_effect(AID("se_grid"), se_ci, m_grid_se);
     KRG_check(rc == result_code::ok && m_grid_se, "Grid shader effect creation failed!");
 
-    m_grid_mat = glob::glob_state().getr_render().loader.create_material(
-        AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
+    m_grid_mat = create_material(AID("mat_grid"), AID("grid"), sd, *m_grid_se, utils::dynobj{});
 
     // Outline post-process shader — edge detection on selection mask
     {
@@ -1199,7 +1224,7 @@ vulkan_render::prepare_system_resources()
         rc = main_pass->create_shader_effect(AID("se_outline_post"), se_ci, m_outline_post_se);
         KRG_check(rc == result_code::ok && m_outline_post_se, "Outline post SE failed!");
 
-        m_outline_post_mat = glob::glob_state().getr_render().loader.create_material(
+        m_outline_post_mat = create_material(
             AID("mat_outline_post"), AID("outline_post"), sd, *m_outline_post_se, utils::dynobj{});
 
         // Register the selection mask image in bindless so the post-process can sample it
@@ -1208,7 +1233,11 @@ vulkan_render::prepare_system_resources()
         if (!sel_images.empty())
         {
             auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-            auto* tex = cache.textures.alloc(AID("selection_mask_texture"));
+            if (!m_selection_mask_txt)
+            {
+                m_selection_mask_txt = alloc_texture(AID("selection_mask_texture"));
+            }
+            auto* tex = m_selection_mask_txt;
             if (tex)
             {
                 tex->image = sel_images[0];
@@ -1243,7 +1272,11 @@ vulkan_render::prepare_system_resources()
             auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
 
             auto& cache = glob::glob_state().getr_render().renderer.get_cache();
-            auto* dtex = cache.textures.alloc(AID("scene_depth_texture"));
+            if (!m_scene_depth_txt)
+            {
+                m_scene_depth_txt = alloc_texture(AID("scene_depth_texture"));
+            }
+            auto* dtex = m_scene_depth_txt;
             if (dtex)
             {
                 dtex->image = std::move(img_sptr);
@@ -1311,7 +1344,7 @@ vulkan_render::prepare_system_resources()
     rc = main_pass->create_shader_effect(AID("se_debug_wire"), se_ci, m_debug_wire_se);
     if (rc == result_code::ok && m_debug_wire_se)
     {
-        m_debug_wire_mat = glob::glob_state().getr_render().loader.create_material(
+        m_debug_wire_mat = create_material(
             AID("mat_debug_wire"), AID("debug_wire"), sd, *m_debug_wire_se, utils::dynobj{});
     }
 
@@ -1322,7 +1355,7 @@ vulkan_render::prepare_system_resources()
         std::memcpy(vb.data(), sphere.vertices.data(), vb.size());
         kryga::utils::buffer ib(sphere.indices.size() * sizeof(gpu::uint));
         std::memcpy(ib.data(), sphere.indices.data(), ib.size());
-        m_debug_sphere_mesh = glob::glob_state().getr_render().loader.create_mesh(
+        m_debug_sphere_mesh = create_mesh(
             AID("debug_sphere_mesh"), vb.make_view<gpu::vertex_data>(), ib.make_view<gpu::uint>());
     }
     // Create cone mesh for debug spot light volume
@@ -1332,7 +1365,7 @@ vulkan_render::prepare_system_resources()
         std::memcpy(vb.data(), cone.vertices.data(), vb.size());
         kryga::utils::buffer ib(cone.indices.size() * sizeof(gpu::uint));
         std::memcpy(ib.data(), cone.indices.data(), ib.size());
-        m_debug_cone_mesh = glob::glob_state().getr_render().loader.create_mesh(
+        m_debug_cone_mesh = create_mesh(
             AID("debug_cone_mesh"), vb.make_view<gpu::vertex_data>(), ib.make_view<gpu::uint>());
     }
 }
@@ -1489,10 +1522,270 @@ vulkan_render::init_shadow_resources()
               1);
 }
 
-render_cache&
+vulkan_render_loader&
 vulkan_render::get_cache()
 {
-    return m_cache;
+    KRG_check(m_loader, "get_cache() before init() bound the loader");
+    return *m_loader;
+}
+
+// --- System / bindless resource lifecycle ----------------------------------
+// Slot identity lives here (the renderer owns the allocators); the loader only
+// builds + stores at the reserved slot. Same split as content, where
+// render_bridge reserves and the loader populates.
+
+mesh_data*
+vulkan_render::create_mesh(const utils::id& mesh_id,
+                           utils::buffer_view<gpu::vertex_data> vertices,
+                           utils::buffer_view<gpu::uint> indices)
+{
+    auto h = m_system_meshes_alloc.reserve();  // grows the loader's storage
+    auto* md = m_loader->populate_system_mesh(h, mesh_id, vertices, indices);
+    m_system_meshes_alloc.set_state(h, render::types::slot_state::resident);
+    return md;
+}
+
+mesh_data*
+vulkan_render::create_skinned_mesh(const utils::id& mesh_id,
+                                   utils::buffer_view<gpu::skinned_vertex_data> vertices,
+                                   utils::buffer_view<gpu::uint> indices)
+{
+    auto h = m_system_meshes_alloc.reserve();
+    auto* md = m_loader->populate_system_skinned_mesh(h, mesh_id, vertices, indices);
+    m_system_meshes_alloc.set_state(h, render::types::slot_state::resident);
+    return md;
+}
+
+mesh_data*
+vulkan_render::get_system_mesh_data(render::types::mesh_handle h)
+{
+    KRG_check_debug(m_system_meshes_alloc.valid(h), "deref of a stale/null system mesh handle");
+    return m_loader->system_mesh_at(h);
+}
+
+bool
+vulkan_render::system_mesh_valid(render::types::mesh_handle h) const
+{
+    return m_system_meshes_alloc.valid(h);
+}
+
+void
+vulkan_render::destroy_system_mesh_data(render::types::mesh_handle h)
+{
+    if (!m_system_meshes_alloc.valid(h))
+    {
+        return;
+    }
+    m_loader->reset_system_mesh(h);  // destroys the mesh in place
+    m_system_meshes_alloc.reclaim(h);
+}
+
+material_data*
+vulkan_render::create_material(const utils::id& id,
+                               const utils::id& type_id,
+                               std::vector<texture_sampler_data>& textures_data,
+                               shader_effect_data& se_data,
+                               const utils::dynobj& params)
+{
+    auto h = m_system_materials_alloc.reserve();
+    auto* mat = m_loader->populate_system_material(h, id, type_id, textures_data, se_data, params);
+    m_system_materials_alloc.set_state(h, render::types::slot_state::resident);
+    return mat;
+}
+
+material_data*
+vulkan_render::get_system_material_data(render::types::material_handle h)
+{
+    KRG_check_debug(m_system_materials_alloc.valid(h),
+                    "deref of a stale/null system material handle");
+    return m_loader->system_material_at(h);
+}
+
+bool
+vulkan_render::system_material_valid(render::types::material_handle h) const
+{
+    return m_system_materials_alloc.valid(h);
+}
+
+void
+vulkan_render::destroy_system_material_data(render::types::material_handle h)
+{
+    if (!m_system_materials_alloc.valid(h))
+    {
+        return;
+    }
+    m_loader->reset_system_material(h);  // destroys the material in place
+    m_system_materials_alloc.reclaim(h);
+}
+
+texture_data*
+vulkan_render::alloc_texture(const utils::id& id)
+{
+    auto h = m_bindless_textures_alloc.reserve();  // bindless slot == h.index()
+    return m_loader->init_texture_slot(h, id);
+}
+
+void
+vulkan_render::bind_render_pools_to_current_thread()
+{
+    m_system_meshes_alloc.bind_to_current_thread();
+    m_system_materials_alloc.bind_to_current_thread();
+    m_bindless_textures_alloc.bind_to_current_thread();
+    m_loader->bind_storages_to_current_thread();
+}
+
+void
+vulkan_render::release_texture(texture_data* td)
+{
+    auto h = td->handle;
+    m_loader->reset_texture_slot(td);
+    m_bindless_textures_alloc.reclaim(h);  // recycle the bindless slot immediately
+}
+
+texture_data*
+vulkan_render::create_texture(const utils::id& texture_id,
+                              const utils::buffer& base_color,
+                              uint32_t w,
+                              uint32_t h)
+{
+    auto* td = alloc_texture(texture_id);
+    // RGBA8 path; format stays texture_format::unknown (matches prior behavior).
+    m_loader->fill_texture(td, base_color, w, h, VK_FORMAT_R8G8B8A8_UNORM, texture_format::unknown);
+    stage_update_texture(td);
+    return td;
+}
+
+texture_data*
+vulkan_render::create_texture(const utils::id& texture_id,
+                              const utils::buffer& data,
+                              uint32_t w,
+                              uint32_t h,
+                              VkFormat vk_format,
+                              texture_format fmt)
+{
+    auto* td = alloc_texture(texture_id);
+    m_loader->fill_texture(td, data, w, h, vk_format, fmt);
+    stage_update_texture(td);
+    return td;
+}
+
+texture_data*
+vulkan_render::create_texture(const utils::id& texture_id,
+                              vk_utils::vulkan_image_sptr image,
+                              vk_utils::vulkan_image_view_sptr view)
+{
+    auto* td = alloc_texture(texture_id);
+    td->image = std::move(image);
+    td->image_view = std::move(view);
+    stage_update_texture(td);
+    return td;
+}
+
+void
+vulkan_render::update_texture(texture_data* td,
+                              const utils::buffer& data,
+                              uint32_t w,
+                              uint32_t h,
+                              VkFormat vk_format,
+                              texture_format fmt)
+{
+    m_loader->fill_texture(td, data, w, h, vk_format, fmt);
+    // Re-register in the bindless set with the new image view (same slot).
+    stage_update_texture(td);
+}
+
+void
+vulkan_render::queue_render_action(std::function<void()> a)
+{
+    // Just store it. The frame pipeline drains the queue at the top of its
+    // next render-loop turn; we don't wake an idle loop. The editor submits a
+    // frame every tick, so a task runs within ~one frame -- which is why a
+    // BLOCKING poster must never be the main thread mid-stream (it couldn't
+    // submit that frame); see run_on_render_thread / post_render_round_trip.
+    std::lock_guard<std::mutex> lock(m_render_actions_mutex);
+    m_render_actions.push_back(std::move(a));
+}
+
+void
+vulkan_render::drain_render_actions()
+{
+    // Swap under the lock, run outside it (a task may take time or re-queue without
+    // blocking the RPC I/O thread that posts). Runs on the render thread with
+    // render-state access held — serialized against drain_frame/draw, so the tasks
+    // read render state without a lock.
+    std::vector<std::function<void()>> local;
+    {
+        std::lock_guard<std::mutex> lock(m_render_actions_mutex);
+        local.swap(m_render_actions);
+    }
+    for (auto& a : local)
+    {
+        a();
+    }
+}
+
+bool
+vulkan_render::wait_render_action(std::function<void()> a, std::chrono::milliseconds timeout)
+{
+    // Queue a task that fulfils a promise, then block the caller (an RPC I/O
+    // thread) on the future. The render-thread mirror of vulkan_engine::
+    // wait_main_action.
+    auto p = std::make_shared<std::promise<void>>();
+    auto fut = p->get_future();
+    queue_render_action(
+        [p, work = std::move(a)]() mutable
+        {
+            try
+            {
+                work();
+                p->set_value();
+            }
+            catch (...)
+            {
+                p->set_exception(std::current_exception());
+            }
+        });
+    if (fut.wait_for(timeout) != std::future_status::ready)
+    {
+        return false;
+    }
+    fut.get();
+    return true;
+}
+
+bool
+vulkan_render::run_on_render_thread(std::function<void()> a, std::chrono::milliseconds timeout)
+{
+    // Inline when the caller already holds render access: the render thread
+    // inside a drain (a queued wait here would deadlock -- the drain can't
+    // pick up a task posted mid-drain), and main during init / headless /
+    // single-threaded teardown (no render loop to post to).
+    if (render::on_render_thread())
+    {
+        a();
+        return true;
+    }
+    // Queued waiting is for WORKER threads (bake, RPC I/O): the queue drains
+    // when main submits the next frame. Main mid-stream blocking here would
+    // therefore stall until the timeout -- main IS the frame submitter. Main
+    // is the one thread holding model access without render access.
+    KRG_check(!render::on_model_thread(),
+              "run_on_render_thread from the main thread mid-stream would stall -- "
+              "use vulkan_engine::post_render_round_trip");
+    return wait_render_action(std::move(a), timeout);
+}
+
+void
+vulkan_render::post_render_action(std::function<void()> a)
+{
+    // Same routing as run_on_render_thread, but fire-and-forget -- safe from
+    // any thread, including main mid-stream, because nothing waits.
+    if (render::on_render_thread())
+    {
+        a();
+        return;
+    }
+    queue_render_action(std::move(a));
 }
 
 render_pass*
