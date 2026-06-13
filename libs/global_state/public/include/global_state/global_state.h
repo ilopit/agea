@@ -58,10 +58,6 @@ class virtual_file_system;
 }
 
 // Services
-namespace core
-{
-class queues;
-}
 namespace engine
 {
 class input_manager;
@@ -97,7 +93,6 @@ struct state_mutator__editor_system;
 struct state_mutator__vfs;
 
 // Services
-struct state_mutator__queues;
 struct state_mutator__input_manager;
 struct state_mutator__render_bridge;
 struct state_mutator__engine_counters;
@@ -152,7 +147,6 @@ class state
     friend class ::kryga::state_mutator__vfs;
 
     // Services
-    friend class ::kryga::state_mutator__queues;
     friend class ::kryga::state_mutator__input_manager;
     friend class core::state_mutator__lua_api;
     friend class ::kryga::state_mutator__render_bridge;
@@ -206,7 +200,6 @@ public:
     KRG_gen_getter(vfs, vfs::virtual_file_system);
 
     // Services
-    KRG_gen_getter(queues, core::queues);
     KRG_gen_getter(input_manager, engine::input_manager);
     KRG_gen_getter(lua, reflection::lua_api);
     KRG_gen_getter(render_bridge, render_bridge);
@@ -268,7 +261,6 @@ private:
     vfs::virtual_file_system*       m_vfs = nullptr;
 
     // Services
-    core::queues*                   m_queues = nullptr;
     engine::input_manager*          m_input_manager = nullptr;
     reflection::lua_api*            m_lua = nullptr;
     render_bridge*                  m_render_bridge = nullptr;
@@ -315,12 +307,6 @@ struct state_mutator__editor_system
 };
 
 // Services
-
-struct state_mutator__queues
-{
-    static void
-    set(gs::state& s);
-};
 
 struct state_mutator__input_manager
 {

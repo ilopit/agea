@@ -7,7 +7,7 @@
 #include <core/package_manager.h>
 #include <core/model_system.h>
 #include <core/core_state.h>
-#include <core/queues.h>
+#include <core/model_output.h>
 #include <core/reflection/reflection_type.h>
 #include <global_state/global_state.h>
 #include <vfs/vfs_state.h>
@@ -56,7 +56,6 @@ struct test_ctor : base_test
         }
         core::state_mutator__lua_api::set(gs);
         core::state_mutator__model::set(gs);
-        state_mutator__queues::set(gs);
 
         auto& pm = gs.getr_model().packages;
         gs.run_create();

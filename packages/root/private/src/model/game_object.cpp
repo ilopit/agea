@@ -7,7 +7,7 @@
 #include <core/model_system.h>
 #include <core/package.h>
 #include <core/level.h>
-#include <core/queues.h>
+#include <core/model_output.h>
 #include <global_state/global_state.h>
 
 namespace kryga
@@ -114,7 +114,7 @@ game_object::spawn_component(component* parent,
 
     if (auto* goc = comp->as<game_object_component>())
     {
-        glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(goc);
+        glob::glob_state().getr_model().output.dirty_render.emplace_back(goc);
     }
 
     return comp;

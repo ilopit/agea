@@ -1,6 +1,6 @@
 #include "packages/root/model/assets/shader_effect.h"
 
-#include <core/queues.h>
+#include <core/model_system.h>
 #include <global_state/global_state.h>
 
 namespace kryga
@@ -15,7 +15,7 @@ shader_effect::mark_render_dirty()
 {
     if (get_state() != smart_object_state::constructed)
     {
-        glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(this);
+        glob::glob_state().getr_model().output.dirty_render.emplace_back(this);
         set_state(smart_object_state::constructed);
     }
 }

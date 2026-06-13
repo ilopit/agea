@@ -28,7 +28,7 @@
 #endif
 
 #include <core/caches/caches_map.h>
-#include <core/queues.h>
+#include <core/model_output.h>
 #include <core/id_generator.h>
 #include <core/level.h>
 #include <core/level_manager.h>
@@ -61,7 +61,6 @@
 #include <packages/root/package.root.h>
 #include <packages/base/package.base.h>
 
-#include <core/queues.h>
 #include <render_bridge/render_bridge.h>
 #include <render_bridge/render_commands_common.h>
 #include <render_bridge/render_command.h>
@@ -320,7 +319,6 @@ vulkan_engine::init(const startup_options& options)
     }
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
-    state_mutator__queues::set(gs);
     state_mutator__render_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
@@ -1031,7 +1029,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 void
 vulkan_engine::consume_updated_transforms()
 {
-    auto& items = glob::glob_state().getr_queues().get_model().dirty_transforms;
+    auto& items = glob::glob_state().getr_model().output.dirty_transforms;
 
     if (items.empty())
     {
@@ -1265,7 +1263,7 @@ vulkan_engine::init_default_scripting()
 void
 vulkan_engine::consume_updated_render()
 {
-    auto& mq = glob::glob_state().getr_queues().get_model();
+    auto& mq = glob::glob_state().getr_model().output;
     auto& rb = glob::glob_state().getr_render_bridge();
 
     for (auto& i : mq.destroy_render)

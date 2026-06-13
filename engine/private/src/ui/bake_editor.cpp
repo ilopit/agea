@@ -29,7 +29,7 @@
 #include <gpu_types/gpu_light_types.h>
 
 #include <core/level.h>
-#include <core/queues.h>
+#include <core/model_output.h>
 #include <vfs/vfs.h>
 #include <vfs/io.h>
 
@@ -386,10 +386,9 @@ bake_editor::submit_bake()
                         // Lightmap binding is render-owned: register the atlas
                         // index + per-object UVs in the loader's per-level
                         // registry (the model no longer caches them).
-                        loader.set_lightmap(
-                            cur_level->get_id(),
-                            tex,
-                            render_translate::flatten_lightmap_manifest(manifest));
+                        loader.set_lightmap(cur_level->get_id(),
+                                            tex,
+                                            render_translate::flatten_lightmap_manifest(manifest));
                     }
                 });
 
@@ -408,8 +407,7 @@ bake_editor::submit_bake()
                     {
                         if (comp->get_layers().contribute_gi)
                         {
-                            glob::glob_state().getr_queues().get_model().dirty_render.emplace_back(
-                                comp);
+                            glob::glob_state().getr_model().output.dirty_render.emplace_back(comp);
                         }
                     }
                 }

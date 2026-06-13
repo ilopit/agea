@@ -10,7 +10,7 @@
 #include <core/object_load_context.h>
 #include <core/package.h>
 #include <core/package_manager.h>
-#include <core/queues.h>
+#include <core/model_output.h>
 
 #include <global_state/global_state.h>
 
@@ -169,8 +169,6 @@ converter_context::init(const std::filesystem::path& data_root,
     core::state_mutator__lua_api::set(gs);
     ALOG_INFO("Setting up model system...");
     core::state_mutator__model::set(gs);
-    ALOG_INFO("Setting up queues...");
-    state_mutator__queues::set(gs);
 
     ALOG_INFO("Running create stage...");
     gs.run_create();

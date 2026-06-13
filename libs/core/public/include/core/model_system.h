@@ -5,6 +5,7 @@
 #include <core/level_manager.h>
 #include <core/package_manager.h>
 #include <core/id_generator.h>
+#include <core/model_output.h>
 #include <core/reflection/reflection_type.h>
 
 #include <global_state/system.h>
@@ -40,6 +41,12 @@ public:
     package_manager packages;
 
     level* current_level = nullptr;
+
+    // The model's per-frame output to the render side (main thread only).
+    // Formerly a standalone global service box (core::queues); folded in here
+    // because it is model state and belongs to the model domain. The render
+    // command queue is a separate render-side subsystem (render::input_queue).
+    model_output output;
 };
 
 }  // namespace kryga::core

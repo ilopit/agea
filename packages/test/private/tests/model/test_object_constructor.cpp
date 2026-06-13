@@ -58,7 +58,6 @@ struct test_object_constructor : base_test
         }
         core::state_mutator__lua_api::set(gs);
         core::state_mutator__model::set(gs);
-        state_mutator__queues::set(gs);
         auto& pm = gs.getr_model().packages;
         gs.run_create();
 

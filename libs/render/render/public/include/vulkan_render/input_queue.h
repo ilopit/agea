@@ -18,7 +18,7 @@ namespace render
 
 // The render system's command input — a member of render_system, reached via
 // glob_state().getr_render().input_queue (NOT a standalone subsystem, and NOT
-// part of core::queues, which holds only model-side dirty tracking). The main
+// the model-side dirty tracking, which lives on model_system as dirty). The main
 // thread produces render commands into the active parity slot; the render thread
 // drains the other slot. From the render system's point of view this is its input.
 //
