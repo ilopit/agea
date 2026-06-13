@@ -283,6 +283,7 @@ vulkan_render_loader::populate_system_mesh(render::types::mesh_handle h,
                                            kryga::utils::buffer_view<gpu::vertex_data> vbv,
                                            kryga::utils::buffer_view<gpu::uint> ibv)
 {
+    KRG_check_render_thread();
     auto md = build_mesh_data(mesh_id, vbv, ibv);
     md.set_render_handle(h);
     // Growth is populate-side now: the handle's lane (system) grows here.
@@ -314,6 +315,7 @@ vulkan_render_loader::populate_system_skinned_mesh(
     kryga::utils::buffer_view<gpu::skinned_vertex_data> vbv,
     kryga::utils::buffer_view<gpu::uint> ibv)
 {
+    KRG_check_render_thread();
     auto md = build_mesh_data(mesh_id, vbv, ibv);
     md.set_render_handle(h);
     // Growth is populate-side now: the handle's lane (system) grows here.
@@ -351,6 +353,7 @@ vulkan_render_loader::fill_texture(texture_data* td,
                                    VkFormat vk_format,
                                    texture_format fmt)
 {
+    KRG_check_render_thread();
     KRG_check(td, "fill_texture on a null texture");
 
     auto& device = glob::glob_state().getr_render().device;
@@ -411,6 +414,7 @@ vulkan_render_loader::reset_texture_storage(render::types::texture_handle h)
 texture_data*
 vulkan_render_loader::init_texture_slot(render::types::texture_handle h, const kryga::utils::id& id)
 {
+    KRG_check_render_thread();
     m_textures.grow_for(h);
     auto* slot = m_textures.at(h);
     *slot = texture_data(id, h.index());  // bindless slot == h.index()
@@ -422,6 +426,7 @@ vulkan_render_loader::init_texture_slot(render::types::texture_handle h, const k
 void
 vulkan_render_loader::reset_texture_slot(texture_data* td)
 {
+    KRG_check_render_thread();
     auto h = td->handle;
     KRG_check(m_textures.valid(h), "release of a stale or unallocated texture");
     *m_textures.at(h) = texture_data{};  // destruct old: release image/view refs now
@@ -431,6 +436,7 @@ vulkan_render_loader::reset_texture_slot(texture_data* td)
 void
 vulkan_render_loader::clear_textures()
 {
+    KRG_check_render_thread();
     // Storage only — the renderer clears its bindless allocator in deinit().
     m_textures.clear();
 }
@@ -474,6 +480,7 @@ vulkan_render_loader::update_object(vulkan_render_data& obj_data,
                                     const glm::mat4& normal_matrix,
                                     const glm::vec3& obj_pos)
 {
+    KRG_check_render_thread();
     obj_data.material = &mat_data;
     obj_data.mesh = &mesh_data;
 
@@ -574,6 +581,7 @@ vulkan_render_loader::populate_system_material(render::types::material_handle h,
                                                shader_effect_data& se_data,
                                                const kryga::utils::dynobj& gpu_params)
 {
+    KRG_check_render_thread();
     auto mat_data = build_material_data(id, type_id, samples, se_data, gpu_params);
     mat_data.set_render_handle(h);
     // Growth is populate-side now: the handle's lane (system) grows here.
@@ -606,6 +614,7 @@ vulkan_render_loader::update_material(material_data& mat_data,
                                       shader_effect_data& se_data,
                                       const kryga::utils::dynobj& gpu_params)
 {
+    KRG_check_render_thread();
     mat_data.set_shader_effect(&se_data);
     mat_data.set_texture_samples(samples);
     mat_data.set_gpu_data(gpu_params);
@@ -637,6 +646,7 @@ vulkan_render_loader::reset_material_storage(render::types::material_handle h)
 void
 vulkan_render_loader::destroy_render_pass(const kryga::utils::id& id)
 {
+    KRG_check_render_thread();
     auto itr = m_render_passes.find(id);
     if (itr != m_render_passes.end())
     {
@@ -647,6 +657,7 @@ vulkan_render_loader::destroy_render_pass(const kryga::utils::id& id)
 void
 vulkan_render_loader::clear_caches()
 {
+    KRG_check_render_thread();
     ALOG_INFO("clear_caches: meshes={} textures={} materials={} render_passes={}",
               m_meshes_storage.size(),
               m_textures_storage.size(),

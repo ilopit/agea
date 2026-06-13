@@ -1,5 +1,7 @@
 #include "engine/private/screenshot_capture.h"
 
+#include <engine/kryga_engine.h>  // queue_main_action: post the result back to main
+
 #include <global_state/global_state.h>
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/vulkan_render_device.h>
@@ -276,7 +278,18 @@ screenshot_capture::draw_overlay()
                                  uint32_t(glm::max(1.0f, x1 - x0)),
                                  uint32_t(glm::max(1.0f, y1 - y0))};
 
-        m_last = capture(region);
+        // draw_overlay runs during UI build on the MAIN thread, but the capture
+        // reads render-owned state (render passes, the presented image, an
+        // immediate_submit). Defer the readback to the render thread, then post
+        // the result back so m_last stays main-only (read by get_last via RPC).
+        auto& renderer = glob::glob_state().getr_render().renderer;
+        renderer.post_render_action(
+            [this, region]
+            {
+                auto result = capture(region);
+                glob::glob_state().getr_engine().queue_main_action(
+                    [this, result = std::move(result)]() mutable { m_last = std::move(result); });
+            });
     }
 
     auto* dl = ImGui::GetForegroundDrawList();

@@ -2140,36 +2140,46 @@ rpc_render_screenshot(const Json::Value& params, Json::Value& result, std::strin
 
     bool get_last = params.isObject() && params.get("get_last", false).asBool();
 
-    bool done = eng.wait_main_action(
-        [&]()
-        {
-            auto& sc = glob::glob_state().getr_editor_system().screenshot;
-            if (get_last)
+    bool done = false;
+    if (get_last)
+    {
+        // Cached result (set by the H-key path's main-thread store) — no render
+        // state touched, so this stays a main action.
+        done = eng.wait_main_action(
+            [&]()
             {
+                auto& sc = glob::glob_state().getr_editor_system().screenshot;
                 if (!sc.has_last())
                 {
                     local_err = "no user screenshot captured yet (press H to select)";
                     return;
                 }
                 sr = sc.get_last();
-            }
-            else
+            });
+    }
+    else
+    {
+        // capture() reads render-owned state (render passes, presented image,
+        // immediate_submit), so it runs ON THE RENDER THREAD — the I/O thread
+        // blocks on it, like every other render.* read RPC.
+        engine::screenshot_region region{};
+        if (params.isObject())
+        {
+            region.x = params.get("x", 0).asUInt();
+            region.y = params.get("y", 0).asUInt();
+            region.w = params.get("width", 0).asUInt();
+            region.h = params.get("height", 0).asUInt();
+        }
+        done = glob::glob_state().getr_render().renderer.wait_render_action(
+            [&]()
             {
-                engine::screenshot_region region{};
-                if (params.isObject())
-                {
-                    region.x = params.get("x", 0).asUInt();
-                    region.y = params.get("y", 0).asUInt();
-                    region.w = params.get("width", 0).asUInt();
-                    region.h = params.get("height", 0).asUInt();
-                }
-                sr = sc.capture(region);
+                sr = glob::glob_state().getr_editor_system().screenshot.capture(region);
                 if (sr.image_base64.empty())
                 {
                     local_err = "screenshot capture failed";
                 }
-            }
-        });
+            });
+    }
 
     if (!done)
     {

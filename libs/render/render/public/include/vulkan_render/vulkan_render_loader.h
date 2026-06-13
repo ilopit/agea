@@ -103,6 +103,7 @@ public:
     vulkan_render_data*
     create_object(render::types::render_object_handle h, const kryga::utils::id& id)
     {
+        KRG_check_render_thread_dbg();
         m_objects.grow_for(h);
         auto* slot = m_objects.at(h);
         *slot = vulkan_render_data(id, h.index());
@@ -115,6 +116,7 @@ public:
     vulkan_render_data*
     get_object(render::types::render_object_handle h)
     {
+        KRG_check_render_thread_dbg();
         return m_objects.valid(h) ? m_objects.at(h) : nullptr;
     }
 
@@ -122,6 +124,7 @@ public:
     vulkan_render_data*
     find_object_by_id(const kryga::utils::id& id)
     {
+        KRG_check_render_thread_dbg();
         auto& lane = m_objects.lane(0);
         for (uint32_t i = 0; i < uint32_t(lane.size()); ++i)
         {
@@ -140,6 +143,7 @@ public:
     void
     retire_object(render::types::render_object_handle h)
     {
+        KRG_check_render_thread_dbg();
         KRG_check(m_objects.valid(h), "retire of a stale or null render-object handle");
         m_objects.set_generation(h, 0);
     }
@@ -148,6 +152,7 @@ public:
     void
     for_each_object(Fn&& fn)
     {
+        KRG_check_render_thread_dbg();
         auto& lane = m_objects.lane(0);
         for (uint32_t i = 0; i < uint32_t(lane.size()); ++i)
         {
@@ -175,6 +180,7 @@ public:
     void
     clear_objects()
     {
+        KRG_check_render_thread_dbg();
         m_objects.clear();
     }
 
@@ -189,6 +195,7 @@ public:
     vulkan_directional_light_data*
     populate_dir_light(render::types::directional_light_handle h, const kryga::utils::id& id)
     {
+        KRG_check_render_thread_dbg();
         m_dir_lights.grow_for(h);
         auto* slot = m_dir_lights.at(h);
         *slot = vulkan_directional_light_data(id, h.index());
@@ -199,12 +206,14 @@ public:
     vulkan_directional_light_data*
     get_dir_light(render::types::directional_light_handle h)
     {
+        KRG_check_render_thread_dbg();
         return m_dir_lights.valid(h) ? m_dir_lights.at(h) : nullptr;
     }
     // Stale/empty handles tolerated (no assert): destroy can race a level reload.
     void
     retire_dir_light(render::types::directional_light_handle h)
     {
+        KRG_check_render_thread_dbg();
         if (!m_dir_lights.valid(h))
         {
             return;
@@ -215,6 +224,7 @@ public:
     vulkan_directional_light_data*
     dir_light_at(uint32_t slot)
     {
+        KRG_check_render_thread_dbg();
         auto& lane = m_dir_lights.lane(0);
         return (slot < lane.size() && lane.occupied(slot)) ? lane.at(slot) : nullptr;
     }
@@ -235,6 +245,7 @@ public:
     void
     for_each_dir_light(Fn&& fn)
     {
+        KRG_check_render_thread_dbg();
         auto& lane = m_dir_lights.lane(0);
         for (uint32_t i = 0; i < uint32_t(lane.size()); ++i)
         {
@@ -248,6 +259,7 @@ public:
     void
     clear_dir_lights()
     {
+        KRG_check_render_thread_dbg();
         m_dir_lights.clear();
     }
 
@@ -263,6 +275,7 @@ public:
                        const kryga::utils::id& id,
                        light_type type)
     {
+        KRG_check_render_thread_dbg();
         m_uni_lights.grow_for(h);
         auto* slot = m_uni_lights.at(h);
         *slot = vulkan_universal_light_data(id, h.index(), type);
@@ -273,12 +286,14 @@ public:
     vulkan_universal_light_data*
     get_uni_light(render::types::universal_light_handle h)
     {
+        KRG_check_render_thread_dbg();
         return m_uni_lights.valid(h) ? m_uni_lights.at(h) : nullptr;
     }
 
     void
     retire_uni_light(render::types::universal_light_handle h)
     {
+        KRG_check_render_thread_dbg();
         if (!m_uni_lights.valid(h))
         {
             return;
@@ -289,6 +304,7 @@ public:
     vulkan_universal_light_data*
     uni_light_at(uint32_t slot)
     {
+        KRG_check_render_thread_dbg();
         auto& lane = m_uni_lights.lane(0);
         return (slot < lane.size() && lane.occupied(slot)) ? lane.at(slot) : nullptr;
     }
@@ -309,6 +325,7 @@ public:
     void
     for_each_uni_light(Fn&& fn)
     {
+        KRG_check_render_thread_dbg();
         auto& lane = m_uni_lights.lane(0);
         for (uint32_t i = 0; i < uint32_t(lane.size()); ++i)
         {
@@ -322,6 +339,7 @@ public:
     void
     clear_uni_lights()
     {
+        KRG_check_render_thread_dbg();
         m_uni_lights.clear();
     }
 
@@ -472,12 +490,14 @@ public:
     mesh_data*
     system_mesh_at(render::types::mesh_handle h)
     {
+        KRG_check_render_thread_dbg();
         return m_meshes_storage.at(h);  // merged storage; the handle's lane routes
     }
 
     void
     reset_system_mesh(render::types::mesh_handle h)
     {
+        KRG_check_render_thread_dbg();
         m_meshes_storage.reset(h);
     }
 
@@ -533,6 +553,7 @@ public:
     const lightmap_binding*
     get_lightmap(const kryga::utils::id& level_id) const
     {
+        KRG_check_render_thread_dbg();
         auto itr = m_lightmaps.find(level_id);
         return itr != m_lightmaps.end() ? &itr->second : nullptr;
     }
@@ -604,12 +625,14 @@ public:
     material_data*
     system_material_at(render::types::material_handle h)
     {
+        KRG_check_render_thread_dbg();
         return m_materials_storage.at(h);  // merged storage; the handle's lane routes
     }
 
     void
     reset_system_material(render::types::material_handle h)
     {
+        KRG_check_render_thread_dbg();
         m_materials_storage.reset(h);
     }
 
@@ -617,6 +640,7 @@ public:
     render_pass*
     get_render_pass(const kryga::utils::id& id)
     {
+        KRG_check_render_thread_dbg();
         auto itr = m_render_passes.find(id);
         return itr != m_render_passes.end() ? itr->second.get() : nullptr;
     }
@@ -624,6 +648,7 @@ public:
     void
     add_render_pass(const kryga::utils::id& id, render_pass_sptr rp)
     {
+        KRG_check_render_thread_dbg();
         m_render_passes[id] = std::move(rp);
     }
 
