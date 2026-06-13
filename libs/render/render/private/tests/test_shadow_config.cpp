@@ -64,9 +64,10 @@ TEST_F(ShadowConfigTest, atlas_decrease_halves_local)
     set_shadows(2048, 512, 2048, 4);
     cfg.validate();
 
-    // csm_tile = 512, remaining = 2048 - 512 = 1536
-    // local 2048 > 1536, halved to 1024
-    EXPECT_EQ(cfg.shadows.local_tile_size, 1024u);
+    // csm_tile = 512. The 16 local tiles (max_local_lights=8 * 2 hemispheres)
+    // pack as a grid below the CSM row: at 256 cols=8, rows=2 -> 512+2*256=1024
+    // fits; at 512 rows=4 -> 512+2048 > 2048 overflows. So 256.
+    EXPECT_EQ(cfg.shadows.local_tile_size, 256u);
 }
 
 TEST_F(ShadowConfigTest, atlas_1024_4_cascades)
@@ -78,8 +79,9 @@ TEST_F(ShadowConfigTest, atlas_1024_4_cascades)
     // csm halves: 1024→512→256. 4*256=1024 OK
     EXPECT_EQ(cfg.shadows.csm_tile_size, 256u);
     EXPECT_EQ(cfg.shadows.cascade_count, 4u);
-    // remaining = 1024 - 256 = 768, local 512 <= 768 OK
-    EXPECT_EQ(cfg.shadows.local_tile_size, 512u);
+    // 16 local tiles below csm=256: at 128 cols=8, rows=2 -> 256+256=512 fits;
+    // at 256 rows=4 -> 256+1024 > 1024 overflows. So 128.
+    EXPECT_EQ(cfg.shadows.local_tile_size, 128u);
 }
 
 TEST_F(ShadowConfigTest, atlas_1024_2_cascades)
@@ -89,8 +91,9 @@ TEST_F(ShadowConfigTest, atlas_1024_2_cascades)
 
     // 2 * 1024 = 2048 > 1024, halve: 512. 2*512=1024 OK
     EXPECT_EQ(cfg.shadows.csm_tile_size, 512u);
-    // remaining = 1024 - 512 = 512, local 512 fits
-    EXPECT_EQ(cfg.shadows.local_tile_size, 512u);
+    // 16 local tiles below csm=512: at 128 cols=8, rows=2 -> 512+256=768 fits;
+    // at 256 rows=4 -> 512+1024 > 1024 overflows. So 128.
+    EXPECT_EQ(cfg.shadows.local_tile_size, 128u);
 }
 
 TEST_F(ShadowConfigTest, atlas_1024_1_cascade)
@@ -101,7 +104,8 @@ TEST_F(ShadowConfigTest, atlas_1024_1_cascade)
     // CSM must leave room for at least minimum local tile
     // 1024 - 512 = 512 >= 64 (min), so csm = 512
     EXPECT_EQ(cfg.shadows.csm_tile_size, 512u);
-    EXPECT_EQ(cfg.shadows.local_tile_size, 512u);
+    // 16 local tiles below csm=512 in a 1024 atlas -> max 128 (as 2-cascade case).
+    EXPECT_EQ(cfg.shadows.local_tile_size, 128u);
 }
 
 // --- Cascade count drives CSM tile ---
@@ -150,8 +154,9 @@ TEST_F(ShadowConfigTest, local_tile_shrinks_when_csm_large)
 
     // 2 * 2048 = 4096 OK
     EXPECT_EQ(cfg.shadows.csm_tile_size, 2048u);
-    // remaining = 4096 - 2048 = 2048, local 4096 > 2048 → 2048
-    EXPECT_EQ(cfg.shadows.local_tile_size, 2048u);
+    // 16 local tiles below csm=2048 in 4096: at 512 cols=8, rows=2 ->
+    // 2048+1024=3072 fits; at 1024 rows=4 -> 2048+4096 > 4096. So 512.
+    EXPECT_EQ(cfg.shadows.local_tile_size, 512u);
 }
 
 TEST_F(ShadowConfigTest, local_tile_cascading_halves)
@@ -161,8 +166,9 @@ TEST_F(ShadowConfigTest, local_tile_cascading_halves)
 
     // 2 * 1024 = 2048 OK
     EXPECT_EQ(cfg.shadows.csm_tile_size, 1024u);
-    // remaining = 2048 - 1024 = 1024, local 2048 > 1024 → 1024
-    EXPECT_EQ(cfg.shadows.local_tile_size, 1024u);
+    // 16 local tiles below csm=1024 in 2048: at 256 cols=8, rows=2 ->
+    // 1024+512=1536 fits; at 512 rows=4 -> 1024+2048 > 2048. So 256.
+    EXPECT_EQ(cfg.shadows.local_tile_size, 256u);
 }
 
 // --- Non-power-of-two inputs get rounded ---
@@ -289,16 +295,18 @@ TEST_F(ShadowConfigTest, max_csm_tile_query)
 TEST_F(ShadowConfigTest, max_local_tile_query)
 {
     set_shadows(4096, 1024, 512, 4);
-    // remaining = 4096 - 1024 = 3072 → pow2 = 2048
-    EXPECT_EQ(cfg.shadows.max_local_tile(), 2048u);
+    // 16 local tiles (max_local_lights=8 * 2) pack as a grid below the CSM row.
+    // Largest tile whose full grid fits: 512 (cols=8, rows=2 -> 1024+1024=2048
+    // <= 4096); 1024 -> rows=4 -> 1024+4096 > 4096.
+    EXPECT_EQ(cfg.shadows.max_local_tile(), 512u);
 
     cfg.shadows.csm_tile_size = 2048;
-    // remaining = 4096 - 2048 = 2048
-    EXPECT_EQ(cfg.shadows.max_local_tile(), 2048u);
+    // 512: 2048+1024=3072 fits; 1024: 2048+4096 > 4096. Still 512.
+    EXPECT_EQ(cfg.shadows.max_local_tile(), 512u);
 
     cfg.shadows.csm_tile_size = 256;
-    // remaining = 4096 - 256 = 3840 → pow2 = 2048
-    EXPECT_EQ(cfg.shadows.max_local_tile(), 2048u);
+    // 512: 256+1024=1280 fits; 1024: 256+4096 > 4096. Still 512.
+    EXPECT_EQ(cfg.shadows.max_local_tile(), 512u);
 }
 
 TEST_F(ShadowConfigTest, max_local_lights_clamped)
