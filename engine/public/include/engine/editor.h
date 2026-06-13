@@ -107,6 +107,9 @@ private:
     glm::mat4
     get_rotation_matrix();
 
+    void
+    apply_pick(const utils::id& clicked_id);
+
     glm::vec3 m_position;
     glm::vec3 m_velocity;
 

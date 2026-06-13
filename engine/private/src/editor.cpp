@@ -139,14 +139,33 @@ game_editor::ev_mouse_press()
     uint32_t w = glob::glob_state().getr_input_manager().get_mouse_state().x;
     uint32_t h = glob::glob_state().getr_input_manager().get_mouse_state().y;
 
-    auto* robj = glob::glob_state().getr_render().renderer.object_id_under_coordinate(w, h);
-    if (!robj)
+    // Picking reads render-thread-owned state (the per-frame draw queues + the
+    // picking BVH) and returns a render_data pointer — none of which may be
+    // touched from this (main) thread. Defer the pick to the render thread, then
+    // bounce the resolved id back to main for the model lookup + selection.
+    // Fire-and-forget (NOT a blocking wait): mouse-press runs on the main thread,
+    // which can't submit the frame that would drain a blocking render action.
+    // The ~2-frame latency to a click is imperceptible.
+    auto& renderer = glob::glob_state().getr_render().renderer;
+    renderer.post_render_action(
+        [this, w, h]()
+        {
+            auto* robj = glob::glob_state().getr_render().renderer.object_id_under_coordinate(w, h);
+            utils::id picked = robj ? robj->id() : utils::id();
+            glob::glob_state().getr_engine().queue_main_action([this, picked]()
+                                                               { apply_pick(picked); });
+        });
+}
+
+void
+game_editor::apply_pick(const utils::id& clicked_id)
+{
+    if (!clicked_id.valid())
     {
         set_selected({});
         return;
     }
 
-    auto clicked_id = robj->id();
     auto* lvl = glob::glob_state().getr_model().current_level;
     if (!lvl)
     {

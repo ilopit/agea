@@ -597,6 +597,7 @@ vulkan_render::resize(uint32_t width, uint32_t height)
 vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
+    KRG_check_render_thread();  // reads the render-thread draw queues + picking BVH
     // Rebuild BVH if objects changed
     // TODO, Move to model
     if (m_object_bvh_dirty)
