@@ -163,8 +163,7 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
         {
             if (auto go = i->as<root::game_object>())
             {
-                glob::glob_state().getr_model().output.dirty_render.emplace_back(
-                    go->get_root_component());
+                glob::glob_state().getr_model().queue_render_dirty(go->get_root_component());
 
                 // Loaded objects must tick too, otherwise level-authored
                 // components that rely on on_tick (cameras, audio emitters,
@@ -195,7 +194,7 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
 void
 level_manager::unload_level(level& l)
 {
-    glob::glob_state().getr_model().output.drop_pending();
+    glob::glob_state().getr_model().drop_pending();
     l.unregister_objects();
     l.unload();
 }

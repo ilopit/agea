@@ -130,7 +130,9 @@ T*
 render_translator::alloc_cmd(Args&&... args)
 {
     void* mem = alloc_cmd_raw(sizeof(T), alignof(T));
-    return new (mem) T(std::forward<Args>(args)...);
+    T* p = new (mem) T(std::forward<Args>(args)...);
+    p->cmd_kind = T::k_kind;
+    return p;
 }
 
 }  // namespace kryga

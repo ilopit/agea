@@ -6,6 +6,7 @@
 #include <core/package_manager.h>
 #include <core/id_generator.h>
 #include <core/model_output.h>
+#include <core/model_dirty.h>
 #include <core/reflection/reflection_type.h>
 
 #include <global_state/system.h>
@@ -42,8 +43,45 @@ public:
 
     level* current_level = nullptr;
 
-    
+    // Model->subsystem message boundary (audio today; POD intents). See model_output.h.
     model_output output;
+
+    // ---- Model-internal dirty bookkeeping (model_dirty.h) ----
+    // Enqueue through these; never reach m_dirty directly to mark. The frame-owner
+    // drain and level rollback/scrub read the lists through dirty().
+    void
+    queue_transform_dirty(root::game_object_component* c)
+    {
+        m_dirty.dirty_transforms.emplace_back(c);
+    }
+    void
+    queue_render_dirty(root::smart_object* o)
+    {
+        m_dirty.dirty_render.emplace_back(o);
+    }
+    void
+    queue_destroy_render(root::smart_object* o)
+    {
+        m_dirty.destroy_render.emplace_back(o);
+    }
+
+    // Frame-drain + level-internal reconcile (rollback/scrub) access. NOT for marking.
+    model_dirty&
+    dirty()
+    {
+        return m_dirty;
+    }
+
+    // Level teardown: clear both the dirty bookkeeping and the message boundary.
+    void
+    drop_pending()
+    {
+        m_dirty.clear();
+        output.drop_pending();
+    }
+
+private:
+    model_dirty m_dirty;
 };
 
 }  // namespace kryga::core

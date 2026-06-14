@@ -5,6 +5,7 @@
 #include <vulkan_render/types/vulkan_render_data.h>
 
 #include <render_translator/render_command.h>  // render_command_base / render_exec_context
+#include <render_translator/render_commands.h>  // apply_bones_cmd / bone_instance_update
 
 #include <global_state/global_state.h>
 
@@ -246,39 +247,6 @@ animation_system::clear_ik(const utils::id& instance_id)
     }
 }
 
-namespace
-{
-struct bone_instance_update
-{
-    render::vulkan_render_data* rd;
-    uint32_t offset;
-    uint32_t count;
-};
-
-// Produced on the main thread by animation_system::tick, executed on the render
-// thread: adopts this frame's bone matrices and re-stages the animated objects.
-// All render-state mutation (bone staging + stage_update_object) happens here, on
-// the render thread — animation only computes data and hands it off via input_queue.
-struct apply_bones_cmd : render_cmd::render_command_base
-{
-    std::vector<glm::mat4> matrices;
-    std::vector<bone_instance_update> updates;
-
-    void
-    execute(render_cmd::render_exec_context& ctx) override
-    {
-        ctx.vr.get_bone_matrices_staging() = std::move(matrices);
-        for (auto& u : updates)
-        {
-            u.rd->bone_offset = u.offset;
-            u.rd->bone_count = u.count;
-            u.rd->gpu_data.bone_offset = u.offset;
-            u.rd->gpu_data.bone_count = u.count;
-            ctx.vr.stage_update_object(u.rd);
-        }
-    }
-};
-}  // namespace
 
 void
 animation_system::tick(float dt)

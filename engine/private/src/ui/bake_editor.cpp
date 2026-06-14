@@ -407,7 +407,7 @@ bake_editor::submit_bake()
                     {
                         if (comp->get_layers().contribute_gi)
                         {
-                            glob::glob_state().getr_model().output.dirty_render.emplace_back(comp);
+                            glob::glob_state().getr_model().queue_render_dirty(comp);
                         }
                     }
                 }

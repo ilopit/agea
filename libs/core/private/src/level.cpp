@@ -98,7 +98,7 @@ level::spawn_object_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    glob::glob_state().getr_model().output.dirty_render.emplace_back(obj->get_root_component());
+    glob::glob_state().getr_model().queue_render_dirty(obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
 
@@ -146,7 +146,7 @@ level::spawn_object_as_clone_impl(const utils::id& proto_id,
         obj->set_scale(prms.scale.value());
     }
 
-    glob::glob_state().getr_model().output.dirty_render.emplace_back(obj->get_root_component());
+    glob::glob_state().getr_model().queue_render_dirty(obj->get_root_component());
 
     m_tickable_objects.emplace_back(obj);
 
@@ -168,8 +168,7 @@ level::spawn_object_impl(const utils::id& proto_id,
     auto obj = result.value()->as<root::game_object>();
     if (obj)
     {
-        glob::glob_state().getr_model().output.dirty_render.emplace_back(
-            obj->get_root_component());
+        glob::glob_state().getr_model().queue_render_dirty(obj->get_root_component());
 
         m_tickable_objects.emplace_back(obj);
     }
@@ -184,7 +183,7 @@ level::destroy_game_object(root::game_object& go)
 
     for (auto* comp : go.get_renderable_components())
     {
-        glob::glob_state().getr_model().output.destroy_render.emplace_back(comp);
+        glob::glob_state().getr_model().queue_destroy_render(comp);
     }
 
     auto it = m_tickable_objects.find(&go);
@@ -220,7 +219,7 @@ level::destroy_game_object(root::game_object& go)
     // shared_ptrs alive for the queued destroy_render raw pointers until the next
     // render drain clears it.
     bool pending_destroy = m_snapshot_all_ids.contains(go.get_id());
-    auto& deferred = glob::glob_state().getr_model().output.deferred_release;
+    auto& deferred = glob::glob_state().getr_model().dirty().deferred_release;
     for (size_t i = m_objects.size(); i-- > 0;)
     {
         if (to_drop.contains(m_objects[i].get()))
@@ -266,7 +265,7 @@ level::snapshot()
 void
 level::rollback()
 {
-    auto& q = glob::glob_state().getr_model().output;
+    auto& q = glob::glob_state().getr_model().dirty();
     auto& deferred = q.deferred_release;
 
     // Revive survivors parked by a mid-play destroy: re-register the intact graph

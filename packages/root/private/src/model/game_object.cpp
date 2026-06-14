@@ -114,7 +114,7 @@ game_object::spawn_component(component* parent,
 
     if (auto* goc = comp->as<game_object_component>())
     {
-        glob::glob_state().getr_model().output.dirty_render.emplace_back(goc);
+        glob::glob_state().getr_model().queue_render_dirty(goc);
     }
 
     return comp;

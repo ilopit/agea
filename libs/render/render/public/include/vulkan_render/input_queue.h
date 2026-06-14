@@ -40,7 +40,9 @@ public:
     T*
     alloc_cmd(Args&&... args)
     {
-        return m_arenas[m_build_frame_slot].alloc<T>(std::forward<Args>(args)...);
+        T* p = m_arenas[m_build_frame_slot].alloc<T>(std::forward<Args>(args)...);
+        p->cmd_kind = T::k_kind;
+        return p;
     }
 
     void*

@@ -1,5 +1,4 @@
 #include "render_translator/render_translator.h"
-#include "render_translator/render_commands_common.h"
 
 #include <global_state/global_state.h>
 #include <vulkan_render/render_system.h>
@@ -182,43 +181,6 @@ render_translator::render_cmd_transform(root::game_object_component& source)
     }
 
     return result_code::ok;
-}
-
-// ============================================================================
-// Common commands
-// ============================================================================
-
-void
-update_transform_cmd::execute(render_cmd::render_exec_context& ctx)
-{
-    auto* object_data = ctx.vr.get_cache().get_object(obj_handle);
-    if (!object_data)
-    {
-        return;
-    }
-
-    object_data->gpu_data.model = transform;
-    object_data->gpu_data.normal = normal_matrix;
-    object_data->gpu_data.obj_pos = position;
-    object_data->gpu_data.bounding_sphere_center = bounding_sphere_center;
-    object_data->gpu_data.bounding_radius = bounding_radius;
-
-    ctx.vr.stage_update_object(object_data);
-}
-
-void
-set_outline_cmd::execute(render_cmd::render_exec_context& ctx)
-{
-    auto* object_data = ctx.vr.get_cache().get_object(obj_handle);
-    if (!object_data)
-    {
-        // Object already destroyed (e.g. selection cleared during level unload),
-        // or the selected component has no render object (null handle).
-        return;
-    }
-
-    object_data->outlined = outlined;
-    ctx.vr.stage_update_object_queue(object_data);
 }
 
 }  // namespace kryga

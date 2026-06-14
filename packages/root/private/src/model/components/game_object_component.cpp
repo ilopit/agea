@@ -109,7 +109,7 @@ game_object_component::mark_transform_dirty()
 {
     if (!has_dirty_transform())
     {
-        glob::glob_state().getr_model().output.dirty_transforms.emplace_back(this);
+        glob::glob_state().getr_model().queue_transform_dirty(this);
         set_dirty_transform(true);
     }
 }
@@ -119,7 +119,7 @@ game_object_component::mark_render_dirty()
 {
     if (get_state() != smart_object_state::constructed)
     {
-        glob::glob_state().getr_model().output.dirty_render.emplace_back(this);
+        glob::glob_state().getr_model().queue_render_dirty(this);
         set_state(smart_object_state::constructed);
     }
 }

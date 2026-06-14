@@ -11,7 +11,7 @@
 #include <vulkan_render/render_system.h>
 
 #include <render_translator/render_translator.h>
-#include <render_translator/render_commands_common.h>
+#include <render_translator/render_commands.h>
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -189,7 +189,7 @@ game_editor::ev_reload()
 
     auto& level = *glob::glob_state().getr_model().current_level;
 
-    glob::glob_state().getr_model().output.drop_pending();
+    glob::glob_state().getr_model().drop_pending();
 
     glob::glob_state().getr_render().renderer.clear_upload_queue();
 

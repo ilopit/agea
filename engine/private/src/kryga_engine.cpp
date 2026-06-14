@@ -29,6 +29,7 @@
 
 #include <core/caches/caches_map.h>
 #include <core/model_output.h>
+#include <render_translator/render_commands.h>
 #include <core/id_generator.h>
 #include <core/level.h>
 #include <core/level_manager.h>
@@ -62,7 +63,6 @@
 #include <packages/base/package.base.h>
 
 #include <render_translator/render_translator.h>
-#include <render_translator/render_commands_common.h>
 #include <render_translator/render_command.h>
 #include <render_translator/render_convert.h>
 
@@ -122,77 +122,8 @@ namespace kryga
 void
 install_crash_handler();
 
-namespace
-{
-// Produced on the main thread by load_level, executed on the render thread:
-// creates/updates the level's lightmap atlas (allocating its bindless index) and
-// registers the per-object UV bindings in the loader's per-level registry. The
-// model never learns the index — object build commands resolve it from the
-// registry at their own execute time. This replaces the old park-the-render-
-// thread upload: the texture creation now rides the normal command pipeline like
-// every other render-state mutation, in FIFO order ahead of the level's object
-// builds (same frame slot), so no stall and no main-thread render touch.
-struct create_lightmap_cmd : render_cmd::render_command_base
-{
-    utils::id level_id;
-    utils::id tex_id;
-    uint32_t width = 0;
-    uint32_t height = 0;
-    std::vector<uint8_t> pixels;
-    std::unordered_map<utils::id, render::lightmap_uv> entries;
-
-    void
-    execute(render_cmd::render_exec_context& ctx) override
-    {
-        utils::buffer buf(pixels.size());
-        std::memcpy(buf.data(), pixels.data(), pixels.size());
-
-        // The binding owns the atlas texture. Re-bake while loaded: update the
-        // existing texture in place (same bindless slot, objects keep their
-        // index). Fresh load: create it. Texture lifecycle goes through the
-        // renderer (it owns the bindless slot identity).
-        auto& renderer = glob::glob_state().getr_render().renderer;
-        const auto* binding = ctx.loader.get_lightmap(level_id);
-        auto* tex = binding ? binding->texture : nullptr;
-        if (tex)
-        {
-            renderer.update_texture(tex,
-                                    buf,
-                                    width,
-                                    height,
-                                    VK_FORMAT_R16G16B16A16_SFLOAT,
-                                    render::texture_format::rgba16f);
-        }
-        else
-        {
-            tex = renderer.create_texture(tex_id,
-                                          buf,
-                                          width,
-                                          height,
-                                          VK_FORMAT_R16G16B16A16_SFLOAT,
-                                          render::texture_format::rgba16f);
-        }
-        if (tex)
-        {
-            ctx.loader.set_lightmap(level_id, tex, std::move(entries));
-        }
-    }
-};
-
-// Retire a level's lightmap binding when it unloads (render thread). The
-// binding owns the atlas texture, so remove_lightmap also frees its bindless
-// slot; a reload re-uploads the atlas through create_lightmap_cmd.
-struct destroy_lightmap_cmd : render_cmd::render_command_base
-{
-    utils::id level_id;
-
-    void
-    execute(render_cmd::render_exec_context& ctx) override
-    {
-        ctx.loader.remove_lightmap(level_id);
-    }
-};
-}  // namespace
+// create_lightmap_cmd / destroy_lightmap_cmd now live in
+// render_translator/render_commands.h (relocated for central tagged dispatch).
 
 // ============================================================================
 // Startup Options
@@ -1047,7 +978,7 @@ vulkan_engine::unload_render_resources(core::package& l)
 void
 vulkan_engine::consume_updated_transforms()
 {
-    auto& items = glob::glob_state().getr_model().output.dirty_transforms;
+    auto& items = glob::glob_state().getr_model().dirty().dirty_transforms;
 
     if (items.empty())
     {
@@ -1295,7 +1226,7 @@ vulkan_engine::init_default_scripting()
 void
 vulkan_engine::consume_updated_render()
 {
-    auto& mq = glob::glob_state().getr_model().output;
+    auto& mq = glob::glob_state().getr_model().dirty();
     auto& rb = glob::glob_state().getr_render_translator();
 
     for (auto& i : mq.destroy_render)

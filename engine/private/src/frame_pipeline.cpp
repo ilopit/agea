@@ -122,8 +122,9 @@ frame_pipeline::drain_frame(uint32_t frame_slot)
         .drain(
             [&exec_ctx](render_cmd::render_command_base*&& cmd)
             {
-                cmd->execute(exec_ctx);
-                cmd->~render_command_base();
+                // Central tagged dispatch: runs the command for its kind, then
+                // destructs it (the arena only rewinds, never calls dtors).
+                render_cmd::dispatch(cmd, exec_ctx);
             });
 }
 
