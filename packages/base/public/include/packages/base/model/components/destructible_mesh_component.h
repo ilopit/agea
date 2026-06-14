@@ -85,17 +85,6 @@ public:
     apply_damage(float amount);
     // clang-format on
 
-    float
-    get_base_bounding_radius() const
-    {
-        return m_base_bounding_radius;
-    }
-    void
-    set_base_bounding_radius(float r)
-    {
-        m_base_bounding_radius = r;
-    }
-
     const physics::destructible_handle&
     get_physics_handle() const
     {
@@ -203,7 +192,6 @@ protected:
     destructible_mesh_asset* m_asset = nullptr;
     // clang-format on
 
-    float m_base_bounding_radius = 0.0f;
     bool m_is_broken = false;
     bool m_chunks_rendering = false;
     bool m_disposed = false;

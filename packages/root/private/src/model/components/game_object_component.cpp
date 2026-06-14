@@ -95,6 +95,15 @@ game_object_component::update_matrix()
     m_normal_matrix = glm::transpose(glm::inverse(m_transform_matrix));
 }
 
+game_object_component::world_bounds
+game_object_component::get_world_bounds() const
+{
+    const glm::vec3 s = m_scale.as_glm();
+    const float max_s = glm::max(glm::max(glm::abs(s.x), glm::abs(s.y)), glm::abs(s.z));
+    const glm::vec4 c = m_transform_matrix * glm::vec4(m_base_centroid, 1.0f);
+    return {glm::vec3(c), m_base_bounding_radius * max_s};
+}
+
 void
 game_object_component::mark_transform_dirty()
 {

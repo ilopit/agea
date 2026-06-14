@@ -481,17 +481,12 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     moc.update_matrix();
 
-    float base_radius = moc.get_mesh()->get_bounding_radius();
-    moc.set_base_bounding_radius(base_radius);
+    moc.set_base_bounding_radius(moc.get_mesh()->get_bounding_radius());
+    moc.set_base_centroid(moc.get_mesh()->get_local_centroid().as_glm());
 
-    auto scale = moc.get_scale();
-    float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-    float scaled_radius = base_radius * max_scale;
-
-    const auto& local_centroid = moc.get_mesh()->get_local_centroid();
-    glm::vec4 world_center4 = moc.get_transform_matrix() *
-                              glm::vec4(local_centroid.x, local_centroid.y, local_centroid.z, 1.0f);
-    glm::vec3 world_sphere_center{world_center4.x, world_center4.y, world_center4.z};
+    auto bounds = moc.get_world_bounds();
+    float scaled_radius = bounds.radius;
+    glm::vec3 world_sphere_center = bounds.center;
 
     auto new_rqid = render_translate::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
 
@@ -594,13 +589,9 @@ mesh_component__cmd_transform(reflection::type_context__render_cmd_build& ctx)
     cmd->normal_matrix = m.get_normal_matrix();
     cmd->position = glm::vec3(m.get_world_position());
 
-    auto scale = m.get_scale();
-    float max_s = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-    cmd->bounding_radius = m.get_base_bounding_radius() * max_s;
-
-    const auto& lc = m.get_mesh()->get_local_centroid();
-    glm::vec4 wc = m.get_transform_matrix() * glm::vec4(lc.x, lc.y, lc.z, 1.0f);
-    cmd->bounding_sphere_center = glm::vec3(wc);
+    auto bounds = m.get_world_bounds();
+    cmd->bounding_radius = bounds.radius;
+    cmd->bounding_sphere_center = bounds.center;
 
     ctx.rb->enqueue_cmd(cmd);
 
@@ -1088,14 +1079,9 @@ animated_mesh_component__cmd_builder(reflection::type_context__render_cmd_build&
 
     amc.update_matrix();
 
-    auto scale = amc.get_scale();
-    float max_scale = glm::max(glm::max(glm::abs(scale.x), glm::abs(scale.y)), glm::abs(scale.z));
-    float scaled_radius = amc.get_base_bounding_radius() * max_scale;
-
-    glm::vec3 amc_local_centroid = amc.get_base_centroid();
-    glm::vec4 amc_world_center4 = amc.get_transform_matrix() * glm::vec4(amc_local_centroid, 1.0f);
-    glm::vec3 amc_world_sphere_center{
-        amc_world_center4.x, amc_world_center4.y, amc_world_center4.z};
+    auto amc_bounds = amc.get_world_bounds();
+    float scaled_radius = amc_bounds.radius;
+    glm::vec3 amc_world_sphere_center = amc_bounds.center;
 
     auto* skel = anim_sys.get_skeleton(skeleton_id);
     uint32_t bone_count = skel ? static_cast<uint32_t>(skel->num_joints()) : 0;

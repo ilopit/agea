@@ -42,10 +42,7 @@ public:
 
     level* current_level = nullptr;
 
-    // The model's per-frame output to the render side (main thread only).
-    // Formerly a standalone global service box (core::queues); folded in here
-    // because it is model state and belongs to the model domain. The render
-    // command queue is a separate render-side subsystem (render::input_queue).
+    
     model_output output;
 };
 

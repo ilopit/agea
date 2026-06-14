@@ -41,17 +41,6 @@ public:
     bool
     construct(construct_params& c);
 
-    float
-    get_base_bounding_radius() const
-    {
-        return m_base_bounding_radius;
-    }
-    void
-    set_base_bounding_radius(float r)
-    {
-        m_base_bounding_radius = r;
-    }
-
 protected:
     // clang-format off
     KRG_ar_property(
@@ -81,8 +70,6 @@ protected:
     );
     ::kryga::root::mesh* m_mesh = nullptr;
     // clang-format on
-
-    float m_base_bounding_radius = 0.0f;
 };
 
 }  // namespace base

@@ -75,6 +75,42 @@ public:
         return m_world_position;
     };
 
+    // World-space bounding sphere of a renderable component.
+    struct world_bounds
+    {
+        glm::vec3 center{0.0f};
+        float radius = 0.0f;
+    };
+
+    // Transform the stored local-space sphere (base radius + base centroid) by the
+    // current world matrix and local scale. Centralizes the per-component math that
+    // was duplicated in each render-command builder. Cheap; recomputed on every
+    // call. Model-thread only. base_centroid defaults to (0,0,0), so a component
+    // that never sets one gets center == world position.
+    world_bounds
+    get_world_bounds() const;
+
+    float
+    get_base_bounding_radius() const
+    {
+        return m_base_bounding_radius;
+    }
+    void
+    set_base_bounding_radius(float r)
+    {
+        m_base_bounding_radius = r;
+    }
+    const glm::vec3&
+    get_base_centroid() const
+    {
+        return m_base_centroid;
+    }
+    void
+    set_base_centroid(const glm::vec3& c)
+    {
+        m_base_centroid = c;
+    }
+
     void
     update_matrix();
 
@@ -225,6 +261,12 @@ protected:
     glm::mat4 m_transform_matrix;
     glm::mat4 m_normal_matrix;
     glm::vec4 m_world_position;
+
+    // Local-space bounding sphere, seeded once per build from the component's mesh
+    // source (mesh asset, gltf bounds, …). Hoisted here from the individual mesh
+    // components so get_world_bounds() can live on the shared base.
+    float m_base_bounding_radius = 0.0f;
+    glm::vec3 m_base_centroid{0.0f};
 
     std::vector<game_object_component*> m_render_children;
 
