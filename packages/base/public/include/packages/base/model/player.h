@@ -103,7 +103,21 @@ private:
     orbit_mode m_mode = orbit_mode::mouse_orbit;
 
     glm::vec3 m_orbit_center{0.f};
+
+protected:
+    // clang-format off
+    KRG_ar_property(
+        category     = "Camera",
+        access       = all,
+        serializable = true,
+        default      = true,
+        mcp_hint     = "orbit camera distance from the pivot - set it to move the "
+                       "camera and listener nearer or farther from the scene"
+    );
     float m_orbit_radius = 10.f;
+    // clang-format on
+
+private:
     float m_min_radius = 2.f;
     float m_max_radius = 100.f;
     float m_zoom_speed = 2.f;

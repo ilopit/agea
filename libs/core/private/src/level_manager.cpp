@@ -165,6 +165,12 @@ level_manager::load_level_path(level& l, const vfs::rid& vfs_root)
             {
                 glob::glob_state().getr_model().output.dirty_render.emplace_back(
                     go->get_root_component());
+
+                // Loaded objects must tick too, otherwise level-authored
+                // components that rely on on_tick (cameras, audio emitters,
+                // scripts) never run — only spawned objects were registered
+                // before. tick() is gated by play mode in the editor.
+                l.m_tickable_objects.emplace_back(go);
             }
         }
     }

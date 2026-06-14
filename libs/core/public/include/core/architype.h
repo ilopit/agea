@@ -24,13 +24,14 @@ namespace core
     X(shader_effect, 5,    "shader_effect")    \
     X(material,      6,    "material")         \
     X(sampler,       7,    "sampler")          \
+    X(audio_clip,    8,    "audio_clip")       \
     X(unknown,       0xff, "unknown")
 // clang-format on
 
 KRG_declare_enum_simple(architype, uint8_t, KRG_ARCHITYPE_LIST)
 
 inline constexpr architype architype_first = architype::smart_object;
-inline constexpr architype architype_last = architype::sampler;
+inline constexpr architype architype_last = architype::audio_clip;
 
 }  // namespace core
 }  // namespace kryga

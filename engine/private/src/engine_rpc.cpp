@@ -20,6 +20,10 @@
 #include <core/reflection/reflection_type.h>
 #include <core/architype.h>
 
+#include <assets_importer/audio_importer.h>
+
+#include <utils/path.h>
+
 #include <vulkan_render/types/vulkan_render_data.h>
 #include <vulkan_render/types/vulkan_light_data.h>
 #include <vulkan_render/types/vulkan_material_data.h>
@@ -2375,6 +2379,44 @@ rpc_material_discard(const Json::Value& params, Json::Value& result, std::string
 }
 
 void
+rpc_audio_import(const Json::Value& params, Json::Value& result, std::string& err)
+{
+    auto& eng = glob::glob_state().getr_engine();
+    if (!params.isObject() || !params.isMember("input") || !params.isMember("id") ||
+        !params.isMember("package"))
+    {
+        err = "missing 'input', 'id' or 'package' parameter";
+        return;
+    }
+    std::string input = params["input"].asString();
+    std::string id = params["id"].asString();
+    std::string package = params["package"].asString();
+
+    bool ok = false;
+    // Run on the main thread: the importer allocates a reflected object and uses
+    // the live reflection/cache, so keep it off the RPC thread.
+    bool done = eng.wait_main_action(
+        [&]()
+        {
+            ok = ::kryga::assets_importer::convert_audio_to_aaud(
+                ::kryga::utils::path(input), ::kryga::utils::path(package), AID(id));
+        });
+    if (!done)
+    {
+        err = "editor.audio.import timed out";
+        return;
+    }
+    if (!ok)
+    {
+        err = "audio import failed (see engine log)";
+        return;
+    }
+    result = Json::Value(Json::objectValue);
+    result["ok"] = true;
+    result["id"] = id;
+}
+
+void
 rpc_actions_get_status(const Json::Value& /*params*/, Json::Value& result, std::string& err)
 {
     auto& eng = glob::glob_state().getr_engine();
@@ -2809,6 +2851,7 @@ register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server)
     server.on_request("editor.material.save", rpc_material_save);
     server.on_request("editor.material.discard", rpc_material_discard);
     server.on_request("editor.material.preview", rpc_material_preview);
+    server.on_request("editor.audio.import", rpc_audio_import);
 
     // Render state & config
     server.on_request("render.config.get", rpc_render_config_get);

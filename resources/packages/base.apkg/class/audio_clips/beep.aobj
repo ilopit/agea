@@ -1,0 +1,7 @@
+proto_id: audio_clip
+id: beep
+data: class/audio_clips/beep.aaud
+sample_rate: 44100
+channels: 1
+duration_seconds: 2
+format: 1

@@ -20,6 +20,7 @@ class texture;
 class mesh;
 class material;
 class sampler;
+class audio_clip;
 class smart_object;
 class shader_effect;
 class light_component;
@@ -49,6 +50,7 @@ struct textures_cache;
 struct meshes_cache;
 struct materials_cache;
 struct samplers_cache;
+struct audio_clips_cache;
 struct shader_effects_cache;
 
 }  // namespace core

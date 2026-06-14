@@ -113,6 +113,7 @@ add_subdirectory(engine)
 # desktop editor side).
 if(KRG_BUILD_EDITOR_TARGET)
     add_subdirectory(tools/cook)
+    add_subdirectory(tools/audio_import)
 
     # `cook_resources` custom target: invokes kryga_cook.exe over resources/
     # into build/cooked/. Part of ALL so a normal build produces cooked

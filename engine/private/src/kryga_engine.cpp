@@ -66,6 +66,10 @@
 #include <render_translator/render_command.h>
 #include <render_translator/render_convert.h>
 
+#include <audio_bridge/audio_bridge.h>
+
+#include <core/audio_message.h>
+
 #include <vfs/vfs.h>
 
 #include <vulkan_render/kryga_render.h>
@@ -81,6 +85,8 @@
 #include <vfs/io.h>
 
 #include <animation/animation_system.h>
+
+#include <audio/audio_system.h>
 
 #include <physics/physics_system.h>
 
@@ -320,9 +326,11 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
     state_mutator__render_translator::set(gs);
+    state_mutator__audio_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
     state_mutator__game_system_manager::set(gs);
+    state_mutator__audio_system::set(gs);
 #if KRG_EDITOR
     state_mutator__editor_system::set(gs);
 #endif
@@ -898,6 +906,16 @@ vulkan_engine::tick(float dt)
         anim->tick(dt);
     }
 
+    // Drain model-emitted audio messages through the bridge, then let the system
+    // reap finished voices. Runs every frame (outside the play gate) so stop
+    // messages from a play->edit transition are applied even in edit mode.
+    consume_updated_audio();
+
+    if (auto* audio = glob::glob_state().get_audio_system())
+    {
+        audio->tick(dt);
+    }
+
 #if KRG_EDITOR
     if (!playing)
     {
@@ -1062,6 +1080,13 @@ vulkan_engine::update_cameras()
         m_camera_data.inv_projection = cam->get_inv_projection();
         m_camera_data.view = cam->get_view();
         m_camera_data.position = cam->get_owner()->get_position();
+
+        if (auto* as = glob::glob_state().get_audio_system())
+        {
+            as->set_listener(cam->get_owner()->get_position(),
+                             cam->get_forward_vector().as_glm(),
+                             cam->get_up_vector().as_glm());
+        }
     }
     else
     {
@@ -1103,6 +1128,13 @@ vulkan_engine::update_cameras()
     m_camera_data.inv_projection = cam->get_inv_projection();
     m_camera_data.view = cam->get_view();
     m_camera_data.position = cam->get_owner()->get_position();
+
+    if (auto* as = glob::glob_state().get_audio_system())
+    {
+        as->set_listener(cam->get_owner()->get_position(),
+                         cam->get_forward_vector().as_glm(),
+                         cam->get_up_vector().as_glm());
+    }
 #endif
 }
 
@@ -1283,6 +1315,22 @@ vulkan_engine::consume_updated_render()
         rb.render_cmd_build(*i, true);
     }
     mq.dirty_render.clear();
+}
+
+void
+vulkan_engine::consume_updated_audio()
+{
+    auto& mq = glob::glob_state().getr_model().output;
+    auto& ab = glob::glob_state().getr_audio_bridge();
+
+    for (auto& msg : mq.audio_messages)
+    {
+        ab.process(msg);
+    }
+    mq.audio_messages.clear();
+
+    // Stop voices whose emitter is gone (deletion / level unload / rollback).
+    ab.reap_orphans();
 }
 
 }  // namespace kryga

@@ -83,6 +83,7 @@ package::init()
                                                         "class/shader_effects",
                                                         "class/materials",
                                                         "class/meshes",
+                                                        "class/audio_clips",
                                                         "class/components"}});
 
     // Fallback: walk the filesystem if no manifest. Desktop-only — Android
@@ -105,6 +106,7 @@ package::init()
                                                   "class/shader_effects",
                                                   "class/materials",
                                                   "class/meshes",
+                                                  "class/audio_clips",
                                                   "class/components"}});
         }
     }

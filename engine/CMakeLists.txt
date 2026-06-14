@@ -74,11 +74,13 @@ target_link_libraries(engine PUBLIC
     kryga::animation
     kryga::asset_importer
     kryga::render_translator
+    kryga::audio_bridge
     kryga::native
     kryga::vfs
     kryga::kryga_port
     kryga::project_paths
     kryga::physics
+    kryga::audio
     kryga::game
 
     ${KRG_ACTIVE_MODULES_TARGETS}
@@ -120,12 +122,14 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::animation
         kryga::asset_importer
         kryga::render_translator
+        kryga::audio_bridge
         kryga::native
         kryga::vfs
         kryga::kryga_port
         kryga::asset_converter
         kryga::project_paths
         kryga::physics
+        kryga::audio
         kryga::game
         kryga::rpc
 

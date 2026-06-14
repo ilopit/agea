@@ -238,6 +238,14 @@ FetchContent_Declare(
   GIT_TAG        16ace528acd2cf1f16a7c0dde99c42c486488dbe
 )
 
+# miniaudio: single-header audio playback/decoding (WAV/MP3/FLAC built in)
+FetchContent_Declare(
+  miniaudio
+  GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+  GIT_TAG        0.11.21
+  GIT_SHALLOW    TRUE
+)
+
 # ==============================================================================
 # Category C: Patched deps (download only)
 # ==============================================================================
@@ -284,3 +292,4 @@ FetchContent_Populate(cgltf)
 FetchContent_Populate(imguizmo)
 FetchContent_Populate(imguifiledialog)
 FetchContent_Populate(xatlas)
+FetchContent_Populate(miniaudio)

@@ -29,6 +29,7 @@ public:
     game_objects_cache   game_objects;
     materials_cache      materials;
     samplers_cache       samplers;
+    audio_clips_cache    audio_clips;
     meshes_cache         meshes;
     textures_cache       textures;
     shader_effects_cache shader_effects;

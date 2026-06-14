@@ -92,11 +92,11 @@ encode_owner(root::smart_object& obj)
 
             if (field["value"].isString() && field["value"].asString().empty() && p->rtype)
             {
-                // Resolve material/mesh references straight off the model object (the
+                // Resolve asset references straight off the model object (the
                 // render cache only mirrors this same pointer). smart_object is the
                 // offset-0 base of every asset, so the member reads back as one.
                 auto tn = p->rtype->type_name.str();
-                if (tn == "material" || tn == "mesh")
+                if (tn == "material" || tn == "mesh" || tn == "audio_clip")
                 {
                     auto blob = p->get_blob(obj);
                     if (auto* asset = *reinterpret_cast<root::smart_object* const*>(blob))

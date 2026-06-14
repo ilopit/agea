@@ -111,6 +111,8 @@ architype_subdir(core::architype a)
         return "class/shader_effects";
     case core::architype::sampler:
         return "class/samplers";
+    case core::architype::audio_clip:
+        return "class/audio_clips";
     case core::architype::component:
         return "class/components";
     default:

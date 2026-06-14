@@ -16,6 +16,7 @@ cache_set::cache_set()
     map.add_cache(&game_objects);
     map.add_cache(&materials);
     map.add_cache(&samplers);
+    map.add_cache(&audio_clips);
     map.add_cache(&meshes);
     map.add_cache(&textures);
     map.add_cache(&shader_effects);
@@ -31,6 +32,7 @@ cache_set::clear()
     game_objects.clear();
     materials.clear();
     samplers.clear();
+    audio_clips.clear();
     meshes.clear();
     textures.clear();
     shader_effects.clear();

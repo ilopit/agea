@@ -1,6 +1,6 @@
 proto_id: mesh_object
 id: hero_cube
-layout: [-1, 0]
+layout: [-1, 0, 0]
 components:
   - id: hero_cube_root
     proto_id: game_object_component
@@ -16,3 +16,10 @@ components:
       x: 1
       y: 1
       z: 1
+  - id: hero_cube_beeper
+    proto_id: audio_emitter_component
+    clip: beep
+    volume: 1
+    loop: true
+    autoplay: true
+    spatial: false

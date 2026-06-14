@@ -123,6 +123,10 @@ externalize(cgltf_unofficial "cgltf")
 add_subdirectory(unofficial/xatlas)
 externalize(xatlas_unofficial "xatlas")
 
+#miniaudio
+add_subdirectory(unofficial/miniaudio)
+externalize(miniaudio_unofficial "miniaudio")
+
 #glm
 add_subdirectory(unofficial/glm)
 externalize(glm_unofficial "glm")

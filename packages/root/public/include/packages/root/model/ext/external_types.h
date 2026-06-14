@@ -176,6 +176,7 @@ KRG_ar_external_define(::kryga::core::object_layer_flags);
 namespace kryga { namespace root {
 enum class sampler_filter : uint8_t;
 enum class sampler_address : uint8_t;
+enum class audio_format : uint32_t;
 }}
 
 KRG_ar_external_type(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::std::uint8_t>,
@@ -198,5 +199,16 @@ KRG_ar_external_type(copy_handler        = ::kryga::reflection::utils::cpp_defau
                       mcp_schema          = "integer",
                       mcp_hint            = "0=repeat 1=mirrored_repeat 2=clamp_to_edge 3=clamp_to_border");
 KRG_ar_external_define(::kryga::root::sampler_address);
+
+
+KRG_ar_external_type(copy_handler        = ::kryga::reflection::utils::cpp_default__copy<::std::uint32_t>,
+                      load_handler = ::kryga::reflection::utils::cpp_default__load<::std::uint32_t>,
+                      save_handler   = ::kryga::reflection::utils::cpp_default__save<::std::uint32_t>,
+                      compare_handler     = ::kryga::reflection::utils::cpp_default__compare<::std::uint32_t>,
+                      json_save_handler   = ::kryga::root::uint32__json_save,
+                      json_load_handler   = ::kryga::root::uint32__json_load,
+                      mcp_schema          = "integer",
+                      mcp_hint            = "0=unknown 1=wav 2=mp3 3=flac 4=ogg_vorbis");
+KRG_ar_external_define(::kryga::root::audio_format);
 
 //clang-format on

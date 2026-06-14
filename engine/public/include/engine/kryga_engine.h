@@ -164,6 +164,8 @@ private:
     consume_updated_render();
     void
     consume_updated_transforms();
+    void
+    consume_updated_audio();
 
     void
     rebuild_physics_static_world();

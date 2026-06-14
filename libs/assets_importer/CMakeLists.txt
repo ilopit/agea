@@ -11,6 +11,7 @@ target_link_libraries(asset_importer PUBLIC
     kryga::vulkan_render
     kryga::core
     kryga::xatlas_unofficial
+    kryga::miniaudio
 
     tinyobjloader
 )

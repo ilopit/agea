@@ -138,6 +138,16 @@ public:
     {
     }
 
+    virtual void
+    begin_play()
+    {
+    }
+
+    virtual void
+    end_play()
+    {
+    }
+
     virtual component&
     add_child(component* c)
     {

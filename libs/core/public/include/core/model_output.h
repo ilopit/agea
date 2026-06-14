@@ -1,8 +1,11 @@
 #pragma once
 
 #include <core/caches/line_cache.h>
+#include <core/audio_message.h>
 
 #include <packages/root/model/components/game_object_component.h>
+
+#include <vector>
 
 namespace kryga
 {
@@ -23,6 +26,11 @@ struct alignas(k_cache_line) model_output
     line_cache<root::smart_object*> destroy_render;
     std::vector<std::shared_ptr<root::smart_object>> deferred_release;
 
+    // Audio intents emitted by the model (emitters), drained each frame by
+    // audio_bridge. A plain vector, not a line_cache: line_cache only holds
+    // smart_object pointers, and these are PODs (see core/audio_message.h).
+    std::vector<audio_message> audio_messages;
+
     void
     drop_pending()
     {
@@ -30,6 +38,7 @@ struct alignas(k_cache_line) model_output
         dirty_render.clear();
         destroy_render.clear();
         deferred_release.clear();
+        audio_messages.clear();
     }
 };
 

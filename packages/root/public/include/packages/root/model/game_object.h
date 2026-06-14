@@ -86,14 +86,26 @@ public:
     component*
     spawn_component_with_proto(component* parent, const utils::id& proto_id);
 
+    // Play-mode lifecycle. The base propagates to every component (the audio
+    // emitter overrides component::begin_play / end_play to start / stop its
+    // voice). A subclass that overrides MUST call base_class::begin_play() to
+    // keep that propagation — the Super:: contract.
     virtual void
     begin_play()
     {
+        for (auto* c : m_components)
+        {
+            c->begin_play();
+        }
     }
 
     virtual void
     end_play()
     {
+        for (auto* c : m_components)
+        {
+            c->end_play();
+        }
     }
 
     virtual void
