@@ -9,7 +9,7 @@ namespace render
 {
 // Payload forward declarations for the allocator aliases below. The allocator
 // only holds a laned_storage<Kind, T>* dispatch token -- an incomplete T is
-// fine for holders (render_bridge, the renderer); methods that reach the
+// fine for holders (render_translator, the renderer); methods that reach the
 // storage (ctor/detach/preallocate) instantiate where the full types exist.
 class mesh_data;
 class material_data;
@@ -63,12 +63,12 @@ using lightmap_handle = handle<static_cast<uint8_t>(resource_kind::lightmap)>;
 using probe_handle = handle<static_cast<uint8_t>(resource_kind::probe)>;
 
 // Storage + allocator types, one pair per (kind, payload) — mirrors the handle
-// aliases above so holders (the loader, render_bridge, the renderer's system
+// aliases above so holders (the loader, render_translator, the renderer's system
 // pools, test fixtures) never spell the template arguments by hand.
 //
 // Lane convention (who claims which lane of a shared storage):
 //   meshes/materials: ONE storage each, system allocator (renderer) lane 0,
-//                     content allocator (render_bridge) lane 1.
+//                     content allocator (render_translator) lane 1.
 //   everything else:  single-lane storages, the lone allocator on lane 0.
 constexpr uint32_t k_system_lane = 0;
 constexpr uint32_t k_content_lane = 1;

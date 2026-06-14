@@ -7,7 +7,7 @@
 
 namespace kryga
 {
-class render_bridge;
+class render_translator;
 
 KRG_ar_render_overrides();
 namespace root

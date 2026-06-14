@@ -86,7 +86,7 @@ protected:
     // Tests are single-threaded; grant this (the test) thread render-state access
     // explicitly. Runs before each test's SetUp()/renderer.init(), which stage.
     //
-    // The fixture owns slot identity (the tests have no render_bridge) and
+    // The fixture owns slot identity (the tests have no render_translator) and
     // follows the lane protocol eagerly: the ctor claims each pool's lane, the
     // dtor releases it. The loader storages exist from global-state setup, so
     // binding here (before SetUp/renderer.init) is safe. NOTE: every test
@@ -173,7 +173,7 @@ protected:
     }
 
     // Reserve a render-object slot and create its render_data in one step. In
-    // production the MODEL thread owns this allocator (render_bridge); the tests
+    // production the MODEL thread owns this allocator (render_translator); the tests
     // have no bridge, so the fixture owns slot identity here and reserves
     // straight into the cache's storage. The fixture is rebuilt per TEST_F, so
     // numbering restarts each test. No sentinel: index 0 is a usable slot (the
@@ -185,7 +185,7 @@ protected:
     }
 
     // Lights on the handle model: in production the model component reserves the
-    // handle (render_bridge); the fixture owns the allocator instead. Per-TEST_F
+    // handle (render_translator); the fixture owns the allocator instead. Per-TEST_F
     // (the fixture is rebuilt each test), so lights land at slots 0,1,2... exactly
     // as the old combined_pool did.
     vulkan_directional_light_data*

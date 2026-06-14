@@ -1,7 +1,7 @@
 #pragma once
 
-#include "render_bridge/render_dependency.h"
-#include "render_bridge/render_command.h"
+#include "render_translator/render_dependency.h"
+#include "render_translator/render_command.h"
 
 #include <utils/id.h>
 #include <utils/check.h>
@@ -20,11 +20,11 @@ class smart_object;
 class game_object_component;
 }  // namespace root
 
-// render_bridge owns the stateful render-command lifecycle: it builds/destroys/
+// render_translator owns the stateful render-command lifecycle: it builds/destroys/
 // transforms render commands from model objects and tracks their dependencies.
 // Stateless model→render translation (create-infos, queue ids, GPU packing,
-// sampler mapping) lives in render_translate.h, not here.
-class render_bridge
+// sampler mapping) lives in render_convert.h, not here.
+class render_translator
 {
 public:
     kryga::result_code
@@ -127,7 +127,7 @@ private:
 
 template <typename T, typename... Args>
 T*
-render_bridge::alloc_cmd(Args&&... args)
+render_translator::alloc_cmd(Args&&... args)
 {
     void* mem = alloc_cmd_raw(sizeof(T), alignof(T));
     return new (mem) T(std::forward<Args>(args)...);

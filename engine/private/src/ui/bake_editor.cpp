@@ -23,7 +23,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
-#include <render_bridge/render_translate.h>
+#include <render_translator/render_convert.h>
 
 #include <gpu_types/gpu_vertex_types.h>
 #include <gpu_types/gpu_light_types.h>
@@ -388,7 +388,7 @@ bake_editor::submit_bake()
                         // registry (the model no longer caches them).
                         loader.set_lightmap(cur_level->get_id(),
                                             tex,
-                                            render_translate::flatten_lightmap_manifest(manifest));
+                                            render_convert::flatten_lightmap_manifest(manifest));
                     }
                 });
 

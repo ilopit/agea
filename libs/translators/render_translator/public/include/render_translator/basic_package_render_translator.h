@@ -2,7 +2,7 @@
 
 namespace kryga
 {
-class basic_package_render_bridge
+class basic_package_render_translator
 {
 public:
     virtual void

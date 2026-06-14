@@ -22,8 +22,8 @@
 #include <core/reflection/property_utils.h>
 #include <core/reflection/reflection_type.h>
 
-#include <render_bridge/render_bridge.h>
-#include <render_bridge/render_translate.h>
+#include <render_translator/render_translator.h>
+#include <render_translator/render_convert.h>
 #include <render/utils/mesh_primitives.h>
 
 #include <vfs/vfs.h>
@@ -314,7 +314,7 @@ build_gpu_material(preview_job& job)
         }
     }
 
-    render_translate::set_material_texture_bindings(
+    render_convert::set_material_texture_bindings(
         job.gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
     auto* mat_data =
@@ -539,8 +539,8 @@ material_previewer::prepare_preview(preview_job& job)
     }
 
     job.se_id = se_model->get_id();
-    job.se_ci = render_translate::make_se_ci(*se_model);
-    job.se_ci.spec_constants = render_translate::collect_spec_constants(*se_model);
+    job.se_ci = render_convert::make_se_ci(*se_model);
+    job.se_ci.spec_constants = render_convert::collect_spec_constants(*se_model);
     // make_se_ci aims the blob pointers into the MODEL object; the job outlives
     // this stage, so own copies and re-point.
     job.vert_copy = *job.se_ci.vert_buffer;
@@ -549,7 +549,7 @@ material_previewer::prepare_preview(preview_job& job)
     job.se_ci.frag_buffer = &job.frag_copy;
 
     job.type_id = mat_model->get_type_id();
-    auto collected = render_translate::collect_gpu_data(*mat_model);
+    auto collected = render_convert::collect_gpu_data(*mat_model);
     job.gpu_data = std::move(collected.gpu_data);
 
     for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
@@ -577,7 +577,7 @@ material_previewer::prepare_preview(preview_job& job)
         if (ts.smp)
         {
             p.has_sampler = true;
-            p.sampler_static_idx = render_translate::map_sampler_to_static_index(*ts.smp);
+            p.sampler_static_idx = render_convert::map_sampler_to_static_index(*ts.smp);
         }
         if (p.has_texture || p.has_sampler)
         {

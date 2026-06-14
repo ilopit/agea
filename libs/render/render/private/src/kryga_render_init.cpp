@@ -299,7 +299,7 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
     m_render_config.present = device.current_present_mode();
     m_pending_render_config.present = device.current_present_mode();
 
-    // Note: the content allocators' deferral window now lives in render_bridge,
+    // Note: the content allocators' deferral window now lives in render_translator,
     // which pulls frames_in_flight itself each tick (avoids a render->bridge dep).
 
     prepare_system_resources();
@@ -1002,7 +1002,7 @@ vulkan_render::reconfigure_swapchain(uint32_t count, present_mode mode)
     m_render_config.frames_in_flight = new_count;
     m_render_config.present = device.current_present_mode();
 
-    // (content-allocator deferral window now tracked in render_bridge::tick)
+    // (content-allocator deferral window now tracked in render_translator::tick)
 
     ALOG_INFO("swapchain reconfigured: {} -> {} images, present {}",
               old_count,
@@ -1532,7 +1532,7 @@ vulkan_render::get_cache()
 // --- System / bindless resource lifecycle ----------------------------------
 // Slot identity lives here (the renderer owns the allocators); the loader only
 // builds + stores at the reserved slot. Same split as content, where
-// render_bridge reserves and the loader populates.
+// render_translator reserves and the loader populates.
 
 mesh_data*
 vulkan_render::create_mesh(const utils::id& mesh_id,

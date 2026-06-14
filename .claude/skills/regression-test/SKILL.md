@@ -14,7 +14,7 @@ Every regression test must verify **both** layers:
 1. **Model layer** — the authoritative state (`model.*` RPCs). This is what gets saved to disk.
 2. **Render layer** — the GPU-facing projection (`render.*` RPCs). This is what the player sees.
 
-Testing only the model is insufficient — it doesn't catch render_bridge propagation bugs. Testing only render is insufficient — it doesn't catch serialization/persistence bugs.
+Testing only the model is insufficient — it doesn't catch render_translator propagation bugs. Testing only render is insufficient — it doesn't catch serialization/persistence bugs.
 
 ## Prefer generated Python proxies over raw RPC calls
 

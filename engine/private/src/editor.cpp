@@ -10,8 +10,8 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_system.h>
 
-#include <render_bridge/render_bridge.h>
-#include <render_bridge/render_commands_common.h>
+#include <render_translator/render_translator.h>
+#include <render_translator/render_commands_common.h>
 
 #include <imgui.h>
 #include <ImGuizmo.h>
@@ -610,7 +610,7 @@ game_editor::set_selected(const utils::id& id)
             return;
         }
 
-        auto& rb = glob::glob_state().getr_render_bridge();
+        auto& rb = glob::glob_state().getr_render_translator();
         auto enqueue_outline = [&](root::smart_object* comp)
         {
             // Components without a render object (lights, camera, ...) carry a null

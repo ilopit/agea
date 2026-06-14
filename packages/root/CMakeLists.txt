@@ -70,7 +70,7 @@ target_link_libraries(packages.root.render
 
    kryga::packages.root.model
    kryga::asset_importer
-   kryga::render_bridge
+   kryga::render_translator
    kryga::gpu_types
 )
 target_compile_definitions(packages.root.render PUBLIC KRG_build__render)

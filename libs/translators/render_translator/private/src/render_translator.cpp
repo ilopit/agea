@@ -1,5 +1,5 @@
-#include "render_bridge/render_bridge.h"
-#include "render_bridge/render_commands_common.h"
+#include "render_translator/render_translator.h"
+#include "render_translator/render_commands_common.h"
 
 #include <global_state/global_state.h>
 #include <vulkan_render/render_system.h>
@@ -19,20 +19,20 @@ namespace kryga
 {
 
 void
-state_mutator__render_bridge::set(gs::state& s)
+state_mutator__render_translator::set(gs::state& s)
 {
-    auto p = s.create_box<render_bridge>("render_bridge");
-    s.m_render_bridge = p;
+    auto p = s.create_box<render_translator>("render_translator");
+    s.m_render_translator = p;
 }
 
 void*
-render_bridge::alloc_cmd_raw(size_t size, size_t align)
+render_translator::alloc_cmd_raw(size_t size, size_t align)
 {
     return glob::glob_state().getr_render().input_queue.alloc_raw(size, align);
 }
 
 void
-render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
+render_translator::enqueue_cmd(render_cmd::render_command_base* cmd)
 {
     glob::glob_state().getr_render().input_queue.enqueue(cmd);
 }
@@ -40,7 +40,7 @@ render_bridge::enqueue_cmd(render_cmd::render_command_base* cmd)
 // --- Content render-resource allocation (model thread) --------------------
 
 void
-render_bridge::bind_content_storages()
+render_translator::bind_content_storages()
 {
     KRG_check_model_thread();
     // Bind each model-side allocator to its render-side storage + lane (bind
@@ -61,7 +61,7 @@ render_bridge::bind_content_storages()
 }
 
 void
-render_bridge::detach_content_storages()
+render_translator::detach_content_storages()
 {
     // [shutdown, single-threaded] Direct detach is the sanctioned same-thread
     // form: the render loop is gone, so calling the storage is legal here.
@@ -74,7 +74,7 @@ render_bridge::detach_content_storages()
 }
 
 void
-render_bridge::tick_content_allocators()
+render_translator::tick_content_allocators()
 {
     KRG_check_model_thread();
     // Re-sync the deferral window to the GPU horizon each frame. The render lib
@@ -97,7 +97,7 @@ render_bridge::tick_content_allocators()
 }
 
 kryga::result_code
-render_bridge::render_cmd_build(root::smart_object& obj, bool sub_objects)
+render_translator::render_cmd_build(root::smart_object& obj, bool sub_objects)
 {
     KRG_check(!obj.get_flags().default_obj, "CDOs must not be render-built");
 
@@ -126,7 +126,7 @@ render_bridge::render_cmd_build(root::smart_object& obj, bool sub_objects)
 }
 
 kryga::result_code
-render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
+render_translator::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 {
     // Class-default objects (CDOs) are shared, readonly templates referenced by
     // instances — never render-built. A type's CDO can be loaded on first use
@@ -165,7 +165,7 @@ render_bridge::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 }
 
 kryga::result_code
-render_bridge::render_cmd_transform(root::game_object_component& source)
+render_translator::render_cmd_transform(root::game_object_component& source)
 {
     auto r = source.get_owner()->get_components(source.get_order_idx());
 

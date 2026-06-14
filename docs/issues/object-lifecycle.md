@@ -22,7 +22,7 @@ scoops up a shared class object that is not per-play state.
 - **Crash (fixed by workaround):** rollback queued the CDO for `destroy_render`,
   and a runtime component's recursive destroy also reached shared CDO/package
   assets it merely references → `render_cmd_destroy` asserted
-  `!default_obj` (`libs/render_bridge/private/src/render_bridge.cpp:253`),
+  `!default_obj` (`libs/render_translator/private/src/render_translator.cpp:253`),
   aborting the engine; the next `model.level.load` then hung against a dead
   process.
 - **Wasteful/fragile (still present):** rollback `remove_obj`s + frees the
@@ -33,7 +33,7 @@ scoops up a shared class object that is not per-play state.
 ### Current workarounds (symptom-level, in place)
 
 - `render_cmd_destroy` skips `default_obj` instead of asserting
-  (`render_bridge.cpp`).
+  (`render_translator.cpp`).
 - `is_same_source` requires a non-null shared owner so a level component does not
   recurse a render-destroy into package assets
   (`packages/base/private/src/render/overrides/render_types_handlers.cpp`).

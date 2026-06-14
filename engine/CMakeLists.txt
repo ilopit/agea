@@ -73,7 +73,7 @@ target_link_libraries(engine PUBLIC
     kryga::vulkan_render_impl_game
     kryga::animation
     kryga::asset_importer
-    kryga::render_bridge
+    kryga::render_translator
     kryga::native
     kryga::vfs
     kryga::kryga_port
@@ -119,7 +119,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::vulkan_render_impl_editor
         kryga::animation
         kryga::asset_importer
-        kryga::render_bridge
+        kryga::render_translator
         kryga::native
         kryga::vfs
         kryga::kryga_port

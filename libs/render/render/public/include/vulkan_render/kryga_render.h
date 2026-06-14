@@ -370,7 +370,7 @@ public:
     // The renderer owns slot identity for render-created resources (system
     // meshes/materials, bindless textures): reserve/reclaim happen HERE; the
     // loader only builds + stores at the reserved slot. Mirrors the content
-    // split, where render_bridge owns identity and the loader owns storage.
+    // split, where render_translator owns identity and the loader owns storage.
     mesh_data*
     create_mesh(const utils::id& mesh_id,
                 utils::buffer_view<gpu::vertex_data> vertices,
@@ -1012,7 +1012,7 @@ private:
     vulkan_render_loader* m_loader = nullptr;
 
     // System (render-created) mesh/material allocators; bind to k_system_lane
-    // of the loader's MERGED mesh/material storages at init (render_bridge's
+    // of the loader's MERGED mesh/material storages at init (render_translator's
     // content allocators own k_content_lane of the same storages). The
     // renderer owns these render-internal pools' identity; the storage stays
     // with the loader (the allocator holds only a dispatch-token pointer).

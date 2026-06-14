@@ -4,7 +4,7 @@
 #include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_data.h>
 
-#include <render_bridge/render_command.h>  // render_command_base / render_exec_context
+#include <render_translator/render_command.h>  // render_command_base / render_exec_context
 
 #include <global_state/global_state.h>
 

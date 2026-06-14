@@ -3,7 +3,7 @@
 Translation layer between model objects (smart_object hierarchy) and Vulkan render data.
 
 ## Command system
-render_bridge is **producer-only**: it creates commands from the model. Per-frame
+render_translator is **producer-only**: it creates commands from the model. Per-frame
 arena allocation eliminates dynamic alloc overhead. Commands and arenas are
 double-buffered by frame parity (slot = frame & 1): the main thread produces
 frame F into slot (F&1) while the render thread consumes the other slot, so they
@@ -18,18 +18,18 @@ queue, then draw) is NOT here: it's the render-thread consumer side and lives on
 `getr_render().input_queue` — distinct from the model-side dirty tracking, which
 lives on `model_system` (`getr_model().dirty`). The frame-slot lifecycle (`set_build_frame_slot` /
 `reset_frame_slot` / `reset_arena`) lives on `render::input_queue`, driven by the frame owner
-(`frame_pipeline` in the streaming loop, the headless tick otherwise). render_bridge
+(`frame_pipeline` in the streaming loop, the headless tick otherwise). render_translator
 holds no slot state; it only builds commands into the active slot.
 
-## Model-to-render dispatch (the render_bridge class)
-The `render_bridge` class is **stateful** — it owns the command lifecycle:
+## Model-to-render dispatch (the render_translator class)
+The `render_translator` class is **stateful** — it owns the command lifecycle:
 - `render_cmd_build/destroy/transform()` — dispatch via reflection-based callbacks
 - `get_dependency()` — the dependency graph (its only state)
 - `alloc_cmd<T>()` / `enqueue_cmd()` — produce commands into the active arena/queue
 - Reflection-driven `gpu_pack` / `render_cmd_builder` decouples model definitions from bridge logic
 
-## Stateless translation (`render_translate.h`)
-Pure model→render conversions live as free functions in `namespace render_translate`,
+## Stateless translation (`render_convert.h`)
+Pure model→render conversions live as free functions in `namespace render_convert`,
 NOT on the class — they hold no state and touch no queue/arena:
 - `collect_gpu_data()` — packs model data into GPU structs via reflection-based serialization
 - `collect_spec_constants()` — gathers specialization constants from model properties

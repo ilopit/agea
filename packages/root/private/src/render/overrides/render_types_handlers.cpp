@@ -1,9 +1,9 @@
 #include "packages/root/package.root.h"
 
 #include <global_state/global_state.h>
-#include <render_bridge/render_bridge.h>
-#include <render_bridge/render_translate.h>
-#include <render_bridge/render_command.h>
+#include <render_translator/render_translator.h>
+#include <render_translator/render_convert.h>
+#include <render_translator/render_command.h>
 #include <vulkan_render/render_system.h>  // getr_render().ctx.rb->meshes_alloc().reserve()
 
 #include "packages/root/model/assets/mesh.h"
@@ -248,7 +248,7 @@ struct create_material_cmd : render_cmd::render_command_base
             }
         }
 
-        render_translate::set_material_texture_bindings(
+        render_convert::set_material_texture_bindings(
             gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
         // Handle path: populate the slot the builder pre-reserved, then read
@@ -342,7 +342,7 @@ struct update_material_cmd : render_cmd::render_command_base
             }
         }
 
-        render_translate::set_material_texture_bindings(
+        render_convert::set_material_texture_bindings(
             gpu_data, gpu_texture_indices, gpu_sampler_indices, KGPU_MAX_TEXTURE_SLOTS);
 
         ctx.loader.update_material(*mat_data, samples, *se_data, gpu_data);
@@ -558,7 +558,7 @@ shader_effect__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     cmd->is_frag_binary = se_model.m_is_frag_binary;
     cmd->wire_topology = se_model.m_wire_topology;
     cmd->enable_alpha = se_model.m_enable_alpha_support;
-    cmd->spec_constants = render_translate::collect_spec_constants(se_model);
+    cmd->spec_constants = render_convert::collect_spec_constants(se_model);
 
     se_model.set_render_built(true);
     ctx.rb->enqueue_cmd(cmd);
@@ -589,7 +589,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 {
     auto& mat_model = ctx.obj->asr<root::material>();
 
-    auto collected = render_translate::collect_gpu_data(mat_model);
+    auto collected = render_convert::collect_gpu_data(mat_model);
 
     std::vector<texture_slot_info> slots;
     for (uint32_t i = 0; i < collected.texture_slot_count; ++i)
@@ -611,7 +611,7 @@ material__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         if (ts.smp)
         {
             ctx.rb->render_cmd_build(*ts.smp, ctx.flag);
-            slot_info.static_sampler_index = render_translate::map_sampler_to_static_index(*ts.smp);
+            slot_info.static_sampler_index = render_convert::map_sampler_to_static_index(*ts.smp);
         }
 
         slots.push_back(slot_info);

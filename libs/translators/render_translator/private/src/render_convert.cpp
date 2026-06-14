@@ -1,4 +1,4 @@
-#include "render_bridge/render_translate.h"
+#include "render_translator/render_convert.h"
 
 #include <global_state/global_state.h>
 #include <core/reflection/reflection_type.h>
@@ -18,7 +18,7 @@
 
 namespace kryga
 {
-namespace render_translate
+namespace render_convert
 {
 
 void
@@ -200,5 +200,5 @@ flatten_lightmap_manifest(const core::lightmap_manifest& manifest)
     return out;
 }
 
-}  // namespace render_translate
+}  // namespace render_convert
 }  // namespace kryga

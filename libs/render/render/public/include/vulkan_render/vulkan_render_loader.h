@@ -61,7 +61,7 @@ struct lightmap_binding
 // from render_types/render_handle.h (one lane per allocator; handles
 // self-route by the lane bits in their index). Lane convention is defined
 // there too: meshes/materials are ONE storage each with the renderer's system
-// allocator on k_system_lane and render_bridge's content allocator on
+// allocator on k_system_lane and render_translator's content allocator on
 // k_content_lane; every other pool is single-lane.
 using object_storage = render::types::object_storage;
 using dir_light_storage = render::types::dir_light_storage;
@@ -75,7 +75,7 @@ using texture_ref_storage = render::types::texture_ref_storage;
 // textures, shaders, samplers, render passes) AND per-instance scene storage
 // (objects, lights, bindless texture pool — formerly render_cache). One
 // render-thread storage class; slot identity for content/scene pools is owned
-// by the model-thread allocators in render_bridge, system pools by the
+// by the model-thread allocators in render_translator, system pools by the
 // renderer's allocators.
 class vulkan_render_loader
 {
@@ -84,13 +84,13 @@ public:
 
     // --- Per-instance render objects (formerly render_cache) --------------
     // Addressed by render_object_handle. Slot identity (free-list + generation)
-    // is owned by lane_allocator on the MODEL thread (render_bridge); this is
+    // is owned by lane_allocator on the MODEL thread (render_translator); this is
     // the render-thread STORAGE with a generation shadow for stale detection.
     // Lock-free: the model thread only touches the allocator, the render thread
     // is the sole reader/writer of the storage (growth included -- populate
     // paths grow_for the handle at execute time).
 
-    // [init/model thread] render_bridge's object allocator claims lane 0 of
+    // [init/model thread] render_translator's object allocator claims lane 0 of
     // this at construction; preallocate pre-grows it (init-time, sanctioned).
     object_storage&
     objects_storage()
@@ -185,7 +185,7 @@ public:
     }
 
     // --- Directional lights (same storage shape as the object slot) ------------
-    // render_bridge's allocator claims lane 0; index() == GPU SSBO slot.
+    // render_translator's allocator claims lane 0; index() == GPU SSBO slot.
     dir_light_storage&
     dir_lights_storage()
     {
@@ -383,7 +383,7 @@ public:
     /*************************/
 
     // --- Storage accessors (for allocator construction) -------------------
-    // Allocators claim a lane at construction: render_bridge's content
+    // Allocators claim a lane at construction: render_translator's content
     // allocators take k_content_lane on meshes/materials (and lane 0 on the
     // single-lane pools); the renderer's system allocators take k_system_lane
     // of the SAME merged mesh/material storages.
@@ -433,7 +433,7 @@ public:
     }
 
     // --- Content meshes (game objects) — lock-free, storage side ----------
-    // The CONTENT pool is split across libs: render_bridge owns the allocator
+    // The CONTENT pool is split across libs: render_translator owns the allocator
     // (reserve / free / tick — model thread); this loader owns the STORAGE
     // (populate / get / valid / reset — render thread). They share no mutable
     // state, only the handle value passed through the command queue, so neither
@@ -574,7 +574,7 @@ public:
     /*************************/
 
     // --- Content materials (game objects) — storage side ------------------
-    // Same split as content meshes: render_bridge owns the allocator, this loader
+    // Same split as content meshes: render_translator owns the allocator, this loader
     // owns the storage.
     material_data*
     get_material_data(render::types::material_handle h)
@@ -660,8 +660,8 @@ public:
     clear_caches();
 
 private:
-    // --- Per-instance scene storage (identity in render_bridge) ---------------
-    // Single-lane: the lone allocator (render_bridge) claims lane 0, so handle
+    // --- Per-instance scene storage (identity in render_translator) ---------------
+    // Single-lane: the lone allocator (render_translator) claims lane 0, so handle
     // index == GPU SSBO slot stays compact.
     object_storage m_objects{1};
     dir_light_storage m_dir_lights{1};
@@ -671,13 +671,13 @@ private:
     texture_storage m_textures{1};
 
     // MERGED mesh storage: the renderer's SYSTEM allocator (quad, debug/test
-    // meshes) claims k_system_lane, render_bridge's CONTENT allocator claims
+    // meshes) claims k_system_lane, render_translator's CONTENT allocator claims
     // k_content_lane. One draw-path entry point; handles self-route by their
     // lane bits, the producers share no state. This loader only ever touches
     // storage (populate/get/valid/reset + grow_for, render thread).
     mesh_storage m_meshes_storage{2};
     // Content texture handle -> texture_data* (non-owning; the data lives in the
-    // bindless pool m_textures). Single-lane: only render_bridge allocates here.
+    // bindless pool m_textures). Single-lane: only render_translator allocates here.
     texture_ref_storage m_textures_storage{1};
     // MERGED material storage, same split as the mesh pool above.
     material_storage m_materials_storage{2};

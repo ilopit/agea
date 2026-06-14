@@ -2,11 +2,11 @@
 
 #include <global_state/global_state.h>
 #include <core/model_system.h>
-#include <render_bridge/render_bridge.h>
-#include <render_bridge/render_translate.h>
-#include <render_bridge/render_command.h>
+#include <render_translator/render_translator.h>
+#include <render_translator/render_convert.h>
+#include <render_translator/render_command.h>
 #include <core/object_layer_flags.h>
-#include <render_bridge/render_commands_common.h>
+#include <render_translator/render_commands_common.h>
 
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
@@ -488,7 +488,7 @@ mesh_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     float scaled_radius = bounds.radius;
     glm::vec3 world_sphere_center = bounds.center;
 
-    auto new_rqid = render_translate::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
+    auto new_rqid = render_convert::make_qid_from_model(*moc.get_material(), *moc.get_mesh());
 
     // Lightmap binding is resolved on the render thread at execute time from the
     // loader's per-level registry — here we only forward which level this instance
@@ -1244,7 +1244,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     float max_scale = glm::max(glm::max(scale.x, scale.y), scale.z);
     float scaled_radius = base_radius * max_scale;
 
-    auto new_rqid = render_translate::make_qid_from_model(*material, *source_mesh);
+    auto new_rqid = render_convert::make_qid_from_model(*material, *source_mesh);
 
     auto* ps = glob::glob_state().get_physics_system();
 

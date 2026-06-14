@@ -22,7 +22,7 @@ set(KRG_VULKAN_RENDER_SRC
 # kryga::vulkan_render — INTERFACE library
 # ----------------------------------------------------------------------------
 # Provides the public include path and the *non-ImGui* transitive deps. This
-# is what intermediate libs (animation, asset_importer, render_bridge, tests)
+# is what intermediate libs (animation, asset_importer, render_translator, tests)
 # link against — they get the headers but no implementation symbols. The exe
 # pulls in exactly one implementation flavor (game or editor) at link time.
 add_library(vulkan_render INTERFACE)

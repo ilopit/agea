@@ -3,7 +3,7 @@
 // Stateless model→render translation helpers. These build render-side data
 // (create-infos, queue ids, packed GPU bytes, sampler indices) from model
 // objects. They hold no state and touch no per-frame queue/arena — that's why
-// they're free functions here rather than methods on render_bridge, which owns
+// they're free functions here rather than methods on render_translator, which owns
 // the stateful command lifecycle (build/destroy/transform + dependency graph).
 
 #include <core/reflection/reflection_type.h>  // gpu_texture_slot_ref
@@ -47,7 +47,7 @@ struct collected_gpu_data
     uint32_t texture_slot_count = 0;
 };
 
-namespace render_translate
+namespace render_convert
 {
 
 render::shader_effect_create_info
@@ -82,5 +82,5 @@ set_material_texture_bindings(utils::dynobj& gpu_data,
 std::unordered_map<utils::id, render::lightmap_uv>
 flatten_lightmap_manifest(const core::lightmap_manifest& manifest);
 
-}  // namespace render_translate
+}  // namespace render_convert
 }  // namespace kryga

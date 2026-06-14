@@ -61,7 +61,7 @@ cmake/           CMake scripts
 - `core` — reflection registry, package/level managers, object caches, archetypes
 - `global_state` — singleton state: `kryga::glob::glob_state()`, lifecycle: create→connect→init→ready
 - `render/` — Vulkan subsystem: `gpu_types` (shared C++/GLSL headers), `shader_system`, `render`, `utils`
-- `render_bridge` — connects model objects to Vulkan render data
+- `render_translator` — connects model objects to Vulkan render data
 - `ar` — reflection macros (`KRG_ar_*`) parsed by argen.py → `build/kryga_generated/`
 - `utils` — id, path, buffer, allocators, singletons, logging
 - `animation` — ozz-based skeletal animation: blending layers, two-bone/aim IK, per-instance playback
@@ -102,4 +102,4 @@ Tracked in `docs/issues/` per subsystem: meshes, shadows, validation, editor UI 
 - C++23, static libraries, Vulkan
 - No defensive null-checks / early-returns — use asserts (`KRG_check`) instead. If something should never be null, assert on it; don't silently skip.
 - NEVER run `UPDATE_REFERENCES=1` for visual regression tests without explicit user confirmation. When tests fail, report which tests failed and WHY the output differs before proposing a reference update.
-- **Render layer is read-only.** All state changes go through the model layer; render is a projection. Never create RPCs or code paths that directly mutate render cache/GPU state — always mutate the model and let `mark_render_dirty()` / render_bridge propagate. `render.*` RPCs must be read-only (state queries); any write RPC belongs under `model.*` or `editor.*`.
+- **Render layer is read-only.** All state changes go through the model layer; render is a projection. Never create RPCs or code paths that directly mutate render cache/GPU state — always mutate the model and let `mark_render_dirty()` / render_translator propagate. `render.*` RPCs must be read-only (state queries); any write RPC belongs under `model.*` or `editor.*`.

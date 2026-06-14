@@ -14,7 +14,7 @@ Actions scheduled per-stage via `schedule_action()`, execute sequentially when `
 - **Caches:** class/instance-level object, component, game_object, material, mesh, texture, sampler, shader caches
 - **Managers:** level_manager, package_manager, id_generator
 - **Reflection:** type registry, Lua API
-- **Rendering:** vulkan_engine, render_device, render_loader, vulkan_render, render_bridge
+- **Rendering:** vulkan_engine, render_device, render_loader, vulkan_render, render_translator
 - **Engine:** game_editor, input_manager, native_window, UI system, animation_system, engine_counters
 - **VFS:** virtual_file_system
 - **Generic:** `create_box<T>()` for extensible custom state

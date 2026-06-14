@@ -5,8 +5,8 @@
 #include <vulkan_render/render_system.h>  // render_system: getr_render() returns this; holds .renderer
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_thread.h>  // render-state ownership handoff
-#include <render_bridge/render_command.h>  // render_exec_context: drain_frame executes commands against it
-#include <render_bridge/render_bridge.h>  // tick_content_allocators()
+#include <render_translator/render_command.h>  // render_exec_context: drain_frame executes commands against it
+#include <render_translator/render_translator.h>  // tick_content_allocators()
 
 #include <utils/check.h>
 
@@ -65,9 +65,9 @@ frame_pipeline::begin_frame()
     glob::glob_state().getr_render().input_queue.set_build_frame_slot(frame_slot);
 
     // [model thread] Mature deferred content-slot frees. Once per frame here so the
-    // model-owned allocators (which live in render_bridge) recycle indices only
+    // model-owned allocators (which live in render_translator) recycle indices only
     // after the GPU has drained the frames that referenced them.
-    glob::glob_state().getr_render_bridge().tick_content_allocators();
+    glob::glob_state().getr_render_translator().tick_content_allocators();
     return frame_slot;
 }
 

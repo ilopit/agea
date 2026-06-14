@@ -20,7 +20,7 @@
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/render_system.h>
 
-#include <render_bridge/render_bridge.h>
+#include <render_translator/render_translator.h>
 #include <vulkan_render/types/vulkan_render_pass.h>
 
 #include <render/utils/image_compare.h>
@@ -130,7 +130,7 @@ relocate_level(const fs::path& scratch_root, const std::string& name)
     ASSERT_FALSE(ec) << "Failed to relocate level: " << ec.message();
 }
 
-// Drive render_bridge-backed level setup: tick a few times so dirty queues
+// Drive render_translator-backed level setup: tick a few times so dirty queues
 // drain, bindless texture registrations land on the frame being rendered.
 void
 warmup(vulkan_engine& engine, int frames = 6)
@@ -236,7 +236,7 @@ TEST(engine_regression, converts_and_renders_box_textured)
         // visible. Lights are on the handle model: reserve a handle, then
         // populate by it. The engine's bridge allocator owns the lights lane
         // (a second local allocator would assert on the lane claim).
-        auto& dir_alloc = glob::glob_state().getr_render_bridge().dir_lights_alloc();
+        auto& dir_alloc = glob::glob_state().getr_render_translator().dir_lights_alloc();
         auto sun_h = dir_alloc.reserve();
         auto* sun = renderer.get_cache().populate_dir_light(sun_h, AID("test_sun"));
         sun->gpu_data.direction = {-0.3f, -1.0f, -0.2f};

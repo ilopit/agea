@@ -1,4 +1,4 @@
-#include <render_bridge/render_dependency.h>
+#include <render_translator/render_dependency.h>
 
 #include <packages/root/model/smart_object.h>
 #include <core/reflection/reflection_type_utils.h>

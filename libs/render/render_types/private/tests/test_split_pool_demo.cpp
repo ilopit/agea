@@ -481,7 +481,7 @@ TEST(split_pool_demo, detach_rides_the_queue)
 
 // --- One storage, two allocators on separate lanes -----------------------------
 // The engine shape this probes: ONE mesh storage; the renderer's system
-// allocator owns lane 0 and works same-thread, render_bridge's content
+// allocator owns lane 0 and works same-thread, render_translator's content
 // allocator owns lane 1 and works through the queue. The draw path gets a
 // single lookup entry point; the producers never touch each other's state.
 TEST(split_pool_demo, shared_storage_two_lanes)

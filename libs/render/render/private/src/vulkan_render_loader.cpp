@@ -669,7 +669,7 @@ vulkan_render_loader::clear_caches()
         ALOG_INFO("  render_pass id={}", id.cstr());
     }
 
-    // Storage only: the matching allocators live with their owners (render_bridge
+    // Storage only: the matching allocators live with their owners (render_translator
     // for content — pure CPU bookkeeping cleared by the bridge's lifetime — and
     // the renderer for system pools, cleared in vulkan_render::deinit). This
     // method never touches an allocator.

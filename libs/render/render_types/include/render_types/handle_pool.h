@@ -173,7 +173,7 @@ enum class slot_state : uint8_t
 //
 // The ONE thing handle_allocator needs from slot_storage: "make index N
 // addressable". Pulling it behind a non-templated interface keeps the allocator
-// free of the storage's element type T -- so a model-layer holder (render_bridge,
+// free of the storage's element type T -- so a model-layer holder (render_translator,
 // packages) can name and operate handle_allocator<Kind> without dragging in the
 // render-side T (mesh_data, material_data, ...). grow_to is rare (once per chunk),
 // so the virtual call is irrelevant; the hot reads (at/valid) stay non-virtual.

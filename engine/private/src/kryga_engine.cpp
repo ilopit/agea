@@ -61,10 +61,10 @@
 #include <packages/root/package.root.h>
 #include <packages/base/package.base.h>
 
-#include <render_bridge/render_bridge.h>
-#include <render_bridge/render_commands_common.h>
-#include <render_bridge/render_command.h>
-#include <render_bridge/render_translate.h>
+#include <render_translator/render_translator.h>
+#include <render_translator/render_commands_common.h>
+#include <render_translator/render_command.h>
+#include <render_translator/render_convert.h>
 
 #include <vfs/vfs.h>
 
@@ -319,7 +319,7 @@ vulkan_engine::init(const startup_options& options)
     }
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
-    state_mutator__render_bridge::set(gs);
+    state_mutator__render_translator::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
     state_mutator__game_system_manager::set(gs);
@@ -467,7 +467,7 @@ vulkan_engine::init(const startup_options& options)
     // Bind the model-side allocators to their render-side storages now that the
     // loader + render cache exist, then preallocate the object slot pool: the
     // allocator's preallocate grows the bound render storage too, synchronously.
-    auto& rb = glob::glob_state().getr_render_bridge();
+    auto& rb = glob::glob_state().getr_render_translator();
     rb.bind_content_storages();
     rb.objects_alloc().preallocate(glob::glob_state().get_config()->object_pool_size);
 
@@ -569,7 +569,7 @@ vulkan_engine::cleanup()
     // Release the content allocators' lane claims before the render system
     // (and its storages) goes away -- the storage dtor asserts no allocator
     // is still attached. Single-threaded here, so the direct form is legal.
-    glob::glob_state().getr_render_bridge().detach_content_storages();
+    glob::glob_state().getr_render_translator().detach_content_storages();
 
     glob::glob_state().getr_render().loader.clear_caches();
 
@@ -975,7 +975,7 @@ vulkan_engine::load_level(const utils::id& level_id)
                 cmd->width = manifest.atlas_width;
                 cmd->height = manifest.atlas_height;
                 cmd->pixels = std::move(lm_data);
-                cmd->entries = render_translate::flatten_lightmap_manifest(manifest);
+                cmd->entries = render_convert::flatten_lightmap_manifest(manifest);
                 iq.enqueue(cmd);
             }
         }
@@ -1001,7 +1001,7 @@ vulkan_engine::unload_render_resources(core::level& l)
             continue;
         }
 
-        glob::glob_state().getr_render_bridge().render_cmd_destroy(obj, true);
+        glob::glob_state().getr_render_translator().render_cmd_destroy(obj, true);
     }
 
     return true;
@@ -1020,7 +1020,7 @@ vulkan_engine::unload_render_resources(core::package& l)
         KRG_check(!obj.get_flags().instance_obj,
                   "instance object found in package during render unload");
 
-        glob::glob_state().getr_render_bridge().render_cmd_destroy(obj, true);
+        glob::glob_state().getr_render_translator().render_cmd_destroy(obj, true);
     }
 
     return true;
@@ -1036,7 +1036,7 @@ vulkan_engine::consume_updated_transforms()
         return;
     }
 
-    auto& rb = glob::glob_state().getr_render_bridge();
+    auto& rb = glob::glob_state().getr_render_translator();
 
     for (auto& i : items)
     {
@@ -1264,7 +1264,7 @@ void
 vulkan_engine::consume_updated_render()
 {
     auto& mq = glob::glob_state().getr_model().output;
-    auto& rb = glob::glob_state().getr_render_bridge();
+    auto& rb = glob::glob_state().getr_render_translator();
 
     for (auto& i : mq.destroy_render)
     {

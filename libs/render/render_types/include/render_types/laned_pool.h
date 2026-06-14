@@ -332,7 +332,7 @@ public:
     using storage_t = laned_storage<Kind, T>;
 
     // NULLABLE: default-constructed it is unbound (no storage, no claim) --
-    // holders created before their storage exists (render_bridge under
+    // holders created before their storage exists (render_translator under
     // global-state init order) sit unbound until bind(). Every minting path
     // asserts boundness; bound() is the explicit query.
     lane_allocator() = default;

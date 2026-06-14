@@ -340,7 +340,7 @@ level::rollback()
 
         // Skip shared class/package objects (readonly) for render-destroy/detach:
         // a CDO (or its class-derived sub-object) loaded on first use mid-play has
-        // no instance render resources, must never be render-destroyed (render_bridge
+        // no instance render resources, must never be render-destroyed (render_translator
         // asserts !default_obj, and tearing into shared state would corrupt
         // survivors that reference it), and has no per-play parent to detach.
         if (auto* comp = obj->as<root::component>(); comp && !comp->get_flags().readonly)

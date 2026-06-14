@@ -66,7 +66,7 @@ namespace reflection
 {
 class lua_api;
 }
-class render_bridge;
+class render_translator;
 struct engine_counters;
 
 // Singletons
@@ -94,7 +94,7 @@ struct state_mutator__vfs;
 
 // Services
 struct state_mutator__input_manager;
-struct state_mutator__render_bridge;
+struct state_mutator__render_translator;
 struct state_mutator__engine_counters;
 
 // Singletons
@@ -149,7 +149,7 @@ class state
     // Services
     friend class ::kryga::state_mutator__input_manager;
     friend class core::state_mutator__lua_api;
-    friend class ::kryga::state_mutator__render_bridge;
+    friend class ::kryga::state_mutator__render_translator;
     friend class ::kryga::state_mutator__engine_counters;
     friend class ::kryga::state_mutator__physics_system;
     friend class ::kryga::state_mutator__game_system_manager;
@@ -202,7 +202,7 @@ public:
     // Services
     KRG_gen_getter(input_manager, engine::input_manager);
     KRG_gen_getter(lua, reflection::lua_api);
-    KRG_gen_getter(render_bridge, render_bridge);
+    KRG_gen_getter(render_translator, render_translator);
     KRG_gen_getter(engine_counters, engine_counters);
 
     // Singletons
@@ -263,7 +263,7 @@ private:
     // Services
     engine::input_manager*          m_input_manager = nullptr;
     reflection::lua_api*            m_lua = nullptr;
-    render_bridge*                  m_render_bridge = nullptr;
+    render_translator*                  m_render_translator = nullptr;
     engine_counters*                m_engine_counters = nullptr;
     physics::physics_system*        m_physics_system = nullptr;
     game::game_system_manager*      m_game_system_manager = nullptr;
@@ -314,7 +314,7 @@ struct state_mutator__input_manager
     set(gs::state& s);
 };
 
-struct state_mutator__render_bridge
+struct state_mutator__render_translator
 {
     static void
     set(gs::state& s);

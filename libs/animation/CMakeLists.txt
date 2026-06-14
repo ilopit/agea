@@ -11,7 +11,7 @@ target_link_libraries(animation PUBLIC
     kryga::glm_unofficial
     kryga::cgltf
     kryga::vulkan_render
-    kryga::render_bridge
+    kryga::render_translator
     kryga::global_state
     ozz_animation
     ozz_base

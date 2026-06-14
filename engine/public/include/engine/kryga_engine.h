@@ -90,7 +90,7 @@ public:
     tick(float dt);
 
     // Run one render frame without input/UI/event pump. Used in headless test mode.
-    // Caller is responsible for any prior camera/render_bridge setup.
+    // Caller is responsible for any prior camera/render_translator setup.
     void
     tick_headless();
 

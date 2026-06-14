@@ -22,7 +22,7 @@ class Value;
 namespace kryga
 {
 
-class render_bridge;
+class render_translator;
 
 namespace root
 {
@@ -67,7 +67,7 @@ struct type_context__compare
 
 struct type_context__render_cmd_build
 {
-    render_bridge* rb = nullptr;
+    render_translator* rb = nullptr;
     root::smart_object* obj = nullptr;
     bool flag = false;
 };

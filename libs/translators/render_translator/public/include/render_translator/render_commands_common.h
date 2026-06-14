@@ -1,6 +1,6 @@
 #pragma once
 
-#include "render_bridge/render_command.h"
+#include "render_translator/render_command.h"
 
 #include <utils/id.h>
 

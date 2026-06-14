@@ -33,7 +33,7 @@
 
 #include <global_state/global_state.h>
 
-#include <render_bridge/render_bridge.h>
+#include <render_translator/render_translator.h>
 
 #include <packages/root/model/assets/asset.h>
 #include <packages/root/model/assets/material.h>
@@ -177,7 +177,7 @@ rpc_sync_reload(const Json::Value& params, Json::Value& result, std::string& err
                     return;
                 }
                 ptr->mark_render_dirty();
-                auto dep = glob::glob_state().getr_render_bridge().get_dependency().get_node(ptr);
+                auto dep = glob::glob_state().getr_render_translator().get_dependency().get_node(ptr);
                 for (auto o : dep.m_children)
                 {
                     auto mt = o->as<root::asset>();
@@ -200,7 +200,7 @@ rpc_sync_reload(const Json::Value& params, Json::Value& result, std::string& err
                         se->mark_render_dirty();
                     }
                 }
-                auto& dep = glob::glob_state().getr_render_bridge().get_dependency();
+                auto& dep = glob::glob_state().getr_render_translator().get_dependency();
                 for (auto& [id, obj] : sec.get_items())
                 {
                     auto node = dep.get_node(obj);
