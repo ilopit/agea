@@ -59,6 +59,7 @@ main(int argc, char** argv)
         0);
     kryga::core::state_mutator__model::set(gs);
     kryga::state_mutator__render::set(gs);
+    kryga::state_mutator__subsystem_queues::set(gs);
 
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

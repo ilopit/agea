@@ -4,6 +4,8 @@
 #include <vulkan_render/render_system.h>
 #include <vulkan_render/types/vulkan_render_data.h>
 
+#include <core/subsystem_queues.h>
+
 #include <render_translator/render_command.h>  // render_command_base / render_exec_context
 #include <render_translator/render_commands.h>  // apply_bones_cmd / bone_instance_update
 
@@ -478,7 +480,7 @@ animation_system::tick(float dt)
     // Hand the frame's bone data to the render thread. alloc/enqueue target the
     // build frame slot's arena/queue (set in begin_frame) — the thread-safe
     // producer path. The render thread drains and applies it before drawing.
-    auto& iq = glob::glob_state().getr_render().input_queue;
+    auto& iq = glob::glob_state().getr_subsystem_queues().render;
     auto* cmd = iq.alloc_cmd<apply_bones_cmd>();
     cmd->matrices = std::move(staging);
     cmd->updates = std::move(updates);

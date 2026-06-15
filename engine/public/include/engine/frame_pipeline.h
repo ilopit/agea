@@ -90,7 +90,7 @@ public:
     // 0) which bypasses the pipeline entirely.
     //
     // The frame-slot lifecycle (set_build_frame_slot / reset_frame_slot /
-    // reset_arena) belongs to the queue owner (render::input_queue); this only
+    // reset_arena) belongs to the queue owner (getr_subsystem_queues().render); this only
     // consumes a frame slot.
     static void
     drain_frame(uint32_t frame_slot);

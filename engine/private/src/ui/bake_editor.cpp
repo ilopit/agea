@@ -29,7 +29,6 @@
 #include <gpu_types/gpu_light_types.h>
 
 #include <core/level.h>
-#include <core/model_output.h>
 #include <vfs/vfs.h>
 #include <vfs/io.h>
 

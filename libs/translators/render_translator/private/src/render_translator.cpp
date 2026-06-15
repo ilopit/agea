@@ -5,6 +5,7 @@
 #include <vulkan_render/render_thread.h>         // KRG_check_model_thread
 #include <vulkan_render/vulkan_render_device.h>  // frames_in_flight()
 #include <core/reflection/reflection_type.h>
+#include <core/subsystem_queues.h>
 
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/components/game_object_component.h>
@@ -27,13 +28,13 @@ state_mutator__render_translator::set(gs::state& s)
 void*
 render_translator::alloc_cmd_raw(size_t size, size_t align)
 {
-    return glob::glob_state().getr_render().input_queue.alloc_raw(size, align);
+    return glob::glob_state().getr_subsystem_queues().render.alloc_raw(size, align);
 }
 
 void
 render_translator::enqueue_cmd(render_cmd::render_command_base* cmd)
 {
-    glob::glob_state().getr_render().input_queue.enqueue(cmd);
+    glob::glob_state().getr_subsystem_queues().render.enqueue(cmd);
 }
 
 // --- Content render-resource allocation (model thread) --------------------

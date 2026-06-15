@@ -16,13 +16,14 @@ namespace core
 // yet." Owned privately by model_system (m_dirty), produced through its queue_*
 // methods, drained by the frame owner and read by level rollback/scrub via
 // getr_model().dirty(). This is NOT the model->subsystem boundary — that is
-// model_output (POD messages). Kept off model_output on purpose: dirty tracking is
-// the model's own state, not an interface other subsystems should see.
+// subsystem_queues (getr_subsystem_queues(): render command + audio message channels).
+// Kept separate on purpose: dirty tracking is the model's own state, not an interface
+// other subsystems should see.
 struct alignas(64) model_dirty
 {
     line_cache<root::game_object_component*> dirty_transforms;
-    line_cache<root::smart_object*>          dirty_render;
-    line_cache<root::smart_object*>          destroy_render;
+    line_cache<root::smart_object*> dirty_render;
+    line_cache<root::smart_object*> destroy_render;
     std::vector<std::shared_ptr<root::smart_object>> deferred_release;
 
     void

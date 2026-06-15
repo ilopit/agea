@@ -3,6 +3,7 @@
 #include <audio/audio_system.h>
 
 #include <core/model_system.h>
+#include <core/subsystem_queues.h>
 
 #include <global_state/global_state.h>
 
@@ -18,6 +19,15 @@ state_mutator__audio_bridge::set(gs::state& s)
 {
     auto p = s.create_box<audio_bridge>("audio_bridge");
     s.m_audio_bridge = p;
+}
+
+void
+audio_bridge::emit(const core::audio_message& msg)
+{
+    // Single-thread channel (slot 0): copy the intent into the arena and enqueue. The
+    // consumer (engine drain) pops these the same frame and feeds them to process().
+    auto& q = glob::glob_state().getr_subsystem_queues().audio;
+    q.enqueue(q.alloc_cmd<core::audio_message>(msg));
 }
 
 void

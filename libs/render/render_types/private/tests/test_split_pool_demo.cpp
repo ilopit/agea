@@ -16,7 +16,7 @@
 // claim/release through the queue, claim epochs (cross-claim ABA), the
 // forged-handle trust boundary, retire-vs-reset payload semantics.
 //
-// The engine's real channel is render::input_queue; the queue here is the
+// The engine's real channel is getr_subsystem_queues().render; the queue here is the
 // minimal shape that exercises the watermark contract. Single-threaded by
 // design -- cross-thread chunk/affinity mechanics live in test_handle_pool.
 // ---------------------------------------------------------------------------

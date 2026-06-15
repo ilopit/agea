@@ -42,6 +42,7 @@ target_link_libraries(packages.base.model PUBLIC
 
    kryga::physics
    kryga::audio
+   kryga::audio_bridge
 
    lua_static
 )

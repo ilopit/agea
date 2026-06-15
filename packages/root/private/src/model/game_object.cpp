@@ -7,7 +7,6 @@
 #include <core/model_system.h>
 #include <core/package.h>
 #include <core/level.h>
-#include <core/model_output.h>
 #include <global_state/global_state.h>
 
 namespace kryga

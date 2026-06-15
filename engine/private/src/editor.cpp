@@ -19,7 +19,7 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/model_system.h>
-#include <core/model_output.h>
+#include <core/subsystem_queues.h>
 #include <core/package_manager.h>
 
 #include <packages/root/model/game_object.h>
@@ -190,6 +190,7 @@ game_editor::ev_reload()
     auto& level = *glob::glob_state().getr_model().current_level;
 
     glob::glob_state().getr_model().drop_pending();
+    glob::glob_state().getr_subsystem_queues().drop_pending();
 
     glob::glob_state().getr_render().renderer.clear_upload_queue();
 

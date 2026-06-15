@@ -10,7 +10,6 @@
 #include <core/object_constructor.h>
 #include <core/construction_utils.h>
 #include <core/reflection/reflection_type.h>
-#include <core/model_output.h>
 #include <global_state/global_state.h>
 
 namespace kryga

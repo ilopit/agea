@@ -5,7 +5,6 @@
 #include <core/level_manager.h>
 #include <core/package_manager.h>
 #include <core/id_generator.h>
-#include <core/model_output.h>
 #include <core/model_dirty.h>
 #include <core/reflection/reflection_type.h>
 
@@ -43,9 +42,6 @@ public:
 
     level* current_level = nullptr;
 
-    // Model->subsystem message boundary (audio today; POD intents). See model_output.h.
-    model_output output;
-
     // ---- Model-internal dirty bookkeeping (model_dirty.h) ----
     // Enqueue through these; never reach m_dirty directly to mark. The frame-owner
     // drain and level rollback/scrub read the lists through dirty().
@@ -72,12 +68,14 @@ public:
         return m_dirty;
     }
 
-    // Level teardown: clear both the dirty bookkeeping and the message boundary.
+    // Level teardown: clear the model-internal dirty bookkeeping. Pending model->
+    // subsystem intents live on subsystem_queues now, so the teardown orchestrator
+    // also calls getr_subsystem_queues().drop_pending() (keeps this header free of a
+    // global_state dependency).
     void
     drop_pending()
     {
         m_dirty.clear();
-        output.drop_pending();
     }
 
 private:

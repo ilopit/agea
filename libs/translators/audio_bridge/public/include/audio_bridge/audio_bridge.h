@@ -5,16 +5,23 @@
 namespace kryga
 {
 
-// The model<->audio analog of render_bridge: model emitters never touch
-// audio_system, they emit core::audio_message on the model queue, and this bridge
-// translates them into audio_system calls. Stateless — it fetches audio_system
-// from global_state at call time (mirrors render_bridge fetching the render
-// system). Lives on the main thread, so no arena / double-buffer / threaded
+// The model<->audio analog of render_bridge. Model emitters never touch
+// audio_system and never touch the command queue directly: they call emit() (the
+// producer side), and the bridge translates drained messages into audio_system
+// calls via process() (the consumer side). Stateless — it fetches the queue /
+// audio_system from global_state at call time (mirrors render_bridge fetching the
+// render system). Lives on the main thread, so no arena / double-buffer / threaded
 // command machinery is needed (unlike render, whose consumer is a separate thread).
 class audio_bridge
 {
 public:
-    // Translate one model message into the matching audio_system call.
+    // Producer side (model thread): enqueue a model-emitted intent onto the audio
+    // channel of subsystem_queues. The only place that writes the audio queue, so the
+    // queue's alloc/enqueue mechanics stay out of model components.
+    void
+    emit(const core::audio_message& msg);
+
+    // Consumer side: translate one drained message into the matching audio_system call.
     void
     process(const core::audio_message& msg);
 

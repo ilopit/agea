@@ -3,6 +3,7 @@
 #include <global_state/global_state.h>
 
 #include <vulkan_render/render_system.h>  // render_system: getr_render() returns this; holds .renderer
+#include <core/subsystem_queues.h>  // getr_subsystem_queues().render command channel
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_thread.h>  // render-state ownership handoff
 #include <render_translator/render_command.h>  // render_exec_context: drain_frame executes commands against it
@@ -62,7 +63,7 @@ frame_pipeline::begin_frame()
     // snapshot double buffers) and the command queue/arena. The render thread reads
     // the matching frame slot when it draws this frame.
     glob::glob_state().getr_render().renderer.set_build_frame_slot(frame_slot);
-    glob::glob_state().getr_render().input_queue.set_build_frame_slot(frame_slot);
+    glob::glob_state().getr_subsystem_queues().render.set_build_frame_slot(frame_slot);
 
     // [model thread] Mature deferred content-slot frees. Once per frame here so the
     // model-owned allocators (which live in render_translator) recycle indices only
@@ -117,8 +118,8 @@ frame_pipeline::drain_frame(uint32_t frame_slot)
     // render thread was released, and the producer is on the other frame slot, so
     // "empty" reliably means "whole frame consumed".
     glob::glob_state()
-        .getr_render()
-        .input_queue.command_queue(frame_slot)
+        .getr_subsystem_queues()
+        .render.queue(frame_slot)
         .drain(
             [&exec_ctx](render_cmd::render_command_base*&& cmd)
             {
@@ -137,7 +138,7 @@ frame_pipeline::render_loop()
     render::set_render_access(true);
 
     auto& renderer = glob::glob_state().getr_render().renderer;
-    auto& queues = glob::glob_state().getr_render().input_queue;
+    auto& queues = glob::glob_state().getr_subsystem_queues().render;
 
     // Same handoff for the pool thread guards: init minted system resources and
     // populated storages on the main thread; from here the render thread is the

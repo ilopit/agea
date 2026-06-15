@@ -4,7 +4,7 @@
 #include "core/model_system.h"
 #include "core/object_constructor.h"
 #include "core/package_manager.h"
-#include "core/model_output.h"
+#include "core/subsystem_queues.h"
 #include "core/caches/cache_set.h"
 #include "core/caches/hash_cache.h"
 #include "core/caches/caches_map.h"
@@ -195,6 +195,7 @@ void
 level_manager::unload_level(level& l)
 {
     glob::glob_state().getr_model().drop_pending();
+    glob::glob_state().getr_subsystem_queues().drop_pending();
     l.unregister_objects();
     l.unload();
 }

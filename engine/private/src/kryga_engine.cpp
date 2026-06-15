@@ -28,7 +28,6 @@
 #endif
 
 #include <core/caches/caches_map.h>
-#include <core/model_output.h>
 #include <render_translator/render_commands.h>
 #include <core/id_generator.h>
 #include <core/level.h>
@@ -76,6 +75,7 @@
 #include <vulkan_render/vulkan_render_loader.h>
 #include <vulkan_render/vulkan_render_device.h>
 #include <vulkan_render/render_system.h>
+#include <core/subsystem_queues.h>
 #include <vulkan_render/render_thread.h>
 #include <vulkan_render/types/vulkan_mesh_data.h>
 #include <vulkan_render/types/vulkan_texture_data.h>
@@ -245,6 +245,7 @@ vulkan_engine::init(const startup_options& options)
 
     state_mutator__config::set(gs);
     state_mutator__render::set(gs);
+    state_mutator__subsystem_queues::set(gs);
 
     // input_manager is the only subsystem that truly can't run headless —
     // it hooks the OS event pump which tests don't drive. Everything else
@@ -710,7 +711,7 @@ vulkan_engine::tick_headless()
     // enqueued into and drained from slot 0.
     frame_pipeline::drain_frame(0);
     glob::glob_state().getr_render().renderer.draw_headless();
-    glob::glob_state().getr_render().input_queue.reset_arena();
+    glob::glob_state().getr_subsystem_queues().render.reset_arena();
 }
 
 #if KRG_EDITOR
@@ -883,9 +884,9 @@ vulkan_engine::load_level(const utils::id& level_id)
         unload_render_resources(*prev);
         // Retire the prev level's lightmap binding on the render thread, ahead of
         // the new level's commands in this same frame slot's FIFO queue.
-        auto* cmd = glob::glob_state().getr_render().input_queue.alloc_cmd<destroy_lightmap_cmd>();
+        auto* cmd = glob::glob_state().getr_subsystem_queues().render.alloc_cmd<destroy_lightmap_cmd>();
         cmd->level_id = prev->get_id();
-        glob::glob_state().getr_render().input_queue.enqueue(cmd);
+        glob::glob_state().getr_subsystem_queues().render.enqueue(cmd);
         lm.unload_level(*prev);
     }
 
@@ -917,7 +918,7 @@ vulkan_engine::load_level(const utils::id& level_id)
             std::vector<uint8_t> lm_data;
             if (vfs::load_file(result->get_lightmap_bin_rid(), lm_data) && !lm_data.empty())
             {
-                auto& iq = glob::glob_state().getr_render().input_queue;
+                auto& iq = glob::glob_state().getr_subsystem_queues().render;
                 auto* cmd = iq.alloc_cmd<create_lightmap_cmd>();
                 cmd->level_id = result->get_id();
                 cmd->tex_id = AID((result->get_id().str() + "_lightmap").c_str());
@@ -1251,14 +1252,13 @@ vulkan_engine::consume_updated_render()
 void
 vulkan_engine::consume_updated_audio()
 {
-    auto& mq = glob::glob_state().getr_model().output;
+    auto& audio = glob::glob_state().getr_subsystem_queues().audio;
     auto& ab = glob::glob_state().getr_audio_bridge();
 
-    for (auto& msg : mq.audio_messages)
-    {
-        ab.process(msg);
-    }
-    mq.audio_messages.clear();
+    // Single-thread channel: main built into slot 0 this frame; drain it here and
+    // rewind the arena (audio_message is trivially destructible — see subsystem_queues.h).
+    audio.queue(0).drain([&ab](core::audio_message* msg) { ab.process(*msg); });
+    audio.reset_arena();
 
     // Stop voices whose emitter is gone (deletion / level unload / rollback).
     ab.reap_orphans();

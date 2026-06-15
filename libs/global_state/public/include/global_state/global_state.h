@@ -73,6 +73,7 @@ class lua_api;
 class render_translator;
 class audio_bridge;
 struct engine_counters;
+struct subsystem_queues;
 
 // Singletons
 class vulkan_engine;
@@ -103,6 +104,7 @@ struct state_mutator__input_manager;
 struct state_mutator__render_translator;
 struct state_mutator__audio_bridge;
 struct state_mutator__engine_counters;
+struct state_mutator__subsystem_queues;
 
 // Singletons
 struct state_mutator__engine;
@@ -159,6 +161,7 @@ class state
     friend class ::kryga::state_mutator__render_translator;
     friend class ::kryga::state_mutator__audio_bridge;
     friend class ::kryga::state_mutator__engine_counters;
+    friend class ::kryga::state_mutator__subsystem_queues;
     friend class ::kryga::state_mutator__physics_system;
     friend class ::kryga::state_mutator__game_system_manager;
     friend class ::kryga::state_mutator__audio_system;
@@ -214,6 +217,7 @@ public:
     KRG_gen_getter(render_translator, render_translator);
     KRG_gen_getter(audio_bridge, audio_bridge);
     KRG_gen_getter(engine_counters, engine_counters);
+    KRG_gen_getter(subsystem_queues, subsystem_queues);
 
     // Singletons
     KRG_gen_getter(engine, vulkan_engine);
@@ -277,6 +281,7 @@ private:
     render_translator*                  m_render_translator = nullptr;
     audio_bridge*                   m_audio_bridge = nullptr;
     engine_counters*                m_engine_counters = nullptr;
+    subsystem_queues*               m_subsystem_queues = nullptr;
     physics::physics_system*        m_physics_system = nullptr;
     game::game_system_manager*      m_game_system_manager = nullptr;
     audio::audio_system*            m_audio_system = nullptr;
@@ -340,6 +345,12 @@ struct state_mutator__audio_bridge
 };
 
 struct state_mutator__engine_counters
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__subsystem_queues
 {
     static void
     set(gs::state& s);
