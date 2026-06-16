@@ -110,7 +110,7 @@ public:
     detach_content_storages();
 
     // Mature deferred frees in all content allocators. Call once per frame from the
-    // producer (frame_pipeline::begin_frame). Re-syncs the deferral window to the
+    // producer (engine_threads::begin_frame). Re-syncs the deferral window to the
     // device's frames_in_flight so it tracks the GPU-resource delete queue.
     void
     tick_content_allocators();

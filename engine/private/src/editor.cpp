@@ -190,7 +190,6 @@ game_editor::ev_reload()
     auto& level = *glob::glob_state().getr_model().current_level;
 
     glob::glob_state().getr_model().drop_pending();
-    glob::glob_state().getr_subsystem_queues().drop_pending();
 
     glob::glob_state().getr_render().renderer.clear_upload_queue();
 

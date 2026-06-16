@@ -11,15 +11,15 @@ never touch the same queue at once.
 1. `alloc_cmd<T>()` — allocate command from the active slot's arena
 2. `enqueue_cmd()` — push onto the active slot's queue
 
-Consuming a slot (`frame_pipeline::drain_frame(slot)` — execute that slot's whole
+Consuming a slot (`engine_threads::drain_frame(slot)` — execute that slot's whole
 queue, then draw) is NOT here: it's the render-thread consumer side and lives on
-`frame_pipeline` (engine). The queue itself is a generic `command_queue<TCmd>`
-(vulkan_render/subsystem_queues.h), instantiated as the **render channel of the neutral
+`engine_threads` (engine). The queue itself is a generic `command_queue<TCmd>`
+(core/subsystem_queues.h), instantiated as the **render channel of the neutral
 `subsystem_queues` holder** reached via `getr_subsystem_queues().render` — distinct from the
 model-side dirty tracking, which lives on `model_system` (`getr_model().dirty`). The frame-slot
 lifecycle (`set_build_frame_slot` / `reset_frame_slot` / `reset_arena`) lives on the
 `command_queue`, driven by the frame owner
-(`frame_pipeline` in the streaming loop, the headless tick otherwise). render_translator
+(`engine_threads` in the streaming loop, the headless tick otherwise). render_translator
 holds no slot state; it only builds commands into the active slot.
 
 ## Model-to-render dispatch (the render_translator class)

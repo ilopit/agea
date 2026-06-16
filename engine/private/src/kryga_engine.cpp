@@ -66,6 +66,7 @@
 #include <render_translator/render_convert.h>
 
 #include <audio_bridge/audio_bridge.h>
+#include <audio_bridge/audio_message_processor.h>
 
 #include <core/audio_message.h>
 
@@ -462,6 +463,12 @@ vulkan_engine::init(const startup_options& options)
 void
 vulkan_engine::cleanup()
 {
+    // Join all worker threads up front — the audio thread owns audio_system and the
+    // render thread owns render state, both of which teardown below (and
+    // glob_state_reset) destroy. Idempotent: run() already stopped them on the normal
+    // path, and headless never started them.
+    m_threads.stop();
+
     // Save session state to rtcache (non-headless only — headless tests don't touch session cfg)
     if (!m_headless)
     {
@@ -529,9 +536,9 @@ vulkan_engine::cleanup()
 bool
 vulkan_engine::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
 {
-    // Thin delegate: the streaming handoff lives in frame_pipeline. The sole
+    // Thin delegate: the streaming handoff lives in engine_threads. The sole
     // caller, rpc waitFrame, already clamps untrusted input to [1,60].
-    return m_pipeline.wait_frames_rendered(count, timeout);
+    return m_threads.wait_frames_rendered(count, timeout);
 }
 #endif
 
@@ -555,9 +562,10 @@ vulkan_engine::run()
     // until stop(), any main-thread render mutation trips the assert.
     render::set_render_access(false);
 
-    // Spawn the render thread. It calls back into select_frame_slot (main thread,
-    // inside begin_frame) and draw_frame (render thread) as it runs.
-    m_pipeline.start();
+    // Spawn the worker threads: the render thread (calls back into begin_frame on
+    // main and draw_frame on itself) and the audio thread (from here audio_system is
+    // owned by it; main only produces messages onto the audio channel).
+    m_threads.start();
 
     // main loop
     for (;;)
@@ -599,7 +607,7 @@ vulkan_engine::run()
         // this frame's camera/UI/command state into that parity slot. The vsync
         // / present-pacing stall the render thread takes each frame is exactly
         // the window this lets the main thread fill (the point of the decouple).
-        m_pipeline.begin_frame();
+        m_threads.begin_frame();
 
 #if KRG_EDITOR
         {
@@ -640,7 +648,7 @@ vulkan_engine::run()
         // (no write to m_render_config), keeping the common path fully decoupled.
         if (glob::glob_state().getr_render().renderer.has_pending_render_config())
         {
-            m_pipeline.wait_idle();
+            m_threads.wait_idle();
             glob::glob_state().getr_render().renderer.apply_pending_render_config();
         }
 
@@ -675,7 +683,7 @@ vulkan_engine::run()
         // Publish the frame: its commands are all in the slot's queue; the render
         // thread drains that slot and draws. (No terminal command — one queue per
         // frame parity means draining to empty is the frame boundary.)
-        m_pipeline.submit_frame();
+        m_threads.submit_frame();
 
         auto frame_msk = std::chrono::microseconds(utils::get_current_time_mks() - start_ts);
 
@@ -691,8 +699,8 @@ vulkan_engine::run()
         KRG_PROFILE_FRAME_MARK();
     }
 
-    // Drain any in-flight frames and join the render thread.
-    m_pipeline.stop();
+    // Drain any in-flight frames and join the worker threads (render + audio).
+    m_threads.stop();
 
     // Render thread gone — main reclaims access for single-threaded teardown,
     // and ownership of the pool guards with it (deinit frees system meshes/
@@ -709,9 +717,12 @@ vulkan_engine::tick_headless()
 
     // Headless is single-threaded and never switches parity, so everything is
     // enqueued into and drained from slot 0.
-    frame_pipeline::drain_frame(0);
+    engine_threads::drain_frame(0);
     glob::glob_state().getr_render().renderer.draw_headless();
     glob::glob_state().getr_subsystem_queues().render.reset_arena();
+
+    // No audio thread in headless — drain the audio channel synchronously here.
+    consume_updated_audio();
 }
 
 #if KRG_EDITOR
@@ -838,15 +849,12 @@ vulkan_engine::tick(float dt)
         anim->tick(dt);
     }
 
-    // Drain model-emitted audio messages through the bridge, then let the system
-    // reap finished voices. Runs every frame (outside the play gate) so stop
-    // messages from a play->edit transition are applied even in edit mode.
-    consume_updated_audio();
-
-    if (auto* audio = glob::glob_state().get_audio_system())
-    {
-        audio->tick(dt);
-    }
+    // Audio runs on its own thread (engine_threads) draining the message channel and
+    // ticking audio_system. Main only PRODUCES here: cancel voices whose emitter left
+    // the model cache (deletion / unload / play->edit rollback) by emitting stop
+    // intents. Runs every frame (outside the play gate) so rollback stops apply even
+    // in edit mode. No audio_system access on the main thread.
+    glob::glob_state().getr_audio_bridge().reap_orphans();
 
 #if KRG_EDITOR
     if (!playing)
@@ -884,7 +892,8 @@ vulkan_engine::load_level(const utils::id& level_id)
         unload_render_resources(*prev);
         // Retire the prev level's lightmap binding on the render thread, ahead of
         // the new level's commands in this same frame slot's FIFO queue.
-        auto* cmd = glob::glob_state().getr_subsystem_queues().render.alloc_cmd<destroy_lightmap_cmd>();
+        auto* cmd =
+            glob::glob_state().getr_subsystem_queues().render.alloc_cmd<destroy_lightmap_cmd>();
         cmd->level_id = prev->get_id();
         glob::glob_state().getr_subsystem_queues().render.enqueue(cmd);
         lm.unload_level(*prev);
@@ -997,6 +1006,23 @@ vulkan_engine::consume_updated_transforms()
     items.clear();
 }
 
+namespace
+{
+// Emit the active camera's pose as a set_listener intent onto the audio channel.
+// Producer-side only (model thread) — the audio thread applies it via the bridge.
+// Same per-frame cadence as the old direct set_listener call.
+void
+emit_listener_pose(base::camera_component* cam)
+{
+    core::audio_message msg;
+    msg.kind = core::audio_msg_kind::set_listener;
+    msg.position = cam->get_owner()->get_position();
+    msg.forward = cam->get_forward_vector().as_glm();
+    msg.up = cam->get_up_vector().as_glm();
+    glob::glob_state().getr_audio_bridge().emit(msg);
+}
+}  // namespace
+
 void
 vulkan_engine::update_cameras()
 {
@@ -1013,12 +1039,7 @@ vulkan_engine::update_cameras()
         m_camera_data.view = cam->get_view();
         m_camera_data.position = cam->get_owner()->get_position();
 
-        if (auto* as = glob::glob_state().get_audio_system())
-        {
-            as->set_listener(cam->get_owner()->get_position(),
-                             cam->get_forward_vector().as_glm(),
-                             cam->get_up_vector().as_glm());
-        }
+        emit_listener_pose(cam);
     }
     else
     {
@@ -1061,12 +1082,7 @@ vulkan_engine::update_cameras()
     m_camera_data.view = cam->get_view();
     m_camera_data.position = cam->get_owner()->get_position();
 
-    if (auto* as = glob::glob_state().get_audio_system())
-    {
-        as->set_listener(cam->get_owner()->get_position(),
-                         cam->get_forward_vector().as_glm(),
-                         cam->get_up_vector().as_glm());
-    }
+    emit_listener_pose(cam);
 #endif
 }
 
@@ -1252,16 +1268,19 @@ vulkan_engine::consume_updated_render()
 void
 vulkan_engine::consume_updated_audio()
 {
-    auto& audio = glob::glob_state().getr_subsystem_queues().audio;
-    auto& ab = glob::glob_state().getr_audio_bridge();
+    // Headless / single-threaded path only: run() spawns the audio thread which is the
+    // sole consumer, so this must NOT run there (it would be a second consumer on the
+    // SPSC queue). In headless no thread exists, so the main thread does the audio
+    // thread's work synchronously — drain the channel through the processor, tick the
+    // renderer, reap orphans.
+    auto& q = glob::glob_state().getr_subsystem_queues().audio;
+    auto* as = glob::glob_state().get_audio_system();
+    audio_message_processor proc{as->renderer};
 
-    // Single-thread channel: main built into slot 0 this frame; drain it here and
-    // rewind the arena (audio_message is trivially destructible — see subsystem_queues.h).
-    audio.queue(0).drain([&ab](core::audio_message* msg) { ab.process(*msg); });
-    audio.reset_arena();
+    q.drain([&proc](core::audio_message msg) { proc.process(msg); });
 
-    // Stop voices whose emitter is gone (deletion / level unload / rollback).
-    ab.reap_orphans();
+    as->renderer.tick(0.f);
+    glob::glob_state().getr_audio_bridge().reap_orphans();
 }
 
 }  // namespace kryga

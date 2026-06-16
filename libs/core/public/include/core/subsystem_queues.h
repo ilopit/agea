@@ -18,23 +18,21 @@ struct render_command_base;
 
 // Generic, double-buffered command channel (NOT render-specific — hence no vulkan
 // dependency). TCmd is the command base type whose pointers flow through the queue.
-// Capacities are ctor params (default to the render channel's sizing); a single-thread
-// channel like audio can request small arenas/queues.
+// Capacities are ctor params (default to the render channel's sizing).
 //
 // alloc_cmd stamps `cmd_kind` only for tagged-command types (those exposing a `static
 // constexpr k_kind` — the central-dispatch discriminator). Single-type channels whose
-// element has no k_kind (e.g. audio_message) simply get allocated, no stamp.
+// element has no k_kind simply get allocated, no stamp.
 //
 // Per-frame-parity queues + arenas. The main thread produces frame F into slot (F&1);
 // the render thread consumes the same slot. The engine's depth-1 pipeline gate keeps
 // main at most one frame ahead, so producer and consumer never touch the same slot at
 // once — each queue carries exactly one frame's commands, and the render thread drains
 // its slot to empty (no in-band frame-boundary marker) then draws. Arena reuse is a
-// free bump-pointer rewind (reset_frame_slot). A single-thread channel ignores the
-// parity and just uses slot 0 (build, drain, reset_arena — all same thread, same frame).
+// free bump-pointer rewind (reset_frame_slot).
 //
 // The frame-slot lifecycle (set_build_frame_slot / reset_frame_slot / reset_arena) is
-// driven by the frame owner (frame_pipeline in the streaming loop, the headless tick
+// driven by the frame owner (engine_threads in the streaming loop, the headless tick
 // otherwise). A "frame slot" is the frame-parity index (frame & 1) selecting one of the
 // two depth-1 double buffers.
 template <typename TCmd>
@@ -116,39 +114,42 @@ private:
     uint32_t m_build_frame_slot = 0;
 };
 
-// Neutral, per-subsystem command-queue holder — the single model->subsystem boundary
-// producers write to INSTEAD of reaching into a subsystem's system object. Lives as its
-// own global_state box (not on any system) so no subsystem "owns" the queue. Both
-// channels are the same command_queue mechanism; they differ only in usage:
-//   - render: cross-thread, double-buffered — main builds slot (F&1), render thread
-//             drains the other; sized for a full frame of draw commands.
-//   - audio:  single-thread — main builds and drains slot 0 the same frame, so the
-//             parity/double-buffer is unused; sized small (a handful of intents/frame).
+// Neutral, per-subsystem queue holder — the single model->subsystem boundary producers
+// write to INSTEAD of reaching into a subsystem's system object. Lives as its own
+// global_state box (not on any system) so no subsystem "owns" the queue. The two
+// channels use different mechanisms because their consumers differ:
+//   - render: double-buffered command_queue — main builds slot (F&1), the render thread
+//             drains the other; pointers into a per-parity arena; sized for a full frame
+//             of draw commands.
+//   - audio:  lock-free value SPSC ring — audio is fire-and-forget on a dedicated
+//             consumer thread (the audio worker in engine_threads), so there's no frame
+//             parity and no arena:
+//             POD messages are copied straight into the ring. Main is the SOLE producer
+//             (emitter intents, listener pose, orphan stops); the audio thread is the
+//             SOLE consumer. Sized for a handful of intents per frame.
 //
 // render_command_base is forward-declared and held only by pointer (type forwarding),
 // so core needs no dependency on the render libs; audio_message is a core type. Future
 // physics/vfx channels get added here as those subsystems land.
+//
+// No teardown drop_pending: the render channel self-cleans via its arena rewind on the
+// render thread, and the audio channel has exactly one consumer (the audio thread) — a
+// main-thread drain would be a second consumer and corrupt the SPSC invariants. Stale
+// plays for torn-down emitters are instead cancelled by audio_bridge::reap_orphans,
+// which emits stop intents from the model thread.
 struct subsystem_queues
 {
     command_queue<render_cmd::render_command_base> render;
-    command_queue<core::audio_message> audio{256, 64 * 1024};
-
-    // Drop pending intents on level teardown / play-mode rollback. Only audio: the
-    // render channel is drained by the render thread and self-cleans via its arena
-    // rewind; touching it here would race that thread. Audio is single-thread (slot 0),
-    // so discarding the queue + rewinding the arena on the main thread is safe.
-    void
-    drop_pending()
-    {
-        audio.queue(0).drain([](core::audio_message*) {});
-        audio.reset_arena();
-    }
+    utils::spsc_queue<core::audio_message> audio{256};
 };
 
-// audio drain + arena reset never run destructors (arena reset is a bump-pointer
-// rewind), so audio_message must stay trivially destructible.
+// audio_message crosses the model->audio thread boundary by value and carries only a
+// raw model-owned clip pointer (no owned resources). Keep it free of RAII members so a
+// copy is a plain field-wise copy with nothing to clean up. (utils::id has a
+// user-declared copy ctor, so the message isn't trivially_copyable — destructibility is
+// the guard that actually matters here.)
 static_assert(std::is_trivially_destructible_v<core::audio_message>,
-              "audio_message must be trivially destructible: the audio command_queue's "
-              "arena reset does not run destructors");
+              "audio_message must stay free of RAII members — it is a plain value "
+              "message copied across the model->audio thread boundary");
 
 }  // namespace kryga

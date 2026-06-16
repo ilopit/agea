@@ -4,7 +4,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_config.h>
 
-#include <engine/frame_pipeline.h>
+#include <engine/engine_threads.h>
 
 #include <utils/id.h>
 #include <utils/line_container.h>
@@ -210,10 +210,13 @@ private:
     // begin_frame/submit_frame; everything else lives inside it. Headless ticks
     // single-threaded through tick_headless(), bypassing the pipeline.
     //
-    // Declared last so its dtor runs first: stop() there joins the render thread
-    // before any other engine member is destroyed, so the render thread can't
-    // touch a half-torn-down subsystem. This ordering is load-bearing.
-    frame_pipeline m_pipeline;
+    // Single owner of all engine worker threads (render streaming pipeline + audio
+    // worker). Declared last so its dtor runs first: stop() there joins both threads
+    // before any other engine member is destroyed, so neither can touch a half-torn-
+    // down subsystem. The authoritative stop() is in cleanup() (before global_state
+    // tears down audio_system / render), so by dtor time the threads are already
+    // joined and the dtor's stop() is a no-op backstop. This ordering is load-bearing.
+    engine_threads m_threads;
 };
 
 }  // namespace kryga

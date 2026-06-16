@@ -195,7 +195,6 @@ void
 level_manager::unload_level(level& l)
 {
     glob::glob_state().getr_model().drop_pending();
-    glob::glob_state().getr_subsystem_queues().drop_pending();
     l.unregister_objects();
     l.unload();
 }

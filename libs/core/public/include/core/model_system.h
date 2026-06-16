@@ -69,9 +69,9 @@ public:
     }
 
     // Level teardown: clear the model-internal dirty bookkeeping. Pending model->
-    // subsystem intents live on subsystem_queues now, so the teardown orchestrator
-    // also calls getr_subsystem_queues().drop_pending() (keeps this header free of a
-    // global_state dependency).
+    // subsystem intents live on subsystem_queues, which self-clean: the render
+    // channel rewinds on the render thread, and the audio channel is cancelled via
+    // audio_bridge::reap_orphans (stop intents) — no teardown drain is needed here.
     void
     drop_pending()
     {

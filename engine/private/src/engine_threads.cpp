@@ -1,52 +1,70 @@
-#include <engine/frame_pipeline.h>
+#include <engine/engine_threads.h>
 
 #include <global_state/global_state.h>
 
 #include <vulkan_render/render_system.h>  // render_system: getr_render() returns this; holds .renderer
-#include <core/subsystem_queues.h>  // getr_subsystem_queues().render command channel
+#include <core/subsystem_queues.h>  // getr_subsystem_queues(): render command channel + audio ring
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_thread.h>  // render-state ownership handoff
 #include <render_translator/render_command.h>  // render_exec_context: drain_frame executes commands against it
 #include <render_translator/render_translator.h>  // tick_content_allocators()
 
+#include <audio/audio_system.h>                    // audio thread owns + ticks the renderer
+#include <audio_bridge/audio_message_processor.h>  // translates drained messages onto it
+
 #include <utils/check.h>
+
+#include <chrono>
 
 namespace kryga
 {
 
-frame_pipeline::~frame_pipeline()
+engine_threads::~engine_threads()
 {
     stop();
 }
 
 void
-frame_pipeline::start()
+engine_threads::start()
 {
-    KRG_check(!m_thread.joinable(), "frame_pipeline::start called twice");
-    m_thread = std::thread(&frame_pipeline::render_loop, this);
+    KRG_check(!m_render_thread.joinable(), "engine_threads::start called twice");
+
+    // Render thread — the gated streaming pipeline.
+    m_shutdown = false;
+    m_render_thread = std::thread(&engine_threads::render_loop, this);
+
+    // Audio thread — independent fire-and-forget worker.
+    m_audio_shutdown.store(false, std::memory_order_relaxed);
+    m_audio_thread = std::thread(&engine_threads::audio_loop, this);
 }
 
 void
-frame_pipeline::stop()
+engine_threads::stop()
 {
-    if (!m_thread.joinable())
+    // Render thread first: drain any in-flight frames, then signal shutdown so it
+    // breaks out only once it has nothing left to draw.
+    if (m_render_thread.joinable())
     {
-        return;
+        {
+            std::unique_lock lock(m_mutex);
+            m_main_cv.wait(lock, [this] { return m_completed == m_submitted; });
+            m_shutdown = true;
+        }
+        m_render_cv.notify_one();
+        m_render_thread.join();
     }
 
-    // Drain any in-flight frames, then signal shutdown so the render thread
-    // breaks out only once it has nothing left to draw.
+    // Audio thread: flag + join. Its loop does a final drain on the way out so
+    // intents queued just before shutdown (e.g. end_play stops) still apply.
+    if (m_audio_thread.joinable())
     {
-        std::unique_lock lock(m_mutex);
-        m_main_cv.wait(lock, [this] { return m_completed == m_submitted; });
-        m_shutdown = true;
+        m_audio_shutdown.store(true, std::memory_order_release);
+        m_audio_thread.join();
     }
-    m_render_cv.notify_one();
-    m_thread.join();
 }
 
 uint32_t
-frame_pipeline::begin_frame()
+engine_threads::begin_frame()
 {
     uint32_t frame_slot;
     {
@@ -73,7 +91,7 @@ frame_pipeline::begin_frame()
 }
 
 void
-frame_pipeline::submit_frame()
+engine_threads::submit_frame()
 {
     {
         std::lock_guard lock(m_mutex);
@@ -83,14 +101,14 @@ frame_pipeline::submit_frame()
 }
 
 void
-frame_pipeline::wait_idle()
+engine_threads::wait_idle()
 {
     std::unique_lock lock(m_mutex);
     m_main_cv.wait(lock, [this] { return m_completed == m_submitted; });
 }
 
 bool
-frame_pipeline::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
+engine_threads::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
 {
     // count < 1 is a caller bug: the static_cast<uint64_t> below would wrap a
     // negative into a huge target and silently block for the full timeout.
@@ -106,7 +124,7 @@ frame_pipeline::wait_frames_rendered(int count, std::chrono::milliseconds timeou
 }
 
 void
-frame_pipeline::drain_frame(uint32_t frame_slot)
+engine_threads::drain_frame(uint32_t frame_slot)
 {
     auto& vr = glob::glob_state().getr_render().renderer;
     auto& loader = glob::glob_state().getr_render().loader;
@@ -130,7 +148,7 @@ frame_pipeline::drain_frame(uint32_t frame_slot)
 }
 
 void
-frame_pipeline::render_loop()
+engine_threads::render_loop()
 {
     // The render thread grants itself render-state access for the lifetime of the
     // loop. Main handed off in vulkan_engine before starting us, so from here only
@@ -159,7 +177,7 @@ frame_pipeline::render_loop()
         // Render-thread tasks (RPC introspection, editor resource builds) run at
         // the top of each turn — the mirror of drain_main_actions() at the top of
         // vulkan_engine::tick. The queue lives on the renderer (render-thread
-        // subsystem); the pipeline only orchestrates when it drains. Render access
+        // subsystem); this only orchestrates when it drains. Render access
         // held, no concurrent mutator, so tasks read the cache without a lock and
         // see the last fully drawn frame's state. Drained on the shutdown wake too,
         // so pending tasks complete.
@@ -194,6 +212,42 @@ frame_pipeline::render_loop()
         // parked on m_main_cv.
         m_main_cv.notify_all();
     }
+}
+
+void
+engine_threads::audio_loop()
+{
+    // Fire-and-forget control worker. Sole consumer of the audio channel and sole
+    // owner of audio_renderer from here; main only produces messages. Shares nothing
+    // with the render pipeline above — no gate, no frame parity.
+    auto& q = glob::glob_state().getr_subsystem_queues().audio;
+    auto* as = glob::glob_state().get_audio_system();
+    KRG_check(as, "engine_threads::audio_loop: audio_system not created before start()");
+    audio::audio_renderer& renderer = as->renderer;
+    audio_message_processor proc{renderer};
+
+    // Self-clocked tick: audio_renderer::tick only reaps finished one-shot voices, so a
+    // coarse, locally measured dt is fine — nothing downstream needs it to match the
+    // render frame time.
+    auto last = std::chrono::steady_clock::now();
+
+    while (!m_audio_shutdown.load(std::memory_order_acquire))
+    {
+        q.drain([&proc](core::audio_message msg) { proc.process(msg); });
+
+        const auto now = std::chrono::steady_clock::now();
+        const float dt = std::chrono::duration<float>(now - last).count();
+        last = now;
+        renderer.tick(dt);
+
+        // Poll cadence — miniaudio mixes on its own realtime thread, so this only
+        // bounds how quickly a play/stop intent is registered, not audio quality.
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    // Final drain so intents queued just before shutdown (e.g. end_play stops) are
+    // applied before audio_renderer is torn down.
+    q.drain([&proc](core::audio_message msg) { proc.process(msg); });
 }
 
 }  // namespace kryga
