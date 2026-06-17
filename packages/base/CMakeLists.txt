@@ -72,6 +72,7 @@ target_link_libraries(packages.base.render
    kryga::packages.base.model
    kryga::asset_importer
    kryga::render_translator
+   kryga::physics_bridge
    kryga::gpu_types
    kryga::animation
    kryga::voronoi_fracture

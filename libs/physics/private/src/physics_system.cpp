@@ -93,11 +93,15 @@ physics_system::shutdown()
     if (m_impl->world)
     {
         auto& bi = m_impl->world->GetBodyInterface();
-        for (auto& [id, body] : m_impl->static_bodies)
-        {
-            bi.RemoveBody(body);
-            bi.DestroyBody(body);
-        }
+        m_impl->static_bodies.for_each_alive(
+            [&bi](JPH::BodyID& body)
+            {
+                if (!body.IsInvalid())
+                {
+                    bi.RemoveBody(body);
+                    bi.DestroyBody(body);
+                }
+            });
     }
     m_impl->static_bodies.clear();
 
@@ -213,18 +217,42 @@ physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
 static_body_handle
 physics_system::register_static_mesh(const static_world_mesh& mesh)
 {
+    static_body_handle h = alloc_static_handle();
+    create_static_mesh(h, mesh);
+    return h;
+}
+
+static_body_handle
+physics_system::alloc_static_handle()
+{
     if (!m_impl->world)
     {
         return {};
+    }
+    return static_body_handle{m_impl->static_bodies.alloc()};
+}
+
+void
+physics_system::create_static_mesh(static_body_handle h, const static_world_mesh& mesh)
+{
+    if (!m_impl->world || !h.valid())
+    {
+        return;
+    }
+
+    JPH::BodyID* slot = m_impl->static_bodies.resolve(h.value);
+    if (!slot)
+    {
+        return;  // stale handle
     }
 
     auto shape_result = build_mesh_shape({mesh});
     if (shape_result.HasError())
     {
-        ALOG_WARN("register_static_mesh: degenerate mesh ({} verts, {} indices) — no collider",
+        ALOG_WARN("create_static_mesh: degenerate mesh ({} verts, {} indices) — no collider",
                   mesh.vertices.size(),
                   mesh.indices.size());
-        return {};
+        return;  // slot stays bound to an invalid BodyID; unregister will no-op it
     }
 
     JPH::BodyCreationSettings bcs(shape_result.Get(),
@@ -237,15 +265,13 @@ physics_system::register_static_mesh(const static_world_mesh& mesh)
     JPH::BodyID body = bi.CreateAndAddBody(bcs, JPH::EActivation::DontActivate);
     if (body.IsInvalid())
     {
-        return {};
+        return;
     }
 
     m_impl->world->OptimizeBroadPhase();
 
-    uint64_t id = m_impl->next_static_body_id++;
-    m_impl->static_bodies.emplace(id, body);
-    ALOG_INFO("register_static_mesh: collider #{} added ({} tris)", id, mesh.indices.size() / 3);
-    return static_body_handle{id};
+    *slot = body;
+    ALOG_INFO("create_static_mesh: collider {} added ({} tris)", h.value, mesh.indices.size() / 3);
 }
 
 void
@@ -256,16 +282,19 @@ physics_system::unregister_static_mesh(static_body_handle h)
         return;
     }
 
-    auto it = m_impl->static_bodies.find(h.value);
-    if (it == m_impl->static_bodies.end())
+    JPH::BodyID* slot = m_impl->static_bodies.resolve(h.value);
+    if (!slot)
     {
         return;
     }
 
-    auto& bi = m_impl->world->GetBodyInterface();
-    bi.RemoveBody(it->second);
-    bi.DestroyBody(it->second);
-    m_impl->static_bodies.erase(it);
+    if (!slot->IsInvalid())
+    {
+        auto& bi = m_impl->world->GetBodyInterface();
+        bi.RemoveBody(*slot);
+        bi.DestroyBody(*slot);
+    }
+    m_impl->static_bodies.free(h.value);
 }
 
 void

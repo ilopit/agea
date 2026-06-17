@@ -23,9 +23,11 @@ const extern vec3 DEF_RIGHT;
 
 // clang-format off
 KRG_ar_class(
-    render_cmd_builder   = game_object_component__cmd_builder,
-    render_cmd_destroyer = game_object_component__cmd_destroyer,
-    mcp_hint             = "Component with spatial transform: position / rotation / scale and "
+    render_cmd_builder    = game_object_component__cmd_builder,
+    render_cmd_destroyer  = game_object_component__cmd_destroyer,
+    physics_cmd_builder   = game_object_component__physics_cmd_builder,
+    physics_cmd_destroyer = game_object_component__physics_cmd_destroyer,
+    mcp_hint              = "Component with spatial transform: position / rotation / scale and "
                            "visibility layer flags — base for all renderable components"
 );
 class game_object_component : public component

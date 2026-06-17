@@ -7,6 +7,8 @@
 #include <render_translator/render_commands.h>
 #include <vulkan_render/render_system.h>  // getr_render().ctx.rb->meshes_alloc().reserve()
 
+#include <physics_bridge/physics_bridge.h>
+
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"
 #include "packages/root/model/assets/texture_slot.h"
@@ -382,6 +384,40 @@ game_object_component__cmd_destroyer(reflection::type_context__render_cmd_build&
     for (auto child : c)
     {
         auto rc = ctx.rb->render_cmd_destroy(*child, false);
+        KRG_return_nok(rc);
+    }
+
+    return result_code::ok;
+}
+
+/*===============================*/
+
+result_code
+game_object_component__physics_cmd_builder(reflection::type_context__physics_cmd_build& ctx)
+{
+    auto& t = ctx.obj->asr<root::game_object_component>();
+
+    auto& c = t.get_render_children();
+
+    for (auto child : c)
+    {
+        auto rc = ctx.pb->physics_cmd_build(*child, false);
+        KRG_return_nok(rc);
+    }
+
+    return result_code::ok;
+}
+
+result_code
+game_object_component__physics_cmd_destroyer(reflection::type_context__physics_cmd_build& ctx)
+{
+    auto& t = ctx.obj->asr<root::game_object_component>();
+
+    auto& c = t.get_render_children();
+
+    for (auto child : c)
+    {
+        auto rc = ctx.pb->physics_cmd_destroy(*child, false);
         KRG_return_nok(rc);
     }
 

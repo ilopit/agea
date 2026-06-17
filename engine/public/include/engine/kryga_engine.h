@@ -163,6 +163,8 @@ private:
     void
     consume_updated_render();
     void
+    consume_updated_physics();
+    void
     consume_updated_transforms();
     void
     consume_updated_audio();

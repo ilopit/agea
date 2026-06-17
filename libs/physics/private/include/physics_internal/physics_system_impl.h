@@ -8,6 +8,8 @@
 
 #include "physics_internal/jolt_layers.h"
 
+#include <utils/handle_pool.h>
+
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/JobSystem.h>
 #include <Jolt/Core/TempAllocator.h>
@@ -15,7 +17,6 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <memory>
-#include <unordered_map>
 
 namespace kryga
 {
@@ -34,10 +35,11 @@ struct physics_system::impl
 
     JPH::BodyID static_world_body;  // invalid == none
 
-    // Independently-registered static colliders (terrain, etc.), keyed by the
-    // value of the static_body_handle handed back to the caller.
-    std::unordered_map<uint64_t, JPH::BodyID> static_bodies;
-    uint64_t next_static_body_id = 1;
+    // Independently-registered static colliders (terrain, etc.). The slot+generation
+    // pool hands out static_body_handle values and detects stale handles to reused
+    // slots. A slot may hold an invalid BodyID between alloc_static_handle() and
+    // create_static_mesh().
+    utils::handle_pool<JPH::BodyID> static_bodies;
 };
 
 }  // namespace physics

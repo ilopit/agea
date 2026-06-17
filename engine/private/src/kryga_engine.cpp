@@ -91,6 +91,10 @@
 
 #include <physics/physics_system.h>
 
+#include <physics_bridge/physics_bridge.h>
+#include <physics_bridge/physics_command.h>
+#include <physics_bridge/physics_commands_common.h>
+
 #include <game/game_system_manager.h>
 
 #include <packages/base/model/components/destructible_mesh_component.h>
@@ -262,6 +266,7 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__audio_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
+    state_mutator__physics_bridge::set(gs);
     state_mutator__game_system_manager::set(gs);
     state_mutator__audio_system::set(gs);
 #if KRG_EDITOR
@@ -676,6 +681,7 @@ vulkan_engine::run()
             update_cameras();
             glob::glob_state().getr_render().renderer.set_camera(m_camera_data);
 
+            consume_updated_physics();
             consume_updated_render();
             consume_updated_transforms();
         }
@@ -712,6 +718,7 @@ void
 vulkan_engine::tick_headless()
 {
     // Process dirty-render items queued by level/package load
+    consume_updated_physics();
     consume_updated_render();
     consume_updated_transforms();
 
@@ -1281,6 +1288,46 @@ vulkan_engine::consume_updated_audio()
 
     as->renderer.tick(0.f);
     glob::glob_state().getr_audio_bridge().reap_orphans();
+}
+
+void
+vulkan_engine::consume_updated_physics()
+{
+    // Mirror of consume_updated_render for the physics world. Reuses the same model
+    // dirty queues: a component with no physics handler is a no-op, so only physics
+    // types (terrain, ...) produce commands. Runs every frame (independent of play
+    // mode) so colliders exist by the time physics ticks.
+    //
+    // Ordering contract: this MUST run before consume_updated_render(), which clears
+    // the queues — physics reads the same dirty list render does. We do NOT clear
+    // here. Commands are drained (executed against the world) immediately: same
+    // thread, and physics is not mid-tick at this point in the frame.
+    auto* ps = glob::glob_state().get_physics_system();
+    if (!ps)
+    {
+        return;
+    }
+
+    auto& mq = glob::glob_state().getr_model().output;
+    auto& pb = glob::glob_state().getr_physics_bridge();
+
+    for (auto& i : mq.destroy_render)
+    {
+        pb.physics_cmd_destroy(*i, true);
+    }
+
+    for (auto& i : mq.dirty_render)
+    {
+        pb.physics_cmd_build(*i, true);
+    }
+
+    physics_cmd::physics_exec_context ctx{*ps};
+    ps->input_queue.drain(
+        [&ctx](physics_cmd::physics_command_base* cmd)
+        {
+            cmd->execute(ctx);
+            cmd->~physics_command_base();
+        });
 }
 
 }  // namespace kryga

@@ -81,6 +81,7 @@ target_link_libraries(engine PUBLIC
     kryga::project_paths
     kryga::physics
     kryga::audio
+    kryga::physics_bridge
     kryga::game
 
     ${KRG_ACTIVE_MODULES_TARGETS}
@@ -130,6 +131,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::project_paths
         kryga::physics
         kryga::audio
+        kryga::physics_bridge
         kryga::game
         kryga::rpc
 

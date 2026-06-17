@@ -72,6 +72,7 @@ class lua_api;
 }
 class render_translator;
 class audio_bridge;
+class physics_bridge;
 struct engine_counters;
 struct subsystem_queues;
 
@@ -103,6 +104,7 @@ struct state_mutator__vfs;
 struct state_mutator__input_manager;
 struct state_mutator__render_translator;
 struct state_mutator__audio_bridge;
+struct state_mutator__physics_bridge;
 struct state_mutator__engine_counters;
 struct state_mutator__subsystem_queues;
 
@@ -160,6 +162,7 @@ class state
     friend class core::state_mutator__lua_api;
     friend class ::kryga::state_mutator__render_translator;
     friend class ::kryga::state_mutator__audio_bridge;
+    friend class ::kryga::state_mutator__physics_bridge;
     friend class ::kryga::state_mutator__engine_counters;
     friend class ::kryga::state_mutator__subsystem_queues;
     friend class ::kryga::state_mutator__physics_system;
@@ -216,6 +219,7 @@ public:
     KRG_gen_getter(lua, reflection::lua_api);
     KRG_gen_getter(render_translator, render_translator);
     KRG_gen_getter(audio_bridge, audio_bridge);
+    KRG_gen_getter(physics_bridge, physics_bridge);
     KRG_gen_getter(engine_counters, engine_counters);
     KRG_gen_getter(subsystem_queues, subsystem_queues);
 
@@ -278,8 +282,9 @@ private:
     // Services
     engine::input_manager*          m_input_manager = nullptr;
     reflection::lua_api*            m_lua = nullptr;
-    render_translator*                  m_render_translator = nullptr;
+    render_translator*              m_render_translator = nullptr;
     audio_bridge*                   m_audio_bridge = nullptr;
+    physics_bridge*                 m_physics_bridge = nullptr;
     engine_counters*                m_engine_counters = nullptr;
     subsystem_queues*               m_subsystem_queues = nullptr;
     physics::physics_system*        m_physics_system = nullptr;
@@ -339,6 +344,12 @@ struct state_mutator__render_translator
 };
 
 struct state_mutator__audio_bridge
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__physics_bridge
 {
     static void
     set(gs::state& s);

@@ -3,6 +3,7 @@
 #include <glm_unofficial/glm.h>
 
 #include <physics/physics_types.h>
+#include <physics/input_queue.h>
 
 #include <cstdint>
 #include <memory>
@@ -64,12 +65,22 @@ public:
     // Register an independent static triangle-mesh collider (vertices in world
     // space). Additive — does NOT touch the build_static_world body, so multiple
     // colliders (terrain chunks, props) can coexist. Returns an invalid handle
-    // on failure (degenerate mesh / uninitialised world).
+    // on failure (degenerate mesh / uninitialised world). Convenience wrapper for
+    // alloc_static_handle() + create_static_mesh().
     static_body_handle
     register_static_mesh(const static_world_mesh& mesh);
 
-    // Remove a collider previously returned by register_static_mesh. No-op on an
-    // invalid/unknown handle.
+    // Split form used by physics_bridge: reserve a collider handle up front (so the
+    // model can store it synchronously), then build the Jolt body for that handle
+    // later when the register command is drained. create_static_mesh is a no-op on a
+    // stale handle or degenerate mesh.
+    static_body_handle
+    alloc_static_handle();
+    void
+    create_static_mesh(static_body_handle h, const static_world_mesh& mesh);
+
+    // Remove a collider previously returned by register_static_mesh /
+    // alloc_static_handle. No-op on an invalid/unknown handle.
     void
     unregister_static_mesh(static_body_handle h);
 
@@ -79,6 +90,10 @@ public:
 
     destructible_physics&
     destructibles();
+
+    // Command input produced by physics_bridge, drained before tick(). Public to
+    // mirror render_system.input_queue (reached via getr_*().input_queue).
+    physics::input_queue input_queue;
 
 private:
     struct impl;

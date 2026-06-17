@@ -23,6 +23,7 @@ namespace kryga
 {
 
 class render_translator;
+class physics_bridge;
 
 namespace root
 {
@@ -72,6 +73,13 @@ struct type_context__render_cmd_build
     bool flag = false;
 };
 
+struct type_context__physics_cmd_build
+{
+    physics_bridge* pb = nullptr;
+    root::smart_object* obj = nullptr;
+    bool flag = false;
+};
+
 struct type_context__alloc
 {
     const utils::id* id = nullptr;
@@ -102,6 +110,9 @@ using type_handler__compare = result_code (*)(type_context__compare&);
 using type_handler__render_cmd_builder = result_code (*)(type_context__render_cmd_build&);
 using type_handler__render_cmd_destroyer = result_code (*)(type_context__render_cmd_build&);
 using type_handler__render_cmd_transform = result_code (*)(type_context__render_cmd_build&);
+using type_handler__physics_cmd_builder = result_code (*)(type_context__physics_cmd_build&);
+using type_handler__physics_cmd_destroyer = result_code (*)(type_context__physics_cmd_build&);
+using type_handler__physics_cmd_transform = result_code (*)(type_context__physics_cmd_build&);
 using type_handler__gpu_pack = void (*)(const void* src, void* dst);
 
 struct gpu_texture_slot_ref
@@ -179,6 +190,10 @@ struct reflection_type
     type_handler__render_cmd_builder            render_cmd_builder = nullptr;
     type_handler__render_cmd_destroyer          render_cmd_destroyer = nullptr;
     type_handler__render_cmd_transform          render_cmd_transform = nullptr;
+
+    type_handler__physics_cmd_builder           physics_cmd_builder = nullptr;
+    type_handler__physics_cmd_destroyer         physics_cmd_destroyer = nullptr;
+    type_handler__physics_cmd_transform         physics_cmd_transform = nullptr;
 
     type_handler__gpu_pack                      gpu_pack = nullptr;
     size_t                                      gpu_data_size = 0;

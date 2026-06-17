@@ -1850,12 +1850,15 @@ package::package_render_types_builder::build(::kryga::core::package& sp)
     for type_obj in fc.types:
       has_cmd_handlers = type_obj.render_cmd_builder or type_obj.render_cmd_destroyer
       has_render_cmd_transform = bool(type_obj.render_cmd_transform)
+      has_physics_handlers = (type_obj.physics_cmd_builder or type_obj.physics_cmd_destroyer
+                              or type_obj.physics_cmd_transform)
       has_gpu_data = type_has_gpu_data(type_obj, fc)
       tex_fields = _collect_texture_slot_fields(type_obj, fc) if type_obj.kind == arapi.types.kryga_type_kind.CLASS else []
       has_texture_slots = len(tex_fields) > 0
 
       if (type_obj.kind == arapi.types.kryga_type_kind.CLASS
-          and (has_cmd_handlers or has_render_cmd_transform or has_gpu_data or has_texture_slots)):
+          and (has_cmd_handlers or has_render_cmd_transform or has_physics_handlers
+               or has_gpu_data or has_texture_slots)):
 
         file_buffer.append(f"""
 {{
@@ -1868,6 +1871,12 @@ package::package_render_types_builder::build(::kryga::core::package& sp)
           file_buffer.append(f"  type_rt->render_cmd_destroyer = {type_obj.render_cmd_destroyer};\n")
         if type_obj.render_cmd_transform:
           file_buffer.append(f"  type_rt->render_cmd_transform = {type_obj.render_cmd_transform};\n")
+        if type_obj.physics_cmd_builder:
+          file_buffer.append(f"  type_rt->physics_cmd_builder  = {type_obj.physics_cmd_builder};\n")
+        if type_obj.physics_cmd_destroyer:
+          file_buffer.append(f"  type_rt->physics_cmd_destroyer = {type_obj.physics_cmd_destroyer};\n")
+        if type_obj.physics_cmd_transform:
+          file_buffer.append(f"  type_rt->physics_cmd_transform = {type_obj.physics_cmd_transform};\n")
         if has_gpu_data:
           struct_name = f"{type_obj.name}__gpu"
           file_buffer.append(f"  type_rt->gpu_pack           = gpu_pack__{type_obj.name};\n")

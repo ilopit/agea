@@ -23,10 +23,12 @@ constexpr uint32_t terrain_source_noise = 1u;      // procedural fbm from noise 
 
 // clang-format off
 KRG_ar_class(
-    render_cmd_builder   = terrain_component__cmd_builder,
-    render_cmd_destroyer = terrain_component__cmd_destroyer,
-    render_cmd_transform = terrain_component__cmd_transform,
-    mcp_hint             = "Heightmap/noise terrain — generates a grid mesh and renders it with a "
+    render_cmd_builder    = terrain_component__cmd_builder,
+    render_cmd_destroyer  = terrain_component__cmd_destroyer,
+    render_cmd_transform  = terrain_component__cmd_transform,
+    physics_cmd_builder   = terrain_component__physics_cmd_builder,
+    physics_cmd_destroyer = terrain_component__physics_cmd_destroyer,
+    mcp_hint              = "Heightmap/noise terrain — generates a grid mesh and renders it with a "
                            "terrain_splatmap_material. Inherits transform from game_object_component"
 );
 class terrain_component : public ::kryga::root::game_object_component

@@ -31,6 +31,9 @@
 #include <physics/physics_system.h>
 #include <physics/destructible_physics.h>
 
+#include <physics_bridge/physics_bridge.h>
+#include <physics_bridge/physics_commands_common.h>
+
 #include <utils/buffer.h>
 
 #include "packages/base/model/lights/point_light.h"
@@ -1486,26 +1489,9 @@ terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         tc.set_local_centroid(centroid);
         tc.set_base_bounding_radius(std::sqrt(max_d2));
 
-        // Register a static triangle-mesh collider (world space) with physics so
-        // dynamic bodies collide with the terrain. Baked once at first build —
-        // moving the terrain afterwards won't move the collider (static v1).
-        // Must run before the vertex buffer is moved into the render command.
-        if (auto* ps = glob::glob_state().get_physics_system())
-        {
-            physics::static_world_mesh coll;
-            const glm::mat4 xf = tc.get_transform_matrix();
-            coll.vertices.reserve(vcount);
-            for (uint32_t v = 0; v < vcount; ++v)
-            {
-                coll.vertices.push_back(glm::vec3(xf * glm::vec4(vv.at(v).position, 1.0f)));
-            }
-            coll.indices.reserve(icount);
-            for (uint32_t i = 0; i < icount; ++i)
-            {
-                coll.indices.push_back(iv.at(i));
-            }
-            tc.set_physics_handle(ps->register_static_mesh(coll));
-        }
+        // The static collider for this terrain is registered separately by
+        // terrain_component__physics_cmd_builder (via physics_bridge), not here —
+        // render no longer talks to the physics world directly.
 
         auto* mcmd = ctx.rb->alloc_cmd<create_terrain_mesh_cmd>();
         mcmd->id = mesh_id;
@@ -1587,14 +1573,8 @@ terrain_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx
         tc.set_render_built(false);
     }
 
-    if (tc.get_physics_handle().valid())
-    {
-        if (auto* ps = glob::glob_state().get_physics_system())
-        {
-            ps->unregister_static_mesh(tc.get_physics_handle());
-        }
-        tc.set_physics_handle({});
-    }
+    // The static collider is torn down by terrain_component__physics_cmd_destroyer
+    // (via physics_bridge), not here.
 
     auto rc = root::game_object_component__cmd_destroyer(ctx);
     KRG_return_nok(rc);
@@ -1621,6 +1601,110 @@ terrain_component__cmd_transform(reflection::type_context__render_cmd_build& ctx
     cmd->bounding_sphere_center = glm::vec3(wc);
 
     ctx.rb->enqueue_cmd(cmd);
+
+    return result_code::ok;
+}
+
+result_code
+terrain_component__physics_cmd_builder(reflection::type_context__physics_cmd_build& ctx)
+{
+    auto rc = root::game_object_component__physics_cmd_builder(ctx);
+    KRG_return_nok(rc);
+
+    auto& tc = ctx.obj->asr<base::terrain_component>();
+
+    auto* ps = glob::glob_state().get_physics_system();
+    if (!ps)
+    {
+        return result_code::ok;
+    }
+
+    // Static collider, baked once (static v1): if it already exists, leave it. The
+    // grid is regenerated here (deterministic from the same params) rather than
+    // shared with the render builder, so the two bridges stay independent. The
+    // position/index math mirrors terrain_component__cmd_builder exactly so the
+    // collider aligns with the rendered surface.
+    if (tc.get_physics_handle().valid())
+    {
+        return result_code::ok;
+    }
+
+    tc.update_matrix();
+
+    uint32_t res = glm::clamp<uint32_t>(tc.get_resolution(), 2u, 4096u);
+    float size = tc.get_world_size();
+    float half = size * 0.5f;
+    float h_scale = tc.get_height_scale();
+    float cell = (res > 1) ? size / float(res - 1) : size;
+
+    std::vector<float> heights;
+    if (!build_height_field(tc, res, heights))
+    {
+        return result_code::failed;
+    }
+
+    const uint32_t vcount = res * res;
+    const uint32_t icount = (res - 1) * (res - 1) * 6;
+
+    // Reserve the handle now so the component records it synchronously; the Jolt
+    // body is built when the register command is drained.
+    physics::static_body_handle h = ps->alloc_static_handle();
+    tc.set_physics_handle(h);
+
+    auto* cmd = ctx.pb->alloc_cmd<register_static_collider_cmd>();
+    cmd->handle = h;
+
+    const glm::mat4 xf = tc.get_transform_matrix();
+    cmd->vertices.reserve(vcount);
+    for (uint32_t j = 0; j < res; ++j)
+    {
+        for (uint32_t i = 0; i < res; ++i)
+        {
+            float hh = heights[size_t(j) * res + i] * h_scale;
+            glm::vec3 pos{-half + float(i) * cell, hh, -half + float(j) * cell};
+            cmd->vertices.push_back(glm::vec3(xf * glm::vec4(pos, 1.0f)));
+        }
+    }
+
+    cmd->indices.reserve(icount);
+    for (uint32_t j = 0; j < res - 1; ++j)
+    {
+        for (uint32_t i = 0; i < res - 1; ++i)
+        {
+            uint32_t v0 = j * res + i;
+            uint32_t v1 = v0 + 1;
+            uint32_t v2 = v0 + res;
+            uint32_t v3 = v2 + 1;
+
+            cmd->indices.push_back(v0);
+            cmd->indices.push_back(v2);
+            cmd->indices.push_back(v1);
+            cmd->indices.push_back(v1);
+            cmd->indices.push_back(v2);
+            cmd->indices.push_back(v3);
+        }
+    }
+
+    ctx.pb->enqueue_cmd(cmd);
+
+    return result_code::ok;
+}
+
+result_code
+terrain_component__physics_cmd_destroyer(reflection::type_context__physics_cmd_build& ctx)
+{
+    auto& tc = ctx.obj->asr<base::terrain_component>();
+
+    if (tc.get_physics_handle().valid())
+    {
+        auto* cmd = ctx.pb->alloc_cmd<unregister_static_collider_cmd>();
+        cmd->handle = tc.get_physics_handle();
+        ctx.pb->enqueue_cmd(cmd);
+        tc.set_physics_handle({});
+    }
+
+    auto rc = root::game_object_component__physics_cmd_destroyer(ctx);
+    KRG_return_nok(rc);
 
     return result_code::ok;
 }
