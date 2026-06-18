@@ -1,6 +1,8 @@
 #pragma once
 
 #include <core/audio_message.h>
+#include <core/physics_message.h>
+#include <core/physics_result.h>
 
 #include <utils/memory_arena.h>
 #include <utils/spsc_queue.h>
@@ -132,15 +134,39 @@ private:
 // so core needs no dependency on the render libs; audio_message is a core type. Future
 // physics/vfx channels get added here as those subsystems land.
 //
+//   - physics: a PAIR of lock-free value SPSC rings (physics_io) — physics is
+//             bidirectional, so unlike audio (a pure sink) it needs a read-back
+//             channel. The pair is grouped so direction is explicit: queues.physics.in
+//             (model->physics commands) and queues.physics.out (physics->model
+//             results, drained by physics_bridge::drain_results). See physics_io below.
+//             No frame parity, no arena — the physics worker is self-clocked like audio.
+//
 // No teardown drop_pending: the render channel self-cleans via its arena rewind on the
 // render thread, and the audio channel has exactly one consumer (the audio thread) — a
 // main-thread drain would be a second consumer and corrupt the SPSC invariants. Stale
 // plays for torn-down emitters are instead cancelled by audio_bridge::reap_orphans,
 // which emits stop intents from the model thread.
+// The physics channel is bidirectional, so its two rings are paired into one
+// member to make the direction explicit at every call site (queues.physics.in vs
+// .out) instead of two loosely-named siblings.
+//   in  — model->physics commands (register / set_transform / impact / shatter).
+//         Main is the SOLE producer, the physics worker the SOLE consumer.
+//   out — physics->model results (chunk transforms + broken/expired state). The
+//         physics worker is the SOLE producer, main the SOLE consumer. Sized for
+//         CONCURRENCY, not throughput: results are latest-wins and only the few
+//         currently-broken destructibles publish, drained every frame; each slot
+//         carries its chunk transforms inline, so dropping a stale one is harmless.
+struct physics_io
+{
+    utils::spsc_queue<core::physics_message> in{1024};
+    utils::spsc_queue<core::physics_result> out{256};
+};
+
 struct subsystem_queues
 {
     command_queue<render_cmd::render_command_base> render;
     utils::spsc_queue<core::audio_message> audio{256};
+    physics_io physics;
 };
 
 // audio_message crosses the model->audio thread boundary by value and carries only a
@@ -151,5 +177,16 @@ struct subsystem_queues
 static_assert(std::is_trivially_destructible_v<core::audio_message>,
               "audio_message must stay free of RAII members — it is a plain value "
               "message copied across the model->audio thread boundary");
+
+// physics_message / physics_result cross the model<->physics thread boundaries by value
+// through SPSC rings. physics_message carries plain fields plus a borrowed chunk-shapes
+// pointer (the receiver copies it); physics_result carries its chunk transforms inline.
+// Either way a copy is field-wise with nothing to clean up — no owned heap to free.
+static_assert(std::is_trivially_destructible_v<core::physics_message>,
+              "physics_message must stay free of RAII members — it is a plain value "
+              "message copied across the model->physics thread boundary");
+static_assert(std::is_trivially_destructible_v<core::physics_result>,
+              "physics_result must stay free of RAII members — it is a plain value "
+              "message copied across the physics->model thread boundary");
 
 }  // namespace kryga

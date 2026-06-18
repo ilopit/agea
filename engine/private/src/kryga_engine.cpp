@@ -68,6 +68,9 @@
 #include <audio_bridge/audio_bridge.h>
 #include <audio_bridge/audio_message_processor.h>
 
+#include <physics_bridge/physics_bridge.h>
+#include <physics_bridge/physics_command_processor.h>
+
 #include <core/audio_message.h>
 
 #include <vfs/vfs.h>
@@ -264,6 +267,7 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__engine_counters::set(gs);
     state_mutator__render_translator::set(gs);
     state_mutator__audio_bridge::set(gs);
+    state_mutator__physics_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
     state_mutator__physics_bridge::set(gs);
@@ -279,6 +283,17 @@ vulkan_engine::init(const startup_options& options)
 
     glob::glob_state().getr_physics_system().init();
     glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
+
+    // Headless runs no worker threads, so physics can't have its own. Build an inline
+    // processor tick_headless() drives each frame — without it the physics command
+    // ring fills and the model-side producer spin-hangs. Threaded mode leaves this
+    // null and lets engine_threads::physics_loop own the processor instead.
+    if (m_headless)
+    {
+        auto& q = glob::glob_state().getr_subsystem_queues();
+        m_headless_physics = std::make_unique<physics_command_processor>(
+            glob::glob_state().getr_physics_system(), q.physics.in, q.physics.out);
+    }
 
     gs.run_connect();
     init_default_scripting();
@@ -534,6 +549,13 @@ vulkan_engine::cleanup()
         phys->shutdown();
     }
 
+    // The physics thread is joined (stop() above), so no more results are produced.
+    // Drain the last published-but-unconsumed snapshots so the ring is empty before
+    // teardown. Results carry their transforms inline now, so there's nothing to free
+    // — this just clears the ring (and reconciles the final snapshots if anything reads
+    // them during shutdown).
+    glob::glob_state().getr_physics_bridge().drain_results();
+
     glob::glob_state_reset();
 }
 
@@ -717,6 +739,16 @@ vulkan_engine::run()
 void
 vulkan_engine::tick_headless()
 {
+    // No physics thread in headless — drive the inline processor here. Pump first so
+    // commands the previous frame's builder emitted get applied + stepped, then drain
+    // the results into the snapshot before this frame's builder reads it. A fixed
+    // nominal dt keeps headless deterministic (no wall clock to sample).
+    if (m_headless_physics)
+    {
+        m_headless_physics->pump(1.0f / 60.0f, /*paused=*/false);
+        glob::glob_state().getr_physics_bridge().drain_results();
+    }
+
     // Process dirty-render items queued by level/package load
     consume_updated_physics();
     consume_updated_render();
@@ -863,17 +895,24 @@ vulkan_engine::tick(float dt)
     // in edit mode. No audio_system access on the main thread.
     glob::glob_state().getr_audio_bridge().reap_orphans();
 
+    // Physics also runs on its own thread (engine_threads::physics_loop). Main only
+    // PRODUCES intents (via the destructible component / its render builder) and
+    // CONSUMES results here: pull published chunk transforms + broken/expired state
+    // into the per-handle snapshot the builder reads. Runs every frame (outside the
+    // play gate) so the snapshot stays current even in edit mode.
+    glob::glob_state().getr_physics_bridge().drain_results();
+#if KRG_EDITOR
+    // Freeze integration in edit mode; the worker still drains commands so transforms
+    // and registrations stay synced for when play resumes.
+    m_threads.set_physics_paused(!playing);
+#endif
+
 #if KRG_EDITOR
     if (!playing)
     {
         return;
     }
 #endif
-
-    if (auto* phys = glob::glob_state().get_physics_system())
-    {
-        phys->tick(dt);
-    }
 
     glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::post_physics, dt);
     glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::late_update, dt);

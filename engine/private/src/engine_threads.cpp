@@ -12,6 +12,9 @@
 #include <audio/audio_system.h>                    // audio thread owns + ticks the renderer
 #include <audio_bridge/audio_message_processor.h>  // translates drained messages onto it
 
+#include <physics/physics_system.h>                    // physics thread owns + steps the world
+#include <physics_bridge/physics_command_processor.h>  // drains commands, steps, publishes results
+
 #include <utils/check.h>
 
 #include <chrono>
@@ -36,6 +39,11 @@ engine_threads::start()
     // Audio thread — independent fire-and-forget worker.
     m_audio_shutdown.store(false, std::memory_order_relaxed);
     m_audio_thread = std::thread(&engine_threads::audio_loop, this);
+
+    // Physics thread — independent self-clocked worker (bidirectional: drains command
+    // intents, steps Jolt on a fixed timestep, publishes result snapshots).
+    m_physics_shutdown.store(false, std::memory_order_relaxed);
+    m_physics_thread = std::thread(&engine_threads::physics_loop, this);
 }
 
 void
@@ -61,6 +69,22 @@ engine_threads::stop()
         m_audio_shutdown.store(true, std::memory_order_release);
         m_audio_thread.join();
     }
+
+    // Physics thread: flag + join. Like audio, it does a final command drain on the
+    // way out so intents queued just before shutdown (e.g. unregister) still apply
+    // before physics_system is torn down. Joining here is the barrier that makes the
+    // subsequent main-thread physics_system::shutdown() safe.
+    if (m_physics_thread.joinable())
+    {
+        m_physics_shutdown.store(true, std::memory_order_release);
+        m_physics_thread.join();
+    }
+}
+
+void
+engine_threads::set_physics_paused(bool paused)
+{
+    m_physics_paused.store(paused, std::memory_order_relaxed);
 }
 
 uint32_t
@@ -248,6 +272,43 @@ engine_threads::audio_loop()
     // Final drain so intents queued just before shutdown (e.g. end_play stops) are
     // applied before audio_renderer is torn down.
     q.drain([&proc](core::audio_message msg) { proc.process(msg); });
+}
+
+void
+engine_threads::physics_loop()
+{
+    // Self-clocked simulation worker. Sole consumer of the physics command ring and
+    // sole producer of the result ring; sole owner of the Jolt world from here (main
+    // init'd it before start()). Independent of the render pipeline — no gate, no
+    // frame parity. Bidirectional: unlike audio it publishes results back.
+    auto& queues = glob::glob_state().getr_subsystem_queues();
+    auto* ps = glob::glob_state().get_physics_system();
+    KRG_check(ps, "engine_threads::physics_loop: physics_system not created before start()");
+
+    physics_command_processor proc{*ps, queues.physics.in, queues.physics.out};
+
+    // Self-clocked tick: the processor's fixed-step accumulator turns this locally
+    // measured wall-clock dt into a deterministic number of 1/60s sub-steps, so the
+    // coarse poll cadence below doesn't affect simulation stability.
+    auto last = std::chrono::steady_clock::now();
+
+    while (!m_physics_shutdown.load(std::memory_order_acquire))
+    {
+        const auto now = std::chrono::steady_clock::now();
+        const float dt = std::chrono::duration<float>(now - last).count();
+        last = now;
+
+        proc.pump(dt, m_physics_paused.load(std::memory_order_relaxed));
+
+        // Poll cadence — finer than audio's 5ms so accumulated dt lands close to the
+        // fixed-step boundary, bounding how late a fresh command/step is applied.
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    // Final command drain so intents queued just before shutdown (e.g. unregister)
+    // reach the world before physics_system is torn down. No step/publish — the model
+    // is gone, results would never be read.
+    proc.drain_commands();
 }
 
 }  // namespace kryga

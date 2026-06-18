@@ -75,6 +75,7 @@ target_link_libraries(engine PUBLIC
     kryga::asset_importer
     kryga::render_translator
     kryga::audio_bridge
+    kryga::physics_bridge
     kryga::native
     kryga::vfs
     kryga::kryga_port
@@ -124,6 +125,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::asset_importer
         kryga::render_translator
         kryga::audio_bridge
+        kryga::physics_bridge
         kryga::native
         kryga::vfs
         kryga::kryga_port

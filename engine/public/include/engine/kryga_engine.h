@@ -27,6 +27,7 @@ union SDL_Event;
 
 namespace kryga
 {
+class physics_command_processor;
 class native_window;
 namespace ui
 {
@@ -219,6 +220,12 @@ private:
     // tears down audio_system / render), so by dtor time the threads are already
     // joined and the dtor's stop() is a no-op backstop. This ordering is load-bearing.
     engine_threads m_threads;
+
+    // Headless has no worker threads, so physics can't run on its own thread. This
+    // inline processor lets tick_headless() drain the physics command ring (otherwise
+    // the SPSC fills and the producer spin-hangs), step, and publish — single-threaded.
+    // Null in threaded mode, where engine_threads::physics_loop owns its own processor.
+    std::unique_ptr<physics_command_processor> m_headless_physics;
 };
 
 }  // namespace kryga

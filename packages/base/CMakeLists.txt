@@ -41,6 +41,7 @@ target_link_libraries(packages.base.model PUBLIC
    kryga::sol2_unofficial
 
    kryga::physics
+   kryga::physics_bridge
    kryga::audio
    kryga::audio_bridge
 

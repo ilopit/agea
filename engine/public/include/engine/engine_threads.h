@@ -58,18 +58,26 @@ public:
     engine_threads&
     operator=(const engine_threads&) = delete;
 
-    // Spawn the render thread AND the audio thread. Call once before
-    // begin_frame/submit_frame. (Render-state access must already have been handed
-    // off to the render thread by the caller — see render::set_render_access.)
+    // Spawn the render thread, the audio thread, AND the physics thread. Call once
+    // before begin_frame/submit_frame. (Render-state access must already have been
+    // handed off to the render thread by the caller — see render::set_render_access;
+    // likewise the physics world must be init'd on the main thread first, after which
+    // only the physics thread touches it.)
     void
     start();
 
-    // Drain in-flight frames, signal shutdown, and join BOTH threads. Idempotent: a
-    // no-op if never started or already stopped (the dtor calls it, so an explicit
-    // stop() is optional). Must run before audio_system / render subsystems are
-    // destroyed — both worker threads touch them.
+    // Drain in-flight frames, signal shutdown, and join ALL THREE threads. Idempotent:
+    // a no-op if never started or already stopped (the dtor calls it, so an explicit
+    // stop() is optional). Must run before audio_system / render / physics subsystems
+    // are destroyed — every worker thread touches them.
     void
     stop();
+
+    // Freeze/resume physics integration (edit vs play mode). When paused the physics
+    // worker still drains its command queue — registrations and transform syncs keep
+    // flowing — but does not advance the simulation. Callable from the main thread.
+    void
+    set_physics_paused(bool paused);
 
     // --- Main-thread per-frame stages (render pipeline) ---
 
@@ -120,6 +128,9 @@ private:
     void
     audio_loop();
 
+    void
+    physics_loop();
+
     // --- Render pipeline (thread 1) ---
     std::thread m_render_thread;
     std::mutex m_mutex;
@@ -132,6 +143,15 @@ private:
     // --- Audio worker (thread 2) — independent of everything above ---
     std::thread m_audio_thread;
     std::atomic<bool> m_audio_shutdown{false};
+
+    // --- Physics worker (thread 3) — independent like audio, but bidirectional ---
+    // Self-clocked fixed-step worker. Sole consumer of subsystem_queues().physics.in and
+    // sole producer of subsystem_queues().physics.out; the main thread only
+    // produces commands / drains results. m_physics_paused freezes integration in edit
+    // mode without stopping command drain.
+    std::thread m_physics_thread;
+    std::atomic<bool> m_physics_shutdown{false};
+    std::atomic<bool> m_physics_paused{false};
 };
 
 }  // namespace kryga

@@ -62,7 +62,6 @@ struct destructible_physics::impl
 {
     physics_system* owner = nullptr;
     std::unordered_map<uint64_t, entry> entries;
-    uint64_t next_id = 1;
 };
 
 destructible_physics::destructible_physics(physics_system& owner)
@@ -91,19 +90,20 @@ destructible_physics::~destructible_physics()
     }
 }
 
-destructible_handle
-destructible_physics::register_destructible(const std::vector<chunk_shape>& chunks,
+void
+destructible_physics::register_destructible(destructible_handle h,
+                                            const std::vector<chunk_shape>& chunks,
                                             float damage_threshold)
 {
-    destructible_handle h;
-    h.value = m_impl->next_id++;
+    if (!h.valid())
+    {
+        return;
+    }
 
     entry e;
     e.chunks = chunks;
     e.damage_threshold = damage_threshold;
     m_impl->entries.emplace(h.value, std::move(e));
-
-    return h;
 }
 
 void
@@ -219,16 +219,14 @@ spawn_chunk_bodies(entry& e, JPH::PhysicsSystem& world, const glm::vec3& impulse
         hull_pts.reserve(ck.hull_points.size());
         for (const auto& p : ck.hull_points)
         {
-            hull_pts.push_back(JPH::Vec3(p.x * world_scale.x,
-                                         p.y * world_scale.y,
-                                         p.z * world_scale.z));
+            hull_pts.push_back(
+                JPH::Vec3(p.x * world_scale.x, p.y * world_scale.y, p.z * world_scale.z));
         }
 
         JPH::ShapeRefC shape;
         if (hull_pts.size() >= 4)
         {
-            JPH::ConvexHullShapeSettings hull_settings(hull_pts.data(),
-                                                       int(hull_pts.size()));
+            JPH::ConvexHullShapeSettings hull_settings(hull_pts.data(), int(hull_pts.size()));
             auto sr = hull_settings.Create();
             if (sr.HasError())
             {

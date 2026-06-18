@@ -18,9 +18,12 @@ class physics_system;
 // Runtime state of destructible meshes registered with the physics world.
 //
 // Lifecycle expected from callers:
-//   1. On component build: register_destructible(chunks, damage_threshold) and
-//      keep the returned handle. Set world transform / lifetime / explosion
-//      strength before the object can be hit.
+//   1. On component build: register_destructible(handle, chunks, damage_threshold)
+//      with a caller-minted handle. Set world transform / lifetime / explosion
+//      strength before the object can be hit. (The handle is minted producer-side
+//      — physics_bridge — so registration can be an async, fire-and-forget
+//      message: there is no return value to wait on. Same model as render
+//      pre-reserving a slot handle before enqueuing the create command.)
 //   2. Each frame while the owning component is intact: call
 //      set_world_transform() so chunks spawn at the right origin when the
 //      object breaks. Cheap while unbroken (no Jolt bodies exist yet).
@@ -40,8 +43,10 @@ public:
     explicit destructible_physics(physics_system& owner);
     ~destructible_physics();
 
-    destructible_handle
-    register_destructible(const std::vector<chunk_shape>& chunks, float damage_threshold);
+    void
+    register_destructible(destructible_handle h,
+                          const std::vector<chunk_shape>& chunks,
+                          float damage_threshold);
 
     void
     unregister_destructible(destructible_handle h);

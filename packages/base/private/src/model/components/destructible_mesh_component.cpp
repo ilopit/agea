@@ -5,8 +5,8 @@
 #include "core/level.h"
 
 #include <global_state/global_state.h>
-#include <physics/physics_system.h>
-#include <physics/destructible_physics.h>
+#include <physics/physics_types.h>
+#include <physics_bridge/physics_bridge.h>
 
 namespace kryga
 {
@@ -43,30 +43,32 @@ destructible_mesh_component::on_tick(float /*dt*/)
         return;
     }
 
-    auto* ps = glob::glob_state().get_physics_system();
-    if (!ps)
+    // Read the published physics snapshot through the bridge instead of querying the
+    // Jolt world (now owned by the physics thread). No snapshot yet means the register
+    // intent hasn't round-tripped — nothing to do this frame.
+    auto& pb = glob::glob_state().getr_physics_bridge();
+    const auto* st = pb.get_state(m_physics_handle);
+    if (!st)
     {
         return;
     }
-    auto& dp = ps->destructibles();
 
-    const bool broken = dp.is_broken(m_physics_handle);
-
-    if (!broken)
+    if (!st->broken)
     {
-        // Keep the physics entry in sync with the authoring transform so
-        // chunks spawn at the correct world origin when the object breaks.
-        dp.set_world_transform(m_physics_handle, get_transform_matrix());
+        // Keep the physics entry in sync with the authoring transform so chunks spawn
+        // at the correct world origin when the object breaks. Emitted as an intent;
+        // applied on the physics thread.
+        pb.set_transform(m_physics_handle, get_transform_matrix());
         return;
     }
 
-    if (m_is_broken != broken)
+    if (m_is_broken != st->broken)
     {
-        m_is_broken = broken;
+        m_is_broken = st->broken;
     }
 
-    // Broken — force a render rebuild so the builder forwards chunk
-    // transforms from Jolt or handles the transition / expiry.
+    // Broken — force a render rebuild so the builder forwards the latest chunk
+    // transforms from the snapshot or handles the transition / expiry.
     mark_render_dirty();
 }
 
@@ -77,20 +79,14 @@ destructible_mesh_component::shatter()
     {
         return false;
     }
-    auto* ps = glob::glob_state().get_physics_system();
-    if (!ps)
-    {
-        return false;
-    }
-    // Make sure the latest transform is visible before chunks spawn.
-    ps->destructibles().set_world_transform(m_physics_handle, get_transform_matrix());
-    bool r = ps->destructibles().shatter(m_physics_handle);
-    if (r)
-    {
-        m_is_broken = true;
-        mark_render_dirty();
-    }
-    return r;
+    // Sync the latest transform first so chunks spawn at the right origin, then request
+    // the break. Both ride the single command ring, so ordering is preserved. Now
+    // ASYNC: the broken state reflects back via results 1-2 frames later (see on_tick),
+    // so the return value means "request accepted", not "broke this instant".
+    auto& pb = glob::glob_state().getr_physics_bridge();
+    pb.set_transform(m_physics_handle, get_transform_matrix());
+    pb.shatter(m_physics_handle);
+    return true;
 }
 
 bool
@@ -100,22 +96,16 @@ destructible_mesh_component::apply_damage(float amount)
     {
         return false;
     }
-    auto* ps = glob::glob_state().get_physics_system();
-    if (!ps)
-    {
-        return false;
-    }
+    // Accumulation + the break decision happen on the physics thread; we can't know
+    // synchronously whether this impact crossed the threshold. Returns "request
+    // accepted" — the resulting break (if any) surfaces via the snapshot in on_tick.
+    auto& pb = glob::glob_state().getr_physics_bridge();
     physics::impact hit;
     hit.damage = amount;
     hit.point = glm::vec3(get_world_position());
-    ps->destructibles().set_world_transform(m_physics_handle, get_transform_matrix());
-    bool r = ps->destructibles().apply_impact(m_physics_handle, hit);
-    if (r)
-    {
-        m_is_broken = true;
-        mark_render_dirty();
-    }
-    return r;
+    pb.set_transform(m_physics_handle, get_transform_matrix());
+    pb.apply_impact(m_physics_handle, hit);
+    return true;
 }
 
 }  // namespace base

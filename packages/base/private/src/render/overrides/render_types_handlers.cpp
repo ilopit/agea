@@ -28,8 +28,9 @@
 
 #include <voronoi_fracture/voronoi_fracture.h>
 
-#include <physics/physics_system.h>
-#include <physics/destructible_physics.h>
+#include <physics/physics_types.h>
+
+#include <physics_bridge/physics_bridge.h>
 
 #include <physics_bridge/physics_bridge.h>
 #include <physics_bridge/physics_commands_common.h>
@@ -889,7 +890,11 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
 
     auto new_rqid = render_convert::make_qid_from_model(*material, *source_mesh);
 
-    auto* ps = glob::glob_state().get_physics_system();
+    // Physics is reached only through the bridge now: this builder runs on the model
+    // thread, so it emits intents (register / unregister) and READS the published
+    // snapshot (broken / expired / chunk transforms) — it never touches the Jolt world
+    // (owned by the physics thread).
+    auto& pb = glob::glob_state().getr_physics_bridge();
 
     // ------------------------------------------------------------------
     // First build: pre-fracture, upload chunk meshes, register physics,
@@ -961,15 +966,16 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
                   dmc.get_id().str(),
                   chunk_shapes.size());
 
-        if (ps)
-        {
-            auto& dp = ps->destructibles();
-            auto handle = dp.register_destructible(chunk_shapes, asset->get_damage_threshold());
-            dp.set_lifetime(handle, asset->get_lifetime());
-            dp.set_explosion_strength(handle, asset->get_explosion_strength());
-            dp.set_world_transform(handle, dmc.get_transform_matrix());
-            dmc.set_physics_handle(handle);
-        }
+        // Mint the handle producer-side and emit a single register intent (params +
+        // initial transform folded in). The physics thread copies the chunk shapes
+        // when it processes the message — chunk_shapes lives in the component, so the
+        // borrow is valid until then.
+        auto handle = pb.register_destructible(chunk_shapes,
+                                               asset->get_damage_threshold(),
+                                               asset->get_lifetime(),
+                                               asset->get_explosion_strength(),
+                                               dmc.get_transform_matrix());
+        dmc.set_physics_handle(handle);
 
         auto src_oh = ctx.rb->objects_alloc().reserve();
         dmc.set_render_object_handle(src_oh);
@@ -994,15 +1000,19 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     }
 
     // ------------------------------------------------------------------
-    // Subsequent builds: advance based on physics state.
+    // Subsequent builds: advance based on the published physics snapshot.
     // ------------------------------------------------------------------
+    const destructible_state* st = nullptr;
     bool broken = false;
     bool expired = false;
-    if (ps && dmc.get_physics_handle().valid())
+    if (dmc.get_physics_handle().valid())
     {
-        auto& dp = ps->destructibles();
-        broken = dp.is_broken(dmc.get_physics_handle());
-        expired = dp.is_expired(dmc.get_physics_handle());
+        st = pb.get_state(dmc.get_physics_handle());
+        if (st)
+        {
+            broken = st->broken;
+            expired = st->expired;
+        }
     }
 
     // Transition to broken — destroy source object, create per-chunk render
@@ -1036,9 +1046,9 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             float chunk_radius = glm::length(far_corner) * max_scale;
 
             glm::mat4 xf(1.0f);
-            if (ps)
+            if (st && i < st->chunk_transforms.size())
             {
-                xf = ps->destructibles().get_chunk_transform(dmc.get_physics_handle(), i);
+                xf = st->chunk_transforms[i];
             }
             xf = xf * scale_mat;
 
@@ -1070,9 +1080,9 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
         for (uint32_t i = 0; i < dmc.get_chunk_render_handles().size(); ++i)
         {
             glm::mat4 xf(1.0f);
-            if (ps)
+            if (st && i < st->chunk_transforms.size())
             {
-                xf = ps->destructibles().get_chunk_transform(dmc.get_physics_handle(), i);
+                xf = st->chunk_transforms[i];
             }
             xf = xf * scale_mat;
 
@@ -1110,9 +1120,9 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
             ctx.rb->enqueue_cmd(cmd);
         }
 
-        if (ps && dmc.get_physics_handle().valid())
+        if (dmc.get_physics_handle().valid())
         {
-            ps->destructibles().unregister_destructible(dmc.get_physics_handle());
+            pb.unregister(dmc.get_physics_handle());
             dmc.set_physics_handle({});
         }
 
@@ -1199,10 +1209,11 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
     }
     dmc.set_render_built(false);
 
-    // Unregister from physics (no-op if expiry already tore it down).
-    if (auto* ps = glob::glob_state().get_physics_system(); ps && dmc.get_physics_handle().valid())
+    // Unregister from physics (no-op if expiry already tore it down). Emits an intent
+    // to the physics thread and drops the model-side snapshot.
+    if (dmc.get_physics_handle().valid())
     {
-        ps->destructibles().unregister_destructible(dmc.get_physics_handle());
+        glob::glob_state().getr_physics_bridge().unregister(dmc.get_physics_handle());
         dmc.set_physics_handle({});
     }
 
