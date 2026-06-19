@@ -490,6 +490,21 @@ converter_context::save_level(core::level& lvl, const vfs::rid& output_path)
     return true;
 }
 
+namespace
+{
+// A converter-built package asset is constructed writable (instance) so its
+// fields can be populated via setters, then sealed as a class object here —
+// packages own class objects, not instances (container::unload enforces this on
+// teardown). The saved .aobj is the class representation either way.
+void
+seal_as_class_asset(root::smart_object* o)
+{
+    auto& f = o->get_flags();
+    f.instance_obj = false;
+    f.derived_obj = true;
+}
+}  // namespace
+
 root::mesh*
 converter_context::create_mesh(core::package& pkg, const utils::id& id, const parsed_mesh& data)
 {
@@ -500,8 +515,9 @@ converter_context::create_mesh(core::package& pkg, const utils::id& id, const pa
     params.indices.write(reinterpret_cast<const uint8_t*>(data.indices.data()),
                          data.indices.size() * sizeof(uint32_t));
 
+    // Package assets are class objects, not instances (is_proto = true).
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(root::mesh::AR_TYPE_id(), id, params, false);
+    auto result = ctor.construct_obj(root::mesh::AR_TYPE_id(), id, params, true);
 
     if (!result)
     {
@@ -521,6 +537,9 @@ converter_context::create_texture(core::package& pkg,
 
     root::texture::construct_params params;
 
+    // Built writable (instance) so width/height/pixels can be populated via
+    // setters, then sealed as a class object below — packages own class objects,
+    // not instances (container::unload enforces this).
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
     auto result = ctor.construct_obj(root::texture::AR_TYPE_id(), id, params, false);
 
@@ -558,6 +577,7 @@ converter_context::create_texture(core::package& pkg,
         }
     }
 
+    seal_as_class_asset(tex);
     return tex;
 }
 
@@ -572,6 +592,8 @@ converter_context::create_material(core::package& pkg,
 
     base::pbr_material::construct_params params;
 
+    // Built writable (instance) so its fields can be populated, then sealed as a
+    // class object below — packages own class objects, not instances.
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
     auto result = ctor.construct_obj(base::pbr_material::AR_TYPE_id(), id, params, false);
 
@@ -614,6 +636,7 @@ converter_context::create_material(core::package& pkg,
         ALOG_WARN("Shader effect not found: {}", data.shader_effect);
     }
 
+    seal_as_class_asset(mat);
     return mat;
 }
 

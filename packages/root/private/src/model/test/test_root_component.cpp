@@ -22,6 +22,7 @@ test_root_component::construct_default(construct_params& params)
     m_pod_instantiate = 42.0f;
     m_pod_share = 99.0f;
 
+    // construct_default builds the class object (CDO) — always a package object.
     auto& olc = m_package->get_load_context();
     core::object_constructor ctor(&olc);
 
@@ -53,7 +54,7 @@ test_root_component::construct(construct_params& params)
     m_pod_share = 99.0f;
 
     bool is_proto = !get_flags().instance_obj;
-    auto& olc = m_package->get_load_context();
+    auto& olc = m_level ? m_level->get_load_context() : m_package->get_load_context();
     core::object_constructor ctor(&olc);
 
     auto r1 = ctor.construct_obj(AID("smart_object"),

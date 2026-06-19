@@ -4,6 +4,7 @@
 
 #include <core/object_constructor.h>
 #include <core/object_load_context.h>
+#include <core/level.h>
 #include <core/package_manager.h>
 #include <core/model_system.h>
 #include <core/core_state.h>
@@ -32,6 +33,12 @@ struct test_ctor : base_test
 {
     core::cache_set m_local_cs;
     core::line_cache<root::smart_object_ptr> m_ownable;
+
+    // Instances belong to a level domain, not a package: an instance constructed
+    // through a package olc would land its construct()-built sub-objects in the
+    // package, which container::unload() forbids. Instance cases construct through
+    // this level so they (and their sub-objects) are owned by the level.
+    std::unique_ptr<core::level> m_level;
 
     void
     SetUp() override
@@ -66,6 +73,11 @@ struct test_ctor : base_test
         pkg.load_types();
         pkg.finalize_reflection();
         pkg.set_state(core::package_state::loaded);
+
+        m_level = std::make_unique<core::level>(AID("test_ctor_level"));
+        // The level olc needs a vfs mount so instance save/load cases (which
+        // resolve + read/write through it) work the same as the package olc.
+        m_level->get_load_context().set_vfs_mount(root::package::instance().get_vfs_root());
     }
 
     void
@@ -77,6 +89,14 @@ struct test_ctor : base_test
         }
         m_ownable.clear();
         m_local_cs.clear();
+
+        // Free the level (and its instances) before the package: level teardown
+        // releases instance objects; the package must then hold only class objects.
+        if (m_level)
+        {
+            m_level->unload();
+            m_level.reset();
+        }
 
         root::package::instance().unload();
         glob::glob_state_reset();
@@ -92,6 +112,40 @@ struct test_ctor : base_test
             .set_ownable_cache(&m_ownable)
             .set_vfs_mount(root::package::instance().get_vfs_root());
         return olc;
+    }
+
+    // The level's load context — instances built through it carry m_level and
+    // own their sub-objects, keeping the package free of instance objects.
+    core::object_load_context&
+    instance_olc()
+    {
+        return m_level->get_load_context();
+    }
+
+    // Constructor for instance cases: builds through the level so instances carry
+    // m_level and their sub-objects land in the level, not the package.
+    core::object_constructor
+    instance_ctor()
+    {
+        return core::object_constructor(&instance_olc(),
+                                        core::object_load_type::instance_obj);
+    }
+
+    // Materialize a type's class object (CDO) in the PACKAGE up front. Production
+    // loads CDOs at package-load time; here construction is lazy, and an instance
+    // built through the level would otherwise create the CDO via the level olc —
+    // leaving it domainless (no package, no level). Pre-creating it in the package
+    // keeps CDOs where they belong; the level instance then finds it in the cache.
+    void
+    ensure_package_cdo(const utils::id& type_id)
+    {
+        auto& plc = root::package::instance().get_load_context();
+        if (plc.find_obj(type_id))
+        {
+            return;
+        }
+        auto* rt = glob::glob_state().getr_model().reflection.get_type(type_id);
+        core::object_constructor(&plc).create_default_class_obj_impl(rt);
     }
 
     reflection::reflection_type*

@@ -242,12 +242,12 @@ TEST_F(test_ctor, construct_obj_as_proto)
 //            m_obj_share:       → "trc_ref_share"          (ro, shared from cdo)
 TEST_F(test_ctor, construct_obj_as_instance)
 {
-    auto olc = make_olc();
+    ensure_package_cdo(AID("test_root_object"));
 
     root::test_root_object::construct_params params;
     params.pos = {5.0f, 6.0f, 7.0f};
 
-    auto result = core::object_constructor(&olc).construct_obj(
+    auto result = instance_ctor().construct_obj(
         AID("test_root_object"), AID("ctor_inst_tro"), params, false);
 
     ASSERT_TRUE(result.has_value());
@@ -312,14 +312,15 @@ TEST_F(test_ctor, construct_obj_invalid_type)
 
 TEST_F(test_ctor, construct_obj_proto_over_instance_fails)
 {
-    auto olc = make_olc();
+    ensure_package_cdo(AID("test_root_object"));
+
     root::test_root_object::construct_params params;
 
-    auto inst = core::object_constructor(&olc).construct_obj(
+    auto inst = instance_ctor().construct_obj(
         AID("test_root_object"), AID("conflict_id"), params, false);
     ASSERT_TRUE(inst.has_value());
 
-    auto proto = core::object_constructor(&olc).construct_obj(
+    auto proto = instance_ctor().construct_obj(
         AID("test_root_object"), AID("conflict_id"), params, true);
     EXPECT_FALSE(proto.has_value());
 }

@@ -148,9 +148,9 @@ TEST_F(test_ctor, save_load_test_root_object)
 //     m_obj_share:       → "trc_ref_share"            (ro, shared from cdo)
 TEST_F(test_ctor, save_instance_test_root_component)
 {
-    auto olc = make_olc();
-    core::object_constructor ctor(&olc);
-    (void)ctor.create_default_class_obj_impl(get_rt("test_root_component"));
+    auto& olc = instance_olc();
+    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
+    ensure_package_cdo(AID("test_root_component"));
 
     root::test_root_component::construct_params params;
     auto result =
@@ -216,8 +216,9 @@ TEST_F(test_ctor, save_instance_test_root_component)
 //       └─ "test_component#2" (test_root_component) (inst)
 TEST_F(test_ctor, save_instance_test_root_object)
 {
-    auto olc = make_olc();
-    core::object_constructor ctor(&olc);
+    auto& olc = instance_olc();
+    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
+    ensure_package_cdo(AID("test_root_object"));
 
     root::test_root_object::construct_params params;
     auto result = ctor.construct_obj(AID("test_root_object"), AID("save_inst_tro"), params, false);
@@ -413,8 +414,9 @@ TEST_F(test_ctor, save_different_component_layout)
 // Layout (depth-first parent_idx): [-1, 0, 1, 0]
 TEST_F(test_ctor, save_instance_different_component_layout)
 {
-    auto olc = make_olc();
-    core::object_constructor ctor(&olc);
+    auto& olc = instance_olc();
+    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
+    ensure_package_cdo(AID("test_root_object"));
 
     root::test_root_object::construct_params params;
     auto result =
@@ -515,11 +517,11 @@ TEST_F(test_ctor, save_instance_different_component_layout)
 // The handler should reject it — deriving from an instance is invalid.
 TEST_F(test_ctor, load_component_type_is_instance)
 {
-    auto olc = make_olc();
-    core::object_constructor ctor(&olc);
+    auto& olc = instance_olc();
+    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
 
     // Create CDOs + an instance of test_root_component
-    (void)ctor.create_default_class_obj_impl(get_rt("test_root_object"));
+    ensure_package_cdo(AID("test_root_object"));
     root::test_root_component::construct_params cp;
     auto inst = ctor.construct_obj(AID("test_root_component"), AID("inst_trc"), cp, false);
     ASSERT_TRUE(inst.has_value());

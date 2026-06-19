@@ -110,8 +110,7 @@ TEST_F(test_ctor, clone_obj_as_instance)
     auto* src = src_result.value();
     auto* src_tro = src->as<root::test_root_object>();
 
-    core::object_constructor ctor(&olc, core::object_load_type::instance_obj);
-    auto clone_result = ctor.clone_obj(*src, AID("clone_inst_dst"));
+    auto clone_result = instance_ctor().clone_obj(*src, AID("clone_inst_dst"));
     ASSERT_TRUE(clone_result.has_value());
     auto* clone = clone_result.value();
     auto* clone_tro = clone->as<root::test_root_object>();
