@@ -315,7 +315,7 @@ vulkan_render::init(uint32_t w, uint32_t h, const render_config& config, bool on
 #endif
 
     // Scene upscale pipeline runs in BOTH editor and game when render_scale is
-    // enabled. Independent of ImGui — must live outside the KRG_EDITOR block,
+    // enabled. Independent of ImGui — must live outside the KRG_HAS_EDITOR block,
     // otherwise game builds get a composite pass with no upscale shader and
     // present a black swapchain.
     prepare_scene_upscale_pipeline();

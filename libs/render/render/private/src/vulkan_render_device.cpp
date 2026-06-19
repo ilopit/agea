@@ -449,7 +449,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
         // FIFO = vsync, lower power/thermal — the sane mobile default.
         const VkPresentModeKHR k_present_mode = to_vk_present_mode(m_present_mode);
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         swapchain_builder.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 #endif
         // Request the resolved image count (== frames_in_flight). Without this
@@ -601,7 +601,7 @@ render_device::recreate_swapchain(
         .set_pre_transform_flags(pre_transform)
         .set_desired_min_image_count(desired_count)
         .set_old_swapchain(m_swapchain);
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     swapchain_builder.add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 #endif
 

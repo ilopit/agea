@@ -159,6 +159,14 @@ concept reflected = std::is_enum_v<E> && requires(E e) {
 // ADL-found to_string(), so `std::format("{}", mode)` and spdlog `"{}"` print
 // the serialization name. `to_string` and the marker are resolved at the format
 // call site (after the enum is fully declared), so order here doesn't matter.
+//
+// Cross-platform: spdlog uses std::format on desktop but its bundled {fmt} on
+// Android — see thirdparty/CMakeLists.txt, which sets SPDLOG_USE_STD_FORMAT =
+// !ANDROID. The two formatter specializations are mutually exclusive on that
+// exact condition: on Android <format>'s std::formatter<std::string_view> is
+// absent, so the std specialization can't even compile there. If that CMake rule
+// ever stops tracking ANDROID, update this guard to match.
+#if !defined(__ANDROID__)
 template <kryga::enum_detail::reflected E>
 struct std::formatter<E> : std::formatter<std::string_view>
 {
@@ -169,13 +177,7 @@ struct std::formatter<E> : std::formatter<std::string_view>
         return std::formatter<std::string_view>::format(to_string(v), ctx);
     }
 };
-
-// Cross-platform logging: spdlog uses std::format on desktop (covered above) but
-// its bundled {fmt} on Android — see thirdparty/CMakeLists.txt, which sets
-// SPDLOG_USE_STD_FORMAT = !ANDROID. This branch mirrors that exact condition so
-// ALOG_*("{}", some_enum) compiles on Android too. If that CMake rule ever stops
-// tracking ANDROID, update this guard to match.
-#if defined(__ANDROID__)
+#else
 #include <spdlog/fmt/fmt.h>
 template <kryga::enum_detail::reflected E>
 struct fmt::formatter<E> : fmt::formatter<std::string_view>

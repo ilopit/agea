@@ -31,14 +31,18 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Form factor (mutually exclusive, one always set):
 #   KRG_DESKTOP / KRG_MOBILE — set globally based on the toolchain platform.
 #
-# Build mode (mutually exclusive, one always set, defined on the *executable*
-# and its private engine library, NOT globally):
-#   KRG_GAME   — game-only target. Editor TUs not compiled in. Smallest binary.
-#   KRG_EDITOR — editor target. Includes editor UI, gizmos, console, profiler,
-#                sync service, runtime play-mode toggle.
+# Build tier (one stamped per engine/render lib via kryga_set_tier(); see
+# cmake/utils.cmake and libs/kryga_port/include/kryga_port/build_tier.h). The
+# tier is a PUBLIC compile def on the lib, NOT a global — so all tiers coexist
+# in a single configure, selected by which exe target you build:
+#   kryga_editor — DEV tier:  editor UI, gizmos, console, profiler, RPC.
+#   kryga_game   — GAME tier:  console + profiler, no editor.
+#   kryga_ship   — SHIP tier:  everything stripped. Smallest binary, the
+#                  shipping artifact.
 #
-# Mobile builds always produce KRG_GAME (no editor on Android/iOS).
-# Desktop builds produce both kryga_game and kryga_editor by default.
+# Mobile builds produce kryga_game and kryga_ship (no editor on Android/iOS) —
+# each a libmain.so entry, selected per build type (debug=GAME, release=SHIP).
+# Desktop builds produce all three by default.
 if(ANDROID)
     add_compile_definitions(KRG_MOBILE=1 KRG_PLATFORM_ANDROID=1)
     set(_krg_build_editor_target OFF)
@@ -132,11 +136,13 @@ if(KRG_BUILD_EDITOR_TARGET)
         COMMENT "Cooking resources → ${KRG_COOKED_DIR}"
         VERBATIM)
     add_dependencies(kryga_editor cook_resources)
-    # Game build also benefits from cooked content existing — depend on it
-    # too when both targets are present in the same build.
-    if(TARGET kryga_game)
-        add_dependencies(kryga_game cook_resources)
-    endif()
+    # The non-editor desktop exes also need cooked content present — depend on
+    # it too when they exist in the same build.
+    foreach(_krg_exe kryga_game kryga_ship)
+        if(TARGET ${_krg_exe})
+            add_dependencies(${_krg_exe} cook_resources)
+        endif()
+    endforeach()
 endif()
 
 # Host-only resource symlinks for local dev runs. On Android, cooked content

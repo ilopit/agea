@@ -38,9 +38,9 @@ include("${_krg_ndk_toolchain}")
 # doesn't ship clang-scan-deps, and we don't use modules — disable globally.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "" FORCE)
 
-# kryga_game is built as a SHARED library (libmain.so) on Android, so every
-# static dependency it pulls in must be compiled as PIC. Turn this on globally
-# so all static libs (vk-bootstrap, spdlog, etc.) get -fPIC.
+# The Android entry (kryga_game / kryga_ship) is built as a SHARED library
+# (libmain.so), so every static dependency it pulls in must be compiled as PIC.
+# Turn this on globally so all static libs (vk-bootstrap, spdlog, etc.) get -fPIC.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
 
 # Project-level defines visible to all targets.

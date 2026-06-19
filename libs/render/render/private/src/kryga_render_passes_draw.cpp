@@ -218,7 +218,7 @@ vulkan_render::draw_debug_overlay(VkCommandBuffer cmd, render::frame_state& curr
     // without restarting. It defaults to true and is shared via rtcache, so a
     // pure runtime check would let an editor session leak `editor_mode=true`
     // into the next game launch — which is exactly the bug this guard fixes.
-#if !KRG_EDITOR
+#if !KRG_HAS_EDITOR
     return;
 #else
     if (!m_render_config.debug.editor_mode)

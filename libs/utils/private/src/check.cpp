@@ -8,6 +8,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#else
+#include <unistd.h>  // _exit
 #endif
 
 namespace kryga::utils

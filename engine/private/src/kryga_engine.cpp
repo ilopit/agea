@@ -10,7 +10,7 @@
 #include <backends/imgui_impl_sdl2.h>
 #endif
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
 #include "engine/editor_system.h"
 #include "engine/ui.h"
 #include "engine/editor.h"
@@ -188,7 +188,7 @@ startup_options::print_help(const char* program_name)
 }
 
 vulkan_engine::vulkan_engine()
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     : m_rpc_server(std::make_unique<rpc::rpc_server>())
 #endif
 {
@@ -269,7 +269,7 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__physics_system::set(gs);
     state_mutator__game_system_manager::set(gs);
     state_mutator__audio_system::set(gs);
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     state_mutator__editor_system::set(gs);
 #endif
 
@@ -327,7 +327,7 @@ vulkan_engine::init(const startup_options& options)
     render_cfg.bind(vfs::rid("data://configs/render.acfg"), vfs::rid("rtcache://render.acfg"));
     render_cfg.load();
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     if (!m_headless)
     {
         // game_editor::init registers input actions — requires input_manager, which
@@ -396,7 +396,7 @@ vulkan_engine::init(const startup_options& options)
         return false;
     }
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     glob::glob_state().getr_editor_system().ui.init();
 
     if (!m_headless)
@@ -444,7 +444,7 @@ vulkan_engine::init(const startup_options& options)
         // their own level and set their own camera
         init_scene();
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         // rpc: bind on a free port (OS-picked), publish discovery file
         // for the VS Code extension to find. Single-engine assumption per
         // project (multi-engine could key by PID later).
@@ -498,14 +498,14 @@ vulkan_engine::cleanup()
     {
         glob::glob_state().getr_render().renderer.get_render_config().save();
         glob::glob_state().get_config()->save();
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         ui::get_window<ui::bake_editor>()->save_config();
 #endif
 
         glob::set_input_provider(nullptr);
     }
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     // Detach RPC log sink BEFORE stopping the server so a late spdlog write
     // doesn't notify into a dead server.
     if (m_rpc_log_sink)
@@ -523,7 +523,7 @@ vulkan_engine::cleanup()
     m_console.reset();
 #endif
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     glob::glob_state().getr_editor_system().ui.get_material_previewer().destroy();
     // Free the screenshot staging image before device.destruct() tears down the
     // VMA allocator (otherwise its lazily-created allocation outlives the
@@ -563,7 +563,7 @@ vulkan_engine::cleanup()
     glob::glob_state_reset();
 }
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
 bool
 vulkan_engine::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
 {
@@ -608,7 +608,7 @@ vulkan_engine::run()
             ALOG_INFO("Run duration limit reached ({} seconds), exiting.", m_run_for_seconds);
             break;
         }
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         if (m_shutdown_requested.load(std::memory_order_relaxed))
         {
             ALOG_INFO("Shutdown requested via RPC, exiting.");
@@ -641,7 +641,7 @@ vulkan_engine::run()
         // the window this lets the main thread fill (the point of the decouple).
         m_threads.begin_frame();
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         {
             KRG_make_scope(ui_tick);
             KRG_PROFILE_SCOPE("UI");
@@ -766,7 +766,7 @@ vulkan_engine::tick_headless()
     consume_updated_audio();
 }
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
 void
 vulkan_engine::queue_main_action(std::function<void()> a)
 {
@@ -818,7 +818,7 @@ vulkan_engine::drain_main_actions()
 void
 vulkan_engine::tick(float dt)
 {
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     drain_main_actions();
 
     if (m_rpc_server)
@@ -903,13 +903,13 @@ vulkan_engine::tick(float dt)
     // into the per-handle snapshot the builder reads. Runs every frame (outside the
     // play gate) so the snapshot stays current even in edit mode.
     glob::glob_state().getr_physics_bridge().drain_results();
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     // Freeze integration in edit mode; the worker still drains commands so transforms
     // and registrations stay synced for when play resumes.
     m_threads.set_physics_paused(!playing);
 #endif
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     if (!playing)
     {
         return;
@@ -932,7 +932,7 @@ vulkan_engine::load_level(const utils::id& level_id)
     // memory survives until executed — no explicit arena retirement needed.
     // The render thread calls schedule_to_delete with authoritative
     // m_current_frame_number — no cross-thread read.
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     glob::glob_state().getr_editor_system().editor.set_selected(utils::id());
 #endif
     if (auto* prev = glob::glob_state().getr_model().current_level)
@@ -1074,7 +1074,7 @@ emit_listener_pose(base::camera_component* cam)
 void
 vulkan_engine::update_cameras()
 {
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     auto& editor = glob::glob_state().getr_editor_system().editor;
     auto* cam = editor.get_active_camera();
     if (editor.get_mode() == engine::editor_mode::playing && cam)
@@ -1147,14 +1147,14 @@ vulkan_engine::init_scene()
     if (level_id.valid())
     {
         load_level(level_id);
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         // Editor-only debug helpers that populate the sandbox scene.
         glob::glob_state().getr_editor_system().editor.ev_spawn();
         glob::glob_state().getr_editor_system().editor.ev_lights();
 #endif
     }
 
-#if !KRG_EDITOR
+#if !KRG_HAS_EDITOR
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         base::player::construct_params player_prms;

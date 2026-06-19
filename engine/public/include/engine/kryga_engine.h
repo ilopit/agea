@@ -35,7 +35,7 @@ namespace ui
 {
 struct editor_console;
 }
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
 namespace rpc
 {
 class rpc_server;
@@ -117,7 +117,7 @@ public:
     bool
     load_level(const utils::id& level_id);
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     // RPC handlers run on the server's I/O thread. ALL state access goes
     // through this queue so the main thread is the sole owner of engine
     // state — no mutexes scattered across mutated fields.
@@ -188,7 +188,7 @@ private:
     std::unique_ptr<ui::editor_console> m_console;
 #endif
 
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
     std::unique_ptr<rpc::rpc_server> m_rpc_server;
     std::shared_ptr<rpc::rpc_log_sink> m_rpc_log_sink;
     // Polled each tick to detect spawn/destroy without instrumenting core.

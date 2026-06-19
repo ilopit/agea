@@ -50,6 +50,16 @@ macro(kryga_finalize_executable)
 
 endmacro()
 
+# Stamp the build tier on a target — the single mechanism for setting KRG_TIER.
+# tier must be one of: DEV | GAME | SHIP (see kryga_port/build_tier.h).
+# PUBLIC so the tier propagates to anything linking this target.
+function(kryga_set_tier target tier)
+    if(NOT tier MATCHES "^(DEV|GAME|SHIP)$")
+        message(FATAL_ERROR "kryga_set_tier(${target} ${tier}): tier must be DEV, GAME or SHIP")
+    endif()
+    target_compile_definitions(${target} PUBLIC KRG_TIER=KRG_TIER_${tier})
+endfunction()
+
 macro(kryga_ar_target)
 
     set(full_name ${ARGV0})

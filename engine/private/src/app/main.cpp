@@ -115,7 +115,7 @@ main(int argc, char** argv)
         //           (vulkan_shader_loader.cpp:53) handles the .vert/.frag
         //           direct path when is_*_binary is false.
         //   game:   cooked output under staged_root.
-#if KRG_EDITOR
+#if KRG_HAS_EDITOR
         if (layout->source_root.empty())
         {
             ALOG_ERROR(

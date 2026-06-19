@@ -7,7 +7,10 @@
 #   -v, --verbose    Show full configure/build output
 #   -j, --jobs N     Parallel jobs (default: cmake auto)
 #   -h, --help       Show this help
-#   target           Optional target name (default: kryga_game)
+#   target           Optional target name (default: kryga_ship).
+#                    Android entry libs: kryga_ship (SHIP tier, release) or
+#                    kryga_game (GAME tier, console + profiler for on-device dev).
+#                    Both emit libmain.so; pick one per build (no reconfigure).
 #
 # Prerequisites:
 #   - ANDROID_NDK_HOME pointing at NDK r26d root (see plans/android_ndk_setup.md)
@@ -23,7 +26,7 @@ CLEAN=0
 CONFIG="Debug"
 VERBOSE=0
 JOBS=""
-TARGET="kryga_game"
+TARGET="kryga_ship"
 
 while [[ $# -gt 0 ]]; do
     case $1 in

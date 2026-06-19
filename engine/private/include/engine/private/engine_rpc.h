@@ -23,7 +23,7 @@ namespace engine_private
 {
 
 // Register every JSON-RPC handler on `server`. Called once from
-// vulkan_engine::init() under KRG_EDITOR after the server starts listening.
+// vulkan_engine::init() under KRG_HAS_EDITOR after the server starts listening.
 void
 register_rpc_handlers(vulkan_engine& eng, rpc::rpc_server& server);
 

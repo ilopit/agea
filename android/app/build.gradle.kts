@@ -31,14 +31,15 @@ android {
                     // reads the top-level CMake arguments here.
                     "-DANDROID_STL=c++_shared"
                 )
-                // kryga_game is the SDL-loaded entry (output named libmain.so);
-                // libSDL2.so is pulled in as a dep. The android branch in
-                // engine/CMakeLists.txt builds kryga_game as SHARED with
-                // OUTPUT_NAME=main. C++ standard is set in root CMakeLists.txt
-                // via CMAKE_CXX_STANDARD 23, which clang 17 translates to
-                // -std=c++2b (the raw -std=c++23 spelling isn't accepted by
-                // NDK r26d's clang).
-                targets += listOf("kryga_game", "SDL2")
+                // SDL2 is the support lib pulled in as a dep for every variant.
+                // The SDL-loaded entry (output named libmain.so) is the game/ship
+                // entry lib, selected per build type below (debug=GAME for
+                // on-device dev tools, release=SHIP). Both build SHARED with
+                // OUTPUT_NAME=main in separate dirs (see engine/CMakeLists.txt).
+                // C++ standard is set in root CMakeLists.txt via
+                // CMAKE_CXX_STANDARD 23, which clang 17 translates to -std=c++2b
+                // (the raw -std=c++23 spelling isn't accepted by NDK r26d's clang).
+                targets += listOf("SDL2")
             }
         }
     }
@@ -73,9 +74,13 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            // Release APK ships the SHIP tier (everything stripped).
+            externalNativeBuild { cmake { targets += listOf("kryga_ship") } }
         }
         getByName("debug") {
             isJniDebuggable = true
+            // Debug APK runs the GAME tier (console + profiler on device).
+            externalNativeBuild { cmake { targets += listOf("kryga_game") } }
         }
     }
 

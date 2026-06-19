@@ -11,6 +11,8 @@
 #include <vfs/rid.h>
 #include <sol2_unofficial/sol.h>
 
+#include <kryga_port/format.h>  // std::format shim (routes to fmt on Android)
+
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
