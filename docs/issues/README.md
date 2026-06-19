@@ -15,7 +15,6 @@ Not design scope — the design docs live in [`../plans/`](../plans/). Items her
 | [`package-organization.md`](package-organization.md) | Core / packages | Split asset packages from module/type packages |
 | [`reflection.md`](reflection.md) | Core / reflection | Transient object flag, serializable vs editable gap |
 | [`object-lifecycle.md`](object-lifecycle.md) | Core / object cache | Class objects (CDOs) leak into the level's instance set; rollback sweeps them |
-| [`game-systems.md`](game-systems.md) | Game systems | Finalize game_system / game_session design, component boundary |
 
 ## Conventions
 

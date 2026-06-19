@@ -40,8 +40,6 @@
 
 #include <packages/base/model/player.h>
 
-#include <game/game_system_manager.h>
-
 namespace kryga
 {
 namespace engine
@@ -517,8 +515,6 @@ game_editor::enter_play_mode()
             }
         }
     }
-
-    glob::glob_state().getr_game_system_manager().on_begin_play();
 }
 
 void
@@ -528,8 +524,6 @@ game_editor::exit_play_mode()
     {
         return;
     }
-
-    glob::glob_state().getr_game_system_manager().on_end_play();
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {

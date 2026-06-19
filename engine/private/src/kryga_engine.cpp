@@ -95,8 +95,6 @@
 
 #include <physics/physics_system.h>
 
-#include <game/game_system_manager.h>
-
 #include <packages/base/model/components/destructible_mesh_component.h>
 
 #include <gpu_types/gpu_vertex_types.h>
@@ -267,7 +265,6 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__physics_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
-    state_mutator__game_system_manager::set(gs);
     state_mutator__audio_system::set(gs);
 #if KRG_HAS_EDITOR
     state_mutator__editor_system::set(gs);
@@ -851,8 +848,6 @@ vulkan_engine::tick(float dt)
 
     if (playing)
     {
-        glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::pre_physics, dt);
-
         if (auto lvl = glob::glob_state().getr_model().current_level)
         {
             lvl->tick(dt);
@@ -877,8 +872,6 @@ vulkan_engine::tick(float dt)
         }
     }
 #else
-    glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::pre_physics, dt);
-
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         lvl->tick(dt);
@@ -915,9 +908,6 @@ vulkan_engine::tick(float dt)
         return;
     }
 #endif
-
-    glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::post_physics, dt);
-    glob::glob_state().getr_game_system_manager().tick_phase(game::game_phase::late_update, dt);
 }
 
 bool
@@ -1176,7 +1166,6 @@ vulkan_engine::init_scene()
                 go->begin_play();
             }
         }
-        glob::glob_state().getr_game_system_manager().on_begin_play();
     }
 #endif
 }

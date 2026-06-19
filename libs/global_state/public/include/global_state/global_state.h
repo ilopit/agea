@@ -48,10 +48,6 @@ namespace audio
 {
 class audio_system;
 }
-namespace game
-{
-class game_system_manager;
-}
 namespace engine
 {
 class editor_system;
@@ -96,7 +92,6 @@ struct state_mutator__render;
 struct state_mutator__animation_system;
 struct state_mutator__physics_system;
 struct state_mutator__audio_system;
-struct state_mutator__game_system_manager;
 struct state_mutator__editor_system;
 struct state_mutator__vfs;
 
@@ -166,7 +161,6 @@ class state
     friend class ::kryga::state_mutator__engine_counters;
     friend class ::kryga::state_mutator__subsystem_queues;
     friend class ::kryga::state_mutator__physics_system;
-    friend class ::kryga::state_mutator__game_system_manager;
     friend class ::kryga::state_mutator__audio_system;
 
     // Singletons
@@ -232,7 +226,6 @@ public:
     register_system(system* sys);
 
     KRG_gen_getter(physics_system, physics::physics_system);
-    KRG_gen_getter(game_system_manager, game::game_system_manager);
     KRG_gen_getter(audio_system, audio::audio_system);
 
     template <typename T>
@@ -288,7 +281,6 @@ private:
     engine_counters*                m_engine_counters = nullptr;
     subsystem_queues*               m_subsystem_queues = nullptr;
     physics::physics_system*        m_physics_system = nullptr;
-    game::game_system_manager*      m_game_system_manager = nullptr;
     audio::audio_system*            m_audio_system = nullptr;
 
     // Singletons
@@ -391,12 +383,6 @@ struct state_mutator__config
 };
 
 struct state_mutator__physics_system
-{
-    static void
-    set(gs::state& s);
-};
-
-struct state_mutator__game_system_manager
 {
     static void
     set(gs::state& s);
