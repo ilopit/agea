@@ -32,9 +32,6 @@
 
 #include <physics_bridge/physics_bridge.h>
 
-#include <physics_bridge/physics_bridge.h>
-#include <physics_bridge/physics_commands_common.h>
-
 #include <utils/buffer.h>
 
 #include "packages/base/model/lights/point_light.h"
@@ -1235,27 +1232,6 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
 namespace
 {
 
-// Upload command for the generated terrain grid. Skips if a mesh with this id is
-// already resident (terrain is regenerated only on the first build).
-struct create_terrain_mesh_cmd : render_cmd::render_command_base
-{
-    utils::id id;
-    std::shared_ptr<utils::buffer> vertices;
-    std::shared_ptr<utils::buffer> indices;
-
-    void
-    execute(render_cmd::render_exec_context& ctx) override
-    {
-        if (ctx.loader.get_mesh_data(id))
-        {
-            return;
-        }
-        auto vbv = vertices->make_view<gpu::vertex_data>();
-        auto ibv = indices->make_view<gpu::uint>();
-        ctx.loader.create_mesh(id, vbv, ibv);
-    }
-};
-
 utils::id
 terrain_mesh_id_for(const utils::id& component_id)
 {
@@ -1504,8 +1480,14 @@ terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         // terrain_component__physics_cmd_builder (via physics_bridge), not here —
         // render no longer talks to the physics world directly.
 
-        auto* mcmd = ctx.rb->alloc_cmd<create_terrain_mesh_cmd>();
+        // Handle model: reserve the mesh slot on the model thread and store it on the
+        // component; the create_mesh command populates that slot on the render thread.
+        auto mesh_handle = ctx.rb->meshes_alloc().reserve();
+        tc.set_mesh_handle(mesh_handle);
+
+        auto* mcmd = ctx.rb->alloc_cmd<create_mesh_cmd>();
         mcmd->id = mesh_id;
+        mcmd->handle = mesh_handle;
         mcmd->vertices = std::move(vbuf);
         mcmd->indices = std::move(ibuf);
         ctx.rb->enqueue_cmd(mcmd);
@@ -1523,10 +1505,14 @@ terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
 
     if (!tc.get_render_built())
     {
+        auto obj_handle = ctx.rb->objects_alloc().reserve();
+        tc.set_render_object_handle(obj_handle);
+
         auto* cmd = ctx.rb->alloc_cmd<create_object_cmd>();
         cmd->id = tc.get_id();
-        cmd->mesh_id = mesh_id;
-        cmd->material_id = material->get_id();
+        cmd->obj_handle = obj_handle;
+        cmd->mesh = tc.get_mesh_handle();
+        cmd->material = material->render_handle();
         cmd->transform = tc.get_transform_matrix();
         cmd->normal_matrix = tc.get_normal_matrix();
         cmd->position = glm::vec3(tc.get_world_position());
@@ -1543,8 +1529,9 @@ terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
     {
         auto* cmd = ctx.rb->alloc_cmd<update_object_cmd>();
         cmd->id = tc.get_id();
-        cmd->mesh_id = mesh_id;
-        cmd->material_id = material->get_id();
+        cmd->obj_handle = tc.get_render_object_handle();
+        cmd->mesh = tc.get_mesh_handle();
+        cmd->material = material->render_handle();
         cmd->transform = tc.get_transform_matrix();
         cmd->normal_matrix = tc.get_normal_matrix();
         cmd->position = glm::vec3(tc.get_world_position());
@@ -1574,11 +1561,15 @@ terrain_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx
     if (tc.get_render_built())
     {
         auto* ocmd = ctx.rb->alloc_cmd<destroy_object_cmd>();
-        ocmd->id = tc.get_id();
+        ocmd->obj_handle = tc.get_render_object_handle();
+        ctx.rb->objects_alloc().free(tc.get_render_object_handle());  // [model thread]
+        tc.set_render_object_handle({});
         ctx.rb->enqueue_cmd(ocmd);
 
         auto* mcmd = ctx.rb->alloc_cmd<destroy_mesh_cmd>();
-        mcmd->id = terrain_mesh_id_for(tc.get_id());
+        mcmd->handle = tc.get_mesh_handle();
+        ctx.rb->meshes_alloc().free(tc.get_mesh_handle());  // [model thread]
+        tc.set_mesh_handle({});
         ctx.rb->enqueue_cmd(mcmd);
 
         tc.set_render_built(false);
@@ -1599,7 +1590,7 @@ terrain_component__cmd_transform(reflection::type_context__render_cmd_build& ctx
     auto& tc = ctx.obj->asr<base::terrain_component>();
 
     auto* cmd = ctx.rb->alloc_cmd<update_transform_cmd>();
-    cmd->id = tc.get_id();
+    cmd->obj_handle = tc.get_render_object_handle();
     cmd->transform = tc.get_transform_matrix();
     cmd->normal_matrix = tc.get_normal_matrix();
     cmd->position = glm::vec3(tc.get_world_position());
@@ -1657,27 +1648,28 @@ terrain_component__physics_cmd_builder(reflection::type_context__physics_cmd_bui
     const uint32_t vcount = res * res;
     const uint32_t icount = (res - 1) * (res - 1) * 6;
 
-    // Reserve the handle now so the component records it synchronously; the Jolt
-    // body is built when the register command is drained.
-    physics::static_body_handle h = ps->alloc_static_handle();
-    tc.set_physics_handle(h);
-
-    auto* cmd = ctx.pb->alloc_cmd<register_static_collider_cmd>();
-    cmd->handle = h;
+    // Build the collider grid into the component's PERSISTENT mesh, then hand the
+    // physics ring a borrowed pointer to it: the processor copies it (create_static_mesh)
+    // on the physics thread, and the component owns the storage past the borrow window.
+    // The identity is minted by the bridge so the component records it synchronously;
+    // the Jolt body is built (and the identity mapped to it) when the command drains.
+    physics::static_world_mesh& mesh = tc.collider_mesh();
+    mesh.vertices.clear();
+    mesh.indices.clear();
 
     const glm::mat4 xf = tc.get_transform_matrix();
-    cmd->vertices.reserve(vcount);
+    mesh.vertices.reserve(vcount);
     for (uint32_t j = 0; j < res; ++j)
     {
         for (uint32_t i = 0; i < res; ++i)
         {
             float hh = heights[size_t(j) * res + i] * h_scale;
             glm::vec3 pos{-half + float(i) * cell, hh, -half + float(j) * cell};
-            cmd->vertices.push_back(glm::vec3(xf * glm::vec4(pos, 1.0f)));
+            mesh.vertices.push_back(glm::vec3(xf * glm::vec4(pos, 1.0f)));
         }
     }
 
-    cmd->indices.reserve(icount);
+    mesh.indices.reserve(icount);
     for (uint32_t j = 0; j < res - 1; ++j)
     {
         for (uint32_t i = 0; i < res - 1; ++i)
@@ -1687,16 +1679,16 @@ terrain_component__physics_cmd_builder(reflection::type_context__physics_cmd_bui
             uint32_t v2 = v0 + res;
             uint32_t v3 = v2 + 1;
 
-            cmd->indices.push_back(v0);
-            cmd->indices.push_back(v2);
-            cmd->indices.push_back(v1);
-            cmd->indices.push_back(v1);
-            cmd->indices.push_back(v2);
-            cmd->indices.push_back(v3);
+            mesh.indices.push_back(v0);
+            mesh.indices.push_back(v2);
+            mesh.indices.push_back(v1);
+            mesh.indices.push_back(v1);
+            mesh.indices.push_back(v2);
+            mesh.indices.push_back(v3);
         }
     }
 
-    ctx.pb->enqueue_cmd(cmd);
+    tc.set_physics_handle(ctx.pb->register_static_collider(mesh));
 
     return result_code::ok;
 }
@@ -1708,9 +1700,7 @@ terrain_component__physics_cmd_destroyer(reflection::type_context__physics_cmd_b
 
     if (tc.get_physics_handle().valid())
     {
-        auto* cmd = ctx.pb->alloc_cmd<unregister_static_collider_cmd>();
-        cmd->handle = tc.get_physics_handle();
-        ctx.pb->enqueue_cmd(cmd);
+        ctx.pb->unregister_static_collider(tc.get_physics_handle());
         tc.set_physics_handle({});
     }
 

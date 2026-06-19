@@ -3,7 +3,6 @@
 #include <glm_unofficial/glm.h>
 
 #include <physics/physics_types.h>
-#include <physics/input_queue.h>
 
 #include <cstdint>
 #include <memory>
@@ -15,15 +14,6 @@ namespace physics
 {
 
 class destructible_physics;
-
-// Triangle mesh in world-space, contributed to the static collision world.
-// The caller flattens model-space vertices through their component transform
-// before passing them in.
-struct static_world_mesh
-{
-    std::vector<glm::vec3> vertices;
-    std::vector<uint32_t> indices;
-};
 
 class physics_system
 {
@@ -90,10 +80,6 @@ public:
 
     destructible_physics&
     destructibles();
-
-    // Command input produced by physics_bridge, drained before tick(). Public to
-    // mirror render_system.input_queue (reached via getr_*().input_queue).
-    physics::input_queue input_queue;
 
 private:
     struct impl;

@@ -95,10 +95,6 @@
 
 #include <physics/physics_system.h>
 
-#include <physics_bridge/physics_bridge.h>
-#include <physics_bridge/physics_command.h>
-#include <physics_bridge/physics_commands_common.h>
-
 #include <game/game_system_manager.h>
 
 #include <packages/base/model/components/destructible_mesh_component.h>
@@ -271,7 +267,6 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__physics_bridge::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
-    state_mutator__physics_bridge::set(gs);
     state_mutator__game_system_manager::set(gs);
     state_mutator__audio_system::set(gs);
 #if KRG_EDITOR
@@ -1346,15 +1341,17 @@ vulkan_engine::consume_updated_physics()
     //
     // Ordering contract: this MUST run before consume_updated_render(), which clears
     // the queues — physics reads the same dirty list render does. We do NOT clear
-    // here. Commands are drained (executed against the world) immediately: same
-    // thread, and physics is not mid-tick at this point in the frame.
+    // here. The bridge only EMITS intents onto the model->physics ring; the physics
+    // thread (physics_command_processor) drains and executes them against the Jolt
+    // world. Nothing mutates the world on this thread — that would race the physics
+    // thread's tick (the reason the old main-thread input_queue drain was removed).
     auto* ps = glob::glob_state().get_physics_system();
     if (!ps)
     {
         return;
     }
 
-    auto& mq = glob::glob_state().getr_model().output;
+    auto& mq = glob::glob_state().getr_model().dirty();
     auto& pb = glob::glob_state().getr_physics_bridge();
 
     for (auto& i : mq.destroy_render)
@@ -1366,14 +1363,6 @@ vulkan_engine::consume_updated_physics()
     {
         pb.physics_cmd_build(*i, true);
     }
-
-    physics_cmd::physics_exec_context ctx{*ps};
-    ps->input_queue.drain(
-        [&ctx](physics_cmd::physics_command_base* cmd)
-        {
-            cmd->execute(ctx);
-            cmd->~physics_command_base();
-        });
 }
 
 }  // namespace kryga

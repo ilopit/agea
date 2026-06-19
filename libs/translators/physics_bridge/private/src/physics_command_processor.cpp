@@ -59,6 +59,27 @@ physics_command_processor::drain_commands()
             case core::physics_msg_kind::shatter:
                 dp.shatter(h);
                 break;
+            case core::physics_msg_kind::register_static_collider:
+            {
+                // Borrowed mesh pointer dereferenced here, on the physics thread,
+                // closing the borrow window opened at emit. The real body handle is
+                // minted on THIS thread (alloc_static_handle touches physics_system)
+                // and mapped from the bridge identity the model already recorded.
+                const physics::static_body_handle body = m_ps.alloc_static_handle();
+                m_ps.create_static_mesh(body, *m.collider_mesh);
+                m_static_colliders[m.handle] = body;
+                break;
+            }
+            case core::physics_msg_kind::unregister_static_collider:
+            {
+                auto it = m_static_colliders.find(m.handle);
+                if (it != m_static_colliders.end())
+                {
+                    m_ps.unregister_static_mesh(it->second);
+                    m_static_colliders.erase(it);
+                }
+                break;
+            }
             }
         });
 }

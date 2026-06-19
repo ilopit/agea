@@ -1,8 +1,15 @@
 #include "physics_bridge/physics_bridge.h"
 
 #include <core/subsystem_queues.h>
+#include <core/reflection/reflection_type.h>
 
 #include <global_state/global_state.h>
+
+#include <physics/physics_types.h>
+
+#include <packages/root/model/smart_object.h>
+#include <packages/root/model/components/game_object_component.h>
+#include <packages/root/model/game_object.h>
 
 namespace kryga
 {
@@ -12,6 +19,100 @@ state_mutator__physics_bridge::set(gs::state& s)
 {
     auto p = s.create_box<physics_bridge>("physics_bridge");
     s.m_physics_bridge = p;
+}
+
+kryga::result_code
+physics_bridge::physics_cmd_build(root::smart_object& obj, bool sub_objects)
+{
+    // CDOs are shared, readonly templates — never carry physics bodies.
+    if (obj.get_flags().default_obj)
+    {
+        return result_code::ok;
+    }
+
+    auto build_fn = obj.get_reflection()->physics_cmd_builder;
+    if (!build_fn)
+    {
+        return result_code::ok;
+    }
+
+    reflection::type_context__physics_cmd_build ctx{this, &obj, sub_objects};
+    return build_fn(ctx);
+}
+
+kryga::result_code
+physics_bridge::physics_cmd_destroy(root::smart_object& obj, bool sub_objects)
+{
+    if (obj.get_flags().default_obj)
+    {
+        return result_code::ok;
+    }
+
+    auto destroy_fn = obj.get_reflection()->physics_cmd_destroyer;
+    if (!destroy_fn)
+    {
+        return result_code::ok;
+    }
+
+    reflection::type_context__physics_cmd_build ctx{this, &obj, sub_objects};
+    return destroy_fn(ctx);
+}
+
+kryga::result_code
+physics_bridge::physics_cmd_transform(root::game_object_component& source)
+{
+    auto r = source.get_owner()->get_components(source.get_order_idx());
+
+    for (auto& obj : r)
+    {
+        auto handler = obj.get_reflection()->physics_cmd_transform;
+        if (!handler)
+        {
+            continue;
+        }
+
+        reflection::type_context__physics_cmd_build ctx{this, &obj};
+        handler(ctx);
+    }
+
+    return result_code::ok;
+}
+
+physics::static_body_handle
+physics_bridge::register_static_collider(const physics::static_world_mesh& mesh)
+{
+    const auto ah = m_static_alloc.reserve();
+
+    physics::static_body_handle h;
+    h.value = ah.v;
+
+    core::physics_message msg;
+    msg.kind = core::physics_msg_kind::register_static_collider;
+    msg.handle = h.value;
+    msg.collider_mesh = &mesh;  // borrowed; the processor copies on register
+    emit(msg);
+
+    return h;
+}
+
+void
+physics_bridge::unregister_static_collider(physics::static_body_handle h)
+{
+    if (!h.valid())
+    {
+        return;
+    }
+
+    const render::types::handle<k_static_collider_handle_kind> ah{h.value};
+    if (m_static_alloc.valid(ah))
+    {
+        m_static_alloc.reclaim(ah);
+    }
+
+    core::physics_message msg;
+    msg.kind = core::physics_msg_kind::unregister_static_collider;
+    msg.handle = h.value;
+    emit(msg);
 }
 
 void

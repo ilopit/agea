@@ -11,7 +11,6 @@ Foundational types used across the entire engine.
 ## Allocators
 - `stack_allocator` — LIFO with metadata tracking (bitpacked: 2 flag bits + 30 item count bits). Per-frame friendly.
 - `memory_arena` — linear bump allocator, 4 MB default, bulk `reset()`. Reset does NOT call destructors — objects must be trivial or manually destroyed.
-- `gen_allocator` — general-purpose with split/merge and tracking hooks
 
 ## Assertion macros (`check.h`)
 - `KRG_check(expr)` — assert, used instead of defensive null-checks

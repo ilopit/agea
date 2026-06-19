@@ -12,6 +12,7 @@ target_link_libraries(physics_bridge
     kryga::utils
     kryga::render_types
     kryga::glm_unofficial
+    kryga::packages.root.model
 )
 
 kryga_finalize_library(physics_bridge)

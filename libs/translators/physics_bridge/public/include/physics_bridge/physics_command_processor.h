@@ -3,6 +3,8 @@
 #include <core/physics_message.h>
 #include <core/physics_result.h>
 
+#include <physics/physics_types.h>
+
 #include <utils/spsc_queue.h>
 
 #include <cstdint>
@@ -68,6 +70,13 @@ private:
     // commands. The publish loop walks this to know which handles to report and how
     // many chunk transforms each has.
     std::unordered_map<uint64_t, uint32_t> m_active;
+
+    // Static colliders: bridge identity (physics_message::handle) -> the physics
+    // body handle minted here on register. The bridge can't call alloc_static_handle
+    // itself (that touches physics_system off the physics thread), so it mints an
+    // identity and we resolve it to a real body handle on this thread. Lives here
+    // (not on physics_system) because only this thread creates/destroys colliders.
+    std::unordered_map<uint64_t, physics::static_body_handle> m_static_colliders;
 };
 
 }  // namespace kryga

@@ -6,6 +6,8 @@
 
 #include <physics/physics_types.h>
 
+#include <render_types/render_handle.h>
+
 namespace kryga
 {
 namespace root
@@ -75,6 +77,44 @@ public:
     set_physics_handle(physics::static_body_handle h)
     {
         m_physics_handle = h;
+    }
+
+    // Persistent backing for the static collider mesh. The physics_cmd builder fills
+    // this once, then hands the physics ring a BORROWED pointer to it (the processor
+    // copies it on register). It must outlive the one-frame borrow window, so it
+    // lives on the component (package lifetime), not in the transient builder — the
+    // same pattern destructible_mesh_component uses for its chunk shapes.
+    physics::static_world_mesh&
+    collider_mesh()
+    {
+        return m_collider_mesh;
+    }
+
+    // Render handles for the procedurally-generated terrain mesh and its render
+    // object. Terrain has no asset mesh, so the builder reserves these (handle model)
+    // and stores them here: the mesh handle backs create/destroy_mesh, the object
+    // handle backs create/update/destroy_object and update_transform. Runtime-only,
+    // not serialized.
+    render::types::mesh_handle
+    get_mesh_handle() const
+    {
+        return m_mesh_handle;
+    }
+    void
+    set_mesh_handle(render::types::mesh_handle h)
+    {
+        m_mesh_handle = h;
+    }
+
+    render::types::render_object_handle
+    get_render_object_handle() const
+    {
+        return m_render_object_handle;
+    }
+    void
+    set_render_object_handle(render::types::render_object_handle h)
+    {
+        m_render_object_handle = h;
     }
 
 protected:
@@ -217,6 +257,9 @@ protected:
     float m_base_bounding_radius = 0.0f;
     glm::vec3 m_local_centroid = {0.0f, 0.0f, 0.0f};
     physics::static_body_handle m_physics_handle{};
+    physics::static_world_mesh m_collider_mesh{};
+    render::types::mesh_handle m_mesh_handle{};
+    render::types::render_object_handle m_render_object_handle{};
 };
 
 }  // namespace base

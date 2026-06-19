@@ -10,6 +10,7 @@ namespace kryga
 namespace physics
 {
 struct chunk_shape;
+struct static_world_mesh;
 }
 
 namespace core
@@ -22,6 +23,8 @@ enum class physics_msg_kind : uint8_t
     set_transform,
     apply_impact,
     shatter,
+    register_static_collider,
+    unregister_static_collider,
 };
 
 // Model-emitted physics intent, pushed onto subsystem_queues().physics.in (via
@@ -64,6 +67,14 @@ struct physics_message
     glm::vec3 impact_point{0.0f};
     glm::vec3 impact_impulse{0.0f};
     float impact_damage = 0.0f;
+
+    // register_static_collider only: borrowed pointer into the owning component's
+    // persistent collider mesh (e.g. terrain_component::collider_mesh). Same
+    // borrow-window contract as `chunks` above — the component owns it for its
+    // lifetime and the processor copies it through create_static_mesh on register,
+    // so the model thread must not overwrite it before that drain (terrain
+    // registers exactly once per handle, so it doesn't).
+    const physics::static_world_mesh* collider_mesh = nullptr;
 };
 
 }  // namespace core

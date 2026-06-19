@@ -49,5 +49,14 @@ struct static_body_handle
     }
 };
 
+// Triangle mesh in world-space, contributed to the static collision world.
+// The caller flattens model-space vertices through their component transform
+// before passing them in.
+struct static_world_mesh
+{
+    std::vector<glm::vec3> vertices;
+    std::vector<uint32_t> indices;
+};
+
 }  // namespace physics
 }  // namespace kryga

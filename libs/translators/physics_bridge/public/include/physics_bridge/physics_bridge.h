@@ -6,6 +6,8 @@
 
 #include <render_types/handle_pool.h>
 
+#include <error_handling/error_handling.h>
+
 #include <glm_unofficial/glm.h>
 
 #include <cstdint>
@@ -13,12 +15,18 @@
 
 namespace kryga
 {
+namespace root
+{
+class smart_object;
+class game_object_component;
+}  // namespace root
 
-// 8-bit type tag for the destructible identity handle. Distinct from render's
+// 8-bit type tags for physics identity handles. Distinct from render's
 // resource_kind values (0-7) so a raw u64 can never be mistaken for a render
 // handle; physics handles never route through render storage, so the exact value
 // only matters for that disambiguation.
 constexpr uint8_t k_destructible_handle_kind = 64;
+constexpr uint8_t k_static_collider_handle_kind = 65;
 
 // Model-thread snapshot of one destructible's physics state, refreshed by
 // drain_results from the physics->model result ring. The destructible component
@@ -34,17 +42,56 @@ struct destructible_state
 
 // The model<->physics analog of render_translator / audio_bridge: the model-thread
 // PRODUCER for the command ring AND the model-thread CONSUMER for the result ring.
-// The destructible component never touches physics_system or the rings directly —
-// it calls these methods; the bridge pushes intents and owns the per-handle state
-// snapshot. Translating drained COMMANDS into physics_system calls is NOT here; it
-// lives in physics_command_processor (the physics-thread consumer), mirroring how
+// Components never touch physics_system or the rings directly — they call these
+// methods; the bridge pushes intents and owns the per-handle state snapshot.
+// Translating drained COMMANDS into physics_system calls is NOT here; it lives in
+// physics_command_processor (the physics-thread consumer), mirroring how
 // render_translator builds commands while render_cmd::dispatch executes them.
 //
-// Threading: every method runs on the model/main thread. State (the handle minter
-// and the snapshot map) is touched solely from there.
+// Two producer faces feed the SAME ring:
+//   - destructibles call the typed methods below directly (register_destructible …);
+//   - static colliders (terrain) are produced through the reflection dispatch
+//     (physics_cmd_build/destroy/transform), the model→physics counterpart of
+//     render_translator's per-type handlers, which call register_static_collider.
+// Both ultimately emit() a core::physics_message — there is no second, main-thread
+// command channel (the old arena/input_queue path was main-thread-only and unsafe
+// once physics moved to its own thread).
+//
+// Threading: every method runs on the model/main thread. State (the handle minters)
+// is touched solely from there.
 class physics_bridge
 {
 public:
+    // --- Reflection-dispatched producers (model thread) ---
+    //
+    // The physics twin of render_translator's render_cmd_build/destroy/transform:
+    // walk a smart_object's per-type physics handler (if any) and let it emit the
+    // right intents. A type with no physics handler is a no-op, so only physics
+    // types (terrain, …) produce commands.
+
+    kryga::result_code
+    physics_cmd_build(root::smart_object& obj, bool sub_objects);
+
+    kryga::result_code
+    physics_cmd_destroy(root::smart_object& obj, bool sub_objects);
+
+    kryga::result_code
+    physics_cmd_transform(root::game_object_component& source);
+
+    // --- Static collider producers (model thread) ---
+
+    // Mint a static-collider identity, emit a register intent carrying a BORROWED
+    // pointer to `mesh` (the processor copies it through create_static_mesh on the
+    // physics thread — same borrow contract as register_destructible's chunks). The
+    // identity is minted here (model-thread allocator) so the caller records it
+    // synchronously without a round-trip to physics_system across the thread
+    // boundary; the processor maps this identity to the real physics body handle.
+    physics::static_body_handle
+    register_static_collider(const physics::static_world_mesh& mesh);
+
+    void
+    unregister_static_collider(physics::static_body_handle h);
+
     // --- Command producers (model thread) ---
 
     // Mint a handle, record an (initially intact) snapshot for it, and emit a
@@ -102,6 +149,13 @@ private:
     // old handle->state hash map — the allocator already owns dense indices, so the
     // payload is a flat vector, not a map.
     std::vector<destructible_state> m_states;
+
+    // Identity minter for static colliders. Pure allocator (no storage, no payload):
+    // the bridge keeps no per-collider state — colliders are write-only from the
+    // model side (build once, destroy once), so unlike destructibles there is no
+    // read-back snapshot. The generation still guards against a stale unregister for
+    // a recycled identity. The processor owns the identity->physics-body mapping.
+    render::types::handle_allocator<k_static_collider_handle_kind> m_static_alloc;
 };
 
 }  // namespace kryga
