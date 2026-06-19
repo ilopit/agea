@@ -15,9 +15,6 @@ bool
 load_buffer(const rid& id, utils::buffer& b);
 
 bool
-save_buffer(utils::buffer& b);
-
-bool
 load_file(const rid& id, std::vector<uint8_t>& blob);
 
 bool

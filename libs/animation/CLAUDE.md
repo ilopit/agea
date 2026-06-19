@@ -6,8 +6,6 @@ Skeletal animation system built on ozz-animation.
 - Registers skeletons with joint hierarchies and inverse bind matrices
 - Manages animation clips per skeleton
 - Creates/destroys animation instances with playback control
-- Multi-layer blending via `set_blend_layers()` (each layer has own sampling context)
-- IK solvers: two-bone IK and aim IK
 
 ## Data flow
 1. `tick()` samples animations per-instance

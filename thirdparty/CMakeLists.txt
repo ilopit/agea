@@ -99,17 +99,9 @@ externalize(imgui_unofficial "imgui")
 add_subdirectory(unofficial/imguizmo)
 externalize(imguizmo_unofficial "imguizmo")
 
-#imguifiledialog
-add_subdirectory(unofficial/imguifiledialog)
-externalize(imguifiledialog_unofficial "imguifiledialog")
-
 #vma
 add_subdirectory(unofficial/vma)
 externalize(vma_unofficial "vma")
-
-#textedit
-add_subdirectory(unofficial/textedit)
-externalize(textedit_unofficial "textedit")
 
 #stb
 add_subdirectory(unofficial/stb)

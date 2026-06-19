@@ -172,85 +172,6 @@ animation_system::destroy_instance(const utils::id& instance_id)
 }
 
 void
-animation_system::set_blend_layers(const utils::id& instance_id,
-                                   const std::vector<blend_layer>& layers)
-{
-    auto inst_it = m_instances.find(instance_id);
-    if (inst_it == m_instances.end())
-    {
-        return;
-    }
-
-    auto& inst = inst_it->second;
-    auto skel_it = m_skeletons.find(inst.skeleton_id);
-    if (skel_it == m_skeletons.end())
-    {
-        return;
-    }
-
-    const auto& reg = skel_it->second;
-    auto anim_map_it = m_animations.find(inst.skeleton_id);
-    if (anim_map_it == m_animations.end())
-    {
-        return;
-    }
-
-    inst.layers.clear();
-
-    for (const auto& bl : layers)
-    {
-        auto clip_it = anim_map_it->second.find(bl.clip_id);
-        if (clip_it == anim_map_it->second.end())
-        {
-            continue;
-        }
-
-        layer_state ls;
-        ls.clip_id = bl.clip_id;
-        ls.weight = bl.weight;
-        ls.playback_time = 0.0f;
-        ls.context =
-            std::make_unique<ozz::animation::SamplingJob::Context>(clip_it->second.num_tracks());
-        ls.locals.resize(reg.skeleton.num_soa_joints());
-        inst.layers.push_back(std::move(ls));
-    }
-}
-
-void
-animation_system::set_ik_two_bone(const utils::id& instance_id, const ik_two_bone_params& params)
-{
-    auto it = m_instances.find(instance_id);
-    if (it != m_instances.end())
-    {
-        it->second.has_ik_two_bone = true;
-        it->second.ik_two_bone = params;
-    }
-}
-
-void
-animation_system::set_ik_aim(const utils::id& instance_id, const ik_aim_params& params)
-{
-    auto it = m_instances.find(instance_id);
-    if (it != m_instances.end())
-    {
-        it->second.has_ik_aim = true;
-        it->second.ik_aim = params;
-    }
-}
-
-void
-animation_system::clear_ik(const utils::id& instance_id)
-{
-    auto it = m_instances.find(instance_id);
-    if (it != m_instances.end())
-    {
-        it->second.has_ik_two_bone = false;
-        it->second.has_ik_aim = false;
-    }
-}
-
-
-void
 animation_system::tick(float dt)
 {
     if (m_instances.empty())
@@ -492,13 +413,6 @@ animation_system::get_skeleton(const utils::id& id) const
 {
     auto it = m_skeletons.find(id);
     return it != m_skeletons.end() ? &it->second.skeleton : nullptr;
-}
-
-int32_t
-animation_system::get_joint_count(const utils::id& skel_id) const
-{
-    auto it = m_skeletons.find(skel_id);
-    return it != m_skeletons.end() ? it->second.skeleton.num_joints() : 0;
 }
 
 bool

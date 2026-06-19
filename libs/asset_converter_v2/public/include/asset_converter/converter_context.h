@@ -136,19 +136,6 @@ struct parsed_scene
     std::vector<parsed_camera> cameras;
     std::vector<parsed_node> nodes;
     std::vector<int> root_nodes;
-
-    // Analysis helpers
-    bool
-    is_single_asset() const
-    {
-        return meshes.size() <= 1 && lights.empty() && cameras.empty() && root_nodes.size() <= 1;
-    }
-
-    bool
-    has_placed_objects() const
-    {
-        return root_nodes.size() > 1 || !lights.empty() || !cameras.empty();
-    }
 };
 
 // ============================================================================

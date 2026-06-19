@@ -32,22 +32,6 @@ load_buffer(const rid& id, utils::buffer& b)
 }
 
 bool
-save_buffer(utils::buffer& b)
-{
-    auto& vfs = glob::glob_state().getr_vfs();
-
-    auto& vpath = b.get_vpath();
-    if (vpath.empty())
-    {
-        ALOG_ERROR("vfs::save_buffer: buffer has no vpath set");
-        return false;
-    }
-
-    auto data = std::span<const uint8_t>(b.data(), b.size());
-    return vfs.write_bytes(rid(vpath), data);
-}
-
-bool
 load_file(const rid& id, std::vector<uint8_t>& blob)
 {
     auto& vfs = glob::glob_state().getr_vfs();

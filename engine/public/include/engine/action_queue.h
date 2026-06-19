@@ -101,10 +101,6 @@ public:
     std::string
     current_name();
 
-    // Current action name (empty if idle)
-    std::string
-    current_action_name();
-
     // Progress of the current action (thread-safe)
     action_progress*
     current_progress()

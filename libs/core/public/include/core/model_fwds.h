@@ -23,7 +23,6 @@ class sampler;
 class audio_clip;
 class smart_object;
 class shader_effect;
-class light_component;
 class point_light;
 
 }  // namespace root
@@ -32,8 +31,6 @@ namespace core
 {
 class caches_map;
 class cache_set;
-class cache_set_ref;
-class class_objects_cache;
 class object_load_context;
 class object_constructor;
 class level;

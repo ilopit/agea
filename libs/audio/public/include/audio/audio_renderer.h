@@ -73,9 +73,6 @@ public:
     void
     load_clip(root::audio_clip& clip);
 
-    bool
-    is_clip_loaded(const utils::id& clip_id) const;
-
     // Start clip_id on the logical voice keyed by voice_id (typically the
     // emitter's id). Replaces any voice already playing under that id.
     void
@@ -87,9 +84,6 @@ public:
     void
     stop_all();
 
-    bool
-    is_voice_playing(const utils::id& voice_id) const;
-
     void
     set_voice_position(const utils::id& voice_id, const glm::vec3& pos);
 
@@ -99,9 +93,6 @@ public:
     // Listener pose for spatial audio — usually driven by the active camera.
     void
     set_listener(const glm::vec3& pos, const glm::vec3& forward, const glm::vec3& up);
-
-    void
-    set_master_volume(float v);
 
     // Per-frame: advances the engine clock bookkeeping and reaps finished voices.
     void

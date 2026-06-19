@@ -245,10 +245,4 @@ gizmo_editor::draw()
     }
 }
 
-bool
-gizmo_editor::is_using() const
-{
-    return m_using;
-}
-
 }  // namespace kryga::ui

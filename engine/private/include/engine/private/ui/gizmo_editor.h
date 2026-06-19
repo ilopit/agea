@@ -19,9 +19,6 @@ public:
     void
     draw();
 
-    bool
-    is_using() const;
-
 private:
     gizmo_mode m_mode = gizmo_mode::translate;
     ImGuizmo::MODE m_space = ImGuizmo::WORLD;

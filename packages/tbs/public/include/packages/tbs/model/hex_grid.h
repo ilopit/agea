@@ -59,64 +59,6 @@ public:
 
     bool
     construct(construct_params& params);
-
-    // Content management (tiles to spawn)
-    void
-    add_content(int q, int r, const utils::id& proto_id);
-
-    void
-    add_content(const hex_tile_entry& entry);
-
-    void
-    clear_content();
-
-    const std::vector<hex_tile_entry>&
-    get_content() const
-    {
-        return m_content;
-    }
-
-    // Spawned tiles access
-    hex_tile*
-    get_tile_at(const hex_coord& coord) const;
-
-    bool
-    has_tile_at(const hex_coord& coord) const;
-
-    const std::unordered_map<hex_coord, hex_tile*, hex_coord_hash>&
-    get_tiles() const
-    {
-        return m_tiles;
-    }
-
-    size_t
-    get_tile_count() const
-    {
-        return m_tiles.size();
-    }
-
-    // Get neighbors of a tile that exist in grid
-    std::vector<hex_tile*>
-    get_neighbors(const hex_coord& coord) const;
-
-    // Register an externally created tile
-    void
-    register_tile(hex_tile* tile);
-
-    // Unregister a tile
-    void
-    unregister_tile(const hex_coord& coord);
-
-    // Clear all tiles (does not destroy them)
-    void
-    clear_tiles();
-
-protected:
-    // Content: tile entries to spawn (runtime, not serialized yet)
-    std::vector<hex_tile_entry> m_content;
-
-    // Runtime: spawned/registered tiles
-    std::unordered_map<hex_coord, hex_tile*, hex_coord_hash> m_tiles;
 };
 
 }  // namespace tbs

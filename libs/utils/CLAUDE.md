@@ -9,7 +9,6 @@ Foundational types used across the entire engine.
 - `id_allocator`: numeric ID reuse pool with free list
 
 ## Allocators
-- `stack_allocator` — LIFO with metadata tracking (bitpacked: 2 flag bits + 30 item count bits). Per-frame friendly.
 - `memory_arena` — linear bump allocator, 4 MB default, bulk `reset()`. Reset does NOT call destructors — objects must be trivial or manually destroyed.
 
 ## Assertion macros (`check.h`)
@@ -27,4 +26,4 @@ Foundational types used across the entire engine.
 - `buffer.h` — raw byte buffer with file I/O and typed views
 - `kryga_log.h` — spdlog wrapper: `ALOG_TRACE/INFO/WARN/ERROR/FATAL`. Must initialize before use.
 - `singleton_instance.h` — singleton patterns
-- `string_utility.h` — split, extension parsing, hex conversion
+- `string_utility.h` — split, prefix/suffix checks

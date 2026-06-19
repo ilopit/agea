@@ -12,12 +12,6 @@ namespace kryga
 namespace animation
 {
 
-struct blend_layer
-{
-    utils::id clip_id;
-    float weight = 1.0f;
-};
-
 struct ik_two_bone_params
 {
     int32_t start_joint = -1;

@@ -44,4 +44,3 @@ is_debugger_attached();
     } while (0)
 
 #define KRG_not_implemented KRG_never("Not Implemented!")
-#define KRG_deprecate KRG_never("Deprecated!")

@@ -13,15 +13,6 @@ class Value;
 namespace kryga::rpc
 {
 
-// Result of a request handler. If `error_message` is non-empty the response
-// becomes a JSON-RPC error with code -32000 (server-defined) and the message;
-// otherwise `result` is sent as the response payload.
-struct handler_result
-{
-    Json::Value* result = nullptr;
-    std::string error_message;
-};
-
 using request_handler =
     std::function<void(const Json::Value& params, Json::Value& result_out, std::string& error_out)>;
 

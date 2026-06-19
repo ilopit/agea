@@ -35,9 +35,6 @@ public:
     void
     shutdown();
 
-    void
-    set_gravity(const glm::vec3& g);
-
     // Builds a single static body from the concatenation of all passed meshes.
     // Replaces any previously registered static world.
     void
@@ -52,14 +49,6 @@ public:
     void
     clear_static_world();
 
-    // Register an independent static triangle-mesh collider (vertices in world
-    // space). Additive — does NOT touch the build_static_world body, so multiple
-    // colliders (terrain chunks, props) can coexist. Returns an invalid handle
-    // on failure (degenerate mesh / uninitialised world). Convenience wrapper for
-    // alloc_static_handle() + create_static_mesh().
-    static_body_handle
-    register_static_mesh(const static_world_mesh& mesh);
-
     // Split form used by physics_bridge: reserve a collider handle up front (so the
     // model can store it synchronously), then build the Jolt body for that handle
     // later when the register command is drained. create_static_mesh is a no-op on a
@@ -69,8 +58,8 @@ public:
     void
     create_static_mesh(static_body_handle h, const static_world_mesh& mesh);
 
-    // Remove a collider previously returned by register_static_mesh /
-    // alloc_static_handle. No-op on an invalid/unknown handle.
+    // Remove a collider previously returned by alloc_static_handle.
+    // No-op on an invalid/unknown handle.
     void
     unregister_static_mesh(static_body_handle h);
 

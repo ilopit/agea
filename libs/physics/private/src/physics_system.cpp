@@ -118,15 +118,6 @@ physics_system::shutdown()
 }
 
 void
-physics_system::set_gravity(const glm::vec3& g)
-{
-    if (m_impl->world)
-    {
-        m_impl->world->SetGravity(JPH::Vec3(g.x, g.y, g.z));
-    }
-}
-
-void
 physics_system::clear_static_world()
 {
     if (!m_impl->world || m_impl->static_world_body.IsInvalid())
@@ -212,14 +203,6 @@ physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
     m_impl->static_world_body = bi.CreateAndAddBody(bcs, JPH::EActivation::DontActivate);
 
     m_impl->world->OptimizeBroadPhase();
-}
-
-static_body_handle
-physics_system::register_static_mesh(const static_world_mesh& mesh)
-{
-    static_body_handle h = alloc_static_handle();
-    create_static_mesh(h, mesh);
-    return h;
 }
 
 static_body_handle

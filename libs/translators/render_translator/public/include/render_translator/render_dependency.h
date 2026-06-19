@@ -59,9 +59,6 @@ public:
     void
     build_node(root::smart_object* obj);
 
-    void
-    print(bool top_down);
-
 private:
     std::unordered_map<root::smart_object*, node> m_top_down;
     std::unordered_map<root::smart_object*, node> m_down_top;

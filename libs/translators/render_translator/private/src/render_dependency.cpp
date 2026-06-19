@@ -62,25 +62,4 @@ render_object_dependency_graph::build_node(root::smart_object* obj)
     }
 }
 
-void
-render_object_dependency_graph::print(bool top_down)
-{
-    for (auto& d : (top_down ? m_top_down : m_down_top))
-    {
-        auto& node = d.second;
-
-        if (!node.get_children().empty())
-        {
-            ALOG_INFO("{0}  =>", node.get_obj()->get_id().cstr());
-
-            for (auto c : node.get_children())
-            {
-                ALOG_INFO("    {0}", c->get_id().cstr());
-            }
-
-            ALOG_INFO("    =====================");
-        }
-    }
-}
-
 }  // namespace kryga

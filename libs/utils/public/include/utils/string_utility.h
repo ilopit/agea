@@ -13,16 +13,10 @@ struct string_utils
     static std::vector<std::string>
     split(const std::string& s, const std::string& del);
 
-    static std::string
-    file_extension(const std::string& file_path);
-
     static bool
     ends_with(const std::string& src, const std::string& ending);
 
     static bool
     starts_with(const std::string& src, const std::string& begin);
-
-    static bool
-    convert_hex_string_to_bytes(size_t size, const char* s, uint8_t* ptr);
 };
 }  // namespace kryga

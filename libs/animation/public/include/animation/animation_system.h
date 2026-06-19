@@ -81,25 +81,10 @@ public:
     destroy_instance(const utils::id& instance_id);
 
     void
-    set_blend_layers(const utils::id& instance_id, const std::vector<blend_layer>& layers);
-
-    void
-    set_ik_two_bone(const utils::id& instance_id, const ik_two_bone_params& params);
-
-    void
-    set_ik_aim(const utils::id& instance_id, const ik_aim_params& params);
-
-    void
-    clear_ik(const utils::id& instance_id);
-
-    void
     tick(float dt);
 
     const ozz::animation::Skeleton*
     get_skeleton(const utils::id& id) const;
-
-    int32_t
-    get_joint_count(const utils::id& skel_id) const;
 
     bool
     has_animation(const utils::id& skel_id, const utils::id& anim_id) const;

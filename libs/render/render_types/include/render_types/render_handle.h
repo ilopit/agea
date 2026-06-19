@@ -58,10 +58,6 @@ using render_object_handle = handle<static_cast<uint8_t>(resource_kind::object)>
 using directional_light_handle = handle<static_cast<uint8_t>(resource_kind::directional_light)>;
 using universal_light_handle = handle<static_cast<uint8_t>(resource_kind::universal_light)>;
 
-// Internal (render-side only) handle types.
-using lightmap_handle = handle<static_cast<uint8_t>(resource_kind::lightmap)>;
-using probe_handle = handle<static_cast<uint8_t>(resource_kind::probe)>;
-
 // Storage + allocator types, one pair per (kind, payload) — mirrors the handle
 // aliases above so holders (the loader, render_translator, the renderer's system
 // pools, test fixtures) never spell the template arguments by hand.

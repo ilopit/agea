@@ -139,12 +139,6 @@ audio_renderer::load_clip(root::audio_clip& clip)
     m_be->clips.emplace(id, std::move(lc));
 }
 
-bool
-audio_renderer::is_clip_loaded(const utils::id& clip_id) const
-{
-    return m_be->clips.find(clip_id) != m_be->clips.end();
-}
-
 void
 audio_renderer::play(const utils::id& voice_id, const utils::id& clip_id, const play_params& params)
 {
@@ -257,17 +251,6 @@ audio_renderer::stop_all()
     m_be->voices.clear();
 }
 
-bool
-audio_renderer::is_voice_playing(const utils::id& voice_id) const
-{
-    auto it = m_be->voices.find(voice_id);
-    if (it == m_be->voices.end())
-    {
-        return false;
-    }
-    return ma_sound_is_playing(&it->second->sound) == MA_TRUE;
-}
-
 void
 audio_renderer::set_voice_position(const utils::id& voice_id, const glm::vec3& pos)
 {
@@ -302,16 +285,6 @@ audio_renderer::set_listener(const glm::vec3& pos, const glm::vec3& forward, con
     ma_engine_listener_set_position(&m_be->engine, 0, pos.x, pos.y, pos.z);
     ma_engine_listener_set_direction(&m_be->engine, 0, forward.x, forward.y, forward.z);
     ma_engine_listener_set_world_up(&m_be->engine, 0, up.x, up.y, up.z);
-}
-
-void
-audio_renderer::set_master_volume(float v)
-{
-    if (!m_enabled)
-    {
-        return;
-    }
-    ma_engine_set_volume(&m_be->engine, v);
 }
 
 void

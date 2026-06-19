@@ -77,16 +77,6 @@ action_queue::current_name()
     return m_current_name;
 }
 
-std::string
-action_queue::current_action_name()
-{
-    if (!m_running.load())
-    {
-        return {};
-    }
-    return m_progress.get_status().empty() ? "Working..." : m_progress.get_status();
-}
-
 size_t
 action_queue::queued_count()
 {

@@ -80,26 +80,6 @@ make_descriptor_set_layout_binding(VkDescriptorType type,
                                    VkShaderStageFlags stage_flags,
                                    uint32_t binding);
 
-VkWriteDescriptorSet
-make_write_descriptor_buffer(VkDescriptorType type,
-                             VkDescriptorSet dst_set,
-                             VkDescriptorBufferInfo* buffer_info,
-                             uint32_t binding);
-
-VkWriteDescriptorSet
-make_write_descriptor_image(VkDescriptorType type,
-                            VkDescriptorSet dst_set,
-                            VkDescriptorImageInfo* image_info,
-                            uint32_t binding);
-
-VkSamplerCreateInfo
-make_sampler_create_info(
-    VkFilter filters, VkSamplerAddressMode sampler_address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-VkPipelineDynamicStateCreateInfo
-make_pipeline_dynamic_state_create_info(const std::vector<VkDynamicState>& dynamic_states,
-                                        VkPipelineDynamicStateCreateFlags flags = 0);
-
 VkImageMemoryBarrier
 make_image_memory_barrier();
 

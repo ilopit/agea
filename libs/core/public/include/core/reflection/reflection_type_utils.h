@@ -34,12 +34,6 @@ extract_field(blob_ptr ptr, const serialization::container& jc)
     as_type<T>(ptr) = jc.as<T>();
 }
 
-inline blob_ptr
-reduce_ptr(blob_ptr ptr, bool is_ptr)
-{
-    return is_ptr ? *(blob_ptr*)(ptr) : ptr;
-}
-
 template <typename T>
 void
 cpp_default__copy(blob_ptr from, blob_ptr to)

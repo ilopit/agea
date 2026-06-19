@@ -27,16 +27,6 @@ using core::input_event_id;
 
 struct event_state;
 
-enum class input_event_type
-{
-    nan = 0,
-
-    press,
-    release,
-    scale,
-    count
-};
-
 struct input_action_descriptor;
 
 struct input_scaled_action_handler : utils::generic_event_handler<void, float>
