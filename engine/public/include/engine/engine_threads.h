@@ -10,6 +10,10 @@
 namespace kryga
 {
 
+class audio_message_processor;
+class physics_command_processor;
+class render_command_processor;
+
 // The single owner of every engine worker thread — start()/stop() here is the one
 // authority for thread lifecycle and (load-bearing) shutdown ordering. It runs two
 // INDEPENDENT threads that share nothing:
@@ -63,8 +67,15 @@ public:
     // handed off to the render thread by the caller — see render::set_render_access;
     // likewise the physics world must be init'd on the main thread first, after which
     // only the physics thread touches it.)
+    //
+    // The audio/physics/render processors are owned by the engine and BORROWED here:
+    // the audio, physics, and render loops drive them (the sole driver in threaded
+    // mode). They must outlive stop() — the engine guarantees that by declaring them
+    // ahead of this object.
     void
-    start();
+    start(audio_message_processor& audio,
+          physics_command_processor& physics,
+          render_command_processor& render);
 
     // Drain in-flight frames, signal shutdown, and join ALL THREE threads. Idempotent:
     // a no-op if never started or already stopped (the dtor calls it, so an explicit
@@ -105,22 +116,6 @@ public:
     bool
     wait_frames_rendered(int count, std::chrono::milliseconds timeout);
 
-    // --- Consumer side (render pipeline) ---
-
-    // Execute (and destruct) every command in `frame_slot`'s queue. Each frame
-    // slot holds exactly one frame's commands (the producer is on the other frame
-    // slot), so draining to empty consumes precisely one frame; the caller then
-    // issues the draw. Pulls the renderer/loader/queue from glob_state, holds no
-    // pipeline state — hence static, callable by both the streaming render loop
-    // (frame_slot = frame parity) and the single-threaded headless tick (frame slot
-    // 0) which bypasses the pipeline entirely.
-    //
-    // The frame-slot lifecycle (set_build_frame_slot / reset_frame_slot /
-    // reset_arena) belongs to the queue owner (getr_subsystem_queues().render); this only
-    // consumes a frame slot.
-    static void
-    drain_frame(uint32_t frame_slot);
-
 private:
     void
     render_loop();
@@ -139,10 +134,15 @@ private:
     uint64_t m_submitted = 0;
     uint64_t m_completed = 0;
     bool m_shutdown = false;
+    // Borrowed from the engine (set in start()); the render loop drives it to consume
+    // each frame slot's command queue before drawing.
+    render_command_processor* m_render_processor = nullptr;
 
     // --- Audio worker (thread 2) — independent of everything above ---
     std::thread m_audio_thread;
     std::atomic<bool> m_audio_shutdown{false};
+    // Borrowed from the engine (set in start()); the audio loop is its sole driver here.
+    audio_message_processor* m_audio_processor = nullptr;
 
     // --- Physics worker (thread 3) — independent like audio, but bidirectional ---
     // Self-clocked fixed-step worker. Sole consumer of subsystem_queues().physics.in and
@@ -152,6 +152,8 @@ private:
     std::thread m_physics_thread;
     std::atomic<bool> m_physics_shutdown{false};
     std::atomic<bool> m_physics_paused{false};
+    // Borrowed from the engine (set in start()); the physics loop is its sole driver here.
+    physics_command_processor* m_physics_processor = nullptr;
 };
 
 }  // namespace kryga

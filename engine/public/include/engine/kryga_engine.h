@@ -28,6 +28,8 @@ union SDL_Event;
 namespace kryga
 {
 class physics_command_processor;
+class audio_message_processor;
+class render_command_processor;
 class native_window;
 namespace ui
 {
@@ -208,24 +210,33 @@ private:
     drain_main_actions();
 #endif
 
+    // Consumer-side processor, one per subsystem (audio / physics / render). Each was
+    // otherwise an ephemeral local (a loop-local or fresh-per-call object, or a static
+    // free function for render); they're unified here as a SINGLE engine-owned instance
+    // each, built in init() once the subsystems exist. The engine is either threaded OR
+    // headless, never both, so exactly one driver touches each:
+    //   - threaded: the worker loop (engine_threads holds a borrowed pointer, passed to
+    //               start()) drives it;
+    //   - headless: the inline tick (tick_headless / consume_updated_audio) drives it.
+    // Declared BEFORE m_threads so they outlive the threads — the dtor destroys m_threads
+    // (joining the workers) before these.
+    std::unique_ptr<audio_message_processor> m_audio_processor;
+    std::unique_ptr<physics_command_processor> m_physics_processor;
+    std::unique_ptr<render_command_processor> m_render_processor;
+
     // Owns the streaming render thread, the main/render handoff, and the
     // per-frame slot routing (depth-1 pipeline). run() drives it via
     // begin_frame/submit_frame; everything else lives inside it. Headless ticks
     // single-threaded through tick_headless(), bypassing the pipeline.
     //
-    // Single owner of all engine worker threads (render streaming pipeline + audio
-    // worker). Declared last so its dtor runs first: stop() there joins both threads
-    // before any other engine member is destroyed, so neither can touch a half-torn-
-    // down subsystem. The authoritative stop() is in cleanup() (before global_state
-    // tears down audio_system / render), so by dtor time the threads are already
-    // joined and the dtor's stop() is a no-op backstop. This ordering is load-bearing.
+    // Single owner of all engine worker threads (render streaming pipeline + audio +
+    // physics workers). Declared last so its dtor runs first: stop() there joins the
+    // threads before any other engine member is destroyed, so none can touch a half-
+    // torn-down subsystem (or a freed processor above). The authoritative stop() is in
+    // cleanup() (before global_state tears down audio_system / render / physics), so by
+    // dtor time the threads are already joined and the dtor's stop() is a no-op backstop.
+    // This ordering is load-bearing.
     engine_threads m_threads;
-
-    // Headless has no worker threads, so physics can't run on its own thread. This
-    // inline processor lets tick_headless() drain the physics command ring (otherwise
-    // the SPSC fills and the producer spin-hangs), step, and publish — single-threaded.
-    // Null in threaded mode, where engine_threads::physics_loop owns its own processor.
-    std::unique_ptr<physics_command_processor> m_headless_physics;
 };
 
 }  // namespace kryga

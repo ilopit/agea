@@ -63,6 +63,7 @@
 
 #include <render_translator/render_translator.h>
 #include <render_translator/render_command.h>
+#include <render_translator/render_command_processor.h>
 #include <render_translator/render_convert.h>
 
 #include <audio_bridge/audio_bridge.h>
@@ -284,15 +285,23 @@ vulkan_engine::init(const startup_options& options)
     glob::glob_state().getr_physics_system().init();
     glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
 
-    // Headless runs no worker threads, so physics can't have its own. Build an inline
-    // processor tick_headless() drives each frame — without it the physics command
-    // ring fills and the model-side producer spin-hangs. Threaded mode leaves this
-    // null and lets engine_threads::physics_loop own the processor instead.
-    if (m_headless)
+    // Build the consumer-side processors once, owned by the engine for the whole run.
+    // The same instance is driven either by its worker thread (threaded — passed to
+    // m_threads.start()) or inline (headless — tick_headless / consume_updated_audio);
+    // the engine is never both, so there's exactly one driver per processor.
     {
         auto& q = glob::glob_state().getr_subsystem_queues();
-        m_headless_physics = std::make_unique<physics_command_processor>(
+        m_physics_processor = std::make_unique<physics_command_processor>(
             glob::glob_state().getr_physics_system(), q.physics.in, q.physics.out);
+
+        auto* as = glob::glob_state().get_audio_system();
+        KRG_check(as, "audio_system must exist before building its processor");
+        m_audio_processor = std::make_unique<audio_message_processor>(as->renderer);
+
+        // Render consumer: binds the renderer + loader refs (both already exist; the
+        // processor only stores them — it's used later, on the render thread or inline).
+        m_render_processor = std::make_unique<render_command_processor>(
+            glob::glob_state().getr_render().renderer, glob::glob_state().getr_render().loader);
     }
 
     gs.run_connect();
@@ -591,8 +600,9 @@ vulkan_engine::run()
 
     // Spawn the worker threads: the render thread (calls back into begin_frame on
     // main and draw_frame on itself) and the audio thread (from here audio_system is
-    // owned by it; main only produces messages onto the audio channel).
-    m_threads.start();
+    // owned by it; main only produces messages onto the audio channel). The audio /
+    // physics loops drive the engine-owned processors handed in here.
+    m_threads.start(*m_audio_processor, *m_physics_processor, *m_render_processor);
 
     // main loop
     for (;;)
@@ -739,15 +749,12 @@ vulkan_engine::run()
 void
 vulkan_engine::tick_headless()
 {
-    // No physics thread in headless — drive the inline processor here. Pump first so
-    // commands the previous frame's builder emitted get applied + stepped, then drain
-    // the results into the snapshot before this frame's builder reads it. A fixed
-    // nominal dt keeps headless deterministic (no wall clock to sample).
-    if (m_headless_physics)
-    {
-        m_headless_physics->pump(1.0f / 60.0f, /*paused=*/false);
-        glob::glob_state().getr_physics_bridge().drain_results();
-    }
+    // No physics thread in headless — drive the engine-owned processor inline here.
+    // Pump first so commands the previous frame's builder emitted get applied + stepped,
+    // then drain the results into the snapshot before this frame's builder reads it. A
+    // fixed nominal dt keeps headless deterministic (no wall clock to sample).
+    m_physics_processor->pump(1.0f / 60.0f, /*paused=*/false);
+    glob::glob_state().getr_physics_bridge().drain_results();
 
     // Process dirty-render items queued by level/package load
     consume_updated_physics();
@@ -756,7 +763,7 @@ vulkan_engine::tick_headless()
 
     // Headless is single-threaded and never switches parity, so everything is
     // enqueued into and drained from slot 0.
-    engine_threads::drain_frame(0);
+    m_render_processor->drain(0);
     glob::glob_state().getr_render().renderer.draw_headless();
     glob::glob_state().getr_subsystem_queues().render.reset_arena();
 
@@ -1321,7 +1328,7 @@ vulkan_engine::consume_updated_audio()
     // renderer, reap orphans.
     auto& q = glob::glob_state().getr_subsystem_queues().audio;
     auto* as = glob::glob_state().get_audio_system();
-    audio_message_processor proc{as->renderer};
+    audio_message_processor& proc = *m_audio_processor;
 
     q.drain([&proc](core::audio_message msg) { proc.process(msg); });
 

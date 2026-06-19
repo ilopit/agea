@@ -11,9 +11,11 @@ never touch the same queue at once.
 1. `alloc_cmd<T>()` — allocate command from the active slot's arena
 2. `enqueue_cmd()` — push onto the active slot's queue
 
-Consuming a slot (`engine_threads::drain_frame(slot)` — execute that slot's whole
-queue, then draw) is NOT here: it's the render-thread consumer side and lives on
-`engine_threads` (engine). The queue itself is a generic `command_queue<TCmd>`
+Consuming a slot — execute that slot's whole queue, then draw — is the render-thread
+consumer side: `render_command_processor::drain(slot)` (this lib) does the execute;
+the draw and frame-slot orchestration live on `engine_threads` (engine). The processor
+is one of three engine-owned consumer objects (audio / physics / render), driven by its
+worker thread when threaded or inline by the headless tick. The queue itself is a generic `command_queue<TCmd>`
 (core/subsystem_queues.h), instantiated as the **render channel of the neutral
 `subsystem_queues` holder** reached via `getr_subsystem_queues().render` — distinct from the
 model-side dirty tracking, which lives on `model_system` (`getr_model().dirty`). The frame-slot

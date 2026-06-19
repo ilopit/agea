@@ -6,7 +6,7 @@
 #include <core/subsystem_queues.h>  // getr_subsystem_queues(): render command channel + audio ring
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_thread.h>  // render-state ownership handoff
-#include <render_translator/render_command.h>  // render_exec_context: drain_frame executes commands against it
+#include <render_translator/render_command_processor.h>  // render-thread command consumer
 #include <render_translator/render_translator.h>  // tick_content_allocators()
 
 #include <audio/audio_system.h>                    // audio thread owns + ticks the renderer
@@ -28,9 +28,16 @@ engine_threads::~engine_threads()
 }
 
 void
-engine_threads::start()
+engine_threads::start(audio_message_processor& audio,
+                       physics_command_processor& physics,
+                       render_command_processor& render)
 {
     KRG_check(!m_render_thread.joinable(), "engine_threads::start called twice");
+
+    // Borrow the engine-owned processors the audio / physics / render loops drive.
+    m_audio_processor = &audio;
+    m_physics_processor = &physics;
+    m_render_processor = &render;
 
     // Render thread — the gated streaming pipeline.
     m_shutdown = false;
@@ -148,30 +155,6 @@ engine_threads::wait_frames_rendered(int count, std::chrono::milliseconds timeou
 }
 
 void
-engine_threads::drain_frame(uint32_t frame_slot)
-{
-    auto& vr = glob::glob_state().getr_render().renderer;
-    auto& loader = glob::glob_state().getr_render().loader;
-
-    render_cmd::render_exec_context exec_ctx{vr, loader};
-
-    // Drain this frame slot's queue to empty. All of the frame's commands were
-    // pushed (and made visible via the submitted-counter mutex handoff) before the
-    // render thread was released, and the producer is on the other frame slot, so
-    // "empty" reliably means "whole frame consumed".
-    glob::glob_state()
-        .getr_subsystem_queues()
-        .render.queue(frame_slot)
-        .drain(
-            [&exec_ctx](render_cmd::render_command_base*&& cmd)
-            {
-                // Central tagged dispatch: runs the command for its kind, then
-                // destructs it (the arena only rewinds, never calls dtors).
-                render_cmd::dispatch(cmd, exec_ctx);
-            });
-}
-
-void
 engine_threads::render_loop()
 {
     // The render thread grants itself render-state access for the lifetime of the
@@ -217,7 +200,7 @@ engine_threads::render_loop()
         // snapshot reads inside draw_main, keeping them in lock-step with the frame
         // the main thread produced.
         const uint32_t frame_slot = static_cast<uint32_t>(m_completed & 1ull);
-        drain_frame(frame_slot);
+        m_render_processor->drain(frame_slot);
         renderer.set_draw_frame_slot(frame_slot);
         renderer.draw_main();
 
@@ -247,8 +230,9 @@ engine_threads::audio_loop()
     auto& q = glob::glob_state().getr_subsystem_queues().audio;
     auto* as = glob::glob_state().get_audio_system();
     KRG_check(as, "engine_threads::audio_loop: audio_system not created before start()");
+    KRG_check(m_audio_processor, "engine_threads::audio_loop: audio processor not bound");
     audio::audio_renderer& renderer = as->renderer;
-    audio_message_processor proc{renderer};
+    audio_message_processor& proc = *m_audio_processor;
 
     // Self-clocked tick: audio_renderer::tick only reaps finished one-shot voices, so a
     // coarse, locally measured dt is fine — nothing downstream needs it to match the
@@ -281,11 +265,8 @@ engine_threads::physics_loop()
     // sole producer of the result ring; sole owner of the Jolt world from here (main
     // init'd it before start()). Independent of the render pipeline — no gate, no
     // frame parity. Bidirectional: unlike audio it publishes results back.
-    auto& queues = glob::glob_state().getr_subsystem_queues();
-    auto* ps = glob::glob_state().get_physics_system();
-    KRG_check(ps, "engine_threads::physics_loop: physics_system not created before start()");
-
-    physics_command_processor proc{*ps, queues.physics.in, queues.physics.out};
+    KRG_check(m_physics_processor, "engine_threads::physics_loop: physics processor not bound");
+    physics_command_processor& proc = *m_physics_processor;
 
     // Self-clocked tick: the processor's fixed-step accumulator turns this locally
     // measured wall-clock dt into a deterministic number of 1/60s sub-steps, so the
