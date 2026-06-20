@@ -137,7 +137,7 @@ protected:
     // clang-format on
 
 private:
-    // Post an audio intent onto the model queue for audio_bridge to translate.
+    // Post an audio intent onto the model queue for audio_translator to translate.
     // Audio's analog of mark_render_dirty, but scoped to this component — the
     // emitter is the only audio source, so the enqueue lives here, not on the
     // generic game_object_component base.

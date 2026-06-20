@@ -1,4 +1,4 @@
-#include "audio_bridge/audio_bridge.h"
+#include "audio_translator/audio_translator.h"
 
 #include <core/model_system.h>
 #include <core/subsystem_queues.h>
@@ -9,14 +9,14 @@ namespace kryga
 {
 
 void
-state_mutator__audio_bridge::set(gs::state& s)
+state_mutator__audio_translator::set(gs::state& s)
 {
-    auto p = s.create_box<audio_bridge>("audio_bridge");
-    s.m_audio_bridge = p;
+    auto p = s.create_box<audio_translator>("audio_translator");
+    s.m_audio_translator = p;
 }
 
 void
-audio_bridge::emit(const core::audio_message& msg)
+audio_translator::emit(const core::audio_message& msg)
 {
     // Maintain the main-thread voice mirror so reap_orphans can find orphaned voices
     // without reaching into audio_system (which the audio thread owns).
@@ -39,7 +39,7 @@ audio_bridge::emit(const core::audio_message& msg)
 }
 
 void
-audio_bridge::reap_orphans()
+audio_translator::reap_orphans()
 {
     if (m_started_voices.empty())
     {

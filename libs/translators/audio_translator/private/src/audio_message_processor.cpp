@@ -1,4 +1,4 @@
-#include "audio_bridge/audio_message_processor.h"
+#include "audio_translator/audio_message_processor.h"
 
 #include <audio/audio_renderer.h>
 

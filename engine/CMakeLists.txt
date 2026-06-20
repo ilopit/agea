@@ -81,15 +81,15 @@ target_link_libraries(engine PUBLIC
     kryga::animation
     kryga::asset_importer
     kryga::render_translator
-    kryga::audio_bridge
-    kryga::physics_bridge
+    kryga::audio_translator
+    kryga::physics_translator
     kryga::native
     kryga::vfs
     kryga::kryga_port
     kryga::project_paths
     kryga::physics
     kryga::audio
-    kryga::physics_bridge
+    kryga::physics_translator
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 
@@ -129,8 +129,8 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::animation
         kryga::asset_importer
         kryga::render_translator
-        kryga::audio_bridge
-        kryga::physics_bridge
+        kryga::audio_translator
+        kryga::physics_translator
         kryga::native
         kryga::vfs
         kryga::kryga_port
@@ -138,7 +138,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::project_paths
         kryga::physics
         kryga::audio
-        kryga::physics_bridge
+        kryga::physics_translator
         kryga::rpc
 
         kryga::imguizmo_unofficial
@@ -194,14 +194,14 @@ target_link_libraries(engine_ship PUBLIC
     kryga::animation
     kryga::asset_importer
     kryga::render_translator
-    kryga::audio_bridge
+    kryga::audio_translator
     kryga::native
     kryga::vfs
     kryga::kryga_port
     kryga::project_paths
     kryga::physics
     kryga::audio
-    kryga::physics_bridge
+    kryga::physics_translator
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 

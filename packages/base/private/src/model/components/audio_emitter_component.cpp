@@ -2,7 +2,7 @@
 
 #include <core/audio_message.h>
 
-#include <audio_bridge/audio_bridge.h>
+#include <audio_translator/audio_translator.h>
 
 #include <global_state/global_state.h>
 
@@ -16,7 +16,7 @@ KRG_gen_class_cd_default(audio_emitter_component);
 void
 audio_emitter_component::emit_audio_message(const core::audio_message& msg) const
 {
-    glob::glob_state().getr_audio_bridge().emit(msg);
+    glob::glob_state().getr_audio_translator().emit(msg);
 }
 
 bool

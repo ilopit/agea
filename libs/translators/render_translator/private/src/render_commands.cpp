@@ -22,7 +22,7 @@
 #include <cstring>
 
 // Render commands are PURE DATA (no methods). All behavior lives here as free
-// process(cmd, ctx) overloads — the same shape as audio_bridge::process(msg). The
+// process(cmd, ctx) overloads — the same shape as audio_translator::process(msg). The
 // central render_cmd::dispatch switches on cmd_kind, calls the matching process(),
 // then destructs the command (the arena only rewinds; non-trivial members like
 // shared_ptr / vector / dynobj are released by the ~T() in run_and_destroy).

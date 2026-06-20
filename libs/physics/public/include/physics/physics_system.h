@@ -59,7 +59,7 @@ public:
     void
     clear_static_world();
 
-    // Static-collider storage. physics_bridge claims lane 0 of this once at init
+    // Static-collider storage. physics_translator claims lane 0 of this once at init
     // (bind), mirroring how render_translator binds its allocators to the loader's
     // storages. Growth is consumer-side (create_static_mesh on the physics thread),
     // so the allocator never touches it after the claim. Model thread, init-time.

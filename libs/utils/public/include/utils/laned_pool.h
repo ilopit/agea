@@ -38,7 +38,7 @@
 // storage asserts catch a skipped step.
 // ---------------------------------------------------------------------------
 
-#include <utils/handle_pool.h>
+#include <utils/handle.h>
 
 #include <utils/check.h>
 
@@ -94,7 +94,7 @@ namespace detail
 //
 // Sole user is this header (lane_store's grower/reader guards + the allocator's
 // owner guard via the KRG_pool_affinity macros), so it lives here next to its
-// machinery -- not with the handle value type in handle_pool.h.
+// machinery -- not with the handle value type in handle.h.
 // ---------------------------------------------------------------------------
 class thread_affinity
 {

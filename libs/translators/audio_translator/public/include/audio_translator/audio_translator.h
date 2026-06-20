@@ -18,7 +18,7 @@ namespace kryga
 //
 // Threading: both emit() and reap_orphans() run on the model/main thread. The only
 // state is m_started_voices, touched solely by those two methods.
-class audio_bridge
+class audio_translator
 {
 public:
     // Producer side (model thread): push a model-emitted intent onto the audio

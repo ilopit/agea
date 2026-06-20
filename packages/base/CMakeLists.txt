@@ -41,9 +41,9 @@ target_link_libraries(packages.base.model PUBLIC
    kryga::sol2_unofficial
 
    kryga::physics
-   kryga::physics_bridge
+   kryga::physics_translator
    kryga::audio
-   kryga::audio_bridge
+   kryga::audio_translator
 
    lua_static
 )
@@ -73,7 +73,7 @@ target_link_libraries(packages.base.render
    kryga::packages.base.model
    kryga::asset_importer
    kryga::render_translator
-   kryga::physics_bridge
+   kryga::physics_translator
    kryga::gpu_types
    kryga::animation
    kryga::voronoi_fracture

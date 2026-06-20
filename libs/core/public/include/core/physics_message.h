@@ -28,7 +28,7 @@ enum class physics_msg_kind : uint8_t
 };
 
 // Model-emitted physics intent, pushed onto subsystem_queues().physics.in (via
-// physics_bridge) and translated into physics_system calls by
+// physics_translator) and translated into physics_system calls by
 // physics_command_processor on the physics thread. The destructible component
 // never calls physics_system directly — it pushes one of these, mirroring how
 // the model marks render dirty instead of touching the GPU and how audio

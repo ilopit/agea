@@ -53,7 +53,7 @@ struct destructible_state
     std::vector<glm::mat4> chunk_transforms;  // world-space, per chunk index
 };
 
-// The model<->physics analog of render_translator / audio_bridge: the model-thread
+// The model<->physics analog of render_translator / audio_translator: the model-thread
 // PRODUCER for the command ring AND the model-thread CONSUMER for the result ring.
 // Components never touch physics_system or the rings directly — they call these
 // methods; the bridge pushes intents and owns the per-handle state snapshot.
@@ -72,18 +72,18 @@ struct destructible_state
 //
 // Threading: every method runs on the model/main thread. State (the handle minters)
 // is touched solely from there.
-class physics_bridge
+class physics_translator
 {
 public:
     // Binds the destructible identity allocator to its own (bridge-owned) state
     // storage, lane 0. Both live here on the model thread, so the claim is direct.
-    physics_bridge();
+    physics_translator();
 
     // Releases the destructible allocator's lane before m_states is destroyed
     // (the storage dtor asserts no allocator is still attached). The static-collider
     // allocator is released earlier, via detach_storages(), since its storage lives
     // in physics_system and is torn down on the engine's schedule.
-    ~physics_bridge();
+    ~physics_translator();
 
     // [shutdown, model thread] Release the static-collider allocator's lane on
     // physics_system's BodyID storage before that storage is destroyed. Mirrors

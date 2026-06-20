@@ -18,7 +18,7 @@
 //
 // The engine's real channel is getr_subsystem_queues().render; the queue here is the
 // minimal shape that exercises the watermark contract. Single-threaded by
-// design -- cross-thread chunk/affinity mechanics live in test_handle_pool.
+// design -- cross-thread chunk/affinity mechanics live in test_handle.
 // ---------------------------------------------------------------------------
 
 #include <utils/laned_pool.h>

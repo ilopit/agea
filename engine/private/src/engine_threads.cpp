@@ -10,10 +10,10 @@
 #include <render_translator/render_translator.h>  // tick_content_allocators()
 
 #include <audio/audio_system.h>                    // audio thread owns + ticks the renderer
-#include <audio_bridge/audio_message_processor.h>  // translates drained messages onto it
+#include <audio_translator/audio_message_processor.h>  // translates drained messages onto it
 
 #include <physics/physics_system.h>                    // physics thread owns + steps the world
-#include <physics_bridge/physics_command_processor.h>  // drains commands, steps, publishes results
+#include <physics_translator/physics_command_processor.h>  // drains commands, steps, publishes results
 
 #include <utils/check.h>
 

@@ -30,7 +30,7 @@
 
 #include <physics/physics_types.h>
 
-#include <physics_bridge/physics_bridge.h>
+#include <physics_translator/physics_translator.h>
 
 #include <utils/buffer.h>
 
@@ -891,7 +891,7 @@ destructible_mesh_component__cmd_builder(reflection::type_context__render_cmd_bu
     // thread, so it emits intents (register / unregister) and READS the published
     // snapshot (broken / expired / chunk transforms) — it never touches the Jolt world
     // (owned by the physics thread).
-    auto& pb = glob::glob_state().getr_physics_bridge();
+    auto& pb = glob::glob_state().getr_physics_translator();
 
     // ------------------------------------------------------------------
     // First build: pre-fracture, upload chunk meshes, register physics,
@@ -1210,7 +1210,7 @@ destructible_mesh_component__cmd_destroyer(reflection::type_context__render_cmd_
     // to the physics thread and drops the model-side snapshot.
     if (dmc.get_physics_handle().valid())
     {
-        glob::glob_state().getr_physics_bridge().unregister(dmc.get_physics_handle());
+        glob::glob_state().getr_physics_translator().unregister(dmc.get_physics_handle());
         dmc.set_physics_handle({});
     }
 
@@ -1477,7 +1477,7 @@ terrain_component__cmd_builder(reflection::type_context__render_cmd_build& ctx)
         tc.set_base_bounding_radius(std::sqrt(max_d2));
 
         // The static collider for this terrain is registered separately by
-        // terrain_component__physics_cmd_builder (via physics_bridge), not here —
+        // terrain_component__physics_cmd_builder (via physics_translator), not here —
         // render no longer talks to the physics world directly.
 
         // Handle model: reserve the mesh slot on the model thread and store it on the
@@ -1576,7 +1576,7 @@ terrain_component__cmd_destroyer(reflection::type_context__render_cmd_build& ctx
     }
 
     // The static collider is torn down by terrain_component__physics_cmd_destroyer
-    // (via physics_bridge), not here.
+    // (via physics_translator), not here.
 
     auto rc = root::game_object_component__cmd_destroyer(ctx);
     KRG_return_nok(rc);

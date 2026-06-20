@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utils/handle_pool.h>
+#include <utils/handle.h>
 #include <utils/laned_pool.h>
 
 namespace kryga

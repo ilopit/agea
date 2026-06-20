@@ -25,7 +25,7 @@ enum class audio_msg_kind : uint8_t
     set_listener,
 };
 
-// Model-emitted audio intent, pushed onto subsystem_queues().audio (via audio_bridge)
+// Model-emitted audio intent, pushed onto subsystem_queues().audio (via audio_translator)
 // and translated into audio_renderer calls by audio_message_processor. The emitter
 // never calls audio_renderer directly — it pushes one of these, mirroring how the
 // model marks render dirty instead of touching the GPU.

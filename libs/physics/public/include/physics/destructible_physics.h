@@ -21,7 +21,7 @@ class physics_system;
 //   1. On component build: register_destructible(handle, chunks, damage_threshold)
 //      with a caller-minted handle. Set world transform / lifetime / explosion
 //      strength before the object can be hit. (The handle is minted producer-side
-//      — physics_bridge — so registration can be an async, fire-and-forget
+//      — physics_translator — so registration can be an async, fire-and-forget
 //      message: there is no return value to wait on. Same model as render
 //      pre-reserving a slot handle before enqueuing the create command.)
 //   2. Each frame while the owning component is intact: call

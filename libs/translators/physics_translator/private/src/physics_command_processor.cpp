@@ -1,4 +1,4 @@
-#include "physics_bridge/physics_command_processor.h"
+#include "physics_translator/physics_command_processor.h"
 
 #include <physics/destructible_physics.h>
 #include <physics/physics_system.h>

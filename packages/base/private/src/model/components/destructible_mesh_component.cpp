@@ -6,7 +6,7 @@
 
 #include <global_state/global_state.h>
 #include <physics/physics_types.h>
-#include <physics_bridge/physics_bridge.h>
+#include <physics_translator/physics_translator.h>
 
 namespace kryga
 {
@@ -46,7 +46,7 @@ destructible_mesh_component::on_tick(float /*dt*/)
     // Read the published physics snapshot through the bridge instead of querying the
     // Jolt world (now owned by the physics thread). No snapshot yet means the register
     // intent hasn't round-tripped — nothing to do this frame.
-    auto& pb = glob::glob_state().getr_physics_bridge();
+    auto& pb = glob::glob_state().getr_physics_translator();
     const auto* st = pb.get_state(m_physics_handle);
     if (!st)
     {
@@ -83,7 +83,7 @@ destructible_mesh_component::shatter()
     // the break. Both ride the single command ring, so ordering is preserved. Now
     // ASYNC: the broken state reflects back via results 1-2 frames later (see on_tick),
     // so the return value means "request accepted", not "broke this instant".
-    auto& pb = glob::glob_state().getr_physics_bridge();
+    auto& pb = glob::glob_state().getr_physics_translator();
     pb.set_transform(m_physics_handle, get_transform_matrix());
     pb.shatter(m_physics_handle);
     return true;
@@ -99,7 +99,7 @@ destructible_mesh_component::apply_damage(float amount)
     // Accumulation + the break decision happen on the physics thread; we can't know
     // synchronously whether this impact crossed the threshold. Returns "request
     // accepted" — the resulting break (if any) surfaces via the snapshot in on_tick.
-    auto& pb = glob::glob_state().getr_physics_bridge();
+    auto& pb = glob::glob_state().getr_physics_translator();
     physics::impact hit;
     hit.damage = amount;
     hit.point = glm::vec3(get_world_position());

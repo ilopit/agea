@@ -138,13 +138,13 @@ private:
 //             bidirectional, so unlike audio (a pure sink) it needs a read-back
 //             channel. The pair is grouped so direction is explicit: queues.physics.in
 //             (model->physics commands) and queues.physics.out (physics->model
-//             results, drained by physics_bridge::drain_results). See physics_io below.
+//             results, drained by physics_translator::drain_results). See physics_io below.
 //             No frame parity, no arena — the physics worker is self-clocked like audio.
 //
 // No teardown drop_pending: the render channel self-cleans via its arena rewind on the
 // render thread, and the audio channel has exactly one consumer (the audio thread) — a
 // main-thread drain would be a second consumer and corrupt the SPSC invariants. Stale
-// plays for torn-down emitters are instead cancelled by audio_bridge::reap_orphans,
+// plays for torn-down emitters are instead cancelled by audio_translator::reap_orphans,
 // which emits stop intents from the model thread.
 // The physics channel is bidirectional, so its two rings are paired into one
 // member to make the direction explicit at every call site (queues.physics.in vs

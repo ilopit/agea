@@ -23,7 +23,7 @@ namespace kryga
 {
 
 class render_translator;
-class physics_bridge;
+class physics_translator;
 
 namespace root
 {
@@ -75,7 +75,7 @@ struct type_context__render_cmd_build
 
 struct type_context__physics_cmd_build
 {
-    physics_bridge* pb = nullptr;
+    physics_translator* pb = nullptr;
     root::smart_object* obj = nullptr;
     bool flag = false;
 };

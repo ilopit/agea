@@ -7,7 +7,7 @@
 #include <render_translator/render_commands.h>
 #include <vulkan_render/render_system.h>  // getr_render().ctx.rb->meshes_alloc().reserve()
 
-#include <physics_bridge/physics_bridge.h>
+#include <physics_translator/physics_translator.h>
 
 #include "packages/root/model/assets/mesh.h"
 #include "packages/root/model/assets/material.h"

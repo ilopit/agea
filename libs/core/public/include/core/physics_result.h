@@ -19,7 +19,7 @@ constexpr uint32_t k_max_result_chunks = 64;
 
 // Physics-emitted result, pushed onto subsystem_queues().physics.out by the
 // physics thread (physics_command_processor) and drained on the model thread by
-// physics_bridge::drain_results. This is the read-back channel physics needs and
+// physics_translator::drain_results. This is the read-back channel physics needs and
 // audio/render do not: physics is bidirectional (the model both drives it and
 // reads chunk transforms / broken state back), so a one-way command queue alone
 // can't carry it.

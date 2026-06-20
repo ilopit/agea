@@ -66,11 +66,11 @@
 #include <render_translator/render_command_processor.h>
 #include <render_translator/render_convert.h>
 
-#include <audio_bridge/audio_bridge.h>
-#include <audio_bridge/audio_message_processor.h>
+#include <audio_translator/audio_translator.h>
+#include <audio_translator/audio_message_processor.h>
 
-#include <physics_bridge/physics_bridge.h>
-#include <physics_bridge/physics_command_processor.h>
+#include <physics_translator/physics_translator.h>
+#include <physics_translator/physics_command_processor.h>
 
 #include <core/audio_message.h>
 
@@ -261,8 +261,8 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__native_window::set(gs);
     state_mutator__engine_counters::set(gs);
     state_mutator__render_translator::set(gs);
-    state_mutator__audio_bridge::set(gs);
-    state_mutator__physics_bridge::set(gs);
+    state_mutator__audio_translator::set(gs);
+    state_mutator__physics_translator::set(gs);
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
     state_mutator__audio_system::set(gs);
@@ -277,7 +277,7 @@ vulkan_engine::init(const startup_options& options)
     glob::glob_state().getr_physics_system().init();
     // Bind the bridge's static-collider allocator to physics_system's BodyID storage
     // (render_translator-style split): the allocator grows + indexes that storage.
-    glob::glob_state().getr_physics_bridge().bind_static_storage(
+    glob::glob_state().getr_physics_translator().bind_static_storage(
         glob::glob_state().getr_physics_system());
     glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
 
@@ -559,13 +559,13 @@ vulkan_engine::cleanup()
     // teardown. Results carry their transforms inline now, so there's nothing to free
     // — this just clears the ring (and reconciles the final snapshots if anything reads
     // them during shutdown).
-    glob::glob_state().getr_physics_bridge().drain_results();
+    glob::glob_state().getr_physics_translator().drain_results();
 
     // Release the static-collider allocator's lane claim on physics_system's BodyID
     // storage before that storage (owned by physics_system) is destroyed in
     // glob_state_reset -- the storage dtor asserts no allocator is still attached.
     // Single-threaded here (physics thread joined), so the direct form is legal.
-    glob::glob_state().getr_physics_bridge().detach_storages();
+    glob::glob_state().getr_physics_translator().detach_storages();
 
     glob::glob_state_reset();
 }
@@ -756,7 +756,7 @@ vulkan_engine::tick_headless()
     // then drain the results into the snapshot before this frame's builder reads it. A
     // fixed nominal dt keeps headless deterministic (no wall clock to sample).
     m_physics_processor->pump(1.0f / 60.0f, /*paused=*/false);
-    glob::glob_state().getr_physics_bridge().drain_results();
+    glob::glob_state().getr_physics_translator().drain_results();
 
     // Process dirty-render items queued by level/package load
     consume_updated_physics();
@@ -898,14 +898,14 @@ vulkan_engine::tick(float dt)
     // the model cache (deletion / unload / play->edit rollback) by emitting stop
     // intents. Runs every frame (outside the play gate) so rollback stops apply even
     // in edit mode. No audio_system access on the main thread.
-    glob::glob_state().getr_audio_bridge().reap_orphans();
+    glob::glob_state().getr_audio_translator().reap_orphans();
 
     // Physics also runs on its own thread (engine_threads::physics_loop). Main only
     // PRODUCES intents (via the destructible component / its render builder) and
     // CONSUMES results here: pull published chunk transforms + broken/expired state
     // into the per-handle snapshot the builder reads. Runs every frame (outside the
     // play gate) so the snapshot stays current even in edit mode.
-    glob::glob_state().getr_physics_bridge().drain_results();
+    glob::glob_state().getr_physics_translator().drain_results();
 #if KRG_HAS_EDITOR
     // Freeze integration in edit mode; the worker still drains commands so transforms
     // and registrations stay synced for when play resumes.
@@ -1067,7 +1067,7 @@ emit_listener_pose(base::camera_component* cam)
     msg.position = cam->get_owner()->get_position();
     msg.forward = cam->get_forward_vector().as_glm();
     msg.up = cam->get_up_vector().as_glm();
-    glob::glob_state().getr_audio_bridge().emit(msg);
+    glob::glob_state().getr_audio_translator().emit(msg);
 }
 }  // namespace
 
@@ -1327,7 +1327,7 @@ vulkan_engine::consume_updated_audio()
     q.drain([&proc](core::audio_message msg) { proc.process(msg); });
 
     as->renderer.tick(0.f);
-    glob::glob_state().getr_audio_bridge().reap_orphans();
+    glob::glob_state().getr_audio_translator().reap_orphans();
 }
 
 void
@@ -1351,7 +1351,7 @@ vulkan_engine::consume_updated_physics()
     }
 
     auto& mq = glob::glob_state().getr_model().dirty();
-    auto& pb = glob::glob_state().getr_physics_bridge();
+    auto& pb = glob::glob_state().getr_physics_translator();
 
     for (auto& i : mq.destroy_render)
     {

@@ -14,7 +14,7 @@ class audio_renderer;
 // renderer (render_exec_context). It lives in the translator layer and is the ONLY
 // place that knows both the model intent format (core::audio_message) and the
 // renderer API at once:
-//   - audio_bridge is producer-only (emit / reap_orphans) and no longer processes.
+//   - audio_translator is producer-only (emit / reap_orphans) and no longer processes.
 //   - audio_renderer knows nothing about audio_message.
 //
 // Holds the renderer by reference; the audio worker constructs one with the

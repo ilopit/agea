@@ -36,7 +36,7 @@ struct physics_system::impl
     JPH::BodyID static_world_body;  // invalid == none
 
     // Static-collider BodyIDs, indexed by the bridge-minted handle (kind
-    // k_static_collider_kind). The render split applied to physics: physics_bridge
+    // k_static_collider_kind). The render split applied to physics: physics_translator
     // owns the lane_allocator (mints handles on the model thread, claims lane 0);
     // physics_system owns this single-lane laned_storage and is the CONSUMER —
     // grow_for + populate on register, read + reset on unregister, all on the

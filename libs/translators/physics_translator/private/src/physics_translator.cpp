@@ -1,4 +1,4 @@
-#include "physics_bridge/physics_bridge.h"
+#include "physics_translator/physics_translator.h"
 
 #include <core/subsystem_queues.h>
 #include <core/reflection/reflection_type.h>
@@ -16,20 +16,20 @@ namespace kryga
 {
 
 void
-state_mutator__physics_bridge::set(gs::state& s)
+state_mutator__physics_translator::set(gs::state& s)
 {
-    auto p = s.create_box<physics_bridge>("physics_bridge");
-    s.m_physics_bridge = p;
+    auto p = s.create_box<physics_translator>("physics_translator");
+    s.m_physics_translator = p;
 }
 
-physics_bridge::physics_bridge()
+physics_translator::physics_translator()
 {
     // Claim lane 0 of our own state storage. Direct: allocator and storage share
     // this (the model) thread, so no queued release is needed at teardown.
     m_alloc.bind(m_states, 0);
 }
 
-physics_bridge::~physics_bridge()
+physics_translator::~physics_translator()
 {
     // Release the destructible allocator's lane before m_states is destroyed; the
     // storage dtor asserts no allocator is still attached. detach_storages() has
@@ -41,7 +41,7 @@ physics_bridge::~physics_bridge()
 }
 
 void
-physics_bridge::detach_storages()
+physics_translator::detach_storages()
 {
     if (m_static_alloc.bound())
     {
@@ -50,7 +50,7 @@ physics_bridge::detach_storages()
 }
 
 kryga::result_code
-physics_bridge::physics_cmd_build(root::smart_object& obj, bool sub_objects)
+physics_translator::physics_cmd_build(root::smart_object& obj, bool sub_objects)
 {
     // CDOs are shared, readonly templates — never carry physics bodies.
     if (obj.get_flags().default_obj)
@@ -69,7 +69,7 @@ physics_bridge::physics_cmd_build(root::smart_object& obj, bool sub_objects)
 }
 
 kryga::result_code
-physics_bridge::physics_cmd_destroy(root::smart_object& obj, bool sub_objects)
+physics_translator::physics_cmd_destroy(root::smart_object& obj, bool sub_objects)
 {
     if (obj.get_flags().default_obj)
     {
@@ -87,7 +87,7 @@ physics_bridge::physics_cmd_destroy(root::smart_object& obj, bool sub_objects)
 }
 
 kryga::result_code
-physics_bridge::physics_cmd_transform(root::game_object_component& source)
+physics_translator::physics_cmd_transform(root::game_object_component& source)
 {
     auto r = source.get_owner()->get_components(source.get_order_idx());
 
@@ -107,7 +107,7 @@ physics_bridge::physics_cmd_transform(root::game_object_component& source)
 }
 
 physics::static_body_handle
-physics_bridge::register_static_collider(const physics::static_world_mesh& mesh)
+physics_translator::register_static_collider(const physics::static_world_mesh& mesh)
 {
     const auto ah = m_static_alloc.reserve();
 
@@ -124,7 +124,7 @@ physics_bridge::register_static_collider(const physics::static_world_mesh& mesh)
 }
 
 void
-physics_bridge::unregister_static_collider(physics::static_body_handle h)
+physics_translator::unregister_static_collider(physics::static_body_handle h)
 {
     if (!h.valid())
     {
@@ -144,13 +144,13 @@ physics_bridge::unregister_static_collider(physics::static_body_handle h)
 }
 
 void
-physics_bridge::bind_static_storage(physics::physics_system& ps)
+physics_translator::bind_static_storage(physics::physics_system& ps)
 {
     m_static_alloc.bind(ps.static_collider_storage(), 0);
 }
 
 void
-physics_bridge::emit(const core::physics_message& msg)
+physics_translator::emit(const core::physics_message& msg)
 {
     // Value SPSC: copy the POD intent into the ring; the physics thread pops it and
     // feeds it to the processor. push() spin-blocks if full, but the queue is sized
@@ -159,7 +159,7 @@ physics_bridge::emit(const core::physics_message& msg)
 }
 
 physics::destructible_handle
-physics_bridge::register_destructible(const std::vector<physics::chunk_shape>& chunks,
+physics_translator::register_destructible(const std::vector<physics::chunk_shape>& chunks,
                                       float damage_threshold,
                                       float lifetime,
                                       float explosion_strength,
@@ -189,7 +189,7 @@ physics_bridge::register_destructible(const std::vector<physics::chunk_shape>& c
 }
 
 void
-physics_bridge::unregister(physics::destructible_handle h)
+physics_translator::unregister(physics::destructible_handle h)
 {
     if (!h.valid())
     {
@@ -211,7 +211,7 @@ physics_bridge::unregister(physics::destructible_handle h)
 }
 
 void
-physics_bridge::set_transform(physics::destructible_handle h, const glm::mat4& world)
+physics_translator::set_transform(physics::destructible_handle h, const glm::mat4& world)
 {
     if (!h.valid())
     {
@@ -225,7 +225,7 @@ physics_bridge::set_transform(physics::destructible_handle h, const glm::mat4& w
 }
 
 void
-physics_bridge::apply_impact(physics::destructible_handle h, const physics::impact& hit)
+physics_translator::apply_impact(physics::destructible_handle h, const physics::impact& hit)
 {
     if (!h.valid())
     {
@@ -241,7 +241,7 @@ physics_bridge::apply_impact(physics::destructible_handle h, const physics::impa
 }
 
 void
-physics_bridge::shatter(physics::destructible_handle h)
+physics_translator::shatter(physics::destructible_handle h)
 {
     if (!h.valid())
     {
@@ -254,7 +254,7 @@ physics_bridge::shatter(physics::destructible_handle h)
 }
 
 void
-physics_bridge::drain_results()
+physics_translator::drain_results()
 {
     auto& q = glob::glob_state().getr_subsystem_queues().physics.out;
     q.drain(
@@ -279,7 +279,7 @@ physics_bridge::drain_results()
 }
 
 const destructible_state*
-physics_bridge::get_state(physics::destructible_handle h) const
+physics_translator::get_state(physics::destructible_handle h) const
 {
     const alloc_handle ah{h.value};
     if (!m_alloc.valid(ah))

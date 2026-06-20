@@ -22,7 +22,7 @@
 #include <utils/line_container.h>
 #include <utils/path.h>
 #include <render_types/render_handle.h>
-#include <utils/handle_pool.h>
+#include <utils/handle.h>
 
 #include <functional>
 #include <memory>
