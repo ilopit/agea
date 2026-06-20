@@ -7,6 +7,7 @@
 #include <utils/check.h>
 
 #include <core/model_minimal.h>
+#include <core/i_translator.h>
 
 #include <render_types/render_handle.h>
 
@@ -24,7 +25,7 @@ class game_object_component;
 // transforms render commands from model objects and tracks their dependencies.
 // Stateless model→render translation (create-infos, queue ids, GPU packing,
 // sampler mapping) lives in render_convert.h, not here.
-class render_translator
+class render_translator : public i_translator
 {
 public:
     kryga::result_code
@@ -58,7 +59,7 @@ public:
     // --- Content render-resource allocators (MODEL THREAD) ----------------
     // The model owns slot allocation; the render-side loader/cache owns the
     // matching storage. The allocators are NULLABLE (lane_allocator's unbound
-    // state): they sit unbound until bind_content_storages() claims each one's
+    // state): they sit unbound until connect() claims each one's
     // storage lane -- minting on an unbound allocator asserts. Callers operate
     // the allocator directly: `rb->meshes_alloc().reserve()`,
     // `rb->objects_alloc().free(h)`. Handles flow to the render thread through
@@ -94,26 +95,25 @@ public:
         return m_uni_lights_alloc;
     }
 
-    // [init, model thread] Bind each allocator to its render-side storage +
-    // lane (bind claims the lane). Call once after render_system exists (the
-    // loader storages live on it) and before any reserve/preallocate.
-    // Implemented in the .cpp because it reaches into the render lib (the
-    // loader).
+    // i_translator::connect — [init, model thread] Bind each allocator to its
+    // render-side storage + lane (bind claims the lane). Call once after render_system
+    // exists (the loader storages live on it) and before any reserve/preallocate.
+    // Implemented in the .cpp because it reaches into the render lib (the loader).
     void
-    bind_content_storages();
+    connect() override;
 
-    // [shutdown, single-threaded] Release every lane claim; the allocators
-    // return to the unbound state. Must run BEFORE the render system (and its
-    // storages) is destroyed -- the storage dtor asserts no allocator is
+    // i_translator::disconnect — [shutdown, single-threaded] Release every lane claim;
+    // the allocators return to the unbound state. Must run BEFORE the render system
+    // (and its storages) is destroyed -- the storage dtor asserts no allocator is
     // still attached.
     void
-    detach_content_storages();
+    disconnect() override;
 
-    // Mature deferred frees in all content allocators. Call once per frame from the
-    // producer (engine_threads::begin_frame). Re-syncs the deferral window to the
-    // device's frames_in_flight so it tracks the GPU-resource delete queue.
+    // i_translator::on_frame — mature deferred frees in all content allocators. Once
+    // per frame from the producer (engine_threads::begin_frame). Re-syncs the deferral
+    // window to the device's frames_in_flight so it tracks the GPU delete queue.
     void
-    tick_content_allocators();
+    on_frame() override;
 
 private:
     render_object_dependency_graph m_dependency_graph;

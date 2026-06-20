@@ -71,7 +71,7 @@ public:
     // Level teardown: clear the model-internal dirty bookkeeping. Pending model->
     // subsystem intents live on subsystem_queues, which self-clean: the render
     // channel rewinds on the render thread, and the audio channel is cancelled via
-    // audio_translator::reap_orphans (stop intents) — no teardown drain is needed here.
+    // audio_translator::on_frame (orphan stop intents) — no teardown drain needed here.
     void
     drop_pending()
     {

@@ -275,10 +275,10 @@ vulkan_engine::init(const startup_options& options)
         { return glob::glob_state().getr_render().renderer.get_cache().get_object(h); });
 
     glob::glob_state().getr_physics_system().init();
-    // Bind the bridge's static-collider allocator to physics_system's BodyID storage
-    // (render_translator-style split): the allocator grows + indexes that storage.
-    glob::glob_state().getr_physics_translator().bind_static_storage(
-        glob::glob_state().getr_physics_system());
+    // Claim the static-collider lane on physics_system's BodyID storage (fetched from
+    // global_state inside connect()). render_translator-style split: the allocator
+    // grows + indexes that storage. Must run after physics_system::init().
+    glob::glob_state().getr_physics_translator().connect();
     glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
 
     // Build the consumer-side processors once, owned by the engine for the whole run.
@@ -434,7 +434,7 @@ vulkan_engine::init(const startup_options& options)
     // loader + render cache exist, then preallocate the object slot pool: the
     // allocator's preallocate grows the bound render storage too, synchronously.
     auto& rb = glob::glob_state().getr_render_translator();
-    rb.bind_content_storages();
+    rb.connect();
     rb.objects_alloc().preallocate(glob::glob_state().get_config()->object_pool_size);
 
     init_default_resources();
@@ -541,7 +541,7 @@ vulkan_engine::cleanup()
     // Release the content allocators' lane claims before the render system
     // (and its storages) goes away -- the storage dtor asserts no allocator
     // is still attached. Single-threaded here, so the direct form is legal.
-    glob::glob_state().getr_render_translator().detach_content_storages();
+    glob::glob_state().getr_render_translator().disconnect();
 
     glob::glob_state().getr_render().loader.clear_caches();
 
@@ -565,7 +565,7 @@ vulkan_engine::cleanup()
     // storage before that storage (owned by physics_system) is destroyed in
     // glob_state_reset -- the storage dtor asserts no allocator is still attached.
     // Single-threaded here (physics thread joined), so the direct form is legal.
-    glob::glob_state().getr_physics_translator().detach_storages();
+    glob::glob_state().getr_physics_translator().disconnect();
 
     glob::glob_state_reset();
 }
@@ -756,7 +756,7 @@ vulkan_engine::tick_headless()
     // then drain the results into the snapshot before this frame's builder reads it. A
     // fixed nominal dt keeps headless deterministic (no wall clock to sample).
     m_physics_processor->pump(1.0f / 60.0f, /*paused=*/false);
-    glob::glob_state().getr_physics_translator().drain_results();
+    glob::glob_state().getr_physics_translator().on_frame();
 
     // Process dirty-render items queued by level/package load
     consume_updated_physics();
@@ -898,14 +898,14 @@ vulkan_engine::tick(float dt)
     // the model cache (deletion / unload / play->edit rollback) by emitting stop
     // intents. Runs every frame (outside the play gate) so rollback stops apply even
     // in edit mode. No audio_system access on the main thread.
-    glob::glob_state().getr_audio_translator().reap_orphans();
+    glob::glob_state().getr_audio_translator().on_frame();
 
     // Physics also runs on its own thread (engine_threads::physics_loop). Main only
     // PRODUCES intents (via the destructible component / its render builder) and
     // CONSUMES results here: pull published chunk transforms + broken/expired state
     // into the per-handle snapshot the builder reads. Runs every frame (outside the
     // play gate) so the snapshot stays current even in edit mode.
-    glob::glob_state().getr_physics_translator().drain_results();
+    glob::glob_state().getr_physics_translator().on_frame();
 #if KRG_HAS_EDITOR
     // Freeze integration in edit mode; the worker still drains commands so transforms
     // and registrations stay synced for when play resumes.
@@ -1327,7 +1327,7 @@ vulkan_engine::consume_updated_audio()
     q.drain([&proc](core::audio_message msg) { proc.process(msg); });
 
     as->renderer.tick(0.f);
-    glob::glob_state().getr_audio_translator().reap_orphans();
+    glob::glob_state().getr_audio_translator().on_frame();
 }
 
 void

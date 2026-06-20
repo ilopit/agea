@@ -40,7 +40,7 @@ render_translator::enqueue_cmd(render_cmd::render_command_base* cmd)
 // --- Content render-resource allocation (model thread) --------------------
 
 void
-render_translator::bind_content_storages()
+render_translator::connect()
 {
     KRG_check_model_thread();
     // Bind each model-side allocator to its render-side storage + lane (bind
@@ -61,7 +61,7 @@ render_translator::bind_content_storages()
 }
 
 void
-render_translator::detach_content_storages()
+render_translator::disconnect()
 {
     // [shutdown, single-threaded] Direct detach is the sanctioned same-thread
     // form: the render loop is gone, so calling the storage is legal here.
@@ -74,7 +74,7 @@ render_translator::detach_content_storages()
 }
 
 void
-render_translator::tick_content_allocators()
+render_translator::on_frame()
 {
     KRG_check_model_thread();
     // Re-sync the deferral window to the GPU horizon each frame. The render lib

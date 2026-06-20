@@ -15,10 +15,15 @@ state_mutator__audio_translator::set(gs::state& s)
     s.m_audio_translator = p;
 }
 
+audio_translator::audio_translator()
+    : translator_base(glob::glob_state().getr_subsystem_queues().audio)
+{
+}
+
 void
 audio_translator::emit(const core::audio_message& msg)
 {
-    // Maintain the main-thread voice mirror so reap_orphans can find orphaned voices
+    // Maintain the main-thread voice mirror so on_frame can find orphaned voices
     // without reaching into audio_system (which the audio thread owns).
     switch (msg.kind)
     {
@@ -32,14 +37,12 @@ audio_translator::emit(const core::audio_message& msg)
         break;
     }
 
-    // Value SPSC: copy the POD intent into the ring; the audio thread pops it and
-    // feeds it to process(). push() spin-blocks if full, but the queue is sized well
-    // above the realistic per-frame intent count.
-    glob::glob_state().getr_subsystem_queues().audio.push(core::audio_message(msg));
+    // Push onto the audio ring via the producer base (queues.audio).
+    translator_base::emit(msg);
 }
 
 void
-audio_translator::reap_orphans()
+audio_translator::on_frame()
 {
     if (m_started_voices.empty())
     {

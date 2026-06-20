@@ -7,7 +7,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_thread.h>  // render-state ownership handoff
 #include <render_translator/render_command_processor.h>  // render-thread command consumer
-#include <render_translator/render_translator.h>  // tick_content_allocators()
+#include <render_translator/render_translator.h>  // render_translator::on_frame()
 
 #include <audio/audio_system.h>                    // audio thread owns + ticks the renderer
 #include <audio_translator/audio_message_processor.h>  // translates drained messages onto it
@@ -117,7 +117,7 @@ engine_threads::begin_frame()
     // [model thread] Mature deferred content-slot frees. Once per frame here so the
     // model-owned allocators (which live in render_translator) recycle indices only
     // after the GPU has drained the frames that referenced them.
-    glob::glob_state().getr_render_translator().tick_content_allocators();
+    glob::glob_state().getr_render_translator().on_frame();
     return frame_slot;
 }
 

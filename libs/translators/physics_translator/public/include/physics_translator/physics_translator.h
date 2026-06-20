@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/physics_message.h>
+#include <core/translator_base.h>
 
 #include <physics/physics_types.h>
 
@@ -72,25 +73,26 @@ struct destructible_state
 //
 // Threading: every method runs on the model/main thread. State (the handle minters)
 // is touched solely from there.
-class physics_translator
+class physics_translator : public translator_base<core::physics_message>
 {
 public:
-    // Binds the destructible identity allocator to its own (bridge-owned) state
-    // storage, lane 0. Both live here on the model thread, so the claim is direct.
+    // Claims lane 0 of its own (translator-owned) destructible-state storage, and binds
+    // the producer base to the model->physics command ring (queues.physics.in). Both
+    // the allocator and its storage live here on the model thread, so the claim is direct.
     physics_translator();
 
     // Releases the destructible allocator's lane before m_states is destroyed
     // (the storage dtor asserts no allocator is still attached). The static-collider
-    // allocator is released earlier, via detach_storages(), since its storage lives
+    // allocator is released earlier, via disconnect(), since its storage lives
     // in physics_system and is torn down on the engine's schedule.
     ~physics_translator();
 
-    // [shutdown, model thread] Release the static-collider allocator's lane on
-    // physics_system's BodyID storage before that storage is destroyed. Mirrors
-    // render_translator::detach_content_storages; call once before physics_system
+    // i_translator::disconnect — [shutdown, model thread] Release the static-collider
+    // allocator's lane on physics_system's BodyID storage before that storage is
+    // destroyed. Mirrors render_translator::disconnect; call once before physics_system
     // shutdown/teardown.
     void
-    detach_storages();
+    disconnect() override;
 
     // --- Reflection-dispatched producers (model thread) ---
     //
@@ -122,12 +124,13 @@ public:
     void
     unregister_static_collider(physics::static_body_handle h);
 
-    // [init, model thread] Claim lane 0 of physics_system's BodyID storage for the
-    // static-collider allocator. Mirrors render_translator::bind_content_storages:
-    // the allocator mints handles that index that storage; growth is consumer-side
-    // (physics thread). Call once after physics_system::init(), before registration.
+    // i_translator::connect — [init, model thread] Claim lane 0 of physics_system's
+    // BodyID storage for the static-collider allocator (fetched from global_state).
+    // Mirrors render_translator::connect: the allocator mints handles that index that
+    // storage; growth is consumer-side (physics thread). Call once after
+    // physics_system::init(), before registration.
     void
-    bind_static_storage(physics::physics_system& ps);
+    connect() override;
 
     // --- Command producers (model thread) ---
 
@@ -157,9 +160,15 @@ public:
 
     // --- Result consumer (still model thread) ---
 
+    // i_translator::on_frame — drain the result ring (see drain_results). The
+    // per-frame entry point; the engine calls this before the render builder runs.
+    void
+    on_frame() override;
+
     // Drain the physics->model result ring into the per-handle snapshot. Latest-wins:
     // a newer result for a handle overwrites the older, and the superseded heap
-    // transform vector is freed. Call once per frame, before the render builder runs.
+    // transform vector is freed. on_frame() calls this each frame; the engine also
+    // calls it directly once at shutdown (a final, non-frame drain before teardown).
     void
     drain_results();
 
@@ -169,8 +178,8 @@ public:
     get_state(physics::destructible_handle h) const;
 
 private:
-    void
-    emit(const core::physics_message& msg);
+    // emit(const core::physics_message&) is inherited from translator_base — it pushes
+    // onto queues.physics.in. All the producer methods above call it.
 
     using alloc_handle = utils::handle<k_destructible_handle_kind>;
 
@@ -186,7 +195,7 @@ private:
     utils::lane_allocator<k_destructible_handle_kind, destructible_state> m_alloc;
 
     // Static-collider allocator, claims lane 0 of physics_system's BodyID storage via
-    // bind_static_storage at init: the minted handle indexes that storage directly.
+    // connect() at init: the minted handle indexes that storage directly.
     // The render split — allocator here (model thread), storage in the system (physics
     // thread, consumer-side growth). One identity space, so the processor no longer
     // maps a bridge id to a separate physics-body handle.

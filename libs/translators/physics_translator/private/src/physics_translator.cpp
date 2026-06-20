@@ -23,6 +23,7 @@ state_mutator__physics_translator::set(gs::state& s)
 }
 
 physics_translator::physics_translator()
+    : translator_base(glob::glob_state().getr_subsystem_queues().physics.in)
 {
     // Claim lane 0 of our own state storage. Direct: allocator and storage share
     // this (the model) thread, so no queued release is needed at teardown.
@@ -32,7 +33,7 @@ physics_translator::physics_translator()
 physics_translator::~physics_translator()
 {
     // Release the destructible allocator's lane before m_states is destroyed; the
-    // storage dtor asserts no allocator is still attached. detach_storages() has
+    // storage dtor asserts no allocator is still attached. disconnect() has
     // already released the static-collider lane (its storage lives elsewhere).
     if (m_alloc.bound())
     {
@@ -41,7 +42,7 @@ physics_translator::~physics_translator()
 }
 
 void
-physics_translator::detach_storages()
+physics_translator::disconnect()
 {
     if (m_static_alloc.bound())
     {
@@ -144,18 +145,10 @@ physics_translator::unregister_static_collider(physics::static_body_handle h)
 }
 
 void
-physics_translator::bind_static_storage(physics::physics_system& ps)
+physics_translator::connect()
 {
+    auto& ps = glob::glob_state().getr_physics_system();
     m_static_alloc.bind(ps.static_collider_storage(), 0);
-}
-
-void
-physics_translator::emit(const core::physics_message& msg)
-{
-    // Value SPSC: copy the POD intent into the ring; the physics thread pops it and
-    // feeds it to the processor. push() spin-blocks if full, but the queue is sized
-    // well above the realistic per-frame intent count.
-    glob::glob_state().getr_subsystem_queues().physics.in.push(core::physics_message(msg));
 }
 
 physics::destructible_handle
@@ -251,6 +244,12 @@ physics_translator::shatter(physics::destructible_handle h)
     msg.kind = core::physics_msg_kind::shatter;
     msg.handle = h.value;
     emit(msg);
+}
+
+void
+physics_translator::on_frame()
+{
+    drain_results();
 }
 
 void
