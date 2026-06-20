@@ -10,6 +10,14 @@ namespace kryga
 namespace physics
 {
 
+// 8-bit kind tag for static-collider handles. One identity space, shared across
+// the split: physics_bridge owns the lane_allocator (mints on the model thread),
+// physics_system owns the laned_storage<JPH::BodyID> the handle indexes (populated
+// on the physics thread) — the render_translator/loader split applied to physics.
+// Distinct from render's resource_kind (0-7) and the destructible kind (64) so a
+// raw u64 can't be mistaken for a handle of another pool.
+constexpr uint8_t k_static_collider_kind = 65;
+
 struct chunk_shape
 {
     glm::vec3 aabb_min{0.0f};

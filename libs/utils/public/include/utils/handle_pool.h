@@ -1,151 +1,99 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 
 namespace kryga
 {
 namespace utils
 {
 
-// Slot + generation handle allocator. Hands back opaque uint64 handles encoded as
-// (index | generation << 32); resolve() rejects a handle whose generation no longer
-// matches its slot, so a stale handle to a freed-then-reused slot reads as invalid
-// instead of silently aliasing the new occupant.
+// ---------------------------------------------------------------------------
+// handle<Kind>
 //
-// Generations start at 1 and never reach 0 again, so a live handle's value is always
-// non-zero — value == 0 is reserved as "invalid" (matches physics::*_handle).
-template <typename T>
-class handle_pool
+// Typed U64 resource handle. Bit layout: 24 index | 32 generation | 8 kind.
+//   - index      pool slot (24 bits -> 16M slots; deliberately overkill)
+//   - generation dangling-detection counter (32 bits -> effectively never wraps)
+//   - kind       compile-time resource type tag (8 bits)
+//
+// v == 0 is the null handle. A live slot's generation is never 0, so a live
+// handle is never all-zero even at index 0 / kind 0.
+//
+// Distinct Kind values are distinct C++ types: passing a mesh handle where a
+// texture handle is expected is a compile error, not a runtime tag mismatch.
+//
+// This is a pure value type -- a held identity, no pool machinery. The chunked
+// storage + allocator that mint and resolve handles live in utils/laned_pool.h;
+// code that only HOLDS a handle (model components, asset records) includes just
+// this header and never pays for the pool's atomics/chunk implementation.
+// ---------------------------------------------------------------------------
+template <uint8_t Kind>
+struct handle
 {
-public:
-    // Reserve a slot and return its handle. The payload is default-constructed;
-    // fill it later with bind(). Reuses a freed slot when available.
-    uint64_t
-    alloc()
+    static constexpr uint64_t index_bits = 24;
+    static constexpr uint64_t gen_bits = 32;
+    static constexpr uint64_t index_mask = (uint64_t(1) << index_bits) - 1;  // 0xFF'FFFF
+    static constexpr uint64_t gen_mask = (uint64_t(1) << gen_bits) - 1;      // 0xFFFF'FFFF
+
+    uint64_t v = 0;
+
+    static handle
+    make(uint32_t index, uint32_t generation)
     {
-        uint32_t index;
-        if (!m_free.empty())
-        {
-            index = m_free.back();
-            m_free.pop_back();
-            m_slots[index].alive = true;
-            m_slots[index].payload = T{};
-        }
-        else
-        {
-            index = static_cast<uint32_t>(m_slots.size());
-            m_slots.push_back(slot{T{}, 1u, true});
-        }
-        return encode(index, m_slots[index].generation);
+        handle h;
+        h.v = (uint64_t(Kind) << (index_bits + gen_bits)) |
+              ((uint64_t(generation) & gen_mask) << index_bits) | (uint64_t(index) & index_mask);
+        return h;
     }
 
-    // Resolve a handle to its payload, or nullptr if the handle is invalid / stale.
-    T*
-    resolve(uint64_t handle)
+    uint32_t
+    index() const
     {
-        slot* s = slot_of(handle);
-        return s ? &s->payload : nullptr;
+        return uint32_t(v & index_mask);
     }
 
-    // Store the payload for a previously allocated handle. No-op on a stale handle.
-    void
-    bind(uint64_t handle, T value)
+    uint32_t
+    generation() const
     {
-        if (slot* s = slot_of(handle))
-        {
-            s->payload = std::move(value);
-        }
+        return uint32_t((v >> index_bits) & gen_mask);
     }
 
-    // Visit the payload of every live slot. Order is unspecified. Useful for bulk
-    // teardown (e.g. destroying all bodies on shutdown).
-    template <typename Fn>
-    void
-    for_each_alive(Fn&& fn)
+    uint8_t
+    kind() const
     {
-        for (auto& s : m_slots)
-        {
-            if (s.alive)
-            {
-                fn(s.payload);
-            }
-        }
+        return uint8_t(v >> (index_bits + gen_bits));
     }
 
-    // Drop all slots and free lists. Does NOT visit payloads — call for_each_alive
-    // first if they own resources.
-    void
-    clear()
+    explicit
+    operator bool() const
     {
-        m_slots.clear();
-        m_free.clear();
+        return v != 0;
     }
-
-    // Release a handle's slot and bump its generation so the old handle goes stale.
-    // No-op on an invalid / already-freed handle.
-    void
-    free(uint64_t handle)
+    bool
+    operator==(const handle& o) const
     {
-        slot* s = slot_of(handle);
-        if (!s)
-        {
-            return;
-        }
-        s->alive = false;
-        // Skip 0 on wraparound so freed generations never produce a zero handle.
-        s->generation = s->generation + 1u == 0u ? 1u : s->generation + 1u;
-        m_free.push_back(index_of(handle));
+        return v == o.v;
     }
-
-private:
-    struct slot
+    bool
+    operator!=(const handle& o) const
     {
-        T payload;
-        uint32_t generation = 1u;
-        bool alive = false;
-    };
-
-    static uint64_t
-    encode(uint32_t index, uint32_t generation)
-    {
-        return static_cast<uint64_t>(index) | (static_cast<uint64_t>(generation) << 32);
+        return v != o.v;
     }
+};
 
-    static uint32_t
-    index_of(uint64_t handle)
-    {
-        return static_cast<uint32_t>(handle & 0xFFFFFFFFu);
-    }
-
-    static uint32_t
-    generation_of(uint64_t handle)
-    {
-        return static_cast<uint32_t>(handle >> 32);
-    }
-
-    slot*
-    slot_of(uint64_t handle)
-    {
-        if (handle == 0)
-        {
-            return nullptr;
-        }
-        uint32_t index = index_of(handle);
-        if (index >= m_slots.size())
-        {
-            return nullptr;
-        }
-        slot& s = m_slots[index];
-        if (!s.alive || s.generation != generation_of(handle))
-        {
-            return nullptr;
-        }
-        return &s;
-    }
-
-    std::vector<slot> m_slots;
-    std::vector<uint32_t> m_free;
+// ---------------------------------------------------------------------------
+// slot_state
+//
+// Per-slot residency. The consumer thread owns transitions; the tri-state in the
+// middle separates a legitimate async window (pending -> draw placeholder) from
+// a contract violation (reserved -> assert: a draw was issued before populate).
+// ---------------------------------------------------------------------------
+enum class slot_state : uint8_t
+{
+    free = 0,  // on the free-list, not handed out
+    reserved,  // handle handed out, no populate submitted -- drawing it is a bug
+    pending,   // populate submitted, GPU upload in flight -- draw placeholder
+    resident,  // upload complete, real data available
+    retiring,  // freed, awaiting safe reclaim (GPU still draining in-flight frames)
 };
 
 }  // namespace utils

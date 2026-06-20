@@ -10,7 +10,6 @@ target_link_libraries(physics_bridge
     kryga::physics
     kryga::global_state
     kryga::utils
-    kryga::render_types
     kryga::glm_unofficial
     kryga::packages.root.model
 )

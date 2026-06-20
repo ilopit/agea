@@ -275,6 +275,10 @@ vulkan_engine::init(const startup_options& options)
         { return glob::glob_state().getr_render().renderer.get_cache().get_object(h); });
 
     glob::glob_state().getr_physics_system().init();
+    // Bind the bridge's static-collider allocator to physics_system's BodyID storage
+    // (render_translator-style split): the allocator grows + indexes that storage.
+    glob::glob_state().getr_physics_bridge().bind_static_storage(
+        glob::glob_state().getr_physics_system());
     glob::glob_state().getr_physics_system().build_ground_plane(-1000.0f);
 
     // Build the consumer-side processors once, owned by the engine for the whole run.
@@ -556,6 +560,12 @@ vulkan_engine::cleanup()
     // — this just clears the ring (and reconciles the final snapshots if anything reads
     // them during shutdown).
     glob::glob_state().getr_physics_bridge().drain_results();
+
+    // Release the static-collider allocator's lane claim on physics_system's BodyID
+    // storage before that storage (owned by physics_system) is destroyed in
+    // glob_state_reset -- the storage dtor asserts no allocator is still attached.
+    // Single-threaded here (physics thread joined), so the direct form is legal.
+    glob::glob_state().getr_physics_bridge().detach_storages();
 
     glob::glob_state_reset();
 }

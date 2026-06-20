@@ -4,7 +4,7 @@
 
 #include <physics/physics_types.h>
 
-#include <render_types/handle_pool.h>
+#include <utils/laned_pool.h>
 
 #include <error_handling/error_handling.h>
 
@@ -12,6 +12,14 @@
 
 #include <cstdint>
 #include <vector>
+
+// Forward-declared so this model-thread header never pulls Jolt: the static-collider
+// allocator only holds a laned_storage<…, JPH::BodyID>* dispatch token (incomplete T
+// is fine — it's never dereferenced here; physics_system populates the BodyIDs).
+namespace JPH
+{
+class BodyID;
+}
 
 namespace kryga
 {
@@ -21,12 +29,17 @@ class smart_object;
 class game_object_component;
 }  // namespace root
 
-// 8-bit type tags for physics identity handles. Distinct from render's
-// resource_kind values (0-7) so a raw u64 can never be mistaken for a render
-// handle; physics handles never route through render storage, so the exact value
-// only matters for that disambiguation.
+namespace physics
+{
+class physics_system;
+}
+
+// 8-bit type tag for destructible identity handles. Model-side only: the payload
+// lives in m_states here, never in render storage, so the value only keeps a raw
+// u64 from being mistaken for a handle of another pool. The static-collider kind
+// (physics::k_static_collider_kind) lives in physics_types.h — it's shared with
+// physics_system, which owns the BodyID storage those handles index.
 constexpr uint8_t k_destructible_handle_kind = 64;
-constexpr uint8_t k_static_collider_handle_kind = 65;
 
 // Model-thread snapshot of one destructible's physics state, refreshed by
 // drain_results from the physics->model result ring. The destructible component
@@ -62,6 +75,23 @@ struct destructible_state
 class physics_bridge
 {
 public:
+    // Binds the destructible identity allocator to its own (bridge-owned) state
+    // storage, lane 0. Both live here on the model thread, so the claim is direct.
+    physics_bridge();
+
+    // Releases the destructible allocator's lane before m_states is destroyed
+    // (the storage dtor asserts no allocator is still attached). The static-collider
+    // allocator is released earlier, via detach_storages(), since its storage lives
+    // in physics_system and is torn down on the engine's schedule.
+    ~physics_bridge();
+
+    // [shutdown, model thread] Release the static-collider allocator's lane on
+    // physics_system's BodyID storage before that storage is destroyed. Mirrors
+    // render_translator::detach_content_storages; call once before physics_system
+    // shutdown/teardown.
+    void
+    detach_storages();
+
     // --- Reflection-dispatched producers (model thread) ---
     //
     // The physics twin of render_translator's render_cmd_build/destroy/transform:
@@ -91,6 +121,13 @@ public:
 
     void
     unregister_static_collider(physics::static_body_handle h);
+
+    // [init, model thread] Claim lane 0 of physics_system's BodyID storage for the
+    // static-collider allocator. Mirrors render_translator::bind_content_storages:
+    // the allocator mints handles that index that storage; growth is consumer-side
+    // (physics thread). Call once after physics_system::init(), before registration.
+    void
+    bind_static_storage(physics::physics_system& ps);
 
     // --- Command producers (model thread) ---
 
@@ -135,27 +172,25 @@ private:
     void
     emit(const core::physics_message& msg);
 
-    using alloc_handle = render::types::handle<k_destructible_handle_kind>;
+    using alloc_handle = utils::handle<k_destructible_handle_kind>;
 
-    // Model-thread-only identity minter: a pure handle allocator (no slot_storage
-    // grower — we keep the payload in m_states ourselves). Hands out dense indices
-    // + a generation per index; the generation is load-bearing here, not decoration:
-    // because indices RECYCLE, a stale in-flight result for an unregistered handle
-    // fails valid() instead of writing into the slot a newer destructible now owns.
-    render::types::handle_allocator<k_destructible_handle_kind> m_alloc;
+    // Destructible state storage + its identity allocator, BOTH model-thread, single
+    // lane (lane 0), both owned here. The allocator mints dense indices + a generation
+    // per index; the generation is load-bearing, not decoration: because indices
+    // RECYCLE, a stale in-flight result for an unregistered handle fails valid()
+    // instead of writing into the slot a newer destructible now owns. The storage
+    // holds the per-handle snapshot the allocator's handle indexes (consumer-side
+    // grow_for on register). m_states is declared FIRST so the ctor can claim its
+    // lane and the dtor (after detach) can let it die last.
+    utils::laned_storage<k_destructible_handle_kind, destructible_state> m_states{1};
+    utils::lane_allocator<k_destructible_handle_kind, destructible_state> m_alloc;
 
-    // Dense per-handle state, indexed by alloc_handle::index(). Entry reset on
-    // register, read through get_state(), refreshed by drain_results. Replaces the
-    // old handle->state hash map — the allocator already owns dense indices, so the
-    // payload is a flat vector, not a map.
-    std::vector<destructible_state> m_states;
-
-    // Identity minter for static colliders. Pure allocator (no storage, no payload):
-    // the bridge keeps no per-collider state — colliders are write-only from the
-    // model side (build once, destroy once), so unlike destructibles there is no
-    // read-back snapshot. The generation still guards against a stale unregister for
-    // a recycled identity. The processor owns the identity->physics-body mapping.
-    render::types::handle_allocator<k_static_collider_handle_kind> m_static_alloc;
+    // Static-collider allocator, claims lane 0 of physics_system's BodyID storage via
+    // bind_static_storage at init: the minted handle indexes that storage directly.
+    // The render split — allocator here (model thread), storage in the system (physics
+    // thread, consumer-side growth). One identity space, so the processor no longer
+    // maps a bridge id to a separate physics-body handle.
+    utils::lane_allocator<physics::k_static_collider_kind, JPH::BodyID> m_static_alloc;
 };
 
 }  // namespace kryga

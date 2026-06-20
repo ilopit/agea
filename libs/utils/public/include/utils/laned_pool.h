@@ -1,23 +1,26 @@
 #pragma once
 
 // ---------------------------------------------------------------------------
-// Split render-resource pool: laned_storage (render side) + lane_allocator
-// (model side). Production port of the design probe in test_split_pool_demo.cpp
-// (which keeps the protocol tests).
+// Split resource pool: laned_storage (consumer side) + lane_allocator (producer
+// side). Production port of the design probe in test_split_pool_demo.cpp (which
+// keeps the protocol tests).
 //
 // The split:
 //   - lane_allocator mints identities (index + generation) and NEVER calls
 //     into the storage in steady state. It holds the storage pointer as a
-//     DISPATCH TOKEN: model-side code copies it into queued commands so the
-//     render side knows which storage each command targets.
-//   - laned_storage holds the payloads. One slot LANE (independent chunked
-//     slot_storage) per allocator; every handle carries its lane id in the
-//     top bits of the index, so handles self-route at the storage and index
+//     DISPATCH TOKEN: producer-side code copies it into queued commands so the
+//     consumer side knows which storage each command targets.
+//   - laned_storage holds the payloads. One LANE (an independent chunked
+//     lane_store) per allocator; every handle carries its lane id in the top
+//     bits of the index, so handles self-route at the storage and index
 //     collisions between allocators are impossible by construction.
-//   - growth is CONSUMER-side: populate paths call grow_for(h) at execute
-//     time, so the grower == the reader == the render thread and the
-//     cross-thread growth race disappears. The exceptions are init-time
-//     (preallocate -> grow_lane, single-threaded by definition).
+//   - growth is CONSUMER-side: populate paths call grow_for(h) at execute time,
+//     so the grower == the reader == the consumer thread and the cross-thread
+//     growth race disappears. The exceptions are init-time (preallocate ->
+//     grow_lane, single-threaded by definition).
+//
+// laned_storage owns the chunk tables directly via the private detail::lane_store
+// (the lock-free chunked, generation-shadowed slot array — one per lane).
 //
 // Lane ownership protocol (all touches ordered, claim flag needs no atomics):
 //   claim    allocator ctor; legal pre-threading, or as a RE-claim after the
@@ -35,11 +38,16 @@
 // storage asserts catch a skipped step.
 // ---------------------------------------------------------------------------
 
-#include <render_types/handle_pool.h>
+#include <utils/handle_pool.h>
+
+#include <utils/check.h>
 
 #include <algorithm>
+#include <atomic>
+#include <bit>
 #include <cstdint>
 #include <memory>
+#include <thread>
 #include <vector>
 
 // Thread-ownership guards behind a dedicated switch: when off, the affinity
@@ -55,7 +63,7 @@
 #endif
 
 #if KRG_POOL_THREAD_GUARDS
-#define KRG_pool_affinity(name) kryga::render::types::detail::thread_affinity name
+#define KRG_pool_affinity(name) kryga::utils::detail::thread_affinity name
 #define KRG_pool_affinity_check(guard, what) (guard).check(what)
 #define KRG_pool_affinity_bind(guard) (guard).bind()
 #else
@@ -66,10 +74,336 @@
 
 namespace kryga
 {
-namespace render
+namespace utils
 {
-namespace types
+
+namespace detail
 {
+// ---------------------------------------------------------------------------
+// thread_affinity
+//
+// Debug-only guard that asserts a primitive is always touched by the SAME thread
+// it was bound to. The pool splits work across a producer thread and a consumer
+// thread by *contract* (no lock enforces it); this turns that contract into a
+// runtime check in development and compiles to nothing in ship.
+//
+// First touch lazily binds (so single-threaded use needs no setup). bind() /
+// reset() handle the lifecycle handoff: a pool is created + preallocated on the
+// init thread, then ownership transfers to the producer/consumer thread, which
+// calls bind() to re-stamp the owner.
+//
+// Sole user is this header (lane_store's grower/reader guards + the allocator's
+// owner guard via the KRG_pool_affinity macros), so it lives here next to its
+// machinery -- not with the handle value type in handle_pool.h.
+// ---------------------------------------------------------------------------
+class thread_affinity
+{
+public:
+    // (Re)assign the owner to the calling thread.
+    void
+    bind()
+    {
+#ifndef NDEBUG
+        m_owner = std::this_thread::get_id();
+        m_bound = true;
+#endif
+    }
+
+    // Drop the binding; the next check()/bind() re-stamps. Used at teardown.
+    void
+    reset()
+    {
+#ifndef NDEBUG
+        m_bound = false;
+#endif
+    }
+
+    // Assert the caller is the owner. Lazily binds on first touch. Calls assert_fail
+    // directly (not KRG_check) because the per-site message is a runtime pointer,
+    // while KRG_check's macro needs a string literal to stringize.
+    void
+    check(const char* what) const
+    {
+#ifndef NDEBUG
+        auto self = std::this_thread::get_id();
+        if (!m_bound)
+        {
+            m_owner = self;
+            m_bound = true;
+            return;
+        }
+        if (m_owner != self)
+        {
+            ::kryga::utils::assert_fail(what, __FILE__, __LINE__);
+        }
+#else
+        (void)what;
+#endif
+    }
+
+#ifndef NDEBUG
+private:
+    mutable std::thread::id m_owner{};
+    mutable bool m_bound = false;
+#endif
+};
+
+// ---------------------------------------------------------------------------
+// lane_store<T> -- ONE lane's payload array, indexed in LOCAL index space.
+//
+// The lock-free growable backing of every laned_storage lane. Holds the actual
+// T interleaved with a generation SHADOW in one `slot`. Single-grower /
+// single-reader: the backing is a fixed table of pointer-stable CHUNKS; growth
+// appends a chunk (published release) and bumps an atomic size -- it NEVER moves
+// an existing chunk, so a live `T*` stays valid forever and a reader indexes
+// with one acquire load, no lock.
+//
+// Threading contract:
+//   - grow_to()  -> the SOLE grower thread. Installs chunks + advances size.
+//   - everything else -> the SOLE reader/populater thread. Reads chunk pointers
+//                   + size with acquire; writes slot contents (data, gen).
+//   - clear()    -> teardown only, NOT concurrent with readers.
+//
+// Publish order is the correctness hinge: grow_to stores the chunk pointer
+// (release) BEFORE the size (release); a reader loads size (acquire) BEFORE the
+// chunk (acquire). Observing a size that covers index i therefore guarantees the
+// chunk backing i -- and its zero-initialised contents -- are visible.
+//
+// This is laned_storage's private per-lane building block; outside code uses
+// laned_storage + lane_allocator, never this directly.
+// ---------------------------------------------------------------------------
+template <typename T>
+class lane_store
+{
+public:
+    // Defaults: 1024 slots/chunk, ~1M total -> 1024-pointer table (8 KB).
+    static constexpr uint32_t k_default_chunk_size = 1024;
+    static constexpr uint32_t k_default_max_slots = uint32_t(1) << 20;  // ~1M
+
+    // chunk_size MUST be a power of two (the index split is shift + mask). max_slots
+    // is rounded up to a whole number of chunks. Both are capped by the 24-bit
+    // handle index space.
+    explicit lane_store(uint32_t chunk_size = k_default_chunk_size,
+                        uint32_t max_slots = k_default_max_slots)
+    {
+        KRG_check(chunk_size > 0 && (chunk_size & (chunk_size - 1)) == 0,
+                  "chunk_size must be a power of two");
+        KRG_check(uint64_t(max_slots) <= uint64_t(handle<0>::index_mask) + 1,
+                  "max_slots exceeds the 24-bit handle index space");
+
+        m_chunk_size = chunk_size;
+        m_chunk_mask = chunk_size - 1;
+        m_chunk_bits = uint32_t(std::countr_zero(chunk_size));        // log2(chunk_size)
+        m_max_chunks = (max_slots + chunk_size - 1) >> m_chunk_bits;  // ceil(max/chunk)
+        m_max_slots = m_max_chunks * chunk_size;                      // rounded up
+        m_chunks = std::make_unique<std::atomic<slot*>[]>(m_max_chunks);
+    }
+
+    ~lane_store()
+    {
+        free_chunks();
+    }
+
+    lane_store(const lane_store&) = delete;
+    lane_store&
+    operator=(const lane_store&) = delete;
+
+    // Re-stamp thread ownership at the init->steady-state handoff.
+    void
+    bind_grower_to_current_thread()
+    {
+        m_grower.bind();
+    }
+    void
+    bind_reader_to_current_thread()
+    {
+        m_reader.bind();
+    }
+
+    // [grower thread] Grow so that indices 0..count-1 are addressable. Fresh
+    // slots are value-initialised: data == T{}, shadow generation == 0. The SOLE
+    // grower -- never called concurrently with itself.
+    void
+    grow_to(uint32_t count)
+    {
+        m_grower.check("lane_store::grow_to from a non-grower thread");
+        KRG_check(count <= m_max_slots, "lane pool capacity exhausted (raise max_slots)");
+        uint32_t cur = m_size.load(std::memory_order_relaxed);  // only this thread writes m_size
+        while (cur < count)
+        {
+            uint32_t ci = cur >> m_chunk_bits;
+            if (m_chunks[ci].load(std::memory_order_acquire) == nullptr)
+            {
+                m_chunks[ci].store(new slot[m_chunk_size](), std::memory_order_release);
+            }
+            uint32_t chunk_end = (ci + 1) << m_chunk_bits;
+            cur = count < chunk_end ? count : chunk_end;
+            m_size.store(cur, std::memory_order_release);  // publish AFTER the chunk
+        }
+    }
+
+    // [reader thread] Record the generation now occupying this slot (on populate
+    // with the handle's generation, on retire/reset with 0). Maintains the live
+    // counter on empty<->occupied transitions.
+    void
+    set_generation(uint32_t index, uint32_t generation)
+    {
+        m_reader.check("lane_store::set_generation from a non-reader thread");
+        auto& gen = slot_at(index)->gen;
+        if ((gen == 0) && (generation != 0))
+        {
+            ++m_active;
+        }
+        else if ((gen != 0) && (generation == 0))
+        {
+            --m_active;
+        }
+        gen = generation;
+    }
+
+    // [reader thread] Deref. The returned pointer is stable forever (the chunk is
+    // never moved or freed until clear()), so callers may use it after this returns.
+    T*
+    at(uint32_t index)
+    {
+        m_reader.check("lane_store::at from a non-reader thread");
+        KRG_check_debug(index < m_size.load(std::memory_order_acquire),
+                        "deref of an index past the populated range");
+        return &slot_at(index)->data;
+    }
+
+    // const read path — same stable-pointer guarantee, for const consumers.
+    const T*
+    at(uint32_t index) const
+    {
+        m_reader.check("lane_store::at from a non-reader thread");
+        KRG_check_debug(index < m_size.load(std::memory_order_acquire),
+                        "deref of an index past the populated range");
+        return &slot_at(index)->data;
+    }
+
+    // [reader thread] Whether a slot currently holds a live (populated) element.
+    // Retired/empty slots carry shadow generation 0 -- no live handle has gen 0.
+    bool
+    occupied(uint32_t index) const
+    {
+        m_reader.check("lane_store::occupied from a non-reader thread");
+        return index < m_size.load(std::memory_order_acquire) && slot_at(index)->gen != 0;
+    }
+
+    // [reader thread] Functional liveness: index addressable AND shadow generation
+    // matches. generation 0 is the null sentinel -- never live.
+    bool
+    valid(uint32_t index, uint32_t generation) const
+    {
+        m_reader.check("lane_store::valid from a non-reader thread");
+        if (generation == 0)
+        {
+            return false;
+        }
+        if (index >= m_size.load(std::memory_order_acquire))
+        {
+            return false;
+        }
+        return slot_at(index)->gen == generation;
+    }
+
+    // [reader thread] Free the data and invalidate the slot. Shadow generation
+    // goes to 0 ("empty"): outstanding handles fail valid() and occupied() reports
+    // the slot free.
+    void
+    reset(uint32_t index)
+    {
+        m_reader.check("lane_store::reset from a non-reader thread");
+        slot_at(index)->data = T{};
+        set_generation(index, 0);
+    }
+
+    // Re-stamp BOTH thread bindings to the calling thread at a lifecycle handoff.
+    void
+    bind_to_current_thread()
+    {
+        m_grower.bind();
+        m_reader.bind();
+    }
+
+    // [teardown, single-threaded] Free every chunk and reset to empty. Must NOT
+    // run concurrently with readers. Drops both thread bindings.
+    void
+    clear()
+    {
+        free_chunks();
+        m_size.store(0, std::memory_order_relaxed);
+        m_active = 0;
+        m_grower.reset();
+        m_reader.reset();
+    }
+
+    uint64_t
+    size() const
+    {
+        return m_size.load(std::memory_order_acquire);
+    }
+
+    // Live (populated) slot count -- introspection / published stats.
+    uint64_t
+    active() const
+    {
+        return m_active;
+    }
+
+    // Alias for size(): the number of addressable slots.
+    uint64_t
+    capacity() const
+    {
+        return size();
+    }
+
+private:
+    struct slot
+    {
+        T data{};
+        uint32_t gen = 0;  // shadow generation; 0 == empty / never populated
+    };
+
+    slot*
+    slot_at(uint32_t index) const
+    {
+        return m_chunks[index >> m_chunk_bits].load(std::memory_order_acquire) +
+               (index & m_chunk_mask);
+    }
+
+    void
+    free_chunks()
+    {
+        uint32_t n = m_size.load(std::memory_order_relaxed);
+        uint32_t chunks = (n + m_chunk_mask) >> m_chunk_bits;  // ceil(n / chunk_size)
+        for (uint32_t i = 0; i < chunks; ++i)
+        {
+            delete[] m_chunks[i].load(std::memory_order_relaxed);
+            m_chunks[i].store(nullptr, std::memory_order_relaxed);
+        }
+    }
+
+    // Per-lane sizing, fixed at construction (see ctor).
+    uint32_t m_chunk_size = 0;
+    uint32_t m_chunk_bits = 0;  // log2(m_chunk_size); index >> bits -> chunk
+    uint32_t m_chunk_mask = 0;  // m_chunk_size - 1; index & mask -> offset
+    uint32_t m_max_chunks = 0;  // table length
+    uint32_t m_max_slots = 0;   // m_max_chunks * m_chunk_size
+
+    // Fixed table of pointer-stable chunks. The table base never moves (set once in
+    // the ctor); chunks are appended at the end and never relocated.
+    std::unique_ptr<std::atomic<slot*>[]> m_chunks;
+    std::atomic<uint32_t> m_size{0};
+    // Live slot count; written only by the reader thread alongside the generation
+    // shadow, so a plain integer is enough.
+    uint64_t m_active = 0;
+
+    thread_affinity m_grower;  // grower thread: grow_to
+    thread_affinity m_reader;  // reader thread: at/valid/occupied/set_generation/reset
+};
+}  // namespace detail
 
 // Lane addressing: the top 3 bits of the 24-bit index select the lane ->
 // up to 8 allocators per storage, 2M slot ids each.
@@ -99,9 +433,9 @@ constexpr uint32_t k_gen_counter_bits = uint32_t(handle<0>::gen_bits) - k_epoch_
 constexpr uint32_t k_gen_counter_mask = (uint32_t(1) << k_gen_counter_bits) - 1;
 
 // ---------------------------------------------------------------------------
-// laned_storage -- ONE storage object, one slot vector (lane) per allocator.
-// Render-thread owned in steady state; see the protocol above for the only
-// model-side touches (claim at ctor time, grow_lane at preallocate time).
+// laned_storage -- ONE storage object, one lane_store (lane) per allocator.
+// Consumer-thread owned in steady state; see the protocol above for the only
+// producer-side touches (claim at ctor time, grow_lane at preallocate time).
 // Lane count is a RUNTIME choice (one lane per allocator the storage serves).
 // ---------------------------------------------------------------------------
 template <uint8_t Kind, typename T>
@@ -110,15 +444,15 @@ class laned_storage
 public:
     using handle_t = handle<Kind>;
 
-    // A lane's local index space is 2^21, but the backing slot_storage caps
-    // at k_default_max_slots (~1M) -- the SMALLER of the two is the real
-    // capacity. Allocators assert reserve() against this.
+    // A lane's local index space is 2^21, but the backing lane_store caps at
+    // k_default_max_slots (~1M) -- the SMALLER of the two is the real capacity.
+    // Allocators assert reserve() against this.
     static constexpr uint32_t k_lane_capacity =
-        std::min<uint32_t>(k_lane_local_mask + 1, slot_storage<Kind, T>::k_default_max_slots);
+        std::min<uint32_t>(k_lane_local_mask + 1, detail::lane_store<T>::k_default_max_slots);
 
     explicit laned_storage(uint32_t lane_count)
         : m_lane_count(lane_count)
-        , m_lanes(std::make_unique<slot_storage<Kind, T>[]>(lane_count))
+        , m_lanes(std::make_unique<detail::lane_store<T>[]>(lane_count))
     {
         KRG_check(lane_count >= 1 && lane_count <= k_lane_count,
                   "lane count must fit the handle's lane bits");
@@ -164,7 +498,7 @@ public:
         KRG_check(m_epochs[i] < k_epoch_count, "lane claim epoch exhausted");
     }
 
-    // --- [render thread] reads/writes; the handle self-routes ----------------
+    // --- [consumer thread] reads/writes; the handle self-routes ----------------
 
     // Make the slot behind h addressable (chunk allocated, zeroed). Called by
     // populate paths at execute time: growth is CONSUMER-side.
@@ -175,7 +509,7 @@ public:
     }
 
     // [init, single-threaded] Bulk pre-growth driven by an allocator's
-    // preallocate -- the sanctioned non-render-side growth (no cross-thread
+    // preallocate -- the sanctioned non-consumer-side growth (no cross-thread
     // traffic exists yet).
     void
     grow_lane(uint32_t lane, uint32_t count)
@@ -190,26 +524,32 @@ public:
         return route(h).at(local_of(h.index()));
     }
 
+    const T*
+    at(handle_t h) const
+    {
+        return lane(lane_of(h.index())).at(local_of(h.index()));
+    }
+
     bool
     valid(handle_t h) const
     {
         // TRUST-BOUNDARY gate: a handle here may be forged or corrupted (RPC,
         // save data, a stomp reinterpreted as a handle). The kind compare
         // backs the static typing for raw u64s; the gen-0 gate closes what
-        // slot_storage::valid lets through (a forged gen-0 handle compares
-        // EQUAL to the shadow gen of any empty/retired slot). A lane past the
+        // lane_store::valid lets through (a forged gen-0 handle compares EQUAL
+        // to the shadow gen of any empty/retired slot). A lane past the
         // configured count is just "not a slot here" -- query semantics.
         return h && h.kind() == Kind && h.generation() != 0 &&
                lane_of(h.index()) < m_lane_count &&
-               m_lanes[lane_of(h.index())].valid(local_handle(h));
+               m_lanes[lane_of(h.index())].valid(local_of(h.index()), h.generation());
     }
 
     void
     set_generation(handle_t h, uint32_t generation)
     {
-        // slot_storage trusts its index (no bounds check, even in release);
-        // gate here so a corrupt index is a clean assert, not a write through
-        // an out-of-range chunk-table read.
+        // lane_store trusts its index (no bounds check, even in release); gate
+        // here so a corrupt index is a clean assert, not a write through an
+        // out-of-range chunk-table read.
         auto& lane = route(h);
         KRG_check(local_of(h.index()) < lane.size(), "set_generation past the populated range");
         lane.set_generation(local_of(h.index()), generation);
@@ -223,16 +563,16 @@ public:
         lane.reset(local_of(h.index()));
     }
 
-    // [render thread] Raw per-lane access for iteration and GPU-slot-indexed
-    // APIs (the lane's slot_storage works in LOCAL index space).
-    slot_storage<Kind, T>&
+    // [consumer thread] Raw per-lane access for iteration and GPU-slot-indexed
+    // APIs (the lane works in LOCAL index space).
+    detail::lane_store<T>&
     lane(uint32_t i)
     {
         KRG_check(i < m_lane_count, "lane id out of the configured range");
         return m_lanes[i];
     }
 
-    const slot_storage<Kind, T>&
+    const detail::lane_store<T>&
     lane(uint32_t i) const
     {
         KRG_check(i < m_lane_count, "lane id out of the configured range");
@@ -271,11 +611,11 @@ public:
         return sum;
     }
 
-    // Re-stamp every lane's thread bindings to the calling thread at a
-    // lifecycle handoff (init thread populated, then the steady-state consumer
-    // thread takes over; main reclaims at teardown). Storage access is
-    // single-consumer across ALL lanes -- populate/at/reset/grow_for run on
-    // the one consumer thread regardless of which producer minted the handle.
+    // Re-stamp every lane's thread bindings to the calling thread at a lifecycle
+    // handoff (init thread populated, then the steady-state consumer thread takes
+    // over; main reclaims at teardown). Storage access is single-consumer across
+    // ALL lanes -- populate/at/reset/grow_for run on the one consumer thread
+    // regardless of which producer minted the handle.
     void
     bind_to_current_thread()
     {
@@ -297,28 +637,21 @@ public:
     }
 
 private:
-    slot_storage<Kind, T>&
+    detail::lane_store<T>&
     route(handle_t h)
     {
         KRG_check(lane_of(h.index()) < m_lane_count, "handle lane out of the configured range");
         return m_lanes[lane_of(h.index())];
     }
 
-    // The lane's slot_storage works in LOCAL index space; strip the lane bits.
-    static handle_t
-    local_handle(handle_t h)
-    {
-        return handle_t::make(local_of(h.index()), h.generation());
-    }
-
     uint32_t m_lane_count;
-    std::unique_ptr<slot_storage<Kind, T>[]> m_lanes;
+    std::unique_ptr<detail::lane_store<T>[]> m_lanes;
     bool m_claimed[k_lane_count] = {};
     uint32_t m_epochs[k_lane_count] = {};  // bumped per release; see claim_lane
 };
 
 // ---------------------------------------------------------------------------
-// lane_allocator -- the model-side half: free-list + generation table +
+// lane_allocator -- the producer-side half: free-list + generation table +
 // per-slot residency state + deferred-free parking matured by tick().
 // Constructed against ONE storage + ONE lane; the storage pointer is a
 // DISPATCH TOKEN (see file header), never called through in steady state.
@@ -344,10 +677,10 @@ public:
 
     ~lane_allocator()
     {
-        // NO release here: a dtor can run on the model thread at any moment,
-        // and a direct claim-flag write from it would race the render side.
-        // Release goes through detach(); this assert makes a forgotten
-        // detach a loud teardown failure instead of silent corruption.
+        // NO release here: a dtor can run on the producer thread at any moment,
+        // and a direct claim-flag write from it would race the consumer side.
+        // Release goes through detach(); this assert makes a forgotten detach a
+        // loud teardown failure instead of silent corruption.
         KRG_check(!m_storage, "allocator destroyed while still attached -- detach() first");
     }
 
@@ -387,7 +720,7 @@ public:
     }
 
     // [producer thread] Cross-thread detach: the lane release RIDES THE QUEUE
-    // like every other render-side mutation; FIFO puts it after every command
+    // like every other consumer-side mutation; FIFO puts it after every command
     // this allocator ever issued. The lane's next claimant must observe queue
     // quiescence first. The allocator returns to the pristine unbound state:
     // every identity dies with the claim (full-teardown semantics -- the
@@ -414,8 +747,8 @@ public:
         unbind();
     }
 
-    // The dispatch token. Render-side code dereferences it at execute time;
-    // model-side code only copies it into commands.
+    // The dispatch token. Consumer-side code dereferences it at execute time;
+    // producer-side code only copies it into commands.
     storage_t*
     storage() const
     {
@@ -663,6 +996,5 @@ consistent(const laned_storage<Kind, T>& s, const Alloc&... alloc)
     return ((alloc.active_count() == s.lane_active(alloc.lane())) && ...);
 }
 
-}  // namespace types
-}  // namespace render
+}  // namespace utils
 }  // namespace kryga

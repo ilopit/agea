@@ -92,18 +92,29 @@ physics_system::shutdown()
 
     if (m_impl->world)
     {
+        // The physics thread is joined by now (the engine stops threads before
+        // shutdown), so re-stamp the storage's lane affinity to this (main) thread
+        // before the sweep — the sanctioned teardown handoff. Single lane, so iterate
+        // it directly in local index space. Destroy any live body in an occupied slot.
+        m_impl->static_storage.bind_to_current_thread();
         auto& bi = m_impl->world->GetBodyInterface();
-        m_impl->static_bodies.for_each_alive(
-            [&bi](JPH::BodyID& body)
+        auto& lane = m_impl->static_storage.lane(0);
+        const uint64_t n = lane.size();
+        for (uint32_t i = 0; i < n; ++i)
+        {
+            if (!lane.occupied(i))
             {
-                if (!body.IsInvalid())
-                {
-                    bi.RemoveBody(body);
-                    bi.DestroyBody(body);
-                }
-            });
+                continue;
+            }
+            const JPH::BodyID body = *lane.at(i);
+            if (!body.IsInvalid())
+            {
+                bi.RemoveBody(body);
+                bi.DestroyBody(body);
+            }
+        }
     }
-    m_impl->static_bodies.clear();
+    m_impl->static_storage.clear();
 
     m_impl->world.reset();
     m_impl->job_system.reset();
@@ -205,14 +216,10 @@ physics_system::build_static_world(const std::vector<static_world_mesh>& meshes)
     m_impl->world->OptimizeBroadPhase();
 }
 
-static_body_handle
-physics_system::alloc_static_handle()
+utils::laned_storage<k_static_collider_kind, JPH::BodyID>&
+physics_system::static_collider_storage()
 {
-    if (!m_impl->world)
-    {
-        return {};
-    }
-    return static_body_handle{m_impl->static_bodies.alloc()};
+    return m_impl->static_storage;
 }
 
 void
@@ -223,11 +230,13 @@ physics_system::create_static_mesh(static_body_handle h, const static_world_mesh
         return;
     }
 
-    JPH::BodyID* slot = m_impl->static_bodies.resolve(h.value);
-    if (!slot)
-    {
-        return;  // stale handle
-    }
+    const utils::handle<k_static_collider_kind> ph{h.value};
+    // Consumer-side growth: make the slot this handle indexes addressable here, on
+    // the physics thread, then claim it for the handle's generation. Until a body
+    // lands it holds the zero-initialised (invalid) BodyID, which unregister and the
+    // shutdown sweep read as "nothing to destroy".
+    m_impl->static_storage.grow_for(ph);
+    m_impl->static_storage.set_generation(ph, ph.generation());
 
     auto shape_result = build_mesh_shape({mesh});
     if (shape_result.HasError())
@@ -235,7 +244,7 @@ physics_system::create_static_mesh(static_body_handle h, const static_world_mesh
         ALOG_WARN("create_static_mesh: degenerate mesh ({} verts, {} indices) — no collider",
                   mesh.vertices.size(),
                   mesh.indices.size());
-        return;  // slot stays bound to an invalid BodyID; unregister will no-op it
+        return;  // slot stays occupied with an invalid BodyID
     }
 
     JPH::BodyCreationSettings bcs(shape_result.Get(),
@@ -253,7 +262,7 @@ physics_system::create_static_mesh(static_body_handle h, const static_world_mesh
 
     m_impl->world->OptimizeBroadPhase();
 
-    *slot = body;
+    *m_impl->static_storage.at(ph) = body;
     ALOG_INFO("create_static_mesh: collider {} added ({} tris)", h.value, mesh.indices.size() / 3);
 }
 
@@ -265,19 +274,20 @@ physics_system::unregister_static_mesh(static_body_handle h)
         return;
     }
 
-    JPH::BodyID* slot = m_impl->static_bodies.resolve(h.value);
-    if (!slot)
+    const utils::handle<k_static_collider_kind> ph{h.value};
+    if (!m_impl->static_storage.valid(ph))
     {
-        return;
+        return;  // stale or already-freed
     }
 
-    if (!slot->IsInvalid())
+    const JPH::BodyID body = *m_impl->static_storage.at(ph);
+    if (!body.IsInvalid())
     {
         auto& bi = m_impl->world->GetBodyInterface();
-        bi.RemoveBody(*slot);
-        bi.DestroyBody(*slot);
+        bi.RemoveBody(body);
+        bi.DestroyBody(body);
     }
-    m_impl->static_bodies.free(h.value);
+    m_impl->static_storage.reset(ph);  // invalid BodyID + shadow gen 0 (empty)
 }
 
 void

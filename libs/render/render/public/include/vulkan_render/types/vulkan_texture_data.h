@@ -19,7 +19,7 @@ enum class texture_format : uint32_t
     r11g11b10f
 };
 
-// Texture data stored by value in the loader's bindless slot_storage.
+// Texture data stored by value in the loader's bindless laned_storage.
 // The slot() from vulkan_render_resource serves as the bindless index.
 class texture_data : public vulkan_render_resource
 {

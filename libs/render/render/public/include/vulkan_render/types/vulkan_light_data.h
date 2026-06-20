@@ -24,7 +24,7 @@ enum class light_type
 class vulkan_directional_light_data : public vulkan_render_resource
 {
 public:
-    // Default-constructs to an empty slot so it can live by value in a slot_storage
+    // Default-constructs to an empty slot so it can live by value in a laned_storage
     // (the same reason vulkan_render_resource has a default ctor).
     vulkan_directional_light_data() = default;
     vulkan_directional_light_data(const utils::id& id, gpu::uint idx)

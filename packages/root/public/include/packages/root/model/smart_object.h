@@ -305,7 +305,7 @@ protected:
     bool m_render_built = false;
 
     // Handle model: the per-instance render-object slot reserved for this object
-    // (handle_allocator, model thread). Null until the builder reserves it on
+    // (lane_allocator, model thread). Null until the builder reserves it on
     // first create; used to address the render_cache slot for update/destroy/
     // transform/outline without an id lookup. Runtime only, not serialized.
     ::kryga::render::types::render_object_handle m_render_object_handle = {};

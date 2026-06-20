@@ -27,7 +27,7 @@ convert_to_vertex_input_description(kryga::utils::dynobj_layout& dol);
 class mesh_data
 {
 public:
-    // Empty slot value — slot_storage pre-constructs slots on growth and
+    // Empty slot value — laned_storage pre-constructs slots on growth and
     // reset() assigns this over the old payload.
     mesh_data() = default;
 

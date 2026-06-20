@@ -1541,7 +1541,7 @@ vulkan_render::create_mesh(const utils::id& mesh_id,
 {
     auto h = m_system_meshes_alloc.reserve();  // grows the loader's storage
     auto* md = m_loader->populate_system_mesh(h, mesh_id, vertices, indices);
-    m_system_meshes_alloc.set_state(h, render::types::slot_state::resident);
+    m_system_meshes_alloc.set_state(h, utils::slot_state::resident);
     return md;
 }
 
@@ -1552,7 +1552,7 @@ vulkan_render::create_skinned_mesh(const utils::id& mesh_id,
 {
     auto h = m_system_meshes_alloc.reserve();
     auto* md = m_loader->populate_system_skinned_mesh(h, mesh_id, vertices, indices);
-    m_system_meshes_alloc.set_state(h, render::types::slot_state::resident);
+    m_system_meshes_alloc.set_state(h, utils::slot_state::resident);
     return md;
 }
 
@@ -1589,7 +1589,7 @@ vulkan_render::create_material(const utils::id& id,
 {
     auto h = m_system_materials_alloc.reserve();
     auto* mat = m_loader->populate_system_material(h, id, type_id, textures_data, se_data, params);
-    m_system_materials_alloc.set_state(h, render::types::slot_state::resident);
+    m_system_materials_alloc.set_state(h, utils::slot_state::resident);
     return mat;
 }
 

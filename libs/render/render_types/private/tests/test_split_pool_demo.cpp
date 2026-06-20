@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // PROTOCOL TESTS for the split pool (laned_storage + lane_allocator).
 //
-// The implementation graduated to render_types/laned_pool.h; this file keeps
+// The implementation graduated to utils/laned_pool.h; this file keeps
 // the protocol pinned with a stand-in SPSC batch queue:
 //   layer 1  queue.quiescent()         lock-free watermark: `issued`
 //            (producer-local plain) vs `applied` (consumer-written atomic,
@@ -21,7 +21,7 @@
 // design -- cross-thread chunk/affinity mechanics live in test_handle_pool.
 // ---------------------------------------------------------------------------
 
-#include "render_types/laned_pool.h"
+#include <utils/laned_pool.h>
 
 #include <atomic>
 #include <deque>
@@ -32,7 +32,7 @@
 
 #include <gtest/gtest.h>
 
-using namespace kryga::render::types;
+using namespace kryga::utils;  // laned_storage / lane_allocator / handle / slot_state
 
 namespace
 {

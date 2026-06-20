@@ -25,7 +25,7 @@ struct texture_sampler_data
 class material_data
 {
 public:
-    // Empty slot value — slot_storage pre-constructs slots on growth and
+    // Empty slot value — laned_storage pre-constructs slots on growth and
     // reset() assigns this over the old payload.
     material_data() = default;
 

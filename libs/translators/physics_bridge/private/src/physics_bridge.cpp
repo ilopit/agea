@@ -6,6 +6,7 @@
 #include <global_state/global_state.h>
 
 #include <physics/physics_types.h>
+#include <physics/physics_system.h>
 
 #include <packages/root/model/smart_object.h>
 #include <packages/root/model/components/game_object_component.h>
@@ -19,6 +20,33 @@ state_mutator__physics_bridge::set(gs::state& s)
 {
     auto p = s.create_box<physics_bridge>("physics_bridge");
     s.m_physics_bridge = p;
+}
+
+physics_bridge::physics_bridge()
+{
+    // Claim lane 0 of our own state storage. Direct: allocator and storage share
+    // this (the model) thread, so no queued release is needed at teardown.
+    m_alloc.bind(m_states, 0);
+}
+
+physics_bridge::~physics_bridge()
+{
+    // Release the destructible allocator's lane before m_states is destroyed; the
+    // storage dtor asserts no allocator is still attached. detach_storages() has
+    // already released the static-collider lane (its storage lives elsewhere).
+    if (m_alloc.bound())
+    {
+        m_alloc.detach();
+    }
+}
+
+void
+physics_bridge::detach_storages()
+{
+    if (m_static_alloc.bound())
+    {
+        m_static_alloc.detach();
+    }
 }
 
 kryga::result_code
@@ -103,7 +131,7 @@ physics_bridge::unregister_static_collider(physics::static_body_handle h)
         return;
     }
 
-    const render::types::handle<k_static_collider_handle_kind> ah{h.value};
+    const utils::handle<physics::k_static_collider_kind> ah{h.value};
     if (m_static_alloc.valid(ah))
     {
         m_static_alloc.reclaim(ah);
@@ -113,6 +141,12 @@ physics_bridge::unregister_static_collider(physics::static_body_handle h)
     msg.kind = core::physics_msg_kind::unregister_static_collider;
     msg.handle = h.value;
     emit(msg);
+}
+
+void
+physics_bridge::bind_static_storage(physics::physics_system& ps)
+{
+    m_static_alloc.bind(ps.static_collider_storage(), 0);
 }
 
 void
@@ -132,12 +166,11 @@ physics_bridge::register_destructible(const std::vector<physics::chunk_shape>& c
                                       const glm::mat4& world_transform)
 {
     const alloc_handle ah = m_alloc.reserve();
-    const uint32_t idx = ah.index();
-    if (idx >= m_states.size())
-    {
-        m_states.resize(idx + 1);
-    }
-    m_states[idx] = destructible_state{};  // reset a recycled slot's stale payload
+    // Consumer-side growth on our own thread: make the slot addressable, mark it live
+    // for this handle's generation, and reset any recycled slot's stale payload.
+    m_states.grow_for(ah);
+    m_states.set_generation(ah, ah.generation());
+    *m_states.at(ah) = destructible_state{};
 
     physics::destructible_handle h;
     h.value = ah.v;
@@ -167,7 +200,7 @@ physics_bridge::unregister(physics::destructible_handle h)
     const alloc_handle ah{h.value};
     if (m_alloc.valid(ah))
     {
-        m_states[ah.index()] = destructible_state{};
+        m_states.reset(ah);  // clear payload + shadow gen 0
         m_alloc.reclaim(ah);
     }
 
@@ -236,7 +269,7 @@ physics_bridge::drain_results()
                 return;
             }
 
-            auto& st = m_states[ah.index()];
+            auto& st = *m_states.at(ah);
             st.broken = r.broken;
             st.expired = r.expired;
             // assign() into the reused slot vector — keeps its capacity across
@@ -253,7 +286,7 @@ physics_bridge::get_state(physics::destructible_handle h) const
     {
         return nullptr;
     }
-    return &m_states[ah.index()];
+    return m_states.at(ah);
 }
 
 }  // namespace kryga

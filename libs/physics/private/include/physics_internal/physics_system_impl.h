@@ -8,7 +8,7 @@
 
 #include "physics_internal/jolt_layers.h"
 
-#include <utils/handle_pool.h>
+#include <utils/laned_pool.h>
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Core/JobSystem.h>
@@ -35,11 +35,17 @@ struct physics_system::impl
 
     JPH::BodyID static_world_body;  // invalid == none
 
-    // Independently-registered static colliders (terrain, etc.). The slot+generation
-    // pool hands out static_body_handle values and detects stale handles to reused
-    // slots. A slot may hold an invalid BodyID between alloc_static_handle() and
-    // create_static_mesh().
-    utils::handle_pool<JPH::BodyID> static_bodies;
+    // Static-collider BodyIDs, indexed by the bridge-minted handle (kind
+    // k_static_collider_kind). The render split applied to physics: physics_bridge
+    // owns the lane_allocator (mints handles on the model thread, claims lane 0);
+    // physics_system owns this single-lane laned_storage and is the CONSUMER —
+    // grow_for + populate on register, read + reset on unregister, all on the
+    // physics thread (growth is consumer-side now, so no cross-thread grow race).
+    // A slot holds an invalid BodyID between register and a successful
+    // create_static_mesh (and for a degenerate mesh). The shutdown sweep runs on
+    // main AFTER the physics thread is joined; it re-stamps the lane affinity to
+    // main (bind_to_current_thread) before reading.
+    utils::laned_storage<k_static_collider_kind, JPH::BodyID> static_storage{1};
 };
 
 }  // namespace physics

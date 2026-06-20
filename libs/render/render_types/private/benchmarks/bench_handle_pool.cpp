@@ -1,4 +1,4 @@
-// Microbenchmarks for the lock-free chunked slot_storage + handle_allocator.
+// Microbenchmarks for the lock-free chunked laned_storage + lane_allocator.
 //
 // Build RELEASE for meaningful numbers: in Debug the thread_affinity guard and
 // KRG_check_debug are live and the methods aren't inlined, so a Debug run measures
@@ -15,7 +15,7 @@
 //
 //   tools/build.sh -r render_types_bench && tools/run.sh -r render_types_bench.exe
 
-#include "render_types/handle_pool.h"
+#include "utils/laned_pool.h"
 #include "render_types/render_handle.h"
 
 #include <algorithm>
@@ -25,7 +25,8 @@
 
 #include <benchmark/benchmark.h>
 
-using namespace kryga::render::types;
+using namespace kryga::render::types;  // resource_kind + typed handle aliases
+using namespace kryga::utils;           // handle / laned_storage / lane_allocator
 
 namespace
 {
@@ -37,8 +38,8 @@ struct fake_mesh
 
 constexpr uint8_t KIND_MESH = 0;
 using mesh_handle = handle<KIND_MESH>;
-using pool_storage = slot_storage<KIND_MESH, fake_mesh>;
-using mesh_alloc = handle_allocator<KIND_MESH>;
+using pool_storage = laned_storage<KIND_MESH, fake_mesh>;
+using mesh_alloc = lane_allocator<KIND_MESH, fake_mesh>;
 
 // 2^19 slots * sizeof(slot) (fake_mesh 8 B + gen 4 B = 12 B) ~= 6 MB. Comfortably
 // past L2 (1 MB) so the random walk actually misses; power of two for cheap wrap.
@@ -46,23 +47,28 @@ constexpr uint32_t kWorkingSet = 1u << 19;
 constexpr uint32_t kGrowCount = 4096;  // smaller: the grow bench rebuilds per iter
 
 // A storage pre-populated with kWorkingSet live slots, the handles to them, and a
-// shuffled index list for the random-access benchmarks.
+// shuffled index list for the random-access benchmarks. Single lane (lane 0), so a
+// handle's index IS its local slot index -- the deref benches index the lane directly.
 struct populated
 {
-    pool_storage storage;
-    mesh_alloc alloc{storage};
+    pool_storage storage{1};
+    mesh_alloc alloc{storage, 0};
     std::vector<mesh_handle> handles;
     std::vector<uint32_t> shuffled;  // slot indices in random order
     uint32_t chain_start = 0;        // entry into the pointer-chase cycle
 
     populated()
     {
+        // Grow + free-list the whole working set up front (init-time bulk growth).
+        alloc.preallocate(kWorkingSet);
+        auto& lane = storage.lane(0);
+
         handles.reserve(kWorkingSet);
         shuffled.reserve(kWorkingSet);
         for (uint32_t i = 0; i < kWorkingSet; ++i)
         {
             auto h = alloc.reserve();
-            storage.set_generation(h.index(), h.generation());
+            lane.set_generation(h.index(), h.generation());
             handles.push_back(h);
             shuffled.push_back(h.index());
         }
@@ -77,9 +83,14 @@ struct populated
         {
             uint32_t cur = shuffled[k];
             uint32_t next = shuffled[(k + 1) & (kWorkingSet - 1)];
-            storage.at(cur)->verts = static_cast<int>(next);
+            lane.at(cur)->verts = static_cast<int>(next);
         }
         chain_start = shuffled[0];
+    }
+
+    ~populated()
+    {
+        alloc.detach();  // release the lane claim before the storage is destroyed
     }
 };
 }  // namespace
@@ -89,11 +100,12 @@ static void
 BM_storage_at_sequential(benchmark::State& state)
 {
     populated p;
+    auto& lane = p.storage.lane(0);
     uint32_t i = 0;
     for (auto _ : state)
     {
         uint32_t idx = p.handles[i & (kWorkingSet - 1)].index();
-        benchmark::DoNotOptimize(p.storage.at(idx)->verts);
+        benchmark::DoNotOptimize(lane.at(idx)->verts);
         ++i;
     }
     state.SetItemsProcessed(state.iterations());
@@ -105,11 +117,12 @@ static void
 BM_storage_at_random(benchmark::State& state)
 {
     populated p;
+    auto& lane = p.storage.lane(0);
     uint32_t i = 0;
     for (auto _ : state)
     {
         uint32_t idx = p.shuffled[i & (kWorkingSet - 1)];
-        benchmark::DoNotOptimize(p.storage.at(idx)->verts);
+        benchmark::DoNotOptimize(lane.at(idx)->verts);
         ++i;
     }
     state.SetItemsProcessed(state.iterations());
@@ -123,10 +136,11 @@ static void
 BM_storage_at_pointer_chase(benchmark::State& state)
 {
     populated p;
+    auto& lane = p.storage.lane(0);
     uint32_t idx = p.chain_start;
     for (auto _ : state)
     {
-        idx = static_cast<uint32_t>(p.storage.at(idx)->verts);
+        idx = static_cast<uint32_t>(lane.at(idx)->verts);
         benchmark::DoNotOptimize(idx);
     }
     state.SetItemsProcessed(state.iterations());
@@ -134,6 +148,7 @@ BM_storage_at_pointer_chase(benchmark::State& state)
 BENCHMARK(BM_storage_at_pointer_chase);
 
 // Liveness check, random: size load + chunk load + generation compare, scattered.
+// Goes through the production handle path (laned_storage::valid -> route -> lane).
 static void
 BM_storage_valid_random(benchmark::State& state)
 {
@@ -154,8 +169,8 @@ BENCHMARK(BM_storage_valid_random);
 static void
 BM_allocator_reserve_reclaim(benchmark::State& state)
 {
-    pool_storage storage;
-    mesh_alloc alloc{storage};
+    pool_storage storage{1};
+    mesh_alloc alloc{storage, 0};
     alloc.reclaim(alloc.reserve());  // warm one slot onto the free-list
 
     for (auto _ : state)
@@ -165,22 +180,27 @@ BM_allocator_reserve_reclaim(benchmark::State& state)
         alloc.reclaim(h);
     }
     state.SetItemsProcessed(state.iterations());
+    alloc.detach();
 }
 BENCHMARK(BM_allocator_reserve_reclaim);
 
-// Reserve WITH growth: a fresh allocator reserving up to N forces a chunk append
-// every chunk_size slots. Amortized cost of the grow path (+ per-iter teardown).
+// Reserve WITH growth: a fresh allocator reserving + growing the storage to N forces
+// a chunk append every chunk_size slots. Amortized cost of the consumer-side grow
+// path (+ per-iter teardown).
 static void
 BM_allocator_reserve_growing(benchmark::State& state)
 {
     for (auto _ : state)
     {
-        pool_storage storage;
-        mesh_alloc alloc{storage};
+        pool_storage storage{1};
+        mesh_alloc alloc{storage, 0};
         for (uint32_t i = 0; i < kGrowCount; ++i)
         {
-            benchmark::DoNotOptimize(alloc.reserve().v);
+            auto h = alloc.reserve();
+            storage.grow_for(h);  // consumer-side growth (chunk append at boundaries)
+            benchmark::DoNotOptimize(h.v);
         }
+        alloc.detach();
     }
     state.SetItemsProcessed(state.iterations() * kGrowCount);
 }
