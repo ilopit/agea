@@ -19,6 +19,8 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/model_system.h>
+
+#include <game_session/game_session.h>
 #include <core/subsystem_queues.h>
 #include <core/package_manager.h>
 
@@ -505,16 +507,11 @@ game_editor::enter_play_mode()
 
     m_mode = editor_mode::playing;
 
-    if (auto lvl2 = glob::glob_state().getr_model().current_level)
-    {
-        for (auto& [id, obj] : lvl2->get_game_objects().get_items())
-        {
-            if (auto go = obj->as<root::game_object>())
-            {
-                go->begin_play();
-            }
-        }
-    }
+    // The game session owns the play lifecycle. The editor still owns its
+    // editor-only concerns above (snapshot, camera save, player-preview spawn);
+    // begin_play() broadcast is the session's job. start() runs after the player
+    // is spawned so the spawned object also receives begin_play().
+    glob::glob_state().getr_game_session().start();
 }
 
 void
@@ -525,16 +522,8 @@ game_editor::exit_play_mode()
         return;
     }
 
-    if (auto lvl = glob::glob_state().getr_model().current_level)
-    {
-        for (auto& [id, obj] : lvl->get_game_objects().get_items())
-        {
-            if (auto go = obj->as<root::game_object>())
-            {
-                go->end_play();
-            }
-        }
-    }
+    // end_play() broadcast before the editor rolls back to the pre-play snapshot.
+    glob::glob_state().getr_game_session().stop();
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {

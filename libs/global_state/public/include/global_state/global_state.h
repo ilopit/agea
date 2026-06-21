@@ -52,6 +52,10 @@ namespace engine
 {
 class editor_system;
 }
+namespace game
+{
+class game_session;
+}
 namespace vfs
 {
 class virtual_file_system;
@@ -93,6 +97,7 @@ struct state_mutator__animation_system;
 struct state_mutator__physics_system;
 struct state_mutator__audio_system;
 struct state_mutator__editor_system;
+struct state_mutator__game_session;
 struct state_mutator__vfs;
 
 // Services
@@ -150,6 +155,7 @@ class state
     friend class ::kryga::state_mutator__render;
     friend class ::kryga::state_mutator__animation_system;
     friend class ::kryga::state_mutator__editor_system;
+    friend class ::kryga::state_mutator__game_session;
     friend class ::kryga::state_mutator__vfs;
 
     // Services
@@ -206,6 +212,7 @@ public:
     KRG_gen_getter(render, render::render_system);
     KRG_gen_getter(animation_system, animation::animation_system);
     KRG_gen_getter(editor_system, engine::editor_system);
+    KRG_gen_getter(game_session, game::game_session);
     KRG_gen_getter(vfs, vfs::virtual_file_system);
 
     // Services
@@ -270,6 +277,7 @@ private:
     render::render_system*          m_render = nullptr;
     animation::animation_system*    m_animation_system = nullptr;
     engine::editor_system*          m_editor_system = nullptr;
+    game::game_session*             m_game_session = nullptr;
     vfs::virtual_file_system*       m_vfs = nullptr;
 
     // Services
@@ -316,6 +324,12 @@ struct state_mutator__animation_system
 };
 
 struct state_mutator__editor_system
+{
+    static void
+    set(gs::state& s);
+};
+
+struct state_mutator__game_session
 {
     static void
     set(gs::state& s);

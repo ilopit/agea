@@ -31,6 +31,7 @@
 #include <render_translator/render_commands.h>
 #include <core/id_generator.h>
 #include <core/level.h>
+#include <game_session/game_session.h>
 #include <core/level_manager.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
@@ -266,6 +267,8 @@ vulkan_engine::init(const startup_options& options)
     state_mutator__animation_system::set(gs);
     state_mutator__physics_system::set(gs);
     state_mutator__audio_system::set(gs);
+    // Tier-agnostic: the game session owns the play lifecycle in all tiers.
+    state_mutator__game_session::set(gs);
 #if KRG_HAS_EDITOR
     state_mutator__editor_system::set(gs);
 #endif
@@ -858,10 +861,17 @@ vulkan_engine::tick(float dt)
 
     if (playing)
     {
-        if (auto lvl = glob::glob_state().getr_model().current_level)
+        // Play mode: the per-frame tick is routed THROUGH the game session, not
+        // the editor. Drain a requested level switch first (load_level does the
+        // render-resource teardown; doing it here keeps it out of level iteration).
+        auto& session = glob::glob_state().getr_game_session();
+        if (auto next = session.take_pending_level())
         {
-            lvl->tick(dt);
+            session.stop();
+            load_level(*next);
+            session.start();
         }
+        session.tick(dt);
     }
 
     // Notify VS Code of object-set changes. Polled rather than hooked into
@@ -882,10 +892,16 @@ vulkan_engine::tick(float dt)
         }
     }
 #else
-    if (auto lvl = glob::glob_state().getr_model().current_level)
+    // Game tier: no editor, the session is always running. Same routing as the
+    // editor's play branch above.
+    auto& session = glob::glob_state().getr_game_session();
+    if (auto next = session.take_pending_level())
     {
-        lvl->tick(dt);
+        session.stop();
+        load_level(*next);
+        session.start();
     }
+    session.tick(dt);
 #endif
 
     if (auto* anim = glob::glob_state().get_animation_system())
@@ -987,6 +1003,14 @@ vulkan_engine::load_level(const utils::id& level_id)
             }
         }
     }
+
+#if !KRG_HAS_EDITOR
+    // Game tier has no editor / F5: the session runs as soon as a level is loaded,
+    // so begin_play() actually fires (previously it never did in the game tier).
+    // start() is idempotent, so the switch path (stop -> load_level -> start) that
+    // also runs in the game tier does not double-fire begin_play.
+    glob::glob_state().getr_game_session().start();
+#endif
 
     return true;
 }
