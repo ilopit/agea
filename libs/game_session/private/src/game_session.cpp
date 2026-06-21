@@ -34,49 +34,97 @@ game_session::deps() const
 }
 
 void
-game_session::start()
+game_session::on_init(gs::state&)
+{
+    m_mode = create_registered_game_mode();
+}
+
+void
+game_session::broadcast_begin_play()
+{
+    auto* lvl = glob::glob_state().getr_model().current_level;
+    if (!lvl)
+    {
+        return;
+    }
+    for (auto& [id, obj] : lvl->get_game_objects().get_items())
+    {
+        if (auto go = obj->as<root::game_object>())
+        {
+            go->begin_play();
+        }
+    }
+    m_player.current_level = lvl->get_id().str();
+}
+
+void
+game_session::broadcast_end_play()
+{
+    auto* lvl = glob::glob_state().getr_model().current_level;
+    if (!lvl)
+    {
+        return;
+    }
+    for (auto& [id, obj] : lvl->get_game_objects().get_items())
+    {
+        if (auto go = obj->as<root::game_object>())
+        {
+            go->end_play();
+        }
+    }
+}
+
+void
+game_session::enter_play()
 {
     if (m_state == session_state::playing)
     {
         return;
     }
-
-    auto* lvl = glob::glob_state().getr_model().current_level;
-    if (lvl)
-    {
-        for (auto& [id, obj] : lvl->get_game_objects().get_items())
-        {
-            if (auto go = obj->as<root::game_object>())
-            {
-                go->begin_play();
-            }
-        }
-        m_player.current_level = lvl->get_id().str();
-    }
-
     m_state = session_state::playing;
+
+    broadcast_begin_play();
+    m_mode->on_start(*this);
+
+    if (auto* lvl = glob::glob_state().getr_model().current_level)
+    {
+        m_mode->on_level_loaded(*this, lvl->get_id());
+    }
 }
 
 void
-game_session::stop()
+game_session::exit_play()
 {
     if (m_state == session_state::idle)
     {
         return;
     }
+    m_mode->on_stop(*this);
+    broadcast_end_play();
+    m_state = session_state::idle;
+}
 
+void
+game_session::on_level_will_change()
+{
+    if (m_state == session_state::playing)
+    {
+        broadcast_end_play();
+    }
+}
+
+void
+game_session::on_level_changed()
+{
+    if (m_state != session_state::playing)
+    {
+        return;
+    }
+    broadcast_begin_play();
     if (auto* lvl = glob::glob_state().getr_model().current_level)
     {
-        for (auto& [id, obj] : lvl->get_game_objects().get_items())
-        {
-            if (auto go = obj->as<root::game_object>())
-            {
-                go->end_play();
-            }
-        }
+        m_mode->on_level_loaded(*this, lvl->get_id());
     }
-
-    m_state = session_state::idle;
 }
 
 void
@@ -87,6 +135,7 @@ game_session::tick(float dt)
         lvl->tick(dt);
     }
     m_quests.poll(dt);
+    m_mode->on_tick(*this, dt);
 }
 
 void
@@ -116,6 +165,10 @@ game_session::save(int slot)
     m_quests.to_container(quests_c);
     c["quests"] = quests_c;
 
+    serialization::container mode_c;
+    m_mode->save(mode_c);
+    c["mode"] = mode_c;
+
     const bool ok = serialization::write_container(slot_rid(slot), c);
     if (!ok)
     {
@@ -141,6 +194,10 @@ game_session::load(int slot)
     if (c["quests"])
     {
         m_quests.from_container(c["quests"]);
+    }
+    if (c["mode"])
+    {
+        m_mode->load(c["mode"]);
     }
     return true;
 }

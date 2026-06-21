@@ -1,5 +1,6 @@
 #pragma once
 
+#include <game_session/game_mode.h>
 #include <game_session/player_state.h>
 #include <game_session/quest_log.h>
 
@@ -7,6 +8,7 @@
 
 #include <utils/id.h>
 
+#include <memory>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -20,10 +22,15 @@ enum class session_state
     playing
 };
 
-// Owns the running-game lifecycle, tier-agnostic. In play mode the engine main
-// loop routes the per-frame tick THROUGH this system instead of ticking the level
-// directly (and instead of the editor). The editor keeps only editor-specific
-// concerns (snapshot/rollback, camera save); begin_play/end_play live here.
+// Owns the running-game lifecycle, tier-agnostic. In play mode the engine main loop
+// routes the per-frame tick THROUGH this system instead of ticking the level directly
+// (and instead of the editor). The session is a STABLE HOST: game-specific behavior is
+// injected via a game_mode (composition, not inheritance) registered by a game package.
+//
+// Two lifecycle axes, deliberately separate so a game_mode's run-scoped state survives
+// level switches:
+//   * play session boundary - enter_play() / exit_play() -> mode.on_start / on_stop
+//   * level activation       - on_level_will_change() / on_level_changed() (each switch)
 class game_session : public gs::system
 {
 public:
@@ -36,13 +43,17 @@ public:
     std::span<const std::string_view>
     deps() const override;
 
-    // Play lifecycle. Idempotent w.r.t. m_state so editor F5, game-tier load and
-    // level switching can all drive it without double begin_play/end_play.
+    // Builds the active game_mode from the package-registered factory (or a no-op base).
     void
-    start();  // begin_play() on every level game_object; state -> playing
+    on_init(gs::state&) override;
+
+    // --- play session boundary (editor F5, or game-tier first level load) ---
 
     void
-    stop();  // end_play() on every level game_object; state -> idle
+    enter_play();  // begin_play() broadcast -> mode.on_start -> mode.on_level_loaded
+
+    void
+    exit_play();  // mode.on_stop -> end_play() broadcast -> idle
 
     bool
     is_playing() const
@@ -50,26 +61,29 @@ public:
         return m_state == session_state::playing;
     }
 
-    // Per-frame; the main loop calls this only while playing. Ticks the level and
-    // polls quests. The level switch itself is NOT applied here — the engine drains
-    // it via take_pending_level() (see below) so teardown never runs mid-iteration
-    // and the session avoids a back-dependency on the engine target.
+    // --- level activation (engine brackets load_level with these on a switch) ---
+
+    // Old level still loaded: end_play() its objects. No mode lifetime change.
+    void
+    on_level_will_change();
+
+    // New level loaded: begin_play() its objects + mode.on_level_loaded.
+    void
+    on_level_changed();
+
+    // Per play frame: level tick + quest poll + mode.on_tick.
     void
     tick(float dt);
 
-    // Game code requests a switch; it is deferred. The engine owns load_level (it
-    // does the render-resource teardown), so the engine drains the request, calls
-    // stop() -> load_level -> start() around it. Keeps the dependency one-way:
-    // engine -> game_session, never the reverse.
+    // Game code requests a switch; deferred. The engine owns load_level (render-resource
+    // teardown), so it drains the request and brackets load_level with the level hooks.
     void
     request_switch_level(const utils::id& level_id);
 
-    // Engine-facing: returns and clears any pending switch target. Returns
-    // std::nullopt when there is nothing to switch to.
     std::optional<utils::id>
     take_pending_level();
 
-    // Player-state persistence to rtcache://saves/slot{slot}.yaml.
+    // Player + game-mode state persistence to rtcache://saves/slot{slot}.yaml.
     bool
     save(int slot);
 
@@ -88,11 +102,25 @@ public:
         return m_quests;
     }
 
+    game_mode&
+    mode()
+    {
+        return *m_mode;
+    }
+
 private:
+    // begin_play()/end_play() broadcast to every game_object in the current level.
+    void
+    broadcast_begin_play();
+
+    void
+    broadcast_end_play();
+
     session_state m_state = session_state::idle;
     std::optional<utils::id> m_pending_level;
     player_state m_player;  // persists across level switches (not owned by a level)
     quest_log m_quests;
+    std::unique_ptr<game_mode> m_mode;  // the pluggable game-specific behavior
 };
 
 }  // namespace kryga::game

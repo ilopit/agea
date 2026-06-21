@@ -32,6 +32,7 @@
 #include <core/id_generator.h>
 #include <core/level.h>
 #include <game_session/game_session.h>
+#include <glue/glue_link.ar.h>
 #include <core/level_manager.h>
 #include <core/object_constructor.h>
 #include <core/package.h>
@@ -240,6 +241,12 @@ vulkan_engine::init(const startup_options& options)
     m_initial_level = options.level;
     m_discovery_path = options.discovery;
     m_headless = options.headless;
+
+    // Link-time anchor (NOT runtime logic): this reference keeps libs/glue — and through
+    // it the static registration of every package that opted into KRG_ar_package(included
+    // = true) — from being stripped by the linker. Do not remove. See libs/glue.
+    volatile int krg_glue_anchor = kryga::glue::link_all_packages();
+    (void)krg_glue_anchor;
 
     auto& gs = glob::glob_state();
     core::state_mutator__lua_api::set(gs);
@@ -867,9 +874,9 @@ vulkan_engine::tick(float dt)
         auto& session = glob::glob_state().getr_game_session();
         if (auto next = session.take_pending_level())
         {
-            session.stop();
+            session.on_level_will_change();
             load_level(*next);
-            session.start();
+            session.on_level_changed();
         }
         session.tick(dt);
     }
@@ -897,9 +904,9 @@ vulkan_engine::tick(float dt)
     auto& session = glob::glob_state().getr_game_session();
     if (auto next = session.take_pending_level())
     {
-        session.stop();
+        session.on_level_will_change();
         load_level(*next);
-        session.start();
+        session.on_level_changed();
     }
     session.tick(dt);
 #endif
@@ -1005,11 +1012,14 @@ vulkan_engine::load_level(const utils::id& level_id)
     }
 
 #if !KRG_HAS_EDITOR
-    // Game tier has no editor / F5: the session runs as soon as a level is loaded,
-    // so begin_play() actually fires (previously it never did in the game tier).
-    // start() is idempotent, so the switch path (stop -> load_level -> start) that
-    // also runs in the game tier does not double-fire begin_play.
-    glob::glob_state().getr_game_session().start();
+    // Game tier has no editor / F5: the session enters play as soon as the first level
+    // is loaded, so begin_play() actually fires (it never did in the game tier before).
+    // Guarded by is_playing() so a level SWITCH (which is bracketed by the level hooks
+    // in tick()) does not re-enter play here.
+    if (!glob::glob_state().getr_game_session().is_playing())
+    {
+        glob::glob_state().getr_game_session().enter_play();
+    }
 #endif
 
     return true;

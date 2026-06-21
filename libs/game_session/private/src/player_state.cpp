@@ -9,14 +9,6 @@ void
 player_state::to_container(serialization::container& c) const
 {
     c["current_level"] = current_level;
-    c["health"] = health;
-
-    serialization::container pos;
-    pos.SetStyle(YAML::EmitterStyle::Flow);
-    pos.push_back(position[0]);
-    pos.push_back(position[1]);
-    pos.push_back(position[2]);
-    c["position"] = pos;
 
     serialization::container flags_c;
     for (const auto& [k, v] : flags)

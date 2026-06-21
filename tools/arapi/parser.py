@@ -88,6 +88,7 @@ PKG_KEY_RENDER_RESOURCES = "render.has_resources"
 PKG_KEY_EDITOR_OVERRIDES = "editor.has_overrides"
 # Note: "dependancies" is intentionally misspelled to match C++ macro API
 PKG_KEY_DEPENDENCIES = "dependancies"
+PKG_KEY_INCLUDED = "included"
 
 # Invalidates values
 INVALIDATES_RENDER = "render"
@@ -837,6 +838,8 @@ def _parse_package(lines: List[str], index: int, lines_count: int,
         context.editor_has_overrides = value == "true"
       elif key == PKG_KEY_DEPENDENCIES:
         context.dependencies = value.split(":")
+      elif key == PKG_KEY_INCLUDED:
+        context.is_included = value == "true"
 
   return index
 

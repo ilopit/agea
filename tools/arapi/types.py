@@ -116,6 +116,9 @@ class file_context:
     self.render_has_custom_resources: bool = False
     self.editor_has_overrides: bool = False
     self.dependencies: list[str] = []
+    # Opt-in: when true, the exe force-links this package so its static-init
+    # registration (game_mode, reflected types) survives /OPT:REF stripping.
+    self.is_included: bool = False
 
     self.properies_access_methods: str = ''
     self.output_dir = ''

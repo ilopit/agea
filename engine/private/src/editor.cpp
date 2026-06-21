@@ -509,9 +509,9 @@ game_editor::enter_play_mode()
 
     // The game session owns the play lifecycle. The editor still owns its
     // editor-only concerns above (snapshot, camera save, player-preview spawn);
-    // begin_play() broadcast is the session's job. start() runs after the player
+    // begin_play() broadcast is the session's job. enter_play() runs after the player
     // is spawned so the spawned object also receives begin_play().
-    glob::glob_state().getr_game_session().start();
+    glob::glob_state().getr_game_session().enter_play();
 }
 
 void
@@ -523,7 +523,7 @@ game_editor::exit_play_mode()
     }
 
     // end_play() broadcast before the editor rolls back to the pre-play snapshot.
-    glob::glob_state().getr_game_session().stop();
+    glob::glob_state().getr_game_session().exit_play();
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {

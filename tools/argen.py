@@ -145,6 +145,59 @@ def build_package(ar_cfg_path: str, root_dir: str, output_dir: str, module_name:
   arapi.writer.write_python_schema(context, output_dir)
 
 
+def _package_header_entry(cfg_path: str) -> Optional[str]:
+  """Return the ar/config entry that is the package declaration header — the file
+    whose basename starts with 'package.' (i.e. package.<name>.h, which carries the
+    KRG_ar_package macro). Matched on the basename, since every entry's directory path
+    contains 'packages/'."""
+  with open(cfg_path, "r", encoding="utf-8") as cfg:
+    for line in cfg:
+      entry = arapi.utils.extstrip(line)
+      if entry and os.path.basename(entry).startswith("package."):
+        return entry
+  return None
+
+
+def build_bind(source_dir: str, output_dir: str) -> None:
+  """Scan every package under source_dir and generate the glue link source for those
+    that opted in via KRG_ar_package(included = true).
+
+    Emits glue_link.gen.{h,cpp} (via write_glue_link_source); libs/glue compiles the
+    .cpp and the engine calls kryga::glue::link_all_packages() so each included
+    package's static registration survives linking. Runs at configure time (top-level
+    CMakeLists, before add_subdirectory(libs)) so the source exists when glue builds.
+    """
+  included: List[str] = []
+
+  if source_dir and os.path.isdir(source_dir):
+    for name in sorted(os.listdir(source_dir)):
+      pkg_dir = os.path.join(source_dir, name)
+      cfg_path = os.path.join(pkg_dir, "public", "ar", "config")
+      if not os.path.isfile(cfg_path):
+        continue
+
+      header_rel = _package_header_entry(cfg_path)
+      if not header_rel:
+        continue
+
+      header_path = os.path.join(pkg_dir, "public", header_rel).replace("\\", "/")
+      if not os.path.isfile(header_path):
+        continue
+
+      # Reuse the real parser so `included` has a single source of truth.
+      context = arapi.types.file_context(name, "kryga")
+      try:
+        arapi.parser.parse_file(header_path, header_rel, name, context)
+      except Exception as exc:  # noqa: BLE001 - one bad package must not break configure
+        print(f"AR bind: failed to parse {header_path}: {exc}")
+        continue
+
+      if context.is_included:
+        included.append(name)
+
+  arapi.writer.write_glue_link_source(included, output_dir)
+
+
 def main() -> None:
   """Main entry point for AR generator."""
   parser = argparse.ArgumentParser(description="AR (KRYGA Reflection) code generator")
@@ -160,6 +213,8 @@ def main() -> None:
 
   if args.type == "package":
     build_package(args.config, args.source, args.output, args.package_name, args.namespace)
+  elif args.type == "bind":
+    build_bind(args.source, args.output)
   else:
     print("Wrong arg")
 

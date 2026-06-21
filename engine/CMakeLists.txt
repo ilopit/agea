@@ -91,6 +91,7 @@ target_link_libraries(engine PUBLIC
     kryga::audio
     kryga::physics_translator
     kryga::game_session
+    kryga::glue
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 
@@ -141,6 +142,7 @@ if(KRG_BUILD_EDITOR_TARGET)
         kryga::audio
         kryga::physics_translator
         kryga::game_session
+        kryga::glue
         kryga::rpc
 
         kryga::imguizmo_unofficial
@@ -205,6 +207,7 @@ target_link_libraries(engine_ship PUBLIC
     kryga::audio
     kryga::physics_translator
     kryga::game_session
+    kryga::glue
 
     ${KRG_ACTIVE_MODULES_TARGETS}
 
