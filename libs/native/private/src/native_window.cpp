@@ -101,7 +101,7 @@ native_window::construct(construct_params& c)
 #endif
 
     SDL_Surface* icon = SDL_CreateRGBSurfaceFrom(
-        (void*)pixels, tex_width, tex_height, 4 * 8, 4 * tex_width, rmask, gmask, bmask, amask);
+        pixels, tex_width, tex_height, 4 * 8, 4 * tex_width, rmask, gmask, bmask, amask);
 
     SDL_SetWindowIcon(m_window, icon);
 

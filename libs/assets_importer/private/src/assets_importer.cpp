@@ -38,9 +38,9 @@ convert_3do_to_amsh(const utils::path& obj_path,
     // Generate lightmap UV2 coordinates via xatlas
     {
         auto* verts_ptr = reinterpret_cast<const gpu::vertex_data*>(vertices.data());
-        uint32_t vert_count = static_cast<uint32_t>(vertices.size() / sizeof(gpu::vertex_data));
+        auto vert_count = static_cast<uint32_t>(vertices.size() / sizeof(gpu::vertex_data));
         auto* inds_ptr = reinterpret_cast<const gpu::uint*>(indices.data());
-        uint32_t ind_count = static_cast<uint32_t>(indices.size() / sizeof(gpu::uint));
+        auto ind_count = static_cast<uint32_t>(indices.size() / sizeof(gpu::uint));
 
         auto uv2_result =
             asset_importer::uv2_generator::generate_uv2(verts_ptr, vert_count, inds_ptr, ind_count);
@@ -90,7 +90,7 @@ convert_3do_to_amsh(const utils::path& obj_path,
     sc["proto_id"] = mesh->get_type_id().str();
     sc["id"] = mesh->get_id().str();
     auto& properties = mesh->get_reflection()->m_serialization_properties;
-    reflection::property_context__save ctx{nullptr, mesh, &sc};
+    reflection::property_context__save ctx{.p = nullptr, .obj = mesh, .sc = &sc};
     for (auto& prop : properties)
     {
         ctx.p = prop.get();
@@ -141,7 +141,7 @@ convert_image_to_atxt(const utils::path& obj_path,
     sc["proto_id"] = txt->get_type_id().str();
     sc["id"] = txt->get_id().str();
     auto& properties = txt->get_reflection()->m_serialization_properties;
-    reflection::property_context__save ctx{nullptr, txt, &sc};
+    reflection::property_context__save ctx{.p = nullptr, .obj = txt, .sc = &sc};
     for (auto& prop : properties)
     {
         ctx.p = prop.get();

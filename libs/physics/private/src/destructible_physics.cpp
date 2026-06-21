@@ -26,7 +26,7 @@ namespace
 JPH::Vec3
 to_jph(const glm::vec3& v)
 {
-    return JPH::Vec3(v.x, v.y, v.z);
+    return {v.x, v.y, v.z};
 }
 
 glm::mat4
@@ -230,7 +230,7 @@ spawn_chunk_bodies(entry& e, JPH::PhysicsSystem& world, const glm::vec3& impulse
             auto sr = hull_settings.Create();
             if (sr.HasError())
             {
-                e.chunk_bodies.push_back({});
+                e.chunk_bodies.emplace_back();
                 continue;
             }
             shape = sr.Get();
@@ -245,7 +245,7 @@ spawn_chunk_bodies(entry& e, JPH::PhysicsSystem& world, const glm::vec3& impulse
             auto sr = box_settings.Create();
             if (sr.HasError())
             {
-                e.chunk_bodies.push_back({});
+                e.chunk_bodies.emplace_back();
                 continue;
             }
             shape = sr.Get();
@@ -391,12 +391,12 @@ destructible_physics::get_chunk_transform(destructible_handle h, uint32_t chunk_
 {
     if (!h.valid())
     {
-        return glm::mat4(1.0f);
+        return {1.0f};
     }
     auto it = m_impl->entries.find(h.value);
     if (it == m_impl->entries.end())
     {
-        return glm::mat4(1.0f);
+        return {1.0f};
     }
     const auto& e = it->second;
     if (!e.broken || chunk_index >= e.chunk_bodies.size())

@@ -47,13 +47,13 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
     }
 
     // Loop over shapes
-    for (size_t s = 0; s < shapes.size(); s++)
+    for (auto& shape : shapes)
     {
         // Loop over faces(polygon)
-        vertices.resize(3 * shapes[s].mesh.num_face_vertices.size());
+        vertices.resize(3 * shape.mesh.num_face_vertices.size());
 
         size_t index_offset = 0;
-        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++)
+        for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++)
         {
             // hardcode loading to triangles
             uint32_t fv = 3;
@@ -62,7 +62,7 @@ extract_mesh_data_from_3do(const utils::path& obj_path,
             for (uint32_t v = 0; v < fv; v++)
             {
                 // access to vertex
-                tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+                tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
 
                 // vertex position
                 tinyobj::real_t vx = attrib.vertices[3 * idx.vertex_index + 0];

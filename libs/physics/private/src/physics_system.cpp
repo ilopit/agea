@@ -165,7 +165,7 @@ build_mesh_shape(const std::vector<static_world_mesh>& meshes)
             all_verts.push_back(JPH::Float3(v.x, v.y, v.z));
         }
 
-        const uint32_t tri_count = static_cast<uint32_t>(m.indices.size() / 3);
+        const auto tri_count = static_cast<uint32_t>(m.indices.size() / 3);
         all_tris.reserve(all_tris.size() + tri_count);
         for (uint32_t t = 0; t < tri_count; ++t)
         {
@@ -179,7 +179,7 @@ build_mesh_shape(const std::vector<static_world_mesh>& meshes)
 
     if (all_tris.empty())
     {
-        return JPH::ShapeSettings::ShapeResult();  // empty -> HasError()
+        return {};  // empty -> HasError()
     }
 
     JPH::MeshShapeSettings mesh_settings(std::move(all_verts), std::move(all_tris));

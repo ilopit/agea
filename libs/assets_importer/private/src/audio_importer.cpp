@@ -120,7 +120,7 @@ convert_audio_to_aaud(const utils::path& audio_path,
     sc["proto_id"] = clip->get_type_id().str();
     sc["id"] = clip->get_id().str();
     auto& properties = clip->get_reflection()->m_serialization_properties;
-    reflection::property_context__save ctx{nullptr, clip, &sc};
+    reflection::property_context__save ctx{.p = nullptr, .obj = clip, .sc = &sc};
     for (auto& prop : properties)
     {
         ctx.p = prop.get();

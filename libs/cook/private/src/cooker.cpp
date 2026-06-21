@@ -152,7 +152,7 @@ compile_shader(const fs::path& glslc,
 
     // Keep debug info / block instance names — the SPIR-V reflection step
     // depends on them (see shader_reflection.cpp).
-    std::string args = std::format("--target-env={} --target-spv={} -O0 -o \"{}\" \"{}\"",
+    std::string args = std::format(R"(--target-env={} --target-spv={} -O0 -o "{}" "{}")",
                                    opts.target_env,
                                    opts.target_spv,
                                    job.output_spv.generic_string(),
@@ -581,6 +581,7 @@ cook(const options& opts)
         };
 
         std::vector<std::thread> pool;
+        pool.reserve(jobs_n);
         for (int i = 0; i < jobs_n; ++i)
         {
             pool.emplace_back(worker);

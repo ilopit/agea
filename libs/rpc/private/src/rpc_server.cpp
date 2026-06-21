@@ -75,7 +75,7 @@ try_consume_frame(std::vector<char>& buffer, std::string& payload_out)
                 line.pop_back();
             }
             constexpr std::string_view k = "Content-Length:";
-            if (line.rfind(k, 0) == 0)
+            if (line.starts_with(k))
             {
                 content_length = std::stoul(line.substr(k.size()));
             }
