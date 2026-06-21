@@ -1,5 +1,6 @@
 build
 build_android
+build_tidy
 *.pyc
 .claude/settings.local.json
 

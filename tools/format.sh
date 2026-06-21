@@ -10,12 +10,31 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-CLANG_FORMAT="/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe"
-if [[ ! -x "$CLANG_FORMAT" ]]; then
-    CLANG_FORMAT="$(command -v clang-format 2>/dev/null || true)"
+# clang-format discovery — no hardcoded VS version/edition/drive. Order: $CLANG_FORMAT
+# env, then the VS-bundled copy (located via vswhere; preferred for deterministic
+# formatting), then PATH. On non-Windows, vswhere is absent and it falls through to PATH.
+find_vswhere() {
+    local pf86
+    pf86="$(cygpath -u "$(printenv 'ProgramFiles(x86)' 2>/dev/null)" 2>/dev/null || true)"
+    [[ -n "$pf86" ]] || pf86="/c/Program Files (x86)"
+    local vw="$pf86/Microsoft Visual Studio/Installer/vswhere.exe"
+    [[ -x "$vw" ]] && { printf '%s\n' "$vw"; return 0; }
+    command -v vswhere.exe 2>/dev/null
+}
+
+if [[ -z "${CLANG_FORMAT:-}" ]]; then
+    vsw="$(find_vswhere || true)"
+    if [[ -n "$vsw" ]]; then
+        vsi="$("$vsw" -latest -products '*' \
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 \
+            -property installationPath 2>/dev/null | tr -d '\r')"
+        cand="$(cygpath -u "$vsi")/VC/Tools/Llvm/x64/bin/clang-format.exe"
+        [[ -x "$cand" ]] && CLANG_FORMAT="$cand"
+    fi
+    [[ -n "${CLANG_FORMAT:-}" ]] || CLANG_FORMAT="$(command -v clang-format 2>/dev/null || true)"
 fi
-if [[ -z "$CLANG_FORMAT" ]]; then
-    echo "ERROR: clang-format not found" >&2
+if [[ -z "${CLANG_FORMAT:-}" ]]; then
+    echo "ERROR: clang-format not found. Set CLANG_FORMAT= or install the VS 'C++ Clang tools'." >&2
     exit 1
 fi
 
@@ -44,7 +63,8 @@ collect_all_files() {
 
 collect_changed_files() {
     cd "$ROOT"
-    git diff --name-only --diff-filter=d HEAD -- '*.h' '*.cpp' | while read -r f; do
+    { git diff --name-only --diff-filter=d HEAD -- '*.h' '*.cpp'
+      git ls-files --others --exclude-standard -- '*.h' '*.cpp'; } | sort -u | while read -r f; do
         case "$f" in
             engine/*|libs/*|packages/*) echo "$ROOT/$f" ;;
         esac

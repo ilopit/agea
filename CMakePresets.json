@@ -13,6 +13,20 @@
     },
 
     {
+      "name": "host-tidy",
+      "displayName": "Host Ninja (clang-tidy compile DB)",
+      "description": "Ninja config that emits compile_commands.json for clang-tidy/clangd. NOT a shipping build — run from a VS x64 Developer prompt so cl.exe is on PATH. Output in build_tidy/.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build_tidy",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_DISABLE_PRECOMPILE_HEADERS": "ON",
+        "CMAKE_CXX_SCAN_FOR_MODULES": "OFF"
+      }
+    },
+
+    {
       "name": "android-base",
       "hidden": true,
       "description": "Shared Android configuration — arm64-v8a, API 29, NDK r26d. Requires ANDROID_NDK_HOME.",

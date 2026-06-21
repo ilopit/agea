@@ -1,0 +1,97 @@
+# clang-tidy for kryga. Companion to .clang-format (mechanical) and the
+# `cpp-style` skill (judgment-based). This layer owns deterministic, AST-level
+# rules: bugs, naming, modernization, performance.
+#
+# Curated, NOT blanket-enabled. cppcoreguidelines-* is mostly OFF because several
+# of its checks want defensive null-checks / early-returns, which CLAUDE.md bans
+# in favor of KRG_check asserts. Style checks that clang-format already enforces
+# (braces, layout) are off to avoid double-reporting.
+#
+# Run via tools/tidy.sh (needs build_tidy/compile_commands.json from the
+# `host-tidy` Ninja preset).
+
+# NOTE: no '#' comments allowed inside the folded Checks scalar below — YAML folds
+# them into the check string and corrupts it. Disabled checks & why:
+#   modernize-concat-nested-namespaces      -> kryga uses nested `namespace a { namespace b {`
+#   clang-diagnostic-unused-command-line-argument -> silences MSVC /MP per-TU noise
+#   *-trailing-return-type / *-use-using    -> conflict with leading-return-type style
+#   easily-swappable-parameters / magic-numbers -> too noisy to be actionable
+#   bugprone-reserved-identifier            -> kryga deliberately uses name__suffix
+#                                              double-underscore for internal qualifiers
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  concurrency-*,
+  performance-*,
+  modernize-*,
+  readability-identifier-naming,
+  readability-misleading-indentation,
+  readability-redundant-*,
+  misc-misleading-identifier,
+  misc-unused-using-decls,
+  cert-err34-c,
+  cert-err52-cpp,
+  -bugprone-easily-swappable-parameters,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-avoid-c-arrays,
+  -modernize-use-using,
+  -readability-magic-numbers,
+  -performance-avoid-endl,
+  -modernize-concat-nested-namespaces,
+  -clang-diagnostic-unused-command-line-argument,
+  -bugprone-reserved-identifier,
+
+# Advisory by default — don't fail builds. Flip specific checks here once a clean
+# baseline exists (e.g. 'bugprone-use-after-move,clang-analyzer-*').
+WarningsAsErrors: ''
+
+# Only diagnose headers in our own tree...
+HeaderFilterRegex: '.*(engine|libs|packages)[/\\].*'
+# ...but never argen-generated code or fetched deps (they trip reserved-identifier,
+# macro-parentheses, naming). Requires clang-tidy >= 18.
+ExcludeHeaderFilterRegex: '.*(kryga_generated|_deps|thirdparty)[/\\].*'
+
+FormatStyle: file
+
+CheckOptions:
+  # ---- naming: everything snake_case; members carry m_ ----
+  readability-identifier-naming.NamespaceCase:            lower_case
+  readability-identifier-naming.ClassCase:                lower_case
+  readability-identifier-naming.StructCase:               lower_case
+  readability-identifier-naming.UnionCase:                lower_case
+  readability-identifier-naming.EnumCase:                 lower_case
+  readability-identifier-naming.EnumConstantCase:         lower_case
+  readability-identifier-naming.FunctionCase:             lower_case
+  readability-identifier-naming.MethodCase:               lower_case
+  readability-identifier-naming.VariableCase:             lower_case
+  readability-identifier-naming.ParameterCase:            lower_case
+  readability-identifier-naming.LocalVariableCase:        lower_case
+  readability-identifier-naming.TypeAliasCase:            lower_case
+  readability-identifier-naming.TypedefCase:              lower_case
+
+  # members: private/protected get m_, public stay bare snake_case
+  readability-identifier-naming.PrivateMemberPrefix:      'm_'
+  readability-identifier-naming.PrivateMemberCase:        lower_case
+  readability-identifier-naming.ProtectedMemberPrefix:    'm_'
+  readability-identifier-naming.ProtectedMemberCase:      lower_case
+  readability-identifier-naming.PublicMemberCase:         lower_case
+
+  # statics get s_ (file-scope statics and static data members)
+  readability-identifier-naming.StaticVariablePrefix:     's_'
+  readability-identifier-naming.StaticVariableCase:       lower_case
+  readability-identifier-naming.ClassMemberPrefix:        's_'
+  readability-identifier-naming.ClassMemberCase:          lower_case
+
+  # constants / constexpr: snake_case (e.g. ks_class_default)
+  readability-identifier-naming.ConstexprVariableCase:    lower_case
+  readability-identifier-naming.GlobalConstantCase:       lower_case
+  readability-identifier-naming.StaticConstantCase:       lower_case
+
+  # NOTE: no MacroDefinitionCase rule — kryga macros are inconsistent by design
+  # (KRG_ar_* lowercase reflection markers, KRG_check mixed). Enforcing a case
+  # here fights the codebase, so naming of macros is left unchecked.
+
+  # perf knobs
+  performance-unnecessary-value-param.AllowedTypes:       ''
+  performance-for-range-copy.WarnOnAllAutoCopies:         true

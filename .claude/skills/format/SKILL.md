@@ -8,18 +8,17 @@ Format all C/C++ files changed since the last commit using format_ar.py (for KRG
 
 ## Command
 
-Run from the project root — format_ar.py first (on headers only), then clang-format on all changed files:
+Run from the project root — format_ar.py first (AR macros, headers only), then
+`tools/format.sh` for clang-format. The clang-format path is auto-discovered via
+vswhere inside format.sh (no hardcoded VS path); it formats changed + untracked files.
 
 ```
-CLANG_FORMAT="/c/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-format.exe"
-
 # AR macro formatting (headers only, no-ops if no macros present)
 git diff --name-only HEAD -- '*.h' | grep -v '^build/' | xargs -r python tools/format_ar.py
 git ls-files --others --exclude-standard -- '*.h' | grep -v '^build/' | xargs -r python tools/format_ar.py
 
-# clang-format
-git diff --name-only HEAD -- '*.h' '*.cpp' | grep -v '^build/' | xargs -r "$CLANG_FORMAT" -i
-git ls-files --others --exclude-standard -- '*.h' '*.cpp' | grep -v '^build/' | xargs -r "$CLANG_FORMAT" -i
+# clang-format (changed + untracked)
+tools/format.sh
 ```
 
 When `--all` is passed, format ALL files (not just changed):

@@ -23,6 +23,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(BUILD_SHARED_LIBS OFF)
 
+# Emit compile_commands.json for clang-tidy / clangd. No effect under the Visual
+# Studio generator (host preset) — use the Ninja `host-tidy` preset to get it.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # ---------------------------------------------------------------------------
