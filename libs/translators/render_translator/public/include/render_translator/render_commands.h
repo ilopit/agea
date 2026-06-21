@@ -1,11 +1,11 @@
 #pragma once
 
 // All concrete render commands, relocated here from the package render-override
-// .cpp files and engine/animation so the central dispatch (render_cmd::dispatch,
-// render_commands.cpp) can see every type. Each is a POD tagged command (no vtable):
-// it carries cmd_kind (via render_command_base) stamped by alloc_cmd<T> from k_kind.
-// These structs are PURE DATA — no methods. Behavior lives in free process(cmd, ctx)
-// overloads in render_commands.cpp, dispatched by render_cmd::dispatch.
+// .cpp files and engine/animation so the central dispatch can see every type. Each is
+// a POD tagged command (no vtable): it carries cmd_kind (via render_command_base)
+// stamped by alloc_cmd<T> from k_kind. These structs are PURE DATA — no methods.
+// Behavior lives in free process(cmd, ctx) overloads in render_command_processor.cpp,
+// dispatched by render_command_processor::apply.
 //
 // All live in `namespace kryga` (not root/base) so the emission sites in
 // kryga::root / kryga::base still resolve them by enclosing-namespace lookup.

@@ -40,7 +40,7 @@ struct play_params
 // as vulkan_render knows nothing about render commands.
 //
 // Owned and called exclusively by the audio thread (the audio worker in
-// engine_threads), except in headless mode where the main thread drives it
+// engine_threads_coordinator), except in headless mode where the main thread drives it
 // single-threaded. It is a pure consumer of model state and never reads the render
 // layer.
 //

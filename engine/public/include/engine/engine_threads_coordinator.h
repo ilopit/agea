@@ -52,15 +52,15 @@ class render_command_processor;
 //           ... engine builds the frame into that frame slot ...
 //           submit_frame() -> publish to the render thread, wake it
 //   render: (internal) wait for work -> drain + draw + reset frame slot -> complete
-class engine_threads
+class engine_threads_coordinator
 {
 public:
-    engine_threads() = default;
-    ~engine_threads();
+    engine_threads_coordinator() = default;
+    ~engine_threads_coordinator();
 
-    engine_threads(const engine_threads&) = delete;
-    engine_threads&
-    operator=(const engine_threads&) = delete;
+    engine_threads_coordinator(const engine_threads_coordinator&) = delete;
+    engine_threads_coordinator&
+    operator=(const engine_threads_coordinator&) = delete;
 
     // Spawn the render thread, the audio thread, AND the physics thread. Call once
     // before begin_frame/submit_frame. (Render-state access must already have been
@@ -147,11 +147,10 @@ private:
     // --- Physics worker (thread 3) — independent like audio, but bidirectional ---
     // Self-clocked fixed-step worker. Sole consumer of subsystem_queues().physics.in and
     // sole producer of subsystem_queues().physics.out; the main thread only
-    // produces commands / drains results. m_physics_paused freezes integration in edit
-    // mode without stopping command drain.
+    // produces commands / drains results. The edit-mode freeze lives on the processor
+    // now (set_physics_paused forwards to it) — see physics_command_processor::set_paused.
     std::thread m_physics_thread;
     std::atomic<bool> m_physics_shutdown{false};
-    std::atomic<bool> m_physics_paused{false};
     // Borrowed from the engine (set in start()); the physics loop is its sole driver here.
     physics_command_processor* m_physics_processor = nullptr;
 };

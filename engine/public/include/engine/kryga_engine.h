@@ -4,7 +4,7 @@
 #include <vulkan_render/kryga_render.h>
 #include <vulkan_render/render_config.h>
 
-#include <engine/engine_threads.h>
+#include <engine/engine_threads_coordinator.h>
 
 #include <utils/id.h>
 #include <utils/line_container.h>
@@ -215,8 +215,8 @@ private:
     // free function for render); they're unified here as a SINGLE engine-owned instance
     // each, built in init() once the subsystems exist. The engine is either threaded OR
     // headless, never both, so exactly one driver touches each:
-    //   - threaded: the worker loop (engine_threads holds a borrowed pointer, passed to
-    //               start()) drives it;
+    //   - threaded: the worker loop (engine_threads_coordinator holds a borrowed pointer,
+    //               passed to start()) drives it;
     //   - headless: the inline tick (tick_headless / consume_updated_audio) drives it.
     // Declared BEFORE m_threads so they outlive the threads — the dtor destroys m_threads
     // (joining the workers) before these.
@@ -236,7 +236,7 @@ private:
     // cleanup() (before global_state tears down audio_system / render / physics), so by
     // dtor time the threads are already joined and the dtor's stop() is a no-op backstop.
     // This ordering is load-bearing.
-    engine_threads m_threads;
+    engine_threads_coordinator m_threads;
 };
 
 }  // namespace kryga

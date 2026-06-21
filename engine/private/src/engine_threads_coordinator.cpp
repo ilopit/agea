@@ -1,4 +1,4 @@
-#include <engine/engine_threads.h>
+#include <engine/engine_threads_coordinator.h>
 
 #include <global_state/global_state.h>
 
@@ -22,17 +22,17 @@
 namespace kryga
 {
 
-engine_threads::~engine_threads()
+engine_threads_coordinator::~engine_threads_coordinator()
 {
     stop();
 }
 
 void
-engine_threads::start(audio_message_processor& audio,
+engine_threads_coordinator::start(audio_message_processor& audio,
                        physics_command_processor& physics,
                        render_command_processor& render)
 {
-    KRG_check(!m_render_thread.joinable(), "engine_threads::start called twice");
+    KRG_check(!m_render_thread.joinable(), "engine_threads_coordinator::start called twice");
 
     // Borrow the engine-owned processors the audio / physics / render loops drive.
     m_audio_processor = &audio;
@@ -41,20 +41,20 @@ engine_threads::start(audio_message_processor& audio,
 
     // Render thread — the gated streaming pipeline.
     m_shutdown = false;
-    m_render_thread = std::thread(&engine_threads::render_loop, this);
+    m_render_thread = std::thread(&engine_threads_coordinator::render_loop, this);
 
     // Audio thread — independent fire-and-forget worker.
     m_audio_shutdown.store(false, std::memory_order_relaxed);
-    m_audio_thread = std::thread(&engine_threads::audio_loop, this);
+    m_audio_thread = std::thread(&engine_threads_coordinator::audio_loop, this);
 
     // Physics thread — independent self-clocked worker (bidirectional: drains command
     // intents, steps Jolt on a fixed timestep, publishes result snapshots).
     m_physics_shutdown.store(false, std::memory_order_relaxed);
-    m_physics_thread = std::thread(&engine_threads::physics_loop, this);
+    m_physics_thread = std::thread(&engine_threads_coordinator::physics_loop, this);
 }
 
 void
-engine_threads::stop()
+engine_threads_coordinator::stop()
 {
     // Render thread first: drain any in-flight frames, then signal shutdown so it
     // breaks out only once it has nothing left to draw.
@@ -89,13 +89,16 @@ engine_threads::stop()
 }
 
 void
-engine_threads::set_physics_paused(bool paused)
+engine_threads_coordinator::set_physics_paused(bool paused)
 {
-    m_physics_paused.store(paused, std::memory_order_relaxed);
+    // Pause is processor state now (it reads it inside process()). start() bound the
+    // processor before the main loop's first call here, so the pointer is live.
+    KRG_check(m_physics_processor, "engine_threads_coordinator::set_physics_paused: physics processor not bound");
+    m_physics_processor->set_paused(paused);
 }
 
 uint32_t
-engine_threads::begin_frame()
+engine_threads_coordinator::begin_frame()
 {
     uint32_t frame_slot;
     {
@@ -122,7 +125,7 @@ engine_threads::begin_frame()
 }
 
 void
-engine_threads::submit_frame()
+engine_threads_coordinator::submit_frame()
 {
     {
         std::lock_guard lock(m_mutex);
@@ -132,14 +135,14 @@ engine_threads::submit_frame()
 }
 
 void
-engine_threads::wait_idle()
+engine_threads_coordinator::wait_idle()
 {
     std::unique_lock lock(m_mutex);
     m_main_cv.wait(lock, [this] { return m_completed == m_submitted; });
 }
 
 bool
-engine_threads::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
+engine_threads_coordinator::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
 {
     // count < 1 is a caller bug: the static_cast<uint64_t> below would wrap a
     // negative into a huge target and silently block for the full timeout.
@@ -155,7 +158,7 @@ engine_threads::wait_frames_rendered(int count, std::chrono::milliseconds timeou
 }
 
 void
-engine_threads::render_loop()
+engine_threads_coordinator::render_loop()
 {
     // The render thread grants itself render-state access for the lifetime of the
     // loop. Main handed off in vulkan_engine before starting us, so from here only
@@ -200,7 +203,7 @@ engine_threads::render_loop()
         // snapshot reads inside draw_main, keeping them in lock-step with the frame
         // the main thread produced.
         const uint32_t frame_slot = static_cast<uint32_t>(m_completed & 1ull);
-        m_render_processor->drain(frame_slot);
+        m_render_processor->process(0.0f, frame_slot);
         renderer.set_draw_frame_slot(frame_slot);
         renderer.draw_main();
 
@@ -222,16 +225,13 @@ engine_threads::render_loop()
 }
 
 void
-engine_threads::audio_loop()
+engine_threads_coordinator::audio_loop()
 {
     // Fire-and-forget control worker. Sole consumer of the audio channel and sole
     // owner of audio_renderer from here; main only produces messages. Shares nothing
-    // with the render pipeline above — no gate, no frame parity.
-    auto& q = glob::glob_state().getr_subsystem_queues().audio;
-    auto* as = glob::glob_state().get_audio_system();
-    KRG_check(as, "engine_threads::audio_loop: audio_system not created before start()");
-    KRG_check(m_audio_processor, "engine_threads::audio_loop: audio processor not bound");
-    audio::audio_renderer& renderer = as->renderer;
+    // with the render pipeline above — no gate, no frame parity. The processor owns the
+    // ring + renderer: one process(dt) call drains the channel and ticks the renderer.
+    KRG_check(m_audio_processor, "engine_threads_coordinator::audio_loop: audio processor not bound");
     audio_message_processor& proc = *m_audio_processor;
 
     // Self-clocked tick: audio_renderer::tick only reaps finished one-shot voices, so a
@@ -241,12 +241,11 @@ engine_threads::audio_loop()
 
     while (!m_audio_shutdown.load(std::memory_order_acquire))
     {
-        q.drain([&proc](core::audio_message msg) { proc.process(msg); });
-
         const auto now = std::chrono::steady_clock::now();
         const float dt = std::chrono::duration<float>(now - last).count();
         last = now;
-        renderer.tick(dt);
+
+        proc.process(dt, 0);
 
         // Poll cadence — miniaudio mixes on its own realtime thread, so this only
         // bounds how quickly a play/stop intent is registered, not audio quality.
@@ -255,17 +254,17 @@ engine_threads::audio_loop()
 
     // Final drain so intents queued just before shutdown (e.g. end_play stops) are
     // applied before audio_renderer is torn down.
-    q.drain([&proc](core::audio_message msg) { proc.process(msg); });
+    proc.process(0.0f, 0);
 }
 
 void
-engine_threads::physics_loop()
+engine_threads_coordinator::physics_loop()
 {
     // Self-clocked simulation worker. Sole consumer of the physics command ring and
     // sole producer of the result ring; sole owner of the Jolt world from here (main
     // init'd it before start()). Independent of the render pipeline — no gate, no
     // frame parity. Bidirectional: unlike audio it publishes results back.
-    KRG_check(m_physics_processor, "engine_threads::physics_loop: physics processor not bound");
+    KRG_check(m_physics_processor, "engine_threads_coordinator::physics_loop: physics processor not bound");
     physics_command_processor& proc = *m_physics_processor;
 
     // Self-clocked tick: the processor's fixed-step accumulator turns this locally
@@ -279,7 +278,7 @@ engine_threads::physics_loop()
         const float dt = std::chrono::duration<float>(now - last).count();
         last = now;
 
-        proc.pump(dt, m_physics_paused.load(std::memory_order_relaxed));
+        proc.process(dt, 0);
 
         // Poll cadence — finer than audio's 5ms so accumulated dt lands close to the
         // fixed-step boundary, bounding how late a fresh command/step is applied.

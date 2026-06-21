@@ -292,7 +292,7 @@ vulkan_engine::init(const startup_options& options)
 
         auto* as = glob::glob_state().get_audio_system();
         KRG_check(as, "audio_system must exist before building its processor");
-        m_audio_processor = std::make_unique<audio_message_processor>(as->renderer);
+        m_audio_processor = std::make_unique<audio_message_processor>(as->renderer, q.audio);
 
         // Render consumer: binds the renderer + loader refs (both already exist; the
         // processor only stores them — it's used later, on the render thread or inline).
@@ -574,7 +574,7 @@ vulkan_engine::cleanup()
 bool
 vulkan_engine::wait_frames_rendered(int count, std::chrono::milliseconds timeout)
 {
-    // Thin delegate: the streaming handoff lives in engine_threads. The sole
+    // Thin delegate: the streaming handoff lives in engine_threads_coordinator. The sole
     // caller, rpc waitFrame, already clamps untrusted input to [1,60].
     return m_threads.wait_frames_rendered(count, timeout);
 }
@@ -755,7 +755,7 @@ vulkan_engine::tick_headless()
     // Pump first so commands the previous frame's builder emitted get applied + stepped,
     // then drain the results into the snapshot before this frame's builder reads it. A
     // fixed nominal dt keeps headless deterministic (no wall clock to sample).
-    m_physics_processor->pump(1.0f / 60.0f, /*paused=*/false);
+    m_physics_processor->process(1.0f / 60.0f, 0);
     glob::glob_state().getr_physics_translator().on_frame();
 
     // Process dirty-render items queued by level/package load
@@ -765,7 +765,7 @@ vulkan_engine::tick_headless()
 
     // Headless is single-threaded and never switches parity, so everything is
     // enqueued into and drained from slot 0.
-    m_render_processor->drain(0);
+    m_render_processor->process(0.0f, 0);
     glob::glob_state().getr_render().renderer.draw_headless();
     glob::glob_state().getr_subsystem_queues().render.reset_arena();
 
@@ -893,14 +893,14 @@ vulkan_engine::tick(float dt)
         anim->tick(dt);
     }
 
-    // Audio runs on its own thread (engine_threads) draining the message channel and
+    // Audio runs on its own thread (engine_threads_coordinator) draining the message channel and
     // ticking audio_system. Main only PRODUCES here: cancel voices whose emitter left
     // the model cache (deletion / unload / play->edit rollback) by emitting stop
     // intents. Runs every frame (outside the play gate) so rollback stops apply even
     // in edit mode. No audio_system access on the main thread.
     glob::glob_state().getr_audio_translator().on_frame();
 
-    // Physics also runs on its own thread (engine_threads::physics_loop). Main only
+    // Physics also runs on its own thread (engine_threads_coordinator::physics_loop). Main only
     // PRODUCES intents (via the destructible component / its render builder) and
     // CONSUMES results here: pull published chunk transforms + broken/expired state
     // into the per-handle snapshot the builder reads. Runs every frame (outside the
@@ -1318,15 +1318,10 @@ vulkan_engine::consume_updated_audio()
     // Headless / single-threaded path only: run() spawns the audio thread which is the
     // sole consumer, so this must NOT run there (it would be a second consumer on the
     // SPSC queue). In headless no thread exists, so the main thread does the audio
-    // thread's work synchronously — drain the channel through the processor, tick the
-    // renderer, reap orphans.
-    auto& q = glob::glob_state().getr_subsystem_queues().audio;
-    auto* as = glob::glob_state().get_audio_system();
-    audio_message_processor& proc = *m_audio_processor;
-
-    q.drain([&proc](core::audio_message msg) { proc.process(msg); });
-
-    as->renderer.tick(0.f);
+    // thread's work synchronously — drain the channel through the processor (which also
+    // ticks the renderer), then reap orphans. A nominal dt of 0 keeps headless
+    // deterministic (no wall clock to sample); the tick only reaps finished voices.
+    m_audio_processor->process(0.0f, 0);
     glob::glob_state().getr_audio_translator().on_frame();
 }
 

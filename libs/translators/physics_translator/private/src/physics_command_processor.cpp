@@ -21,58 +21,60 @@ constexpr int k_max_substeps = 4;
 void
 physics_command_processor::drain_commands()
 {
+    m_commands.drain([this](core::physics_message m) { apply(m); });
+}
+
+void
+physics_command_processor::apply(const core::physics_message& m)
+{
     auto& dp = m_ps.destructibles();
 
-    m_commands.drain(
-        [this, &dp](core::physics_message m)
-        {
-            const physics::destructible_handle h{m.handle};
-            switch (m.kind)
-            {
-            case core::physics_msg_kind::register_destructible:
-            {
-                // Borrowed chunk pointer is dereferenced (and copied) right here, on
-                // the physics thread, closing the borrow window opened at emit.
-                dp.register_destructible(h, *m.chunks, m.damage_threshold);
-                dp.set_lifetime(h, m.lifetime);
-                dp.set_explosion_strength(h, m.explosion_strength);
-                dp.set_world_transform(h, m.transform);
-                m_active[m.handle] = static_cast<uint32_t>(m.chunks->size());
-                break;
-            }
-            case core::physics_msg_kind::unregister_destructible:
-                dp.unregister_destructible(h);
-                m_active.erase(m.handle);
-                break;
-            case core::physics_msg_kind::set_transform:
-                dp.set_world_transform(h, m.transform);
-                break;
-            case core::physics_msg_kind::apply_impact:
-            {
-                physics::impact hit;
-                hit.point = m.impact_point;
-                hit.impulse = m.impact_impulse;
-                hit.damage = m.impact_damage;
-                dp.apply_impact(h, hit);
-                break;
-            }
-            case core::physics_msg_kind::shatter:
-                dp.shatter(h);
-                break;
-            case core::physics_msg_kind::register_static_collider:
-            {
-                // The bridge minted m.handle and grew physics_system's storage at
-                // reserve(); here, on the physics thread, build the Jolt body and
-                // populate the slot that handle indexes. The borrowed mesh pointer is
-                // dereferenced (copied) right here, closing the borrow window.
-                m_ps.create_static_mesh(physics::static_body_handle{m.handle}, *m.collider_mesh);
-                break;
-            }
-            case core::physics_msg_kind::unregister_static_collider:
-                m_ps.unregister_static_mesh(physics::static_body_handle{m.handle});
-                break;
-            }
-        });
+    const physics::destructible_handle h{m.handle};
+    switch (m.kind)
+    {
+    case core::physics_msg_kind::register_destructible:
+    {
+        // Borrowed chunk pointer is dereferenced (and copied) right here, on the
+        // physics thread, closing the borrow window opened at emit.
+        dp.register_destructible(h, *m.chunks, m.damage_threshold);
+        dp.set_lifetime(h, m.lifetime);
+        dp.set_explosion_strength(h, m.explosion_strength);
+        dp.set_world_transform(h, m.transform);
+        m_active[m.handle] = static_cast<uint32_t>(m.chunks->size());
+        break;
+    }
+    case core::physics_msg_kind::unregister_destructible:
+        dp.unregister_destructible(h);
+        m_active.erase(m.handle);
+        break;
+    case core::physics_msg_kind::set_transform:
+        dp.set_world_transform(h, m.transform);
+        break;
+    case core::physics_msg_kind::apply_impact:
+    {
+        physics::impact hit;
+        hit.point = m.impact_point;
+        hit.impulse = m.impact_impulse;
+        hit.damage = m.impact_damage;
+        dp.apply_impact(h, hit);
+        break;
+    }
+    case core::physics_msg_kind::shatter:
+        dp.shatter(h);
+        break;
+    case core::physics_msg_kind::register_static_collider:
+    {
+        // The bridge minted m.handle and grew physics_system's storage at reserve();
+        // here, on the physics thread, build the Jolt body and populate the slot that
+        // handle indexes. The borrowed mesh pointer is dereferenced (copied) right
+        // here, closing the borrow window.
+        m_ps.create_static_mesh(physics::static_body_handle{m.handle}, *m.collider_mesh);
+        break;
+    }
+    case core::physics_msg_kind::unregister_static_collider:
+        m_ps.unregister_static_mesh(physics::static_body_handle{m.handle});
+        break;
+    }
 }
 
 bool
@@ -136,11 +138,11 @@ physics_command_processor::publish()
 }
 
 void
-physics_command_processor::pump(float dt, bool paused)
+physics_command_processor::process(float dt, uint32_t /*frame*/)
 {
     drain_commands();
 
-    if (paused)
+    if (m_paused.load(std::memory_order_relaxed))
     {
         return;
     }

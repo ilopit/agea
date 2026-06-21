@@ -34,7 +34,7 @@ struct render_command_base;
 // free bump-pointer rewind (reset_frame_slot).
 //
 // The frame-slot lifecycle (set_build_frame_slot / reset_frame_slot / reset_arena) is
-// driven by the frame owner (engine_threads in the streaming loop, the headless tick
+// driven by the frame owner (engine_threads_coordinator in the streaming loop, the headless tick
 // otherwise). A "frame slot" is the frame-parity index (frame & 1) selecting one of the
 // two depth-1 double buffers.
 template <typename TCmd>
@@ -124,7 +124,7 @@ private:
 //             drains the other; pointers into a per-parity arena; sized for a full frame
 //             of draw commands.
 //   - audio:  lock-free value SPSC ring — audio is fire-and-forget on a dedicated
-//             consumer thread (the audio worker in engine_threads), so there's no frame
+//             consumer thread (the audio worker in engine_threads_coordinator), so there's no frame
 //             parity and no arena:
 //             POD messages are copied straight into the ring. Main is the SOLE producer
 //             (emitter intents, listener pose, orphan stops); the audio thread is the

@@ -12,16 +12,18 @@ never touch the same queue at once.
 2. `enqueue_cmd()` — push onto the active slot's queue
 
 Consuming a slot — execute that slot's whole queue, then draw — is the render-thread
-consumer side: `render_command_processor::drain(slot)` (this lib) does the execute;
-the draw and frame-slot orchestration live on `engine_threads` (engine). The processor
-is one of three engine-owned consumer objects (audio / physics / render), driven by its
-worker thread when threaded or inline by the headless tick. The queue itself is a generic `command_queue<TCmd>`
+consumer side: `render_command_processor::process(dt, frame)` (this lib) does the execute
+(dt is unused; `frame` is the slot to drain); the draw and frame-slot orchestration live
+on `engine_threads_coordinator` (engine). The processor is one of three engine-owned consumer objects
+(audio / physics / render), each an `i_processor` (core) with the uniform
+`process(dt, frame)` iteration, driven by its worker thread when threaded or inline by the
+headless tick. The queue itself is a generic `command_queue<TCmd>`
 (core/subsystem_queues.h), instantiated as the **render channel of the neutral
 `subsystem_queues` holder** reached via `getr_subsystem_queues().render` — distinct from the
 model-side dirty tracking, which lives on `model_system` (`getr_model().dirty`). The frame-slot
 lifecycle (`set_build_frame_slot` / `reset_frame_slot` / `reset_arena`) lives on the
 `command_queue`, driven by the frame owner
-(`engine_threads` in the streaming loop, the headless tick otherwise). render_translator
+(`engine_threads_coordinator` in the streaming loop, the headless tick otherwise). render_translator
 holds no slot state; it only builds commands into the active slot.
 
 ## Model-to-render dispatch (the render_translator class)

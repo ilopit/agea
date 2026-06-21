@@ -110,7 +110,7 @@ public:
     disconnect() override;
 
     // i_translator::on_frame — mature deferred frees in all content allocators. Once
-    // per frame from the producer (engine_threads::begin_frame). Re-syncs the deferral
+    // per frame from the producer (engine_threads_coordinator::begin_frame). Re-syncs the deferral
     // window to the device's frames_in_flight so it tracks the GPU delete queue.
     void
     on_frame() override;

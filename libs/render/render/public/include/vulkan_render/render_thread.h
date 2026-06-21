@@ -8,7 +8,7 @@ namespace kryga::render
 // Per-thread render-access permission — thread_local, no shared state, no atomic.
 // Default FALSE: no thread may mutate render state until it explicitly grants
 // itself access. Exactly one thread holds it at a time:
-//   - render thread: grants itself once in engine_threads::render_loop;
+//   - render thread: grants itself once in engine_threads_coordinator::render_loop;
 //   - engine main:   grants at vulkan_engine::init for single-threaded setup, hands
 //                    off (false) before the streaming loop, reclaims after it;
 //   - tests:         grant explicitly in their fixture (single-threaded).

@@ -565,7 +565,7 @@ public:
     void
     apply_config_changes();
 
-    // --- Render-thread task queue (orchestrated by engine_threads) ----------
+    // --- Render-thread task queue (orchestrated by engine_threads_coordinator) ----------
     // Run a task ON THE RENDER THREAD, at the top of its next frame — render-state
     // access held, serialized against drain/draw. RPC handlers reading render state
     // (cache, camera, device stats) use this so they never race the render thread.
