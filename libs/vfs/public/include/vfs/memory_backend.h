@@ -52,7 +52,7 @@ private:
     struct file_entry
     {
         std::vector<uint8_t> data;
-        std::filesystem::file_time_type last_modified{};
+        std::filesystem::file_time_type last_modified;
     };
 
     std::unordered_map<std::string, file_entry> m_files;

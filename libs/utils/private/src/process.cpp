@@ -40,16 +40,16 @@ run_binary(construct_params p, std::uint64_t& result_code)
     startup_info.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
 
     std::string wd = p.working_dir.str();
-    LPSTR wd_ptr = p.working_dir.empty() ? NULL : wd.data();
+    LPSTR wd_ptr = p.working_dir.empty() ? nullptr : wd.data();
 
     auto path_to_binary = p.path_to_binary.str();
     BOOL result = ::CreateProcessA(path_to_binary.c_str(),
                                    &p.arguments[0],
-                                   NULL,
-                                   NULL,
+                                   nullptr,
+                                   nullptr,
                                    FALSE,
                                    0,
-                                   NULL,
+                                   nullptr,
                                    wd_ptr,
                                    &startup_info,
                                    &process_info);
@@ -87,8 +87,8 @@ run_binary_capture(construct_params p, std::uint64_t& result_code, std::string& 
     sa.nLength = sizeof(sa);
     sa.bInheritHandle = TRUE;
 
-    HANDLE read_pipe = NULL;
-    HANDLE write_pipe = NULL;
+    HANDLE read_pipe = nullptr;
+    HANDLE write_pipe = nullptr;
     if (!::CreatePipe(&read_pipe, &write_pipe, &sa, 0))
     {
         return false;
@@ -102,19 +102,19 @@ run_binary_capture(construct_params p, std::uint64_t& result_code, std::string& 
     startup_info.dwFlags = STARTF_USESTDHANDLES;
     startup_info.hStdOutput = write_pipe;
     startup_info.hStdError = write_pipe;
-    startup_info.hStdInput = NULL;
+    startup_info.hStdInput = nullptr;
 
     std::string wd = p.working_dir.str();
-    LPSTR wd_ptr = p.working_dir.empty() ? NULL : wd.data();
+    LPSTR wd_ptr = p.working_dir.empty() ? nullptr : wd.data();
 
     auto path_to_binary = p.path_to_binary.str();
     BOOL result = ::CreateProcessA(path_to_binary.c_str(),
                                    &p.arguments[0],
-                                   NULL,
-                                   NULL,
+                                   nullptr,
+                                   nullptr,
                                    TRUE,
                                    0,
-                                   NULL,
+                                   nullptr,
                                    wd_ptr,
                                    &startup_info,
                                    &process_info);
@@ -130,7 +130,7 @@ run_binary_capture(construct_params p, std::uint64_t& result_code, std::string& 
     captured_output.clear();
     char buf[4096];
     DWORD bytes_read = 0;
-    while (::ReadFile(read_pipe, buf, sizeof(buf), &bytes_read, NULL) && bytes_read > 0)
+    while (::ReadFile(read_pipe, buf, sizeof(buf), &bytes_read, nullptr) && bytes_read > 0)
     {
         captured_output.append(buf, bytes_read);
     }

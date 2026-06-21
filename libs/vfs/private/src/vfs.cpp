@@ -40,10 +40,10 @@ virtual_file_system::mount(const rid& target, std::filesystem::path root, const 
 
     ALOG_INFO(
         "VFS: mounting '{}' backend '{}' at priority {}", target.str(), be->name(), cfg.priority);
-    m_mounts.push_back({std::string(target.mount_point()),
-                        std::string(target.relative()),
-                        std::move(be),
-                        cfg.priority});
+    m_mounts.push_back({.mount_point = std::string(target.mount_point()),
+                        .scope = std::string(target.relative()),
+                        .be = std::move(be),
+                        .priority = cfg.priority});
 
     std::stable_sort(m_mounts.begin(),
                      m_mounts.end(),
@@ -96,10 +96,10 @@ virtual_file_system::mount_from_manifest(const rid& target,
               manifest.str(),
               entries.size(),
               cfg.priority);
-    m_mounts.push_back({std::string(target.mount_point()),
-                        std::string(target.relative()),
-                        std::move(be),
-                        cfg.priority});
+    m_mounts.push_back({.mount_point = std::string(target.mount_point()),
+                        .scope = std::string(target.relative()),
+                        .be = std::move(be),
+                        .priority = cfg.priority});
 
     std::stable_sort(m_mounts.begin(),
                      m_mounts.end(),
@@ -119,7 +119,10 @@ void
 virtual_file_system::mount(std::string mount_point, std::unique_ptr<backend> b, int priority)
 {
     ALOG_INFO("VFS: mounting '{}' backend '{}' at priority {}", mount_point, b->name(), priority);
-    m_mounts.push_back({std::move(mount_point), {}, std::move(b), priority});
+    m_mounts.push_back({.mount_point = std::move(mount_point),
+                        .scope = {},
+                        .be = std::move(b),
+                        .priority = priority});
 
     std::stable_sort(m_mounts.begin(),
                      m_mounts.end(),
@@ -185,7 +188,7 @@ virtual_file_system::find_read_backend(std::string_view mount_point,
         auto info = e.be->stat(lookup);
         if (info.exists)
         {
-            return {e.be.get(), lookup};
+            return {.be = e.be.get(), .relative = lookup};
         }
     }
 
@@ -449,7 +452,7 @@ virtual_file_system::enumerate_objects(const rid& scope,
                                        backend* filter_be) const
 {
     auto make_rid = [&](const mount_entry& e, const std::string& path) -> rid
-    { return rid(scope.mount_point(), e.scope.empty() ? path : e.scope + "/" + path); };
+    { return {scope.mount_point(), e.scope.empty() ? path : e.scope + "/" + path}; };
 
     if (filter_be)
     {
@@ -576,7 +579,7 @@ virtual_file_system::create_temp_dir()
     auto rp = real_path(tmp_id);
     if (rp.has_value())
     {
-        return temp_dir_context(APATH(rp.value()));
+        return {APATH(rp.value())};
     }
 
     ALOG_ERROR("VFS: failed to create temp dir — no real path for tmp://");

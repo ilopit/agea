@@ -37,7 +37,7 @@ discover_exe_path_native()
     {
         return {};
     }
-    return fs::path(buf, buf + n);
+    return {buf, buf + n};
 #elif defined(__APPLE__)
     char buf[4096];
     uint32_t size = sizeof(buf);

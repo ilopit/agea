@@ -8,7 +8,7 @@ namespace kryga
 {
 namespace utils
 {
-inline constexpr size_t
+constexpr size_t
 id_size_in_bytes()
 {
     return 63;

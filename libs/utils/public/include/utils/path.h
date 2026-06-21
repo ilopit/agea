@@ -3,6 +3,7 @@
 #include "utils/check.h"
 
 #include <filesystem>
+#include <utility>
 
 namespace kryga
 {
@@ -24,8 +25,8 @@ public:
         normalize();
     }
 
-    explicit path(const std::filesystem::path& p)
-        : m_value(p)
+    explicit path(std::filesystem::path p)
+        : m_value(std::move(p))
     {
         normalize();
     }

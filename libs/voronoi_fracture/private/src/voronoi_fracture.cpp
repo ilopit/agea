@@ -111,9 +111,9 @@ smooth_step(float t)
 float
 value_noise(const glm::vec3& p, uint32_t seed)
 {
-    int32_t ix = int32_t(std::floor(p.x));
-    int32_t iy = int32_t(std::floor(p.y));
-    int32_t iz = int32_t(std::floor(p.z));
+    auto ix = int32_t(std::floor(p.x));
+    auto iy = int32_t(std::floor(p.y));
+    auto iz = int32_t(std::floor(p.z));
     float fx = smooth_step(p.x - float(ix));
     float fy = smooth_step(p.y - float(iy));
     float fz = smooth_step(p.z - float(iz));
@@ -167,10 +167,10 @@ subdivide_triangle(const sub_tri& t, int levels, std::vector<sub_tri>& out)
     glm::vec3 mab = (t.a + t.b) * 0.5f;
     glm::vec3 mbc = (t.b + t.c) * 0.5f;
     glm::vec3 mca = (t.c + t.a) * 0.5f;
-    subdivide_triangle({t.a, mab, mca}, levels - 1, out);
-    subdivide_triangle({mab, t.b, mbc}, levels - 1, out);
-    subdivide_triangle({mca, mbc, t.c}, levels - 1, out);
-    subdivide_triangle({mab, mbc, mca}, levels - 1, out);
+    subdivide_triangle({.a = t.a, .b = mab, .c = mca}, levels - 1, out);
+    subdivide_triangle({.a = mab, .b = t.b, .c = mbc}, levels - 1, out);
+    subdivide_triangle({.a = mca, .b = mbc, .c = t.c}, levels - 1, out);
+    subdivide_triangle({.a = mab, .b = mbc, .c = mca}, levels - 1, out);
 }
 
 // ── Manifold integration ────────────────────────────────────────────────────
@@ -211,9 +211,9 @@ build_input_manifold(const gpu::vertex_data* verts,
     for (uint32_t i = 0; i < vert_count; ++i)
     {
         auto& p = verts[i].position;
-        pos_key k{int32_t(std::round(p.x * inv_eps)),
-                  int32_t(std::round(p.y * inv_eps)),
-                  int32_t(std::round(p.z * inv_eps))};
+        pos_key k{.x = int32_t(std::round(p.x * inv_eps)),
+                  .y = int32_t(std::round(p.y * inv_eps)),
+                  .z = int32_t(std::round(p.z * inv_eps))};
         auto [it, ok] = dedup.try_emplace(k, uint32_t(props.size() / 3));
         if (ok)
         {
@@ -311,7 +311,7 @@ emit_flat_triangle(const glm::vec3 p[3], const glm::vec3& chunk_center, chunk& c
         fn = -fn;
     }
 
-    uint32_t base = uint32_t(ck.vertices.size());
+    auto base = uint32_t(ck.vertices.size());
     for (int k = 0; k < 3; ++k)
     {
         gpu::vertex_data v{};
@@ -371,7 +371,7 @@ manifold_to_chunk(const manifold::MeshGL& mesh,
             float noise_scale = 4.0f / glm::max(edge_len, 1e-4f);
 
             std::vector<sub_tri> subs;
-            subdivide_triangle({p[0], p[1], p[2]}, 2, subs);
+            subdivide_triangle({.a = p[0], .b = p[1], .c = p[2]}, 2, subs);
 
             for (auto& st : subs)
             {

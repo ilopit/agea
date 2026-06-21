@@ -29,7 +29,6 @@ string_utils::split(const std::string& s, const std::string& del, std::vector<st
 
         start = ((end > (std::string::npos - del.size())) ? std::string::npos : end + del.size());
     }
-    return;
 }
 
 bool

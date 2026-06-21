@@ -91,7 +91,7 @@ protected:
     base_view(uint64_t offset,
               uint8_t* data,
               const dynobj_field* cur_field,
-              const utils::dynobj_layout_sptr& layout);
+              utils::dynobj_layout_sptr layout);
 
     static uint32_t
     get_type_id(const dynobj_field* f);
@@ -129,7 +129,7 @@ public:
     dynobj_view(uint64_t offset,
                 uint8_t* data,
                 const dynobj_field* cur_field,
-                std::shared_ptr<dynobj_layout> layout)
+                const std::shared_ptr<dynobj_layout>& layout)
         : base_view(offset, data, cur_field, layout)
     {
     }
@@ -409,7 +409,7 @@ class dynobj
 {
 public:
     dynobj()
-        : m_layout()
+
     {
     }
 

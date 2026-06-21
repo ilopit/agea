@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 #include <cstdio>
 #include <cstdlib>
+#include <print>
 
 #if KRG_PLATFORM_WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -36,7 +37,7 @@ assert_fail(const char* expr, const char* file, int line)
     }
     else
     {
-        fprintf(stderr, "ASSERT FAILED: %s (%s:%d)\n", expr, file, line);
+        std::println(stderr, "ASSERT FAILED: {} ({}:{})", expr, file, line);
         fflush(stderr);
     }
 

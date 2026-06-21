@@ -19,9 +19,7 @@ using dynobj_layout_sptr = std::shared_ptr<dynobj_layout>;
 
 struct dynobj_field_context
 {
-    virtual ~dynobj_field_context()
-    {
-    }
+    virtual ~dynobj_field_context() = default;
 };
 
 using dynobj_context_uptr = std::unique_ptr<dynobj_field_context>;

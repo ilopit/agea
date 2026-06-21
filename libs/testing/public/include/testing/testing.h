@@ -25,13 +25,13 @@ struct testing_base
 struct base_test : public testing_base, public testing::Test
 {
     void
-    SetUp()
+    SetUp() override
     {
         Do_SetUp();
     }
 
     void
-    TearDown()
+    TearDown() override
     {
         Do_TearDown();
     }

@@ -193,10 +193,10 @@ public:
     state(state&&) = default;
 
     state&
-    operator=(state&& other);
+    operator=(state&& other) noexcept;
 
     int
-    schedule_action(state_stage execute_at, scheduled_action action);
+    schedule_action(state_stage execute_at, const scheduled_action& action);
 
     void
     run_create();
@@ -239,7 +239,7 @@ public:
     T*
     create_box(std::string name)
     {
-        state_type_box<T>* box = new state_type_box<T>(std::move(name));
+        auto* box = new state_type_box<T>(std::move(name));
         auto obj = box->get();
 
         std::unique_ptr<state_base_box> ubox(box);
@@ -253,7 +253,7 @@ public:
     T*
     create_box_with_obj(std::string name, T value)
     {
-        state_type_box<T>* box = new state_type_box<T>(std::move(name), std::move(value));
+        auto* box = new state_type_box<T>(std::move(name), std::move(value));
         auto obj = box->get();
 
         std::unique_ptr<state_base_box> ubox(box);

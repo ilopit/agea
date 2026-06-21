@@ -20,7 +20,7 @@ namespace vfs
 struct file_info
 {
     uint64_t size = 0;
-    std::filesystem::file_time_type last_modified{};
+    std::filesystem::file_time_type last_modified;
     bool exists = false;
     bool is_directory = false;
 };

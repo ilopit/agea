@@ -67,9 +67,7 @@ state_base_box::~state_base_box()
     ALOG_TRACE("Box [{}] destroyed ", box_name);
 }
 
-state::state()
-{
-}
+state::state() = default;
 
 state::~state()
 {
@@ -77,7 +75,7 @@ state::~state()
 }
 
 state&
-state::operator=(state&& other)
+state::operator=(state&& other) noexcept
 {
     if (this != &other)
     {
@@ -110,7 +108,7 @@ state::cleanup()
 }
 
 int
-state::schedule_action(state_stage stage, scheduled_action action)
+state::schedule_action(state_stage stage, const scheduled_action& action)
 {
     auto& node = m_scheduled_actions[(size_t)stage];
 

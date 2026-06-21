@@ -70,15 +70,15 @@ struct test_type
     static constexpr id
     decode(const T&)
     {
-        if constexpr (std::is_same<T, float>::value)
+        if constexpr (std::is_same_v<T, float>)
         {
             return id::id_float;
         }
-        else if constexpr (std::is_same<T, uint32_t>::value)
+        else if constexpr (std::is_same_v<T, uint32_t>)
         {
             return id::id_uint32;
         }
-        else if constexpr (std::is_same<T, std::array<float, 3>>::value)
+        else if constexpr (std::is_same_v<T, std::array<float, 3>>)
         {
             return id::id_vec3;
         }

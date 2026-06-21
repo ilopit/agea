@@ -11,6 +11,9 @@
 #   tools/tidy.sh --fix          # apply auto-fixable diagnostics
 #   tools/tidy.sh --all          # whole tree (slow)
 #   tools/tidy.sh --configure    # (re)generate build_tidy/compile_commands.json, then run
+#   tools/tidy.sh [--fix] <path>...  # scope to path(s), e.g. libs/core. Header fixes are
+#                                    # restricted to the scope, so parallel per-lib --fix
+#                                    # runs never touch the same header. Skips changed/all.
 #
 # Toolchain (clang-tidy, vcvars64.bat) is auto-discovered via vswhere — works across
 # VS versions/editions/drives. Override with CLANG_TIDY=... and/or VCVARS=... if needed.
@@ -57,13 +60,14 @@ if [[ -z "${CLANG_TIDY:-}" ]]; then
 fi
 [[ -n "$CLANG_TIDY" ]] || { echo "ERROR: clang-tidy not found. Set CLANG_TIDY= or install the VS 'C++ Clang tools'." >&2; exit 1; }
 
-FIX="" ; ALL=0 ; CONFIGURE=0
+FIX="" ; ALL=0 ; CONFIGURE=0 ; SCOPES=()
 for arg in "$@"; do
   case "$arg" in
     --fix) FIX="--fix" ;;
     --all) ALL=1 ;;
     --configure) CONFIGURE=1 ;;
-    *) echo "unknown arg: $arg" >&2; exit 2 ;;
+    --*) echo "unknown flag: $arg" >&2; exit 2 ;;
+    *) SCOPES+=("$arg") ;;   # path scope(s), e.g. libs/core — see collection below
   esac
 done
 
@@ -92,7 +96,17 @@ if [[ "$CONFIGURE" -eq 1 || ! -f "$DB_DIR/compile_commands.json" ]]; then
 fi
 
 # Collect targets; drop build artifacts, thirdparty, and argen-generated TUs.
-if [[ "$ALL" -eq 1 ]]; then
+# HF overrides the config's HeaderFilterRegex so a scoped run only FIXES headers
+# inside that scope — this is what makes parallel per-lib --fix safe (each scope
+# owns its own headers; no two runs write the same header).
+HF=""
+if [[ ${#SCOPES[@]} -gt 0 ]]; then
+  # Scoped: every .cpp TU under the given path(s). Headers fixed via HF below.
+  mapfile -t FILES < <(git ls-files -- "${SCOPES[@]}" | grep -E '\.cpp$' || true)
+  parts=()
+  for s in "${SCOPES[@]}"; do s="${s%/}"; parts+=("${s//\//[/\\\\]}"); done
+  IFS='|'; HF=".*(${parts[*]})[/\\\\].*"; unset IFS
+elif [[ "$ALL" -eq 1 ]]; then
   mapfile -t FILES < <(git ls-files -- '*.h' '*.cpp')
 else
   mapfile -t FILES < <( { git diff --name-only HEAD -- '*.h' '*.cpp'; \
@@ -115,5 +129,16 @@ echo "clang-tidy: ${#FILTERED[@]} file(s)${FIX:+ (--fix)}"
 # can't find. File args stay relative (clang-tidy accepts forward slashes fine).
 CT_WIN="$(cygpath -w "$CLANG_TIDY")"
 CMD="\"$CT_WIN\" -p $DB_DIR ${FIX}"
+[[ -n "$HF" ]] && CMD+=" --header-filter=\"$HF\""
+# These checks produce BUILD-BREAKING auto-fixes and must never be applied via --fix:
+#  - identifier-naming renames third-party symbols we forward-declare (JPH::BodyID,
+#    Json::Value, YAML::Node) and GTest contract methods (SetUp/TearDown/PrintTo).
+#  - macro-parentheses parenthesizes macro *return types* (KRG_gen_getter), invalid C++.
+# They stay active as DIAGNOSTICS in report mode (no --fix); only suppressed when fixing.
+#  - use-ranges rewrites remove_if/unique to std::ranges:: which return a subrange,
+#    breaking the erase-remove idiom (erase(it,end) no longer compiles).
+# NOTE: even with these off, --fix is heuristic and CAN break the build — always
+# build-verify after fixing (ideally per-lib), and revert the lib if it fails.
+[[ -n "$FIX" ]] && CMD+=" --checks=-readability-identifier-naming,-bugprone-macro-parentheses,-modernize-use-ranges"
 for f in "${FILTERED[@]}"; do CMD+=" \"$f\""; done
 run_in_vcvars "$CMD"

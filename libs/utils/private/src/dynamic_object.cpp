@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "utils/dynamic_object.h"
 
 #include "utils/dynamic_object_builder.h"
@@ -93,11 +95,11 @@ base_view::id() const
 base_view::base_view(uint64_t offset,
                      uint8_t* data,
                      const dynobj_field* cur_field,
-                     const utils::dynobj_layout_sptr& layout)
+                     utils::dynobj_layout_sptr layout)
     : m_offset(offset)
     , m_data(data)
     , m_cur_field(cur_field)
-    , m_layout(layout)
+    , m_layout(std::move(layout))
 {
 }
 
