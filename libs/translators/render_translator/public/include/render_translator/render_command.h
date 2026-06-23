@@ -42,6 +42,8 @@ enum class render_cmd_kind : uint16_t
     create_lightmap,
     destroy_lightmap,
     apply_bones,
+    ui_panel_upsert,
+    ui_panel_destroy,
 };
 
 struct render_exec_context

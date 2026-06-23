@@ -4,6 +4,7 @@
 #include <core/level.h>
 #include <core/level_manager.h>
 #include <core/package_manager.h>
+#include <core/screen_manager.h>
 #include <core/id_generator.h>
 #include <core/model_dirty.h>
 #include <core/reflection/reflection_type.h>
@@ -39,6 +40,7 @@ public:
     id_generator id_gen;
     level_manager levels;
     package_manager packages;
+    screen_manager screens;  // live UI screens, peer to levels/packages
 
     level* current_level = nullptr;
 

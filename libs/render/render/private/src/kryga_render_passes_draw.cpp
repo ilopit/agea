@@ -177,9 +177,70 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
     {
         draw_debug_overlay(cmd, current_frame);
         draw_outline_post(cmd, current_frame);
+
+        // Layer order: player-facing UI panels first, then the ImGui editor chrome
+        // composited on top of them. Panels are not ImGui-gated (they ship in game
+        // builds); ImGui is editor-only and always sits above our UI.
+        draw_ui_panels(cmd);
 #if KRG_HAS_IMGUI
         draw_ui_overlay(cmd, current_frame);
 #endif
+    }
+    else
+    {
+        // Render-scale on: the full-res overlays + ImGui run later in draw_composite,
+        // which executes after this lowres pass — so ImGui already lands on top of
+        // the panels there. Panels must still be drawn here in the main pass: the
+        // se_ui_panel pipeline is built for main_pass and would be invalid in the
+        // composite pass.
+        draw_ui_panels(cmd);
+    }
+}
+
+// ============================================================================
+// UI Panels (packages/ui retained-mode widgets)
+// ============================================================================
+
+void
+vulkan_render::ui_panel_create_or_update(const utils::id& id, const ui_panel_entry& e)
+{
+    m_ui_panels[id] = e;
+}
+
+void
+vulkan_render::ui_panel_destroy(const utils::id& id)
+{
+    m_ui_panels.erase(id);
+}
+
+void
+vulkan_render::draw_ui_panels(VkCommandBuffer cmd)
+{
+    if (!m_ui_panel_se || m_ui_panels.empty())
+    {
+        return;
+    }
+
+    struct ui_panel_push_constants
+    {
+        glm::vec4 rect_ndc;
+        glm::vec4 color_opacity;
+    };
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_ui_panel_se->m_pipeline);
+
+    auto pipeline_layout = m_ui_panel_se->m_pipeline_layout;
+
+    for (auto& [id, entry] : m_ui_panels)
+    {
+        ui_panel_push_constants pc{entry.rect_ndc, entry.color_opacity};
+        vkCmdPushConstants(cmd,
+                           pipeline_layout,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(pc),
+                           &pc);
+        vkCmdDraw(cmd, 6, 1, 0, 0);
     }
 }
 

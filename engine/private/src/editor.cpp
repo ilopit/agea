@@ -36,6 +36,8 @@
 #include <packages/root/model/components/destructible_mesh_component.h>
 #include <packages/root/model/assets/destructible_mesh_asset.h>
 #include <packages/root/model/components/camera_component.h>
+#include <packages/tbs/model/hex_grid.h>
+#include <packages/ui/model/ui_panel.h>
 
 #include <gpu_types/gpu_generic_constants.h>
 
@@ -229,6 +231,41 @@ game_editor::ev_reload()
     }
 
     glob::glob_state().getr_engine().init_scene();
+}
+
+void
+game_editor::ev_spawn2()
+{
+    tbs::hex_grid::construct_params cprms;
+    auto pp = glob::glob_state().getr_model().current_level->spawn_object<tbs::hex_grid>(AID("gg"),
+                                                                                         cprms);
+}
+
+void
+game_editor::ev_spawn_ui()
+{
+    // UI lives on a model-owned screen, NOT the level: a HUD/menu must survive
+    // level switches. Lazily create the demo screen on first use.
+    auto& screens = glob::glob_state().getr_model().screens;
+    auto* screen = screens.active();
+    if (!screen)
+    {
+        screen = screens.push(AID("hud"));
+    }
+
+    ui::ui_panel::construct_params cprms;
+    auto* panel = screen->spawn_widget<ui::ui_panel>(AID("ui_demo_panel"), cprms);
+
+    panel->set_x(80);
+    panel->set_y(80);
+    panel->set_width(400);
+    panel->set_height(250);
+    panel->set_color({0.90f, 0.30f, 0.20f});
+    panel->set_opacity(1.0f);
+
+    // spawn_widget already queued the first render build; the setters above are
+    // no-ops on a freshly-constructed object (mark_render_dirty skips
+    // state==constructed), so no extra queue is needed.
 }
 
 void

@@ -911,6 +911,10 @@ vulkan_engine::tick(float dt)
     session.tick(dt);
 #endif
 
+    // UI screens tick every frame, independent of play mode — UI animation must
+    // run in edit mode too (same rationale as the animation system below).
+    glob::glob_state().getr_model().screens.tick(dt);
+
     if (auto* anim = glob::glob_state().get_animation_system())
     {
         anim->tick(dt);
@@ -1160,6 +1164,13 @@ vulkan_engine::init_scene()
         // Editor-only debug helpers that populate the sandbox scene.
         glob::glob_state().getr_editor_system().editor.ev_spawn();
         glob::glob_state().getr_editor_system().editor.ev_lights();
+        // Opt-in UI smoke test: spawn a demo panel so the ui_panel render path
+        // exercises end-to-end. KRG_UI_DEMO gates the spawn, but ev_spawn_ui's
+        // reference to ui::ui_panel force-links packages.ui unconditionally.
+        if (std::getenv("KRG_UI_DEMO"))
+        {
+            glob::glob_state().getr_editor_system().editor.ev_spawn_ui();
+        }
 #endif
     }
 

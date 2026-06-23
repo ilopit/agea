@@ -1365,6 +1365,42 @@ vulkan_render::prepare_system_resources()
         m_debug_cone_mesh = create_mesh(
             AID("debug_cone_mesh"), vb.make_view<gpu::vertex_data>(), ib.make_view<gpu::uint>());
     }
+
+    init_ui_panel_pipeline();
+}
+
+void
+vulkan_render::init_ui_panel_pipeline()
+{
+    vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
+
+    auto v_r = render::shader_loader::load(se_base / "ui/se_ui_panel.vert.spv");
+    auto f_r = render::shader_loader::load(se_base / "ui/se_ui_panel.frag.spv");
+    if (!v_r || !f_r)
+    {
+        ALOG_ERROR("UI panel shader files missing");
+        return;
+    }
+    kryga::utils::buffer vert = std::move(*v_r);
+    kryga::utils::buffer frag = std::move(*f_r);
+
+    auto main_pass = glob::glob_state().getr_render().loader.get_render_pass(AID("main"));
+
+    shader_effect_create_info se_ci = {};
+    se_ci.vert_buffer = &vert;
+    se_ci.frag_buffer = &frag;
+    se_ci.is_wire = false;
+    se_ci.enable_dynamic_state = false;
+    se_ci.alpha = alpha_mode::world;
+    se_ci.depth_compare_op = VK_COMPARE_OP_ALWAYS;
+    se_ci.ds_mode = depth_stencil_mode::none;
+    se_ci.cull_mode = VK_CULL_MODE_NONE;
+    se_ci.height = m_height;
+    se_ci.width = m_width;
+
+    m_ui_panel_se = nullptr;
+    auto rc = main_pass->create_shader_effect(AID("se_ui_panel"), se_ci, m_ui_panel_se);
+    KRG_check(rc == result_code::ok && m_ui_panel_se, "UI panel shader effect creation failed!");
 }
 
 void

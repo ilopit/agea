@@ -234,7 +234,7 @@ struct create_light_cmd : render_cmd::render_command_base
 
     utils::id id;
     render::types::directional_light_handle dir_handle;  // set when kind==directional
-    render::types::universal_light_handle uni_handle;     // set when kind==point/spot
+    render::types::universal_light_handle uni_handle;    // set when kind==point/spot
     light_kind kind = light_kind::point;
     glm::vec3 position{0.0f};
     glm::vec3 ambient{0.0f};
@@ -326,6 +326,35 @@ struct apply_bones_cmd : render_cmd::render_command_base
 
     std::vector<glm::mat4> matrices;
     std::vector<bone_instance_update> updates;
+};
+
+// ============================================================================
+// UI panels (packages/ui retained-mode widgets)
+//
+// Raw pixel rect (top-left origin) + flat color. The pixel->NDC conversion and
+// viewport lookup are deferred to the render thread (process(), where the live
+// viewport size is known), so the model thread never reads render state.
+// ============================================================================
+
+struct ui_panel_upsert_cmd : render_cmd::render_command_base
+{
+    static constexpr auto k_kind = render_cmd::render_cmd_kind::ui_panel_upsert;
+
+    utils::id id;
+    int32_t x = 0;
+    int32_t y = 0;
+    int32_t w = 0;
+    int32_t h = 0;
+    glm::vec3 color{0.0f};
+    float opacity = 1.0f;
+    bool visible = true;
+};
+
+struct ui_panel_destroy_cmd : render_cmd::render_command_base
+{
+    static constexpr auto k_kind = render_cmd::render_cmd_kind::ui_panel_destroy;
+
+    utils::id id;
 };
 
 }  // namespace kryga

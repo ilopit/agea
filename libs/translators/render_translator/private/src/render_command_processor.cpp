@@ -639,6 +639,53 @@ process(apply_bones_cmd& c, render_cmd::render_exec_context& ctx)
 }
 
 // ============================================================================
+// UI panels (packages/ui retained-mode widgets)
+// ============================================================================
+
+namespace
+{
+
+// Pixel rect (top-left origin) -> NDC rect (min, max) using the current viewport
+// size. Y maps directly: pixel +y = down, and Vulkan NDC +y also points down.
+glm::vec4
+ui_pixels_to_ndc(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t vw, uint32_t vh)
+{
+    float fvw = static_cast<float>(vw == 0 ? 1u : vw);
+    float fvh = static_cast<float>(vh == 0 ? 1u : vh);
+
+    float x0 = (static_cast<float>(x) / fvw) * 2.f - 1.f;
+    float x1 = (static_cast<float>(x + w) / fvw) * 2.f - 1.f;
+    float y0 = (static_cast<float>(y) / fvh) * 2.f - 1.f;
+    float y1 = (static_cast<float>(y + h) / fvh) * 2.f - 1.f;
+
+    return glm::vec4(x0, y0, x1, y1);
+}
+
+}  // namespace
+
+static void
+process(ui_panel_upsert_cmd& c, render_cmd::render_exec_context& ctx)
+{
+    if (!c.visible)
+    {
+        ctx.vr.ui_panel_destroy(c.id);
+        return;
+    }
+
+    render::vulkan_render::ui_panel_entry entry;
+    entry.rect_ndc = ui_pixels_to_ndc(c.x, c.y, c.w, c.h, ctx.vr.get_width(), ctx.vr.get_height());
+    entry.color_opacity = glm::vec4(c.color, c.opacity);
+
+    ctx.vr.ui_panel_create_or_update(c.id, entry);
+}
+
+static void
+process(ui_panel_destroy_cmd& c, render_cmd::render_exec_context& ctx)
+{
+    ctx.vr.ui_panel_destroy(c.id);
+}
+
+// ============================================================================
 // run_and_destroy — run the matching process() overload (ADL), then destruct the
 // command in place (the arena only rewinds; ~T() releases non-trivial members).
 // ============================================================================
@@ -748,6 +795,12 @@ render_command_processor::apply(render_cmd::render_command_base* cmd)
         break;
     case render_cmd::render_cmd_kind::apply_bones:
         render_cmd::run_and_destroy<apply_bones_cmd>(cmd, ctx);
+        break;
+    case render_cmd::render_cmd_kind::ui_panel_upsert:
+        render_cmd::run_and_destroy<ui_panel_upsert_cmd>(cmd, ctx);
+        break;
+    case render_cmd::render_cmd_kind::ui_panel_destroy:
+        render_cmd::run_and_destroy<ui_panel_destroy_cmd>(cmd, ctx);
         break;
     }
 }

@@ -81,6 +81,16 @@ public:
     ev_spawn();
 
     void
+    ev_spawn2();
+
+    // Spawns a demo ui_panel into the current level and queues it for render.
+    // Doubles as the force-link anchor for packages.ui (a reference to ui::ui_panel
+    // in this already-linked TU pulls the package's generated static-init object
+    // file in, so its types register). Gated at the call site by KRG_UI_DEMO.
+    void
+    ev_spawn_ui();
+
+    void
     ev_lights();
 
     void
