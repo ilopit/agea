@@ -12,7 +12,7 @@ namespace kryga::render::test
 {
 
 inline void
-print_layout(const ::kryga::utils::dynobj_layout_sptr l)
+print_layout(const ::kryga::utils::dynobj_layout_sptr& l)
 {
     auto view = l->make_view<gpu_type>();
 

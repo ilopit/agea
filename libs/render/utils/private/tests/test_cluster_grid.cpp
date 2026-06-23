@@ -147,7 +147,7 @@ TEST(ClusterGrid, light_at_origin_assigned_to_clusters)
     glm::mat4 inv_proj = glm::inverse(proj);
 
     std::vector<cluster_light_info> lights;
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, 0.0f), 5.0f});
+    lights.push_back({.slot = 0, .position = glm::vec3(0.0f, 0.0f, 0.0f), .radius = 5.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -169,7 +169,7 @@ TEST(ClusterGrid, light_behind_camera_not_assigned)
 
     std::vector<cluster_light_info> lights;
     // Light behind camera (positive Z when camera looks down -Z)
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, 50.0f), 5.0f});
+    lights.push_back({.slot = 0, .position = glm::vec3(0.0f, 0.0f, 50.0f), .radius = 5.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -189,7 +189,7 @@ TEST(ClusterGrid, light_beyond_far_plane_not_assigned)
 
     std::vector<cluster_light_info> lights;
     // Light way beyond far plane
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, -500.0f), 5.0f});
+    lights.push_back({.slot = 0, .position = glm::vec3(0.0f, 0.0f, -500.0f), .radius = 5.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -208,7 +208,7 @@ TEST(ClusterGrid, large_radius_light_assigned_to_many_clusters)
 
     std::vector<cluster_light_info> lights;
     // Large light at origin
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, 0.0f), 100.0f});
+    lights.push_back({.slot = 0, .position = glm::vec3(0.0f, 0.0f, 0.0f), .radius = 100.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -227,7 +227,7 @@ TEST(ClusterGrid, clear_removes_assignments)
     glm::mat4 inv_proj = glm::inverse(proj);
 
     std::vector<cluster_light_info> lights;
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, 0.0f), 5.0f});
+    lights.push_back({.slot = 0, .position = glm::vec3(0.0f, 0.0f, 0.0f), .radius = 5.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
     EXPECT_GT(grid.get_active_clusters(), 0u);
@@ -281,9 +281,12 @@ TEST(ClusterGrid, multiple_lights_at_different_depths)
 
     std::vector<cluster_light_info> lights;
     // Lights at different depths along -Z axis
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, -10.0f), 5.0f});   // Near
-    lights.push_back({1, glm::vec3(0.0f, 0.0f, -100.0f), 5.0f});  // Mid
-    lights.push_back({2, glm::vec3(0.0f, 0.0f, -500.0f), 5.0f});  // Far
+    lights.push_back(
+        {.slot = 0, .position = glm::vec3(0.0f, 0.0f, -10.0f), .radius = 5.0f});  // Near
+    lights.push_back(
+        {.slot = 1, .position = glm::vec3(0.0f, 0.0f, -100.0f), .radius = 5.0f});  // Mid
+    lights.push_back(
+        {.slot = 2, .position = glm::vec3(0.0f, 0.0f, -500.0f), .radius = 5.0f});  // Far
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -307,7 +310,7 @@ TEST(ClusterGrid, shader_lookup_consistency)
 
     // Light at origin
     std::vector<cluster_light_info> lights;
-    lights.push_back({42, glm::vec3(0.0f, 0.0f, 0.0f), 10.0f});
+    lights.push_back({.slot = 42, .position = glm::vec3(0.0f, 0.0f, 0.0f), .radius = 10.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -369,7 +372,7 @@ TEST(ClusterGrid, vulkan_projection_shader_lookup_consistency)
 
     // Light at origin
     std::vector<cluster_light_info> lights;
-    lights.push_back({42, glm::vec3(0.0f, 0.0f, 0.0f), 10.0f});
+    lights.push_back({.slot = 42, .position = glm::vec3(0.0f, 0.0f, 0.0f), .radius = 10.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -432,7 +435,7 @@ TEST(ClusterGrid, vulkan_projection_off_center_light)
     // Light above center, 50 units in front
     glm::vec3 light_pos(0.0f, 20.0f, -50.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({99, light_pos, 15.0f});
+    lights.push_back({.slot = 99, .position = light_pos, .radius = 15.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -508,7 +511,7 @@ TEST(ClusterGrid, far_depth_light_assignment)
     // Light at far distance (1500 units in front of camera)
     glm::vec3 light_pos(0.0f, 0.0f, -1500.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({77, light_pos, 100.0f});
+    lights.push_back({.slot = 77, .position = light_pos, .radius = 100.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -575,7 +578,7 @@ TEST(ClusterGrid, very_far_depth_light_near_far_plane)
     // Light at 1900 units (close to far plane of KGPU_zfar)
     glm::vec3 light_pos(0.0f, 0.0f, -1900.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({88, light_pos, 150.0f});
+    lights.push_back({.slot = 88, .position = light_pos, .radius = 150.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -638,7 +641,7 @@ TEST(ClusterGrid, camera_offset_far_light)
     // Light at world origin with radius 50
     glm::vec3 light_world_pos(0.0f, 0.0f, 0.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({55, light_world_pos, 50.0f});
+    lights.push_back({.slot = 55, .position = light_world_pos, .radius = 50.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -722,10 +725,17 @@ TEST(ClusterGrid, multiple_lights_correct_assignment)
 
     // Multiple lights at different depths
     std::vector<cluster_light_info> lights;
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, -50.0f), 50.0f});    // Near: depth 50
-    lights.push_back({1, glm::vec3(0.0f, 0.0f, -200.0f), 50.0f});   // Mid: depth 200
-    lights.push_back({2, glm::vec3(0.0f, 0.0f, -800.0f), 50.0f});   // Far: depth 800
-    lights.push_back({3, glm::vec3(0.0f, 0.0f, -1200.0f), 50.0f});  // Very far: depth 1200
+    lights.push_back(
+        {.slot = 0, .position = glm::vec3(0.0f, 0.0f, -50.0f), .radius = 50.0f});  // Near: depth 50
+    lights.push_back(
+        {.slot = 1, .position = glm::vec3(0.0f, 0.0f, -200.0f), .radius = 50.0f});  // Mid: depth
+                                                                                    // 200
+    lights.push_back(
+        {.slot = 2, .position = glm::vec3(0.0f, 0.0f, -800.0f), .radius = 50.0f});  // Far: depth
+                                                                                    // 800
+    lights.push_back(
+        {.slot = 3, .position = glm::vec3(0.0f, 0.0f, -1200.0f), .radius = 50.0f});  // Very far:
+                                                                                     // depth 1200
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -805,7 +815,7 @@ TEST(ClusterGrid, near_light_not_in_far_cluster)
     // Near light at depth 100 with radius 50
     glm::vec3 near_light_pos(0.0f, 0.0f, -100.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({11, near_light_pos, 50.0f});
+    lights.push_back({.slot = 11, .position = near_light_pos, .radius = 50.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -874,7 +884,7 @@ TEST(ClusterGrid, depth_800_boundary)
     // Light at depth 800 with radius 50
     glm::vec3 light_world_pos(0.0f, 0.0f, -800.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({77, light_world_pos, 50.0f});
+    lights.push_back({.slot = 77, .position = light_world_pos, .radius = 50.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -951,7 +961,7 @@ TEST(ClusterGrid, very_far_object_and_light)
     // Light at Z=-1200 (1200 units in front of camera) with radius 50
     glm::vec3 light_world_pos(0.0f, 0.0f, -1200.0f);
     std::vector<cluster_light_info> lights;
-    lights.push_back({66, light_world_pos, 50.0f});
+    lights.push_back({.slot = 66, .position = light_world_pos, .radius = 50.0f});
 
     grid.build_clusters(view, proj, inv_proj, lights);
 
@@ -1029,7 +1039,7 @@ TEST(ClusterGrid, far_aabb_extents)
 
     // Just need to build clusters to populate AABBs
     std::vector<cluster_light_info> lights;
-    lights.push_back({0, glm::vec3(0.0f, 0.0f, -100.0f), 50.0f});
+    lights.push_back({.slot = 0, .position = glm::vec3(0.0f, 0.0f, -100.0f), .radius = 50.0f});
     grid.build_clusters(view, proj, inv_proj, lights);
 
     const auto& aabbs = grid.get_cluster_aabbs();

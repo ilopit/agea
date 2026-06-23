@@ -23,7 +23,7 @@ create_pool(const descriptor_allocator::pool_sizes_mapping& pool_sizes,
     sizes.reserve(pool_sizes.size());
     for (const auto& [f, s] : pool_sizes)
     {
-        sizes.push_back({f, uint32_t(s * sets_count)});
+        sizes.push_back({.type = f, .descriptorCount = uint32_t(s * sets_count)});
     }
 
     VkDescriptorPoolCreateInfo pool_info = {};

@@ -195,7 +195,8 @@ flatten_lightmap_manifest(const core::lightmap_manifest& manifest)
     out.reserve(manifest.objects.size());
     for (const auto& [oid, entry] : manifest.objects)
     {
-        out[oid] = render::lightmap_uv{entry.lightmap_scale, entry.lightmap_offset};
+        out[oid] =
+            render::lightmap_uv{.scale = entry.lightmap_scale, .offset = entry.lightmap_offset};
     }
     return out;
 }

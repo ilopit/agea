@@ -267,7 +267,7 @@ offscreen_renderer::render(render_device& device, const offscreen_draw_request& 
                                 request.clear_color[1],
                                 request.clear_color[2],
                                 request.clear_color[3]}};
-            clears[1].depthStencil = {1.0f, 0};
+            clears[1].depthStencil = {.depth = 1.0f, .stencil = 0};
             rp_bi.clearValueCount = 2;
             rp_bi.pClearValues = clears;
             vkCmdBeginRenderPass(cmd, &rp_bi, VK_SUBPASS_CONTENTS_INLINE);
@@ -327,9 +327,15 @@ offscreen_renderer::render(render_device& device, const offscreen_draw_request& 
                 VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
             VkImageCopy region{};
-            region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-            region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-            region.extent = {size, size, 1};
+            region.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                     .mipLevel = 0,
+                                     .baseArrayLayer = 0,
+                                     .layerCount = 1};
+            region.dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                     .mipLevel = 0,
+                                     .baseArrayLayer = 0,
+                                     .layerCount = 1};
+            region.extent = {.width = size, .height = size, .depth = 1};
             vkCmdCopyImage(cmd,
                            color_img,
                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,

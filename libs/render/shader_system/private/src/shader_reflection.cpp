@@ -235,7 +235,7 @@ shader_reflection_utils::build_shader_input_reflection(SpvReflectShaderModule& s
                                                        reflection::shader_reflection& sr)
 {
     uint32_t count = 0;
-    auto result = spvReflectEnumerateInputVariables(&spv_reflection, &count, NULL);
+    auto result = spvReflectEnumerateInputVariables(&spv_reflection, &count, nullptr);
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
@@ -265,10 +265,8 @@ shader_reflection_utils::extract_interface_variables(
 
     block.variables.clear();
 
-    for (uint64_t i = 0; i < inputs.size(); ++i)
+    for (auto input : inputs)
     {
-        auto input = inputs[i];
-
         // Skip built-in variables (location == -1)
         if (input->location == uint32_t(-1))
         {
@@ -302,7 +300,7 @@ shader_reflection_utils::build_shader_output_reflection(SpvReflectShaderModule& 
                                                         reflection::shader_reflection& sr)
 {
     uint32_t count = 0;
-    auto result = spvReflectEnumerateOutputVariables(&spv_reflection, &count, NULL);
+    auto result = spvReflectEnumerateOutputVariables(&spv_reflection, &count, nullptr);
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
@@ -323,7 +321,7 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
     SpvReflectShaderModule& spv_reflection, reflection::shader_reflection& sr)
 {
     uint32_t count = 0;
-    auto result = spvReflectEnumerateDescriptorSets(&spv_reflection, &count, NULL);
+    auto result = spvReflectEnumerateDescriptorSets(&spv_reflection, &count, nullptr);
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;
@@ -341,10 +339,8 @@ shader_reflection_utils::build_shader_descriptor_sets_reflection(
               [](SpvReflectDescriptorSet* l, SpvReflectDescriptorSet* r)
               { return l->set < r->set; });
 
-    for (uint64_t i = 0; i < spv_sets.size(); ++i)
+    for (auto spv_set : spv_sets)
     {
-        auto spv_set = spv_sets[i];
-
         auto& refl_ds = sr.descriptors.emplace_back();
         refl_ds.set_index = spv_set->set;
 
@@ -545,7 +541,7 @@ shader_reflection_utils::build_shader_spec_constants(SpvReflectShaderModule& spv
         const auto& sc = spv_reflection.spec_constants[i];
         if (sc.name)
         {
-            sr.spec_constants.push_back({sc.name, sc.constant_id});
+            sr.spec_constants.push_back({.name = sc.name, .constant_id = sc.constant_id});
         }
     }
     return true;
@@ -624,7 +620,7 @@ shader_reflection_utils::build_shader_push_constants(SpvReflectShaderModule& spv
 {
     uint32_t count = 0;
 
-    auto result = spvReflectEnumeratePushConstantBlocks(&spv_reflection, &count, NULL);
+    auto result = spvReflectEnumeratePushConstantBlocks(&spv_reflection, &count, nullptr);
     if (result != SPV_REFLECT_RESULT_SUCCESS)
     {
         return false;

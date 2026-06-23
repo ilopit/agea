@@ -1,6 +1,7 @@
 #include <render/utils/mesh_primitives.h>
 
 #include <cmath>
+#include <numbers>
 
 namespace kryga
 {
@@ -9,7 +10,7 @@ namespace render
 
 namespace
 {
-constexpr float PI = 3.14159265358979323846f;
+constexpr float PI = std::numbers::pi_v<float>;
 }
 
 primitive_mesh

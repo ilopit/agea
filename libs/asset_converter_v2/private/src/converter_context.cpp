@@ -59,9 +59,9 @@ parent_of(const vfs::rid& r)
     auto slash = rel.find_last_of('/');
     if (slash == std::string_view::npos)
     {
-        return vfs::rid(r.mount_point(), "");
+        return {r.mount_point(), ""};
     }
-    return vfs::rid(r.mount_point(), rel.substr(0, slash));
+    return {r.mount_point(), rel.substr(0, slash)};
 }
 
 // Dump a package's proto caches for debugging lookups.

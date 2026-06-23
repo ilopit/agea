@@ -93,7 +93,7 @@ cluster_grid::depth_to_slice(float depth) const
 
     t = std::clamp(t, 0.0f, 0.99999994f);
 
-    uint32_t slice = uint32_t(t * m_config.depth_slices);
+    auto slice = uint32_t(t * m_config.depth_slices);
     return std::min(slice, m_config.depth_slices - 1);
 }
 
@@ -140,7 +140,7 @@ cluster_grid::screen_to_view(float screen_x,
     // Note: view_point.z is negative (OpenGL convention), depth is positive
     // We want AABBs in positive-Z-forward space, so use abs
     const float scale = depth / std::abs(view_point.z);
-    return glm::vec3(view_point.x * scale, view_point.y * scale, depth);
+    return {view_point.x * scale, view_point.y * scale, depth};
 }
 
 cluster_aabb
@@ -150,10 +150,10 @@ cluster_grid::compute_cluster_aabb(uint32_t tile_x,
                                    const glm::mat4& inv_projection) const
 {
     // Screen-space bounds of this tile
-    const float min_x = static_cast<float>(tile_x * m_config.tile_size);
-    const float max_x = static_cast<float>((tile_x + 1) * m_config.tile_size);
-    const float min_y = static_cast<float>(tile_y * m_config.tile_size);
-    const float max_y = static_cast<float>((tile_y + 1) * m_config.tile_size);
+    const auto min_x = static_cast<float>(tile_x * m_config.tile_size);
+    const auto max_x = static_cast<float>((tile_x + 1) * m_config.tile_size);
+    const auto min_y = static_cast<float>(tile_y * m_config.tile_size);
+    const auto max_y = static_cast<float>((tile_y + 1) * m_config.tile_size);
 
     // Depth bounds of this slice
     const float near_depth = slice_to_depth(slice);

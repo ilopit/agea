@@ -28,9 +28,7 @@ level::level(const utils::id& id)
                 .build();
 }
 
-level::~level()
-{
-}
+level::~level() = default;
 
 root::game_object*
 level::find_game_object(const utils::id& id)

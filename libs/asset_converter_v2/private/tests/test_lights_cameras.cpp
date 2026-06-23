@@ -32,7 +32,10 @@ protected:
         parsed_mesh mesh;
         mesh.name = "dummy";
         mesh.vertices = make_vertex_bytes({
-            {glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), glm::vec2(0, 0)},
+            {.position = glm::vec3(0, 0, 0),
+             .normal = glm::vec3(0, 1, 0),
+             .color = glm::vec3(1, 1, 1),
+             .uv = glm::vec2(0, 0)},
         });
         mesh.indices = {0};
         m_scene.meshes.push_back(std::move(mesh));
@@ -189,7 +192,10 @@ TEST_F(LightCameraWriterTest, MixedSceneWithMeshesAndLights)
     parsed_mesh mesh;
     mesh.name = "cube";
     mesh.vertices = make_vertex_bytes({
-        {glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), glm::vec3(1, 1, 1), glm::vec2(0, 0)},
+        {.position = glm::vec3(0, 0, 0),
+         .normal = glm::vec3(0, 1, 0),
+         .color = glm::vec3(1, 1, 1),
+         .uv = glm::vec2(0, 0)},
     });
     mesh.indices = {0};
     m_scene.meshes.push_back(std::move(mesh));

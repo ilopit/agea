@@ -141,7 +141,7 @@ build_culled_shadow_batches(render_line_container& r,
     }
 
     mesh_data* cur_mesh = nullptr;
-    uint32_t batch_start = (uint32_t)staging.size();
+    auto batch_start = (uint32_t)staging.size();
 
     auto flush = [&]()
     {
@@ -220,7 +220,7 @@ vulkan_render::build_batches_for_queue_into(render_line_container& r,
 
     mesh_data* cur_mesh = nullptr;
     bool cur_cast_shadows = true;
-    uint32_t batch_start = (uint32_t)m_instance_slots_staging.size();
+    auto batch_start = (uint32_t)m_instance_slots_staging.size();
 
     for (auto& obj : r)
     {

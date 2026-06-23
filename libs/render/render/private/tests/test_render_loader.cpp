@@ -19,7 +19,7 @@ class render_device_test : public ::testing::Test
 {
 public:
     void
-    SetUp()
+    SetUp() override
     {
         // Single-threaded test — grant this thread render + model access.
         render::set_render_access(true);
@@ -37,7 +37,7 @@ public:
     }
 
     void
-    TearDown()
+    TearDown() override
     {
         glob::glob_state().getr_render().renderer.deinit();
         glob::glob_state().getr_render().loader.clear_caches();

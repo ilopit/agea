@@ -74,7 +74,11 @@ property::default_copy(property_context__copy& cxt)
     auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                               cxt.dst_property->type.is_ptr);
 
-    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
+    type_context__copy type_ctx{.dst_owner_obj = nullptr,
+                                .src_obj = from,
+                                .src_owner_obj = nullptr,
+                                .dst_obj = to,
+                                .ctor = cxt.ctor};
     return cxt.dst_property->rtype->copy(type_ctx);
 }
 
@@ -120,7 +124,11 @@ property::default_snapshot(property_context__copy& cxt)
     auto from = p->get_blob(*cxt.src_obj);
     auto to = p->get_blob(*cxt.dst_obj);
 
-    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
+    type_context__copy type_ctx{.dst_owner_obj = nullptr,
+                                .src_obj = from,
+                                .src_owner_obj = nullptr,
+                                .dst_obj = to,
+                                .ctor = cxt.ctor};
     return p->rtype->copy(type_ctx);
 }
 
@@ -141,7 +149,11 @@ property::default_instantiate(property_context__instantiate& cxt)
     auto to = ::kryga::reflection::reduce_ptr(cxt.dst_property->get_blob(*cxt.dst_obj),
                                               cxt.dst_property->type.is_ptr);
 
-    type_context__copy type_ctx{nullptr, from, nullptr, to, cxt.ctor};
+    type_context__copy type_ctx{.dst_owner_obj = nullptr,
+                                .src_obj = from,
+                                .src_owner_obj = nullptr,
+                                .dst_obj = to,
+                                .ctor = cxt.ctor};
 
     if (cxt.dst_property->rtype->instantiate)
     {
@@ -181,7 +193,11 @@ property::default_load(property_context__load& ctx)
                                                       ctx.dst_property->type.is_ptr);
 
             KRG_check(ctx.dst_property->rtype->copy, "Should never happen!");
-            type_context__copy type_ctx{nullptr, from, nullptr, to, ctx.ctor};
+            type_context__copy type_ctx{.dst_owner_obj = nullptr,
+                                        .src_obj = from,
+                                        .src_owner_obj = nullptr,
+                                        .dst_obj = to,
+                                        .ctor = ctx.ctor};
             if (auto rc = ctx.dst_property->rtype->copy(type_ctx); rc != result_code::ok)
             {
                 return rc;
@@ -221,7 +237,8 @@ property::deserialize_collection(reflection::property& p,
         auto idx = item["order_idx"].as<std::uint32_t>();
 
         auto* field_ptr = &r[idx];
-        type_context__load type_ctx{nullptr, (blob_ptr)field_ptr, &item, ctor};
+        type_context__load type_ctx{
+            .owner_obj = nullptr, .obj = (blob_ptr)field_ptr, .jc = &item, .ctor = ctor};
         if (auto rc = p.rtype->load(type_ctx); rc != result_code::ok)
         {
             return rc;
@@ -261,7 +278,7 @@ property::load_item(reflection::property& p,
     KRG_check(p.rtype->load, "Should never happen!");
 
     auto sub_jc = jc[p.name];
-    type_context__load type_ctx{nullptr, ptr, &sub_jc, ctor};
+    type_context__load type_ctx{.owner_obj = nullptr, .obj = ptr, .jc = &sub_jc, .ctor = ctor};
     return p.rtype->load(type_ctx);
 }
 
@@ -277,7 +294,7 @@ property::serialize_item(const reflection::property& p,
     serialization::container c;
 
     KRG_check(p.rtype->save, "Should never happen!");
-    type_context__save type_ctx{&obj, ptr, &c};
+    type_context__save type_ctx{.owner_obj = &obj, .obj = ptr, .jc = &c};
     if (auto rc = p.rtype->save(type_ctx); rc != result_code::ok)
     {
         return rc;
@@ -304,7 +321,7 @@ property::compare_item(property_context__compare& context)
     auto dst_ptr = ::kryga::reflection::reduce_ptr(context.dst_obj->as_blob() + context.p->offset,
                                                    context.p->type.is_ptr);
 
-    type_context__compare type_ctx{src_ptr, dst_ptr};
+    type_context__compare type_ctx{.left_obj = src_ptr, .right_obj = dst_ptr};
     return context.p->rtype->compare(type_ctx);
 }
 

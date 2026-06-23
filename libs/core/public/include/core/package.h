@@ -34,9 +34,7 @@ enum class package_type
 
 struct package_types_builder
 {
-    virtual ~package_types_builder()
-    {
-    }
+    virtual ~package_types_builder() = default;
 
     virtual bool
     build(package& sp)
@@ -55,9 +53,7 @@ struct package_types_builder
 
 struct package_render_types_builder
 {
-    virtual ~package_render_types_builder()
-    {
-    }
+    virtual ~package_render_types_builder() = default;
 
     virtual bool
     build(package& sp)
@@ -74,9 +70,7 @@ struct package_render_types_builder
 
 struct package_types_custom_loader
 {
-    virtual ~package_types_custom_loader()
-    {
-    }
+    virtual ~package_types_custom_loader() = default;
 
     virtual bool
     load(package& sp)
@@ -92,9 +86,7 @@ struct package_types_custom_loader
 
 struct package_object_builder
 {
-    virtual ~package_object_builder()
-    {
-    }
+    virtual ~package_object_builder() = default;
 
     virtual bool
     build(package& sp)
@@ -110,9 +102,7 @@ struct package_object_builder
 
 struct package_types_default_objects_builder
 {
-    virtual ~package_types_default_objects_builder()
-    {
-    }
+    virtual ~package_types_default_objects_builder() = default;
 
     virtual bool
     build(package& sp)
@@ -128,9 +118,7 @@ struct package_types_default_objects_builder
 
 struct package_editor_types_builder
 {
-    virtual ~package_editor_types_builder()
-    {
-    }
+    virtual ~package_editor_types_builder() = default;
 
     virtual bool
     build(package& sp)
@@ -146,9 +134,7 @@ struct package_editor_types_builder
 
 struct package_render_custom_resource_builder
 {
-    virtual ~package_render_custom_resource_builder()
-    {
-    }
+    virtual ~package_render_custom_resource_builder() = default;
 
     virtual bool
     build(package& sp)

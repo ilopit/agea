@@ -52,7 +52,7 @@ public:
     on_connect(gs::state&) override;
 
     animation_system();
-    ~animation_system();
+    ~animation_system() override;
 
     void
     set_render_data_resolver(render_data_resolver fn)

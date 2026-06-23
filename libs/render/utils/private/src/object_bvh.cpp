@@ -116,7 +116,7 @@ object_bvh::build_recursive(uint32_t node_idx, uint32_t begin, uint32_t end)
                      { return entry_center(a)[axis] < entry_center(b)[axis]; });
 
     node.count = 0;
-    uint32_t left_idx = static_cast<uint32_t>(m_nodes.size());
+    auto left_idx = static_cast<uint32_t>(m_nodes.size());
     m_nodes.push_back({});
     m_nodes.push_back({});
     m_nodes[node_idx].left_or_first = left_idx;
@@ -216,7 +216,7 @@ object_bvh::screen_to_ray(uint32_t screen_x,
     glm::vec3 origin = glm::vec3(inv_view * glm::vec4(glm::vec3(near_view), 1.0f));
     glm::vec3 direction = glm::normalize(glm::mat3(inv_view) * dir_view);
 
-    return {origin, direction};
+    return {.origin = origin, .direction = direction};
 }
 
 }  // namespace render

@@ -22,7 +22,7 @@ cache_rid_for(const vfs::rid& spv_rid)
     rel += spv_rid.mount_point();
     rel += '/';
     rel += spv_rid.relative();
-    return vfs::rid("rtcache", rel);
+    return {"rtcache", rel};
 }
 
 bool

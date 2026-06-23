@@ -35,7 +35,7 @@ void main() {
 
     // Check SPIR-V magic number (0x07230203)
     ASSERT_GE(result->spirv.size(), 4u);
-    const uint32_t* spirv = reinterpret_cast<const uint32_t*>(result->spirv.data());
+    const auto* spirv = reinterpret_cast<const uint32_t*>(result->spirv.data());
     EXPECT_EQ(spirv[0], 0x07230203u) << "Invalid SPIR-V magic number";
 }
 

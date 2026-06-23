@@ -19,9 +19,9 @@ template <typename T>
 type_description
 kryga_type_resolve()
 {
-    if constexpr (std::is_pointer<T>::value)
+    if constexpr (std::is_pointer_v<T>)
     {
-        using no_ptr_type = std::remove_pointer<T>::type;
+        using no_ptr_type = std::remove_pointer_t<T>;
         return type_description{type_resolver<no_ptr_type>::value, false};
     }
 

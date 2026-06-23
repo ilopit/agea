@@ -17,7 +17,7 @@ namespace core
 {
 
 object_load_context::object_load_context()
-    : m_ownable_cache_ptr(nullptr)
+
 {
 }
 
@@ -61,7 +61,7 @@ object_load_context::add_obj(std::shared_ptr<root::smart_object> obj)
     KRG_check(m_local_set, "Local set must be set!");
     KRG_check(obj, "Object must exist!");
 
-    auto& obj_ref = *obj.get();
+    auto& obj_ref = *obj;
 
     // TODO(object-lifecycle): class objects (default_obj/readonly CDOs) go into
     // the container's ownable cache here just like instances. When a CDO is first

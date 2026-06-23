@@ -19,9 +19,7 @@ container::container(const utils::id& id)
 {
 }
 
-container::~container()
-{
-}
+container::~container() = default;
 
 void
 container::set_vfs_root(const vfs::rid& r)

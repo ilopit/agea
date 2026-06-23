@@ -71,13 +71,9 @@ glm_to_simd(const glm::vec3& v)
 
 }  // namespace
 
-animation_system::animation_system()
-{
-}
+animation_system::animation_system() = default;
 
-animation_system::~animation_system()
-{
-}
+animation_system::~animation_system() = default;
 
 void
 animation_system::register_skeleton(const utils::id& id,

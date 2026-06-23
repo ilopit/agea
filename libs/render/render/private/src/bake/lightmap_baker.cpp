@@ -35,7 +35,7 @@ lightmap_baker::add_mesh(const gpu::vertex_data* vertices,
                          const uint32_t* indices,
                          uint32_t index_count)
 {
-    uint32_t base_vertex = static_cast<uint32_t>(m_vertices.size());
+    auto base_vertex = static_cast<uint32_t>(m_vertices.size());
 
     m_vertices.insert(m_vertices.end(), vertices, vertices + vertex_count);
 
@@ -669,9 +669,15 @@ lightmap_baker::bake(const bake::bake_settings& settings)
             if (cs_denoise.valid && settings.denoise_iterations > 0)
             {
                 VkImageCopy copy{};
-                copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-                copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-                copy.extent = {W, H, 1};
+                copy.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                       .mipLevel = 0,
+                                       .baseArrayLayer = 0,
+                                       .layerCount = 1};
+                copy.dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                       .mipLevel = 0,
+                                       .baseArrayLayer = 0,
+                                       .layerCount = 1};
+                copy.extent = {.width = W, .height = H, .depth = 1};
                 vkCmdCopyImage(cmd,
                                img_denoise_tmp->image(),
                                VK_IMAGE_LAYOUT_GENERAL,
@@ -704,9 +710,15 @@ lightmap_baker::bake(const bake::bake_settings& settings)
 
                     // Copy dilated result back to lightmap for next iteration
                     VkImageCopy copy{};
-                    copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-                    copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-                    copy.extent = {W, H, 1};
+                    copy.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                           .mipLevel = 0,
+                                           .baseArrayLayer = 0,
+                                           .layerCount = 1};
+                    copy.dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                           .mipLevel = 0,
+                                           .baseArrayLayer = 0,
+                                           .layerCount = 1};
+                    copy.extent = {.width = W, .height = H, .depth = 1};
                     vkCmdCopyImage(cmd,
                                    img_denoise_tmp->image(),
                                    VK_IMAGE_LAYOUT_GENERAL,
@@ -770,8 +782,14 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                                                            range);
 
                 VkImageCopy copy_region{};
-                copy_region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-                copy_region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                copy_region.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                              .mipLevel = 0,
+                                              .baseArrayLayer = 0,
+                                              .layerCount = 1};
+                copy_region.dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                              .mipLevel = 0,
+                                              .baseArrayLayer = 0,
+                                              .layerCount = 1};
                 copy_region.extent = extent;
 
                 vkCmdCopyImage(cmd,
@@ -852,8 +870,14 @@ lightmap_baker::bake(const bake::bake_settings& settings)
                                                            range);
 
                 VkImageCopy copy_region{};
-                copy_region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-                copy_region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                copy_region.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                              .mipLevel = 0,
+                                              .baseArrayLayer = 0,
+                                              .layerCount = 1};
+                copy_region.dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                              .mipLevel = 0,
+                                              .baseArrayLayer = 0,
+                                              .layerCount = 1};
                 copy_region.extent = extent;
 
                 vkCmdCopyImage(cmd,

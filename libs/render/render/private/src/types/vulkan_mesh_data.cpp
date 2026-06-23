@@ -41,9 +41,7 @@ convert_to_vertex_input_description(kryga::utils::dynobj_layout& dol)
     return description;
 }
 
-mesh_data::~mesh_data()
-{
-}
+mesh_data::~mesh_data() = default;
 
 }  // namespace render
 }  // namespace kryga

@@ -48,6 +48,8 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <numbers>
+#include <print>
 #include <random>
 
 using namespace kryga;
@@ -165,7 +167,7 @@ protected:
 
     // Without the detach, the NEXT test's fixture would hit the "lane already
     // claimed" assert on the same storage.
-    ~visual_test_base()
+    ~visual_test_base() override
     {
         m_obj_alloc.detach();  // single-threaded test == storage-owner thread
         m_dir_light_alloc.detach();
@@ -403,35 +405,35 @@ protected:
         // clang-format off
         std::vector<gpu::vertex_data> verts = {
             // Front face
-            {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, color, {0, 0}},
-            {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, color, {1, 0}},
-            {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, color, {1, 1}},
-            {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, color, {0, 1}},
+            {.position={-0.5f, -0.5f,  0.5f}, .normal={ 0, 0, 1}, .color=color, .uv={0, 0}},
+            {.position={ 0.5f, -0.5f,  0.5f}, .normal={ 0, 0, 1}, .color=color, .uv={1, 0}},
+            {.position={ 0.5f,  0.5f,  0.5f}, .normal={ 0, 0, 1}, .color=color, .uv={1, 1}},
+            {.position={-0.5f,  0.5f,  0.5f}, .normal={ 0, 0, 1}, .color=color, .uv={0, 1}},
             // Back face
-            {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, color, {0, 0}},
-            {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, color, {1, 0}},
-            {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, color, {1, 1}},
-            {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, color, {0, 1}},
+            {.position={ 0.5f, -0.5f, -0.5f}, .normal={ 0, 0,-1}, .color=color, .uv={0, 0}},
+            {.position={-0.5f, -0.5f, -0.5f}, .normal={ 0, 0,-1}, .color=color, .uv={1, 0}},
+            {.position={-0.5f,  0.5f, -0.5f}, .normal={ 0, 0,-1}, .color=color, .uv={1, 1}},
+            {.position={ 0.5f,  0.5f, -0.5f}, .normal={ 0, 0,-1}, .color=color, .uv={0, 1}},
             // Top face
-            {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, color, {0, 0}},
-            {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, color, {1, 0}},
-            {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, color, {1, 1}},
-            {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, color, {0, 1}},
+            {.position={-0.5f,  0.5f,  0.5f}, .normal={ 0, 1, 0}, .color=color, .uv={0, 0}},
+            {.position={ 0.5f,  0.5f,  0.5f}, .normal={ 0, 1, 0}, .color=color, .uv={1, 0}},
+            {.position={ 0.5f,  0.5f, -0.5f}, .normal={ 0, 1, 0}, .color=color, .uv={1, 1}},
+            {.position={-0.5f,  0.5f, -0.5f}, .normal={ 0, 1, 0}, .color=color, .uv={0, 1}},
             // Bottom face
-            {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, color, {0, 0}},
-            {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, color, {1, 0}},
-            {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, color, {1, 1}},
-            {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, color, {0, 1}},
+            {.position={-0.5f, -0.5f, -0.5f}, .normal={ 0,-1, 0}, .color=color, .uv={0, 0}},
+            {.position={ 0.5f, -0.5f, -0.5f}, .normal={ 0,-1, 0}, .color=color, .uv={1, 0}},
+            {.position={ 0.5f, -0.5f,  0.5f}, .normal={ 0,-1, 0}, .color=color, .uv={1, 1}},
+            {.position={-0.5f, -0.5f,  0.5f}, .normal={ 0,-1, 0}, .color=color, .uv={0, 1}},
             // Right face
-            {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, color, {0, 0}},
-            {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, color, {1, 0}},
-            {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, color, {1, 1}},
-            {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, color, {0, 1}},
+            {.position={ 0.5f, -0.5f,  0.5f}, .normal={ 1, 0, 0}, .color=color, .uv={0, 0}},
+            {.position={ 0.5f, -0.5f, -0.5f}, .normal={ 1, 0, 0}, .color=color, .uv={1, 0}},
+            {.position={ 0.5f,  0.5f, -0.5f}, .normal={ 1, 0, 0}, .color=color, .uv={1, 1}},
+            {.position={ 0.5f,  0.5f,  0.5f}, .normal={ 1, 0, 0}, .color=color, .uv={0, 1}},
             // Left face
-            {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, color, {0, 0}},
-            {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, color, {1, 0}},
-            {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, color, {1, 1}},
-            {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, color, {0, 1}},
+            {.position={-0.5f, -0.5f, -0.5f}, .normal={-1, 0, 0}, .color=color, .uv={0, 0}},
+            {.position={-0.5f, -0.5f,  0.5f}, .normal={-1, 0, 0}, .color=color, .uv={1, 0}},
+            {.position={-0.5f,  0.5f,  0.5f}, .normal={-1, 0, 0}, .color=color, .uv={1, 1}},
+            {.position={-0.5f,  0.5f, -0.5f}, .normal={-1, 0, 0}, .color=color, .uv={0, 1}},
         };
         std::vector<gpu::uint> indices = {
              0, 1, 2,  2, 3, 0,   // front
@@ -535,10 +537,10 @@ protected:
         float h = size * 0.5f;
         // clang-format off
         std::vector<gpu::vertex_data> verts = {
-            {{-h, 0,  h}, {0, 1, 0}, color, {0, 0}},
-            {{ h, 0,  h}, {0, 1, 0}, color, {1, 0}},
-            {{ h, 0, -h}, {0, 1, 0}, color, {1, 1}},
-            {{-h, 0, -h}, {0, 1, 0}, color, {0, 1}},
+            {.position={-h, 0,  h}, .normal={0, 1, 0}, .color=color, .uv={0, 0}},
+            {.position={ h, 0,  h}, .normal={0, 1, 0}, .color=color, .uv={1, 0}},
+            {.position={ h, 0, -h}, .normal={0, 1, 0}, .color=color, .uv={1, 1}},
+            {.position={-h, 0, -h}, .normal={0, 1, 0}, .color=color, .uv={0, 1}},
         };
         std::vector<gpu::uint> indices = {0, 1, 2, 2, 3, 0};
         // clang-format on
@@ -817,35 +819,35 @@ protected:
         // clang-format off
         return {
             // Front  (col 0, row 0)
-            {{-0.5f,-0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {0,0}, {u(0,0), v(0,0)}},
-            {{ 0.5f,-0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {1,0}, {u(0,1), v(0,0)}},
-            {{ 0.5f, 0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {1,1}, {u(0,1), v(0,1)}},
-            {{-0.5f, 0.5f, 0.5f}, { 0, 0, 1}, {1,1,1}, {0,1}, {u(0,0), v(0,1)}},
+            {.position={-0.5f,-0.5f, 0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={0,0}, .uv2={u(0,0), v(0,0)}},
+            {.position={ 0.5f,-0.5f, 0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={1,0}, .uv2={u(0,1), v(0,0)}},
+            {.position={ 0.5f, 0.5f, 0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={1,1}, .uv2={u(0,1), v(0,1)}},
+            {.position={-0.5f, 0.5f, 0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={0,1}, .uv2={u(0,0), v(0,1)}},
             // Back   (col 1, row 0)
-            {{ 0.5f,-0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {0,0}, {u(1,0), v(0,0)}},
-            {{-0.5f,-0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {1,0}, {u(1,1), v(0,0)}},
-            {{-0.5f, 0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {1,1}, {u(1,1), v(0,1)}},
-            {{ 0.5f, 0.5f,-0.5f}, { 0, 0,-1}, {1,1,1}, {0,1}, {u(1,0), v(0,1)}},
+            {.position={ 0.5f,-0.5f,-0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={0,0}, .uv2={u(1,0), v(0,0)}},
+            {.position={-0.5f,-0.5f,-0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={1,0}, .uv2={u(1,1), v(0,0)}},
+            {.position={-0.5f, 0.5f,-0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={1,1}, .uv2={u(1,1), v(0,1)}},
+            {.position={ 0.5f, 0.5f,-0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={0,1}, .uv2={u(1,0), v(0,1)}},
             // Top    (col 2, row 0)
-            {{-0.5f, 0.5f, 0.5f}, { 0, 1, 0}, {1,1,1}, {0,0}, {u(2,0), v(0,0)}},
-            {{ 0.5f, 0.5f, 0.5f}, { 0, 1, 0}, {1,1,1}, {1,0}, {u(2,1), v(0,0)}},
-            {{ 0.5f, 0.5f,-0.5f}, { 0, 1, 0}, {1,1,1}, {1,1}, {u(2,1), v(0,1)}},
-            {{-0.5f, 0.5f,-0.5f}, { 0, 1, 0}, {1,1,1}, {0,1}, {u(2,0), v(0,1)}},
+            {.position={-0.5f, 0.5f, 0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={0,0}, .uv2={u(2,0), v(0,0)}},
+            {.position={ 0.5f, 0.5f, 0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={1,0}, .uv2={u(2,1), v(0,0)}},
+            {.position={ 0.5f, 0.5f,-0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={1,1}, .uv2={u(2,1), v(0,1)}},
+            {.position={-0.5f, 0.5f,-0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={0,1}, .uv2={u(2,0), v(0,1)}},
             // Bottom (col 0, row 1)
-            {{-0.5f,-0.5f,-0.5f}, { 0,-1, 0}, {1,1,1}, {0,0}, {u(0,0), v(1,0)}},
-            {{ 0.5f,-0.5f,-0.5f}, { 0,-1, 0}, {1,1,1}, {1,0}, {u(0,1), v(1,0)}},
-            {{ 0.5f,-0.5f, 0.5f}, { 0,-1, 0}, {1,1,1}, {1,1}, {u(0,1), v(1,1)}},
-            {{-0.5f,-0.5f, 0.5f}, { 0,-1, 0}, {1,1,1}, {0,1}, {u(0,0), v(1,1)}},
+            {.position={-0.5f,-0.5f,-0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={0,0}, .uv2={u(0,0), v(1,0)}},
+            {.position={ 0.5f,-0.5f,-0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={1,0}, .uv2={u(0,1), v(1,0)}},
+            {.position={ 0.5f,-0.5f, 0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={1,1}, .uv2={u(0,1), v(1,1)}},
+            {.position={-0.5f,-0.5f, 0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={0,1}, .uv2={u(0,0), v(1,1)}},
             // Right  (col 1, row 1)
-            {{ 0.5f,-0.5f, 0.5f}, { 1, 0, 0}, {1,1,1}, {0,0}, {u(1,0), v(1,0)}},
-            {{ 0.5f,-0.5f,-0.5f}, { 1, 0, 0}, {1,1,1}, {1,0}, {u(1,1), v(1,0)}},
-            {{ 0.5f, 0.5f,-0.5f}, { 1, 0, 0}, {1,1,1}, {1,1}, {u(1,1), v(1,1)}},
-            {{ 0.5f, 0.5f, 0.5f}, { 1, 0, 0}, {1,1,1}, {0,1}, {u(1,0), v(1,1)}},
+            {.position={ 0.5f,-0.5f, 0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={0,0}, .uv2={u(1,0), v(1,0)}},
+            {.position={ 0.5f,-0.5f,-0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={1,0}, .uv2={u(1,1), v(1,0)}},
+            {.position={ 0.5f, 0.5f,-0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={1,1}, .uv2={u(1,1), v(1,1)}},
+            {.position={ 0.5f, 0.5f, 0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={0,1}, .uv2={u(1,0), v(1,1)}},
             // Left   (col 2, row 1)
-            {{-0.5f,-0.5f,-0.5f}, {-1, 0, 0}, {1,1,1}, {0,0}, {u(2,0), v(1,0)}},
-            {{-0.5f,-0.5f, 0.5f}, {-1, 0, 0}, {1,1,1}, {1,0}, {u(2,1), v(1,0)}},
-            {{-0.5f, 0.5f, 0.5f}, {-1, 0, 0}, {1,1,1}, {1,1}, {u(2,1), v(1,1)}},
-            {{-0.5f, 0.5f,-0.5f}, {-1, 0, 0}, {1,1,1}, {0,1}, {u(2,0), v(1,1)}},
+            {.position={-0.5f,-0.5f,-0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={0,0}, .uv2={u(2,0), v(1,0)}},
+            {.position={-0.5f,-0.5f, 0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={1,0}, .uv2={u(2,1), v(1,0)}},
+            {.position={-0.5f, 0.5f, 0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={1,1}, .uv2={u(2,1), v(1,1)}},
+            {.position={-0.5f, 0.5f,-0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={0,1}, .uv2={u(2,0), v(1,1)}},
         };
         // clang-format on
     }
@@ -927,18 +929,50 @@ protected:
 
         // Floor / wall quad — single face, UV2 covers full [0,1].
         std::vector<gpu::vertex_data> floor_verts = {
-            {{-1, 0, 1}, {0, 1, 0}, {1, 1, 1}, {0, 0}, {0, 0}},
-            {{1, 0, 1}, {0, 1, 0}, {1, 1, 1}, {1, 0}, {1, 0}},
-            {{1, 0, -1}, {0, 1, 0}, {1, 1, 1}, {1, 1}, {1, 1}},
-            {{-1, 0, -1}, {0, 1, 0}, {1, 1, 1}, {0, 1}, {0, 1}},
+            {.position = {-1, 0, 1},
+             .normal = {0, 1, 0},
+             .color = {1, 1, 1},
+             .uv = {0, 0},
+             .uv2 = {0, 0}},
+            {.position = {1, 0, 1},
+             .normal = {0, 1, 0},
+             .color = {1, 1, 1},
+             .uv = {1, 0},
+             .uv2 = {1, 0}},
+            {.position = {1, 0, -1},
+             .normal = {0, 1, 0},
+             .color = {1, 1, 1},
+             .uv = {1, 1},
+             .uv2 = {1, 1}},
+            {.position = {-1, 0, -1},
+             .normal = {0, 1, 0},
+             .color = {1, 1, 1},
+             .uv = {0, 1},
+             .uv2 = {0, 1}},
         };
         std::vector<gpu::uint> quad_indices = {0, 1, 2, 2, 3, 0};
 
         std::vector<gpu::vertex_data> wall_verts = {
-            {{-1, -1, 0}, {0, 0, 1}, {1, 1, 1}, {0, 0}, {0, 0}},
-            {{1, -1, 0}, {0, 0, 1}, {1, 1, 1}, {1, 0}, {1, 0}},
-            {{1, 1, 0}, {0, 0, 1}, {1, 1, 1}, {1, 1}, {1, 1}},
-            {{-1, 1, 0}, {0, 0, 1}, {1, 1, 1}, {0, 1}, {0, 1}},
+            {.position = {-1, -1, 0},
+             .normal = {0, 0, 1},
+             .color = {1, 1, 1},
+             .uv = {0, 0},
+             .uv2 = {0, 0}},
+            {.position = {1, -1, 0},
+             .normal = {0, 0, 1},
+             .color = {1, 1, 1},
+             .uv = {1, 0},
+             .uv2 = {1, 0}},
+            {.position = {1, 1, 0},
+             .normal = {0, 0, 1},
+             .color = {1, 1, 1},
+             .uv = {1, 1},
+             .uv2 = {1, 1}},
+            {.position = {-1, 1, 0},
+             .normal = {0, 0, 1},
+             .color = {1, 1, 1},
+             .uv = {0, 1},
+             .uv2 = {0, 1}},
         };
 
         // Pack tiles + feed transformed geometry into the baker.
@@ -1020,11 +1054,11 @@ protected:
         bake_cfg.directional_lights.push_back(bake_sun);
         if (bake_cfg.output_lightmap.empty())
         {
-            bake_cfg.output_lightmap = vfs::rid(("tmp://" + test_name + "_lm.bin").c_str());
+            bake_cfg.output_lightmap = vfs::rid("tmp://" + test_name + "_lm.bin");
         }
         if (bake_cfg.output_ao.empty())
         {
-            bake_cfg.output_ao = vfs::rid(("tmp://" + test_name + "_ao.bin").c_str());
+            bake_cfg.output_ao = vfs::rid("tmp://" + test_name + "_ao.bin");
         }
         bake_cfg.output_png = false;
 
@@ -1466,9 +1500,9 @@ TEST_F(visual_pipeline_test, material_properties)
         material_data* mat;
     };
     mat_entry entries[] = {
-        {"sph_matte", -2.5f, matte_mat},
-        {"sph_glossy", 0.0f, glossy_mat},
-        {"sph_metal", 2.5f, metal_mat},
+        {.name = "sph_matte", .x = -2.5f, .mat = matte_mat},
+        {.name = "sph_glossy", .x = 0.0f, .mat = glossy_mat},
+        {.name = "sph_metal", .x = 2.5f, .mat = metal_mat},
     };
 
     for (auto& e : entries)
@@ -2121,35 +2155,35 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     { return row * ch + ipad_v + corner_y * (ch - 2 * ipad_v); };
     std::vector<gpu::vertex_data> cube_verts = {
         // Front face  (col 0, row 0)
-        {{-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 0}, {u(0,0), v(0,0)}},
-        {{ 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 0}, {u(0,1), v(0,0)}},
-        {{ 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {1, 1}, {u(0,1), v(0,1)}},
-        {{-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1,1,1}, {0, 1}, {u(0,0), v(0,1)}},
+        {.position={-0.5f, -0.5f,  0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={0, 0}, .uv2={u(0,0), v(0,0)}},
+        {.position={ 0.5f, -0.5f,  0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={1, 0}, .uv2={u(0,1), v(0,0)}},
+        {.position={ 0.5f,  0.5f,  0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={1, 1}, .uv2={u(0,1), v(0,1)}},
+        {.position={-0.5f,  0.5f,  0.5f}, .normal={ 0, 0, 1}, .color={1,1,1}, .uv={0, 1}, .uv2={u(0,0), v(0,1)}},
         // Back face   (col 1, row 0)
-        {{ 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 0}, {u(1,0), v(0,0)}},
-        {{-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 0}, {u(1,1), v(0,0)}},
-        {{-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {1, 1}, {u(1,1), v(0,1)}},
-        {{ 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1,1,1}, {0, 1}, {u(1,0), v(0,1)}},
+        {.position={ 0.5f, -0.5f, -0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={0, 0}, .uv2={u(1,0), v(0,0)}},
+        {.position={-0.5f, -0.5f, -0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={1, 0}, .uv2={u(1,1), v(0,0)}},
+        {.position={-0.5f,  0.5f, -0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={1, 1}, .uv2={u(1,1), v(0,1)}},
+        {.position={ 0.5f,  0.5f, -0.5f}, .normal={ 0, 0,-1}, .color={1,1,1}, .uv={0, 1}, .uv2={u(1,0), v(0,1)}},
         // Top face    (col 2, row 0)
-        {{-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {0, 0}, {u(2,0), v(0,0)}},
-        {{ 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1,1,1}, {1, 0}, {u(2,1), v(0,0)}},
-        {{ 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {1, 1}, {u(2,1), v(0,1)}},
-        {{-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1,1,1}, {0, 1}, {u(2,0), v(0,1)}},
+        {.position={-0.5f,  0.5f,  0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={0, 0}, .uv2={u(2,0), v(0,0)}},
+        {.position={ 0.5f,  0.5f,  0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={1, 0}, .uv2={u(2,1), v(0,0)}},
+        {.position={ 0.5f,  0.5f, -0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={1, 1}, .uv2={u(2,1), v(0,1)}},
+        {.position={-0.5f,  0.5f, -0.5f}, .normal={ 0, 1, 0}, .color={1,1,1}, .uv={0, 1}, .uv2={u(2,0), v(0,1)}},
         // Bottom face (col 0, row 1)
-        {{-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {0, 0}, {u(0,0), v(1,0)}},
-        {{ 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1,1,1}, {1, 0}, {u(0,1), v(1,0)}},
-        {{ 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {1, 1}, {u(0,1), v(1,1)}},
-        {{-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1,1,1}, {0, 1}, {u(0,0), v(1,1)}},
+        {.position={-0.5f, -0.5f, -0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={0, 0}, .uv2={u(0,0), v(1,0)}},
+        {.position={ 0.5f, -0.5f, -0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={1, 0}, .uv2={u(0,1), v(1,0)}},
+        {.position={ 0.5f, -0.5f,  0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={1, 1}, .uv2={u(0,1), v(1,1)}},
+        {.position={-0.5f, -0.5f,  0.5f}, .normal={ 0,-1, 0}, .color={1,1,1}, .uv={0, 1}, .uv2={u(0,0), v(1,1)}},
         // Right face  (col 1, row 1)
-        {{ 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 0}, {u(1,0), v(1,0)}},
-        {{ 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 0}, {u(1,1), v(1,0)}},
-        {{ 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1,1,1}, {1, 1}, {u(1,1), v(1,1)}},
-        {{ 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1,1,1}, {0, 1}, {u(1,0), v(1,1)}},
+        {.position={ 0.5f, -0.5f,  0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={0, 0}, .uv2={u(1,0), v(1,0)}},
+        {.position={ 0.5f, -0.5f, -0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={1, 0}, .uv2={u(1,1), v(1,0)}},
+        {.position={ 0.5f,  0.5f, -0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={1, 1}, .uv2={u(1,1), v(1,1)}},
+        {.position={ 0.5f,  0.5f,  0.5f}, .normal={ 1, 0, 0}, .color={1,1,1}, .uv={0, 1}, .uv2={u(1,0), v(1,1)}},
         // Left face   (col 2, row 1)
-        {{-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 0}, {u(2,0), v(1,0)}},
-        {{-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 0}, {u(2,1), v(1,0)}},
-        {{-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1,1,1}, {1, 1}, {u(2,1), v(1,1)}},
-        {{-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1,1,1}, {0, 1}, {u(2,0), v(1,1)}},
+        {.position={-0.5f, -0.5f, -0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={0, 0}, .uv2={u(2,0), v(1,0)}},
+        {.position={-0.5f, -0.5f,  0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={1, 0}, .uv2={u(2,1), v(1,0)}},
+        {.position={-0.5f,  0.5f,  0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={1, 1}, .uv2={u(2,1), v(1,1)}},
+        {.position={-0.5f,  0.5f, -0.5f}, .normal={-1, 0, 0}, .color={1,1,1}, .uv={0, 1}, .uv2={u(2,0), v(1,1)}},
     };
     std::vector<gpu::uint> cube_indices = {
          0, 1, 2,  2, 3, 0,
@@ -2165,10 +2199,10 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     float fh = 12.0f;
     // clang-format off
     std::vector<gpu::vertex_data> floor_verts = {
-        {{-fh, 0,  fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {0, 0}, {0, 0}},
-        {{ fh, 0,  fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {1, 0}, {1, 0}},
-        {{ fh, 0, -fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {1, 1}, {1, 1}},
-        {{-fh, 0, -fh}, {0, 1, 0}, {0.6f, 0.6f, 0.6f}, {0, 1}, {0, 1}},
+        {.position={-fh, 0,  fh}, .normal={0, 1, 0}, .color={0.6f, 0.6f, 0.6f}, .uv={0, 0}, .uv2={0, 0}},
+        {.position={ fh, 0,  fh}, .normal={0, 1, 0}, .color={0.6f, 0.6f, 0.6f}, .uv={1, 0}, .uv2={1, 0}},
+        {.position={ fh, 0, -fh}, .normal={0, 1, 0}, .color={0.6f, 0.6f, 0.6f}, .uv={1, 1}, .uv2={1, 1}},
+        {.position={-fh, 0, -fh}, .normal={0, 1, 0}, .color={0.6f, 0.6f, 0.6f}, .uv={0, 1}, .uv2={0, 1}},
     };
     std::vector<gpu::uint> floor_indices = {0, 1, 2, 2, 3, 0};
     // clang-format on
@@ -2200,7 +2234,11 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
         glm::vec2 lm_scale = {float(region->width) * inv_w, float(region->height) * inv_h};
         glm::vec2 lm_offset = {float(region->x) * inv_w, float(region->y) * inv_h};
 
-        instances.push_back({{0, -0.5f, 0}, lm_scale, lm_offset, 1.0f, true});
+        instances.push_back({.pos = {0, -0.5f, 0},
+                             .lightmap_scale = lm_scale,
+                             .lightmap_offset = lm_offset,
+                             .scale = 1.0f,
+                             .is_floor = true});
 
         std::vector<gpu::vertex_data> remapped = floor_verts;
         for (auto& v : remapped)
@@ -2239,7 +2277,11 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
         glm::vec2 lm_scale = {float(region->width) * inv_w, float(region->height) * inv_h};
         glm::vec2 lm_offset = {float(region->x) * inv_w, float(region->y) * inv_h};
 
-        instances.push_back({glm::vec3(wx, wy, wz), lm_scale, lm_offset, scale, false});
+        instances.push_back({.pos = glm::vec3(wx, wy, wz),
+                             .lightmap_scale = lm_scale,
+                             .lightmap_offset = lm_offset,
+                             .scale = scale,
+                             .is_floor = false});
 
         // Prepare baker input: remap UV2 from [0,1] to atlas coordinates
         // and transform positions to world space for correct baking
@@ -2931,7 +2973,7 @@ TEST_F(visual_pipeline_test, culling_frustum_basic)
     constexpr int N = 8;
     for (int i = 0; i < N; ++i)
     {
-        float a = (2.0f * 3.14159265f) * float(i) / float(N);
+        float a = (2.0f * std::numbers::pi_v<float>)*float(i) / float(N);
         float x = 4.0f * std::cos(a);
         float z = 4.0f * std::sin(a);
 
@@ -3254,7 +3296,8 @@ TEST_F(visual_pipeline_test, shader_toon)
     std::memcpy(toon_data.data(), &mat_gpu, sizeof(mat_gpu));
 
     std::vector<texture_sampler_data> samples;
-    samples.push_back({tex, VK_NULL_HANDLE, KGPU_TEXTURE_SLOT_ALBEDO});
+    samples.push_back(
+        {.texture = tex, .descriptor_set = VK_NULL_HANDLE, .slot = KGPU_TEXTURE_SLOT_ALBEDO});
     auto* mat =
         renderer.create_material(AID("mat_toon"), AID("toon_material"), samples, *se, toon_data);
     renderer.stage_add_material(mat);
@@ -3377,9 +3420,18 @@ TEST_F(visual_pipeline_test, material_alpha_sorting)
         float opacity;
     };
     entry entries[] = {
-        {"alpha_sort_red", {-0.6f, 0.3f, 0}, {1, 0.1f, 0.1f}, 0.5f},
-        {"alpha_sort_grn", {0, -0.3f, -1}, {0.1f, 1, 0.1f}, 0.5f},
-        {"alpha_sort_blu", {0.6f, 0.3f, -2}, {0.1f, 0.1f, 1}, 0.5f},
+        {.name = "alpha_sort_red",
+         .pos = {-0.6f, 0.3f, 0},
+         .color = {1, 0.1f, 0.1f},
+         .opacity = 0.5f},
+        {.name = "alpha_sort_grn",
+         .pos = {0, -0.3f, -1},
+         .color = {0.1f, 1, 0.1f},
+         .opacity = 0.5f},
+        {.name = "alpha_sort_blu",
+         .pos = {0.6f, 0.3f, -2},
+         .color = {0.1f, 0.1f, 1},
+         .opacity = 0.5f},
     };
 
     for (auto& e : entries)
@@ -3660,7 +3712,14 @@ TEST_F(visual_pipeline_test, mesh_skinned_basic)
     glm::vec4 w_full = {1.0f, 0.0f, 0.0f, 0.0f};
 
     auto mk = [&](glm::vec3 p, glm::vec3 n, glm::vec3 c, glm::vec2 uv, glm::uvec4 bi, glm::vec4 bw)
-    { return gpu::skinned_vertex_data{p, n, c, uv, bi, bw}; };
+    {
+        return gpu::skinned_vertex_data{.position = p,
+                                        .normal = n,
+                                        .color = c,
+                                        .uv = uv,
+                                        .bone_indices = bi,
+                                        .bone_weights = bw};
+    };
 
     // 24 verts (6 faces * 4) so each face has its own normals.
     std::vector<gpu::skinned_vertex_data> verts;
@@ -3719,8 +3778,8 @@ TEST_F(visual_pipeline_test, mesh_skinned_basic)
     //   bone 0 = identity
     //   bone 1 = rotation -45° around X (top half tilts toward camera)
     auto& bone_staging = renderer.get_bone_matrices_staging();
-    const uint32_t bone_offset = static_cast<uint32_t>(bone_staging.size());
-    bone_staging.push_back(glm::mat4(1.0f));
+    const auto bone_offset = static_cast<uint32_t>(bone_staging.size());
+    bone_staging.emplace_back(1.0f);
     bone_staging.push_back(glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f), glm::vec3(1, 0, 0)));
 
     // Camera + sun.
@@ -3809,7 +3868,8 @@ TEST_F(visual_pipeline_test, material_textured_albedo)
     std::memcpy(data.data(), &mat_gpu, sizeof(mat_gpu));
 
     std::vector<texture_sampler_data> samples;
-    samples.push_back({tex, VK_NULL_HANDLE, KGPU_TEXTURE_SLOT_ALBEDO});
+    samples.push_back(
+        {.texture = tex, .descriptor_set = VK_NULL_HANDLE, .slot = KGPU_TEXTURE_SLOT_ALBEDO});
     auto* mat =
         renderer.create_material(AID("mat_tex_albedo"), AID("pbr_material"), samples, *se, data);
     renderer.stage_add_material(mat);
@@ -3884,8 +3944,11 @@ TEST_F(visual_pipeline_test, material_pbr_textured)
     std::memcpy(data.data(), &mat_gpu, sizeof(mat_gpu));
 
     std::vector<texture_sampler_data> samples;
-    samples.push_back({alb_tex, VK_NULL_HANDLE, KGPU_TEXTURE_SLOT_ALBEDO});
-    samples.push_back({spec_tex, VK_NULL_HANDLE, KGPU_TEXTURE_SLOT_SPECULAR});
+    samples.push_back(
+        {.texture = alb_tex, .descriptor_set = VK_NULL_HANDLE, .slot = KGPU_TEXTURE_SLOT_ALBEDO});
+    samples.push_back({.texture = spec_tex,
+                       .descriptor_set = VK_NULL_HANDLE,
+                       .slot = KGPU_TEXTURE_SLOT_SPECULAR});
     auto* mat = renderer.create_material(AID("mat_pbr_tex"), AID("pbr_material"), samples, *se, data);
     renderer.stage_add_material(mat);
 
@@ -3967,7 +4030,7 @@ TEST_F(visual_pipeline_test, shader_unlit_textured)
     std::memcpy(data.data(), &mat_gpu, sizeof(mat_gpu));
 
     std::vector<texture_sampler_data> samples;
-    samples.push_back({tex, VK_NULL_HANDLE, 0});
+    samples.push_back({.texture = tex, .descriptor_set = VK_NULL_HANDLE, .slot = 0});
     auto* mat = renderer.create_material(
         AID("mat_unlit_tex"), AID("simple_texture_material"), samples, *se, data);
     renderer.stage_add_material(mat);
@@ -4704,10 +4767,26 @@ TEST_F(visual_pipeline_test, toggle_lighting_baked_off)
     const auto cube_indices = make_cube_lm_indices();
 
     std::vector<gpu::vertex_data> floor_verts = {
-        {{-1, 0, 1}, {0, 1, 0}, {1, 1, 1}, {0, 0}, {0, 0}},
-        {{1, 0, 1}, {0, 1, 0}, {1, 1, 1}, {1, 0}, {1, 0}},
-        {{1, 0, -1}, {0, 1, 0}, {1, 1, 1}, {1, 1}, {1, 1}},
-        {{-1, 0, -1}, {0, 1, 0}, {1, 1, 1}, {0, 1}, {0, 1}},
+        {.position = {-1, 0, 1},
+         .normal = {0, 1, 0},
+         .color = {1, 1, 1},
+         .uv = {0, 0},
+         .uv2 = {0, 0}},
+        {.position = {1, 0, 1},
+         .normal = {0, 1, 0},
+         .color = {1, 1, 1},
+         .uv = {1, 0},
+         .uv2 = {1, 0}},
+        {.position = {1, 0, -1},
+         .normal = {0, 1, 0},
+         .color = {1, 1, 1},
+         .uv = {1, 1},
+         .uv2 = {1, 1}},
+        {.position = {-1, 0, -1},
+         .normal = {0, 1, 0},
+         .color = {1, 1, 1},
+         .uv = {0, 1},
+         .uv2 = {0, 1}},
     };
     std::vector<gpu::uint> quad_indices = {0, 1, 2, 2, 3, 0};
 
@@ -5101,7 +5180,7 @@ TEST_F(visual_pipeline_test, voronoi_fractured_cube)
                                std::sin(phi) * std::sin(theta)};
                 glm::vec3 p = n * radius;
                 glm::vec2 uv = {float(j) / float(slices), float(i) / float(stacks)};
-                sphere_verts.push_back({p, n, {1, 1, 1}, uv});
+                sphere_verts.push_back({.position = p, .normal = n, .color = {1, 1, 1}, .uv = uv});
             }
         }
         for (uint32_t i = 0; i < stacks; ++i)
@@ -5208,30 +5287,30 @@ TEST_F(visual_pipeline_test, chunk_normals_point_light)
     // Fracture a unit cube (vertices + indices identical to create_cube_mesh)
     // clang-format off
     std::vector<gpu::vertex_data> cube_v = {
-        {{-0.5f,-0.5f, 0.5f},{0,0, 1},{1,1,1},{0,0}},
-        {{ 0.5f,-0.5f, 0.5f},{0,0, 1},{1,1,1},{1,0}},
-        {{ 0.5f, 0.5f, 0.5f},{0,0, 1},{1,1,1},{1,1}},
-        {{-0.5f, 0.5f, 0.5f},{0,0, 1},{1,1,1},{0,1}},
-        {{ 0.5f,-0.5f,-0.5f},{0,0,-1},{1,1,1},{0,0}},
-        {{-0.5f,-0.5f,-0.5f},{0,0,-1},{1,1,1},{1,0}},
-        {{-0.5f, 0.5f,-0.5f},{0,0,-1},{1,1,1},{1,1}},
-        {{ 0.5f, 0.5f,-0.5f},{0,0,-1},{1,1,1},{0,1}},
-        {{-0.5f, 0.5f, 0.5f},{0,1,0},{1,1,1},{0,0}},
-        {{ 0.5f, 0.5f, 0.5f},{0,1,0},{1,1,1},{1,0}},
-        {{ 0.5f, 0.5f,-0.5f},{0,1,0},{1,1,1},{1,1}},
-        {{-0.5f, 0.5f,-0.5f},{0,1,0},{1,1,1},{0,1}},
-        {{-0.5f,-0.5f,-0.5f},{0,-1,0},{1,1,1},{0,0}},
-        {{ 0.5f,-0.5f,-0.5f},{0,-1,0},{1,1,1},{1,0}},
-        {{ 0.5f,-0.5f, 0.5f},{0,-1,0},{1,1,1},{1,1}},
-        {{-0.5f,-0.5f, 0.5f},{0,-1,0},{1,1,1},{0,1}},
-        {{ 0.5f,-0.5f, 0.5f},{1,0,0},{1,1,1},{0,0}},
-        {{ 0.5f,-0.5f,-0.5f},{1,0,0},{1,1,1},{1,0}},
-        {{ 0.5f, 0.5f,-0.5f},{1,0,0},{1,1,1},{1,1}},
-        {{ 0.5f, 0.5f, 0.5f},{1,0,0},{1,1,1},{0,1}},
-        {{-0.5f,-0.5f,-0.5f},{-1,0,0},{1,1,1},{0,0}},
-        {{-0.5f,-0.5f, 0.5f},{-1,0,0},{1,1,1},{1,0}},
-        {{-0.5f, 0.5f, 0.5f},{-1,0,0},{1,1,1},{1,1}},
-        {{-0.5f, 0.5f,-0.5f},{-1,0,0},{1,1,1},{0,1}},
+        {.position={-0.5f,-0.5f, 0.5f},.normal={0,0, 1},.color={1,1,1},.uv={0,0}},
+        {.position={ 0.5f,-0.5f, 0.5f},.normal={0,0, 1},.color={1,1,1},.uv={1,0}},
+        {.position={ 0.5f, 0.5f, 0.5f},.normal={0,0, 1},.color={1,1,1},.uv={1,1}},
+        {.position={-0.5f, 0.5f, 0.5f},.normal={0,0, 1},.color={1,1,1},.uv={0,1}},
+        {.position={ 0.5f,-0.5f,-0.5f},.normal={0,0,-1},.color={1,1,1},.uv={0,0}},
+        {.position={-0.5f,-0.5f,-0.5f},.normal={0,0,-1},.color={1,1,1},.uv={1,0}},
+        {.position={-0.5f, 0.5f,-0.5f},.normal={0,0,-1},.color={1,1,1},.uv={1,1}},
+        {.position={ 0.5f, 0.5f,-0.5f},.normal={0,0,-1},.color={1,1,1},.uv={0,1}},
+        {.position={-0.5f, 0.5f, 0.5f},.normal={0,1,0},.color={1,1,1},.uv={0,0}},
+        {.position={ 0.5f, 0.5f, 0.5f},.normal={0,1,0},.color={1,1,1},.uv={1,0}},
+        {.position={ 0.5f, 0.5f,-0.5f},.normal={0,1,0},.color={1,1,1},.uv={1,1}},
+        {.position={-0.5f, 0.5f,-0.5f},.normal={0,1,0},.color={1,1,1},.uv={0,1}},
+        {.position={-0.5f,-0.5f,-0.5f},.normal={0,-1,0},.color={1,1,1},.uv={0,0}},
+        {.position={ 0.5f,-0.5f,-0.5f},.normal={0,-1,0},.color={1,1,1},.uv={1,0}},
+        {.position={ 0.5f,-0.5f, 0.5f},.normal={0,-1,0},.color={1,1,1},.uv={1,1}},
+        {.position={-0.5f,-0.5f, 0.5f},.normal={0,-1,0},.color={1,1,1},.uv={0,1}},
+        {.position={ 0.5f,-0.5f, 0.5f},.normal={1,0,0},.color={1,1,1},.uv={0,0}},
+        {.position={ 0.5f,-0.5f,-0.5f},.normal={1,0,0},.color={1,1,1},.uv={1,0}},
+        {.position={ 0.5f, 0.5f,-0.5f},.normal={1,0,0},.color={1,1,1},.uv={1,1}},
+        {.position={ 0.5f, 0.5f, 0.5f},.normal={1,0,0},.color={1,1,1},.uv={0,1}},
+        {.position={-0.5f,-0.5f,-0.5f},.normal={-1,0,0},.color={1,1,1},.uv={0,0}},
+        {.position={-0.5f,-0.5f, 0.5f},.normal={-1,0,0},.color={1,1,1},.uv={1,0}},
+        {.position={-0.5f, 0.5f, 0.5f},.normal={-1,0,0},.color={1,1,1},.uv={1,1}},
+        {.position={-0.5f, 0.5f,-0.5f},.normal={-1,0,0},.color={1,1,1},.uv={0,1}},
     };
     std::vector<gpu::uint> cube_i = {
          0, 1, 2,  2, 3, 0,
@@ -5256,9 +5335,8 @@ TEST_F(visual_pipeline_test, chunk_normals_point_light)
     // Positions are already relative to seed_point (origin), so use origin as center.
     uint32_t total_tris = 0;
     uint32_t inward_tris = 0;
-    for (uint32_t ci = 0; ci < result.chunks.size(); ++ci)
+    for (auto& ck : result.chunks)
     {
-        auto& ck = result.chunks[ci];
         glm::vec3 center{0.0f};
 
         for (uint32_t t = 0; t + 2 < ck.indices.size(); t += 3)
@@ -5277,15 +5355,14 @@ TEST_F(visual_pipeline_test, chunk_normals_point_light)
         }
     }
     float inward_pct = total_tris > 0 ? 100.0f * inward_tris / total_tris : 0.0f;
-    printf("\n[chunk_normals] total triangles: %u, inward-facing: %u (%.1f%%)\n",
-           total_tris,
-           inward_tris,
-           inward_pct);
+    std::println("\n[chunk_normals] total triangles: {}, inward-facing: {} ({:.1f}%)",
+                 total_tris,
+                 inward_tris,
+                 inward_pct);
 
     // Verify vertex_data layout matches GPU expectations
-    printf(
-        "[chunk_normals] sizeof(vertex_data)=%zu  "
-        "offset: pos=%zu normal=%zu color=%zu uv=%zu uv2=%zu\n",
+    std::println(
+        "[chunk_normals] sizeof(vertex_data)={}  offset: pos={} normal={} color={} uv={} uv2={}",
         sizeof(gpu::vertex_data),
         offsetof(gpu::vertex_data, position),
         offsetof(gpu::vertex_data, normal),
@@ -5302,9 +5379,9 @@ TEST_F(visual_pipeline_test, chunk_normals_point_light)
         {
             auto& v = ck.vertices[ck.indices[t * 3]];
             auto* raw = reinterpret_cast<const float*>(&v);
-            printf(
-                "[chunk_normals] tri %u: normal=(%.3f,%.3f,%.3f)  "
-                "raw floats[0..7]=(%.3f,%.3f,%.3f, %.3f,%.3f,%.3f, %.3f,%.3f)\n",
+            std::println(
+                "[chunk_normals] tri {}: normal=({:.3f},{:.3f},{:.3f})  raw "
+                "floats[0..7]=({:.3f},{:.3f},{:.3f}, {:.3f},{:.3f},{:.3f}, {:.3f},{:.3f})",
                 t,
                 v.normal[0],
                 v.normal[1],
@@ -5328,17 +5405,16 @@ TEST_F(visual_pipeline_test, chunk_normals_point_light)
     if (!result.chunks.empty())
     {
         auto& ck = result.chunks[0];
-        printf("[chunk_normals] chunk 0: %zu verts, %zu indices\n",
-               ck.vertices.size(),
-               ck.indices.size());
+        std::println(
+            "[chunk_normals] chunk 0: {} verts, {} indices", ck.vertices.size(), ck.indices.size());
         // Print vertex 0 raw bytes
         auto* raw = reinterpret_cast<const uint8_t*>(&ck.vertices[0]);
-        printf("[chunk_normals] vertex 0 hex (52 bytes):");
+        std::print("[chunk_normals] vertex 0 hex (52 bytes):");
         for (int b = 0; b < 52; ++b)
         {
-            printf(" %02x", raw[b]);
+            std::print(" {:02x}", raw[b]);
         }
-        printf("\n");
+        std::println("");
     }
 
     // Place each chunk separated on a floor, under the point light.
@@ -5350,10 +5426,10 @@ TEST_F(visual_pipeline_test, chunk_normals_point_light)
     {
         // Control: a simple quad built with the same buffer→create_mesh path as chunks
         std::vector<gpu::vertex_data> ctrl_v = {
-            {{-0.4f, 0, 0.4f}, {0, 1, 0}, {1, 1, 1}, {0, 0}},
-            {{0.4f, 0, 0.4f}, {0, 1, 0}, {1, 1, 1}, {1, 0}},
-            {{0.4f, 0, -0.4f}, {0, 1, 0}, {1, 1, 1}, {1, 1}},
-            {{-0.4f, 0, -0.4f}, {0, 1, 0}, {1, 1, 1}, {0, 1}},
+            {.position = {-0.4f, 0, 0.4f}, .normal = {0, 1, 0}, .color = {1, 1, 1}, .uv = {0, 0}},
+            {.position = {0.4f, 0, 0.4f}, .normal = {0, 1, 0}, .color = {1, 1, 1}, .uv = {1, 0}},
+            {.position = {0.4f, 0, -0.4f}, .normal = {0, 1, 0}, .color = {1, 1, 1}, .uv = {1, 1}},
+            {.position = {-0.4f, 0, -0.4f}, .normal = {0, 1, 0}, .color = {1, 1, 1}, .uv = {0, 1}},
         };
         std::vector<gpu::uint> ctrl_i = {0, 1, 2, 2, 3, 0};
 
@@ -5444,7 +5520,7 @@ TEST_F(visual_pipeline_test, voronoi_fractured_convex)
                                std::sin(phi) * std::sin(theta)};
                 glm::vec3 p = n * radius;
                 glm::vec2 uv = {float(j) / float(slices), float(i) / float(stacks)};
-                sphere_verts.push_back({p, n, {1, 1, 1}, uv});
+                sphere_verts.push_back({.position = p, .normal = n, .color = {1, 1, 1}, .uv = uv});
             }
         }
         for (uint32_t i = 0; i < stacks; ++i)
@@ -5546,7 +5622,10 @@ TEST_F(visual_pipeline_test, voronoi_presets)
                 glm::vec3 n = {std::sin(phi) * std::cos(theta),
                                std::cos(phi),
                                std::sin(phi) * std::sin(theta)};
-                sv.push_back({n, n, {1, 1, 1}, {float(j) / slices, float(i) / stacks}});
+                sv.push_back({.position = n,
+                              .normal = n,
+                              .color = {1, 1, 1},
+                              .uv = {float(j) / slices, float(i) / stacks}});
             }
         }
         for (uint32_t i = 0; i < stacks; ++i)
@@ -5575,11 +5654,41 @@ TEST_F(visual_pipeline_test, voronoi_presets)
 
     // 1=baseline  2=detail×4  3=depth×2  4=rough  5=all combined
     preset presets[] = {
-        {-4.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.0f, 1, 1}},
-        {-2.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.0f, 1, 4}},
-        {0.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.0f, 2, 1}},
-        {2.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.05f, 1, 1}},
-        {4.0f, {42, 8, voronoi_fracture::fill_mode::convex, 0.02f, 2, 4}},
+        {.x = -4.0f,
+         .fp = {.seed = 42,
+                .cell_count = 8,
+                .fill = voronoi_fracture::fill_mode::convex,
+                .roughness = 0.0f,
+                .depth = 1,
+                .detail = 1}},
+        {.x = -2.0f,
+         .fp = {.seed = 42,
+                .cell_count = 8,
+                .fill = voronoi_fracture::fill_mode::convex,
+                .roughness = 0.0f,
+                .depth = 1,
+                .detail = 4}},
+        {.x = 0.0f,
+         .fp = {.seed = 42,
+                .cell_count = 8,
+                .fill = voronoi_fracture::fill_mode::convex,
+                .roughness = 0.0f,
+                .depth = 2,
+                .detail = 1}},
+        {.x = 2.0f,
+         .fp = {.seed = 42,
+                .cell_count = 8,
+                .fill = voronoi_fracture::fill_mode::convex,
+                .roughness = 0.05f,
+                .depth = 1,
+                .detail = 1}},
+        {.x = 4.0f,
+         .fp = {.seed = 42,
+                .cell_count = 8,
+                .fill = voronoi_fracture::fill_mode::convex,
+                .roughness = 0.02f,
+                .depth = 2,
+                .detail = 4}},
     };
 
     std::vector<texture_sampler_data> no_tex;

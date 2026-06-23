@@ -196,7 +196,7 @@ vulkan_render::upload_bone_matrices(render::frame_state& frame)
     // Always upload at least one identity matrix so the SSBO is valid
     if (m_bone_matrices_staging.empty())
     {
-        m_bone_matrices_staging.push_back(glm::mat4(1.0f));
+        m_bone_matrices_staging.emplace_back(1.0f);
     }
 
     const size_t required_size = m_bone_matrices_staging.size() * sizeof(glm::mat4);

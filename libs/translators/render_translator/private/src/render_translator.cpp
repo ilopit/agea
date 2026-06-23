@@ -117,7 +117,7 @@ render_translator::render_cmd_build(root::smart_object& obj, bool sub_objects)
 
     get_dependency().build_node(&obj);
 
-    reflection::type_context__render_cmd_build ctx{this, &obj, sub_objects};
+    reflection::type_context__render_cmd_build ctx{.rb = this, .obj = &obj, .flag = sub_objects};
     result_code rc = build_fn(ctx);
 
     obj.set_state(root::smart_object_state::render_ready);
@@ -156,7 +156,7 @@ render_translator::render_cmd_destroy(root::smart_object& obj, bool sub_objects)
 
     obj.set_state(root::smart_object_state::render_preparing);
 
-    reflection::type_context__render_cmd_build ctx{this, &obj, sub_objects};
+    reflection::type_context__render_cmd_build ctx{.rb = this, .obj = &obj, .flag = sub_objects};
     result_code rc = destroy_fn(ctx);
 
     obj.set_state(root::smart_object_state::constructed);
@@ -177,7 +177,7 @@ render_translator::render_cmd_transform(root::game_object_component& source)
             continue;
         }
 
-        reflection::type_context__render_cmd_build ctx{this, &obj};
+        reflection::type_context__render_cmd_build ctx{.rb = this, .obj = &obj};
         handler(ctx);
     }
 

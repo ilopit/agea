@@ -122,7 +122,7 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         update_transparent_objects_queue();
 
         // Add transparent object slots to instance buffer (after opaque objects)
-        uint32_t transparent_base = (uint32_t)m_instance_slots_staging.size();
+        auto transparent_base = (uint32_t)m_instance_slots_staging.size();
         for (auto& obj : m_transparent_render_object_queue)
         {
             m_instance_slots_staging.push_back(obj->slot());

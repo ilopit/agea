@@ -30,7 +30,7 @@ class shader_effect_data
 {
 public:
     shader_effect_data(const ::kryga::utils::id& id);
-    shader_effect_data(const ::kryga::utils::id& id, const utils::dynobj_layout_sptr& v);
+    shader_effect_data(const ::kryga::utils::id& id, utils::dynobj_layout_sptr v);
 
     ~shader_effect_data();
 

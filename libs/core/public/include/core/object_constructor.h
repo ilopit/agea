@@ -83,7 +83,7 @@ public:
 
     std::expected<root::smart_object*, result_code>
     construct_obj(const utils::id& type_id,
-                  name_of name,
+                  const name_of& name,
                   const root::smart_object::construct_params& params,
                   bool is_proto);
 

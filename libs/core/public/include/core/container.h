@@ -29,13 +29,13 @@ inline constexpr std::string_view k_levels_prefix = "levels/";
 inline vfs::rid
 package_root(const utils::id& id)
 {
-    return vfs::rid(k_mount, std::string(k_packages_prefix) + id.str() + ".apkg");
+    return {k_mount, std::string(k_packages_prefix) + id.str() + ".apkg"};
 }
 
 inline vfs::rid
 level_root(const utils::id& id)
 {
-    return vfs::rid(k_mount, std::string(k_levels_prefix) + id.str() + ".alvl");
+    return {k_mount, std::string(k_levels_prefix) + id.str() + ".alvl"};
 }
 
 inline bool
@@ -105,7 +105,7 @@ public:
     object_load_context&
     get_load_context() const
     {
-        return *m_occ.get();
+        return *m_occ;
     }
 
     static void

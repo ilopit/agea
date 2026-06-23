@@ -21,7 +21,7 @@ public:
     ~vulkan_image();
 
     static vulkan_image
-    create(vma_allocator_provider allocator,
+    create(const vma_allocator_provider& allocator,
            VkImageCreateInfo ici,
            VmaAllocationCreateInfo aci,
            int mips_level = 0,

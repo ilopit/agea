@@ -227,7 +227,7 @@ TEST(split_pool_demo, watermark_two_phase_create)
     demo_allocator alloc{storage, 0};
     spsc_batch_queue q;
 
-    auto h = create(q, alloc, {7, nullptr});
+    auto h = create(q, alloc, {.value = 7, .token = nullptr});
 
     // Staged but not published: nothing issued yet, queue is trivially quiescent.
     EXPECT_TRUE(q.quiescent());
@@ -259,11 +259,11 @@ TEST(split_pool_demo, watermark_is_batch_granular)
     spsc_batch_queue q;
 
     // Batch A: two creates. Batch B: one create.
-    create(q, alloc, {1, nullptr});
-    create(q, alloc, {2, nullptr});
+    create(q, alloc, {.value = 1, .token = nullptr});
+    create(q, alloc, {.value = 2, .token = nullptr});
     q.publish();
 
-    create(q, alloc, {3, nullptr});
+    create(q, alloc, {.value = 3, .token = nullptr});
     q.publish();
 
     EXPECT_EQ(q.issued, 3u);
@@ -291,7 +291,7 @@ TEST(split_pool_demo, deferred_destroy_eventual_consistency)
     spsc_batch_queue q;
     alloc.set_defer_ticks(3);  // == frames in flight
 
-    auto h = create(q, alloc, {1, nullptr});
+    auto h = create(q, alloc, {.value = 1, .token = nullptr});
     q.publish();
     q.drain_all();
     ASSERT_TRUE(q.quiescent());
@@ -340,7 +340,7 @@ TEST(split_pool_demo, retire_keeps_payload_reset_destructs)
     auto token = std::make_shared<int>(0);
 
     auto h = alloc.reserve();
-    auto* slot = populate(storage, h, {5, token});
+    auto* slot = populate(storage, h, {.value = 5, .token = token});
     ASSERT_EQ(token.use_count(), 2);  // test + slot
 
     EXPECT_TRUE(retire(storage, h));
@@ -367,7 +367,7 @@ TEST(split_pool_demo, stale_retire_still_moves_watermark)
     spsc_batch_queue q;
 
     auto h = alloc.reserve();
-    populate(storage, h, {3, nullptr});
+    populate(storage, h, {.value = 3, .token = nullptr});
 
     EXPECT_TRUE(retire(storage, h));
     EXPECT_FALSE(retire(storage, h));              // stale: caller's policy call
@@ -394,7 +394,7 @@ TEST(split_pool_demo, forged_handles_rejected)
     demo_allocator alloc{storage, 0};
 
     auto h = alloc.reserve();
-    populate(storage, h, {1, nullptr});
+    populate(storage, h, {.value = 1, .token = nullptr});
     EXPECT_TRUE(retire(storage, h));  // retired: shadow gen 0, payload parked in place
 
     // Gen-0 forgery: non-null (kind bits set), in-range index, generation 0.
@@ -411,7 +411,7 @@ TEST(split_pool_demo, forged_handles_rejected)
     // Kind confusion: correct index + generation, wrong kind tag. The static
     // handle type can't catch a reinterpreted u64; the runtime compare does.
     auto h2 = alloc.reserve();
-    populate(storage, h2, {2, nullptr});
+    populate(storage, h2, {.value = 2, .token = nullptr});
     demo_handle wrong_kind{};
     wrong_kind.v =
         (uint64_t(KIND_DEMO + 1) << (demo_handle::index_bits + demo_handle::gen_bits)) |
@@ -442,7 +442,7 @@ TEST(split_pool_demo, detach_rides_the_queue)
     demo_handle leaked{};  // a stale handle that "escapes" the first owner
     {
         demo_allocator alloc{storage, 0};
-        auto h = create(q, alloc, {1, nullptr});
+        auto h = create(q, alloc, {.value = 1, .token = nullptr});
         leaked = h;
         destroy(q, alloc, h);  // identity dead, retire queued
         alloc.detach(q);       // release queued, FIFO after the retire
@@ -466,7 +466,7 @@ TEST(split_pool_demo, detach_rides_the_queue)
     // Cross-claim ABA: the new owner re-mints the SAME index with a counter
     // restarting at 1 -- exactly the bit pattern the leaked handle carried.
     // Without epochs, populate would re-validate it against the new payload.
-    auto h2 = create(q, next, {2, nullptr});
+    auto h2 = create(q, next, {.value = 2, .token = nullptr});
     q.publish();
     q.drain_all();
     ASSERT_EQ(h2.index(), leaked.index());
@@ -493,10 +493,10 @@ TEST(split_pool_demo, shared_storage_two_lanes)
 
     // System pool: same-thread create (reserve + populate, no queue).
     auto sh = system_alloc.reserve();
-    populate(storage, sh, {1, nullptr});
+    populate(storage, sh, {.value = 1, .token = nullptr});
 
     // Content pool: two-phase create through the queue.
-    auto ch = create(q, content_alloc, {2, nullptr});
+    auto ch = create(q, content_alloc, {.value = 2, .token = nullptr});
     q.publish();
 
     // Lane id rides in the index top bits: no collision by construction.
@@ -550,7 +550,7 @@ TEST(split_pool_demo, quiescence_invariant_mixed_workload)
         // Content: create a few through the queue.
         for (int i = 0; i < 4; ++i)
         {
-            live.push_back(create(q, content_alloc, {i, nullptr}));
+            live.push_back(create(q, content_alloc, {.value = i, .token = nullptr}));
         }
         // Content: destroy every other live handle.
         for (size_t i = 0; i + 1 < live.size(); i += 2)
@@ -565,7 +565,7 @@ TEST(split_pool_demo, quiescence_invariant_mixed_workload)
             system_alloc.reclaim(sys_live);
         }
         sys_live = system_alloc.reserve();
-        populate(storage, sys_live, {round, nullptr});
+        populate(storage, sys_live, {.value = round, .token = nullptr});
 
         q.publish();
         q.drain_all();  // frame boundary: render consumes the batch

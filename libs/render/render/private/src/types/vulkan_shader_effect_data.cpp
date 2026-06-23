@@ -11,6 +11,8 @@
 
 #include <utils/kryga_log.h>
 
+#include <utility>
+
 namespace kryga
 {
 namespace render
@@ -23,10 +25,9 @@ shader_effect_data::shader_effect_data(const ::kryga::utils::id& id)
     m_set_layout.fill(VK_NULL_HANDLE);
 }
 
-shader_effect_data::shader_effect_data(const ::kryga::utils::id& id,
-                                       const utils::dynobj_layout_sptr& v)
+shader_effect_data::shader_effect_data(const ::kryga::utils::id& id, utils::dynobj_layout_sptr v)
     : m_id(id)
-    , m_expected_vertex_input(v)
+    , m_expected_vertex_input(std::move(v))
 {
     m_set_layout.fill(VK_NULL_HANDLE);
 }

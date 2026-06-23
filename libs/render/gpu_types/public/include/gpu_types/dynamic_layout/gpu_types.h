@@ -55,12 +55,12 @@ struct gpu_type
     decode(const T&)
     {
         // clang-format off
-        if      constexpr (std::is_same<T, float>::value)     { return g_float; }
-        else if constexpr (std::is_same<T, double>::value)    { return g_double; }
-        else if constexpr (std::is_same<T, uint32_t>::value)  { return g_unsigned; }
-        else if constexpr (std::is_same<T, int32_t>::value)   { return g_int; }
-        else if constexpr (std::is_same<T, glm::vec2>::value) { return g_vec2; }
-        else if constexpr (std::is_same<T, glm::vec3>::value) { return g_vec3; }
+        if      constexpr (std::is_same_v<T, float>)     { return g_float; }
+        else if constexpr (std::is_same_v<T, double>)    { return g_double; }
+        else if constexpr (std::is_same_v<T, uint32_t>)  { return g_unsigned; }
+        else if constexpr (std::is_same_v<T, int32_t>)   { return g_int; }
+        else if constexpr (std::is_same_v<T, glm::vec2>) { return g_vec2; }
+        else if constexpr (std::is_same_v<T, glm::vec3>) { return g_vec3; }
 
         // clang-format on
 

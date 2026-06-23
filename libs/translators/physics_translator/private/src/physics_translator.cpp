@@ -65,7 +65,7 @@ physics_translator::physics_cmd_build(root::smart_object& obj, bool sub_objects)
         return result_code::ok;
     }
 
-    reflection::type_context__physics_cmd_build ctx{this, &obj, sub_objects};
+    reflection::type_context__physics_cmd_build ctx{.pb = this, .obj = &obj, .flag = sub_objects};
     return build_fn(ctx);
 }
 
@@ -83,7 +83,7 @@ physics_translator::physics_cmd_destroy(root::smart_object& obj, bool sub_object
         return result_code::ok;
     }
 
-    reflection::type_context__physics_cmd_build ctx{this, &obj, sub_objects};
+    reflection::type_context__physics_cmd_build ctx{.pb = this, .obj = &obj, .flag = sub_objects};
     return destroy_fn(ctx);
 }
 
@@ -100,7 +100,7 @@ physics_translator::physics_cmd_transform(root::game_object_component& source)
             continue;
         }
 
-        reflection::type_context__physics_cmd_build ctx{this, &obj};
+        reflection::type_context__physics_cmd_build ctx{.pb = this, .obj = &obj};
         handler(ctx);
     }
 

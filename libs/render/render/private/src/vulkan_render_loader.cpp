@@ -197,8 +197,8 @@ build_mesh_data(const kryga::utils::id& mesh_id,
         md.m_bounding_radius = std::sqrt(max_dist_sq);
     }
 
-    const uint32_t vertex_buffer_size = (uint32_t)vbv.size_bytes();
-    const uint32_t index_buffer_size = (uint32_t)ibv.size_bytes();
+    const auto vertex_buffer_size = (uint32_t)vbv.size_bytes();
+    const auto index_buffer_size = (uint32_t)ibv.size_bytes();
 
     const uint32_t buffer_size = vertex_buffer_size + index_buffer_size;
 
@@ -453,8 +453,9 @@ vulkan_render_loader::set_lightmap(const kryga::utils::id& level_id,
     auto itr = m_lightmaps.find(level_id);
     KRG_check(itr == m_lightmaps.end() || itr->second.texture == texture,
               "lightmap rebind with a different atlas — release the old one first");
-    m_lightmaps[level_id] =
-        lightmap_binding{texture->get_bindless_index(), texture, std::move(entries)};
+    m_lightmaps[level_id] = lightmap_binding{.bindless_index = texture->get_bindless_index(),
+                                             .texture = texture,
+                                             .entries = std::move(entries)};
 }
 
 void

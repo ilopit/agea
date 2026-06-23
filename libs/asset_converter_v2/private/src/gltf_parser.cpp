@@ -143,7 +143,7 @@ extract_textures(cgltf_data* data,
             std::string uri(image->uri);
 
             // Skip data URIs — treat as embedded
-            if (uri.rfind("data:", 0) == 0)
+            if (uri.starts_with("data:"))
             {
                 // base64 data URI — decode
                 // cgltf should have already decoded this into buffer_view
@@ -198,7 +198,7 @@ find_texture_index(cgltf_data* data, const parsed_scene& scene, cgltf_texture* t
         return -1;
     }
 
-    cgltf_size image_idx = static_cast<cgltf_size>(tex->image - data->images);
+    auto image_idx = static_cast<cgltf_size>(tex->image - data->images);
     // Match by name since scene.textures may have skipped some
     std::string expected_name =
         sanitize_name(data->images[image_idx].name, "txt_", static_cast<int>(image_idx));
@@ -567,7 +567,7 @@ process_node(cgltf_data* data,
     // Light reference
     if (node->light)
     {
-        cgltf_size light_idx = static_cast<cgltf_size>(node->light - data->lights);
+        auto light_idx = static_cast<cgltf_size>(node->light - data->lights);
         if (light_idx < scene.lights.size())
         {
             parsed_n.light_index = static_cast<int>(light_idx);
@@ -577,7 +577,7 @@ process_node(cgltf_data* data,
     // Camera reference
     if (node->camera)
     {
-        cgltf_size cam_idx = static_cast<cgltf_size>(node->camera - data->cameras);
+        auto cam_idx = static_cast<cgltf_size>(node->camera - data->cameras);
         if (cam_idx < scene.cameras.size())
         {
             parsed_n.camera_index = static_cast<int>(cam_idx);
@@ -589,7 +589,7 @@ process_node(cgltf_data* data,
     // Mesh reference
     if (node->mesh)
     {
-        cgltf_size mesh_idx = static_cast<cgltf_size>(node->mesh - data->meshes);
+        auto mesh_idx = static_cast<cgltf_size>(node->mesh - data->meshes);
         auto it = mesh_to_ir.find(mesh_idx);
         if (it != mesh_to_ir.end() && !it->second.empty())
         {
@@ -599,7 +599,7 @@ process_node(cgltf_data* data,
         // Material from first primitive
         if (node->mesh->primitives_count > 0 && node->mesh->primitives[0].material)
         {
-            cgltf_size mat_idx =
+            auto mat_idx =
                 static_cast<cgltf_size>(node->mesh->primitives[0].material - data->materials);
             if (mat_idx < scene.materials.size())
             {

@@ -39,9 +39,7 @@ vulkan_buffer::operator=(vulkan_buffer&& other) noexcept
 }
 
 vulkan_buffer::vulkan_buffer()
-    : m_buffer(VK_NULL_HANDLE)
-    , m_allocation(VK_NULL_HANDLE)
-    , m_alloc_size(0)
+
 {
 }
 

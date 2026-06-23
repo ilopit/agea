@@ -31,6 +31,7 @@
 
 #include <shader_system/shader_loader.h>
 
+#include <memory>
 #include <tracy/Tracy.hpp>
 
 #include <cmath>
@@ -77,13 +78,9 @@ compute_cluster_indices_size(uint32_t screen_w,
 
 }  // namespace
 
-vulkan_render::vulkan_render()
-{
-}
+vulkan_render::vulkan_render() = default;
 
-vulkan_render::~vulkan_render()
-{
-}
+vulkan_render::~vulkan_render() = default;
 
 void
 vulkan_render::create_frame_buffers(size_t i)
@@ -510,8 +507,8 @@ vulkan_render::reconfigure_render_scale_live(uint32_t new_divisor)
         {
             auto& depth_img = main_pass->get_depth_images()[0];
             auto img_handle = depth_img.image();
-            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(new vk_utils::vulkan_image(
-                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+            auto img_sptr = std::make_shared<vk_utils::vulkan_image>(
+                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT));
 
             auto depth_view_ci = vk_utils::make_imageview_create_info(
                 VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -707,8 +704,8 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         {
             auto& depth_img = main_pass->get_depth_images()[0];
             auto img_handle = depth_img.image();
-            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(new vk_utils::vulkan_image(
-                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+            auto img_sptr = std::make_shared<vk_utils::vulkan_image>(
+                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT));
             auto depth_view_ci = vk_utils::make_imageview_create_info(
                 VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
             auto depth_view = vk_utils::vulkan_image_view::create_shared(depth_view_ci);
@@ -1264,8 +1261,8 @@ vulkan_render::prepare_system_resources()
 
             // Non-owning wrapper sptr — the render pass owns the actual image.
             auto img_handle = depth_img.image();
-            auto img_sptr = std::shared_ptr<vk_utils::vulkan_image>(new vk_utils::vulkan_image(
-                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT)));
+            auto img_sptr = std::make_shared<vk_utils::vulkan_image>(
+                vk_utils::vulkan_image::create(img_handle, VK_FORMAT_D32_SFLOAT_S8_UINT));
 
             auto depth_view_ci = vk_utils::make_imageview_create_info(
                 VK_FORMAT_D32_SFLOAT_S8_UINT, img_handle, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -1910,12 +1907,12 @@ vulkan_render::deinit_static_samplers()
 {
     auto vk_device = glob::glob_state().getr_render().device.vk_device();
 
-    for (int i = 0; i < KGPU_SAMPLER_COUNT; ++i)
+    for (auto& m_static_sampler : m_static_samplers)
     {
-        if (m_static_samplers[i] != VK_NULL_HANDLE)
+        if (m_static_sampler != VK_NULL_HANDLE)
         {
-            vkDestroySampler(vk_device, m_static_samplers[i], nullptr);
-            m_static_samplers[i] = VK_NULL_HANDLE;
+            vkDestroySampler(vk_device, m_static_sampler, nullptr);
+            m_static_sampler = VK_NULL_HANDLE;
         }
     }
 }

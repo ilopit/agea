@@ -150,7 +150,7 @@ vulkan_shader_loader::create_shader_effect_pipeline_layout(shader_effect_data& s
         ly.create_info.bindingCount = (uint32_t)ly.bindings.size();
         ly.create_info.pBindings = ly.bindings.data();
         ly.create_info.flags = 0;
-        ly.create_info.pNext = 0;
+        ly.create_info.pNext = nullptr;
 
         // For set 2 (textures), skip creating layout - we'll use the global bindless layout
         // Don't store it in se.m_set_layout since it's shared and shouldn't be destroyed
@@ -281,7 +281,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
     pb.m_viewport.minDepth = 0.0f;
     pb.m_viewport.maxDepth = 1.0f;
 
-    pb.m_scissor.offset = {0, 0};
+    pb.m_scissor.offset = {.x = 0, .y = 0};
     pb.m_scissor.extent = VkExtent2D{width, height};
 
     pb.m_rasterizer_ci = vk_utils::make_rasterization_state_create_info(
@@ -357,7 +357,7 @@ vulkan_shader_loader::create_shader_effect(shader_effect_data& se_data,
 
             if (found)
             {
-                pb.m_spec_constants.push_back({found->constant_id, value});
+                pb.m_spec_constants.push_back({.constant_id = found->constant_id, .value = value});
             }
             else
             {

@@ -32,7 +32,7 @@ l_my_print(lua_State* L)
 }
 
 const struct luaL_Reg printlib[] = {
-    {"print", l_my_print}, {NULL, NULL} /* end of array */
+    {.name = "print", .func = l_my_print}, {.name = nullptr, .func = nullptr} /* end of array */
 };
 
 int
@@ -60,9 +60,7 @@ lua_api::lua_api()
     m_state->require("kryga", luaopen_luamylib, true);
 }
 
-lua_api::~lua_api()
-{
-}
+lua_api::~lua_api() = default;
 
 sol::state&
 lua_api::state()

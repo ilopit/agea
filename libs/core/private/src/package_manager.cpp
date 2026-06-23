@@ -26,28 +26,23 @@ namespace kryga
 namespace core
 {
 
-package_manager::package_manager()
-{
-}
+package_manager::package_manager() = default;
 
 package_manager::~package_manager()
 {
     deinit();
 }
 
-static_package_context::static_package_context()
-{
-}
+static_package_context::static_package_context() = default;
 
-static_package_context::~static_package_context()
-{
-}
+static_package_context::~static_package_context() = default;
 
 bool
 package_manager::init()
 {
     // Collect all static packages
     std::vector<package*> packages;
+    packages.reserve(m_static_packages.size());
     for (auto& p : m_static_packages)
     {
         packages.push_back(p.second.pkg.get());
@@ -138,7 +133,7 @@ package_manager::load_static_package(const utils::id& package_id)
     ctx.pkg = ctx.loader();
     m_packages[ctx.pkg->get_id()] = ctx.pkg.get();
 
-    return *ctx.pkg.get();
+    return *ctx.pkg;
 }
 
 bool

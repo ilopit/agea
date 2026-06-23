@@ -189,7 +189,7 @@ object_constructor::construct_obj(const utils::id& type_id,
 
 std::expected<root::smart_object*, result_code>
 object_constructor::construct_obj(const utils::id& type_id,
-                                  name_of name,
+                                  const name_of& name,
                                   const root::smart_object::construct_params& params,
                                   bool is_proto)
 {
@@ -215,7 +215,7 @@ object_constructor::save_obj(const root::smart_object& obj)
         return rc;
     }
 
-    reflection::property_context__save ser_ctx{nullptr, &obj, &sc};
+    reflection::property_context__save ser_ctx{.p = nullptr, .obj = &obj, .sc = &sc};
 
     for (auto& p : diff)
     {
@@ -318,7 +318,12 @@ object_constructor::load_derive_object_properties(root::smart_object& from,
 {
     auto& properties = from.get_reflection()->m_serialization_properties;
 
-    reflection::property_context__load ctx{nullptr, nullptr, &from, &to, this, &c};
+    reflection::property_context__load ctx{.src_property = nullptr,
+                                           .dst_property = nullptr,
+                                           .src_obj = &from,
+                                           .dst_obj = &to,
+                                           .ctor = this,
+                                           .sc = &c};
 
     for (auto& p : properties)
     {
@@ -427,8 +432,16 @@ object_constructor::clone_object_properties(root::smart_object& from, root::smar
 {
     auto& properties = from.get_reflection()->m_serialization_properties;
 
-    reflection::property_context__instantiate ictx{nullptr, nullptr, &from, &to, this};
-    reflection::property_context__copy cctx{nullptr, nullptr, &from, &to, this};
+    reflection::property_context__instantiate ictx{.src_property = nullptr,
+                                                   .dst_property = nullptr,
+                                                   .src_obj = &from,
+                                                   .dst_obj = &to,
+                                                   .ctor = this};
+    reflection::property_context__copy cctx{.src_property = nullptr,
+                                            .dst_property = nullptr,
+                                            .src_obj = &from,
+                                            .dst_obj = &to,
+                                            .ctor = this};
 
     for (auto& p : properties)
     {
@@ -503,8 +516,16 @@ object_constructor::instantiate_object_properties(root::smart_object& from, root
 {
     auto& properties = from.get_reflection()->m_serialization_properties;
 
-    reflection::property_context__instantiate ictx{nullptr, nullptr, &from, &to, this};
-    reflection::property_context__copy cctx{nullptr, nullptr, &from, &to, this};
+    reflection::property_context__instantiate ictx{.src_property = nullptr,
+                                                   .dst_property = nullptr,
+                                                   .src_obj = &from,
+                                                   .dst_obj = &to,
+                                                   .ctor = this};
+    reflection::property_context__copy cctx{.src_property = nullptr,
+                                            .dst_property = nullptr,
+                                            .src_obj = &from,
+                                            .dst_obj = &to,
+                                            .ctor = this};
 
     for (auto& p : properties)
     {

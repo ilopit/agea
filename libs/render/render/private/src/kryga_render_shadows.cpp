@@ -88,8 +88,8 @@ vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
         vkCmdSetViewport(cmd, 0, 1, &vp);
 
         VkRect2D sc{};
-        sc.offset = {static_cast<int32_t>(tile.x), static_cast<int32_t>(tile.y)};
-        sc.extent = {tile.size, tile.size};
+        sc.offset = {.x = static_cast<int32_t>(tile.x), .y = static_cast<int32_t>(tile.y)};
+        sc.extent = {.width = tile.size, .height = tile.size};
         vkCmdSetScissor(cmd, 0, 1, &sc);
 
         draw_shadow_pass(cmd, c);
@@ -113,8 +113,8 @@ vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
             vkCmdSetViewport(cmd, 0, 1, &vp);
 
             VkRect2D sc{};
-            sc.offset = {static_cast<int32_t>(tile.x), static_cast<int32_t>(tile.y)};
-            sc.extent = {tile.size, tile.size};
+            sc.offset = {.x = static_cast<int32_t>(tile.x), .y = static_cast<int32_t>(tile.y)};
+            sc.extent = {.width = tile.size, .height = tile.size};
             vkCmdSetScissor(cmd, 0, 1, &sc);
 
             draw_shadow_local_pass(cmd, i, false);
@@ -134,8 +134,8 @@ vulkan_render::draw_shadow_atlas(VkCommandBuffer cmd)
             vkCmdSetViewport(cmd, 0, 1, &vp);
 
             VkRect2D sc{};
-            sc.offset = {static_cast<int32_t>(tile.x), static_cast<int32_t>(tile.y)};
-            sc.extent = {tile.size, tile.size};
+            sc.offset = {.x = static_cast<int32_t>(tile.x), .y = static_cast<int32_t>(tile.y)};
+            sc.extent = {.width = tile.size, .height = tile.size};
             vkCmdSetScissor(cmd, 0, 1, &sc);
 
             draw_shadow_local_pass(cmd, i, true);
@@ -497,7 +497,7 @@ vulkan_render::select_shadowed_lights()
 
         float dist = glm::length(light->gpu_data.position - m_camera_data.position);
         float contribution = light->gpu_data.radius / std::max(dist, 0.1f);
-        candidates.push_back({light->slot(), contribution});
+        candidates.push_back({.light_slot = light->slot(), .contribution = contribution});
     }
 
     // Sort by contribution (highest first)

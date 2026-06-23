@@ -216,7 +216,8 @@ parse_obj(const std::string& path, parsed_scene& out_scene)
             {
                 tinyobj::index_t idx = shape.mesh.indices[index_offset + vi];
 
-                vertex_key key{idx.vertex_index, idx.normal_index, idx.texcoord_index};
+                vertex_key key{
+                    .vi = idx.vertex_index, .ni = idx.normal_index, .ti = idx.texcoord_index};
 
                 auto it = dedup_map.find(key);
                 if (it != dedup_map.end())
@@ -261,7 +262,7 @@ parse_obj(const std::string& path, parsed_scene& out_scene)
                         vert.color = glm::vec3(1.0f, 1.0f, 1.0f);
                     }
 
-                    uint32_t new_idx = static_cast<uint32_t>(temp_vertices.size());
+                    auto new_idx = static_cast<uint32_t>(temp_vertices.size());
                     temp_vertices.push_back(vert);
                     ir_m.indices.push_back(new_idx);
                     dedup_map[key] = new_idx;

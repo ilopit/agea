@@ -116,7 +116,12 @@ binding_table::add(const utils::id& name,
                   "Duplicate set/binding index");
     }
 
-    m_bindings.push_back({name, set, binding, type, stages, scope});
+    m_bindings.push_back({.name = name,
+                          .set_index = set,
+                          .binding_index = binding,
+                          .type = type,
+                          .stages = stages,
+                          .scope = scope});
     return *this;
 }
 
@@ -131,7 +136,12 @@ binding_table::add_bda(const utils::id& name)
     }
 
     // BDA entries use dummy set/binding/type — they don't participate in descriptor layout
-    m_bindings.push_back({name, 0, 0, VK_DESCRIPTOR_TYPE_MAX_ENUM, 0, binding_scope::bda});
+    m_bindings.push_back({.name = name,
+                          .set_index = 0,
+                          .binding_index = 0,
+                          .type = VK_DESCRIPTOR_TYPE_MAX_ENUM,
+                          .stages = 0,
+                          .scope = binding_scope::bda});
     return *this;
 }
 
@@ -441,7 +451,8 @@ binding_table::bind_buffer(const utils::id& name, vk_utils::vulkan_buffer& buf)
     if (spec->scope == binding_scope::bda)
     {
         // BDA entries — just track that the resource was bound, no descriptor write
-        m_bound[name] = {&buf, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE};
+        m_bound[name] = {
+            .buffer = &buf, .image = nullptr, .view = VK_NULL_HANDLE, .sampler = VK_NULL_HANDLE};
         return;
     }
 
@@ -449,7 +460,8 @@ binding_table::bind_buffer(const utils::id& name, vk_utils::vulkan_buffer& buf)
     KRG_check(spec->scope == binding_scope::per_pass,
               "Cannot bind per_material binding via bind_buffer");
 
-    m_bound[name] = {&buf, nullptr, VK_NULL_HANDLE, VK_NULL_HANDLE};
+    m_bound[name] = {
+        .buffer = &buf, .image = nullptr, .view = VK_NULL_HANDLE, .sampler = VK_NULL_HANDLE};
 }
 
 void
@@ -466,7 +478,7 @@ binding_table::bind_image(const utils::id& name,
     KRG_check(spec->scope == binding_scope::per_pass,
               "Cannot bind per_material binding via bind_image");
 
-    m_bound[name] = {nullptr, &img, view, sampler};
+    m_bound[name] = {.buffer = nullptr, .image = &img, .view = view, .sampler = sampler};
 }
 
 VkDescriptorSet
@@ -536,7 +548,7 @@ binding_table::build_set(uint32_t set_index, vk_utils::descriptor_allocator& all
                     range = res.buffer->get_alloc_size();
                 }
             }
-            buffer_infos.push_back({res.buffer->buffer(), 0, range});
+            buffer_infos.push_back({.buffer = res.buffer->buffer(), .offset = 0, .range = range});
             write.pBufferInfo = &buffer_infos.back();
         }
         else if (is_image_descriptor(spec->type))
@@ -546,7 +558,8 @@ binding_table::build_set(uint32_t set_index, vk_utils::descriptor_allocator& all
             {
                 layout = VK_IMAGE_LAYOUT_GENERAL;
             }
-            image_infos.push_back({res.sampler, res.view, layout});
+            image_infos.push_back(
+                {.sampler = res.sampler, .imageView = res.view, .imageLayout = layout});
             write.pImageInfo = &image_infos.back();
         }
 

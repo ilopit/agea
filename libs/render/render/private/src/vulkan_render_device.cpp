@@ -340,7 +340,7 @@ render_device::init_vulkan(SDL_Window* window, bool headless)
     {
         ALOG_ERROR("vkb::DeviceBuilder::build failed: {}", dev_ret.error().message());
     }
-    vkb::Device vkbDevice = dev_ret.value();
+    const vkb::Device& vkbDevice = dev_ret.value();
 
     // Get the VkDevice handle used in the rest of a vulkan application
     m_vk_device = vkbDevice.device;
@@ -490,7 +490,7 @@ render_device::init_swapchain(bool headless, uint32_t width, uint32_t height)
     }
     else
     {
-        m_swapchain_extent = {width, height};
+        m_swapchain_extent = {.width = width, .height = height};
         VkExtent3D swapchain_image_extent = {width, height, 1};
 
         auto simg_info = vk_utils::make_image_create_info(
@@ -615,15 +615,17 @@ render_device::recreate_swapchain(
     std::vector<vk_utils::vulkan_image_view_sptr> new_views;
 
     auto images = vkb_swapchain.get_images().value();
-    for (size_t idx = 0; idx < images.size(); ++idx)
+    new_images.reserve(images.size());
+    for (auto& image : images)
     {
         new_images.push_back(std::make_shared<vk_utils::vulkan_image>(
-            vk_utils::vulkan_image::create(images[idx], vkb_swapchain.image_format)));
+            vk_utils::vulkan_image::create(image, vkb_swapchain.image_format)));
     }
     auto views = vkb_swapchain.get_image_views().value();
-    for (size_t idx = 0; idx < views.size(); ++idx)
+    new_views.reserve(views.size());
+    for (auto& view : views)
     {
-        new_views.push_back(vk_utils::vulkan_image_view::create_shared(std::move(views[idx])));
+        new_views.push_back(vk_utils::vulkan_image_view::create_shared(std::move(view)));
     }
 
     // Rebuild pass framebuffers against the NEW views while the OLD ones still
@@ -646,7 +648,7 @@ render_device::recreate_swapchain(
         vkDestroySwapchainKHR(m_vk_device, old_swapchain, nullptr);
     }
 
-    uint32_t actual = static_cast<uint32_t>(m_swapchain_images.size());
+    auto actual = static_cast<uint32_t>(m_swapchain_images.size());
     // A surface whose minImageCount exceeds our frame_data backing would index
     // past m_frames on the next draw. Fail loudly rather than corrupt memory.
     if (actual > m_frames.size())
@@ -707,7 +709,7 @@ render_device::present_mode_image_range(present_mode mode) const
     uint32_t hi = (caps.maxImageCount == 0) ? FRAMES_IN_FLIGHT_MAX
                                             : std::min(caps.maxImageCount, FRAMES_IN_FLIGHT_MAX);
     hi = std::max(hi, lo);
-    return {lo, hi};
+    return {.min = lo, .max = hi};
 }
 
 bool
@@ -771,7 +773,7 @@ render_device::begin_present_timing()
         return nullptr;
     }
     m_current_present_id = ++m_present_id;
-    m_present_pending.push_back({m_current_present_id, ns_now()});
+    m_present_pending.push_back({.id = m_current_present_id, .submit_ns = ns_now()});
     // Safety cap — the deque should never hold more than a few frames in flight.
     while (m_present_pending.size() > 64)
     {
@@ -1035,7 +1037,7 @@ render_device::schedule_to_delete(delayed_deleter d)
 }
 
 void
-render_device::delete_immediately(delayed_deleter d)
+render_device::delete_immediately(const delayed_deleter& d)
 {
     d(m_vk_device, m_allocator);
 }
@@ -1172,7 +1174,7 @@ uint32_t
 render_device::pad_uniform_buffer_size(uint32_t original_size)
 {
     // Calculate required alignment based on minimum device offset alignment
-    uint32_t min_ubo_alignment = (uint32_t)m_gpu_properties.limits.minUniformBufferOffsetAlignment;
+    auto min_ubo_alignment = (uint32_t)m_gpu_properties.limits.minUniformBufferOffsetAlignment;
     uint32_t aligned_size = original_size;
     if (min_ubo_alignment > 0)
     {

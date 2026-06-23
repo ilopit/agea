@@ -16,9 +16,7 @@ material_data::material_data(const ::kryga::utils::id& id, const ::kryga::utils:
 {
 }
 
-material_data::~material_data()
-{
-}
+material_data::~material_data() = default;
 
 shader_effect_data*
 material_data::get_shader_effect()

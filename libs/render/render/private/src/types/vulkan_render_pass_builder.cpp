@@ -106,13 +106,15 @@ render_pass_builder::build()
 
         if (m_depth_only)
         {
-            depthReference = {0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+            depthReference = {.attachment = 0,
+                              .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
             subpassDescription.colorAttachmentCount = 0;
             subpassDescription.pColorAttachments = nullptr;
         }
         else
         {
-            depthReference = {1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+            depthReference = {.attachment = 1,
+                              .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
             subpassDescription.colorAttachmentCount = 1;
             subpassDescription.pColorAttachments = &colorReference;
         }

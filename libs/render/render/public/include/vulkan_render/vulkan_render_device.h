@@ -399,7 +399,7 @@ public:
     schedule_to_delete(delayed_deleter d);
 
     void
-    delete_immediately(delayed_deleter d);
+    delete_immediately(const delayed_deleter& d);
 
     void
     delete_scheduled_actions();

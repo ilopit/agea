@@ -27,7 +27,8 @@ diff_object_properties(const root::smart_object& left,
 
     auto& properties = left.get_reflection()->m_serialization_properties;
 
-    reflection::property_context__compare compare_ctx{nullptr, &left, &right};
+    reflection::property_context__compare compare_ctx{
+        .p = nullptr, .src_obj = &left, .dst_obj = &right};
 
     for (auto& p : properties)
     {
@@ -54,7 +55,11 @@ snapshot_object_properties(root::smart_object& from, root::smart_object& to)
 
     // ctor = nullptr: the snapshot path never allocates a sub-object (those props
     // are skipped), so no object_constructor is required.
-    reflection::property_context__copy cctx{nullptr, nullptr, &from, &to, nullptr};
+    reflection::property_context__copy cctx{.src_property = nullptr,
+                                            .dst_property = nullptr,
+                                            .src_obj = &from,
+                                            .dst_obj = &to,
+                                            .ctor = nullptr};
 
     for (auto& p : properties)
     {

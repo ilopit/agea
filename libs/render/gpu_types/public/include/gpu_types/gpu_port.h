@@ -37,7 +37,7 @@ struct bda_addr
 inline bda_addr
 make_bda_addr(uint64_t addr)
 {
-    return bda_addr(uint32_t(addr), uint32_t(addr >> 32));
+    return {uint32_t(addr), uint32_t(addr >> 32)};
 }
 using ivec4 = ::glm::ivec4;
 }  // namespace kryga::gpu

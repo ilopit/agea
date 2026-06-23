@@ -8,12 +8,16 @@
 #include <global_state/global_state.h>
 #include <utils/kryga_log.h>
 
+#include <utility>
+
+#include <utility>
+
 namespace kryga::render::vk_utils
 {
 
 vulkan_image::vulkan_image(vma_allocator_provider a, int mips_level)
     : m_image()
-    , m_allocator(a)
+    , m_allocator(std::move(std::move(a)))
     , mipLevels(mips_level)
     , m_allocation(VK_NULL_HANDLE)
 {
@@ -30,14 +34,13 @@ vulkan_image::vulkan_image(vulkan_image&& other) noexcept
     other.m_allocation = VK_NULL_HANDLE;
     other.m_format = VK_FORMAT_UNDEFINED;
     other.mipLevels = 0;
-    other.m_allocator = 0;
+    other.m_allocator = nullptr;
 }
 
 vulkan_image::vulkan_image()
     : m_image(VK_NULL_HANDLE)
     , m_allocation(VK_NULL_HANDLE)
-    , mipLevels(1)
-    , m_allocator()
+
 {
 }
 
@@ -70,7 +73,7 @@ vulkan_image::~vulkan_image()
 }
 
 vulkan_image
-vulkan_image::create(vma_allocator_provider allocator,
+vulkan_image::create(const vma_allocator_provider& allocator,
                      VkImageCreateInfo ici,
                      VmaAllocationCreateInfo aci,
                      int mips_level,
@@ -176,7 +179,7 @@ vulkan_image_view::create(const VkImageViewCreateInfo& iv_ci, std::string_view d
         KRG_VK_NAME(vk_device, iv, debug_name);
     }
 
-    return vulkan_image_view(iv);
+    return {iv};
 }
 
 vulkan_image_view

@@ -76,7 +76,7 @@ build_recursive(std::vector<build_node>& nodes,
                 uint32_t begin,
                 uint32_t end)
 {
-    uint32_t node_idx = static_cast<uint32_t>(nodes.size());
+    auto node_idx = static_cast<uint32_t>(nodes.size());
     nodes.emplace_back();
 
     uint32_t count = end - begin;

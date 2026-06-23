@@ -11,7 +11,7 @@ lightmap_atlas::lightmap_atlas(uint32_t width, uint32_t height)
     : m_width(width)
     , m_height(height)
 {
-    m_skyline.push_back({0, 0, width});
+    m_skyline.push_back({.x = 0, .y = 0, .width = width});
 }
 
 bool
@@ -64,7 +64,7 @@ lightmap_atlas::clear()
 {
     m_regions.clear();
     m_skyline.clear();
-    m_skyline.push_back({0, 0, m_width});
+    m_skyline.push_back({.x = 0, .y = 0, .width = m_width});
 }
 
 bool

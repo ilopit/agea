@@ -71,21 +71,24 @@ public:
     read(const utils::id& name)
     {
         auto it = m_resources.find(name);
-        return {it != m_resources.end() ? &it->second.base : nullptr, rg_access_mode::read};
+        return {.resource = it != m_resources.end() ? &it->second.base : nullptr,
+                .usage = rg_access_mode::read};
     }
 
     rg_resource_ref
     write(const utils::id& name)
     {
         auto it = m_resources.find(name);
-        return {it != m_resources.end() ? &it->second.base : nullptr, rg_access_mode::write};
+        return {.resource = it != m_resources.end() ? &it->second.base : nullptr,
+                .usage = rg_access_mode::write};
     }
 
     rg_resource_ref
     read_write(const utils::id& name)
     {
         auto it = m_resources.find(name);
-        return {it != m_resources.end() ? &it->second.base : nullptr, rg_access_mode::read_write};
+        return {.resource = it != m_resources.end() ? &it->second.base : nullptr,
+                .usage = rg_access_mode::read_write};
     }
 
     // Pass registration

@@ -45,7 +45,7 @@ id_generator::generate(const utils::id& obj_id)
     {
         auto& node = m_mapping[AID(obj_id_raw)];
 
-        std::string s = std::format("{}#{}", obj_id_raw.c_str(), node.ctr);
+        std::string s = std::format("{}#{}", obj_id_raw, node.ctr);
         ++node.ctr;
 
         if (glob::glob_state().getr_model().caches.objects.has_item(AID(s)))

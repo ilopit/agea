@@ -9,6 +9,12 @@
 # Usage:
 #   tools/tidy.sh                # changed-since-HEAD files, report only
 #   tools/tidy.sh --fix          # apply auto-fixable diagnostics
+#   tools/tidy.sh --force        # like --fix, but applies fixes even when a TU has a
+#                                # COMPILE error (--fix-errors). Needed for libs whose
+#                                # every TU transitively includes a thirdparty header
+#                                # clang can't parse (e.g. sol2's optional<T&> in core).
+#                                # Fixes still come from the correctly-parsed code; the
+#                                # broken part is thirdparty. ALWAYS build-gate after.
 #   tools/tidy.sh --all          # whole tree (slow)
 #   tools/tidy.sh --configure    # (re)generate build_tidy/compile_commands.json, then run
 #   tools/tidy.sh [--fix] <path>...  # scope to path(s), e.g. libs/core. Header fixes are
@@ -63,7 +69,8 @@ fi
 FIX="" ; ALL=0 ; CONFIGURE=0 ; SCOPES=()
 for arg in "$@"; do
   case "$arg" in
-    --fix) FIX="--fix" ;;
+    --fix) [[ "$FIX" == "--fix-errors" ]] || FIX="--fix" ;;
+    --force) FIX="--fix-errors" ;;   # apply fixes despite thirdparty compile errors
     --all) ALL=1 ;;
     --configure) CONFIGURE=1 ;;
     --*) echo "unknown flag: $arg" >&2; exit 2 ;;
@@ -128,7 +135,11 @@ echo "clang-tidy: ${#FILTERED[@]} file(s)${FIX:+ (--fix)}"
 # Windows path (cygpath) — a naive /->\ swap yields '\c\Program Files\...' which cmd
 # can't find. File args stay relative (clang-tidy accepts forward slashes fine).
 CT_WIN="$(cygpath -w "$CLANG_TIDY")"
-CMD="\"$CT_WIN\" -p $DB_DIR ${FIX}"
+# Force our root .clang-tidy for every file so clang-tidy never walks into a nested
+# thirdparty .clang-tidy (e.g. spdlog's stale 'AnalyzeTemporaryDtors' key, which
+# errors out and blocks fixes for any TU that includes it).
+CFG_WIN="$(cygpath -w "$PWD/.clang-tidy")"
+CMD="\"$CT_WIN\" -p $DB_DIR --config-file=\"$CFG_WIN\" ${FIX}"
 [[ -n "$HF" ]] && CMD+=" --header-filter=\"$HF\""
 # These checks produce BUILD-BREAKING auto-fixes and must never be applied via --fix:
 #  - identifier-naming renames third-party symbols we forward-declare (JPH::BodyID,
@@ -139,6 +150,12 @@ CMD="\"$CT_WIN\" -p $DB_DIR ${FIX}"
 #    breaking the erase-remove idiom (erase(it,end) no longer compiles).
 # NOTE: even with these off, --fix is heuristic and CAN break the build — always
 # build-verify after fixing (ideally per-lib), and revert the lib if it fails.
-[[ -n "$FIX" ]] && CMD+=" --checks=-readability-identifier-naming,-bugprone-macro-parentheses,-modernize-use-ranges"
+#  - macro-to-enum converts #define groups to anonymous enums; in the shared
+#    gpu_types/* headers GLSL then chokes ("'enum': Reserved word"). The C++ build
+#    can't catch this — only the shader cook does — so it must never auto-apply.
+#  - move-const-arg strips std::move on trivially-copyable handles (e.g. VkImageView),
+#    but the move is what selects an rvalue-ref overload — removing it breaks overload
+#    resolution (create_shared -> create(VkImageView&&)).
+[[ -n "$FIX" ]] && CMD+=" --checks=-readability-identifier-naming,-bugprone-macro-parentheses,-modernize-use-ranges,-modernize-macro-to-enum,-cppcoreguidelines-macro-to-enum,-performance-move-const-arg,-hicpp-move-const-arg"
 for f in "${FILTERED[@]}"; do CMD+=" \"$f\""; done
 run_in_vcvars "$CMD"

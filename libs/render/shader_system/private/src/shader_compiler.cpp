@@ -78,7 +78,7 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
     if (compiled_path.exists())
     {
         ALOG_ERROR("Tmp file already exists!");
-        return std::unexpected(compilation_error{result_code::failed});
+        return std::unexpected(compilation_error{.code = result_code::failed});
     }
 
     auto includes = vfs.real_path(vfs::rid("data://shaders_includes"));
@@ -119,14 +119,14 @@ shader_compiler::compile_shader(const kryga::utils::buffer& raw_buffer,
     if (!kryga::utils::buffer::load(compiled_path, cs.spirv))
     {
         ALOG_ERROR("Failed to load compiled shader");
-        return std::unexpected(compilation_error{result_code::compilation_failed});
+        return std::unexpected(compilation_error{.code = result_code::compilation_failed});
     }
 
     if (!shader_reflection_utils::build_shader_reflection(
             cs.spirv.data(), cs.spirv.size(), cs.reflection))
     {
         ALOG_ERROR("Failed to build shader reflection");
-        return std::unexpected(compilation_error{result_code::compilation_failed});
+        return std::unexpected(compilation_error{.code = result_code::compilation_failed});
     }
 
     return cs;

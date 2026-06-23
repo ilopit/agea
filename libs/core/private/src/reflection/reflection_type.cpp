@@ -123,7 +123,7 @@ reflection_type::as_string() const
 
     result += "properties:\n";
 
-    for (auto p : m_properties)
+    for (const auto& p : m_properties)
     {
         result += std::format("  {0}:{1}:{2}\n",
                               p->rtype ? p->rtype->type_name.str() : std::string("custom"),
@@ -132,7 +132,7 @@ reflection_type::as_string() const
     }
     result += "functions:\n";
 
-    for (auto p : m_functions)
+    for (const auto& p : m_functions)
     {
         result += std::format("  {0}\n", p->name);
     }

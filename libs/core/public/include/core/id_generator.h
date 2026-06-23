@@ -20,7 +20,6 @@ public:
     utils::id
     generate(const utils::id& obj_id);
 
-public:
     std::unordered_map<utils::id, name_counter> m_mapping;
 };
 

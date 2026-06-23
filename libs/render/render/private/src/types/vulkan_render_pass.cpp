@@ -75,13 +75,13 @@ render_pass::begin(VkCommandBuffer cmd,
     if (m_color_attachment_count == 0)
     {
         // Depth-only pass: single clear value for depth
-        clear_values[0].depthStencil = {1.0f, 0};
+        clear_values[0].depthStencil = {.depth = 1.0f, .stencil = 0};
         rp_info.clearValueCount = 1;
     }
     else
     {
         clear_values[0].color = m_clear_color;
-        clear_values[1].depthStencil = {1.0f, 0};
+        clear_values[1].depthStencil = {.depth = 1.0f, .stencil = 0};
         rp_info.clearValueCount = 2;
     }
     rp_info.pClearValues = clear_values;
@@ -122,8 +122,8 @@ render_pass::execute(VkCommandBuffer cmd,
         vkCmdSetViewport(cmd, 0, 1, &viewport);
 
         VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = {pass_width, pass_height};
+        scissor.offset = {.x = 0, .y = 0};
+        scissor.extent = {.width = pass_width, .height = pass_height};
         vkCmdSetScissor(cmd, 0, 1, &scissor);
 
         if (m_execute)
@@ -180,7 +180,7 @@ render_pass::replace_color_targets(
     m_color_images = new_color_images;
     m_color_image_views = new_color_views;
 
-    const uint32_t image_count = static_cast<uint32_t>(new_color_images.size());
+    const auto image_count = static_cast<uint32_t>(new_color_images.size());
 
     VkExtent3D depth_extent = {new_width, new_height, 1};
     VkImageUsageFlags depth_usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;

@@ -58,7 +58,7 @@ public:
     void
     upload_data(const T& t, bool alligment = true)
     {
-        static_assert(!(std::is_reference<T>::value || std::is_pointer<T>::value));
+        static_assert(!(std::is_reference_v<T> || std::is_pointer_v<T>));
 
         upload_data((std::uint8_t*)&t, (uint32_t)sizeof(T), alligment);
     }
