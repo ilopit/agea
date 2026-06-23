@@ -119,8 +119,14 @@ screenshot_capture::readback_and_crop(const screenshot_region& region)
                 VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1});
 
             VkImageCopy copy{};
-            copy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-            copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+            copy.srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                   .mipLevel = 0,
+                                   .baseArrayLayer = 0,
+                                   .layerCount = 1};
+            copy.dstSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                                   .mipLevel = 0,
+                                   .baseArrayLayer = 0,
+                                   .layerCount = 1};
             copy.extent = extent;
 
             vkCmdCopyImage(cmd,
@@ -189,7 +195,7 @@ screenshot_capture::readback_and_crop(const screenshot_region& region)
         stride = int(out_w * 4);
     }
 
-    return {src_ptr, out_w, out_h, stride};
+    return {.data = src_ptr, .w = out_w, .h = out_h, .stride = stride};
 }
 
 std::string
@@ -215,7 +221,7 @@ screenshot_capture::capture(const screenshot_region& region)
 
     screenshot_result sr;
     sr.image_base64 = encode_png(rb);
-    sr.region = {region.x, region.y, rb.w, rb.h};
+    sr.region = {.x = region.x, .y = region.y, .w = rb.w, .h = rb.h};
     return sr;
 }
 
@@ -273,10 +279,10 @@ screenshot_capture::draw_overlay()
         float x1 = glm::max(m_drag_start.x, m_drag_end.x);
         float y1 = glm::max(m_drag_start.y, m_drag_end.y);
 
-        screenshot_region region{uint32_t(glm::max(0.0f, x0)),
-                                 uint32_t(glm::max(0.0f, y0)),
-                                 uint32_t(glm::max(1.0f, x1 - x0)),
-                                 uint32_t(glm::max(1.0f, y1 - y0))};
+        screenshot_region region{.x = uint32_t(glm::max(0.0f, x0)),
+                                 .y = uint32_t(glm::max(0.0f, y0)),
+                                 .w = uint32_t(glm::max(1.0f, x1 - x0)),
+                                 .h = uint32_t(glm::max(1.0f, y1 - y0))};
 
         // draw_overlay runs during UI build on the MAIN thread, but the capture
         // reads render-owned state (render passes, the presented image, an

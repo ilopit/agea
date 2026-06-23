@@ -119,8 +119,8 @@ public:
     void
     update_children_matrixes();
 
-    virtual void
-    set_parent(component* c)
+    void
+    set_parent(component* c) override
     {
         base_class::set_parent(c);
 

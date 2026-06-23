@@ -22,8 +22,7 @@ class window
 {
 public:
     window(std::string name)
-        : m_show(false)
-        , m_str(std::move(name))
+        : m_str(std::move(name))
     {
     }
 
@@ -38,7 +37,7 @@ public:
     void
     handle_end();
 
-    bool m_show;
+    bool m_show{false};
     std::string m_str;
 };
 

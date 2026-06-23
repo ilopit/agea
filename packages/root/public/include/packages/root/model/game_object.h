@@ -43,10 +43,10 @@ public:
     bool
     construct_default(construct_params& params);
 
-    virtual bool
+    bool
     post_construct() override;
 
-    virtual bool
+    bool
     post_load() override;
 
     void
@@ -265,13 +265,13 @@ public:
     Range<component>
     get_components()
     {
-        return {m_components.begin(), m_components.end()};
+        return {.m_begin = m_components.begin(), .m_end = m_components.end()};
     }
 
     Range<component>
     get_components(uint32_t idx)
     {
-        return {m_components.begin() + idx, m_components.end()};
+        return {.m_begin = m_components.begin() + idx, .m_end = m_components.end()};
     }
 
     void

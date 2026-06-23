@@ -101,7 +101,7 @@ game_object_component::get_world_bounds() const
     const glm::vec3 s = m_scale.as_glm();
     const float max_s = glm::max(glm::max(glm::abs(s.x), glm::abs(s.y)), glm::abs(s.z));
     const glm::vec4 c = m_transform_matrix * glm::vec4(m_base_centroid, 1.0f);
-    return {glm::vec3(c), m_base_bounding_radius * max_s};
+    return {.center = glm::vec3(c), .radius = m_base_bounding_radius * max_s};
 }
 
 void

@@ -141,7 +141,7 @@ public:
     bool
     castable_to()
     {
-        static_assert(std::is_base_of<smart_object, T>::value, "Non a smart object!");
+        static_assert(std::is_base_of_v<smart_object, T>, "Non a smart object!");
 
         return dynamic_cast<T*>(this);
     }
@@ -340,8 +340,8 @@ template <typename To, typename From>
 std::shared_ptr<To>
 cast_ref(const std::shared_ptr<From>& ref)
 {
-    static_assert(std::is_base_of<smart_object, From>::value, "Non a smart object!");
-    static_assert(std::is_base_of<smart_object, To>::value, "Non a smart object!");
+    static_assert(std::is_base_of_v<smart_object, From>, "Non a smart object!");
+    static_assert(std::is_base_of_v<smart_object, To>, "Non a smart object!");
 
     if (!ref || !ref->template castable_to<To>())
     {
@@ -355,8 +355,8 @@ template <typename To, typename From>
 To*
 cast_ref(From* ref)
 {
-    static_assert(std::is_base_of<smart_object, From>::value, "Non a smart object!");
-    static_assert(std::is_base_of<smart_object, To>::value, "Non a smart object!");
+    static_assert(std::is_base_of_v<smart_object, From>, "Non a smart object!");
+    static_assert(std::is_base_of_v<smart_object, To>, "Non a smart object!");
 
     if (!ref || !ref->template castable_to<To>())
     {

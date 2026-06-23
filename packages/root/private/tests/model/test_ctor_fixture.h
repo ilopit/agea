@@ -127,8 +127,7 @@ struct test_ctor : base_test
     core::object_constructor
     instance_ctor()
     {
-        return core::object_constructor(&instance_olc(),
-                                        core::object_load_type::instance_obj);
+        return {&instance_olc(), core::object_load_type::instance_obj};
     }
 
     // Materialize a type's class object (CDO) in the PACKAGE up front. Production

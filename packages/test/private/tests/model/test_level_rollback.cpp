@@ -27,7 +27,7 @@ using namespace kryga;
 struct test_level_rollback : base_test
 {
     void
-    SetUp()
+    SetUp() override
     {
         glob::glob_state_reset();
 
@@ -70,7 +70,7 @@ struct test_level_rollback : base_test
     }
 
     void
-    TearDown()
+    TearDown() override
     {
         test::package::instance().unload();
         base::package::instance().unload();

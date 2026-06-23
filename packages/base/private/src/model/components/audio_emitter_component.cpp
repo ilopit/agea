@@ -94,7 +94,7 @@ audio_emitter_component::on_tick(float)
     // emitter doesn't post a message every frame.
     if (m_spatial && m_playing)
     {
-        glm::vec3 pos = glm::vec3(get_world_position());
+        auto pos = glm::vec3(get_world_position());
         if (pos != m_last_emit_pos)
         {
             m_last_emit_pos = pos;

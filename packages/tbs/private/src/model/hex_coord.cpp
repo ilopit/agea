@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace kryga::tbs
 {
@@ -41,19 +42,19 @@ hex_coord::to_world(float hex_size) const
     // Pointy-top hex layout
     // x = size * sqrt(3) * (q + r/2)
     // z = size * 3/2 * r
-    const float sqrt3 = 1.7320508075688772f;
+    const float sqrt3 = std::numbers::sqrt3_v<float>;
 
     const float x = hex_size * sqrt3 * (static_cast<float>(q) + static_cast<float>(r) / 2.0f);
     const float z = hex_size * 1.5f * static_cast<float>(r);
 
-    return glm::vec3(x, 0.0f, z);
+    return {x, 0.0f, z};
 }
 
 hex_coord
 hex_coord::from_world(const glm::vec3& world_pos, float hex_size)
 {
     // Inverse of to_world, then round to nearest hex
-    const float sqrt3 = 1.7320508075688772f;
+    const float sqrt3 = std::numbers::sqrt3_v<float>;
 
     // Convert to fractional axial coordinates
     const float fq = (sqrt3 / 3.0f * world_pos.x - 1.0f / 3.0f * world_pos.z) / hex_size;
@@ -88,7 +89,7 @@ hex_coord::from_world(const glm::vec3& world_pos, float hex_size)
     }
 
     // Convert back to axial (q = x, r = z)
-    return hex_coord(rx, rz);
+    return {rx, rz};
 }
 
 std::vector<hex_coord>
@@ -150,7 +151,7 @@ hex_coord::hex_line(const hex_coord& start, const hex_coord& end)
     results.reserve(static_cast<size_t>(n + 1));
 
     // Linear interpolation in cube space, then round
-    const float sqrt3 = 1.7320508075688772f;
+    const float sqrt3 = std::numbers::sqrt3_v<float>;
     const float hex_size = 1.0f;  // Using unit size for interpolation
 
     const glm::vec3 start_world = start.to_world(hex_size);

@@ -31,7 +31,7 @@ public:
     bool
     construct(construct_params& params);
 
-    virtual void
+    void
     on_tick(float) override;
 };
 

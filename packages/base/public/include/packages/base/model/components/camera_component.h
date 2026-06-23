@@ -153,7 +153,7 @@ private:
     // clang-format on
 
     // Internal state
-private:
+
     glm::mat4 m_perspective;
     glm::mat4 m_inv_projection;
     glm::mat4 m_view;

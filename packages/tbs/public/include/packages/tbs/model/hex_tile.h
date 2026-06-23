@@ -41,7 +41,7 @@ public:
     hex_coord
     get_hex_coord() const
     {
-        return hex_coord(m_hex_q, m_hex_r);
+        return {m_hex_q, m_hex_r};
     }
 
     // Set hex coordinate and update world position

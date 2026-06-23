@@ -27,13 +27,13 @@ snap_to_axis(const glm::vec3& v)
     glm::vec3 a = glm::abs(v);
     if (a.x >= a.y && a.x >= a.z)
     {
-        return glm::vec3(v.x > 0.f ? 1.f : -1.f, 0.f, 0.f);
+        return {v.x > 0.f ? 1.f : -1.f, 0.f, 0.f};
     }
     if (a.y >= a.x && a.y >= a.z)
     {
-        return glm::vec3(0.f, v.y > 0.f ? 1.f : -1.f, 0.f);
+        return {0.f, v.y > 0.f ? 1.f : -1.f, 0.f};
     }
-    return glm::vec3(0.f, 0.f, v.z > 0.f ? 1.f : -1.f);
+    return {0.f, 0.f, v.z > 0.f ? 1.f : -1.f};
 }
 
 glm::quat

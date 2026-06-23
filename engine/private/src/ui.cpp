@@ -613,7 +613,7 @@ render_config_window::handle()
             {
                 for (int i = 0; i < tile_count; ++i)
                 {
-                    uint32_t t = static_cast<uint32_t>(tile_sizes[i]);
+                    auto t = static_cast<uint32_t>(tile_sizes[i]);
                     bool too_large = t > csm_limit;
                     if (too_large)
                     {

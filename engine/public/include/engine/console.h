@@ -31,6 +31,7 @@ struct command_context
 using cmd_handler = std::function<void(editor_console&, const command_context&)>;
 
 using tree_container = std::unordered_map<std::string, std::unique_ptr<node>>;
+;
 
 class node
 {
@@ -128,7 +129,7 @@ private:
     std::vector<std::string> m_items;
     std::vector<std::string> m_history;
 
-    int m_history_pos;  // -1: new line, 0..History.Size-1 browsing history.
+    int m_history_pos{-1};  // -1: new line, 0..History.Size-1 browsing history.
 
     ImGuiTextFilter m_filter;
     bool m_show = false;

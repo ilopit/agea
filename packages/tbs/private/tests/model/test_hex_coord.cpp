@@ -266,7 +266,7 @@ TEST_F(HexCoordTest, hexes_in_range_formula)
     for (int r = 0; r <= 5; ++r)
     {
         auto hexes = hex_coord::hexes_in_range(center, r);
-        size_t expected = static_cast<size_t>(3 * r * (r + 1) + 1);
+        auto expected = static_cast<size_t>(3 * r * (r + 1) + 1);
         EXPECT_EQ(hexes.size(), expected) << "Failed for radius " << r;
     }
 }

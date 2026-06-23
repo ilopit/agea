@@ -104,7 +104,7 @@ game_object_components_save(::kryga::reflection::property_context__save& dc)
         component_container["proto_id"] = pid;
 
         reflection::property_context__save internal_sc{
-            nullptr, obj_component, &component_container};
+            .p = nullptr, .obj = obj_component, .sc = &component_container};
         std::vector<reflection::property*> diff;
 
         if (auto rc =

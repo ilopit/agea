@@ -66,17 +66,17 @@ struct hex_coord
     constexpr hex_coord
     operator+(const hex_coord& other) const
     {
-        return hex_coord(q + other.q, r + other.r);
+        return {q + other.q, r + other.r};
     }
     constexpr hex_coord
     operator-(const hex_coord& other) const
     {
-        return hex_coord(q - other.q, r - other.r);
+        return {q - other.q, r - other.r};
     }
     constexpr hex_coord
     operator*(int scalar) const
     {
-        return hex_coord(q * scalar, r * scalar);
+        return {q * scalar, r * scalar};
     }
 
     constexpr hex_coord&

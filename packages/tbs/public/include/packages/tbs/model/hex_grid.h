@@ -34,7 +34,7 @@ struct hex_tile_entry
     hex_coord
     get_coord() const
     {
-        return hex_coord(q, r);
+        return {q, r};
     }
 };
 

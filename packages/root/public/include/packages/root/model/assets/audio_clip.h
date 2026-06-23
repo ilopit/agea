@@ -97,7 +97,7 @@ protected:
         default      = true,
         mcp_hint     = "encoded audio bytes [WAV/MP3/FLAC/OGG] — read-only at runtime"
     );
-    utils::buffer m_data = {};
+    utils::buffer m_data;
     // clang-format on
 
     // clang-format off

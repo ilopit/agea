@@ -31,7 +31,7 @@ public:
     }
 
     converter_window();
-    ~converter_window();
+    ~converter_window() override;
 
     void
     handle() override;

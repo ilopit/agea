@@ -11,6 +11,7 @@
 #include <dbghelp.h>
 
 #include <cstdio>
+#include <print>
 
 #pragma comment(lib, "dbghelp.lib")
 #endif
@@ -39,14 +40,14 @@ crash_filter(EXCEPTION_POINTERS* ep)
         mei.ExceptionPointers = ep;
         mei.ClientPointers = FALSE;
 
-        const MINIDUMP_TYPE type = static_cast<MINIDUMP_TYPE>(
+        const auto type = static_cast<MINIDUMP_TYPE>(
             MiniDumpWithFullMemory | MiniDumpWithThreadInfo | MiniDumpWithHandleData);
 
         MiniDumpWriteDump(
             GetCurrentProcess(), GetCurrentProcessId(), file, type, &mei, nullptr, nullptr);
         CloseHandle(file);
 
-        fprintf(stderr, "\n*** CRASH: minidump written to kryga_crash.dmp ***\n");
+        std::println(stderr, "\n*** CRASH: minidump written to kryga_crash.dmp ***");
         fflush(stderr);
     }
     return EXCEPTION_EXECUTE_HANDLER;

@@ -1256,8 +1256,8 @@ terrain_value_noise(float x, float y, uint32_t seed)
 {
     float fx = std::floor(x);
     float fy = std::floor(y);
-    int32_t x0 = static_cast<int32_t>(fx);
-    int32_t y0 = static_cast<int32_t>(fy);
+    auto x0 = static_cast<int32_t>(fx);
+    auto y0 = static_cast<int32_t>(fy);
     float tx = x - fx;
     float ty = y - fy;
 
@@ -1332,8 +1332,8 @@ build_height_field(const base::terrain_component& tc, uint32_t res, std::vector<
                 float v = (res > 1) ? float(j) / float(res - 1) : 0.0f;
                 float fx = u * float(hw - 1);
                 float fy = v * float(hh - 1);
-                uint32_t x0 = static_cast<uint32_t>(fx);
-                uint32_t y0 = static_cast<uint32_t>(fy);
+                auto x0 = static_cast<uint32_t>(fx);
+                auto y0 = static_cast<uint32_t>(fy);
                 uint32_t x1 = glm::min(x0 + 1, hw - 1);
                 uint32_t y1 = glm::min(y0 + 1, hh - 1);
                 float tx = fx - float(x0);

@@ -99,7 +99,8 @@ compute_content_hash(root::material& mat)
                 continue;
             }
             Json::Value val;
-            kryga::reflection::property_context__json_get ctx{p.get(), &mat, &val};
+            kryga::reflection::property_context__json_get ctx{
+                .p = p.get(), .obj = &mat, .jc = &val};
             if (p->json_get(ctx) == result_code::ok)
             {
                 Json::StreamWriterBuilder b;
@@ -449,7 +450,7 @@ material_previewer::save_to_fs(const std::string& id_str,
     vfs.write_bytes(vfs::rid("tmp", "preview_cache/" + filename),
                     std::span<const uint8_t>(png_data.data(), png_data.size()));
 
-    m_fs_registry[id_str] = {hash_hex, filename};
+    m_fs_registry[id_str] = {.hash_hex = hash_hex, .filename = filename};
     m_fs_registry_dirty = true;
     save_registry();
 }
@@ -690,7 +691,7 @@ material_previewer::complete_preview(preview_job& job)
         if (!png_buf.empty())
         {
             b64 = base64_encode(png_buf.data(), png_buf.size());
-            m_memory_cache[job.id_str] = {b64, job.hash_hex};
+            m_memory_cache[job.id_str] = {.base64_png = b64, .content_hash_hex = job.hash_hex};
             save_to_fs(job.id_str, job.hash_hex, png_buf);
         }
     }
@@ -744,7 +745,7 @@ material_previewer::render_preview(const utils::id& material_id, uint32_t size)
     auto b64 = try_load_from_fs(id_str, hash_hex);
     if (!b64.empty())
     {
-        m_memory_cache[id_str] = {b64, hash_hex};
+        m_memory_cache[id_str] = {.base64_png = b64, .content_hash_hex = hash_hex};
         return ready(b64);
     }
 
@@ -897,13 +898,15 @@ material_previewer::save_edit(const utils::id& material_id)
                 }
 
                 Json::Value val;
-                kryga::reflection::property_context__json_get get_ctx{p.get(), instance, &val};
+                kryga::reflection::property_context__json_get get_ctx{
+                    .p = p.get(), .obj = instance, .jc = &val};
                 if (p->json_get(get_ctx) != result_code::ok)
                 {
                     continue;
                 }
 
-                kryga::reflection::property_context__json_set set_ctx{p.get(), class_obj, &val};
+                kryga::reflection::property_context__json_set set_ctx{
+                    .p = p.get(), .obj = class_obj, .jc = &val};
                 p->json_set(set_ctx);
             }
         }

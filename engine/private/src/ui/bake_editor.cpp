@@ -35,6 +35,8 @@
 #include <utils/kryga_log.h>
 #include <utils/buffer.h>
 
+#include <algorithm>
+
 namespace kryga
 {
 namespace ui
@@ -147,16 +149,14 @@ bake_editor::submit_bake()
                 bake_mesh_data md;
                 md.component_id = mc->get_id();
                 auto* src_verts = reinterpret_cast<const gpu::vertex_data*>(vert_buf.data());
-                uint32_t vert_count =
-                    static_cast<uint32_t>(vert_buf.size() / sizeof(gpu::vertex_data));
+                auto vert_count = static_cast<uint32_t>(vert_buf.size() / sizeof(gpu::vertex_data));
                 md.vertices.assign(src_verts, src_verts + vert_count);
 
                 float uv2_max = 0.0f;
                 for (uint32_t vi = 0; vi < vert_count; ++vi)
                 {
                     uv2_max = std::max(
-                        uv2_max,
-                        std::max(std::abs(src_verts[vi].uv2.x), std::abs(src_verts[vi].uv2.y)));
+                        {uv2_max, std::abs(src_verts[vi].uv2.x), std::abs(src_verts[vi].uv2.y)});
                 }
                 ALOG_INFO("bake_editor: {} verts={} uv2_max={:.4f}",
                           mc->get_id().str(),
@@ -164,7 +164,7 @@ bake_editor::submit_bake()
                           uv2_max);
 
                 auto* src_indices = reinterpret_cast<const uint32_t*>(idx_buf.data());
-                uint32_t idx_count = static_cast<uint32_t>(idx_buf.size() / sizeof(uint32_t));
+                auto idx_count = static_cast<uint32_t>(idx_buf.size() / sizeof(uint32_t));
                 md.indices.assign(src_indices, src_indices + idx_count);
 
                 md.transform = mc->get_transform_matrix();
@@ -261,7 +261,7 @@ bake_editor::submit_bake()
             }
             float max_extent =
                 glm::max(bb_max.x - bb_min.x, glm::max(bb_max.y - bb_min.y, bb_max.z - bb_min.z));
-            uint32_t tile_size = static_cast<uint32_t>(std::ceil(max_extent * texels_per_unit));
+            auto tile_size = static_cast<uint32_t>(std::ceil(max_extent * texels_per_unit));
             tile_size = std::clamp(
                 tile_size, static_cast<uint32_t>(min_tile), static_cast<uint32_t>(max_tile));
             tile_size = (tile_size + 3) & ~3u;

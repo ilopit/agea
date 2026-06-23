@@ -31,7 +31,7 @@ extract_field(kryga::serialization::container& c, const std::string& key, T& fie
         return;
     }
 
-    if constexpr (std::is_same<T, ::kryga::utils::id>::value)
+    if constexpr (std::is_same_v<T, ::kryga::utils::id>)
     {
         field = AID(v.as<std::string>());
     }

@@ -398,7 +398,7 @@ rpc_model_list(const Json::Value& params, Json::Value& result, std::string& err)
                     items.append(encode_object_entry(obj, id));
                 }
             }
-            else if (source.rfind("package:", 0) == 0)
+            else if (source.starts_with("package:"))
             {
                 auto pkg_id_str = source.substr(8);
                 auto* pkg = model.packages.get_package(AID(pkg_id_str));
@@ -1046,7 +1046,7 @@ rpc_property_get_one(const Json::Value& params, Json::Value& result, std::string
             else
             {
                 Json::Value val;
-                reflection::property_context__json_get get_ctx{prop, obj, &val};
+                reflection::property_context__json_get get_ctx{.p = prop, .obj = obj, .jc = &val};
                 if (prop->json_get(get_ctx) == result_code::ok)
                 {
                     r["value"] = val;
@@ -1090,7 +1090,7 @@ rpc_property_get_one(const Json::Value& params, Json::Value& result, std::string
             if (prop->rtype && !prop->rtype->mcp_schema.empty())
             {
                 auto& s = prop->rtype->mcp_schema;
-                if (s == "number" || s == "boolean" || s.rfind("array:", 0) == 0)
+                if (s == "number" || s == "boolean" || s.starts_with("array:"))
                 {
                     schema_needs_hint = false;
                 }
@@ -1534,9 +1534,9 @@ rpc_render_config_get(const Json::Value& /*params*/, Json::Value& result, std::s
             Json::Value ol(Json::objectValue);
             ol["enabled"] = cfg.outline.enabled;
             Json::Value color(Json::arrayValue);
-            for (int i = 0; i < 4; ++i)
+            for (float i : cfg.outline.color)
             {
-                color.append(cfg.outline.color[i]);
+                color.append(i);
             }
             ol["color"] = color;
             ol["depth_threshold"] = cfg.outline.depth_threshold;
@@ -2213,7 +2213,7 @@ rpc_editor_camera_set(const Json::Value& params, Json::Value& result, std::strin
         err = "missing 'position' parameter";
         return;
     }
-    auto pos = params["position"];
+    const auto& pos = params["position"];
     glm::vec3 position{
         pos[0u].asFloat(),
         pos[1u].asFloat(),

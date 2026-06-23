@@ -156,7 +156,7 @@ mount_for_test(const std::filesystem::path& path)
 {
     auto name = "test_mount_" + std::to_string(s_test_mount_counter++);
     glob::glob_state().getr_vfs().mount(name, std::make_unique<vfs::physical_backend>(path), 0);
-    return vfs::rid(name, "");
+    return {name, ""};
 }
 
 // Saves an object via VFS, then reloads it as an instance via the given level's load context.
@@ -202,7 +202,7 @@ round_trip_save_load(root::smart_object& obj,
 struct test_preloaded_test_package : base_test
 {
     void
-    SetUp()
+    SetUp() override
     {
         glob::glob_state_reset();
 
@@ -265,7 +265,7 @@ struct test_preloaded_test_package : base_test
     }
 
     void
-    TearDown()
+    TearDown() override
     {
         test::package::instance().unload();
         base::package::instance().unload();

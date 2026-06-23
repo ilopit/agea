@@ -3,6 +3,8 @@
 #include "packages/root/model/component.ar.h"
 #include "packages/root/model/smart_object.h"
 
+#include <utility>
+#include <utility>
 #include <vector>
 
 namespace kryga
@@ -16,7 +18,7 @@ struct Node_Iter
     using difference_type = std::ptrdiff_t;
 
     Node_Iter(std::vector<node_t*>::iterator ptr)
-        : m_itr(ptr)
+        : m_itr(std::move(std::move(ptr)))
     {
     }
 

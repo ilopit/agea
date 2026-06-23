@@ -123,7 +123,7 @@ protected:
         default      = true,
         mcp_hint     = "vertex buffer binary — read-only at runtime"
     );
-    utils::buffer m_vertices = {};
+    utils::buffer m_vertices;
     // clang-format on
 
     // clang-format off
@@ -133,7 +133,7 @@ protected:
         default      = true,
         mcp_hint     = "index buffer binary — read-only at runtime"
     );
-    utils::buffer m_indices = {};
+    utils::buffer m_indices;
     // clang-format on
 
     // clang-format off
@@ -143,11 +143,11 @@ protected:
         default      = true,
         mcp_hint     = "additional mesh data like UV2 — read-only at runtime"
     );
-    utils::buffer m_external = {};
+    utils::buffer m_external;
     // clang-format on
 
     float m_bounding_radius = 0.0f;
-    ::kryga::root::vec3 m_local_centroid = {};
+    ::kryga::root::vec3 m_local_centroid;
     ::kryga::render::types::mesh_handle m_render_handle = {};  // runtime, not serialized
 };
 

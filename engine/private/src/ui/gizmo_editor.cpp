@@ -207,10 +207,10 @@ gizmo_editor::draw()
         memcpy(&new_model[0][0], model_arr, sizeof(float) * 16);
 
         // Extract position from column 3
-        glm::vec3 new_pos = glm::vec3(new_model[3]);
+        auto new_pos = glm::vec3(new_model[3]);
 
         // Extract the 3x3 part (= S * R)
-        glm::mat3 sr = glm::mat3(new_model);
+        auto sr = glm::mat3(new_model);
 
         // Scale from row lengths (glm is column-major, so rows are accessed per component)
         glm::vec3 new_scl;

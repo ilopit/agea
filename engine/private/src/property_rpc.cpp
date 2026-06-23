@@ -75,7 +75,7 @@ encode_owner(root::smart_object& obj)
             }
 
             Json::Value val;
-            reflection::property_context__json_get get_ctx{p.get(), &obj, &val};
+            reflection::property_context__json_get get_ctx{.p = p.get(), .obj = &obj, .jc = &val};
             if (p->json_get(get_ctx) == result_code::ok)
             {
                 field["value"] = val;
@@ -251,14 +251,14 @@ write_property(root::smart_object& owner,
         return "field is not editable: " + field_name;
     }
 
-    reflection::property_context__json_set set_ctx{prop, &owner, &value};
+    reflection::property_context__json_set set_ctx{.p = prop, .obj = &owner, .jc = &value};
     if (prop->json_set(set_ctx) != result_code::ok)
     {
         return "value did not match field type '" + prop->rtype->type_name.str() + "'";
     }
 
     Json::Value echo;
-    reflection::property_context__json_get get_ctx{prop, &owner, &echo};
+    reflection::property_context__json_get get_ctx{.p = prop, .obj = &owner, .jc = &echo};
     if (prop->json_get(get_ctx) == result_code::ok)
     {
         out_value = echo;
@@ -267,7 +267,7 @@ write_property(root::smart_object& owner,
     {
         out_value = Json::Value(Json::nullValue);
     }
-    return std::string();
+    return {};
 }
 
 }  // namespace kryga::engine_private

@@ -302,12 +302,12 @@ converter_window::submit_conversion(const std::string& input,
     };
     if (mode == "extend" || mode == "level")
     {
-        args.push_back("--existing-package");
+        args.emplace_back("--existing-package");
         args.push_back(existing_package);
     }
     for (const auto& id : deps)
     {
-        args.push_back("--dep");
+        args.emplace_back("--dep");
         args.push_back(id);
     }
 
@@ -319,8 +319,10 @@ converter_window::submit_conversion(const std::string& input,
 
     try
     {
-        async->proc.emplace(
-            async->ctx.get_executor(), bexe, args, bp::process_stdio{{}, blog, blog});
+        async->proc.emplace(async->ctx.get_executor(),
+                            bexe,
+                            args,
+                            bp::process_stdio{.in = {}, .out = blog, .err = blog});
         m_async = std::move(async);
         m_status.clear();
         m_status_is_error = false;

@@ -443,7 +443,7 @@ editor_console::add_log(const char* fmt, ...) IM_FMTARGS(2)
     auto idx = vsnprintf(m_buf.data(), 1024, fmt, args);
     m_buf[idx] = 0;
     va_end(args);
-    m_items.push_back(m_buf.data());
+    m_items.emplace_back(m_buf.data());
 
     m_buf.fill('\0');
 }
@@ -630,7 +630,7 @@ editor_console::exec_command(const std::string& command_line)
 int
 editor_console::text_edit_callback_stub(ImGuiInputTextCallbackData* data)
 {
-    editor_console* console = (editor_console*)data->UserData;
+    auto* console = (editor_console*)data->UserData;
     return console->text_edit_callback(data);
 }
 
@@ -659,7 +659,7 @@ editor_console::text_edit_callback(ImGuiInputTextCallbackData* data)
         if (word.starts_with("config") || word.starts_with("conf") || word.starts_with("con"))
         {
             // Config path completion
-            std::string prefix = word;
+            const std::string& prefix = word;
             // Ensure trailing dot for intermediate completions
             config_completions(prefix, candidates);
             // Also try with trailing dot if no results and word matches a node exactly
@@ -836,7 +836,7 @@ editor_console::handle_cmd_run(editor_console& e, const command_context& ctx)
 editor_console* editor_console::s_instance = nullptr;
 
 editor_console::editor_console()
-    : m_history_pos(-1)
+
 {
     s_instance = this;
     m_buf.fill('\0');

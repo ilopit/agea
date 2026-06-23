@@ -156,6 +156,17 @@ CMD="\"$CT_WIN\" -p $DB_DIR --config-file=\"$CFG_WIN\" ${FIX}"
 #  - move-const-arg strips std::move on trivially-copyable handles (e.g. VkImageView),
 #    but the move is what selects an rvalue-ref overload — removing it breaks overload
 #    resolution (create_shared -> create(VkImageView&&)).
-[[ -n "$FIX" ]] && CMD+=" --checks=-readability-identifier-naming,-bugprone-macro-parentheses,-modernize-use-ranges,-modernize-macro-to-enum,-cppcoreguidelines-macro-to-enum,-performance-move-const-arg,-hicpp-move-const-arg"
+# What to exclude (any ONE reason qualifies):
+#  1. build-INVISIBLE bad fixes — macro-to-enum compiles fine as C++; only the shader
+#     cook rejects it, so the C++ build gate can't catch it. Must exclude.
+#  2. low value-density — identifier-naming/use-ranges/macro-parentheses/move-const-arg
+#     fire mostly as false-positives here (renaming thirdparty symbols, breaking the
+#     erase-remove idiom, etc.); excluding avoids a revert-rebuild cycle for little loss.
+#  3. breaks in MIXED files — use-equals-default mangles a ctor that has a base/member
+#     init list ('vec2() : glm::vec2() = default;'), but those same files also carry
+#     valid fixes. The build catches the break, yet the only way to keep the good fixes
+#     while dropping the bad one is to exclude the check and re-run — a per-file revert
+#     would discard the unrelated good fixes too.
+[[ -n "$FIX" ]] && CMD+=" --checks=-readability-identifier-naming,-bugprone-macro-parentheses,-modernize-use-ranges,-modernize-macro-to-enum,-cppcoreguidelines-macro-to-enum,-performance-move-const-arg,-hicpp-move-const-arg,-modernize-use-equals-default,-hicpp-use-equals-default"
 for f in "${FILTERED[@]}"; do CMD+=" \"$f\""; done
 run_in_vcvars "$CMD"
