@@ -2,6 +2,11 @@
 
 #include <game_session/game_session.h>
 
+#include <picking/picking.h>
+
+#include <packages/base/model/components/camera_component.h>
+#include <packages/root/model/game_object.h>
+
 #include <core/input_provider.h>
 
 #include <serialization/serialization.h>
@@ -37,10 +42,19 @@ nevermatch_mode::on_stop(game::game_session&)
 void
 nevermatch_mode::on_select_pressed(const core::io_context& e)
 {
-    // Foundation: click reaches the game session. The click point is read from the
-    // live global current state; next step turns it into a screen-to-world ray and
-    // selects the hit match_cube.
-    ALOG_INFO("nevermatch_mode: select pressed at ({}, {})", e.current.mouse_x, e.current.mouse_y);
+    auto* cam = picking::find_active_camera();
+    if (!cam)
+    {
+        ALOG_WARN("nevermatch_mode: click ignored — no active camera in level");
+        return;
+    }
+
+    auto* hit = picking::pick_object_under_cursor(*cam, e.current.mouse_x, e.current.mouse_y);
+
+    ALOG_INFO("nevermatch_mode: pick at ({}, {}) -> '{}'",
+              e.current.mouse_x,
+              e.current.mouse_y,
+              hit ? hit->get_id().str() : std::string("<none>"));
 }
 
 void

@@ -7,7 +7,7 @@
 
 namespace kryga
 {
-namespace render
+namespace spatial
 {
 
 struct ray
@@ -40,6 +40,10 @@ struct object_bvh_node
     uint32_t count;          // 0 = internal node, >0 = leaf with count objects
 };
 
+// Layer-neutral object BVH (glm-only): both the render subsystem and the model layer
+// build their own instances from world-space AABBs. user_data is an opaque pointer so
+// the structure stays agnostic to what it indexes (render data on the render side,
+// model objects on the model side).
 class object_bvh
 {
 public:
@@ -76,5 +80,5 @@ private:
     std::vector<bvh_object_entry> m_objects;
 };
 
-}  // namespace render
+}  // namespace spatial
 }  // namespace kryga

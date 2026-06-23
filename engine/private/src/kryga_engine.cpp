@@ -57,6 +57,8 @@
 #include <packages/base/model/lights/point_light.h>
 #include <packages/base/model/lights/spot_light.h>
 #include <packages/base/model/components/camera_component.h>
+
+#include <picking/picking.h>
 #include <packages/base/model/components/input_component.h>
 #include <packages/root/model/assets/material.h>
 
@@ -1128,34 +1130,9 @@ vulkan_engine::update_cameras()
         m_camera_data = editor.get_camera_data();
     }
 #else
-    // Game build — find first active camera in current level.
-    base::camera_component* cam = nullptr;
-    if (auto lvl = glob::glob_state().getr_model().current_level)
-    {
-        for (auto& [id, obj] : lvl->get_game_objects().get_items())
-        {
-            auto go = obj->as<root::game_object>();
-            if (!go)
-            {
-                continue;
-            }
-            for (auto c : go->get_renderable_components())
-            {
-                if (auto cc = c->as<base::camera_component>())
-                {
-                    if (cc->is_active_camera())
-                    {
-                        cam = cc;
-                        break;
-                    }
-                }
-            }
-            if (cam)
-            {
-                break;
-            }
-        }
-    }
+    // Game build — resolve the level's active camera (O(1) id the level remembers).
+    // See picking::find_active_camera.
+    base::camera_component* cam = picking::find_active_camera();
     KRG_check(cam, "Game build requires an active camera in the level.");
     float aspect = glob::glob_state().getr_native_window().aspect_ratio();
     cam->set_aspect_ratio(aspect);

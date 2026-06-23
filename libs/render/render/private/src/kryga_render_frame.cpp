@@ -598,11 +598,11 @@ vulkan_render_data*
 vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 {
     KRG_check_render_thread();  // reads the render-thread draw queues + picking BVH
-    // Rebuild BVH if objects changed
-    // TODO, Move to model
+    // Editor-only-icon fallback BVH (real objects are picked model-side now).
+    // Rebuild if the editor-only set changed since the last pick.
     if (m_object_bvh_dirty)
     {
-        std::vector<bvh_object_entry> entries;
+        std::vector<spatial::bvh_object_entry> entries;
 
         auto collect = [&](const auto& queue_map)
         {
@@ -611,6 +611,13 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
                 for (auto* obj : container)
                 {
                     if (!obj->renderable)
+                    {
+                        continue;
+                    }
+
+                    // Real scene objects are picked model-side (level spatial index).
+                    // This render BVH is now the fallback for editor-only icons only.
+                    if ((obj->layer_flags & render::LAYER_EDITOR_ONLY) == 0)
                     {
                         continue;
                     }
@@ -665,6 +672,12 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
                 continue;
             }
 
+            // Editor-only icons only — real objects are picked model-side.
+            if ((obj->layer_flags & render::LAYER_EDITOR_ONLY) == 0)
+            {
+                continue;
+            }
+
             float r = obj->gpu_data.bounding_radius;
             glm::vec3 c = obj->gpu_data.bounding_sphere_center;
             glm::vec3 world_min = c - glm::vec3(r);
@@ -682,10 +695,10 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
 
     // Cast ray — nearest AABB hit wins
     auto inv_view = glm::inverse(m_camera_data.view);
-    auto r =
-        object_bvh::screen_to_ray(x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
+    auto r = spatial::object_bvh::screen_to_ray(
+        x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
 
-    raycast_hit hit;
+    spatial::raycast_hit hit;
     if (m_object_bvh.raycast(r, hit))
     {
         return static_cast<vulkan_render_data*>(hit.user_data);

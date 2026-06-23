@@ -141,13 +141,31 @@ game_editor::ev_mouse_press(const core::io_context& e)
     uint32_t w = static_cast<uint32_t>(e.current.mouse_x);
     uint32_t h = static_cast<uint32_t>(e.current.mouse_y);
 
-    // Picking reads render-thread-owned state (the per-frame draw queues + the
-    // picking BVH) and returns a render_data pointer — none of which may be
-    // touched from this (main) thread. Defer the pick to the render thread, then
-    // bounce the resolved id back to main for the model lookup + selection.
-    // Fire-and-forget (NOT a blocking wait): mouse-press runs on the main thread,
-    // which can't submit the frame that would drain a blocking render action.
-    // The ~2-frame latency to a click is imperceptible.
+    // Real scene objects: pick model-side on this (main) thread via the level's
+    // spatial index — returns a model object directly, no render round-trip.
+    auto* lvl = glob::glob_state().getr_model().current_level;
+    if (lvl)
+    {
+        const auto cam = get_camera_data();
+        const auto win = glob::glob_state().getr_native_window().get_size();
+        if (auto* go = lvl->pick_under_cursor(cam.inv_projection,
+                                              cam.view,
+                                              static_cast<int32_t>(w),
+                                              static_cast<int32_t>(h),
+                                              static_cast<uint32_t>(win.w),
+                                              static_cast<uint32_t>(win.h)))
+        {
+            apply_pick(go->get_id());
+            return;
+        }
+    }
+
+    // Fallback for editor-only icons (light/camera/gizmo billboards) — they have no
+    // model bounds, so they live only in the render-thread BVH and must be picked
+    // there. Reads render-thread-owned state (draw queues + picking BVH) and returns
+    // a render_data pointer, none of which may be touched from this thread: defer to
+    // the render thread, then bounce the resolved id back to main. Fire-and-forget
+    // (mouse-press can't drain a blocking render action); ~2-frame latency, imperceptible.
     auto& renderer = glob::glob_state().getr_render().renderer;
     renderer.post_render_action(
         [this, w, h]()

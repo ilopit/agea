@@ -49,16 +49,19 @@ public:
     queue_transform_dirty(root::game_object_component* c)
     {
         m_dirty.dirty_transforms.emplace_back(c);
+        invalidate_pick_index();
     }
     void
     queue_render_dirty(root::smart_object* o)
     {
         m_dirty.dirty_render.emplace_back(o);
+        invalidate_pick_index();
     }
     void
     queue_destroy_render(root::smart_object* o)
     {
         m_dirty.destroy_render.emplace_back(o);
+        invalidate_pick_index();
     }
 
     // Frame-drain + level-internal reconcile (rollback/scrub) access. NOT for marking.
@@ -79,6 +82,19 @@ public:
     }
 
 private:
+    // Any geometry/membership mutation invalidates the current level's pick index;
+    // the next pick rebuilds it. Cheap (sets a flag), coarse on purpose — over-
+    // invalidation only costs one rebuild on the next pick, a stale index would
+    // mis-pick.
+    void
+    invalidate_pick_index()
+    {
+        if (current_level)
+        {
+            current_level->mark_pick_index_dirty();
+        }
+    }
+
     model_dirty m_dirty;
 };
 

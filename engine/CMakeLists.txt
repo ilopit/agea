@@ -93,6 +93,7 @@ target_link_libraries(engine PUBLIC
     kryga::game_session
     kryga::glue
 
+    kryga::picking
     ${KRG_ACTIVE_MODULES_TARGETS}
 
     sdl2
@@ -147,7 +148,8 @@ if(KRG_BUILD_EDITOR_TARGET)
 
         kryga::imguizmo_unofficial
 
-        ${KRG_ACTIVE_MODULES_TARGETS}
+        kryga::picking
+    ${KRG_ACTIVE_MODULES_TARGETS}
         ${KRG_EDITOR_MODULES_TARGETS}
 
         sdl2
@@ -209,6 +211,7 @@ target_link_libraries(engine_ship PUBLIC
     kryga::game_session
     kryga::glue
 
+    kryga::picking
     ${KRG_ACTIVE_MODULES_TARGETS}
 
     sdl2

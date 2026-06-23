@@ -30,6 +30,8 @@ target_link_libraries(packages.nevermatch.model PUBLIC
    kryga::utils
 
    kryga::game_session
+   kryga::picking
+   kryga::packages.base.model
    kryga::packages.root.model
 )
 target_compile_definitions(packages.nevermatch.model PUBLIC KRG_build__model)

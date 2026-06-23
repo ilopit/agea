@@ -56,6 +56,69 @@ level::find_object(const utils::id& id)
     return nullptr;
 }
 
+void
+level::rebuild_pick_index()
+{
+    std::vector<spatial::bvh_object_entry> entries;
+    for (auto& [id, obj] : m_local_cs.game_objects.get_items())
+    {
+        auto* go = obj->as<root::game_object>();
+        if (!go)
+        {
+            continue;
+        }
+        for (auto* c : go->get_renderable_components())
+        {
+            const auto wb = c->get_world_bounds();
+            if (wb.radius <= 0.f)
+            {
+                continue;  // non-visual (camera / light) — no model bounds to hit
+            }
+            // AABB of the world sphere (matches the render BVH's box test). user_data
+            // is the owning game_object so a hit on any of its components selects it.
+            entries.push_back({.aabb_min = wb.center - glm::vec3(wb.radius),
+                               .aabb_max = wb.center + glm::vec3(wb.radius),
+                               .user_id = 0,
+                               .user_data = go});
+        }
+    }
+    m_pick_index.build(entries.data(), static_cast<uint32_t>(entries.size()));
+    m_pick_index_dirty = false;
+}
+
+root::game_object*
+level::pick_under_cursor(const glm::mat4& inv_projection,
+                         const glm::mat4& view,
+                         int32_t mouse_x,
+                         int32_t mouse_y,
+                         uint32_t screen_w,
+                         uint32_t screen_h)
+{
+    if (screen_w == 0 || screen_h == 0)
+    {
+        return nullptr;
+    }
+
+    if (m_pick_index_dirty)
+    {
+        rebuild_pick_index();
+    }
+
+    const spatial::ray r = spatial::object_bvh::screen_to_ray(static_cast<uint32_t>(mouse_x),
+                                                              static_cast<uint32_t>(mouse_y),
+                                                              screen_w,
+                                                              screen_h,
+                                                              inv_projection,
+                                                              glm::inverse(view));
+
+    spatial::raycast_hit hit;
+    if (m_pick_index.raycast(r, hit))
+    {
+        return static_cast<root::game_object*>(hit.user_data);
+    }
+    return nullptr;
+}
+
 root::smart_object*
 level::spawn_object_impl(const utils::id& proto_id,
                          const utils::id& object_id,

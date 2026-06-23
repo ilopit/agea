@@ -36,6 +36,7 @@ target_link_libraries(packages.base.model PUBLIC
 
    kryga::vfs
    kryga::utils
+   kryga::native
    kryga::render_types
 
    kryga::sol2_unofficial

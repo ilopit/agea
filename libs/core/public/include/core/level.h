@@ -14,6 +14,8 @@ class backend;
 
 #include <packages/root/model/core_types/vec3.h>
 
+#include <spatial/object_bvh.h>
+
 #include <utils/singleton_instance.h>
 
 #include <map>
@@ -102,6 +104,25 @@ public:
         return m_local_cs.game_objects;
     }
 
+    // Nearest game_object whose renderable world-sphere the cursor ray hits, via the
+    // model-side spatial index. Builds the world ray from the supplied camera matrices.
+    // Returns nullptr on miss. Replaces the per-pick whole-scene scan. Model thread.
+    root::game_object*
+    pick_under_cursor(const glm::mat4& inv_projection,
+                      const glm::mat4& view,
+                      int32_t mouse_x,
+                      int32_t mouse_y,
+                      uint32_t screen_w,
+                      uint32_t screen_h);
+
+    // Invalidate the pick index — the next pick rebuilds it. Cheap (sets a flag);
+    // called from model_system on any transform / render / destroy mutation.
+    void
+    mark_pick_index_dirty()
+    {
+        m_pick_index_dirty = true;
+    }
+
     const std::vector<utils::id>&
     get_package_ids() const
     {
@@ -171,6 +192,22 @@ private:
 
     utils::id m_selected_directional_light_id;
 
+    // The active camera in this level, by id (not pointer: address reuse makes raw
+    // pointers unsafe — see the snapshot note above). Runtime state written through
+    // camera_component::set_active_camera; resolved O(1) via find_component. Empty
+    // until first set/registration. Replaces a per-frame whole-scene scan.
+    utils::id m_active_camera_id;
+
+    // Model-side spatial index over renderable world-bounds, for picking. Lazily
+    // (re)built on the next pick when m_pick_index_dirty — invalidated by model_system
+    // on transform / render / destroy mutations. Indexes real scene objects only;
+    // editor-only icon proxies live render-side (kryga_render object BVH).
+    spatial::object_bvh m_pick_index;
+    bool m_pick_index_dirty = true;
+
+    void
+    rebuild_pick_index();
+
     // Baked lighting — paths read from root.cfg. The runtime lightmap binding
     // (atlas bindless index + per-object UVs) is owned render-side in the loader's
     // per-level registry, NOT cached here: the texture is created on the render
@@ -189,6 +226,18 @@ public:
     get_selected_directional_light_id() const
     {
         return m_selected_directional_light_id;
+    }
+
+    void
+    set_active_camera_id(const utils::id& id)
+    {
+        m_active_camera_id = id;
+    }
+
+    const utils::id&
+    get_active_camera_id() const
+    {
+        return m_active_camera_id;
     }
 
     // Lightmap references (from root.cfg, set by baker)

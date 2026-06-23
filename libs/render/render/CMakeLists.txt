@@ -40,6 +40,7 @@ target_link_libraries(vulkan_render INTERFACE
     kryga::error_handling
     kryga::global_state
     kryga::render_utils
+    kryga::spatial
     kryga::shader_system
 
     kryga::glm_unofficial

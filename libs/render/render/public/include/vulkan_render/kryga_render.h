@@ -16,7 +16,7 @@
 #include "vulkan_render/render_config.h"
 #include "render/utils/frustum.h"
 #include "render/utils/cluster_grid.h"
-#include "render/utils/object_bvh.h"
+#include "spatial/object_bvh.h"
 #include "gpu_types/gpu_cluster_types.h"
 #include "gpu_types/gpu_shadow_types.h"
 #include "gpu_types/gpu_probe_types.h"
@@ -1042,7 +1042,7 @@ private:
     frustum m_frustum;
 
     // Object-level BVH for CPU raycasting (picking)
-    object_bvh m_object_bvh;
+    spatial::object_bvh m_object_bvh;
     bool m_object_bvh_dirty = true;
 
     // Shadow mapping

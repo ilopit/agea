@@ -1,4 +1,4 @@
-#include "render/utils/object_bvh.h"
+#include "spatial/object_bvh.h"
 
 #include <algorithm>
 #include <cmath>
@@ -6,7 +6,7 @@
 
 namespace kryga
 {
-namespace render
+namespace spatial
 {
 
 namespace
@@ -219,5 +219,5 @@ object_bvh::screen_to_ray(uint32_t screen_x,
     return {.origin = origin, .direction = direction};
 }
 
-}  // namespace render
+}  // namespace spatial
 }  // namespace kryga

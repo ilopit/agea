@@ -40,6 +40,7 @@ target_link_libraries(core PUBLIC
    kryga::vfs
    kryga::serialization
    kryga::utils
+   kryga::spatial
 
    lua_static
    kryga::sol2_unofficial

@@ -49,6 +49,13 @@ public:
     void
     on_tick(float dt) override;
 
+    // Register the authored active-camera flag into the owning level on every creation
+    // path (construct / load / clone), so the level always remembers its active camera.
+    bool
+    post_construct() override;
+    bool
+    post_load() override;
+
     float
     near_clip() const;
     float
@@ -100,11 +107,11 @@ public:
         return m_is_active_camera;
     }
 
+    // Sets this camera active (or inactive) and writes the level's active-camera
+    // state through. Activating clears any other previously-active camera, so a
+    // level holds exactly one active camera. Out-of-line: needs the level/global state.
     void
-    set_active_camera(bool v)
-    {
-        m_is_active_camera = v;
-    }
+    set_active_camera(bool v);
 
     const glm::mat4&
     get_inv_projection()
@@ -159,5 +166,6 @@ private:
     glm::mat4 m_view;
     glm::mat4 m_model;
 };
+
 }  // namespace base
 }  // namespace kryga
