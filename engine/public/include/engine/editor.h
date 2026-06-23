@@ -7,6 +7,11 @@
 
 namespace kryga
 {
+namespace core
+{
+struct io_context;
+}
+
 namespace root
 {
 class game_object;
@@ -68,7 +73,7 @@ public:
     ev_look_left(float f);
 
     void
-    ev_mouse_press();
+    ev_mouse_press(const core::io_context& e);
 
     void
     ev_reload();

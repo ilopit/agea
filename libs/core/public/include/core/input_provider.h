@@ -1,7 +1,12 @@
 #pragma once
 
 #include <utils/id.h>
-#include <utils/generic_event_handler.h>
+
+#include <algorithm>
+#include <cstdint>
+#include <functional>
+#include <type_traits>
+#include <vector>
 
 namespace kryga
 {
@@ -95,13 +100,57 @@ enum input_event_id
     keyboard_delete
 };
 
-struct input_scaled_handler_data : utils::generic_event_handler<void, float>
+class input_provider;
+
+// Live, global input state. ONE instance, owned by the provider and handed to handlers
+// BY REFERENCE — never copied per event. It can grow (full held-key table, modifiers,
+// gamepad axes…) without bloating the event queue. Use it for "what is true right now"
+// queries, including multi-key actions: is_down(keyboard_w) && is_down(keyboard_lshift).
+struct io_state
 {
-    float basic_amp = 1.f;
+    input_provider* provider = nullptr;  // backs is_down()
+    int32_t mouse_x = 0;                  // current cursor (window px, top-left)
+    int32_t mouse_y = 0;
+
+    bool
+    is_down(input_event_id id) const;  // defined out-of-line — needs input_provider
 };
 
-struct input_fixed_handler_data : utils::generic_event_handler<void>
+// Global per-frame input delta — what changed THIS frame. Accumulated as events arrive
+// and reset each tick. ONE instance, referenced by the context (never copied per event).
+struct io_delta
 {
+    int32_t mouse_dx = 0;  // accumulated cursor motion this frame (raw px)
+    int32_t mouse_dy = 0;
+    int32_t wheel = 0;     // accumulated wheel ticks this frame
+
+    // Ids whose down-state flipped THIS frame. Pure delta — it does NOT say which way:
+    // pair it with the current state to recover direction (current.is_down(id) == true
+    // means it just went down, false means it just went up). Enough for chords/combos.
+    std::vector<input_event_id> changed;
+
+    bool
+    did_change(input_event_id id) const
+    {
+        return std::find(changed.begin(), changed.end(), id) != changed.end();
+    }
+
+    void
+    reset()
+    {
+        mouse_dx = mouse_dy = wheel = 0;
+        changed.clear();
+    }
+};
+
+// Handed to handlers that opt in: the two live global states BY REFERENCE — current
+// absolute state and this frame's delta. Nothing is copied per event; the per-event
+// information (which trigger, and press / release / scaled) is implied by the handler
+// that fires.
+struct io_context
+{
+    const io_state& current;
+    const io_delta& delta;
 };
 
 class input_provider
@@ -109,22 +158,26 @@ class input_provider
 public:
     virtual ~input_provider() = default;
 
+    // Stored, type-erased handlers. The dispatcher always has an io_context; the adapter
+    // below drops it for handlers that don't take one.
+    using fixed_handler = std::function<void(const io_context&)>;
+    using scaled_handler = std::function<void(float, const io_context&)>;
+
+    // Opt-in context — the bound method may take the io_context or omit it:
+    //   fixed : void()      | void(const io_context&)
+    //   scaled: void(float) | void(float, const io_context&)
     template <typename real_obj, typename real_method>
     bool
     register_scaled_action(const utils::id& id, real_obj* o, real_method m)
     {
-        input_scaled_handler_data h;
-        h.assign(o, m);
-        return do_register_scaled(id, h);
+        return do_register_scaled(id, wrap_scaled(o, m), reinterpret_cast<void*>(o));
     }
 
     template <typename real_obj, typename real_method>
     bool
     register_fixed_action(const utils::id& id, bool pressed, real_obj* o, real_method m)
     {
-        input_fixed_handler_data h;
-        h.assign(o, m);
-        return do_register_fixed(id, pressed, h);
+        return do_register_fixed(id, pressed, wrap_fixed(o, m), reinterpret_cast<void*>(o));
     }
 
     virtual bool
@@ -135,11 +188,46 @@ public:
 
 protected:
     virtual bool
-    do_register_scaled(const utils::id& id, input_scaled_handler_data handler) = 0;
+    do_register_scaled(const utils::id& id, scaled_handler handler, void* owner) = 0;
 
     virtual bool
-    do_register_fixed(const utils::id& id, bool pressed, input_fixed_handler_data handler) = 0;
+    do_register_fixed(const utils::id& id, bool pressed, fixed_handler handler, void* owner) = 0;
+
+private:
+    template <typename real_obj, typename real_method>
+    static fixed_handler
+    wrap_fixed(real_obj* o, real_method m)
+    {
+        if constexpr (std::is_invocable_v<real_method, real_obj*, const io_context&>)
+        {
+            return [o, m](const io_context& c) { (o->*m)(c); };
+        }
+        else
+        {
+            return [o, m](const io_context&) { (o->*m)(); };
+        }
+    }
+
+    template <typename real_obj, typename real_method>
+    static scaled_handler
+    wrap_scaled(real_obj* o, real_method m)
+    {
+        if constexpr (std::is_invocable_v<real_method, real_obj*, float, const io_context&>)
+        {
+            return [o, m](float v, const io_context& c) { (o->*m)(v, c); };
+        }
+        else
+        {
+            return [o, m](float v, const io_context&) { (o->*m)(v); };
+        }
+    }
 };
+
+inline bool
+io_state::is_down(input_event_id id) const
+{
+    return provider && provider->get_input_state(id);
+}
 
 }  // namespace core
 

@@ -2,6 +2,8 @@
 
 #include <game_session/game_session.h>
 
+#include <core/input_provider.h>
+
 #include <serialization/serialization.h>
 
 #include <utils/kryga_log.h>
@@ -13,12 +15,32 @@ void
 nevermatch_mode::on_start(game::game_session&)
 {
     ALOG_INFO("nevermatch_mode: play started (gold={})", m_save.gold);
+
+    if (auto* ip = glob::get_input_provider())
+    {
+        ip->register_fixed_action(AID("mouse_pressed"), true, this,
+                                  &nevermatch_mode::on_select_pressed);
+    }
 }
 
 void
 nevermatch_mode::on_stop(game::game_session&)
 {
+    if (auto* ip = glob::get_input_provider())
+    {
+        ip->unregister_owner(this);
+    }
+
     ALOG_INFO("nevermatch_mode: play stopped (playtime={:.1f}s)", m_save.playtime);
+}
+
+void
+nevermatch_mode::on_select_pressed(const core::io_context& e)
+{
+    // Foundation: click reaches the game session. The click point is read from the
+    // live global current state; next step turns it into a screen-to-world ray and
+    // selects the hit match_cube.
+    ALOG_INFO("nevermatch_mode: select pressed at ({}, {})", e.current.mouse_x, e.current.mouse_y);
 }
 
 void

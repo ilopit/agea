@@ -253,13 +253,14 @@ from_string(const std::string& s)
 
 input_manager::input_manager()
 {
+    m_current.provider = this;
 }
 
 bool
 input_manager::input_tick(float dur_seconds)
 {
     m_dur_seconds = dur_seconds;
-    m_to_drop_events.clear();
+    m_delta.reset();  // per-frame delta: accumulates this tick's motion/wheel/edges
 
     SDL_Event e;
     while (SDL_PollEvent(&e) != 0)
@@ -384,43 +385,63 @@ input_manager::load_actions(const vfs::rid& rid)
 void
 input_manager::fire_input_event()
 {
-    for (auto a : m_active_events)
+    // Continuous held keys: synthesize a per-frame scaled tick for every held trigger
+    // that has scaled handlers (e.g. WASD movement). Appended AFTER this frame's real
+    // events — movement continuity needs no ordering against discrete edges.
+    for (auto& [id, down] : m_is_down)
     {
-        if (a->fire_on_start)
+        if (!down)
         {
-            for (auto& h : a->m_registered_pres_fixed_handlers)
-            {
-                h.fire();
-            }
-
-            a->fire_on_start = false;
+            continue;
         }
-
-        if (a->to_drop)
+        auto it = m_handlers.find(id);
+        if (it != m_handlers.end() && !it->second.scaled.empty())
         {
-            for (auto& h : a->m_registered_pres_fixed_handlers)
-            {
-                h.fire();
-            }
-        }
-
-        for (auto& h : a->m_registered_scaled_handlers)
-        {
-            h.fire(a->extra_ampl * m_dur_seconds * h.basic_amp);
+            m_queue.push_back({id, input_record::kind::scaled, 1.f});
         }
     }
 
-    drop_fired_event();
-}
+    // The two global states, by reference, are all a handler sees — current absolute
+    // state + this frame's delta. Built once; the queue only carries event identity.
+    const core::io_context ctx{m_current, m_delta};
 
-void
-input_manager::drop_fired_event()
-{
-    for (auto e : m_to_drop_events)
+    // Drain in arrival order, preserving the sequence edges actually happened. Note
+    // unordered_map keeps references to mapped values valid across inserts (a fired
+    // handler registering new triggers won't dangle `h`); the only contract is
+    // "don't mutate the vector you're currently iterating".
+    for (const auto& rec : m_queue)
     {
-        m_active_events.erase(e);
-        e->reset();
+        auto it = m_handlers.find(rec.id);
+        if (it == m_handlers.end())
+        {
+            continue;
+        }
+        auto& h = it->second;
+
+        switch (rec.k)
+        {
+        case input_record::kind::pressed:
+            for (auto& e : h.pressed)
+            {
+                e.fn(ctx);
+            }
+            break;
+        case input_record::kind::released:
+            for (auto& e : h.released)
+            {
+                e.fn(ctx);
+            }
+            break;
+        case input_record::kind::scaled:
+            for (auto& e : h.scaled)
+            {
+                e.fn(rec.amount * m_dur_seconds * e.basic_amp, ctx);
+            }
+            break;
+        }
     }
+
+    m_queue.clear();
 }
 
 void
@@ -436,13 +457,13 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             return;
         }
-
-        auto* es = &m_events_state[id];
-        es->is_active = true;
-        es->to_drop = false;
-
-        m_active_events.insert(es);
-
+        // Dedup SDL auto-repeat: only the rising edge is a press event.
+        if (!m_is_down[id])
+        {
+            m_is_down[id] = true;
+            m_delta.changed.push_back(id);
+            m_queue.push_back({id, input_record::kind::pressed, 0.f});
+        }
         break;
     }
     case SDL_KEYUP:
@@ -451,11 +472,9 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             return;
         }
-
-        auto* es = &m_events_state[id];
-        es->to_drop = true;
-        m_to_drop_events.push_back(es);
-
+        m_is_down[id] = false;
+        m_delta.changed.push_back(id);
+        m_queue.push_back({id, input_record::kind::released, 0.f});
         break;
     }
     case SDL_MOUSEWHEEL:
@@ -463,19 +482,12 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         m_mouse_wheel_state.x = sdle.wheel.x;
         m_mouse_wheel_state.y = sdle.wheel.y;
 
-        id = input_event_id::mouse_move_wheel;
-
         if (sdle.wheel.y)
         {
-            auto* es = &m_events_state[id];
-
-            es->extra_ampl = (float)sdle.wheel.y;
-
-            es->is_active = true;
-            es->to_drop = false;
-
-            m_active_events.insert(es);
-            m_to_drop_events.push_back(es);
+            m_delta.wheel += sdle.wheel.y;
+            m_queue.push_back({input_event_id::mouse_move_wheel,
+                               input_record::kind::scaled,
+                               (float)sdle.wheel.y});
         }
         break;
     }
@@ -497,37 +509,26 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         m_mouse_axis_state.xrel = sdle.motion.xrel;
         m_mouse_axis_state.yrel = sdle.motion.yrel;
 
-        id = input_event_id::mouse_move_x;
+        // Global current/delta: keep the absolute cursor live and accumulate this
+        // frame's raw motion for handlers that want it off the context.
+        m_current.mouse_x = sdle.motion.x;
+        m_current.mouse_y = sdle.motion.y;
+        m_delta.mouse_dx += sdle.motion.xrel;
+        m_delta.mouse_dy += sdle.motion.yrel;
 
         if (sdle.motion.xrel)
         {
-            auto* es = &m_events_state[id];
-
             auto rel = (k_mouse_sensitivity * sdle.motion.xrel) /
                        (float)glob::glob_state().get_native_window()->get_size().w;
-            es->extra_ampl = rel * glob::glob_state().get_native_window()->aspect_ratio();
-
-            es->is_active = true;
-            es->to_drop = false;
-
-            m_active_events.insert(es);
-            m_to_drop_events.push_back(es);
+            rel *= glob::glob_state().get_native_window()->aspect_ratio();
+            m_queue.push_back({input_event_id::mouse_move_x, input_record::kind::scaled, rel});
         }
 
-        id = input_event_id::mouse_move_y;
         if (sdle.motion.yrel)
         {
-            auto* es = &m_events_state[id];
-
             auto rel = (k_mouse_sensitivity * sdle.motion.yrel) /
                        (float)glob::glob_state().get_native_window()->get_size().h;
-            es->extra_ampl = rel;
-
-            es->is_active = true;
-            es->to_drop = false;
-
-            m_active_events.insert(es);
-            m_to_drop_events.push_back(es);
+            m_queue.push_back({input_event_id::mouse_move_y, input_record::kind::scaled, rel});
         }
         break;
     case SDL_MOUSEBUTTONDOWN:
@@ -542,12 +543,16 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
             return;
         }
 
-        auto* es = &m_events_state[id];
-        es->is_active = true;
-        es->to_drop = false;
-
-        m_active_events.insert(es);
-
+        if (!m_is_down[id])
+        {
+            m_is_down[id] = true;
+            m_delta.changed.push_back(id);
+            // SDL hands us the cursor position the button event fired at — make the
+            // global current state reflect the click point for handlers that pick.
+            m_current.mouse_x = sdle.button.x;
+            m_current.mouse_y = sdle.button.y;
+            m_queue.push_back({id, input_record::kind::pressed, 0.f});
+        }
         break;
     }
     case SDL_MOUSEBUTTONUP:
@@ -562,10 +567,11 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
             return;
         }
 
-        auto* es = &m_events_state[id];
-        es->to_drop = true;
-        m_to_drop_events.push_back(es);
-
+        m_is_down[id] = false;
+        m_delta.changed.push_back(id);
+        m_current.mouse_x = sdle.button.x;
+        m_current.mouse_y = sdle.button.y;
+        m_queue.push_back({id, input_record::kind::released, 0.f});
         break;
     }
 
@@ -586,42 +592,42 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         m_mouse_axis_state.xrel = (int)(sdle.tfinger.dx * win_w);
         m_mouse_axis_state.yrel = (int)(sdle.tfinger.dy * win_h);
 
+        m_current.mouse_x = m_mouse_axis_state.x;
+        m_current.mouse_y = m_mouse_axis_state.y;
+        m_delta.mouse_dx += m_mouse_axis_state.xrel;
+        m_delta.mouse_dy += m_mouse_axis_state.yrel;
+
         if (sdle.tfinger.dx != 0.f)
         {
-            auto* es = &m_events_state[input_event_id::mouse_move_x];
             auto rel = (k_mouse_sensitivity * sdle.tfinger.dx * win_w) / win_w;
-            es->extra_ampl = rel * glob::glob_state().get_native_window()->aspect_ratio();
-            es->is_active = true;
-            es->to_drop = false;
-            m_active_events.insert(es);
-            m_to_drop_events.push_back(es);
+            rel *= glob::glob_state().get_native_window()->aspect_ratio();
+            m_queue.push_back({input_event_id::mouse_move_x, input_record::kind::scaled, rel});
         }
 
         if (sdle.tfinger.dy != 0.f)
         {
-            auto* es = &m_events_state[input_event_id::mouse_move_y];
             auto rel = (k_mouse_sensitivity * sdle.tfinger.dy * win_h) / win_h;
-            es->extra_ampl = rel;
-            es->is_active = true;
-            es->to_drop = false;
-            m_active_events.insert(es);
-            m_to_drop_events.push_back(es);
+            m_queue.push_back({input_event_id::mouse_move_y, input_record::kind::scaled, rel});
         }
         break;
     }
     case SDL_FINGERDOWN:
     {
-        auto* es = &m_events_state[input_event_id::mouse_left];
-        es->is_active = true;
-        es->to_drop = false;
-        m_active_events.insert(es);
+        id = input_event_id::mouse_left;
+        if (!m_is_down[id])
+        {
+            m_is_down[id] = true;
+            m_delta.changed.push_back(id);
+            m_queue.push_back({id, input_record::kind::pressed, 0.f});
+        }
         break;
     }
     case SDL_FINGERUP:
     {
-        auto* es = &m_events_state[input_event_id::mouse_left];
-        es->to_drop = true;
-        m_to_drop_events.push_back(es);
+        id = input_event_id::mouse_left;
+        m_is_down[id] = false;
+        m_delta.changed.push_back(id);
+        m_queue.push_back({id, input_record::kind::released, 0.f});
         break;
     }
 #endif
@@ -632,7 +638,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
 }
 
 bool
-input_manager::do_register_scaled(const utils::id& id, core::input_scaled_handler_data handler)
+input_manager::do_register_scaled(const utils::id& id, scaled_handler handler, void* owner)
 {
     auto itr = m_input_actions.find(id);
     if (itr == m_input_actions.end())
@@ -642,11 +648,7 @@ input_manager::do_register_scaled(const utils::id& id, core::input_scaled_handle
 
     for (auto& t : itr->second.m_triggers)
     {
-        input_scaled_action_handler ev;
-        ev.obj = handler.obj;
-        ev.method = handler.method;
-        ev.basic_amp = t.second.amp;
-        m_events_state[t.second.id].m_registered_scaled_handlers.push_back(ev);
+        m_handlers[t.second.id].scaled.push_back({owner, handler, t.second.amp});
     }
     return true;
 }
@@ -654,7 +656,8 @@ input_manager::do_register_scaled(const utils::id& id, core::input_scaled_handle
 bool
 input_manager::do_register_fixed(const utils::id& id,
                                  bool pressed,
-                                 core::input_fixed_handler_data handler)
+                                 fixed_handler handler,
+                                 void* owner)
 {
     auto itr = m_input_actions.find(id);
     if (itr == m_input_actions.end())
@@ -662,44 +665,23 @@ input_manager::do_register_fixed(const utils::id& id,
         return false;
     }
 
-    if (pressed)
+    for (auto& t : itr->second.m_triggers)
     {
-        for (auto& t : itr->second.m_triggers)
-        {
-            input_fixed_action_handler ev;
-            ev.obj = handler.obj;
-            ev.method = handler.method;
-            m_events_state[t.second.id].m_registered_pres_fixed_handlers.push_back(ev);
-        }
+        auto& eh = m_handlers[t.second.id];
+        (pressed ? eh.pressed : eh.released).push_back({owner, handler});
     }
-    else
-    {
-        for (auto& t : itr->second.m_triggers)
-        {
-            input_fixed_action_handler ev;
-            ev.obj = handler.obj;
-            ev.method = handler.method;
-            m_events_state[t.second.id].m_registered_release_fixed_handlers.push_back(ev);
-        }
-    }
-
     return true;
 }
 
 void
 input_manager::unregister_owner(void* owner)
 {
-    for (auto& [eid, es] : m_events_state)
+    for (auto& [eid, eh] : m_handlers)
     {
-        auto erase_matching = [owner](auto& vec)
-        {
-            std::erase_if(vec,
-                          [owner](auto& h) { return reinterpret_cast<void*>(h.obj) == owner; });
-        };
-
-        erase_matching(es.m_registered_scaled_handlers);
-        erase_matching(es.m_registered_pres_fixed_handlers);
-        erase_matching(es.m_registered_release_fixed_handlers);
+        auto by_owner = [owner](auto& e) { return e.owner == owner; };
+        std::erase_if(eh.pressed, by_owner);
+        std::erase_if(eh.released, by_owner);
+        std::erase_if(eh.scaled, by_owner);
     }
 }
 

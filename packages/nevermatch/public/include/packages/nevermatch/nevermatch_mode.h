@@ -4,6 +4,11 @@
 
 #include "packages/nevermatch/nevermatch_save.h"
 
+namespace kryga::core
+{
+struct io_context;
+}
+
 namespace kryga::nevermatch
 {
 
@@ -32,6 +37,14 @@ public:
     load(const serialization::container& c) override;
 
 private:
+    // Input entry point for the game. Registered against the "mouse_pressed" action
+    // (mouse_button_left, see resources/configs/inputs.acfg) on play-start and torn
+    // down on play-stop — the in/out bracket of the session. The click coordinate
+    // arrives on the event (captured at press), so it stays correct once input is
+    // queued. This is where match-cube picking will be driven from.
+    void
+    on_select_pressed(const core::io_context& e);
+
     nevermatch_save m_save;
 };
 

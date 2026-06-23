@@ -119,7 +119,7 @@ game_editor::ev_look_left(float f)
 }
 
 void
-game_editor::ev_mouse_press()
+game_editor::ev_mouse_press(const core::io_context& e)
 {
     if (m_mode == editor_mode::playing)
     {
@@ -136,8 +136,10 @@ game_editor::ev_mouse_press()
         return;
     }
 
-    uint32_t w = glob::glob_state().getr_input_manager().get_mouse_state().x;
-    uint32_t h = glob::glob_state().getr_input_manager().get_mouse_state().y;
+    // Click point comes from the live global current state (set to the button's
+    // coordinate when the press was consumed this frame).
+    uint32_t w = static_cast<uint32_t>(e.current.mouse_x);
+    uint32_t h = static_cast<uint32_t>(e.current.mouse_y);
 
     // Picking reads render-thread-owned state (the per-frame draw queues + the
     // picking BVH) and returns a render_data pointer — none of which may be
