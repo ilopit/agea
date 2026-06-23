@@ -129,9 +129,9 @@ public:
     //   needs to reflect the work's result (reads, single mutations that
     //   want explicit ok/err in the response).
     void
-    queue_main_action(std::function<void()> a);
+    queue_main_action(const std::function<void()>& a);
     bool
-    wait_main_action(std::function<void()> a,
+    wait_main_action(const std::function<void()>& a,
                      std::chrono::milliseconds timeout = std::chrono::milliseconds(5000));
 
     // Block (on the caller's thread, e.g. an RPC I/O thread) until the render

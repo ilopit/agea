@@ -32,6 +32,7 @@ using cmd_handler = std::function<void(editor_console&, const command_context&)>
 
 using tree_container = std::unordered_map<std::string, std::unique_ptr<node>>;
 ;
+;
 
 class node
 {

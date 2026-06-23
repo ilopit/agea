@@ -22,7 +22,7 @@ namespace
 vfs::rid
 slot_rid(int slot)
 {
-    return vfs::rid("rtcache", std::string("saves/slot") + std::to_string(slot) + ".yaml");
+    return {"rtcache", std::string("saves/slot") + std::to_string(slot) + ".yaml"};
 }
 }  // namespace
 

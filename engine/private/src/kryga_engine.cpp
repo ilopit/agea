@@ -786,14 +786,14 @@ vulkan_engine::tick_headless()
 
 #if KRG_HAS_EDITOR
 void
-vulkan_engine::queue_main_action(std::function<void()> a)
+vulkan_engine::queue_main_action(const std::function<void()>& a)
 {
     std::lock_guard<std::mutex> lk(m_rpc_action_mutex);
     m_rpc_actions.push_back(std::move(a));
 }
 
 bool
-vulkan_engine::wait_main_action(std::function<void()> a, std::chrono::milliseconds timeout)
+vulkan_engine::wait_main_action(const std::function<void()>& a, std::chrono::milliseconds timeout)
 {
     auto p = std::make_shared<std::promise<void>>();
     auto fut = p->get_future();

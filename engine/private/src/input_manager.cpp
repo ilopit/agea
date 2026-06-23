@@ -397,13 +397,13 @@ input_manager::fire_input_event()
         auto it = m_handlers.find(id);
         if (it != m_handlers.end() && !it->second.scaled.empty())
         {
-            m_queue.push_back({id, input_record::kind::scaled, 1.f});
+            m_queue.push_back({.id = id, .k = input_record::kind::scaled, .amount = 1.f});
         }
     }
 
     // The two global states, by reference, are all a handler sees — current absolute
     // state + this frame's delta. Built once; the queue only carries event identity.
-    const core::io_context ctx{m_current, m_delta};
+    const core::io_context ctx{.current = m_current, .delta = m_delta};
 
     // Drain in arrival order, preserving the sequence edges actually happened. Note
     // unordered_map keeps references to mapped values valid across inserts (a fired
@@ -462,7 +462,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         {
             m_is_down[id] = true;
             m_delta.changed.push_back(id);
-            m_queue.push_back({id, input_record::kind::pressed, 0.f});
+            m_queue.push_back({.id = id, .k = input_record::kind::pressed, .amount = 0.f});
         }
         break;
     }
@@ -474,7 +474,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         }
         m_is_down[id] = false;
         m_delta.changed.push_back(id);
-        m_queue.push_back({id, input_record::kind::released, 0.f});
+        m_queue.push_back({.id = id, .k = input_record::kind::released, .amount = 0.f});
         break;
     }
     case SDL_MOUSEWHEEL:
@@ -485,9 +485,9 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         if (sdle.wheel.y)
         {
             m_delta.wheel += sdle.wheel.y;
-            m_queue.push_back({input_event_id::mouse_move_wheel,
-                               input_record::kind::scaled,
-                               (float)sdle.wheel.y});
+            m_queue.push_back({.id = input_event_id::mouse_move_wheel,
+                               .k = input_record::kind::scaled,
+                               .amount = (float)sdle.wheel.y});
         }
         break;
     }
@@ -521,14 +521,18 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
             auto rel = (k_mouse_sensitivity * sdle.motion.xrel) /
                        (float)glob::glob_state().get_native_window()->get_size().w;
             rel *= glob::glob_state().get_native_window()->aspect_ratio();
-            m_queue.push_back({input_event_id::mouse_move_x, input_record::kind::scaled, rel});
+            m_queue.push_back({.id = input_event_id::mouse_move_x,
+                               .k = input_record::kind::scaled,
+                               .amount = rel});
         }
 
         if (sdle.motion.yrel)
         {
             auto rel = (k_mouse_sensitivity * sdle.motion.yrel) /
                        (float)glob::glob_state().get_native_window()->get_size().h;
-            m_queue.push_back({input_event_id::mouse_move_y, input_record::kind::scaled, rel});
+            m_queue.push_back({.id = input_event_id::mouse_move_y,
+                               .k = input_record::kind::scaled,
+                               .amount = rel});
         }
         break;
     case SDL_MOUSEBUTTONDOWN:
@@ -551,7 +555,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
             // global current state reflect the click point for handlers that pick.
             m_current.mouse_x = sdle.button.x;
             m_current.mouse_y = sdle.button.y;
-            m_queue.push_back({id, input_record::kind::pressed, 0.f});
+            m_queue.push_back({.id = id, .k = input_record::kind::pressed, .amount = 0.f});
         }
         break;
     }
@@ -571,7 +575,7 @@ input_manager::consume_sdl_events(const SDL_Event& sdle)
         m_delta.changed.push_back(id);
         m_current.mouse_x = sdle.button.x;
         m_current.mouse_y = sdle.button.y;
-        m_queue.push_back({id, input_record::kind::released, 0.f});
+        m_queue.push_back({.id = id, .k = input_record::kind::released, .amount = 0.f});
         break;
     }
 
@@ -648,7 +652,8 @@ input_manager::do_register_scaled(const utils::id& id, scaled_handler handler, v
 
     for (auto& t : itr->second.m_triggers)
     {
-        m_handlers[t.second.id].scaled.push_back({owner, handler, t.second.amp});
+        m_handlers[t.second.id].scaled.push_back(
+            {.owner = owner, .fn = handler, .basic_amp = t.second.amp});
     }
     return true;
 }
@@ -668,7 +673,7 @@ input_manager::do_register_fixed(const utils::id& id,
     for (auto& t : itr->second.m_triggers)
     {
         auto& eh = m_handlers[t.second.id];
-        (pressed ? eh.pressed : eh.released).push_back({owner, handler});
+        (pressed ? eh.pressed : eh.released).push_back({.owner = owner, .fn = handler});
     }
     return true;
 }

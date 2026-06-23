@@ -12,7 +12,7 @@ audio_message_processor::process(float dt, uint32_t /*frame*/)
 {
     // Drain the whole channel onto the renderer, then advance it. Mirrors physics's
     // process (drain commands -> step): one self-contained worker iteration.
-    m_queue.drain([this](core::audio_message msg) { apply(msg); });
+    m_queue.drain([this](const core::audio_message& msg) { apply(msg); });
     m_renderer.tick(dt);
 }
 

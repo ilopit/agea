@@ -202,7 +202,7 @@ engine_threads_coordinator::render_loop()
         // transform commands, then draw — the frame slot drives the camera/UI
         // snapshot reads inside draw_main, keeping them in lock-step with the frame
         // the main thread produced.
-        const uint32_t frame_slot = static_cast<uint32_t>(m_completed & 1ull);
+        const auto frame_slot = static_cast<uint32_t>(m_completed & 1ull);
         m_render_processor->process(0.0f, frame_slot);
         renderer.set_draw_frame_slot(frame_slot);
         renderer.draw_main();

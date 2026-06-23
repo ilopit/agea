@@ -139,8 +139,8 @@ game_editor::ev_mouse_press(const core::io_context& e)
 
     // Click point comes from the live global current state (set to the button's
     // coordinate when the press was consumed this frame).
-    uint32_t w = static_cast<uint32_t>(e.current.mouse_x);
-    uint32_t h = static_cast<uint32_t>(e.current.mouse_y);
+    auto w = static_cast<uint32_t>(e.current.mouse_x);
+    auto h = static_cast<uint32_t>(e.current.mouse_y);
 
     // Real scene objects: pick model-side on this (main) thread via the level's
     // spatial index — returns a model object directly, no render round-trip.

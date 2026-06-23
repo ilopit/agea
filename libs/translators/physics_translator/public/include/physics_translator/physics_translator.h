@@ -85,7 +85,7 @@ public:
     // (the storage dtor asserts no allocator is still attached). The static-collider
     // allocator is released earlier, via disconnect(), since its storage lives
     // in physics_system and is torn down on the engine's schedule.
-    ~physics_translator();
+    ~physics_translator() override;
 
     // i_translator::disconnect — [shutdown, model thread] Release the static-collider
     // allocator's lane on physics_system's BodyID storage before that storage is

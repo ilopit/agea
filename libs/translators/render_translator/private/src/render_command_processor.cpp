@@ -752,7 +752,7 @@ render_command_processor::apply(render_cmd::render_command_base* cmd)
     // Central tagged dispatch: switch on cmd_kind, run the matching process(), then
     // destruct. The exec context is just the bound renderer/loader refs, so minting it
     // per command is free.
-    render_cmd::render_exec_context ctx{m_vr, m_loader};
+    render_cmd::render_exec_context ctx{.vr = m_vr, .loader = m_loader};
 
     switch (cmd->cmd_kind)
     {
