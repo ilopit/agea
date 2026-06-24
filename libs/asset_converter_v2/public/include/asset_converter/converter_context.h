@@ -30,19 +30,19 @@ class game_object;
 class component;
 }  // namespace root
 
-namespace base
+namespace root
 {
 class pbr_material;
-}  // namespace base
+}  // namespace root
 
-namespace base
+namespace root
 {
 class mesh_object;
 class point_light;
 class directional_light;
 class spot_light;
 class camera_object;
-}  // namespace base
+}  // namespace root
 
 namespace converter
 {
@@ -213,7 +213,7 @@ public:
     root::texture*
     create_texture(core::package& pkg, const utils::id& id, const parsed_texture& data);
 
-    base::pbr_material*
+    root::pbr_material*
     create_material(core::package& pkg,
                     const utils::id& id,
                     const parsed_material& data,

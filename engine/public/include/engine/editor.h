@@ -17,12 +17,12 @@ namespace root
 class game_object;
 }
 
-namespace base
+namespace root
 {
 class camera_component;
 class player;
 class destructible_mesh_component;
-}  // namespace base
+}  // namespace root
 
 namespace engine
 {
@@ -105,7 +105,7 @@ public:
     void
     ev_escape();
 
-    base::camera_component*
+    root::camera_component*
     get_active_camera() const;
 
 private:
@@ -149,9 +149,9 @@ private:
     bool m_saved_grid_visible = true;
     bool m_saved_editor_mode_visuals = true;
 
-    base::camera_component* m_active_camera = nullptr;
-    base::player* m_player = nullptr;
-    base::destructible_mesh_component* m_pending_shatter = nullptr;
+    root::camera_component* m_active_camera = nullptr;
+    root::player* m_player = nullptr;
+    root::destructible_mesh_component* m_pending_shatter = nullptr;
     int m_pending_shatter_frames = 0;
 
     // Selection state. RPC handlers route through the engine's main-thread

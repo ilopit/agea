@@ -47,23 +47,22 @@
 #include <native/native_window.h>
 
 #include <packages/root/model/assets/mesh.h>
-#include <packages/base/model/components/mesh_component.h>
+#include <packages/root/model/components/mesh_component.h>
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/shader_effect.h>
-#include <packages/base/model/camera_object.h>
-#include <packages/base/model/player.h>
+#include <packages/root/model/camera_object.h>
+#include <packages/root/model/player.h>
 
-#include <packages/base/model/lights/directional_light.h>
-#include <packages/base/model/lights/point_light.h>
-#include <packages/base/model/lights/spot_light.h>
-#include <packages/base/model/components/camera_component.h>
+#include <packages/root/model/lights/directional_light.h>
+#include <packages/root/model/lights/point_light.h>
+#include <packages/root/model/lights/spot_light.h>
+#include <packages/root/model/components/camera_component.h>
 
 #include <picking/picking.h>
-#include <packages/base/model/components/input_component.h>
+#include <packages/root/model/components/input_component.h>
 #include <packages/root/model/assets/material.h>
 
 #include <packages/root/package.root.h>
-#include <packages/base/package.base.h>
 
 #include <render_translator/render_translator.h>
 #include <render_translator/render_command.h>
@@ -99,7 +98,7 @@
 
 #include <physics/physics_system.h>
 
-#include <packages/base/model/components/destructible_mesh_component.h>
+#include <packages/root/model/components/destructible_mesh_component.h>
 
 #include <gpu_types/gpu_vertex_types.h>
 
@@ -1096,7 +1095,7 @@ namespace
 // Producer-side only (model thread) — the audio thread applies it via the bridge.
 // Same per-frame cadence as the old direct set_listener call.
 void
-emit_listener_pose(base::camera_component* cam)
+emit_listener_pose(root::camera_component* cam)
 {
     core::audio_message msg;
     msg.kind = core::audio_msg_kind::set_listener;
@@ -1132,7 +1131,7 @@ vulkan_engine::update_cameras()
 #else
     // Game build — resolve the level's active camera (O(1) id the level remembers).
     // See picking::find_active_camera.
-    base::camera_component* cam = picking::find_active_camera();
+    root::camera_component* cam = picking::find_active_camera();
     KRG_check(cam, "Game build requires an active camera in the level.");
     float aspect = glob::glob_state().getr_native_window().aspect_ratio();
     cam->set_aspect_ratio(aspect);
@@ -1168,8 +1167,8 @@ vulkan_engine::init_scene()
 #if !KRG_HAS_EDITOR
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
-        base::player::construct_params player_prms;
-        auto player_obj = lvl->spawn_object<base::player>(AID("player_0"), player_prms);
+        root::player::construct_params player_prms;
+        auto player_obj = lvl->spawn_object<root::player>(AID("player_0"), player_prms);
         if (player_obj)
         {
             player_obj->get_camera()->set_active_camera(true);
@@ -1221,12 +1220,12 @@ vulkan_engine::rebuild_physics_static_world()
                 // Skip destructibles — once broken they stop being collision
                 // anyway, and keeping their pre-break body around would
                 // collide with the chunks spawning on top of it.
-                if (comp->castable_to<base::destructible_mesh_component>())
+                if (comp->castable_to<root::destructible_mesh_component>())
                 {
                     continue;
                 }
 
-                auto* mc = comp->as<base::mesh_component>();
+                auto* mc = comp->as<root::mesh_component>();
                 if (!mc || !mc->get_mesh())
                 {
                     continue;

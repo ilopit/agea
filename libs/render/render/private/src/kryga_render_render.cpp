@@ -716,7 +716,7 @@ vulkan_render::prepare_ui_resources()
 void
 vulkan_render::prepare_ui_pipeline()
 {
-    vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
+    vfs::rid se_ui_base("data://packages/root.apkg/class/shader_effects/ui");
 
     {
         auto vert_r = render::shader_loader::load(se_ui_base / "se_uioverlay.vert.spv");
@@ -935,7 +935,7 @@ vulkan_render::prepare_scene_upscale_pipeline()
         return;
     }
 
-    vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
+    vfs::rid se_ui_base("data://packages/root.apkg/class/shader_effects/ui");
 
     auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
     auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");

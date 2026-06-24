@@ -7,7 +7,7 @@ add_executable (packages.tbs.model.tests ${TEST_SOURCES} )
 target_link_libraries(packages.tbs.model.tests
     kryga::core
     kryga::packages.tbs.model
-    kryga::packages.base.model
+    kryga::packages.root.model
     kryga::packages.root.model
 
     gtest

@@ -10,8 +10,8 @@
 
 #include "packages/root/package.root.h"
 #include "packages/root/package.root.types_builder.ar.h"
-#include "packages/base/package.base.h"
-#include "packages/base/package.base.types_builder.ar.h"
+#include "packages/root/package.root.h"
+#include "packages/root/package.root.types_builder.ar.h"
 #include "packages/test/package.test.h"
 
 #include <packages/root/model/game_object.h>
@@ -56,12 +56,6 @@ struct test_level_rollback : base_test
             pkg.complete_load();
         }
         {
-            pm.register_static_package_loader<base::package>();
-            auto& pkg = pm.load_static_package<base::package>();
-            pkg.register_package_extension<base::package::package_types_builder>();
-            pkg.complete_load();
-        }
-        {
             pm.register_static_package_loader<test::package>();
             auto& pkg = pm.load_static_package<test::package>();
             pkg.init();
@@ -73,7 +67,7 @@ struct test_level_rollback : base_test
     TearDown() override
     {
         test::package::instance().unload();
-        base::package::instance().unload();
+        root::package::instance().unload();
         root::package::instance().unload();
         glob::glob_state_reset();
 

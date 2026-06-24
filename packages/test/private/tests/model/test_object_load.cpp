@@ -17,8 +17,8 @@
 
 #include "packages/root/package.root.h"
 #include "packages/root/package.root.types_builder.ar.h"
-#include "packages/base/package.base.h"
-#include "packages/base/package.base.types_builder.ar.h"
+#include "packages/root/package.root.h"
+#include "packages/root/package.root.types_builder.ar.h"
 #include "packages/test/package.test.h"
 
 #include <packages/root/model/game_object.h>
@@ -26,8 +26,8 @@
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/texture.h>
 #include <packages/test/model/test_mesh_object.h>
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/assets/simple_texture_material.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/assets/simple_texture_material.h>
 
 #include <serialization/serialization.h>
 
@@ -233,12 +233,6 @@ struct test_preloaded_test_package : base_test
                 pkg.complete_load();
             }
             {
-                pm.register_static_package_loader<base::package>();
-                auto& pkg = pm.load_static_package<base::package>();
-                pkg.register_package_extension<base::package::package_types_builder>();
-                pkg.complete_load();
-            }
-            {
                 pm.register_static_package_loader<test::package>();
                 auto& pkg = pm.load_static_package<test::package>();
                 pkg.init();
@@ -268,7 +262,7 @@ struct test_preloaded_test_package : base_test
     TearDown() override
     {
         test::package::instance().unload();
-        base::package::instance().unload();
+        root::package::instance().unload();
         root::package::instance().unload();
         glob::glob_state_reset();
 
@@ -377,7 +371,7 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
     ASSERT_TRUE(verify_flags(*comp1, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*comp1));
 
-    auto comp2 = components[1]->as<base::mesh_component>();
+    auto comp2 = components[1]->as<root::mesh_component>();
     ASSERT_EQ(comp2->get_id(), AID("test_root_component_1"));
     ASSERT_EQ(comp2->get_architype_id(), core::architype::component);
     ASSERT_EQ(comp2->get_class_obj()->get_id(), AID("mesh_component"));
@@ -390,7 +384,7 @@ TEST_F(test_preloaded_test_package, load_class_object_with_custom_layout)
     ASSERT_TRUE(verify_flags(*mesh, core::ks_class_derived));
     ASSERT_TRUE(validate_class_obj(*mesh));
 
-    auto material = comp2->get_material()->as<base::simple_texture_material>();
+    auto material = comp2->get_material()->as<root::simple_texture_material>();
     ASSERT_EQ(material->get_id(), AID("test_material"));
     ASSERT_EQ(material->get_class_obj()->get_id(), AID("simple_texture_material"));
     ASSERT_TRUE(verify_flags(*material, core::ks_class_derived));
@@ -672,13 +666,13 @@ TEST_F(test_preloaded_test_package, load_instance_object_with_custom_layout)
         ASSERT_TRUE(verify_flags(*comp, core::ks_instance_derived));
     }
 
-    auto comp2 = components[1]->as<base::mesh_component>();
+    auto comp2 = components[1]->as<root::mesh_component>();
     ASSERT_TRUE(comp2);
 
     auto mesh = comp2->get_mesh();
     ASSERT_EQ(mesh->get_id(), AID("test_mesh"));
 
-    auto material = comp2->get_material()->as<base::simple_texture_material>();
+    auto material = comp2->get_material()->as<root::simple_texture_material>();
     ASSERT_EQ(material->get_id(), AID("test_material"));
 }
 
@@ -853,7 +847,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_complex_mesh_object)
 
     auto orig_components = obj->get_subcomponents();
     ASSERT_EQ(orig_components.size(), 2);
-    auto orig_mesh_comp = orig_components[1]->as<base::mesh_component>();
+    auto orig_mesh_comp = orig_components[1]->as<root::mesh_component>();
     ASSERT_TRUE(orig_mesh_comp);
 
     // Verify save succeeds and produces output via VFS
@@ -880,7 +874,7 @@ TEST_F(test_preloaded_test_package, object_save_reload_material)
     auto load_result =
         test_object_load(AID("test_material"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
-    auto material = load_result.value()->as<base::simple_texture_material>();
+    auto material = load_result.value()->as<root::simple_texture_material>();
     ASSERT_TRUE(material);
 
     // Verify save succeeds and produces output via VFS
@@ -978,7 +972,7 @@ TEST_F(test_preloaded_test_package, object_save_material_preserves_texture_slots
     auto load_result =
         test_object_load(AID("test_material"), core::object_load_type::class_obj, lc, loaded);
     ASSERT_TRUE(load_result.has_value());
-    auto* material = load_result.value()->as<base::simple_texture_material>();
+    auto* material = load_result.value()->as<root::simple_texture_material>();
     ASSERT_TRUE(material);
 
     ASSERT_TRUE(material->simple_texture().txt) << "texture slot should be populated after load";
@@ -1005,7 +999,7 @@ TEST_F(test_preloaded_test_package, object_save_material_preserves_texture_slots
 
 TEST_F(test_preloaded_test_package, package_objects_are_all_readonly)
 {
-    auto& local = base::package::instance().get_local_cache();
+    auto& local = root::package::instance().get_local_cache();
     auto& items = local.objects.get_items();
     ASSERT_FALSE(items.empty());
 
@@ -1044,7 +1038,7 @@ TEST_F(test_preloaded_test_package, package_subobjects_are_readonly)
         test_object_load(AID("test_material"), core::object_load_type::class_obj, lc, loaded);
 
     ASSERT_TRUE(result.has_value());
-    auto material = result.value()->as<base::simple_texture_material>();
+    auto material = result.value()->as<root::simple_texture_material>();
     ASSERT_TRUE(material);
     ASSERT_TRUE(material->get_flags().readonly);
 
@@ -1164,7 +1158,7 @@ TEST_F(test_preloaded_test_package, instantiate_preserves_readonly_sub_assets)
 
     auto proto_comps = proto->get_subcomponents();
     ASSERT_GE(proto_comps.size(), 2u);
-    auto* proto_mc = proto_comps[1]->as<base::mesh_component>();
+    auto* proto_mc = proto_comps[1]->as<root::mesh_component>();
     ASSERT_TRUE(proto_mc);
 
     std::vector<root::smart_object*> instantiated;
@@ -1175,7 +1169,7 @@ TEST_F(test_preloaded_test_package, instantiate_preserves_readonly_sub_assets)
 
     auto inst_comps = instance->get_subcomponents();
     ASSERT_GE(inst_comps.size(), 2u);
-    auto* inst_mc = inst_comps[1]->as<base::mesh_component>();
+    auto* inst_mc = inst_comps[1]->as<root::mesh_component>();
     ASSERT_TRUE(inst_mc);
 
     ASSERT_EQ(inst_mc->get_mesh(), proto_mc->get_mesh())

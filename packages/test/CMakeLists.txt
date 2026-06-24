@@ -30,7 +30,7 @@ target_link_libraries(packages.test.model PUBLIC
    kryga::vfs
    kryga::utils
 
-   kryga::packages.base.model
+   kryga::packages.root.model
    kryga::packages.root.model
 
    kryga::sol2_unofficial

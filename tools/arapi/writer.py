@@ -1118,8 +1118,8 @@ def _write_type_registration_body(file_buffer: arapi.utils.FileBuffer, fc: arapi
 {indent}    rt.mcp_schema = parent_rt->mcp_schema;
 {indent}if (rt.mcp_hint.empty() && !parent_rt->mcp_hint.empty())
 {indent}    rt.mcp_hint = parent_rt->mcp_hint;
-{indent}for (auto& pf : parent_rt->m_functions)
-{indent}    rt.m_functions.push_back(pf);
+{indent}// NOTE: m_properties and m_functions are inherited from the parent chain in
+{indent}// package::finalize_reflection (after all own members are registered).
 """)
 
   if type_obj.compare_handler:

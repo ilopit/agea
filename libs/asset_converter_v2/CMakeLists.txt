@@ -16,7 +16,7 @@ target_link_libraries(asset_converter_lib
     kryga::vfs
     kryga::serialization
     packages.root.model
-    packages.base.model
+    packages.root.model
 )
 
 target_include_directories(asset_converter_lib

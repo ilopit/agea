@@ -4,7 +4,7 @@
 
 #include <picking/picking.h>
 
-#include <packages/base/model/components/camera_component.h>
+#include <packages/root/model/components/camera_component.h>
 #include <packages/root/model/game_object.h>
 
 #include <core/input_provider.h>

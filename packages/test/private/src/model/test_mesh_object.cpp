@@ -1,7 +1,7 @@
 #include "packages/test/model/test_mesh_object.h"
 
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/lights/components/directional_light_component.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/lights/components/directional_light_component.h>
 
 #include <core/caches/cache_set.h>
 

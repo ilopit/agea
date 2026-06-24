@@ -70,7 +70,7 @@ for normal, positions, uvs, col, row in faces:
     vert_idx += 4
 
 # Write files
-out_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'packages', 'base.apkg', 'class', 'meshes')
+out_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'packages', 'root.apkg', 'class', 'meshes')
 
 avrt_path = os.path.join(out_dir, 'cube_mesh.avrt')
 aind_path = os.path.join(out_dir, 'cube_mesh.aind')

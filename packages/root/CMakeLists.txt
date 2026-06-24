@@ -7,6 +7,8 @@ SET(ROOT_MODEL_PREFIX "public/include/packages/root/model")
 ##### Types
 kryga_gather_sources(ROOT_ASSETS_SRC "assets" "${ROOT_MODEL_PREFIX}/assets/*.h" "private/src/model/assets/*.cpp")
 kryga_gather_sources(ROOT_COMPONENTS_SRC "components" "${ROOT_MODEL_PREFIX}/components/*.h" "private/src/model/components/*.cpp")
+kryga_gather_sources(ROOT_LIGHTS_SRC "lights" "${ROOT_MODEL_PREFIX}/lights/*.h" "private/src/model/lights/*.cpp")
+kryga_gather_sources(ROOT_LIGHTS_COMPONENTS_SRC "lights/components" "${ROOT_MODEL_PREFIX}/lights/components/*.h" "private/src/model/lights/components/*.cpp")
 kryga_gather_sources(ROOT_CORE_TYPES_SRC "core_types" "${ROOT_MODEL_PREFIX}/core_types/*.h" "private/src/model/core_types/*.cpp")
 kryga_gather_sources(ROOT_EXT_SRC "ext" "${ROOT_MODEL_PREFIX}/ext/*.h" "private/src/model/ext/*.cpp")
 kryga_gather_sources(ROOT_OVERRIDES_SRC "overrides" "${ROOT_MODEL_PREFIX}/overrides/*.h" "private/src/model/overrides/*.cpp")
@@ -17,6 +19,8 @@ kryga_gather_sources(ROOT_MODEL_GENERATED_SRC "generated" "${CMAKE_BINARY_DIR}/k
 add_library(packages.root.model STATIC
    ${ROOT_ASSETS_SRC}
    ${ROOT_COMPONENTS_SRC}
+   ${ROOT_LIGHTS_SRC}
+   ${ROOT_LIGHTS_COMPONENTS_SRC}
    ${ROOT_CORE_TYPES_SRC}
    ${ROOT_EXT_SRC}
    ${ROOT_OVERRIDES_SRC}
@@ -40,9 +44,15 @@ target_link_libraries(packages.root.model PUBLIC
 
    kryga::vfs
    kryga::utils
+   kryga::native
    kryga::render_types
 
    kryga::sol2_unofficial
+
+   kryga::physics
+   kryga::physics_translator
+   kryga::audio
+   kryga::audio_translator
 
    lua_static
 )
@@ -73,6 +83,8 @@ target_link_libraries(packages.root.render
    kryga::render_translator
    kryga::physics_translator
    kryga::gpu_types
+   kryga::animation
+   kryga::voronoi_fracture
 )
 target_compile_definitions(packages.root.render PUBLIC KRG_build__render)
 kryga_finalize_library(packages.root.render)

@@ -3,7 +3,7 @@
 #include "packages/tbs/model/hex_tile.ar.h"
 #include "packages/tbs/model/hex_coord.h"
 
-#include "packages/base/model/components/mesh_component.h"
+#include "packages/root/model/components/mesh_component.h"
 
 #include <cstdint>
 
@@ -19,13 +19,13 @@ KRG_ar_class(
     mcp_hint = "Single hex tile — mesh_component whose world position is derived from axial Q/R "
                "coordinates and tile size"
 );
-class hex_tile : public ::kryga::base::mesh_component
+class hex_tile : public ::kryga::root::mesh_component
 // clang-format on
 {
     KRG_gen_meta__hex_tile();
 
 public:
-    KRG_gen_class_meta(hex_tile, ::kryga::base::mesh_component);
+    KRG_gen_class_meta(hex_tile, ::kryga::root::mesh_component);
     KRG_gen_construct_params
     {
         int32_t hex_q = 0;

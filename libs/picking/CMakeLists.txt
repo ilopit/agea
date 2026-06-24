@@ -8,7 +8,7 @@ target_link_libraries(picking PUBLIC
     kryga::core
     kryga::global_state
     kryga::native
-    kryga::packages.base.model
+    kryga::packages.root.model
     kryga::packages.root.model
 )
 

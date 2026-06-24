@@ -730,7 +730,7 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         composite_for_uicopy->destroy_shader_effect(AID("se_ui_copy"));
     }
     {
-        vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
+        vfs::rid se_ui_base("data://packages/root.apkg/class/shader_effects/ui");
         auto vert_r = render::shader_loader::load(se_ui_base / "se_upload.vert.spv");
         auto frag_r = render::shader_loader::load(se_ui_base / "se_upload.frag.spv");
         if (!vert_r || !frag_r)
@@ -769,8 +769,8 @@ vulkan_render::reconfigure_render_scale_enabled(bool enabled)
         auto* composite_pass = loader.get_render_pass(AID("composite"));
         KRG_check(composite_pass, "composite pass should exist after enable");
 
-        vfs::rid se_ui_base("data://packages/base.apkg/class/shader_effects/ui");
-        vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
+        vfs::rid se_ui_base("data://packages/root.apkg/class/shader_effects/ui");
+        vfs::rid se_base("data://packages/root.apkg/class/shader_effects");
 
         // Scene upscale
         {
@@ -1133,7 +1133,7 @@ vulkan_render::prepare_system_resources()
 
     kryga::utils::buffer vert, frag;
 
-    vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
+    vfs::rid se_base("data://packages/root.apkg/class/shader_effects");
 
     auto load_pair = [&vert, &frag](const vfs::rid& v_rid, const vfs::rid& f_rid) -> bool
     {
@@ -1396,7 +1396,7 @@ vulkan_render::init_shadow_resources()
     }
 
     // Create shadow shader effects on the atlas pass
-    vfs::rid se_base("data://packages/base.apkg/class/shader_effects");
+    vfs::rid se_base("data://packages/root.apkg/class/shader_effects");
 
     auto vert_r = render::shader_loader::load(se_base / "shadow/se_shadow.vert.spv");
     if (vert_r)

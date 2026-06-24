@@ -2,7 +2,7 @@
 
 #include "packages/test/model/test_mesh_object.ar.h"
 
-#include "packages/base/model/mesh_object.h"
+#include "packages/root/model/mesh_object.h"
 
 #include <vector>
 
@@ -12,12 +12,12 @@ namespace test
 {
 
 KRG_ar_class(mcp_hint = "Test mesh_object — used in automated tests for mesh rendering validation");
-class test_mesh_object : public ::kryga::base::mesh_object
+class test_mesh_object : public ::kryga::root::mesh_object
 {
     KRG_gen_meta__test_mesh_object();
 
 public:
-    KRG_gen_class_meta(test_mesh_object, ::kryga::base::mesh_object);
+    KRG_gen_class_meta(test_mesh_object, ::kryga::root::mesh_object);
     KRG_gen_construct_params{};
     KRG_gen_meta_api;
 

@@ -11,7 +11,7 @@ namespace kryga::test
 // clang-format off
 KRG_ar_package(model.has_types_overrides = false,
                 model.has_properties_overrides = false,
-                dependancies = "base:root",
+                dependancies = "root",
                 render.has_overrides = false,
                 render.has_resources = false);
 class package : public ::kryga::core::package

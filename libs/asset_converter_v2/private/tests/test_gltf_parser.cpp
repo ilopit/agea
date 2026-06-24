@@ -35,7 +35,7 @@ protected:
     void
     SetUp() override
     {
-        m_fox_path = "../packages/base.apkg/class/meshes/Fox.glb";
+        m_fox_path = "../packages/root.apkg/class/meshes/Fox.glb";
         if (!std::filesystem::exists(m_fox_path))
         {
             GTEST_SKIP() << "Fox.glb not found at " << m_fox_path;

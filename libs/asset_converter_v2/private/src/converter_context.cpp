@@ -13,19 +13,19 @@
 
 #include <global_state/global_state.h>
 
-#include <packages/base/model/camera_object.h>
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/components/camera_component.h>
-#include <packages/base/model/lights/components/directional_light_component.h>
-#include <packages/base/model/lights/components/point_light_component.h>
-#include <packages/base/model/lights/components/spot_light_component.h>
-#include <packages/base/model/lights/directional_light.h>
-#include <packages/base/model/lights/point_light.h>
-#include <packages/base/model/lights/spot_light.h>
-#include <packages/base/model/assets/pbr_material.h>
-#include <packages/base/model/mesh_object.h>
-#include <packages/base/package.base.h>
-#include <packages/base/package.base.types_builder.ar.h>
+#include <packages/root/model/camera_object.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/components/camera_component.h>
+#include <packages/root/model/lights/components/directional_light_component.h>
+#include <packages/root/model/lights/components/point_light_component.h>
+#include <packages/root/model/lights/components/spot_light_component.h>
+#include <packages/root/model/lights/directional_light.h>
+#include <packages/root/model/lights/point_light.h>
+#include <packages/root/model/lights/spot_light.h>
+#include <packages/root/model/assets/pbr_material.h>
+#include <packages/root/model/mesh_object.h>
+#include <packages/root/package.root.h>
+#include <packages/root/package.root.types_builder.ar.h>
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/texture.h>
@@ -202,16 +202,6 @@ converter_context::init_packages()
     }
     ALOG_INFO("Root package loaded");
 
-    ALOG_INFO("Loading base package...");
-    {
-        pm.register_static_package_loader<base::package>();
-        auto& pkg = pm.load_static_package<base::package>();
-        pkg.init();
-        pkg.register_package_extension<base::package::package_types_builder>();
-        pkg.complete_load();
-    }
-    ALOG_INFO("Base package loaded");
-
     return true;
 }
 
@@ -246,7 +236,6 @@ converter_context::shutdown()
 void
 converter_context::shutdown_packages()
 {
-    base::package::instance().unload();
     root::package::instance().unload();
 }
 
@@ -581,7 +570,7 @@ converter_context::create_texture(core::package& pkg,
     return tex;
 }
 
-base::pbr_material*
+root::pbr_material*
 converter_context::create_material(core::package& pkg,
                                    const utils::id& id,
                                    const parsed_material& data,
@@ -590,12 +579,12 @@ converter_context::create_material(core::package& pkg,
 {
     auto& olc = pkg.get_load_context();
 
-    base::pbr_material::construct_params params;
+    root::pbr_material::construct_params params;
 
     // Built writable (instance) so its fields can be populated, then sealed as a
     // class object below — packages own class objects, not instances.
     core::object_constructor ctor(&olc, core::object_load_type::class_obj);
-    auto result = ctor.construct_obj(base::pbr_material::AR_TYPE_id(), id, params, false);
+    auto result = ctor.construct_obj(root::pbr_material::AR_TYPE_id(), id, params, false);
 
     if (!result)
     {
@@ -603,7 +592,7 @@ converter_context::create_material(core::package& pkg,
         return nullptr;
     }
 
-    auto* mat = result.value()->as<base::pbr_material>();
+    auto* mat = result.value()->as<root::pbr_material>();
 
     mat->set_ambient(root::vec3(data.ambient));
     mat->set_diffuse(root::vec3(data.diffuse));
@@ -855,7 +844,7 @@ lookup_node_material(core::package& pkg,
 }
 
 void
-configure_point_light(base::point_light_component* lc, const parsed_light& data)
+configure_point_light(root::point_light_component* lc, const parsed_light& data)
 {
     glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
     glm::vec3 ambient = diffuse * 0.1f;
@@ -866,7 +855,7 @@ configure_point_light(base::point_light_component* lc, const parsed_light& data)
 }
 
 void
-configure_directional_light(base::directional_light_component* lc, const parsed_light& data)
+configure_directional_light(root::directional_light_component* lc, const parsed_light& data)
 {
     glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
     glm::vec3 ambient = diffuse * 0.1f;
@@ -877,7 +866,7 @@ configure_directional_light(base::directional_light_component* lc, const parsed_
 }
 
 void
-configure_spot_light(base::spot_light_component* lc, const parsed_light& data)
+configure_spot_light(root::spot_light_component* lc, const parsed_light& data)
 {
     glm::vec3 diffuse = data.color * std::min(data.intensity, 1.0f);
     glm::vec3 ambient = diffuse * 0.1f;
@@ -891,7 +880,7 @@ configure_spot_light(base::spot_light_component* lc, const parsed_light& data)
 }
 
 void
-configure_camera(base::camera_component* cc, const parsed_camera& data)
+configure_camera(root::camera_component* cc, const parsed_camera& data)
 {
     cc->set_perspective(data.fov, data.aspect_ratio, data.znear, data.zfar);
 }
@@ -926,10 +915,10 @@ converter_context::spawn_node_component(root::game_object* obj,
         }
         auto* material = lookup_node_material(pkg, scene, opts, node);
 
-        base::mesh_component::construct_params p;
+        root::mesh_component::construct_params p;
         p.mesh_handle = mesh;
         p.material_handle = material;
-        this_comp = obj->spawn_component<base::mesh_component>(parent, cid, p);
+        this_comp = obj->spawn_component<root::mesh_component>(parent, cid, p);
     }
     else if (node.light_index >= 0 && size_t(node.light_index) < scene.lights.size())
     {
@@ -938,7 +927,7 @@ converter_context::spawn_node_component(root::game_object* obj,
         {
         case parsed_light_type::point:
         {
-            auto* lc = obj->spawn_component<base::point_light_component>(parent, cid, {});
+            auto* lc = obj->spawn_component<root::point_light_component>(parent, cid, {});
             if (lc)
             {
                 configure_point_light(lc, light);
@@ -948,7 +937,7 @@ converter_context::spawn_node_component(root::game_object* obj,
         }
         case parsed_light_type::directional:
         {
-            auto* lc = obj->spawn_component<base::directional_light_component>(parent, cid, {});
+            auto* lc = obj->spawn_component<root::directional_light_component>(parent, cid, {});
             if (lc)
             {
                 configure_directional_light(lc, light);
@@ -958,7 +947,7 @@ converter_context::spawn_node_component(root::game_object* obj,
         }
         case parsed_light_type::spot:
         {
-            auto* lc = obj->spawn_component<base::spot_light_component>(parent, cid, {});
+            auto* lc = obj->spawn_component<root::spot_light_component>(parent, cid, {});
             if (lc)
             {
                 configure_spot_light(lc, light);
@@ -971,7 +960,7 @@ converter_context::spawn_node_component(root::game_object* obj,
     else if (node.camera_index >= 0 && size_t(node.camera_index) < scene.cameras.size())
     {
         const auto& camera = scene.cameras[node.camera_index];
-        auto* cc = obj->spawn_component<base::camera_component>(parent, cid, {});
+        auto* cc = obj->spawn_component<root::camera_component>(parent, cid, {});
         if (cc)
         {
             configure_camera(cc, camera);
@@ -1102,11 +1091,11 @@ converter_context::place_scene_root(core::level& lvl,
         if (auto* mesh = lookup_node_mesh(pkg, scene, opts, root_node))
         {
             auto* material = lookup_node_material(pkg, scene, opts, root_node);
-            base::mesh_component::construct_params p;
+            root::mesh_component::construct_params p;
             p.mesh_handle = mesh;
             p.material_handle = material;
             auto mc_id = utils::id::make_id(obj_id.str() + "_mesh");
-            obj->spawn_component<base::mesh_component>(root_comp, mc_id, p);
+            obj->spawn_component<root::mesh_component>(root_comp, mc_id, p);
         }
         else
         {
@@ -1121,7 +1110,7 @@ converter_context::place_scene_root(core::level& lvl,
         {
             if (light.type == parsed_light_type::point)
             {
-                if (auto* lc = comp.as<base::point_light_component>())
+                if (auto* lc = comp.as<root::point_light_component>())
                 {
                     configure_point_light(lc, light);
                     break;
@@ -1129,7 +1118,7 @@ converter_context::place_scene_root(core::level& lvl,
             }
             else if (light.type == parsed_light_type::directional)
             {
-                if (auto* lc = comp.as<base::directional_light_component>())
+                if (auto* lc = comp.as<root::directional_light_component>())
                 {
                     configure_directional_light(lc, light);
                     break;
@@ -1137,7 +1126,7 @@ converter_context::place_scene_root(core::level& lvl,
             }
             else if (light.type == parsed_light_type::spot)
             {
-                if (auto* lc = comp.as<base::spot_light_component>())
+                if (auto* lc = comp.as<root::spot_light_component>())
                 {
                     configure_spot_light(lc, light);
                     break;
@@ -1150,7 +1139,7 @@ converter_context::place_scene_root(core::level& lvl,
         const auto& camera = scene.cameras[root_node.camera_index];
         for (auto& comp : obj->get_components())
         {
-            if (auto* cc = comp.as<base::camera_component>())
+            if (auto* cc = comp.as<root::camera_component>())
             {
                 configure_camera(cc, camera);
                 break;

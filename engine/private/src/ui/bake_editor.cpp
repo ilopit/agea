@@ -11,10 +11,10 @@
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/material.h>
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/lights/components/directional_light_component.h>
-#include <packages/base/model/lights/components/point_light_component.h>
-#include <packages/base/model/lights/components/spot_light_component.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/lights/components/directional_light_component.h>
+#include <packages/root/model/lights/components/point_light_component.h>
+#include <packages/root/model/lights/components/spot_light_component.h>
 
 #include <vulkan_render/bake/lightmap_baker.h>
 #include <core/lightmap_manifest.h>
@@ -76,22 +76,22 @@ bake_editor::collect_scene_info() const
         auto* go = static_cast<root::game_object*>(obj_ptr);
         for (auto* comp : go->get_renderable_components())
         {
-            if (auto* mc = dynamic_cast<base::mesh_component*>(comp))
+            if (auto* mc = dynamic_cast<root::mesh_component*>(comp))
             {
                 if (mc->get_layers().contribute_gi)
                 {
                     ++info.static_count;
                 }
             }
-            if (auto* dlc = dynamic_cast<base::directional_light_component*>(comp))
+            if (auto* dlc = dynamic_cast<root::directional_light_component*>(comp))
             {
                 if (dlc->get_selected())
                 {
                     ++info.directional_count;
                 }
             }
-            if (dynamic_cast<base::point_light_component*>(comp) ||
-                dynamic_cast<base::spot_light_component*>(comp))
+            if (dynamic_cast<root::point_light_component*>(comp) ||
+                dynamic_cast<root::spot_light_component*>(comp))
             {
                 ++info.local_light_count;
             }
@@ -132,7 +132,7 @@ bake_editor::submit_bake()
         auto* go = static_cast<root::game_object*>(obj_ptr);
         for (auto* comp : go->get_renderable_components())
         {
-            if (auto* mc = dynamic_cast<base::mesh_component*>(comp))
+            if (auto* mc = dynamic_cast<root::mesh_component*>(comp))
             {
                 if (!mc->get_layers().contribute_gi || !mc->get_mesh())
                 {
@@ -171,7 +171,7 @@ bake_editor::submit_bake()
                 meshes->push_back(std::move(md));
             }
 
-            if (auto* dlc = dynamic_cast<base::directional_light_component*>(comp))
+            if (auto* dlc = dynamic_cast<root::directional_light_component*>(comp))
             {
                 if (!dlc->get_selected())
                 {
@@ -186,7 +186,7 @@ bake_editor::submit_bake()
                 lights->push_back(ld);
             }
 
-            if (auto* plc = dynamic_cast<base::point_light_component*>(comp))
+            if (auto* plc = dynamic_cast<root::point_light_component*>(comp))
             {
                 gpu::universal_light_data ld{};
                 ld.position = glm::vec3(plc->get_world_position());
@@ -200,7 +200,7 @@ bake_editor::submit_bake()
                 local_lights->push_back(ld);
             }
 
-            if (auto* slc = dynamic_cast<base::spot_light_component*>(comp))
+            if (auto* slc = dynamic_cast<root::spot_light_component*>(comp))
             {
                 gpu::universal_light_data ld{};
                 ld.position = glm::vec3(slc->get_world_position());

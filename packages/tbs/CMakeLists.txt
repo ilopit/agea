@@ -30,7 +30,7 @@ target_link_libraries(packages.tbs.model PUBLIC
    kryga::vfs
    kryga::utils
 
-   kryga::packages.base.model
+   kryga::packages.root.model
    kryga::packages.root.model
 )
 target_compile_definitions(packages.tbs.model PUBLIC KRG_build__model)

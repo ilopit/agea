@@ -14,8 +14,8 @@
 
 #include "packages/root/package.root.h"
 #include "packages/root/package.root.types_builder.ar.h"
-#include "packages/base/package.base.h"
-#include "packages/base/package.base.types_builder.ar.h"
+#include "packages/root/package.root.h"
+#include "packages/root/package.root.types_builder.ar.h"
 #include "packages/test/package.test.h"
 
 #include <packages/root/model/smart_object.h>
@@ -24,8 +24,8 @@
 #include <packages/root/model/assets/material.h>
 #include <packages/root/model/assets/texture.h>
 #include <packages/root/model/components/component.h>
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/assets/simple_texture_material.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/assets/simple_texture_material.h>
 
 #include <gtest/gtest.h>
 
@@ -64,13 +64,6 @@ struct test_olc : base_test
             pkg.complete_load();
         }
         {
-            pm.register_static_package_loader<base::package>();
-            auto& pkg = pm.load_static_package<base::package>();
-            pkg.init();
-            pkg.register_package_extension<base::package::package_types_builder>();
-            pkg.complete_load();
-        }
-        {
             pm.register_static_package_loader<test::package>();
             auto& pkg = pm.load_static_package<test::package>();
             pkg.init();
@@ -82,7 +75,7 @@ struct test_olc : base_test
     TearDown() override
     {
         test::package::instance().unload();
-        base::package::instance().unload();
+        root::package::instance().unload();
         root::package::instance().unload();
         glob::glob_state_reset();
 

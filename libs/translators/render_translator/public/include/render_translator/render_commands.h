@@ -8,7 +8,7 @@
 // dispatched by render_command_processor::apply.
 //
 // All live in `namespace kryga` (not root/base) so the emission sites in
-// kryga::root / kryga::base still resolve them by enclosing-namespace lookup.
+// kryga::root / kryga::root still resolve them by enclosing-namespace lookup.
 
 #include "render_translator/render_command.h"
 

@@ -34,7 +34,7 @@ protected:
     void
     SetUp() override
     {
-        m_cube_path = "../packages/base.apkg/class/meshes/cube_mesh.obj";
+        m_cube_path = "../packages/root.apkg/class/meshes/cube_mesh.obj";
         if (!std::filesystem::exists(m_cube_path))
         {
             GTEST_SKIP() << "cube_mesh.obj not found at " << m_cube_path;

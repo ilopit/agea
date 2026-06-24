@@ -1,0 +1,95 @@
+#pragma once
+
+#include "packages/root/model/point_light_component.ar.h"
+
+#include "packages/root/model/components/game_object_component.h"
+
+namespace kryga
+{
+namespace root
+{
+
+// clang-format off
+KRG_ar_class(
+    render_cmd_builder   = point_light_component__cmd_builder,
+    render_cmd_destroyer = point_light_component__cmd_destroyer,
+    render_cmd_transform = point_light_component__cmd_transform,
+    mcp_hint             = "Point light parameters — ambient/diffuse/specular colors and influence "
+                           "radius"
+);
+class point_light_component : public ::kryga::root::game_object_component
+// clang-format on
+{
+    KRG_gen_meta__point_light_component();
+
+public:
+    KRG_gen_class_meta(point_light_component, ::kryga::root::game_object_component);
+
+    KRG_gen_construct_params{};
+    KRG_gen_meta_api;
+
+protected:
+    // clang-format off
+    KRG_ar_property(
+        category     = "Light Properties",
+        access       = all,
+        serializable = true,
+        invalidates  = render,
+        mcp_hint     = "ambient light color RGB [0-1]"
+    );
+    ::kryga::root::vec3 m_ambient = glm::vec3{1.0f};
+    // clang-format on
+
+    // clang-format off
+    KRG_ar_property(
+        category     = "Light Properties",
+        access       = all,
+        serializable = true,
+        invalidates  = render,
+        mcp_hint     = "diffuse light color RGB [0-1]"
+    );
+    ::kryga::root::vec3 m_diffuse = glm::vec3{1.0f};
+    // clang-format on
+
+    // clang-format off
+    KRG_ar_property(
+        category     = "Light Properties",
+        access       = all,
+        serializable = true,
+        invalidates  = render,
+        mcp_hint     = "specular highlight color RGB [0-1]"
+    );
+    ::kryga::root::vec3 m_specular = glm::vec3{1.0f};
+    // clang-format on
+
+    // clang-format off
+    KRG_ar_property(
+        category     = "Light Properties",
+        access       = all,
+        serializable = true,
+        invalidates  = render,
+        mcp_hint     = "how far the light reaches in world units"
+    );
+    float m_radius = 50.0f;
+    // clang-format on
+
+public:
+    // Handle-model render slot (runtime, not serialized): the universal-light pool
+    // slot reserved by the builder. Mirrors smart_object::m_render_object_handle.
+    ::kryga::render::types::universal_light_handle m_render_light_handle = {};
+
+    ::kryga::render::types::universal_light_handle
+    get_render_light_handle() const
+    {
+        return m_render_light_handle;
+    }
+
+    void
+    set_render_light_handle(::kryga::render::types::universal_light_handle h)
+    {
+        m_render_light_handle = h;
+    }
+};
+
+}  // namespace root
+}  // namespace kryga

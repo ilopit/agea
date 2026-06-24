@@ -464,7 +464,7 @@ protected:
         kryga::utils::buffer vert_buf, frag_buf;
 
         auto path_rp = glob::glob_state().getr_vfs().real_path(
-            vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+            vfs::rid("data://packages/root.apkg/class/shader_effects/lit"));
         auto path = APATH(path_rp.value());
 
         kryga::utils::buffer::load(path / "se_lit.vert.spv", vert_buf);
@@ -655,7 +655,7 @@ protected:
         kryga::utils::buffer vert_buf, frag_buf;
 
         auto& vfs = glob::glob_state().getr_vfs();
-        auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects"));
+        auto se_path = vfs.real_path(vfs::rid("data", "packages/root.apkg/class/shader_effects"));
         auto path = APATH(se_path.value());
 
         kryga::utils::buffer::load(path / "se_solid_color.vert.spv", vert_buf);
@@ -680,7 +680,7 @@ protected:
         kryga::utils::buffer vert_buf, frag_buf;
 
         auto& vfs = glob::glob_state().getr_vfs();
-        auto se_path = vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects"));
+        auto se_path = vfs.real_path(vfs::rid("data", "packages/root.apkg/class/shader_effects"));
         auto path = APATH(se_path.value());
 
         kryga::utils::buffer::load(path / "se_solid_color.vert.spv", vert_buf);
@@ -706,7 +706,7 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
         auto path_rp = glob::glob_state().getr_vfs().real_path(
-            vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+            vfs::rid("data://packages/root.apkg/class/shader_effects/lit"));
         auto path = APATH(path_rp.value());
         kryga::utils::buffer::load(path / "se_lit.vert.spv", vert_buf);
         kryga::utils::buffer::load(path / "se_pbr_lit.frag.spv", frag_buf);
@@ -729,7 +729,7 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
         auto path_rp = glob::glob_state().getr_vfs().real_path(
-            vfs::rid("data://packages/base.apkg/class/shader_effects"));
+            vfs::rid("data://packages/root.apkg/class/shader_effects"));
         auto path = APATH(path_rp.value());
         kryga::utils::buffer::load(path / "se_simple_texture.vert.spv", vert_buf);
         kryga::utils::buffer::load(path / "se_simple_texture.frag.spv", frag_buf);
@@ -779,7 +779,7 @@ protected:
     {
         kryga::utils::buffer vert_buf, frag_buf;
         auto path_rp = glob::glob_state().getr_vfs().real_path(
-            vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+            vfs::rid("data://packages/root.apkg/class/shader_effects/lit"));
         auto path = APATH(path_rp.value());
         kryga::utils::buffer::load(path / "se_lit.vert.spv", vert_buf);
         kryga::utils::buffer::load(path / "se_solid_color_lit.frag.spv", frag_buf);
@@ -2067,7 +2067,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     {
         auto& vfs = glob::glob_state().getr_vfs();
         auto se_path =
-            vfs.real_path(vfs::rid("data", "packages/base.apkg/class/shader_effects/lit"));
+            vfs.real_path(vfs::rid("data", "packages/root.apkg/class/shader_effects/lit"));
         auto path = APATH(se_path.value());
 
         kryga::utils::buffer::load(path / "se_lit.vert.spv", lm_vert_buf);
@@ -3237,7 +3237,7 @@ TEST_F(visual_pipeline_test, shader_toon)
 
     kryga::utils::buffer vert_buf, frag_buf;
     auto se_path = glob::glob_state().getr_vfs().real_path(
-        vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+        vfs::rid("data://packages/root.apkg/class/shader_effects/lit"));
     auto path = APATH(se_path.value());
     kryga::utils::buffer::load(path / "se_lit.vert.spv", vert_buf);
     kryga::utils::buffer::load(path / "se_toon.frag.spv", frag_buf);
@@ -3687,7 +3687,7 @@ TEST_F(visual_pipeline_test, mesh_skinned_basic)
     // out_lightmap_uv unwritten is safe).
     kryga::utils::buffer vert_buf, frag_buf;
     auto path_rp = glob::glob_state().getr_vfs().real_path(
-        vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+        vfs::rid("data://packages/root.apkg/class/shader_effects/lit"));
     auto path = APATH(path_rp.value());
     kryga::utils::buffer::load(path / "se_simple_texture_lit_skinned.vert.spv", vert_buf);
     kryga::utils::buffer::load(path / "se_solid_color_lit.frag.spv", frag_buf);
@@ -4236,7 +4236,7 @@ void main() {
     // Vert: reuse pre-cooked se_lit.vert (matches the location 0..5 layout
     // common_frag.glsl expects).
     kryga::utils::buffer vert_buf;
-    auto vert_dir = vfs.real_path(vfs::rid("data://packages/base.apkg/class/shader_effects/lit"));
+    auto vert_dir = vfs.real_path(vfs::rid("data://packages/root.apkg/class/shader_effects/lit"));
     auto vert_path = APATH(vert_dir.value()) / "se_lit.vert.spv";
     ASSERT_TRUE(kryga::utils::buffer::load(vert_path, vert_buf));
 
@@ -4551,7 +4551,7 @@ TEST_F(visual_pipeline_test, shader_error_fallback)
 
     kryga::utils::buffer vert_buf;
     auto se_path = glob::glob_state().getr_vfs().real_path(
-        vfs::rid("data://packages/base.apkg/class/shader_effects"));
+        vfs::rid("data://packages/root.apkg/class/shader_effects"));
     auto path = APATH(se_path.value());
     kryga::utils::buffer::load(path / "se_solid_color.vert.spv", vert_buf);
 

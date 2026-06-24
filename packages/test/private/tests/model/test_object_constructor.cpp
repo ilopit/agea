@@ -18,8 +18,8 @@
 
 #include "packages/root/package.root.h"
 #include "packages/root/package.root.types_builder.ar.h"
-#include "packages/base/package.base.h"
-#include "packages/base/package.base.types_builder.ar.h"
+#include "packages/root/package.root.h"
+#include "packages/root/package.root.types_builder.ar.h"
 #include "packages/test/package.test.h"
 
 #include <packages/root/model/game_object.h>
@@ -27,8 +27,8 @@
 #include <packages/root/model/core_types/vec3.h>
 #include <packages/root/model/assets/mesh.h>
 #include <packages/root/model/assets/material.h>
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/assets/simple_texture_material.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/assets/simple_texture_material.h>
 
 #include <utils/kryga_log.h>
 
@@ -69,13 +69,6 @@ struct test_object_constructor : base_test
             pkg.complete_load();
         }
         {
-            pm.register_static_package_loader<base::package>();
-            auto& pkg = pm.load_static_package<base::package>();
-            pkg.init();
-            pkg.register_package_extension<base::package::package_types_builder>();
-            pkg.complete_load();
-        }
-        {
             pm.register_static_package_loader<test::package>();
             auto& pkg = pm.load_static_package<test::package>();
             pkg.init();
@@ -87,7 +80,7 @@ struct test_object_constructor : base_test
     TearDown() override
     {
         test::package::instance().unload();
-        base::package::instance().unload();
+        root::package::instance().unload();
         root::package::instance().unload();
         glob::glob_state_reset();
 
@@ -212,14 +205,14 @@ TEST_F(test_object_constructor, load_complex_object_with_dependencies)
     auto components = go->get_subcomponents();
     ASSERT_EQ(components.size(), 2);
 
-    auto comp2 = components[1]->as<base::mesh_component>();
+    auto comp2 = components[1]->as<root::mesh_component>();
     ASSERT_TRUE(comp2);
 
     auto mesh = comp2->get_mesh();
     ASSERT_TRUE(mesh);
     ASSERT_EQ(mesh->get_id(), AID("test_mesh"));
 
-    auto material = comp2->get_material()->as<base::simple_texture_material>();
+    auto material = comp2->get_material()->as<root::simple_texture_material>();
     ASSERT_TRUE(material);
     ASSERT_EQ(material->get_id(), AID("test_material"));
 }

@@ -25,22 +25,22 @@
 #include <core/package_manager.h>
 
 #include <packages/root/model/game_object.h>
-#include <packages/base/model/mesh_object.h>
-#include <packages/base/model/components/mesh_component.h>
-#include <packages/base/model/components/camera_component.h>
-#include <packages/base/model/components/input_component.h>
-#include <packages/base/model/lights/point_light.h>
-#include <packages/base/model/lights/directional_light.h>
-#include <packages/base/model/lights/spot_light.h>
-#include <packages/base/model/destructible_mesh_object.h>
-#include <packages/base/model/components/destructible_mesh_component.h>
-#include <packages/base/model/assets/destructible_mesh_asset.h>
+#include <packages/root/model/mesh_object.h>
+#include <packages/root/model/components/mesh_component.h>
+#include <packages/root/model/components/camera_component.h>
+#include <packages/root/model/components/input_component.h>
+#include <packages/root/model/lights/point_light.h>
+#include <packages/root/model/lights/directional_light.h>
+#include <packages/root/model/lights/spot_light.h>
+#include <packages/root/model/destructible_mesh_object.h>
+#include <packages/root/model/components/destructible_mesh_component.h>
+#include <packages/root/model/assets/destructible_mesh_asset.h>
 #include <packages/tbs/model/hex_grid.h>
-#include <packages/base/model/components/camera_component.h>
+#include <packages/root/model/components/camera_component.h>
 
 #include <gpu_types/gpu_generic_constants.h>
 
-#include <packages/base/model/player.h>
+#include <packages/root/model/player.h>
 
 namespace kryga
 {
@@ -274,8 +274,8 @@ game_editor::ev_spawn()
                 auto pp =
                     glob::glob_state()
                         .getr_model().current_level
-                        ->spawn_object_as_clone<base::mesh_object>(AID("test_cube"), AID(id), sp);
-                auto mc = pp->get_component_at(1)->as<base::mesh_component>();
+                        ->spawn_object_as_clone<root::mesh_object>(AID("test_cube"), AID(id), sp);
+                auto mc = pp->get_component_at(1)->as<root::mesh_component>();
                 mc->layers().visible = true;
             }
         }
@@ -283,7 +283,7 @@ game_editor::ev_spawn()
 
     int light_DIM = 0;
 
-    base::point_light::construct_params prms;
+    root::point_light::construct_params prms;
 
     for (x = -light_DIM / 2; x < light_DIM / 2; ++x)
     {
@@ -294,7 +294,7 @@ game_editor::ev_spawn()
                 auto id = std::format("pl_{}_{}_{}", x, y, z);
 
                 prms.pos = root::vec3{x * 45.f, y * 45.f, z * 45.f};
-                auto pp = glob::glob_state().getr_model().current_level->spawn_object<base::point_light>(
+                auto pp = glob::glob_state().getr_model().current_level->spawn_object<root::point_light>(
                     AID(id), prms);
             }
         }
@@ -318,21 +318,21 @@ game_editor::ev_lights()
     }
 
     //     {
-    //         base::spot_light::construct_params plp;
+    //         root::spot_light::construct_params plp;
     //         plp.pos = {-20.f};
-    //         lvl.spawn_object<base::spot_light>(AID("PL1"), plp);
+    //         lvl.spawn_object<root::spot_light>(AID("PL1"), plp);
     //     }
     //
     //     {
-    //         base::point_light::construct_params plp;
+    //         root::point_light::construct_params plp;
     //         plp.pos = {15.f};
-    //         lvl.spawn_object<base::point_light>(AID("PL2"), plp);
+    //         lvl.spawn_object<root::point_light>(AID("PL2"), plp);
     //     }
 
     {
-        base::directional_light::construct_params dcp;
+        root::directional_light::construct_params dcp;
         dcp.pos = {0.f, 20.f, 0.0};
-        lvl.spawn_object<base::directional_light>(AID("DL"), dcp);
+        lvl.spawn_object<root::directional_light>(AID("DL"), dcp);
     }
 }
 
@@ -347,7 +347,7 @@ game_editor::ev_shatter_demo()
 
     auto& caches = glob::glob_state().getr_model().caches;
     auto* obj = caches.objects.get_item(AID("test_destructible"));
-    auto* asset = obj ? obj->as<base::destructible_mesh_asset>() : nullptr;
+    auto* asset = obj ? obj->as<root::destructible_mesh_asset>() : nullptr;
     if (!asset)
     {
         ALOG_WARN("shatter_demo: test_destructible asset not found");
@@ -357,14 +357,14 @@ game_editor::ev_shatter_demo()
     static int s_counter = 0;
     auto obj_id = AID(std::format("shatter_demo_{}", s_counter++));
 
-    base::destructible_mesh_object::construct_params go_params;
+    root::destructible_mesh_object::construct_params go_params;
     auto& cam = glob::glob_state().getr_render().renderer.get_camera();
     glm::vec3 cam_pos = cam.position;
     glm::vec3 cam_fwd = -glm::vec3(cam.view[0][2], cam.view[1][2], cam.view[2][2]);
     glm::vec3 spawn_pos = cam_pos + glm::normalize(cam_fwd) * 8.0f;
     go_params.pos = root::vec3{spawn_pos.x, spawn_pos.y, spawn_pos.z};
 
-    auto* go = lvl->spawn_object<base::destructible_mesh_object>(obj_id, go_params);
+    auto* go = lvl->spawn_object<root::destructible_mesh_object>(obj_id, go_params);
     if (!go)
     {
         return;
@@ -372,10 +372,10 @@ game_editor::ev_shatter_demo()
 
     go->get_root_component()->set_scale({3.0f, 3.0f, 3.0f});
 
-    base::destructible_mesh_component::construct_params dmc_params;
+    root::destructible_mesh_component::construct_params dmc_params;
     dmc_params.asset_handle = asset;
 
-    auto* dmc = go->spawn_component<base::destructible_mesh_component>(
+    auto* dmc = go->spawn_component<root::destructible_mesh_component>(
         go->get_root_component(), AID(obj_id.str() + "_dmc"), dmc_params);
 
     if (dmc && m_mode == editor_mode::playing)
@@ -509,8 +509,8 @@ game_editor::enter_play_mode()
     {
         lvl->snapshot();
 
-        base::player::construct_params pp;
-        m_player = lvl->spawn_object<base::player>(AID("player_0"), pp);
+        root::player::construct_params pp;
+        m_player = lvl->spawn_object<root::player>(AID("player_0"), pp);
         if (m_player)
         {
             m_player->set_position(root::vec3{
@@ -585,7 +585,7 @@ game_editor::ev_escape()
     }
 }
 
-base::camera_component*
+root::camera_component*
 game_editor::get_active_camera() const
 {
     return m_active_camera;

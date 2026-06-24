@@ -260,14 +260,17 @@ package::finalize_reflection()
         }
 
         reflection::property_list to_insert;
+        reflection::function_list to_insert_fn;
 
         while (!to_handle.empty())
         {
             auto& top = to_handle.top();
 
             top->m_properties.insert(top->m_properties.end(), to_insert.begin(), to_insert.end());
+            top->m_functions.insert(top->m_functions.end(), to_insert_fn.begin(), to_insert_fn.end());
 
             to_insert = top->m_properties;
+            to_insert_fn = top->m_functions;
             top->initialized = true;
             top->override();
 
