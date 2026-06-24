@@ -118,7 +118,7 @@ base_view::build_for_subobject(uint64_t field_idx, uint64_t idx) const
 
     auto offset = glob_offset_at_index(sub_field, idx);
 
-    return base_view(offset, m_data, sub_field, m_cur_field->sub_field_layout);
+    return {offset, m_data, sub_field, m_cur_field->sub_field_layout};
 }
 
 base_view
@@ -126,7 +126,7 @@ base_view::build_for_subobject(uint64_t field_idx) const
 {
     auto sub_field = field_by_idx(m_cur_field->sub_field_layout, field_idx);
 
-    return base_view(glob_offset(sub_field), m_data, sub_field, m_cur_field->sub_field_layout);
+    return {glob_offset(sub_field), m_data, sub_field, m_cur_field->sub_field_layout};
 }
 
 const dynobj_field*

@@ -57,7 +57,7 @@ public:
     {
         std::string result = base;
         int suffix = 1;
-        while (m_used.count(result) > 0)
+        while (m_used.contains(result))
         {
             result = base + "_" + std::to_string(suffix);
             ++suffix;

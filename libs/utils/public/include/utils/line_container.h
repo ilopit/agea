@@ -28,7 +28,7 @@ public:
     }
 
     void
-    swap_and_remove(itr pos)
+    swap_and_remove(const itr& pos)
     {
         KRG_check(!m_items.empty(), "Should not be empty!");
         KRG_check(pos >= m_items.begin(), "Should not be empty!");

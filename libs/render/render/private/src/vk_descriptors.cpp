@@ -135,7 +135,7 @@ descriptor_allocator::cleanup()
 VkDescriptorPool
 descriptor_allocator::grab_pool()
 {
-    if (m_free_pools.size() > 0)
+    if (!m_free_pools.empty())
     {
         VkDescriptorPool pool = m_free_pools.back();
         m_free_pools.pop_back();

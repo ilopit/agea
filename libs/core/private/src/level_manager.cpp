@@ -225,12 +225,7 @@ level_manager::save_level(level& l, const utils::path& path)
     }
 
     auto root_path = full_path / "root.cfg";
-    if (!serialization::write_container(root_path, container))
-    {
-        return false;
-    }
-
-    return true;
+    return serialization::write_container(root_path, container);
 }
 
 }  // namespace core

@@ -143,7 +143,7 @@ public:
 
 #ifndef NDEBUG
 private:
-    mutable std::thread::id m_owner{};
+    mutable std::thread::id m_owner;
     mutable bool m_bound = false;
 #endif
 };

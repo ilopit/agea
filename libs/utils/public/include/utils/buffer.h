@@ -81,7 +81,7 @@ struct buffer
     }
 
     void
-    set_vpath(std::string vpath)
+    set_vpath(const std::string& vpath)
     {
         m_vpath = std::move(vpath);
     }

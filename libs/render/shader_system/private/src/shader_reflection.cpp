@@ -213,7 +213,7 @@ shader_reflection_utils::convert_spvr_to_dyn_layout(const utils::id& field_name,
     }
 
     // Use SPIR-V offset/size — the compiler already computed the correct layout
-    dl.finalize_field(type, df);
+    gpu_dynobj_builder::finalize_field(type, df);
     df.offset = block.offset;
     df.size = block.size;
 

@@ -158,7 +158,7 @@ public:
     has_extension(const char* v) const
     {
         auto e = m_value.extension().generic_string();
-        return e.compare(v) == 0;
+        return e == v;
     }
 
     bool
