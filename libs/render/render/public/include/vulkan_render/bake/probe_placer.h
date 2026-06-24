@@ -23,7 +23,7 @@ struct probe_placement_params
 struct probe_placement_result
 {
     std::vector<glm::vec3> positions;
-    gpu::probe_grid_config grid_config;
+    gpu::probe_grid_config grid_config{};
 };
 
 // Place probes on a uniform grid covering the scene AABB.

@@ -324,8 +324,8 @@ struct apply_bones_cmd : render_cmd::render_command_base
 {
     static constexpr auto k_kind = render_cmd::render_cmd_kind::apply_bones;
 
-    std::vector<glm::mat4> matrices;
-    std::vector<bone_instance_update> updates;
+    std::vector<glm::mat4> matrices{};
+    std::vector<bone_instance_update> updates{};
 };
 
 // ============================================================================

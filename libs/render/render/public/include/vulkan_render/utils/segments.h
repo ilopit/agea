@@ -55,7 +55,7 @@ struct buffer_segment
     uint64_t reserved_size = 0;
     uint64_t offset = 0;
 
-    std::vector<T> selected;
+    std::vector<T> selected{};
     bool in_usage = false;
     bool out_of_range = false;
 };
@@ -197,7 +197,7 @@ private:
         return id ? (m_segments[id - 1].offset + m_segments[id - 1].get_allocated_size()) : 0U;
     }
 
-    std::vector<buffer_segment<T>> m_segments;
+    std::vector<buffer_segment<T>> m_segments{};
     utils::id_allocator m_id_alloc;
     bool m_changed_layout = false;
 };

@@ -56,7 +56,7 @@ struct lightmap_binding
     // The atlas texture itself — re-bakes update it in place (same bindless
     // slot, objects keep their index); remove_lightmap releases it.
     texture_data* texture = nullptr;
-    std::unordered_map<kryga::utils::id, lightmap_uv> entries;  // object/component id → UV
+    std::unordered_map<kryga::utils::id, lightmap_uv> entries{};  // object/component id → UV
 };
 
 // One line of UI text, the payload of the loader's ui_text laned_storage. The
@@ -758,11 +758,11 @@ private:
     texture_ref_storage m_textures_storage{1};
     // MERGED material storage, same split as the mesh pool above.
     material_storage m_materials_storage{2};
-    std::unordered_map<kryga::utils::id, render_pass_sptr> m_render_passes;
+    std::unordered_map<kryga::utils::id, render_pass_sptr> m_render_passes{};
 
-    std::unordered_map<kryga::utils::id, lightmap_binding> m_lightmaps;
+    std::unordered_map<kryga::utils::id, lightmap_binding> m_lightmaps{};
     ui_text_storage m_ui_texts{1};  // single lane (render_translator's content alloc)
-    std::unordered_map<kryga::utils::id, font_atlas> m_fonts;  // id -> baked atlas
+    std::unordered_map<kryga::utils::id, font_atlas> m_fonts{};  // id -> baked atlas
 };
 
 }  // namespace render

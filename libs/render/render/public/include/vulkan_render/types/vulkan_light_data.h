@@ -31,7 +31,7 @@ public:
         : vulkan_render_resource(id, idx)
     {
     }
-    gpu::directional_light_data gpu_data;
+    gpu::directional_light_data gpu_data{};
 };
 
 // Unified local light (point + spot combined)
@@ -63,7 +63,7 @@ public:
         return slot() != INVALID_GPU_INDEX;
     }
 
-    gpu::universal_light_data gpu_data;
+    gpu::universal_light_data gpu_data{};
 };
 
 }  // namespace render

@@ -38,7 +38,7 @@ public:
 
 private:
     uint64_t m_ids_in_fly = 0;
-    std::vector<uint64_t> m_free_ids;
+    std::vector<uint64_t> m_free_ids{};
 };
 }  // namespace utils
 }  // namespace kryga

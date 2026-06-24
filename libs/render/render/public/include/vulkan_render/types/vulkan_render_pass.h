@@ -217,7 +217,7 @@ private:
     rg_pass_type m_type = rg_pass_type::graphics;
 
     // Render graph properties
-    std::vector<rg_resource_ref> m_resources;
+    std::vector<rg_resource_ref> m_resources{};
     VkClearColorValue m_clear_color = {0, 0, 0, 0};
     std::function<void(VkCommandBuffer)> m_execute;
     rg_pass_barriers m_barriers;
@@ -234,17 +234,17 @@ private:
 
     // Vulkan resources
     VkRenderPass m_vk_render_pass = VK_NULL_HANDLE;
-    std::vector<VkFramebuffer> m_framebuffers;
+    std::vector<VkFramebuffer> m_framebuffers{};
 
     // Image resources
-    std::vector<vk_utils::vulkan_image_sptr> m_color_images;
-    std::vector<vk_utils::vulkan_image_view_sptr> m_color_image_views;
-    std::vector<vk_utils::vulkan_image> m_depth_images;
-    std::vector<vk_utils::vulkan_image_view> m_depth_image_views;
+    std::vector<vk_utils::vulkan_image_sptr> m_color_images{};
+    std::vector<vk_utils::vulkan_image_view_sptr> m_color_image_views{};
+    std::vector<vk_utils::vulkan_image> m_depth_images{};
+    std::vector<vk_utils::vulkan_image_view> m_depth_image_views{};
 
     // Shader storage
-    std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>> m_shader_effects;
-    std::unordered_map<kryga::utils::id, std::shared_ptr<compute_shader_data>> m_compute_shaders;
+    std::unordered_map<kryga::utils::id, std::shared_ptr<shader_effect_data>> m_shader_effects{};
+    std::unordered_map<kryga::utils::id, std::shared_ptr<compute_shader_data>> m_compute_shaders{};
 
     // Binding management
     binding_table m_binding_table;

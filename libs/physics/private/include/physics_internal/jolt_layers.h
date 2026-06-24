@@ -55,7 +55,7 @@ public:
 #endif
 
 private:
-    JPH::BroadPhaseLayer m_object_to_broad_phase[NUM_OBJECT_LAYERS];
+    JPH::BroadPhaseLayer m_object_to_broad_phase[NUM_OBJECT_LAYERS]{};
 };
 
 class object_vs_bp_filter_impl final : public JPH::ObjectVsBroadPhaseLayerFilter

@@ -138,7 +138,7 @@ lightmap_atlas::skyline_pack(uint32_t rw, uint32_t rh, uint32_t& out_x, uint32_t
     out_y = best_y;
 
     // Insert new skyline node for the placed rect
-    skyline_node new_node;
+    skyline_node new_node{};
     new_node.x = out_x;
     new_node.y = best_y + rh;
     new_node.width = rw;

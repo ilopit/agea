@@ -464,7 +464,7 @@ private:
     const dynobj_field*
     get_dyn_field(uint64_t idx);
 
-    std::vector<uint8_t> m_obj_data;
+    std::vector<uint8_t> m_obj_data{};
     std::shared_ptr<dynobj_layout> m_layout;
 };
 

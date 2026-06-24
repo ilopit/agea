@@ -20,7 +20,7 @@ struct static_package_context
     static_package_context();
     ~static_package_context();
 
-    static_package_loader loader;
+    static_package_loader loader{};
     std::unique_ptr<package> pkg;
 };
 

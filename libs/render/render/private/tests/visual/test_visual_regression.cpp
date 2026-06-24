@@ -597,7 +597,7 @@ protected:
         auto& cache = renderer.get_cache();
 
         // Camera
-        gpu::camera_data cam;
+        gpu::camera_data cam{};
         cam.projection = glm::perspective(
             glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
         cam.projection[1][1] *= -1.0f;
@@ -895,7 +895,7 @@ protected:
         ASSERT_FALSE(se_lm->m_failed_load) << "Lightmapped shader marked failed";
 
         // Camera
-        gpu::camera_data cam;
+        gpu::camera_data cam{};
         cam.projection = glm::perspective(
             glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
         cam.projection[1][1] *= -1.0f;
@@ -1154,7 +1154,7 @@ TEST_F(visual_pipeline_test, empty_frame)
 {
     auto& renderer = glob::glob_state().getr_render().renderer;
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 256.0f);
     cam.view = glm::lookAt(glm::vec3(0, 0, 5), glm::vec3(0), glm::vec3(0, 1, 0));
     cam.inv_projection = glm::inverse(cam.projection);
@@ -1244,7 +1244,7 @@ TEST_F(visual_pipeline_test, lit_cubes)
     auto center = glm::vec3(0.0f, 0.0f, 0.0f);
     auto up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;  // Vulkan Y-flip
@@ -1651,7 +1651,7 @@ TEST_F(visual_pipeline_test, alpha_blending)
     ASSERT_TRUE(se_trans);
 
     // Camera
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection = glm::perspective(glm::radians(60.0f), 1.0f, 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
     cam.view = glm::lookAt(glm::vec3(0, 0, 4), glm::vec3(0), glm::vec3(0, 1, 0));
@@ -1761,7 +1761,7 @@ TEST_F(visual_pipeline_test, unlit_shader)
     ASSERT_TRUE(se_unlit);
 
     // Camera but no setup_scene — we want to control the light precisely
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -1830,7 +1830,7 @@ TEST_F(visual_pipeline_test, directional_light_switching)
     ASSERT_TRUE(se);
 
     // Camera
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -1896,7 +1896,7 @@ TEST_F(visual_pipeline_test, complex_scene)
     ASSERT_TRUE(se_trans);
 
     // Camera — elevated view of a populated scene
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -2088,7 +2088,7 @@ TEST_F(visual_pipeline_test, baked_lighting_scene)
     ASSERT_FALSE(se_lm->m_failed_load) << "Lightmapped shader marked as failed";
 
     // --- Camera ---
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -2457,7 +2457,7 @@ TEST_F(visual_pipeline_test, shadow_csm_cascades)
     ASSERT_TRUE(se);
 
     // High elevated camera looking down a long ground strip.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -2575,7 +2575,7 @@ TEST_P(shadow_pcf_test, looks_correct)
     // The cube floats (y=0..2) above floor (y=-1); sun direction (-0.3,-1,-0.2)
     // projects its shadow into the region x in [0.25, 1.55], z in [-0.95, 0.15]
     // on the floor — looking straight down so the penumbra band reads cleanly.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(15.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -2800,7 +2800,7 @@ TEST_F(visual_pipeline_test, culling_cluster_many_lights)
     ASSERT_TRUE(se);
 
     // Top-down camera, framed tight to the 4x8 light grid.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -2891,7 +2891,7 @@ TEST_F(visual_pipeline_test, camera_orthographic)
     ASSERT_TRUE(se);
 
     // Orthographic projection — cubes at z=0, -3, -6 must be identical screen size.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     float ortho_h = 3.0f;
     float ortho_w = ortho_h * float(TEST_WIDTH) / float(TEST_HEIGHT);
     cam.projection = glm::ortho(-ortho_w, ortho_w, -ortho_h, ortho_h, 0.1f, 50.0f);
@@ -3089,7 +3089,7 @@ TEST_F(visual_pipeline_test, toggle_grid_on)
 
     // Camera angled to see grid stretching to horizon + a single cube for
     // depth occlusion verification.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3164,7 +3164,7 @@ TEST_P(shadow_cascade_test, looks_correct)
     auto* se = create_lit_shader_effect(AID("se_cascade"));
     ASSERT_TRUE(se);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3255,7 +3255,7 @@ TEST_F(visual_pipeline_test, shader_toon)
 
     // Skip setup_scene — floor's solid_color material interferes with the
     // sphere's bindless texture sampling under toon (engine batching bug).
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3333,7 +3333,7 @@ TEST_F(visual_pipeline_test, material_emissive)
     ASSERT_TRUE(lit_se);
     ASSERT_TRUE(unlit_se);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3397,7 +3397,7 @@ TEST_F(visual_pipeline_test, material_alpha_sorting)
     auto* se = create_transparent_shader_effect(AID("se_alpha_sort"));
     ASSERT_TRUE(se);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3469,7 +3469,7 @@ TEST_F(visual_pipeline_test, shadow_point_dpsm)
     auto* se = create_lit_shader_effect(AID("se_point_dpsm"));
     ASSERT_TRUE(se);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3569,7 +3569,7 @@ TEST_F(visual_pipeline_test, mesh_instanced_draw)
     auto* se = create_lit_shader_effect(AID("se_inst"));
     ASSERT_TRUE(se);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(45.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3631,7 +3631,7 @@ TEST_F(visual_pipeline_test, toggle_grid_off)
     ASSERT_TRUE(se);
 
     // Same camera + cube as toggle_grid_on.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3783,7 +3783,7 @@ TEST_F(visual_pipeline_test, mesh_skinned_basic)
     bone_staging.push_back(glm::rotate(glm::mat4(1.0f), glm::radians(-45.0f), glm::vec3(1, 0, 0)));
 
     // Camera + sun.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(45.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 100.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3826,7 +3826,7 @@ TEST_F(visual_pipeline_test, material_textured_albedo)
 
     // Skip setup_scene — render only the textured cube to isolate the
     // lit-shader bindless sampling path from any floor-material interference.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3897,7 +3897,7 @@ TEST_F(visual_pipeline_test, material_pbr_textured)
 
     // Skip setup_scene — floor's solid_color material interferes with the
     // cube's bindless texture sampling under pbr_lit (engine batching bug).
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -3988,7 +3988,7 @@ TEST_F(visual_pipeline_test, shader_unlit_textured)
     auto* se = create_textured_unlit_shader_effect(AID("se_unlit_tex"));
     ASSERT_TRUE(se);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -4300,7 +4300,7 @@ void main() {
     renderer.stage_set_probes(std::move(probes), grid);
 
     // Camera + null sun (probes provide all illumination via the new shader).
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(45.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 100.0f);
     cam.projection[1][1] *= -1.0f;
@@ -4576,7 +4576,7 @@ TEST_F(visual_pipeline_test, shader_error_fallback)
         ASSERT_TRUE(se);
     }
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(50.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -4737,7 +4737,7 @@ TEST_F(visual_pipeline_test, toggle_lighting_baked_off)
     ASSERT_TRUE(se_lm);
     ASSERT_FALSE(se_lm->m_failed_load);
 
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;
@@ -5648,7 +5648,7 @@ TEST_F(visual_pipeline_test, voronoi_presets)
 
     struct preset
     {
-        float x;
+        float x{};
         voronoi_fracture::fracture_params fp;
     };
 
@@ -5761,7 +5761,7 @@ TEST_F(visual_pipeline_test, noop_grid_offscreen)
 
     // Camera at origin looking straight up — XZ plane (grid) is at infinity
     // behind us, never in frame.
-    gpu::camera_data cam;
+    gpu::camera_data cam{};
     cam.projection =
         glm::perspective(glm::radians(60.0f), float(TEST_WIDTH) / float(TEST_HEIGHT), 0.1f, 256.0f);
     cam.projection[1][1] *= -1.0f;

@@ -81,7 +81,7 @@ struct shadow_cull_volume
     };
 
     kind which = kind::frustum;
-    frustum frust;                          // kind::frustum
+    frustum frust{};                        // kind::frustum
     glm::vec3 position{0.0f};               // kind::point_*
     glm::vec3 front_dir{0.0f, 0.0f, 1.0f};  // kind::point_*
     float light_radius = 0.0f;              // kind::point_* (light reach)

@@ -22,7 +22,7 @@ class render_pass;
 struct vulkan_descriptor_set_layout_data
 {
     uint32_t set_idx = 0;
-    VkDescriptorSetLayoutCreateInfo create_info;
+    VkDescriptorSetLayoutCreateInfo create_info{};
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 };
 
@@ -69,7 +69,7 @@ public:
     VkPipeline m_with_stencil_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 
-    std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout;
+    std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout{};
 
     // Push constant ranges used to build m_pipeline_layout. Stored so
     // draw-time push_constants() can match the layout exactly per stage.

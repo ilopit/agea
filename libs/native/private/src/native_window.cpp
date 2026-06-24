@@ -111,7 +111,7 @@ native_window::construct(construct_params& c)
 native_window::size
 native_window::get_size()
 {
-    native_window::size s;
+    native_window::size s{};
     SDL_GetWindowSize(m_window, &s.w, &s.h);
 
     return s;

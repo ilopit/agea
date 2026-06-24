@@ -181,14 +181,14 @@ private:
     cluster_grid_config m_config;
 
     // Per-cluster light count
-    std::vector<uint32_t> m_cluster_light_counts;
+    std::vector<uint32_t> m_cluster_light_counts{};
 
     // Flat array of light indices per cluster
     // Layout: [cluster0_light0, cluster0_light1, ..., cluster1_light0, ...]
-    std::vector<uint32_t> m_cluster_light_indices;
+    std::vector<uint32_t> m_cluster_light_indices{};
 
     // Precomputed cluster AABBs in view space (recomputed on projection change)
-    std::vector<cluster_aabb> m_cluster_aabbs;
+    std::vector<cluster_aabb> m_cluster_aabbs{};
 
     // Cached inverse projection for AABB computation
     glm::mat4 m_cached_inv_projection = glm::mat4(1.0f);

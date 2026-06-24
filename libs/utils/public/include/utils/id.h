@@ -64,7 +64,7 @@ public:
     }
 
 private:
-    char m_id[id_size_in_bytes() + 1];
+    char m_id[id_size_in_bytes() + 1]{};
 };
 
 }  // namespace utils

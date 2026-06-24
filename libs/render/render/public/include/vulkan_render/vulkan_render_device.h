@@ -44,14 +44,14 @@ struct upload_context
 
 struct frame_data
 {
-    VkSemaphore m_present_semaphore;
-    VkSemaphore m_render_semaphore;
-    VkFence m_render_fence;
+    VkSemaphore m_present_semaphore{};
+    VkSemaphore m_render_semaphore{};
+    VkFence m_render_fence{};
 
-    VkCommandPool m_command_pool;
-    VkCommandBuffer m_main_command_buffer;
+    VkCommandPool m_command_pool{};
+    VkCommandBuffer m_main_command_buffer{};
 
-    std::unique_ptr<vk_utils::descriptor_allocator> m_dynamic_descriptor_allocator;
+    std::unique_ptr<vk_utils::descriptor_allocator> m_dynamic_descriptor_allocator{};
 };
 
 class render_device
@@ -449,12 +449,12 @@ public:
     VkDebugUtilsMessengerEXT m_debug_msg = VK_NULL_HANDLE;
     VkPhysicalDevice m_vk_gpu = VK_NULL_HANDLE;
     VkDevice m_vk_device = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties m_gpu_properties;
+    VkPhysicalDeviceProperties m_gpu_properties{};
     VkSurfaceKHR m_surface = VK_NULL_HANDLE;
     VmaAllocator m_allocator = VK_NULL_HANDLE;
-    VkQueue m_graphics_queue;
-    uint32_t m_graphics_queue_family;
-    upload_context m_upload_context;
+    VkQueue m_graphics_queue{};
+    uint32_t m_graphics_queue_family{};
+    upload_context m_upload_context{};
 
     VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
     VkFormat m_swapchain_image_format = VK_FORMAT_UNDEFINED;

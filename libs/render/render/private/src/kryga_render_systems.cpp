@@ -516,7 +516,7 @@ vulkan_render::upload_frustum_data(render::frame_state& frame)
     ZoneScopedN("Render::UploadFrustumData");
 
     // Convert frustum planes to GPU format (vec4: normal.xyz, distance)
-    gpu::frustum_data frustum_gpu;
+    gpu::frustum_data frustum_gpu{};
     for (int i = 0; i < 6; ++i)
     {
         const auto& plane = m_frustum.get_plane(static_cast<frustum::plane_id>(i));
@@ -578,7 +578,7 @@ vulkan_render::dispatch_frustum_cull_impl(VkCommandBuffer cmd)
     {
         uint32_t object_count;
         uint32_t max_visible;
-    } pc;
+    } pc{};
 
     pc.object_count = static_cast<uint32_t>(m_loader->objects_capacity());
     pc.max_visible = static_cast<uint32_t>(m_loader->objects_capacity());  // Same capacity

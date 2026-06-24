@@ -190,9 +190,9 @@ struct ui_draw_snapshot
     float display_size[2] = {0.f, 0.f};
     uint32_t total_vtx = 0;
     uint32_t total_idx = 0;
-    std::vector<uint8_t> vtx;  // concatenated ImDrawVert bytes
-    std::vector<uint8_t> idx;  // concatenated ImDrawIdx bytes
-    std::vector<ui_draw_cmd> cmds;
+    std::vector<uint8_t> vtx{};  // concatenated ImDrawVert bytes
+    std::vector<uint8_t> idx{};  // concatenated ImDrawIdx bytes
+    std::vector<ui_draw_cmd> cmds{};
 };
 
 struct frame_state
@@ -898,14 +898,14 @@ private:
     // Render thread's working camera + frustum, written ONLY by
     // apply_pending_camera() at draw start (render-owned). All render passes
     // read these.
-    gpu::camera_data m_camera_data;
+    gpu::camera_data m_camera_data{};
 
     // Camera written by set_camera() (main thread, into m_camera_pending[
     // m_build_frame_slot]) and latched into m_camera_data by apply_pending_camera()
     // (render thread, from m_camera_pending[m_draw_frame_slot]). Double-buffered
     // by frame parity so the main thread building frame F+1 writes a different
     // slot than the render thread reads for frame F.
-    gpu::camera_data m_camera_pending[2];
+    gpu::camera_data m_camera_pending[2]{};
 
     // Frame-parity slot selectors for the camera/UI double buffers. m_build_frame_slot
     // is written only by the main thread (begin_frame_inputs); m_draw_frame_slot
@@ -957,8 +957,8 @@ private:
     // stage to sample the font from the global bindless set.
     struct ui_push_constants
     {
-        glm::vec2 scale;
-        glm::vec2 translate;
+        glm::vec2 scale{};
+        glm::vec2 translate{};
         uint32_t tex_index = 0;
         uint32_t sampler_index = 0;
     };
@@ -1058,7 +1058,7 @@ private:
 
     // Clustered lighting
     cluster_grid m_cluster_grid;
-    gpu::cluster_grid_data m_cluster_config;
+    gpu::cluster_grid_data m_cluster_config{};
     bool m_clusters_dirty = true;
 
     // GPU compute cluster culling
@@ -1073,7 +1073,7 @@ private:
     bool m_gpu_frustum_culling_enabled = true;
 
     // Frustum for view culling
-    frustum m_frustum;
+    frustum m_frustum{};
 
     // Object-level BVH for CPU raycasting (picking)
     spatial::object_bvh m_object_bvh;
@@ -1113,8 +1113,8 @@ private:
         uint32_t x, y, size;
         glm::vec2 uv_offset, uv_scale;
     };
-    shadow_atlas_tile m_csm_tiles[KGPU_CSM_CASCADE_COUNT];
-    shadow_atlas_tile m_local_tiles[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2];
+    shadow_atlas_tile m_csm_tiles[KGPU_CSM_CASCADE_COUNT]{};
+    shadow_atlas_tile m_local_tiles[KGPU_MAX_SHADOWED_LOCAL_LIGHTS * 2]{};
 
     shader_effect_data* m_shadow_se = nullptr;
     shader_effect_data* m_shadow_dpsm_se = nullptr;

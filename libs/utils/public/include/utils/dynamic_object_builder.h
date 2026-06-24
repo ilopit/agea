@@ -120,7 +120,7 @@ public:
 private:
     utils::id m_id;
     uint64_t m_object_size = 0;
-    std::vector<dynobj_field> m_fields;
+    std::vector<dynobj_field> m_fields{};
 };
 
 class basic_dynobj_layout_builder

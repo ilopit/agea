@@ -76,8 +76,8 @@ private:
     void
     build_recursive(uint32_t node_idx, uint32_t begin, uint32_t end);
 
-    std::vector<object_bvh_node> m_nodes;
-    std::vector<bvh_object_entry> m_objects;
+    std::vector<object_bvh_node> m_nodes{};
+    std::vector<bvh_object_entry> m_objects{};
 };
 
 }  // namespace spatial

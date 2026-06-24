@@ -169,9 +169,9 @@ private:
         VkSampler sampler = VK_NULL_HANDLE;
     };
 
-    std::vector<binding_spec> m_bindings;
+    std::vector<binding_spec> m_bindings{};
     std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_layouts{};
-    std::unordered_map<utils::id, bound_resource> m_bound;
+    std::unordered_map<utils::id, bound_resource> m_bound{};
 
     bool m_finalized = false;
 };

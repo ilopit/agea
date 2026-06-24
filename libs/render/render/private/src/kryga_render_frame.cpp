@@ -698,7 +698,7 @@ vulkan_render::object_id_under_coordinate(uint32_t x, uint32_t y)
     auto r = spatial::object_bvh::screen_to_ray(
         x, y, m_width, m_height, m_camera_data.inv_projection, inv_view);
 
-    spatial::raycast_hit hit;
+    spatial::raycast_hit hit{};
     if (m_object_bvh.raycast(r, hit))
     {
         return static_cast<vulkan_render_data*>(hit.user_data);

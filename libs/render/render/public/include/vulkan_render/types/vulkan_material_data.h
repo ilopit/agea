@@ -191,9 +191,9 @@ private:
     kryga::utils::dynobj m_gpu_data;
 
     shader_effect_data* m_effect = nullptr;
-    std::vector<texture_sampler_data> m_texture_samples;
-    std::vector<uint32_t> m_bindless_texture_indices;
-    std::vector<uint8_t> m_bindless_sampler_indices;  // Parallel to texture indices
+    std::vector<texture_sampler_data> m_texture_samples{};
+    std::vector<uint32_t> m_bindless_texture_indices{};
+    std::vector<uint8_t> m_bindless_sampler_indices{};  // Parallel to texture indices
 };
 }  // namespace render
 }  // namespace kryga

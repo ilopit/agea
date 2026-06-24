@@ -184,13 +184,13 @@ private:
     void
     insert_barriers(VkCommandBuffer cmd, const rg_pass_barriers& barriers);
 
-    std::unordered_map<utils::id, vulkan_resource> m_resources;
-    std::vector<render_pass_sptr> m_passes;
-    std::vector<size_t> m_execution_order;
+    std::unordered_map<utils::id, vulkan_resource> m_resources{};
+    std::vector<render_pass_sptr> m_passes{};
+    std::vector<size_t> m_execution_order{};
     bool m_compiled = false;
 
-    std::unordered_set<utils::id> m_bound_this_frame;
-    std::unordered_map<utils::id, VkImageLayout> m_final_layouts;
+    std::unordered_set<utils::id> m_bound_this_frame{};
+    std::unordered_map<utils::id, VkImageLayout> m_final_layouts{};
 };
 
 }  // namespace kryga::render

@@ -571,7 +571,7 @@ shader_reflection_utils::build_shader_reflection(const uint8_t* spirv_code,
                                                  size_t spirv_size,
                                                  reflection::shader_reflection& sr)
 {
-    SpvReflectShaderModuleHandle spvmodule;
+    SpvReflectShaderModuleHandle spvmodule{};
 
     auto result = spvReflectCreateShaderModule(spirv_size, spirv_code, &spvmodule.h);
     if (result != SPV_REFLECT_RESULT_SUCCESS)

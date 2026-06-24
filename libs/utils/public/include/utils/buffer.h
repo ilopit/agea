@@ -140,8 +140,8 @@ struct buffer
 private:
     utils::path m_file;
     std::string m_vpath;
-    std::vector<uint8_t> m_data;
-    std::filesystem::file_time_type m_last_write_time;
+    std::vector<uint8_t> m_data{};
+    std::filesystem::file_time_type m_last_write_time{};
 };
 
 template <typename T>

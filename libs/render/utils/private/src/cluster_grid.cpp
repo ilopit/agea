@@ -171,7 +171,7 @@ cluster_grid::compute_cluster_aabb(uint32_t tile_x,
     corners[7] = screen_to_view(max_x, max_y, far_depth, inv_projection);
 
     // Compute AABB from corners
-    cluster_aabb aabb;
+    cluster_aabb aabb{};
     aabb.min_point = corners[0];
     aabb.max_point = corners[0];
 

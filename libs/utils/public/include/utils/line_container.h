@@ -135,7 +135,7 @@ public:
     }
 
 protected:
-    std::vector<T> m_items;
+    std::vector<T> m_items{};
 };
 }  // namespace utils
 

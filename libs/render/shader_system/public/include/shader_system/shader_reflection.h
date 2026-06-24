@@ -24,7 +24,7 @@ struct interface_variable
 
 struct interface_block
 {
-    std::vector<interface_variable> variables;
+    std::vector<interface_variable> variables{};
     utils::dynobj_layout_sptr layout;
 };
 
@@ -51,7 +51,7 @@ struct binding
 struct descriptor_set
 {
     uint32_t set_index = 0;
-    std::vector<binding> bindings;
+    std::vector<binding> bindings{};
 };
 
 struct compute_info

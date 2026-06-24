@@ -39,8 +39,8 @@ private:
 
     VkDescriptorPool m_current_pool = VK_NULL_HANDLE;
     pool_sizes_mapping m_descriptor_sizes = get_default_pool_size();
-    std::vector<VkDescriptorPool> m_used_pools;
-    std::vector<VkDescriptorPool> m_free_pools;
+    std::vector<VkDescriptorPool> m_used_pools{};
+    std::vector<VkDescriptorPool> m_free_pools{};
 };
 
 class descriptor_layout_cache
@@ -54,7 +54,7 @@ public:
         size_t
         hash() const;
 
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        std::vector<VkDescriptorSetLayoutBinding> bindings{};
     };
 
     virtual ~descriptor_layout_cache() = default;
@@ -76,7 +76,7 @@ private:
     };
 
     std::unordered_map<descriptor_layout_info, VkDescriptorSetLayout, descriptor_layout_hash>
-        m_layout_cache;
+        m_layout_cache{};
 };
 
 class descriptor_builder
@@ -104,8 +104,8 @@ public:
     build(VkDescriptorSet& set);
 
 private:
-    std::vector<VkWriteDescriptorSet> m_writes;
-    std::vector<VkDescriptorSetLayoutBinding> m_bindings;
+    std::vector<VkWriteDescriptorSet> m_writes{};
+    std::vector<VkDescriptorSetLayoutBinding> m_bindings{};
 
     descriptor_layout_cache* m_cache = nullptr;
     descriptor_allocator* m_alloc = nullptr;

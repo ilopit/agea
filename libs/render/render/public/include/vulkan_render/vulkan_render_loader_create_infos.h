@@ -46,10 +46,10 @@ struct shader_effect_create_info
     uint32_t height = 0;
 
     // Preprocessor defines passed to glslc (e.g., "ENABLE_LIGHTMAP=1")
-    std::vector<std::string> defines;
+    std::vector<std::string> defines{};
 
     // Specialization constants by name — resolved to constant_id via shader reflection
-    std::unordered_map<std::string, uint32_t> spec_constants;
+    std::unordered_map<std::string, uint32_t> spec_constants{};
 
     // If set, reuse this pipeline layout instead of building from reflection.
     // The shader effect will NOT own/destroy the layout.

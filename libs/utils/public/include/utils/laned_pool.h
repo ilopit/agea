@@ -394,7 +394,7 @@ private:
 
     // Fixed table of pointer-stable chunks. The table base never moves (set once in
     // the ctor); chunks are appended at the end and never relocated.
-    std::unique_ptr<std::atomic<slot*>[]> m_chunks;
+    std::unique_ptr<std::atomic<slot*>[]> m_chunks{};
     std::atomic<uint32_t> m_size{0};
     // Live slot count; written only by the reader thread alongside the generation
     // shadow, so a plain integer is enough.
@@ -645,7 +645,7 @@ private:
     }
 
     uint32_t m_lane_count;
-    std::unique_ptr<detail::lane_store<T>[]> m_lanes;
+    std::unique_ptr<detail::lane_store<T>[]> m_lanes{};
     bool m_claimed[k_lane_count] = {};
     uint32_t m_epochs[k_lane_count] = {};  // bumped per release; see claim_lane
 };
@@ -972,11 +972,11 @@ private:
     // vector, NOT deque: MSVC deque blocks are 16 bytes -- 1-2 elements per
     // heap allocation, double indirection per access. Nothing holds pointers
     // into these (every call re-indexes by value).
-    std::vector<entry> m_entries;
-    std::vector<uint32_t> m_free;
+    std::vector<entry> m_entries{};
+    std::vector<uint32_t> m_free{};
     // Strict-FIFO retire queue as a flat ring: head cursor instead of
     // pop_front, buffer recycled when fully drained (see tick).
-    std::vector<parked> m_retiring;
+    std::vector<parked> m_retiring{};
     size_t m_retire_head = 0;
     uint64_t m_active = 0;
     uint64_t m_tick = 0;

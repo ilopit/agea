@@ -15,8 +15,8 @@ namespace render
 {
 struct vertex_input_description
 {
-    std::vector<VkVertexInputBindingDescription> bindings;
-    std::vector<VkVertexInputAttributeDescription> attributes;
+    std::vector<VkVertexInputBindingDescription> bindings{};
+    std::vector<VkVertexInputAttributeDescription> attributes{};
 
     VkPipelineVertexInputStateCreateFlags flags = 0;
 };

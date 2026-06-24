@@ -48,7 +48,7 @@ public:
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout m_pipeline_layout = VK_NULL_HANDLE;
 
-    std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout;
+    std::array<VkDescriptorSetLayout, DESCRIPTORS_SETS_COUNT> m_set_layout{};
 
     std::shared_ptr<shader_module_data> m_compute_stage;
 

@@ -44,7 +44,7 @@ struct physics_result
     // World-space transform per chunk, in chunk index order. Only [0, chunk_count)
     // is meaningful; valid only while broken.
     uint32_t chunk_count = 0;
-    glm::mat4 chunk_transforms[k_max_result_chunks];
+    glm::mat4 chunk_transforms[k_max_result_chunks]{};
 };
 
 }  // namespace core

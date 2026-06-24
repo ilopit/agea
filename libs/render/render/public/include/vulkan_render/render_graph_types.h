@@ -70,9 +70,9 @@ struct rg_pass_barriers
 
     VkPipelineStageFlags src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
     VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    std::vector<VkMemoryBarrier> memory_barriers;
-    std::vector<VkBufferMemoryBarrier> buffer_barriers;
-    std::vector<VkImageMemoryBarrier> image_barriers;
+    std::vector<VkMemoryBarrier> memory_barriers{};
+    std::vector<VkBufferMemoryBarrier> buffer_barriers{};
+    std::vector<VkImageMemoryBarrier> image_barriers{};
 };
 
 }  // namespace kryga::render

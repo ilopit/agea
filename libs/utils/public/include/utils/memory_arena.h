@@ -61,7 +61,7 @@ public:
     }
 
 private:
-    std::vector<std::byte> m_buf;
+    std::vector<std::byte> m_buf{};
     size_t m_offset = 0;
 };
 

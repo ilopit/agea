@@ -43,7 +43,7 @@ class mesh_data;
 struct collected_gpu_data
 {
     utils::dynobj gpu_data;
-    reflection::gpu_texture_slot_ref texture_slots[KGPU_MAX_TEXTURE_SLOTS];
+    reflection::gpu_texture_slot_ref texture_slots[KGPU_MAX_TEXTURE_SLOTS]{};
     uint32_t texture_slot_count = 0;
 };
 

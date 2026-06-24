@@ -409,7 +409,7 @@ vulkan_render::draw_outline_post(VkCommandBuffer cmd, render::frame_state& curre
         uint32_t mask_texture_idx;
     };
 
-    outline_pc pc;
+    outline_pc pc{};
     pc.outline_color = glm::vec4(0.2f, 0.9f, 0.4f, 1.0f);  // green
     pc.texel_size = glm::vec2(1.0f / m_width, 1.0f / m_height);
     pc.thickness = 1.5f;
@@ -468,7 +468,7 @@ vulkan_render::draw_depth_outline(VkCommandBuffer cmd, render::frame_state& curr
         uint32_t _pad;
     };
 
-    outline_pc pc;
+    outline_pc pc{};
     const auto& cfg = m_render_config.outline;
     pc.outline_color = glm::vec4(cfg.color[0], cfg.color[1], cfg.color[2], cfg.color[3]);
     // texel_size is in low-res scene coordinates — that's where the depth texture lives

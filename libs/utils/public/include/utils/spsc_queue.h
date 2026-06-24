@@ -114,7 +114,7 @@ private:
     alignas(k_cache_line) std::atomic<size_t> m_head{0};
     alignas(k_cache_line) std::atomic<size_t> m_tail{0};
 
-    std::vector<T> m_buffer;
+    std::vector<T> m_buffer{};
 };
 
 }  // namespace utils
