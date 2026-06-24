@@ -36,7 +36,6 @@
 #include <packages/root/model/components/destructible_mesh_component.h>
 #include <packages/root/model/assets/destructible_mesh_asset.h>
 #include <packages/root/model/components/camera_component.h>
-#include <packages/tbs/model/hex_grid.h>
 #include <packages/ui/model/ui_panel.h>
 #include <packages/ui/model/ui_text.h>
 
@@ -232,14 +231,6 @@ game_editor::ev_reload()
     }
 
     glob::glob_state().getr_engine().init_scene();
-}
-
-void
-game_editor::ev_spawn2()
-{
-    tbs::hex_grid::construct_params cprms;
-    auto pp = glob::glob_state().getr_model().current_level->spawn_object<tbs::hex_grid>(AID("gg"),
-                                                                                         cprms);
 }
 
 void
