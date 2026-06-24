@@ -108,6 +108,24 @@ public:
         return *m_mode;
     }
 
+    // Simple session score (HUD-facing). Persists for the play session; game code
+    // drives it, the UI reads it. Not tied to a level.
+    int64_t
+    get_score() const
+    {
+        return m_score;
+    }
+    void
+    add_score(int64_t delta)
+    {
+        m_score += delta;
+    }
+    void
+    set_score(int64_t v)
+    {
+        m_score = v;
+    }
+
 private:
     // begin_play()/end_play() broadcast to every game_object in the current level.
     void
@@ -120,6 +138,7 @@ private:
     std::optional<utils::id> m_pending_level;
     player_state m_player;  // persists across level switches (not owned by a level)
     quest_log m_quests;
+    int64_t m_score = 0;
     std::unique_ptr<game_mode> m_mode;  // the pluggable game-specific behavior
 };
 

@@ -8,6 +8,7 @@
 #include "vulkan_render/types/vulkan_material_data.h"
 #include "vulkan_render/types/vulkan_texture_data.h"
 #include "vulkan_render/types/vulkan_render_pass.h"
+#include "vulkan_render/font_atlas.h"
 #include "vulkan_render/utils/vulkan_image.h"
 #include "vulkan_render/vulkan_render_loader_create_infos.h"
 #include "vulkan_render/render_thread.h"  // KRG_check_model_thread / _render_thread
@@ -27,6 +28,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <string_view>
 #include <unordered_map>
 #include <queue>
 
@@ -57,6 +59,21 @@ struct lightmap_binding
     std::unordered_map<kryga::utils::id, lightmap_uv> entries;  // object/component id → UV
 };
 
+// One line of UI text, the payload of the loader's ui_text laned_storage. The
+// model widget (ui::ui_text) holds the handle; ui_text_upsert populates the slot,
+// draw_ui_text reads it. Glyph layout happens at draw time (anchor: 0=TL,1=TR,
+// 2=BL,3=BR). Default-constructs to an empty slot for the pool's grow/reset.
+struct ui_text_entry
+{
+    std::string text;
+    int32_t x = 0;
+    int32_t y = 0;
+    uint32_t anchor = 0;
+    float font_size = 24.0f;
+    glm::vec4 color{1.0f};
+    kryga::utils::id font;  // which baked font to use; empty -> loader's default
+};
+
 // The storage instantiations the loader owns are the laned_storage aliases
 // from render_types/render_handle.h (one lane per allocator; handles
 // self-route by the lane bits in their index). Lane convention is defined
@@ -70,6 +87,7 @@ using mesh_storage = render::types::mesh_storage;
 using material_storage = render::types::material_storage;
 using texture_storage = render::types::bindless_texture_storage;
 using texture_ref_storage = render::types::texture_ref_storage;
+using ui_text_storage = render::types::ui_text_storage;
 
 // Merged render-resource owner: asset/content storage (meshes, materials,
 // textures, shaders, samplers, render passes) AND per-instance scene storage
@@ -562,6 +580,65 @@ public:
     remove_lightmap(const kryga::utils::id& level_id);
 
     /*************************/
+    // UI text registry (render-thread owned), handle-indexed laned_storage. The
+    // model widget (ui::ui_text) holds the handle; render_translator's ui_text
+    // allocator mints it (k_content style, single lane 0). The builder reserves,
+    // populate writes the slot, reset clears it (hide/destroy), draw_ui_text
+    // iterates the live slots. Storage handed to that allocator via bind().
+    ui_text_storage&
+    ui_texts_storage()
+    {
+        return m_ui_texts;
+    }
+
+    void
+    populate_ui_text(render::types::ui_text_handle h, const ui_text_entry& e)
+    {
+        KRG_check_render_thread_dbg();
+        m_ui_texts.grow_for(h);  // growth is consumer-side (this thread)
+        *m_ui_texts.at(h) = e;
+        m_ui_texts.set_generation(h, h.generation());  // mark the slot live
+    }
+
+    void
+    reset_ui_text(render::types::ui_text_handle h)
+    {
+        KRG_check_render_thread_dbg();
+        // May fire before the slot was ever populated (hide-before-show); grow_for
+        // makes it addressable, reset zeroes the payload + clears the gen shadow.
+        m_ui_texts.grow_for(h);
+        m_ui_texts.reset(h);
+    }
+
+    // Runtime UI fonts — id-keyed registry (same shape as the render-pass /
+    // lightmap registries above, NOT the handle/allocator pools: fonts are loaded
+    // once and referenced by a stable id, not minted per-instance by the model).
+    // Each font bakes a TTF into one bindless atlas via the renderer's
+    // create_texture (see kryga_render_text.cpp). Owned here, not on the renderer.
+    // Independent of ImGui -> works in game builds.
+    //
+    // This is MECHANISM only: which fonts ship and which id is the default are
+    // engine policy (see vulkan_engine::init_default_resources). The loader neither
+    // bakes built-ins nor knows a "default" — it stores and resolves by id.
+
+    // Bake a TTF (read from ttf_path via the VFS) into a new atlas under `id`.
+    // bake_height is the rasterization size in px (the draw scales from it).
+    // Re-loading the same id replaces the atlas. Returns the baked font, or null
+    // on failure (missing file / pack error).
+    font_atlas*
+    load_font(const kryga::utils::id& id, std::string_view ttf_path, float bake_height);
+
+    // Resolve a font by id, or null if no font is registered under it. The caller
+    // (draw_ui_text) skips entries whose font is missing. [render thread]
+    font_atlas*
+    get_font(const kryga::utils::id& id)
+    {
+        KRG_check_render_thread_dbg();
+        auto itr = m_fonts.find(id);
+        return itr != m_fonts.end() ? &itr->second : nullptr;
+    }
+
+    /*************************/
 
     bool
     update_object(vulkan_render_data& obj_data,
@@ -684,6 +761,8 @@ private:
     std::unordered_map<kryga::utils::id, render_pass_sptr> m_render_passes;
 
     std::unordered_map<kryga::utils::id, lightmap_binding> m_lightmaps;
+    ui_text_storage m_ui_texts{1};  // single lane (render_translator's content alloc)
+    std::unordered_map<kryga::utils::id, font_atlas> m_fonts;  // id -> baked atlas
 };
 
 }  // namespace render

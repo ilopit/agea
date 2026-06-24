@@ -58,6 +58,7 @@ render_translator::connect()
     m_objects_alloc.bind(rs.loader.objects_storage(), 0);
     m_dir_lights_alloc.bind(rs.loader.dir_lights_storage(), 0);
     m_uni_lights_alloc.bind(rs.loader.uni_lights_storage(), 0);
+    m_ui_texts_alloc.bind(rs.loader.ui_texts_storage(), 0);
 }
 
 void
@@ -71,6 +72,7 @@ render_translator::disconnect()
     m_objects_alloc.detach();
     m_dir_lights_alloc.detach();
     m_uni_lights_alloc.detach();
+    m_ui_texts_alloc.detach();
 }
 
 void
@@ -87,6 +89,7 @@ render_translator::on_frame()
     m_objects_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
     m_dir_lights_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
     m_uni_lights_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
+    m_ui_texts_alloc.set_defer_ticks(static_cast<uint64_t>(fif) + 1);
 
     m_meshes_alloc.tick();
     m_materials_alloc.tick();
@@ -94,6 +97,7 @@ render_translator::on_frame()
     m_objects_alloc.tick();
     m_dir_lights_alloc.tick();
     m_uni_lights_alloc.tick();
+    m_ui_texts_alloc.tick();
 }
 
 kryga::result_code

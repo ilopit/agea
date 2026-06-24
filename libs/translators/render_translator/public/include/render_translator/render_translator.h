@@ -94,6 +94,11 @@ public:
     {
         return m_uni_lights_alloc;
     }
+    render::types::ui_text_allocator&
+    ui_texts_alloc()
+    {
+        return m_ui_texts_alloc;
+    }
 
     // i_translator::connect — [init, model thread] Bind each allocator to its
     // render-side storage + lane (bind claims the lane). Call once after render_system
@@ -123,6 +128,7 @@ private:
     render::types::render_object_allocator m_objects_alloc;
     render::types::directional_light_allocator m_dir_lights_alloc;
     render::types::universal_light_allocator m_uni_lights_alloc;
+    render::types::ui_text_allocator m_ui_texts_alloc;
 };
 
 template <typename T, typename... Args>

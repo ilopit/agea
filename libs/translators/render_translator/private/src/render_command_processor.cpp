@@ -685,6 +685,35 @@ process(ui_panel_destroy_cmd& c, render_cmd::render_exec_context& ctx)
     ctx.vr.ui_panel_destroy(c.id);
 }
 
+static void
+process(ui_text_upsert_cmd& c, render_cmd::render_exec_context& ctx)
+{
+    // Hidden / empty just clears the slot — the handle stays reserved (the widget
+    // still exists); only the destroyer frees it.
+    if (!c.visible || c.text[0] == '\0')
+    {
+        ctx.loader.reset_ui_text(c.handle);
+        return;
+    }
+
+    render::ui_text_entry entry;
+    entry.text = c.text;  // char[] -> std::string (null-terminated)
+    entry.x = c.x;
+    entry.y = c.y;
+    entry.anchor = c.anchor;
+    entry.font_size = c.font_size;
+    entry.color = c.color;
+    entry.font = c.font;
+
+    ctx.loader.populate_ui_text(c.handle, entry);
+}
+
+static void
+process(ui_text_destroy_cmd& c, render_cmd::render_exec_context& ctx)
+{
+    ctx.loader.reset_ui_text(c.handle);
+}
+
 // ============================================================================
 // run_and_destroy — run the matching process() overload (ADL), then destruct the
 // command in place (the arena only rewinds; ~T() releases non-trivial members).
@@ -801,6 +830,12 @@ render_command_processor::apply(render_cmd::render_command_base* cmd)
         break;
     case render_cmd::render_cmd_kind::ui_panel_destroy:
         render_cmd::run_and_destroy<ui_panel_destroy_cmd>(cmd, ctx);
+        break;
+    case render_cmd::render_cmd_kind::ui_text_upsert:
+        render_cmd::run_and_destroy<ui_text_upsert_cmd>(cmd, ctx);
+        break;
+    case render_cmd::render_cmd_kind::ui_text_destroy:
+        render_cmd::run_and_destroy<ui_text_destroy_cmd>(cmd, ctx);
         break;
     }
 }

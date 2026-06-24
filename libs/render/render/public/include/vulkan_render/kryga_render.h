@@ -978,6 +978,17 @@ private:
     void
     draw_ui_panels(VkCommandBuffer cmd);
 
+    // UI text — parallel path to panels. The model sends a string + pixel anchor;
+    // glyph layout (one quad per char from the atlas metrics) and pixel->NDC happen
+    // here, render-side, in draw_ui_text. The entry cache AND the font atlas are
+    // owned by the render loader (vulkan_render_loader::ui_texts/ui_font); both are
+    // read via m_loader.
+    shader_effect_data* m_ui_text_se = nullptr;
+    void
+    init_ui_text_pipeline();
+    void
+    draw_ui_text(VkCommandBuffer cmd);
+
     // Selection mask + outline post-process
     shader_effect_data* m_selection_mask_se = nullptr;
     material_data* m_selection_mask_mat = nullptr;

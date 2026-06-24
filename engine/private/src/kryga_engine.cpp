@@ -32,6 +32,7 @@
 #include <core/id_generator.h>
 #include <core/level.h>
 #include <game_session/game_session.h>
+#include <packages/ui/model/ui_text.h>
 #include <glue/glue_link.ar.h>
 #include <core/level_manager.h>
 #include <core/object_constructor.h>
@@ -915,6 +916,20 @@ vulkan_engine::tick(float dt)
     // run in edit mode too (same rationale as the animation system below).
     glob::glob_state().getr_model().screens.tick(dt);
 
+#if KRG_HAS_EDITOR
+    // Demo: drive the top-right score counter (only present when KRG_UI_DEMO spawned
+    // it). A real game would update this from its game_mode, not the engine loop.
+    if (auto* scr = glob::glob_state().getr_model().screens.active())
+    {
+        if (auto* w = scr->find_widget(AID("score_text")))
+        {
+            auto& session = glob::glob_state().getr_game_session();
+            session.add_score(1);
+            w->as<ui::ui_text>()->set_text(std::format("Score: {}", session.get_score()));
+        }
+    }
+#endif
+
     if (auto* anim = glob::glob_state().get_animation_system())
     {
         anim->tick(dt);
@@ -1151,6 +1166,18 @@ void
 vulkan_engine::init_default_resources()
 {
     // plane_mesh is now created by vulkan_render::prepare_system_resources()
+
+    // Built-in UI fonts. ENGINE POLICY: which fonts ship and which id is the
+    // default. The loader owns only the registry mechanism (load_font/get_font).
+    // The id below is the contract with kryga::ui::ui_text, whose font defaults to
+    // AID("ui_font_default") — keep the two in sync. Add more fonts here (or, later,
+    // from package load) by calling load_font with a different id. Skipped headless:
+    // there is no UI-text draw pass, so no atlas is needed.
+    if (!m_headless)
+    {
+        glob::glob_state().getr_render().loader.load_font(
+            AID("ui_font_default"), "data://fonts/Roboto-Medium.ttf", 48.0f);
+    }
 }
 
 void

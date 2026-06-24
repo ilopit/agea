@@ -38,6 +38,7 @@
 #include <packages/root/model/components/camera_component.h>
 #include <packages/tbs/model/hex_grid.h>
 #include <packages/ui/model/ui_panel.h>
+#include <packages/ui/model/ui_text.h>
 
 #include <gpu_types/gpu_generic_constants.h>
 
@@ -266,6 +267,17 @@ game_editor::ev_spawn_ui()
     // spawn_widget already queued the first render build; the setters above are
     // no-ops on a freshly-constructed object (mark_render_dirty skips
     // state==constructed), so no extra queue is needed.
+
+    // Score counter, top-right corner. The value is driven each frame by the
+    // engine update (demo); a real game would drive it from its game_mode.
+    auto* score =
+        screen->spawn_widget<ui::ui_text>(AID("score_text"), ui::ui_text::construct_params{});
+    score->set_x(24);
+    score->set_y(20);
+    score->set_font_size(36.0f);
+    score->set_color({1.0f, 0.95f, 0.3f, 1.0f});
+    score->set_anchor(ui::ui_text_anchor::top_right);
+    score->set_text("Score: 0");
 }
 
 void

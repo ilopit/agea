@@ -17,6 +17,7 @@ class texture_data;
 class vulkan_render_data;
 class vulkan_directional_light_data;
 class vulkan_universal_light_data;
+struct ui_text_entry;
 
 namespace types
 {
@@ -48,6 +49,10 @@ enum class resource_kind : uint8_t
     // internal — handle exists, never handed to the model:
     lightmap = 6,
     probe = 7,
+
+    // CPU-side UI text draw entries (render-thread storage). Not a GPU slot;
+    // pooled here so widgets hold a handle like any other render resource.
+    ui_text = 8,
 };
 
 // Model-exposed handle types.
@@ -57,8 +62,8 @@ using material_handle = utils::handle<static_cast<uint8_t>(resource_kind::materi
 using render_object_handle = utils::handle<static_cast<uint8_t>(resource_kind::object)>;
 using directional_light_handle =
     utils::handle<static_cast<uint8_t>(resource_kind::directional_light)>;
-using universal_light_handle =
-    utils::handle<static_cast<uint8_t>(resource_kind::universal_light)>;
+using universal_light_handle = utils::handle<static_cast<uint8_t>(resource_kind::universal_light)>;
+using ui_text_handle = utils::handle<static_cast<uint8_t>(resource_kind::ui_text)>;
 
 // Storage + allocator types, one pair per (kind, payload) — mirrors the handle
 // aliases above so holders (the loader, render_translator, the renderer's system
@@ -85,12 +90,12 @@ using object_storage =
 using dir_light_storage =
     utils::laned_storage<static_cast<uint8_t>(resource_kind::directional_light),
                          vulkan_directional_light_data>;
-using uni_light_storage =
-    utils::laned_storage<static_cast<uint8_t>(resource_kind::universal_light),
-                         vulkan_universal_light_data>;
+using uni_light_storage = utils::laned_storage<static_cast<uint8_t>(resource_kind::universal_light),
+                                               vulkan_universal_light_data>;
+using ui_text_storage =
+    utils::laned_storage<static_cast<uint8_t>(resource_kind::ui_text), ui_text_entry>;
 
-using mesh_allocator =
-    utils::lane_allocator<static_cast<uint8_t>(resource_kind::mesh), mesh_data>;
+using mesh_allocator = utils::lane_allocator<static_cast<uint8_t>(resource_kind::mesh), mesh_data>;
 using material_allocator =
     utils::lane_allocator<static_cast<uint8_t>(resource_kind::material), material_data>;
 using texture_allocator =
@@ -105,6 +110,8 @@ using directional_light_allocator =
 using universal_light_allocator =
     utils::lane_allocator<static_cast<uint8_t>(resource_kind::universal_light),
                           vulkan_universal_light_data>;
+using ui_text_allocator =
+    utils::lane_allocator<static_cast<uint8_t>(resource_kind::ui_text), ui_text_entry>;
 
 }  // namespace types
 }  // namespace render

@@ -25,4 +25,9 @@ ui_panel__cmd_builder(reflection::type_context__render_cmd_build& ctx);
 result_code
 ui_panel__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
 
+result_code
+ui_text__cmd_builder(reflection::type_context__render_cmd_build& ctx);
+result_code
+ui_text__cmd_destroyer(reflection::type_context__render_cmd_build& ctx);
+
 }  // namespace kryga

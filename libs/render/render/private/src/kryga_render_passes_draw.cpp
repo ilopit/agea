@@ -178,10 +178,11 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
         draw_debug_overlay(cmd, current_frame);
         draw_outline_post(cmd, current_frame);
 
-        // Layer order: player-facing UI panels first, then the ImGui editor chrome
-        // composited on top of them. Panels are not ImGui-gated (they ship in game
-        // builds); ImGui is editor-only and always sits above our UI.
+        // Layer order: player-facing UI panels, then text on top of them, then the
+        // ImGui editor chrome composited above all. Panels/text are not ImGui-gated
+        // (they ship in game builds); ImGui is editor-only and always sits above.
         draw_ui_panels(cmd);
+        draw_ui_text(cmd);
 #if KRG_HAS_IMGUI
         draw_ui_overlay(cmd, current_frame);
 #endif
@@ -190,10 +191,10 @@ vulkan_render::draw_objects_instanced(render::frame_state& current_frame)
     {
         // Render-scale on: the full-res overlays + ImGui run later in draw_composite,
         // which executes after this lowres pass — so ImGui already lands on top of
-        // the panels there. Panels must still be drawn here in the main pass: the
-        // se_ui_panel pipeline is built for main_pass and would be invalid in the
-        // composite pass.
+        // the panels there. Panels/text must still be drawn here in the main pass:
+        // their pipelines are built for main_pass and would be invalid in composite.
         draw_ui_panels(cmd);
+        draw_ui_text(cmd);
     }
 }
 

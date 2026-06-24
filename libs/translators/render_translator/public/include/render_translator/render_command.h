@@ -44,6 +44,8 @@ enum class render_cmd_kind : uint16_t
     apply_bones,
     ui_panel_upsert,
     ui_panel_destroy,
+    ui_text_upsert,
+    ui_text_destroy,
 };
 
 struct render_exec_context

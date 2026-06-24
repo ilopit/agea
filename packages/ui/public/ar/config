@@ -1,3 +1,4 @@
 include/packages/ui/package.ui.h
 include/packages/ui/render/overrides/render_types_handlers.h
 include/packages/ui/model/ui_panel.h
+include/packages/ui/model/ui_text.h

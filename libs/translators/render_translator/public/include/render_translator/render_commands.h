@@ -357,4 +357,38 @@ struct ui_panel_destroy_cmd : render_cmd::render_command_base
     utils::id id;
 };
 
+// ============================================================================
+// UI text (packages/ui ui_text widget)
+//
+// Carries the raw string + pixel anchor; glyph layout (per-glyph quads from the
+// font atlas metrics) and the pixel->NDC conversion are deferred to the render
+// thread (draw_ui_text), where the live viewport + baked metrics are known.
+// anchor: 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right (matches
+// kryga::ui::ui_text_anchor; right/bottom anchors align the text to that edge).
+// ============================================================================
+
+struct ui_text_upsert_cmd : render_cmd::render_command_base
+{
+    static constexpr auto k_kind = render_cmd::render_cmd_kind::ui_text_upsert;
+
+    static constexpr int k_max_len = 64;
+
+    render::types::ui_text_handle handle;  // pre-reserved by the builder (handle model)
+    int32_t x = 0;
+    int32_t y = 0;
+    uint32_t anchor = 0;
+    float font_size = 24.0f;  // pixel height
+    glm::vec4 color{1.0f};
+    utils::id font;  // baked font id; empty -> loader default
+    bool visible = true;
+    char text[k_max_len] = {};  // null-terminated, truncated to k_max_len-1
+};
+
+struct ui_text_destroy_cmd : render_cmd::render_command_base
+{
+    static constexpr auto k_kind = render_cmd::render_cmd_kind::ui_text_destroy;
+
+    render::types::ui_text_handle handle;
+};
+
 }  // namespace kryga
