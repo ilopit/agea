@@ -35,12 +35,11 @@
 #include <packages/root/model/destructible_mesh_object.h>
 #include <packages/root/model/components/destructible_mesh_component.h>
 #include <packages/root/model/assets/destructible_mesh_asset.h>
-#include <packages/tbs/model/hex_grid.h>
 #include <packages/root/model/components/camera_component.h>
 
 #include <gpu_types/gpu_generic_constants.h>
 
-#include <packages/root/model/player.h>
+#include <picking/picking.h>
 
 namespace kryga
 {
@@ -230,14 +229,6 @@ game_editor::ev_reload()
     }
 
     glob::glob_state().getr_engine().init_scene();
-}
-
-void
-game_editor::ev_spawn2()
-{
-    tbs::hex_grid::construct_params cprms;
-    auto pp = glob::glob_state().getr_model().current_level->spawn_object<tbs::hex_grid>(AID("gg"),
-                                                                                         cprms);
 }
 
 void
@@ -503,35 +494,21 @@ game_editor::enter_play_mode()
     dbg.editor_mode = false;
 
     m_active_camera = nullptr;
-    m_player = nullptr;
 
     if (auto lvl = glob::glob_state().getr_model().current_level)
     {
         lvl->snapshot();
-
-        root::player::construct_params pp;
-        m_player = lvl->spawn_object<root::player>(AID("player_0"), pp);
-        if (m_player)
-        {
-            m_player->set_position(root::vec3{
-                m_camera_data.position.x, m_camera_data.position.y, m_camera_data.position.z});
-
-            m_active_camera = m_player->get_camera();
-            m_active_camera->set_active_camera(true);
-            m_active_camera->set_perspective(60.f,
-                                             glob::glob_state().getr_native_window().aspect_ratio(),
-                                             (float)KGPU_znear,
-                                             (float)KGPU_zfar);
-        }
     }
 
     m_mode = editor_mode::playing;
 
-    // The game session owns the play lifecycle. The editor still owns its
-    // editor-only concerns above (snapshot, camera save, player-preview spawn);
-    // begin_play() broadcast is the session's job. enter_play() runs after the player
-    // is spawned so the spawned object also receives begin_play().
+    // The game session owns the play lifecycle, including spawning the game's
+    // player (the registered game_mode's on_start). The editor stays generic: it
+    // takes the pre-play snapshot above, then resolves whatever camera the game
+    // activated. enter_play() runs the begin_play() broadcast + on_start.
     glob::glob_state().getr_game_session().enter_play();
+
+    m_active_camera = picking::find_active_camera();
 }
 
 void
@@ -549,7 +526,6 @@ game_editor::exit_play_mode()
     {
         lvl->rollback();
     }
-    m_player = nullptr;
     m_active_camera = nullptr;
 
     m_camera_data.position = m_saved_position;

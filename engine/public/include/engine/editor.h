@@ -20,7 +20,6 @@ class game_object;
 namespace root
 {
 class camera_component;
-class player;
 class destructible_mesh_component;
 }  // namespace root
 
@@ -80,9 +79,6 @@ public:
 
     void
     ev_spawn();
-
-    void
-    ev_spawn2();
 
     void
     ev_lights();
@@ -150,7 +146,6 @@ private:
     bool m_saved_editor_mode_visuals = true;
 
     root::camera_component* m_active_camera = nullptr;
-    root::player* m_player = nullptr;
     root::destructible_mesh_component* m_pending_shatter = nullptr;
     int m_pending_shatter_frames = 0;
 

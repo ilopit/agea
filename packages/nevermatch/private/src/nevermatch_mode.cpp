@@ -4,10 +4,14 @@
 
 #include <picking/picking.h>
 
+#include <packages/nevermatch/model/nevermatch_player.h>
+
 #include <packages/root/model/components/camera_component.h>
 #include <packages/root/model/game_object.h>
 
 #include <core/input_provider.h>
+#include <core/level.h>
+#include <core/model_system.h>
 
 #include <serialization/serialization.h>
 
@@ -23,8 +27,26 @@ nevermatch_mode::on_start(game::game_session&)
 
     if (auto* ip = glob::get_input_provider())
     {
-        ip->register_fixed_action(AID("mouse_pressed"), true, this,
-                                  &nevermatch_mode::on_select_pressed);
+        ip->register_fixed_action(
+            AID("mouse_pressed"), true, this, &nevermatch_mode::on_select_pressed);
+    }
+
+    // The game owns its player. Spawned here (not by the engine/editor) so root
+    // stays generic. on_start runs after the begin_play() broadcast, so the freshly
+    // spawned player is begin_play()'d explicitly. The active camera's aspect is
+    // driven per-frame by the engine's update_cameras(); we only set fov/near/far.
+    if (auto* lvl = glob::glob_state().getr_model().current_level)
+    {
+        nevermatch_player::construct_params pp;
+        if (auto* player = lvl->spawn_object<nevermatch_player>(AID("player_0"), pp))
+        {
+            player->begin_play();
+            if (auto* cam = player->get_camera())
+            {
+                cam->set_active_camera(true);
+                cam->set_perspective(60.f, 1.f, 0.1f, 2000.f);
+            }
+        }
     }
 }
 

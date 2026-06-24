@@ -51,7 +51,6 @@
 #include <packages/root/model/game_object.h>
 #include <packages/root/model/assets/shader_effect.h>
 #include <packages/root/model/camera_object.h>
-#include <packages/root/model/player.h>
 
 #include <packages/root/model/lights/directional_light.h>
 #include <packages/root/model/lights/point_light.h>
@@ -1164,30 +1163,9 @@ vulkan_engine::init_scene()
 #endif
     }
 
-#if !KRG_HAS_EDITOR
-    if (auto lvl = glob::glob_state().getr_model().current_level)
-    {
-        root::player::construct_params player_prms;
-        auto player_obj = lvl->spawn_object<root::player>(AID("player_0"), player_prms);
-        if (player_obj)
-        {
-            player_obj->get_camera()->set_active_camera(true);
-            player_obj->get_camera()->set_perspective(
-                60.f,
-                glob::glob_state().getr_native_window().aspect_ratio(),
-                (float)KGPU_znear,
-                (float)KGPU_zfar);
-        }
-
-        for (auto& [id, obj] : lvl->get_game_objects().get_items())
-        {
-            if (auto go = obj->as<root::game_object>())
-            {
-                go->begin_play();
-            }
-        }
-    }
-#endif
+    // Player spawn + begin_play is the game's responsibility: the game-tier
+    // enter_play() (in load_level) drives the registered game_mode's on_start,
+    // which spawns the player and activates its camera. Keeps the engine generic.
 }
 
 void
